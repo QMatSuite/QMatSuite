@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Menu?>
+<?import javafx.scene.control.MenuBar?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.RadioButton?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Pane?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane fx:id="rootPane" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
+   <top>
+      <VBox BorderPane.alignment="CENTER">
+         <children>
+            <MenuBar>
+              <menus>
+                <Menu fx:id="menuFile" mnemonicParsing="false" text="File">
+                  <items>
+                        <MenuItem fx:id="menuSaveProject" mnemonicParsing="false" text="Save current project" />
+                        <MenuItem fx:id="menuLoadProject" mnemonicParsing="false" text="Load project" />
+                    <Menu fx:id="menuFile" mnemonicParsing="false" text="Examples">
+                      <MenuItem mnemonicParsing="false" text="Si" />
+                      <MenuItem mnemonicParsing="false" text="H2O" />
+                    </Menu>
+                    <MenuItem mnemonicParsing="false" text="Close" />
+                  </items>
+                </Menu>
+                <Menu mnemonicParsing="false" text="Edit">
+                  <items>
+                    <MenuItem mnemonicParsing="false" text="Delete" />
+                  </items>
+                </Menu>
+                <Menu mnemonicParsing="false" text="Help">
+                  <items>
+                    <MenuItem fx:id="menuAbout" mnemonicParsing="false" text="About" />
+                  </items>
+                </Menu>
+              </menus>
+            </MenuBar>
+            <HBox>
+               <children>
+                <Button fx:id="createProject" minWidth="75.0" mnemonicParsing="false" text="New project" />
+                  <ComboBox fx:id="comboProject" minWidth="55.0" />
+                  <Separator orientation="VERTICAL" />
+                  <MenuButton fx:id="calcMain" minWidth="75.0" mnemonicParsing="false" text="Add calculation">
+                     <items>
+                     <MenuItem fx:id="calcScf" mnemonicParsing="false" text="Single energy" />
+                      <MenuItem fx:id="calcOpt" mnemonicParsing="false" text="optimization" />
+                      <MenuItem fx:id="calcDos" mnemonicParsing="false" text="DOS" />
+                      <MenuItem fx:id="calcBands" mnemonicParsing="false" text="bands" />
+                      <MenuItem fx:id="calcMd" mnemonicParsing="false" text="MD" />
+                      <MenuItem fx:id="calcTddft" mnemonicParsing="false" text="TDDFT" />
+                      <MenuItem fx:id="calcCustom" mnemonicParsing="false" text="Custom..." />
+                     </items>
+                  </MenuButton>
+                  <Separator orientation="VERTICAL" />
+                <Button fx:id="runButton" minWidth="70.0" mnemonicParsing="false" text="Show Input" />
+                <Button fx:id="addMolecule" minWidth="70.0" mnemonicParsing="false" text="Add sample molecule" />
+                <Pane prefHeight="25.0" prefWidth="358.0" HBox.hgrow="ALWAYS" />
+                  <Separator orientation="VERTICAL" />
+                  <RadioButton fx:id="radioGeometry" minWidth="60.0" mnemonicParsing="false" />
+                  <RadioButton fx:id="radioCalculation" minWidth="60.0" mnemonicParsing="false" />
+                  <Separator orientation="VERTICAL" />
+                  <ComboBox fx:id="comboCalculation" minWidth="70.0" />
+                <Label fx:id="calcLabel" minWidth="55.0" text="" />
+               </children>
+            </HBox>
+         </children>
+      </VBox>
+   </top>
+   <bottom>
+      <HBox BorderPane.alignment="CENTER">
+         <children>
+            <Label text="Status" />
+         </children>
+      </HBox>
+   </bottom>
+   <left>
+      <HBox fx:id="hboxLeft" BorderPane.alignment="CENTER">
+      </HBox>
+   </left>
+   <right>
+      <HBox fx:id="hboxRight" BorderPane.alignment="CENTER">
+      </HBox>
+   </right>
+   <center>
+      <TabPane fx:id="workSpaceTabPane" prefHeight="323.0" prefWidth="241.0" tabClosingPolicy="UNAVAILABLE" BorderPane.alignment="CENTER">
+      </TabPane>
+   </center>
+</BorderPane>
