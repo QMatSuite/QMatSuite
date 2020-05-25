@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Accordion?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TitledPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<ScrollPane xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
+   <content>
+      <VBox>
+         <children>
+            <BorderPane>
+               <left>
+                  <Label text="Geometry" BorderPane.alignment="CENTER">
+                     <font>
+                        <Font name="System Bold Italic" size="14.0" />
+                     </font>
+                  </Label>
+               </left>
+               <center>
+                  <Separator prefWidth="200.0" BorderPane.alignment="CENTER" />
+               </center>
+            </BorderPane>
+            <GridPane>
+              <columnConstraints>
+                <ColumnConstraints hgrow="SOMETIMES" maxWidth="161.5" minWidth="10.0" prefWidth="161.5" />
+                <ColumnConstraints hgrow="SOMETIMES" maxWidth="121.5" minWidth="10.0" prefWidth="90.5" />
+                  <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+              </columnConstraints>
+              <rowConstraints>
+                <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+              </rowConstraints>
+               <children>
+                  <Label fx:id="labelGeoLeft" prefHeight="17.0" prefWidth="154.0" text="Use the following geometry: " GridPane.halignment="RIGHT" />
+                  <ComboBox fx:id="comboGeo" prefHeight="25.0" prefWidth="95.0" GridPane.columnIndex="1" />
+                  <Label fx:id="labelGeoRight" GridPane.columnIndex="2" />
+               </children>
+            </GridPane>
+              <Accordion fx:id="accordGeo">
+                  <panes>
+                      <TitledPane animated="false" text="Cell">
+                          <content>
+                              <ScrollPane fx:id="cellPane" prefWidth="375.0" />
+                          </content>
+                      </TitledPane>
+                      <TitledPane animated="false" text="Atoms">
+                          <content>
+                              <ScrollPane fx:id="atomsPane" prefWidth="375.0" />
+                          </content>
+                      </TitledPane>
+                      <TitledPane fx:id="titlePaneElements" animated="false" text="Elements">
+                          <content>
+                              <ScrollPane fx:id="elementsPane" prefWidth="375.0" />
+                          </content>
+                      </TitledPane>
+                  </panes>
+              </Accordion>
+         </children>
+      </VBox>
+   </content>
+</ScrollPane>

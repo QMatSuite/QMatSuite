@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefWidth="350.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
+   <children>
+      <BorderPane prefWidth="350.0">
+         <center>
+            <Separator prefHeight="30.0" BorderPane.alignment="CENTER" />
+         </center>
+         <left>
+            <Label styleClass="medium-text" text="Pseudopotential Settings" BorderPane.alignment="CENTER">
+               <font>
+                  <Font name="System Bold Italic" size="14.0" />
+               </font>
+               <padding>
+                  <Insets left="10.0" right="10.0" />
+               </padding>
+            </Label>
+         </left>
+         <padding>
+            <Insets top="10.0" />
+         </padding>
+      </BorderPane>
+      <GridPane prefWidth="350.0" vgap="5.0">
+         <children>
+            <Button mnemonicParsing="false" text="i" GridPane.columnIndex="5" GridPane.rowIndex="1" />
+            <CheckBox mnemonicParsing="false" GridPane.columnIndex="4" GridPane.halignment="CENTER" GridPane.rowIndex="1" />
+            <Label text="Reset to default" GridPane.columnIndex="4" />
+            <ComboBox fx:id="comboFunctional" prefHeight="25.0" prefWidth="83.0" GridPane.rowIndex="1" />
+            <Label prefHeight="17.0" prefWidth="89.0" text="Functional Type" />
+            <Label text="P.P Type" GridPane.columnIndex="1" />
+            <Label text="Full relativ." GridPane.columnIndex="2" />
+            <ComboBox fx:id="comboPP" prefHeight="25.0" prefWidth="86.0" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+            <CheckBox fx:id="checkRelativ" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.halignment="CENTER" GridPane.rowIndex="1" />
+            <Separator orientation="VERTICAL" GridPane.columnIndex="3" />
+            <Separator orientation="VERTICAL" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+         </children>
+         <columnConstraints>
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="306.5" minWidth="10.0" prefWidth="86.5" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="306.5" minWidth="10.0" prefWidth="82.0" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="306.5" minWidth="10.0" prefWidth="58.0" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="113.0" minWidth="1.5" prefWidth="3.5" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="137.5" minWidth="10.0" prefWidth="87.0" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="38.0" minWidth="10.0" prefWidth="23.0" />
+         </columnConstraints>
+         <rowConstraints>
+            <RowConstraints vgrow="SOMETIMES" />
+            <RowConstraints vgrow="SOMETIMES" />
+         </rowConstraints>
+         <VBox.margin>
+            <Insets left="10.0" />
+         </VBox.margin>
+      </GridPane>
+      <BorderPane prefWidth="350.0">
+         <center>
+            <Separator prefHeight="30.0" BorderPane.alignment="CENTER" />
+         </center>
+         <left>
+            <Label styleClass="medium-text" text="Elements" BorderPane.alignment="CENTER">
+               <font>
+                  <Font name="System Bold Italic" size="14.0" />
+               </font>
+               <padding>
+                  <Insets left="10.0" right="10.0" />
+               </padding>
+            </Label>
+         </left>
+         <padding>
+            <Insets top="10.0" />
+         </padding>
+      </BorderPane>
+      <TableView fx:id="elementTable" editable="true" prefHeight="250.0">
+         <columns>
+            <TableColumn fx:id="indexColumn" editable="false" prefWidth="35.0" text="#" />
+            <TableColumn fx:id="nameColumn" editable="false" prefWidth="75.0" resizable="false" text="Name" />
+            <TableColumn fx:id="massColumn" prefWidth="75.0" resizable="false" text="Mass" />
+            <TableColumn fx:id="pseudoColumn" prefWidth="186.5" resizable="false" text="Pseudopotential" />
+         </columns>
+         <VBox.margin>
+            <Insets bottom="8.0" left="10.0" />
+         </VBox.margin>
+      </TableView>
+      <BorderPane prefWidth="350.0">
+         <center>
+            <Separator prefHeight="30.0" BorderPane.alignment="CENTER" />
+         </center>
+         <left>
+            <Label styleClass="medium-text" text="Pseudopotential's Conditions" BorderPane.alignment="CENTER">
+               <font>
+                  <Font name="System Bold Italic" size="14.0" />
+               </font>
+               <padding>
+                  <Insets left="10.0" right="10.0" />
+               </padding>
+            </Label>
+         </left>
+         <padding>
+            <Insets top="10.0" />
+         </padding>
+      </BorderPane>
+      <GridPane hgap="5.0" prefWidth="350.0" vgap="5.0">
+        <columnConstraints>
+            <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="25.0" />
+          <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="135.0" />
+          <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="205.0" />
+        </columnConstraints>
+        <rowConstraints>
+          <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+          <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+          <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+            <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+            <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+        </rowConstraints>
+         <children>
+            <Label fx:id="ppTypePoint" text="*" />
+            <Label text="*" GridPane.rowIndex="1" fx:id="xcFuncPoint" />
+            <Label fx:id="ecutwfcPoint" text="*" GridPane.rowIndex="2" />
+            <Label fx:id="ecutrhoPoint" text="*" GridPane.rowIndex="3" />
+            <Label styleClass="italicbold-text" text="P.P. Type" GridPane.columnIndex="1" />
+            <Label styleClass="italicbold-text" text="XC Functional" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+            <Label styleClass="italicbold-text" text="Cutoff of W.F." GridPane.columnIndex="1" GridPane.rowIndex="2" />
+            <Label styleClass="italicbold-text" text="Cutoff of Charge" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+            <Label fx:id="ppTypeLabel" text="PAW" GridPane.columnIndex="2" />
+            <Label text="PBE" GridPane.columnIndex="2" GridPane.rowIndex="1" fx:id="xcFuncLabel" />
+            <Label fx:id="ecutwfcLabel" text="25.0 Ry" GridPane.columnIndex="2" GridPane.rowIndex="2" />
+            <Label fx:id="ecutrhoLabel" text="225.0 Ry" GridPane.columnIndex="2" GridPane.rowIndex="3" />
+            <Label text="*" GridPane.rowIndex="4" />
+            <Label text="Relativistic" GridPane.columnIndex="1" GridPane.rowIndex="4" />
+            <Label text="Scalar relativistic" GridPane.columnIndex="2" GridPane.rowIndex="4" />
+         </children>
+         <padding>
+            <Insets left="20.0" />
+         </padding>
+      </GridPane>
+      <BorderPane prefWidth="350.0">
+         <center>
+            <Separator prefHeight="30.0" BorderPane.alignment="CENTER" />
+         </center>
+         <padding>
+            <Insets top="10.0" />
+         </padding>
+      </BorderPane>
+   </children>
+</VBox>

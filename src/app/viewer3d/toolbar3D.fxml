@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.RadioButton?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.Slider?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox fx:id="rootVbox" prefWidth="165.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
+   <children>
+      <Label text="3D toolbar" />
+      <ToggleButton fx:id="toggleShowToolbar" mnemonicParsing="false" text="ToggleButton" />
+      <VBox fx:id="functionVbox">
+         <children>
+            <Separator prefWidth="200.0">
+               <VBox.margin>
+                  <Insets top="5.0" />
+               </VBox.margin></Separator>
+            <Label text="Bond Scaling:" />
+            <Slider fx:id="sliderBondScaling" />
+            <Separator prefWidth="200.0">
+               <VBox.margin>
+                  <Insets top="5.0" />
+               </VBox.margin></Separator>
+            <CheckBox fx:id="checkFoldBack" mnemonicParsing="false" text="Fold atoms into cell" />
+            <Separator prefWidth="129.0">
+               <VBox.margin>
+                  <Insets top="5.0" />
+               </VBox.margin></Separator>
+            <Label text="Supercell:" />
+            <RadioButton fx:id="radio1No" mnemonicParsing="false" text="no" />
+            <RadioButton fx:id="radio2Cryst" mnemonicParsing="false" text="crystal" />
+            <RadioButton fx:id="radio3Cart" mnemonicParsing="false" text="cartesian" />
+            <GridPane hgap="2.0">
+               <columnConstraints>
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="50.0" minWidth="10.0" prefWidth="40.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="50.0" minWidth="10.0" prefWidth="40.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="50.0" minWidth="10.0" prefWidth="40.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="60.0" minWidth="10.0" prefWidth="55.0" />
+               </columnConstraints>
+               <rowConstraints>
+                  <RowConstraints minHeight="10.0" vgrow="SOMETIMES" />
+               </rowConstraints>
+               <children>
+                  <TextField fx:id="tfx" />
+                  <TextField fx:id="tfy" GridPane.columnIndex="1" />
+                  <TextField fx:id="tfz" GridPane.columnIndex="2" />
+                  <Button fx:id="btUpd" mnemonicParsing="false" prefWidth="50.0" text="Plot" GridPane.columnIndex="3" />
+               </children>
+            </GridPane>
+            <Separator prefWidth="200.0">
+               <VBox.margin>
+                  <Insets top="5.0" />
+               </VBox.margin></Separator>
+            <Button fx:id="buttonResetView" mnemonicParsing="false" text="Reset view" />
+            <Separator prefWidth="200.0">
+               <VBox.margin>
+                  <Insets top="5.0" />
+               </VBox.margin>
+            </Separator>
+            <Label fx:id="labelStatus" text="Status bar" />
+         </children>
+      </VBox>
+   </children>
+</VBox>

@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox prefWidth="350.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
+   <children>
+      <GridPane hgap="5.0" vgap="5.0">
+        <columnConstraints>
+          <ColumnConstraints hgrow="SOMETIMES" maxWidth="318.0" minWidth="10.0" prefWidth="288.0" />
+          <ColumnConstraints hgrow="SOMETIMES" maxWidth="195.5" minWidth="10.0" prefWidth="19.5" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="195.5" minWidth="10.0" prefWidth="34.5" />
+        </columnConstraints>
+        <rowConstraints>
+          <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+        </rowConstraints>
+         <children>
+            <Label text="Set all to deault" GridPane.halignment="RIGHT" />
+            <CheckBox fx:id="checkResetAll" mnemonicParsing="false" GridPane.columnIndex="1" />
+            <Button mnemonicParsing="false" text="i" GridPane.columnIndex="2" />
+         </children>
+      </GridPane>
+      <BorderPane prefWidth="350.0">
+         <center>
+            <Separator prefHeight="30.0" BorderPane.alignment="CENTER" />
+         </center>
+         <left>
+            <Label styleClass="medium-text" text="Spin" BorderPane.alignment="CENTER">
+               <font>
+                  <Font name="System Bold Italic" size="14.0" />
+               </font>
+               <padding>
+                  <Insets left="10.0" right="10.0" />
+               </padding>
+            </Label>
+         </left>
+         <padding>
+            <Insets top="10.0" />
+         </padding>
+      </BorderPane>
+      <GridPane hgap="5.0" prefWidth="350.0" vgap="5.0">
+          <columnConstraints>
+              <ColumnConstraints hgrow="SOMETIMES" maxWidth="133.0" minWidth="107.0" prefWidth="129.5" />
+              <ColumnConstraints hgrow="SOMETIMES" maxWidth="190.0" minWidth="126.0" prefWidth="144.0" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="141.5" minWidth="0.0" prefWidth="19.5" />
+              <ColumnConstraints hgrow="SOMETIMES" maxWidth="108.5" minWidth="28.5" prefWidth="35.0" />
+          </columnConstraints>
+          <rowConstraints>
+              <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+            <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+          </rowConstraints>
+          <children>
+              <Label fx:id="polarizLabel" text="Spin Polarization" />
+            <Label fx:id="spinorbitLabel" text="Spin-Orbit Coupling" GridPane.rowIndex="1" />
+            <ComboBox fx:id="polarizCombo" prefWidth="200.0" GridPane.columnIndex="1" />
+            <ToggleButton fx:id="spinorbitToggle" mnemonicParsing="false" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+              <Button fx:id="polarizButton" mnemonicParsing="false" text="i" GridPane.columnIndex="3" />
+            <Button fx:id="spinorbitButton" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+            <CheckBox fx:id="checkPolariz" mnemonicParsing="false" GridPane.columnIndex="2" />
+            <CheckBox fx:id="checkSoc" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="1" />
+          </children>
+          <padding>
+              <Insets left="10.0" />
+          </padding>
+      </GridPane>
+      <Label fx:id="statusInfo" />
+      <BorderPane prefWidth="350.0">
+         <center>
+            <Separator prefHeight="30.0" BorderPane.alignment="CENTER" />
+         </center>
+         <left>
+            <Label styleClass="medium-text" text="Starting Magnetization" BorderPane.alignment="CENTER">
+               <font>
+                  <Font name="System Bold Italic" size="14.0" />
+               </font>
+               <padding>
+                  <Insets left="10.0" right="10.0" />
+               </padding>
+            </Label>
+         </left>
+         <padding>
+            <Insets top="10.0" />
+         </padding>
+      </BorderPane>
+      <GridPane fx:id="grid1" hgap="5.0" vgap="5.0">
+        <columnConstraints>
+          <ColumnConstraints hgrow="SOMETIMES" maxWidth="191.5" minWidth="10.0" prefWidth="176.0" />
+          <ColumnConstraints hgrow="SOMETIMES" maxWidth="173.5" minWidth="10.0" prefWidth="127.5" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="165.0" minWidth="10.0" prefWidth="29.0" />
+        </columnConstraints>
+        <rowConstraints>
+          <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+        </rowConstraints>
+         <children>
+            <CheckBox fx:id="setForElements" mnemonicParsing="false" text="Set for each element" />
+            <CheckBox fx:id="setForAtoms" mnemonicParsing="false" text="Set for each atom" GridPane.columnIndex="1" />
+            <Button mnemonicParsing="false" text="i" GridPane.columnIndex="2" />
+         </children>
+         <padding>
+            <Insets left="5.0" right="5.0" />
+         </padding>
+      </GridPane>
+      <GridPane>
+        <columnConstraints>
+          <ColumnConstraints hgrow="SOMETIMES" maxWidth="189.5" minWidth="10.0" prefWidth="182.5" />
+          <ColumnConstraints hgrow="SOMETIMES" maxWidth="170.5" minWidth="10.0" prefWidth="167.5" />
+        </columnConstraints>
+        <rowConstraints>
+          <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+          <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+        </rowConstraints>
+         <children>
+            <Label text="*Angle1 is the polar angle" GridPane.rowIndex="1" />
+            <Label text="*Magnetization between -1 to 1" />
+            <Label text="*Angle2 is the azimuthal angle" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+         </children>
+      </GridPane>
+      <GridPane fx:id="grid2">
+         <columnConstraints>
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="53.5" minWidth="10.0" prefWidth="47.5" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="105.5" minWidth="10.0" prefWidth="52.5" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="132.5" minWidth="10.0" prefWidth="73.0" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="190.5" minWidth="10.0" prefWidth="71.5" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="190.5" minWidth="10.0" prefWidth="69.5" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="190.5" minWidth="10.0" prefWidth="44.5" />
+         </columnConstraints>
+         <rowConstraints>
+            <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+            <RowConstraints minHeight="10.0" vgrow="SOMETIMES" />
+         </rowConstraints>
+         <children>
+            <Label fx:id="labelNum" text="" GridPane.rowIndex="1" />
+            <Label text="Magnetiz." GridPane.columnIndex="2" />
+            <TextField fx:id="textMag" prefHeight="25.0" prefWidth="64.0" GridPane.columnIndex="2" GridPane.rowIndex="1" />
+            <Label text="Name" GridPane.columnIndex="1" />
+            <Label text="#" />
+            <Label fx:id="labelName" text="" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+            <Label fx:id="labelAngle1" text="Angle1(to z)" GridPane.columnIndex="3" />
+            <Label fx:id="labelAngle2" text="Angel2" GridPane.columnIndex="4" />
+            <TextField fx:id="textAngle1" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+            <TextField fx:id="textAngle2" GridPane.columnIndex="4" GridPane.rowIndex="1" />
+            <Button fx:id="editButton" mnemonicParsing="false" text="Update" GridPane.columnIndex="5" GridPane.rowIndex="1" />
+         </children>
+      </GridPane>
+      <Label fx:id="bottomStatusLabel" />
+      <TableView fx:id="elementTable" editable="true" prefHeight="250.0" prefWidth="390.0">
+        <columns>
+          <TableColumn fx:id="indexColumn" editable="false" prefWidth="35.0" resizable="false" text="#" />
+          <TableColumn fx:id="nameColumn" editable="false" prefWidth="45.0" resizable="false" text="Name" />
+            <TableColumn fx:id="magColumn" prefWidth="97.5" resizable="false" text="Magnitization" />
+            <TableColumn fx:id="angle1Column" resizable="false" text="angle1(to z)" />
+            <TableColumn fx:id="angle2Column" resizable="false" text="angle2(to x)" />
+        </columns>
+         <VBox.margin>
+            <Insets left="10.0" top="5.0" />
+         </VBox.margin>
+      </TableView>
+      <BorderPane prefWidth="350.0">
+         <center>
+            <Separator prefHeight="30.0" BorderPane.alignment="CENTER" />
+         </center>
+         <padding>
+            <Insets top="10.0" />
+         </padding>
+      </BorderPane>
+   </children>
+</VBox>
