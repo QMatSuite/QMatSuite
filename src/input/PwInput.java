@@ -19,7 +19,6 @@
 package input;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Set;
 
 import com.consts.Constants.*;
@@ -46,14 +45,14 @@ public class PwInput extends QeInput{
 	 * 
 	 */
 	private static final long serialVersionUID = 170593734738549L;
-	private HashMap<String, InputSection> sectionDict;
+	
 	private ArrayList<Element> elementList = new ArrayList<Element>();
 	private ArrayList<Atom> atomList = new ArrayList<Atom>();
 	private boolean flagLoadGeo=false;
 	
 	
 	public PwInput() {
-		sectionDict = new HashMap<String, InputSection> ();
+		super();
 		//namelists
 		sectionDict.put("CONTROL", new NameList(EnumNameList.CONTROL));
 		sectionDict.put("SYSTEM", new NameList(EnumNameList.SYSTEM));
@@ -70,7 +69,7 @@ public class PwInput extends QeInput{
 		sectionDict.put("ATOMIC_FORCES", new Card(EnumCard.ATOMIC_FORCES));
 		//add relevant parameters
 		sectionDict.get("CONTROL").setBoolRequired(true);
-		sectionDict.get("CONTROL").addParameter("calculation", new InputValueString("calculation","scf",false));
+		sectionDict.get("CONTROL").addParameter("calculation", new InputValueString("calculation","scf",true));
 		sectionDict.get("CONTROL").addParameter("restart_mode", new InputValueString("restart_mode","from_scratch",false));
 		sectionDict.get("CONTROL").addParameter("max_seconds", new InputValueDouble("max_seconds",1.0E7,false));
 		sectionDict.get("CONTROL").addParameter("tprnfor", new InputValueBoolean("tprnfor",false,false));
@@ -114,15 +113,6 @@ public class PwInput extends QeInput{
 		 * (sectionDict.get("SYSTEM").getValue("ecutwfc") instanceof InputValueInt) {
 		 * System.out.println("int"); }
 		 */
-	}
-	@Override
-	public String genInput() {
-		String message = "pw.x input\n";
-		Set<String> keys = sectionDict.keySet();
-        for(String key: keys){
-        	message = message+sectionDict.get(key).toString()+"\n";
-        }
-		return message;
 	}
 	@Override
 	public String addParameter(InputValue val) {
@@ -172,6 +162,10 @@ public class PwInput extends QeInput{
 		if (checkKeyExistence(keySec, keyPara)) {sectionDict.get(keySec).getValue(keyPara).setExplicitWrite(bl);}
 		else {throw new InvalidKeyException("in PwInput setValue");}
 	}
+	public void setRequiredAndWrite(String keySec, String keyPara, boolean bl1, boolean bl2) throws InvalidKeyException, InvalidTypeException{
+		if (checkKeyExistence(keySec, keyPara)) {sectionDict.get(keySec).getValue(keyPara).setRequiredAndWrite(bl1,bl2);}
+		else {throw new InvalidKeyException("in PwInput setValue");}
+	}
 	public void andExplicitWrite(String keySec, String keyPara, boolean bl) throws InvalidKeyException, InvalidTypeException{
 		if (checkKeyExistence(keySec, keyPara)) {sectionDict.get(keySec).getValue(keyPara).andExplicitWrite(bl);}
 		else {throw new InvalidKeyException("in PwInput setValue");}
@@ -193,12 +187,40 @@ public class PwInput extends QeInput{
 		try {
 			//setValue("SYSTEM","ibrav",(Integer) null);
 			setValue("SYSTEM","ibrav",ia1.ibrav);
-			setValue("SYSTEM","A",ia1.cellA);
-			setValue("SYSTEM","B",ia1.cellB);
-			setValue("SYSTEM","C",ia1.cellC);
-			setValue("SYSTEM","cosBC",ia1.cellAngleBC);
-			setValue("SYSTEM","cosAC",ia1.cellAngleAC);
-			setValue("SYSTEM","cosAB",ia1.cellAngleAB);
+			setValue("SYSTEM","A",ia1.convCellLength(ia1.cellA));
+			setValue("SYSTEM","B",ia1.convCellLength(ia1.cellB));
+			setValue("SYSTEM","C",ia1.convCellLength(ia1.cellC));
+			setValue("SYSTEM","cosBC",ia1.convCellAngle(ia1.cellAngleBC));
+			setValue("SYSTEM","cosAC",ia1.convCellAngle(ia1.cellAngleAC));
+			setValue("SYSTEM","cosAB",ia1.convCellAngle(ia1.cellAngleAB));
+			
+			//set section options
+			if(ia1.ibrav.equals(0)) {
+				setSectionRequired("CELL_PARAMETERS",true);
+				setRequiredAndWrite("CELL_PARAMETERS","body",true,true);
+				String optTmp;
+				double scale = 1.0;
+				switch(ia1.unitCellParameter) {
+					case alat:setRequiredAndWrite("SYSTEM","A",true,true);optTmp="(alat)";break;
+					case angstrom:setRequiredAndWrite("SYSTEM","A",false,false);optTmp="(angstrom)";break;
+					case bohr:setRequiredAndWrite("SYSTEM","A",false,false);optTmp="(bohr)";break;
+					case pm:setRequiredAndWrite("SYSTEM","A",false,false);optTmp="(angstrom)";scale=1.0/100;break;
+					default:optTmp=null;
+				}
+				if(optTmp!=null) {
+					setSectionOption("CELL_PARAMETERS",optTmp);
+					if (!ia1.vectorA1.isNull() && !ia1.vectorA2.isNull() && !ia1.vectorA3.isNull() &&
+							!ia1.vectorB1.isNull() && !ia1.vectorB2.isNull() && !ia1.vectorB3.isNull() &&
+									!ia1.vectorC1.isNull() && !ia1.vectorC2.isNull() && !ia1.vectorC3.isNull() ) {
+						WrapperString wp = new WrapperString(
+										" "+ia1.vectorA1.getValue()*scale+" "+ia1.vectorA2.getValue()*scale+" "+ia1.vectorA3.getValue()*scale+"\n"+
+										" "+ia1.vectorB1.getValue()*scale+" "+ia1.vectorB2.getValue()*scale+" "+ia1.vectorB3.getValue()*scale+"\n"+
+										" "+ia1.vectorC1.getValue()*scale+" "+ia1.vectorC2.getValue()*scale+" "+ia1.vectorC3.getValue()*scale);
+						setValue("CELL_PARAMETERS","body",wp);
+					}
+				}
+			}
+			
 			elementList.clear();
 			for (int i=0;i<ia1.elemListAll.size();i++) {
 				elementList.add(ia1.elemListAll.get(i));
@@ -230,6 +252,7 @@ public class PwInput extends QeInput{
 			setSectionRequired("ATOMIC_SPECIES",true);setSectionRequired("ATOMIC_POSITIONS",true);setSectionRequired("K_POINTS",true);
 			//set section options
 			setSectionOption("K_POINTS","(automatic)");
+			setRequiredAndWrite("K_POINTS","body",true,true);
 			//set parameters
 			boolean boolMag = ia1.setMag;
 			setValue("SYSTEM","nspin",ia1.nspin);andExplicitWrite("SYSTEM","nspin",boolMag);
@@ -307,7 +330,7 @@ public class PwInput extends QeInput{
 			setValue("ELECTRONS","mixing_beta",ia1.mixBeta);
 			setValue("SYSTEM","degauss",ia1.degauss);
 			setValue("SYSTEM","smearing",ia1.enumSmearing);
-			WrapperString wp = new WrapperString(" "+ia1.nkx.getValue()+" "+" "
+			WrapperString wp = new WrapperString(" "+ia1.nkx.getValue()+" "
 			+ia1.nky.getValue()+" "+ia1.nkz.getValue()+" 0 0 0");
 			setValue("K_POINTS","body",wp);
 			

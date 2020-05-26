@@ -27,6 +27,7 @@ import agent.InputAgentDos;
 import agent.InputAgentGeo;
 import agent.InputAgentNscf;
 import agent.InputAgentScf;
+import input.ContainerInputString;
 import input.DosInput;
 import input.PwInput;
 import javafx.scene.control.Alert;
@@ -70,30 +71,30 @@ public class calculationDosClass extends calculationClass{
 	public void genInputFromAgent(ArrayList<InputAgentGeo> geoList) {
 		inputList.get(EnumStep.SCF).loadAgent(geoList.get(getGeoInd()));
 		inputList.get(EnumStep.SCF).loadAgent((InputAgentScf)agentList.get(EnumStep.SCF));
-		String inputFile= inputList.get(EnumStep.SCF).genInput();
+		ContainerInputString inputWrapper= inputList.get(EnumStep.SCF).genInput(EnumStep.SCF);
 		
 		Alert alert1 = new Alert(AlertType.INFORMATION);
     	alert1.setHeaderText("Input 1: SCF ("+"Input of "+nameCalc+")");
-    	alert1.setContentText(inputFile);
+    	alert1.setContentText(inputWrapper.toString());
     	alert1.showAndWait();
 		
     	//******not efficient. Maybe should implement clone method in QeInput
     	inputList.get(EnumStep.NSCF).loadAgent(geoList.get(getGeoInd()));
 		inputList.get(EnumStep.NSCF).loadAgent((InputAgentScf)agentList.get(EnumStep.SCF));
 		inputList.get(EnumStep.NSCF).loadAgent((InputAgentNscf)agentList.get(EnumStep.NSCF));
-		inputFile= inputList.get(EnumStep.NSCF).genInput();
+		inputWrapper= inputList.get(EnumStep.NSCF).genInput(EnumStep.NSCF);
 		
 		alert1 = new Alert(AlertType.INFORMATION);
     	alert1.setHeaderText("Input 2: NSCF ("+"Input of "+nameCalc+")");
-    	alert1.setContentText(inputFile);
+    	alert1.setContentText(inputWrapper.toString());
     	alert1.showAndWait();
     	
 		inputList.get(EnumStep.DOS).loadAgent((InputAgentDos) agentList.get(EnumStep.DOS));
-		inputFile= inputList.get(EnumStep.DOS).genInput();
+		inputWrapper= inputList.get(EnumStep.DOS).genInput(EnumStep.DOS);
 		
 		alert1 = new Alert(AlertType.INFORMATION);
     	alert1.setHeaderText("Input 3: DOS ("+"Input of "+nameCalc+")");
-    	alert1.setContentText(inputFile);
+    	alert1.setContentText(inputWrapper.toString());
     	alert1.showAndWait();
 	}
 }

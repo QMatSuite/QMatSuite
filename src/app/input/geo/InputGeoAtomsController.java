@@ -148,18 +148,19 @@ public class InputGeoAtomsController implements Initializable{
 				InputAgentGeo iGeo = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
 				if (iGeo!=null) {
 					try {
+						iGeo.needAlatFromAtom=false;
 						switch (EnumUnitAtomPos.valueOf(unitCombo.getValue())) {
 							case alat:
-								iGeo.unitLength=EnumUnitAtomPos.alat;alat.setVisible(true);
+								iGeo.unitAtomPos=EnumUnitAtomPos.alat;alat.setVisible(true);iGeo.needAlatFromAtom=true;
 								break;
 							case bohr:
-								iGeo.unitLength=EnumUnitAtomPos.bohr;alat.setVisible(false);
+								iGeo.unitAtomPos=EnumUnitAtomPos.bohr;alat.setVisible(false);
 								break;
 							case angstrom:
-								iGeo.unitLength=EnumUnitAtomPos.angstrom;alat.setVisible(false);
+								iGeo.unitAtomPos=EnumUnitAtomPos.angstrom;alat.setVisible(false);
 								break;
 							case crystal:
-								iGeo.unitLength=EnumUnitAtomPos.crystal;alat.setVisible(false);
+								iGeo.unitAtomPos=EnumUnitAtomPos.crystal;alat.setVisible(false);
 								break;
 							default:
 								Alert alert = new Alert(AlertType.INFORMATION);
@@ -330,8 +331,8 @@ public class InputGeoAtomsController implements Initializable{
     	if (ia==null) return;
     	clearInput();
     	if (!unitCombo.getItems().isEmpty()) {
-			if (ia.unitLength==null) {unitCombo.getSelectionModel().clearSelection();return;}
-        	switch (ia.unitLength){
+			if (ia.unitAtomPos==null) {unitCombo.getSelectionModel().clearSelection();return;}
+        	switch (ia.unitAtomPos){
 	        	case alat:unitCombo.setValue(EnumUnitAtomPos.alat.toString());alat.setVisible(true);break;
 	        	case bohr:unitCombo.setValue(EnumUnitAtomPos.bohr.toString());alat.setVisible(false);break;
 	        	case angstrom:unitCombo.setValue(EnumUnitAtomPos.angstrom.toString());alat.setVisible(false);break;

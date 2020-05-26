@@ -34,7 +34,7 @@ public abstract class InputValue implements Serializable{
 	private static final long serialVersionUID = 4608210422008015737L;
 	
 	protected final String nameString;
-	protected final Boolean boolRequired;
+	protected Boolean boolRequired;
 	protected Boolean explicitWrite = false;
 	public InputValueInfo valueInfo = null; 
 	public InputValue(String ns, Boolean br) {
@@ -80,4 +80,9 @@ public abstract class InputValue implements Serializable{
 		setValueNow(val.getValue());
 		setExplicitWrite(val.isEnabled());
 	}
+	public void setRequiredAndWrite(Boolean bl1, Boolean bl2){
+		boolRequired = bl1;
+		explicitWrite = bl2;
+	}
+	
 }

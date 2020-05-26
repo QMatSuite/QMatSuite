@@ -98,7 +98,6 @@ public class InputGeoController implements Initializable{
 				vboxElements = fxmlLoader3.load();
 				
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			atomsPane.setContent(vboxAtoms);
@@ -116,6 +115,7 @@ public class InputGeoController implements Initializable{
 //	        	    	alert1.showAndWait();
 	    				if (contElem!=null) {contElem.loadProjectParameters();}
 	                }
+	                if (contCell!=null) {contCell.updateCellA();}
 		        });
 		}
 	}

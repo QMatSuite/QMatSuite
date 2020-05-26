@@ -19,7 +19,10 @@
 package input;
 
 import java.io.Serializable;
+import java.util.LinkedHashMap;
+import java.util.Set;
 
+import com.consts.Constants.EnumStep;
 import com.error.InvalidKeyException;
 import com.error.InvalidTypeException;
 
@@ -39,9 +42,28 @@ public abstract class QeInput implements Serializable{
 	 */
 	private static final long serialVersionUID = -8331487638839992617L;
 	
+	protected LinkedHashMap<String, InputSection> sectionDict;
+	
+	public QeInput() {
+		sectionDict = new LinkedHashMap<String, InputSection> ();
+	}
 	public abstract String addParameter(InputValue val);
 	public abstract void print(); 
-	public abstract String genInput();  
+	public ContainerInputString genInput(String startingMsg) {
+		ContainerInputString ci = new ContainerInputString();
+		ci.appendInput(startingMsg);
+		Set<String> keys = sectionDict.keySet();
+        for(String key: keys){
+        	ContainerInputString ciTmp = sectionDict.get(key).toStringWrapper();
+        	if (!ciTmp.isEmpty()) {
+        		ci.append(ciTmp);
+        	}
+        }
+		return ci;
+	}  
+	public ContainerInputString genInput(EnumStep es) {
+		return genInput("!"+es.toString()+"\n");
+	} 
 	public abstract void setValue(String keySec, String keyPara) throws InvalidKeyException, InvalidTypeException;//set null
 	public abstract void setValue(String keySec, String keyPara,WrapperDouble para) throws InvalidKeyException, InvalidTypeException;
 	public abstract void setValue(String keySec, String keyPara,WrapperInteger para) throws InvalidKeyException, InvalidTypeException;

@@ -17,7 +17,6 @@
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
 package input;
-import java.util.HashMap;
 import java.util.Set;
 
 import com.consts.Constants.EnumCard;
@@ -29,35 +28,43 @@ public class Card extends InputSection{
 	private static final long serialVersionUID = -7515062976251781681L;
 	private EnumCard cardEnum;
 	public Card(EnumCard cardE) {
-		parameterDict = new HashMap<String, InputValue>();
+		super();
 		boolRequired = false;
 		cardEnum = cardE;
 	}
+//	@Override
+//	public ContainerInputString toStringWrapper() {
+//		if (!isEmpty() || boolRequired) {
+//			String message = "&"+cardEnum.name()+" "+ options +" \n";
+//			String strTmp;
+//			Set<String> keys = parameterDict.keySet();
+//	        for(String key: keys){
+//	        	if (parameterDict.get(key).isExplicitWrite() || parameterDict.get(key).isRequired()) {
+//	        		strTmp = parameterDict.get(key).toString();
+//	        		if (strTmp==null) {}
+//	        		else if (!strTmp.isEmpty()) {message = message+strTmp+"\n";}
+//	        	}
+//	        }
+//	        return message+"/\n";
+//		}
+//		else return "";
+//	}
 	@Override
-	public String toString() {
+	public ContainerInputString toStringWrapper() {
+		ContainerInputString ci = new ContainerInputString();
 		if (!isEmpty() || boolRequired) {
-			String message = "--- (Card) "+cardEnum.name()+" "+ options +" \n";
+			ci.appendInput("&"+cardEnum.name()+" "+ options +" \n");
+			String strTmp;
 			Set<String> keys = parameterDict.keySet();
 	        for(String key: keys){
 	        	if (parameterDict.get(key).isExplicitWrite() || parameterDict.get(key).isRequired()) {
-	        		message = message+parameterDict.get(key).toString()+"\n";
+	        		strTmp = parameterDict.get(key).toString();
+	        		if (strTmp==null) {ci.appendLog(cardEnum.name()+"-"+key+": required but not set\n");}
+	        		else if (!strTmp.isEmpty()) {ci.appendInput(strTmp+"\n");}
 	        	}
 	        }
-	        return message;
+	        ci.appendInput("/\n");
 		}
-		else return "";
+		return ci;
 	}
-//	@Override
-//	public void print() {
-//		if (!parameterDict.isEmpty()) {
-//			System.out.println("--- (Card) "+cardEnum.name()+" :");
-//			Set<String> keys = parameterDict.keySet();
-//	        for(String key: keys){
-//	        	parameterDict.get(key).print();
-//	        }
-//		}
-//		else if (boolRequired) {
-//			System.out.println("--- (Card) "+cardEnum.name()+" : empty");
-//		}
-//	}
 }

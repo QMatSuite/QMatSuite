@@ -28,6 +28,7 @@ import com.consts.Constants.EnumUnitCellAngle;
 import com.consts.Constants.EnumUnitCellLength;
 import com.consts.Constants.EnumUnitCellParameter;
 import com.consts.Constants.ProgramName;
+import com.consts.PhysicalConstants;
 
 import app.input.geo.Atom;
 import app.input.geo.Element;
@@ -37,6 +38,9 @@ public class InputAgentGeo extends InputAgent{
 	 * 
 	 */
 	private static final long serialVersionUID = -7687077166066768185L;
+	//helpers
+	public boolean needAlatFromCell;
+	public boolean needAlatFromAtom;
 	//cell
 	public WrapperInteger ibrav;//ok
 	public EnumUnitCellLength unitCellLength;
@@ -50,7 +54,7 @@ public class InputAgentGeo extends InputAgent{
 	public WrapperDouble vectorB1;public WrapperDouble vectorB2;public WrapperDouble vectorB3;
 	public WrapperDouble vectorC1;public WrapperDouble vectorC2;public WrapperDouble vectorC3;
 	//atom
-	public EnumUnitAtomPos unitLength;//ok
+	public EnumUnitAtomPos unitAtomPos;//ok
 	public ArrayList<Atom> atomList;//ok
 	//elements
 	public EnumFunctional typeFunctional;
@@ -61,23 +65,51 @@ public class InputAgentGeo extends InputAgent{
 	public InputAgentGeo() {
 		super(ProgramName.PW);
 		//cell
-		ibrav=new WrapperInteger(null);//no default
+		ibrav=new WrapperInteger(null);//no default//ok
 		unitCellLength=EnumUnitCellLength.angstrom;
 		unitCellAngle=EnumUnitCellAngle.degree;
-		cellA=new WrapperDouble(null);cellB=new WrapperDouble(null);cellC=new WrapperDouble(null);
-		cellAngleAB=new WrapperDouble(null);cellAngleBC=new WrapperDouble(null);cellAngleAC=new WrapperDouble(null);
+		cellA=new WrapperDouble(null);cellB=new WrapperDouble(null);cellC=new WrapperDouble(null);//ok
+		cellAngleAB=new WrapperDouble(null);cellAngleBC=new WrapperDouble(null);cellAngleAC=new WrapperDouble(null);//ok
 		unitCellParameter=EnumUnitCellParameter.angstrom;
 		vectorA1=new WrapperDouble(null);vectorA2=new WrapperDouble(null);vectorA3=new WrapperDouble(null);
 		vectorB1=new WrapperDouble(null);vectorB2=new WrapperDouble(null);vectorB3=new WrapperDouble(null);
 		vectorC1=new WrapperDouble(null);vectorC2=new WrapperDouble(null);vectorC3=new WrapperDouble(null);
 		//atom
-		unitLength=EnumUnitAtomPos.alat;
+		unitAtomPos=EnumUnitAtomPos.alat;
 		atomList=new ArrayList<Atom>();//for geoAtoms
 		//elements
 		typeFunctional=EnumFunctional.PBE;
 		typePP=EnumPP.PAW;
 		isRelativ=new WrapperBoolean(false);
 		elemListAll = new ArrayList<Element>();//for geoElements,scfMagnet
+		
+		//
+		needAlatFromCell = false;
+		needAlatFromAtom = (unitAtomPos.equals(EnumUnitAtomPos.alat));
+	}
+	public boolean needCellA() {
+		return (needAlatFromCell || needAlatFromAtom);
+	}
+	public WrapperDouble convCellLength(WrapperDouble wd) {
+		double scale = 1.0;
+		//final input file: angstrom for cellA,B,C
+		switch (unitCellLength) {
+			case angstrom:scale=1.0;break;
+			case bohr:scale=1.0*PhysicalConstants.angstPerBohr;break;
+			case pm:scale=1.0/100;break;
+			default:return null;
+		}
+		return new WrapperDouble((wd.isNull()?null:wd.getValue()*scale),wd.isEnabled());
+	}
+	public WrapperDouble convCellAngle(WrapperDouble wd) {
+		double scale = 1.0;
+		//final input file: angstrom for cellA,B,C
+		switch (unitCellAngle) {
+			case degree:scale=Math.PI/180.0;break;
+			case radian:scale=1.0;break;
+			default:return null;
+		}
+		return new WrapperDouble((wd.isNull()?null:Math.cos(wd.getValue()*scale)),wd.isEnabled());
 	}
 	public void updateElemListAll() {
 		for (Atom tmp_atom : atomList) {

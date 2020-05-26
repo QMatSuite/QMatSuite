@@ -18,7 +18,6 @@
  *******************************************************************************/
 package input;
 
-import java.util.Hashtable;
 import java.util.Set;
 import com.error.InvalidKeyException;
 import com.error.InvalidTypeException;
@@ -34,19 +33,9 @@ public class DosInput extends QeInput{
 	 * 
 	 */
 	private static final long serialVersionUID = -4833790656816018508L;
-	private Hashtable<String, InputSection> sectionDict;
 	
 	public DosInput() {
-		sectionDict = new Hashtable<String, InputSection> ();
-	}
-	@Override
-	public String genInput() {
-		String message = "dos.x input\n";
-		Set<String> keys = sectionDict.keySet();
-        for(String key: keys){
-        	message = message+sectionDict.get(key).toString()+"\n";
-        }
-		return message;
+		super();
 	}
 	@Override
 	public String addParameter(InputValue val) {

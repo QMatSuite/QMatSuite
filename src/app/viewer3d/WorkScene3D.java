@@ -20,7 +20,10 @@ package app.viewer3d;
 
 import java.io.IOException;
 import java.util.ArrayList;
+
+import com.consts.Constants.EnumUnitAtomPos;
 import com.consts.Constants.EnumUnitCellAngle;
+import com.consts.Constants.EnumUnitCellParameter;
 import com.consts.PhysicalConstants;
 
 import agent.InputAgentGeo;
@@ -50,6 +53,7 @@ import javafx.scene.shape.Cylinder;
 import javafx.scene.shape.Sphere;
 import javafx.scene.transform.Rotate;
 import javafx.scene.transform.Translate;
+import math.Thresholds;
 
 public class WorkScene3D {
 	private AnchorPane acp;//root
@@ -89,6 +93,9 @@ public class WorkScene3D {
     double mouseDeltaY;
     
     private Toolbar3DController cont3D;
+    
+    //angstrom/length in the figure
+    private double scalingLength;//not good, because it is a global parameter
     
 	public WorkScene3D() {
 		
@@ -262,7 +269,7 @@ public class WorkScene3D {
 	        
 			//generate lattice vectors
 	        Point3D lattVecs[] = genVecFromGeo(alat);
-	        if (lattVecs==null) return;
+	        if (lattVecs==null) return;//important
 	        
 	        //draw bravais lattice
 	        buildBravaisLattice(alat, lattVecs,latticeGroup);
@@ -270,7 +277,7 @@ public class WorkScene3D {
 			if(iGeoCache.atomList.size()>0) {
 				
 				ArrayList<Atom> atomListClone = genAtomListInAlat(alat,lattVecs);
-				if (atomListClone==null) return;
+				if (atomListClone==null) return;//important
 				
 				addAtomsToScene(alat,atomListClone,atomsGroup,lattVecs);
 				addBondsToScene(alat,atomListClone,bondsGroup,lattVecs);
@@ -281,18 +288,32 @@ public class WorkScene3D {
 	private Point3D[] genVecFromGeo(Double alat) {
 		if (iGeoCache == null) return null;
 		
-		Point3D aVec,bVec,cVec;
+		Point3D aVec = null;
+		Point3D bVec = null;
+		Point3D cVec = null;
 		
-		//make sure that cellA exists, which is always necessary!
-        if (iGeoCache.cellA.isNull() || iGeoCache.cellA.getValue()<=0) return null;  
+		//make sure that cellA exists, which is always necessary! -> except ibrav==0 and not alat
+        if (iGeoCache.cellA.isNull() || iGeoCache.cellA.getValue()<=0) {
+        	if(iGeoCache.ibrav.equals(0)) {
+        		if(iGeoCache.unitCellParameter.equals(EnumUnitCellParameter.alat)) {
+        			cont3D.setStatus("Add alat of change unit for user vectors.");return null;
+    			}
+        	}
+        	else {cont3D.setStatus("Always need alat for ibrav not zero.");return null;}
+        }
         
         final Double a,b,c,gm,alpha,beta;
         a = alat;
         
-        if (!iGeoCache.cellB.isNull()) b=iGeoCache.cellB.getValue()/iGeoCache.cellA.getValue()*alat;
+        if (!iGeoCache.cellA.isNull() && iGeoCache.cellA.getValue()>0 && !iGeoCache.cellB.isNull()) {
+        	b=iGeoCache.cellB.getValue()/iGeoCache.cellA.getValue()*alat;
+        }
         else b=null;
-        if (!iGeoCache.cellC.isNull()) c=iGeoCache.cellC.getValue()/iGeoCache.cellA.getValue()*alat;
+        if (!iGeoCache.cellA.isNull() && iGeoCache.cellA.getValue()>0 && !iGeoCache.cellC.isNull()) {
+        	c=iGeoCache.cellC.getValue()/iGeoCache.cellA.getValue()*alat;
+        }
         else c=null;
+        
         if (!iGeoCache.cellAngleAB.isNull()) {
         	if (iGeoCache.unitCellAngle.equals(EnumUnitCellAngle.degree)) gm = Math.toRadians(iGeoCache.cellAngleAB.getValue());
         	else if (iGeoCache.unitCellAngle.equals(EnumUnitCellAngle.radian)) gm = iGeoCache.cellAngleAB.getValue();
@@ -314,8 +335,9 @@ public class WorkScene3D {
     	}
         else alpha=null;
         
-        switch (iGeoCache.ibrav.getValue()) {
-        case 0:
+        //get the scaling for later use
+        double scalingTmp;
+        if (iGeoCache.ibrav.equals(0)) {//user defined lattice parameters
         	if (iGeoCache.vectorA1.isNull() || iGeoCache.vectorA2.isNull() || iGeoCache.vectorA3.isNull()
         			|| iGeoCache.vectorB1.isNull() || iGeoCache.vectorB2.isNull() || iGeoCache.vectorB3.isNull()
         			|| iGeoCache.vectorC1.isNull() || iGeoCache.vectorC2.isNull() || iGeoCache.vectorC3.isNull()) {
@@ -326,11 +348,70 @@ public class WorkScene3D {
         		double lengthB = Math.sqrt(Math.pow(iGeoCache.vectorB1.getValue(), 2)+Math.pow(iGeoCache.vectorB2.getValue(), 2)+Math.pow(iGeoCache.vectorB3.getValue(), 2));
         		double lengthC = Math.sqrt(Math.pow(iGeoCache.vectorC1.getValue(), 2)+Math.pow(iGeoCache.vectorC2.getValue(), 2)+Math.pow(iGeoCache.vectorC3.getValue(), 2));
         		if (lengthA==0 || lengthB==0 || lengthC==0) return null;
-        		double scalingAll = a/Math.max(Math.max(lengthA, lengthB), lengthC);
+        		
+        		double mx = Math.max(Math.max(lengthA, lengthB), lengthC);//do not change. If change, please change everywhere in this program
+        		double scalingAll = a/mx;
         		aVec= new Point3D(iGeoCache.vectorA1.getValue(),iGeoCache.vectorA2.getValue(),iGeoCache.vectorA3.getValue()).multiply(scalingAll); 
 	        	bVec= new Point3D(iGeoCache.vectorB1.getValue(),iGeoCache.vectorB2.getValue(),iGeoCache.vectorB3.getValue()).multiply(scalingAll); 
 	        	cVec= new Point3D(iGeoCache.vectorC1.getValue(),iGeoCache.vectorC2.getValue(),iGeoCache.vectorC3.getValue()).multiply(scalingAll); 
+	        	
+	        	double det = -aVec.getZ()*bVec.getY()*cVec.getX() + aVec.getY()*bVec.getZ()*cVec.getX() 
+        				+ aVec.getZ()*bVec.getX()*cVec.getY() - aVec.getX()*bVec.getZ()*cVec.getY() 
+        				- aVec.getY()*bVec.getX()*cVec.getZ() + aVec.getX()*bVec.getY()*cVec.getZ();
+	        	if (Math.abs(det) < Thresholds.zero*mx) return null;//then a,b,cVec are in the same plane (or almost)
+	        	
+	        	scalingTmp = 1.0/a*mx;
+	        	
+	        	switch(iGeoCache.unitCellParameter){//aUnit
+					case alat:
+						//iGeoCache.cellA must exist and >0, because previous steps ensured that
+						scalingTmp = scalingTmp*iGeoCache.cellA.getValue();
+						switch(iGeoCache.unitCellLength) {//the unit of iGeoCache.cellA
+							case angstrom:break;
+							case bohr:scalingTmp = scalingTmp*PhysicalConstants.angstPerBohr;break;
+							case pm:scalingTmp = scalingTmp/100;break;
+							default:
+								Alert alert1 = new Alert(AlertType.INFORMATION);
+						    	alert1.setTitle("Error");
+						    	alert1.setContentText("Non valid unitCellLength detected in WorkScene3D!");
+						    	alert1.showAndWait();
+								return null;
+						}
+						break;
+					case angstrom:
+						break;
+					case bohr:
+						scalingTmp=scalingTmp*PhysicalConstants.angstPerBohr;break;
+					case pm:
+						scalingTmp=scalingTmp/100;break;
+					default:
+						Alert alert1 = new Alert(AlertType.INFORMATION);
+				    	alert1.setTitle("Error");
+				    	alert1.setContentText("Non valid unitCellParameter detected in WorkScene3D!");
+				    	alert1.showAndWait();
+						return null;
+	    		}
+	        	scalingLength = scalingTmp;
         	}
+		}
+		else {//ibrav not 0, then iGeoCache.cellA must exist and >0, because previous steps ensured that
+			scalingTmp = 1.0/alat*iGeoCache.cellA.getValue();
+			switch(iGeoCache.unitCellLength){//aUnit
+				case bohr:scalingTmp=scalingTmp*PhysicalConstants.angstPerBohr;break;
+				case angstrom:break;
+				case pm:scalingTmp=scalingTmp/100;break;
+				default:
+					Alert alert1 = new Alert(AlertType.INFORMATION);
+			    	alert1.setTitle("Error");
+			    	alert1.setContentText("Non valid unitCellLength detected in WorkScene3D!");
+			    	alert1.showAndWait();
+					return null;
+			}
+			scalingLength = scalingTmp;
+		}
+        
+        switch (iGeoCache.ibrav.getValue()) {
+        case 0:
         	break;
         case 1://sc
         	aVec= new Point3D(1,0,0).multiply(a); 
@@ -578,13 +659,39 @@ public class WorkScene3D {
 		//draw atoms
 		//iGeo.unitCellParameter
 		//alat,bohr,angstrom,pm
-		switch(iGeoCache.unitLength){//there is a default value, so shouldn't be null
+		switch(iGeoCache.unitAtomPos){//there is a default value, so shouldn't be null
 			//alat,bohr,angstrom,crystal
 			case alat:
-				for (int i=0;i<atomListClone.size();i++) {
-					atomListClone.get(i).mulX(alat);
-					atomListClone.get(i).mulY(alat);
-					atomListClone.get(i).mulZ(alat);
+				//necessary, for user defined vectors
+				if(iGeoCache.cellA.isNull() || iGeoCache.cellA.getValue()<=0) {cont3D.setStatus("Need alat to plot atoms!");return null;}
+				
+				
+				
+				if(iGeoCache.ibrav.equals(0)) {
+					double scalingTmp = iGeoCache.cellA.getValue();
+					switch(iGeoCache.unitCellLength) {//the unit of iGeoCache.cellA
+						case angstrom:break;
+						case bohr:scalingTmp = scalingTmp*PhysicalConstants.angstPerBohr;break;
+						case pm:scalingTmp = scalingTmp/100;break;
+						default:
+							Alert alert1 = new Alert(AlertType.INFORMATION);
+					    	alert1.setTitle("Error");
+					    	alert1.setContentText("Non valid unitCellLength detected in WorkScene3D!");
+					    	alert1.showAndWait();
+							return null;
+					}
+					for (int i=0;i<atomListClone.size();i++) {
+						atomListClone.get(i).mulX(scalingTmp/scalingLength);
+						atomListClone.get(i).mulY(scalingTmp/scalingLength);
+						atomListClone.get(i).mulZ(scalingTmp/scalingLength);
+					}
+				}
+				else {
+					for (int i=0;i<atomListClone.size();i++) {
+						atomListClone.get(i).mulX(alat);
+						atomListClone.get(i).mulY(alat);
+						atomListClone.get(i).mulZ(alat);
+					}
 				}
 				break;
 			case crystal:
@@ -602,80 +709,17 @@ public class WorkScene3D {
 				}
 				break;
 			case angstrom:
-				switch(iGeoCache.unitCellLength){//aUnit
-//					case alat:
-//						for (int i=0;i<atomListClone.size();i++) {
-//							atomListClone.get(i).mulX(a);
-//							atomListClone.get(i).mulY(a);
-//							atomListClone.get(i).mulZ(a);
-//						}
-//						break;
-					case bohr:
-						for (int i=0;i<atomListClone.size();i++) {
-							atomListClone.get(i).mulX(alat/(iGeoCache.cellA.getValue()*PhysicalConstants.bohrInAngs));
-							atomListClone.get(i).mulY(alat/(iGeoCache.cellA.getValue()*PhysicalConstants.bohrInAngs));
-							atomListClone.get(i).mulZ(alat/(iGeoCache.cellA.getValue()*PhysicalConstants.bohrInAngs));
-						}
-						break;
-					case angstrom:
-						for (int i=0;i<atomListClone.size();i++) {
-							atomListClone.get(i).mulX(alat/iGeoCache.cellA.getValue());
-							atomListClone.get(i).mulY(alat/iGeoCache.cellA.getValue());
-							atomListClone.get(i).mulZ(alat/iGeoCache.cellA.getValue());
-						}
-						break;
-					case pm:
-						for (int i=0;i<atomListClone.size();i++) {
-							atomListClone.get(i).mulX(alat/(iGeoCache.cellA.getValue()/100));//100 is angstrom -> pm
-							atomListClone.get(i).mulY(alat/(iGeoCache.cellA.getValue()/100));
-							atomListClone.get(i).mulZ(alat/(iGeoCache.cellA.getValue()/100));
-						}
-						break;
-					default:
-						Alert alert1 = new Alert(AlertType.INFORMATION);
-				    	alert1.setTitle("Error");
-				    	alert1.setContentText("Non valid unitCellParameter detected in WorkScene3D!");
-				    	alert1.showAndWait();
-						return null;
+			case bohr:	
+				double scalingTmp=1.0;
+				if(iGeoCache.unitAtomPos.equals(EnumUnitAtomPos.angstrom)) scalingTmp = 1.0;
+				else if (iGeoCache.unitAtomPos.equals(EnumUnitAtomPos.bohr)) scalingTmp = PhysicalConstants.angstPerBohr;
+				
+				if(scalingLength<=0) return null;
+				for (int i=0;i<atomListClone.size();i++) {
+					atomListClone.get(i).mulX(scalingTmp/scalingLength);
+					atomListClone.get(i).mulY(scalingTmp/scalingLength);
+					atomListClone.get(i).mulZ(scalingTmp/scalingLength);
 				}
-				break;
-			case bohr:
-				switch(iGeoCache.unitCellLength){//aUnit
-//				case alat:
-//					for (int i=0;i<atomListClone.size();i++) {
-//						atomListClone.get(i).mulX(a);
-//						atomListClone.get(i).mulY(a);
-//						atomListClone.get(i).mulZ(a);
-//					}
-//					break;
-				case angstrom:
-					for (int i=0;i<atomListClone.size();i++) {
-						atomListClone.get(i).mulX(alat*PhysicalConstants.bohrInAngs/iGeoCache.cellA.getValue());
-						atomListClone.get(i).mulY(alat*PhysicalConstants.bohrInAngs/iGeoCache.cellA.getValue());
-						atomListClone.get(i).mulZ(alat*PhysicalConstants.bohrInAngs/iGeoCache.cellA.getValue());
-					}
-					break;
-				case bohr:
-					for (int i=0;i<atomListClone.size();i++) {
-						atomListClone.get(i).mulX(alat/iGeoCache.cellA.getValue());
-						atomListClone.get(i).mulY(alat/iGeoCache.cellA.getValue());
-						atomListClone.get(i).mulZ(alat/iGeoCache.cellA.getValue());
-					}
-					break;
-				case pm:
-					for (int i=0;i<atomListClone.size();i++) {
-						atomListClone.get(i).mulX(alat*PhysicalConstants.bohrInAngs/(iGeoCache.cellA.getValue()/100));//100 is angstrom -> pm
-						atomListClone.get(i).mulY(alat*PhysicalConstants.bohrInAngs/(iGeoCache.cellA.getValue()/100));
-						atomListClone.get(i).mulZ(alat*PhysicalConstants.bohrInAngs/(iGeoCache.cellA.getValue()/100));
-					}
-					break;
-				default:
-					Alert alert1 = new Alert(AlertType.INFORMATION);
-			    	alert1.setTitle("Error");
-			    	alert1.setContentText("Non valid unitCellParameter detected in WorkScene3D!");
-			    	alert1.showAndWait();
-					return null;
-			}
 				break;
 			default:
 				Alert alert1 = new Alert(AlertType.INFORMATION);
@@ -876,24 +920,9 @@ public class WorkScene3D {
 					
 					Point3D tmpOrigin = new Point3D(vix,viy,viz).add(origini);
 					Point3D tmpTarget = new Point3D(vjx,vjy,vjz).add(origini);
-					double tmpDistance = tmpOrigin.distance(tmpTarget)/alat*iGeoCache.cellA.getValue();
-					//convert tmpDistance to pm
-					switch(iGeoCache.unitCellLength){//aUnit
-						case angstrom:
-							tmpDistance*=100;
-							break;
-						case bohr:
-							tmpDistance*=PhysicalConstants.bohrInAngs*100;
-							break;
-						case pm:
-							break;
-						default:
-							Alert alert1 = new Alert(AlertType.INFORMATION);
-					    	alert1.setTitle("Error");
-					    	alert1.setContentText("Non valid unitCellParameter detected in WorkScene3D!");
-					    	alert1.showAndWait();
-							return;
-					}
+					
+					double tmpDistance = tmpOrigin.distance(tmpTarget)*scalingLength*100;//convert tmpDistance to pm
+					
 					double tmpBondLength = atomListClone.get(i).getAtomSpecies().getEmpricalRadius()+
 							atomListClone.get(j).getAtomSpecies().getEmpricalRadius();
 					
