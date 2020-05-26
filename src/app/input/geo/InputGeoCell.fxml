@@ -27,7 +27,7 @@
         </rowConstraints>
          <children>
             <Label text="Reset all to default" GridPane.halignment="RIGHT" />
-            <CheckBox mnemonicParsing="false" GridPane.columnIndex="1" GridPane.halignment="CENTER" />
+            <CheckBox fx:id="checkResetAll" mnemonicParsing="false" GridPane.columnIndex="1" GridPane.halignment="CENTER" />
             <Button mnemonicParsing="false" text="i" GridPane.columnIndex="2" />
          </children>
       </GridPane>
@@ -171,7 +171,7 @@
                 <Insets left="10.0" />
             </padding>
         </GridPane>
-      <Label fx:id="statusInfo"/>
+      <Label fx:id="statusInfo" />
       <BorderPane prefWidth="350.0">
          <center>
             <Separator prefHeight="30.0" BorderPane.alignment="CENTER" />

@@ -88,7 +88,8 @@ public class InputValueString extends InputValue {
 
 	@Override
 	public String toString() {
-		return toString(false);
+		if(explicitWrite || boolRequired) return toString(false);
+		else return "";
 	}
 	
 	public String toString(boolean debugbool) {
@@ -96,8 +97,8 @@ public class InputValueString extends InputValue {
 			return nameString+", "+paraDefault+", "+paraNow+", "+(boolRequired? "required":"optional")+", "+(explicitWrite? "write":"ignored");
 			}
 		else {
-			if (paraNow!=null) return nameString=="body"? ""+paraNow :nameString+"="+paraNow;
-			else return "";
+			if (paraNow!=null && !paraNow.isEmpty()) return nameString.equals("body")? ""+paraNow+"" :nameString+"='"+paraNow+"'";
+			else return null;
 		}
 	}
 

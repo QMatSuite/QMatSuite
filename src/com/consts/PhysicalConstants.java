@@ -19,6 +19,6 @@
 package com.consts;
 
 public interface PhysicalConstants {
-	public static final double bohrInAngs = 0.529177249;//1 bohr = 0.529177249 angstrom
+	public static final double angstPerBohr = 0.529177249;//1 bohr = 0.529177249 angstrom
 	public static final double ryInEV = 13.6056980659;//1 Ry = 13.6056980659 eV
 }

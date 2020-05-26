@@ -25,6 +25,7 @@ import com.consts.Constants.EnumStep;
 
 import agent.InputAgentGeo;
 import agent.InputAgentScf;
+import input.ContainerInputString;
 import input.PwInput;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
@@ -51,11 +52,11 @@ public class calculationScfClass extends calculationClass{
 	public void genInputFromAgent(ArrayList<InputAgentGeo> geoList) {
 		inputList.get(EnumStep.SCF).loadAgent(geoList.get(getGeoInd()));
 		inputList.get(EnumStep.SCF).loadAgent((InputAgentScf)agentList.get(EnumStep.SCF));
-		String inputFile= inputList.get(EnumStep.SCF).genInput();
+		ContainerInputString inputWrapper= inputList.get(EnumStep.SCF).genInput(EnumStep.SCF);
 		
 		Alert alert1 = new Alert(AlertType.INFORMATION);
     	alert1.setHeaderText("Input of "+nameCalc);
-    	alert1.setContentText(inputFile);
+    	alert1.setContentText(inputWrapper.toString());
     	alert1.showAndWait();
 	}
 }

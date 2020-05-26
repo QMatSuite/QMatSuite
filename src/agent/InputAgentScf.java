@@ -70,8 +70,8 @@ public class InputAgentScf extends InputAgent{
 		expandVdw=false;expandAdv=false;expandE=false;
 		//spin
 		resetnspin();resetnoncolin();resetboolSoc();//ok
-		setForElements=new WrapperBoolean(false);
-		setForAtoms = new WrapperBoolean(false);
+		setForElements=new WrapperBoolean(false);//ok
+		setForAtoms = new WrapperBoolean(false);//ok
 		//DFT+U
 		//boolHubbardU=new WrapperBoolean(false);
 		resetlda_plus_u();//ok

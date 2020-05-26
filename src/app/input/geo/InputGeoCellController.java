@@ -59,7 +59,7 @@ public class InputGeoCellController implements Initializable{
 
     @FXML private Button ibravInfo,aInfo,bInfo,cInfo,alphaInfo,betaInfo,gammaInfo,lattInfo;
     
-    @FXML private CheckBox ibravCheck,aCheck,bCheck,cCheck,alphaCheck,betaCheck,gammaCheck;
+    @FXML private CheckBox checkResetAll,ibravCheck,aCheck,bCheck,cCheck,alphaCheck,betaCheck,gammaCheck;
 
     @FXML private ComboBox<EnumUnitCellParameter> lattUnit;//ok
     
@@ -86,14 +86,15 @@ public class InputGeoCellController implements Initializable{
     private void setDisableInputFields() {
     	InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
 		if (ia==null) return;
+		//if ibrav==null, all enabled
     	Boolean a= false,b= false,c= false,alpha = false,beta= false,gamma= false;
-    	//if ibrav==null, all enabled
+    	ia.needAlatFromCell=true;
     	if(ia.ibrav.getValue()!=null) {
 	    	switch(ia.ibrav.getValue()) {
 				case 0:
-					if (ia.unitCellParameter!=null && ia.unitCellParameter==EnumUnitCellParameter.alat) {
-						a=false;b=true;c=true;alpha=true;beta=true;gamma=true;}
-					else {a=true;b=true;c=true;alpha=true;beta=true;gamma=true;}
+					if (ia.unitCellParameter!=null && ia.unitCellParameter.equals(EnumUnitCellParameter.alat)) {
+						ia.needAlatFromCell=true;a=(!ia.needCellA());b=true;c=true;alpha=true;beta=true;gamma=true;}
+					else {ia.needAlatFromCell=false;a=(!ia.needCellA());b=true;c=true;alpha=true;beta=true;gamma=true;}
 					break;
 				case 1:a=false;b=true;c=true;alpha=true;beta=true;gamma=true;break;
 				case 2:a=false;b=true;c=true;alpha=true;beta=true;gamma=true;break;
@@ -127,6 +128,8 @@ public class InputGeoCellController implements Initializable{
     	alphaUnit.setDisable(alpha&&beta&&gamma);
     }
     public void initialize() {
+    	checkResetAll.setDisable(true);ibravCheck.setDisable(true);aCheck.setDisable(true);bCheck.setDisable(true);
+    	cCheck.setDisable(true);alphaCheck.setDisable(true);betaCheck.setDisable(true);gammaCheck.setDisable(true);
     	//ibrav
     	ObservableList<BravaisLattice> ibrav = FXCollections.observableArrayList(BravaisLattice.values());
     	ibravCombo.setItems(ibrav);
@@ -190,15 +193,18 @@ public class InputGeoCellController implements Initializable{
     	ObservableList<EnumUnitCellParameter> latticeUn = FXCollections.observableArrayList(EnumUnitCellParameter.values());
     	lattUnit.setItems(latticeUn);
     	lattUnit.setOnAction((event) -> {
-    		//only accessible when ibrav==0 -> this is not true when switching projects!!!
+    		//*******only accessible when ibrav==0 -> this is not true when switching projects!!!???
 			if (lattUnit.getValue()!=null) {
 				InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
 				if (ia!=null) {
 					EnumUnitCellParameter tmp = lattUnit.getValue();
 					if(tmp!=null) ia.unitCellParameter=tmp;
 					if (ia.ibrav.getValue()!=null && ia.ibrav.getValue()==0) {
-					if (lattUnit.getValue()==EnumUnitCellParameter.alat) {aField.setDisable(false);aUnit.setDisable(false);}
-					else {aField.setDisable(true);aUnit.setDisable(true);}}
+						if (lattUnit.getValue()==EnumUnitCellParameter.alat) {
+							ia.needAlatFromCell=true;aField.setDisable(!ia.needCellA());aUnit.setDisable(!ia.needCellA());
+						}
+						else {ia.needAlatFromCell=false;aField.setDisable(!ia.needCellA());aUnit.setDisable(!ia.needCellA());}
+					}
 					mainClass.projectManager.updateViewerPlot();
 				}
 				
@@ -269,5 +275,10 @@ public class InputGeoCellController implements Initializable{
     private void setField(TextField tf, WrapperDouble val) {
     	if(val.getValue()==null) tf.setText("");
     	else tf.setText(val.getValue().toString());
+    }
+    public void updateCellA(){
+    	InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
+    	boolean a=(!ia.needCellA());
+    	aField.setDisable(a);ia.cellA.setEnabled(!a);
     }
 }

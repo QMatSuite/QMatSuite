@@ -19,7 +19,7 @@
 package input;
 
 import java.io.Serializable;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 
 public abstract class InputSection implements Serializable{
 	/**
@@ -27,10 +27,13 @@ public abstract class InputSection implements Serializable{
 	 */
 	private static final long serialVersionUID = -5978615968104371200L;
 	
-	protected HashMap<String, InputValue> parameterDict; 
+	protected LinkedHashMap<String, InputValue> parameterDict; 
 	protected Boolean boolRequired=false;
 	protected String options="";
 	
+	public InputSection() {
+		parameterDict = new LinkedHashMap<String, InputValue>();
+	}
 	public String addParameter(String key, InputValue val) {
 		parameterDict.put(key,val);
 		return null;
@@ -44,7 +47,7 @@ public abstract class InputSection implements Serializable{
 	public void print() {
 		System.out.println(toString());
 	}
-	public abstract String toString();
+	public abstract ContainerInputString toStringWrapper();
 	public Boolean containsKey(String key) {
 		return parameterDict.containsKey(key);
 	}

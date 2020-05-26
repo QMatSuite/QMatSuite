@@ -17,7 +17,6 @@
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
 package input;
-import java.util.HashMap;
 import java.util.Set;
 
 import com.consts.Constants.EnumNameList;
@@ -29,36 +28,27 @@ public class NameList extends InputSection{
 	private static final long serialVersionUID = -7707997872165494410L;
 	private EnumNameList nameEnum;
 	public NameList(EnumNameList nameE) {
-		parameterDict = new HashMap<String, InputValue>();
+		super();
 		boolRequired = false;
 		nameEnum = nameE;
 	}
 	@Override
-	public String toString() {
+	public ContainerInputString toStringWrapper() {
+		ContainerInputString ci = new ContainerInputString();
 		if (!isEmpty() || boolRequired) {
-			String message = "--- (NameList) "+nameEnum.name()+" "+ options +" \n";
+			ci.appendInput("&"+nameEnum.name()+" "+ options +" \n");
+			String strTmp;
 			Set<String> keys = parameterDict.keySet();
 	        for(String key: keys){
 	        	if (parameterDict.get(key).isExplicitWrite() || parameterDict.get(key).isRequired()) {
-	        		message = message+parameterDict.get(key).toString()+"\n";
+	        		strTmp = parameterDict.get(key).toString();
+	        		if (strTmp==null) {ci.appendLog(nameEnum.name()+"-"+key+": required but not set\n");}
+	        		else if (!strTmp.isEmpty()) {ci.appendInput(strTmp+"\n");}
 	        	}
 	        }
-	        return message;
+	        ci.appendInput("/\n");
 		}
-		else return "";
+		return ci;
 	}
-//	@Override
-//	public void print() {
-//		if (!parameterDict.isEmpty()) {
-//			System.out.println("--- (NameList) "+nameEnum.name()+" :");
-//			Set<String> keys = parameterDict.keySet();
-//	        for(String key: keys){
-//	        	parameterDict.get(key).print();
-//	        }
-//		}
-//		else if (boolRequired) {
-//			System.out.println("--- (NameList) "+nameEnum.name()+" : empty");
-//		}
-//	}
 	
 }

@@ -91,7 +91,8 @@ public class InputValueDoubleArray extends InputValue {
 	
 	@Override
 	public String toString() {
-		return toString(false);
+		if(explicitWrite || boolRequired) return toString(false);
+		else return "";
 	}
 	
 	public String toString(boolean debugbool) {
@@ -101,6 +102,7 @@ public class InputValueDoubleArray extends InputValue {
 			if (paraNow.get(i)!=null) convertTmp = String.valueOf(paraNow.get(i));
 			strOut+=(nameString+"("+index.get(i)+")="+convertTmp+",");
 		}
-		return strOut;
+		if (strOut.isEmpty()) return null;
+		else return strOut;
 	}
 }
