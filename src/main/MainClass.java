@@ -25,6 +25,8 @@ public class MainClass {
 	public ProjectManager projectManager;
 	public JobManager jobManager;
 	
+	
+	
 	public MainClass() {
 		projectManager = new ProjectManager();
 		jobManager = new JobManager();
