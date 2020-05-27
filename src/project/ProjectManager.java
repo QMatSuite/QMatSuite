@@ -39,10 +39,12 @@ import javafx.scene.control.Alert.AlertType;
 public class ProjectManager {
 	private LinkedHashMap<String, Project> projectDict;
 	private String activeProjKey;
+	private String workSpaceDir;
 	
 	public ProjectManager() {
 		projectDict = new LinkedHashMap<String, Project> ();
 		activeProjKey = null;
+		workSpaceDir = null;
 	}
 	public void saveActiveProject(File filename) {
 		Project pj = getActiveProject();

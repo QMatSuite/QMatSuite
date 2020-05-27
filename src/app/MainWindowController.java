@@ -35,6 +35,7 @@ import javafx.event.Event;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
+import javafx.geometry.Insets;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
@@ -48,6 +49,7 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TabPane.TabClosingPolicy;
+import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.TreeItem;
@@ -55,10 +57,16 @@ import javafx.scene.control.TreeTableColumn;
 import javafx.scene.control.TreeTableView;
 import javafx.scene.control.cell.TreeItemPropertyValueFactory;
 import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.Background;
+import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.CornerRadii;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
 import javafx.scene.shape.Box;
+import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import main.MainClass;
@@ -77,7 +85,11 @@ public class MainWindowController implements Initializable{
     
     @FXML private MenuItem calcScf,calcOpt,calcDos,calcBands,calcMd,calcTddft,calcCustom,menuAbout,menuSaveProject,menuLoadProject;
     
-    @FXML private Button createProject,runButton,addMolecule;
+    @FXML private Button createProject,runButton,addMolecule,buttonOpenWorkSpace,buttonOpenQEEngine;
+    
+    @FXML private Label textWorkSpace,textQEEngine;
+    
+    @FXML private Pane paneQEEngine,paneWorkSpace;
     
     @FXML private ComboBox<String> comboProject,comboCalculation;
     
@@ -181,9 +193,20 @@ public class MainWindowController implements Initializable{
 		projectCalcTreeDict = new HashMap<String, HashMap<EnumCalc, TreeItem<ProjectCalcLog>>>();
 		projectTabDict = new HashMap<String, Tab>();
 		
+		//set the style of workspace and QEEngine fields
+		textWorkSpace.setBackground(new Background(new BackgroundFill(Color.WHITE, 
+				CornerRadii.EMPTY, Insets.EMPTY)));
+		textQEEngine.setBackground(new Background(new BackgroundFill(Color.WHITE, 
+				CornerRadii.EMPTY, Insets.EMPTY)));
+		textWorkSpace.prefWidthProperty().bind(paneWorkSpace.widthProperty());
+		textWorkSpace.prefHeightProperty().bind(paneWorkSpace.heightProperty());
+		textQEEngine.prefWidthProperty().bind(paneQEEngine.widthProperty());
+		textQEEngine.prefHeightProperty().bind(paneQEEngine.heightProperty());
 		
 		tabPaneRight = null;
 		tabPaneStatusRight = false;
+		
+		
 		
 		// load all relevant panes and sub-panes
 		try {
@@ -403,6 +426,40 @@ public class MainWindowController implements Initializable{
 	    			"    This is free software, and you are welcome to redistribute it\r\n" + 
 	    			"    under certain conditions; press `license' for details.");
 	    	alert1.showAndWait();
+		});
+		buttonOpenWorkSpace.setOnAction((event) -> {
+			DirectoryChooser dirChooser = new DirectoryChooser ();
+			
+			//go to current directory
+			String currentPath = Paths.get(".").toAbsolutePath().normalize().toString();
+			File tmpFile = new File(currentPath);
+			if(tmpFile!=null && tmpFile.canRead()) {
+				dirChooser.setInitialDirectory(tmpFile);
+			}
+			
+			File selectedDir = dirChooser.showDialog((Stage)rootPane.getScene().getWindow());
+			
+			if(selectedDir!=null && selectedDir.canRead()) {
+				textWorkSpace.setText(selectedDir.getPath());
+			}
+			
+		});
+		buttonOpenQEEngine.setOnAction((event) -> {
+			DirectoryChooser dirChooser = new DirectoryChooser ();
+			
+			//go to current directory
+			String currentPath = Paths.get(".").toAbsolutePath().normalize().toString();
+			File tmpFile = new File(currentPath);
+			if(tmpFile!=null && tmpFile.canRead()) {
+				dirChooser.setInitialDirectory(tmpFile);
+			}
+			
+			File selectedDir = dirChooser.showDialog((Stage)rootPane.getScene().getWindow());
+			
+			if(selectedDir!=null && selectedDir.canRead()) {
+				textQEEngine.setText(selectedDir.getPath());
+			}
+			
 		});
 	}
 	private void toggleGeometry() {
