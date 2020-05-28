@@ -18,6 +18,8 @@
  *******************************************************************************/
 package com.consts;
 
+import com.consts.Constants.EnumCalc;
+import com.consts.Constants.EnumStep;
 
 public class Constants {
 	public enum ProgramName{
@@ -49,23 +51,55 @@ public class Constants {
 	public enum EnumCalc{
 		//NULL,//no calculation
 		//GEO,//not a calculation, just here for programming convenience
-		SCF,
-		OPT,
-		DOS,
-		BANDS,
-		BOMD,
-		TDDFT
+		SCF("Self consistency (scf)", "SCF"),
+		OPT("Structure optimization", "OPT"),
+		DOS("Electronic density of states (DOS)", "DOS"),
+		BANDS("Electronic band structure", "Bands"),
+		BOMD("Molecular Dynamics (Born–Oppenheimer type, BOMD)", "MD"),
+		TDDFT("TDDFT", "TDDFT");
+
+		private String longName,shortName;
+		
+		private EnumCalc(String longName, String shortName) {
+	        this.longName = longName;
+	        this.shortName = shortName;
+	    }
+		public String getLong() {
+			return longName;
+		}
+		public String getShort() {
+			return shortName;
+		}
+		public static EnumCalc shortReverse(String shortTmp) {
+			switch(shortTmp) {
+				case "SCF":return SCF;
+				case "OPT":return OPT;
+				case "DOS":return DOS;
+				case "Bands":return BANDS;
+				case "MD":return BOMD;
+				case "TDDFT":return TDDFT;
+				default:return null;
+			}
+		}
 	}
 	public enum EnumStep{
 		//NULL,//no calculation
-		GEO,
-		SCF,
-		NSCF,
-		OPT,
-		DOS,
-		BANDS,
-		BOMD,
-		TDDFT
+		GEO("GEO"),
+		SCF("SCF"),
+		NSCF("NSCF"),
+		OPT("OPT"),
+		DOS("DOS"),
+		BANDS("Bands"),
+		BOMD("MD"),
+		TDDFT("TDDFT");
+		private String name;
+		
+		private EnumStep(String name) {
+	        this.name = name;
+	    }
+		public String getName() {
+			return name;
+		}
 	}
 	public interface enumInProgram {
     }
