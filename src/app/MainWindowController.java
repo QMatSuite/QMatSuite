@@ -111,10 +111,6 @@ public class MainWindowController implements Initializable{
 	
 	private TabPane tabPaneRight;
 	
-	private TreeTableView<ProjectCalcLog> projectTree;
-	
-	private TreeItem<ProjectCalcLog> projectTreeRoot;
-	
 	private Boolean tabPaneStatusRight,scrollStatusLeft;
 	
 	private VBox vboxRight,vboxLeft;
@@ -127,60 +123,13 @@ public class MainWindowController implements Initializable{
 	
 	private InputGeoController contGeo;
 	
+	private MainLeftPaneController contTree;
+	
 	private HashMap<String, Tab> projectTabDict;
-	
-	private HashMap<String, TreeItem<ProjectCalcLog>> projectTreeDict;
-	
-	private HashMap<String, HashMap<EnumCalc, TreeItem<ProjectCalcLog>>> projectCalcTreeDict;
-	
-	private final HashMap<EnumCalc, String> calcStringCalcLong,calcStringCalcShort;
-	
-	private final HashMap<String, EnumCalc> calcStringCalcShortReverse;
-	
-	private final HashMap<EnumStep, String> calcStringStep;
 	
 	private final ToggleGroup group = new ToggleGroup();
 	
 	public MainWindowController(MainClass mc) {
-		
-		HashMap<EnumCalc, String> cc2 = new HashMap<EnumCalc, String>();
-		cc2.put(EnumCalc.SCF, "Self consistency (scf)");
-		cc2.put(EnumCalc.OPT, "Structure optimization");
-		cc2.put(EnumCalc.DOS, "Electronic density of states (DOS)");
-		cc2.put(EnumCalc.BANDS, "Electronic band structure");
-		cc2.put(EnumCalc.BOMD, "Molecular Dynamics (Born–Oppenheimer type, BOMD)");
-		cc2.put(EnumCalc.TDDFT, "TDDFT");
-		calcStringCalcLong = new HashMap<EnumCalc, String>(cc2);//shallow copy, should be enough
-		
-		HashMap<EnumCalc, String> cc3 = new HashMap<EnumCalc, String>();
-		cc3.put(EnumCalc.SCF, "SCF");
-		cc3.put(EnumCalc.OPT, "OPT");
-		cc3.put(EnumCalc.DOS, "DOS");
-		cc3.put(EnumCalc.BANDS, "Bands");
-		cc3.put(EnumCalc.BOMD, "MD");
-		cc3.put(EnumCalc.TDDFT, "TDDFT");
-		calcStringCalcShort = new HashMap<EnumCalc, String>(cc3);//shallow copy, should be enough
-		
-		HashMap<String, EnumCalc> cc3r = new HashMap<String,EnumCalc>();
-		cc3r.put("SCF",EnumCalc.SCF);
-		cc3r.put("OPT",EnumCalc.OPT);
-		cc3r.put("DOS",EnumCalc.DOS);
-		cc3r.put("Bands",EnumCalc.BANDS);
-		cc3r.put("MD",EnumCalc.BOMD);
-		cc3r.put("TDDFT",EnumCalc.TDDFT);
-		
-		calcStringCalcShortReverse = new HashMap<String,EnumCalc>(cc3r);
-		
-		HashMap<EnumStep, String> cc4 = new HashMap<EnumStep, String>();
-		cc4.put(EnumStep.GEO, "GEO");
-		cc4.put(EnumStep.SCF, "SCF");
-		cc4.put(EnumStep.NSCF, "NSCF");
-		cc4.put(EnumStep.OPT, "OPT");
-		cc4.put(EnumStep.DOS, "DOS");
-		cc4.put(EnumStep.BANDS, "Bands");
-		cc4.put(EnumStep.BOMD, "MD");
-		cc4.put(EnumStep.TDDFT, "TDDFT");
-		calcStringStep = new HashMap<EnumStep, String>(cc4);//shallow copy, should be enough
 		
 		mainClass = mc;
 	}
@@ -188,9 +137,8 @@ public class MainWindowController implements Initializable{
 	@Override
 	public void initialize(URL arg0, ResourceBundle arg1){
 		workSpaceTabPane.setTabClosingPolicy(TabClosingPolicy.SELECTED_TAB);
-		projectTree = new TreeTableView<ProjectCalcLog>();
-		projectTreeDict = new HashMap<String, TreeItem<ProjectCalcLog>> ();
-		projectCalcTreeDict = new HashMap<String, HashMap<EnumCalc, TreeItem<ProjectCalcLog>>>();
+
+		
 		projectTabDict = new HashMap<String, Tab>();
 		
 		//set the style of workspace and QEEngine fields
@@ -227,6 +175,11 @@ public class MainWindowController implements Initializable{
 			scrollBands = FXMLLoader.load(getClass().getResource("input/InputBands.fxml")); 
 			scrollMd = FXMLLoader.load(getClass().getResource("input/InputMd.fxml")); 
 			scrollTddft = FXMLLoader.load(getClass().getResource("input/InputTddft.fxml")); 
+			
+			contTree = new MainLeftPaneController(mainClass);
+			FXMLLoader fxmlLoaderTree = new FXMLLoader(this.getClass().getResource("MainLeftPane.fxml"));
+			fxmlLoaderTree.setController(contTree);
+			scrollLeft = fxmlLoaderTree.load();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -245,8 +198,6 @@ public class MainWindowController implements Initializable{
 		setProjectNull();
 		
 		initializeLeftRightPane();//initialize tabPaneRight
-		
-		initializeProjectTree();
 		
 		
 		createProject.setOnAction((event) -> {
@@ -290,7 +241,7 @@ public class MainWindowController implements Initializable{
 				if (mainClass.projectManager.existCurrentCalc()) {
 					ArrayList<EnumCalc> al = mainClass.projectManager.getCurrentCalcList();
 					for (EnumCalc ec : al) {
-						comboCalculation.getItems().add(calcStringCalcShort.get(ec));
+						comboCalculation.getItems().add(ec.getShort());
 					}
 					//******not the most efficient way, may run twice
 					//radioCalculation.setSelected(true);
@@ -332,8 +283,9 @@ public class MainWindowController implements Initializable{
 			}
 	    });
 		comboCalculation.getSelectionModel().selectedItemProperty().addListener((ov, oldVal, newVal) -> {
-			if (newVal!=null && calcStringCalcShortReverse.containsKey(newVal)) {
-				mainClass.projectManager.setActiveCalculation(calcStringCalcShortReverse.get(newVal));
+			EnumCalc ec = EnumCalc.shortReverse(newVal);
+			if (newVal!=null && ec!=null) {
+				mainClass.projectManager.setActiveCalculation(ec);
 				//-------------********not the most efficient way*******---------------
 				openCalc(mainClass.projectManager.getCurrentCalcName());//openCalc is null tolerant
 			}
@@ -471,7 +423,7 @@ public class MainWindowController implements Initializable{
 			mainClass.projectManager.setGeoActive(true);
 			
 			Tab tab = new Tab();
-			tab.setText(calcStringStep.get(EnumStep.GEO));
+			tab.setText(EnumStep.GEO.getName());
 			tab.setContent(scrollGeo);
 			tabPaneRight.getTabs().clear();
 			tabPaneRight.getTabs().add(tab);
@@ -493,7 +445,7 @@ public class MainWindowController implements Initializable{
 		if (tabPaneRight==null) return;
 		
 		Tab tab = new Tab();
-		tab.setText(calcStringStep.get(es));
+		tab.setText(es.getName());
 		tab.setContent(scroll);
 		tabPaneRight.getTabs().add(tab);
 		
@@ -526,65 +478,7 @@ public class MainWindowController implements Initializable{
 		radioGeometry.setSelected(true);
 //		currentProject=null;
 	}
-	private void initializeProjectTree() {
-		TreeTableColumn<ProjectCalcLog, String> treeTableColumn1 = new TreeTableColumn<>("Project");
-		TreeTableColumn<ProjectCalcLog, String> treeTableColumn2 = new TreeTableColumn<>("Calculation");
-		TreeTableColumn<ProjectCalcLog, String> treeTableColumn3 = new TreeTableColumn<>("Steps");
-		
-		treeTableColumn1.setCellValueFactory(new TreeItemPropertyValueFactory<>("project"));
-		treeTableColumn2.setCellValueFactory(new TreeItemPropertyValueFactory<>("calculation"));
-		treeTableColumn3.setCellValueFactory(new TreeItemPropertyValueFactory<>("steps"));
-
-		projectTree.getColumns().add(treeTableColumn1);
-		projectTree.getColumns().add(treeTableColumn2);
-		projectTree.getColumns().add(treeTableColumn3);
-		
-		//projectTreeDict = new HashMap<String, TreeItem<String>>();
-		//projectCalcTreeDict = new HashMap<String, HashMap<EnumCalc, TreeItem<String>>>();
-//		projectTreeDict = new HashMap<String, TreeItem<ProjectCalcLog>>();
-//		projectCalcTreeDict = new HashMap<String, HashMap<EnumCalc, TreeItem<ProjectCalcLog>>>();
-				
-		//add listener
-		
-//		projectTree.getSelectionModel().selectedItemProperty().addListener((v, oldValue, newValue) -> { 
-//			if (newValue!=null || projectTreeDict == null) {
-//				/*for (String key : projectTreeDict.keySet()) {
-//				if (projectTreeDict.get(key)==newValue) {
-//					//must be project branch. A bit complicated here
-//					
-//					if (currentProject==key) return;//if project still the same!
-//					//handle old part of the tree
-//					if (currentProject!=null && projectTreeDict.containsKey(currentProject)) {
-//						projectTreeDict.get(currentProject).setExpanded(false);
-//					}
-//					//handle new project
-//					//workSpaceTabPane.getSelectionModel().select
-//					mainClass.projectManager.setActiveProject(key);
-//					currentProject=key;
-//					projectTreeDict.get(currentProject).setExpanded(true);
-//					if (currentCalcDict.get(currentProject)!=null) {
-//						openCalc(currentCalcDict.get(currentProject));
-//					}
-//					//projectCalcTreeDict.get(currentProject).get(key)
-//					//updateCalcTree();
-//					loadProjectParameters();	
-//					
-//					return;//just need first match
-//				}}*/
-//				if (currentProject==null || !projectCalcTreeDict.containsKey(currentProject)) return;
-//				for (EnumCalc key2 : projectCalcTreeDict.get(currentProject).keySet()) {
-//					if (projectCalcTreeDict.get(currentProject).get(key2)==newValue) {
-//						//must be in a calculation branch, just open the calculation
-//						openCalc(key2); return;//just need first match
-//					}
-//				}
-//			}
-//		});
-		
-		projectTreeRoot = new TreeItem<ProjectCalcLog>(new ProjectCalcLog("Projects","",""));
-		projectTree.setRoot(projectTreeRoot);
-		projectTreeRoot.setExpanded(true);
-	}
+	
 	private void initializeLeftRightPane() {
 		
 		// right part, default off
@@ -604,8 +498,9 @@ public class MainWindowController implements Initializable{
 		
 		//left part, default on
 		scrollStatusLeft = true;
-		scrollLeft = new ScrollPane();
-		scrollLeft.setContent(projectTree);
+//		scrollLeft = new ScrollPane();
+//		scrollLeft.setContent(projectTree);
+		
 		scrollLeft.setFitToHeight(true);
 		vboxLeft = new VBox();
 		btnLeft = new Button("L");
@@ -642,10 +537,8 @@ public class MainWindowController implements Initializable{
 			workSpaceTabPane.getTabs().remove(tab);
 //			currentCalcDict.remove(pj);
 //			calcAvailDict.remove(pj);
-			projectTreeRoot.getChildren().remove(projectTreeDict.get(pj));
+			contTree.removeProject(pj);
 			projectTabDict.remove(pj);
-			projectTreeDict.remove(pj);
-			projectCalcTreeDict.remove(pj);
 			comboProject.getItems().remove(pj);
 			});
 				
@@ -664,15 +557,11 @@ public class MainWindowController implements Initializable{
 //		}
 //		tabPaneStatusRight = false;
 		//set project tree
-		TreeItem<ProjectCalcLog> ti = new TreeItem<ProjectCalcLog>(new ProjectCalcLog(pj,"",""));
-		projectTreeRoot.getChildren().add(ti);
-		projectTreeRoot.setExpanded(true);
-		projectTreeDict.put(pj,ti);
-		projectCalcTreeDict.put(pj, new HashMap<EnumCalc, TreeItem<ProjectCalcLog>>());
+		contTree.addProject(pj);
 //		if (oldProjectTemp!=null && projectTreeDict.containsKey(oldProjectTemp)) {
 //			projectTreeDict.get(oldProjectTemp).setExpanded(false);
 //		}
-		updateCalcTree();
+		contTree.updateCalcTree();
 		//allow more interactions
 		calcMain.setDisable(false);
 		addMolecule.setDisable(false);
@@ -712,9 +601,9 @@ public class MainWindowController implements Initializable{
 				//initialize controllers. This will be automatically done only once
 				//***moved to the beginning of the program
 				//add comboBox item
-				comboCalculation.getItems().add(calcStringCalcShort.get(EnumCalc.SCF));
+				comboCalculation.getItems().add(EnumCalc.SCF.getShort());
 				//update current status to trees
-				updateCalcTree(EnumCalc.SCF);
+				contTree.updateCalcTree(EnumCalc.SCF);
 				
 //				Alert alert1 = new Alert(AlertType.INFORMATION);
 //		    	alert1.setTitle("Error");
@@ -727,7 +616,7 @@ public class MainWindowController implements Initializable{
 			//-------------********not the most efficient way*******---------------
 			// for simplicity, always update GUI
 			if (true) {
-				comboCalculation.setValue(calcStringCalcShort.get(EnumCalc.SCF));
+				comboCalculation.setValue(EnumCalc.SCF.getShort());
 				//need to update current calculation before loading parameters
 				mainClass.projectManager.setActiveCalculation(EnumCalc.SCF);
 				//load parameters for current project and calculation
@@ -739,7 +628,7 @@ public class MainWindowController implements Initializable{
 				addRightPane(scrollScf,EnumStep.SCF);
 				try {tabPaneRight.getSelectionModel().select(1);}catch (Exception e) {}//load second tab(not geo)
 				
-				calcLabel.setText(calcStringCalcLong.get(EnumCalc.SCF));
+				calcLabel.setText(EnumCalc.SCF.getLong());
 			}
 			
 			break;
@@ -756,9 +645,9 @@ public class MainWindowController implements Initializable{
 				//initialize controllers. This will be automatically done only once
 				//***moved to the beginning of the program
 				//add comboBox item
-				comboCalculation.getItems().add(calcStringCalcShort.get(EnumCalc.OPT));
+				comboCalculation.getItems().add(EnumCalc.OPT.getShort());
 				//update current status to trees
-				updateCalcTree(EnumCalc.OPT);
+				contTree.updateCalcTree(EnumCalc.OPT);
 				
 //				Alert alert1 = new Alert(AlertType.INFORMATION);
 //		    	alert1.setTitle("Error");
@@ -770,7 +659,7 @@ public class MainWindowController implements Initializable{
 			//if (firstFlag || !mainClass.projectManager.isCurrentCalc(EnumCalc.OPT)) {
 			// for simplicity, always update GUI
 			if (true) {
-				comboCalculation.setValue(calcStringCalcShort.get(EnumCalc.OPT));
+				comboCalculation.setValue(EnumCalc.OPT.getShort());
 				//need to update current calculation before loading parameters
 				mainClass.projectManager.setActiveCalculation(EnumCalc.OPT);
 				//load parameters for current project and calculation
@@ -783,7 +672,7 @@ public class MainWindowController implements Initializable{
 				addRightPane(scrollScf,EnumStep.SCF);
 				addRightPane(scrollOpt,EnumStep.OPT);
 				try {tabPaneRight.getSelectionModel().select(1);}catch (Exception e) {}//load second tab(not geo)
-				calcLabel.setText(calcStringCalcLong.get(EnumCalc.OPT));
+				calcLabel.setText(EnumCalc.OPT.getLong());
 				
 			}
 			break;
@@ -847,39 +736,8 @@ public class MainWindowController implements Initializable{
 		}
 	}
 
-	public void updateCalcTree() {
-		if (mainClass.projectManager.existCurrentCalc()) {
-			updateCalcTree(mainClass.projectManager.getCurrentCalcName());
-		}
-	}
-	public void updateCalcTree(EnumCalc ec) {
-		String currentProject = mainClass.projectManager.getActiveProjectName();
-		if (currentProject!=null && projectTreeDict.containsKey(currentProject)) {
-			if (ec==null) {
-				//select active tree item to be the project
-				//int row = projectTree.getRow(projectTreeDict.get(currentProject));
-				//projectTree.getSelectionModel().select(row);
-				return;
-			}
-			if (projectCalcTreeDict.containsKey(currentProject) && !projectCalcTreeDict.get(currentProject).containsKey(ec)) {
-				//add tree item if not already exists
-				TreeItem<ProjectCalcLog> ti = new TreeItem<ProjectCalcLog>(new ProjectCalcLog("",calcStringCalcShort.get(ec),""));
-				projectCalcTreeDict.get(currentProject).put(ec, ti);
-				projectTreeDict.get(currentProject).getChildren().add(ti);
-				//expand project tree, select active calc item
-				projectTreeDict.get(currentProject).setExpanded(true);
-				//int row = projectTree.getRow(ti);
-				//projectTree.getSelectionModel().select(row);
-			}
-			else {
-				//expand project tree, select active calc item
-				projectTreeDict.get(currentProject).setExpanded(true);
-//				//int row = projectTree.getRow(projectCalcTreeDict.get(currentProject).get(ec));
-//				//projectTree.getSelectionModel().select(row);
-			}
-			
-		}
-	}
+	
+	
 	public void aboutClicked(Event e) {
 		Alert alert = new Alert(AlertType.INFORMATION);
     	alert.setTitle("About");
