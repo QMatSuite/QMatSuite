@@ -19,14 +19,18 @@
 
 package app;
 
+import java.io.File;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.ResourceBundle;
+
 
 import com.consts.Constants.EnumCalc;
 
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.control.Button;
+import javafx.scene.control.RadioButton;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeTableColumn;
 import javafx.scene.control.TreeTableView;
@@ -37,6 +41,8 @@ import project.ProjectCalcLog;
 public class MainLeftPaneController implements Initializable {
 	
 	@FXML private TreeTableView<ProjectCalcLog> projectTree;
+	@FXML public RadioButton radioShowAll,radioShowOpen;
+	@FXML public Button buttonOpenSelected,buttonCloseSelected;
 	
 	private TreeItem<ProjectCalcLog> projectTreeRoot;
 	private MainClass mainClass;
@@ -117,6 +123,17 @@ public class MainLeftPaneController implements Initializable {
 		projectTree.setRoot(projectTreeRoot);
 		projectTreeRoot.setExpanded(true);
 	}
+	public String getSelectedProject() {
+		TreeItem<ProjectCalcLog> ti = projectTree.getSelectionModel().getSelectedItem();
+		if(ti==null || projectTreeRoot==null) return null;
+		else {
+			while(!projectTreeRoot.getChildren().contains(ti)) {
+				ti=ti.getParent();//go back up until the children of the root
+			}
+			return ti.getValue().getProject();
+		}
+		
+	}
 	public void removeProject(String pj) {
 		projectTreeRoot.getChildren().remove(projectTreeDict.get(pj));
 		projectTreeDict.remove(pj);
@@ -160,6 +177,38 @@ public class MainLeftPaneController implements Initializable {
 	public void updateCalcTree() {
 		if (mainClass.projectManager.existCurrentCalc()) {
 			updateCalcTree(mainClass.projectManager.getCurrentCalcName());
+		}
+	}
+	public void updateProjects(File wsDir) {
+		if (wsDir==null || !wsDir.canRead()) return;
+//		try (Stream<Path> walk = Files.walk(wsDir.toPath())) {
+//
+////			List<String> result = walk.filter(Files::isDirectory)
+////					.map(x -> x.toString()).collect(Collectors.toList());
+//			List<Path> result = walk.filter(Files::isDirectory).collect(Collectors.toList());
+//			
+//			for (Path temp : result) {
+//				String tmp = temp.getFileName().toString();
+//				TreeItem<ProjectCalcLog> ti = new TreeItem<ProjectCalcLog>(new ProjectCalcLog(tmp,"",""));
+//				projectTreeRoot.getChildren().add(ti);
+//				projectTreeRoot.setExpanded(true);
+//				projectTreeDict.put(tmp,ti);
+//				projectCalcTreeDict.put(tmp, new HashMap<EnumCalc, TreeItem<ProjectCalcLog>>());
+//			}
+//			
+//			//result.forEach(System.out::println);
+//
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		}
+		File[] directories = wsDir.listFiles(File::isDirectory);
+		for (File temp : directories) {
+			String tmp = temp.getName();
+			TreeItem<ProjectCalcLog> ti = new TreeItem<ProjectCalcLog>(new ProjectCalcLog(tmp,"",""));
+			projectTreeRoot.getChildren().add(ti);
+			projectTreeRoot.setExpanded(true);
+			projectTreeDict.put(tmp,ti);
+			projectCalcTreeDict.put(tmp, new HashMap<EnumCalc, TreeItem<ProjectCalcLog>>());
 		}
 	}
 }

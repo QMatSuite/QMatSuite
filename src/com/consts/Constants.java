@@ -18,9 +18,6 @@
  *******************************************************************************/
 package com.consts;
 
-import com.consts.Constants.EnumCalc;
-import com.consts.Constants.EnumStep;
-
 public class Constants {
 	public enum ProgramName{
 		PW,
@@ -71,6 +68,7 @@ public class Constants {
 			return shortName;
 		}
 		public static EnumCalc shortReverse(String shortTmp) {
+			if(shortTmp==null) return null;
 			switch(shortTmp) {
 				case "SCF":return SCF;
 				case "OPT":return OPT;

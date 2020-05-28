@@ -18,24 +18,39 @@
  *******************************************************************************/
 package app;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Optional;
 import java.util.ResourceBundle;
+import java.util.Scanner;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
-
+import com.consts.DefaultFileNames;
+import com.consts.DefaultFileNames.settingKeys;
 
 import javafx.event.Event;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
+import javafx.scene.Node;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
@@ -49,13 +64,8 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TabPane.TabClosingPolicy;
-import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.ToggleGroup;
-import javafx.scene.control.TreeItem;
-import javafx.scene.control.TreeTableColumn;
-import javafx.scene.control.TreeTableView;
-import javafx.scene.control.cell.TreeItemPropertyValueFactory;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
@@ -70,7 +80,7 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import main.MainClass;
-import project.ProjectCalcLog;
+import project.Project;
 import app.input.*;
 import app.viewer3d.GeoGroup;
 import app.viewer3d.WorkScene3D;
@@ -129,6 +139,8 @@ public class MainWindowController implements Initializable{
 	
 	private final ToggleGroup group = new ToggleGroup();
 	
+	private String workSpacePath = null;
+	
 	public MainWindowController(MainClass mc) {
 		
 		mainClass = mc;
@@ -185,7 +197,50 @@ public class MainWindowController implements Initializable{
 			e.printStackTrace();
 		}
 		
-				
+		contTree.buttonOpenSelected.setOnAction((event) -> {
+			String projName = contTree.getSelectedProject();
+			if(projName==null || projName.isEmpty()) return;
+			
+			File wsDir = getWorkSpace();
+			
+			File projDir = new File(wsDir,projName);
+			
+			if(projDir==null || !projDir.canRead()) return;
+			
+			try (Stream<Path> walk = Files.walk(projDir.toPath())) {
+
+				List<String> result = walk.map(x -> x.toString())
+						.filter(f -> f.endsWith(".proj")).collect(Collectors.toList());
+				boolean flag=true;//true is load failure
+				if(result!=null && !result.isEmpty()) {
+					if(result.size()==1) {flag = loadProject(new File(result.get(0)));}
+					else {//more than one .proj file
+						FileChooser fileChooser = new FileChooser();
+						fileChooser.setInitialDirectory(projDir);
+						fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("project files", "*.proj"));
+						
+						File selectedFile = fileChooser.showOpenDialog((Stage)rootPane.getScene().getWindow());
+						
+						flag = loadProject(selectedFile);
+					}
+				}
+				else {//no .proj file, 
+					flag = true;
+					
+					String msg = mainClass.projectManager.addProject(projName);
+					
+					if (msg!=null) return;
+					
+					creatProject(projName);
+				}
+
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+		});
+		
 		radioGeometry.setText("Geometry");
 		radioGeometry.setToggleGroup(group);
 		radioGeometry.setSelected(true);
@@ -199,9 +254,37 @@ public class MainWindowController implements Initializable{
 		
 		initializeLeftRightPane();//initialize tabPaneRight
 		
+		//load environment variable
+		workSpacePath = readGlobalSettings(settingKeys.workspace.toString());
+		if (workSpacePath!=null) {
+			File wsDir = new File(workSpacePath);
+			if(wsDir!=null && wsDir.canRead()) {
+				textWorkSpace.setText(workSpacePath);
+				setWorkSpace(true);
+			}
+			else {
+				setWorkSpace(false);
+				textWorkSpace.setBackground(new Background(new BackgroundFill(Color.RED, 
+						CornerRadii.EMPTY, Insets.EMPTY)));
+				Alert alert1 = new Alert(AlertType.INFORMATION);
+		    	alert1.setTitle("Warning");
+		    	alert1.setContentText("Cannot load the previous workspace directory. Please specify a new one.");
+		    	alert1.showAndWait();
+			}
+		}
+		else {
+			setWorkSpace(false);
+			Alert alert1 = new Alert(AlertType.INFORMATION);
+	    	alert1.setTitle("Message");
+	    	alert1.setContentText("Please specify a workspace directory to start with.");
+	    	alert1.showAndWait();
+		}
+		
+		if(workSpacePath!=null) {contTree.updateProjects(new File(workSpacePath));}
 		
 		createProject.setOnAction((event) -> {
 //			String oldProjectTemp = currentProject;
+			
 			TextInputDialog promptProjName = new TextInputDialog(); 
 			String projName = null;
 			String msg = null;
@@ -216,8 +299,18 @@ public class MainWindowController implements Initializable{
 					return;
 				}
 			} while (msg!=null);
+			
+			File wsDir = getWorkSpace();
+			
+			if (!makeDir(wsDir, projName)) {return;}
+			
 			msg = mainClass.projectManager.addProject(projName);
-			if (msg==null) creatProject(projName);
+			
+			if (msg!=null) return;
+			
+			//set project tree
+			contTree.addProject(projName);
+			creatProject(projName);
 		});
 		workSpaceTabPane.getSelectionModel().selectedItemProperty().addListener((ov, oldTab, newTab) -> {
 			//******main code for changing project********
@@ -243,16 +336,6 @@ public class MainWindowController implements Initializable{
 					for (EnumCalc ec : al) {
 						comboCalculation.getItems().add(ec.getShort());
 					}
-					//******not the most efficient way, may run twice
-					//radioCalculation.setSelected(true);
-//					if (radioGeometry.isSelected()) {
-//						toggleGeometry();
-//					}
-//					else {
-//						openCalc(mainClass.projectManager.getCurrentCalcName());
-//					}
-					//******not the most efficient way, may run twice
-					//toggleGeometry();
 					openCalc(mainClass.projectManager.getCurrentCalcName());
 				}
 				else {
@@ -260,15 +343,6 @@ public class MainWindowController implements Initializable{
 					radioGeometry.setSelected(true);
 					toggleGeometry();
 				}
-//				currentProject=newTab.getText();
-////				if (oldTab!=null && projectTreeDict.containsKey(oldTab.getText())) {
-////					//projectTreeDict.get(oldTab.getText()).setExpanded(false);
-////				}
-////				//updateCalcTree();
-//				if (oldTab!=null && projectTreeDict.containsKey(oldTab.getText())) {
-//				projectTreeDict.get(oldTab.getText()).setExpanded(false);
-//			}
-//			//updateCalcTree();
 			}
 	    });
 		comboProject.getSelectionModel().selectedItemProperty().addListener((ov, oldVal, newVal) -> {
@@ -329,44 +403,33 @@ public class MainWindowController implements Initializable{
 //	    	alert.showAndWait();
 		});
 		menuSaveProject.setOnAction((event) -> {
-			FileChooser fileChooser = new FileChooser();
-			
-			//go to current directory
-			String currentPath = Paths.get(".").toAbsolutePath().normalize().toString();
-			File tmpFile = new File(currentPath);
-			if(tmpFile!=null && tmpFile.canRead()) {
-				fileChooser.setInitialDirectory(tmpFile);
-			}
-			fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("project files", "*.proj"));
-			
-			File selectedFile = fileChooser.showSaveDialog((Stage)rootPane.getScene().getWindow());
-			mainClass.projectManager.saveActiveProject(selectedFile);//empty string means activeProjKey+".proj"
+			File wsDir = getWorkSpace();
+			if(wsDir==null || !wsDir.canWrite()) {return;}
+			mainClass.projectManager.saveActiveProject(wsDir,null);//empty string means activeProjKey+".proj"
+//			FileChooser fileChooser = new FileChooser();
+//			
+//			//go to current directory
+//			String currentPath = Paths.get(".").toAbsolutePath().normalize().toString();
+//			File tmpFile = new File(currentPath);
+//			if(tmpFile!=null && tmpFile.canRead()) {
+//				fileChooser.setInitialDirectory(tmpFile);
+//			}
+//			fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("project files", "*.proj"));
+//			
+//			File selectedFile = fileChooser.showSaveDialog((Stage)rootPane.getScene().getWindow());
+//			mainClass.projectManager.saveActiveProject(selectedFile);
 		});
 		menuLoadProject.setOnAction((event) -> {
-			FileChooser fileChooser = new FileChooser();
+			File wsDir = getWorkSpace();
+			if(wsDir==null || !wsDir.canWrite()) {return;}
 			
-			//go to current directory
-			String currentPath = Paths.get(".").toAbsolutePath().normalize().toString();
-			File tmpFile = new File(currentPath);
-			if(tmpFile!=null && tmpFile.canRead()) {
-				fileChooser.setInitialDirectory(tmpFile);
-			}
+			FileChooser fileChooser = new FileChooser();
+			fileChooser.setInitialDirectory(wsDir);
 			fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("project files", "*.proj"));
 			
 			File selectedFile = fileChooser.showOpenDialog((Stage)rootPane.getScene().getWindow());
 			
-			if(selectedFile!=null && selectedFile.canRead()) {
-				String msg = mainClass.projectManager.loadProject(selectedFile);
-				if (msg!=null) {
-					Alert alert1 = new Alert(AlertType.INFORMATION);
-			    	alert1.setTitle("Error");
-			    	alert1.setContentText(msg);
-			    	alert1.showAndWait();
-				}
-				else {
-					creatProject(mainClass.projectManager.getActiveProjectName());
-				}
-			}
+			loadProject(selectedFile);
 			
 		});
 		menuAbout.setOnAction((event) -> {
@@ -379,7 +442,19 @@ public class MainWindowController implements Initializable{
 	    			"    under certain conditions; press `license' for details.");
 	    	alert1.showAndWait();
 		});
+				
 		buttonOpenWorkSpace.setOnAction((event) -> {
+			if(workSpacePath!=null) {
+				File wsDir = new File(workSpacePath);
+				if(mainClass.projectManager.existCurrentProject() && wsDir!=null && wsDir.canRead()) {
+					Alert alert1 = new Alert(AlertType.INFORMATION);
+			    	alert1.setTitle("Warning");
+			    	alert1.setContentText("Please close ALL projects before changing the workspace directory.");
+			    	alert1.showAndWait();
+			    	return;
+				}
+			}
+			
 			DirectoryChooser dirChooser = new DirectoryChooser ();
 			
 			//go to current directory
@@ -392,7 +467,13 @@ public class MainWindowController implements Initializable{
 			File selectedDir = dirChooser.showDialog((Stage)rootPane.getScene().getWindow());
 			
 			if(selectedDir!=null && selectedDir.canRead()) {
-				textWorkSpace.setText(selectedDir.getPath());
+				workSpacePath = selectedDir.getPath();
+				textWorkSpace.setText(workSpacePath);
+				writeGlobalSettings(settingKeys.workspace.toString(),selectedDir.getPath());
+				setWorkSpace(true);
+				contTree.updateProjects(new File(workSpacePath));
+//				textWorkSpace.setBackground(new Background(new BackgroundFill(Color.WHITE, 
+//						CornerRadii.EMPTY, Insets.EMPTY)));
 			}
 			
 		});
@@ -413,6 +494,191 @@ public class MainWindowController implements Initializable{
 			}
 			
 		});
+	}
+	private boolean loadProject(File selectedFile) {
+		//true is load failure
+		if(selectedFile!=null && selectedFile.canRead()) {
+			String msg = mainClass.projectManager.loadProject(selectedFile);
+			if (msg!=null) {
+				Alert alert1 = new Alert(AlertType.INFORMATION);
+		    	alert1.setTitle("Error");
+		    	alert1.setContentText(msg);
+		    	alert1.showAndWait();
+		    	return true;
+			}
+			else {
+				String projName = mainClass.projectManager.getActiveProjectName();
+				//handle the case when the name in the .proj file is different than the folder name
+				File pr = selectedFile.getParentFile();
+				if(pr==null || pr.getName().isEmpty()) {return true;}
+				
+				//String nameWithoutExtension = selectedFile.getName().replaceFirst("[.][^.]+$", "");
+				
+				if(!(pr.getName()+".proj").equals(selectedFile.getName())) {
+					Path source = selectedFile.toPath();
+					
+					Alert alert1 = new Alert(AlertType.INFORMATION);
+			    	alert1.setTitle("Info");
+			    	alert1.setContentText("Rename "+selectedFile.getName()+" to "+pr.getName()+".proj");
+			    	alert1.showAndWait();
+					
+		    		try {
+		    			Files.move(source, source.resolveSibling(pr.getName()+".proj"));
+					} catch (IOException e) {
+						alert1 = new Alert(AlertType.INFORMATION);
+				    	alert1.setTitle("Error");
+				    	alert1.setContentText("Cannot rename and save to "+selectedFile.getName()+" to "+pr.getName()+".proj");
+				    	alert1.showAndWait();
+						e.printStackTrace();
+					}
+					
+				}
+				if(!pr.getName().equals(projName)) {
+					//use pr.getName() instead 
+					mainClass.projectManager.changeProjectName(pr.getName());
+					projName = pr.getName();
+					//save project again
+					File wsDir = getWorkSpace();
+					if(wsDir!=null && wsDir.canWrite()) {
+						mainClass.projectManager.saveActiveProject(wsDir,null);//empty string means activeProjKey+".proj"
+					}
+
+				}
+				
+				//createProject in the GUI
+				creatProject(projName);
+				return false;
+			}
+		}
+		return true;
+	}
+	private File getWorkSpace() {
+		File wsDir = new File(workSpacePath);
+		if(wsDir!=null && wsDir.canWrite()) {return wsDir;}
+		else {
+			Alert alert1 = new Alert(AlertType.INFORMATION);
+	    	alert1.setTitle("Error");
+	    	alert1.setContentText("Cannot load workspace. Please fix it.");
+	    	alert1.showAndWait();
+	    	return null;
+		}
+	}
+	private void setWorkSpace(boolean bl) {
+		if (bl) {
+			for (Node node : rootPane.getChildrenUnmodifiable()) {
+				node.setDisable(false);
+		    }
+			for (Node node : buttonOpenWorkSpace.getParent().getParent().getChildrenUnmodifiable()) {
+				node.setDisable(false);
+		    }
+			for (Node node : buttonOpenWorkSpace.getParent().getChildrenUnmodifiable()) {
+				node.setDisable(false);
+		    }
+		}
+		else{
+			for (Node node : rootPane.getChildrenUnmodifiable()) {
+				node.setDisable(true);
+		    }
+			buttonOpenWorkSpace.getParent().getParent().setDisable(false);
+			for (Node node : buttonOpenWorkSpace.getParent().getParent().getChildrenUnmodifiable()) {
+				node.setDisable(true);
+		    }
+			buttonOpenWorkSpace.getParent().setDisable(false);
+			for (Node node : buttonOpenWorkSpace.getParent().getChildrenUnmodifiable()) {
+				node.setDisable(true);
+		    }
+			buttonOpenWorkSpace.setDisable(false);
+			textWorkSpace.setDisable(false);
+		}
+	}
+	private void creatGlobalSettings() {
+		File stFile = new File(DefaultFileNames.defaultSettingFile);
+		try {
+			stFile.createNewFile();
+	    } catch (IOException e1) {
+	    	Alert alert1 = new Alert(AlertType.INFORMATION);
+	    	alert1.setTitle("Error");
+	    	alert1.setContentText("IOException while creating setting file.");
+	    	alert1.showAndWait();
+	    	e1.printStackTrace();
+	    }
+	}
+	private String readGlobalSettings(String key) {
+		String textOut=null;
+		//go to current directory
+		File stFile = new File(DefaultFileNames.defaultSettingFile);
+		try {
+			FileInputStream fis = new FileInputStream(stFile);
+			InputStreamReader isr = new InputStreamReader(fis);
+			BufferedReader br = new BufferedReader(isr);
+
+			String line;
+			while((line = br.readLine()) != null){
+				//allText = allText + line + "\n";
+				
+				if(line.contains(key+"=")) {textOut=line.substring(line.lastIndexOf(key+"=") + key.length()+1);}
+			}
+			br.close();
+		} catch (FileNotFoundException e) {
+			Alert alert1 = new Alert(AlertType.INFORMATION);
+	    	alert1.setTitle("Warning");
+	    	alert1.setContentText("Setting file not found. Make a new one.");
+	    	alert1.showAndWait();
+	    	
+	    	creatGlobalSettings();
+	    	
+		} catch (IOException e) {
+			Alert alert1 = new Alert(AlertType.INFORMATION);
+	    	alert1.setTitle("Error");
+	    	alert1.setContentText("IOException while reading setting file.");
+	    	alert1.showAndWait();
+		}
+		return textOut;
+	}
+	private void writeGlobalSettings(String key, String msg) {
+		//go to current directory
+		File stFile = new File(DefaultFileNames.defaultSettingFile);
+		for(int i=0;i<3;i++) {
+			try {
+				// input the (modified) file content to the StringBuffer "input"
+		        BufferedReader file = new BufferedReader(new FileReader(stFile));
+		        StringBuffer inputBuffer = new StringBuffer();
+		        String line;
+		        
+		        int count = 0;
+		        //find the line containing the key
+		        while ((line = file.readLine()) != null) {
+		            if(line.contains(key+"=")) {line=key+"="+msg;count++;}
+		            inputBuffer.append(line);
+		            inputBuffer.append('\n');
+		        }
+		        //if key not existing
+		        if (count==0) {inputBuffer.append(key+"="+msg+"\n");}
+		        
+		        file.close();
+
+		        // write the new string with the replaced line OVER the same file
+		        FileOutputStream fileOut = new FileOutputStream(stFile);
+		        
+		        fileOut.write(inputBuffer.toString().getBytes());
+		        fileOut.close();
+		        
+				break;
+			} catch (FileNotFoundException e) {
+				Alert alert1 = new Alert(AlertType.INFORMATION);
+		    	alert1.setTitle("Warning");
+		    	alert1.setContentText("Setting file not found. Make a new one.");
+		    	alert1.showAndWait();
+		    	
+				creatGlobalSettings();
+	
+			} catch (IOException e) {
+				Alert alert1 = new Alert(AlertType.INFORMATION);
+		    	alert1.setTitle("Error");
+		    	alert1.setContentText("IOException while reading setting file.");
+		    	alert1.showAndWait();
+			}
+		}
 	}
 	private void toggleGeometry() {
 		if (tabPaneRight==null) return;
@@ -523,7 +789,37 @@ public class MainWindowController implements Initializable{
 			scrollStatusLeft=!scrollStatusLeft;
 		});
 	}
+	private boolean makeDir(File parentDir, String dirName) {
+		if(parentDir==null || !parentDir.exists()) {
+			Alert alert1 = new Alert(AlertType.INFORMATION);
+	    	alert1.setTitle("Error");
+	    	alert1.setContentText("Parent directory invalid. Please set a valid parent folder.");
+	    	alert1.showAndWait();
+	    	return false;
+    	}
+		
+		File projectDir = new File(parentDir,dirName);
+		if(projectDir.exists()) {
+			Alert alert1 = new Alert(AlertType.INFORMATION);
+	    	alert1.setTitle("Error");
+	    	alert1.setContentText("Folder with the same name already exists!");
+	    	alert1.showAndWait();
+	    	return false;
+    	}
+		else {
+			boolean dirCreated = projectDir.mkdir();
+			if(!dirCreated) {
+				Alert alert1 = new Alert(AlertType.INFORMATION);
+		    	alert1.setTitle("Error");
+		    	alert1.setContentText("Cannot make directory.");
+		    	alert1.showAndWait();
+		    	return false;
+			}
+		}
+		return true;
+	}
 	private void creatProject(String projName) {
+
 		//add to ComboBox
 		comboProject.getItems().add(projName);
 		comboProject.setValue(projName);
@@ -535,9 +831,7 @@ public class MainWindowController implements Initializable{
 		tab.setOnClosed((e) -> {
 			mainClass.projectManager.removeProject(pj);
 			workSpaceTabPane.getTabs().remove(tab);
-//			currentCalcDict.remove(pj);
-//			calcAvailDict.remove(pj);
-			contTree.removeProject(pj);
+			//contTree.removeProject(pj);
 			projectTabDict.remove(pj);
 			comboProject.getItems().remove(pj);
 			});
@@ -556,11 +850,11 @@ public class MainWindowController implements Initializable{
 //			hboxRight.getChildren().remove(tabPaneRight);
 //		}
 //		tabPaneStatusRight = false;
-		//set project tree
-		contTree.addProject(pj);
+		
 //		if (oldProjectTemp!=null && projectTreeDict.containsKey(oldProjectTemp)) {
 //			projectTreeDict.get(oldProjectTemp).setExpanded(false);
 //		}
+		
 		contTree.updateCalcTree();
 		//allow more interactions
 		calcMain.setDisable(false);
