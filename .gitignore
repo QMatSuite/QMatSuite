@@ -1,5 +1,6 @@
 # For quantumVITAS
 *.proj
+*.ini
 
 # Compiled class file
 *.class

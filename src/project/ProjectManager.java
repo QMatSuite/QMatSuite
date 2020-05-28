@@ -39,14 +39,12 @@ import javafx.scene.control.Alert.AlertType;
 public class ProjectManager {
 	private LinkedHashMap<String, Project> projectDict;
 	private String activeProjKey;
-	private String workSpaceDir;
 	
 	public ProjectManager() {
 		projectDict = new LinkedHashMap<String, Project> ();
 		activeProjKey = null;
-		workSpaceDir = null;
 	}
-	public void saveActiveProject(File filename) {
+	public void saveActiveProject(File dirParent, String filename) {
 		Project pj = getActiveProject();
 		if(pj==null) {
 			Alert alert1 = new Alert(AlertType.INFORMATION);
@@ -56,15 +54,23 @@ public class ProjectManager {
 			return;
 		}
 		
+		File dirProj = new File(dirParent,pj.getName());
+		if(dirProj==null || !dirProj.canWrite()) {
+			Alert alert1 = new Alert(AlertType.INFORMATION);
+	    	alert1.setTitle("Error");
+	    	alert1.setContentText("Cannot access project directory! Cannot save...");
+	    	alert1.showAndWait();
+			return;
+		}
     	// Serialization 
         try { 
             // Saving of object in a file 
         	FileOutputStream file;
-        	if(filename==null) {
-        		file = new FileOutputStream (pj.getName()+".proj"); 
+        	if(filename==null || filename.isEmpty()) {
+        		file = new FileOutputStream (new File(dirProj,pj.getName()+".proj"), false); 
     		}
         	else {
-        		file = new FileOutputStream (filename); 
+        		file = new FileOutputStream (new File(dirProj,filename), false); 
         	}
             
             ObjectOutputStream out = new ObjectOutputStream (file); 
@@ -75,9 +81,14 @@ public class ProjectManager {
             out.close(); 
             file.close(); 
             
+            
             Alert alert1 = new Alert(AlertType.INFORMATION);
 	    	alert1.setTitle("Success");
-	    	alert1.setContentText("Successfully saved to "+filename+".");
+	    	if(filename==null || filename.isEmpty()) {
+	    		alert1.setContentText("Successfully saved to "+dirProj.getAbsolutePath()+File.separator+pj.getName()+".proj"+".");
+	    	}else {
+	    		alert1.setContentText("Successfully saved to "+dirProj.getAbsolutePath()+File.separator+filename+".");
+	    	}
 	    	alert1.showAndWait();
         } 
   
@@ -87,6 +98,17 @@ public class ProjectManager {
 	    	alert1.setContentText("IOException is caught! Cannot save to file "+filename+"."+ex.getMessage());
 	    	alert1.showAndWait();
         } 
+	}
+	public void changeProjectName(String newName) {
+		if(newName==null || newName.isEmpty() || projectDict==null || projectDict.containsKey(newName)) return;
+		
+		String projName = getActiveProjectName();
+		if (projName==null) return;
+		Project pj = projectDict.get(projName);
+		pj.setName(newName);
+		projectDict.remove(projName);
+		projectDict.put(newName,pj);
+		activeProjKey=newName;
 	}
 	public String loadProject(File filename) {
 		Project pj;

@@ -47,6 +47,7 @@ public class Project implements Serializable{
 	private Integer activeGeoInd;
 	private Boolean boolGeoActive;
 	private EnumCalc calcScfDefault;
+	
 	transient private WorkScene3D viewer3D=null; //do not save it to the file!
 	
 	public Project(String np) {
@@ -166,6 +167,9 @@ public class Project implements Serializable{
 	}
 	public String getName() {
 		return nameProject;
+	}
+	public void setName(String st) {
+		nameProject = new String(st);
 	}
 	public void genInputFromAgent() {
 		calculationClass tmp = getActiveCalc();
