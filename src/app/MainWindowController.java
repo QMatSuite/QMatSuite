@@ -24,7 +24,6 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
@@ -36,7 +35,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.ResourceBundle;
-import java.util.Scanner;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -80,7 +78,6 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import main.MainClass;
-import project.Project;
 import app.input.*;
 import app.viewer3d.GeoGroup;
 import app.viewer3d.WorkScene3D;
@@ -203,9 +200,11 @@ public class MainWindowController implements Initializable{
 			
 			File wsDir = getWorkSpace();
 			
+			if(wsDir==null || !wsDir.canRead()) {return;}
+			
 			File projDir = new File(wsDir,projName);
 			
-			if(projDir==null || !projDir.canRead()) return;
+			if(projDir==null || !projDir.canRead()) {contTree.updateProjects(wsDir);return;}
 			
 			try (Stream<Path> walk = Files.walk(projDir.toPath())) {
 
@@ -233,12 +232,18 @@ public class MainWindowController implements Initializable{
 					
 					creatProject(projName);
 				}
+				
+				contTree.setOpenCloseButtons(false);
 
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			
+		});
+		contTree.buttonCloseSelected.setOnAction((event) -> {
+			String projName = contTree.getSelectedProject();
+			closeProject(projName);//should be null safe and empty safe
 		});
 		
 		radioGeometry.setText("Geometry");
@@ -495,6 +500,17 @@ public class MainWindowController implements Initializable{
 			
 		});
 	}
+	private void closeProject(String pj) {
+		String tmp = mainClass.projectManager.removeProject(pj);
+		if(tmp!=null) return;//cannot remove project: pj==null || pj is empty or pj not in the list
+		Tab tab = projectTabDict.get(pj);
+		if(tab!=null) {workSpaceTabPane.getTabs().remove(tab);}
+		contTree.closeProject(pj);
+		projectTabDict.remove(pj);
+		comboProject.getItems().remove(pj);
+		//openCalc(null);//not necessary. Covered by the change tab listener
+		contTree.setOpenCloseButtons(true);
+	}
 	private boolean loadProject(File selectedFile) {
 		//true is load failure
 		if(selectedFile!=null && selectedFile.canRead()) {
@@ -733,16 +749,10 @@ public class MainWindowController implements Initializable{
 		mainClass.projectManager.setActiveProject(null);
 		calcMain.setDisable(true);
 		addMolecule.setDisable(true);
-		if (tabPaneRight!=null) {
-			tabPaneRight.getTabs().clear();
-		}
-		if (tabPaneStatusRight) {
-			hboxRight.getChildren().remove(tabPaneRight);
-		}
-		tabPaneStatusRight = false;
-		comboCalculation.getItems().removeAll();
+		clearRightPane();
+		comboCalculation.getItems().clear();
 		radioGeometry.setSelected(true);
-//		currentProject=null;
+		calcLabel.setText("");
 	}
 	
 	private void initializeLeftRightPane() {
@@ -829,12 +839,8 @@ public class MainWindowController implements Initializable{
 		tab.setText(pj);
 		tab.setClosable(true);
 		tab.setOnClosed((e) -> {
-			mainClass.projectManager.removeProject(pj);
-			workSpaceTabPane.getTabs().remove(tab);
-			//contTree.removeProject(pj);
-			projectTabDict.remove(pj);
-			comboProject.getItems().remove(pj);
-			});
+			closeProject(pj);
+		});
 				
 		//add tab
 		workSpaceTabPane.getTabs().add(tab);
@@ -855,7 +861,7 @@ public class MainWindowController implements Initializable{
 //			projectTreeDict.get(oldProjectTemp).setExpanded(false);
 //		}
 		
-		contTree.updateCalcTree();
+		contTree.updateFullCalcTree();
 		//allow more interactions
 		calcMain.setDisable(false);
 		addMolecule.setDisable(false);
@@ -873,7 +879,7 @@ public class MainWindowController implements Initializable{
 	private void openCalc(EnumCalc ec) {
 		if (ec==null) {
 			clearRightPane();
-			comboCalculation.getItems().removeAll();
+			comboCalculation.getItems().clear();
 			calcLabel.setText("");
 			return;
 		}

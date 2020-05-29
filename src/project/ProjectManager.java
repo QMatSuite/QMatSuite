@@ -160,6 +160,11 @@ public class ProjectManager {
 			return null;
 		}	
 	}
+	public boolean containsProject(String nameProject) {
+		if (nameProject==null || nameProject.isEmpty() || projectDict==null)
+			return false;
+		else return projectDict.containsKey(nameProject);
+	}
 	public String addProject(String nameProject) {
 		String tmp = checkProjectName(nameProject);
 		if (tmp!=null) return tmp;

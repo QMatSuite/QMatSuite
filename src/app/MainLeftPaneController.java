@@ -18,30 +18,27 @@
  *******************************************************************************/
 
 package app;
-
 import java.io.File;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.ResourceBundle;
-
-
 import com.consts.Constants.EnumCalc;
-
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
-import javafx.scene.control.RadioButton;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeTableColumn;
 import javafx.scene.control.TreeTableView;
 import javafx.scene.control.cell.TreeItemPropertyValueFactory;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import main.MainClass;
 import project.ProjectCalcLog;
 
 public class MainLeftPaneController implements Initializable {
 	
 	@FXML private TreeTableView<ProjectCalcLog> projectTree;
-	@FXML public RadioButton radioShowAll,radioShowOpen;
 	@FXML public Button buttonOpenSelected,buttonCloseSelected;
 	
 	private TreeItem<ProjectCalcLog> projectTreeRoot;
@@ -119,26 +116,62 @@ public class MainLeftPaneController implements Initializable {
 //			}
 //		});
 		
+		projectTree.getSelectionModel().selectedItemProperty().addListener((v, oldValue, newValue) -> { 
+			if(newValue==null || projectTreeRoot==null) return;
+			else {
+				while(newValue!=null && !projectTreeRoot.getChildren().contains(newValue)) {
+					newValue=newValue.getParent();//go back up until the children of the root
+				}
+				if(newValue==null) return;
+				String pj = newValue.getValue().getProject();
+				setOpenCloseButtons(!mainClass.projectManager.containsProject(pj));
+			}
+		});
+		
 		projectTreeRoot = new TreeItem<ProjectCalcLog>(new ProjectCalcLog("Projects","",""));
 		projectTree.setRoot(projectTreeRoot);
 		projectTreeRoot.setExpanded(true);
+	}
+	public void setOpenCloseButtons(boolean bl) {
+		//true -> can open
+		//false -> can close
+		if(bl) {
+			buttonCloseSelected.setFont(Font.font(buttonCloseSelected.getFont().toString(), FontWeight.NORMAL, buttonCloseSelected.getFont().getSize()));
+			buttonOpenSelected.setFont(Font.font(buttonOpenSelected.getFont().toString(), FontWeight.BOLD, buttonOpenSelected.getFont().getSize()));
+		}
+		else {
+			buttonCloseSelected.setFont(Font.font(buttonCloseSelected.getFont().toString(), FontWeight.BOLD, buttonCloseSelected.getFont().getSize()));
+			buttonOpenSelected.setFont(Font.font(buttonOpenSelected.getFont().toString(), FontWeight.NORMAL, buttonOpenSelected.getFont().getSize()));
+		}
 	}
 	public String getSelectedProject() {
 		TreeItem<ProjectCalcLog> ti = projectTree.getSelectionModel().getSelectedItem();
 		if(ti==null || projectTreeRoot==null) return null;
 		else {
-			while(!projectTreeRoot.getChildren().contains(ti)) {
+			//checking ti!=null will increase program rigidity, but not necessary
+			while(ti!=null && !projectTreeRoot.getChildren().contains(ti)) {
 				ti=ti.getParent();//go back up until the children of the root
 			}
+			if(ti==null) return null;
 			return ti.getValue().getProject();
 		}
 		
 	}
-	public void removeProject(String pj) {
-		projectTreeRoot.getChildren().remove(projectTreeDict.get(pj));
-		projectTreeDict.remove(pj);
-		projectCalcTreeDict.remove(pj);
+	public void closeProject(String pj) {
+		if(projectCalcTreeDict.get(pj)!=null) {
+			for (TreeItem<ProjectCalcLog> value : projectCalcTreeDict.get(pj).values()) {
+				value.getParent().getChildren().remove(value);
+			}
+		}
+		projectCalcTreeDict.get(pj).clear();
 	}
+//	public void removeProject(String pj) {
+//		
+//	    projectTreeRoot.getChildren().remove(projectTreeDict.get(pj));
+//	    projectTreeDict.remove(pj);
+//		
+//		projectCalcTreeDict.remove(pj);
+//	}
 	public void addProject(String pj) {
 		TreeItem<ProjectCalcLog> ti = new TreeItem<ProjectCalcLog>(new ProjectCalcLog(pj,"",""));
 		projectTreeRoot.getChildren().add(ti);
@@ -148,14 +181,11 @@ public class MainLeftPaneController implements Initializable {
 	}
 	public void updateCalcTree(EnumCalc ec) {
 		String currentProject = mainClass.projectManager.getActiveProjectName();
-		if (currentProject!=null && projectTreeDict.containsKey(currentProject)) {
+		if (currentProject!=null && projectTreeDict.containsKey(currentProject) && projectCalcTreeDict.containsKey(currentProject)) {
 			if (ec==null) {
-				//select active tree item to be the project
-				//int row = projectTree.getRow(projectTreeDict.get(currentProject));
-				//projectTree.getSelectionModel().select(row);
 				return;
 			}
-			if (projectCalcTreeDict.containsKey(currentProject) && !projectCalcTreeDict.get(currentProject).containsKey(ec)) {
+			if (!projectCalcTreeDict.get(currentProject).containsKey(ec)) {
 				//add tree item if not already exists
 				TreeItem<ProjectCalcLog> ti = new TreeItem<ProjectCalcLog>(new ProjectCalcLog("",ec.getShort(),""));
 				projectCalcTreeDict.get(currentProject).put(ec, ti);
@@ -174,10 +204,20 @@ public class MainLeftPaneController implements Initializable {
 			
 		}
 	}
+	public void updateFullCalcTree() {
+		for(EnumCalc ec : mainClass.projectManager.getCurrentCalcList()) {
+			updateCalcTree(ec);
+		}
+	}
 	public void updateCalcTree() {
 		if (mainClass.projectManager.existCurrentCalc()) {
 			updateCalcTree(mainClass.projectManager.getCurrentCalcName());
 		}
+	}
+	public void clearTree() {
+		projectTreeRoot.getChildren().clear();
+		projectTreeDict.clear();
+		projectCalcTreeDict.clear();
 	}
 	public void updateProjects(File wsDir) {
 		if (wsDir==null || !wsDir.canRead()) return;
@@ -201,14 +241,19 @@ public class MainLeftPaneController implements Initializable {
 //		} catch (IOException e) {
 //			e.printStackTrace();
 //		}
+		
 		File[] directories = wsDir.listFiles(File::isDirectory);
+		ArrayList<String> nameTmp = new ArrayList<String>();
 		for (File temp : directories) {
 			String tmp = temp.getName();
-			TreeItem<ProjectCalcLog> ti = new TreeItem<ProjectCalcLog>(new ProjectCalcLog(tmp,"",""));
-			projectTreeRoot.getChildren().add(ti);
-			projectTreeRoot.setExpanded(true);
-			projectTreeDict.put(tmp,ti);
-			projectCalcTreeDict.put(tmp, new HashMap<EnumCalc, TreeItem<ProjectCalcLog>>());
+			if(!projectTreeDict.containsKey(tmp)) {
+				TreeItem<ProjectCalcLog> ti = new TreeItem<ProjectCalcLog>(new ProjectCalcLog(tmp,"",""));
+				projectTreeRoot.getChildren().add(ti);
+				projectTreeRoot.setExpanded(true);
+				projectTreeDict.put(tmp,ti);
+				projectCalcTreeDict.put(tmp, new HashMap<EnumCalc, TreeItem<ProjectCalcLog>>());
+			}	
 		}
+		
 	}
 }
