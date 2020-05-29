@@ -73,7 +73,7 @@ public class WorkScene3D {
 	private final int maxTrialCells = 8;//(maxTrialCells*2)^3 cells tried
 	private final double ballRadiusAtom = 30;
 	private final int bondThick = 10;
-	public  double bondScaling=1.1;//the same across WorkScenes
+	public  double bondScaling=1.05;//the same across WorkScenes
 	private static final double minBondScaling=0.1;
 	public InputAgentGeo iGeoCache=null;
 	public boolean boolFoldBack=false;
