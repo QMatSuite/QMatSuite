@@ -26,6 +26,7 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -64,6 +65,7 @@ import javafx.scene.control.TabPane;
 import javafx.scene.control.TabPane.TabClosingPolicy;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.control.TreeItem;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
@@ -78,6 +80,9 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import main.MainClass;
+import project.Project;
+import project.ProjectCalcLog;
+import project.calculationClass;
 import app.input.*;
 import app.viewer3d.GeoGroup;
 import app.viewer3d.WorkScene3D;
@@ -198,7 +203,7 @@ public class MainWindowController implements Initializable{
 			String projName = contTree.getSelectedProject();
 			if(projName==null || projName.isEmpty()) return;
 			
-			File wsDir = getWorkSpace();
+			File wsDir = getWorkSpaceDir();
 			
 			if(wsDir==null || !wsDir.canRead()) {return;}
 			
@@ -305,7 +310,7 @@ public class MainWindowController implements Initializable{
 				}
 			} while (msg!=null);
 			
-			File wsDir = getWorkSpace();
+			File wsDir = getWorkSpaceDir();
 			
 			if (!makeDir(wsDir, projName)) {return;}
 			
@@ -407,9 +412,9 @@ public class MainWindowController implements Initializable{
 //	    	alert.showAndWait();
 		});
 		menuSaveProject.setOnAction((event) -> {
-			File wsDir = getWorkSpace();
+			File wsDir = getWorkSpaceDir();
 			if(wsDir==null || !wsDir.canWrite()) {return;}
-			mainClass.projectManager.saveActiveProject(wsDir,null);//empty string means activeProjKey+".proj"
+			mainClass.projectManager.saveActiveProjectInMultipleFiles(wsDir);//empty string means activeProjKey+".proj"
 //			FileChooser fileChooser = new FileChooser();
 //			
 //			//go to current directory
@@ -424,16 +429,16 @@ public class MainWindowController implements Initializable{
 //			mainClass.projectManager.saveActiveProject(selectedFile);
 		});
 		menuLoadProject.setOnAction((event) -> {
-			File wsDir = getWorkSpace();
-			if(wsDir==null || !wsDir.canWrite()) {return;}
-			
-			FileChooser fileChooser = new FileChooser();
-			fileChooser.setInitialDirectory(wsDir);
-			fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("project files", "*.proj"));
-			
-			File selectedFile = fileChooser.showOpenDialog((Stage)rootPane.getScene().getWindow());
-			
-			loadProject(selectedFile);
+//			File wsDir = getWorkSpaceDir();
+//			if(wsDir==null || !wsDir.canWrite()) {return;}
+//			
+//			FileChooser fileChooser = new FileChooser();
+//			fileChooser.setInitialDirectory(wsDir);
+//			fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("project files", "*.proj"));
+//			
+//			File selectedFile = fileChooser.showOpenDialog((Stage)rootPane.getScene().getWindow());
+//			
+//			loadProject(selectedFile);
 			
 		});
 		menuAbout.setOnAction((event) -> {
@@ -553,11 +558,45 @@ public class MainWindowController implements Initializable{
 					mainClass.projectManager.changeProjectName(pr.getName());
 					projName = pr.getName();
 					//save project again
-					File wsDir = getWorkSpace();
+					File wsDir = getWorkSpaceDir();
 					if(wsDir!=null && wsDir.canWrite()) {
-						mainClass.projectManager.saveActiveProject(wsDir,null);//empty string means activeProjKey+".proj"
+						mainClass.projectManager.saveActiveProjectInMultipleFiles(wsDir);//empty string means activeProjKey+".proj"
 					}
 
+				}
+				
+				//check calculations
+				File[] directories = pr.listFiles(File::isDirectory);
+				calculationClass clc;
+				for (File temp : directories) {
+					String tmp = temp.getName();
+					try { 
+			            // Reading the object from a file 
+						File fl = new File(new File(pr,tmp),DefaultFileNames.calcSaveFile);
+						if (fl==null || !fl.canRead()) continue;
+			            FileInputStream file = new FileInputStream (fl); 
+			            ObjectInputStream in = new ObjectInputStream (file); 
+			  
+			            // Method for deserialization of object 
+			            clc = (calculationClass)in.readObject(); 
+			  
+			            in.close(); 
+			            file.close(); 
+			            if(clc==null) {continue;}
+			            
+			        } 
+			        catch (IOException ex) { 
+			            Alert alert1 = new Alert(AlertType.INFORMATION);
+				    	alert1.setTitle("Error");
+				    	alert1.setContentText("IOException is caught! Cannot load calculation file" +ex.getMessage());
+				    	alert1.showAndWait();
+			        } 
+			        catch (ClassNotFoundException ex) { 
+			        	Alert alert1 = new Alert(AlertType.INFORMATION);
+				    	alert1.setTitle("Error");
+				    	alert1.setContentText("ClassNotFoundException is caught! Cannot find calculation class "+ex.getMessage());
+				    	alert1.showAndWait();
+			        }
 				}
 				
 				//createProject in the GUI
@@ -567,7 +606,7 @@ public class MainWindowController implements Initializable{
 		}
 		return true;
 	}
-	private File getWorkSpace() {
+	private File getWorkSpaceDir() {
 		File wsDir = new File(workSpacePath);
 		if(wsDir!=null && wsDir.canWrite()) {return wsDir;}
 		else {
@@ -577,6 +616,21 @@ public class MainWindowController implements Initializable{
 	    	alert1.showAndWait();
 	    	return null;
 		}
+	}
+	private File getProjectDir() {
+		String pj = mainClass.projectManager.getActiveProjectName();
+		if(pj!=null && !pj.isEmpty() && workSpacePath!=null) {
+			File pjDir = new File(workSpacePath,pj);
+			if(pjDir!=null && pjDir.exists()) {
+				return pjDir;
+			}
+		}
+		//if reached here, something must be wrong
+		Alert alert1 = new Alert(AlertType.INFORMATION);
+    	alert1.setTitle("Error");
+    	alert1.setContentText("Cannot load workspace/project folder. Please fix it.");
+    	alert1.showAndWait();
+    	return null;
 	}
 	private void setWorkSpace(boolean bl) {
 		if (bl) {
@@ -799,7 +853,9 @@ public class MainWindowController implements Initializable{
 		});
 	}
 	private boolean makeDir(File parentDir, String dirName) {
-		if(parentDir==null || !parentDir.exists()) {
+		//true-> everything ok
+		//false->error
+		if(parentDir==null || !parentDir.canWrite()) {
 			Alert alert1 = new Alert(AlertType.INFORMATION);
 	    	alert1.setTitle("Error");
 	    	alert1.setContentText("Parent directory invalid. Please set a valid parent folder.");
@@ -845,20 +901,7 @@ public class MainWindowController implements Initializable{
 		workSpaceTabPane.getTabs().add(tab);
 		workSpaceTabPane.getSelectionModel().select(tab);
 		projectTabDict.put(pj,tab);
-				
 		
-//		currentProject = pj;
-//		currentCalcDict.put(pj, null);
-//		calcAvailDict.put(pj, new HashMap<EnumCalc, Boolean>(calcList));//shallow copy calcList
-//		//remove calculation panel if already exist
-//		if (tabPaneStatusRight) {
-//			hboxRight.getChildren().remove(tabPaneRight);
-//		}
-//		tabPaneStatusRight = false;
-		
-//		if (oldProjectTemp!=null && projectTreeDict.containsKey(oldProjectTemp)) {
-//			projectTreeDict.get(oldProjectTemp).setExpanded(false);
-//		}
 		
 		contTree.updateFullCalcTree();
 		//allow more interactions
@@ -925,6 +968,16 @@ public class MainWindowController implements Initializable{
 				comboCalculation.getItems().add(calcName);
 				//update current status to trees
 				contTree.updateCalcTree(calcName);
+				
+				File pjDir = getProjectDir();
+				
+				if (!makeDir(pjDir, calcName)) {
+					Alert alert = new Alert(AlertType.INFORMATION);
+			    	alert.setTitle("Error");
+			    	alert.setContentText("Cannot create calculation folder. Continue nevertheless...");
+			    	alert.showAndWait();
+				}
+				
 			}
 			
 			//load parameters for current project and calculation
@@ -957,6 +1010,15 @@ public class MainWindowController implements Initializable{
 				comboCalculation.getItems().add(calcName);
 				//update current status to trees
 				contTree.updateCalcTree(calcName);
+				
+				File pjDir = getProjectDir();
+				
+				if (!makeDir(pjDir, calcName)) {
+					Alert alert = new Alert(AlertType.INFORMATION);
+			    	alert.setTitle("Error");
+			    	alert.setContentText("Cannot create calculation folder. Continue nevertheless...");
+			    	alert.showAndWait();
+				}
 			}
 			
 			//load parameters for current project and calculation
