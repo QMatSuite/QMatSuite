@@ -186,14 +186,23 @@ public class ProjectManager {
 		InputAgent ia = projectDict.get(activeProjKey).getProjectDefault(es);//already cloned in getProjectDefault()
 		setStepAgent(es,ia);
 	}
-	public void addCalculation(String nameProject, EnumCalc ec) {
+	public void addCalculation(String nameProject, EnumCalc ec) {//use default naming
 		if (nameProject==null || ec==null || nameProject.isEmpty()) return;
 		if (!projectDict.containsKey(nameProject)) addProject(nameProject);//continue to add calc
 		projectDict.get(nameProject).addCalculation(ec);
 	}
-	public void addCalcToActiveProj(EnumCalc ec) {
+	public void addCalculation(String nameProject, String calcName, EnumCalc ec) {//use custom naming
+		if (nameProject==null || ec==null || nameProject.isEmpty()) return;
+		if (!projectDict.containsKey(nameProject)) addProject(nameProject);//continue to add calc
+		projectDict.get(nameProject).addCalculation(calcName,ec);
+	}
+	public void addCalcToActiveProj(EnumCalc ec) {//use default naming
 		if (activeProjKey==null|| ec==null || activeProjKey.isEmpty() || ! projectDict.containsKey(activeProjKey)) return;
 		projectDict.get(activeProjKey).addCalculation(ec);
+	}
+	public void addCalcToActiveProj(String calcName, EnumCalc ec) {//use custom naming
+		if (activeProjKey==null|| ec==null || activeProjKey.isEmpty() || ! projectDict.containsKey(activeProjKey)) return;
+		projectDict.get(activeProjKey).addCalculation(calcName, ec);
 	}
 	public void setActiveProject(String nameProject) {
 		if (nameProject==null || nameProject.isEmpty() || projectDict == null)
@@ -205,7 +214,7 @@ public class ProjectManager {
 			
 		}	
 	}
-	public void setActiveCalculation(EnumCalc ec) {
+	public void setActiveCalculation(String ec) {
 		if (existCurrentProject()) {
 			projectDict.get(activeProjKey).setActiveCalcName(ec);
 		}
@@ -227,11 +236,11 @@ public class ProjectManager {
 		if (!existCurrentProject()) return false;
 		return projectDict.get(activeProjKey).existCurrentCalc();
 	}
-	public Boolean existCalcInCurrentProject(EnumCalc ec) {
+	public Boolean existCalcInCurrentProject(String ec) {
 		if (!existCurrentProject()) return false;
 		return projectDict.get(activeProjKey).existCalc(ec);
 	}
-	public Boolean isCurrentCalc(EnumCalc ec) {
+	public Boolean isCurrentCalc(String ec) {
 		if (!existCurrentCalc()) return false;//false, not null!
 		return projectDict.get(activeProjKey).getActiveCalcName()==ec;
 	}
@@ -239,12 +248,16 @@ public class ProjectManager {
 		if (!existCurrentCalc()) return false;
 		return projectDict.get(activeProjKey).getActiveCalc().existStep(es);
 	}
-	public EnumCalc getCurrentCalcName() {
+	public String getCurrentCalcName() {
 		if (!existCurrentCalc()) return null;
 		return projectDict.get(activeProjKey).getActiveCalcName();
 	}
-	public ArrayList<EnumCalc> getCurrentCalcList(){
-		if (!existCurrentProject()) return new ArrayList<EnumCalc>(); //return an empty list
+	public EnumCalc getCurrentCalcType() {
+		if (!existCurrentCalc()) return null;
+		return projectDict.get(activeProjKey).getActiveCalc().getCalcType();
+	}
+	public ArrayList<String> getCurrentCalcList(){
+		if (!existCurrentProject()) return new ArrayList<String>(); //return an empty list
 		return projectDict.get(activeProjKey).getCalcList();
 	}
 	public InputAgent getStepAgent(EnumStep es) {
@@ -313,7 +326,13 @@ public class ProjectManager {
 			return null;
 		}
 	}
-	public QeInput getProjectCalcInp(String proj, EnumCalc calc, EnumStep indInp) {
+	public EnumCalc getCalcType(String calcName) {
+		if(calcName==null || calcName.isEmpty()) return null;
+		Project pj = getActiveProject();
+		if(pj==null) return null;
+		return pj.getCalcType(calcName);
+	}
+	public QeInput getProjectCalcInp(String proj, String calc, EnumStep indInp) {
 		if (projectDict==null || activeProjKey == null || calc == null || indInp == null || proj == null|| 
 				proj.isEmpty() )  return null;
 		
@@ -330,7 +349,7 @@ public class ProjectManager {
 		
 		return qi;
 	}
-	public QeInput getActiveProjectCalcInp(EnumCalc calc, EnumStep indInp) {
+	public QeInput getActiveProjectCalcInp(String calc, EnumStep indInp) {
 		if (projectDict==null || activeProjKey == null || calc == null || indInp == null)  return null;
 		
 		if (!projectDict.containsKey(activeProjKey)) return null;

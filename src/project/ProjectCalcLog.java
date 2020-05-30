@@ -22,14 +22,16 @@ public class ProjectCalcLog {
 
     private String project = null;
     private String calculation = null;
+    private String calcType = null;
     private String steps = null;
 
     public ProjectCalcLog() {
     }
 
-    public ProjectCalcLog(String pj, String cc, String st) {
+    public ProjectCalcLog(String pj, String cc, String ct, String st) {
         this.project = pj;
         this.calculation = cc;
+        this.calcType = ct;
         this.steps = st;
     }
     //get
@@ -52,4 +54,12 @@ public class ProjectCalcLog {
     public void setSteps(String st) {
         this.steps = st;
     }
+
+	public String getCalcType() {
+		return calcType;
+	}
+
+	public void setCalcType(String calcType) {
+		this.calcType = calcType;
+	}
 }
