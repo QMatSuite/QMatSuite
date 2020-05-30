@@ -39,22 +39,22 @@ public class Project implements Serializable{
 	private static final long serialVersionUID = 8311819691310573808L;
 	
 	private String nameProject;
-	private HashMap<EnumCalc, calculationClass> calcDict;
-	private ArrayList<EnumCalc> calcList;
+	private HashMap<String, calculationClass> calcDict;
+	private ArrayList<String> calcList;
 	private HashMap<EnumStep, InputAgent> projectDefault;
-	private EnumCalc activeCalcKey;
+	private String activeCalcKey;
 	private ArrayList<InputAgentGeo> geoList;
 	private Integer activeGeoInd;
 	private Boolean boolGeoActive;
-	private EnumCalc calcScfDefault;
+	private String calcScfDefault;
 	
 	transient private WorkScene3D viewer3D=null; //do not save it to the file!
 	
 	public Project(String np) {
 		activeCalcKey = null;
 		nameProject = np;
-		calcDict = new HashMap<EnumCalc, calculationClass>();
-		calcList = new ArrayList<EnumCalc>();
+		calcDict = new HashMap<String, calculationClass>();
+		calcList = new ArrayList<String>();
 		projectDefault = new HashMap<EnumStep, InputAgent>();
 		geoList = new ArrayList<InputAgentGeo>();
 		geoList.add(new InputAgentGeo());//at least have one Geometry
@@ -97,9 +97,26 @@ public class Project implements Serializable{
 		if (calcScfDefault==null || activeCalcKey==null) return false;
 		return (calcScfDefault==activeCalcKey);
 	}
+	
 	public void addCalculation(EnumCalc ec) {
+		String ecStr = genCalcName(ec);//ec can be null
+		if(ecStr !=null) {
+			addCalculation(ecStr, ec);
+		}
+	}
+	private String genCalcName(EnumCalc ec) {
+		if(ec==null) return null;
+		String seedStr = ec.toString();
+		int i=0;
+		while(true) {
+			i++;
+			String out = (seedStr+"_"+i);
+			if(!calcDict.containsKey(out)) return out;
+		}
+	}
+	public void addCalculation(String calcName, EnumCalc ec) {
 		if (ec == null)  return;
-		if (!calcDict.containsKey(ec)){
+		if (!calcDict.containsKey(calcName)){
 			calculationClass calc;
 			switch (ec) {
 			case SCF:calc = new calculationScfClass();break;
@@ -112,10 +129,10 @@ public class Project implements Serializable{
 		    	alert.showAndWait();
 		    	return;
 			}
-			calcDict.put(ec, calc);
-			calcList.add(ec);
+			calcDict.put(calcName, calc);
+			calcList.add(calcName);
 		}
-		activeCalcKey = ec;//set active no matter whether already contains or not
+		activeCalcKey = calcName;//set active no matter whether already contains or not
 	}
 	public InputAgentGeo getAgentGeo() {
 		if (activeGeoInd>=geoList.size()) return null;
@@ -134,13 +151,18 @@ public class Project implements Serializable{
 		if (ind>=geoList.size()) return;
 		activeGeoInd = ind;
 	}
-	public ArrayList<EnumCalc> getCalcList(){
+	public ArrayList<String> getCalcList(){
 		return calcList;
 	}
-	public EnumCalc getActiveCalcName() {
+	public String getActiveCalcName() {
 		return activeCalcKey;
 	}
-	public void setActiveCalcName(EnumCalc ec) {
+	public EnumCalc getCalcType(String calcName) {
+		calculationClass calcObj = getCalc(calcName);
+		if(calcObj==null) return null;
+		return calcObj.getCalcType();
+	}
+	public void setActiveCalcName(String ec) {
 		if (ec!=null && calcDict.containsKey(ec)) {
 			activeCalcKey=ec;
 		}
@@ -156,11 +178,11 @@ public class Project implements Serializable{
 		if (activeCalcKey == null)  return false;//no current calc
 		return calcDict.containsKey(activeCalcKey);
 	}
-	public Boolean existCalc(EnumCalc key) {
+	public Boolean existCalc(String key) {
 		if (key == null)  return false;
 		return calcDict.containsKey(key);
 	}
-	public calculationClass getCalc(EnumCalc key) {
+	public calculationClass getCalc(String key) {
 		if (key == null)  return null;
 		if (calcDict.containsKey(key)) return calcDict.get(key);
 		else return null;
@@ -181,10 +203,10 @@ public class Project implements Serializable{
 		}
 		else tmp.genInputFromAgent(geoList);
 	}
-	public EnumCalc getcalcScfDefault() {
+	public String getcalcScfDefault() {
 		return calcScfDefault;
 	}
-	public void setcalcScfDefault(EnumCalc calcScfDefault) {
+	public void setcalcScfDefault(String calcScfDefault) {
 		this.calcScfDefault = calcScfDefault;
 	}
 }

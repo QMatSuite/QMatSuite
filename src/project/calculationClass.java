@@ -71,5 +71,8 @@ public abstract class calculationClass implements Serializable{
 		if (index==null || ! inputList.containsKey(index)) return null;
 		else return inputList.get(index);
 	}
+	public EnumCalc getCalcType() {
+		return nameCalc;
+	}
 	public abstract void genInputFromAgent(ArrayList<InputAgentGeo> geoList);
 }

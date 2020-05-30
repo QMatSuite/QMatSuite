@@ -337,9 +337,9 @@ public class MainWindowController implements Initializable{
 				comboCalculation.getItems().clear();
 				//current calculation exists, so at least one calculation exists
 				if (mainClass.projectManager.existCurrentCalc()) {
-					ArrayList<EnumCalc> al = mainClass.projectManager.getCurrentCalcList();
-					for (EnumCalc ec : al) {
-						comboCalculation.getItems().add(ec.getShort());
+					ArrayList<String> al = mainClass.projectManager.getCurrentCalcList();
+					for (String ec : al) {
+						comboCalculation.getItems().add(ec);//******later, organize/sort the items
 					}
 					openCalc(mainClass.projectManager.getCurrentCalcName());
 				}
@@ -357,35 +357,34 @@ public class MainWindowController implements Initializable{
 				//no need to put the code executed when changing project again here!
 				workSpaceTabPane.getSelectionModel().select(projectTabDict.get(newVal));
 //				mainClass.projectManager.setActiveProject(newVal);
-//				openCalc(mainClass.projectManager.getCurrentCalcName());//openCalc is null tolerant
+				openCalc(mainClass.projectManager.getCurrentCalcName());//openCalc is null tolerant
 				
 			}
 	    });
 		comboCalculation.getSelectionModel().selectedItemProperty().addListener((ov, oldVal, newVal) -> {
-			EnumCalc ec = EnumCalc.shortReverse(newVal);
-			if (newVal!=null && ec!=null) {
-				mainClass.projectManager.setActiveCalculation(ec);
+			if (newVal!=null) {
+				mainClass.projectManager.setActiveCalculation(newVal);
 				//-------------********not the most efficient way*******---------------
 				openCalc(mainClass.projectManager.getCurrentCalcName());//openCalc is null tolerant
 			}
 	    });
 		calcScf.setOnAction((event) -> {
-			openCalc(EnumCalc.SCF);
+			openCalc(EnumCalc.SCF,true);
 		});
 		calcOpt.setOnAction((event) -> {
-			openCalc(EnumCalc.OPT);
+			openCalc(EnumCalc.OPT,true);
 		});
 		calcDos.setOnAction((event) -> {
-			openCalc(EnumCalc.DOS);
+			openCalc(EnumCalc.DOS,true);
 		});
 		calcBands.setOnAction((event) -> {
-			openCalc(EnumCalc.BANDS);
+			openCalc(EnumCalc.BANDS,true);
 		});
 		calcMd.setOnAction((event) -> {
-			openCalc(EnumCalc.BOMD);
+			openCalc(EnumCalc.BOMD,true);
 		});
 		calcTddft.setOnAction((event) -> {
-			openCalc(EnumCalc.TDDFT);
+			openCalc(EnumCalc.TDDFT,true);
 		});
 		runButton.setOnAction((event) -> {
 			mainClass.projectManager.genInputFromAgent();
@@ -875,14 +874,35 @@ public class MainWindowController implements Initializable{
 		});
 		toggleGeometry();
 	}
-
-	private void openCalc(EnumCalc ec) {
-		if (ec==null) {
+	private void openCalc(String ecStr) {
+		//load an existing calculation having name String ecStr
+		if (ecStr==null || ecStr.isEmpty()) {
 			clearRightPane();
 			comboCalculation.getItems().clear();
 			calcLabel.setText("");
 			return;
 		}
+
+		mainClass.projectManager.setActiveCalculation(ecStr);
+		 
+		//check again whether successfully set the active calculation
+		if(!ecStr.equals(mainClass.projectManager.getCurrentCalcName())) {
+			Alert alert = new Alert(AlertType.INFORMATION);
+	    	alert.setTitle("Error");
+	    	alert.setContentText("Cannot set active calculation string ecStr.");
+	    	alert.showAndWait();
+	    	return;
+		}
+		EnumCalc ec = mainClass.projectManager.getCurrentCalcType();//null safe
+		openCalc(ec, false);
+		
+	}
+	private void openCalc(EnumCalc ec, boolean boolCreate) {
+		//if(boolCreate), open a new calculation of type EnumCalc ec
+		//if(!boolCreate), just load one existing calculation. MUST be entered through openCalc(String ecStr) in this case!
+		String calcName="";
+		if (ec==null) {return;}
+		
 		//Boolean firstFlag=false;
 //		if (mainClass.projectManager.existCurrentStep(EnumStep.SCF)) contScf.loadProjectParameters();
 //		if (mainClass.projectManager.existCurrentStep(EnumStep.GEO)) contGeo.loadProjectParameters();
@@ -890,46 +910,36 @@ public class MainWindowController implements Initializable{
 		switch(ec) {
 		case SCF:
 			if (!mainClass.projectManager.existCurrentProject()) return;//abnormal!
+			
 			radioCalculation.setSelected(true);
 			mainClass.projectManager.setGeoActive(false);
 			
-			//project exists, but this calculation does not. Create new calculation
-			if (!mainClass.projectManager.existCalcInCurrentProject(EnumCalc.SCF)) {
-//				firstFlag = true;
+			if(boolCreate) {
+				//create new calculation even if SCF exists
 				//need to update current calculation before loading parameters
 				mainClass.projectManager.addCalcToActiveProj(EnumCalc.SCF); 
+				calcName = mainClass.projectManager.getCurrentCalcName();
 				//initialize controllers. This will be automatically done only once
 				//***moved to the beginning of the program
 				//add comboBox item
-				comboCalculation.getItems().add(EnumCalc.SCF.getShort());
+				comboCalculation.getItems().add(calcName);
 				//update current status to trees
-				contTree.updateCalcTree(EnumCalc.SCF);
-				
-//				Alert alert1 = new Alert(AlertType.INFORMATION);
-//		    	alert1.setTitle("Error");
-//		    	alert1.setContentText("Wrong calculation type!");
-//
-//		    	alert1.showAndWait();
+				contTree.updateCalcTree(calcName);
 			}
-			////execute only if the current calculation is different or first time
-			//if (firstFlag || !mainClass.projectManager.isCurrentCalc(EnumCalc.SCF)) {
-			//-------------********not the most efficient way*******---------------
-			// for simplicity, always update GUI
-			if (true) {
-				comboCalculation.setValue(EnumCalc.SCF.getShort());
-				//need to update current calculation before loading parameters
-				mainClass.projectManager.setActiveCalculation(EnumCalc.SCF);
-				//load parameters for current project and calculation
-				contGeo.loadProjectParameters();
-				contGeo.setDisabled();
-				contScf.loadProjectParameters();
-				clearRightPane();
-				addRightPane(scrollGeo,EnumStep.GEO);
-				addRightPane(scrollScf,EnumStep.SCF);
-				try {tabPaneRight.getSelectionModel().select(1);}catch (Exception e) {}//load second tab(not geo)
-				
-				calcLabel.setText(EnumCalc.SCF.getLong());
-			}
+			
+			//load parameters for current project and calculation
+			contGeo.loadProjectParameters();
+			contGeo.setDisabled();
+			contScf.loadProjectParameters();
+			clearRightPane();
+			addRightPane(scrollGeo,EnumStep.GEO);
+			addRightPane(scrollScf,EnumStep.SCF);
+			try {tabPaneRight.getSelectionModel().select(1);}catch (Exception e) {}//load second tab(not geo)
+			
+			calcLabel.setText(EnumCalc.SCF.getLong());
+			
+			calcName = mainClass.projectManager.getCurrentCalcName();
+			if(calcName!=null) comboCalculation.getSelectionModel().select(calcName);
 			
 			break;
 		case OPT:
@@ -937,44 +947,32 @@ public class MainWindowController implements Initializable{
 			radioCalculation.setSelected(true);
 			mainClass.projectManager.setGeoActive(false);
 			
-			//project exists, but this calculation does not. Create new calculation
-			if (!mainClass.projectManager.existCalcInCurrentProject(EnumCalc.OPT)) {
-//				firstFlag = true;
+			if(boolCreate) {
 				//need to update current calculation before loading parameters
 				mainClass.projectManager.addCalcToActiveProj(EnumCalc.OPT); 
+				calcName = mainClass.projectManager.getCurrentCalcName();
 				//initialize controllers. This will be automatically done only once
 				//***moved to the beginning of the program
 				//add comboBox item
-				comboCalculation.getItems().add(EnumCalc.OPT.getShort());
+				comboCalculation.getItems().add(calcName);
 				//update current status to trees
-				contTree.updateCalcTree(EnumCalc.OPT);
-				
-//				Alert alert1 = new Alert(AlertType.INFORMATION);
-//		    	alert1.setTitle("Error");
-//		    	alert1.setContentText("Wrong calculation type!");
-//
-//		    	alert1.showAndWait();
+				contTree.updateCalcTree(calcName);
 			}
-			////execute only when the current calculation is different or first time
-			//if (firstFlag || !mainClass.projectManager.isCurrentCalc(EnumCalc.OPT)) {
-			// for simplicity, always update GUI
-			if (true) {
-				comboCalculation.setValue(EnumCalc.OPT.getShort());
-				//need to update current calculation before loading parameters
-				mainClass.projectManager.setActiveCalculation(EnumCalc.OPT);
-				//load parameters for current project and calculation
-				contGeo.loadProjectParameters();
-				contGeo.setDisabled();
-				contScf.loadProjectParameters();
-				//update GUI
-				clearRightPane();
-				addRightPane(scrollGeo,EnumStep.GEO);
-				addRightPane(scrollScf,EnumStep.SCF);
-				addRightPane(scrollOpt,EnumStep.OPT);
-				try {tabPaneRight.getSelectionModel().select(1);}catch (Exception e) {}//load second tab(not geo)
-				calcLabel.setText(EnumCalc.OPT.getLong());
-				
-			}
+			
+			//load parameters for current project and calculation
+			contGeo.loadProjectParameters();
+			contGeo.setDisabled();
+			contScf.loadProjectParameters();
+			//update GUI
+			clearRightPane();
+			addRightPane(scrollGeo,EnumStep.GEO);
+			addRightPane(scrollScf,EnumStep.SCF);
+			addRightPane(scrollOpt,EnumStep.OPT);
+			try {tabPaneRight.getSelectionModel().select(1);}catch (Exception e) {}//load second tab(not geo)
+			
+			calcLabel.setText(EnumCalc.OPT.getLong());
+			calcName = mainClass.projectManager.getCurrentCalcName();
+			if(calcName!=null) comboCalculation.getSelectionModel().select(calcName);
 			break;
 		case DOS:
 //			if (currentProject!=null && !calcAvailDict.get(currentProject).get(EnumCalc.DOS)) {

@@ -44,7 +44,7 @@ public class MainLeftPaneController implements Initializable {
 	private TreeItem<ProjectCalcLog> projectTreeRoot;
 	private MainClass mainClass;
 	private HashMap<String, TreeItem<ProjectCalcLog>> projectTreeDict;
-	private HashMap<String, HashMap<EnumCalc, TreeItem<ProjectCalcLog>>> projectCalcTreeDict;
+	private HashMap<String, HashMap<String, TreeItem<ProjectCalcLog>>> projectCalcTreeDict;
 	
     public MainLeftPaneController(MainClass mc) {
     	mainClass = mc;
@@ -56,23 +56,27 @@ public class MainLeftPaneController implements Initializable {
 	}
 	public void initialize() {
 		projectTreeDict = new HashMap<String, TreeItem<ProjectCalcLog>> ();
-		projectCalcTreeDict = new HashMap<String, HashMap<EnumCalc, TreeItem<ProjectCalcLog>>>();
+		projectCalcTreeDict = new HashMap<String, HashMap<String, TreeItem<ProjectCalcLog>>>();
 		
 		TreeTableColumn<ProjectCalcLog, String> treeTableColumn1 = new TreeTableColumn<>("Project");
-		TreeTableColumn<ProjectCalcLog, String> treeTableColumn2 = new TreeTableColumn<>("Calculation");
-		TreeTableColumn<ProjectCalcLog, String> treeTableColumn3 = new TreeTableColumn<>("Steps");
+		TreeTableColumn<ProjectCalcLog, String> treeTableColumn2 = new TreeTableColumn<>("Calc. Name");
+		TreeTableColumn<ProjectCalcLog, String> treeTableColumn3 = new TreeTableColumn<>("Calc. Type");
+		TreeTableColumn<ProjectCalcLog, String> treeTableColumn4 = new TreeTableColumn<>("Steps");
 		
 		treeTableColumn1.setPrefWidth(90);
-		treeTableColumn2.setPrefWidth(90);
-		treeTableColumn3.setPrefWidth(90);
+		treeTableColumn2.setPrefWidth(70);
+		treeTableColumn3.setPrefWidth(70);
+		treeTableColumn4.setPrefWidth(70);
 		
 		treeTableColumn1.setCellValueFactory(new TreeItemPropertyValueFactory<>("project"));
 		treeTableColumn2.setCellValueFactory(new TreeItemPropertyValueFactory<>("calculation"));
-		treeTableColumn3.setCellValueFactory(new TreeItemPropertyValueFactory<>("steps"));
+		treeTableColumn3.setCellValueFactory(new TreeItemPropertyValueFactory<>("calcType"));
+		treeTableColumn4.setCellValueFactory(new TreeItemPropertyValueFactory<>("steps"));
 
 		projectTree.getColumns().add(treeTableColumn1);
 		projectTree.getColumns().add(treeTableColumn2);
 		projectTree.getColumns().add(treeTableColumn3);
+		projectTree.getColumns().add(treeTableColumn4);
 		
 		//projectTreeDict = new HashMap<String, TreeItem<String>>();
 		//projectCalcTreeDict = new HashMap<String, HashMap<EnumCalc, TreeItem<String>>>();
@@ -128,7 +132,7 @@ public class MainLeftPaneController implements Initializable {
 			}
 		});
 		
-		projectTreeRoot = new TreeItem<ProjectCalcLog>(new ProjectCalcLog("Projects","",""));
+		projectTreeRoot = new TreeItem<ProjectCalcLog>(new ProjectCalcLog("Projects","","",""));
 		projectTree.setRoot(projectTreeRoot);
 		projectTreeRoot.setExpanded(true);
 	}
@@ -173,21 +177,25 @@ public class MainLeftPaneController implements Initializable {
 //		projectCalcTreeDict.remove(pj);
 //	}
 	public void addProject(String pj) {
-		TreeItem<ProjectCalcLog> ti = new TreeItem<ProjectCalcLog>(new ProjectCalcLog(pj,"",""));
+		TreeItem<ProjectCalcLog> ti = new TreeItem<ProjectCalcLog>(new ProjectCalcLog(pj,"","",""));
 		projectTreeRoot.getChildren().add(ti);
 		projectTreeRoot.setExpanded(true);
 		projectTreeDict.put(pj,ti);
-		projectCalcTreeDict.put(pj, new HashMap<EnumCalc, TreeItem<ProjectCalcLog>>());
+		projectCalcTreeDict.put(pj, new HashMap<String, TreeItem<ProjectCalcLog>>());
 	}
-	public void updateCalcTree(EnumCalc ec) {
+	public void updateCalcTree(String ec) {
 		String currentProject = mainClass.projectManager.getActiveProjectName();
 		if (currentProject!=null && projectTreeDict.containsKey(currentProject) && projectCalcTreeDict.containsKey(currentProject)) {
-			if (ec==null) {
+			if (ec==null || ec.isEmpty()) {
 				return;
 			}
 			if (!projectCalcTreeDict.get(currentProject).containsKey(ec)) {
 				//add tree item if not already exists
-				TreeItem<ProjectCalcLog> ti = new TreeItem<ProjectCalcLog>(new ProjectCalcLog("",ec.getShort(),""));
+				EnumCalc ecType = mainClass.projectManager.getActiveProject().getCalcType(ec);
+				TreeItem<ProjectCalcLog> ti;
+				if(ecType==null) {ti = new TreeItem<ProjectCalcLog>(new ProjectCalcLog("",ec,"",""));}
+				else {ti = new TreeItem<ProjectCalcLog>(new ProjectCalcLog("",ec,ecType.getShort(),""));}
+				
 				projectCalcTreeDict.get(currentProject).put(ec, ti);
 				projectTreeDict.get(currentProject).getChildren().add(ti);
 				//expand project tree, select active calc item
@@ -205,7 +213,7 @@ public class MainLeftPaneController implements Initializable {
 		}
 	}
 	public void updateFullCalcTree() {
-		for(EnumCalc ec : mainClass.projectManager.getCurrentCalcList()) {
+		for(String ec : mainClass.projectManager.getCurrentCalcList()) {
 			updateCalcTree(ec);
 		}
 	}
@@ -247,11 +255,11 @@ public class MainLeftPaneController implements Initializable {
 		for (File temp : directories) {
 			String tmp = temp.getName();
 			if(!projectTreeDict.containsKey(tmp)) {
-				TreeItem<ProjectCalcLog> ti = new TreeItem<ProjectCalcLog>(new ProjectCalcLog(tmp,"",""));
+				TreeItem<ProjectCalcLog> ti = new TreeItem<ProjectCalcLog>(new ProjectCalcLog(tmp,"","",""));
 				projectTreeRoot.getChildren().add(ti);
 				projectTreeRoot.setExpanded(true);
 				projectTreeDict.put(tmp,ti);
-				projectCalcTreeDict.put(tmp, new HashMap<EnumCalc, TreeItem<ProjectCalcLog>>());
+				projectCalcTreeDict.put(tmp, new HashMap<String, TreeItem<ProjectCalcLog>>());
 			}	
 		}
 		

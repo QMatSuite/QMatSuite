@@ -91,7 +91,7 @@
               </rowConstraints>
                <children>
                   <Label text="Workspace" />
-                  <Button fx:id="buttonOpenWorkSpace" mnemonicParsing="false" prefHeight="25.0" prefWidth="46.0" text="open" GridPane.columnIndex="1" />
+                  <Button fx:id="buttonOpenWorkSpace" mnemonicParsing="false" prefHeight="25.0" prefWidth="55.0" text="open" GridPane.columnIndex="1" />
                   <Button fx:id="buttonOpenQEEngine" mnemonicParsing="false" text="open" GridPane.columnIndex="4" />
                   <Label text="QE engine" GridPane.columnIndex="3" />
                   <Pane fx:id="paneWorkSpace" GridPane.columnIndex="2">
