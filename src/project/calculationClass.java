@@ -35,6 +35,7 @@ public abstract class calculationClass implements Serializable{
 	 */
 	private static final long serialVersionUID = 4624943336997290724L;
 	
+	protected String calcName;
 	protected EnumCalc nameCalc;
 	protected HashMap<EnumStep, String> commandList;
 	protected HashMap<EnumStep, QeInput> inputList;

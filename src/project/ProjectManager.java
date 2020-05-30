@@ -29,6 +29,7 @@ import java.util.LinkedHashMap;
 
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
+import com.consts.DefaultFileNames;
 
 import agent.InputAgent;
 import agent.InputAgentGeo;
@@ -44,7 +45,7 @@ public class ProjectManager {
 		projectDict = new LinkedHashMap<String, Project> ();
 		activeProjKey = null;
 	}
-	public void saveActiveProject(File dirParent, String filename) {
+	public void saveActiveProjectInMultipleFiles(File workSpaceDir) {
 		Project pj = getActiveProject();
 		if(pj==null) {
 			Alert alert1 = new Alert(AlertType.INFORMATION);
@@ -54,7 +55,7 @@ public class ProjectManager {
 			return;
 		}
 		
-		File dirProj = new File(dirParent,pj.getName());
+		File dirProj = new File(workSpaceDir,pj.getName());
 		if(dirProj==null || !dirProj.canWrite()) {
 			Alert alert1 = new Alert(AlertType.INFORMATION);
 	    	alert1.setTitle("Error");
@@ -62,16 +63,14 @@ public class ProjectManager {
 	    	alert1.showAndWait();
 			return;
 		}
-    	// Serialization 
-        try { 
+		
+		String msg="";
+		
+		//save project in one file in the project directory
+		try { 
             // Saving of object in a file 
         	FileOutputStream file;
-        	if(filename==null || filename.isEmpty()) {
-        		file = new FileOutputStream (new File(dirProj,pj.getName()+".proj"), false); 
-    		}
-        	else {
-        		file = new FileOutputStream (new File(dirProj,filename), false); 
-        	}
+        	file = new FileOutputStream (new File(dirProj,pj.getName()+".proj"), false);
             
             ObjectOutputStream out = new ObjectOutputStream (file); 
   
@@ -81,24 +80,133 @@ public class ProjectManager {
             out.close(); 
             file.close(); 
             
-            
-            Alert alert1 = new Alert(AlertType.INFORMATION);
-	    	alert1.setTitle("Success");
-	    	if(filename==null || filename.isEmpty()) {
-	    		alert1.setContentText("Successfully saved to "+dirProj.getAbsolutePath()+File.separator+pj.getName()+".proj"+".");
-	    	}else {
-	    		alert1.setContentText("Successfully saved to "+dirProj.getAbsolutePath()+File.separator+filename+".");
-	    	}
-	    	alert1.showAndWait();
+            msg+=" project: "+dirProj.getAbsolutePath()+File.separator+pj.getName()+".proj. ";
         } 
   
         catch (IOException ex) { 
 			Alert alert1 = new Alert(AlertType.INFORMATION);
 	    	alert1.setTitle("Error");
-	    	alert1.setContentText("IOException is caught! Cannot save to file "+filename+"."+ex.getMessage());
+	    	alert1.setContentText("IOException is caught! Cannot save general project file "+"."+ex.getMessage());
 	    	alert1.showAndWait();
         } 
+		
+		//save calculation in the calculation sub-folders (just to check integrity and in case the user renamed the calculation folders)
+		
+		ArrayList<String> calcList = pj.getCalcList();
+		
+		if(calcList==null) {
+			Alert alert1 = new Alert(AlertType.INFORMATION);
+	    	alert1.setTitle("Error");
+	    	alert1.setContentText("Cannot access calculation list! Cannot save...");
+	    	alert1.showAndWait();
+			return;
+		}
+		
+		for (int i=0;i<calcList.size();i++) {
+			File tmpCalc = new File(dirProj,calcList.get(i));
+			if(!tmpCalc.exists()) {
+				if(!tmpCalc.mkdir()) {
+					Alert alert1 = new Alert(AlertType.INFORMATION);
+			    	alert1.setTitle("Warning");
+			    	alert1.setContentText("Cannot create calculation folder! Try next...");
+			    	alert1.showAndWait();
+					continue;
+				}
+			}
+			//now either exists or freshly made. Check whether canWrite
+			if(!tmpCalc.canWrite()) {
+				Alert alert1 = new Alert(AlertType.INFORMATION);
+		    	alert1.setTitle("Warning");
+		    	alert1.setContentText("No write access to the calculation folder! Try next...");
+		    	alert1.showAndWait();
+				continue;
+			}
+			// Serialization 
+	        try { 
+	            // Saving of object in a file 
+	        	FileOutputStream file;
+	        	file = new FileOutputStream (new File(tmpCalc,DefaultFileNames.calcSaveFile), false);
+	            
+	            ObjectOutputStream out = new ObjectOutputStream (file); 
+	  
+	            // Method for serialization of object 
+	            out.writeObject(pj.getCalc(calcList.get(i))); 
+	  
+	            out.close(); 
+	            file.close(); 
+	            
+	            msg+=calcList.get(i)+", ";
+	        } 
+	  
+	        catch (IOException ex) { 
+				Alert alert1 = new Alert(AlertType.INFORMATION);
+		    	alert1.setTitle("Error");
+		    	alert1.setContentText("IOException is caught! Cannot save calculation "+calcList.get(i)+"."+ex.getMessage());
+		    	alert1.showAndWait();
+	        }
+		}
+		
+		Alert alert1 = new Alert(AlertType.INFORMATION);
+    	alert1.setTitle("Success");
+    	alert1.setContentText("Successfully saved: "+msg);
+    	alert1.showAndWait();
+    	
 	}
+//	public void saveActiveProjectInOneFile(File workSpaceDir, String filename) {
+//		Project pj = getActiveProject();
+//		if(pj==null) {
+//			Alert alert1 = new Alert(AlertType.INFORMATION);
+//	    	alert1.setTitle("Error");
+//	    	alert1.setContentText("No active project! Cannot save...");
+//	    	alert1.showAndWait();
+//			return;
+//		}
+//		
+//		File dirProj = new File(workSpaceDir,pj.getName());
+//		if(dirProj==null || !dirProj.canWrite()) {
+//			Alert alert1 = new Alert(AlertType.INFORMATION);
+//	    	alert1.setTitle("Error");
+//	    	alert1.setContentText("Cannot access project directory! Cannot save...");
+//	    	alert1.showAndWait();
+//			return;
+//		}
+//    	// Serialization 
+//        try { 
+//            // Saving of object in a file 
+//        	FileOutputStream file;
+//        	if(filename==null || filename.isEmpty()) {
+//        		file = new FileOutputStream (new File(dirProj,pj.getName()+".proj"), false); 
+//    		}
+//        	else {
+//        		file = new FileOutputStream (new File(dirProj,filename), false); 
+//        	}
+//            
+//            ObjectOutputStream out = new ObjectOutputStream (file); 
+//  
+//            // Method for serialization of object 
+//            out.writeObject(pj); 
+//  
+//            out.close(); 
+//            file.close(); 
+//            
+//            
+//            Alert alert1 = new Alert(AlertType.INFORMATION);
+//	    	alert1.setTitle("Success");
+//	    	if(filename==null || filename.isEmpty()) {
+//	    		alert1.setContentText("Successfully saved to "+dirProj.getAbsolutePath()+File.separator+pj.getName()+".proj"+".");
+//	    	}else {
+//	    		alert1.setContentText("Successfully saved to "+dirProj.getAbsolutePath()+File.separator+filename+".");
+//	    	}
+//	    	alert1.showAndWait();
+//        } 
+//  
+//        catch (IOException ex) { 
+//			Alert alert1 = new Alert(AlertType.INFORMATION);
+//	    	alert1.setTitle("Error");
+//	    	alert1.setContentText("IOException is caught! Cannot save to file "+filename+"."+ex.getMessage());
+//	    	alert1.showAndWait();
+//        } 
+//	}
 	public void changeProjectName(String newName) {
 		if(newName==null || newName.isEmpty() || projectDict==null || projectDict.containsKey(newName)) return;
 		

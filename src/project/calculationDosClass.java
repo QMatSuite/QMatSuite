@@ -38,8 +38,9 @@ public class calculationDosClass extends calculationClass{
 	 * 
 	 */
 	private static final long serialVersionUID = -7797188687240412631L;
-	public calculationDosClass() {
+	public calculationDosClass(String cn) {
 		super();
+		this.calcName = cn;
 		nameCalc = EnumCalc.DOS;
 		
 //		PwInput inp1 = new PwInput();

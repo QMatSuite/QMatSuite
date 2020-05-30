@@ -35,8 +35,9 @@ public class calculationScfClass extends calculationClass{
 	 * 
 	 */
 	private static final long serialVersionUID = 2187936113824732788L;
-	public calculationScfClass() {
+	public calculationScfClass(String cn) {
 		super();
+		this.calcName = cn;
 		nameCalc = EnumCalc.SCF;
 		
 //		commandList.put(EnumStep.GEO,"");

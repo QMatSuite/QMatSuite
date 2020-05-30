@@ -18,6 +18,7 @@
  *******************************************************************************/
 package project;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -39,16 +40,29 @@ public class Project implements Serializable{
 	private static final long serialVersionUID = 8311819691310573808L;
 	
 	private String nameProject;
-	private HashMap<String, calculationClass> calcDict;
-	private ArrayList<String> calcList;
-	private HashMap<EnumStep, InputAgent> projectDefault;
-	private String activeCalcKey;
+	
+	transient private HashMap<String, calculationClass> calcDict;
+	transient private ArrayList<String> calcList;
+	transient private HashMap<EnumStep, InputAgent> projectDefault;
+	transient private String activeCalcKey;
+	
 	private ArrayList<InputAgentGeo> geoList;
 	private Integer activeGeoInd;
 	private Boolean boolGeoActive;
 	private String calcScfDefault;
 	
-	transient private WorkScene3D viewer3D=null; //do not save it to the file!
+	transient private WorkScene3D viewer3D=null;
+	
+	private void readObject(java.io.ObjectInputStream in)throws IOException, ClassNotFoundException 
+	{
+		//for loading after serialization
+	    in.defaultReadObject();
+	    calcDict = new HashMap<String, calculationClass>();
+		calcList = new ArrayList<String>();
+		projectDefault = new HashMap<EnumStep, InputAgent>();
+		activeCalcKey = null;
+		viewer3D = new WorkScene3D();
+	}
 	
 	public Project(String np) {
 		activeCalcKey = null;
@@ -119,9 +133,9 @@ public class Project implements Serializable{
 		if (!calcDict.containsKey(calcName)){
 			calculationClass calc;
 			switch (ec) {
-			case SCF:calc = new calculationScfClass();break;
-			case OPT:calc = new calculationOptClass();break;
-			case DOS:calc = new calculationDosClass();break;
+			case SCF:calc = new calculationScfClass(calcName);break;
+			case OPT:calc = new calculationOptClass(calcName);break;
+			case DOS:calc = new calculationDosClass(calcName);break;
 			default:
 				Alert alert = new Alert(AlertType.INFORMATION);
 		    	alert.setTitle("Error");

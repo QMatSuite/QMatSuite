@@ -36,8 +36,9 @@ public class calculationOptClass extends calculationClass{
 	 * 
 	 */
 	private static final long serialVersionUID = 138458242473384324L;
-	public calculationOptClass() {
+	public calculationOptClass(String cn) {
 		super();
+		this.calcName = cn;
 		nameCalc = EnumCalc.OPT;
 		
 //		commandList.put(EnumStep.GEO,"");
