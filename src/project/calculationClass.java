@@ -50,6 +50,12 @@ public abstract class calculationClass implements Serializable{
 		agentList = new HashMap<EnumStep, InputAgent>();
 		geometryIndex = 0;
 	}
+	public String getCalcName() {
+		return calcName;
+	}
+	public void setCalcName(String newName) {
+		if(newName!=null && !newName.isEmpty()) {calcName = newName;}
+	}
 	public Integer getGeoInd() {
 		return geometryIndex;
 	}

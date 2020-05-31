@@ -43,6 +43,7 @@ import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
 import com.consts.DefaultFileNames;
 import com.consts.DefaultFileNames.settingKeys;
+import com.error.ErrorMsg;
 
 import javafx.event.Event;
 import javafx.fxml.FXML;
@@ -95,9 +96,9 @@ public class MainWindowController implements Initializable{
     
     @FXML private MenuButton calcMain;
     
-    @FXML private MenuItem calcScf,calcOpt,calcDos,calcBands,calcMd,calcTddft,calcCustom,menuAbout,menuSaveProject,menuLoadProject;
+    @FXML private MenuItem calcScf,calcOpt,calcDos,calcBands,calcMd,calcTddft,calcCustom,menuAbout,menuSaveProjectAs,menuLoadProject;
     
-    @FXML private Button createProject,runButton,addMolecule,buttonOpenWorkSpace,buttonOpenQEEngine;
+    @FXML private Button createProject,showInputButton,runJob,buttonOpenWorkSpace,buttonOpenQEEngine,saveProjectButton;
     
     @FXML private Label textWorkSpace,textQEEngine;
     
@@ -139,7 +140,7 @@ public class MainWindowController implements Initializable{
 	
 	private HashMap<String, Tab> projectTabDict;
 	
-	private final ToggleGroup group = new ToggleGroup();
+	private final ToggleGroup tgGroup = new ToggleGroup();
 	
 	private String workSpacePath = null;
 	
@@ -207,44 +208,20 @@ public class MainWindowController implements Initializable{
 			
 			if(wsDir==null || !wsDir.canRead()) {return;}
 			
-			File projDir = new File(wsDir,projName);
+			String msg = mainClass.projectManager.loadProject(wsDir, projName);
+					
+			if(msg.contains(ErrorMsg.cannotFindProjectFolder)) {contTree.updateProjects(wsDir);return;}
 			
-			if(projDir==null || !projDir.canRead()) {contTree.updateProjects(wsDir);return;}
+			creatProject(projName);//loading GUI
 			
-			try (Stream<Path> walk = Files.walk(projDir.toPath())) {
-
-				List<String> result = walk.map(x -> x.toString())
-						.filter(f -> f.endsWith(".proj")).collect(Collectors.toList());
-				boolean flag=true;//true is load failure
-				if(result!=null && !result.isEmpty()) {
-					if(result.size()==1) {flag = loadProject(new File(result.get(0)));}
-					else {//more than one .proj file
-						FileChooser fileChooser = new FileChooser();
-						fileChooser.setInitialDirectory(projDir);
-						fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("project files", "*.proj"));
-						
-						File selectedFile = fileChooser.showOpenDialog((Stage)rootPane.getScene().getWindow());
-						
-						flag = loadProject(selectedFile);
-					}
-				}
-				else {//no .proj file, 
-					flag = true;
-					
-					String msg = mainClass.projectManager.addProject(projName);
-					
-					if (msg!=null) return;
-					
-					creatProject(projName);
-				}
-				
-				contTree.setOpenCloseButtons(false);
-
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+			contTree.setOpenCloseButtons(false);
+			
+			if(msg!=null) {
+				Alert alert1 = new Alert(AlertType.INFORMATION);
+		    	alert1.setTitle("Info");
+		    	alert1.setContentText(msg);
+		    	alert1.showAndWait();
 			}
-			
 		});
 		contTree.buttonCloseSelected.setOnAction((event) -> {
 			String projName = contTree.getSelectedProject();
@@ -252,11 +229,11 @@ public class MainWindowController implements Initializable{
 		});
 		
 		radioGeometry.setText("Geometry");
-		radioGeometry.setToggleGroup(group);
+		radioGeometry.setToggleGroup(tgGroup);
 		radioGeometry.setSelected(true);
 		radioCalculation.setText("Calculation");
-		radioCalculation.setToggleGroup(group);
-		group.selectedToggleProperty().addListener((ov, old_toggle, new_toggle) -> {
+		radioCalculation.setToggleGroup(tgGroup);
+		tgGroup.selectedToggleProperty().addListener((ov, old_toggle, new_toggle) -> {
 			toggleGeometry();
 		});
 		
@@ -311,8 +288,16 @@ public class MainWindowController implements Initializable{
 			} while (msg!=null);
 			
 			File wsDir = getWorkSpaceDir();
+			if(wsDir==null) return;
+			File projDir = new File(wsDir,projName);
 			
-			if (!makeDir(wsDir, projName)) {return;}
+			if (projDir.exists()) {
+				Alert alert = new Alert(AlertType.INFORMATION);
+		    	alert.setTitle("Error");
+		    	alert.setContentText("Project with the same name already existed in the workspace. Please try another name.");
+		    	alert.showAndWait();
+				return;
+			}
 			
 			msg = mainClass.projectManager.addProject(projName);
 			
@@ -367,7 +352,7 @@ public class MainWindowController implements Initializable{
 			}
 	    });
 		comboCalculation.getSelectionModel().selectedItemProperty().addListener((ov, oldVal, newVal) -> {
-			if (newVal!=null) {
+			if (newVal!=null && !newVal.isEmpty()) {
 				mainClass.projectManager.setActiveCalculation(newVal);
 				//-------------********not the most efficient way*******---------------
 				openCalc(mainClass.projectManager.getCurrentCalcName());//openCalc is null tolerant
@@ -391,7 +376,7 @@ public class MainWindowController implements Initializable{
 		calcTddft.setOnAction((event) -> {
 			openCalc(EnumCalc.TDDFT,true);
 		});
-		runButton.setOnAction((event) -> {
+		showInputButton.setOnAction((event) -> {
 			mainClass.projectManager.genInputFromAgent();
 			String pj = mainClass.projectManager.getActiveProjectName();
 			if (pj==null || pj.isEmpty()) return;
@@ -411,22 +396,28 @@ public class MainWindowController implements Initializable{
 //
 //	    	alert.showAndWait();
 		});
-		menuSaveProject.setOnAction((event) -> {
+		saveProjectButton.setOnAction((event) -> {
 			File wsDir = getWorkSpaceDir();
 			if(wsDir==null || !wsDir.canWrite()) {return;}
-			mainClass.projectManager.saveActiveProjectInMultipleFiles(wsDir);//empty string means activeProjKey+".proj"
-//			FileChooser fileChooser = new FileChooser();
-//			
-//			//go to current directory
-//			String currentPath = Paths.get(".").toAbsolutePath().normalize().toString();
-//			File tmpFile = new File(currentPath);
-//			if(tmpFile!=null && tmpFile.canRead()) {
-//				fileChooser.setInitialDirectory(tmpFile);
-//			}
-//			fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("project files", "*.proj"));
-//			
-//			File selectedFile = fileChooser.showSaveDialog((Stage)rootPane.getScene().getWindow());
-//			mainClass.projectManager.saveActiveProject(selectedFile);
+			mainClass.projectManager.saveActiveProjectInMultipleFiles(wsDir);
+		});
+		menuSaveProjectAs.setOnAction((event) -> {
+			
+			DirectoryChooser dirChooser = new DirectoryChooser ();
+			dirChooser.setTitle("Choose an alternative workspace folder to save the project");
+			
+			//go to current directory
+			String currentPath = Paths.get(".").toAbsolutePath().normalize().toString();
+			File tmpFile = new File(currentPath);
+			if(tmpFile!=null && tmpFile.canRead()) {
+				dirChooser.setInitialDirectory(tmpFile);
+			}
+			
+			File selectedDir = dirChooser.showDialog((Stage)rootPane.getScene().getWindow());
+			
+			if(selectedDir!=null && selectedDir.canWrite()) {
+				mainClass.projectManager.saveActiveProjectInMultipleFiles(selectedDir);
+			}
 		});
 		menuLoadProject.setOnAction((event) -> {
 //			File wsDir = getWorkSpaceDir();
@@ -515,97 +506,7 @@ public class MainWindowController implements Initializable{
 		//openCalc(null);//not necessary. Covered by the change tab listener
 		contTree.setOpenCloseButtons(true);
 	}
-	private boolean loadProject(File selectedFile) {
-		//true is load failure
-		if(selectedFile!=null && selectedFile.canRead()) {
-			String msg = mainClass.projectManager.loadProject(selectedFile);
-			if (msg!=null) {
-				Alert alert1 = new Alert(AlertType.INFORMATION);
-		    	alert1.setTitle("Error");
-		    	alert1.setContentText(msg);
-		    	alert1.showAndWait();
-		    	return true;
-			}
-			else {
-				String projName = mainClass.projectManager.getActiveProjectName();
-				//handle the case when the name in the .proj file is different than the folder name
-				File pr = selectedFile.getParentFile();
-				if(pr==null || pr.getName().isEmpty()) {return true;}
-				
-				//String nameWithoutExtension = selectedFile.getName().replaceFirst("[.][^.]+$", "");
-				
-				if(!(pr.getName()+".proj").equals(selectedFile.getName())) {
-					Path source = selectedFile.toPath();
-					
-					Alert alert1 = new Alert(AlertType.INFORMATION);
-			    	alert1.setTitle("Info");
-			    	alert1.setContentText("Rename "+selectedFile.getName()+" to "+pr.getName()+".proj");
-			    	alert1.showAndWait();
-					
-		    		try {
-		    			Files.move(source, source.resolveSibling(pr.getName()+".proj"));
-					} catch (IOException e) {
-						alert1 = new Alert(AlertType.INFORMATION);
-				    	alert1.setTitle("Error");
-				    	alert1.setContentText("Cannot rename and save to "+selectedFile.getName()+" to "+pr.getName()+".proj");
-				    	alert1.showAndWait();
-						e.printStackTrace();
-					}
-					
-				}
-				if(!pr.getName().equals(projName)) {
-					//use pr.getName() instead 
-					mainClass.projectManager.changeProjectName(pr.getName());
-					projName = pr.getName();
-					//save project again
-					File wsDir = getWorkSpaceDir();
-					if(wsDir!=null && wsDir.canWrite()) {
-						mainClass.projectManager.saveActiveProjectInMultipleFiles(wsDir);//empty string means activeProjKey+".proj"
-					}
-
-				}
-				
-				//check calculations
-				File[] directories = pr.listFiles(File::isDirectory);
-				calculationClass clc;
-				for (File temp : directories) {
-					String tmp = temp.getName();
-					try { 
-			            // Reading the object from a file 
-						File fl = new File(new File(pr,tmp),DefaultFileNames.calcSaveFile);
-						if (fl==null || !fl.canRead()) continue;
-			            FileInputStream file = new FileInputStream (fl); 
-			            ObjectInputStream in = new ObjectInputStream (file); 
-			  
-			            // Method for deserialization of object 
-			            clc = (calculationClass)in.readObject(); 
-			  
-			            in.close(); 
-			            file.close(); 
-			            if(clc==null) {continue;}
-			            
-			        } 
-			        catch (IOException ex) { 
-			            Alert alert1 = new Alert(AlertType.INFORMATION);
-				    	alert1.setTitle("Error");
-				    	alert1.setContentText("IOException is caught! Cannot load calculation file" +ex.getMessage());
-				    	alert1.showAndWait();
-			        } 
-			        catch (ClassNotFoundException ex) { 
-			        	Alert alert1 = new Alert(AlertType.INFORMATION);
-				    	alert1.setTitle("Error");
-				    	alert1.setContentText("ClassNotFoundException is caught! Cannot find calculation class "+ex.getMessage());
-				    	alert1.showAndWait();
-			        }
-				}
-				
-				//createProject in the GUI
-				creatProject(projName);
-				return false;
-			}
-		}
-		return true;
-	}
+	
 	private File getWorkSpaceDir() {
 		File wsDir = new File(workSpacePath);
 		if(wsDir!=null && wsDir.canWrite()) {return wsDir;}
@@ -754,7 +655,7 @@ public class MainWindowController implements Initializable{
 		if (radioGeometry.isSelected()) 
 		{
 			if (!mainClass.projectManager.existCurrentProject()) return;//abnormal!
-			radioGeometry.setSelected(true);
+			//radioGeometry.setSelected(true);
 			mainClass.projectManager.setGeoActive(true);
 			
 			Tab tab = new Tab();
@@ -801,7 +702,7 @@ public class MainWindowController implements Initializable{
 	private void setProjectNull() {
 		mainClass.projectManager.setActiveProject(null);
 		calcMain.setDisable(true);
-		addMolecule.setDisable(true);
+		runJob.setDisable(true);
 		clearRightPane();
 		comboCalculation.getItems().clear();
 		radioGeometry.setSelected(true);
@@ -852,37 +753,6 @@ public class MainWindowController implements Initializable{
 			scrollStatusLeft=!scrollStatusLeft;
 		});
 	}
-	private boolean makeDir(File parentDir, String dirName) {
-		//true-> everything ok
-		//false->error
-		if(parentDir==null || !parentDir.canWrite()) {
-			Alert alert1 = new Alert(AlertType.INFORMATION);
-	    	alert1.setTitle("Error");
-	    	alert1.setContentText("Parent directory invalid. Please set a valid parent folder.");
-	    	alert1.showAndWait();
-	    	return false;
-    	}
-		
-		File projectDir = new File(parentDir,dirName);
-		if(projectDir.exists()) {
-			Alert alert1 = new Alert(AlertType.INFORMATION);
-	    	alert1.setTitle("Error");
-	    	alert1.setContentText("Folder with the same name already exists!");
-	    	alert1.showAndWait();
-	    	return false;
-    	}
-		else {
-			boolean dirCreated = projectDir.mkdir();
-			if(!dirCreated) {
-				Alert alert1 = new Alert(AlertType.INFORMATION);
-		    	alert1.setTitle("Error");
-		    	alert1.setContentText("Cannot make directory.");
-		    	alert1.showAndWait();
-		    	return false;
-			}
-		}
-		return true;
-	}
 	private void creatProject(String projName) {
 
 		//add to ComboBox
@@ -906,14 +776,14 @@ public class MainWindowController implements Initializable{
 		contTree.updateFullCalcTree();
 		//allow more interactions
 		calcMain.setDisable(false);
-		addMolecule.setDisable(false);
+		runJob.setDisable(false);
 		//enable add molecule button
-		addMolecule.setOnAction((event) -> {
-			if (!mainClass.projectManager.existCurrentProject()) return;
-			GeoGroup sg = new GeoGroup();
-			Box box = new Box(100,50,20);
-			sg.getChildren().add(box);
-			mainClass.projectManager.getActiveProject().getViewer3D().drawGroup(sg);
+		runJob.setOnAction((event) -> {
+			Alert alert = new Alert(AlertType.INFORMATION);
+	    	alert.setTitle("Info");
+	    	alert.setContentText("To be implemented!");
+	    	alert.showAndWait();
+	    	return;
 		});
 		toggleGeometry();
 	}
@@ -969,14 +839,7 @@ public class MainWindowController implements Initializable{
 				//update current status to trees
 				contTree.updateCalcTree(calcName);
 				
-				File pjDir = getProjectDir();
 				
-				if (!makeDir(pjDir, calcName)) {
-					Alert alert = new Alert(AlertType.INFORMATION);
-			    	alert.setTitle("Error");
-			    	alert.setContentText("Cannot create calculation folder. Continue nevertheless...");
-			    	alert.showAndWait();
-				}
 				
 			}
 			
@@ -1011,14 +874,6 @@ public class MainWindowController implements Initializable{
 				//update current status to trees
 				contTree.updateCalcTree(calcName);
 				
-				File pjDir = getProjectDir();
-				
-				if (!makeDir(pjDir, calcName)) {
-					Alert alert = new Alert(AlertType.INFORMATION);
-			    	alert.setTitle("Error");
-			    	alert.setContentText("Cannot create calculation folder. Continue nevertheless...");
-			    	alert.showAndWait();
-				}
 			}
 			
 			//load parameters for current project and calculation
@@ -1095,16 +950,4 @@ public class MainWindowController implements Initializable{
 	    	alert.showAndWait();
 		}
 	}
-
-	
-	
-	public void aboutClicked(Event e) {
-		Alert alert = new Alert(AlertType.INFORMATION);
-    	alert.setTitle("About");
-    	alert.setContentText("Copyright QuantumNerd and XL");
-
-    	alert.showAndWait();
-	}
-
-	
 }

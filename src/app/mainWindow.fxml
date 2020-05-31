@@ -19,7 +19,7 @@
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane fx:id="rootPane" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
+<BorderPane fx:id="rootPane" prefHeight="450.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
    <top>
       <VBox BorderPane.alignment="CENTER">
          <children>
@@ -27,7 +27,7 @@
               <menus>
                 <Menu fx:id="menuFile" mnemonicParsing="false" text="File">
                   <items>
-                        <MenuItem fx:id="menuSaveProject" mnemonicParsing="false" text="Save current project" />
+                        <MenuItem fx:id="menuSaveProjectAs" mnemonicParsing="false" text="Save as..." />
                         <MenuItem fx:id="menuLoadProject" mnemonicParsing="false" text="Load project" />
                     <Menu fx:id="menuFile" mnemonicParsing="false" text="Examples">
                       <MenuItem mnemonicParsing="false" text="Si" />
@@ -50,10 +50,13 @@
             </MenuBar>
             <HBox>
                <children>
-                <Button fx:id="createProject" minWidth="75.0" mnemonicParsing="false" text="New project" />
+                  <Label minWidth="40.0" text="Project" />
+                <Button fx:id="createProject" minWidth="70.0" mnemonicParsing="false" prefWidth="90.0" text="New project" />
                   <ComboBox fx:id="comboProject" minWidth="55.0" />
+                  <Button fx:id="saveProjectButton" minWidth="45.0" mnemonicParsing="false" prefWidth="50.0" text="Save" />
                   <Separator orientation="VERTICAL" />
-                  <MenuButton fx:id="calcMain" minWidth="75.0" mnemonicParsing="false" text="Add calculation">
+                  <Label minWidth="60.0" text="Calculation" />
+                  <MenuButton fx:id="calcMain" minWidth="75.0" mnemonicParsing="false" prefWidth="90.0" text="Add calculation">
                      <items>
                      <MenuItem fx:id="calcScf" mnemonicParsing="false" text="Single energy" />
                       <MenuItem fx:id="calcOpt" mnemonicParsing="false" text="optimization" />
@@ -64,16 +67,17 @@
                       <MenuItem fx:id="calcCustom" mnemonicParsing="false" text="Custom..." />
                      </items>
                   </MenuButton>
+                  <ComboBox fx:id="comboCalculation" minWidth="75.0" prefWidth="80.0" />
                   <Separator orientation="VERTICAL" />
-                <Button fx:id="runButton" minWidth="70.0" mnemonicParsing="false" text="Show Input" />
-                <Button fx:id="addMolecule" minWidth="70.0" mnemonicParsing="false" text="Add sample molecule" />
+                  <Label minWidth="25.0" text="Run" />
+                <Button fx:id="showInputButton" minWidth="70.0" mnemonicParsing="false" prefWidth="90.0" text="Show Input" />
+                <Button fx:id="runJob" minWidth="40.0" mnemonicParsing="false" prefWidth="40.0" text="Run" />
                 <Pane prefHeight="25.0" prefWidth="358.0" HBox.hgrow="ALWAYS" />
                   <Separator orientation="VERTICAL" />
-                  <RadioButton fx:id="radioGeometry" minWidth="60.0" mnemonicParsing="false" />
-                  <RadioButton fx:id="radioCalculation" minWidth="60.0" mnemonicParsing="false" />
+                  <RadioButton fx:id="radioGeometry" minWidth="80.0" mnemonicParsing="false" />
+                  <RadioButton fx:id="radioCalculation" minWidth="80.0" mnemonicParsing="false" />
                   <Separator orientation="VERTICAL" />
-                  <ComboBox fx:id="comboCalculation" minWidth="70.0" />
-                <Label fx:id="calcLabel" minWidth="55.0" text="" />
+                <Label fx:id="calcLabel" minWidth="100.0" prefWidth="120.0" text="" />
                </children>
             </HBox>
             <GridPane hgap="5.0">
