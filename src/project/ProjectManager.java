@@ -24,18 +24,26 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
 import com.consts.DefaultFileNames;
+import com.error.ErrorMsg;
 
 import agent.InputAgent;
 import agent.InputAgentGeo;
 import input.QeInput;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
+import javafx.stage.FileChooser;
+import javafx.stage.Stage;
 
 public class ProjectManager {
 	private LinkedHashMap<String, Project> projectDict;
@@ -46,6 +54,14 @@ public class ProjectManager {
 		activeProjKey = null;
 	}
 	public void saveActiveProjectInMultipleFiles(File workSpaceDir) {
+		if(workSpaceDir==null || !workSpaceDir.canWrite()) {
+			Alert alert1 = new Alert(AlertType.INFORMATION);
+	    	alert1.setTitle("Error");
+	    	alert1.setContentText("No workspace! Cannot save...");
+	    	alert1.showAndWait();
+			return;
+		}
+		
 		Project pj = getActiveProject();
 		if(pj==null) {
 			Alert alert1 = new Alert(AlertType.INFORMATION);
@@ -56,12 +72,16 @@ public class ProjectManager {
 		}
 		
 		File dirProj = new File(workSpaceDir,pj.getName());
-		if(dirProj==null || !dirProj.canWrite()) {
-			Alert alert1 = new Alert(AlertType.INFORMATION);
-	    	alert1.setTitle("Error");
-	    	alert1.setContentText("Cannot access project directory! Cannot save...");
-	    	alert1.showAndWait();
-			return;
+		
+		if(dirProj!=null && !dirProj.exists()) {//make project directory if not existing
+			boolean dirCreated = dirProj.mkdir();
+			if(!dirCreated) {
+				Alert alert1 = new Alert(AlertType.INFORMATION);
+		    	alert1.setTitle("Error");
+		    	alert1.setContentText("Cannot make project directory.");
+		    	alert1.showAndWait();
+		    	return;
+			}
 		}
 		
 		String msg="";
@@ -70,7 +90,7 @@ public class ProjectManager {
 		try { 
             // Saving of object in a file 
         	FileOutputStream file;
-        	file = new FileOutputStream (new File(dirProj,pj.getName()+".proj"), false);
+        	file = new FileOutputStream (new File(dirProj,DefaultFileNames.projSaveFile), false);
             
             ObjectOutputStream out = new ObjectOutputStream (file); 
   
@@ -80,7 +100,7 @@ public class ProjectManager {
             out.close(); 
             file.close(); 
             
-            msg+=" project: "+dirProj.getAbsolutePath()+File.separator+pj.getName()+".proj. ";
+            msg+=" Project saved to "+dirProj.getAbsolutePath()+File.separator+DefaultFileNames.projSaveFile+". ";
         } 
   
         catch (IOException ex) { 
@@ -152,61 +172,7 @@ public class ProjectManager {
     	alert1.showAndWait();
     	
 	}
-//	public void saveActiveProjectInOneFile(File workSpaceDir, String filename) {
-//		Project pj = getActiveProject();
-//		if(pj==null) {
-//			Alert alert1 = new Alert(AlertType.INFORMATION);
-//	    	alert1.setTitle("Error");
-//	    	alert1.setContentText("No active project! Cannot save...");
-//	    	alert1.showAndWait();
-//			return;
-//		}
-//		
-//		File dirProj = new File(workSpaceDir,pj.getName());
-//		if(dirProj==null || !dirProj.canWrite()) {
-//			Alert alert1 = new Alert(AlertType.INFORMATION);
-//	    	alert1.setTitle("Error");
-//	    	alert1.setContentText("Cannot access project directory! Cannot save...");
-//	    	alert1.showAndWait();
-//			return;
-//		}
-//    	// Serialization 
-//        try { 
-//            // Saving of object in a file 
-//        	FileOutputStream file;
-//        	if(filename==null || filename.isEmpty()) {
-//        		file = new FileOutputStream (new File(dirProj,pj.getName()+".proj"), false); 
-//    		}
-//        	else {
-//        		file = new FileOutputStream (new File(dirProj,filename), false); 
-//        	}
-//            
-//            ObjectOutputStream out = new ObjectOutputStream (file); 
-//  
-//            // Method for serialization of object 
-//            out.writeObject(pj); 
-//  
-//            out.close(); 
-//            file.close(); 
-//            
-//            
-//            Alert alert1 = new Alert(AlertType.INFORMATION);
-//	    	alert1.setTitle("Success");
-//	    	if(filename==null || filename.isEmpty()) {
-//	    		alert1.setContentText("Successfully saved to "+dirProj.getAbsolutePath()+File.separator+pj.getName()+".proj"+".");
-//	    	}else {
-//	    		alert1.setContentText("Successfully saved to "+dirProj.getAbsolutePath()+File.separator+filename+".");
-//	    	}
-//	    	alert1.showAndWait();
-//        } 
-//  
-//        catch (IOException ex) { 
-//			Alert alert1 = new Alert(AlertType.INFORMATION);
-//	    	alert1.setTitle("Error");
-//	    	alert1.setContentText("IOException is caught! Cannot save to file "+filename+"."+ex.getMessage());
-//	    	alert1.showAndWait();
-//        } 
-//	}
+	
 	public void changeProjectName(String newName) {
 		if(newName==null || newName.isEmpty() || projectDict==null || projectDict.containsKey(newName)) return;
 		
@@ -218,40 +184,142 @@ public class ProjectManager {
 		projectDict.put(newName,pj);
 		activeProjKey=newName;
 	}
-	public String loadProject(File filename) {
-		Project pj;
-		// Deserialization 
-        try { 
-            // Reading the object from a file 
-            FileInputStream file = new FileInputStream (filename); 
-            ObjectInputStream in = new ObjectInputStream (file); 
-  
-            // Method for deserialization of object 
-            pj = (Project)in.readObject(); 
-  
-            in.close(); 
-            file.close(); 
-            if(pj==null) {return "Project read from file is null";}
-            if(projectDict.containsKey(pj.getName())) {return "Already contains project of the same name. Please close it first before loading.";}
-        	
-            projectDict.put(pj.getName(), pj);
-			activeProjKey = pj.getName();
-			return null;
-        } 
-        catch (IOException ex) { 
-            Alert alert1 = new Alert(AlertType.INFORMATION);
-	    	alert1.setTitle("Error");
-	    	alert1.setContentText("IOException is caught! Cannot load file "+filename+"."+ex.getMessage());
-	    	alert1.showAndWait();
-	    	return "IOException";
-        } 
-        catch (ClassNotFoundException ex) { 
-        	Alert alert1 = new Alert(AlertType.INFORMATION);
-	    	alert1.setTitle("Error");
-	    	alert1.setContentText("ClassNotFoundException is caught! Cannot find Project class "+filename+"."+ex.getMessage());
-	    	alert1.showAndWait();
-	    	return "ClassNotFoundException";
-        }
+	public String loadProject(File wsDir, String projName) {
+		
+		if(wsDir==null || !wsDir.canRead()) {return ErrorMsg.cannotFindWorkSpaceFolder;}
+		
+		File projDir = new File(wsDir,projName);
+		
+		if(projName==null || projDir==null || !projDir.canRead()) {return ErrorMsg.cannotFindProjectFolder;}
+		
+		File projSaveFile = new File(projDir,DefaultFileNames.projSaveFile);
+		
+		String msg_all = "";
+		
+		if(projSaveFile==null || !projSaveFile.canRead()) {
+			msg_all+= ErrorMsg.cannotFindProjectSaveFile;
+		}
+		else {
+			Project pj=null;
+			// Deserialization 
+	        try { 
+	            // Reading the object from a file 
+	            FileInputStream file1 = new FileInputStream (projSaveFile); 
+	            ObjectInputStream in = new ObjectInputStream (file1); 
+	  
+	            // Method for deserialization of object 
+	            pj = (Project)in.readObject(); 
+	  
+	            in.close(); 
+	            file1.close(); 
+	            
+	            if(pj==null) {msg_all+= "Project read from file is null";}
+	            else {
+		            if(!projName.equals(pj.getName())) {
+		            	//project name different than the folder name. Use the folder name
+		            	msg_all+=("Rename project name in the saved file from '"+pj.getName()+"' to '"+projName+"'. ");
+		            	pj.setName(projName);
+		            	
+		            	//update the .proj file
+		            	FileOutputStream file2;
+		            	file2 = new FileOutputStream (projSaveFile, false);
+		                ObjectOutputStream out = new ObjectOutputStream (file2); 
+		      
+		                // Method for serialization of object 
+		                out.writeObject(pj); 
+		      
+		                out.close(); 
+		                file1.close(); 
+		                
+		                msg_all+="Project saved to "+projSaveFile.getAbsolutePath()+". ";
+		            }
+		            if(projectDict.containsKey(pj.getName())) {
+		            	//fatal error, already existing project. Will only happen when loading already loaded project. Abort
+		            	msg_all+= ErrorMsg.alreadyContainsProject;
+		            	return msg_all;
+	            	}
+		        	
+		            projectDict.put(pj.getName(), pj);
+					activeProjKey = pj.getName();
+	            }
+	        } 
+	        catch (IOException ex) { 
+		    	msg_all+= "IOException.";
+	        } 
+	        catch (ClassNotFoundException ex) { 
+		    	msg_all+= "ClassNotFoundException.";
+	        }
+		}
+		
+		
+		if(!projName.equals(activeProjKey)) {
+			msg_all+="\n";
+			String msg2 = addProject(projName);
+			if(msg2==null) {msg_all+=ErrorMsg.createProject;}//successfully created project, continue
+			else {msg_all+=msg2;return msg_all;}//fatal error, cannot add new project, stop here
+		}
+		else {
+			//everything fine
+			msg_all+="Project save file successfully loaded.";
+		}
+		
+		msg_all+="\n";
+		String msg3="";
+		int calcCount=0;
+		//load calculations regardless
+		//*************need to take care of the geo part if newly created project
+		File[] directories = projDir.listFiles(File::isDirectory);
+		calculationClass clc;
+		Project pjNew = getActiveProject();
+		if(pjNew!=null) {
+			for (File temp : directories) {
+				calcCount++;
+				String calcName = temp.getName();
+				try { 
+		            // Reading the object from a file 
+					File fl = new File(new File(projDir,calcName),DefaultFileNames.calcSaveFile);
+					if (calcName==null || calcName.isEmpty() || fl==null || !fl.canRead()) {msg3+="Cannot load calculation in "+calcName+". ";continue;}
+		            FileInputStream file = new FileInputStream (fl); 
+		            ObjectInputStream in = new ObjectInputStream (file); 
+		  
+		            // Method for deserialization of object 
+		            clc = (calculationClass)in.readObject(); 
+		  
+		            in.close(); 
+		            file.close(); 
+		            if(clc==null) {msg3+="Cannot load calculation in "+calcName+". ";continue;}
+		            
+		            if(msg_all.contains(ErrorMsg.createProject)) {//new project, but load existing calculations
+		            	clc.setGeoInd(0);//set geometry to 0 because it always exists
+		            }
+		            
+		            pjNew.addCalculation(calcName, clc);
+		        } 
+		        catch (IOException ex) { 
+		        	msg3+="IOException is caught! Cannot load calculation file "+calcName+". ";
+		        } 
+		        catch (ClassNotFoundException ex) { 
+		        	msg3+="ClassNotFoundException is caught! Cannot find calculation class "+calcName+". ";
+		        }
+			}
+		}
+		if(calcCount==0) {
+			msg_all+="No calculation to be loaded. ";
+		}
+		else {
+			if(msg3.isEmpty()) {
+				msg_all+="All calculations successfully loaded. ";
+				if(msg_all.contains(ErrorMsg.createProject)) {
+					msg_all+="Set active geometry of all calculations to the first geometry.";
+				}
+			}
+			else {msg_all+=msg3;}
+		}
+		
+		if (msg_all.isEmpty()) {return null;}
+		else {return msg_all;}
+		
+		
 	}
 	public void updateViewerPlot() {
 		Project pj = getActiveProject();

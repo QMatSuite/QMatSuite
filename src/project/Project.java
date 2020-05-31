@@ -128,6 +128,16 @@ public class Project implements Serializable{
 			if(!calcDict.containsKey(out)) return out;
 		}
 	}
+	public void addCalculation(String calcName, calculationClass cls) {
+		if(cls!=null && calcName!=null && !calcName.isEmpty()) {
+			if (!calcDict.containsKey(calcName)){
+				if(!calcName.equals(cls.getCalcName())) {cls.setCalcName(calcName);}
+				calcDict.put(calcName, cls);
+				calcList.add(calcName);
+			}
+			activeCalcKey = calcName;
+		}
+	}
 	public void addCalculation(String calcName, EnumCalc ec) {
 		if (ec == null)  return;
 		if (!calcDict.containsKey(calcName)){
