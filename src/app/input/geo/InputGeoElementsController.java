@@ -20,9 +20,14 @@
 package app.input.geo;
 
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.ResourceBundle;
 import com.consts.Constants.EnumFunctional;
 import com.consts.Constants.EnumPP;
+import com.pseudopot.EnumPseudoPotLib;
+import com.pseudopot.PseudoDojoClass;
+import com.pseudopot.SSSPClass;
+
 import agent.InputAgentGeo;
 import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
@@ -42,7 +47,7 @@ import main.MainClass;
 public class InputGeoElementsController implements Initializable{
 
 	@FXML
-    private Button defButton;
+    private Button defButton,buttonOpenLib;
 
 	@FXML private TableView<Element> elementTable;
     
@@ -55,25 +60,35 @@ public class InputGeoElementsController implements Initializable{
     @FXML private TableColumn<Element, String> pseudoColumn;
 
     @FXML
-    private Label ppTypePoint,xcFuncPoint,ecutwfcPoint,ecutrhoPoint;
+    private Label ppTypePoint,xcFuncPoint,ecutwfcPoint,ecutrhoPoint,labelPathPseudoLib;
 
     @FXML
-    private Label ppTypeLabel,xcFuncLabel,ecutwfcLabel,ecutrhoLabel;
+    private Label ppTypeLabel,xcFuncLabel,ecutwfcLabel,ecutrhoLabel,relavLabel,relavPoint;
 
 	
     @FXML private ComboBox<EnumFunctional> comboFunctional;
     
     @FXML private ComboBox<EnumPP> comboPP;
     
-    @FXML private CheckBox checkRelativ;
+    @FXML private ComboBox<EnumPseudoPotLib> comboLib;
+    
+    @FXML private ComboBox<String> comboPrec;
+    
+    @FXML private CheckBox checkRelativ,resetCheck;
     
     private MainClass mainClass;
     
     private ObservableList<Element> elemData;
 	
+    private PseudoDojoClass pdClass;
+    
+    private SSSPClass ssspClass;
+    
 	public InputGeoElementsController(MainClass mc) {
 		mainClass = mc;
 		elemData = FXCollections.observableArrayList();
+		pdClass = new PseudoDojoClass();
+		ssspClass = new SSSPClass();
 	}
     
     @Override
@@ -81,32 +96,138 @@ public class InputGeoElementsController implements Initializable{
     	initialize();
     }
     public void initialize() {
+    	//pseudoPot library
+    	ObservableList<EnumPseudoPotLib> typeLib = FXCollections.observableArrayList(EnumPseudoPotLib.values());
+    	comboLib.setItems(typeLib);
+    	
+    	comboLib.getSelectionModel().selectedItemProperty().addListener((obs, oldSelect, newSelect) -> {
+    		ObservableList<EnumFunctional> typeFunc;
+    		ObservableList<EnumPP> typePP;
+    		ObservableList<String> typePrec;
+    		boolean bl;
+    		
+    		if(newSelect==null) return;
+    		if(EnumPseudoPotLib.SSSP.equals(newSelect)) {
+    			typeFunc = FXCollections.observableArrayList(ssspClass.getFunctionalList());
+    			typePP = FXCollections.observableArrayList(ssspClass.getPpList());
+    			typePrec = FXCollections.observableArrayList(ssspClass.getPrecisionList());
+    			bl = ssspClass.getFullRelativSupport();
+    		}
+    		else if(EnumPseudoPotLib.PSEUDODOJO.equals(newSelect)) {
+    			typeFunc = FXCollections.observableArrayList(pdClass.getFunctionalList());
+    			typePP = FXCollections.observableArrayList(pdClass.getPpList());
+    			typePrec = FXCollections.observableArrayList(pdClass.getPrecisionList());
+    			bl = pdClass.getFullRelativSupport();
+    		}
+    		else {
+    			return;
+    		}
+    		
+    		InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
+			if (ia==null) return; 
+			
+			ia.typeLib=newSelect;
+			
+			//a bit complicated because needs to consider:
+			//loading, don't want to overwrite things
+			//user change library combobox
+			//don't want to have empty selection
+			EnumFunctional efTmp = ia.typeFunctional;
+        	comboFunctional.setItems(typeFunc);comboFunctional.setDisable(typeFunc.isEmpty());
+        	if(typeFunc.isEmpty()) {comboFunctional.getSelectionModel().clearSelection();}
+        	else if (efTmp!=null && typeFunc.contains(efTmp)) {comboFunctional.getSelectionModel().select(efTmp);}
+        	else {comboFunctional.getSelectionModel().select(0);}
+        	
+        	EnumPP epTmp = ia.typePP;
+        	comboPP.setItems(typePP);comboPP.setDisable(typePP.isEmpty());
+        	if(typePP.isEmpty()) {comboPP.getSelectionModel().clearSelection();}
+        	else if (epTmp!=null && typePP.contains(epTmp)) {comboPP.getSelectionModel().select(epTmp);}
+        	else {comboPP.getSelectionModel().select(0);}
+
+        	Integer intTmp = ia.typePrec;
+        	comboPrec.setItems(typePrec);comboPrec.setDisable(typePrec.isEmpty());
+        	if(typePrec.isEmpty()) {comboPrec.getSelectionModel().clearSelection();}
+        	else if (intTmp!=null && typePrec.size()>intTmp) {comboPrec.getSelectionModel().select(intTmp);}
+        	else {comboPrec.getSelectionModel().select(0);}
+        	
+
+        	checkRelativ.setDisable(!bl);
+        	if(!bl && checkRelativ.isSelected()) {checkRelativ.setSelected(false);}
+        	
+			updatePseudoElementList();
+		});
+    	//default use SSSP library, not necessary here
+    	//comboLib.getSelectionModel().select(EnumPseudoPotLib.SSSP);
+    	
     	//functional type
-    	ObservableList<EnumFunctional> typeFunc = FXCollections.observableArrayList(EnumFunctional.values());
-    	comboFunctional.setItems(typeFunc);
     	comboFunctional.setOnAction((event) -> {	
+    		//if null, also take that
+    		InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
+			if (ia!=null) ia.typeFunctional=comboFunctional.getValue();
 			if (comboFunctional.getValue()!=null) {
-				InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
-				if (ia!=null) ia.typeFunctional=comboFunctional.getValue();
+				updatePseudoElementList();
 			}
 		});
     	//pp type
-    	ObservableList<EnumPP> typePP = FXCollections.observableArrayList(EnumPP.values());
-    	comboPP.setItems(typePP);
     	comboPP.setOnAction((event) -> {	
+    		//if null, also take that
+    		InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
+			if (ia!=null) ia.typePP=comboPP.getValue();
 			if (comboPP.getValue()!=null) {
-				InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
-				if (ia!=null) ia.typePP=comboPP.getValue();
+				updatePseudoElementList();
+			}
+			
+		});
+    	//precision type
+    	comboPrec.setOnAction((event) -> {	
+    		//if null, also take that
+    		InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
+			if (ia!=null) ia.typePrec=comboPrec.getSelectionModel().getSelectedIndex();
+			if (comboPrec.getValue()!=null) {
+				updatePseudoElementList();
 			}
 		});
     	//full relativistic
     	checkRelativ.selectedProperty().addListener((obs, oldSelect, newSelect) -> {
     		InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
 			if (ia!=null) ia.isRelativ.setValue(newSelect);
-		    if (newSelect) comboPP.getSelectionModel().select(EnumPP.USPP);//no need to change ia.typePP explicitly
+			updatePseudoElementList();
+		    //if (newSelect) comboPP.getSelectionModel().select(EnumPP.USPP);//no need to change ia.typePP explicitly
 		});
     	//setup element table
     	setupTable();
+    }
+    private void updatePseudoElementList() {
+    	InputAgentGeo iGeo = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
+    	ArrayList<Element> elemListAll = iGeo.elemListAll;
+    	if(elemListAll==null || elemListAll.isEmpty()) return;
+    	
+    	EnumPseudoPotLib eppl = comboLib.getSelectionModel().getSelectedItem();
+    	if(eppl==null) return;
+    	switch(eppl) {
+    		case SSSP:
+    			ssspClass.setPrecString(comboPrec.getSelectionModel().getSelectedItem());
+    			break;
+    		case PSEUDODOJO:
+    			pdClass.setRelativ(checkRelativ.isSelected());
+    			pdClass.setTypeFunctional(comboFunctional.getSelectionModel().getSelectedItem());
+    			pdClass.setPrecString(comboPrec.getSelectionModel().getSelectedItem());
+    			break;
+    		default: return;
+    	}
+    	
+    	for (Element ele : elemListAll) {
+    		String pseudoPotFile;
+    		switch(eppl) {
+	    		case SSSP:pseudoPotFile=ssspClass.getFile(ele.getAtomSpecies().toString());break;
+	    		case PSEUDODOJO:pseudoPotFile=pdClass.getFile(ele.getAtomSpecies().toString());break;
+	    		default: return;
+    		}
+    		ele.setPseudoPotFile(pseudoPotFile);
+    	}
+    	
+    	elemData.clear();
+    	elemData.addAll(iGeo.elemListAll);
     }
     private void setupTable() {
     	indexColumn.setCellValueFactory(new PropertyValueFactory<Element, Integer>("index"));
@@ -135,12 +256,18 @@ public class InputGeoElementsController implements Initializable{
     	InputAgentGeo iGeo = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
 		if (iGeo==null) return;
 		//iGeo.updateElemListAll();//from atom generate elements table
+		if (iGeo.typeLib==null) {comboLib.getSelectionModel().clearSelection();}
+		else {comboLib.getSelectionModel().select(iGeo.typeLib);}
+		//*************not efficient, run twice possible
 		if (iGeo.typeFunctional==null) {comboFunctional.getSelectionModel().clearSelection();}
 		else {comboFunctional.getSelectionModel().select(iGeo.typeFunctional);}
 		if (iGeo.typePP==null) {comboPP.getSelectionModel().clearSelection();}
 		else {comboPP.getSelectionModel().select(iGeo.typePP);}
+		if (iGeo.typePrec==null) {comboPrec.getSelectionModel().clearSelection();}
+		else {comboPrec.getSelectionModel().select(iGeo.typePrec);}
 		checkRelativ.setSelected(iGeo.isRelativ.getValue());//should not be null!
-		elemData.clear();
-		elemData.addAll(iGeo.elemListAll);
+//		elemData.clear();
+//		elemData.addAll(iGeo.elemListAll);
+		updatePseudoElementList();
     }
 }

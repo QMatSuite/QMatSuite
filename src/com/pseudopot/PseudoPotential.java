@@ -17,12 +17,37 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package com.error;
+package com.pseudopot;
 
-public interface ErrorMsg {
-	public String cannotFindProjectFolder = "Cannot find/read project folder. ";
-	public String cannotFindWorkSpaceFolder = "Cannot find/read workspace folder. ";
-	public String cannotFindProjectSaveFile = "Cannot find/read project save file. ";
-	public String createProject = "Project created. ";
-	public String alreadyContainsProject = "Already contains project of the same name. Please close it first before loading. ";
+import java.util.ArrayList;
+
+import com.consts.Constants.EnumFunctional;
+import com.consts.Constants.EnumPP;
+
+public abstract class PseudoPotential {
+	protected EnumPseudoPotLib libName;
+	protected ArrayList<EnumFunctional> functionalList;//functional list
+	protected ArrayList<EnumPP> ppList;//pseudopotential type list
+	protected ArrayList<String> precisionList;//precision settings
+	boolean fullRelativSupport;
+	
+	public PseudoPotential(EnumPseudoPotLib ln, boolean fr) {
+		libName = ln;
+		functionalList = new ArrayList<EnumFunctional>();
+		ppList = new ArrayList<EnumPP>();
+		precisionList = new ArrayList<String>();
+		fullRelativSupport = fr;
+	}
+	public ArrayList<EnumFunctional> getFunctionalList(){
+		return functionalList;
+	}
+	public ArrayList<EnumPP> getPpList(){
+		return ppList;
+	}
+	public ArrayList<String> getPrecisionList(){
+		return precisionList;
+	}
+	public boolean getFullRelativSupport() {
+		return fullRelativSupport;
+	}
 }
