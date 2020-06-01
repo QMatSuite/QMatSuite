@@ -37,27 +37,33 @@
       </BorderPane>
       <GridPane prefWidth="350.0" vgap="5.0">
          <children>
-            <Button mnemonicParsing="false" text="i" GridPane.columnIndex="5" GridPane.rowIndex="1" />
-            <CheckBox mnemonicParsing="false" GridPane.columnIndex="4" GridPane.halignment="CENTER" GridPane.rowIndex="1" />
-            <Label text="Reset to default" GridPane.columnIndex="4" />
-            <ComboBox fx:id="comboFunctional" prefHeight="25.0" prefWidth="83.0" GridPane.rowIndex="1" />
-            <Label prefHeight="17.0" prefWidth="89.0" text="Functional Type" />
-            <Label text="P.P Type" GridPane.columnIndex="1" />
-            <Label text="Full relativ." GridPane.columnIndex="2" />
-            <ComboBox fx:id="comboPP" prefHeight="25.0" prefWidth="86.0" GridPane.columnIndex="1" GridPane.rowIndex="1" />
-            <CheckBox fx:id="checkRelativ" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.halignment="CENTER" GridPane.rowIndex="1" />
-            <Separator orientation="VERTICAL" GridPane.columnIndex="3" />
-            <Separator orientation="VERTICAL" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+            <Button fx:id="infoElement" mnemonicParsing="false" text="i" GridPane.columnIndex="4" GridPane.rowIndex="3" />
+            <CheckBox fx:id="resetCheck" mnemonicParsing="false" GridPane.halignment="CENTER" GridPane.rowIndex="1" />
+            <Label text="Reset to default" />
+            <ComboBox fx:id="comboFunctional" prefHeight="25.0" prefWidth="83.0" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+            <Label prefHeight="17.0" prefWidth="89.0" text="Functional" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+            <Label text="P.P Type" GridPane.columnIndex="2" GridPane.rowIndex="2" />
+            <Label text="Full relativ." GridPane.columnIndex="3" />
+            <ComboBox fx:id="comboPP" prefHeight="25.0" prefWidth="86.0" GridPane.columnIndex="2" GridPane.rowIndex="3" />
+            <CheckBox fx:id="checkRelativ" mnemonicParsing="false" GridPane.columnIndex="3" GridPane.halignment="CENTER" GridPane.rowIndex="1" />
+            <ComboBox fx:id="comboLib" prefWidth="150.0" GridPane.rowIndex="3" />
+            <Label text="Library" GridPane.rowIndex="2" />
+            <Label text="Precision" GridPane.columnIndex="3" GridPane.rowIndex="2" />
+            <ComboBox fx:id="comboPrec" prefWidth="150.0" GridPane.columnIndex="3" GridPane.rowIndex="3" />
+            <Label fx:id="labelPathPseudoLib" prefHeight="17.0" prefWidth="165.0" style="-fx-background-color: #FFFFFF;" GridPane.columnIndex="1" GridPane.columnSpan="2" GridPane.rowIndex="1" />
+            <Label text="Library path" GridPane.columnIndex="1" />
+            <Button fx:id="buttonOpenLib" mnemonicParsing="false" text="open" GridPane.columnIndex="2" />
          </children>
          <columnConstraints>
-            <ColumnConstraints hgrow="SOMETIMES" maxWidth="306.5" minWidth="10.0" prefWidth="86.5" />
-            <ColumnConstraints hgrow="SOMETIMES" maxWidth="306.5" minWidth="10.0" prefWidth="82.0" />
-            <ColumnConstraints hgrow="SOMETIMES" maxWidth="306.5" minWidth="10.0" prefWidth="58.0" />
-            <ColumnConstraints hgrow="SOMETIMES" maxWidth="113.0" minWidth="1.5" prefWidth="3.5" />
-            <ColumnConstraints hgrow="SOMETIMES" maxWidth="137.5" minWidth="10.0" prefWidth="87.0" />
-            <ColumnConstraints hgrow="SOMETIMES" maxWidth="38.0" minWidth="10.0" prefWidth="23.0" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="306.5" minWidth="10.0" prefWidth="85.0" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="306.5" minWidth="10.0" prefWidth="80.0" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="306.5" minWidth="10.0" prefWidth="70.0" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="137.5" minWidth="10.0" prefWidth="80.0" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="38.0" minWidth="10.0" prefWidth="17.5" />
          </columnConstraints>
          <rowConstraints>
+            <RowConstraints vgrow="SOMETIMES" />
+            <RowConstraints vgrow="SOMETIMES" />
             <RowConstraints vgrow="SOMETIMES" />
             <RowConstraints vgrow="SOMETIMES" />
          </rowConstraints>
@@ -86,9 +92,9 @@
       <TableView fx:id="elementTable" editable="true" prefHeight="250.0">
          <columns>
             <TableColumn fx:id="indexColumn" editable="false" prefWidth="35.0" text="#" />
-            <TableColumn fx:id="nameColumn" editable="false" prefWidth="75.0" resizable="false" text="Name" />
-            <TableColumn fx:id="massColumn" prefWidth="75.0" resizable="false" text="Mass" />
-            <TableColumn fx:id="pseudoColumn" prefWidth="186.5" resizable="false" text="Pseudopotential" />
+            <TableColumn fx:id="nameColumn" editable="false" maxWidth="200.0" prefWidth="50.0" text="Name" />
+            <TableColumn fx:id="massColumn" prefWidth="50.0" text="Mass" />
+            <TableColumn fx:id="pseudoColumn" prefWidth="200.0" text="Pseudopotential" />
          </columns>
          <VBox.margin>
             <Insets bottom="8.0" left="10.0" />
@@ -138,9 +144,9 @@
             <Label text="PBE" GridPane.columnIndex="2" GridPane.rowIndex="1" fx:id="xcFuncLabel" />
             <Label fx:id="ecutwfcLabel" text="25.0 Ry" GridPane.columnIndex="2" GridPane.rowIndex="2" />
             <Label fx:id="ecutrhoLabel" text="225.0 Ry" GridPane.columnIndex="2" GridPane.rowIndex="3" />
-            <Label text="*" GridPane.rowIndex="4" />
+            <Label fx:id="relavPoint" text="*" GridPane.rowIndex="4" />
             <Label text="Relativistic" GridPane.columnIndex="1" GridPane.rowIndex="4" />
-            <Label text="Scalar relativistic" GridPane.columnIndex="2" GridPane.rowIndex="4" />
+            <Label fx:id="relavLabel" text="Scalar relativistic" GridPane.columnIndex="2" GridPane.rowIndex="4" />
          </children>
          <padding>
             <Insets left="20.0" />

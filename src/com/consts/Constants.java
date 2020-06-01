@@ -19,6 +19,8 @@
 package com.consts;
 
 public class Constants {
+	private Constants() {
+	}
 	public enum ProgramName{
 		PW,
 		PH,

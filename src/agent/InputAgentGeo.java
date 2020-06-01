@@ -29,6 +29,7 @@ import com.consts.Constants.EnumUnitCellLength;
 import com.consts.Constants.EnumUnitCellParameter;
 import com.consts.Constants.ProgramName;
 import com.consts.PhysicalConstants;
+import com.pseudopot.EnumPseudoPotLib;
 
 import app.input.geo.Atom;
 import app.input.geo.Element;
@@ -57,8 +58,10 @@ public class InputAgentGeo extends InputAgent{
 	public EnumUnitAtomPos unitAtomPos;//ok
 	public ArrayList<Atom> atomList;//ok
 	//elements
+	public EnumPseudoPotLib typeLib;
 	public EnumFunctional typeFunctional;
 	public EnumPP typePP;
+	public Integer typePrec;
 	public WrapperBoolean isRelativ;//whether or not fully relativistic
 	public ArrayList<Element> elemListAll;
 	
@@ -78,8 +81,10 @@ public class InputAgentGeo extends InputAgent{
 		unitAtomPos=EnumUnitAtomPos.alat;
 		atomList=new ArrayList<Atom>();//for geoAtoms
 		//elements
+		typeLib = EnumPseudoPotLib.SSSP;
 		typeFunctional=EnumFunctional.PBE;
-		typePP=EnumPP.PAW;
+		typePP=null;
+		typePrec=0;
 		isRelativ=new WrapperBoolean(false);
 		elemListAll = new ArrayList<Element>();//for geoElements,scfMagnet
 		
