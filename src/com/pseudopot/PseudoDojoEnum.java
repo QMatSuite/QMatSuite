@@ -123,8 +123,8 @@ public class PseudoDojoEnum {
 	    	this.gbrv = gbrv;
 	    }
 
-		public String getFolderName() {return folderName;}
-		public String getFileName() {return fileName;}
+		public String getFolderName() {return folderName;}//necessary
+		public String getFileName() {return fileName;}//necessary
 		public Double getLowCut() {return lowCut;}
 		public Double getNormalCut() {return normalCut;}
 		public Double getHighCut() {return highCut;}

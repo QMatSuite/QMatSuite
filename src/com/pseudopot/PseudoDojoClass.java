@@ -20,11 +20,12 @@
 
 package com.pseudopot;
 
-import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import com.consts.Constants.EnumFunctional;
+import com.consts.Constants.EnumPP;
+import com.consts.PhysicalConstants;
 import com.pseudopot.PseudoDojoEnum.*;
 
 import javafx.scene.control.Alert;
@@ -44,19 +45,29 @@ public class PseudoDojoClass extends PseudoPotential{
 		functionalList.add(EnumFunctional.LDA);
 		
 	}
-	public String getFile(String element) { //element name in the format of e.g. "He" 
-		if (typeFunctional==null || !functionalList.contains(typeFunctional)) return null;
-		if (precString==null || !precisionList.contains(precString)) return null;
-		
-		String st1 =  getString(element, "getFolderName");
-		String st2 =  getString(element, "getFileName");
-		
-		if(st1!=null && st2!=null) {
-			return st1+File.separator+st2;
-		}
-		else {return null;}
+	
+	@Override
+	public Double getEcutWfc(String element) {
+		//use the "normal" hint
+		Double out = getDouble(element, "getNormalCut");
+		if(out==null || out<0) return null;
+		return out * PhysicalConstants.hartreeInRy;//convert Ha to Ry
 	}
-	public String getString(String element, String methodName) { //element name in the format of e.g. "He" 
+	@Override
+	public Double getDual(String element) {
+		return 4.0;
+	}
+	@Override
+	public String getPpType(String element) {
+		return EnumPP.NCPP.toString()+"(NC)";
+	}
+	@Override
+	public String getFunctionalType(String element) {
+		if(typeFunctional==null) return null;
+		return typeFunctional.toString();
+	}
+	@Override
+	protected <T> T getValue(String element, String methodName, Class<T> clazz) { //element name in the format of e.g. "He" 
 		//use reflection to simplify code
 		
 		if (typeFunctional==null || !functionalList.contains(typeFunctional)) return null;
@@ -70,21 +81,21 @@ public class PseudoDojoClass extends PseudoPotential{
 						if (isRelativ) {
 							fr_pbe_standard ef = fr_pbe_standard.valueOf(element);
 							method = ef.getClass().getMethod(methodName);
-							return (String) method.invoke(ef);}
+							return clazz.cast(method.invoke(ef));}
 						else {
 							sr_pbe_standard ef = sr_pbe_standard.valueOf(element);
 							method = ef.getClass().getMethod(methodName);
-							return (String) method.invoke(ef);}
+							return clazz.cast(method.invoke(ef));}
 					}
 					else if (precString.equals("Stringent")) {
 						if (isRelativ) {
 							fr_pbe_stringent ef = fr_pbe_stringent.valueOf(element);
 							method = ef.getClass().getMethod(methodName);
-							return (String) method.invoke(ef);}
+							return clazz.cast(method.invoke(ef));}
 						else {
 							sr_pbe_stringent ef = sr_pbe_stringent.valueOf(element);
 							method = ef.getClass().getMethod(methodName);
-							return (String) method.invoke(ef);}
+							return clazz.cast(method.invoke(ef));}
 					}
 					else return null;
 				case PBESOL:
@@ -92,21 +103,21 @@ public class PseudoDojoClass extends PseudoPotential{
 						if (isRelativ) {
 							fr_pbesol_standard ef = fr_pbesol_standard.valueOf(element);
 							method = ef.getClass().getMethod(methodName);
-							return (String) method.invoke(ef);}
+							return clazz.cast(method.invoke(ef));}
 						else {
 							sr_pbesol_standard ef = sr_pbesol_standard.valueOf(element);
 							method = ef.getClass().getMethod(methodName);
-							return (String) method.invoke(ef);}
+							return clazz.cast(method.invoke(ef));}
 					}
 					else if (precString.equals("Stringent")) {
 						if (isRelativ) {
 							fr_pbesol_stringent ef = fr_pbesol_stringent.valueOf(element);
 							method = ef.getClass().getMethod(methodName);
-							return (String) method.invoke(ef);}
+							return clazz.cast(method.invoke(ef));}
 						else {
 							sr_pbesol_stringent ef = sr_pbesol_stringent.valueOf(element);
 							method = ef.getClass().getMethod(methodName);
-							return (String) method.invoke(ef);}	
+							return clazz.cast(method.invoke(ef));}	
 					}
 					else return null;
 				case LDA:
@@ -115,25 +126,30 @@ public class PseudoDojoClass extends PseudoPotential{
 						else {
 							sr_pw_standard ef = sr_pw_standard.valueOf(element);
 							method = ef.getClass().getMethod(methodName);
-							return (String) method.invoke(ef);}
+							return clazz.cast(method.invoke(ef));}
 					}
 					else if (precString.equals("Stringent")) {
 						if (isRelativ) {return null;}
 						else {
 							sr_pw_stringent ef = sr_pw_stringent.valueOf(element);
 							method = ef.getClass().getMethod(methodName);
-							return (String) method.invoke(ef);}
+							return clazz.cast(method.invoke(ef));}
 					}
 					else return null;
 				default:return null;
 			}
 		}
-		catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException | SecurityException | NoSuchMethodException e) {
+		catch (IllegalAccessException | InvocationTargetException | SecurityException | NoSuchMethodException e) {
 			Alert alert = new Alert(AlertType.INFORMATION);
 	    	alert.setTitle("Error");
 	    	alert.setContentText("Error in PseudoDojoClass.getString()! "+e.getMessage());
 	    	alert.showAndWait();
 	    	
+			return null;
+		}
+		catch (IllegalArgumentException e) {
+			//cannot find the corresponding item in the enum
+			//normal
 			return null;
 		}
 	}
