@@ -121,8 +121,18 @@ public class InputAgentGeo extends InputAgent{
 			if(!elemListAllContains(tmp_atom.getAtomSpecies())) {
 				elemListAll.add(new Element(tmp_atom.getAtomSpecies()));
 			}
-			
 		}
+		for (int i=0;i<elemListAll.size();i++) {
+			if(!atomListContains(elemListAll.get(i).getAtomSpecies())) {
+				elemListAll.remove(i);
+			}
+		}
+	}
+	private Boolean atomListContains(ChemicalElements species) {
+		for (Atom tmp_atom : atomList) {
+			if(tmp_atom.getAtomSpecies().toString().equals(species.toString())) {return true;}
+		}
+		return false;
 	}
 	private Boolean elemListAllContains(ChemicalElements species) {
 		for (Element tmp_elem : elemListAll) {

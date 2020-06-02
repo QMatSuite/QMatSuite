@@ -34,6 +34,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
@@ -41,6 +42,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.cell.PropertyValueFactory;
 import main.MainClass;
 
@@ -154,6 +156,7 @@ public class InputGeoElementsController implements Initializable{
         	checkRelativ.setDisable(!bl);
         	if(!bl && checkRelativ.isSelected()) {checkRelativ.setSelected(false);}
         	
+        	//*******very inefficient because will run multiple times
 			updatePseudoElementList();
 		});
     	//default use SSSP library, not necessary here
@@ -194,13 +197,23 @@ public class InputGeoElementsController implements Initializable{
 			updatePseudoElementList();
 		    //if (newSelect) comboPP.getSelectionModel().select(EnumPP.USPP);//no need to change ia.typePP explicitly
 		});
+    	//reset to default: SSSP, Efficiency
+    	resetCheck.selectedProperty().addListener((obs, oldSelect, newSelect) -> {
+    		if (newSelect!=null && newSelect) {
+    			comboLib.getSelectionModel().select(EnumPseudoPotLib.SSSP);comboLib.setDisable(true);
+    			comboPrec.getSelectionModel().select(0);comboPrec.setDisable(true);
+    			comboFunctional.getSelectionModel().select(0);comboFunctional.setDisable(true);
+			}
+    		else {comboLib.setDisable(false);comboPrec.setDisable(false);comboFunctional.setDisable(false);}
+			updatePseudoElementList();
+		});
     	//setup element table
     	setupTable();
     }
     private void updatePseudoElementList() {
     	InputAgentGeo iGeo = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
     	ArrayList<Element> elemListAll = iGeo.elemListAll;
-    	if(elemListAll==null || elemListAll.isEmpty()) return;
+    	if(elemListAll==null || elemListAll.isEmpty() || elemData==null || elemData.isEmpty()) return;
     	
     	EnumPseudoPotLib eppl = comboLib.getSelectionModel().getSelectedItem();
     	if(eppl==null) return;
@@ -216,18 +229,77 @@ public class InputGeoElementsController implements Initializable{
     		default: return;
     	}
     	
-    	for (Element ele : elemListAll) {
-    		String pseudoPotFile;
-    		switch(eppl) {
-	    		case SSSP:pseudoPotFile=ssspClass.getFile(ele.getAtomSpecies().toString());break;
-	    		case PSEUDODOJO:pseudoPotFile=pdClass.getFile(ele.getAtomSpecies().toString());break;
-	    		default: return;
+    	if(elemListAll.size()!=elemData.size()) {
+    		Alert alert = new Alert(AlertType.INFORMATION);
+	    	alert.setTitle("Warning");
+	    	alert.setContentText("The size of elemData and elemListAll is not equal! Should not happen, but don't worry though...");
+	    	alert.showAndWait();
+	    	
+	    	for (Element ele : elemListAll) {
+	    		String pseudoPotFile;
+	    		switch(eppl) {
+		    		case SSSP:pseudoPotFile=ssspClass.getFile(ele.getAtomSpecies().toString());break;
+		    		case PSEUDODOJO:pseudoPotFile=pdClass.getFile(ele.getAtomSpecies().toString());break;
+		    		default: return;
+	    		}
+	    		ele.setPseudoPotFile(pseudoPotFile);
+	    	}
+	    	
+	    	elemData.clear();
+	    	elemData.addAll(iGeo.elemListAll);
+    	}
+    	else {
+    		for (int i=0;i<elemData.size();i++) {
+    			Element ele1 = iGeo.elemListAll.get(i);
+    			Element ele2 = elemData.get(i);
+    			if(ele1==null || ele2==null) continue;
+    			String pseudoPotFile;
+	    		switch(eppl) {
+		    		case SSSP:pseudoPotFile=ssspClass.getFile(ele1.getAtomSpecies().toString());break;
+		    		case PSEUDODOJO:pseudoPotFile=pdClass.getFile(ele1.getAtomSpecies().toString());break;
+		    		default: return;
+	    		}
+	    		ele1.setPseudoPotFile(pseudoPotFile);
+	    		ele2.setPseudoPotFile(pseudoPotFile);
+	    		elemData.set(i, ele2);
     		}
-    		ele.setPseudoPotFile(pseudoPotFile);
     	}
     	
-    	elemData.clear();
-    	elemData.addAll(iGeo.elemListAll);
+    	updatePseudoInfo();
+    }
+    private void updatePseudoInfo() {
+    	Element el = elementTable.getSelectionModel().getSelectedItem();
+    	if(el==null) {
+    		ecutwfcLabel.setText("");ecutrhoLabel.setText("");ppTypeLabel.setText("");xcFuncLabel.setText("");relavLabel.setText("");
+    		return;}
+    	String elemSpec = el.getAtomSpecies().toString();
+    	if(elemSpec==null || elemSpec.isEmpty()) return;
+    	
+    	EnumPseudoPotLib eppl = comboLib.getSelectionModel().getSelectedItem();
+    	if(eppl==null) return;
+    	
+    	Double ecutwfc, dual;
+    	String ppType, functionalType;
+    	switch(eppl) {
+			case SSSP:
+				ecutwfc = ssspClass.getEcutWfc(elemSpec);
+				dual = ssspClass.getDual(elemSpec);
+				ppType = ssspClass.getPpType(elemSpec);
+				functionalType = ssspClass.getFunctionalType(elemSpec);
+				break;
+			case PSEUDODOJO:
+				ecutwfc = pdClass.getEcutWfc(elemSpec);
+				dual = pdClass.getDual(elemSpec);
+				ppType = pdClass.getPpType(elemSpec);
+				functionalType = pdClass.getFunctionalType(elemSpec);
+				break;
+			default: return;
+    	}
+    	if(ecutwfc!=null) {ecutwfcLabel.setText(ecutwfc.toString()+" Ry");}else {ecutwfcLabel.setText("");}
+    	if(dual!=null && ecutwfc!=null) {dual*=ecutwfc;ecutrhoLabel.setText(dual.toString()+" Ry");}else {ecutrhoLabel.setText("");}
+    	if(ppType!=null && !ppType.isEmpty()) {ppTypeLabel.setText(ppType);}else {ppTypeLabel.setText("");}
+    	if(functionalType!=null && !functionalType.isEmpty()) {xcFuncLabel.setText(functionalType);}else {xcFuncLabel.setText("");}
+    	relavLabel.setText(checkRelativ.isSelected()?"Full relativistic":"Scalar relativistic");
     }
     private void setupTable() {
     	indexColumn.setCellValueFactory(new PropertyValueFactory<Element, Integer>("index"));
@@ -249,13 +321,14 @@ public class InputGeoElementsController implements Initializable{
     	elementTable.setItems(elemData);
 		
     	elementTable.getSelectionModel().selectedItemProperty().addListener((obs, oldSelect, newSelect) -> {
-		    //to be added
+    		updatePseudoInfo();
 		});
     }
     public void loadProjectParameters() {
     	InputAgentGeo iGeo = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
 		if (iGeo==null) return;
-		//iGeo.updateElemListAll();//from atom generate elements table
+		iGeo.updateElemListAll();//from atom generate elements table. Necessary if previous ElementList is loaded but not correctly generated
+		
 		if (iGeo.typeLib==null) {comboLib.getSelectionModel().clearSelection();}
 		else {comboLib.getSelectionModel().select(iGeo.typeLib);}
 		//*************not efficient, run twice possible
@@ -266,8 +339,8 @@ public class InputGeoElementsController implements Initializable{
 		if (iGeo.typePrec==null) {comboPrec.getSelectionModel().clearSelection();}
 		else {comboPrec.getSelectionModel().select(iGeo.typePrec);}
 		checkRelativ.setSelected(iGeo.isRelativ.getValue());//should not be null!
-//		elemData.clear();
-//		elemData.addAll(iGeo.elemListAll);
+		elemData.clear();
+		elemData.addAll(iGeo.elemListAll);
 		updatePseudoElementList();
     }
 }

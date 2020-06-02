@@ -19,6 +19,7 @@
  *******************************************************************************/
 package com.pseudopot;
 
+import java.io.File;
 import java.util.ArrayList;
 
 import com.consts.Constants.EnumFunctional;
@@ -50,4 +51,27 @@ public abstract class PseudoPotential {
 	public boolean getFullRelativSupport() {
 		return fullRelativSupport;
 	}
+	
+	//methods that should be implemented
+	public String getFile(String element) { //element name in the format of e.g. "He" 
+		
+		String st1 =  getString(element, "getFolderName");
+		String st2 =  getString(element, "getFileName");
+		
+		if(st1!=null && st2!=null) {
+			return st1+File.separator+st2;
+		}
+		else {return null;}
+	}
+	protected String getString(String element, String methodName) {
+		return getValue(element, methodName, String.class);
+	}
+	protected Double getDouble(String element, String methodName) {
+		return getValue(element, methodName, Double.class);
+	}
+	protected abstract <T> T getValue(String element, String methodName, Class<T> clazz);
+	public abstract Double getEcutWfc(String element);
+	public abstract Double getDual(String element);//get ecutrho/ecutwfc, usually 4 for NCPP and higher for USPP
+	public abstract String getPpType(String element);
+	public abstract String getFunctionalType(String element);
 }

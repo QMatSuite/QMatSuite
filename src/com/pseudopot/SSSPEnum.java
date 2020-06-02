@@ -133,33 +133,13 @@ public class SSSPEnum {
 	    	this.ecutrho = ecutrho;
 	    }
 
-		public double getEcutwfc() {
-			return ecutwfc;
-		}
-
-		public double getDual() {
-			return dual;
-		}
-
-		public String getFileName() {
-			return fileName;
-		}
-
-		public String getMd5Str() {
-			return md5Str;
-		}
-
-		public String getPpType() {
-			return ppType;
-		}
-
-		public double getEcutrho() {
-			return ecutrho;
-		}
-
-		public String getFolderName() {
-			return folderName;
-		}
+	    public double getEcutwfc() {return ecutwfc;}
+		public double getDual() {return dual;}
+		public String getFileName() {return fileName;}//necessary
+		public String getMd5Str() {return md5Str;}
+		public String getPpType() {return ppType;}
+		public double getEcutrho() {return ecutrho;}
+		public String getFolderName() {return folderName;}//necessary
 	}
 	
 	public static enum Precision {
@@ -273,32 +253,12 @@ public class SSSPEnum {
 	    	this.ecutrho = ecutrho;
 	    }
 
-		public double getEcutwfc() {
-			return ecutwfc;
-		}
-
-		public double getDual() {
-			return dual;
-		}
-
-		public String getFileName() {
-			return fileName;
-		}
-
-		public String getMd5Str() {
-			return md5Str;
-		}
-
-		public String getPpType() {
-			return ppType;
-		}
-
-		public double getEcutrho() {
-			return ecutrho;
-		}
-
-		public String getFolderName() {
-			return folderName;
-		}
+		public double getEcutwfc() {return ecutwfc;}
+		public double getDual() {return dual;}
+		public String getFileName() {return fileName;}//necessary
+		public String getMd5Str() {return md5Str;}
+		public String getPpType() {return ppType;}
+		public double getEcutrho() {return ecutrho;}
+		public String getFolderName() {return folderName;}//necessary
 	}
 }
