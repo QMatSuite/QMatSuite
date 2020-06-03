@@ -17,35 +17,12 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package input;
+package com.displayPreference;
 
-import com.consts.Constants.EnumStep;
+import javafx.scene.paint.Color;
 
-public class ContainerInputString {
-	public EnumStep stepName;
-	public String input;
-	public String log;
-	public ContainerInputString() {
-		input = new String("");
-		log = new String("");
-		stepName = null;
-	}
-	public void appendInput(String st) {
-		input = input + st;
-	}
-	public void appendLog(String st) {
-		log = log + st;
-	}
-	public void append(ContainerInputString ci) {
-		input = input + new String(ci.input);
-		log = log + new String(ci.log);
-	}
-	public String toString() {
-		return (input.isEmpty()? "":"------Input file-----\n"+input)+
-				(log.isEmpty()? "":"-------Warning-------\n"+log);
-	}
-	public boolean isEmpty() {
-		return (input.isEmpty()&&log.isEmpty());
-	}
-	
+public interface Coloring {
+	public final Color invalidFile = Color.ORANGERED; 
+	public final Color validFile = Color.LIGHTGREEN; 
+	public final Color defaultFile = Color.WHITE;
 }

@@ -18,6 +18,102 @@
  *******************************************************************************/
 package job;
 
-public class JobManager {
+import java.util.LinkedList;
+import java.util.Queue;
+
+import javafx.beans.property.SimpleStringProperty;
+
+
+
+public class JobManager implements Runnable {
+	
+	//always alive during the execution of the main program. Only used when exiting the main program
+	private boolean alive;
+
+	private JobNode currentNode;
+	
+    private Queue<JobNode> nodeList;
+    
+    public JobManager() {
+    	alive = true;
+        currentNode = null;
+        nodeList = new LinkedList<JobNode>();
+        
+        Thread thread = new Thread(this);
+        thread.start();
+	}
+    
+    private synchronized boolean isAlive() {
+        return alive;
+    }
+    public synchronized void setAlive(boolean bl) {
+        alive = bl;
+    }
+    
+	@Override
+	public void run() {
+		while(isAlive()) {
+			synchronized (this) {
+                while (isAlive()) {
+                    this.currentNode = this.nodeList.poll();
+                    if (this.currentNode != null) {break;}//if currentNode is not null, break and run it
+
+                    try {
+                        this.wait();//if there is no available job, wait until notify
+                    } catch (InterruptedException e) {
+                    	//if notified, catches here. Will then go back to "while loop" again
+                        e.printStackTrace();
+                    }
+                }
+            }
+
+            if (this.currentNode != null && isAlive()) {
+            	
+                this.currentNode.run();
+                
+                synchronized (this) {//this will only execute AFTER the run FINISHED
+                    this.currentNode = null;
+                }
+            }
+        }
+	}
+	public synchronized void stopCurrent() {
+		if (this.currentNode != null) {
+            this.currentNode.stop();
+        }
+		this.notifyAll();
+	}
+	public synchronized void stopAll() {
+		if (this.currentNode != null) {
+            this.currentNode.stop();
+        }
+		this.nodeList.clear();
+		this.notifyAll();
+	}
+	public synchronized void stop() {
+        this.alive = false;
+
+        if (this.currentNode != null) {
+            this.currentNode.stop();
+        }
+
+        this.notifyAll();
+    }
+	public synchronized boolean addNode(JobNode node) {
+		if (node != null) {
+		    boolean status = this.nodeList.offer(node);
+		
+		    if (status) {this.notifyAll();}
+		
+		    return status;
+		}
+		return false;
+	}
+
+	public synchronized String getCurrentJobName() {
+		if(this.currentNode!=null) {
+		return this.currentNode.getName();}
+		else {return null;}
+	}
 
 }

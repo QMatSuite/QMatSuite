@@ -36,9 +36,10 @@
                     <MenuItem mnemonicParsing="false" text="Close" />
                   </items>
                 </Menu>
-                <Menu mnemonicParsing="false" text="Edit">
+                <Menu mnemonicParsing="false" text="Job control">
                   <items>
-                    <MenuItem mnemonicParsing="false" text="Delete" />
+                    <MenuItem fx:id="stopCurrentJob" mnemonicParsing="false" text="Stop current job" />
+                    <MenuItem fx:id="stopAllJobs" mnemonicParsing="false" text="Stop all jobs" />
                   </items>
                 </Menu>
                 <Menu mnemonicParsing="false" text="Help">
@@ -72,6 +73,7 @@
                   <Label minWidth="25.0" text="Run" />
                 <Button fx:id="showInputButton" minWidth="70.0" mnemonicParsing="false" prefWidth="90.0" text="Show Input" />
                 <Button fx:id="runJob" minWidth="40.0" mnemonicParsing="false" prefWidth="40.0" text="Run" />
+                <Label fx:id="currentJobLabel" minWidth="100.0" prefWidth="350.0" text="" />
                 <Pane prefHeight="25.0" prefWidth="358.0" HBox.hgrow="ALWAYS" />
                   <Separator orientation="VERTICAL" />
                   <RadioButton fx:id="radioGeometry" minWidth="80.0" mnemonicParsing="false" />

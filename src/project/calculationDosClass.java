@@ -82,36 +82,40 @@ public class calculationDosClass extends calculationClass{
 		agentList.put(EnumStep.DOS,new InputAgentDos());
 	}
 	
-	public void genInputFromAgent(ArrayList<InputAgentGeo> geoList) {
+	public ArrayList<ContainerInputString> genInputFromAgent(ArrayList<InputAgentGeo> geoList) {
+		ArrayList<ContainerInputString> cis = new ArrayList<ContainerInputString>();
+		
 		inputList.get(EnumStep.SCF).clearErrorMessage();
 		inputList.get(EnumStep.SCF).loadAgent(geoList.get(getGeoInd()));
 		inputList.get(EnumStep.SCF).loadAgent((InputAgentScf)agentList.get(EnumStep.SCF));
-		ContainerInputString inputWrapper= inputList.get(EnumStep.SCF).genInput(EnumStep.SCF);
+		cis.add(inputList.get(EnumStep.SCF).genInput(EnumStep.SCF));
 		
-		Alert alert1 = new Alert(AlertType.INFORMATION);
-    	alert1.setHeaderText("Input 1: SCF ("+"Input of "+nameCalc+")");
-    	alert1.setContentText(inputWrapper.toString());
-    	alert1.showAndWait();
+//		Alert alert1 = new Alert(AlertType.INFORMATION);
+//    	alert1.setHeaderText("Input 1: SCF ("+"Input of "+nameCalc+")");
+//    	alert1.setContentText(inputWrapper.toString());
+//    	alert1.showAndWait();
 		
     	//******not efficient. Maybe should implement clone method in QeInput
     	inputList.get(EnumStep.NSCF).clearErrorMessage();
     	inputList.get(EnumStep.NSCF).loadAgent(geoList.get(getGeoInd()));
 		inputList.get(EnumStep.NSCF).loadAgent((InputAgentScf)agentList.get(EnumStep.SCF));
 		inputList.get(EnumStep.NSCF).loadAgent((InputAgentNscf)agentList.get(EnumStep.NSCF));
-		inputWrapper= inputList.get(EnumStep.NSCF).genInput(EnumStep.NSCF);
+		cis.add(inputList.get(EnumStep.NSCF).genInput(EnumStep.NSCF));
 		
-		alert1 = new Alert(AlertType.INFORMATION);
-    	alert1.setHeaderText("Input 2: NSCF ("+"Input of "+nameCalc+")");
-    	alert1.setContentText(inputWrapper.toString());
-    	alert1.showAndWait();
+//		alert1 = new Alert(AlertType.INFORMATION);
+//    	alert1.setHeaderText("Input 2: NSCF ("+"Input of "+nameCalc+")");
+//    	alert1.setContentText(inputWrapper.toString());
+//    	alert1.showAndWait();
     	
     	inputList.get(EnumStep.DOS).clearErrorMessage();
 		inputList.get(EnumStep.DOS).loadAgent((InputAgentDos) agentList.get(EnumStep.DOS));
-		inputWrapper= inputList.get(EnumStep.DOS).genInput(EnumStep.DOS);
+		cis.add(inputList.get(EnumStep.DOS).genInput(EnumStep.DOS));
 		
-		alert1 = new Alert(AlertType.INFORMATION);
-    	alert1.setHeaderText("Input 3: DOS ("+"Input of "+nameCalc+")");
-    	alert1.setContentText(inputWrapper.toString());
-    	alert1.showAndWait();
+		return cis;
+		
+//		alert1 = new Alert(AlertType.INFORMATION);
+//    	alert1.setHeaderText("Input 3: DOS ("+"Input of "+nameCalc+")");
+//    	alert1.setContentText(inputWrapper.toString());
+//    	alert1.showAndWait();
 	}
 }

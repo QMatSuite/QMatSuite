@@ -22,6 +22,7 @@ package app;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -30,7 +31,10 @@ import java.util.ResourceBundle;
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
 import com.consts.DefaultFileNames.settingKeys;
+import com.displayPreference.Coloring;
 import com.error.ErrorMsg;
+
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
@@ -59,12 +63,13 @@ import javafx.scene.layout.CornerRadii;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
+import job.JobNode;
 import main.MainClass;
 import app.input.*;
 import app.viewer3d.WorkScene3D;
+import input.ContainerInputString;
 
 public class MainWindowController implements Initializable{
 	
@@ -75,6 +80,8 @@ public class MainWindowController implements Initializable{
     @FXML private MenuButton calcMain;
     
     @FXML private MenuItem calcScf,calcOpt,calcDos,calcBands,calcMd,calcTddft,calcCustom,menuAbout,menuSaveProjectAs,menuLoadProject;
+    
+    @FXML private MenuItem stopCurrentJob,stopAllJobs;
     
     @FXML private Button createProject,showInputButton,runJob,buttonOpenWorkSpace,buttonOpenQEEngine,saveProjectButton;
     
@@ -88,7 +95,7 @@ public class MainWindowController implements Initializable{
 	
 	@FXML private HBox hboxRight,hboxLeft;
 	
-	@FXML private Label calcLabel;
+	@FXML private Label calcLabel,currentJobLabel;
 	
 	@FXML private TabPane workSpaceTabPane;
 	
@@ -120,7 +127,7 @@ public class MainWindowController implements Initializable{
 	
 	private final ToggleGroup tgGroup = new ToggleGroup();
 	
-	
+	private Thread thread1;
 	
 	public MainWindowController(MainClass mc) {
 		mainClass = mc;
@@ -134,9 +141,9 @@ public class MainWindowController implements Initializable{
 		projectTabDict = new HashMap<String, Tab>();
 		
 		//set the style of workspace and QEEngine fields
-		textWorkSpace.setBackground(new Background(new BackgroundFill(Color.WHITE, 
+		textWorkSpace.setBackground(new Background(new BackgroundFill(Coloring.defaultFile, 
 				CornerRadii.EMPTY, Insets.EMPTY)));
-		textQEEngine.setBackground(new Background(new BackgroundFill(Color.WHITE, 
+		textQEEngine.setBackground(new Background(new BackgroundFill(Coloring.defaultFile, 
 				CornerRadii.EMPTY, Insets.EMPTY)));
 		textWorkSpace.prefWidthProperty().bind(paneWorkSpace.widthProperty());
 		textWorkSpace.prefHeightProperty().bind(paneWorkSpace.heightProperty());
@@ -232,37 +239,7 @@ public class MainWindowController implements Initializable{
 		
 		initializeLeftRightPane();//initialize tabPaneRight
 		
-		//load environment variable
-		String wsp = mainClass.projectManager.readGlobalSettings(settingKeys.workspace.toString());
-		mainClass.projectManager.workSpacePath = wsp;
-		if (wsp!=null) {
-			File wsDir = new File(wsp);
-			if(wsDir!=null && wsDir.canRead()) {
-				textWorkSpace.setText(wsp);
-				setWorkSpace(true);
-			}
-			else {
-				setWorkSpace(false);
-				textWorkSpace.setBackground(new Background(new BackgroundFill(Color.RED, 
-						CornerRadii.EMPTY, Insets.EMPTY)));
-				Alert alert1 = new Alert(AlertType.INFORMATION);
-		    	alert1.setTitle("Warning");
-		    	alert1.setContentText("Cannot load the previous workspace directory. Please specify a new one.");
-		    	alert1.showAndWait();
-			}
-		}
-		else {
-			setWorkSpace(false);
-			Alert alert1 = new Alert(AlertType.INFORMATION);
-	    	alert1.setTitle("Message");
-	    	alert1.setContentText("Please specify a workspace directory to start with.");
-	    	alert1.showAndWait();
-		}
-		
-		if(wsp!=null) {contTree.updateProjects(new File(wsp));}
-		
-		String wsp2 = mainClass.projectManager.readGlobalSettings(settingKeys.pseudolibroot.toString());
-		mainClass.projectManager.pseudoLibPath = wsp2;
+		loadEnvironmentPaths();
 		
 		createProject.setOnAction((event) -> {
 //			String oldProjectTemp = currentProject;
@@ -372,25 +349,134 @@ public class MainWindowController implements Initializable{
 			openCalc(EnumCalc.TDDFT,true);
 		});
 		showInputButton.setOnAction((event) -> {
-			mainClass.projectManager.genInputFromAgent();
-			String pj = mainClass.projectManager.getActiveProjectName();
-			if (pj==null || pj.isEmpty()) return;
-			//workSceneDict.get(pj).buildGeometry(mainClass.projectManager.getCurrentGeoAgent());
-//			Alert alert = new Alert(AlertType.INFORMATION);
-//	    	alert.setTitle("Information Dialog");
-//	    	if (mainClass.projectManager.getActiveProject()==null) {
-//	    		alert.setContentText("Project not existing!");
-//	    	}
-//	    	else {
-//	    		String tmpStr = "Current project: ";
-//	    		tmpStr+=mainClass.projectManager.getActiveProjectName();
-//	    		tmpStr+="\nCurrent calculation: ";
-//	    		tmpStr+=mainClass.projectManager.getActiveProject().getActiveCalcName();
-//	    		alert.setContentText(tmpStr);
-//	    	}
-//
-//	    	alert.showAndWait();
+			ArrayList<ContainerInputString> cis = mainClass.projectManager.genInputFromAgent();
+			
+			if (cis!=null && cis.size()>0) {
+				Alert alert = new Alert(AlertType.INFORMATION);
+		    	alert.setTitle("Input");
+		    	alert.setContentText(cis.size()+" steps in total. Show here the input for the first step:\n"+cis.get(0).toString());
+		    	alert.showAndWait();
+			}
+			else {
+				Alert alert = new Alert(AlertType.INFORMATION);
+		    	alert.setTitle("Input");
+		    	alert.setContentText("Cannot generate input file. Empty input file.");
+		    	alert.showAndWait();
+			}
 		});
+		
+		//new thread listening to job status
+		thread1 = new Thread() {
+	        public void run() {
+        		try {
+		            while (!interrupted()) {        
+	                    //sleep
+	                    Thread.sleep(500);
+		                
+		                // update currentJobLabel on FX thread
+		                Platform.runLater(new Runnable() {
+		
+		                    public void run() {
+		                    	String st = mainClass.jobManager.getCurrentJobName();
+		                    	if(st==null) {currentJobLabel.setText("Idle...");}
+		                    	else {currentJobLabel.setText("Running: "+st);}
+		                    }
+		                });
+		            }
+        		} catch (InterruptedException ex) {
+                    //ex.printStackTrace();
+                }
+	        }
+        };
+        thread1.start();
+        
+		stopCurrentJob.setOnAction((event) -> {
+			mainClass.jobManager.stopCurrent();
+		});
+		stopAllJobs.setOnAction((event) -> {
+			mainClass.jobManager.stopAll();
+		});
+		runJob.setOnAction((event) -> {
+//			mainClass.jobManager.addNode(new JobNode(null,"notepad.exe"));
+//			mainClass.jobManager.addNode(new JobNode("C:\\Program Files\\PuTTY\\","putty.exe"));
+//			mainClass.jobManager.addNode(new JobNode(null,"notepad.exe"));
+			//save project first
+			File wsDir = mainClass.projectManager.getWorkSpaceDir();
+			if(wsDir==null || !wsDir.canWrite()) {
+				Alert alert = new Alert(AlertType.INFORMATION);
+		    	alert.setTitle("Error");
+		    	alert.setContentText("Cannot find the workspace directory when trying to run job.");
+		    	alert.showAndWait();
+		    	return;
+	    	}
+			//only save current calc, do not show successfully save window
+			mainClass.projectManager.saveActiveProjectInMultipleFiles(wsDir,true,false);
+			//get calculation directory
+			File fl = mainClass.projectManager.getCalculationDir();
+			if(fl==null || !fl.canWrite() || !fl.canRead()) {
+				Alert alert = new Alert(AlertType.INFORMATION);
+		    	alert.setTitle("Error");
+		    	alert.setContentText("Cannot find the calculation directory when trying to run job.");
+		    	alert.showAndWait();
+		    	return;
+			}
+
+			//generate input file
+			ArrayList<ContainerInputString> cis = mainClass.projectManager.genInputFromAgent();
+			if(cis==null || cis.isEmpty()) {
+				Alert alert = new Alert(AlertType.INFORMATION);
+		    	alert.setTitle("Error");
+		    	alert.setContentText("No input file generated. Should not be like this! Abort...");
+		    	alert.showAndWait();
+		    	return;
+			}
+
+			for(int j = 0 ; j < cis.size() ; j++) {
+				if(cis.get(j)==null || (cis.get(j).log!=null && !cis.get(j).log.isEmpty()) || cis.get(j).input==null) {
+					Alert alert = new Alert(AlertType.INFORMATION);
+			    	alert.setTitle("Warning");
+			    	String stt = "Warning! Input file not complete for "+j+"th step. Please fix the following errors:\n";
+			    	stt+=(cis.get(j).input==null? "Null input string.\n":"");
+			    	alert.setContentText(cis.get(j)==null ? stt:(stt + cis.get(j)));
+			    	alert.showAndWait();
+			    	return;
+				}
+				if(cis.get(j).stepName==null) {
+					Alert alert = new Alert(AlertType.INFORMATION);
+			    	alert.setTitle("Warning");
+			    	alert.setContentText("Warning! EnumStep not set for "+j+"th step. Please check the code.");
+			    	alert.showAndWait();
+			    	return;
+				}
+				File calcFile = new File(fl,cis.get(j).stepName.toString()+".in");
+				try {
+		            Files.write(calcFile.toPath(), cis.get(j).input.getBytes());
+		        } catch (IOException e) {
+		        	Alert alert = new Alert(AlertType.INFORMATION);
+			    	alert.setTitle("Error");
+			    	alert.setContentText("Warning! Cannot write input file for "+j+"th step. Abort.");
+			    	alert.showAndWait();
+			    	return;
+		        }
+			}
+			
+			
+			//just for test use
+	    	mainClass.jobManager.addNode(new JobNode(null,"notepad.exe"));
+			mainClass.jobManager.addNode(
+					//new JobNode(mainClass.projectManager.qePath,fl.getPath(),"pw.exe"));
+					new JobNode(fl.getPath(),mainClass.projectManager.qePath+File.separator+"pw.exe"));
+			mainClass.jobManager.addNode(new JobNode(null,"notepad.exe"));
+			mainClass.jobManager.addNode(new JobNode(null,"notepad.exe"));
+			
+		});
+//		runJob.setOnAction((event) -> {
+//			Alert alert = new Alert(AlertType.INFORMATION);
+//	    	alert.setTitle("Info");
+//	    	alert.setContentText("To be implemented!");
+//	    	alert.showAndWait();
+//	    	return;
+//		});
 		saveProjectButton.setOnAction((event) -> {
 			File wsDir = mainClass.projectManager.getWorkSpaceDir();
 			if(wsDir==null || !wsDir.canWrite()) {return;}
@@ -468,12 +554,13 @@ public class MainWindowController implements Initializable{
 				mainClass.projectManager.writeGlobalSettings(settingKeys.workspace.toString(),selectedDir.getPath());
 				setWorkSpace(true);
 				contTree.updateProjects(new File(mainClass.projectManager.workSpacePath));
-//				textWorkSpace.setBackground(new Background(new BackgroundFill(Color.WHITE, 
-//						CornerRadii.EMPTY, Insets.EMPTY)));
+				textWorkSpace.setBackground(new Background(new BackgroundFill(Coloring.validFile, 
+						CornerRadii.EMPTY, Insets.EMPTY)));
 			}
 			
 		});
 		buttonOpenQEEngine.setOnAction((event) -> {
+
 			DirectoryChooser dirChooser = new DirectoryChooser ();
 			
 			//go to current directory
@@ -486,11 +573,75 @@ public class MainWindowController implements Initializable{
 			File selectedDir = dirChooser.showDialog((Stage)rootPane.getScene().getWindow());
 			
 			if(selectedDir!=null && selectedDir.canRead()) {
+				mainClass.projectManager.qePath = selectedDir.getPath();
 				textQEEngine.setText(selectedDir.getPath());
+				mainClass.projectManager.writeGlobalSettings(settingKeys.qePath.toString(),selectedDir.getPath());
+				textQEEngine.setBackground(new Background(new BackgroundFill(Coloring.validFile, 
+						CornerRadii.EMPTY, Insets.EMPTY)));
 			}
 			
 		});
 	}
+	public void killAllThreads() {
+		thread1.interrupt();
+	}
+	private void loadEnvironmentPaths() {
+		//load environment variable
+		String wsp = mainClass.projectManager.readGlobalSettings(settingKeys.workspace.toString());
+		mainClass.projectManager.workSpacePath = wsp;
+		if (wsp!=null) {
+			File wsDir = new File(wsp);
+			if(wsDir!=null && wsDir.canRead()) {
+				textWorkSpace.setText(wsp);
+				textWorkSpace.setBackground(new Background(new BackgroundFill(Coloring.validFile, 
+						CornerRadii.EMPTY, Insets.EMPTY)));
+				setWorkSpace(true);
+			}
+			else {
+				setWorkSpace(false);
+				textWorkSpace.setBackground(new Background(new BackgroundFill(Coloring.invalidFile, 
+						CornerRadii.EMPTY, Insets.EMPTY)));
+				Alert alert1 = new Alert(AlertType.INFORMATION);
+		    	alert1.setTitle("Warning");
+		    	alert1.setContentText("Cannot load the previous workspace directory. Please specify a new one.");
+		    	alert1.showAndWait();
+			}
+		}
+		else {
+			setWorkSpace(false);
+			textWorkSpace.setBackground(new Background(new BackgroundFill(Coloring.invalidFile, 
+					CornerRadii.EMPTY, Insets.EMPTY)));
+			Alert alert1 = new Alert(AlertType.INFORMATION);
+	    	alert1.setTitle("Message");
+	    	alert1.setContentText("Please specify a workspace directory to start with.");
+	    	alert1.showAndWait();
+		}
+		
+		String qePath = mainClass.projectManager.readGlobalSettings(settingKeys.qePath.toString());
+		mainClass.projectManager.qePath = qePath;
+		if(qePath!=null) {
+			textQEEngine.setText(qePath);
+			File qeDir = new File(qePath);
+			if(qeDir!=null && qeDir.canRead()) {
+				textQEEngine.setBackground(new Background(new BackgroundFill(Coloring.validFile, 
+						CornerRadii.EMPTY, Insets.EMPTY)));
+			}
+			else {
+				textQEEngine.setBackground(new Background(new BackgroundFill(Coloring.invalidFile, 
+						CornerRadii.EMPTY, Insets.EMPTY)));
+			}
+		}
+		else {
+			textQEEngine.setBackground(new Background(new BackgroundFill(Coloring.invalidFile, 
+					CornerRadii.EMPTY, Insets.EMPTY)));
+		}
+		
+		if(wsp!=null) {contTree.updateProjects(new File(wsp));}
+		
+		String wsp2 = mainClass.projectManager.readGlobalSettings(settingKeys.pseudolibroot.toString());
+		mainClass.projectManager.pseudoLibPath = wsp2;
+	}
+
 	private void closeProject(String pj) {
 		String tmp = mainClass.projectManager.removeProject(pj);
 		if(tmp!=null) return;//cannot remove project: pj==null || pj is empty or pj not in the list
@@ -659,14 +810,6 @@ public class MainWindowController implements Initializable{
 		//allow more interactions
 		calcMain.setDisable(false);
 		runJob.setDisable(false);
-		//enable add molecule button
-		runJob.setOnAction((event) -> {
-			Alert alert = new Alert(AlertType.INFORMATION);
-	    	alert.setTitle("Info");
-	    	alert.setContentText("To be implemented!");
-	    	alert.showAndWait();
-	    	return;
-		});
 		toggleGeometry();
 	}
 	private void openCalc(String ecStr) {
