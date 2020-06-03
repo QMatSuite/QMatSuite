@@ -113,6 +113,8 @@ public class Constants {
 		degree,radian
 	}
 	public enum EnumUnitAtomPos implements enumInProgram{
+		//must be exactly the same as used in the input file
+		//Card: ATOMIC_POSITIONS { alat | bohr | angstrom | crystal | crystal_sg }
 		alat,bohr,angstrom,crystal
 	}
 	public enum EnumUnitEnergy implements enumInProgram{

@@ -29,10 +29,6 @@ import agent.WrapperInteger;
 import agent.WrapperString;
 
 public class DosInput extends QeInput{
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = -4833790656816018508L;
 	
 	public DosInput() {
 		super();

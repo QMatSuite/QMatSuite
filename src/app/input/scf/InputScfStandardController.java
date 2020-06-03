@@ -31,7 +31,10 @@ import com.consts.Constants.EnumUnitEnergy;
 import com.consts.QeDocumentation;
 
 import agent.InputAgentScf;
+import agent.WrapperBoolean;
+import agent.WrapperClass;
 import agent.WrapperDouble;
+import agent.WrapperEnum;
 import agent.WrapperInteger;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -283,8 +286,9 @@ public class InputScfStandardController implements Initializable{
 						iScf.ecutRho.setValue(iScf.ecutWfc.getValue()*4.0);
 						ecutrhoField.setText(String.valueOf(iScf.ecutWfc.getValue()*4.0));
 					}
+					iScf.ecutRho.setEnabled(false);
 				}
-				else {ecutrhoField.setDisable(false);if(checkResetAll.isSelected()) {allDefault=false;checkResetAll.setSelected(false);}}
+				else {iScf.ecutRho.setEnabled(true);ecutrhoField.setDisable(false);if(checkResetAll.isSelected()) {allDefault=false;checkResetAll.setSelected(false);}}
 			});
 			checkMaxStep.selectedProperty().addListener((observable, oldValue, newValue) ->
     		{ 
@@ -460,6 +464,22 @@ public class InputScfStandardController implements Initializable{
     			setField(kzField, iScf.nkz);
     			smearCombo.setValue((EnumSmearing) iScf.enumSmearing.getValue());
     			setField(gaussField, iScf.degauss);
+    			
+    			//load default checkBoxes
+    			checkRestart.setSelected(!iScf.boolRestart.isEnabled());
+    			checkForce.setSelected(!iScf.boolForce.isEnabled());
+    			checkStress.setSelected(!iScf.boolStress.isEnabled());
+    			checkEcutwfc.setSelected(!iScf.ecutWfc.isEnabled());
+    			checkEcutrho.setSelected(!iScf.ecutRho.isEnabled());
+    			checkMaxStep.setSelected(!iScf.nElecMaxStep.isEnabled());
+    			checkConv.setSelected(!iScf.elecConv.isEnabled());
+    			checkMixMode.setSelected(!iScf.enumMixing.isEnabled());
+    			checkMixBeta.setSelected(!iScf.mixBeta.isEnabled());
+    			checkK.setSelected(!iScf.nkx.isEnabled());
+    			checkOccup.setSelected(!iScf.enumOccupation.isEnabled());
+    			checkSmear.setSelected(!iScf.enumSmearing.isEnabled());
+    			checkGauss.setSelected(!iScf.degauss.isEnabled());
+    			
     		}
     	}
     }

@@ -31,6 +31,7 @@ public abstract class PseudoPotential {
 	protected ArrayList<EnumPP> ppList;//pseudopotential type list
 	protected ArrayList<String> precisionList;//precision settings
 	boolean fullRelativSupport;
+	protected String libFolderName;
 	
 	public PseudoPotential(EnumPseudoPotLib ln, boolean fr) {
 		libName = ln;
@@ -38,6 +39,7 @@ public abstract class PseudoPotential {
 		ppList = new ArrayList<EnumPP>();
 		precisionList = new ArrayList<String>();
 		fullRelativSupport = fr;
+		libFolderName="";
 	}
 	public ArrayList<EnumFunctional> getFunctionalList(){
 		return functionalList;
@@ -53,13 +55,21 @@ public abstract class PseudoPotential {
 	}
 	
 	//methods that should be implemented
+	public String getFolder(String element) {
+		String st1 =  getString(element, "getFolderName");
+		
+		if(st1!=null) {
+			return libFolderName+File.separator+st1;
+		}
+		else {return null;}
+	}
 	public String getFile(String element) { //element name in the format of e.g. "He" 
 		
 		String st1 =  getString(element, "getFolderName");
 		String st2 =  getString(element, "getFileName");
 		
 		if(st1!=null && st2!=null) {
-			return st1+File.separator+st2;
+			return libFolderName+File.separator+st1+File.separator+st2;
 		}
 		else {return null;}
 	}

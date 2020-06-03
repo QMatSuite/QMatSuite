@@ -18,7 +18,9 @@
  *******************************************************************************/
 package project;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
@@ -27,6 +29,7 @@ import agent.InputAgentGeo;
 import agent.InputAgentScf;
 import input.ContainerInputString;
 import input.PwInput;
+import input.QeInput;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 
@@ -35,6 +38,15 @@ public class calculationScfClass extends calculationClass{
 	 * 
 	 */
 	private static final long serialVersionUID = 2187936113824732788L;
+	
+	private void readObject(java.io.ObjectInputStream in)throws IOException, ClassNotFoundException 
+	{
+		//for loading after serialization
+	    in.defaultReadObject();
+	    inputList = new HashMap<EnumStep, QeInput>();
+	    inputList.put(EnumStep.SCF, new PwInput());
+	}
+	
 	public calculationScfClass(String cn) {
 		super();
 		this.calcName = cn;
@@ -51,6 +63,7 @@ public class calculationScfClass extends calculationClass{
 		agentList.put(EnumStep.SCF,new InputAgentScf());
 	}
 	public void genInputFromAgent(ArrayList<InputAgentGeo> geoList) {
+		inputList.get(EnumStep.SCF).clearErrorMessage();
 		inputList.get(EnumStep.SCF).loadAgent(geoList.get(getGeoInd()));
 		inputList.get(EnumStep.SCF).loadAgent((InputAgentScf)agentList.get(EnumStep.SCF));
 		ContainerInputString inputWrapper= inputList.get(EnumStep.SCF).genInput(EnumStep.SCF);

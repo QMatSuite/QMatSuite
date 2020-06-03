@@ -18,7 +18,9 @@
  *******************************************************************************/
 package project;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
@@ -30,6 +32,7 @@ import agent.InputAgentScf;
 import input.ContainerInputString;
 import input.DosInput;
 import input.PwInput;
+import input.QeInput;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 
@@ -38,6 +41,15 @@ public class calculationDosClass extends calculationClass{
 	 * 
 	 */
 	private static final long serialVersionUID = -7797188687240412631L;
+	private void readObject(java.io.ObjectInputStream in)throws IOException, ClassNotFoundException 
+	{
+		//for loading after serialization, necessary!
+	    in.defaultReadObject();
+	    inputList = new HashMap<EnumStep, QeInput>();
+	    inputList.put(EnumStep.SCF, new PwInput());
+	    inputList.put(EnumStep.NSCF,new PwInput());
+	    inputList.put(EnumStep.DOS,new DosInput());
+	}
 	public calculationDosClass(String cn) {
 		super();
 		this.calcName = cn;
@@ -69,7 +81,9 @@ public class calculationDosClass extends calculationClass{
 		inputList.put(EnumStep.DOS,new DosInput());
 		agentList.put(EnumStep.DOS,new InputAgentDos());
 	}
+	
 	public void genInputFromAgent(ArrayList<InputAgentGeo> geoList) {
+		inputList.get(EnumStep.SCF).clearErrorMessage();
 		inputList.get(EnumStep.SCF).loadAgent(geoList.get(getGeoInd()));
 		inputList.get(EnumStep.SCF).loadAgent((InputAgentScf)agentList.get(EnumStep.SCF));
 		ContainerInputString inputWrapper= inputList.get(EnumStep.SCF).genInput(EnumStep.SCF);
@@ -80,6 +94,7 @@ public class calculationDosClass extends calculationClass{
     	alert1.showAndWait();
 		
     	//******not efficient. Maybe should implement clone method in QeInput
+    	inputList.get(EnumStep.NSCF).clearErrorMessage();
     	inputList.get(EnumStep.NSCF).loadAgent(geoList.get(getGeoInd()));
 		inputList.get(EnumStep.NSCF).loadAgent((InputAgentScf)agentList.get(EnumStep.SCF));
 		inputList.get(EnumStep.NSCF).loadAgent((InputAgentNscf)agentList.get(EnumStep.NSCF));
@@ -90,6 +105,7 @@ public class calculationDosClass extends calculationClass{
     	alert1.setContentText(inputWrapper.toString());
     	alert1.showAndWait();
     	
+    	inputList.get(EnumStep.DOS).clearErrorMessage();
 		inputList.get(EnumStep.DOS).loadAgent((InputAgentDos) agentList.get(EnumStep.DOS));
 		inputWrapper= inputList.get(EnumStep.DOS).genInput(EnumStep.DOS);
 		

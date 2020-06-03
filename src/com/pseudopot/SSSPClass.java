@@ -36,6 +36,7 @@ public class SSSPClass extends PseudoPotential{
 		super(EnumPseudoPotLib.SSSP, false);
 		precisionList.add("Efficiency");precisionList.add("Precision");
 		functionalList.add(EnumFunctional.PBE);
+		libFolderName="SSSP_v1.1";
 	}
 	@Override
 	public Double getEcutWfc(String element) {

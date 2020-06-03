@@ -18,6 +18,7 @@
  *******************************************************************************/
 package project;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -38,11 +39,12 @@ public abstract class calculationClass implements Serializable{
 	protected String calcName;
 	protected EnumCalc nameCalc;
 	protected HashMap<EnumStep, String> commandList;
-	protected HashMap<EnumStep, QeInput> inputList;
+	transient protected HashMap<EnumStep, QeInput> inputList;
 	protected HashMap<EnumStep, InputAgent> agentList;//direct record of the GUI
 	private Integer geometryIndex;
 	
 	protected ArrayList<EnumStep> orderList;
+
 	public calculationClass() {
 		commandList = new HashMap<EnumStep, String>();
 		inputList = new HashMap<EnumStep, QeInput>();

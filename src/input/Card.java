@@ -53,9 +53,12 @@ public class Card extends InputSection{
 	public ContainerInputString toStringWrapper() {
 		ContainerInputString ci = new ContainerInputString();
 		if (!isEmpty() || boolRequired) {
-			ci.appendInput("&"+cardEnum.name()+" "+ options +" \n");
 			String strTmp;
 			Set<String> keys = parameterDict.keySet();
+			//only add "&" in front when not containing "body", i.e. "...=..." syntax
+			if (!keys.contains("body")) {ci.appendInput("&");}
+			
+			ci.appendInput(cardEnum.name()+" "+ options +" \n");
 	        for(String key: keys){
 	        	if (parameterDict.get(key).isExplicitWrite() || parameterDict.get(key).isRequired()) {
 	        		strTmp = parameterDict.get(key).toString();

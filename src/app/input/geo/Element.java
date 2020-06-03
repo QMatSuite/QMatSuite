@@ -34,12 +34,13 @@ public class Element implements Serializable{
 	private ChemicalElements atomSpecies;
 	private Double atomMass;
 	private String pseudoPotFile;
+	private boolean pseudoValid;
 	private Double hubbardU;
 	private Double mag;private Double angle1;private Double angle2;
 	
 	public Element(ChemicalElements species) {
 		atomSpecies = species;
-		pseudoPotFile = null;
+		pseudoPotFile = null;pseudoValid=false;
 		hubbardU = 0.0;mag=0.0;angle1=0.0;angle2=0.0;
 		atomMass=species.getAtomicMass();
 //		try {
@@ -55,7 +56,7 @@ public class Element implements Serializable{
 	}
 	public Element(ChemicalElements species, Double hubb) {
 		atomSpecies = species;
-		pseudoPotFile = null;
+		pseudoPotFile = null;pseudoValid=false;
 		hubbardU = hubb;mag=0.0;angle1=0.0;angle2=0.0;
 		atomMass=species.getAtomicMass();
 //		try {
@@ -70,7 +71,7 @@ public class Element implements Serializable{
 //		}
 	}
 	public Element(String species, Double hubb) {
-		pseudoPotFile = null;
+		pseudoPotFile = null;pseudoValid=false;
 		hubbardU = hubb;mag=0.0;angle1=0.0;angle2=0.0;
 		try {
 			atomSpecies = ChemicalElements.valueOf(species);
@@ -125,5 +126,11 @@ public class Element implements Serializable{
 	}
 	public void setAngle2(Double angle2) {
 		if (angle2!=null) this.angle2 = angle2;
+	}
+	public boolean isPseudoValid() {
+		return pseudoValid;
+	}
+	public void setPseudoValid(boolean pseudoValid) {
+		this.pseudoValid = pseudoValid;
 	}
 }

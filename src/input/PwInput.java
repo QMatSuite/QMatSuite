@@ -18,6 +18,7 @@
  *******************************************************************************/
 package input;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Set;
 
@@ -41,15 +42,10 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 
 public class PwInput extends QeInput{
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = 170593734738549L;
 	
 	private ArrayList<Element> elementList = new ArrayList<Element>();
 	private ArrayList<Atom> atomList = new ArrayList<Atom>();
 	private boolean flagLoadGeo=false;
-	
 	
 	public PwInput() {
 		super();
@@ -74,6 +70,7 @@ public class PwInput extends QeInput{
 		sectionDict.get("CONTROL").addParameter("max_seconds", new InputValueDouble("max_seconds",1.0E7,false));
 		sectionDict.get("CONTROL").addParameter("tprnfor", new InputValueBoolean("tprnfor",false,false));
 		sectionDict.get("CONTROL").addParameter("tstress", new InputValueBoolean("tstress",false,false));
+		sectionDict.get("CONTROL").addParameter("pseudo_dir", new InputValueString("pseudo_dir",false));
 		sectionDict.get("SYSTEM").setBoolRequired(true);
 		sectionDict.get("SYSTEM").addParameter("ibrav", new InputValueInt("ibrav"));
 		sectionDict.get("SYSTEM").addParameter("A", new InputValueDouble("A"));
@@ -220,15 +217,48 @@ public class PwInput extends QeInput{
 					}
 				}
 			}
+			else {
+				setRequiredAndWrite("SYSTEM","A",true,true);
+				setSectionRequired("CELL_PARAMETERS",false);
+				setRequiredAndWrite("CELL_PARAMETERS","body",false,false);
+			}
 			
+			setValue("SYSTEM","nat",new WrapperInteger(ia1.atomList.size()));
+			
+			if(ia1.pseudodir!=null) {setValue("CONTROL","pseudo_dir",new WrapperString(ia1.pseudodir));}
+					
+			setRequiredAndWrite("ATOMIC_SPECIES","body",true,true);
 			elementList.clear();
+			String atomSpecTmp = "";
 			for (int i=0;i<ia1.elemListAll.size();i++) {
-				elementList.add(ia1.elemListAll.get(i));
+				Element elTmp = ia1.elemListAll.get(i);
+				elementList.add(elTmp);
+				if(elTmp.isPseudoValid() && elTmp.getPseudoPotFile()!=null) {
+					File fl = new File(elTmp.getPseudoPotFile());
+					atomSpecTmp+=(elTmp.getAtomSpecies()+"  "+elTmp.getAtomMass().toString()+"  "+fl.getName()+"\n");}
+				else {errorMessage+=("Pseudo potential file invalid for "+i+"th atom: "+elTmp.getAtomSpecies()+"\n");}
 			}
+			setValue("ATOMIC_SPECIES","body",new WrapperString(atomSpecTmp));
+			
+			setRequiredAndWrite("ATOMIC_POSITIONS","body",true,true);
+			setSectionOption("ATOMIC_POSITIONS","("+ia1.unitAtomPos+")");//ia1.unitAtomPos will not be null
 			atomList.clear();
+			String atomPosTmp = "";
 			for (int i=0;i<ia1.atomList.size();i++) {
-				atomList.add(ia1.atomList.get(i));
+				Atom atTmp = ia1.atomList.get(i);
+				atomList.add(atTmp);
+				atomPosTmp+=(atTmp.getAtomSpecies().toString()
+						+"  "+atTmp.getX_coor().getX().toString()
+						+"  "+atTmp.getY_coor().getX().toString()
+						+"  "+atTmp.getZ_coor().getX().toString()
+						+"  "+(atTmp.getX_coor().getBoolFix()?"0":"1")
+						+"  "+(atTmp.getY_coor().getBoolFix()?"0":"1")
+						+"  "+(atTmp.getZ_coor().getBoolFix()?"0":"1")
+						+"\n");
 			}
+			setValue("ATOMIC_POSITIONS","body",new WrapperString(atomPosTmp));
+				
+
 		} catch (InvalidKeyException | InvalidTypeException e) {
 			Alert alert1 = new Alert(AlertType.INFORMATION);
 	    	alert1.setTitle("Error");

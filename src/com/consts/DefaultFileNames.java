@@ -25,6 +25,7 @@ public interface DefaultFileNames {
 	public String projSaveFile = "save.proj";
 	
 	public enum settingKeys {
-		workspace
+		workspace,
+		pseudolibroot
 	}
 }
