@@ -68,16 +68,19 @@ public class calculationOptClass extends calculationClass{
 	    inputList.put(EnumStep.SCF, new PwInput());
 	    inputList.put(EnumStep.OPT,new PwInput());
 	}
-	public void genInputFromAgent(ArrayList<InputAgentGeo> geoList) {
+	public ArrayList<ContainerInputString> genInputFromAgent(ArrayList<InputAgentGeo> geoList) {
+		ArrayList<ContainerInputString> cis = new ArrayList<ContainerInputString>();
+		
 		inputList.get(EnumStep.OPT).clearErrorMessage();
 		inputList.get(EnumStep.OPT).loadAgent(geoList.get(getGeoInd()));
 		inputList.get(EnumStep.OPT).loadAgent((InputAgentScf)agentList.get(EnumStep.SCF));
 		inputList.get(EnumStep.OPT).loadAgent((InputAgentOpt)agentList.get(EnumStep.OPT));
-		ContainerInputString inputWrapper= inputList.get(EnumStep.OPT).genInput(EnumStep.OPT);
+		cis.add(inputList.get(EnumStep.OPT).genInput(EnumStep.OPT));
 		
-		Alert alert1 = new Alert(AlertType.INFORMATION);
-    	alert1.setHeaderText("Input of "+nameCalc);
-    	alert1.setContentText(inputWrapper.toString());
-    	alert1.showAndWait();
+		return cis;
+//		Alert alert1 = new Alert(AlertType.INFORMATION);
+//    	alert1.setHeaderText("Input of "+nameCalc);
+//    	alert1.setContentText(inputWrapper.toString());
+//    	alert1.showAndWait();
 	}
 }

@@ -37,6 +37,7 @@ import com.error.ErrorMsg;
 
 import agent.InputAgent;
 import agent.InputAgentGeo;
+import input.ContainerInputString;
 import input.QeInput;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
@@ -44,6 +45,7 @@ import javafx.scene.control.Alert.AlertType;
 public class ProjectManager {
 	public String workSpacePath;
 	public String pseudoLibPath;
+	public String qePath;
 	private LinkedHashMap<String, Project> projectDict;
 	private String activeProjKey;
 	
@@ -52,6 +54,7 @@ public class ProjectManager {
 		activeProjKey = null;
 		workSpacePath = null;
 		pseudoLibPath = null;
+		qePath = null;
 	}
 	public File getWorkSpaceDir() {
 		File wsDir = new File(workSpacePath);
@@ -78,6 +81,14 @@ public class ProjectManager {
     	alert1.setContentText("Cannot load workspace/project folder. Please fix it.");
     	alert1.showAndWait();
     	return null;
+	}
+	public File getCalculationDir() {
+		File fl = getProjectDir();
+		if(fl!=null && fl.canWrite()) {
+			String st = getCurrentCalcName();
+			if(st!=null && !st.isEmpty()) {return new File(fl,st);}
+		}
+		return null;
 	}
 	public void creatGlobalSettings() {
 		File stFile = new File(DefaultFileNames.defaultSettingFile);
@@ -169,6 +180,10 @@ public class ProjectManager {
 		}
 	}
 	public void saveActiveProjectInMultipleFiles(File workSpaceDir) {
+		//save all calculations, show success window
+		saveActiveProjectInMultipleFiles(workSpaceDir, false,true);
+	}
+	public void saveActiveProjectInMultipleFiles(File workSpaceDir, boolean saveCurrentCalc, boolean showSuccess) {
 		if(workSpaceDir==null || !workSpaceDir.canWrite()) {
 			Alert alert1 = new Alert(AlertType.INFORMATION);
 	    	alert1.setTitle("Error");
@@ -226,8 +241,19 @@ public class ProjectManager {
         } 
 		
 		//save calculation in the calculation sub-folders (just to check integrity and in case the user renamed the calculation folders)
-		
-		ArrayList<String> calcList = pj.getCalcList();
+		ArrayList<String> calcList;
+		if(saveCurrentCalc) {
+			if(pj.existCurrentCalc()) {
+				calcList=new ArrayList<String>();
+				calcList.add(pj.getActiveCalcName());//only save current calculation
+			}
+			else {Alert alert1 = new Alert(AlertType.INFORMATION);
+	    	alert1.setTitle("Error");
+	    	alert1.setContentText("No active calculation! Cannot save... ");
+	    	alert1.showAndWait();
+	    	return;}
+		}
+		else {calcList= pj.getCalcList();}//save all calculations in the project
 		
 		if(calcList==null) {
 			Alert alert1 = new Alert(AlertType.INFORMATION);
@@ -281,10 +307,13 @@ public class ProjectManager {
 	        }
 		}
 		
-		Alert alert1 = new Alert(AlertType.INFORMATION);
-    	alert1.setTitle("Success");
-    	alert1.setContentText("Successfully saved: "+msg);
-    	alert1.showAndWait();
+		if(showSuccess) {
+			Alert alert1 = new Alert(AlertType.INFORMATION);
+	    	alert1.setTitle("Success");
+	    	if (saveCurrentCalc) {alert1.setContentText("Successfully saved current calculation: "+msg);}
+	    	else {alert1.setContentText("Successfully saved current project: "+msg);}
+	    	alert1.showAndWait();
+		}
     	
 	}
 	
@@ -659,15 +688,16 @@ public class ProjectManager {
 		
 		return qi;
 	}
-	public void genInputFromAgent() {
+	public ArrayList<ContainerInputString> genInputFromAgent() {
 		Project pj =  getActiveProject();
 		if(pj==null) {
 			Alert alert1 = new Alert(AlertType.INFORMATION);
 	    	alert1.setHeaderText("No project!");
 	    	alert1.setContentText("No project!");
 	    	alert1.showAndWait();
+	    	return null;
 		}
-		else pj.genInputFromAgent();
+		else return pj.genInputFromAgent();
 	}
 	
 }

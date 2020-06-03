@@ -29,6 +29,7 @@ import com.consts.Constants.EnumStep;
 import agent.InputAgent;
 import agent.InputAgentGeo;
 import app.viewer3d.WorkScene3D;
+import input.ContainerInputString;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 
@@ -217,15 +218,16 @@ public class Project implements Serializable{
 	public void setName(String st) {
 		nameProject = new String(st);
 	}
-	public void genInputFromAgent() {
+	public ArrayList<ContainerInputString> genInputFromAgent() {
 		calculationClass tmp = getActiveCalc();
 		if (tmp==null || boolGeoActive) {
 			Alert alert1 = new Alert(AlertType.INFORMATION);
 	    	alert1.setHeaderText("No valid calculation!");
 	    	alert1.setContentText("No calculaion or in the geometry page.");
 	    	alert1.showAndWait();
+	    	return null;
 		}
-		else tmp.genInputFromAgent(geoList);
+		else return tmp.genInputFromAgent(geoList);
 	}
 	public String getcalcScfDefault() {
 		return calcScfDefault;

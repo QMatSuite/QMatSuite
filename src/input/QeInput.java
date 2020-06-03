@@ -66,6 +66,7 @@ public abstract class QeInput{
 	}  
 	public ContainerInputString genInput(EnumStep es) {
 		ContainerInputString ci = genInput("!"+es.toString()+"\n");
+		ci.stepName = es;//necessary!
 		ci.appendLog(errorMessage);
 		return ci;
 	} 

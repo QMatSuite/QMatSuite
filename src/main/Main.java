@@ -20,6 +20,7 @@ package main;
 
 import app.MainWindowController;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.stage.Stage;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -27,11 +28,15 @@ import javafx.fxml.FXMLLoader;
 
 
 public class Main extends Application {
+	private MainWindowController contMain;
+	private MainClass mainClass;
+	
 	@Override
 	public void start(Stage primaryStage) {
+		System.out.println("QuantumVITAS is launching.");
 		try {
-			MainClass mainClass = new MainClass();
-			MainWindowController contMain = new MainWindowController(mainClass);
+			mainClass = new MainClass();
+			contMain = new MainWindowController(mainClass);
 			FXMLLoader fxmlLoader = new FXMLLoader(this.getClass().getResource("/app/mainWindow.fxml"));
 			fxmlLoader.setController(contMain);
             Parent root = fxmlLoader.load();
@@ -40,16 +45,22 @@ public class Main extends Application {
 			scene.getStylesheets().add(getClass().getResource("/app/application.css").toExternalForm());
 			
 			primaryStage.setScene(scene);
+			primaryStage.setOnCloseRequest(e->{
+				System.out.println("QuantumVITAS is closing.");
+				//close custom threads
+			    if(mainClass!=null) {mainClass.jobManager.stop();}
+			    if(contMain!=null) {contMain.killAllThreads();}
+			    //standard closing
+				Platform.exit();
+				System.exit(0);
+			});
+
 			primaryStage.show();
 		} catch(Exception e) {
 			e.printStackTrace();
 		}
 	}
-	
 	public static void main(String[] args) {
-		//PwInput pwInput = new PwInput();
-		//pwInput.print();
-		
 		
 		launch(args);
 	}

@@ -28,6 +28,7 @@ import com.consts.Constants.EnumStep;
 
 import agent.InputAgent;
 import agent.InputAgentGeo;
+import input.ContainerInputString;
 import input.QeInput;
 
 public abstract class calculationClass implements Serializable{
@@ -83,5 +84,5 @@ public abstract class calculationClass implements Serializable{
 	public EnumCalc getCalcType() {
 		return nameCalc;
 	}
-	public abstract void genInputFromAgent(ArrayList<InputAgentGeo> geoList);
+	public abstract ArrayList<ContainerInputString> genInputFromAgent(ArrayList<InputAgentGeo> geoList);
 }

@@ -24,8 +24,10 @@ public interface DefaultFileNames {
 	public String calcSaveFile = "save.calc";
 	public String projSaveFile = "save.proj";
 	
+	
 	public enum settingKeys {
 		workspace,
-		pseudolibroot
+		pseudolibroot,
+		qePath
 	}
 }
