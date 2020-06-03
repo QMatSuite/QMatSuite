@@ -246,8 +246,8 @@ public class InputGeoElementsController implements Initializable{
     }
     private void updatePseudoElementList() {
     	InputAgentGeo iGeo = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
-    	ArrayList<Element> elemListAll = iGeo.elemListAll;
-    	if(elemListAll==null || elemListAll.isEmpty() || elemData==null || elemData.isEmpty()) return;
+
+    	if(iGeo.elemListAll==null || iGeo.elemListAll.isEmpty() || elemData==null || elemData.isEmpty()) return;
     	
     	EnumPseudoPotLib eppl = comboLib.getSelectionModel().getSelectedItem();
     	
@@ -267,61 +267,38 @@ public class InputGeoElementsController implements Initializable{
     	}
     	
     	String libFolderPath=null;
-    	if(elemListAll.size()!=elemData.size()) {
+    	if(iGeo.elemListAll.size()!=elemData.size()) {
     		Alert alert = new Alert(AlertType.INFORMATION);
 	    	alert.setTitle("Warning");
-	    	alert.setContentText("The size of elemData and elemListAll is not equal! Should not happen, but don't worry though...");
+	    	alert.setContentText("The size of elemData and elemListAll is not equal! Should not happen usually, but don't worry though...");
 	    	alert.showAndWait();
-	    	
-	    	for (Element ele : elemListAll) {
-	    		String pseudoPotFile;
-	    		switch(eppl) {
-		    		case SSSP:
-		    			pseudoPotFile=ssspClass.getFile(ele.getAtomSpecies().toString());
-		    			if(libFolderPath==null) libFolderPath=ssspClass.getFolder(ele.getAtomSpecies().toString());
-		    			break;
-		    		case PSEUDODOJO:
-		    			pseudoPotFile=pdClass.getFile(ele.getAtomSpecies().toString());
-		    			if(libFolderPath==null) libFolderPath=pdClass.getFolder(ele.getAtomSpecies().toString());
-		    			break;
-		    		default: return;
-	    		}
-	    		ele.setPseudoPotFile(pseudoPotFile);
-	    		ele.setPseudoValid(existPseudoFile(pseudoPotFile));
-	    	}
-	    	
-	    	if(mainClass.projectManager.pseudoLibPath!=null && libFolderPath!=null) {
-	    		iGeo.pseudodir = mainClass.projectManager.pseudoLibPath+File.separator+libFolderPath;
-	    	}
 	    	
 	    	elemData.clear();
 	    	elemData.addAll(iGeo.elemListAll);
     	}
-    	else {
-    		for (int i=0;i<elemData.size();i++) {
-    			Element ele1 = iGeo.elemListAll.get(i);
-    			Element ele2 = elemData.get(i);
-    			if(ele1==null || ele2==null) continue;
-    			String pseudoPotFile;
-	    		switch(eppl) {
-		    		case SSSP:pseudoPotFile=ssspClass.getFile(ele1.getAtomSpecies().toString());
-		    		if(libFolderPath==null) libFolderPath=ssspClass.getFolder(ele1.getAtomSpecies().toString());break;
-		    		case PSEUDODOJO:pseudoPotFile=pdClass.getFile(ele1.getAtomSpecies().toString());
-		    		if(libFolderPath==null) libFolderPath=pdClass.getFolder(ele1.getAtomSpecies().toString());break;
-		    		default: return;
-	    		}
-	    		ele1.setPseudoPotFile(pseudoPotFile);
-	    		ele2.setPseudoPotFile(pseudoPotFile);
-	    		boolean bl = existPseudoFile(pseudoPotFile);
-	    		ele1.setPseudoValid(bl);
-	    		ele2.setPseudoValid(bl);
-	    		elemData.set(i, ele2);
-	    		
-	    		if(mainClass.projectManager.pseudoLibPath!=null && libFolderPath!=null) {
-		    		iGeo.pseudodir = mainClass.projectManager.pseudoLibPath+File.separator+libFolderPath;
-		    	}
+    	for (int i=0;i<iGeo.elemListAll.size();i++) {
+			Element ele1 = iGeo.elemListAll.get(i);
+			Element ele2 = elemData.get(i);
+			if(ele1==null || ele2==null) continue;
+			String pseudoPotFile;
+    		switch(eppl) {
+	    		case SSSP:pseudoPotFile=ssspClass.getFile(ele1.getAtomSpecies().toString());
+	    		if(libFolderPath==null) libFolderPath=ssspClass.getFolder(ele1.getAtomSpecies().toString());break;
+	    		case PSEUDODOJO:pseudoPotFile=pdClass.getFile(ele1.getAtomSpecies().toString());
+	    		if(libFolderPath==null) libFolderPath=pdClass.getFolder(ele1.getAtomSpecies().toString());break;
+	    		default: return;
     		}
-    	}
+    		ele1.setPseudoPotFile(pseudoPotFile);
+    		ele2.setPseudoPotFile(pseudoPotFile);
+    		boolean bl = existPseudoFile(pseudoPotFile);
+    		ele1.setPseudoValid(bl);
+    		ele2.setPseudoValid(bl);
+    		elemData.set(i, ele2);
+    		
+    		if(mainClass.projectManager.pseudoLibPath!=null && libFolderPath!=null) {
+	    		iGeo.pseudodir = mainClass.projectManager.pseudoLibPath+File.separator+libFolderPath;
+	    	}
+		}
     	
     	updatePseudoInfo();
     }
@@ -394,7 +371,7 @@ public class InputGeoElementsController implements Initializable{
 		        @Override
 		        protected void updateItem(String item, boolean empty) {
 		            super.updateItem(item, empty);
-		            if (empty) {setStyle("");return;}
+		            if (empty) {setStyle("");setText(null);return;}
 		            if (item == null || item.isEmpty()) {
 		                setText(null);
 		                setStyle("-fx-background-color: red");
@@ -434,6 +411,9 @@ public class InputGeoElementsController implements Initializable{
 		if (iGeo==null) return;
 		iGeo.updateElemListAll();//from atom generate elements table. Necessary if previous ElementList is loaded but not correctly generated
 		
+		elemData.clear();
+		elemData.addAll(iGeo.elemListAll);
+		
 		if (iGeo.typeLib==null) {comboLib.getSelectionModel().clearSelection();}
 		else {comboLib.getSelectionModel().select(iGeo.typeLib);}
 		//*************not efficient, run twice possible
@@ -444,8 +424,7 @@ public class InputGeoElementsController implements Initializable{
 		if (iGeo.typePrec==null) {comboPrec.getSelectionModel().clearSelection();}
 		else {comboPrec.getSelectionModel().select(iGeo.typePrec);}
 		checkRelativ.setSelected(iGeo.isRelativ.getValue());//should not be null!
-		elemData.clear();
-		elemData.addAll(iGeo.elemListAll);
+		
 		updatePseudoElementList();
 		
 		if(mainClass.projectManager.pseudoLibPath!=null) {labelPathPseudoLib.setText(mainClass.projectManager.pseudoLibPath);}
