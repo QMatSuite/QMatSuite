@@ -670,6 +670,7 @@ public class MainWindowController implements Initializable{
 		toggleGeometry();
 	}
 	private void openCalc(String ecStr) {
+		
 		//load an existing calculation having name String ecStr
 		if (ecStr==null || ecStr.isEmpty()) {
 			clearRightPane();

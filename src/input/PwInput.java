@@ -233,10 +233,18 @@ public class PwInput extends QeInput{
 			for (int i=0;i<ia1.elemListAll.size();i++) {
 				Element elTmp = ia1.elemListAll.get(i);
 				elementList.add(elTmp);
-				if(elTmp.isPseudoValid() && elTmp.getPseudoPotFile()!=null) {
+				
+				
+				if(elTmp.getPseudoPotFile()==null || elTmp.getPseudoPotFile().isEmpty()) {
+					//write pseudopotential file anyway
+					atomSpecTmp+=(elTmp.getAtomSpecies()+"  "+elTmp.getAtomMass().toString()+"\n");
+					errorMessage+=("Missing pseudo potential file for "+(i+1)+"th atom: "+elTmp.getAtomSpecies()+"\n");
+				}
+				else {
 					File fl = new File(elTmp.getPseudoPotFile());
-					atomSpecTmp+=(elTmp.getAtomSpecies()+"  "+elTmp.getAtomMass().toString()+"  "+fl.getName()+"\n");}
-				else {errorMessage+=("Pseudo potential file invalid for "+i+"th atom: "+elTmp.getAtomSpecies()+"\n");}
+					atomSpecTmp+=(elTmp.getAtomSpecies()+"  "+elTmp.getAtomMass().toString()+"  "+fl.getName()+"\n");
+					if(!elTmp.isPseudoValid()){errorMessage+=("Pseudo potential file invalid for "+(i+1)+"th atom: "+elTmp.getAtomSpecies()+"\n");}
+				}
 			}
 			setValue("ATOMIC_SPECIES","body",new WrapperString(atomSpecTmp));
 			

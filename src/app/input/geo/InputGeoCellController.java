@@ -149,7 +149,7 @@ public class InputGeoCellController implements Initializable{
     	//**********not efficient because whenever parameters are loaded from InputAgentGeo, this will run again trying to write there
     	//the use of reflection increases code simplicity
     	//but may 1) result in error if the field name is not correct 2) much slower
-    	setDoubleFieldListener(aField,"cellA",EnumNumCondition.nonNegative);
+    	setDoubleFieldListener(aField,"cellA",EnumNumCondition.positive);//for any case of ibrav, A cannot be zero
     	setDoubleFieldListener(bField,"cellB",EnumNumCondition.nonNegative);
     	setDoubleFieldListener(cField,"cellC",EnumNumCondition.nonNegative);
     	//**********do not delete the following comment. Alternative to reflection, faster but more tedious to write
