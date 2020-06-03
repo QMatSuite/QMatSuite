@@ -18,7 +18,6 @@
  *******************************************************************************/
 package input;
 
-import java.io.Serializable;
 import java.util.LinkedHashMap;
 import java.util.Set;
 
@@ -36,16 +35,20 @@ import agent.WrapperDouble;
 import agent.WrapperInteger;
 import agent.WrapperString;
 
-public abstract class QeInput implements Serializable{ 
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = -8331487638839992617L;
+public abstract class QeInput{ 
 	
 	protected LinkedHashMap<String, InputSection> sectionDict;
+	protected String errorMessage;
 	
 	public QeInput() {
 		sectionDict = new LinkedHashMap<String, InputSection> ();
+		errorMessage="";
+	}
+	public void clearErrorMessage() {
+		errorMessage="";
+	}
+	public String getErrorMessage() {
+		return errorMessage;
 	}
 	public abstract String addParameter(InputValue val);
 	public abstract void print(); 
@@ -62,7 +65,9 @@ public abstract class QeInput implements Serializable{
 		return ci;
 	}  
 	public ContainerInputString genInput(EnumStep es) {
-		return genInput("!"+es.toString()+"\n");
+		ContainerInputString ci = genInput("!"+es.toString()+"\n");
+		ci.appendLog(errorMessage);
+		return ci;
 	} 
 	public abstract void setValue(String keySec, String keyPara) throws InvalidKeyException, InvalidTypeException;//set null
 	public abstract void setValue(String keySec, String keyPara,WrapperDouble para) throws InvalidKeyException, InvalidTypeException;

@@ -55,7 +55,7 @@ public class InputAgentGeo extends InputAgent{
 	public WrapperDouble vectorB1;public WrapperDouble vectorB2;public WrapperDouble vectorB3;
 	public WrapperDouble vectorC1;public WrapperDouble vectorC2;public WrapperDouble vectorC3;
 	//atom
-	public EnumUnitAtomPos unitAtomPos;//ok
+	public EnumUnitAtomPos unitAtomPos;//ok, will not be null
 	public ArrayList<Atom> atomList;//ok
 	//elements
 	public EnumPseudoPotLib typeLib;
@@ -64,6 +64,7 @@ public class InputAgentGeo extends InputAgent{
 	public Integer typePrec;
 	public WrapperBoolean isRelativ;//whether or not fully relativistic
 	public ArrayList<Element> elemListAll;
+	public String pseudodir;//pseudodir, careful, have to sync with ProjectManager.pseudoLibPath and settings of the lib
 	
 	public InputAgentGeo() {
 		super(ProgramName.PW);
@@ -91,6 +92,8 @@ public class InputAgentGeo extends InputAgent{
 		//
 		needAlatFromCell = false;
 		needAlatFromAtom = (unitAtomPos.equals(EnumUnitAtomPos.alat));
+		
+		pseudodir=null;
 	}
 	public boolean needCellA() {
 		return (needAlatFromCell || needAlatFromAtom);

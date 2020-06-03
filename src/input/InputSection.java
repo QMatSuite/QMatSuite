@@ -20,6 +20,7 @@ package input;
 
 import java.io.Serializable;
 import java.util.LinkedHashMap;
+import java.util.Map;
 
 public abstract class InputSection implements Serializable{
 	/**
@@ -56,6 +57,12 @@ public abstract class InputSection implements Serializable{
 	}
 	public boolean isEmpty() {
 		if(parameterDict==null || parameterDict.size()==0) {return true;}
-		else {return false;}
+		if(parameterDict.size()==1 && parameterDict.containsKey("body")) {
+			//if only contains body, check whether body is empty
+			return ((InputValueString) parameterDict.get("body")).isEmpty();
+		}
+		else {
+			return false;
+		}
 	}
 }

@@ -43,7 +43,7 @@ public class PseudoDojoClass extends PseudoPotential{
 		functionalList.add(EnumFunctional.PBE);
 		functionalList.add(EnumFunctional.PBESOL);
 		functionalList.add(EnumFunctional.LDA);
-		
+		libFolderName="pseudo_dojo_ONCVPSP_v0.4";
 	}
 	
 	@Override

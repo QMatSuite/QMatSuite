@@ -18,34 +18,19 @@
  *******************************************************************************/
 package app;
 
-import java.io.BufferedReader;
+
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.ObjectInputStream;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Optional;
 import java.util.ResourceBundle;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
-import com.consts.DefaultFileNames;
 import com.consts.DefaultFileNames.settingKeys;
 import com.error.ErrorMsg;
-
-import javafx.event.Event;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
@@ -66,7 +51,6 @@ import javafx.scene.control.TabPane;
 import javafx.scene.control.TabPane.TabClosingPolicy;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.ToggleGroup;
-import javafx.scene.control.TreeItem;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
@@ -76,16 +60,10 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Box;
 import javafx.stage.DirectoryChooser;
-import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import main.MainClass;
-import project.Project;
-import project.ProjectCalcLog;
-import project.calculationClass;
 import app.input.*;
-import app.viewer3d.GeoGroup;
 import app.viewer3d.WorkScene3D;
 
 public class MainWindowController implements Initializable{
@@ -142,10 +120,9 @@ public class MainWindowController implements Initializable{
 	
 	private final ToggleGroup tgGroup = new ToggleGroup();
 	
-	private String workSpacePath = null;
+	
 	
 	public MainWindowController(MainClass mc) {
-		
 		mainClass = mc;
 	}
 	
@@ -204,13 +181,27 @@ public class MainWindowController implements Initializable{
 			String projName = contTree.getSelectedProject();
 			if(projName==null || projName.isEmpty()) return;
 			
-			File wsDir = getWorkSpaceDir();
+			File wsDir = mainClass.projectManager.getWorkSpaceDir();
 			
 			if(wsDir==null || !wsDir.canRead()) {return;}
 			
 			String msg = mainClass.projectManager.loadProject(wsDir, projName);
+			
+			if(msg.contains(ErrorMsg.alreadyContainsProject)) {
+				Alert alert1 = new Alert(AlertType.INFORMATION);
+		    	alert1.setTitle("Error");
+		    	alert1.setContentText(msg);
+		    	alert1.showAndWait();
+		    	return;
+	    	}
 					
-			if(msg.contains(ErrorMsg.cannotFindProjectFolder)) {contTree.updateProjects(wsDir);return;}
+			if(msg.contains(ErrorMsg.cannotFindProjectFolder)) {
+				contTree.updateProjects(wsDir);
+				Alert alert1 = new Alert(AlertType.INFORMATION);
+		    	alert1.setTitle("Error");
+		    	alert1.setContentText(msg);
+		    	alert1.showAndWait();
+				return;}
 			
 			creatProject(projName);//loading GUI
 			
@@ -242,11 +233,12 @@ public class MainWindowController implements Initializable{
 		initializeLeftRightPane();//initialize tabPaneRight
 		
 		//load environment variable
-		workSpacePath = readGlobalSettings(settingKeys.workspace.toString());
-		if (workSpacePath!=null) {
-			File wsDir = new File(workSpacePath);
+		String wsp = mainClass.projectManager.readGlobalSettings(settingKeys.workspace.toString());
+		mainClass.projectManager.workSpacePath = wsp;
+		if (wsp!=null) {
+			File wsDir = new File(wsp);
 			if(wsDir!=null && wsDir.canRead()) {
-				textWorkSpace.setText(workSpacePath);
+				textWorkSpace.setText(wsp);
 				setWorkSpace(true);
 			}
 			else {
@@ -267,7 +259,10 @@ public class MainWindowController implements Initializable{
 	    	alert1.showAndWait();
 		}
 		
-		if(workSpacePath!=null) {contTree.updateProjects(new File(workSpacePath));}
+		if(wsp!=null) {contTree.updateProjects(new File(wsp));}
+		
+		String wsp2 = mainClass.projectManager.readGlobalSettings(settingKeys.pseudolibroot.toString());
+		mainClass.projectManager.pseudoLibPath = wsp2;
 		
 		createProject.setOnAction((event) -> {
 //			String oldProjectTemp = currentProject;
@@ -287,7 +282,7 @@ public class MainWindowController implements Initializable{
 				}
 			} while (msg!=null);
 			
-			File wsDir = getWorkSpaceDir();
+			File wsDir = mainClass.projectManager.getWorkSpaceDir();
 			if(wsDir==null) return;
 			File projDir = new File(wsDir,projName);
 			
@@ -397,7 +392,7 @@ public class MainWindowController implements Initializable{
 //	    	alert.showAndWait();
 		});
 		saveProjectButton.setOnAction((event) -> {
-			File wsDir = getWorkSpaceDir();
+			File wsDir = mainClass.projectManager.getWorkSpaceDir();
 			if(wsDir==null || !wsDir.canWrite()) {return;}
 			mainClass.projectManager.saveActiveProjectInMultipleFiles(wsDir);
 		});
@@ -444,8 +439,9 @@ public class MainWindowController implements Initializable{
 		});
 				
 		buttonOpenWorkSpace.setOnAction((event) -> {
-			if(workSpacePath!=null) {
-				File wsDir = new File(workSpacePath);
+			String wsp1 = mainClass.projectManager.readGlobalSettings(settingKeys.workspace.toString());
+			if(wsp1!=null) {
+				File wsDir = new File(wsp1);
 				if(mainClass.projectManager.existCurrentProject() && wsDir!=null && wsDir.canRead()) {
 					Alert alert1 = new Alert(AlertType.INFORMATION);
 			    	alert1.setTitle("Warning");
@@ -467,11 +463,11 @@ public class MainWindowController implements Initializable{
 			File selectedDir = dirChooser.showDialog((Stage)rootPane.getScene().getWindow());
 			
 			if(selectedDir!=null && selectedDir.canRead()) {
-				workSpacePath = selectedDir.getPath();
-				textWorkSpace.setText(workSpacePath);
-				writeGlobalSettings(settingKeys.workspace.toString(),selectedDir.getPath());
+				mainClass.projectManager.workSpacePath = selectedDir.getPath();
+				textWorkSpace.setText(mainClass.projectManager.workSpacePath);
+				mainClass.projectManager.writeGlobalSettings(settingKeys.workspace.toString(),selectedDir.getPath());
 				setWorkSpace(true);
-				contTree.updateProjects(new File(workSpacePath));
+				contTree.updateProjects(new File(mainClass.projectManager.workSpacePath));
 //				textWorkSpace.setBackground(new Background(new BackgroundFill(Color.WHITE, 
 //						CornerRadii.EMPTY, Insets.EMPTY)));
 			}
@@ -507,32 +503,7 @@ public class MainWindowController implements Initializable{
 		contTree.setOpenCloseButtons(true);
 	}
 	
-	private File getWorkSpaceDir() {
-		File wsDir = new File(workSpacePath);
-		if(wsDir!=null && wsDir.canWrite()) {return wsDir;}
-		else {
-			Alert alert1 = new Alert(AlertType.INFORMATION);
-	    	alert1.setTitle("Error");
-	    	alert1.setContentText("Cannot load workspace. Please fix it.");
-	    	alert1.showAndWait();
-	    	return null;
-		}
-	}
-	private File getProjectDir() {
-		String pj = mainClass.projectManager.getActiveProjectName();
-		if(pj!=null && !pj.isEmpty() && workSpacePath!=null) {
-			File pjDir = new File(workSpacePath,pj);
-			if(pjDir!=null && pjDir.exists()) {
-				return pjDir;
-			}
-		}
-		//if reached here, something must be wrong
-		Alert alert1 = new Alert(AlertType.INFORMATION);
-    	alert1.setTitle("Error");
-    	alert1.setContentText("Cannot load workspace/project folder. Please fix it.");
-    	alert1.showAndWait();
-    	return null;
-	}
+	
 	private void setWorkSpace(boolean bl) {
 		if (bl) {
 			for (Node node : rootPane.getChildrenUnmodifiable()) {
@@ -559,95 +530,6 @@ public class MainWindowController implements Initializable{
 		    }
 			buttonOpenWorkSpace.setDisable(false);
 			textWorkSpace.setDisable(false);
-		}
-	}
-	private void creatGlobalSettings() {
-		File stFile = new File(DefaultFileNames.defaultSettingFile);
-		try {
-			stFile.createNewFile();
-	    } catch (IOException e1) {
-	    	Alert alert1 = new Alert(AlertType.INFORMATION);
-	    	alert1.setTitle("Error");
-	    	alert1.setContentText("IOException while creating setting file.");
-	    	alert1.showAndWait();
-	    	e1.printStackTrace();
-	    }
-	}
-	private String readGlobalSettings(String key) {
-		String textOut=null;
-		//go to current directory
-		File stFile = new File(DefaultFileNames.defaultSettingFile);
-		try {
-			FileInputStream fis = new FileInputStream(stFile);
-			InputStreamReader isr = new InputStreamReader(fis);
-			BufferedReader br = new BufferedReader(isr);
-
-			String line;
-			while((line = br.readLine()) != null){
-				//allText = allText + line + "\n";
-				
-				if(line.contains(key+"=")) {textOut=line.substring(line.lastIndexOf(key+"=") + key.length()+1);}
-			}
-			br.close();
-		} catch (FileNotFoundException e) {
-			Alert alert1 = new Alert(AlertType.INFORMATION);
-	    	alert1.setTitle("Warning");
-	    	alert1.setContentText("Setting file not found. Make a new one.");
-	    	alert1.showAndWait();
-	    	
-	    	creatGlobalSettings();
-	    	
-		} catch (IOException e) {
-			Alert alert1 = new Alert(AlertType.INFORMATION);
-	    	alert1.setTitle("Error");
-	    	alert1.setContentText("IOException while reading setting file.");
-	    	alert1.showAndWait();
-		}
-		return textOut;
-	}
-	private void writeGlobalSettings(String key, String msg) {
-		//go to current directory
-		File stFile = new File(DefaultFileNames.defaultSettingFile);
-		for(int i=0;i<3;i++) {
-			try {
-				// input the (modified) file content to the StringBuffer "input"
-		        BufferedReader file = new BufferedReader(new FileReader(stFile));
-		        StringBuffer inputBuffer = new StringBuffer();
-		        String line;
-		        
-		        int count = 0;
-		        //find the line containing the key
-		        while ((line = file.readLine()) != null) {
-		            if(line.contains(key+"=")) {line=key+"="+msg;count++;}
-		            inputBuffer.append(line);
-		            inputBuffer.append('\n');
-		        }
-		        //if key not existing
-		        if (count==0) {inputBuffer.append(key+"="+msg+"\n");}
-		        
-		        file.close();
-
-		        // write the new string with the replaced line OVER the same file
-		        FileOutputStream fileOut = new FileOutputStream(stFile);
-		        
-		        fileOut.write(inputBuffer.toString().getBytes());
-		        fileOut.close();
-		        
-				break;
-			} catch (FileNotFoundException e) {
-				Alert alert1 = new Alert(AlertType.INFORMATION);
-		    	alert1.setTitle("Warning");
-		    	alert1.setContentText("Setting file not found. Make a new one.");
-		    	alert1.showAndWait();
-		    	
-				creatGlobalSettings();
-	
-			} catch (IOException e) {
-				Alert alert1 = new Alert(AlertType.INFORMATION);
-		    	alert1.setTitle("Error");
-		    	alert1.setContentText("IOException while reading setting file.");
-		    	alert1.showAndWait();
-			}
 		}
 	}
 	private void toggleGeometry() {

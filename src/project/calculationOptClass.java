@@ -18,7 +18,9 @@
  *******************************************************************************/
 package project;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
@@ -27,7 +29,9 @@ import agent.InputAgentGeo;
 import agent.InputAgentOpt;
 import agent.InputAgentScf;
 import input.ContainerInputString;
+import input.DosInput;
 import input.PwInput;
+import input.QeInput;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 
@@ -56,7 +60,16 @@ public class calculationOptClass extends calculationClass{
 		inputList.put(EnumStep.OPT,new PwInput());
 		agentList.put(EnumStep.OPT,new InputAgentOpt());
 	}
+	protected void readObject(java.io.ObjectInputStream in)throws IOException, ClassNotFoundException 
+	{
+		//for loading after serialization
+	    in.defaultReadObject();
+	    inputList = new HashMap<EnumStep, QeInput>();
+	    inputList.put(EnumStep.SCF, new PwInput());
+	    inputList.put(EnumStep.OPT,new PwInput());
+	}
 	public void genInputFromAgent(ArrayList<InputAgentGeo> geoList) {
+		inputList.get(EnumStep.OPT).clearErrorMessage();
 		inputList.get(EnumStep.OPT).loadAgent(geoList.get(getGeoInd()));
 		inputList.get(EnumStep.OPT).loadAgent((InputAgentScf)agentList.get(EnumStep.SCF));
 		inputList.get(EnumStep.OPT).loadAgent((InputAgentOpt)agentList.get(EnumStep.OPT));

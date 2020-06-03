@@ -18,20 +18,18 @@
  *******************************************************************************/
 package project;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
 import com.consts.DefaultFileNames;
@@ -42,16 +40,133 @@ import agent.InputAgentGeo;
 import input.QeInput;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
-import javafx.stage.FileChooser;
-import javafx.stage.Stage;
 
 public class ProjectManager {
+	public String workSpacePath;
+	public String pseudoLibPath;
 	private LinkedHashMap<String, Project> projectDict;
 	private String activeProjKey;
 	
 	public ProjectManager() {
 		projectDict = new LinkedHashMap<String, Project> ();
 		activeProjKey = null;
+		workSpacePath = null;
+		pseudoLibPath = null;
+	}
+	public File getWorkSpaceDir() {
+		File wsDir = new File(workSpacePath);
+		if(wsDir!=null && wsDir.canWrite()) {return wsDir;}
+		else {
+			Alert alert1 = new Alert(AlertType.INFORMATION);
+	    	alert1.setTitle("Error");
+	    	alert1.setContentText("Cannot load workspace. Please fix it.");
+	    	alert1.showAndWait();
+	    	return null;
+		}
+	}
+	public File getProjectDir() {
+		String pj = getActiveProjectName();
+		if(pj!=null && !pj.isEmpty() && workSpacePath!=null) {
+			File pjDir = new File(workSpacePath,pj);
+			if(pjDir!=null && pjDir.exists()) {
+				return pjDir;
+			}
+		}
+		//if reached here, something must be wrong
+		Alert alert1 = new Alert(AlertType.INFORMATION);
+    	alert1.setTitle("Error");
+    	alert1.setContentText("Cannot load workspace/project folder. Please fix it.");
+    	alert1.showAndWait();
+    	return null;
+	}
+	public void creatGlobalSettings() {
+		File stFile = new File(DefaultFileNames.defaultSettingFile);
+		try {
+			stFile.createNewFile();
+	    } catch (IOException e1) {
+	    	Alert alert1 = new Alert(AlertType.INFORMATION);
+	    	alert1.setTitle("Error");
+	    	alert1.setContentText("IOException while creating setting file.");
+	    	alert1.showAndWait();
+	    	e1.printStackTrace();
+	    }
+	}
+	public String readGlobalSettings(String key) {
+		String textOut=null;
+		//go to current directory
+		File stFile = new File(DefaultFileNames.defaultSettingFile);
+		try {
+			FileInputStream fis = new FileInputStream(stFile);
+			InputStreamReader isr = new InputStreamReader(fis);
+			BufferedReader br = new BufferedReader(isr);
+
+			String line;
+			while((line = br.readLine()) != null){
+				//allText = allText + line + "\n";
+				
+				if(line.contains(key+"=")) {textOut=line.substring(line.lastIndexOf(key+"=") + key.length()+1);}
+			}
+			br.close();
+		} catch (FileNotFoundException e) {
+			Alert alert1 = new Alert(AlertType.INFORMATION);
+	    	alert1.setTitle("Warning");
+	    	alert1.setContentText("Setting file not found. Make a new one.");
+	    	alert1.showAndWait();
+	    	
+	    	creatGlobalSettings();
+	    	
+		} catch (IOException e) {
+			Alert alert1 = new Alert(AlertType.INFORMATION);
+	    	alert1.setTitle("Error");
+	    	alert1.setContentText("IOException while reading setting file.");
+	    	alert1.showAndWait();
+		}
+		return textOut;
+	}
+	public void writeGlobalSettings(String key, String msg) {
+		//go to current directory
+		File stFile = new File(DefaultFileNames.defaultSettingFile);
+		for(int i=0;i<3;i++) {
+			try {
+				// input the (modified) file content to the StringBuffer "input"
+		        BufferedReader file = new BufferedReader(new FileReader(stFile));
+		        StringBuffer inputBuffer = new StringBuffer();
+		        String line;
+		        
+		        int count = 0;
+		        //find the line containing the key
+		        while ((line = file.readLine()) != null) {
+		            if(line.contains(key+"=")) {line=key+"="+msg;count++;}
+		            inputBuffer.append(line);
+		            inputBuffer.append('\n');
+		        }
+		        //if key not existing
+		        if (count==0) {inputBuffer.append(key+"="+msg+"\n");}
+		        
+		        file.close();
+
+		        // write the new string with the replaced line OVER the same file
+		        FileOutputStream fileOut = new FileOutputStream(stFile);
+		        
+		        fileOut.write(inputBuffer.toString().getBytes());
+		        fileOut.close();
+		        
+				break;
+			} catch (FileNotFoundException e) {
+				Alert alert1 = new Alert(AlertType.INFORMATION);
+		    	alert1.setTitle("Warning");
+		    	alert1.setContentText("Setting file not found. Make a new one.");
+		    	alert1.showAndWait();
+		    	
+				creatGlobalSettings();
+	
+			} catch (IOException e) {
+				Alert alert1 = new Alert(AlertType.INFORMATION);
+		    	alert1.setTitle("Error");
+		    	alert1.setContentText("IOException while reading setting file.");
+		    	alert1.showAndWait();
+			}
+		}
 	}
 	public void saveActiveProjectInMultipleFiles(File workSpaceDir) {
 		if(workSpaceDir==null || !workSpaceDir.canWrite()) {
@@ -190,11 +305,17 @@ public class ProjectManager {
 		
 		File projDir = new File(wsDir,projName);
 		
-		if(projName==null || projDir==null || !projDir.canRead()) {return ErrorMsg.cannotFindProjectFolder;}
+		if(projName==null || projName.isEmpty() || projDir==null || !projDir.canRead()) {return ErrorMsg.cannotFindProjectFolder;}
 		
 		File projSaveFile = new File(projDir,DefaultFileNames.projSaveFile);
 		
 		String msg_all = "";
+		
+		if(projectDict.containsKey(projName)) {
+        	//fatal error, already existing project. Will only happen when loading already loaded project. Abort
+        	msg_all+= ErrorMsg.alreadyContainsProject;
+        	return msg_all;
+    	}
 		
 		if(projSaveFile==null || !projSaveFile.canRead()) {
 			msg_all+= ErrorMsg.cannotFindProjectSaveFile;
@@ -233,11 +354,7 @@ public class ProjectManager {
 		                
 		                msg_all+="Project saved to "+projSaveFile.getAbsolutePath()+". ";
 		            }
-		            if(projectDict.containsKey(pj.getName())) {
-		            	//fatal error, already existing project. Will only happen when loading already loaded project. Abort
-		            	msg_all+= ErrorMsg.alreadyContainsProject;
-		            	return msg_all;
-	            	}
+		            
 		        	
 		            projectDict.put(pj.getName(), pj);
 					activeProjKey = pj.getName();
@@ -256,7 +373,8 @@ public class ProjectManager {
 			msg_all+="\n";
 			String msg2 = addProject(projName);
 			if(msg2==null) {msg_all+=ErrorMsg.createProject;}//successfully created project, continue
-			else {msg_all+=msg2;return msg_all;}//fatal error, cannot add new project, stop here
+			else {msg_all+=msg2;return msg_all;}//fatal error, cannot add new project, stop here. 
+			//Above: since projName will not be empty, error will only happen when ErrorMsg.alreadyContainsProject, which has already been taken care of before
 		}
 		else {
 			//everything fine
@@ -330,7 +448,7 @@ public class ProjectManager {
 		if (nameProject==null || nameProject.isEmpty())
 			return "Empty project name!";
 		else if (projectDict.containsKey(nameProject)){
-			return "Duplicate project name!";
+			return ErrorMsg.alreadyContainsProject;
 		}
 		else {
 			return null;

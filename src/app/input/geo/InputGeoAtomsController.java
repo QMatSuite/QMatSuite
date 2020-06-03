@@ -226,7 +226,7 @@ public class InputGeoAtomsController implements Initializable{
 		                setText(null);
 		                setStyle("");
 		            } else {
-		                // Format date.
+
 		                setText(item.toString());
 
 		                if (item.getBoolFix()) {
@@ -250,7 +250,7 @@ public class InputGeoAtomsController implements Initializable{
 		                setText(null);
 		                setStyle("");
 		            } else {
-		                // Format date.
+
 		                setText(item.toString());
 
 		                if (item.getBoolFix()) {
@@ -274,7 +274,7 @@ public class InputGeoAtomsController implements Initializable{
 		                setText(null);
 		                setStyle("");
 		            } else {
-		                // Format date.
+
 		                setText(item.toString());
 
 		                if (item.getBoolFix()) {

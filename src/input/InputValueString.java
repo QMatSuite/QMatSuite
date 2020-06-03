@@ -46,7 +46,10 @@ public class InputValueString extends InputValue {
 		paraNow = null;
 		explicitWrite = true;
 	}
-	
+	public boolean isEmpty() {
+		if(paraNow==null||paraNow.isEmpty()) return true;
+		else return false;
+	}
 
 	@Override
 	public void print() {
