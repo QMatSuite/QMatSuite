@@ -54,7 +54,7 @@ public class JobManager implements Runnable {
 	public void run() {
 		while(isAlive()) {
 			synchronized (this) {
-                while (isAlive()) {
+                while (this.alive) {//since in synchronized block, safe to directly use this.alive field
                     this.currentNode = this.nodeList.poll();
                     if (this.currentNode != null) {break;}//if currentNode is not null, break and run it
 

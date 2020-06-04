@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TreeView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Pane?>
+<?import javafx.scene.text.Font?>
+
+<BorderPane fx:id="borderPaneMain" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="450.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
+   <left>
+      <TreeView fx:id="treeNavigate" prefHeight="240.0" prefWidth="149.0" BorderPane.alignment="CENTER" />
+   </left>
+   <bottom>
+      <HBox BorderPane.alignment="CENTER">
+         <children>
+            <Pane HBox.hgrow="ALWAYS" />
+            <Button fx:id="saveButton" mnemonicParsing="false" text="Save" />
+            <Button fx:id="cancelButton" mnemonicParsing="false" text="Cancel" />
+          <Button fx:id="saveCloseButton" mnemonicParsing="false" text="Apply and close" />
+         </children>
+      </HBox>
+   </bottom>
+   <top>
+      <BorderPane BorderPane.alignment="CENTER">
+         <left>
+            <Label text="Settings" BorderPane.alignment="CENTER">
+               <font>
+                  <Font name="System Bold Italic" size="14.0" />
+               </font>
+            </Label>
+         </left>
+         <center>
+            <Separator prefWidth="200.0" BorderPane.alignment="CENTER" />
+         </center>
+      </BorderPane>
+   </top>
+   <center>
+   </center>
+</BorderPane>

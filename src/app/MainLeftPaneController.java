@@ -132,7 +132,7 @@ public class MainLeftPaneController implements Initializable {
 			}
 		});
 		
-		projectTreeRoot = new TreeItem<ProjectCalcLog>(new ProjectCalcLog("Projects","","",""));
+		projectTreeRoot = new TreeItem<ProjectCalcLog>(new ProjectCalcLog("Workspace","","",""));
 		projectTree.setRoot(projectTreeRoot);
 		projectTreeRoot.setExpanded(true);
 	}
