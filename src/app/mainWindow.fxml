@@ -42,6 +42,11 @@
                     <MenuItem fx:id="stopAllJobs" mnemonicParsing="false" text="Stop all jobs" />
                   </items>
                 </Menu>
+                  <Menu mnemonicParsing="false" text="Settings">
+                    <items>
+                      <MenuItem fx:id="settingsMenuItem" mnemonicParsing="false" text="General settings" />
+                    </items>
+                  </Menu>
                 <Menu mnemonicParsing="false" text="Help">
                   <items>
                     <MenuItem fx:id="menuAbout" mnemonicParsing="false" text="About" />
@@ -49,6 +54,29 @@
                 </Menu>
               </menus>
             </MenuBar>
+            <GridPane hgap="5.0">
+              <columnConstraints>
+                <ColumnConstraints hgrow="NEVER" maxWidth="118.5" minWidth="10.0" />
+                  <ColumnConstraints hgrow="NEVER" maxWidth="203.0" minWidth="10.0" />
+                  <ColumnConstraints hgrow="ALWAYS" maxWidth="686.5" minWidth="10.0" prefWidth="568.5" />
+                <ColumnConstraints hgrow="ALWAYS" maxWidth="400.0" minWidth="10.0" prefWidth="311.5" />
+              </columnConstraints>
+              <rowConstraints>
+                <RowConstraints minHeight="10.0" vgrow="SOMETIMES" />
+              </rowConstraints>
+               <children>
+                  <Label text="Workspace" />
+                  <Button fx:id="buttonOpenWorkSpace" mnemonicParsing="false" prefHeight="25.0" prefWidth="55.0" text="open" GridPane.columnIndex="1" />
+                  <Pane fx:id="paneWorkSpace" prefHeight="25.0" prefWidth="439.0" GridPane.columnIndex="2">
+                     <children>
+                        <Label fx:id="textWorkSpace" />
+                     </children>
+                  </Pane>
+               </children>
+               <VBox.margin>
+                  <Insets left="5.0" right="5.0" />
+               </VBox.margin>
+            </GridPane>
             <HBox>
                <children>
                   <Label minWidth="40.0" text="Project" />
@@ -76,45 +104,13 @@
                 <Label fx:id="currentJobLabel" minWidth="100.0" prefWidth="350.0" text="" />
                 <Pane prefHeight="25.0" prefWidth="358.0" HBox.hgrow="ALWAYS" />
                   <Separator orientation="VERTICAL" />
+                  <Label minWidth="80" prefWidth="180.0" text="Input settings" />
                   <RadioButton fx:id="radioGeometry" minWidth="80.0" mnemonicParsing="false" />
                   <RadioButton fx:id="radioCalculation" minWidth="80.0" mnemonicParsing="false" />
                   <Separator orientation="VERTICAL" />
                 <Label fx:id="calcLabel" minWidth="100.0" prefWidth="120.0" text="" />
                </children>
             </HBox>
-            <GridPane hgap="5.0">
-              <columnConstraints>
-                <ColumnConstraints hgrow="NEVER" maxWidth="118.5" minWidth="10.0" />
-                  <ColumnConstraints hgrow="NEVER" maxWidth="203.0" minWidth="10.0" />
-                  <ColumnConstraints hgrow="ALWAYS" maxWidth="400.0" minWidth="10.0" prefWidth="200.0" />
-                  <ColumnConstraints hgrow="NEVER" maxWidth="177.5" minWidth="10.0" />
-                  <ColumnConstraints hgrow="NEVER" maxWidth="93.5" minWidth="10.0" />
-                <ColumnConstraints hgrow="ALWAYS" maxWidth="400.0" minWidth="10.0" prefWidth="200.0" />
-                  <ColumnConstraints hgrow="NEVER" minWidth="10.0" />
-              </columnConstraints>
-              <rowConstraints>
-                <RowConstraints minHeight="10.0" vgrow="SOMETIMES" />
-              </rowConstraints>
-               <children>
-                  <Label text="Workspace" />
-                  <Button fx:id="buttonOpenWorkSpace" mnemonicParsing="false" prefHeight="25.0" prefWidth="55.0" text="open" GridPane.columnIndex="1" />
-                  <Button fx:id="buttonOpenQEEngine" mnemonicParsing="false" text="open" GridPane.columnIndex="4" />
-                  <Label text="QE engine" GridPane.columnIndex="3" />
-                  <Pane fx:id="paneWorkSpace" GridPane.columnIndex="2">
-                     <children>
-                        <Label fx:id="textWorkSpace" />
-                     </children>
-                  </Pane>
-                  <Pane fx:id="paneQEEngine" GridPane.columnIndex="5">
-                     <children>
-                        <Label fx:id="textQEEngine" />
-                     </children>
-                  </Pane>
-               </children>
-               <VBox.margin>
-                  <Insets left="5.0" right="5.0" />
-               </VBox.margin>
-            </GridPane>
          </children>
       </VBox>
    </top>

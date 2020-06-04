@@ -31,8 +31,8 @@ import java.util.ResourceBundle;
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
 import com.consts.DefaultFileNames.settingKeys;
-import com.displayPreference.Coloring;
 import com.error.ErrorMsg;
+import com.programConst.Coloring;
 
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -40,6 +40,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
+import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
@@ -64,10 +65,13 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 import job.JobNode;
 import main.MainClass;
 import app.input.*;
+import app.menus.SettingsWindowController;
 import app.viewer3d.WorkScene3D;
 import input.ContainerInputString;
 
@@ -81,13 +85,13 @@ public class MainWindowController implements Initializable{
     
     @FXML private MenuItem calcScf,calcOpt,calcDos,calcBands,calcMd,calcTddft,calcCustom,menuAbout,menuSaveProjectAs,menuLoadProject;
     
-    @FXML private MenuItem stopCurrentJob,stopAllJobs;
+    @FXML private MenuItem stopCurrentJob,stopAllJobs,settingsMenuItem;
     
-    @FXML private Button createProject,showInputButton,runJob,buttonOpenWorkSpace,buttonOpenQEEngine,saveProjectButton;
+    @FXML private Button createProject,showInputButton,runJob,buttonOpenWorkSpace,saveProjectButton;
     
-    @FXML private Label textWorkSpace,textQEEngine;
+    @FXML private Label textWorkSpace;
     
-    @FXML private Pane paneQEEngine,paneWorkSpace;
+    @FXML private Pane paneWorkSpace;
     
     @FXML private ComboBox<String> comboProject,comboCalculation;
     
@@ -107,6 +111,8 @@ public class MainWindowController implements Initializable{
 	
 	private ScrollPane scrollLeft;
 	
+	private BorderPane borderSettings;
+	
 	private TabPane tabPaneRight;
 	
 	private Boolean tabPaneStatusRight,scrollStatusLeft;
@@ -122,6 +128,8 @@ public class MainWindowController implements Initializable{
 	private InputGeoController contGeo;
 	
 	private MainLeftPaneController contTree;
+	
+	private SettingsWindowController contSettings;
 	
 	private HashMap<String, Tab> projectTabDict;
 	
@@ -143,12 +151,9 @@ public class MainWindowController implements Initializable{
 		//set the style of workspace and QEEngine fields
 		textWorkSpace.setBackground(new Background(new BackgroundFill(Coloring.defaultFile, 
 				CornerRadii.EMPTY, Insets.EMPTY)));
-		textQEEngine.setBackground(new Background(new BackgroundFill(Coloring.defaultFile, 
-				CornerRadii.EMPTY, Insets.EMPTY)));
 		textWorkSpace.prefWidthProperty().bind(paneWorkSpace.widthProperty());
 		textWorkSpace.prefHeightProperty().bind(paneWorkSpace.heightProperty());
-		textQEEngine.prefWidthProperty().bind(paneQEEngine.widthProperty());
-		textQEEngine.prefHeightProperty().bind(paneQEEngine.heightProperty());
+
 		
 		tabPaneRight = null;
 		tabPaneStatusRight = false;
@@ -179,6 +184,12 @@ public class MainWindowController implements Initializable{
 			FXMLLoader fxmlLoaderTree = new FXMLLoader(this.getClass().getResource("MainLeftPane.fxml"));
 			fxmlLoaderTree.setController(contTree);
 			scrollLeft = fxmlLoaderTree.load();
+			
+			contSettings = new SettingsWindowController(mainClass);
+			FXMLLoader fxmlLoaderSettings = new FXMLLoader(this.getClass().getResource("menus/settingsWindow.fxml"));
+			fxmlLoaderSettings.setController(contSettings);
+			borderSettings = fxmlLoaderSettings.load();
+			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -292,7 +303,7 @@ public class MainWindowController implements Initializable{
 				WorkScene3D workScene = mainClass.projectManager.getActiveProject().getViewer3D();
 				workScene.centerSubScene(workSpaceTabPane);
 				AnchorPane acp = workScene.getRootPane();
-				newTab.setContent(acp);
+				newTab.setContent(acp);//***may be unnecessary for some situations
 				
 				comboProject.getSelectionModel().select(newTab.getText());
 				//update calculation list
@@ -523,7 +534,19 @@ public class MainWindowController implements Initializable{
 	    			"    under certain conditions; press `license' for details.");
 	    	alert1.showAndWait();
 		});
-				
+		
+		settingsMenuItem.setOnAction((event) -> {
+			
+			//Scene scene = new Scene(borderSettings,600,450);
+			Scene scene = new Scene(borderSettings);
+	        Stage stage = new Stage();
+	        stage.setTitle("Settings");
+	        stage.initModality(Modality.APPLICATION_MODAL);
+	        stage.initStyle(StageStyle.DECORATED);
+	        stage.setScene(scene);
+	        stage.showAndWait();
+		});
+		
 		buttonOpenWorkSpace.setOnAction((event) -> {
 			String wsp1 = mainClass.projectManager.readGlobalSettings(settingKeys.workspace.toString());
 			if(wsp1!=null) {
@@ -559,28 +582,7 @@ public class MainWindowController implements Initializable{
 			}
 			
 		});
-		buttonOpenQEEngine.setOnAction((event) -> {
-
-			DirectoryChooser dirChooser = new DirectoryChooser ();
-			
-			//go to current directory
-			String currentPath = Paths.get(".").toAbsolutePath().normalize().toString();
-			File tmpFile = new File(currentPath);
-			if(tmpFile!=null && tmpFile.canRead()) {
-				dirChooser.setInitialDirectory(tmpFile);
-			}
-			
-			File selectedDir = dirChooser.showDialog((Stage)rootPane.getScene().getWindow());
-			
-			if(selectedDir!=null && selectedDir.canRead()) {
-				mainClass.projectManager.qePath = selectedDir.getPath();
-				textQEEngine.setText(selectedDir.getPath());
-				mainClass.projectManager.writeGlobalSettings(settingKeys.qePath.toString(),selectedDir.getPath());
-				textQEEngine.setBackground(new Background(new BackgroundFill(Coloring.validFile, 
-						CornerRadii.EMPTY, Insets.EMPTY)));
-			}
-			
-		});
+		
 	}
 	public void killAllThreads() {
 		thread1.interrupt();
@@ -619,22 +621,7 @@ public class MainWindowController implements Initializable{
 		
 		String qePath = mainClass.projectManager.readGlobalSettings(settingKeys.qePath.toString());
 		mainClass.projectManager.qePath = qePath;
-		if(qePath!=null) {
-			textQEEngine.setText(qePath);
-			File qeDir = new File(qePath);
-			if(qeDir!=null && qeDir.canRead()) {
-				textQEEngine.setBackground(new Background(new BackgroundFill(Coloring.validFile, 
-						CornerRadii.EMPTY, Insets.EMPTY)));
-			}
-			else {
-				textQEEngine.setBackground(new Background(new BackgroundFill(Coloring.invalidFile, 
-						CornerRadii.EMPTY, Insets.EMPTY)));
-			}
-		}
-		else {
-			textQEEngine.setBackground(new Background(new BackgroundFill(Coloring.invalidFile, 
-					CornerRadii.EMPTY, Insets.EMPTY)));
-		}
+		
 		
 		if(wsp!=null) {contTree.updateProjects(new File(wsp));}
 		
