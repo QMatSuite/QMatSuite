@@ -23,7 +23,7 @@ public class ProjectCalcLog {
     private String project = null;
     private String calculation = null;
     private String calcType = null;
-    private String steps = null;
+    private String status = null;
 
     public ProjectCalcLog() {
     }
@@ -32,7 +32,7 @@ public class ProjectCalcLog {
         this.project = pj;
         this.calculation = cc;
         this.calcType = ct;
-        this.steps = st;
+        this.status = st;
     }
     //get
     public String getProject() {
@@ -41,8 +41,8 @@ public class ProjectCalcLog {
     public String getCalculation() {
         return calculation;
     }
-    public String getSteps() {
-        return steps;
+    public String getStatus() {
+        return status;
     }
     //set
     public void setProject(String pj) {
@@ -51,8 +51,8 @@ public class ProjectCalcLog {
     public void setCalculation(String cc) {
         this.calculation = cc;
     }
-    public void setSteps(String st) {
-        this.steps = st;
+    public void setStatus(String st) {
+        this.status = st;
     }
 
 	public String getCalcType() {

@@ -53,6 +53,7 @@ import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.SplitPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TabPane.TabClosingPolicy;
@@ -75,6 +76,7 @@ import job.JobNode;
 import main.MainClass;
 import app.input.*;
 import app.menus.SettingsWindowController;
+import app.viewer3d.OutputViewerController;
 import app.viewer3d.WorkScene3D;
 import input.ContainerInputString;
 
@@ -142,6 +144,10 @@ public class MainWindowController implements Initializable{
 	
 	private Integer tabRowNum;
 	
+	private OutputViewerController contOutput;
+	
+	private HBox hboxOutput;
+			
 	public MainWindowController(MainClass mc) {
 		mainClass = mc;
 	}
@@ -195,10 +201,18 @@ public class MainWindowController implements Initializable{
 			fxmlLoaderSettings.setController(contSettings);
 			borderSettings = fxmlLoaderSettings.load();
 			
+			contOutput = new OutputViewerController(mainClass);
+			FXMLLoader fxmlLoaderOutput = new FXMLLoader(this.getClass().getResource("viewer3d/outputViewer.fxml"));
+			fxmlLoaderOutput.setController(contOutput);
+			hboxOutput = fxmlLoaderOutput.load();
+			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		
+		hboxOutput.prefWidthProperty().bind(workSpaceTabPane.widthProperty());
+		hboxOutput.prefHeightProperty().bind(workSpaceTabPane.heightProperty());
 		
 		contTree.buttonOpenSelected.setOnAction((event) -> {
 			String projName = contTree.getSelectedProject();
@@ -226,7 +240,7 @@ public class MainWindowController implements Initializable{
 		    	alert1.showAndWait();
 				return;}
 			
-			creatProject(projName);//loading GUI
+			createProjectGui(projName);//loading GUI
 			
 			contTree.setOpenCloseButtons(false);
 			
@@ -293,7 +307,7 @@ public class MainWindowController implements Initializable{
 			
 			//set project tree
 			contTree.addProject(projName);
-			creatProject(projName);
+			createProjectGui(projName);
 		});
 		workSpaceTabPane.getSelectionModel().selectedItemProperty().addListener((ov, oldTab, newTab) -> {
 			//******main code for changing project********
@@ -612,7 +626,8 @@ public class MainWindowController implements Initializable{
 				hbTmp.getChildren().add(acp);
 			}
 			else {
-				hbTmp.getChildren().add(new Label("To be implemented"));
+				contOutput.updateProjectFolder();
+				hbTmp.getChildren().add(hboxOutput);
 			}
 		}
 		
@@ -806,7 +821,7 @@ public class MainWindowController implements Initializable{
 			scrollStatusLeft=!scrollStatusLeft;
 		});
 	}
-	private void creatProject(String projName) {
+	private void createProjectGui(String projName) {
 
 		//add to ComboBox
 		comboProject.getItems().add(projName);
@@ -815,6 +830,7 @@ public class MainWindowController implements Initializable{
 		Tab tab = new Tab();
 		VBox hbTmp = new VBox();
 		ToggleButton tgButton = new ToggleButton("");
+		tgButton.setPrefWidth(150);
 		
 		if (mainClass.projectManager.getShow3DScene()) 
 		{ tgButton.setSelected(false);tgButton.setText("Show input/output files");}
@@ -832,7 +848,7 @@ public class MainWindowController implements Initializable{
 			updateWorkScene();
 		});
 		
-		hbTmp.getChildren().add(new HBox(new Label("Toggle geometry and in/out files"),tgButton));
+		hbTmp.getChildren().add(new HBox(tgButton,new Label("Toggle geometry and in/out files")));
 		tabRowNum=2;//2 in total, including the display defined in the tab change listener
 		
 		tab.setContent(hbTmp);
