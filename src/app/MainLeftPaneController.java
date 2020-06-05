@@ -61,17 +61,17 @@ public class MainLeftPaneController implements Initializable {
 		TreeTableColumn<ProjectCalcLog, String> treeTableColumn1 = new TreeTableColumn<>("Project");
 		TreeTableColumn<ProjectCalcLog, String> treeTableColumn2 = new TreeTableColumn<>("Calc. Name");
 		TreeTableColumn<ProjectCalcLog, String> treeTableColumn3 = new TreeTableColumn<>("Calc. Type");
-		TreeTableColumn<ProjectCalcLog, String> treeTableColumn4 = new TreeTableColumn<>("Steps");
+		TreeTableColumn<ProjectCalcLog, String> treeTableColumn4 = new TreeTableColumn<>("Status");
 		
-		treeTableColumn1.setPrefWidth(90);
-		treeTableColumn2.setPrefWidth(70);
-		treeTableColumn3.setPrefWidth(70);
-		treeTableColumn4.setPrefWidth(70);
+		treeTableColumn1.setPrefWidth(85);
+		treeTableColumn2.setPrefWidth(68);
+		treeTableColumn3.setPrefWidth(65);
+		treeTableColumn4.setPrefWidth(65);
 		
 		treeTableColumn1.setCellValueFactory(new TreeItemPropertyValueFactory<>("project"));
 		treeTableColumn2.setCellValueFactory(new TreeItemPropertyValueFactory<>("calculation"));
 		treeTableColumn3.setCellValueFactory(new TreeItemPropertyValueFactory<>("calcType"));
-		treeTableColumn4.setCellValueFactory(new TreeItemPropertyValueFactory<>("steps"));
+		treeTableColumn4.setCellValueFactory(new TreeItemPropertyValueFactory<>("status"));
 
 		projectTree.getColumns().add(treeTableColumn1);
 		projectTree.getColumns().add(treeTableColumn2);

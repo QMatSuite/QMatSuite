@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.ToolBar?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.TextFlow?>
+
+<HBox fx:id="rootHbox" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
+   <children>
+      <VBox fx:id="vBoxCalcFolder" minWidth="105.0" prefHeight="200.0" prefWidth="105.0">
+         <children>
+            <Label text="Calc. folders" />
+            <ToolBar prefHeight="40.0" prefWidth="200.0">
+              <items>
+                <Button fx:id="deleteFolderButton" mnemonicParsing="false" text="del" />
+              </items>
+            </ToolBar>
+            <ListView fx:id="listCalcFolders" VBox.vgrow="SOMETIMES" />
+         </children>
+      </VBox>
+      <VBox fx:id="vboxFiles" minWidth="105.0" prefHeight="200.0" prefWidth="105.0">
+         <children>
+            <Label text="Files" />
+            <ToolBar prefHeight="40.0" prefWidth="200.0">
+              <items>
+                <Button fx:id="deleteFileButton" mnemonicParsing="false" text="del" />
+              </items>
+            </ToolBar>
+            <ListView fx:id="listFiles" VBox.vgrow="SOMETIMES" />
+         </children>
+      </VBox>
+      <VBox fx:id="vboxMainPlot" HBox.hgrow="ALWAYS">
+         <children>
+            <ToolBar prefHeight="40.0" prefWidth="200.0">
+              <items>
+                <Button fx:id="openAsButton" mnemonicParsing="false" text="Open with..." />
+              </items>
+            </ToolBar>
+            <TextFlow fx:id="textFlowDisplay" />
+         </children>
+      </VBox>
+   </children>
+</HBox>
