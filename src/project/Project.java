@@ -46,13 +46,14 @@ public class Project implements Serializable{
 	transient private ArrayList<String> calcList;
 	transient private HashMap<EnumStep, InputAgent> projectDefault;
 	transient private String activeCalcKey;
+	transient private WorkScene3D viewer3D=null;
 	
 	private ArrayList<InputAgentGeo> geoList;
 	private Integer activeGeoInd;
 	private Boolean boolGeoActive;
 	private String calcScfDefault;
-	
-	transient private WorkScene3D viewer3D=null;
+	private Boolean show3DScene;//if true, show 3D structure in the workspace. Otherwise show in/output files
+
 	
 	private void readObject(java.io.ObjectInputStream in)throws IOException, ClassNotFoundException 
 	{
@@ -63,9 +64,11 @@ public class Project implements Serializable{
 		projectDefault = new HashMap<EnumStep, InputAgent>();
 		activeCalcKey = null;
 		viewer3D = new WorkScene3D();
+		if(show3DScene==null) {show3DScene=true;}//make older version compatible with newer version
 	}
 	
 	public Project(String np) {
+		show3DScene = true;
 		activeCalcKey = null;
 		nameProject = np;
 		calcDict = new HashMap<String, calculationClass>();
@@ -77,6 +80,12 @@ public class Project implements Serializable{
 		boolGeoActive = true;
 		calcScfDefault = null;
 		viewer3D = new WorkScene3D();
+	}
+	public void setShow3DScene(Boolean bl) {
+		show3DScene = bl;
+	}
+	public Boolean getShow3DScene() {
+		return show3DScene;
 	}
 	public WorkScene3D getViewer3D() {
 		if (viewer3D==null) {viewer3D = new WorkScene3D();}

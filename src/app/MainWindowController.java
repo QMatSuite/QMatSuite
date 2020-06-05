@@ -34,7 +34,9 @@ import com.consts.DefaultFileNames.settingKeys;
 import com.error.ErrorMsg;
 import com.programConst.Coloring;
 
+import agent.InputAgentScf;
 import javafx.application.Platform;
+import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
@@ -55,6 +57,7 @@ import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TabPane.TabClosingPolicy;
 import javafx.scene.control.TextInputDialog;
+import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Background;
@@ -136,6 +139,8 @@ public class MainWindowController implements Initializable{
 	private final ToggleGroup tgGroup = new ToggleGroup();
 	
 	private Thread thread1;
+	
+	private Integer tabRowNum;
 	
 	public MainWindowController(MainClass mc) {
 		mainClass = mc;
@@ -298,12 +303,8 @@ public class MainWindowController implements Initializable{
 			else {
 				mainClass.projectManager.setActiveProject(newTab.getText());
 				
-				//add 3D view
-				mainClass.projectManager.updateViewerPlot();
-				WorkScene3D workScene = mainClass.projectManager.getActiveProject().getViewer3D();
-				workScene.centerSubScene(workSpaceTabPane);
-				AnchorPane acp = workScene.getRootPane();
-				newTab.setContent(acp);//***may be unnecessary for some situations
+				
+				updateWorkScene();
 				
 				comboProject.getSelectionModel().select(newTab.getText());
 				//update calculation list
@@ -584,6 +585,38 @@ public class MainWindowController implements Initializable{
 		});
 		
 	}
+	private void updateWorkScene() {
+		String currentPj = mainClass.projectManager.getActiveProjectName();
+		if(currentPj==null) return;
+		Tab newTab = this.projectTabDict.get(currentPj);
+		if(newTab==null) return;
+		
+		VBox hbTmp = (VBox) newTab.getContent();
+		//***may be unnecessary for some situations
+		//remove last one. The if condition takes care of the case of first creation of a project
+		if(tabRowNum==null) {
+			Alert alert = new Alert(AlertType.INFORMATION);
+	    	alert.setTitle("Error");
+	    	alert.setContentText("Null of tabRowNum. Cannot load workscene.");
+	    	alert.showAndWait();
+		}
+		else {
+			ObservableList<Node>  obsTmp = hbTmp.getChildren();
+			if(obsTmp.size()>=tabRowNum) {obsTmp.remove(obsTmp.size()-1);}
+			if(mainClass.projectManager.getShow3DScene()) {
+				//add 3D view
+				mainClass.projectManager.updateViewerPlot();//*******not always necessary
+				WorkScene3D workScene = mainClass.projectManager.getActiveProject().getViewer3D();
+				workScene.centerSubScene(workSpaceTabPane);
+				AnchorPane acp = workScene.getRootPane();
+				hbTmp.getChildren().add(acp);
+			}
+			else {
+				hbTmp.getChildren().add(new Label("To be implemented"));
+			}
+		}
+		
+	}
 	public void killAllThreads() {
 		thread1.interrupt();
 	}
@@ -780,6 +813,30 @@ public class MainWindowController implements Initializable{
 		comboProject.setValue(projName);
 		//add tab
 		Tab tab = new Tab();
+		VBox hbTmp = new VBox();
+		ToggleButton tgButton = new ToggleButton("");
+		
+		if (mainClass.projectManager.getShow3DScene()) 
+		{ tgButton.setSelected(false);tgButton.setText("Show input/output files");}
+		else 
+		{ tgButton.setSelected(true);tgButton.setText("Show geometry"); }
+		//reversed than in projectManager
+		tgButton.selectedProperty().addListener((observable, oldValue, newValue) ->
+		{ 
+			if(newValue==null) return;
+			if (newValue) 
+			{ tgButton.setText("Show geometry");}
+			else 
+			{ tgButton.setText("Show input/output files"); }
+			mainClass.projectManager.setShow3DScene(!newValue);
+			updateWorkScene();
+		});
+		
+		hbTmp.getChildren().add(new HBox(new Label("Toggle geometry and in/out files"),tgButton));
+		tabRowNum=2;//2 in total, including the display defined in the tab change listener
+		
+		tab.setContent(hbTmp);
+		
 		final String pj = projName;
 		tab.setText(pj);
 		tab.setClosable(true);
@@ -788,11 +845,10 @@ public class MainWindowController implements Initializable{
 		});
 				
 		//add tab
-		workSpaceTabPane.getTabs().add(tab);
-		workSpaceTabPane.getSelectionModel().select(tab);
 		projectTabDict.put(pj,tab);
-		
-		
+		workSpaceTabPane.getTabs().add(tab);
+		workSpaceTabPane.getSelectionModel().select(tab);//must happen AFTER projectTabDict.put(pj,tab), because updateWorkScene() uses this
+
 		contTree.updateFullCalcTree();
 		//allow more interactions
 		calcMain.setDisable(false);
