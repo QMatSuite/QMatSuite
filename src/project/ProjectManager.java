@@ -56,6 +56,19 @@ public class ProjectManager {
 		pseudoLibPath = null;
 		qePath = null;
 	}
+	public void setShow3DScene(Boolean bl) {
+		Project pj = this.getActiveProject();
+		if(pj!=null) {
+			pj.setShow3DScene(bl);
+		}
+	}
+	public Boolean getShow3DScene() {
+		Project pj = this.getActiveProject();
+		if(pj!=null) {
+			return pj.getShow3DScene();
+		}
+		else {return null;}
+	}
 	public File getWorkSpaceDir() {
 		File wsDir = new File(workSpacePath);
 		if(wsDir!=null && wsDir.canWrite()) {return wsDir;}
