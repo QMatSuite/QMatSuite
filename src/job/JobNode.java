@@ -30,11 +30,20 @@ public class JobNode implements Runnable {
 	
 	private String workingDir;
 	
+	private String stdInOutFileStem;
+	
 	
 	public JobNode(String workingDir, String commandName) {
 		//commandName must be full path + command
 		this.commandName = commandName;
 		this.workingDir = workingDir;
+		this.stdInOutFileStem = null;
+	}
+	public JobNode(String workingDir, String commandName, String stdInOutFileStem) {
+		//commandName must be full path + command
+		this.commandName = commandName;
+		this.workingDir = workingDir;
+		this.stdInOutFileStem = stdInOutFileStem;
 	}
 	
 	@Override
@@ -45,7 +54,11 @@ public class JobNode implements Runnable {
 		builder = new ProcessBuilder();
 		if(workingDir!=null) {builder.directory(new File(workingDir));}
         builder.command(commandName);
-        
+        if(stdInOutFileStem!=null){
+        	builder.redirectInput(new File(workingDir,stdInOutFileStem+".in"));
+        	builder.redirectOutput(new File(workingDir,stdInOutFileStem+".out"));
+        	builder.redirectError(new File(workingDir,stdInOutFileStem+".err"));
+    	}
         try {
             synchronized (this) {
                 this.jobProcess = builder.start();

@@ -30,8 +30,6 @@ import agent.InputAgentScf;
 import input.ContainerInputString;
 import input.PwInput;
 import input.QeInput;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Alert.AlertType;
 
 public class calculationScfClass extends calculationClass{
 	/**

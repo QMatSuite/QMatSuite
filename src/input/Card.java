@@ -66,7 +66,7 @@ public class Card extends InputSection{
 	        		else if (!strTmp.isEmpty()) {ci.appendInput(strTmp+"\n");}
 	        	}
 	        }
-	        ci.appendInput("/\n");
+	        if (!keys.contains("body")) {ci.appendInput("/\n");}
 		}
 		return ci;
 	}

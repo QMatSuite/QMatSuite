@@ -1,3 +1,22 @@
+/*******************************************************************************
+ * Copyright (c) 2020 Haonan Huang.
+ *
+ *     This file is part of QuantumVITAS (Quantum Visualization Interactive 
+ *     Toolkit for Ab-initio Simulations).
+ *
+ *     QuantumVITAS is free software: you can redistribute it and/or modify
+ *     it under the terms of the GNU General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or any 
+ *     later version.
+ *
+ *     QuantumVITAS is distributed in the hope that it will be useful,
+ *     but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *     GNU General Public License for more details.
+ *
+ *     You should have received a copy of the GNU General Public License
+ *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
+ *******************************************************************************/
 package app.menus;
 
 import java.io.IOException;
@@ -5,30 +24,16 @@ import java.net.URL;
 import java.util.ResourceBundle;
 
 import com.programConst.ProgrammingConsts.settingsTags;
-
-import app.MainLeftPaneController;
-import app.input.InputGeoController;
-import app.input.InputScfController;
 import app.menus.settingTabs.PathsController;
-import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
-import javafx.scene.Scene;
 import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextField;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.ColumnConstraints;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.VBox;
-import javafx.stage.Modality;
 import javafx.stage.Stage;
 import main.MainClass;
 

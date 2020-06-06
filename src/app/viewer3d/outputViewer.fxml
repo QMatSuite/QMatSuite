@@ -3,6 +3,7 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.ToolBar?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
@@ -39,7 +40,11 @@
                 <Button fx:id="openAsButton" mnemonicParsing="false" text="Open with..." />
               </items>
             </ToolBar>
-            <TextFlow fx:id="textFlowDisplay" />
+            <ScrollPane VBox.vgrow="ALWAYS">
+               <content>
+                  <TextFlow fx:id="textFlowDisplay" />
+               </content>
+            </ScrollPane>
          </children>
       </VBox>
    </children>
