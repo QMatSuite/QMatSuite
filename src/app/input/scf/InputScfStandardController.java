@@ -31,10 +31,7 @@ import com.consts.Constants.EnumUnitEnergy;
 import com.consts.QeDocumentation;
 
 import agent.InputAgentScf;
-import agent.WrapperBoolean;
-import agent.WrapperClass;
 import agent.WrapperDouble;
-import agent.WrapperEnum;
 import agent.WrapperInteger;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;

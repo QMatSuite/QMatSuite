@@ -29,11 +29,8 @@ import agent.InputAgentGeo;
 import agent.InputAgentOpt;
 import agent.InputAgentScf;
 import input.ContainerInputString;
-import input.DosInput;
 import input.PwInput;
 import input.QeInput;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Alert.AlertType;
 
 public class calculationOptClass extends calculationClass{
 	/**

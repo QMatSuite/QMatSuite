@@ -101,7 +101,7 @@
                   <Label minWidth="25.0" text="Run" />
                 <Button fx:id="showInputButton" minWidth="70.0" mnemonicParsing="false" prefWidth="90.0" text="Show Input" />
                 <Button fx:id="runJob" minWidth="40.0" mnemonicParsing="false" prefWidth="40.0" text="Run" />
-                <Label fx:id="currentJobLabel" minWidth="100.0" prefWidth="350.0" text="" />
+                <Label fx:id="currentJobLabel" minWidth="200.0" prefWidth="400.0" text="" />
                 <Pane prefHeight="25.0" prefWidth="358.0" HBox.hgrow="ALWAYS" />
                   <Separator orientation="VERTICAL" />
                   <Label minWidth="80" prefWidth="180.0" text="Input settings" />

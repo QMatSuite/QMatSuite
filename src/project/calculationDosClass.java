@@ -33,8 +33,6 @@ import input.ContainerInputString;
 import input.DosInput;
 import input.PwInput;
 import input.QeInput;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Alert.AlertType;
 
 public class calculationDosClass extends calculationClass{
 	/**

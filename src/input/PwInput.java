@@ -80,6 +80,7 @@ public class PwInput extends QeInput{
 		sectionDict.get("SYSTEM").addParameter("cosAC", new InputValueDouble("cosAC",false));
 		sectionDict.get("SYSTEM").addParameter("cosAB", new InputValueDouble("cosAB",false));
 		sectionDict.get("SYSTEM").addParameter("nat", new InputValueInt("nat",true));
+		sectionDict.get("SYSTEM").addParameter("ntyp", new InputValueInt("ntyp",true));
 		sectionDict.get("SYSTEM").addParameter("ecutwfc", new InputValueDouble("ecutwfc",true));
 		sectionDict.get("SYSTEM").addParameter("ecutrho", new InputValueDouble("ecutrho",false));
 		sectionDict.get("SYSTEM").addParameter("lda_plus_u", new InputValueBoolean("lda_plus_u",false,false));
@@ -224,8 +225,13 @@ public class PwInput extends QeInput{
 			}
 			
 			setValue("SYSTEM","nat",new WrapperInteger(ia1.atomList.size()));
+			setValue("SYSTEM","ntyp",new WrapperInteger(ia1.elemListAll.size()));
 			
-			if(ia1.pseudodir!=null) {setValue("CONTROL","pseudo_dir",new WrapperString(ia1.pseudodir));}
+			if(ia1.pseudodir!=null) {
+				//*****to solve the issue of QE 6.4.1 windows version
+				//*****careful when cross platform
+				setValue("CONTROL","pseudo_dir",new WrapperString(ia1.pseudodir.replace("\\", "/")));
+			}
 					
 			setRequiredAndWrite("ATOMIC_SPECIES","body",true,true);
 			elementList.clear();

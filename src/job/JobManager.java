@@ -21,10 +21,6 @@ package job;
 import java.util.LinkedList;
 import java.util.Queue;
 
-import javafx.beans.property.SimpleStringProperty;
-
-
-
 public class JobManager implements Runnable {
 	
 	//always alive during the execution of the main program. Only used when exiting the main program
