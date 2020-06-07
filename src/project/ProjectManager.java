@@ -578,7 +578,7 @@ public class ProjectManager {
 	}
 	public Boolean isCurrentCalc(String ec) {
 		if (!existCurrentCalc()) return false;//false, not null!
-		return projectDict.get(activeProjKey).getActiveCalcName()==ec;
+		return java.util.Objects.equals(projectDict.get(activeProjKey).getActiveCalcName(),ec);
 	}
 	public Boolean existCurrentStep(EnumStep es) {
 		if (!existCurrentCalc()) return false;
@@ -617,7 +617,7 @@ public class ProjectManager {
 			return "Empty project name!";
 		else if (projectDict.containsKey(nameProject)){
 			projectDict.remove(nameProject);
-			if (activeProjKey==nameProject){
+			if (nameProject.equals(activeProjKey)){
 				activeProjKey = getNextKey(nameProject);
 			}
 			return null;
@@ -630,7 +630,7 @@ public class ProjectManager {
 		Boolean flag = false;
 		if (!projectDict.isEmpty()){
 			for (String key : projectDict.keySet()) {
-				if (key == nameProject) {
+				if (java.util.Objects.equals(key,nameProject)) {
 					flag = true;
 					continue;
 				}

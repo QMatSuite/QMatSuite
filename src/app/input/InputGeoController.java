@@ -107,7 +107,7 @@ public class InputGeoController implements Initializable{
 			
 			//when elementsPane expanded, automatically update the element table
 			accordGeo.expandedPaneProperty().addListener((obs, oldSelect, newSelect) -> {
-	                if (titlePaneElements==newSelect) {
+	                if (titlePaneElements==newSelect) {//here use == because check reference
 	                	//works!
 //	                	Alert alert1 = new Alert(AlertType.INFORMATION);
 //	        	    	alert1.setTitle("Yes!");

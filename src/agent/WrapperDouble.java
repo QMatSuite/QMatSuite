@@ -39,7 +39,7 @@ public class WrapperDouble extends WrapperClass{
 		value = val;
 	}
 	public Boolean equals(Double vl) {
-		return vl==value;
+		return java.util.Objects.equals(vl, value);
 	}
 	@Override
 	public Boolean isNull() {

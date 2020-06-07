@@ -174,7 +174,7 @@ public class InputScfHubbardController implements Initializable{
 		});
     	checkResetAll.selectedProperty().addListener((observable, oldValue, newValue) ->
 		{ 
-			if(newValue!=null && newValue!=allDefault) {
+			if(newValue!=null && !newValue.equals(allDefault)) {//compare wrapper with primitive, != should be ok
 				checkHubbardU.setSelected(newValue);
 				allDefault = newValue;
 			}

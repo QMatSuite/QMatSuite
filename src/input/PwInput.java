@@ -306,7 +306,7 @@ public class PwInput extends QeInput{
 			InputValueDoubleArray tmp2 = ((InputValueDoubleArray) sectionDict.get("SYSTEM").getValue("starting_magnetization"));
 			tmp2.clearAll();tmp2.setExplicitWrite(false);
 			
-			if(boolMag && (ia1.nspin.isNull() || ia1.nspin.getValue()!=1)) {
+			if(boolMag && (ia1.nspin.isNull() || !ia1.nspin.getValue().equals(1))) {
 				tmp2.setExplicitWrite(true);
 				if(ia1.setForElements.getValue()) {
 					for(int iele=0;iele<elementList.size();iele++) {
@@ -349,7 +349,7 @@ public class PwInput extends QeInput{
 			
 			if(EnumOccupations.smearing.equals((EnumOccupations)ia1.enumOccupation.getValue())) {
 				setRequiredAndWrite("SYSTEM","degauss",true,true);setRequiredAndWrite("SYSTEM","smearing",true,true);
-				if(boolHubbard && ia1.degauss.getValue()==null || ia1.degauss.getValue()==0.0) {
+				if(boolHubbard && (ia1.degauss.getValue()==null || ia1.degauss.getValue().equals(0.0))) {
 					errorMessage+="For DFT+U calculation, if you use smearing, smearing width must be positive.\n";
 				}
 			}

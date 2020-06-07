@@ -338,7 +338,7 @@ public class InputScfStandardController implements Initializable{
 			checkGauss.setDisable(true);
 			checkResetAll.selectedProperty().addListener((observable, oldValue, newValue) ->
     		{ 
-    			if(newValue!=null && newValue!=allDefault) {
+    			if(newValue!=null && !newValue.equals(allDefault)) {
     				checkRestart.setSelected(newValue);checkForce.setSelected(newValue);
     				checkStress.setSelected(newValue);checkEcutrho.setSelected(newValue);
     				checkMaxStep.setSelected(newValue);checkConv.setSelected(newValue);

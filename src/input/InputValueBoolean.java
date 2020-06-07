@@ -47,7 +47,8 @@ public class InputValueBoolean extends InputValue {
 	
 	@Override
 	public void setValueNow(Integer valueNow) throws InvalidTypeException {
-		if (valueNow!=1 && valueNow!=0) {
+		//will not be null here, otherwise compiler error
+		if (!valueNow.equals(1) && !valueNow.equals(0)) {
 			throw new InvalidTypeException("cannot convert from int to bool for int="+valueNow);
 		}
 		paraNow = (valueNow == 1);

@@ -77,7 +77,7 @@ public class WorkScene3D {
 	private static final double minBondScaling=0.1;
 	public InputAgentGeo iGeoCache=null;
 	public boolean boolFoldBack=false;
-	public Integer supercellMode = 0;//0 is no, 1 is crystal, 2 is alat
+	public int supercellMode = 0;//0 is no, 1 is crystal, 2 is alat, -1 is not selected
 	public Integer nx,ny,nz;
 	
 	private ArrayList<Atom> atomListCacheSC;
@@ -537,7 +537,7 @@ public class WorkScene3D {
         material.setDiffuseColor(Color.DARKBLUE);
         material.setSpecularColor(Color.LIGHTBLUE);
         
-        //supercellMode 0 is no, 1 is crystal, 2 is alat
+        //supercellMode 0 is no, 1 is crystal, 2 is alat, -1 is not selected (null)
     	int nxlim=1;
     	int nylim=1;
     	int nzlim=1;

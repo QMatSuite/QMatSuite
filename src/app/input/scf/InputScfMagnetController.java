@@ -241,7 +241,7 @@ public class InputScfMagnetController implements Initializable{
 			});
 			checkResetAll.selectedProperty().addListener((observable, oldValue, newValue) ->
     		{ 
-    			if(newValue!=null && newValue!=allDefault) {
+    			if(newValue!=null && !newValue.equals(allDefault)) {
     				checkPolariz.setSelected(newValue);checkSoc.setSelected(newValue);
     				allDefault = newValue;
     			}
