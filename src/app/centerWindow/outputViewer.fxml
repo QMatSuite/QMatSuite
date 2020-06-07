@@ -18,6 +18,7 @@
             <ToolBar prefHeight="40.0" prefWidth="200.0">
               <items>
                 <Button fx:id="deleteFolderButton" mnemonicParsing="false" text="del" />
+                  <Button fx:id="buttonRefreshFolder" mnemonicParsing="false" text="refresh" />
               </items>
             </ToolBar>
             <ListView fx:id="listCalcFolders" VBox.vgrow="SOMETIMES" />
@@ -29,6 +30,7 @@
             <ToolBar prefHeight="40.0" prefWidth="200.0">
               <items>
                 <Button fx:id="deleteFileButton" mnemonicParsing="false" text="del" />
+                  <Button fx:id="buttonRefreshFiles" mnemonicParsing="false" text="refresh" />
               </items>
             </ToolBar>
             <ListView fx:id="listFiles" VBox.vgrow="SOMETIMES" />

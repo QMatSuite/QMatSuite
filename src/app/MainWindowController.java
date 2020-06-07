@@ -541,12 +541,15 @@ public class MainWindowController implements Initializable{
 		});
 		menuAbout.setOnAction((event) -> {
 			Alert alert1 = new Alert(AlertType.INFORMATION);
-	    	alert1.setTitle("Error");
-	    	alert1.setContentText("QuantumVITAS (Quantum Visualization Interactive Toolkit for Ab-initio Simulations)"+
-	    			" Copyright (C) 2020  Haonan Huang\r\n" + 
-	    			"    This program comes with ABSOLUTELY NO WARRANTY; for details press `show more'.\r\n" + 
-	    			"    This is free software, and you are welcome to redistribute it\r\n" + 
-	    			"    under certain conditions; press `license' for details.");
+	    	alert1.setTitle("License");
+	    	alert1.setHeaderText("About");
+	    	alert1.setContentText("Copyright (c) 2020 Haonan Huang.\r\n" + 
+	    			"\r\n" + 
+	    			"QuantumVITAS (Quantum Visualization Interactive Toolkit for Ab-initio Simulations) is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or any later version.\r\n" + 
+	    			"\r\n" + 
+	    			"QuantumVITAS is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.\r\n" + 
+	    			"\r\n" + 
+	    			"You should have received a copy of the GNU General Public License along with QuantumVITAS. If not, see https://www.gnu.org/licenses/gpl-3.0.txt.");
 	    	alert1.showAndWait();
 		});
 		

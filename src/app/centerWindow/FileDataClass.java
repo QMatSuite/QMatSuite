@@ -6,6 +6,8 @@ public class FileDataClass {
 	private ArrayList<ArrayList<Double>> energyArray;//Ry
 	private ArrayList<Double> fermiLevel;//eV
 	private ArrayList<Double> homoLevel;//eV
+	private ArrayList<ArrayList<Double>> totalMag;//Bohr mag/cell
+	private ArrayList<ArrayList<Double>> absoluteMag;//Bohr mag/cell
 	
 	public int nstep=1;
 	public boolean isJobDone=false;
@@ -18,10 +20,16 @@ public class FileDataClass {
 	public boolean isNscf=false;
 	public boolean isNscfFinished=false;
 	
+	//will be true when one scf just finished. Will be set back to false when one new mag is read
+	private boolean flagScfFinishedForTotalMag=false;
+	private boolean flagScfFinishedForAbsMag=false;
+	
 	public FileDataClass() {
 		energyArray = new ArrayList<ArrayList<Double>>();
 		fermiLevel = new ArrayList<Double>();
 		homoLevel = new ArrayList<Double>();
+		totalMag = new ArrayList<ArrayList<Double>>();
+		absoluteMag = new ArrayList<ArrayList<Double>>();
 	}
 	public void clearAll() {
 		clearEnergyArray();
@@ -30,20 +38,42 @@ public class FileDataClass {
 		for(ArrayList<Double> ard:energyArray) {
 			if(ard!=null) {ard.clear();}
 		}
+		for(ArrayList<Double> ard:totalMag) {
+			if(ard!=null) {ard.clear();}
+		}
+		for(ArrayList<Double> ard:absoluteMag) {
+			if(ard!=null) {ard.clear();}
+		}
 		energyArray.clear();
 		fermiLevel.clear();
 		homoLevel.clear();
+		totalMag.clear();
+		absoluteMag.clear();
+
 		nstep=1;
 		isJobDone=false;
 		hasScf=false;hasScfFinished=false;isMD=false;isMDFinished=false;isOpt=false;isOptFinished=false;
 		isNscf=false;isNscfFinished=false;
+		
+		flagScfFinishedForTotalMag=false;
+		flagScfFinishedForAbsMag=false;
 	}
 	public void addTotalEnergy(double ene, boolean isFinal) {
 		//here, ene and isFinal are primitive types that CANNOT be null
-		if(energyArray==null) {energyArray = new ArrayList<ArrayList<Double>>();}//shouldn't happen
+		//energyArray==null shouldn't happen
 		if(energyArray.isEmpty()) {energyArray.add(new ArrayList<Double>());}
 		energyArray.get(energyArray.size()-1).add(ene);
-		if(isFinal) {energyArray.add(new ArrayList<Double>());}
+		if(isFinal) {energyArray.add(new ArrayList<Double>());
+		flagScfFinishedForTotalMag=true;
+		flagScfFinishedForAbsMag=true;}
+	}
+	public void addMag(double mag, boolean isTotal) {
+		ArrayList<ArrayList<Double>> tmpMag = isTotal?totalMag:absoluteMag;
+		//tmpMag==null shouldn't happen
+		if(tmpMag.isEmpty()) {tmpMag.add(new ArrayList<Double>());}
+		tmpMag.get(tmpMag.size()-1).add(mag);
+		if(flagScfFinishedForTotalMag&&isTotal) {flagScfFinishedForTotalMag=false;tmpMag.add(new ArrayList<Double>());}
+		if(flagScfFinishedForAbsMag&&!isTotal) {flagScfFinishedForAbsMag=false;tmpMag.add(new ArrayList<Double>());}
 	}
 	public ArrayList<ArrayList<Double>> getEnergyArray(){
 		return this.energyArray;
@@ -56,7 +86,7 @@ public class FileDataClass {
 	}
 	public String toString() {
 		String strTmp = "";
-		Integer cnt = 0;
+		
 		//calculation type
 		strTmp+="Detected calculation type:";
 		if(nstep==1 && hasScf) {strTmp+="SCF,";}
@@ -75,6 +105,7 @@ public class FileDataClass {
 		strTmp+=(isJobDone?"Job done.\n":"Job not done yet.\n");
 		
 		//total energy
+		Integer cnt = 0;
 		strTmp+="Total energy (Ry):";
 		for(ArrayList<Double> ard:energyArray) {
 			if(ard!=null) {
@@ -85,6 +116,36 @@ public class FileDataClass {
 					if(val!=null) {strTmp+=(val.toString()+",");}
 				}
 				strTmp+="\n";
+			}
+		}
+		
+		//magnetization
+		Integer cnt_mag = 0;
+		if(!totalMag.isEmpty() || !absoluteMag.isEmpty()) {
+			strTmp+="Total magnetization (Bohr mag/cell):";
+			for(ArrayList<Double> ard:totalMag) {
+				if(ard!=null) {
+					cnt_mag++;
+					if(ard.isEmpty()) {continue;}
+					strTmp+=("Step "+cnt_mag.toString()+": ");
+					for(Double val:ard) {
+						if(val!=null) {strTmp+=(val.toString()+",");}
+					}
+					strTmp+="\n";
+				}
+			}
+			cnt_mag = 0;
+			strTmp+="Absolute magnetization (Bohr mag/cell):";
+			for(ArrayList<Double> ard:absoluteMag) {
+				if(ard!=null) {
+					cnt_mag++;
+					if(ard.isEmpty()) {continue;}
+					strTmp+=("Step "+cnt_mag.toString()+": ");
+					for(Double val:ard) {
+						if(val!=null) {strTmp+=(val.toString()+",");}
+					}
+					strTmp+="\n";
+				}
 			}
 		}
 		

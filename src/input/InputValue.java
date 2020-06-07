@@ -26,6 +26,8 @@ import agent.WrapperBoolean;
 import agent.WrapperDouble;
 import agent.WrapperInteger;
 import agent.WrapperString;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
 
 public abstract class InputValue implements Serializable{
 	/**
@@ -35,8 +37,8 @@ public abstract class InputValue implements Serializable{
 	
 	protected final String nameString;
 	protected Boolean boolRequired;
-	protected Boolean explicitWrite = false;
-	public InputValueInfo valueInfo = null; 
+	protected Boolean explicitWrite = false;//cannot set to null
+
 	public InputValue(String ns, Boolean br) {
 		boolRequired = br;
 		nameString = ns;
@@ -48,13 +50,19 @@ public abstract class InputValue implements Serializable{
 		return boolRequired;
 	}
 	public void setExplicitWrite(Boolean ew) {
-		explicitWrite = (ew || boolRequired);//if required, always explicitly write
+		explicitWrite = ew;
 	}
 	public void andExplicitWrite(Boolean ew) {
+		if(explicitWrite==null) {explicitWrite=ew;return;}
 		explicitWrite = (ew && explicitWrite);
 	}
-	public abstract void print();
-	public abstract String toString();
+	public void print() {
+		System.out.println(toString());
+	}
+	public String toString() {
+		return toString(false);
+	}
+	public abstract String toString(boolean bl);
 	//********remove the abstract keyword so that you do not need to implement all in the inherited class!
 	public abstract void setValueNow() throws InvalidTypeException;//set to null
 	public abstract void setValueNow(Integer valueNow) throws InvalidTypeException;
@@ -72,9 +80,6 @@ public abstract class InputValue implements Serializable{
 	public void setValue(WrapperString val) throws InvalidTypeException {
 		setValueNow(val.getValue().toString());
 		setExplicitWrite(val.isEnabled());
-	}
-	public void setValue(String val) throws InvalidTypeException {
-		setValueNow(val);
 	}
 	public void setValue(WrapperBoolean val) throws InvalidTypeException {
 		setValueNow(val.getValue());

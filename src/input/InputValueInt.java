@@ -26,44 +26,32 @@ public class InputValueInt extends InputValue {
 	 */
 	private static final long serialVersionUID = 8421184057694098619L;
 	private final Integer paraDefault;
-	private Integer paraNow = null;
+	private Integer paraNow = null;//only show up in generating input from agent
 	
 	public InputValueInt(String name, Integer para, Boolean boolReq) {
 		super(name, boolReq);
 		paraDefault = para;
 		paraNow = paraDefault;
-		explicitWrite = boolRequired;
 	}
 	public InputValueInt(String name, Boolean boolReq) {
 		super(name, boolReq);
 		paraDefault = null;
-		paraNow = null;
-		explicitWrite = boolRequired;
+		paraNow = paraDefault;
 	}
 	public InputValueInt(String name) {
 		super(name, true);
 		paraDefault = null;
-		paraNow = null;
-		explicitWrite = true;
-	}
-
-	@Override
-	public void print() {
-		System.out.println(toString());
+		paraNow = paraDefault;
 	}
 	
 	@Override
 	public void setValueNow(Integer valueNow) throws InvalidTypeException{
-		explicitWrite = boolRequired || (paraDefault != valueNow);
-		//explicitWrite = boolRequired || (paraDefault==null && valueNow!=null) || (paraDefault!=null && !paraDefault.equals(valueNow));
 		paraNow = valueNow;
 	}
 	
 	@Override
 	public void setValueNow(Double valueNow) throws InvalidTypeException{
 		Integer valueNew = valueNow.intValue();
-		//explicitWrite = boolRequired || (paraDefault==null && valueNew!=null) || (paraDefault!=null && !paraDefault.equals(valueNew));
-		explicitWrite = boolRequired || (paraDefault != valueNew);
 		paraNow = valueNew;
 	}
 	
@@ -79,7 +67,6 @@ public class InputValueInt extends InputValue {
 	
 	@Override
 	public void setValueNow() throws InvalidTypeException{
-		explicitWrite = boolRequired;
 		paraNow = null;
 	}
 	
@@ -88,11 +75,6 @@ public class InputValueInt extends InputValue {
 	}
 	
 	@Override
-	public String toString() {
-		if(explicitWrite || boolRequired) return toString(false);
-		else return "";
-	}
-	
 	public String toString(boolean debugbool) {
 		if(debugbool) {
 			return nameString+", "+paraDefault+", "+paraNow+", "+(boolRequired? "required":"optional")+", "+(explicitWrite? "write":"ignored");
