@@ -32,23 +32,6 @@ public class Card extends InputSection{
 		boolRequired = false;
 		cardEnum = cardE;
 	}
-//	@Override
-//	public ContainerInputString toStringWrapper() {
-//		if (!isEmpty() || boolRequired) {
-//			String message = "&"+cardEnum.name()+" "+ options +" \n";
-//			String strTmp;
-//			Set<String> keys = parameterDict.keySet();
-//	        for(String key: keys){
-//	        	if (parameterDict.get(key).isExplicitWrite() || parameterDict.get(key).isRequired()) {
-//	        		strTmp = parameterDict.get(key).toString();
-//	        		if (strTmp==null) {}
-//	        		else if (!strTmp.isEmpty()) {message = message+strTmp+"\n";}
-//	        	}
-//	        }
-//	        return message+"/\n";
-//		}
-//		else return "";
-//	}
 	@Override
 	public ContainerInputString toStringWrapper() {
 		ContainerInputString ci = new ContainerInputString();

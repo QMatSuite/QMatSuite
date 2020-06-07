@@ -34,13 +34,11 @@ public class InputValueDoubleArray extends InputValue {
 		super(name, boolReq);
 		paraNow = new ArrayList<Double>();
 		index = new ArrayList<Integer>();
-		explicitWrite = boolRequired;
 	}
 	public InputValueDoubleArray(String name) {
 		super(name, true);
 		paraNow = new ArrayList<Double>();
 		index = new ArrayList<Integer>();
-		explicitWrite = true;
 	}
 	public void addElement(Double db,Integer it) {
 		if(db!=null && paraNow!=null && it!=null && index!=null) {
@@ -56,11 +54,6 @@ public class InputValueDoubleArray extends InputValue {
 			index.clear();
 		}
 	}
-	@Override
-	public void print() {
-		System.out.println(toString());
-	}
-
 	@Override
 	public void setValueNow(Double valueNow) throws InvalidTypeException{	
 		throw new InvalidTypeException("cannot set double array directly!");
@@ -90,11 +83,6 @@ public class InputValueDoubleArray extends InputValue {
 	}
 	
 	@Override
-	public String toString() {
-		if(explicitWrite || boolRequired) return toString(false);
-		else return "";
-	}
-	
 	public String toString(boolean debugbool) {
 		String strOut="";
 		for(int i=0;i<paraNow.size();i++) {

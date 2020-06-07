@@ -65,7 +65,7 @@ public class OutputViewerController implements Initializable{
     
     @FXML private ScrollPane displayScroll;
     
-    @FXML private Button deleteFolderButton,deleteFileButton,openAsButton;
+    @FXML private Button deleteFolderButton,deleteFileButton,openAsButton,buttonRefreshFolder,buttonRefreshFiles;
     
     @FXML private Label labelFileCategory;
     
@@ -97,14 +97,8 @@ public class OutputViewerController implements Initializable{
 			File pjFolder = getProjectFolder();
 			if(pjFolder==null || !pjFolder.canRead()) return;
 			calcFolder = new File(pjFolder,newTab);
-			if(calcFolder==null || !calcFolder.canRead() || !calcFolder.isDirectory()) return;
 			
-			listFiles.getItems().clear();
-			
-			File[] fileList = calcFolder.listFiles();
-			for (File f : fileList) {
-				listFiles.getItems().add(f.getName());
-			}
+			updateFilesInCalcFolder();
 		});
 		listFiles.getSelectionModel().selectedItemProperty().addListener((ov, oldTab, newTab) -> {
 			fileCategory = null;
@@ -156,7 +150,31 @@ public class OutputViewerController implements Initializable{
 				e.printStackTrace();
 			}
 		});
+		buttonRefreshFolder.setOnAction((event) -> {
+			int tmpInt = listCalcFolders.getSelectionModel().getSelectedIndex();
+			updateProjectFolder();
+			if(tmpInt>=0 && listCalcFolders.getItems()!=null && listCalcFolders.getItems().size()>tmpInt) {
+				listCalcFolders.getSelectionModel().select(tmpInt);
+			}
+		});
+		buttonRefreshFiles.setOnAction((event) -> {
+			int tmpInt = listFiles.getSelectionModel().getSelectedIndex();
+			updateFilesInCalcFolder();
+			if(tmpInt>=0 && listFiles.getItems()!=null && listFiles.getItems().size()>tmpInt) {
+				listFiles.getSelectionModel().select(tmpInt);
+			}
+		});
 		
+	}
+	private void updateFilesInCalcFolder() {
+		listFiles.getItems().clear();
+		
+		if(calcFolder==null || !calcFolder.canRead() || !calcFolder.isDirectory()) return;
+		
+		File[] fileList = calcFolder.listFiles();
+		for (File f : fileList) {
+			listFiles.getItems().add(f.getName());
+		}
 	}
 	private void updateIoDisplay() {
 		EnumAnalysis analTmp = comboAnalysis.getSelectionModel().getSelectedItem();
@@ -217,6 +235,24 @@ public class OutputViewerController implements Initializable{
 		    				Double dbTmp =  Double.valueOf(splitted[3]);
 			    			if(dbTmp!=null) {fileData.addTotalEnergy(dbTmp, false);}
 		    			}
+		    		}catch(Exception e) {
+		    			e.printStackTrace();
+		    		}
+		    	}
+		    	if(lowerCaseStr.contains("total magnetization") && strTmp.contains("=")) {
+		    		String[] splitted = strTmp.trim().split("\\s+");//split the string by whitespaces
+		    		try {
+		    			Double dbTmp =  Double.valueOf(splitted[3]);
+		    			if(dbTmp!=null) {fileData.addMag(dbTmp, true);}
+		    		}catch(Exception e) {
+		    			e.printStackTrace();
+		    		}
+		    	}
+		    	if(lowerCaseStr.contains("absolute magnetization") && strTmp.contains("=")) {
+		    		String[] splitted = strTmp.trim().split("\\s+");//split the string by whitespaces
+		    		try {
+		    			Double dbTmp =  Double.valueOf(splitted[3]);
+		    			if(dbTmp!=null) {fileData.addMag(dbTmp, false);}
 		    		}catch(Exception e) {
 		    			e.printStackTrace();
 		    		}
@@ -300,8 +336,8 @@ public class OutputViewerController implements Initializable{
 		    	strTmp = sc.nextLine();
 		    	txtTmp = new Text(strTmp+"\n");
 		    	if(boolHighLight) {
-			    	if(strTmp!=null && strTmp.contains("calculation")) {txtTmp.setFill(Color.BLUE);}
-			    	if(strTmp!=null && containsSectionName(strTmp)) {txtTmp.setFill(Color.GREEN);}
+			    	if(strTmp!=null && strTmp.contains("calculation")&& strTmp.contains("=")) {txtTmp.setFill(Color.BLUE);}
+			    	if(strTmp!=null && containsSectionName(strTmp) && !strTmp.contains("=")) {txtTmp.setFill(Color.GREEN);}
 		    	}
 		    	textFlowDisplay.getChildren().add(txtTmp);
 		    }
@@ -340,10 +376,10 @@ public class OutputViewerController implements Initializable{
 		return new File(new File(wsp),pj);
 	}
 	public void updateProjectFolder() {
+		listCalcFolders.getItems().clear();listFiles.getItems().clear();
+		
 		File pjFolder = getProjectFolder();
 		if(pjFolder==null || !pjFolder.canRead()) return;
-
-		listCalcFolders.getItems().clear();listFiles.getItems().clear();
 		
 		File[] fileList = pjFolder.listFiles();
 		int count = 0;

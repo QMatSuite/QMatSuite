@@ -26,40 +26,30 @@ public class InputValueString extends InputValue {
 	 */
 	private static final long serialVersionUID = 2924455053168830612L;
 	private final String paraDefault;
-	private String paraNow = null;
+	private String paraNow;
 	
 	public InputValueString(String name, String para, Boolean boolReq) {
 		super(name, boolReq);
 		paraDefault = para;
-		paraNow = paraDefault;
-		explicitWrite = boolRequired;
+		paraNow = paraDefault;//necessary
 	}
 	public InputValueString(String name, Boolean boolReq) {
 		super(name, boolReq);
 		paraDefault = null;
-		paraNow = null;
-		explicitWrite = boolRequired;
+		paraNow = paraDefault;
 	}
 	public InputValueString(String name) {
 		super(name, true);
 		paraDefault = null;
-		paraNow = null;
-		explicitWrite = true;
+		paraNow = paraDefault;
 	}
 	public boolean isEmpty() {
 		if(paraNow==null||paraNow.isEmpty()) return true;
 		else return false;
 	}
-
-	@Override
-	public void print() {
-		System.out.println(toString());
-	}
 	
 	@Override
 	public void setValueNow(String valueNow) throws InvalidTypeException{
-		explicitWrite = boolRequired || (paraDefault != valueNow);
-		//explicitWrite = boolRequired || (paraDefault==null && valueNow!=null) || (paraDefault!=null && !paraDefault.equals(valueNow));
 		paraNow = valueNow;
 	}
 	
@@ -80,7 +70,6 @@ public class InputValueString extends InputValue {
 	
 	@Override
 	public void setValueNow() throws InvalidTypeException{
-		explicitWrite = boolRequired;
 		paraNow = null;
 	}
 	
@@ -90,11 +79,6 @@ public class InputValueString extends InputValue {
 
 
 	@Override
-	public String toString() {
-		if(explicitWrite || boolRequired) return toString(false);
-		else return "";
-	}
-	
 	public String toString(boolean debugbool) {
 		if(debugbool) {
 			return nameString+", "+paraDefault+", "+paraNow+", "+(boolRequired? "required":"optional")+", "+(explicitWrite? "write":"ignored");

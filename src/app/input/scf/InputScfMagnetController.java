@@ -108,13 +108,13 @@ public class InputScfMagnetController implements Initializable{
 					setDisable();
 					switch (polarizCombo.getValue()) {
 						case "not spin-polarized": 
-							ia.nspin.setValue(1);ia.noncolin.setValue(false);
+							ia.nspin.setValue(1);ia.noncolin.setValue(false);ia.noncolin.setEnabled(false);
 							break;
 						case "spin-polarized (collinear)":
-							ia.nspin.setValue(2);ia.noncolin.setValue(false);
+							ia.nspin.setValue(2);ia.noncolin.setValue(false);ia.noncolin.setEnabled(false);
 							break;
 						case "non collinear":
-							ia.nspin.setValue(null);ia.noncolin.setValue(true);
+							ia.nspin.setValue(null);ia.noncolin.setValue(true);ia.noncolin.setEnabled(true);
 							break;
 						default:
 							Alert alert = new Alert(AlertType.INFORMATION);

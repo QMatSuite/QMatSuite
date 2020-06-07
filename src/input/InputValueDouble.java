@@ -26,50 +26,37 @@ public class InputValueDouble extends InputValue {
 	 */
 	private static final long serialVersionUID = 6246154679191L;
 	private final Double paraDefault;
-	private Double paraNow = null;
+	private Double paraNow;//only show up in generating input from agent
 	
 	public InputValueDouble(String name, Double para, Boolean boolReq) {
 		super(name, boolReq);
 		paraDefault = para;
 		paraNow = paraDefault;
-		explicitWrite = boolRequired;
 	}
 	public InputValueDouble(String name, Integer para, Boolean boolReq) {
 		super(name, boolReq);
 		paraDefault = Double.valueOf(para);
 		paraNow = paraDefault;
-		explicitWrite = boolRequired;
 	}
 	public InputValueDouble(String name, Boolean boolReq) {
 		super(name, boolReq);
 		paraDefault = null;
-		paraNow = null;
-		explicitWrite = boolRequired;
+		paraNow = paraDefault;
 	}
 	public InputValueDouble(String name) {
 		super(name, true);
 		paraDefault = null;
-		paraNow = null;
-		explicitWrite = true;
-	}
-
-	@Override
-	public void print() {
-		System.out.println(toString());
+		paraNow = paraDefault;
 	}
 
 	@Override
 	public void setValueNow(Double valueNow) throws InvalidTypeException{	
-		//explicitWrite = boolRequired || (paraDefault==null && valueNow!=null) || (paraDefault!=null && !paraDefault.equals(valueNow));
-		explicitWrite = boolRequired || (paraDefault != valueNow);
 		paraNow = valueNow;
 	}
 	
 	@Override
 	public void setValueNow(Integer valueNow) throws InvalidTypeException{	
 		Double valueNew = valueNow.doubleValue();
-		explicitWrite = boolRequired || (paraDefault != valueNew);
-		//explicitWrite = boolRequired || (paraDefault==null && valueNew!=null) || (paraDefault!=null && !paraDefault.equals(valueNew));
 		paraNow = valueNew;
 	}
 	
@@ -85,7 +72,6 @@ public class InputValueDouble extends InputValue {
 	
 	@Override
 	public void setValueNow() throws InvalidTypeException{
-		explicitWrite = boolRequired;
 		paraNow = null;
 	}
 	public void multiply(double db) throws InvalidTypeException {
@@ -96,11 +82,6 @@ public class InputValueDouble extends InputValue {
 	}
 	
 	@Override
-	public String toString() {
-		if(explicitWrite || boolRequired) return toString(false);
-		else return "";
-	}
-	
 	public String toString(boolean debugbool) {
 		if(debugbool) {
 			return nameString+", "+paraDefault+", "+paraNow+", "+(boolRequired? "required":"optional")+", "+(explicitWrite? "write":"ignored");

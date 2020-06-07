@@ -26,30 +26,23 @@ public class InputValueBoolean extends InputValue {
 	 */
 	private static final long serialVersionUID = 1372244252110504167L;
 	private final Boolean paraDefault;
-	private Boolean paraNow = null;
+	private Boolean paraNow = null;//only show up in generating input from agent
 	
 	public InputValueBoolean(String name, Boolean para, Boolean boolReq) {
 		super(name, boolReq);
 		paraDefault = para;
 		paraNow = paraDefault;
-		explicitWrite = boolRequired;
 	}
 	public InputValueBoolean(String name, Boolean boolReq) {
 		super(name, boolReq);
 		paraDefault = null;
 		paraNow = paraDefault;
-		explicitWrite = boolRequired;
+		
 	}
 	public InputValueBoolean(String name) {
 		super(name, true);
 		paraDefault = null;
-		paraNow = null;
-		explicitWrite = true;
-	}
-	
-	@Override
-	public void print() {
-		System.out.println(toString());
+		paraNow = paraDefault;
 	}
 	
 	@Override
@@ -57,7 +50,6 @@ public class InputValueBoolean extends InputValue {
 		if (valueNow!=1 && valueNow!=0) {
 			throw new InvalidTypeException("cannot convert from int to bool for int="+valueNow);
 		}
-		explicitWrite = boolRequired || (paraNow != (valueNow == 1));
 		paraNow = (valueNow == 1);
 	}
 	
@@ -73,14 +65,11 @@ public class InputValueBoolean extends InputValue {
 	
 	@Override
 	public void setValueNow(Boolean valueNow) throws InvalidTypeException{	
-		//explicitWrite = boolRequired || (paraDefault==null && valueNow!=null) || (paraDefault!=null && !paraDefault.equals(valueNow));
-		explicitWrite = boolRequired || (paraDefault!=valueNow);
 		paraNow = valueNow;
 	}
 	
 	@Override
 	public void setValueNow() throws InvalidTypeException{
-		explicitWrite = boolRequired;
 		paraNow = null;
 	}
 	
@@ -89,16 +78,11 @@ public class InputValueBoolean extends InputValue {
 	}
 	
 	@Override
-	public String toString() {
-		if(explicitWrite || boolRequired) return toString(false);
-		else return "";
-	}
-	
 	public String toString(boolean debugbool) {
 		if(debugbool) {
 			return nameString+", "+paraDefault+", "+paraNow+", "+(boolRequired? "required":"optional")+", "+(explicitWrite? "write":"ignored");
 			}
-		else {
+		else {			
 			if (paraNow!=null) {
 				String strTmp = (paraNow?".true.":".false.");
 				return nameString.equals("body")? ""+strTmp :nameString+"="+strTmp;

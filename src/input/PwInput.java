@@ -65,7 +65,7 @@ public class PwInput extends QeInput{
 		sectionDict.put("ATOMIC_FORCES", new Card(EnumCard.ATOMIC_FORCES));
 		//add relevant parameters
 		sectionDict.get("CONTROL").setBoolRequired(true);
-		sectionDict.get("CONTROL").addParameter("calculation", new InputValueString("calculation","scf",true));
+		sectionDict.get("CONTROL").addParameter("calculation", new InputValueString("calculation","scf",true));//always write to make clear
 		sectionDict.get("CONTROL").addParameter("restart_mode", new InputValueString("restart_mode","from_scratch",false));
 		sectionDict.get("CONTROL").addParameter("max_seconds", new InputValueDouble("max_seconds",1.0E7,false));
 		sectionDict.get("CONTROL").addParameter("tprnfor", new InputValueBoolean("tprnfor",false,false));
@@ -92,7 +92,7 @@ public class PwInput extends QeInput{
 		sectionDict.get("SYSTEM").addParameter("nspin", new InputValueInt("nspin",1,false));
 		sectionDict.get("SYSTEM").addParameter("noncolin", new InputValueBoolean("noncolin",false,false));
 		sectionDict.get("SYSTEM").addParameter("lspinorb", new InputValueBoolean("lspinorb",false,false));
-		sectionDict.get("SYSTEM").addParameter("occupations", new InputValueString("occupations",EnumOccupations.smearing.toString(),true));
+		sectionDict.get("SYSTEM").addParameter("occupations", new InputValueString("occupations",true));
 		sectionDict.get("SYSTEM").addParameter("degauss", new InputValueDouble("degauss",0.0,true));
 		sectionDict.get("SYSTEM").addParameter("smearing", new InputValueString("smearing",EnumSmearing.gauss.toString(),true));
 		sectionDict.get("ELECTRONS").addParameter("electron_maxstep", new InputValueInt("electron_maxstep",100,false));
@@ -341,9 +341,25 @@ public class PwInput extends QeInput{
 				}
 			}
 			
+			setValue("SYSTEM","occupations",ia1.enumOccupation);
+			setValue("SYSTEM","degauss",ia1.degauss);
+			setValue("SYSTEM","smearing",ia1.enumSmearing);
 			
 			boolean boolHubbard = ia1.setU;
+			
+			if(EnumOccupations.smearing.equals((EnumOccupations)ia1.enumOccupation.getValue())) {
+				setRequiredAndWrite("SYSTEM","degauss",true,true);setRequiredAndWrite("SYSTEM","smearing",true,true);
+				if(boolHubbard && ia1.degauss.getValue()==null || ia1.degauss.getValue()==0.0) {
+					errorMessage+="For DFT+U calculation, if you use smearing, smearing width must be positive.\n";
+				}
+			}
+			else {
+				setRequiredAndWrite("SYSTEM","degauss",false,false);setRequiredAndWrite("SYSTEM","smearing",false,false);
+			}
+			
+			
 			setValue("SYSTEM","lda_plus_u",ia1.lda_plus_u);andExplicitWrite("SYSTEM","lda_plus_u",boolHubbard);
+			
 			
 			InputValueDoubleArray tmp = ((InputValueDoubleArray) sectionDict.get("SYSTEM").getValue("Hubbard_U"));
 			tmp.setExplicitWrite(boolHubbard);
@@ -367,13 +383,12 @@ public class PwInput extends QeInput{
 			setValue("CONTROL","restart_mode",new WrapperString(ia1.boolRestart.getValue()?"restart":"from_scratch",ia1.boolRestart.isEnabled()));
 			setValue("CONTROL","tprnfor",ia1.boolForce);
 			setValue("CONTROL","tstress",ia1.boolStress);
-			setValue("SYSTEM","occupations",ia1.enumOccupation);
+			
 			setValue("ELECTRONS","electron_maxstep",ia1.nElecMaxStep);
 			setValue("ELECTRONS","conv_thr",ia1.elecConv);
 			setValue("ELECTRONS","mixing_mode",ia1.enumMixing);
 			setValue("ELECTRONS","mixing_beta",ia1.mixBeta);
-			setValue("SYSTEM","degauss",ia1.degauss);
-			setValue("SYSTEM","smearing",ia1.enumSmearing);
+			
 			WrapperString wp = new WrapperString(" "+ia1.nkx.getValue()+" "
 			+ia1.nky.getValue()+" "+ia1.nkz.getValue()+" 0 0 0");
 			setValue("K_POINTS","body",wp);
