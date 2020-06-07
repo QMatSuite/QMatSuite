@@ -25,7 +25,7 @@ import java.nio.file.Paths;
 import java.util.ResourceBundle;
 import com.consts.Constants.EnumFunctional;
 import com.consts.Constants.EnumPP;
-import com.consts.DefaultFileNames.settingKeys;
+import com.programConst.DefaultFileNames.settingKeys;
 import com.pseudopot.EnumPseudoPotLib;
 import com.pseudopot.PseudoDojoClass;
 import com.pseudopot.SSSPClass;

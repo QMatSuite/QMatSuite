@@ -21,6 +21,8 @@ package job;
 
 import java.io.File;
 
+import com.programConst.ProgrammingConsts;
+
 
 public class JobNode implements Runnable {
 
@@ -55,9 +57,9 @@ public class JobNode implements Runnable {
 		if(workingDir!=null) {builder.directory(new File(workingDir));}
         builder.command(commandName);
         if(stdInOutFileStem!=null){
-        	builder.redirectInput(new File(workingDir,stdInOutFileStem+".in"));
-        	builder.redirectOutput(new File(workingDir,stdInOutFileStem+".out"));
-        	builder.redirectError(new File(workingDir,stdInOutFileStem+".err"));
+        	builder.redirectInput(new File(workingDir,stdInOutFileStem + ProgrammingConsts.stdinExtension));
+        	builder.redirectOutput(new File(workingDir,stdInOutFileStem + ProgrammingConsts.stdoutExtension));
+        	builder.redirectError(new File(workingDir,stdInOutFileStem + ProgrammingConsts.stderrExtension));
     	}
         try {
             synchronized (this) {

@@ -99,7 +99,10 @@ public class InputValueBoolean extends InputValue {
 			return nameString+", "+paraDefault+", "+paraNow+", "+(boolRequired? "required":"optional")+", "+(explicitWrite? "write":"ignored");
 			}
 		else {
-			if (paraNow!=null) return nameString.equals("body")? ""+paraNow :nameString+"="+paraNow;
+			if (paraNow!=null) {
+				String strTmp = (paraNow?".true.":".false.");
+				return nameString.equals("body")? ""+strTmp :nameString+"="+strTmp;
+			}
 			else return null;
 		}
 	}

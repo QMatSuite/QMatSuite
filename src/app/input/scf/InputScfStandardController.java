@@ -321,14 +321,18 @@ public class InputScfStandardController implements Initializable{
     		{ 
     			InputAgentScf iScf = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
 				if (iScf==null || newValue==null) return;
-				if (newValue) {occupCombo.getSelectionModel().select(iScf.resetenumOccupation());occupCombo.setDisable(true);iScf.enumOccupation.setEnabled(false);}
+				if (newValue) {occupCombo.getSelectionModel().select(iScf.resetenumOccupation());occupCombo.setDisable(true);
+				iScf.enumOccupation.setEnabled(true);//here set to true, because QE does not have the same default
+				}
 				else {occupCombo.setDisable(false);iScf.enumOccupation.setEnabled(true);if(checkResetAll.isSelected()) {allDefault=false;checkResetAll.setSelected(false);}}
 			});
 			checkSmear.selectedProperty().addListener((observable, oldValue, newValue) ->
     		{ 
     			InputAgentScf iScf = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
 				if (iScf==null || newValue==null) return;
-				if (newValue) {smearCombo.getSelectionModel().select(iScf.resetenumSmearing());smearCombo.setDisable(true);iScf.enumSmearing.setEnabled(false);}
+				if (newValue) {smearCombo.getSelectionModel().select(iScf.resetenumSmearing());smearCombo.setDisable(true);
+				iScf.enumSmearing.setEnabled(true);//here set to true, because QE does not have the same default
+				}
 				else {smearCombo.setDisable(false);iScf.enumSmearing.setEnabled(true);if(checkResetAll.isSelected()) {allDefault=false;checkResetAll.setSelected(false);}}
 			});
 			checkGauss.setDisable(true);

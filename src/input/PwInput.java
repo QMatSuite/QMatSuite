@@ -92,9 +92,9 @@ public class PwInput extends QeInput{
 		sectionDict.get("SYSTEM").addParameter("nspin", new InputValueInt("nspin",1,false));
 		sectionDict.get("SYSTEM").addParameter("noncolin", new InputValueBoolean("noncolin",false,false));
 		sectionDict.get("SYSTEM").addParameter("lspinorb", new InputValueBoolean("lspinorb",false,false));
-		sectionDict.get("SYSTEM").addParameter("occupations", new InputValueString("occupations",EnumOccupations.smearing.toString(),false));
-		sectionDict.get("SYSTEM").addParameter("degauss", new InputValueDouble("degauss",0.0,false));
-		sectionDict.get("SYSTEM").addParameter("smearing", new InputValueString("smearing",EnumSmearing.gauss.toString(),false));
+		sectionDict.get("SYSTEM").addParameter("occupations", new InputValueString("occupations",EnumOccupations.smearing.toString(),true));
+		sectionDict.get("SYSTEM").addParameter("degauss", new InputValueDouble("degauss",0.0,true));
+		sectionDict.get("SYSTEM").addParameter("smearing", new InputValueString("smearing",EnumSmearing.gauss.toString(),true));
 		sectionDict.get("ELECTRONS").addParameter("electron_maxstep", new InputValueInt("electron_maxstep",100,false));
 		sectionDict.get("ELECTRONS").addParameter("conv_thr", new InputValueDouble("conv_thr",1e-6,false));
 		sectionDict.get("ELECTRONS").addParameter("mixing_mode", new InputValueString("mixing_mode",EnumMixingMode.plain.toString(),false));
