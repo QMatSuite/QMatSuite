@@ -71,10 +71,10 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import job.JobNode;
 import main.MainClass;
+import app.centerWindow.OutputViewerController;
+import app.centerWindow.WorkScene3D;
 import app.input.*;
 import app.menus.SettingsWindowController;
-import app.viewer3d.OutputViewerController;
-import app.viewer3d.WorkScene3D;
 import input.ContainerInputString;
 
 public class MainWindowController implements Initializable{
@@ -199,7 +199,7 @@ public class MainWindowController implements Initializable{
 			borderSettings = fxmlLoaderSettings.load();
 			
 			contOutput = new OutputViewerController(mainClass);
-			FXMLLoader fxmlLoaderOutput = new FXMLLoader(this.getClass().getResource("viewer3d/outputViewer.fxml"));
+			FXMLLoader fxmlLoaderOutput = new FXMLLoader(this.getClass().getResource("centerWindow/outputViewer.fxml"));
 			fxmlLoaderOutput.setController(contOutput);
 			hboxOutput = fxmlLoaderOutput.load();
 			
