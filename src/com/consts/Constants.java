@@ -37,6 +37,45 @@ public class Constants {
 		IONS,
 		CELL
 	}
+	public enum EnumFileCategory{
+		save("QuantumVITAS save"),directory("Directory"),stdin("Input (std)"),
+		stdout("Output (std)"),xmlout("Output (xml)"),crash("Crash"),stderr("Error (std)"),
+		unknown("Unknown");
+		
+		private String name;
+		
+		private EnumFileCategory(String name) {
+			this.name = name;
+		}
+		@Override
+		public String toString() {
+			return name;
+		}
+	}
+	public enum EnumAnalysis{
+		info("Information"),
+		text("Raw text"),
+		plot2D("Plots");
+		
+		private String name;
+		
+		private EnumAnalysis(String name) {
+			this.name = name;
+		}
+		
+		@Override
+		public String toString() {
+			return name;
+		}
+
+		public String getName() {
+			return name;
+		}
+
+		public void setName(String name) {
+			this.name = name;
+		}
+	}
 	public enum EnumCard {
 		//pw.x
 		ATOMIC_SPECIES,

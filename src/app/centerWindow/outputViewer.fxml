@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ListView?>
 <?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.ToolBar?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.text.TextFlow?>
 
 <HBox fx:id="rootHbox" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
    <children>
@@ -35,16 +36,18 @@
       </VBox>
       <VBox fx:id="vboxMainPlot" HBox.hgrow="ALWAYS">
          <children>
-            <ToolBar prefHeight="40.0" prefWidth="200.0">
-              <items>
+            <HBox>
+               <children>
+                  <Label text="File category:" />
+                  <Label fx:id="labelFileCategory" minWidth="65.0" />
+                  <Separator orientation="VERTICAL" />
+                  <Label text="Show" />
+                  <ComboBox fx:id="comboAnalysis" />
+                  <Separator orientation="VERTICAL" />
                 <Button fx:id="openAsButton" mnemonicParsing="false" text="Open with..." />
-              </items>
-            </ToolBar>
-            <ScrollPane VBox.vgrow="ALWAYS">
-               <content>
-                  <TextFlow fx:id="textFlowDisplay" />
-               </content>
-            </ScrollPane>
+               </children>
+            </HBox>
+            <ScrollPane fx:id="displayScroll" VBox.vgrow="ALWAYS" />
          </children>
       </VBox>
    </children>

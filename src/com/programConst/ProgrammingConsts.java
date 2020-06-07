@@ -25,4 +25,7 @@ public interface ProgrammingConsts {
 		Paths,
 		Viewer3D
 	}
+	public final String stdinExtension = ".in"; 
+	public final String stdoutExtension = ".out";
+	public final String stderrExtension = ".err";
 }

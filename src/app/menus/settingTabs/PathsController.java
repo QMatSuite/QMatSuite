@@ -24,8 +24,8 @@ import java.net.URL;
 import java.nio.file.Paths;
 import java.util.ResourceBundle;
 
-import com.consts.DefaultFileNames.settingKeys;
 import com.programConst.Coloring;
+import com.programConst.DefaultFileNames.settingKeys;
 
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
