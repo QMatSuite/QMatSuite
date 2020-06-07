@@ -41,7 +41,7 @@ public class WrapperEnum extends WrapperClass{
 		value = val;
 	}
 	public Boolean equals(enumInProgram vl) {
-		return vl==value;
+		return java.util.Objects.equals(vl, value);
 	}
 	@Override
 	public Boolean isNull() {

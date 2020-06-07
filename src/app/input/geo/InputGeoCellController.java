@@ -199,8 +199,8 @@ public class InputGeoCellController implements Initializable{
 				if (ia!=null) {
 					EnumUnitCellParameter tmp = lattUnit.getValue();
 					if(tmp!=null) ia.unitCellParameter=tmp;
-					if (ia.ibrav.getValue()!=null && ia.ibrav.getValue()==0) {
-						if (lattUnit.getValue()==EnumUnitCellParameter.alat) {
+					if (ia.ibrav.getValue()!=null && ia.ibrav.getValue().equals(0)) {
+						if (lattUnit.getValue().equals(EnumUnitCellParameter.alat)) {
 							ia.needAlatFromCell=true;aField.setDisable(!ia.needCellA());aUnit.setDisable(!ia.needCellA());
 						}
 						else {ia.needAlatFromCell=false;aField.setDisable(!ia.needCellA());aUnit.setDisable(!ia.needCellA());}

@@ -121,7 +121,7 @@ public class Project implements Serializable{
 	}
 	public Boolean isDefault() {
 		if (calcScfDefault==null || activeCalcKey==null) return false;
-		return (calcScfDefault==activeCalcKey);
+		return java.util.Objects.equals(calcScfDefault,activeCalcKey);
 	}
 	
 	public void addCalculation(EnumCalc ec) {
