@@ -37,33 +37,27 @@ public class calculationOptClass extends calculationClass{
 	 * 
 	 */
 	private static final long serialVersionUID = 138458242473384324L;
+	
+	private void readObject(java.io.ObjectInputStream in)throws IOException, ClassNotFoundException 
+	{
+		//for loading after serialization
+	    in.defaultReadObject();
+	    inputList = new HashMap<EnumStep, QeInput>();
+	    inputList.put(EnumStep.OPT,new PwInput());
+	}
 	public calculationOptClass(String cn) {
 		super();
 		this.calcName = cn;
 		nameCalc = EnumCalc.OPT;
 		
-//		commandList.put(EnumStep.GEO,"");
-//		orderList.add(EnumStep.GEO);
-//		inputList.put(EnumStep.GEO,null);
-//		agentList.put(EnumStep.GEO,null);
-		
 		commandList.put(EnumStep.SCF,"");
 		orderList.add(EnumStep.SCF);
-		inputList.put(EnumStep.SCF,null);
 		agentList.put(EnumStep.SCF,new InputAgentScf());
 		
 		commandList.put(EnumStep.OPT,"pw.exe < espresso.in > espresso.out");
 		orderList.add(EnumStep.OPT);
 		inputList.put(EnumStep.OPT,new PwInput());
 		agentList.put(EnumStep.OPT,new InputAgentOpt());
-	}
-	protected void readObject(java.io.ObjectInputStream in)throws IOException, ClassNotFoundException 
-	{
-		//for loading after serialization
-	    in.defaultReadObject();
-	    inputList = new HashMap<EnumStep, QeInput>();
-	    inputList.put(EnumStep.SCF, new PwInput());
-	    inputList.put(EnumStep.OPT,new PwInput());
 	}
 	public ArrayList<ContainerInputString> genInputFromAgent(ArrayList<InputAgentGeo> geoList) {
 		ArrayList<ContainerInputString> cis = new ArrayList<ContainerInputString>();
