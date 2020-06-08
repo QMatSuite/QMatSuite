@@ -26,8 +26,6 @@ import agent.WrapperBoolean;
 import agent.WrapperDouble;
 import agent.WrapperInteger;
 import agent.WrapperString;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Alert.AlertType;
 
 public abstract class InputValue implements Serializable{
 	/**

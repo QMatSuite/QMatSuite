@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TreeTableView?>
@@ -12,10 +13,11 @@
    <content>
       <VBox prefHeight="500.0" prefWidth="280.0">
          <children>
-            <GridPane>
+            <GridPane hgap="5.0">
               <columnConstraints>
-                <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
-                <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+                <ColumnConstraints hgrow="SOMETIMES" maxWidth="101.0" minWidth="10.0" prefWidth="94.0" />
+                <ColumnConstraints hgrow="SOMETIMES" maxWidth="101.5" minWidth="10.0" prefWidth="92.5" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="92.5" minWidth="10.0" prefWidth="79.5" />
               </columnConstraints>
               <rowConstraints>
                 <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
@@ -23,7 +25,11 @@
                <children>
                   <Button fx:id="buttonOpenSelected" mnemonicParsing="false" text="Open selected" />
                   <Button fx:id="buttonCloseSelected" mnemonicParsing="false" text="Close selected" GridPane.columnIndex="1" />
+                  <Button fx:id="buttonRefresh" mnemonicParsing="false" text="Refresh" GridPane.columnIndex="2" />
                </children>
+               <VBox.margin>
+                  <Insets left="5.0" />
+               </VBox.margin>
             </GridPane>
             <TreeTableView fx:id="projectTree" prefHeight="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS" />
          </children>

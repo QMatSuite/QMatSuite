@@ -158,15 +158,38 @@ public class OutputViewerController implements Initializable{
 			}
 		});
 		buttonRefreshFiles.setOnAction((event) -> {
-			int tmpInt = listFiles.getSelectionModel().getSelectedIndex();
 			updateFilesInCalcFolder();
-			if(tmpInt>=0 && listFiles.getItems()!=null && listFiles.getItems().size()>tmpInt) {
-				listFiles.getSelectionModel().select(tmpInt);
+		});
+		deleteFolderButton.setOnAction((event) -> {
+			try {
+				deleteDirectory(calcFolder);
+			} catch (IOException e) {
+				e.printStackTrace();
 			}
+			updateProjectFolder();
+		});
+		deleteFileButton.setOnAction((event) -> {
+			try {
+				deleteDirectory(inoutFiles);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			updateFilesInCalcFolder();
 		});
 		
 	}
+	boolean deleteDirectory(File directoryToBeDeleted) throws IOException {
+	    File[] contentFiles = directoryToBeDeleted.listFiles();
+	    if (contentFiles != null) {
+	        for (File file : contentFiles) {
+	            deleteDirectory(file);
+	        }
+	    }
+	    return directoryToBeDeleted.delete();
+	}
 	private void updateFilesInCalcFolder() {
+		int tmpInt = listFiles.getSelectionModel().getSelectedIndex();
+		
 		listFiles.getItems().clear();
 		
 		if(calcFolder==null || !calcFolder.canRead() || !calcFolder.isDirectory()) return;
@@ -174,6 +197,10 @@ public class OutputViewerController implements Initializable{
 		File[] fileList = calcFolder.listFiles();
 		for (File f : fileList) {
 			listFiles.getItems().add(f.getName());
+		}
+		
+		if(tmpInt>=0 && listFiles.getItems()!=null && listFiles.getItems().size()>tmpInt) {
+			listFiles.getSelectionModel().select(tmpInt);//will invoke selection change listener and update "inoutFiles"
 		}
 	}
 	private void updateIoDisplay() {
@@ -390,7 +417,7 @@ public class OutputViewerController implements Initializable{
 		for (File f : fileList) {
 			if(f.isFile()) {listCalcFolders.getItems().add(f.getName());pureFiles.add(f.getName());}
 		}
-		if(count>0) {listCalcFolders.getSelectionModel().select(0);}
+		if(count>0) {listCalcFolders.getSelectionModel().select(0);}//will invoke selection change listener and update "calcFolder"
 		listCalcFolders.setCellFactory(new Callback<ListView<String>, ListCell<String>>() {
 	        @Override 
 	        public ListCell<String> call(ListView<String> param) {
