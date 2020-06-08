@@ -21,14 +21,25 @@
     </resources>
     <plugins>
       	<plugin>
-		    <artifactId>maven-compiler-plugin</artifactId>
-		    <version>3.8.0</version>
-		    <configuration>
-		        <source>1.8</source>
-		        <target>1.8</target>
-		    </configuration>
-		</plugin>
-		
+	    <artifactId>maven-compiler-plugin</artifactId>
+	    <version>3.8.0</version>
+	    <configuration>
+		<source>1.8</source>
+		<target>1.8</target>
+	    </configuration>
+	</plugin>
+    	<plugin>
+	    <groupId>org.codehaus.mojo</groupId>
+	    <artifactId>cobertura-maven-plugin</artifactId>
+	    <version>2.7</version>
+	    <configuration>
+		<formats>
+		    <format>html</format>
+		    <format>xml</format>
+		</formats>
+		<check />
+	    </configuration>
+	</plugin>	
     </plugins>
   </build>
 </project>
