@@ -42,7 +42,6 @@
 		    <execution>
 			<phase>test</phase>
 			<goals>
-			    <goal>check</goal>
 			</goals>
 		    </execution>
 		</executions>
