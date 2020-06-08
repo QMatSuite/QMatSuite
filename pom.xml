@@ -29,24 +29,24 @@
 	    </configuration>
 	</plugin>
     	<plugin>
-		<groupId>org.jacoco</groupId>
-		<artifactId>jacoco-maven-plugin</artifactId>
-		<version>0.8.2</version>
+		<groupId>org.apache.maven.plugins</groupId>
+		<artifactId>maven-pmd-plugin</artifactId>
+		<version>3.13.0</version>
+		<configuration>
+		    <sourceEncoding>UTF-8</sourceEncoding>
+		    <targetJdk>8</targetJdk>
+		    <verbose>true</verbose>
+		    <linkXRef>false</linkXRef>
+		</configuration>
 		<executions>
-			<execution>
-				<goals>
-					<goal>prepare-agent</goal>
-				</goals>
-			</execution>
-			<execution>
-				<id>report</id>
-				<phase>test</phase>
-				<goals>
-					<goal>report</goal>
-				</goals>
-			</execution>
+		    <execution>
+			<phase>test</phase>
+			<goals>
+			    <goal>check</goal>
+			</goals>
+		    </execution>
 		</executions>
-	</plugin>	
+	    </plugin>	
     </plugins>
   </build>
 </project>
