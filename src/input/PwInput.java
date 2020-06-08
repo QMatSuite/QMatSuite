@@ -409,7 +409,8 @@ public class PwInput extends QeInput{
 	    	alert1.showAndWait();
 			e.printStackTrace();
 		}
-	} 
+	}
+	
 	private Integer findElementIndex(Element el) {
 		for(int iele=0;iele<elementList.size();iele++) {
 			if (elementList.get(iele).getAtomSpecies().equals(el.getAtomSpecies())) {
