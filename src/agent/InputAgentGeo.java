@@ -91,12 +91,12 @@ public class InputAgentGeo extends InputAgent{
 		
 		//
 		needAlatFromCell = false;
-		needAlatFromAtom = (unitAtomPos.equals(EnumUnitAtomPos.alat));
+		needAlatFromAtom = unitAtomPos.equals(EnumUnitAtomPos.alat);
 		
 		pseudodir=null;
 	}
 	public boolean needCellA() {
-		return (needAlatFromCell || needAlatFromAtom);
+		return needAlatFromCell || needAlatFromAtom;
 	}
 	public WrapperDouble convCellLength(WrapperDouble wd) {
 		double scale = 1.0;
@@ -107,7 +107,7 @@ public class InputAgentGeo extends InputAgent{
 			case pm:scale=1.0/100;break;
 			default:return null;
 		}
-		return new WrapperDouble((wd.isNull()?null:wd.getValue()*scale),wd.isEnabled());
+		return new WrapperDouble(wd.isNull()?null:wd.getValue()*scale,wd.isEnabled());
 	}
 	public WrapperDouble convCellAngle(WrapperDouble wd) {
 		double scale = 1.0;
@@ -117,7 +117,7 @@ public class InputAgentGeo extends InputAgent{
 			case radian:scale=1.0;break;
 			default:return null;
 		}
-		return new WrapperDouble((wd.isNull()?null:Math.cos(wd.getValue()*scale)),wd.isEnabled());
+		return new WrapperDouble(wd.isNull()?null:Math.cos(wd.getValue()*scale),wd.isEnabled());
 	}
 	public void updateElemListAll() {
 		for (Atom tmp_atom : atomList) {
