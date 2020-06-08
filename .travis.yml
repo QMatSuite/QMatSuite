@@ -1,4 +1,4 @@
 language: java
 jdk: openjdk8
 install: true
-script: ./mvnw clean install
+script: mvn test -B
