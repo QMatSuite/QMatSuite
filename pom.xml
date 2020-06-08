@@ -21,14 +21,31 @@
     </resources>
     <plugins>
       	<plugin>
-		    <artifactId>maven-compiler-plugin</artifactId>
-		    <version>3.8.0</version>
-		    <configuration>
-		        <source>1.8</source>
-		        <target>1.8</target>
-		    </configuration>
-		</plugin>
-		
+	    <artifactId>maven-compiler-plugin</artifactId>
+	    <version>3.8.0</version>
+	    <configuration>
+		<source>1.8</source>
+		<target>1.8</target>
+	    </configuration>
+	</plugin>
+    	<plugin>
+		<groupId>org.apache.maven.plugins</groupId>
+		<artifactId>maven-pmd-plugin</artifactId>
+		<version>3.13.0</version>
+		<configuration>
+		    <sourceEncoding>UTF-8</sourceEncoding>
+		    <targetJdk>8</targetJdk>
+		    <verbose>true</verbose>
+		    <linkXRef>false</linkXRef>
+		</configuration>
+		<executions>
+		    <execution>
+			<phase>test</phase>
+			<goals>
+			</goals>
+		    </execution>
+		</executions>
+	    </plugin>	
     </plugins>
   </build>
 </project>
