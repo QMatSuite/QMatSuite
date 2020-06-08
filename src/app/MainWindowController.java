@@ -231,7 +231,7 @@ public class MainWindowController implements Initializable{
 	    	}
 					
 			if(msg.contains(ErrorMsg.cannotFindProjectFolder)) {
-				contTree.updateProjects(wsDir);
+				contTree.updateProjects();
 				Alert alert1 = new Alert(AlertType.INFORMATION);
 		    	alert1.setTitle("Error");
 		    	alert1.setContentText(msg);
@@ -594,7 +594,7 @@ public class MainWindowController implements Initializable{
 				textWorkSpace.setText(mainClass.projectManager.workSpacePath);
 				mainClass.projectManager.writeGlobalSettings(settingKeys.workspace.toString(),selectedDir.getPath());
 				setWorkSpace(true);
-				contTree.updateProjects(new File(mainClass.projectManager.workSpacePath));
+				contTree.updateProjects();
 				textWorkSpace.setBackground(new Background(new BackgroundFill(Coloring.validFile, 
 						CornerRadii.EMPTY, Insets.EMPTY)));
 			}
@@ -673,8 +673,7 @@ public class MainWindowController implements Initializable{
 		String qePath = mainClass.projectManager.readGlobalSettings(settingKeys.qePath.toString());
 		mainClass.projectManager.qePath = qePath;
 		
-		
-		if(wsp!=null) {contTree.updateProjects(new File(wsp));}
+		contTree.updateProjects();
 		
 		String wsp2 = mainClass.projectManager.readGlobalSettings(settingKeys.pseudolibroot.toString());
 		mainClass.projectManager.pseudoLibPath = wsp2;

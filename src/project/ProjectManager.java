@@ -486,6 +486,10 @@ public class ProjectManager {
 		if (pj==null) return;
 		pj.updateViewerPlot();
 	}
+	public boolean existProject(String nameProject) {
+		if (nameProject==null || nameProject.isEmpty() || projectDict==null || projectDict.isEmpty()) {return false;}
+		return projectDict.containsKey(nameProject);
+	}
 	public String checkProjectName(String nameProject) {
 		if (nameProject==null || nameProject.isEmpty())
 			return "Empty project name!";

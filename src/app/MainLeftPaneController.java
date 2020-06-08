@@ -20,16 +20,20 @@
 package app;
 import java.io.File;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.ResourceBundle;
 import com.consts.Constants.EnumCalc;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeTableColumn;
 import javafx.scene.control.TreeTableView;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.cell.TreeItemPropertyValueFactory;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
@@ -39,7 +43,7 @@ import project.ProjectCalcLog;
 public class MainLeftPaneController implements Initializable {
 	
 	@FXML private TreeTableView<ProjectCalcLog> projectTree;
-	@FXML public Button buttonOpenSelected,buttonCloseSelected;
+	@FXML public Button buttonOpenSelected,buttonCloseSelected,buttonRefresh;
 	
 	private TreeItem<ProjectCalcLog> projectTreeRoot;
 	private MainClass mainClass;
@@ -131,6 +135,9 @@ public class MainLeftPaneController implements Initializable {
 				setOpenCloseButtons(!mainClass.projectManager.containsProject(pj));
 			}
 		});
+		buttonRefresh.setOnAction((event) -> {
+			updateProjects();
+		});
 		
 		projectTreeRoot = new TreeItem<ProjectCalcLog>(new ProjectCalcLog("Workspace","","",""));
 		projectTree.setRoot(projectTreeRoot);
@@ -169,13 +176,6 @@ public class MainLeftPaneController implements Initializable {
 		}
 		projectCalcTreeDict.get(pj).clear();
 	}
-//	public void removeProject(String pj) {
-//		
-//	    projectTreeRoot.getChildren().remove(projectTreeDict.get(pj));
-//	    projectTreeDict.remove(pj);
-//		
-//		projectCalcTreeDict.remove(pj);
-//	}
 	public void addProject(String pj) {
 		TreeItem<ProjectCalcLog> ti = new TreeItem<ProjectCalcLog>(new ProjectCalcLog(pj,"","",""));
 		projectTreeRoot.getChildren().add(ti);
@@ -227,31 +227,44 @@ public class MainLeftPaneController implements Initializable {
 		projectTreeDict.clear();
 		projectCalcTreeDict.clear();
 	}
-	public void updateProjects(File wsDir) {
-		if (wsDir==null || !wsDir.canRead()) return;
-//		try (Stream<Path> walk = Files.walk(wsDir.toPath())) {
-//
-////			List<String> result = walk.filter(Files::isDirectory)
-////					.map(x -> x.toString()).collect(Collectors.toList());
-//			List<Path> result = walk.filter(Files::isDirectory).collect(Collectors.toList());
-//			
-//			for (Path temp : result) {
-//				String tmp = temp.getFileName().toString();
-//				TreeItem<ProjectCalcLog> ti = new TreeItem<ProjectCalcLog>(new ProjectCalcLog(tmp,"",""));
-//				projectTreeRoot.getChildren().add(ti);
-//				projectTreeRoot.setExpanded(true);
-//				projectTreeDict.put(tmp,ti);
-//				projectCalcTreeDict.put(tmp, new HashMap<EnumCalc, TreeItem<ProjectCalcLog>>());
-//			}
-//			
-//			//result.forEach(System.out::println);
-//
-//		} catch (IOException e) {
-//			e.printStackTrace();
-//		}
+//	public void removeProject(String pj) {
+//	    projectTreeRoot.getChildren().remove(projectTreeDict.get(pj));
+//	    projectTreeDict.remove(pj);
+//		projectCalcTreeDict.remove(pj);
+//	}
+	public void updateProjects() {
+		File wsDir = mainClass.projectManager.getWorkSpaceDir();
+
+		if (wsDir==null || !wsDir.canRead()) {
+			Alert alert1 = new Alert(AlertType.ERROR);
+	    	alert1.setTitle("Error");
+	    	alert1.setContentText("The workspace folder is not available! Please check before continuing!");
+	    	alert1.showAndWait();
+			return;
+		}
 		
 		File[] directories = wsDir.listFiles(File::isDirectory);
-		ArrayList<String> nameTmp = new ArrayList<String>();
+		//remove projects that no longer has a folder and is not opened in the program now
+		//need to use iterator rather than projectTreeDict.keySet(), otherwise ConcurrentModificationException
+		Iterator<Entry<String, TreeItem<ProjectCalcLog>>> it = projectTreeDict.entrySet().iterator();
+	    while (it.hasNext()) {
+	        Map.Entry<String, TreeItem<ProjectCalcLog>> pair = (Map.Entry<String, TreeItem<ProjectCalcLog>>)it.next();
+	        String keyStr = pair.getKey();//pair.getValue()
+	        boolean flagExist = false;
+			for (File temp : directories) {
+				String tmp = temp.getName();
+				if(tmp!=null && tmp.equals(keyStr)) {flagExist=true;break;}
+			}
+			if(!flagExist && !mainClass.projectManager.existProject(keyStr)) {//not exist a folder nor opened in the program
+				projectTreeRoot.getChildren().remove(pair.getValue());
+				projectCalcTreeDict.remove(keyStr);
+				it.remove();//projectTreeDict.remove(keyStr);
+			}
+			
+	        
+	    }
+
+		//add newly detected
 		for (File temp : directories) {
 			String tmp = temp.getName();
 			if(!projectTreeDict.containsKey(tmp)) {
