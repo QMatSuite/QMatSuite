@@ -24,7 +24,7 @@ import javafx.scene.layout.AnchorPane;
 
 public class InputOptController {
 	
-	@FXML AnchorPane projectPane;
+	@FXML private AnchorPane projectPane;
 
     public InputOptController() {
     }

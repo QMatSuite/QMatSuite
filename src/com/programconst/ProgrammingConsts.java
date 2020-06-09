@@ -17,17 +17,15 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package com.programConst;
+package com.programconst;
 
-public interface DefaultFileNames {
-	public String defaultSettingFile = "settings.ini";
-	public String calcSaveFile = "save.calc";
-	public String projSaveFile = "save.proj";
-	
-	
-	public enum settingKeys {
-		workspace,
-		pseudolibroot,
-		qePath
+public interface ProgrammingConsts {
+	public enum SettingsTags{
+		Settings,//root, not visible
+		Paths,
+		Viewer3D
 	}
+	public final String stdinExtension = ".in"; 
+	public final String stdoutExtension = ".out";
+	public final String stderrExtension = ".err";
 }

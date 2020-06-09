@@ -25,7 +25,7 @@ import java.nio.file.Paths;
 import java.util.ResourceBundle;
 import com.consts.Constants.EnumFunctional;
 import com.consts.Constants.EnumPP;
-import com.programConst.DefaultFileNames.settingKeys;
+import com.programconst.DefaultFileNames.settingKeys;
 import com.pseudopot.EnumPseudoPotLib;
 import com.pseudopot.PseudoDojoClass;
 import com.pseudopot.SSSPClass;
@@ -407,8 +407,7 @@ public class InputGeoElementsController implements Initializable{
 		String pseudoLibRoot = mainClass.projectManager.pseudoLibPath;
 		if(pseudoLibRoot==null) return false;
 		File pseudoFile = new File(pseudoLibRoot+File.separator+fileName);
-		if(!pseudoFile.canRead()) return false;
-		else return true;
+		return pseudoFile.canRead();
 	}
     public void loadProjectParameters() {
     	InputAgentGeo iGeo = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();

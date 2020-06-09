@@ -31,8 +31,8 @@ import java.util.ResourceBundle;
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
 import com.error.ErrorMsg;
-import com.programConst.Coloring;
-import com.programConst.DefaultFileNames.settingKeys;
+import com.programconst.Coloring;
+import com.programconst.DefaultFileNames.settingKeys;
 
 import javafx.application.Platform;
 import javafx.collections.ObservableList;

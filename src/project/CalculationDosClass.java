@@ -34,7 +34,7 @@ import input.DosInput;
 import input.PwInput;
 import input.QeInput;
 
-public class calculationDosClass extends calculationClass{
+public class CalculationDosClass extends CalculationClass{
 	/**
 	 * 
 	 */
@@ -48,7 +48,7 @@ public class calculationDosClass extends calculationClass{
 	    inputList.put(EnumStep.NSCF,new PwInput());
 	    inputList.put(EnumStep.DOS,new DosInput());
 	}
-	public calculationDosClass(String cn) {
+	public CalculationDosClass(String cn) {
 		super();
 		this.calcName = cn;
 		nameCalc = EnumCalc.DOS;

@@ -26,49 +26,49 @@ import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
 
 import agent.InputAgentGeo;
+import agent.InputAgentOpt;
 import agent.InputAgentScf;
 import input.ContainerInputString;
 import input.PwInput;
 import input.QeInput;
 
-public class calculationScfClass extends calculationClass{
+public class CalculationOptClass extends CalculationClass{
 	/**
 	 * 
 	 */
-	private static final long serialVersionUID = 2187936113824732788L;
+	private static final long serialVersionUID = 138458242473384324L;
 	
 	private void readObject(java.io.ObjectInputStream in)throws IOException, ClassNotFoundException 
 	{
 		//for loading after serialization
 	    in.defaultReadObject();
 	    inputList = new HashMap<EnumStep, QeInput>();
-	    inputList.put(EnumStep.SCF, new PwInput());
+	    inputList.put(EnumStep.OPT,new PwInput());
 	}
-	
-	public calculationScfClass(String cn) {
+	public CalculationOptClass(String cn) {
 		super();
 		this.calcName = cn;
-		nameCalc = EnumCalc.SCF;
+		nameCalc = EnumCalc.OPT;
 		
-//		commandList.put(EnumStep.GEO,"");
-//		orderList.add(EnumStep.GEO);
-//		inputList.put(EnumStep.GEO, inp1);
-//		agentList.put(EnumStep.GEO,null);
-		
-		commandList.put(EnumStep.SCF,"pw.exe < espresso.in > espresso.out");
+		commandList.put(EnumStep.SCF,"");
 		orderList.add(EnumStep.SCF);
-		inputList.put(EnumStep.SCF, new PwInput());
 		agentList.put(EnumStep.SCF,new InputAgentScf());
+		
+		commandList.put(EnumStep.OPT,"pw.exe < espresso.in > espresso.out");
+		orderList.add(EnumStep.OPT);
+		inputList.put(EnumStep.OPT,new PwInput());
+		agentList.put(EnumStep.OPT,new InputAgentOpt());
 	}
 	public ArrayList<ContainerInputString> genInputFromAgent(ArrayList<InputAgentGeo> geoList) {
 		ArrayList<ContainerInputString> cis = new ArrayList<ContainerInputString>();
 		
-		inputList.get(EnumStep.SCF).clearErrorMessage();
-		inputList.get(EnumStep.SCF).loadAgent(geoList.get(getGeoInd()));
-		inputList.get(EnumStep.SCF).loadAgent((InputAgentScf)agentList.get(EnumStep.SCF));
-		cis.add(inputList.get(EnumStep.SCF).genInput(EnumStep.SCF));
-		return cis;
+		inputList.get(EnumStep.OPT).clearErrorMessage();
+		inputList.get(EnumStep.OPT).loadAgent(geoList.get(getGeoInd()));
+		inputList.get(EnumStep.OPT).loadAgent((InputAgentScf)agentList.get(EnumStep.SCF));
+		inputList.get(EnumStep.OPT).loadAgent((InputAgentOpt)agentList.get(EnumStep.OPT));
+		cis.add(inputList.get(EnumStep.OPT).genInput(EnumStep.OPT));
 		
+		return cis;
 //		Alert alert1 = new Alert(AlertType.INFORMATION);
 //    	alert1.setHeaderText("Input of "+nameCalc);
 //    	alert1.setContentText(inputWrapper.toString());
