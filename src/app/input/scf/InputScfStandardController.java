@@ -18,37 +18,28 @@
  *******************************************************************************/
 package app.input.scf;
 
-import java.lang.reflect.Field;
 import java.net.URL;
 import java.util.ResourceBundle;
-
 import com.consts.Constants.EnumMixingMode;
 import com.consts.Constants.EnumNumCondition;
 import com.consts.Constants.EnumOccupations;
 import com.consts.Constants.EnumSmearing;
 import com.consts.Constants.EnumStep;
 import com.consts.Constants.EnumUnitEnergy;
-import com.consts.QeDocumentation;
-
 import agent.InputAgentScf;
-import agent.WrapperDouble;
-import agent.WrapperInteger;
+import app.input.InputController;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
-import javafx.fxml.Initializable;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
-import javafx.scene.control.Tooltip;
-import javafx.scene.control.Alert.AlertType;
 import main.MainClass;
 
-public class InputScfStandardController implements Initializable{
+public class InputScfStandardController extends InputController{
 
     @FXML private CheckBox checkResetAll;
 
@@ -134,14 +125,14 @@ public class InputScfStandardController implements Initializable{
 
     private boolean allDefault=false;
     
-    private MainClass mainClass;
 	
 	public InputScfStandardController(MainClass mc) {
-		mainClass = mc;
+		super(mc);
 	}
 
 	@Override
 	public void initialize(URL arg0, ResourceBundle arg1) {
+		setPointerStatusTextField(statusInfo);//point all status messages to the Label statusInfo
 		initialize();
     }
     public void initialize(){
@@ -220,11 +211,11 @@ public class InputScfStandardController implements Initializable{
     				}
 				}
     		});
-    		setDoubleFieldListener(ecutrhoField, "ecutRho",EnumNumCondition.positive);
+    		setDoubleFieldListener(ecutrhoField, "ecutRho",EnumNumCondition.positive,EnumStep.SCF);
     		convUnit.textProperty().bind(ecutwfcUnit.valueProperty().asString());
     		
-    		setIntegerFieldListener(maxStepField, "nElecMaxStep",EnumNumCondition.positive);
-    		setDoubleFieldListener(convField, "elecConv",EnumNumCondition.positive);
+    		setIntegerFieldListener(maxStepField, "nElecMaxStep",EnumNumCondition.positive,EnumStep.SCF);
+    		setDoubleFieldListener(convField, "elecConv",EnumNumCondition.positive,EnumStep.SCF);
     		
     		//mixing mode
 			ObservableList<EnumMixingMode> mixi = 
@@ -237,10 +228,10 @@ public class InputScfStandardController implements Initializable{
 				}
 			});
 			
-			setDoubleFieldListener(mixingField, "mixBeta",EnumNumCondition.positive);
-			setIntegerFieldListener(kxField, "nkx",EnumNumCondition.positive);
-			setIntegerFieldListener(kyField, "nky",EnumNumCondition.positive);
-			setIntegerFieldListener(kzField, "nkz",EnumNumCondition.positive);
+			setDoubleFieldListener(mixingField, "mixBeta",EnumNumCondition.positive,EnumStep.SCF);
+			setIntegerFieldListener(kxField, "nkx",EnumNumCondition.positive,EnumStep.SCF);
+			setIntegerFieldListener(kyField, "nky",EnumNumCondition.positive,EnumStep.SCF);
+			setIntegerFieldListener(kzField, "nkz",EnumNumCondition.positive,EnumStep.SCF);
 			
     		gaussUnit.textProperty().bind(ecutwfcUnit.valueProperty().asString());
     		
@@ -276,7 +267,7 @@ public class InputScfStandardController implements Initializable{
 				}
 			});
 			
-			setDoubleFieldListener(gaussField, "degauss",EnumNumCondition.nonNegative);
+			setDoubleFieldListener(gaussField, "degauss",EnumNumCondition.nonNegative,EnumStep.SCF);
 			
 			//reset 
 			checkRestart.selectedProperty().addListener((observable, oldValue, newValue) ->
@@ -384,95 +375,7 @@ public class InputScfStandardController implements Initializable{
     	if (checkConv.isSelected()) return;// || checkGauss.isSelected()
     	else {ecutwfcUnit.setDisable(false);}
     }
-    private void setInfoButton(Button bt,String key) {
-    	bt.setTooltip(new Tooltip(QeDocumentation.pwShortDoc.get(key)));
-    	bt.setOnAction((event) -> {
-			Alert alert1 = new Alert(AlertType.INFORMATION);
-	    	alert1.setTitle("Info");
-	    	alert1.setContentText(QeDocumentation.pwDoc.get(key));
-	    	alert1.showAndWait();
-		});
-    }
-    private void setIntegerFieldListener(TextField tf, String fieldName, EnumNumCondition cond) {	
-		tf.textProperty().addListener((observable, oldValue, newValue) -> {
-			InputAgentScf ia = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
-			if (ia==null) return;
-			try {
-				Field fd = InputAgentScf.class.getField(fieldName);
-				Integer tmp = str2int(newValue);
-				if (tmp!=null) {
-					switch(cond) {
-						case no:{break;}
-						case positive:{if(tmp<=0) {statusInfo.setText("Must be positive!");return;} break;}
-						case nonNegative:{if(tmp<0) {statusInfo.setText("Must not be negative!");return;} break;}
-						default:
-					}
-					statusInfo.setText("");
-					((WrapperInteger) fd.get(ia)).setValue(tmp);
-				}
-			} catch (Exception e) {
-				Alert alert1 = new Alert(AlertType.INFORMATION);
-		    	alert1.setTitle("Error");
-		    	alert1.setContentText("Cannot set listener! "+fieldName+e.getMessage());
-		    	alert1.showAndWait();
-				e.printStackTrace();
-			}
-		});
-    }
-    private void setDoubleFieldListener(TextField tf, String fieldName, EnumNumCondition cond) {	
-		tf.textProperty().addListener((observable, oldValue, newValue) -> {
-			InputAgentScf ia = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
-			if (ia==null) return;
-			try {
-				Field fd = InputAgentScf.class.getField(fieldName);
-				Double tmp = str2double(newValue);
-				if (tmp!=null) {
-					switch(cond) {
-						case no:{break;}
-						case positive:{if(tmp<=0) {statusInfo.setText("Must be positive!");return;} break;}
-						case nonNegative:{if(tmp<0) {statusInfo.setText("Must not be negative!");return;} break;}
-						default:
-					}
-					statusInfo.setText("");
-					((WrapperDouble) fd.get(ia)).setValue(tmp);
-				}
-			} catch (Exception e) {
-				Alert alert1 = new Alert(AlertType.INFORMATION);
-		    	alert1.setTitle("Error");
-		    	alert1.setContentText("Cannot set listener! "+e.getMessage());
-		    	alert1.showAndWait();
-				e.printStackTrace();
-			}
-		});
-    }
-    private Integer str2int(String str) {
-    	try {
-    		statusInfo.setText("");
-    		return Integer.parseInt(str);
-    	}
-    	catch(Exception e) {
-    		statusInfo.setText("Error! Input is not integer. "+e.getMessage());
-    		return null;
-    	}
-    }
-    private Double str2double(String str) {
-    	try {
-    		statusInfo.setText("");
-    		return Double.parseDouble(str);
-    	}
-    	catch(Exception e) {
-    		statusInfo.setText("Error! Input is not double. "+e.getMessage());
-    		return null;
-    	}
-    }
-    private void setField(TextField tf, WrapperDouble val) {
-    	if(val.getValue()==null) tf.setText("");
-    	else tf.setText(val.getValue().toString());
-    }
-    private void setField(TextField tf, WrapperInteger val) {
-    	if(val.getValue()==null) tf.setText("");
-    	else tf.setText(val.getValue().toString());
-    }
+    
     public void loadProjectParameters() {
     	if (!occupCombo.getItems().isEmpty()) {
     		InputAgentScf iScf = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);

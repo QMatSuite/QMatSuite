@@ -1,22 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.media.*?>
-<?import javafx.scene.paint.*?>
-<?import javafx.geometry.*?>
-<?import javafx.scene.effect.*?>
-<?import javafx.scene.shape.*?>
-<?import javafx.scene.*?>
-<?import javafx.scene.text.*?>
-<?import java.lang.*?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleButton?>
 <?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
 
-<ScrollPane prefHeight="510.0" prefWidth="425.0" xmlns="http://javafx.com/javafx/8" 
-xmlns:fx="http://javafx.com/fxml/1">
+<ScrollPane prefHeight="510.0" prefWidth="425.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
    <content>
       <VBox>
          <children>
+            <GridPane hgap="5.0" vgap="5.0">
+              <columnConstraints>
+                <ColumnConstraints halignment="RIGHT" hgrow="SOMETIMES" maxWidth="338.5" minWidth="10.0" prefWidth="336.0" />
+                <ColumnConstraints hgrow="SOMETIMES" maxWidth="127.5" minWidth="0.0" prefWidth="24.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="105.0" minWidth="10.0" prefWidth="34.0" />
+              </columnConstraints>
+              <rowConstraints>
+                <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+              </rowConstraints>
+               <children>
+                  <Label text="Reset all to default" />
+                  <CheckBox fx:id="checkResetAll" mnemonicParsing="false" GridPane.columnIndex="1" />
+                  <Button fx:id="infoResetAll" mnemonicParsing="false" text="i" GridPane.columnIndex="2" />
+               </children>
+            </GridPane>
             <BorderPane prefWidth="395.0">
                <center>
                   <Separator prefHeight="30.0" BorderPane.alignment="CENTER" />
@@ -37,45 +55,29 @@ xmlns:fx="http://javafx.com/fxml/1">
             </BorderPane>
             <GridPane hgap="5.0" prefWidth="395.0" vgap="5.0">
                <children>
-                  <Label fx:id="restartLabel" text="Restart Mode" />
-                  <Label fx:id="maxtimeLabel" text="Max Time" GridPane.rowIndex="1" />
-                  <Label fx:id="maxstepLabel" text="Max Steps" GridPane.rowIndex="2" />
-                  <Label fx:id="vcLabel" text="Variable Cell" GridPane.rowIndex="3" />
-                  <ToggleButton fx:id="restartToggle" mnemonicParsing="false" prefWidth="200.0" GridPane.columnIndex="1" />
-                  <GridPane prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
-                     <children>
-                        <TextField fx:id="maxtimeField" prefWidth="100.0" />
-                        <ComboBox fx:id="maxtimeUnit" prefWidth="97.0" GridPane.columnIndex="1" />
-                     </children>
-                     <columnConstraints>
-                        <ColumnConstraints hgrow="SOMETIMES" prefWidth="100.0" />
-                        <ColumnConstraints hgrow="SOMETIMES" prefWidth="100.0" />
-                     </columnConstraints>
-                     <rowConstraints>
-                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-                     </rowConstraints>
-                  </GridPane>
-                  <AnchorPane prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
-                     <children>
-                        <Slider fx:id="maxstepSlider" majorTickUnit="50.0" max="201.0" min="1.0" minorTickCount="4" prefWidth="200.0" showTickLabels="true" showTickMarks="true" value="50.0" />
-                     </children>
-                  </AnchorPane>
-                  <ToggleButton fx:id="vcToggle" mnemonicParsing="false" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="3" />
-                  <Button fx:id="restartButton" mnemonicParsing="false" text="\@" GridPane.columnIndex="2" />
-                  <Button fx:id="maxtimeButton" mnemonicParsing="false" text="\@" GridPane.columnIndex="2" GridPane.rowIndex="1" />
-                  <Button fx:id="maxstepButton" mnemonicParsing="false" text="\@" GridPane.columnIndex="2" GridPane.rowIndex="2" />
-                  <Button fx:id="vcButton" mnemonicParsing="false" text="\@" GridPane.columnIndex="2" GridPane.rowIndex="3" />
+                  <Label fx:id="restartLabel" text="Relax Cell" />
+                  <Label fx:id="maxstepLabel" text="Max Steps" GridPane.rowIndex="1" />
+                  <Label fx:id="vcLabel" text="scf_must_converge" GridPane.rowIndex="2" />
+                  <ToggleButton fx:id="relaxCellToggle" mnemonicParsing="false" prefWidth="200.0" GridPane.columnIndex="1" />
+                  <ToggleButton fx:id="scfMustToggle" mnemonicParsing="false" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+                  <Button fx:id="infoRelaxCell" mnemonicParsing="false" text="i" GridPane.columnIndex="3" />
+                  <Button fx:id="infoMaxStep" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+                  <Button fx:id="infoScfMust" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="2" />
+                  <CheckBox fx:id="checkRelaxCell" mnemonicParsing="false" GridPane.columnIndex="2" />
+                  <CheckBox fx:id="checkMaxStep" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="1" />
+                  <CheckBox fx:id="checkScfMust" mnemonicParsing="false" prefHeight="0.0" prefWidth="16.0" GridPane.columnIndex="2" GridPane.rowIndex="2" />
+                  <TextField fx:id="textMaxStep" GridPane.columnIndex="1" GridPane.rowIndex="1" />
                </children>
                <columnConstraints>
-                  <ColumnConstraints hgrow="SOMETIMES" prefWidth="120.0" />
-                  <ColumnConstraints hgrow="SOMETIMES" prefWidth="205.0" />
-                  <ColumnConstraints hgrow="SOMETIMES" prefWidth="50.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="133.5" minWidth="124.0" prefWidth="127.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="245.0" minWidth="187.0" prefWidth="191.5" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="65.5" minWidth="10.0" prefWidth="26.5" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="39.5" minWidth="24.5" prefWidth="34.0" />
                </columnConstraints>
                <padding>
                   <Insets left="10.0" />
                </padding>
                <rowConstraints>
-                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                   <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                   <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                   <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
@@ -101,12 +103,12 @@ xmlns:fx="http://javafx.com/fxml/1">
             </BorderPane>
             <GridPane hgap="5.0" prefWidth="395.0" vgap="5.0">
                <children>
-                  <Label fx:id="ionConvLabel" text="Threshold" />
-                  <Label fx:id="ionMethodLabel" text="Method" GridPane.rowIndex="1" />
+                  <Label fx:id="ionConvLabel" text="Energy Conv. Thres." />
+                  <Label fx:id="ionMethodLabel" text="Opt. Method" GridPane.rowIndex="2" />
                   <GridPane prefWidth="200.0" GridPane.columnIndex="1">
                      <children>
-                        <TextField fx:id="ionConvField" prefWidth="100.0" />
-                        <ComboBox fx:id="ionConvUnit" prefWidth="97.0" GridPane.columnIndex="1" />
+                        <TextField fx:id="eConvText" prefWidth="100.0" />
+                        <ComboBox fx:id="eConvUnit" prefWidth="97.0" GridPane.columnIndex="1" />
                      </children>
                      <columnConstraints>
                         <ColumnConstraints hgrow="SOMETIMES" prefWidth="100.0" />
@@ -116,19 +118,39 @@ xmlns:fx="http://javafx.com/fxml/1">
                         <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                      </rowConstraints>
                   </GridPane>
-                  <ComboBox fx:id="ionMethodCombo" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="1" />
-                  <Button fx:id="ionConvButton" mnemonicParsing="false" text="\@" GridPane.columnIndex="2" />
-                  <Button fx:id="ionMethodButton" mnemonicParsing="false" text="\@" GridPane.columnIndex="2" GridPane.rowIndex="1" />
+                  <ComboBox fx:id="ionRelaxCombo" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+                  <Button fx:id="infoEConv" mnemonicParsing="false" text="i" GridPane.columnIndex="3" />
+                  <Button fx:id="infoIonMethod" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="2" />
+                  <CheckBox fx:id="checkEConv" mnemonicParsing="false" GridPane.columnIndex="2" />
+                  <CheckBox fx:id="checkIonMethod" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="2" />
+                  <Label fx:id="ionConvLabel1" text="Force Conv. Thres." GridPane.rowIndex="1" />
+                  <GridPane prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                     <children>
+                        <TextField fx:id="fConvText" prefWidth="100.0" />
+                        <Label text="a.u." GridPane.columnIndex="1" />
+                     </children>
+                     <columnConstraints>
+                        <ColumnConstraints hgrow="SOMETIMES" prefWidth="100.0" />
+                        <ColumnConstraints hgrow="SOMETIMES" prefWidth="100.0" />
+                     </columnConstraints>
+                     <rowConstraints>
+                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                     </rowConstraints>
+                  </GridPane>
+                  <CheckBox fx:id="checkFConv" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="1" />
+                  <Button fx:id="infoFConv" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="1" />
                </children>
                <columnConstraints>
-                  <ColumnConstraints hgrow="SOMETIMES" prefWidth="120.0" />
-                  <ColumnConstraints hgrow="SOMETIMES" prefWidth="205.0" />
-                  <ColumnConstraints hgrow="SOMETIMES" prefWidth="50.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="131.0" minWidth="122.5" prefWidth="127.5" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="225.5" minWidth="185.5" prefWidth="193.5" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="71.5" minWidth="10.0" prefWidth="24.5" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="41.0" minWidth="33.5" prefWidth="35.5" />
                </columnConstraints>
                <padding>
                   <Insets left="10.0" />
                </padding>
                <rowConstraints>
+                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                   <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                   <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                </rowConstraints>
@@ -151,16 +173,16 @@ xmlns:fx="http://javafx.com/fxml/1">
                   <Insets top="10.0" />
                </padding>
             </BorderPane>
-            <GridPane hgap="5.0" prefWidth="395.0" vgap="5.0">
+            <GridPane fx:id="gridPaneCell" hgap="5.0" prefWidth="395.0" vgap="5.0">
                <children>
-                  <Label fx:id="cellConvLabel" text="Threshold" />
-                  <Label fx:id="cellMethodLabel" text="Method" GridPane.rowIndex="1" />
-                  <Label fx:id="pressLabel" text="Pressure" GridPane.rowIndex="2" />
+                  <Label fx:id="cellConvLabel" text="Pressure Conv. Thres." />
+                  <Label fx:id="cellMethodLabel" text="Opt. Method" GridPane.rowIndex="1" />
+                  <Label fx:id="pressLabel" text="Target Pressure" GridPane.rowIndex="2" />
                   <Label fx:id="cellFreeLabel" text="Freedom" GridPane.rowIndex="3" />
                   <GridPane prefWidth="200.0" GridPane.columnIndex="1">
                      <children>
-                        <TextField fx:id="cellConvField" prefWidth="100.0" />
-                        <ComboBox fx:id="cellConvUnit" prefWidth="97.0" GridPane.columnIndex="1" />
+                        <TextField fx:id="pConvText" prefWidth="100.0" />
+                        <Label text="Kbar" GridPane.columnIndex="1" />
                      </children>
                      <columnConstraints>
                         <ColumnConstraints hgrow="SOMETIMES" prefWidth="100.0" />
@@ -170,11 +192,11 @@ xmlns:fx="http://javafx.com/fxml/1">
                         <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                      </rowConstraints>
                   </GridPane>
-                  <ComboBox fx:id="cellMethodCombo" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+                  <ComboBox fx:id="cellRelaxCombo" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="1" />
                   <GridPane prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
                      <children>
-                        <TextField fx:id="pressField" prefWidth="100.0" />
-                        <ComboBox fx:id="pressUnit" prefWidth="97.0" GridPane.columnIndex="1" />
+                        <TextField fx:id="pTargetText" prefWidth="100.0" />
+                        <Label text="Kbar" GridPane.columnIndex="1" />
                      </children>
                      <columnConstraints>
                         <ColumnConstraints hgrow="SOMETIMES" prefWidth="100.0" />
@@ -184,16 +206,21 @@ xmlns:fx="http://javafx.com/fxml/1">
                         <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                      </rowConstraints>
                   </GridPane>
-                  <ComboBox fx:id="cellFreeCombo" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="3" />
-                  <Button fx:id="cellConvButton" mnemonicParsing="false" text="\@" GridPane.columnIndex="2" />
-                  <Button fx:id="cellMethodButton" mnemonicParsing="false" text="\@" GridPane.columnIndex="2" GridPane.rowIndex="1" />
-                  <Button fx:id="pressButton" mnemonicParsing="false" text="\@" GridPane.columnIndex="2" GridPane.rowIndex="2" />
-                  <Button fx:id="cellFreeButton" mnemonicParsing="false" text="\@" GridPane.columnIndex="2" GridPane.rowIndex="3" />
+                  <ComboBox fx:id="cellDoFreeCombo" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+                  <Button fx:id="infoPConv" mnemonicParsing="false" text="i" GridPane.columnIndex="3" />
+                  <Button fx:id="infoCellMethod" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+                  <Button fx:id="infoTargetP" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="2" />
+                  <Button fx:id="infoCellFree" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="3" />
+                  <CheckBox fx:id="checkPConv" mnemonicParsing="false" GridPane.columnIndex="2" />
+                  <CheckBox fx:id="checkCellMethod" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="1" />
+                  <CheckBox fx:id="checkTargetP" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="2" />
+                  <CheckBox fx:id="checkCellFree" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="3" />
                </children>
                <columnConstraints>
-                  <ColumnConstraints hgrow="SOMETIMES" prefWidth="120.0" />
-                  <ColumnConstraints hgrow="SOMETIMES" prefWidth="205.0" />
-                  <ColumnConstraints hgrow="SOMETIMES" prefWidth="50.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="139.0" minWidth="122.5" prefWidth="127.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="242.5" minWidth="185.5" prefWidth="195.5" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="71.5" minWidth="10.0" prefWidth="21.5" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="42.0" minWidth="32.0" prefWidth="35.0" />
                </columnConstraints>
                <padding>
                   <Insets left="10.0" />

@@ -74,6 +74,7 @@ import main.MainClass;
 import app.centerwindow.OutputViewerController;
 import app.centerwindow.WorkScene3D;
 import app.input.InputGeoController;
+import app.input.InputOptController;
 import app.input.InputScfController;
 import app.menus.SettingsWindowController;
 import input.ContainerInputString;
@@ -152,6 +153,8 @@ public class MainWindowController implements Initializable{
 	
 	private InputGeoController contGeo;
 	
+	private InputOptController contOpt;
+	
 	private MainLeftPaneController contTree;
 	
 	private SettingsWindowController contSettings;
@@ -197,15 +200,21 @@ public class MainWindowController implements Initializable{
 			FXMLLoader fxmlLoader1 = new FXMLLoader(this.getClass().getResource("input/InputScf.fxml"));
 			fxmlLoader1.setController(contScf);
 			scrollScf = fxmlLoader1.load();
-			contScf.initialize();//must be later than the load
+			//contScf.initialize();//must be later than the load
 			
 			contGeo = new InputGeoController(mainClass);
 			FXMLLoader fxmlLoader2 = new FXMLLoader(this.getClass().getResource("input/InputGeo.fxml"));
 			fxmlLoader2.setController(contGeo);
 			scrollGeo = fxmlLoader2.load();
-			contGeo.initialize();//must be later than the load
+			//contGeo.initialize();//must be later than the load
 			
-			scrollOpt = FXMLLoader.load(getClass().getResource("input/InputOpt.fxml"));
+			
+			contOpt = new InputOptController(mainClass);
+			FXMLLoader fxmlLoader3 = new FXMLLoader(this.getClass().getResource("input/InputOpt.fxml"));
+			fxmlLoader3.setController(contOpt);
+			scrollOpt = fxmlLoader3.load();
+			
+			
 			scrollDos = FXMLLoader.load(getClass().getResource("input/InputDos.fxml"));
 			scrollBands = FXMLLoader.load(getClass().getResource("input/InputBands.fxml")); 
 			scrollMd = FXMLLoader.load(getClass().getResource("input/InputMd.fxml")); 

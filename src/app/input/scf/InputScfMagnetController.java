@@ -21,18 +21,16 @@ package app.input.scf;
 
 import java.net.URL;
 import java.util.ResourceBundle;
-
 import com.consts.Constants.EnumStep;
-
 import agent.InputAgentGeo;
 import agent.InputAgentScf;
+import app.input.InputController;
 import app.input.geo.Atom;
 import app.input.geo.Element;
 import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
-import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
@@ -49,7 +47,7 @@ import javafx.scene.layout.GridPane;
 import main.MainClass;
 
 
-public class InputScfMagnetController implements Initializable{
+public class InputScfMagnetController extends InputController{
 	
 	//InputScfMagnet
 	@FXML private CheckBox checkResetAll,
@@ -102,7 +100,6 @@ public class InputScfMagnetController implements Initializable{
 	@FXML private GridPane grid1,
 	grid2;
 	
-	private MainClass mainClass;
 	
 	private Boolean initializedFlag=false;
 	
@@ -111,7 +108,7 @@ public class InputScfMagnetController implements Initializable{
 	private boolean allDefault=false;
 	
 	public InputScfMagnetController(MainClass mc) {
-		mainClass = mc;
+		super(mc);
 		elemData = FXCollections.observableArrayList();
 	}
     

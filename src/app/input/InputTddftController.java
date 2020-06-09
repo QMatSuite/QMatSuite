@@ -19,12 +19,26 @@
 
 package app.input;
 
+import java.net.URL;
+import java.util.ResourceBundle;
+
 import javafx.fxml.FXML;
 import javafx.scene.layout.AnchorPane;
+import main.MainClass;
 
-public class InputTddftController {
+public class InputTddftController extends InputController{
 	
 	@FXML private AnchorPane projectPane;
+
+	public InputTddftController(MainClass mc) {
+		super(mc);
+	}
+	
+	@Override
+	public void initialize(URL location, ResourceBundle resources) {
+		// TODO Auto-generated method stub
+		
+	}
 
 
 }

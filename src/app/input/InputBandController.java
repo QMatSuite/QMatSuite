@@ -19,6 +19,9 @@
 
 package app.input;
 
+import java.net.URL;
+import java.util.ResourceBundle;
+
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
@@ -27,8 +30,9 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
+import main.MainClass;
 
-public class InputBandController {
+public class InputBandController extends InputController{
 	
 	@FXML private Label nbandLabel,
 	symLabel;
@@ -44,5 +48,15 @@ public class InputBandController {
 	kxColumn,
 	kyColumn,
 	kzColumn;
+	
+	public InputBandController (MainClass mc) {
+		super(mc);
+	}
+	
+	@Override
+	public void initialize(URL location, ResourceBundle resources) {
+		// TODO Auto-generated method stub
+		
+	}
 
 }
