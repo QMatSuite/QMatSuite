@@ -22,17 +22,15 @@ package app.input.scf;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.ResourceBundle;
-
 import com.consts.Constants.EnumStep;
-
 import agent.InputAgentGeo;
 import agent.InputAgentScf;
+import app.input.InputController;
 import app.input.geo.Element;
 import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
-import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
@@ -47,7 +45,7 @@ import javafx.scene.layout.HBox;
 import main.MainClass;
 
 
-public class InputScfHubbardController implements Initializable{
+public class InputScfHubbardController extends InputController{
 	
 	//InputScfHubbard
 	
@@ -78,15 +76,13 @@ public class InputScfHubbardController implements Initializable{
     
     @FXML private HBox hubbardHbox;//ok
     
-    private MainClass mainClass;
-    
     private Boolean initializedFlag=false;
     
     private ObservableList<Element> elemData;
     private boolean allDefault=false;
     
     public InputScfHubbardController(MainClass mc) {
-    	mainClass = mc;
+    	super(mc);
     	elemData = FXCollections.observableArrayList();
 	}
     @Override

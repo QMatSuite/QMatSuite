@@ -28,7 +28,6 @@ import app.input.geo.InputGeoElementsController;
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
-import javafx.fxml.Initializable;
 import javafx.scene.control.Accordion;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ScrollPane;
@@ -39,7 +38,7 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
 import main.MainClass;
 
-public class InputGeoController implements Initializable{
+public class InputGeoController extends InputController{
 	
 	@FXML private Accordion accordGeo;
 
@@ -58,7 +57,6 @@ public class InputGeoController implements Initializable{
     vboxCell,
     vboxElements;
     
-    private MainClass mainClass;
     
     private InputGeoCellController contCell=null;
     
@@ -67,11 +65,12 @@ public class InputGeoController implements Initializable{
     private InputGeoElementsController contElem = null;
     
     public InputGeoController(MainClass mc) {
-    	mainClass = mc;
+		super(mc);
 	}
 
     @Override
    	public void initialize(URL location, ResourceBundle resources) {
+    	initialize();
     }
     public void initialize() {
 		// load sub panes, if not already loaded

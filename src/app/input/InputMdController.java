@@ -19,11 +19,25 @@
 
 package app.input;
 
+import java.net.URL;
+import java.util.ResourceBundle;
+
 import javafx.fxml.FXML;
 import javafx.scene.layout.AnchorPane;
+import main.MainClass;
 
-public class InputMdController {
+public class InputMdController extends InputController{
 	
 	@FXML private AnchorPane projectPane;
+
+	public InputMdController(MainClass mc) {
+		super(mc);
+	}
+	
+	@Override
+	public void initialize(URL location, ResourceBundle resources) {
+		// TODO Auto-generated method stub
+		
+	}
 
 }

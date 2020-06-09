@@ -23,16 +23,14 @@ import java.util.List;
 import java.util.ResourceBundle;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 import com.consts.ChemicalElements;
 import com.consts.Constants.EnumUnitAtomPos;
-
 import agent.InputAgentGeo;
+import app.input.InputController;
 import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
-import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
@@ -47,7 +45,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.paint.Color;
 import main.MainClass;
 
-public class InputGeoAtomsController implements Initializable{
+public class InputGeoAtomsController extends InputController{
 
 	@FXML private ComboBox<String> unitCombo;//ok
 
@@ -89,10 +87,9 @@ public class InputGeoAtomsController implements Initializable{
             .map(Enum::name)
             .collect(Collectors.toList());
 	
-    private MainClass mainClass;
 	
 	public InputGeoAtomsController(MainClass mc) {
-		mainClass = mc;
+		super(mc);
 		atomsData = FXCollections.observableArrayList();
 	}
     

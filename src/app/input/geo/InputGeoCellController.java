@@ -19,22 +19,19 @@
 
 package app.input.geo;
 
-import java.lang.reflect.Field;
 import java.net.URL;
 import java.util.ResourceBundle;
-
 import com.consts.BravaisLattice;
 import com.consts.Constants.EnumNumCondition;
+import com.consts.Constants.EnumStep;
 import com.consts.Constants.EnumUnitCellAngle;
 import com.consts.Constants.EnumUnitCellLength;
 import com.consts.Constants.EnumUnitCellParameter;
-
 import agent.InputAgentGeo;
-import agent.WrapperDouble;
+import app.input.InputController;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
-import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
@@ -45,7 +42,7 @@ import javafx.scene.layout.GridPane;
 import main.MainClass;
 import javafx.scene.control.Alert.AlertType;
 
-public class InputGeoCellController implements Initializable{
+public class InputGeoCellController extends InputController{
 
     @FXML private ComboBox<BravaisLattice> ibravCombo;//ok, String before, now enum. Better!
 
@@ -101,14 +98,13 @@ public class InputGeoCellController implements Initializable{
     cVecField2,
     cVecField3;//ok
 	
-	private MainClass mainClass;//nothing to be done here
-	
 	public InputGeoCellController(MainClass mc) {
-		mainClass = mc;
+		super(mc);
 	}
     
     @Override
 	public void initialize(URL location, ResourceBundle resources) {
+    	setPointerStatusTextField(statusInfo);//point all status messages to the Label statusInfo
     	initialize();
     }
     private void setDisableInputFields() {
@@ -183,9 +179,9 @@ public class InputGeoCellController implements Initializable{
     	//**********not efficient because whenever parameters are loaded from InputAgentGeo, this will run again trying to write there
     	//the use of reflection increases code simplicity
     	//but may 1) result in error if the field name is not correct 2) much slower
-    	setDoubleFieldListener(aField,"cellA",EnumNumCondition.positive);//for any case of ibrav, A cannot be zero
-    	setDoubleFieldListener(bField,"cellB",EnumNumCondition.nonNegative);
-    	setDoubleFieldListener(cField,"cellC",EnumNumCondition.nonNegative);
+    	setDoubleFieldListener(aField,"cellA",EnumNumCondition.positive,EnumStep.GEO);//for any case of ibrav, A cannot be zero
+    	setDoubleFieldListener(bField,"cellB",EnumNumCondition.nonNegative,EnumStep.GEO);
+    	setDoubleFieldListener(cField,"cellC",EnumNumCondition.nonNegative,EnumStep.GEO);
     	//**********do not delete the following comment. Alternative to reflection, faster but more tedious to write
 //    	aField.textProperty().addListener((observable, oldValue, newValue) -> {
 //    		InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
@@ -196,18 +192,18 @@ public class InputGeoCellController implements Initializable{
 //    	cField.textProperty().addListener((observable, oldValue, newValue) -> {
 //    		InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
 //			if (ia!=null) {Double tmp = str2double(newValue);if (tmp!=null) ia.cellC=tmp;}});
-    	setDoubleFieldListener(alphaField,"cellAngleBC",EnumNumCondition.no);
-    	setDoubleFieldListener(betaField,"cellAngleAC",EnumNumCondition.no);
-    	setDoubleFieldListener(gammaField,"cellAngleAB",EnumNumCondition.no);
-    	setDoubleFieldListener(aVecField1,"vectorA1",EnumNumCondition.no);
-    	setDoubleFieldListener(aVecField2,"vectorA2",EnumNumCondition.no);
-    	setDoubleFieldListener(aVecField3,"vectorA3",EnumNumCondition.no);
-    	setDoubleFieldListener(bVecField1,"vectorB1",EnumNumCondition.no);
-    	setDoubleFieldListener(bVecField2,"vectorB2",EnumNumCondition.no);
-    	setDoubleFieldListener(bVecField3,"vectorB3",EnumNumCondition.no);
-    	setDoubleFieldListener(cVecField1,"vectorC1",EnumNumCondition.no);
-    	setDoubleFieldListener(cVecField2,"vectorC2",EnumNumCondition.no);
-    	setDoubleFieldListener(cVecField3,"vectorC3",EnumNumCondition.no);
+    	setDoubleFieldListener(alphaField,"cellAngleBC",EnumNumCondition.no,EnumStep.GEO);
+    	setDoubleFieldListener(betaField,"cellAngleAC",EnumNumCondition.no,EnumStep.GEO);
+    	setDoubleFieldListener(gammaField,"cellAngleAB",EnumNumCondition.no,EnumStep.GEO);
+    	setDoubleFieldListener(aVecField1,"vectorA1",EnumNumCondition.no,EnumStep.GEO);
+    	setDoubleFieldListener(aVecField2,"vectorA2",EnumNumCondition.no,EnumStep.GEO);
+    	setDoubleFieldListener(aVecField3,"vectorA3",EnumNumCondition.no,EnumStep.GEO);
+    	setDoubleFieldListener(bVecField1,"vectorB1",EnumNumCondition.no,EnumStep.GEO);
+    	setDoubleFieldListener(bVecField2,"vectorB2",EnumNumCondition.no,EnumStep.GEO);
+    	setDoubleFieldListener(bVecField3,"vectorB3",EnumNumCondition.no,EnumStep.GEO);
+    	setDoubleFieldListener(cVecField1,"vectorC1",EnumNumCondition.no,EnumStep.GEO);
+    	setDoubleFieldListener(cVecField2,"vectorC2",EnumNumCondition.no,EnumStep.GEO);
+    	setDoubleFieldListener(cVecField3,"vectorC3",EnumNumCondition.no,EnumStep.GEO);
     	//units,enumUnitCellLengthNames
     	aUnit.setItems(FXCollections.observableArrayList(EnumUnitCellLength.values()));
     	aUnit.getSelectionModel().selectedItemProperty().addListener( (options, oldValue, newValue) -> {
@@ -245,45 +241,8 @@ public class InputGeoCellController implements Initializable{
 			}
 		});
 	}
-    private void setDoubleFieldListener(TextField tf, String fieldName,EnumNumCondition cond) {	
-		tf.textProperty().addListener((observable, oldValue, newValue) -> {
-			InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
-			if (ia==null) return;
-			try {
-				Field fd = InputAgentGeo.class.getField(fieldName);
-				Double tmp = str2double(newValue);
-				if (tmp!=null) {
-					switch(cond) {
-						case no:{break;}
-						case positive:{if(tmp<=0) {statusInfo.setText("Must be positive!");return;} break;}
-						case nonNegative:{if(tmp<0) {statusInfo.setText("Must not be negative!");return;} break;}
-						default:
-					}
-					statusInfo.setText("");
-					((WrapperDouble) fd.get(ia)).setValue(tmp);
-					mainClass.projectManager.updateViewerPlot();
-				}
-			} catch (Exception e) {
-				Alert alert1 = new Alert(AlertType.INFORMATION);
-		    	alert1.setTitle("Error");
-		    	alert1.setContentText("Cannot set listener! "+e.getMessage());
-		    	alert1.showAndWait();
-				e.printStackTrace();
-			}
-		});
-    }
     public TextField getAField() {
     	return aField;
-    }
-    private Double str2double(String str) {
-    	try {
-    		statusInfo.setText("");
-    		return Double.parseDouble(str);
-    	}
-    	catch(Exception e) {
-    		statusInfo.setText("Error! Input is not double. "+e.getMessage());
-    		return null;
-    	}
     }
     public void loadProjectParameters() {
 		InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
@@ -306,10 +265,6 @@ public class InputGeoCellController implements Initializable{
 		
 		mainClass.projectManager.updateViewerPlot();//*****not so efficient
 	}
-    private void setField(TextField tf, WrapperDouble val) {
-    	if(val.getValue()==null) tf.setText("");
-    	else tf.setText(val.getValue().toString());
-    }
     public void updateCellA(){
     	InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
     	boolean a=(!ia.needCellA());

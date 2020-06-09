@@ -23,16 +23,13 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.net.URL;
 import java.util.ResourceBundle;
-
 import com.consts.Constants.EnumStep;
-
 import agent.InputAgentScf;
 import app.input.scf.InputScfHubbardController;
 import app.input.scf.InputScfMagnetController;
 import app.input.scf.InputScfStandardController;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
-import javafx.fxml.Initializable;
 import javafx.scene.control.Accordion;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ScrollPane;
@@ -44,7 +41,7 @@ import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.VBox;
 import main.MainClass;
 
-public class InputScfController implements Initializable{
+public class InputScfController extends InputController{
 
 	@FXML private ScrollPane standardScroll;
 	
@@ -80,8 +77,6 @@ public class InputScfController implements Initializable{
     vboxEfield,
     vboxAdvanced;
     
-    private MainClass mainClass;
-    
     private InputScfMagnetController contMagnet=null;
     
     private InputScfHubbardController contHubb=null;
@@ -89,8 +84,9 @@ public class InputScfController implements Initializable{
     private InputScfStandardController contStandard=null;
     
     public InputScfController(MainClass mc) {
-    	mainClass = mc;
+		super(mc);
 	}
+    
     @Override
 	public void initialize(URL location, ResourceBundle resources) {
     	initialize();
