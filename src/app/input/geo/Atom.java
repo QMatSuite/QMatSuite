@@ -33,18 +33,18 @@ public class Atom implements Serializable{
 	
 	private ChemicalElements atomSpecies;
 	//coordinates "as is"
-	private Coordinate x_coor;
-	private Coordinate y_coor;
-	private Coordinate z_coor;
+	private Coordinate xcoor;
+	private Coordinate ycoor;
+	private Coordinate zcoor;
 	//for magnet
 	private Double mag;private Double angle1;private Double angle2;
 
 	
 	public Atom(ChemicalElements species, Double x, Double y, Double z, Boolean fix_x,Boolean fix_y,Boolean fix_z) {
 		atomSpecies = species;
-		x_coor=new Coordinate(x,fix_x);
-		y_coor=new Coordinate(y,fix_y);
-		z_coor=new Coordinate(z,fix_z);
+		xcoor=new Coordinate(x,fix_x);
+		ycoor=new Coordinate(y,fix_y);
+		zcoor=new Coordinate(z,fix_z);
 		mag=0.0;angle1=0.0;angle2=0.0;
 	}
 	public Atom(String species, Double x, Double y, Double z, Boolean fix_x,Boolean fix_y,Boolean fix_z) {
@@ -57,49 +57,32 @@ public class Atom implements Serializable{
 	    	alert1.showAndWait();
 			e.printStackTrace();
 		}
-		x_coor=new Coordinate(x,fix_x);
-		y_coor=new Coordinate(y,fix_y);
-		z_coor=new Coordinate(z,fix_z);
+		xcoor=new Coordinate(x,fix_x);
+		ycoor=new Coordinate(y,fix_y);
+		zcoor=new Coordinate(z,fix_z);
 		mag=0.0;angle1=0.0;angle2=0.0;
 	}
-	public void mulX(Double mul) {
-		if (mul!=null) {
-			double tmp=x_coor.getX();
-			x_coor.setX(tmp*mul);}
-	}
-	public void mulY(Double mul) {
-		if (mul!=null) {
-			double tmp=y_coor.getX();
-			y_coor.setX(tmp*mul);}
-	}
-	public void mulZ(Double mul) {
-		if (mul!=null) {
-			double tmp=z_coor.getX();
-			z_coor.setX(tmp*mul);}
-	}
+	
 	public ChemicalElements getAtomSpecies() {
 		return atomSpecies;
 	}
 	public void setAtomSpecies(ChemicalElements atomSpecies) {
 		this.atomSpecies = atomSpecies;
 	}
-	public Coordinate getXcoor() {
-		return x_coor;
+	public void mulX(Double mul) {
+		if (mul!=null) {
+			double tmp=xcoor.getX();
+			xcoor.setX(tmp*mul);}
 	}
-	public void setXcoor(Coordinate x_coor) {
-		this.x_coor = x_coor;
+	public void mulY(Double mul) {
+		if (mul!=null) {
+			double tmp=ycoor.getX();
+			ycoor.setX(tmp*mul);}
 	}
-	public Coordinate getYcoor() {
-		return y_coor;
-	}
-	public void setYcoor(Coordinate y_coor) {
-		this.y_coor = y_coor;
-	}
-	public Coordinate getZcoor() {
-		return z_coor;
-	}
-	public void setZcoor(Coordinate z_coor) {
-		this.z_coor = z_coor;
+	public void mulZ(Double mul) {
+		if (mul!=null) {
+			double tmp=zcoor.getX();
+			zcoor.setX(tmp*mul);}
 	}
 	public Double getMag() {
 		return mag;
@@ -118,5 +101,23 @@ public class Atom implements Serializable{
 	}
 	public void setAngle2(Double angle2) {
 		if (angle2!=null) this.angle2 = angle2;
+	}
+	public Coordinate getXcoor() {
+		return xcoor;
+	}
+	public void setXcoor(Coordinate xcoor) {
+		this.xcoor = xcoor;
+	}
+	public Coordinate getYcoor() {
+		return ycoor;
+	}
+	public void setYcoor(Coordinate ycoor) {
+		this.ycoor = ycoor;
+	}
+	public Coordinate getZcoor() {
+		return zcoor;
+	}
+	public void setZcoor(Coordinate zcoor) {
+		this.zcoor = zcoor;
 	}
 }

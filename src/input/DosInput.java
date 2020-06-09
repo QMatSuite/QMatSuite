@@ -30,9 +30,9 @@ import agent.WrapperString;
 
 public class DosInput extends QeInput{
 	
-	public DosInput() {
-		super();
-	}
+//	public DosInput() {
+//		super();
+//	}
 	@Override
 	public String addParameter(InputValue val) {
 		return null;

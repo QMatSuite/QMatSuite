@@ -208,9 +208,9 @@ public class InputGeoAtomsController implements Initializable{
 		    return cell ;
 		});
 		elementColumn.setCellValueFactory(new PropertyValueFactory<Atom, String>("atomSpecies"));
-		xColumn.setCellValueFactory(new PropertyValueFactory<Atom, Coordinate>("x_coor"));
-		yColumn.setCellValueFactory(new PropertyValueFactory<Atom, Coordinate>("y_coor"));
-		zColumn.setCellValueFactory(new PropertyValueFactory<Atom, Coordinate>("z_coor"));
+		xColumn.setCellValueFactory(new PropertyValueFactory<Atom, Coordinate>("xcoor"));
+		yColumn.setCellValueFactory(new PropertyValueFactory<Atom, Coordinate>("ycoor"));
+		zColumn.setCellValueFactory(new PropertyValueFactory<Atom, Coordinate>("zcoor"));
 		
 		atomTable.setItems(atomsData);
 		
