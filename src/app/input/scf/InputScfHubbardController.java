@@ -172,7 +172,7 @@ public class InputScfHubbardController implements Initializable{
 		{ 
 			InputAgentScf iScf = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
 			if (iScf==null || newValue==null) return;
-			if (newValue) {applyToggle.setSelected(iScf.resetlda_plus_u());applyToggle.setDisable(true);iScf.lda_plus_u.setEnabled(false);}//****not so efficient, double executing
+			if (newValue) {applyToggle.setSelected(iScf.resetldaplusu());applyToggle.setDisable(true);iScf.lda_plus_u.setEnabled(false);}//****not so efficient, double executing
 			else {applyToggle.setDisable(false);iScf.lda_plus_u.setEnabled(true);if(checkResetAll.isSelected()) {allDefault=false;checkResetAll.setSelected(false);}}
 		});
     	checkResetAll.selectedProperty().addListener((observable, oldValue, newValue) ->

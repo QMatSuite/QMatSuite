@@ -431,7 +431,7 @@ public class InputScfStandardController implements Initializable{
 						case no:{break;}
 						case positive:{if(tmp<=0) {statusInfo.setText("Must be positive!");return;} break;}
 						case nonNegative:{if(tmp<0) {statusInfo.setText("Must not be negative!");return;} break;}
-						default:{}
+						default:
 					}
 					statusInfo.setText("");
 					((WrapperDouble) fd.get(ia)).setValue(tmp);

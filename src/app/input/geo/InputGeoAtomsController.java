@@ -178,6 +178,7 @@ public class InputGeoAtomsController implements Initializable{
 						    	alert.setTitle("Error");
 						    	alert.setContentText(unitCombo.getValue()+" is invalid for unit!");
 						    	alert.showAndWait();	
+						    	break;
 						}
 						mainClass.projectManager.updateViewerPlot();
 					}catch (Exception e) {
@@ -355,7 +356,8 @@ public class InputGeoAtomsController implements Initializable{
         			Alert alert = new Alert(AlertType.INFORMATION);
 			    	alert.setTitle("Error");
 			    	alert.setContentText(ia.ibrav+" is invalid for ibrav!");
-			    	alert.showAndWait();			
+			    	alert.showAndWait();	
+			    	break;
         	}
     	}
     	atomsData.clear();

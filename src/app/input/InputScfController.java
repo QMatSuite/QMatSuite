@@ -56,7 +56,12 @@ public class InputScfController implements Initializable{
 	
 	@FXML private Button buttonGetProjectDefault;
 	
-	@FXML private CheckBox setMag,setU,setHybrid,setVdw,setAdv,setE;
+	@FXML private CheckBox setMag,
+	setU,
+	setHybrid,
+	setVdw,
+	setAdv,
+	setE;
 	
 	@FXML private TitledPane standardPane;
 	

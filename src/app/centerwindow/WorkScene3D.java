@@ -57,7 +57,7 @@ import math.Thresholds;
 
 public class WorkScene3D {
 	private AnchorPane acp;//root
-	private VBox hb;//child 1, for toolbar
+	//private VBox hb; child 1, for toolbar
 	private SubScene subScene;//child 2, for 3D scene
 	
 	private final Group root = new Group();
@@ -78,7 +78,9 @@ public class WorkScene3D {
 	public InputAgentGeo iGeoCache=null;
 	public boolean boolFoldBack=false;
 	public int supercellMode = 0;//0 is no, 1 is crystal, 2 is alat, -1 is not selected
-	public Integer nx,ny,nz;
+	public Integer nx,
+	ny,
+	nz;
 	
 	private ArrayList<Atom> atomListCacheSC;
         
@@ -86,8 +88,6 @@ public class WorkScene3D {
 	private double mousePosY;
 	private double mouseOldX;
 	private double mouseOldY;
-	private double mouseDeltaX;
-	private double mouseDeltaY;
     
     private Toolbar3DController cont3D;
     
@@ -99,6 +99,7 @@ public class WorkScene3D {
 		acp = new AnchorPane();
 		
 		cont3D = new Toolbar3DController(this);
+		VBox hb;
 		FXMLLoader fxmlLoader2 = new FXMLLoader(this.getClass().getResource("toolbar3D.fxml"));
 		fxmlLoader2.setController(cont3D);
 		try {
@@ -125,7 +126,7 @@ public class WorkScene3D {
 		//camera.setFieldOfView(20);
 		
 		acp.getChildren().addAll(subScene,hb);
-		handleMouse(subScene, world);
+		handleMouse(subScene);
 		//initMouseControl();
 		//buildSampleMolecule();
 	}
@@ -151,7 +152,7 @@ public class WorkScene3D {
 		cameraSys1.rx.setAngle(-100.0);
         cameraSys1.rz.setAngle(100);
 	}
-	private void handleMouse(SubScene scene, final Node root) {
+	private void handleMouse(SubScene scene) {
         scene.setOnMousePressed(new EventHandler<MouseEvent>() {
             @Override public void handle(MouseEvent me) {
                 mousePosX = me.getSceneX();
@@ -166,8 +167,8 @@ public class WorkScene3D {
                 mouseOldY = mousePosY;
                 mousePosX = me.getSceneX();
                 mousePosY = me.getSceneY();
-                mouseDeltaX = (mousePosX - mouseOldX); 
-                mouseDeltaY = (mousePosY - mouseOldY); 
+                double mouseDeltaX = (mousePosX - mouseOldX); 
+                double mouseDeltaY = (mousePosY - mouseOldY); 
                 
                 double modifier = 1.0;
                 double modifierFactor = 0.15;
@@ -299,7 +300,13 @@ public class WorkScene3D {
         	else {cont3D.setStatus("Always need alat for ibrav not zero.");return null;}
         }
         
-        final Double a,b,c,gm,alpha,beta;
+        final Double a,
+        b,
+        c,
+        gm,
+        alpha,
+        beta;
+        
         a = alat;
         
         if (!iGeoCache.cellA.isNull() && iGeoCache.cellA.getValue()>0 && !iGeoCache.cellB.isNull()) {
@@ -539,15 +546,29 @@ public class WorkScene3D {
     	int nylim=1;
     	int nzlim=1;
     	
-        if (supercellMode==0) {}
+        if (supercellMode==0) {
+        	//do nothing
+        }
         else if (supercellMode==1) {
         	if (nx==null||ny==null||nz==null) {cont3D.setStatus("No nx,ny,nz!");return;}
         	if (nx>0 && ny>0 && nz>0) {nxlim=nx;nylim=ny;nzlim=nz;}
     	}
         else if (supercellMode==2) {
-        	if (nx==null||ny==null||nz==null || nx<=0 || ny<=0 || nz<=0) {cont3D.setStatus("No nx,ny,nz!");return;}
+        	if (nx==null||ny==null||nz==null || nx<=0 || ny<=0 || nz<=0) {cont3D.setStatus("No nx,ny,nz!");return;
+        	}
         	
-        	Cylinder x1,x2,x3,x4,y1,y2,y3,y4,z1,z2,z3,z4;
+        	Cylinder x1,
+        	x2,
+        	x3,
+        	x4,
+        	y1,
+        	y2,
+        	y3,
+        	y4,
+        	z1,
+        	z2,
+        	z3,
+        	z4;
 			
 	        x1 = makeCylinderConnect(new Point3D(0,0,0),new Point3D(alat*nx,0,0),thick);
 	        x2 = makeCylinderConnect(new Point3D(0,0,0),new Point3D(0,alat*ny,0),thick);

@@ -115,7 +115,13 @@ public class InputGeoCellController implements Initializable{
     	InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
 		if (ia==null) return;
 		//if ibrav==null, all enabled
-    	boolean a= false,b= false,c= false,alpha = false,beta= false,gamma= false;
+    	boolean a= false,
+    			b= false,
+    			c= false,
+    			alpha = false,
+    			beta= false,
+    			gamma= false;
+    	
     	ia.needAlatFromCell=true;
     	if(ia.ibrav.getValue()!=null) {
 	    	switch(ia.ibrav.getValue()) {
