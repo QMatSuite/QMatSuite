@@ -26,7 +26,16 @@ import java.lang.reflect.Method;
 import com.consts.Constants.EnumFunctional;
 import com.consts.Constants.EnumPP;
 import com.consts.PhysicalConstants;
-import com.pseudopot.PseudoDojoEnum.*;
+import com.pseudopot.PseudoDojoEnum.FrPbeStandard;
+import com.pseudopot.PseudoDojoEnum.FrPbeStringent;
+import com.pseudopot.PseudoDojoEnum.FrPbesolStandard;
+import com.pseudopot.PseudoDojoEnum.FrPbesolStringent;
+import com.pseudopot.PseudoDojoEnum.SrPbeStandard;
+import com.pseudopot.PseudoDojoEnum.SrPbeStringent;
+import com.pseudopot.PseudoDojoEnum.SrPbesolStandard;
+import com.pseudopot.PseudoDojoEnum.SrPbesolStringent;
+import com.pseudopot.PseudoDojoEnum.SrPwStandard;
+import com.pseudopot.PseudoDojoEnum.SrPwStringent;
 
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
@@ -77,7 +86,7 @@ public class PseudoDojoClass extends PseudoPotential{
 		try {
 			switch(typeFunctional) {
 				case PBE:
-					if (precString.equals("Standard")) {
+					if ("Standard".equals(precString)) {
 						if (isRelativ) {
 							FrPbeStandard ef = FrPbeStandard.valueOf(element);
 							method = ef.getClass().getMethod(methodName);
@@ -87,7 +96,7 @@ public class PseudoDojoClass extends PseudoPotential{
 							method = ef.getClass().getMethod(methodName);
 							return clazz.cast(method.invoke(ef));}
 					}
-					else if (precString.equals("Stringent")) {
+					else if ("Stringent".equals(precString)) {
 						if (isRelativ) {
 							FrPbeStringent ef = FrPbeStringent.valueOf(element);
 							method = ef.getClass().getMethod(methodName);
@@ -99,7 +108,7 @@ public class PseudoDojoClass extends PseudoPotential{
 					}
 					else return null;
 				case PBESOL:
-					if (precString.equals("Standard")) {
+					if ("Standard".equals(precString)) {
 						if (isRelativ) {
 							FrPbesolStandard ef = FrPbesolStandard.valueOf(element);
 							method = ef.getClass().getMethod(methodName);
@@ -109,7 +118,7 @@ public class PseudoDojoClass extends PseudoPotential{
 							method = ef.getClass().getMethod(methodName);
 							return clazz.cast(method.invoke(ef));}
 					}
-					else if (precString.equals("Stringent")) {
+					else if ("Stringent".equals(precString)) {
 						if (isRelativ) {
 							FrPbesolStringent ef = FrPbesolStringent.valueOf(element);
 							method = ef.getClass().getMethod(methodName);
@@ -121,14 +130,14 @@ public class PseudoDojoClass extends PseudoPotential{
 					}
 					else return null;
 				case LDA:
-					if (precString.equals("Standard")) {
+					if ("Standard".equals(precString)) {
 						if (isRelativ) {return null;}
 						else {
 							SrPwStandard ef = SrPwStandard.valueOf(element);
 							method = ef.getClass().getMethod(methodName);
 							return clazz.cast(method.invoke(ef));}
 					}
-					else if (precString.equals("Stringent")) {
+					else if ("Stringent".equals(precString)) {
 						if (isRelativ) {return null;}
 						else {
 							SrPwStringent ef = SrPwStringent.valueOf(element);

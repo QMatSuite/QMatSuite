@@ -37,7 +37,8 @@ import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.VBox;
 
 public class Toolbar3DController implements Initializable{
-	@FXML private VBox rootVbox,functionVbox;
+	@FXML private VBox rootVbox,
+	functionVbox;
 	@FXML private ToggleButton toggleShowToolbar;
 	@FXML private Slider sliderBondScaling;
 	@FXML private CheckBox checkFoldBack;
@@ -51,7 +52,7 @@ public class Toolbar3DController implements Initializable{
 	radio2Cryst,
 	radio3Cart;
 	
-	final ToggleGroup groupSupercell = new ToggleGroup();
+	private final ToggleGroup groupSupercell = new ToggleGroup();
 	
 	private WorkScene3D ws3d;
 	

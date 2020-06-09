@@ -145,6 +145,7 @@ public class InputScfMagnetController implements Initializable{
 					    	alert.setTitle("Error");
 					    	alert.setContentText(polarizCombo.getValue()+" is invalid for polarization!");
 					    	alert.showAndWait();
+					    	break;
 			    	}	    
 				}
 			});

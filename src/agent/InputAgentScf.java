@@ -92,7 +92,7 @@ public class InputAgentScf extends InputAgent{
 		setForAtoms = new WrapperBoolean(false);//ok
 		//DFT+U
 		//boolHubbardU=new WrapperBoolean(false);
-		resetlda_plus_u();//ok
+		resetldaplusu();//ok
 		elementList = new ArrayList<Element>();//ok, //for scfHubbard, part of all elements
 		//standard
 		resetboolRestart(); //false is from scratch //ok
@@ -111,7 +111,7 @@ public class InputAgentScf extends InputAgent{
 		
 	}
 	//hubbardU
-	public boolean resetlda_plus_u() {boolean out = false;if(lda_plus_u==null){lda_plus_u=new WrapperBoolean(out);}else{lda_plus_u.setValue(out);}return out;}
+	public boolean resetldaplusu() {boolean out = false;if(lda_plus_u==null){lda_plus_u=new WrapperBoolean(out);}else{lda_plus_u.setValue(out);}return out;}
 	//spin
 	public int resetnspin() {int out = 1;if(nspin==null){nspin=new WrapperInteger(out);}else{nspin.setValue(out);}return out;}
 	public boolean resetnoncolin() {boolean out = false;if(noncolin==null){noncolin=new WrapperBoolean(out);}else{noncolin.setValue(out);}return out;}
