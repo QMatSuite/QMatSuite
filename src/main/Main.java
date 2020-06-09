@@ -42,7 +42,7 @@ public class Main extends Application {
             Parent root = fxmlLoader.load();
             
 			Scene scene = new Scene(root,1280,800);
-			scene.getStylesheets().add(getClass().getResource("/app/application.css").toExternalForm());
+			//scene.getStylesheets().add(getClass().getResource("/app/application.css").toExternalForm());
 			
 			primaryStage.setScene(scene);
 			primaryStage.setOnCloseRequest(e->{

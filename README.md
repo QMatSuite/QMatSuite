@@ -9,12 +9,12 @@ We want to integrate input file generation, calculation job control, result anal
 
 The project is **not done yet**, and we are continuously working on it. We expect to offer the first early access version in **mid June**. For more information, feel free check out my [introduction video](https://www.youtube.com/watch?v=S2e1TWx6DHs) and [development progress video](https://www.youtube.com/watch?v=JSX576IHaH0) on my Youtube channel.
 
-### Requirements:
+## Requirements
 
-* Java Runtime Environment (JRE) 1.8
-* Windows/Linux/Mac OS
+*   Java Runtime Environment (JRE) 1.8
+*   Windows/Linux/Mac OS
 
-## License:
+## License
 
  Copyright (c) 2020 Haonan Huang.
  
@@ -31,5 +31,3 @@ The project is **not done yet**, and we are continuously working on it. We expec
  
  You should have received a copy of the GNU General Public License
  along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
-
-
