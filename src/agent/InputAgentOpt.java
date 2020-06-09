@@ -18,6 +18,10 @@
  *******************************************************************************/
 package agent;
 
+import com.consts.Constants.EnumCellDoFree;
+import com.consts.Constants.EnumCellOptMethod;
+import com.consts.Constants.EnumIonOptMethod;
+import com.consts.Constants.EnumUnitEnergy;
 import com.consts.Constants.ProgramName;
 
 public class InputAgentOpt extends InputAgent{
@@ -25,8 +29,37 @@ public class InputAgentOpt extends InputAgent{
 	 * 
 	 */
 	private static final long serialVersionUID = -8527007056845124155L;
-	public Boolean ionic;
+	
+	public WrapperBoolean boolRelaxCell,
+	boolScfMustConverge;
+	public WrapperInteger nMaxSteps;
+	
+	public WrapperDouble numEConv,
+	numFConv,
+	numPConv,
+	numPTarget;
+	
+	public WrapperEnum enumEUnit,
+	enumOptMethodIon,
+	enumOptMethodCell,
+	enumCellDoFree;
+	
+	
 	public InputAgentOpt() {
 		super(ProgramName.PW);
+		
+		boolRelaxCell = new WrapperBoolean(false);
+		boolScfMustConverge = new WrapperBoolean(true);
+		nMaxSteps = new WrapperInteger(50);
+		
+		numEConv = new WrapperDouble(1e-4);
+		numFConv = new WrapperDouble(1e-3);
+		numPConv = new WrapperDouble(0.5);
+		numPTarget = new WrapperDouble(0.0);
+		
+		enumEUnit = new WrapperEnum(EnumUnitEnergy.Ry);
+		enumOptMethodIon = new WrapperEnum(EnumIonOptMethod.bfgs);
+		enumOptMethodCell = new WrapperEnum(EnumCellOptMethod.bfgs);
+		enumCellDoFree = new WrapperEnum(EnumCellDoFree.all);
 	}
 }

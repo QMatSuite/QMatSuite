@@ -258,7 +258,7 @@ public class InputScfMagnetController extends InputController{
     		{ 
     			InputAgentScf iScf = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
 				if (iScf==null || newValue==null) return;
-				if (newValue) {spinorbitToggle.setSelected(iScf.resetboolSoc());spinorbitToggle.setDisable(true);iScf.boolSoc.setEnabled(false);}//****not so efficient, double executing
+				if (newValue) {spinorbitToggle.setSelected(iScf.boolSoc.resetDefault());spinorbitToggle.setDisable(true);iScf.boolSoc.setEnabled(false);}//****not so efficient, double executing
 				else {spinorbitToggle.setDisable(false);iScf.boolSoc.setEnabled(true);if(checkResetAll.isSelected()) {allDefault=false;checkResetAll.setSelected(false);}}
 			});
 			checkResetAll.selectedProperty().addListener((observable, oldValue, newValue) ->

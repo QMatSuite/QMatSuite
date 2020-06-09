@@ -18,17 +18,23 @@
  *******************************************************************************/
 package agent;
 
+import com.consts.Constants.EnumInProgram;
+
 public class WrapperString extends WrapperClass{
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 6353893107280121267L;
 	private String value;
+	final private String defaultValue;
+	
 	public WrapperString(String val) {
+		defaultValue = val;
 		value = val;
 		enabled = true;
 	}
 	public WrapperString(String val,Boolean bl) {
+		defaultValue = val;
 		value = val;
 		enabled = bl;
 	}
@@ -44,5 +50,9 @@ public class WrapperString extends WrapperClass{
 	@Override
 	public Boolean isNull() {
 		return value==null || value.isEmpty();
+	}
+	public String resetDefault() {
+		value = defaultValue;
+		return defaultValue;
 	}
 }

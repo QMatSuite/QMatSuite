@@ -215,4 +215,52 @@ public class Constants {
 			return name;
 		}
 	}
+	public enum EnumIonOptMethod implements EnumInProgram{
+		bfgs,damp;
+	}
+	public enum EnumCellOptMethod implements EnumInProgram{
+		no("none"),
+		sd("sd"),
+		damppr("damp-pr"),
+		dampw("damp-w"),
+		bfgs("bfgs");
+		
+		private String name;
+		
+		private EnumCellOptMethod(String name) {
+	        this.name = name;
+	    }
+		@Override
+		public String toString() {
+			return name;
+		}
+	}
+	public enum EnumCellDoFree implements EnumInProgram{
+		all("all"),
+		ibrav("ibrav"),
+		xonly("x"),
+		yonly("y"),
+		zonly("z"),
+		xy("xy"),
+		xz("xz"),
+		yz("yz"),
+		xyz("xyz"),
+		shape("shape"),
+		volume("volume"),
+		xy2d("2Dxy"),
+		shape2d("2Dshape"),
+		epitaxialab("epitaxial_ab"),
+		epitaxialac("epitaxial_ac"),
+		epitaxialbc("epitaxial_bc");
+		
+		private String name;
+		
+		private EnumCellDoFree(String name) {
+	        this.name = name;
+	    }
+		@Override
+		public String toString() {
+			return name;
+		}
+	}
 }

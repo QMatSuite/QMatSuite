@@ -40,7 +40,7 @@
                   <Separator prefHeight="30.0" BorderPane.alignment="CENTER" />
                </center>
                <left>
-                  <Label styleClass="medium-text" text="Controlling Calculation" BorderPane.alignment="CENTER">
+                  <Label styleClass="medium-text" text="General Controls" BorderPane.alignment="CENTER">
                      <font>
                         <Font name="System Bold Italic" size="14.0" />
                      </font>
@@ -88,7 +88,7 @@
                   <Separator prefHeight="30.0" BorderPane.alignment="CENTER" />
                </center>
                <left>
-                  <Label styleClass="medium-text" text="Ion's Optimization" BorderPane.alignment="CENTER">
+                  <Label styleClass="medium-text" text="Ionic Optimization" BorderPane.alignment="CENTER">
                      <font>
                         <Font name="System Bold Italic" size="14.0" />
                      </font>
@@ -160,7 +160,7 @@
                   <Separator prefHeight="30.0" BorderPane.alignment="CENTER" />
                </center>
                <left>
-                  <Label styleClass="medium-text" text="Cell's Optimization" BorderPane.alignment="CENTER">
+                  <Label styleClass="medium-text" text="Cell Optimization" BorderPane.alignment="CENTER">
                      <font>
                         <Font name="System Bold Italic" size="14.0" />
                      </font>

@@ -24,11 +24,15 @@ public class WrapperInteger extends WrapperClass{
 	 */
 	private static final long serialVersionUID = 834652343873610631L;
 	private Integer value;
+	final private Integer defaultValue;
+	
 	public WrapperInteger(Integer val) {
+		defaultValue = val;
 		value = val;
 		enabled = true;
 	}
 	public WrapperInteger(Integer val,Boolean bl) {
+		defaultValue = val;
 		value = val;
 		enabled = bl;
 	}
@@ -44,5 +48,9 @@ public class WrapperInteger extends WrapperClass{
 	@Override
 	public Boolean isNull() {
 		return value==null;
+	}
+	public Integer resetDefault() {
+		value = defaultValue;
+		return defaultValue;
 	}
 }

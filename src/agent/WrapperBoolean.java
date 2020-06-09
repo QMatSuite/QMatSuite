@@ -24,11 +24,15 @@ public class WrapperBoolean extends WrapperClass{
 	 */
 	private static final long serialVersionUID = -1515304239289393505L;
 	private Boolean value;
+	final private Boolean defaultValue;
+	
 	public WrapperBoolean(Boolean val) {
+		defaultValue = val;
 		value = val;
 		enabled = true;
 	}
 	public WrapperBoolean(Boolean val,Boolean bl) {
+		defaultValue = val;
 		value = val;
 		enabled = bl;
 	}
@@ -44,5 +48,9 @@ public class WrapperBoolean extends WrapperClass{
 	@Override
 	public Boolean isNull() {
 		return value==null;
+	}
+	public Boolean resetDefault() {
+		value = defaultValue;
+		return defaultValue;
 	}
 }

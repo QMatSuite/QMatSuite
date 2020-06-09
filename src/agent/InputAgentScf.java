@@ -87,49 +87,29 @@ public class InputAgentScf extends InputAgent{
 		expandStandard=false;expandMag=false;expandU=false;expandHybrid=false;
 		expandVdw=false;expandAdv=false;expandE=false;
 		//spin
-		resetnspin();resetnoncolin();resetboolSoc();//ok
+		nspin=new WrapperInteger(1);noncolin=new WrapperBoolean(false);boolSoc=new WrapperBoolean(false);//ok
 		setForElements=new WrapperBoolean(false);//ok
 		setForAtoms = new WrapperBoolean(false);//ok
 		//DFT+U
 		//boolHubbardU=new WrapperBoolean(false);
-		resetldaplusu();//ok
+		lda_plus_u=new WrapperBoolean(false);//ok
 		elementList = new ArrayList<Element>();//ok, //for scfHubbard, part of all elements
 		//standard
-		resetboolRestart(); //false is from scratch //ok
-		resetboolForce();resetboolStress();resetenumOccupation();//ok
+		boolRestart=new WrapperBoolean(false); //false is from scratch //ok
+		boolForce=new WrapperBoolean(false);boolStress=new WrapperBoolean(false);enumOccupation=new WrapperEnum(EnumOccupations.smearing);//ok
 		enumEnergyUnit = new WrapperEnum(EnumUnitEnergy.Ry);//ok
 		ecutWfc = new WrapperDouble(null);//ok
 		ecutRho = new WrapperDouble(null);//ok
-		resetnElecMaxStep();resetelecConv();resetenumMixing();resetmixBeta();//ok
+		nElecMaxStep=new WrapperInteger(100);elecConv=new WrapperDouble(1e-6);enumMixing=new WrapperEnum(EnumMixingMode.plain);
+		mixBeta=new WrapperDouble(0.7);//ok
 		nkx = new WrapperInteger(1);//ok
 		nky = new WrapperInteger(1);//ok
 		nkz = new WrapperInteger(1);//ok
-		resetenumSmearing();//ok
+		enumSmearing=new WrapperEnum(EnumSmearing.gauss);//ok
 		degauss = new WrapperDouble(0.0);//ok
 		//***********************/|\*********//
 		//************************|**********//
 		
 	}
-	//hubbardU
-	public boolean resetldaplusu() {boolean out = false;if(lda_plus_u==null){lda_plus_u=new WrapperBoolean(out);}else{lda_plus_u.setValue(out);}return out;}
-	//spin
-	public int resetnspin() {int out = 1;if(nspin==null){nspin=new WrapperInteger(out);}else{nspin.setValue(out);}return out;}
-	public boolean resetnoncolin() {boolean out = false;if(noncolin==null){noncolin=new WrapperBoolean(out);}else{noncolin.setValue(out);}return out;}
-	public boolean resetboolSoc() {boolean out = false;if(boolSoc==null){boolSoc=new WrapperBoolean(out);}else{boolSoc.setValue(out);}return out;}
-	//standard
-	public boolean resetboolRestart() {boolean out = false;if(boolRestart==null){boolRestart=new WrapperBoolean(out);}else{boolRestart.setValue(out);}return out;}
-	public boolean resetboolForce() {boolean out = false;if(boolForce==null){boolForce=new WrapperBoolean(out);}else{boolForce.setValue(out);}return out;}
-	public boolean resetboolStress() {boolean out = false;if(boolStress==null){boolStress=new WrapperBoolean(out);}else{boolStress.setValue(out);}return out;}
-	public EnumOccupations resetenumOccupation() {EnumOccupations out = EnumOccupations.smearing;
-	if(enumOccupation==null){enumOccupation=new WrapperEnum(out);}else{enumOccupation.setValue(out);}return out;}
-	
-	public int resetnElecMaxStep() {int out = 100;if(nElecMaxStep==null){nElecMaxStep=new WrapperInteger(out);}else{nElecMaxStep.setValue(out);}return out;}
-	public double resetelecConv() {double out = 1e-6;if(elecConv==null){elecConv=new WrapperDouble(out);}else{elecConv.setValue(out);}return out;}
-	public EnumMixingMode resetenumMixing() {
-		EnumMixingMode out = EnumMixingMode.plain;if(enumMixing==null){enumMixing=new WrapperEnum(out);}else{enumMixing.setValue(out);}return out;}
-	public double resetmixBeta() {double out = 0.7;if(mixBeta==null){mixBeta=new WrapperDouble(out);}else{mixBeta.setValue(out);}return out;}
-	
-	public EnumSmearing resetenumSmearing() {
-		EnumSmearing out = EnumSmearing.gauss;if(enumSmearing==null){enumSmearing=new WrapperEnum(out);}else{enumSmearing.setValue(out);}return out;}
 	
 }
