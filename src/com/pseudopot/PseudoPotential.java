@@ -30,7 +30,7 @@ public abstract class PseudoPotential {
 	protected ArrayList<EnumFunctional> functionalList;//functional list
 	protected ArrayList<EnumPP> ppList;//pseudopotential type list
 	protected ArrayList<String> precisionList;//precision settings
-	boolean fullRelativSupport;
+	private boolean fullRelativSupport;
 	protected String libFolderName;
 	
 	public PseudoPotential(EnumPseudoPotLib ln, boolean fr) {

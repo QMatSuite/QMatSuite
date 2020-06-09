@@ -26,7 +26,4 @@ public class InputMdController {
 	
 	@FXML private AnchorPane projectPane;
 
-    public InputMdController() {
-    }
-
 }

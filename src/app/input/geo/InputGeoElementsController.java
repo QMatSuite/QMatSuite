@@ -25,7 +25,7 @@ import java.nio.file.Paths;
 import java.util.ResourceBundle;
 import com.consts.Constants.EnumFunctional;
 import com.consts.Constants.EnumPP;
-import com.programconst.DefaultFileNames.settingKeys;
+import com.programconst.DefaultFileNames.SettingKeys;
 import com.pseudopot.EnumPseudoPotLib;
 import com.pseudopot.PseudoDojoClass;
 import com.pseudopot.SSSPClass;
@@ -56,7 +56,8 @@ public class InputGeoElementsController implements Initializable{
 
 	@FXML private VBox rootVbox;
 	
-	@FXML private Button defButton,buttonOpenLib;
+	@FXML private Button defButton,
+	buttonOpenLib;
 
 	@FXML private TableView<Element> elementTable;
     
@@ -69,10 +70,20 @@ public class InputGeoElementsController implements Initializable{
     @FXML private TableColumn<Element, String> pseudoColumn;
 
     @FXML
-    private Label ppTypePoint,xcFuncPoint,ecutwfcPoint,ecutrhoPoint,labelPathPseudoLib;
+    private Label ppTypePoint,
+    xcFuncPoint,
+    ecutwfcPoint,
+    ecutrhoPoint,
+    labelPathPseudoLib;
 
     @FXML
-    private Label ppTypeLabel,xcFuncLabel,ecutwfcLabel,ecutrhoLabel,relavLabel,relavPoint,fullPathLabel;
+    private Label ppTypeLabel,
+    xcFuncLabel,
+    ecutwfcLabel,
+    ecutrhoLabel,
+    relavLabel,
+    relavPoint,
+    fullPathLabel;
 
 	
     @FXML private ComboBox<EnumFunctional> comboFunctional;
@@ -83,7 +94,8 @@ public class InputGeoElementsController implements Initializable{
     
     @FXML private ComboBox<String> comboPrec;
     
-    @FXML private CheckBox checkRelativ,resetCheck;
+    @FXML private CheckBox checkRelativ,
+    resetCheck;
     
     private MainClass mainClass;
     
@@ -185,7 +197,7 @@ public class InputGeoElementsController implements Initializable{
 			
 			if(selectedDir!=null && selectedDir.canRead()) {
 				mainClass.projectManager.pseudoLibPath = selectedDir.getPath();
-				mainClass.projectManager.writeGlobalSettings(settingKeys.pseudolibroot.toString(),selectedDir.getPath());
+				mainClass.projectManager.writeGlobalSettings(SettingKeys.pseudolibroot.toString(),selectedDir.getPath());
 				labelPathPseudoLib.setText(selectedDir.getPath());
 				
 //				InputAgentGeo iGeo = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
@@ -331,8 +343,12 @@ public class InputGeoElementsController implements Initializable{
     	EnumPseudoPotLib eppl = comboLib.getSelectionModel().getSelectedItem();
     	if(eppl==null) return;
     	
-    	Double ecutwfc, dual;
-    	String ppType, functionalType;
+    	Double ecutwfc,
+    	dual;
+    	
+    	String ppType, 
+    	functionalType;
+    	
     	switch(eppl) {
 			case SSSP:
 				ecutwfc = ssspClass.getEcutWfc(elemSpec);

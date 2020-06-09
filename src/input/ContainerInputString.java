@@ -26,8 +26,8 @@ public class ContainerInputString {
 	public String input;
 	public String log;
 	public ContainerInputString() {
-		input = new String("");
-		log = new String("");
+		input = "";
+		log = "";
 		stepName = null;
 	}
 	public void appendInput(String st) {
@@ -37,8 +37,8 @@ public class ContainerInputString {
 		log = log + st;
 	}
 	public void append(ContainerInputString ci) {
-		input = input + new String(ci.input);
-		log = log + new String(ci.log);
+		input = input + ci.input;
+		log = log + ci.log;
 	}
 	public String toString() {
 		return (input.isEmpty()? "":"------Input file-----\n"+input)+

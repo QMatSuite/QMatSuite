@@ -18,29 +18,29 @@
  *******************************************************************************/
 package agent;
 
-import com.consts.Constants.enumInProgram;
+import com.consts.Constants.EnumInProgram;
 
 public class WrapperEnum extends WrapperClass{
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = -5526687023913245151L;
-	private enumInProgram value;
-	public WrapperEnum(enumInProgram val) {
+	private EnumInProgram value;
+	public WrapperEnum(EnumInProgram val) {
 		value = val;
 		enabled = true;
 	}
-	public WrapperEnum(enumInProgram val,Boolean bl) {
+	public WrapperEnum(EnumInProgram val,Boolean bl) {
 		value = val;
 		enabled = bl;
 	}
-	public enumInProgram getValue() {
+	public EnumInProgram getValue() {
 		return value;
 	}
-	public void setValue(enumInProgram val) {
+	public void setValue(EnumInProgram val) {
 		value = val;
 	}
-	public Boolean equals(enumInProgram vl) {
+	public Boolean equals(EnumInProgram vl) {
 		return java.util.Objects.equals(vl, value);
 	}
 	@Override

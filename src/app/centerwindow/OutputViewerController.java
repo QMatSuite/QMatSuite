@@ -17,7 +17,7 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package app.centerWindow;
+package app.centerwindow;
 
 import java.awt.Desktop;
 import java.io.File;
@@ -57,7 +57,9 @@ public class OutputViewerController implements Initializable{
 
     @FXML private HBox rootHbox;
 
-    @FXML private VBox vBoxCalcFolder,vboxFiles,vboxMainPlot;
+    @FXML private VBox vBoxCalcFolder,
+    vboxFiles,
+    vboxMainPlot;
 
     @FXML private ListView<String> listCalcFolders;
 
@@ -65,7 +67,11 @@ public class OutputViewerController implements Initializable{
     
     @FXML private ScrollPane displayScroll;
     
-    @FXML private Button deleteFolderButton,deleteFileButton,openAsButton,buttonRefreshFolder,buttonRefreshFiles;
+    @FXML private Button deleteFolderButton,
+    deleteFileButton,
+    openAsButton,
+    buttonRefreshFolder,
+    buttonRefreshFiles;
     
     @FXML private Label labelFileCategory;
     
@@ -178,7 +184,7 @@ public class OutputViewerController implements Initializable{
 		});
 		
 	}
-	boolean deleteDirectory(File directoryToBeDeleted) throws IOException {
+	private boolean deleteDirectory(File directoryToBeDeleted) throws IOException {
 	    File[] contentFiles = directoryToBeDeleted.listFiles();
 	    if (contentFiles != null) {
 	        for (File file : contentFiles) {

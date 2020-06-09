@@ -86,7 +86,7 @@ public class InputValueBoolean extends InputValue {
 		else {			
 			if (paraNow!=null) {
 				String strTmp = (paraNow?".true.":".false.");
-				return nameString.equals("body")? ""+strTmp :nameString+"="+strTmp;
+				return "body".equals(nameString)? ""+strTmp :nameString+"="+strTmp;
 			}
 			else return null;
 		}

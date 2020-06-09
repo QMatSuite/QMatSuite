@@ -17,7 +17,7 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package app.menus.settingTabs;
+package app.menus.settingtabs;
 
 import java.io.File;
 import java.net.URL;
@@ -25,7 +25,7 @@ import java.nio.file.Paths;
 import java.util.ResourceBundle;
 
 import com.programconst.Coloring;
-import com.programconst.DefaultFileNames.settingKeys;
+import com.programconst.DefaultFileNames.SettingKeys;
 
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -83,7 +83,7 @@ public class PathsController implements Initializable{
 			if(selectedDir!=null && selectedDir.canRead()) {
 				mainClass.projectManager.qePath = selectedDir.getPath();
 				textQEPath.setText(selectedDir.getPath());
-				mainClass.projectManager.writeGlobalSettings(settingKeys.qePath.toString(),selectedDir.getPath());
+				mainClass.projectManager.writeGlobalSettings(SettingKeys.qePath.toString(),selectedDir.getPath());
 				textQEPath.setBackground(new Background(new BackgroundFill(Coloring.validFile, 
 						CornerRadii.EMPTY, Insets.EMPTY)));
 			}

@@ -318,7 +318,10 @@ public class InputGeoAtomsController implements Initializable{
     	if (!enumElementsNames.contains(textElem.getText().trim())) {
 			labelBottom.setText("Error! Invalid element. Please use the format of H,He,Li,Be,...");return null;
 		}
-		Double x_coor,y_coor,z_coor;
+		Double x_coor,
+		y_coor,
+		z_coor;
+		
 		try {
 			x_coor=Double.valueOf(textX.getText());
 			y_coor=Double.valueOf(textY.getText());

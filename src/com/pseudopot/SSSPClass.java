@@ -73,12 +73,12 @@ public class SSSPClass extends PseudoPotential{
 		
 		Method method;
 		try {
-			if (precString.equals("Efficiency")) {
+			if ("Efficiency".equals(precString)) {
 				Efficiency ef = Efficiency.valueOf(element);
 				method = ef.getClass().getMethod(methodName);
 				return clazz.cast(method.invoke(ef));
 			}
-			else if (precString.equals("Precision")) {
+			else if ("Precision".equals(precString)) {
 				Precision ef = Precision.valueOf(element);
 				method = ef.getClass().getMethod(methodName);
 				return clazz.cast(method.invoke(ef));

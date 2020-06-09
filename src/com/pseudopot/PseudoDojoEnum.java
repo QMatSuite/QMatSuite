@@ -23,7 +23,7 @@ public class PseudoDojoEnum {
 	private PseudoDojoEnum() {
 	}
 	
-	public static enum Sr_pbe_standard {
+	public static enum SrPbeStandard {
 		//For licenses and acknowledgments please go to the website below
 		//http://www.pseudo-dojo.org
 		
@@ -110,7 +110,7 @@ public class PseudoDojoEnum {
 		private final Double renormalizedDeltaGauge;
 		private final Double gbrv;//Average FCC BCC GBRV test (%)
 
-	    private Sr_pbe_standard(String folderName, String fileName, Double lowCut, Double normalCut, Double highCut, Double nValenceShells,
+	    private SrPbeStandard(String folderName, String fileName, Double lowCut, Double normalCut, Double highCut, Double nValenceShells,
 	    		Double deltaGauge, Double renormalizedDeltaGauge, Double gbrv) {
 	    	this.folderName = folderName;
 	    	this.fileName = fileName;
@@ -135,7 +135,7 @@ public class PseudoDojoEnum {
 
 	}
 	
-	public static enum Sr_pbe_stringent {
+	public static enum SrPbeStringent {
 		//For licenses and acknowledgments please go to the website below
 		//http://www.pseudo-dojo.org
 		
@@ -222,7 +222,7 @@ public class PseudoDojoEnum {
 		private final Double renormalizedDeltaGauge;
 		private final Double gbrv;//Average FCC BCC GBRV test (%)
 
-	    private Sr_pbe_stringent(String folderName, String fileName, Double lowCut, Double normalCut, Double highCut, Double nValenceShells,
+	    private SrPbeStringent(String folderName, String fileName, Double lowCut, Double normalCut, Double highCut, Double nValenceShells,
 	    		Double deltaGauge, Double renormalizedDeltaGauge, Double gbrv) {
 	    	this.folderName = folderName;
 	    	this.fileName = fileName;
@@ -247,7 +247,7 @@ public class PseudoDojoEnum {
 
 	}
 	
-	public static enum Sr_pbesol_standard {
+	public static enum SrPbesolStandard {
 		//For licenses and acknowledgments please go to the website below
 		//http://www.pseudo-dojo.org
 		
@@ -334,7 +334,7 @@ public class PseudoDojoEnum {
 		private final Double renormalizedDeltaGauge;
 		private final Double gbrv;//Average FCC BCC GBRV test (%)
 
-	    private Sr_pbesol_standard(String folderName, String fileName, Double lowCut, Double normalCut, Double highCut, Double nValenceShells,
+	    private SrPbesolStandard(String folderName, String fileName, Double lowCut, Double normalCut, Double highCut, Double nValenceShells,
 	    		Double deltaGauge, Double renormalizedDeltaGauge, Double gbrv) {
 	    	this.folderName = folderName;
 	    	this.fileName = fileName;
@@ -359,7 +359,7 @@ public class PseudoDojoEnum {
 
 	}
 	
-	public static enum Sr_pbesol_stringent {
+	public static enum SrPbesolStringent {
 		//For licenses and acknowledgments please go to the website below
 		//http://www.pseudo-dojo.org
 
@@ -446,7 +446,7 @@ public class PseudoDojoEnum {
 		private final Double renormalizedDeltaGauge;
 		private final Double gbrv;//Average FCC BCC GBRV test (%)
 
-	    private Sr_pbesol_stringent(String folderName, String fileName, Double lowCut, Double normalCut, Double highCut, Double nValenceShells,
+	    private SrPbesolStringent(String folderName, String fileName, Double lowCut, Double normalCut, Double highCut, Double nValenceShells,
 	    		Double deltaGauge, Double renormalizedDeltaGauge, Double gbrv) {
 	    	this.folderName = folderName;
 	    	this.fileName = fileName;
@@ -471,7 +471,7 @@ public class PseudoDojoEnum {
 
 	}
 	
-	public static enum Sr_pw_standard {
+	public static enum SrPwStandard {
 		//For licenses and acknowledgments please go to the website below
 		//http://www.pseudo-dojo.org
 		
@@ -550,7 +550,7 @@ public class PseudoDojoEnum {
 		private final Double renormalizedDeltaGauge;
 		private final Double gbrv;//Average FCC BCC GBRV test (%)
 
-	    private Sr_pw_standard(String folderName, String fileName, Double lowCut, Double normalCut, Double highCut, Double nValenceShells,
+	    private SrPwStandard(String folderName, String fileName, Double lowCut, Double normalCut, Double highCut, Double nValenceShells,
 	    		Double deltaGauge, Double renormalizedDeltaGauge, Double gbrv) {
 	    	this.folderName = folderName;
 	    	this.fileName = fileName;
@@ -575,7 +575,7 @@ public class PseudoDojoEnum {
 
 	}
 	
-	public static enum Sr_pw_stringent {
+	public static enum SrPwStringent {
 		//For licenses and acknowledgments please go to the website below
 		//http://www.pseudo-dojo.org
 		
@@ -652,7 +652,7 @@ public class PseudoDojoEnum {
 		private final Double renormalizedDeltaGauge;
 		private final Double gbrv;//Average FCC BCC GBRV test (%)
 
-	    private Sr_pw_stringent(String folderName, String fileName, Double lowCut, Double normalCut, Double highCut, Double nValenceShells,
+	    private SrPwStringent(String folderName, String fileName, Double lowCut, Double normalCut, Double highCut, Double nValenceShells,
 	    		Double deltaGauge, Double renormalizedDeltaGauge, Double gbrv) {
 	    	this.folderName = folderName;
 	    	this.fileName = fileName;
@@ -677,7 +677,7 @@ public class PseudoDojoEnum {
 
 	}
 	
-	public static enum Fr_pbe_standard {
+	public static enum FrPbeStandard {
 		//For licenses and acknowledgments please go to the website below
 		//http://www.pseudo-dojo.org
 		
@@ -762,7 +762,7 @@ public class PseudoDojoEnum {
 		private final Double renormalizedDeltaGauge;
 		private final Double gbrv;//Average FCC BCC GBRV test (%)
 
-	    private Fr_pbe_standard(String folderName, String fileName, Double lowCut, Double normalCut, Double highCut, Double nValenceShells,
+	    private FrPbeStandard(String folderName, String fileName, Double lowCut, Double normalCut, Double highCut, Double nValenceShells,
 	    		Double deltaGauge, Double renormalizedDeltaGauge, Double gbrv) {
 	    	this.folderName = folderName;
 	    	this.fileName = fileName;
@@ -787,7 +787,7 @@ public class PseudoDojoEnum {
 
 	}
 	
-	public static enum Fr_pbe_stringent {
+	public static enum FrPbeStringent {
 		//For licenses and acknowledgments please go to the website below
 		//http://www.pseudo-dojo.org
 		
@@ -874,7 +874,7 @@ public class PseudoDojoEnum {
 		private final Double renormalizedDeltaGauge;
 		private final Double gbrv;//Average FCC BCC GBRV test (%)
 
-	    private Fr_pbe_stringent(String folderName, String fileName, Double lowCut, Double normalCut, Double highCut, Double nValenceShells,
+	    private FrPbeStringent(String folderName, String fileName, Double lowCut, Double normalCut, Double highCut, Double nValenceShells,
 	    		Double deltaGauge, Double renormalizedDeltaGauge, Double gbrv) {
 	    	this.folderName = folderName;
 	    	this.fileName = fileName;
@@ -899,7 +899,7 @@ public class PseudoDojoEnum {
 
 	}
 	
-	public static enum Fr_pbesol_standard {
+	public static enum FrPbesolStandard {
 		//For licenses and acknowledgments please go to the website below
 		//http://www.pseudo-dojo.org
 		
@@ -985,7 +985,7 @@ public class PseudoDojoEnum {
 		private final Double renormalizedDeltaGauge;
 		private final Double gbrv;//Average FCC BCC GBRV test (%)
 
-	    private Fr_pbesol_standard(String folderName, String fileName, Double lowCut, Double normalCut, Double highCut, Double nValenceShells,
+	    private FrPbesolStandard(String folderName, String fileName, Double lowCut, Double normalCut, Double highCut, Double nValenceShells,
 	    		Double deltaGauge, Double renormalizedDeltaGauge, Double gbrv) {
 	    	this.folderName = folderName;
 	    	this.fileName = fileName;
@@ -1010,7 +1010,7 @@ public class PseudoDojoEnum {
 
 	}
 	
-	public static enum Fr_pbesol_stringent {
+	public static enum FrPbesolStringent {
 		//For licenses and acknowledgments please go to the website below
 		//http://www.pseudo-dojo.org
 
@@ -1096,7 +1096,7 @@ public class PseudoDojoEnum {
 		private final Double renormalizedDeltaGauge;
 		private final Double gbrv;//Average FCC BCC GBRV test (%)
 
-	    private Fr_pbesol_stringent(String folderName, String fileName, Double lowCut, Double normalCut, Double highCut, Double nValenceShells,
+	    private FrPbesolStringent(String folderName, String fileName, Double lowCut, Double normalCut, Double highCut, Double nValenceShells,
 	    		Double deltaGauge, Double renormalizedDeltaGauge, Double gbrv) {
 	    	this.folderName = folderName;
 	    	this.fileName = fileName;

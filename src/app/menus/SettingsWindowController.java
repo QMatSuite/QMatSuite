@@ -25,7 +25,7 @@ import java.util.ResourceBundle;
 
 import com.programconst.ProgrammingConsts.SettingsTags;
 
-import app.menus.settingTabs.PathsController;
+import app.menus.settingtabs.PathsController;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
@@ -54,8 +54,6 @@ public class SettingsWindowController implements Initializable {
 
     @FXML
     private BorderPane borderPaneMain;
-
-    private TreeItem<SettingsTags> treeRoot;
     
     private MainClass mainClass;
     
@@ -70,7 +68,7 @@ public class SettingsWindowController implements Initializable {
     
 	@Override
 	public void initialize(URL arg0, ResourceBundle arg1) {
-		treeRoot = new TreeItem<SettingsTags>(SettingsTags.Settings);
+		TreeItem<SettingsTags> treeRoot = new TreeItem<SettingsTags>(SettingsTags.Settings);
 		treeNavigate.setRoot(treeRoot);treeNavigate.setShowRoot(false);//treeRoot.setExpanded(true);
 		//tree items
 		treeRoot.getChildren().add(new TreeItem<SettingsTags>(SettingsTags.Paths));

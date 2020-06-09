@@ -43,7 +43,9 @@ import project.ProjectCalcLog;
 public class MainLeftPaneController implements Initializable {
 	
 	@FXML private TreeTableView<ProjectCalcLog> projectTree;
-	@FXML public Button buttonOpenSelected,buttonCloseSelected,buttonRefresh;
+	@FXML public Button buttonOpenSelected,
+	buttonCloseSelected,
+	buttonRefresh;
 	
 	private TreeItem<ProjectCalcLog> projectTreeRoot;
 	private MainClass mainClass;

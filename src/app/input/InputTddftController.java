@@ -26,7 +26,5 @@ public class InputTddftController {
 	
 	@FXML private AnchorPane projectPane;
 
-    public InputTddftController() {
-    }
 
 }

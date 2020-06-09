@@ -551,9 +551,6 @@ public class ProjectManager {
 		else if (projectDict.containsKey(nameProject)){
 			activeProjKey = nameProject;
 		}
-		else {
-			
-		}	
 	}
 	public void setActiveCalculation(String ec) {
 		if (existCurrentProject()) {
