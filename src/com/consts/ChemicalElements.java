@@ -163,7 +163,7 @@ public enum ChemicalElements {
         Holder.map.put(atomicNumber, this);
     }
     private static class Holder {
-        static Map<Integer, ChemicalElements> map = new HashMap<Integer, ChemicalElements>();
+        private static Map<Integer, ChemicalElements> map = new HashMap<Integer, ChemicalElements>();
     }
     public static ChemicalElements forAtomicNumber(int atomicNumber) {
         return Holder.map.get(atomicNumber);
