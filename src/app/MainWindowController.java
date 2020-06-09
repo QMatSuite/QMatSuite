@@ -516,7 +516,7 @@ public class MainWindowController implements Initializable{
 			//go to current directory
 			String currentPath = Paths.get(".").toAbsolutePath().normalize().toString();
 			File tmpFile = new File(currentPath);
-			if(tmpFile!=null && tmpFile.canRead()) {
+			if(tmpFile.canRead()) {
 				dirChooser.setInitialDirectory(tmpFile);
 			}
 			
@@ -569,7 +569,7 @@ public class MainWindowController implements Initializable{
 			String wsp1 = mainClass.projectManager.readGlobalSettings(settingKeys.workspace.toString());
 			if(wsp1!=null) {
 				File wsDir = new File(wsp1);
-				if(mainClass.projectManager.existCurrentProject() && wsDir!=null && wsDir.canRead()) {
+				if(mainClass.projectManager.existCurrentProject() && wsDir.canRead()) {
 					Alert alert1 = new Alert(AlertType.INFORMATION);
 			    	alert1.setTitle("Warning");
 			    	alert1.setContentText("Please close ALL projects before changing the workspace directory.");
@@ -583,7 +583,7 @@ public class MainWindowController implements Initializable{
 			//go to current directory
 			String currentPath = Paths.get(".").toAbsolutePath().normalize().toString();
 			File tmpFile = new File(currentPath);
-			if(tmpFile!=null && tmpFile.canRead()) {
+			if(tmpFile.canRead()) {
 				dirChooser.setInitialDirectory(tmpFile);
 			}
 			
@@ -644,7 +644,7 @@ public class MainWindowController implements Initializable{
 		mainClass.projectManager.workSpacePath = wsp;
 		if (wsp!=null) {
 			File wsDir = new File(wsp);
-			if(wsDir!=null && wsDir.canRead()) {
+			if(wsDir.canRead()) {
 				textWorkSpace.setText(wsp);
 				textWorkSpace.setBackground(new Background(new BackgroundFill(Coloring.validFile, 
 						CornerRadii.EMPTY, Insets.EMPTY)));

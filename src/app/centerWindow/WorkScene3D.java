@@ -771,14 +771,17 @@ public class WorkScene3D {
         		//*******not the best algorithm. Performs not good when the primitive cell is very anisotropic
         		//*******also many xiangxian no use
         		nxlim=(int) Math.ceil(distMax);nylim=(int) Math.ceil(distMax);nzlim=(int) Math.ceil(distMax);
-        		nxlim=Math.min(nxlim, maxTrialCells);
-        		nylim=Math.min(nylim, maxTrialCells);
-        		nzlim=Math.min(nzlim, maxTrialCells);
         		
         		//tell the user that it is truncated
         		if(nxlim>maxTrialCells || nylim>maxTrialCells || nzlim>maxTrialCells) {
         			cont3D.setStatus("Warning! Atoms truncated.");
         		}
+        		
+        		nxlim=Math.min(nxlim, maxTrialCells);
+        		nylim=Math.min(nylim, maxTrialCells);
+        		nzlim=Math.min(nzlim, maxTrialCells);
+        		
+        		
         		
         		//to shift half later
         		nxlim=2*nxlim;nylim=2*nylim;nzlim=2*nzlim;
@@ -854,7 +857,7 @@ public class WorkScene3D {
 		
 		//add bonds
 		cont3D.setStatus("");
-		Integer countBondsTooClose = 0;
+		int countBondsTooClose = 0;
 		//for supercells
 		//supercellMode 0 is no, 1 is crystal, 2 is alat
     	int nxlim=1;

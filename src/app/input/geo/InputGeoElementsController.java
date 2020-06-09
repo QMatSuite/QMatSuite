@@ -177,7 +177,7 @@ public class InputGeoElementsController implements Initializable{
 			//go to current directory
 			String currentPath = Paths.get(".").toAbsolutePath().normalize().toString();
 			File tmpFile = new File(currentPath);
-			if(tmpFile!=null && tmpFile.canRead()) {
+			if(tmpFile.canRead()) {
 				dirChooser.setInitialDirectory(tmpFile);
 			}
 			
@@ -281,11 +281,16 @@ public class InputGeoElementsController implements Initializable{
 			if(ele1==null || ele2==null) continue;
 			String pseudoPotFile;
     		switch(eppl) {
-	    		case SSSP:pseudoPotFile=ssspClass.getFile(ele1.getAtomSpecies().toString());
-	    		if(libFolderPath==null) libFolderPath=ssspClass.getFolder(ele1.getAtomSpecies().toString());break;
-	    		case PSEUDODOJO:pseudoPotFile=pdClass.getFile(ele1.getAtomSpecies().toString());
-	    		if(libFolderPath==null) libFolderPath=pdClass.getFolder(ele1.getAtomSpecies().toString());break;
-	    		default: return;
+	    		case SSSP:
+	    			pseudoPotFile=ssspClass.getFile(ele1.getAtomSpecies().toString());
+		    		if(libFolderPath==null) {libFolderPath=ssspClass.getFolder(ele1.getAtomSpecies().toString());}
+		    		break;
+	    		case PSEUDODOJO:
+	    			pseudoPotFile=pdClass.getFile(ele1.getAtomSpecies().toString());
+		    		if(libFolderPath==null) {libFolderPath=pdClass.getFolder(ele1.getAtomSpecies().toString());}
+		    		break;
+	    		default: 
+	    			return;
     		}
     		ele1.setPseudoPotFile(pseudoPotFile);
     		ele2.setPseudoPotFile(pseudoPotFile);
@@ -402,7 +407,7 @@ public class InputGeoElementsController implements Initializable{
 		String pseudoLibRoot = mainClass.projectManager.pseudoLibPath;
 		if(pseudoLibRoot==null) return false;
 		File pseudoFile = new File(pseudoLibRoot+File.separator+fileName);
-		if(pseudoFile==null || !pseudoFile.canRead()) return false;
+		if(!pseudoFile.canRead()) return false;
 		else return true;
 	}
     public void loadProjectParameters() {

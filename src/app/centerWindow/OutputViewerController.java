@@ -109,7 +109,7 @@ public class OutputViewerController implements Initializable{
 			if(newTab==null || newTab.isEmpty()) return;
 			if(calcFolder==null || !calcFolder.canRead() || !calcFolder.isDirectory()) return;
 			inoutFiles = new File(calcFolder,newTab);
-			if(inoutFiles==null || !inoutFiles.canRead()) return;
+			if(!inoutFiles.canRead()) return;
 			
 			if(newTab.contains(ProgrammingConsts.stdinExtension)) {fileCategory = EnumFileCategory.stdin;}
 			else if(newTab.contains(ProgrammingConsts.stdoutExtension)) {fileCategory = EnumFileCategory.stdout;}

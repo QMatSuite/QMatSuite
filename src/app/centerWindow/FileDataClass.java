@@ -105,13 +105,13 @@ public class FileDataClass {
 		strTmp+=(isJobDone?"Job done.\n":"Job not done yet.\n");
 		
 		//total energy
-		Integer cnt = 0;
+		int cnt = 0;
 		strTmp+="Total energy (Ry):";
 		for(ArrayList<Double> ard:energyArray) {
 			if(ard!=null) {
 				cnt++;
 				if(ard.isEmpty()) {continue;}
-				strTmp+=("Step "+cnt.toString()+": ");
+				strTmp+=("Step "+Integer.toString(cnt)+": ");
 				for(Double val:ard) {
 					if(val!=null) {strTmp+=(val.toString()+",");}
 				}
@@ -120,14 +120,14 @@ public class FileDataClass {
 		}
 		
 		//magnetization
-		Integer cnt_mag = 0;
+		int cnt_mag = 0;
 		if(!totalMag.isEmpty() || !absoluteMag.isEmpty()) {
 			strTmp+="Total magnetization (Bohr mag/cell):";
 			for(ArrayList<Double> ard:totalMag) {
 				if(ard!=null) {
 					cnt_mag++;
 					if(ard.isEmpty()) {continue;}
-					strTmp+=("Step "+cnt_mag.toString()+": ");
+					strTmp+=("Step "+Integer.toString(cnt_mag)+": ");
 					for(Double val:ard) {
 						if(val!=null) {strTmp+=(val.toString()+",");}
 					}
@@ -140,7 +140,7 @@ public class FileDataClass {
 				if(ard!=null) {
 					cnt_mag++;
 					if(ard.isEmpty()) {continue;}
-					strTmp+=("Step "+cnt_mag.toString()+": ");
+					strTmp+=("Step "+Integer.toString(cnt_mag)+": ");
 					for(Double val:ard) {
 						if(val!=null) {strTmp+=(val.toString()+",");}
 					}
