@@ -56,7 +56,7 @@ public class InputValueDouble extends InputValue {
 	
 	@Override
 	public void setValueNow(Integer valueNow) throws InvalidTypeException{	
-		Double valueNew = valueNow.doubleValue();
+		double valueNew = valueNow.doubleValue();
 		paraNow = valueNew;
 	}
 	

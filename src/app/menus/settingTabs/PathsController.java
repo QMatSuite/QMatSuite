@@ -74,7 +74,7 @@ public class PathsController implements Initializable{
 			//go to current directory
 			String currentPath = Paths.get(".").toAbsolutePath().normalize().toString();
 			File tmpFile = new File(currentPath);
-			if(tmpFile!=null && tmpFile.canRead()) {
+			if(tmpFile.canRead()) {
 				dirChooser.setInitialDirectory(tmpFile);
 			}
 			
@@ -96,7 +96,7 @@ public class PathsController implements Initializable{
 		if (workSpacePath!=null) {
 			textWorkspace.setText(workSpacePath);
 			File wsDir = new File(workSpacePath);
-			if(wsDir!=null && wsDir.canRead()) {
+			if(wsDir.canRead()) {
 				textWorkspace.setBackground(new Background(new BackgroundFill(Coloring.validFile, 
 						CornerRadii.EMPTY, Insets.EMPTY)));
 			}
@@ -113,7 +113,7 @@ public class PathsController implements Initializable{
 		if(qePath!=null) {
 			textQEPath.setText(qePath);
 			File qeDir = new File(qePath);
-			if(qeDir!=null && qeDir.canRead()) {
+			if(qeDir.canRead()) {
 				textQEPath.setBackground(new Background(new BackgroundFill(Coloring.validFile, 
 						CornerRadii.EMPTY, Insets.EMPTY)));
 			}
