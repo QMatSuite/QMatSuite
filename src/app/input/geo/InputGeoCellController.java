@@ -49,17 +49,39 @@ public class InputGeoCellController implements Initializable{
 
     @FXML private ComboBox<BravaisLattice> ibravCombo;//ok, String before, now enum. Better!
 
-    @FXML private TextField aField,bField,cField,alphaField,betaField,gammaField;//ok. Use reflection: slow, but much shorter code
+    @FXML private TextField aField,
+    bField,
+    cField,
+    alphaField,
+    betaField,
+    gammaField;//ok. Use reflection: slow, but much shorter code
 
     @FXML private ComboBox<EnumUnitCellLength> aUnit;//ok
     
     @FXML private ComboBox<EnumUnitCellAngle> alphaUnit;//ok
     
-    @FXML private Label bUnit,cUnit,betaUnit,gammaUnit;//ok
+    @FXML private Label bUnit,
+    cUnit,
+    betaUnit,
+    gammaUnit;//ok
 
-    @FXML private Button ibravInfo,aInfo,bInfo,cInfo,alphaInfo,betaInfo,gammaInfo,lattInfo;
+    @FXML private Button ibravInfo,
+    aInfo,
+    bInfo,
+    cInfo,
+    alphaInfo,
+    betaInfo,
+    gammaInfo,
+    lattInfo;
     
-    @FXML private CheckBox checkResetAll,ibravCheck,aCheck,bCheck,cCheck,alphaCheck,betaCheck,gammaCheck;
+    @FXML private CheckBox checkResetAll,
+    ibravCheck,
+    aCheck,
+    bCheck,
+    cCheck,
+    alphaCheck,
+    betaCheck,
+    gammaCheck;
 
     @FXML private ComboBox<EnumUnitCellParameter> lattUnit;//ok
     
@@ -67,11 +89,17 @@ public class InputGeoCellController implements Initializable{
 
     @FXML private Label statusInfo;//ok. Can add more
     
-    @FXML private TextField aVecField1,aVecField2,aVecField3;//ok
+    @FXML private TextField aVecField1,
+    aVecField2,
+    aVecField3;//ok
 
-    @FXML private TextField bVecField1,bVecField2,bVecField3;//ok
+    @FXML private TextField bVecField1,
+    bVecField2,
+    bVecField3;//ok
 
-    @FXML private TextField cVecField1,cVecField2,cVecField3;//ok
+    @FXML private TextField cVecField1,
+    cVecField2,
+    cVecField3;//ok
 	
 	private MainClass mainClass;//nothing to be done here
 	
@@ -223,7 +251,7 @@ public class InputGeoCellController implements Initializable{
 						case no:{break;}
 						case positive:{if(tmp<=0) {statusInfo.setText("Must be positive!");return;} break;}
 						case nonNegative:{if(tmp<0) {statusInfo.setText("Must not be negative!");return;} break;}
-						default:{}
+						default:
 					}
 					statusInfo.setText("");
 					((WrapperDouble) fd.get(ia)).setValue(tmp);

@@ -83,22 +83,22 @@ public class Atom implements Serializable{
 	public void setAtomSpecies(ChemicalElements atomSpecies) {
 		this.atomSpecies = atomSpecies;
 	}
-	public Coordinate getX_coor() {
+	public Coordinate getXcoor() {
 		return x_coor;
 	}
-	public void setX_coor(Coordinate x_coor) {
+	public void setXcoor(Coordinate x_coor) {
 		this.x_coor = x_coor;
 	}
-	public Coordinate getY_coor() {
+	public Coordinate getYcoor() {
 		return y_coor;
 	}
-	public void setY_coor(Coordinate y_coor) {
+	public void setYcoor(Coordinate y_coor) {
 		this.y_coor = y_coor;
 	}
-	public Coordinate getZ_coor() {
+	public Coordinate getZcoor() {
 		return z_coor;
 	}
-	public void setZ_coor(Coordinate z_coor) {
+	public void setZcoor(Coordinate z_coor) {
 		this.z_coor = z_coor;
 	}
 	public Double getMag() {

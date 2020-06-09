@@ -641,8 +641,8 @@ public class WorkScene3D {
 		for (int i=0;i<iGeoCache.atomList.size();i++) {
 			Atom tmp = iGeoCache.atomList.get(i);
 			atomListClone.add(
-					new Atom(tmp.getAtomSpecies(), tmp.getX_coor().getX(), tmp.getY_coor().getX(),
-					tmp.getZ_coor().getX(),false,false,false)
+					new Atom(tmp.getAtomSpecies(), tmp.getXcoor().getX(), tmp.getYcoor().getX(),
+					tmp.getZcoor().getX(),false,false,false)
 					);
 //			//to transform to the usual way of 3D viewing
 //			atomListClone.add(
@@ -693,14 +693,14 @@ public class WorkScene3D {
 				double vtmp1,vtmp2,vtmp3;
 				Point3D vout;
 				for (int i=0;i<atomListClone.size();i++) {
-					vtmp1=atomListClone.get(i).getX_coor().getX();
-					vtmp2=atomListClone.get(i).getY_coor().getX();
-					vtmp3=atomListClone.get(i).getZ_coor().getX();
+					vtmp1=atomListClone.get(i).getXcoor().getX();
+					vtmp2=atomListClone.get(i).getYcoor().getX();
+					vtmp3=atomListClone.get(i).getZcoor().getX();
 					
 					vout=(aVec.multiply(vtmp1)).add(bVec.multiply(vtmp2)).add(cVec.multiply(vtmp3));
-					atomListClone.get(i).getX_coor().setX(vout.getX());
-					atomListClone.get(i).getY_coor().setX(vout.getY());
-					atomListClone.get(i).getZ_coor().setX(vout.getZ());
+					atomListClone.get(i).getXcoor().setX(vout.getX());
+					atomListClone.get(i).getYcoor().setX(vout.getY());
+					atomListClone.get(i).getZcoor().setX(vout.getZ());
 				}
 				break;
 			case angstrom:
@@ -801,9 +801,9 @@ public class WorkScene3D {
 			atomMat.setSpecularColor(Color.LIGHTGRAY);
 			atomMat.setDiffuseColor(Color.web(atomListClone.get(i).getAtomSpecies().getColorJmol()));
 			
-			double vx = atomListClone.get(i).getX_coor().getX();
-			double vy = atomListClone.get(i).getY_coor().getX();
-			double vz = atomListClone.get(i).getZ_coor().getX();
+			double vx = atomListClone.get(i).getXcoor().getX();
+			double vy = atomListClone.get(i).getYcoor().getX();
+			double vz = atomListClone.get(i).getZcoor().getX();
 			//checkFoldBack
 			if (boolFoldBack) {
 				//folded into the primitive unit cell
@@ -896,12 +896,12 @@ public class WorkScene3D {
 					if (iz+sjz<0) continue;
 					if (iz+sjz>=nzlim) continue;
 					
-					double vix = atomListClone.get(i).getX_coor().getX();
-					double viy = atomListClone.get(i).getY_coor().getX();
-					double viz = atomListClone.get(i).getZ_coor().getX();
-					double vjx = atomListClone.get(j).getX_coor().getX();
-					double vjy = atomListClone.get(j).getY_coor().getX();
-					double vjz = atomListClone.get(j).getZ_coor().getX();
+					double vix = atomListClone.get(i).getXcoor().getX();
+					double viy = atomListClone.get(i).getYcoor().getX();
+					double viz = atomListClone.get(i).getZcoor().getX();
+					double vjx = atomListClone.get(j).getXcoor().getX();
+					double vjy = atomListClone.get(j).getYcoor().getX();
+					double vjz = atomListClone.get(j).getZcoor().getX();
 					
 					if (boolFoldBack && supercellMode!=2) {
 						//folded into the primitive unit cell

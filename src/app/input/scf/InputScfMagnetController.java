@@ -52,31 +52,55 @@ import main.MainClass;
 public class InputScfMagnetController implements Initializable{
 	
 	//InputScfMagnet
-	@FXML private CheckBox checkResetAll,checkPolariz,checkSoc;//ok
+	@FXML private CheckBox checkResetAll,
+	checkPolariz,
+	checkSoc;//ok
 	
-	@FXML private Label polarizLabel,spinorbitLabel,magmethodLabel,xmagLabel,ymagLabel,zmagLabel;
+	@FXML private Label polarizLabel,
+	spinorbitLabel,
+	magmethodLabel,
+	xmagLabel,
+	ymagLabel,
+	zmagLabel;
 	
-	@FXML private Label statusInfo,bottomStatusLabel;
+	@FXML private Label statusInfo,
+	bottomStatusLabel;
 	
 	@FXML private ComboBox<String> polarizCombo;//ok
 	
 	@FXML private ToggleButton spinorbitToggle;//ok
 	
-	@FXML private Button polarizButton,spinorbitButton,fixmethodButton,xmagButton,ymagButton,zmagButton;//info, not implemented
+	@FXML private Button polarizButton,
+	spinorbitButton,
+	fixmethodButton,
+	xmagButton,
+	ymagButton,
+	zmagButton;//info, not implemented
 	
 	@FXML private TableView elementTable;
 	
-	@FXML private TableColumn<?, ?> indexColumn,nameColumn,magColumn,angle1Column,angle2Column;
+	@FXML private TableColumn<?, ?> indexColumn,
+	nameColumn,
+	magColumn,
+	angle1Column,
+	angle2Column;
 	
-	@FXML private CheckBox setForElements,setForAtoms;
+	@FXML private CheckBox setForElements,
+	setForAtoms;
 	
 	@FXML private Button editButton;//ok
 	
-	@FXML private Label labelNum,labelName,labelAngle1,labelAngle2;//ok
+	@FXML private Label labelNum,
+	labelName,
+	labelAngle1,
+	labelAngle2;//ok
 	
-	@FXML private TextField textMag,textAngle1,textAngle2;//ok
+	@FXML private TextField textMag,
+	textAngle1,
+	textAngle2;//ok
 	
-	@FXML private GridPane grid1,grid2;
+	@FXML private GridPane grid1,
+	grid2;
 	
 	private MainClass mainClass;
 	

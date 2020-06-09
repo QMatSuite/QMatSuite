@@ -260,12 +260,12 @@ public class PwInput extends QeInput{
 				Atom atTmp = ia1.atomList.get(i);
 				atomList.add(atTmp);
 				atomPosTmp+=(atTmp.getAtomSpecies().toString()
-						+"  "+atTmp.getX_coor().getX().toString()
-						+"  "+atTmp.getY_coor().getX().toString()
-						+"  "+atTmp.getZ_coor().getX().toString()
-						+"  "+(atTmp.getX_coor().getBoolFix()?"0":"1")
-						+"  "+(atTmp.getY_coor().getBoolFix()?"0":"1")
-						+"  "+(atTmp.getZ_coor().getBoolFix()?"0":"1")
+						+"  "+atTmp.getXcoor().getX().toString()
+						+"  "+atTmp.getYcoor().getX().toString()
+						+"  "+atTmp.getZcoor().getX().toString()
+						+"  "+(atTmp.getXcoor().getBoolFix()?"0":"1")
+						+"  "+(atTmp.getYcoor().getBoolFix()?"0":"1")
+						+"  "+(atTmp.getZcoor().getBoolFix()?"0":"1")
 						+"\n");
 			}
 			setValue("ATOMIC_POSITIONS","body",new WrapperString(atomPosTmp));
@@ -419,11 +419,11 @@ public class PwInput extends QeInput{
 	}
 	@Override
 	public void loadAgent(InputAgentNscf ia1) {
-		
+		//to do
 	}
 	@Override
 	public void loadAgent(InputAgentOpt ia1) {
-		
+		//to do
 	}
 	
 	

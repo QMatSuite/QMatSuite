@@ -79,21 +79,21 @@ public class PseudoDojoClass extends PseudoPotential{
 				case PBE:
 					if (precString.equals("Standard")) {
 						if (isRelativ) {
-							fr_pbe_standard ef = fr_pbe_standard.valueOf(element);
+							Fr_pbe_standard ef = Fr_pbe_standard.valueOf(element);
 							method = ef.getClass().getMethod(methodName);
 							return clazz.cast(method.invoke(ef));}
 						else {
-							sr_pbe_standard ef = sr_pbe_standard.valueOf(element);
+							Sr_pbe_standard ef = Sr_pbe_standard.valueOf(element);
 							method = ef.getClass().getMethod(methodName);
 							return clazz.cast(method.invoke(ef));}
 					}
 					else if (precString.equals("Stringent")) {
 						if (isRelativ) {
-							fr_pbe_stringent ef = fr_pbe_stringent.valueOf(element);
+							Fr_pbe_stringent ef = Fr_pbe_stringent.valueOf(element);
 							method = ef.getClass().getMethod(methodName);
 							return clazz.cast(method.invoke(ef));}
 						else {
-							sr_pbe_stringent ef = sr_pbe_stringent.valueOf(element);
+							Sr_pbe_stringent ef = Sr_pbe_stringent.valueOf(element);
 							method = ef.getClass().getMethod(methodName);
 							return clazz.cast(method.invoke(ef));}
 					}
@@ -101,21 +101,21 @@ public class PseudoDojoClass extends PseudoPotential{
 				case PBESOL:
 					if (precString.equals("Standard")) {
 						if (isRelativ) {
-							fr_pbesol_standard ef = fr_pbesol_standard.valueOf(element);
+							Fr_pbesol_standard ef = Fr_pbesol_standard.valueOf(element);
 							method = ef.getClass().getMethod(methodName);
 							return clazz.cast(method.invoke(ef));}
 						else {
-							sr_pbesol_standard ef = sr_pbesol_standard.valueOf(element);
+							Sr_pbesol_standard ef = Sr_pbesol_standard.valueOf(element);
 							method = ef.getClass().getMethod(methodName);
 							return clazz.cast(method.invoke(ef));}
 					}
 					else if (precString.equals("Stringent")) {
 						if (isRelativ) {
-							fr_pbesol_stringent ef = fr_pbesol_stringent.valueOf(element);
+							Fr_pbesol_stringent ef = Fr_pbesol_stringent.valueOf(element);
 							method = ef.getClass().getMethod(methodName);
 							return clazz.cast(method.invoke(ef));}
 						else {
-							sr_pbesol_stringent ef = sr_pbesol_stringent.valueOf(element);
+							Sr_pbesol_stringent ef = Sr_pbesol_stringent.valueOf(element);
 							method = ef.getClass().getMethod(methodName);
 							return clazz.cast(method.invoke(ef));}	
 					}
@@ -124,14 +124,14 @@ public class PseudoDojoClass extends PseudoPotential{
 					if (precString.equals("Standard")) {
 						if (isRelativ) {return null;}
 						else {
-							sr_pw_standard ef = sr_pw_standard.valueOf(element);
+							Sr_pw_standard ef = Sr_pw_standard.valueOf(element);
 							method = ef.getClass().getMethod(methodName);
 							return clazz.cast(method.invoke(ef));}
 					}
 					else if (precString.equals("Stringent")) {
 						if (isRelativ) {return null;}
 						else {
-							sr_pw_stringent ef = sr_pw_stringent.valueOf(element);
+							Sr_pw_stringent ef = Sr_pw_stringent.valueOf(element);
 							method = ef.getClass().getMethod(methodName);
 							return clazz.cast(method.invoke(ef));}
 					}
@@ -188,41 +188,41 @@ public class PseudoDojoClass extends PseudoPotential{
 //		switch(typeFunctional) {
 //			case PBE:
 //				if (precString.equals("Standard")) {
-//					if (isRelativ) {fr_pbe_standard ef = fr_pbe_standard.valueOf(element);
+//					if (isRelativ) {Fr_pbe_standard ef = Fr_pbe_standard.valueOf(element);
 //					return ef.getFolderName()+File.separator+ef.getFileName();}
-//					else {sr_pbe_standard ef = sr_pbe_standard.valueOf(element);
+//					else {Sr_pbe_standard ef = Sr_pbe_standard.valueOf(element);
 //					return ef.getFolderName()+File.separator+ef.getFileName();}
 //				}
 //				else if (precString.equals("Stringent")) {
-//					if (isRelativ) {fr_pbe_stringent ef = fr_pbe_stringent.valueOf(element);
+//					if (isRelativ) {Fr_pbe_stringent ef = Fr_pbe_stringent.valueOf(element);
 //					return ef.getFolderName()+File.separator+ef.getFileName();}
-//					else {sr_pbe_stringent ef = sr_pbe_stringent.valueOf(element);
+//					else {Sr_pbe_stringent ef = Sr_pbe_stringent.valueOf(element);
 //					return ef.getFolderName()+File.separator+ef.getFileName();}
 //				}
 //				else return null;
 //			case PBESOL:
 //				if (precString.equals("Standard")) {
-//					if (isRelativ) {fr_pbesol_standard ef = fr_pbesol_standard.valueOf(element);
+//					if (isRelativ) {Fr_pbesol_standard ef = Fr_pbesol_standard.valueOf(element);
 //					return ef.getFolderName()+File.separator+ef.getFileName();}
-//					else {sr_pbesol_standard ef = sr_pbesol_standard.valueOf(element);
+//					else {Sr_pbesol_standard ef = Sr_pbesol_standard.valueOf(element);
 //					return ef.getFolderName()+File.separator+ef.getFileName();}
 //				}
 //				else if (precString.equals("Stringent")) {
-//					if (isRelativ) {fr_pbesol_stringent ef = fr_pbesol_stringent.valueOf(element);
+//					if (isRelativ) {Fr_pbesol_stringent ef = Fr_pbesol_stringent.valueOf(element);
 //					return ef.getFolderName()+File.separator+ef.getFileName();}
-//					else {sr_pbesol_stringent ef = sr_pbesol_stringent.valueOf(element);
+//					else {Sr_pbesol_stringent ef = Sr_pbesol_stringent.valueOf(element);
 //					return ef.getFolderName()+File.separator+ef.getFileName();}
 //				}
 //				else return null;
 //			case LDA:
 //				if (precString.equals("Standard")) {
 //					if (isRelativ) {return null;}
-//					else {sr_pw_standard ef = sr_pw_standard.valueOf(element);
+//					else {Sr_pw_standard ef = Sr_pw_standard.valueOf(element);
 //					return ef.getFolderName()+File.separator+ef.getFileName();}
 //				}
 //				else if (precString.equals("Stringent")) {
 //					if (isRelativ) {return null;}
-//					else {sr_pw_stringent ef = sr_pw_stringent.valueOf(element);
+//					else {Sr_pw_stringent ef = Sr_pw_stringent.valueOf(element);
 //					return ef.getFolderName()+File.separator+ef.getFileName();}
 //				}
 //				else return null;

@@ -33,8 +33,19 @@ public class InputAgentScf extends InputAgent{
 	 * 
 	 */
 	private static final long serialVersionUID = -3659165710616979269L;
-	public Boolean setMag,setU,setHybrid,setVdw,setAdv,setE;
-	public Boolean expandStandard,expandMag,expandU,expandHybrid,expandVdw,expandAdv,expandE;
+	public Boolean setMag,
+	setU,
+	setHybrid,
+	setVdw,
+	setAdv,
+	setE;
+	public Boolean expandStandard,
+	expandMag,
+	expandU,
+	expandHybrid,
+	expandVdw,
+	expandAdv,
+	expandE;
 	
 	//standard
 	public WrapperEnum enumOccupation;//EnumOccupations 
@@ -42,8 +53,15 @@ public class InputAgentScf extends InputAgent{
 	public WrapperBoolean boolForce;
 	public WrapperBoolean boolStress;
 	public WrapperEnum enumEnergyUnit;
-	public WrapperDouble  ecutWfc,ecutRho,elecConv,mixBeta,degauss;
-	public WrapperInteger nElecMaxStep,nkx,nky,nkz;
+	public WrapperDouble  ecutWfc,
+	ecutRho,
+	elecConv,
+	mixBeta,
+	degauss;
+	public WrapperInteger nElecMaxStep,
+	nkx,
+	nky,
+	nkz;
 	public WrapperEnum enumMixing;//EnumMixingMode
 	public WrapperEnum enumSmearing;//EnumSmearing
 	
