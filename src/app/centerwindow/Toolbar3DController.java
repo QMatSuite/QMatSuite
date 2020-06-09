@@ -16,7 +16,7 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package app.centerWindow;
+package app.centerwindow;
 
 import java.net.URL;
 import java.util.ResourceBundle;

@@ -22,7 +22,12 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Set;
 
-import com.consts.Constants.*;
+import com.consts.Constants.EnumCard;
+import com.consts.Constants.EnumMixingMode;
+import com.consts.Constants.EnumNameList;
+import com.consts.Constants.EnumOccupations;
+import com.consts.Constants.EnumSmearing;
+import com.consts.Constants.EnumUnitEnergy;
 import com.consts.PhysicalConstants;
 import com.error.InvalidKeyException;
 import com.error.InvalidTypeException;
@@ -201,7 +206,7 @@ public class PwInput extends QeInput{
 					case angstrom:setRequiredAndWrite("SYSTEM","A",false,false);optTmp="(angstrom)";break;
 					case bohr:setRequiredAndWrite("SYSTEM","A",false,false);optTmp="(bohr)";break;
 					case pm:setRequiredAndWrite("SYSTEM","A",false,false);optTmp="(angstrom)";scale=1.0/100;break;
-					default:optTmp=null;
+					default:optTmp=null;break;
 				}
 				if(optTmp!=null) {
 					setSectionOption("CELL_PARAMETERS",optTmp);

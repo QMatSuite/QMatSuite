@@ -148,7 +148,8 @@ public enum ChemicalElements {
     private final double atomicMass;
     private final double empricalRadius;
     private final String electConf;
-    private final String colorJmol,colorRasmol;
+    private final String colorJmol,
+    colorRasmol;
     
     private ChemicalElements(int atomicNumber, String fullName, double atomicMass, double empricalRadius, String electConf, 
     		String colorJmol, String colorRasmol) {

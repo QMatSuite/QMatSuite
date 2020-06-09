@@ -28,7 +28,7 @@ import com.consts.Constants.EnumStep;
 
 import agent.InputAgent;
 import agent.InputAgentGeo;
-import app.centerWindow.WorkScene3D;
+import app.centerwindow.WorkScene3D;
 import input.ContainerInputString;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;

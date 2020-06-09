@@ -76,9 +76,19 @@ public abstract class QeInput{
 	public abstract void setValue(String keySec, String keyPara,WrapperString para) throws InvalidKeyException, InvalidTypeException;
 	public abstract void setValue(String keySec, String keyPara,WrapperBoolean para) throws InvalidKeyException, InvalidTypeException;
 	//not abstract method, because no need to define all of them in the inherited class
-	public void loadAgent(InputAgentDos ia1) {}
-	public void loadAgent(InputAgentGeo ia1) {}
-	public void loadAgent(InputAgentNscf ia1) {}
-	public void loadAgent(InputAgentOpt ia1) {}
-	public void loadAgent(InputAgentScf ia1) {} 
+	public void loadAgent(InputAgentDos ia1) {
+		//implement in the subclasses
+	}
+	public void loadAgent(InputAgentGeo ia1) {
+		//implement in the subclasses
+	}
+	public void loadAgent(InputAgentNscf ia1) {
+		//implement in the subclasses
+	}
+	public void loadAgent(InputAgentOpt ia1) {
+		//implement in the subclasses
+	}
+	public void loadAgent(InputAgentScf ia1) {
+		//implement in the subclasses
+	} 
 }

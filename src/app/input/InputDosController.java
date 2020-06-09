@@ -26,7 +26,5 @@ public class InputDosController {
 	
 	@FXML private AnchorPane projectPane;
 
-    public InputDosController() {
-    }
 
 }

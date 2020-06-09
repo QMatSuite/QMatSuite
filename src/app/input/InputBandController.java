@@ -30,15 +30,19 @@ import javafx.scene.control.ToggleButton;
 
 public class InputBandController {
 	
-	@FXML private Label nbandLabel,symLabel;
+	@FXML private Label nbandLabel,
+	symLabel;
 	@FXML private ToggleButton symToggle;
-	@FXML private Button nbandButton,symButton,defButton;
+	@FXML private Button nbandButton,
+	symButton,
+	defButton;
 	@FXML private ComboBox<?> unitCombo;
 	@FXML private TextField nbandField;
 	@FXML private TableView<?> kpointTable;
-	@FXML private TableColumn<?,?> symbolColumn,nkColumn,kxColumn,kyColumn,kzColumn;
-
-    public InputBandController() {
-    }
+	@FXML private TableColumn<?,?> symbolColumn,
+	nkColumn,
+	kxColumn,
+	kyColumn,
+	kzColumn;
 
 }

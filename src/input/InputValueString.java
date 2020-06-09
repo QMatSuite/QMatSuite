@@ -44,8 +44,7 @@ public class InputValueString extends InputValue {
 		paraNow = paraDefault;
 	}
 	public boolean isEmpty() {
-		if(paraNow==null||paraNow.isEmpty()) return true;
-		else return false;
+		return paraNow==null || paraNow.isEmpty();
 	}
 	
 	@Override
@@ -84,7 +83,7 @@ public class InputValueString extends InputValue {
 			return nameString+", "+paraDefault+", "+paraNow+", "+(boolRequired? "required":"optional")+", "+(explicitWrite? "write":"ignored");
 			}
 		else {
-			if (paraNow!=null && !paraNow.isEmpty()) return nameString.equals("body")? ""+paraNow+"" :nameString+"='"+paraNow+"'";
+			if (paraNow!=null && !paraNow.isEmpty()) return "body".equals(nameString)? ""+paraNow+"" :nameString+"='"+paraNow+"'";
 			else return null;
 		}
 	}

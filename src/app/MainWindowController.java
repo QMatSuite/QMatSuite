@@ -32,8 +32,7 @@ import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
 import com.error.ErrorMsg;
 import com.programconst.Coloring;
-import com.programconst.DefaultFileNames.settingKeys;
-
+import com.programconst.DefaultFileNames.SettingKeys;
 import javafx.application.Platform;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -72,9 +71,10 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import job.JobNode;
 import main.MainClass;
-import app.centerWindow.OutputViewerController;
-import app.centerWindow.WorkScene3D;
-import app.input.*;
+import app.centerwindow.OutputViewerController;
+import app.centerwindow.WorkScene3D;
+import app.input.InputGeoController;
+import app.input.InputScfController;
 import app.menus.SettingsWindowController;
 import input.ContainerInputString;
 
@@ -86,31 +86,56 @@ public class MainWindowController implements Initializable{
     
     @FXML private MenuButton calcMain;
     
-    @FXML private MenuItem calcScf,calcOpt,calcDos,calcBands,calcMd,calcTddft,calcCustom,menuAbout,menuSaveProjectAs,menuLoadProject;
+    @FXML private MenuItem calcScf,
+    calcOpt,
+    calcDos,
+    calcBands,
+    calcMd,
+    calcTddft,
+    calcCustom,
+    menuAbout,
+    menuSaveProjectAs,
+    menuLoadProject;
     
-    @FXML private MenuItem stopCurrentJob,stopAllJobs,settingsMenuItem;
+    @FXML private MenuItem stopCurrentJob,
+    stopAllJobs,
+    settingsMenuItem;
     
-    @FXML private Button createProject,showInputButton,runJob,buttonOpenWorkSpace,saveProjectButton;
+    @FXML private Button createProject,
+    showInputButton,
+    runJob,
+    buttonOpenWorkSpace,
+    saveProjectButton;
     
     @FXML private Label textWorkSpace;
     
     @FXML private Pane paneWorkSpace;
     
-    @FXML private ComboBox<String> comboProject,comboCalculation;
+    @FXML private ComboBox<String> comboProject,
+    comboCalculation;
     
 	@FXML private ScrollPane inputField;
 	
-	@FXML private HBox hboxRight,hboxLeft;
+	@FXML private HBox hboxRight,
+	hboxLeft;
 	
-	@FXML private Label calcLabel,currentJobLabel;
+	@FXML private Label calcLabel,
+	currentJobLabel;
 	
 	@FXML private TabPane workSpaceTabPane;
 	
-	@FXML private RadioButton radioGeometry, radioCalculation;
+	@FXML private RadioButton radioGeometry, 
+	radioCalculation;
 	
 	@FXML private BorderPane rootPane;
 	
-	private ScrollPane scrollGeo,scrollOpt,scrollScf,scrollDos,scrollBands,scrollMd,scrollTddft;
+	private ScrollPane scrollGeo,
+	scrollOpt,
+	scrollScf,
+	scrollDos,
+	scrollBands,
+	scrollMd,
+	scrollTddft;
 	
 	private ScrollPane scrollLeft;
 	
@@ -118,9 +143,8 @@ public class MainWindowController implements Initializable{
 	
 	private TabPane tabPaneRight;
 	
-	private Boolean tabPaneStatusRight,scrollStatusLeft;
-	
-	private Button btnRight,btnLeft;
+	private Boolean tabPaneStatusRight,
+	scrollStatusLeft;
 	
 	private MainClass mainClass;
 	
@@ -565,7 +589,7 @@ public class MainWindowController implements Initializable{
 		});
 		
 		buttonOpenWorkSpace.setOnAction((event) -> {
-			String wsp1 = mainClass.projectManager.readGlobalSettings(settingKeys.workspace.toString());
+			String wsp1 = mainClass.projectManager.readGlobalSettings(SettingKeys.workspace.toString());
 			if(wsp1!=null) {
 				File wsDir = new File(wsp1);
 				if(mainClass.projectManager.existCurrentProject() && wsDir.canRead()) {
@@ -591,7 +615,7 @@ public class MainWindowController implements Initializable{
 			if(selectedDir!=null && selectedDir.canRead()) {
 				mainClass.projectManager.workSpacePath = selectedDir.getPath();
 				textWorkSpace.setText(mainClass.projectManager.workSpacePath);
-				mainClass.projectManager.writeGlobalSettings(settingKeys.workspace.toString(),selectedDir.getPath());
+				mainClass.projectManager.writeGlobalSettings(SettingKeys.workspace.toString(),selectedDir.getPath());
 				setWorkSpace(true);
 				contTree.updateProjects();
 				textWorkSpace.setBackground(new Background(new BackgroundFill(Coloring.validFile, 
@@ -639,7 +663,7 @@ public class MainWindowController implements Initializable{
 	}
 	private void loadEnvironmentPaths() {
 		//load environment variable
-		String wsp = mainClass.projectManager.readGlobalSettings(settingKeys.workspace.toString());
+		String wsp = mainClass.projectManager.readGlobalSettings(SettingKeys.workspace.toString());
 		mainClass.projectManager.workSpacePath = wsp;
 		if (wsp!=null) {
 			File wsDir = new File(wsp);
@@ -669,12 +693,12 @@ public class MainWindowController implements Initializable{
 	    	alert1.showAndWait();
 		}
 		
-		String qePath = mainClass.projectManager.readGlobalSettings(settingKeys.qePath.toString());
+		String qePath = mainClass.projectManager.readGlobalSettings(SettingKeys.qePath.toString());
 		mainClass.projectManager.qePath = qePath;
 		
 		contTree.updateProjects();
 		
-		String wsp2 = mainClass.projectManager.readGlobalSettings(settingKeys.pseudolibroot.toString());
+		String wsp2 = mainClass.projectManager.readGlobalSettings(SettingKeys.pseudolibroot.toString());
 		mainClass.projectManager.pseudoLibPath = wsp2;
 	}
 
@@ -783,7 +807,7 @@ public class MainWindowController implements Initializable{
 		// right part, default off
 		tabPaneStatusRight = false;
 		VBox vboxRight = new VBox();
-		btnRight = new Button("R");
+		Button btnRight = new Button("R");
 		vboxRight.getChildren().add(btnRight);
 		hboxRight.getChildren().add(vboxRight);
 		//right part, tab pane
@@ -802,7 +826,7 @@ public class MainWindowController implements Initializable{
 		
 		scrollLeft.setFitToHeight(true);
 		VBox vboxLeft = new VBox();
-		btnLeft = new Button("L");
+		Button btnLeft = new Button("L");
 		vboxLeft.getChildren().add(btnLeft);
 		hboxLeft.getChildren().addAll(vboxLeft,scrollLeft);
 		

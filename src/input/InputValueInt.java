@@ -80,7 +80,7 @@ public class InputValueInt extends InputValue {
 			return nameString+", "+paraDefault+", "+paraNow+", "+(boolRequired? "required":"optional")+", "+(explicitWrite? "write":"ignored");
 			}
 		else {
-			if (paraNow!=null) return nameString.equals("body")? ""+paraNow :nameString+"="+paraNow;
+			if (paraNow!=null) return "body".equals(nameString)? ""+paraNow :nameString+"="+paraNow;
 			else return null;
 		}
 	}

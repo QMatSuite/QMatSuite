@@ -51,7 +51,8 @@ public class InputScfHubbardController implements Initializable{
 	
 	//InputScfHubbard
 	
-	@FXML private CheckBox checkResetAll,checkHubbardU;
+	@FXML private CheckBox checkResetAll,
+	checkHubbardU;
 	
 	@FXML private Label statusLabel;//ok
 
@@ -59,7 +60,9 @@ public class InputScfHubbardController implements Initializable{
 
 	@FXML private Button applyInfo;
 	
-	@FXML private Button buttonAdd,buttonDel,buttonEdit;//ok
+	@FXML private Button buttonAdd,
+	buttonDel,
+	buttonEdit;//ok
 
     @FXML private TableView<Element> elementTableHubbard;//ok
     

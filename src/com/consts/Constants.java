@@ -96,7 +96,8 @@ public class Constants {
 		BOMD("Molecular Dynamics (Born–Oppenheimer type, BOMD)", "MD"),
 		TDDFT("TDDFT", "TDDFT");
 
-		private String longName,shortName;
+		private String longName,
+		shortName;
 		
 		private EnumCalc(String longName, String shortName) {
 	        this.longName = longName;
@@ -140,29 +141,29 @@ public class Constants {
 			return name;
 		}
 	}
-	public interface enumInProgram {
+	public interface EnumInProgram {
     }
-	public enum EnumUnitCellLength implements enumInProgram{
+	public enum EnumUnitCellLength implements EnumInProgram{
 		bohr,angstrom,pm
 	}
-	public enum EnumUnitCellParameter implements enumInProgram{
+	public enum EnumUnitCellParameter implements EnumInProgram{
 		alat,bohr,angstrom,pm
 	}
-	public enum EnumUnitCellAngle implements enumInProgram{
+	public enum EnumUnitCellAngle implements EnumInProgram{
 		degree,radian
 	}
-	public enum EnumUnitAtomPos implements enumInProgram{
+	public enum EnumUnitAtomPos implements EnumInProgram{
 		//must be exactly the same as used in the input file
 		//Card: ATOMIC_POSITIONS { alat | bohr | angstrom | crystal | crystal_sg }
 		alat,bohr,angstrom,crystal
 	}
-	public enum EnumUnitEnergy implements enumInProgram{
+	public enum EnumUnitEnergy implements EnumInProgram{
 		Ry,eV
 	}
-	public enum EnumFunctional implements enumInProgram{
+	public enum EnumFunctional implements EnumInProgram{
 		LDA,GGA,PBE,PBESOL
 	}
-	public enum EnumMixingMode implements enumInProgram{
+	public enum EnumMixingMode implements EnumInProgram{
 		plain("plain"),
 		tf("TF"),
 		ltf("local-TF");
@@ -177,10 +178,10 @@ public class Constants {
 			return name;
 		}
 	}
-	public enum EnumOccupations implements enumInProgram{
+	public enum EnumOccupations implements EnumInProgram{
 		smearing,tetrahedra,tetrahedra_lin,tetrahedra_opt,fixed
 	}
-	public enum EnumPP implements enumInProgram{
+	public enum EnumPP implements EnumInProgram{
 		PAW("PAW"),
 		USPP("Ultrasoft"),
 		NCPP("Norm-conserving");
@@ -195,10 +196,10 @@ public class Constants {
 			return name;
 		}
 	}
-	public enum EnumNumCondition implements enumInProgram{
+	public enum EnumNumCondition implements EnumInProgram{
 		no,positive,nonNegative
 	}
-	public enum EnumSmearing implements enumInProgram{
+	public enum EnumSmearing implements EnumInProgram{
 		gauss("gaussian"),
 		mp("methfessel-paxton"),
 		mv("marzari-vanderbilt"),

@@ -16,7 +16,7 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package app.centerWindow;
+package app.centerwindow;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -60,15 +60,15 @@ public class WorkScene3D {
 	private VBox hb;//child 1, for toolbar
 	private SubScene subScene;//child 2, for 3D scene
 	
-	final Group root = new Group();
+	private final Group root = new Group();
 	private GeoGroup world= new GeoGroup();
 	private GeoGroup moleculeGroup= new GeoGroup();
 	private Group axisGroup= new Group();
-    final PerspectiveCamera camera = new PerspectiveCamera(true);
-    final GeoGroup cameraSys1 = new GeoGroup();
-    final GeoGroup cameraSys2 = new GeoGroup();
-    final GeoGroup cameraSys3 = new GeoGroup();
-    final double cameraDistance = 1500;
+	private final PerspectiveCamera camera = new PerspectiveCamera(true);
+	private final GeoGroup cameraSys1 = new GeoGroup();
+	private final GeoGroup cameraSys2 = new GeoGroup();
+	private final GeoGroup cameraSys3 = new GeoGroup();
+	private final double cameraDistance = 1500;
 
 	private final int maxTrialCells = 8;//(maxTrialCells*2)^3 cells tried
 	private final double ballRadiusAtom = 30;
@@ -81,16 +81,13 @@ public class WorkScene3D {
 	public Integer nx,ny,nz;
 	
 	private ArrayList<Atom> atomListCacheSC;
-	
-	//private double CONTROL_MULTIPLIER = 0.1;
-	//private double SHIFT_MULTIPLIER = 0.1;
         
-    double mousePosX;
-    double mousePosY;
-    double mouseOldX;
-    double mouseOldY;
-    double mouseDeltaX;
-    double mouseDeltaY;
+	private double mousePosX;
+	private double mousePosY;
+	private double mouseOldX;
+	private double mouseOldY;
+	private double mouseDeltaX;
+	private double mouseDeltaY;
     
     private Toolbar3DController cont3D;
     
@@ -280,7 +277,7 @@ public class WorkScene3D {
 				if (atomListClone==null) return;//important
 				
 				addAtomsToScene(alat,atomListClone,atomsGroup,lattVecs);
-				addBondsToScene(alat,atomListClone,bondsGroup,lattVecs);
+				addBondsToScene(atomListClone,bondsGroup,lattVecs);
 			}
 			moleculeGroup.getChildren().addAll(latticeGroup, atomsGroup, bondsGroup);
 		}
@@ -690,7 +687,10 @@ public class WorkScene3D {
 				}
 				break;
 			case crystal:
-				double vtmp1,vtmp2,vtmp3;
+				double vtmp1,
+				vtmp2,
+				vtmp3;
+				
 				Point3D vout;
 				for (int i=0;i<atomListClone.size();i++) {
 					vtmp1=atomListClone.get(i).getXcoor().getX();
@@ -848,7 +848,7 @@ public class WorkScene3D {
 	        }
 		}
 	}
-	private void addBondsToScene(Double alat,ArrayList<Atom> atomListClone,GeoGroup bondsGroup,Point3D[] lattVecs) {
+	private void addBondsToScene(ArrayList<Atom> tmpAtmLst,GeoGroup bondsGroup,Point3D[] lattVecs) {
 		if (iGeoCache == null) return;
 		
 		//add bonds
@@ -860,6 +860,8 @@ public class WorkScene3D {
     	int nylim=1;
     	int nzlim=1;
     	int bufferRegion=0;
+    	
+    	ArrayList<Atom> atomListClone = tmpAtmLst;
     	
         if (supercellMode==0) {}//only explore 0
         //bufferRegion only explore 0,+1,-1 supercell for bonds

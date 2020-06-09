@@ -285,7 +285,7 @@ public class InputScfMagnetController implements Initializable{
     private void setDisable() {
     	String st = polarizCombo.getSelectionModel().getSelectedItem();
     	if (st==null) return;
-    	if(st.equals("not spin-polarized")) {
+    	if("not spin-polarized".equals(st)) {
     		grid1.setDisable(true);
     		grid2.setDisable(true);
     		elementTable.setDisable(true);
@@ -293,7 +293,7 @@ public class InputScfMagnetController implements Initializable{
     		textAngle1.setVisible(false);textAngle2.setVisible(false);
     		labelAngle1.setVisible(false);labelAngle2.setVisible(false);
     	}
-    	else if (st.equals("spin-polarized (collinear)")) {
+    	else if ("spin-polarized (collinear)".equals(st)) {
     		grid1.setDisable(false);
     		grid2.setDisable(false);//including textAngle1,textAngle2
     		//elementTable.setVisible(true);
@@ -302,7 +302,7 @@ public class InputScfMagnetController implements Initializable{
     		textAngle1.setVisible(false);textAngle2.setVisible(false);
     		labelAngle1.setVisible(false);labelAngle2.setVisible(false);
     	}
-    	else if (st.equals("non collinear")) {
+    	else if ("non collinear".equals(st)) {
     		grid1.setDisable(false);
     		grid2.setDisable(false);
     		//elementTable.setVisible(true);

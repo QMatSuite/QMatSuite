@@ -46,10 +46,8 @@ public class DosInput extends QeInput{
 	}
 	public Boolean checkKeyExistence(String keySec, String keyPara) {
 		if (keySec==null || keyPara ==null) return false;
-		if (sectionDict.containsKey(keySec)) {
-			if (sectionDict.get(keySec).containsKey(keyPara)) {
-				return true;
-			}
+		if (sectionDict.containsKey(keySec) && sectionDict.get(keySec).containsKey(keyPara)) {
+			return true;
 		}
 		return false;
 	}
