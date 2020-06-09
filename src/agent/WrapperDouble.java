@@ -24,11 +24,15 @@ public class WrapperDouble extends WrapperClass{
 	 */
 	private static final long serialVersionUID = 1129334485712449681L;
 	private Double value;
+	final private Double defaultValue;
+	
 	public WrapperDouble(Double val) {
+		defaultValue = val;
 		value = val;
 		enabled = true;
 	}
 	public WrapperDouble(Double val,Boolean bl) {
+		defaultValue = val;
 		value = val;
 		enabled = bl;
 	}
@@ -44,5 +48,9 @@ public class WrapperDouble extends WrapperClass{
 	@Override
 	public Boolean isNull() {
 		return value==null;
+	}
+	public Double resetDefault() {
+		value = defaultValue;
+		return defaultValue;
 	}
 }

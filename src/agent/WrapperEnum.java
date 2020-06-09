@@ -26,11 +26,15 @@ public class WrapperEnum extends WrapperClass{
 	 */
 	private static final long serialVersionUID = -5526687023913245151L;
 	private EnumInProgram value;
+	final private EnumInProgram defaultValue;
+	
 	public WrapperEnum(EnumInProgram val) {
+		defaultValue = val;
 		value = val;
 		enabled = true;
 	}
 	public WrapperEnum(EnumInProgram val,Boolean bl) {
+		defaultValue = val;
 		value = val;
 		enabled = bl;
 	}
@@ -46,5 +50,9 @@ public class WrapperEnum extends WrapperClass{
 	@Override
 	public Boolean isNull() {
 		return value==null;
+	}
+	public EnumInProgram resetDefault() {
+		value = defaultValue;
+		return defaultValue;
 	}
 }

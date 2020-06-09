@@ -8,6 +8,7 @@ import com.consts.Constants.EnumStep;
 
 import agent.InputAgent;
 import agent.InputAgentGeo;
+import agent.InputAgentOpt;
 import agent.InputAgentScf;
 import agent.WrapperDouble;
 import agent.WrapperInteger;
@@ -58,11 +59,11 @@ public abstract class InputController implements Initializable{
 				switch(es) {
 					case GEO:fd = InputAgentGeo.class.getField(fieldName);break;
 					case SCF:fd = InputAgentScf.class.getField(fieldName);break;
-					case OPT:break;
-					case NSCF:break;
-					case DOS:break;
-					case BANDS:break;
-					case BOMD:break;
+					case OPT:fd = InputAgentOpt.class.getField(fieldName);break;
+					case NSCF:
+					case DOS:
+					case BANDS:
+					case BOMD:
 					case TDDFT:break;
 					default:break;
 						
