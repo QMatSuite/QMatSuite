@@ -143,17 +143,13 @@ public enum ChemicalElements {
 	Og(118, "Oganesson", 294.0, 0.0, "[Rn],5f14,6d10,7s2,7p6", "FF1493", "FF1493")
     ;
 
-    private static class Holder {
-        static Map<Integer, ChemicalElements> map = new HashMap<Integer, ChemicalElements>();
-    }
-
-    private final int atomicNumber;
+	private final int atomicNumber;
     private final String fullName;
     private final double atomicMass;
     private final double empricalRadius;
     private final String electConf;
     private final String colorJmol,colorRasmol;
-
+    
     private ChemicalElements(int atomicNumber, String fullName, double atomicMass, double empricalRadius, String electConf, 
     		String colorJmol, String colorRasmol) {
         this.atomicNumber = atomicNumber;
@@ -164,6 +160,9 @@ public enum ChemicalElements {
         this.colorJmol = colorJmol;
         this.colorRasmol = colorRasmol;
         Holder.map.put(atomicNumber, this);
+    }
+    private static class Holder {
+        static Map<Integer, ChemicalElements> map = new HashMap<Integer, ChemicalElements>();
     }
     public static ChemicalElements forAtomicNumber(int atomicNumber) {
         return Holder.map.get(atomicNumber);

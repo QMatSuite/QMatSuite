@@ -43,15 +43,20 @@ public class InputGeoController implements Initializable{
 	
 	@FXML private Accordion accordGeo;
 
-	@FXML private ScrollPane cellPane,elementsPane,atomsPane;
+	@FXML private ScrollPane cellPane,
+	elementsPane,
+	atomsPane;
 	
-	@FXML private Label labelGeoLeft,labelGeoRight;
+	@FXML private Label labelGeoLeft,
+	labelGeoRight;
 	
 	@FXML private ComboBox<String> comboGeo;
 	
 	@FXML private TitledPane titlePaneElements;
 
-    private VBox vboxAtoms,vboxCell,vboxElements;
+    private VBox vboxAtoms,
+    vboxCell,
+    vboxElements;
     
     private MainClass mainClass;
     

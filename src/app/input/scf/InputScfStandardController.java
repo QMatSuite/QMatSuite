@@ -55,7 +55,9 @@ public class InputScfStandardController implements Initializable{
     @FXML private Button infoResetAll;
 
     @FXML
-    private ToggleButton restartToggle,forceToggle,stressToggle;
+    private ToggleButton restartToggle,
+    forceToggle,
+    stressToggle;
 
     @FXML
     private TextField ecutwfcField;
@@ -64,10 +66,12 @@ public class InputScfStandardController implements Initializable{
     private ComboBox<EnumUnitEnergy> ecutwfcUnit;
 
     @FXML
-    private TextField ecutrhoField,maxStepField;
+    private TextField ecutrhoField,
+    maxStepField;
 
     @FXML
-    private Label ecutrhoUnit,statusInfo;
+    private Label ecutrhoUnit,
+    statusInfo;
 
     @FXML
     private TextField convField;
@@ -82,7 +86,9 @@ public class InputScfStandardController implements Initializable{
     private TextField mixingField;
 
     @FXML
-    private TextField kxField,kyField,kzField;
+    private TextField kxField,
+    kyField,
+    kzField;
 
     @FXML
     private ComboBox<EnumOccupations> occupCombo;
@@ -96,13 +102,35 @@ public class InputScfStandardController implements Initializable{
     @FXML
     private Label gaussUnit;
 
-    @FXML private Button infoRestart,infoForce,infoStress,infoEcutwfc,infoEcutRho,infoMaxstep,infoConv;
+    @FXML private Button infoRestart,
+    infoForce,
+    infoStress,
+    infoEcutwfc,
+    infoEcutRho,
+    infoMaxstep,
+    infoConv;
     
-    @FXML private Button infoMixMode,infoMixBeta,infoK,infoOccup,infoSmearing,infoGauss;
+    @FXML private Button infoMixMode,
+    infoMixBeta,
+    infoK,
+    infoOccup,
+    infoSmearing,
+    infoGauss;
 
-    @FXML private CheckBox checkRestart,checkForce,checkStress,checkEcutwfc,checkEcutrho,checkMaxStep;
+    @FXML private CheckBox checkRestart,
+    checkForce,
+    checkStress,
+    checkEcutwfc,
+    checkEcutrho,
+    checkMaxStep;
     
-    @FXML private CheckBox checkConv,checkMixMode,checkMixBeta,checkK,checkOccup,checkSmear,checkGauss;
+    @FXML private CheckBox checkConv,
+    checkMixMode,
+    checkMixBeta,
+    checkK,
+    checkOccup,
+    checkSmear,
+    checkGauss;
 
     private boolean allDefault=false;
     
@@ -377,7 +405,7 @@ public class InputScfStandardController implements Initializable{
 						case no:{break;}
 						case positive:{if(tmp<=0) {statusInfo.setText("Must be positive!");return;} break;}
 						case nonNegative:{if(tmp<0) {statusInfo.setText("Must not be negative!");return;} break;}
-						default:{}
+						default:
 					}
 					statusInfo.setText("");
 					((WrapperInteger) fd.get(ia)).setValue(tmp);

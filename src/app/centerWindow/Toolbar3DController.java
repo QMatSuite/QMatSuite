@@ -45,8 +45,11 @@ public class Toolbar3DController implements Initializable{
 	@FXML private TextField tfx;
 	@FXML private TextField tfy;
 	@FXML private TextField tfz;
-	@FXML private Button btUpd,buttonResetView;
-	@FXML private RadioButton radio1No,radio2Cryst,radio3Cart;
+	@FXML private Button btUpd,
+	buttonResetView;
+	@FXML private RadioButton radio1No,
+	radio2Cryst,
+	radio3Cart;
 	
 	final ToggleGroup groupSupercell = new ToggleGroup();
 	

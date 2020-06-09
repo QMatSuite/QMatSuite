@@ -51,13 +51,19 @@ public class InputGeoAtomsController implements Initializable{
 
 	@FXML private ComboBox<String> unitCombo;//ok
 
-    @FXML private Button addAtom,infoButton,deleteAtom,editAtom,clearInput;//ok except infoButton
+    @FXML private Button addAtom,
+    infoButton,
+    deleteAtom,
+    editAtom,
+    clearInput;//ok except infoButton
 
     @FXML private TableView<Atom> atomTable;//ok
 
     @FXML private TableColumn<Atom, Integer> indexColumn;//ok
     
-    @FXML private TableColumn<Atom, Coordinate> xColumn,yColumn,zColumn;//ok
+    @FXML private TableColumn<Atom, Coordinate> xColumn,
+    yColumn,
+    zColumn;//ok
     
     @FXML private TableColumn<Atom, String> elementColumn;//ok
     
@@ -65,9 +71,14 @@ public class InputGeoAtomsController implements Initializable{
     
     @FXML private Label alat;
     
-    @FXML private TextField textElem,textX,textY,textZ;
+    @FXML private TextField textElem,
+    textX,
+    textY,
+    textZ;
     
-    @FXML private ToggleButton fixX,fixY,fixZ;
+    @FXML private ToggleButton fixX,
+    fixY,
+    fixZ;
     
     private ObservableList<Atom> atomsData;
     
@@ -294,12 +305,12 @@ public class InputGeoAtomsController implements Initializable{
 		    }
 		    else {
 		    	textElem.setText(newSelect.getAtomSpecies().toString());
-		    	textX.setText(newSelect.getX_coor().getX().toString());
-		    	textY.setText(newSelect.getY_coor().getX().toString());
-		    	textZ.setText(newSelect.getZ_coor().getX().toString());
-		    	fixX.setSelected(newSelect.getX_coor().getBoolFix());
-		    	fixY.setSelected(newSelect.getY_coor().getBoolFix());
-		    	fixZ.setSelected(newSelect.getZ_coor().getBoolFix());
+		    	textX.setText(newSelect.getXcoor().getX().toString());
+		    	textY.setText(newSelect.getYcoor().getX().toString());
+		    	textZ.setText(newSelect.getZcoor().getX().toString());
+		    	fixX.setSelected(newSelect.getXcoor().getBoolFix());
+		    	fixY.setSelected(newSelect.getYcoor().getBoolFix());
+		    	fixZ.setSelected(newSelect.getZcoor().getBoolFix());
 		    }
 		});
     }

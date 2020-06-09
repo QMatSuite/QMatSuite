@@ -60,9 +60,20 @@ public class InputScfController implements Initializable{
 	
 	@FXML private TitledPane standardPane;
 	
-	private TitledPane magnetPane,hubbardPane,hybridPane,vdwPane,efieldPane,advancedPane;
+	private TitledPane magnetPane,
+	hubbardPane,
+	hybridPane,
+	vdwPane,
+	efieldPane,
+	advancedPane;
 
-    private VBox vboxStandard,vboxHubbard,vboxMagnet,vboxHybrid,vboxVdw,vboxEfield,vboxAdvanced;
+    private VBox vboxStandard,
+    vboxHubbard,
+    vboxMagnet,
+    vboxHybrid,
+    vboxVdw,
+    vboxEfield,
+    vboxAdvanced;
     
     private MainClass mainClass;
     
