@@ -64,7 +64,7 @@ public class InputScfMagnetController implements Initializable{
 	
 	@FXML private Button polarizButton,spinorbitButton,fixmethodButton,xmagButton,ymagButton,zmagButton;//info, not implemented
 	
-	@FXML private TableView<?> elementTable;
+	@FXML private TableView elementTable;
 	
 	@FXML private TableColumn<?, ?> indexColumn,nameColumn,magColumn,angle1Column,angle2Column;
 	
