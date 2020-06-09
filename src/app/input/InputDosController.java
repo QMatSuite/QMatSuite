@@ -24,7 +24,7 @@ import javafx.scene.layout.AnchorPane;
 
 public class InputDosController {
 	
-	@FXML AnchorPane projectPane;
+	@FXML private AnchorPane projectPane;
 
     public InputDosController() {
     }

@@ -42,7 +42,7 @@ public class Project implements Serializable{
 	
 	private String nameProject;
 	
-	transient private HashMap<String, calculationClass> calcDict;
+	transient private HashMap<String, CalculationClass> calcDict;
 	transient private ArrayList<String> calcList;
 	transient private HashMap<EnumStep, InputAgent> projectDefault;
 	transient private String activeCalcKey;
@@ -60,7 +60,7 @@ public class Project implements Serializable{
 	{
 		//for loading after serialization
 	    in.defaultReadObject();
-	    calcDict = new HashMap<String, calculationClass>();
+	    calcDict = new HashMap<String, CalculationClass>();
 		calcList = new ArrayList<String>();
 		projectDefault = new HashMap<EnumStep, InputAgent>();
 		activeCalcKey = null;
@@ -73,7 +73,7 @@ public class Project implements Serializable{
 		show3DScene = true;
 		activeCalcKey = null;
 		nameProject = np;
-		calcDict = new HashMap<String, calculationClass>();
+		calcDict = new HashMap<String, CalculationClass>();
 		calcList = new ArrayList<String>();
 		projectDefault = new HashMap<EnumStep, InputAgent>();
 		geoList = new ArrayList<InputAgentGeo>();
@@ -105,7 +105,7 @@ public class Project implements Serializable{
 		return boolGeoActive;
 	}
 	public void setProjectDefault(EnumStep es) {
-		calculationClass calc = getActiveCalc();
+		CalculationClass calc = getActiveCalc();
 		if (calc==null) return;
 		InputAgent ia = calc.getAgent(es);
 		if (projectDefault!=null && ia!=null) {
@@ -140,7 +140,7 @@ public class Project implements Serializable{
 			if(!calcDict.containsKey(out)) return out;
 		}
 	}
-	public void addCalculation(String calcName, calculationClass cls) {
+	public void addCalculation(String calcName, CalculationClass cls) {
 		if(cls!=null && calcName!=null && !calcName.isEmpty()) {
 			if (!calcDict.containsKey(calcName)){
 				if(!calcName.equals(cls.getCalcName())) {cls.setCalcName(calcName);}
@@ -153,15 +153,15 @@ public class Project implements Serializable{
 	public void addCalculation(String calcName, EnumCalc ec) {
 		if (ec == null)  return;
 		if (!calcDict.containsKey(calcName)){
-			calculationClass calc;
+			CalculationClass calc;
 			switch (ec) {
-			case SCF:calc = new calculationScfClass(calcName);break;
-			case OPT:calc = new calculationOptClass(calcName);break;
-			case DOS:calc = new calculationDosClass(calcName);break;
+			case SCF:calc = new CalculationScfClass(calcName);break;
+			case OPT:calc = new CalculationOptClass(calcName);break;
+			case DOS:calc = new CalculationDosClass(calcName);break;
 			default:
 				Alert alert = new Alert(AlertType.INFORMATION);
 		    	alert.setTitle("Error");
-		    	alert.setContentText("Not implemented calculationClass!");
+		    	alert.setContentText("Not implemented CalculationClass!");
 		    	alert.showAndWait();
 		    	return;
 			}
@@ -194,7 +194,7 @@ public class Project implements Serializable{
 		return activeCalcKey;
 	}
 	public EnumCalc getCalcType(String calcName) {
-		calculationClass calcObj = getCalc(calcName);
+		CalculationClass calcObj = getCalc(calcName);
 		if(calcObj==null) return null;
 		return calcObj.getCalcType();
 	}
@@ -203,7 +203,7 @@ public class Project implements Serializable{
 			activeCalcKey=ec;
 		}
 	}
-	public calculationClass getActiveCalc() {
+	public CalculationClass getActiveCalc() {
 		if (activeCalcKey == null)  return null;
 		if (calcDict.containsKey(activeCalcKey)) {
 			return calcDict.get(activeCalcKey);
@@ -218,7 +218,7 @@ public class Project implements Serializable{
 		if (key == null)  return false;
 		return calcDict.containsKey(key);
 	}
-	public calculationClass getCalc(String key) {
+	public CalculationClass getCalc(String key) {
 		if (key == null)  return null;
 		if (calcDict.containsKey(key)) return calcDict.get(key);
 		else return null;
@@ -227,10 +227,10 @@ public class Project implements Serializable{
 		return nameProject;
 	}
 	public void setName(String st) {
-		nameProject = new String(st);
+		nameProject = st;//no need to use new String(st)
 	}
 	public ArrayList<ContainerInputString> genInputFromAgent() {
-		calculationClass tmp = getActiveCalc();
+		CalculationClass tmp = getActiveCalc();
 		if (tmp==null || boolGeoActive) {
 			Alert alert1 = new Alert(AlertType.INFORMATION);
 	    	alert1.setHeaderText("No valid calculation!");

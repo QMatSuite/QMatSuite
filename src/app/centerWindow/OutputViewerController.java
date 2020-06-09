@@ -34,8 +34,8 @@ import com.consts.Constants.EnumAnalysis;
 import com.consts.Constants.EnumCard;
 import com.consts.Constants.EnumFileCategory;
 import com.consts.Constants.EnumNameList;
-import com.programConst.DefaultFileNames;
-import com.programConst.ProgrammingConsts;
+import com.programconst.DefaultFileNames;
+import com.programconst.ProgrammingConsts;
 
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;

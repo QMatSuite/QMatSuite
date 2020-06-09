@@ -33,7 +33,7 @@ import java.util.LinkedHashMap;
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
 import com.error.ErrorMsg;
-import com.programConst.DefaultFileNames;
+import com.programconst.DefaultFileNames;
 
 import agent.InputAgent;
 import agent.InputAgentGeo;
@@ -430,7 +430,7 @@ public class ProjectManager {
 		//load calculations regardless
 		//*************need to take care of the geo part if newly created project
 		File[] directories = projDir.listFiles(File::isDirectory);
-		calculationClass clc;
+		CalculationClass clc;
 		Project pjNew = getActiveProject();
 		if(pjNew!=null) {
 			for (File temp : directories) {
@@ -444,7 +444,7 @@ public class ProjectManager {
 		            ObjectInputStream in = new ObjectInputStream (file); 
 		  
 		            // Method for deserialization of object 
-		            clc = (calculationClass)in.readObject(); 
+		            clc = (CalculationClass)in.readObject(); 
 		  
 		            in.close(); 
 		            file.close(); 
@@ -682,7 +682,7 @@ public class ProjectManager {
 		Project pj = projectDict.get(proj);
 		if (pj==null) return null;
 		
-		calculationClass cc =  pj.getCalc(calc);
+		CalculationClass cc =  pj.getCalc(calc);
 		if (cc==null) return null;
 		
 		QeInput qi = cc.getQeInput(indInp);
@@ -698,7 +698,7 @@ public class ProjectManager {
 		Project pj = projectDict.get(activeProjKey);
 		if (pj==null) return null;
 		
-		calculationClass cc =  pj.getCalc(calc);
+		CalculationClass cc =  pj.getCalc(calc);
 		if (cc==null) return null;
 		
 		QeInput qi = cc.getQeInput(indInp);

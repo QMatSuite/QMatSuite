@@ -30,7 +30,7 @@ import agent.InputAgentGeo;
 import input.ContainerInputString;
 import input.QeInput;
 
-public abstract class calculationClass implements Serializable{
+public abstract class CalculationClass implements Serializable{
 	/**
 	 * 
 	 */
@@ -45,7 +45,7 @@ public abstract class calculationClass implements Serializable{
 	
 	protected ArrayList<EnumStep> orderList;
 
-	public calculationClass() {
+	public CalculationClass() {
 		commandList = new HashMap<EnumStep, String>();
 		inputList = new HashMap<EnumStep, QeInput>();
 		orderList = new ArrayList<EnumStep>();

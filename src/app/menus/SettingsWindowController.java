@@ -23,7 +23,8 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.ResourceBundle;
 
-import com.programConst.ProgrammingConsts.settingsTags;
+import com.programconst.ProgrammingConsts.SettingsTags;
+
 import app.menus.settingTabs.PathsController;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -40,7 +41,7 @@ import main.MainClass;
 public class SettingsWindowController implements Initializable {
 
     @FXML
-    private TreeView<settingsTags> treeNavigate;
+    private TreeView<SettingsTags> treeNavigate;
 
     @FXML
     private Button saveButton;
@@ -54,7 +55,7 @@ public class SettingsWindowController implements Initializable {
     @FXML
     private BorderPane borderPaneMain;
 
-    private TreeItem<settingsTags> treeRoot;
+    private TreeItem<SettingsTags> treeRoot;
     
     private MainClass mainClass;
     
@@ -69,11 +70,11 @@ public class SettingsWindowController implements Initializable {
     
 	@Override
 	public void initialize(URL arg0, ResourceBundle arg1) {
-		treeRoot = new TreeItem<settingsTags>(settingsTags.Settings);
+		treeRoot = new TreeItem<SettingsTags>(SettingsTags.Settings);
 		treeNavigate.setRoot(treeRoot);treeNavigate.setShowRoot(false);//treeRoot.setExpanded(true);
 		//tree items
-		treeRoot.getChildren().add(new TreeItem<settingsTags>(settingsTags.Paths));
-		treeRoot.getChildren().add(new TreeItem<settingsTags>(settingsTags.Viewer3D));
+		treeRoot.getChildren().add(new TreeItem<SettingsTags>(SettingsTags.Paths));
+		treeRoot.getChildren().add(new TreeItem<SettingsTags>(SettingsTags.Viewer3D));
 		
 		try {
 			contPath = new PathsController(mainClass);
@@ -114,10 +115,10 @@ public class SettingsWindowController implements Initializable {
 		});
 	}
 	private void cancelChanges() {
-		
+		//to be done later
 	}
 	private void saveChanges() {
-		
+		//to be done later
 	}
 	private void closeStage() {
         Stage stage  = (Stage) borderPaneMain.getScene().getWindow();

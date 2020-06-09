@@ -17,15 +17,12 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package com.programConst;
+package com.programconst;
 
-public interface ProgrammingConsts {
-	public enum settingsTags{
-		Settings,//root, not visible
-		Paths,
-		Viewer3D
-	}
-	public final String stdinExtension = ".in"; 
-	public final String stdoutExtension = ".out";
-	public final String stderrExtension = ".err";
+import javafx.scene.paint.Color;
+
+public interface Coloring {
+	public final Color invalidFile = Color.ORANGERED; 
+	public final Color validFile = Color.LIGHTGREEN; 
+	public final Color defaultFile = Color.WHITE;
 }
