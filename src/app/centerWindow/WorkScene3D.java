@@ -435,13 +435,13 @@ public class WorkScene3D {
 //        	cVec= new Point3D(1,-1,1).multiply(a/2); 
         	break;
         case 4:
-        	if (iGeoCache.cellC.isNull()) return null;
+        	if (c==null) return null;
         	aVec= new Point3D(a,0,0); 
         	bVec= new Point3D(-1,Math.sqrt(3),0).multiply(a/2); 
         	cVec= new Point3D(0,0,c); 
         	break;
         case 5://trigonal R, still not good
-        	if (iGeoCache.cellAngleAB.isNull()) return null; //gamma
+        	if (gm==null) return null; //gamma
         	double tx=Math.sqrt((1-Math.cos(gm))/2);
         	double ty=Math.sqrt((1-Math.cos(gm))/6);
         	double tz=Math.sqrt((1+2*Math.cos(gm))/3);
@@ -450,13 +450,13 @@ public class WorkScene3D {
         	cVec= new Point3D(-tx,-ty,tz).multiply(alat); 
         	break;
         case 6:
-        	if (iGeoCache.cellC.isNull()) return null;
+        	if (c==null) return null;
         	aVec= new Point3D(a,0,0); 
         	bVec= new Point3D(0,a,0); 
         	cVec= new Point3D(0,0,c); 
         	break;
         case 7://Tetragonal I (bct)
-        	if (iGeoCache.cellC.isNull()) return null;
+        	if (c==null) return null;
         	aVec= new Point3D(1,-1,c/a).multiply(a/2); 
         	bVec= new Point3D(1,1,c/a).multiply(a/2); 
         	cVec= new Point3D(-1,-1,c/a).multiply(a/2);
@@ -465,44 +465,44 @@ public class WorkScene3D {
 //        	cVec= new Point3D(-1,1,c/a).multiply(a/2); 
         	break;
         case 8:
-        	if (iGeoCache.cellC.isNull() || iGeoCache.cellB.isNull()) return null;
+        	if (b==null || c==null) return null;
         	aVec= new Point3D(a,0,0); 
         	bVec= new Point3D(0,b,0); 
         	cVec= new Point3D(0,0,c); 
         	break;
         case 9:
-        	if (iGeoCache.cellC.isNull() || iGeoCache.cellB.isNull()) return null;
+        	if (b==null || c==null) return null;
         	aVec= new Point3D(a/2,b/2,0); 
         	bVec= new Point3D(-a/2,b/2,0); 
         	cVec= new Point3D(0,0,c); 
         	break;
         case 10:
-        	if (iGeoCache.cellC.isNull() || iGeoCache.cellB.isNull()) return null;
+        	if (b==null || c==null) return null;
         	aVec= new Point3D(a/2,0,c/2); 
         	bVec= new Point3D(a/2,b/2,0); 
         	cVec= new Point3D(0,b/2,c/2); 
         	break;
         case 11:
-        	if (iGeoCache.cellC.isNull() || iGeoCache.cellB.isNull()) return null;
+        	if (b==null || c==null) return null;
         	aVec= new Point3D(a/2,b/2,c/2); 
         	bVec= new Point3D(-a/2,b/2,c/2);  
         	cVec= new Point3D(-a/2,-b/2,c/2); 
         	break;
         case 12:
-        	if (iGeoCache.cellC.isNull() || iGeoCache.cellB.isNull() || iGeoCache.cellAngleAB.isNull()) return null;
+        	if (b==null || c==null || gm==null) return null;
         	aVec= new Point3D(a,0,0); 
         	bVec= new Point3D(Math.cos(gm),Math.sin(gm),0).multiply(b); 
         	cVec= new Point3D(0,0,c); 
         	break;
         case 13:
-        	if (iGeoCache.cellC.isNull() || iGeoCache.cellB.isNull() || iGeoCache.cellAngleAB.isNull()) return null;
+        	if (b==null || c==null || gm==null) return null;
         	aVec= new Point3D(a/2,0,-c/2); 
         	bVec= new Point3D(b*Math.cos(gm), b*Math.sin(gm), 0); 
         	cVec= new Point3D(a/2,0,c/2); 
         	break;
         case 14:
-        	if (iGeoCache.cellC.isNull() || iGeoCache.cellB.isNull() || iGeoCache.cellAngleAB.isNull()
-        			|| iGeoCache.cellAngleAC.isNull() || iGeoCache.cellAngleBC.isNull()) return null;
+        	if (b==null || c==null || gm==null
+        			|| beta==null || alpha==null) return null;
         	aVec= new Point3D(a,0,0); 
         	bVec= new Point3D(b*Math.cos(gm), b*Math.sin(gm), 0); 
         	cVec= new Point3D(c*Math.cos(beta),  
