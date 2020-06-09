@@ -82,7 +82,7 @@ public class InputScfMagnetController implements Initializable{
 	
 	private Boolean initializedFlag=false;
 	
-	private ObservableList elemData;
+	private ObservableList<?> elemData;
 	
 	private boolean allDefault=false;
 	

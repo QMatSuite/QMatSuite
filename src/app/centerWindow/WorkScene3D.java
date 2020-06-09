@@ -570,16 +570,16 @@ public class WorkScene3D {
 	        z4 = makeCylinderConnect(new Point3D(0,0,alat*nz),new Point3D(alat*nx,0,alat*nz),thick);
 	        x4 = makeCylinderConnect(new Point3D(0,0,alat*nz),new Point3D(0,alat*ny,alat*nz),thick);
 	        
-
+	        if(x1==null || x2==null || x3==null || x4==null || y1==null || y2==null || y3==null || y4==null ||
+	        		z1==null || z2==null || z3==null ||  z4==null) {return;}
 	        
 	        x1.setMaterial(material);x2.setMaterial(material);x3.setMaterial(material);x4.setMaterial(material);
 	        y1.setMaterial(material);y2.setMaterial(material);y3.setMaterial(material);y4.setMaterial(material);
 	        z1.setMaterial(material);z2.setMaterial(material);z3.setMaterial(material);z4.setMaterial(material);
-	        //
-	        if (x1!=null) {
-		        latticeGroup.getChildren().addAll(x1,x2,x3,x4,y1,y2,y3,y4,z1,z2,z3,z4);
-		        latticeGroup.setVisible(true);
-	        }
+	        
+	        latticeGroup.getChildren().addAll(x1,x2,x3,x4,y1,y2,y3,y4,z1,z2,z3,z4);
+	        latticeGroup.setVisible(true);
+	        
         	return;
         }
         else {
@@ -613,20 +613,15 @@ public class WorkScene3D {
 			        z3 = makeCylinderConnect(aVec.add(pointOriginNew),cVec.add(aVec).add(pointOriginNew),thick);
 			        z4 = makeCylinderConnect(bVec.add(aVec).add(pointOriginNew),cVec.add(bVec.add(aVec)).add(pointOriginNew),thick);
 			        
+			        if(x1==null || x2==null || x3==null || x4==null || y1==null || y2==null || y3==null || y4==null ||
+			        		z1==null || z2==null || z3==null ||  z4==null) {continue;}
+			        
 			        x1.setMaterial(material);x2.setMaterial(material);x3.setMaterial(material);x4.setMaterial(material);
 			        y1.setMaterial(material);y2.setMaterial(material);y3.setMaterial(material);y4.setMaterial(material);
 			        z1.setMaterial(material);z2.setMaterial(material);z3.setMaterial(material);z4.setMaterial(material);
 			        //
-			        if (x1!=null) {
-			//        	Sphere sp1,sp2,sp3;
-			//        	sp1 = new Sphere(5);sp2 = new Sphere(5);sp3 = new Sphere(5);
-			//        	sp1.setTranslateX(aVec.getX());sp1.setTranslateY(aVec.getY());sp1.setTranslateZ(aVec.getZ());
-			//        	sp2.setTranslateX(bVec.getX());sp2.setTranslateY(bVec.getY());sp2.setTranslateZ(bVec.getZ());
-			//        	sp3.setTranslateX(cVec.getX());sp3.setTranslateY(cVec.getY());sp3.setTranslateZ(cVec.getZ());
-			//        	latticeGroup.getChildren().addAll(sp1,sp2,sp3);
-				        latticeGroup.getChildren().addAll(x1,x2,x3,x4,y1,y2,y3,y4,z1,z2,z3,z4);
-				        latticeGroup.setVisible(true);
-			        }
+			        latticeGroup.getChildren().addAll(x1,x2,x3,x4,y1,y2,y3,y4,z1,z2,z3,z4);
+			        latticeGroup.setVisible(true);
         		}
         	}
         }
@@ -829,6 +824,7 @@ public class WorkScene3D {
 	        			if (supercellMode==2) {
 	        				pointOriginNew = new Point3D(0,0,0).add(lattVecs[0].multiply(ix-nxlim/2)).add(lattVecs[1].multiply(iy-nxlim/2)).add(lattVecs[2].multiply(iz-nxlim/2));
 	        				//do not plot the ones outside of the bonds
+	        				if (nx==null||ny==null||nz==null) {cont3D.setStatus("No nx,ny,nz!");return;}//should not happen
 	        				if (vx+pointOriginNew.getX()>nx*alat || vx+pointOriginNew.getX()<0 ||
 	        						vy+pointOriginNew.getY()>ny*alat || vy+pointOriginNew.getY()<0 ||
 	        						vz+pointOriginNew.getZ()>nz*alat || vz+pointOriginNew.getZ()<0)

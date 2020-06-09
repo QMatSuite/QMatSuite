@@ -222,22 +222,23 @@ public class MainWindowController implements Initializable{
 			
 			String msg = mainClass.projectManager.loadProject(wsDir, projName);
 			
-			if(msg.contains(ErrorMsg.alreadyContainsProject)) {
-				Alert alert1 = new Alert(AlertType.INFORMATION);
-		    	alert1.setTitle("Error");
-		    	alert1.setContentText(msg);
-		    	alert1.showAndWait();
-		    	return;
-	    	}
-					
-			if(msg.contains(ErrorMsg.cannotFindProjectFolder)) {
-				contTree.updateProjects();
-				Alert alert1 = new Alert(AlertType.INFORMATION);
-		    	alert1.setTitle("Error");
-		    	alert1.setContentText(msg);
-		    	alert1.showAndWait();
-				return;}
-			
+			if(msg!=null) {
+				if(msg.contains(ErrorMsg.alreadyContainsProject)) {
+					Alert alert1 = new Alert(AlertType.INFORMATION);
+			    	alert1.setTitle("Error");
+			    	alert1.setContentText(msg);
+			    	alert1.showAndWait();
+			    	return;
+		    	}
+						
+				if(msg.contains(ErrorMsg.cannotFindProjectFolder)) {
+					contTree.updateProjects();
+					Alert alert1 = new Alert(AlertType.INFORMATION);
+			    	alert1.setTitle("Error");
+			    	alert1.setContentText(msg);
+			    	alert1.showAndWait();
+					return;}
+			}
 			createProjectGui(projName);//loading GUI
 			
 			contTree.setOpenCloseButtons(false);
