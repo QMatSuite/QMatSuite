@@ -120,8 +120,6 @@ public class MainWindowController implements Initializable{
 	
 	private Boolean tabPaneStatusRight,scrollStatusLeft;
 	
-	private VBox vboxRight,vboxLeft;
-	
 	private Button btnRight,btnLeft;
 	
 	private MainClass mainClass;
@@ -784,7 +782,7 @@ public class MainWindowController implements Initializable{
 		
 		// right part, default off
 		tabPaneStatusRight = false;
-		vboxRight = new VBox();
+		VBox vboxRight = new VBox();
 		btnRight = new Button("R");
 		vboxRight.getChildren().add(btnRight);
 		hboxRight.getChildren().add(vboxRight);
@@ -803,7 +801,7 @@ public class MainWindowController implements Initializable{
 //		scrollLeft.setContent(projectTree);
 		
 		scrollLeft.setFitToHeight(true);
-		vboxLeft = new VBox();
+		VBox vboxLeft = new VBox();
 		btnLeft = new Button("L");
 		vboxLeft.getChildren().add(btnLeft);
 		hboxLeft.getChildren().addAll(vboxLeft,scrollLeft);

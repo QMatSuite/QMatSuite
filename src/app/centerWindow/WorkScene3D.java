@@ -82,8 +82,8 @@ public class WorkScene3D {
 	
 	private ArrayList<Atom> atomListCacheSC;
 	
-    double CONTROL_MULTIPLIER = 0.1;
-    double SHIFT_MULTIPLIER = 0.1;
+	private double CONTROL_MULTIPLIER = 0.1;
+	private double SHIFT_MULTIPLIER = 0.1;
         
     double mousePosX;
     double mousePosY;
