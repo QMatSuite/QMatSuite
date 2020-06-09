@@ -71,7 +71,7 @@ public class ProjectManager {
 	}
 	public File getWorkSpaceDir() {
 		File wsDir = new File(workSpacePath);
-		if(wsDir!=null && wsDir.canWrite()) {return wsDir;}
+		if(wsDir.canWrite()) {return wsDir;}
 		else {
 			Alert alert1 = new Alert(AlertType.INFORMATION);
 	    	alert1.setTitle("Error");
@@ -84,7 +84,7 @@ public class ProjectManager {
 		String pj = getActiveProjectName();
 		if(pj!=null && !pj.isEmpty() && workSpacePath!=null) {
 			File pjDir = new File(workSpacePath,pj);
-			if(pjDir!=null && pjDir.exists()) {
+			if(pjDir.exists()) {
 				return pjDir;
 			}
 		}
@@ -131,6 +131,7 @@ public class ProjectManager {
 				if(line.contains(key+"=")) {textOut=line.substring(line.lastIndexOf(key+"=") + key.length()+1);}
 			}
 			br.close();
+			isr.close();
 		} catch (FileNotFoundException e) {
 			Alert alert1 = new Alert(AlertType.INFORMATION);
 	    	alert1.setTitle("Warning");
@@ -216,7 +217,7 @@ public class ProjectManager {
 		
 		File dirProj = new File(workSpaceDir,pj.getName());
 		
-		if(dirProj!=null && !dirProj.exists()) {//make project directory if not existing
+		if(!dirProj.exists()) {//make project directory if not existing
 			boolean dirCreated = dirProj.mkdir();
 			if(!dirCreated) {
 				Alert alert1 = new Alert(AlertType.INFORMATION);
@@ -347,7 +348,7 @@ public class ProjectManager {
 		
 		File projDir = new File(wsDir,projName);
 		
-		if(projName==null || projName.isEmpty() || projDir==null || !projDir.canRead()) {return ErrorMsg.cannotFindProjectFolder;}
+		if(projName==null || projName.isEmpty() || !projDir.canRead()) {return ErrorMsg.cannotFindProjectFolder;}
 		
 		File projSaveFile = new File(projDir,DefaultFileNames.projSaveFile);
 		
@@ -359,7 +360,7 @@ public class ProjectManager {
         	return msg_all;
     	}
 		
-		if(projSaveFile==null || !projSaveFile.canRead()) {
+		if(!projSaveFile.canRead()) {
 			msg_all+= ErrorMsg.cannotFindProjectSaveFile;
 		}
 		else {
@@ -438,7 +439,7 @@ public class ProjectManager {
 				try { 
 		            // Reading the object from a file 
 					File fl = new File(new File(projDir,calcName),DefaultFileNames.calcSaveFile);
-					if (calcName==null || calcName.isEmpty() || fl==null || !fl.canRead()) {msg3+="Cannot load calculation in "+calcName+". ";continue;}
+					if (calcName==null || calcName.isEmpty() || !fl.canRead()) {msg3+="Cannot load calculation in "+calcName+". ";continue;}
 		            FileInputStream file = new FileInputStream (fl); 
 		            ObjectInputStream in = new ObjectInputStream (file); 
 		  
@@ -631,7 +632,7 @@ public class ProjectManager {
 		}
 	}
 	private String getNextKey(String nameProject) {
-		Boolean flag = false;
+		boolean flag = false;
 		if (!projectDict.isEmpty()){
 			for (String key : projectDict.keySet()) {
 				if (java.util.Objects.equals(key,nameProject)) {
