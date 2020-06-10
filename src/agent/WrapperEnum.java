@@ -55,4 +55,8 @@ public class WrapperEnum extends WrapperClass{
 		value = defaultValue;
 		return defaultValue;
 	}
+	@Override
+	public Boolean isDefaultNull() {
+		return defaultValue==null;
+	}
 }

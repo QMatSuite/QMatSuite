@@ -243,13 +243,7 @@ public class InputScfMagnetController extends InputController{
 				if (newValue) {polarizCombo.getSelectionModel().select(0);polarizCombo.setDisable(true);iScf.nspin.setEnabled(false);}
 				else {polarizCombo.setDisable(false);iScf.nspin.setEnabled(true);if(checkResetAll.isSelected()) {allDefault=false;checkResetAll.setSelected(false);}}
 			});
-			checkSoc.selectedProperty().addListener((observable, oldValue, newValue) ->
-    		{ 
-    			InputAgentScf iScf = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
-				if (iScf==null || newValue==null) return;
-				if (newValue) {spinorbitToggle.setSelected(iScf.boolSoc.resetDefault());spinorbitToggle.setDisable(true);iScf.boolSoc.setEnabled(false);}//****not so efficient, double executing
-				else {spinorbitToggle.setDisable(false);iScf.boolSoc.setEnabled(true);if(checkResetAll.isSelected()) {allDefault=false;checkResetAll.setSelected(false);}}
-			});
+			resetToggleListener(checkSoc, spinorbitToggle, "boolSoc", EnumStep.SCF, checkResetAll);
 			checkResetAll.selectedProperty().addListener((observable, oldValue, newValue) ->
     		{ 
     			if(newValue!=null && !newValue.equals(allDefault)) {

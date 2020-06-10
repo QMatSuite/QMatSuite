@@ -34,4 +34,5 @@ public abstract class WrapperClass implements Serializable{
 		return enabled;
 	}
 	public abstract Boolean isNull();
+	public abstract Boolean isDefaultNull();
 }
