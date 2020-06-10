@@ -51,6 +51,7 @@ public class PwInput extends QeInput{
 	private ArrayList<Element> elementList = new ArrayList<Element>();
 	private ArrayList<Atom> atomList = new ArrayList<Atom>();
 	private boolean flagLoadGeo=false;
+	private boolean flagLoadScf=false;
 	
 	public PwInput() {
 		super();
@@ -76,6 +77,7 @@ public class PwInput extends QeInput{
 		sectionDict.get("CONTROL").addParameter("tprnfor", new InputValueBoolean("tprnfor",false,false));
 		sectionDict.get("CONTROL").addParameter("tstress", new InputValueBoolean("tstress",false,false));
 		sectionDict.get("CONTROL").addParameter("pseudo_dir", new InputValueString("pseudo_dir",false));
+		
 		sectionDict.get("SYSTEM").setBoolRequired(true);
 		sectionDict.get("SYSTEM").addParameter("ibrav", new InputValueInt("ibrav"));
 		sectionDict.get("SYSTEM").addParameter("A", new InputValueDouble("A"));
@@ -93,13 +95,13 @@ public class PwInput extends QeInput{
 		sectionDict.get("SYSTEM").addParameter("starting_magnetization", new InputValueDoubleArray("starting_magnetization",false));
 		sectionDict.get("SYSTEM").addParameter("angle1", new InputValueDoubleArray("angle1",false));
 		sectionDict.get("SYSTEM").addParameter("angle2", new InputValueDoubleArray("angle2",false));
-		
 		sectionDict.get("SYSTEM").addParameter("nspin", new InputValueInt("nspin",1,false));
 		sectionDict.get("SYSTEM").addParameter("noncolin", new InputValueBoolean("noncolin",false,false));
 		sectionDict.get("SYSTEM").addParameter("lspinorb", new InputValueBoolean("lspinorb",false,false));
 		sectionDict.get("SYSTEM").addParameter("occupations", new InputValueString("occupations",true));
 		sectionDict.get("SYSTEM").addParameter("degauss", new InputValueDouble("degauss",0.0,true));
 		sectionDict.get("SYSTEM").addParameter("smearing", new InputValueString("smearing",EnumSmearing.gauss.toString(),true));
+		
 		sectionDict.get("ELECTRONS").addParameter("electron_maxstep", new InputValueInt("electron_maxstep",100,false));
 		sectionDict.get("ELECTRONS").addParameter("conv_thr", new InputValueDouble("conv_thr",1e-6,false));
 		sectionDict.get("ELECTRONS").addParameter("mixing_mode", new InputValueString("mixing_mode",EnumMixingMode.plain.toString(),false));
@@ -185,6 +187,7 @@ public class PwInput extends QeInput{
 	}
 	@Override
 	public void loadAgent(InputAgentGeo ia1) {
+		flagLoadScf = false;
 		try {
 			//setValue("SYSTEM","ibrav",(Integer) null);
 			setValue("SYSTEM","ibrav",ia1.ibrav);
@@ -275,7 +278,8 @@ public class PwInput extends QeInput{
 			}
 			setValue("ATOMIC_POSITIONS","body",new WrapperString(atomPosTmp));
 				
-
+			flagLoadGeo = true;
+			
 		} catch (InvalidKeyException | InvalidTypeException e) {
 			Alert alert1 = new Alert(AlertType.INFORMATION);
 	    	alert1.setTitle("Error");
@@ -283,16 +287,18 @@ public class PwInput extends QeInput{
 	    	alert1.showAndWait();
 			e.printStackTrace();
 		}
-		flagLoadGeo = true;
+		
 	}
 	@Override
 	public void loadAgent(InputAgentScf ia1) {
+		flagLoadScf = false;
 		try {
 			if (!flagLoadGeo) {
 				Alert alert1 = new Alert(AlertType.INFORMATION);
 		    	alert1.setTitle("Info");
 		    	alert1.setContentText("You should load Geometry first!");
 		    	alert1.showAndWait();
+		    	return;
 			}
 			//set section required
 			setSectionRequired("CONTROL",true);setSectionRequired("SYSTEM",true);setSectionRequired("ELECTRONS",true);
@@ -405,6 +411,8 @@ public class PwInput extends QeInput{
 				((InputValueDouble) sectionDict.get("ELECTRONS").getValue("conv_thr")).multiply(1.0/PhysicalConstants.ryInEV);
 			}
 			
+			flagLoadScf = true;
+			
 		} catch (InvalidKeyException | InvalidTypeException e) {
 			Alert alert1 = new Alert(AlertType.INFORMATION);
 	    	alert1.setTitle("Error");
@@ -423,13 +431,33 @@ public class PwInput extends QeInput{
 		return null;
 	}
 	@Override
+	public void loadAgent(InputAgentOpt ia1) {
+		try {
+			if (!flagLoadGeo || !flagLoadScf) {
+				Alert alert1 = new Alert(AlertType.INFORMATION);
+		    	alert1.setTitle("Info");
+		    	alert1.setContentText("You should load Geometry first!");
+		    	alert1.showAndWait();
+		    	return;
+			}
+			//set section required
+			setSectionRequired("IONS",true);
+			
+			setValue("CONTROL","calculation",new WrapperString(ia1.boolRelaxCell.getValue()?"vc-relax":"relax",true));
+			
+		} catch (InvalidKeyException | InvalidTypeException e) {
+			Alert alert1 = new Alert(AlertType.INFORMATION);
+	    	alert1.setTitle("Error");
+	    	alert1.setContentText("Exception!"+e.getMessage());
+	    	alert1.showAndWait();
+			e.printStackTrace();
+		}
+	}
+	@Override
 	public void loadAgent(InputAgentNscf ia1) {
 		//to do
 	}
-	@Override
-	public void loadAgent(InputAgentOpt ia1) {
-		//to do
-	}
+	
 	
 	
 }

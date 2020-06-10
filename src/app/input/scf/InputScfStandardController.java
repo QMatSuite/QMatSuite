@@ -256,21 +256,28 @@ public class InputScfStandardController extends InputController{
     	if (!occupCombo.getItems().isEmpty()) {
     		InputAgentScf iScf = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
     		if (iScf!=null) {
-    			occupCombo.setValue((EnumOccupations)iScf.enumOccupation.getValue());
-    			restartToggle.setSelected(iScf.boolRestart.getValue());
-    			forceToggle.setSelected(iScf.boolForce.getValue());
-    			stressToggle.setSelected(iScf.boolStress.getValue());
-    			ecutwfcUnit.setValue((EnumUnitEnergy)iScf.enumEnergyUnit.getValue());
+    			setCombo(occupCombo, iScf.enumOccupation);
+    			setToggle(restartToggle, iScf.boolRestart);
+    			setToggle(forceToggle, iScf.boolForce);
+    			setToggle(stressToggle, iScf.boolStress);
+    			setCombo(ecutwfcUnit, iScf.enumEnergyUnit);
+    			setCombo(mixingModeCombo, iScf.enumMixing);
+    			setCombo(smearCombo, iScf.enumSmearing);
+    			//occupCombo.setValue((EnumOccupations)iScf.enumOccupation.getValue());
+    			//restartToggle.setSelected(iScf.boolRestart.getValue());
+    			//forceToggle.setSelected(iScf.boolForce.getValue());
+    			//stressToggle.setSelected(iScf.boolStress.getValue());
+    			//ecutwfcUnit.setValue((EnumUnitEnergy)iScf.enumEnergyUnit.getValue());
     			setField(ecutwfcField, iScf.ecutWfc);
     			setField(ecutrhoField, iScf.ecutRho);
         		setField(maxStepField, iScf.nElecMaxStep);
     			setField(convField, iScf.elecConv);
-    			mixingModeCombo.setValue((EnumMixingMode)iScf.enumMixing.getValue());
+    			//mixingModeCombo.setValue((EnumMixingMode)iScf.enumMixing.getValue());
     			setField(mixingField, iScf.mixBeta);
     			setField(kxField, iScf.nkx);
     			setField(kyField, iScf.nky);
     			setField(kzField, iScf.nkz);
-    			smearCombo.setValue((EnumSmearing) iScf.enumSmearing.getValue());
+    			//smearCombo.setValue((EnumSmearing) iScf.enumSmearing.getValue());
     			setField(gaussField, iScf.degauss);
     			
     			//load default checkBoxes
