@@ -53,4 +53,8 @@ public class WrapperInteger extends WrapperClass{
 		value = defaultValue;
 		return defaultValue;
 	}
+	@Override
+	public Boolean isDefaultNull() {
+		return defaultValue==null;
+	}
 }

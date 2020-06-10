@@ -164,13 +164,7 @@ public class InputScfHubbardController extends InputController{
 			}
 			elementTableHubbard.getSelectionModel().selectNext();
 		});
-    	checkHubbardU.selectedProperty().addListener((observable, oldValue, newValue) ->
-		{ 
-			InputAgentScf iScf = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
-			if (iScf==null || newValue==null) return;
-			if (newValue) {applyToggle.setSelected(iScf.lda_plus_u.resetDefault());applyToggle.setDisable(true);iScf.lda_plus_u.setEnabled(false);}//****not so efficient, double executing
-			else {applyToggle.setDisable(false);iScf.lda_plus_u.setEnabled(true);if(checkResetAll.isSelected()) {allDefault=false;checkResetAll.setSelected(false);}}
-		});
+    	resetToggleListener(checkHubbardU, applyToggle, "lda_plus_u", EnumStep.SCF, checkResetAll);
     	checkResetAll.selectedProperty().addListener((observable, oldValue, newValue) ->
 		{ 
 			if(newValue!=null && !newValue.equals(allDefault)) {//compare wrapper with primitive, != should be ok

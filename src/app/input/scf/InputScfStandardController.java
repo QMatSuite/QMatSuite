@@ -122,8 +122,6 @@ public class InputScfStandardController extends InputController{
     checkOccup,
     checkSmear,
     checkGauss;
-
-    private boolean allDefault=false;
     
 	
 	public InputScfStandardController(MainClass mc) {
@@ -137,65 +135,11 @@ public class InputScfStandardController extends InputController{
     }
     public void initialize(){
     	if (occupCombo.getItems().isEmpty()) {
-    		//restart mode
-    		restartToggle.setText("from scratch"); restartToggle.setSelected(false);
-    		restartToggle.selectedProperty().addListener((observable, oldValue, newValue) ->
-    		{ 
-    			InputAgentScf iScf = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
-    			if (newValue) 
-    			{ 
-    				restartToggle.setText("restart");
-    				if (iScf!=null)  iScf.boolRestart.setValue(true);
-    			}
-    			else 
-    			{ 
-    				restartToggle.setText("from scratch"); 
-    				if (iScf!=null)  iScf.boolRestart.setValue(false);
-    			}
-    		});
-    		//force
-    		forceToggle.setText("off"); forceToggle.setSelected(false);
-    		forceToggle.selectedProperty().addListener((observable, oldValue, newValue) ->
-    		{ 
-    			InputAgentScf iScf = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
-    			if (newValue) 
-    			{ 
-    				forceToggle.setText("on");
-    				if (iScf!=null)  iScf.boolForce.setValue(true);
-    			}
-    			else 
-    			{ 
-    				forceToggle.setText("off"); 
-    				if (iScf!=null)  iScf.boolForce.setValue(false);
-    			}
-    		});
-    		//stress
-    		stressToggle.setText("off"); stressToggle.setSelected(false);
-    		stressToggle.selectedProperty().addListener((observable, oldValue, newValue) ->
-    		{ 
-    			InputAgentScf iScf = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
-    			if (newValue) 
-    			{ 
-    				stressToggle.setText("on");
-    				if (iScf!=null)  iScf.boolStress.setValue(true);
-    			}
-    			else 
-    			{ 
-    				stressToggle.setText("off"); 
-    				if (iScf!=null)  iScf.boolStress.setValue(false);
-    			}
-    		});
-    		//ecutwfc
-    		ObservableList<EnumUnitEnergy> ecutUnit = 
-	    		    FXCollections.observableArrayList(EnumUnitEnergy.values());
-    		ecutwfcUnit.setItems(ecutUnit);
-    		ecutwfcUnit.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) ->
-    		{ 
-				InputAgentScf ia = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
-				if (ia!=null && newValue!=null) {
-					ia.enumEnergyUnit.setValue(newValue);
-				}
-			});
+    		setToggleListener(restartToggle, "boolRestart", EnumStep.SCF, "restart", "from scratch");//restart mode
+    		setToggleListener(forceToggle, "boolForce", EnumStep.SCF, "on", "off");//force
+    		setToggleListener(stressToggle, "boolStress", EnumStep.SCF, "on", "off");//stress
+    		
+    		setComboListener(ecutwfcUnit, EnumUnitEnergy.values(), "enumEnergyUnit", EnumStep.SCF);//ecutwfc
     		//setDoubleFieldListener(ecutwfcField, "ecutWfc",EnumNumCondition.positive);
     		ecutwfcField.textProperty().addListener((observable, oldValue, newValue) -> {
     			InputAgentScf ia = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
@@ -217,16 +161,8 @@ public class InputScfStandardController extends InputController{
     		setIntegerFieldListener(maxStepField, "nElecMaxStep",EnumNumCondition.positive,EnumStep.SCF);
     		setDoubleFieldListener(convField, "elecConv",EnumNumCondition.positive,EnumStep.SCF);
     		
-    		//mixing mode
-			ObservableList<EnumMixingMode> mixi = 
-	    		    FXCollections.observableArrayList(EnumMixingMode.values());
-			mixingModeCombo.setItems(mixi);
-			mixingModeCombo.setOnAction((event) -> {
-				InputAgentScf iScf = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
-				if (iScf!=null && mixingModeCombo.getValue()!=null) {
-					iScf.enumMixing.setValue(mixingModeCombo.getValue());
-				}
-			});
+    		
+    		setComboListener(mixingModeCombo, EnumMixingMode.values(), "enumMixing", EnumStep.SCF);//mixing mode
 			
 			setDoubleFieldListener(mixingField, "mixBeta",EnumNumCondition.positive,EnumStep.SCF);
 			setIntegerFieldListener(kxField, "nkx",EnumNumCondition.positive,EnumStep.SCF);
@@ -255,43 +191,17 @@ public class InputScfStandardController extends InputController{
 				}
 			});
 			
-			//smearing list
-			ObservableList<EnumSmearing> smearList = 
-	    		    FXCollections.observableArrayList(EnumSmearing.values());
-			smearCombo.setItems(smearList);
-			smearCombo.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) ->
-    		{ 
-    			InputAgentScf iScf = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
-				if (iScf!=null && newValue!=null) {
-					iScf.enumSmearing.setValue(newValue);
-				}
-			});
+			setComboListener(smearCombo, EnumSmearing.values(), "enumSmearing", EnumStep.SCF);//smearing list
 			
 			setDoubleFieldListener(gaussField, "degauss",EnumNumCondition.nonNegative,EnumStep.SCF);
 			
 			//reset 
-			checkRestart.selectedProperty().addListener((observable, oldValue, newValue) ->
-    		{ 
-    			InputAgentScf iScf = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
-				if (iScf==null || newValue==null) return;
-				if (newValue) {restartToggle.setSelected(iScf.boolRestart.resetDefault());restartToggle.setDisable(true);iScf.boolRestart.setEnabled(false);}//****not so efficient, double executing
-				else {restartToggle.setDisable(false);iScf.boolRestart.setEnabled(true);if(checkResetAll.isSelected()) {allDefault=false;checkResetAll.setSelected(false);}}
-			});
-			checkForce.selectedProperty().addListener((observable, oldValue, newValue) ->
-    		{ 
-    			InputAgentScf iScf = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
-				if (iScf==null || newValue==null) return;
-				if (newValue) {forceToggle.setSelected(iScf.boolForce.resetDefault());forceToggle.setDisable(true);iScf.boolForce.setEnabled(false);}//****not so efficient, double executing
-				else {forceToggle.setDisable(false);iScf.boolForce.setEnabled(true);if(checkResetAll.isSelected()) {allDefault=false;checkResetAll.setSelected(false);}}
-			});
-			checkStress.selectedProperty().addListener((observable, oldValue, newValue) ->
-    		{ 
-    			InputAgentScf iScf = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
-				if (iScf==null || newValue==null) return;
-				if (newValue) {stressToggle.setSelected(iScf.boolStress.resetDefault());stressToggle.setDisable(true);iScf.boolStress.setEnabled(false);}//****not so efficient, double executing
-				else {stressToggle.setDisable(false);iScf.boolStress.setEnabled(true);if(checkResetAll.isSelected()) {allDefault=false;checkResetAll.setSelected(false);}}
-			});
+			resetToggleListener(checkRestart, restartToggle, "boolRestart", EnumStep.SCF, checkResetAll);
+			resetToggleListener(checkForce, forceToggle, "boolForce", EnumStep.SCF, checkResetAll);
+			resetToggleListener(checkStress, stressToggle, "boolStress", EnumStep.SCF, checkResetAll);
 			checkEcutwfc.setDisable(true);
+			
+			
 			checkEcutrho.selectedProperty().addListener((observable, oldValue, newValue) ->
     		{ 
     			InputAgentScf iScf = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
@@ -306,13 +216,7 @@ public class InputScfStandardController extends InputController{
 				}
 				else {iScf.ecutRho.setEnabled(true);ecutrhoField.setDisable(false);if(checkResetAll.isSelected()) {allDefault=false;checkResetAll.setSelected(false);}}
 			});
-			checkMaxStep.selectedProperty().addListener((observable, oldValue, newValue) ->
-    		{ 
-    			InputAgentScf iScf = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
-				if (iScf==null || newValue==null) return;
-				if (newValue) {maxStepField.setText(Integer.toString(iScf.nElecMaxStep.resetDefault()));maxStepField.setDisable(true);iScf.nElecMaxStep.setEnabled(false);}
-				else {maxStepField.setDisable(false);iScf.nElecMaxStep.setEnabled(true);if(checkResetAll.isSelected()) {allDefault=false;checkResetAll.setSelected(false);}}
-			});
+			resetTextFieldIntegerListener(checkMaxStep, maxStepField, "nElecMaxStep", EnumStep.SCF, checkResetAll);
 			checkConv.selectedProperty().addListener((observable, oldValue, newValue) ->
     		{ 
     			InputAgentScf iScf = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
@@ -321,39 +225,11 @@ public class InputScfStandardController extends InputController{
 				ecutwfcUnit.getSelectionModel().select(EnumUnitEnergy.Ry);ecutwfcUnit.setDisable(true);iScf.elecConv.setEnabled(false);}
 				else {convField.setDisable(false);checkEcutwfcAvailable();iScf.elecConv.setEnabled(true);if(checkResetAll.isSelected()) {allDefault=false;checkResetAll.setSelected(false);}}
 			});
-			checkMixMode.selectedProperty().addListener((observable, oldValue, newValue) ->
-    		{ 
-    			InputAgentScf iScf = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
-				if (iScf==null || newValue==null) return;
-				if (newValue) {mixingModeCombo.getSelectionModel().select((EnumMixingMode) iScf.enumMixing.resetDefault());mixingModeCombo.setDisable(true);iScf.enumMixing.setEnabled(false);}
-				else {mixingModeCombo.setDisable(false);iScf.enumMixing.setEnabled(true);if(checkResetAll.isSelected()) {allDefault=false;checkResetAll.setSelected(false);}}
-			});
-			checkMixBeta.selectedProperty().addListener((observable, oldValue, newValue) ->
-    		{ 
-    			InputAgentScf iScf = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
-				if (iScf==null || newValue==null) return;
-				if (newValue) {mixingField.setText(Double.toString(iScf.mixBeta.resetDefault()));mixingField.setDisable(true);iScf.mixBeta.setEnabled(false);}
-				else {mixingField.setDisable(false);iScf.mixBeta.setEnabled(true);if(checkResetAll.isSelected()) {allDefault=false;checkResetAll.setSelected(false);}}
-			});
+			resetComboBoxListener(checkMixMode, mixingModeCombo, "enumMixing", EnumStep.SCF, checkResetAll);
+			resetTextFieldDoubleListener(checkMixBeta, mixingField, "mixBeta", EnumStep.SCF, checkResetAll);
 			checkK.setDisable(true);
-			checkOccup.selectedProperty().addListener((observable, oldValue, newValue) ->
-    		{ 
-    			InputAgentScf iScf = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
-				if (iScf==null || newValue==null) return;
-				if (newValue) {occupCombo.getSelectionModel().select((EnumOccupations) iScf.enumOccupation.resetDefault());occupCombo.setDisable(true);
-				iScf.enumOccupation.setEnabled(true);//here set to true, because QE does not have the same default
-				}
-				else {occupCombo.setDisable(false);iScf.enumOccupation.setEnabled(true);if(checkResetAll.isSelected()) {allDefault=false;checkResetAll.setSelected(false);}}
-			});
-			checkSmear.selectedProperty().addListener((observable, oldValue, newValue) ->
-    		{ 
-    			InputAgentScf iScf = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
-				if (iScf==null || newValue==null) return;
-				if (newValue) {smearCombo.getSelectionModel().select((EnumSmearing) iScf.enumSmearing.resetDefault());smearCombo.setDisable(true);
-				iScf.enumSmearing.setEnabled(true);//here set to true, because QE does not have the same default
-				}
-				else {smearCombo.setDisable(false);iScf.enumSmearing.setEnabled(true);if(checkResetAll.isSelected()) {allDefault=false;checkResetAll.setSelected(false);}}
-			});
+			resetComboBoxListener(checkOccup, occupCombo, "enumOccupation", EnumStep.SCF, checkResetAll, true);//true means not QE default
+			resetComboBoxListener(checkSmear, smearCombo, "enumSmearing", EnumStep.SCF, checkResetAll, true);//true means not QE default
 			checkGauss.setDisable(true);
 			checkResetAll.selectedProperty().addListener((observable, oldValue, newValue) ->
     		{ 
