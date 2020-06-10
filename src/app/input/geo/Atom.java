@@ -18,36 +18,32 @@
  *******************************************************************************/
 package app.input.geo;
 
-import java.io.Serializable;
 
 import com.consts.ChemicalElements;
 
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 
-public class Atom implements Serializable{
+public class Atom extends Chemical {
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 2080346685186523233L;
 	
-	private ChemicalElements atomSpecies;
 	//coordinates "as is"
 	private Coordinate xcoor;
 	private Coordinate ycoor;
 	private Coordinate zcoor;
-	//for magnet
-	private Double mag;private Double angle1;private Double angle2;
 
 	
 	public Atom(ChemicalElements species, Double x, Double y, Double z, Boolean fix_x,Boolean fix_y,Boolean fix_z) {
-		atomSpecies = species;
+		super(species);
 		xcoor=new Coordinate(x,fix_x);
 		ycoor=new Coordinate(y,fix_y);
 		zcoor=new Coordinate(z,fix_z);
-		mag=0.0;angle1=0.0;angle2=0.0;
 	}
 	public Atom(String species, Double x, Double y, Double z, Boolean fix_x,Boolean fix_y,Boolean fix_z) {
+		//super();
 		try {
 			atomSpecies = ChemicalElements.valueOf(species);
 		}catch(IllegalArgumentException e) {
@@ -60,14 +56,6 @@ public class Atom implements Serializable{
 		xcoor=new Coordinate(x,fix_x);
 		ycoor=new Coordinate(y,fix_y);
 		zcoor=new Coordinate(z,fix_z);
-		mag=0.0;angle1=0.0;angle2=0.0;
-	}
-	
-	public ChemicalElements getAtomSpecies() {
-		return atomSpecies;
-	}
-	public void setAtomSpecies(ChemicalElements atomSpecies) {
-		this.atomSpecies = atomSpecies;
 	}
 	public void mulX(Double mul) {
 		if (mul!=null) {
@@ -84,24 +72,7 @@ public class Atom implements Serializable{
 			double tmp=zcoor.getX();
 			zcoor.setX(tmp*mul);}
 	}
-	public Double getMag() {
-		return mag;
-	}
-	public void setMag(Double mag) {
-		if (mag!=null) this.mag = mag;
-	}
-	public Double getAngle1() {
-		return angle1;
-	}
-	public void setAngle1(Double angle1) {
-		if (angle1!=null) this.angle1 = angle1;
-	}
-	public Double getAngle2() {
-		return angle2;
-	}
-	public void setAngle2(Double angle2) {
-		if (angle2!=null) this.angle2 = angle2;
-	}
+	
 	public Coordinate getXcoor() {
 		return xcoor;
 	}

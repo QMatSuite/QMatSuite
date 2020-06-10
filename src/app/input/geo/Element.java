@@ -18,31 +18,27 @@
  *******************************************************************************/
 package app.input.geo;
 
-import java.io.Serializable;
-
 import com.consts.ChemicalElements;
 
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 
-public class Element implements Serializable{
+public class Element extends Chemical{
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 1452087912861807366L;
 	
-	private ChemicalElements atomSpecies;
-	private Double atomMass;
+	
 	private String pseudoPotFile;
 	private boolean pseudoValid;
 	private Double hubbardU;
-	private Double mag;private Double angle1;private Double angle2;
+	
 	
 	public Element(ChemicalElements species) {
-		atomSpecies = species;
+		super(species);
 		pseudoPotFile = null;pseudoValid=false;
-		hubbardU = 0.0;mag=0.0;angle1=0.0;angle2=0.0;
-		atomMass=species.getAtomicMass();
+		hubbardU = 0.0;
 //		try {
 //			ChemicalElements enumElem = ChemicalElements.valueOf(species);
 //			atomMass=enumElem.getAtomicMass();
@@ -55,10 +51,9 @@ public class Element implements Serializable{
 //		}
 	}
 	public Element(ChemicalElements species, Double hubb) {
-		atomSpecies = species;
+		super(species);
 		pseudoPotFile = null;pseudoValid=false;
-		hubbardU = hubb;mag=0.0;angle1=0.0;angle2=0.0;
-		atomMass=species.getAtomicMass();
+		hubbardU = hubb;
 //		try {
 //			ChemicalElements enumElem = ChemicalElements.valueOf(species);
 //			atomMass=enumElem.getAtomicMass();
@@ -71,8 +66,9 @@ public class Element implements Serializable{
 //		}
 	}
 	public Element(String species, Double hubb) {
+		//super();
 		pseudoPotFile = null;pseudoValid=false;
-		hubbardU = hubb;mag=0.0;angle1=0.0;angle2=0.0;
+		hubbardU = hubb;
 		try {
 			atomSpecies = ChemicalElements.valueOf(species);
 			atomMass=atomSpecies.getAtomicMass();
@@ -84,13 +80,7 @@ public class Element implements Serializable{
 			e.printStackTrace();
 		}
 	}
-	public ChemicalElements getAtomSpecies() {
-		return atomSpecies;
-	}
-	public void setAtomSpecies(ChemicalElements atomSpecies) {
-		this.atomSpecies = atomSpecies;
-		this.atomMass=atomSpecies.getAtomicMass();
-	}
+	
 	public Double getAtomMass() {
 		return atomMass;
 	}
@@ -108,24 +98,6 @@ public class Element implements Serializable{
 	}
 	public void setHubbardU(Double hubbardU) {
 		if (hubbardU!=null) this.hubbardU = hubbardU;
-	}
-	public Double getMag() {
-		return mag;
-	}
-	public void setMag(Double mag) {
-		if (mag!=null)  this.mag = mag;
-	}
-	public Double getAngle1() {
-		return angle1;
-	}
-	public void setAngle1(Double angle1) {
-		if (angle1!=null) this.angle1 = angle1;
-	}
-	public Double getAngle2() {
-		return angle2;
-	}
-	public void setAngle2(Double angle2) {
-		if (angle2!=null) this.angle2 = angle2;
 	}
 	public boolean isPseudoValid() {
 		return pseudoValid;
