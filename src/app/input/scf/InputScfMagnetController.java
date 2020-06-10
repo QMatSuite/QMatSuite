@@ -25,8 +25,7 @@ import com.consts.Constants.EnumStep;
 import agent.InputAgentGeo;
 import agent.InputAgentScf;
 import app.input.InputController;
-import app.input.geo.Atom;
-import app.input.geo.Element;
+import app.input.geo.Chemical;
 import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -75,13 +74,14 @@ public class InputScfMagnetController extends InputController{
 	ymagButton,
 	zmagButton;//info, not implemented
 	
-	@FXML private TableView elementTable;
+	@FXML private TableView<Chemical> elementTable;
 	
-	@FXML private TableColumn<?, ?> indexColumn,
-	nameColumn,
-	magColumn,
-	angle1Column,
-	angle2Column;
+	@FXML private TableColumn<Chemical, String> indexColumn;
+	@FXML private TableColumn<Chemical, String> nameColumn;
+	@FXML private TableColumn<Chemical, Double> magColumn;
+	@FXML private TableColumn<Chemical, Double> angle1Column;
+	@FXML private TableColumn<Chemical, Double> angle2Column;
+
 	
 	@FXML private CheckBox setForElements,
 	setForAtoms;
@@ -103,7 +103,7 @@ public class InputScfMagnetController extends InputController{
 	
 	private Boolean initializedFlag=false;
 	
-	private ObservableList<?> elemData;
+	private ObservableList<Chemical> elemData;
 	
 	private boolean allDefault=false;
 	
@@ -147,9 +147,9 @@ public class InputScfMagnetController extends InputController{
 				}
 			});
 			//initialize table
-			indexColumn.setCellValueFactory(new PropertyValueFactory("index"));
+			indexColumn.setCellValueFactory(new PropertyValueFactory<Chemical,String>("index"));
 	    	indexColumn.setCellFactory(col -> {
-			    TableCell cell = new TableCell<>();
+			    TableCell<Chemical,String> cell = new TableCell<>();
 			    cell.textProperty().bind(Bindings.createStringBinding(() -> {
 			        if (cell.isEmpty()) {
 			            return null ;
@@ -157,33 +157,22 @@ public class InputScfMagnetController extends InputController{
 			            return Integer.toString(cell.getIndex()+1);
 			        }
 			    }, cell.emptyProperty(), cell.indexProperty()));
-			    return cell ;
+			    return cell;
 			});
-	    	nameColumn.setCellValueFactory(new PropertyValueFactory("atomSpecies"));
-	    	magColumn.setCellValueFactory(new PropertyValueFactory("mag"));
-	    	angle1Column.setCellValueFactory(new PropertyValueFactory("angle1"));
-	    	angle2Column.setCellValueFactory(new PropertyValueFactory("angle2"));
+	    	nameColumn.setCellValueFactory(new PropertyValueFactory<Chemical,String>("atomSpecies"));
+	    	magColumn.setCellValueFactory(new PropertyValueFactory<Chemical,Double>("mag"));
+	    	angle1Column.setCellValueFactory(new PropertyValueFactory<Chemical,Double>("angle1"));
+	    	angle2Column.setCellValueFactory(new PropertyValueFactory<Chemical,Double>("angle2"));
 	    	elementTable.getSelectionModel().selectedItemProperty().addListener((obs, oldSelect, newSelect) -> {
 			    if (newSelect == null) {
 			    	textMag.setText("");textAngle1.setText("");textAngle2.setText("");
 			    }
 			    else {
-			    	if (setForElements.isSelected()) {
-				    	Element tmp = (Element) newSelect;
-				    	try{labelNum.setText(Integer.toString(elementTable.getSelectionModel().getSelectedIndex()+1));}catch(Exception e) {}
-				    	labelName.setText(tmp.getAtomSpecies().toString());
-				    	textMag.setText(tmp.getMag().toString());
-				    	textAngle1.setText(tmp.getAngle1().toString());
-				    	textAngle2.setText(tmp.getAngle2().toString());
-			    	}
-			    	else if(setForAtoms.isSelected()) {
-			    		Atom tmp = (Atom) newSelect;
-			    		try{labelNum.setText(Integer.toString(elementTable.getSelectionModel().getSelectedIndex()+1));}catch(Exception e) {}
-				    	labelName.setText(tmp.getAtomSpecies().toString());
-				    	textMag.setText(tmp.getMag().toString());
-				    	textAngle1.setText(tmp.getAngle1().toString());
-				    	textAngle2.setText(tmp.getAngle2().toString());
-			    	}
+			    	try{labelNum.setText(Integer.toString(elementTable.getSelectionModel().getSelectedIndex()+1));}catch(Exception e) {}
+			    	labelName.setText(newSelect.getAtomSpecies().toString());
+			    	textMag.setText(newSelect.getMag().toString());
+			    	textAngle1.setText(newSelect.getAngle1().toString());
+			    	textAngle2.setText(newSelect.getAngle2().toString());
 			    }
 			});
 	    	//spin orbit toggle

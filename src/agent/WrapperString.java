@@ -18,8 +18,6 @@
  *******************************************************************************/
 package agent;
 
-import com.consts.Constants.EnumInProgram;
-
 public class WrapperString extends WrapperClass{
 	/**
 	 * 
