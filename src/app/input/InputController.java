@@ -6,7 +6,6 @@ import com.consts.QeDocumentation;
 import com.consts.Constants.EnumInProgram;
 import com.consts.Constants.EnumNumCondition;
 import com.consts.Constants.EnumStep;
-
 import agent.InputAgent;
 import agent.InputAgentGeo;
 import agent.InputAgentOpt;
@@ -374,5 +373,13 @@ public abstract class InputController implements Initializable{
     protected void setField(TextField tf, WrapperInteger val) {
     	if(val.getValue()==null) tf.setText("");
     	else tf.setText(val.getValue().toString());
+    }
+    protected <T> void setCombo(ComboBox<T> cb, WrapperEnum val) {
+    	if(val.getValue()==null) cb.getSelectionModel().clearSelection();
+    	else cb.setValue((T) val.getValue());
+    }
+    protected void setToggle(ToggleButton tb, WrapperBoolean val) {
+    	//val cannot be null!
+    	tb.setSelected(val.getValue());
     }
 }
