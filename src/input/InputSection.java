@@ -41,6 +41,9 @@ public abstract class InputSection implements Serializable{
 	public void setBoolRequired(Boolean br) {
 		boolRequired = br;
 	}
+	public Boolean getBoolRequired() {
+		return boolRequired;
+	}
 	public void setOptions(String st) {
 		if(st!=null) options=st;
 	}

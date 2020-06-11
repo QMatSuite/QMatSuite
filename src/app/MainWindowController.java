@@ -999,6 +999,7 @@ public class MainWindowController implements Initializable{
 			contGeo.loadProjectParameters();
 			contGeo.setDisabled();
 			contScf.loadProjectParameters();
+			contOpt.loadProjectParameters();
 			//update GUI
 			clearRightPane();
 			addRightPane(scrollGeo,EnumStep.GEO);
