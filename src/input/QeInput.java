@@ -27,6 +27,7 @@ import com.error.InvalidTypeException;
 
 import agent.InputAgentDos;
 import agent.InputAgentGeo;
+import agent.InputAgentMd;
 import agent.InputAgentNscf;
 import agent.InputAgentOpt;
 import agent.InputAgentScf;
@@ -86,6 +87,9 @@ public abstract class QeInput{
 		//implement in the subclasses
 	}
 	public void loadAgent(InputAgentOpt ia1) {
+		//implement in the subclasses
+	}
+	public void loadAgent(InputAgentMd ia1) {
 		//implement in the subclasses
 	}
 	public void loadAgent(InputAgentScf ia1) {

@@ -74,6 +74,7 @@ import main.MainClass;
 import app.centerwindow.OutputViewerController;
 import app.centerwindow.WorkScene3D;
 import app.input.InputGeoController;
+import app.input.InputMdController;
 import app.input.InputOptController;
 import app.input.InputScfController;
 import app.menus.SettingsWindowController;
@@ -155,6 +156,8 @@ public class MainWindowController implements Initializable{
 	
 	private InputOptController contOpt;
 	
+	private InputMdController contMd;
+			
 	private MainLeftPaneController contTree;
 	
 	private SettingsWindowController contSettings;
@@ -214,10 +217,14 @@ public class MainWindowController implements Initializable{
 			fxmlLoader3.setController(contOpt);
 			scrollOpt = fxmlLoader3.load();
 			
+			contMd = new InputMdController(mainClass);
+			FXMLLoader fxmlLoader4 = new FXMLLoader(this.getClass().getResource("input/InputMd.fxml"));
+			fxmlLoader4.setController(contMd);
+			scrollMd = fxmlLoader4.load();
+			
 			
 			scrollDos = FXMLLoader.load(getClass().getResource("input/InputDos.fxml"));
 			scrollBands = FXMLLoader.load(getClass().getResource("input/InputBands.fxml")); 
-			scrollMd = FXMLLoader.load(getClass().getResource("input/InputMd.fxml")); 
 			scrollTddft = FXMLLoader.load(getClass().getResource("input/InputTddft.fxml")); 
 			
 			contTree = new MainLeftPaneController(mainClass);
@@ -939,13 +946,12 @@ public class MainWindowController implements Initializable{
 //		if (mainClass.projectManager.existCurrentStep(EnumStep.SCF)) contScf.loadProjectParameters();
 //		if (mainClass.projectManager.existCurrentStep(EnumStep.GEO)) contGeo.loadProjectParameters();
 		
+		if (!mainClass.projectManager.existCurrentProject()) return;//abnormal!
+		radioCalculation.setSelected(true);
+		mainClass.projectManager.setGeoActive(false);
+		
 		switch(ec) {
 		case SCF:
-			if (!mainClass.projectManager.existCurrentProject()) return;//abnormal!
-			
-			radioCalculation.setSelected(true);
-			mainClass.projectManager.setGeoActive(false);
-			
 			if(boolCreate) {
 				//create new calculation even if SCF exists
 				//need to update current calculation before loading parameters
@@ -978,10 +984,6 @@ public class MainWindowController implements Initializable{
 			
 			break;
 		case OPT:
-			if (!mainClass.projectManager.existCurrentProject()) return;//abnormal!
-			radioCalculation.setSelected(true);
-			mainClass.projectManager.setGeoActive(false);
-			
 			if(boolCreate) {
 				//need to update current calculation before loading parameters
 				mainClass.projectManager.addCalcToActiveProj(EnumCalc.OPT); 
@@ -1012,55 +1014,40 @@ public class MainWindowController implements Initializable{
 			if(calcName!=null) comboCalculation.getSelectionModel().select(calcName);
 			break;
 		case DOS:
-//			if (currentProject!=null && !calcAvailDict.get(currentProject).get(EnumCalc.DOS)) {
-//				//project exists, but this calculation does not
-//				comboCalculation.getItems().add(calcString2.get(EnumCalc.DOS));
-//				comboCalculation.setValue(calcString2.get(EnumCalc.DOS));
-//			}
-//			addRightPane(scrollScf,EnumStep.GEO);
-//			addRightPane(scrollScf,EnumStep.SCF);
-//			addRightPane(scrollScf,EnumStep.NSCF);
-//			addRightPane(scrollDos,EnumStep.DOS);
-//			calcLabel.setText(calcString1.get(EnumCalc.DOS));
-//			currentCalcDict.put(currentProject,EnumCalc.DOS);
-//			calcAvailDict.get(currentProject).put(EnumCalc.DOS, true);
-//			updateCalcTree(EnumCalc.DOS);
 			break;
 		case BANDS:
-//			if (currentProject!=null && !calcAvailDict.get(currentProject).get(EnumCalc.BANDS)) {
-//				//project exists, but this calculation does not
-//				comboCalculation.getItems().add(calcString2.get(EnumCalc.BANDS));
-//				comboCalculation.setValue(calcString2.get(EnumCalc.BANDS));
-//			}
-//			addRightPane(scrollBands,EnumCalc.BANDS);
-//			calcLabel.setText(calcString1.get(EnumCalc.BANDS));
-//			currentCalcDict.put(currentProject,EnumCalc.BANDS);
-//			calcAvailDict.get(currentProject).put(EnumCalc.BANDS, true);
-//			updateCalcTree(EnumCalc.BANDS);
 			break;
 		case BOMD:
-//			if (currentProject!=null && !calcAvailDict.get(currentProject).get(EnumCalc.BOMD)) {
-//				//project exists, but this calculation does not
-//				comboCalculation.getItems().add(calcString2.get(EnumCalc.BOMD));
-//				comboCalculation.setValue(calcString2.get(EnumCalc.BOMD));
-//			}
-//			addRightPane(scrollMd,EnumCalc.BOMD);
-//			calcLabel.setText(calcString1.get(EnumCalc.BOMD));
-//			currentCalcDict.put(currentProject,EnumCalc.BOMD);
-//			calcAvailDict.get(currentProject).put(EnumCalc.BOMD, true);
-//			updateCalcTree(EnumCalc.BOMD);
+			if(boolCreate) {
+				//need to update current calculation before loading parameters
+				mainClass.projectManager.addCalcToActiveProj(EnumCalc.BOMD); 
+				calcName = mainClass.projectManager.getCurrentCalcName();
+				//initialize controllers. This will be automatically done only once
+				//***moved to the beginning of the program
+				//add comboBox item
+				comboCalculation.getItems().add(calcName);
+				//update current status to trees
+				contTree.updateCalcTree(calcName);
+				
+			}
+			
+			//load parameters for current project and calculation
+			contGeo.loadProjectParameters();
+			contGeo.setDisabled();
+			contScf.loadProjectParameters();
+			contMd.loadProjectParameters();
+			//update GUI
+			clearRightPane();
+			addRightPane(scrollGeo,EnumStep.GEO);
+			addRightPane(scrollScf,EnumStep.SCF);
+			addRightPane(scrollMd,EnumStep.BOMD);
+			try {tabPaneRight.getSelectionModel().select(1);}catch (Exception e) {}//load second tab(not geo)
+			
+			calcLabel.setText(EnumCalc.BOMD.getLong());
+			calcName = mainClass.projectManager.getCurrentCalcName();
+			if(calcName!=null) comboCalculation.getSelectionModel().select(calcName);
 			break;
 		case TDDFT:
-//			if (currentProject!=null && !calcAvailDict.get(currentProject).get(EnumCalc.TDDFT)) {
-//				//project exists, but this calculation does not
-//				comboCalculation.getItems().add(calcString2.get(EnumCalc.TDDFT));
-//				comboCalculation.setValue(calcString2.get(EnumCalc.TDDFT));
-//			}
-//			addRightPane(scrollTddft,EnumCalc.TDDFT);
-//			calcLabel.setText(calcString1.get(EnumCalc.TDDFT));
-//			currentCalcDict.put(currentProject,EnumCalc.TDDFT);
-//			calcAvailDict.get(currentProject).put(EnumCalc.TDDFT, true);
-//			updateCalcTree(EnumCalc.TDDFT);
 			break;
 		default:
 			Alert alert = new Alert(AlertType.INFORMATION);

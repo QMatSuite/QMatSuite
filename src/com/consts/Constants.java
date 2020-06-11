@@ -160,6 +160,20 @@ public class Constants {
 	public enum EnumUnitEnergy implements EnumInProgram{
 		Ry,eV
 	}
+	public enum EnumUnitTime implements EnumInProgram{
+		Ry("Rydberg a.u."),
+		fs("fs");
+		
+		private String name;
+		
+		private EnumUnitTime(String name) {
+	        this.name = name;
+	    }
+		@Override
+		public String toString() {
+			return name;
+		}
+	}
 	public enum EnumFunctional implements EnumInProgram{
 		LDA,GGA,PBE,PBESOL
 	}
@@ -218,6 +232,45 @@ public class Constants {
 	public enum EnumIonOptMethod implements EnumInProgram{
 		bfgs,damp;
 	}
+	public enum EnumIonMdMethod implements EnumInProgram{
+		verlet("verlet"),
+		langevin("langevin"),
+		langevinsmc("langevin-smc");
+		
+		private String name;
+		
+		private EnumIonMdMethod(String name) {
+	        this.name = name;
+	    }
+		@Override
+		public String toString() {
+			return name;
+		}
+	}
+	public enum EnumIonVcmdMethod implements EnumInProgram{
+		beeman;
+	}
+	public enum EnumThermalstat implements EnumInProgram{
+		rescaling("rescaling"),
+		rescalev("rescale-v"),
+		rescaleT("rescale-T"),
+		reduceT("reduce-T"),
+		berendsen("berendsen"),
+		andersen("andersen"),
+		svr("svr"),
+		initial("initial"),
+		non("not_controlled");
+		
+		private String name;
+		
+		private EnumThermalstat(String name) {
+	        this.name = name;
+	    }
+		@Override
+		public String toString() {
+			return name;
+		}
+	}
 	public enum EnumCellOptMethod implements EnumInProgram{
 		no("none"),
 		sd("sd"),
@@ -234,6 +287,9 @@ public class Constants {
 		public String toString() {
 			return name;
 		}
+	}
+	public enum EnumCellMdMethod implements EnumInProgram{
+		none,pr,w;
 	}
 	public enum EnumCellDoFree implements EnumInProgram{
 		all("all"),

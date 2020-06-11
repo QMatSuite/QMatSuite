@@ -158,6 +158,7 @@ public class Project implements Serializable{
 			case SCF:calc = new CalculationScfClass(calcName);break;
 			case OPT:calc = new CalculationOptClass(calcName);break;
 			case DOS:calc = new CalculationDosClass(calcName);break;
+			case BOMD:calc = new CalculationMdClass(calcName);break;
 			default:
 				Alert alert = new Alert(AlertType.INFORMATION);
 		    	alert.setTitle("Error");

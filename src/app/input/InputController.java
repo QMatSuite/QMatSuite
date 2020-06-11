@@ -7,7 +7,10 @@ import com.consts.Constants.EnumInProgram;
 import com.consts.Constants.EnumNumCondition;
 import com.consts.Constants.EnumStep;
 import agent.InputAgent;
+import agent.InputAgentDos;
 import agent.InputAgentGeo;
+import agent.InputAgentMd;
+import agent.InputAgentNscf;
 import agent.InputAgentOpt;
 import agent.InputAgentScf;
 import agent.WrapperBoolean;
@@ -198,10 +201,10 @@ public abstract class InputController implements Initializable{
 				case GEO:fd = InputAgentGeo.class.getField(fieldName);break;
 				case SCF:fd = InputAgentScf.class.getField(fieldName);break;
 				case OPT:fd = InputAgentOpt.class.getField(fieldName);break;
-				case NSCF:
-				case DOS:
+				case NSCF:fd = InputAgentNscf.class.getField(fieldName);break;
+				case DOS:fd = InputAgentDos.class.getField(fieldName);break;
+				case BOMD:fd = InputAgentMd.class.getField(fieldName);break;
 				case BANDS:
-				case BOMD:
 				case TDDFT:break;
 				default:break;	
 			}

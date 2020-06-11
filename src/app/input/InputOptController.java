@@ -30,7 +30,6 @@ import com.consts.Constants.EnumNumCondition;
 import com.consts.Constants.EnumStep;
 import com.consts.Constants.EnumUnitEnergy;
 import agent.InputAgentOpt;
-import agent.InputAgentScf;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
