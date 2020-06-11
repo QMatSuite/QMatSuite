@@ -10,6 +10,10 @@ We want to integrate input file generation, calculation job control, result anal
 
 The project is **not done yet**, and we are continuously working on it. We expect to offer the first early access version in **mid June**. For more information, feel free check out my [introduction video](https://www.youtube.com/watch?v=S2e1TWx6DHs) and [development progress video](https://www.youtube.com/watch?v=JSX576IHaH0) on my Youtube channel.
 
+## Preview of the main user interface 
+
+![main user interface](docs/images/uipreview.PNG)
+
 ## Requirements
 
 *   Java Runtime Environment (JRE) 1.8
