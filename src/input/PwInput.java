@@ -77,6 +77,9 @@ public class PwInput extends QeInput{
 		sectionDict.get("CONTROL").addParameter("tprnfor", new InputValueBoolean("tprnfor",false,false));
 		sectionDict.get("CONTROL").addParameter("tstress", new InputValueBoolean("tstress",false,false));
 		sectionDict.get("CONTROL").addParameter("pseudo_dir", new InputValueString("pseudo_dir",false));
+		sectionDict.get("CONTROL").addParameter("nstep", new InputValueInt("nstep",1,false));
+		sectionDict.get("CONTROL").addParameter("etot_conv_thr", new InputValueDouble("etot_conv_thr",1.0E-4,false));
+		sectionDict.get("CONTROL").addParameter("forc_conv_thr", new InputValueDouble("forc_conv_thr",1.0E-3,false));
 		
 		sectionDict.get("SYSTEM").setBoolRequired(true);
 		sectionDict.get("SYSTEM").addParameter("ibrav", new InputValueInt("ibrav"));
@@ -106,6 +109,14 @@ public class PwInput extends QeInput{
 		sectionDict.get("ELECTRONS").addParameter("conv_thr", new InputValueDouble("conv_thr",1e-6,false));
 		sectionDict.get("ELECTRONS").addParameter("mixing_mode", new InputValueString("mixing_mode",EnumMixingMode.plain.toString(),false));
 		sectionDict.get("ELECTRONS").addParameter("mixing_beta", new InputValueDouble("mixing_beta",0.7,false));
+		sectionDict.get("ELECTRONS").addParameter("scf_must_converge", new InputValueBoolean("scf_must_converge",true,false));
+
+		sectionDict.get("IONS").addParameter("ion_dynamics", new InputValueString("ion_dynamics","bfgs",false));
+				 
+		sectionDict.get("CELL").addParameter("cell_dynamics", new InputValueString("cell_dynamics","bfgs",false));
+		sectionDict.get("CELL").addParameter("press", new InputValueDouble("press",0.0,false));
+		sectionDict.get("CELL").addParameter("press_conv_thr", new InputValueDouble("press_conv_thr",0.5,false));
+		sectionDict.get("CELL").addParameter("cell_dofree", new InputValueString("cell_dofree","all",false));
 		
 		//"body" means the part without "...=" prefix. We assume here at most only one such part exists for one namelist
 		sectionDict.get("ATOMIC_SPECIES").addParameter("body",new InputValueString("body","",false));
@@ -331,8 +342,8 @@ public class PwInput extends QeInput{
 			
 			InputValueDoubleArray tmpAngle1 = ((InputValueDoubleArray) sectionDict.get("SYSTEM").getValue("angle1"));
 			InputValueDoubleArray tmpAngle2 = ((InputValueDoubleArray) sectionDict.get("SYSTEM").getValue("angle2"));
-			tmpAngle1.clearAll();
-			tmpAngle2.clearAll();
+			tmpAngle1.clearAll();tmpAngle1.setExplicitWrite(false);
+			tmpAngle2.clearAll();tmpAngle2.setExplicitWrite(false);
 			if(boolMag && ia1.nspin.isNull() && ia1.noncolin.getValue()) {
 				tmpAngle1.setExplicitWrite(true);
 				tmpAngle2.setExplicitWrite(true);
@@ -432,18 +443,44 @@ public class PwInput extends QeInput{
 	}
 	@Override
 	public void loadAgent(InputAgentOpt ia1) {
+		if(ia1==null) {
+			Alert alert1 = new Alert(AlertType.INFORMATION);
+	    	alert1.setTitle("Info");
+	    	alert1.setContentText("Null inputAgentOpt!");
+	    	alert1.showAndWait();
+	    	return;
+		}
+		if (!flagLoadGeo || !flagLoadScf) {
+			Alert alert1 = new Alert(AlertType.INFORMATION);
+	    	alert1.setTitle("Info");
+	    	alert1.setContentText("You should load Geometry first!");
+	    	alert1.showAndWait();
+	    	return;
+		}
 		try {
-			if (!flagLoadGeo || !flagLoadScf) {
-				Alert alert1 = new Alert(AlertType.INFORMATION);
-		    	alert1.setTitle("Info");
-		    	alert1.setContentText("You should load Geometry first!");
-		    	alert1.showAndWait();
-		    	return;
-			}
 			//set section required
 			setSectionRequired("IONS",true);
 			
 			setValue("CONTROL","calculation",new WrapperString(ia1.boolRelaxCell.getValue()?"vc-relax":"relax",true));
+			setValue("ELECTRONS","scf_must_converge",ia1.boolScfMustConverge);
+			//default for OPT is also 50 steps, although in PwInput the default is 1 step
+			setValue("CONTROL","nstep",ia1.nMaxSteps);
+			setValue("CONTROL","etot_conv_thr",ia1.numEConv);
+			setValue("CONTROL","forc_conv_thr",ia1.numFConv);
+			
+			setValue("IONS","ion_dynamics",ia1.enumOptMethodIon);
+			
+			boolean boolCell = ia1.boolRelaxCell.getValue();
+			setSectionRequired("CELL",boolCell);
+			setValue("CELL","cell_dynamics",ia1.enumOptMethodCell);andExplicitWrite("CELL","cell_dynamics",boolCell);
+			setValue("CELL","cell_dofree",ia1.enumCellDoFree);andExplicitWrite("CELL","cell_dofree",boolCell);
+			setValue("CELL","press",ia1.numPTarget);andExplicitWrite("CELL","press",boolCell);
+			setValue("CELL","press_conv_thr",ia1.numPConv);andExplicitWrite("CELL","press_conv_thr",boolCell);
+			
+			//correct Units, should be always put at the end
+			if(ia1.enumEUnit.equals(EnumUnitEnergy.eV)) {
+				((InputValueDouble) sectionDict.get("CONTROL").getValue("etot_conv_thr")).multiply(1.0/PhysicalConstants.ryInEV);
+			}
 			
 		} catch (InvalidKeyException | InvalidTypeException e) {
 			Alert alert1 = new Alert(AlertType.INFORMATION);

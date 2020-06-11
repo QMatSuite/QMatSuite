@@ -58,7 +58,7 @@ public abstract class QeInput{
 		Set<String> keys = sectionDict.keySet();
         for(String key: keys){
         	ContainerInputString ciTmp = sectionDict.get(key).toStringWrapper();
-        	if (!ciTmp.isEmpty()) {
+        	if (!ciTmp.isEmpty() || sectionDict.get(key).getBoolRequired()) {
         		ci.append(ciTmp);
         	}
         }

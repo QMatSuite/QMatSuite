@@ -30,6 +30,7 @@ import com.consts.Constants.EnumNumCondition;
 import com.consts.Constants.EnumStep;
 import com.consts.Constants.EnumUnitEnergy;
 import agent.InputAgentOpt;
+import agent.InputAgentScf;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
@@ -188,9 +189,26 @@ public class InputOptController extends InputController implements Initializable
 		setPointerStatusTextField(statusInfo);
 		//connect fields in GUI to inputAgent
 		
+		relaxCellToggle.selectedProperty().addListener((observable, oldValue, newValue) ->
+		{ 
+			InputAgentOpt iOpt = (InputAgentOpt) mainClass.projectManager.getStepAgent(EnumStep.OPT);
+			if (newValue) 
+			{ 
+				relaxCellToggle.setText("relax cell also");
+				gridPaneCell.setVisible(true);
+				if (iOpt!=null)  iOpt.boolRelaxCell.setValue(true);
+			}
+			else 
+			{ 
+				relaxCellToggle.setText("only ions"); 
+				gridPaneCell.setVisible(false);
+				if (iOpt!=null)  iOpt.boolRelaxCell.setValue(false);
+			}
+		});
+		//initialize without cell
+		relaxCellToggle.setSelected(false);relaxCellToggle.setText("only ions"); 
+		gridPaneCell.setVisible(false);
 		
-			
-		setToggleListener(relaxCellToggle, "boolRelaxCell", EnumStep.OPT, "relax cell also", "only ions");
 		setIntegerFieldListener(textMaxStep, "nMaxSteps",EnumNumCondition.positive,EnumStep.OPT);
 		setToggleListener(scfMustToggle, "boolScfMustConverge", EnumStep.OPT, "true", "false");
 		setDoubleFieldListener(eConvText, "numEConv",EnumNumCondition.positive,EnumStep.OPT);

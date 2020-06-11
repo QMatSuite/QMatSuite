@@ -47,7 +47,7 @@ public class NameList extends InputSection{
 	        	if (parameterDict.get(key).isExplicitWrite() || parameterDict.get(key).isRequired()) {
 	        		strTmp = parameterDict.get(key).toString();
 	        		if (strTmp==null) {ci.appendLog(nameEnum.name()+"-"+key+": required but not set\n");}
-	        		else if (!strTmp.isEmpty()) {ci.appendInput(strTmp+"\n");}
+	        		else if (!strTmp.isEmpty()) {ci.appendInput(strTmp+"\n");ci.boolEmpty=false;}
 	        	}
 	        }
 	        if (!keys.contains("body")) {ci.appendInput("/\n");}

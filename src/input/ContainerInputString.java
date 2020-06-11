@@ -25,10 +25,12 @@ public class ContainerInputString {
 	public EnumStep stepName;
 	public String input;
 	public String log;
+	public boolean boolEmpty;
 	public ContainerInputString() {
 		input = "";
 		log = "";
 		stepName = null;
+		boolEmpty = true;
 	}
 	public void appendInput(String st) {
 		input = input + st;
@@ -45,7 +47,8 @@ public class ContainerInputString {
 				(log.isEmpty()? "":"-------Warning-------\n"+log);
 	}
 	public boolean isEmpty() {
-		return (input.isEmpty()&&log.isEmpty());
+		//return (input.isEmpty()&&log.isEmpty());
+		return boolEmpty;
 	}
 	
 }
