@@ -4,19 +4,20 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>quantumVITAS</groupId>
   <artifactId>quantumVITAS</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
+  <version>0.0.3-SNAPSHOT</version>
    <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <javafx.version>8</javafx.version>
     </properties>
   <build>
-    <sourceDirectory>src</sourceDirectory>
+    <sourceDirectory>src/main/java</sourceDirectory>
     <resources>
       <resource>
-        <directory>src</directory>
-        <excludes>
-          <exclude>**/*.java</exclude>
-        </excludes>
+        <directory>src/main/resources</directory>
+        <includes>
+            <include>*.fxml</include>
+            <include>*.css</include>
+        </includes>
       </resource>
     </resources>
     <plugins>
@@ -28,25 +29,15 @@
 		<target>1.8</target>
 	    </configuration>
 	</plugin>
-    <plugin>
-		<groupId>org.jacoco</groupId>
-		<artifactId>jacoco-maven-plugin</artifactId>
-		<version>0.8.5</version>
-		<executions>
-			<execution>
-				<goals>
-					<goal>prepare-agent</goal>
-				</goals>
-			</execution>
-			<execution>
-				<id>report</id>
-				<phase>test</phase>
-				<goals>
-					<goal>report</goal>
-				</goals>
-			</execution>
-		</executions>
-	</plugin>
+		<plugin>
+		    <groupId>com.zenjava</groupId>
+		    <artifactId>javafx-maven-plugin</artifactId>
+		    <version>8.8.3</version>
+		    <configuration>
+		        <vendor>QuantumVITAS</vendor>
+		        <mainClass>main.java.Main</mainClass>
+		    </configuration>
+		</plugin>
     </plugins>
   </build>
 </project>
