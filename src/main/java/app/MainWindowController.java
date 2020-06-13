@@ -201,49 +201,49 @@ public class MainWindowController implements Initializable{
 		// load all relevant panes and sub-panes
 		try {
 			contScf = new InputScfController(mainClass);
-			FXMLLoader fxmlLoader1 = MainClass.getFxmlLoader("InputScf.fxml");
+			FXMLLoader fxmlLoader1 = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputScf.fxml"));
 			fxmlLoader1.setController(contScf);
 			scrollScf = fxmlLoader1.load();
 			//contScf.initialize();//must be later than the load
 			
 			contGeo = new InputGeoController(mainClass);
-			FXMLLoader fxmlLoader2 = MainClass.getFxmlLoader("InputGeo.fxml");
+			FXMLLoader fxmlLoader2 = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputGeo.fxml"));
 			fxmlLoader2.setController(contGeo);
 			scrollGeo = fxmlLoader2.load();
 			//contGeo.initialize();//must be later than the load
 			
 			
 			contOpt = new InputOptController(mainClass);
-			FXMLLoader fxmlLoader3 = MainClass.getFxmlLoader("InputOpt.fxml");
+			FXMLLoader fxmlLoader3 = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputOpt.fxml"));
 			fxmlLoader3.setController(contOpt);
 			scrollOpt = fxmlLoader3.load();
 			
 			contMd = new InputMdController(mainClass);
-			FXMLLoader fxmlLoader4 = MainClass.getFxmlLoader("InputMd.fxml");
+			FXMLLoader fxmlLoader4 = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputMd.fxml"));
 			fxmlLoader4.setController(contMd);
 			scrollMd = fxmlLoader4.load();
 			
-			FXMLLoader fxmlLoader5 = MainClass.getFxmlLoader("InputDos.fxml");
+			FXMLLoader fxmlLoader5 = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputDos.fxml"));
 			scrollDos = fxmlLoader5.load();
 
-			FXMLLoader fxmlLoader6 = MainClass.getFxmlLoader("InputBands.fxml");
+			FXMLLoader fxmlLoader6 = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputBands.fxml"));
 			scrollBands = fxmlLoader6.load(); 
 
-			FXMLLoader fxmlLoader7 = MainClass.getFxmlLoader("InputTddft.fxml");
+			FXMLLoader fxmlLoader7 = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputTddft.fxml"));
 			scrollTddft = fxmlLoader7.load(); 
 			
 			contTree = new MainLeftPaneController(mainClass);
-			FXMLLoader fxmlLoaderTree = MainClass.getFxmlLoader("MainLeftPane.fxml");
+			FXMLLoader fxmlLoaderTree = new FXMLLoader(getClass().getClassLoader().getResource("app/MainLeftPane.fxml"));
 			fxmlLoaderTree.setController(contTree);
 			scrollLeft = fxmlLoaderTree.load();
 			
 			contSettings = new SettingsWindowController(mainClass);
-			FXMLLoader fxmlLoaderSettings = MainClass.getFxmlLoader("settingsWindow.fxml");
+			FXMLLoader fxmlLoaderSettings = new FXMLLoader(getClass().getClassLoader().getResource("app/menus/settingsWindow.fxml"));
 			fxmlLoaderSettings.setController(contSettings);
 			borderSettings = fxmlLoaderSettings.load();
 			
 			contOutput = new OutputViewerController(mainClass);
-			FXMLLoader fxmlLoaderOutput = MainClass.getFxmlLoader("outputViewer.fxml");
+			FXMLLoader fxmlLoaderOutput = new FXMLLoader(getClass().getClassLoader().getResource("app/centerwindow/outputViewer.fxml"));
 			fxmlLoaderOutput.setController(contOutput);
 			hboxOutput = fxmlLoaderOutput.load();
 			
@@ -716,6 +716,7 @@ public class MainWindowController implements Initializable{
 		
 		String qePath = mainClass.projectManager.readGlobalSettings(SettingKeys.qePath.toString());
 		mainClass.projectManager.qePath = qePath;
+		
 		
 		contTree.updateProjects();
 		

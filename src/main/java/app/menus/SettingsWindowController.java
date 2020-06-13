@@ -75,7 +75,7 @@ public class SettingsWindowController implements Initializable {
 		
 		try {
 			contPath = new PathsController(mainClass);
-			FXMLLoader fxmlLoader1 = MainClass.getFxmlLoader("paths.fxml");
+			FXMLLoader fxmlLoader1 = new FXMLLoader(getClass().getClassLoader().getResource("app/menus/settingtabs/paths.fxml"));
 			fxmlLoader1.setController(contPath);
 			panePath = fxmlLoader1.load();
 		} catch (IOException e) {

@@ -70,6 +70,7 @@ public class ProjectManager {
 		else {return null;}
 	}
 	public File getWorkSpaceDir() {
+		if(workSpacePath==null) return null;
 		File wsDir = new File(workSpacePath);
 		if(wsDir.canWrite()) {return wsDir;}
 		else {

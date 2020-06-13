@@ -15,8 +15,8 @@
       <resource>
         <directory>src/main/resources</directory>
         <includes>
-            <include>*.fxml</include>
-            <include>*.css</include>
+            <include>**/*.fxml</include>
+            <include>**/*.css</include>
         </includes>
       </resource>
     </resources>
@@ -36,7 +36,27 @@
 		    <configuration>
 		        <vendor>QuantumVITAS</vendor>
 		        <mainClass>main.java.Main</mainClass>
+		        <bundleArguments>
+                        <runtime />
+                    </bundleArguments>
 		    </configuration>
+		    <executions>
+                    <!-- required before build-native -->
+                    <execution>
+                        <id>create-jfxjar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>build-jar</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>create-native</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>build-native</goal>
+                        </goals>
+                    </execution>
+                </executions>
 		</plugin>
     </plugins>
   </build>

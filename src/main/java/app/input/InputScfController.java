@@ -98,30 +98,30 @@ public class InputScfController extends InputController{
 			try {
 				
 				contStandard = new InputScfStandardController(mainClass);
-				FXMLLoader fxmlLoader0 = MainClass.getFxmlLoader("InputScfStandard.fxml");
+				FXMLLoader fxmlLoader0 = new FXMLLoader(getClass().getClassLoader().getResource("app/input/scf/InputScfStandard.fxml"));
 				fxmlLoader0.setController(contStandard);
 				vboxStandard = fxmlLoader0.load();
 				
 				contMagnet = new InputScfMagnetController(mainClass);
-				FXMLLoader fxmlLoader1 = MainClass.getFxmlLoader("InputScfMagnet.fxml");
+				FXMLLoader fxmlLoader1 = new FXMLLoader(getClass().getClassLoader().getResource("app/input/scf/InputScfMagnet.fxml"));
 				fxmlLoader1.setController(contMagnet);
 				vboxMagnet = fxmlLoader1.load();
 				
 				contHubb = new InputScfHubbardController(mainClass);
-				FXMLLoader fxmlLoader2 = MainClass.getFxmlLoader("InputScfHubbard.fxml");
+				FXMLLoader fxmlLoader2 = new FXMLLoader(getClass().getClassLoader().getResource("app/input/scf/InputScfHubbard.fxml"));
 				fxmlLoader2.setController(contHubb);
 				vboxHubbard = fxmlLoader2.load();
 				
-				FXMLLoader fxmlLoader3 = MainClass.getFxmlLoader("InputScfHybrid.fxml");
+				FXMLLoader fxmlLoader3 = new FXMLLoader(getClass().getClassLoader().getResource("app/input/scf/InputScfHybrid.fxml"));
 				vboxHybrid = fxmlLoader3.load();
 				
-				FXMLLoader fxmlLoader4 = MainClass.getFxmlLoader("InputScfVdw.fxml");
+				FXMLLoader fxmlLoader4 = new FXMLLoader(getClass().getClassLoader().getResource("app/input/scf/InputScfVdw.fxml"));
 				vboxVdw = fxmlLoader4.load();
 				
-				FXMLLoader fxmlLoader5 = MainClass.getFxmlLoader("InputScfEfield.fxml");
+				FXMLLoader fxmlLoader5 = new FXMLLoader(getClass().getClassLoader().getResource("app/input/scf/InputScfEfield.fxml"));
 				vboxEfield = fxmlLoader5.load();
 				
-				FXMLLoader fxmlLoader6 = MainClass.getFxmlLoader("InputScfAdvanced.fxml");
+				FXMLLoader fxmlLoader6 = new FXMLLoader(getClass().getClassLoader().getResource("app/input/scf/InputScfAdvanced.fxml"));
 				vboxAdvanced = fxmlLoader6.load();
 				
 				
