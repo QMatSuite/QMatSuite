@@ -17,7 +17,7 @@ The project is **not done yet**, and we are continuously working on it. We expec
 
 ## Requirements
 
-*   Java Runtime Environment (JRE) 1.8
+*   Java Runtime Environment (JRE) 1.8: https://java.com/en/download/
 *   Windows/Linux/Mac OS
 
 ## License
