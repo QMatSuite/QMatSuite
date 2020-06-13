@@ -16,17 +16,17 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package main.java.input;
+package input;
 
 import java.util.Set;
 
-import main.java.agent.InputAgentDos;
-import main.java.agent.WrapperBoolean;
-import main.java.agent.WrapperDouble;
-import main.java.agent.WrapperInteger;
-import main.java.agent.WrapperString;
-import main.java.com.error.InvalidKeyException;
-import main.java.com.error.InvalidTypeException;
+import agent.InputAgentDos;
+import agent.WrapperBoolean;
+import agent.WrapperDouble;
+import agent.WrapperInteger;
+import agent.WrapperString;
+import com.error.InvalidKeyException;
+import com.error.InvalidTypeException;
 
 public class DosInput extends QeInput{
 	

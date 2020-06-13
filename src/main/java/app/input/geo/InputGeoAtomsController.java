@@ -16,7 +16,7 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package main.java.app.input.geo;
+package app.input.geo;
 
 import java.net.URL;
 import java.util.List;
@@ -40,11 +40,11 @@ import javafx.scene.control.ToggleButton;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.paint.Color;
-import main.java.MainClass;
-import main.java.agent.InputAgentGeo;
-import main.java.app.input.InputController;
-import main.java.com.consts.ChemicalElements;
-import main.java.com.consts.Constants.EnumUnitAtomPos;
+import main.MainClass;
+import agent.InputAgentGeo;
+import app.input.InputController;
+import com.consts.ChemicalElements;
+import com.consts.Constants.EnumUnitAtomPos;
 
 public class InputGeoAtomsController extends InputController{
 

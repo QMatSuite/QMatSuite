@@ -17,7 +17,7 @@
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
 
-package main.java.app.input.geo;
+package app.input.geo;
 
 import java.io.File;
 import java.net.URL;
@@ -42,15 +42,15 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
-import main.java.MainClass;
-import main.java.agent.InputAgentGeo;
-import main.java.app.input.InputController;
-import main.java.com.consts.Constants.EnumFunctional;
-import main.java.com.consts.Constants.EnumPP;
-import main.java.com.programconst.DefaultFileNames.SettingKeys;
-import main.java.com.pseudopot.EnumPseudoPotLib;
-import main.java.com.pseudopot.PseudoDojoClass;
-import main.java.com.pseudopot.SSSPClass;
+import main.MainClass;
+import agent.InputAgentGeo;
+import app.input.InputController;
+import com.consts.Constants.EnumFunctional;
+import com.consts.Constants.EnumPP;
+import com.programconst.DefaultFileNames.SettingKeys;
+import com.pseudopot.EnumPseudoPotLib;
+import com.pseudopot.PseudoDojoClass;
+import com.pseudopot.SSSPClass;
 
 public class InputGeoElementsController extends InputController{
 

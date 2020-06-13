@@ -16,11 +16,11 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package main.java;
+package main;
 
 
-import main.java.job.JobManager;
-import main.java.project.ProjectManager;
+import job.JobManager;
+import project.ProjectManager;
 
 public class MainClass {
 	public ProjectManager projectManager;

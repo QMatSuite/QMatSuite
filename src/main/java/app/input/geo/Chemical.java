@@ -1,8 +1,8 @@
-package main.java.app.input.geo;
+package app.input.geo;
 
 import java.io.Serializable;
 
-import main.java.com.consts.ChemicalElements;
+import com.consts.ChemicalElements;
 
 public abstract class Chemical implements Serializable{
 

@@ -16,16 +16,16 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package main.java.agent;
+package agent;
 
 import java.util.ArrayList;
 
-import main.java.app.input.geo.Element;
-import main.java.com.consts.Constants.EnumMixingMode;
-import main.java.com.consts.Constants.EnumOccupations;
-import main.java.com.consts.Constants.EnumSmearing;
-import main.java.com.consts.Constants.EnumUnitEnergy;
-import main.java.com.consts.Constants.ProgramName;
+import app.input.geo.Element;
+import com.consts.Constants.EnumMixingMode;
+import com.consts.Constants.EnumOccupations;
+import com.consts.Constants.EnumSmearing;
+import com.consts.Constants.EnumUnitEnergy;
+import com.consts.Constants.ProgramName;
 
 public class InputAgentScf extends InputAgent{
 	/**

@@ -43,7 +43,7 @@
                 <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
               </rowConstraints>
                <children>
-                  <CheckBox fx:id="checkSetProjectDefault" mnemonicParsing="false" text="Set as main.java.project default" />
+                  <CheckBox fx:id="checkSetProjectDefault" mnemonicParsing="false" text="Set as project default" />
                   <GridPane GridPane.columnIndex="1">
                     <columnConstraints>
                       <ColumnConstraints hgrow="SOMETIMES" maxWidth="91.0" minWidth="10.0" prefWidth="47.0" />
@@ -51,7 +51,7 @@
                     </columnConstraints>
                      <children>
                         <Button fx:id="buttonGetProjectDefault" mnemonicParsing="false" text="Sync" />
-                        <Label text="from main.java.project default" GridPane.columnIndex="1" />
+                        <Label text="from project default" GridPane.columnIndex="1" />
                      </children>
                      <rowConstraints>
                         <RowConstraints />

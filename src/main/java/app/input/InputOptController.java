@@ -17,7 +17,7 @@
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
 
-package main.java.app.input;
+package app.input;
 
 
 import java.net.URL;
@@ -32,14 +32,14 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.layout.GridPane;
-import main.java.MainClass;
-import main.java.agent.InputAgentOpt;
-import main.java.com.consts.Constants.EnumCellDoFree;
-import main.java.com.consts.Constants.EnumCellOptMethod;
-import main.java.com.consts.Constants.EnumIonOptMethod;
-import main.java.com.consts.Constants.EnumNumCondition;
-import main.java.com.consts.Constants.EnumStep;
-import main.java.com.consts.Constants.EnumUnitEnergy;
+import main.MainClass;
+import agent.InputAgentOpt;
+import com.consts.Constants.EnumCellDoFree;
+import com.consts.Constants.EnumCellOptMethod;
+import com.consts.Constants.EnumIonOptMethod;
+import com.consts.Constants.EnumNumCondition;
+import com.consts.Constants.EnumStep;
+import com.consts.Constants.EnumUnitEnergy;
 
 public class InputOptController extends InputController implements Initializable {
 

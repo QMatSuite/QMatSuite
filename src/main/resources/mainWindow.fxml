@@ -28,7 +28,7 @@
                 <Menu fx:id="menuFile" mnemonicParsing="false" text="File">
                   <items>
                         <MenuItem fx:id="menuSaveProjectAs" mnemonicParsing="false" text="Save as..." />
-                        <MenuItem fx:id="menuLoadProject" mnemonicParsing="false" text="Load main.java.project" />
+                        <MenuItem fx:id="menuLoadProject" mnemonicParsing="false" text="Load project" />
                     <Menu fx:id="menuFile" mnemonicParsing="false" text="Examples">
                       <MenuItem mnemonicParsing="false" text="Si" />
                       <MenuItem mnemonicParsing="false" text="H2O" />
@@ -38,7 +38,7 @@
                 </Menu>
                 <Menu mnemonicParsing="false" text="Job control">
                   <items>
-                    <MenuItem fx:id="stopCurrentJob" mnemonicParsing="false" text="Stop current main.java.job" />
+                    <MenuItem fx:id="stopCurrentJob" mnemonicParsing="false" text="Stop current job" />
                     <MenuItem fx:id="stopAllJobs" mnemonicParsing="false" text="Stop all jobs" />
                   </items>
                 </Menu>
@@ -80,7 +80,7 @@
             <HBox>
                <children>
                   <Label minWidth="40.0" text="Project" />
-                <Button fx:id="createProject" minWidth="70.0" mnemonicParsing="false" prefWidth="90.0" text="New main.java.project" />
+                <Button fx:id="createProject" minWidth="70.0" mnemonicParsing="false" prefWidth="90.0" text="New project" />
                   <ComboBox fx:id="comboProject" minWidth="55.0" />
                   <Button fx:id="saveProjectButton" minWidth="45.0" mnemonicParsing="false" prefWidth="50.0" text="Save" />
                   <Separator orientation="VERTICAL" />

@@ -16,9 +16,9 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package main.java.input;
+package input;
 
-import main.java.com.error.InvalidTypeException;
+import com.error.InvalidTypeException;
 
 public class InputValueDouble extends InputValue {
 	/**

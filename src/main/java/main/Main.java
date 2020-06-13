@@ -16,13 +16,13 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package main.java;
+package main;
 
 
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.stage.Stage;
-import main.java.app.MainWindowController;
+import app.MainWindowController;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.fxml.FXMLLoader;

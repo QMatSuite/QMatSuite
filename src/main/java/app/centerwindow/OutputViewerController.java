@@ -17,7 +17,7 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package main.java.app.centerwindow;
+package app.centerwindow;
 
 import java.awt.Desktop;
 import java.io.File;
@@ -44,13 +44,13 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
 import javafx.util.Callback;
-import main.java.MainClass;
-import main.java.com.consts.Constants.EnumAnalysis;
-import main.java.com.consts.Constants.EnumCard;
-import main.java.com.consts.Constants.EnumFileCategory;
-import main.java.com.consts.Constants.EnumNameList;
-import main.java.com.programconst.DefaultFileNames;
-import main.java.com.programconst.ProgrammingConsts;
+import main.MainClass;
+import com.consts.Constants.EnumAnalysis;
+import com.consts.Constants.EnumCard;
+import com.consts.Constants.EnumFileCategory;
+import com.consts.Constants.EnumNameList;
+import com.programconst.DefaultFileNames;
+import com.programconst.ProgrammingConsts;
 
 public class OutputViewerController implements Initializable{
 

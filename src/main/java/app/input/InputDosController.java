@@ -17,14 +17,14 @@
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
 
-package main.java.app.input;
+package app.input;
 
 import java.net.URL;
 import java.util.ResourceBundle;
 
 import javafx.fxml.FXML;
 import javafx.scene.layout.AnchorPane;
-import main.java.MainClass;
+import main.MainClass;
 
 public class InputDosController extends InputController {
 	

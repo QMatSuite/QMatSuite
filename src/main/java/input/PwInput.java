@@ -16,7 +16,7 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package main.java.input;
+package input;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -24,26 +24,26 @@ import java.util.Set;
 
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
-import main.java.agent.InputAgentGeo;
-import main.java.agent.InputAgentNscf;
-import main.java.agent.InputAgentOpt;
-import main.java.agent.InputAgentScf;
-import main.java.agent.WrapperBoolean;
-import main.java.agent.WrapperDouble;
-import main.java.agent.WrapperEnum;
-import main.java.agent.WrapperInteger;
-import main.java.agent.WrapperString;
-import main.java.app.input.geo.Atom;
-import main.java.app.input.geo.Element;
-import main.java.com.consts.PhysicalConstants;
-import main.java.com.consts.Constants.EnumCard;
-import main.java.com.consts.Constants.EnumMixingMode;
-import main.java.com.consts.Constants.EnumNameList;
-import main.java.com.consts.Constants.EnumOccupations;
-import main.java.com.consts.Constants.EnumSmearing;
-import main.java.com.consts.Constants.EnumUnitEnergy;
-import main.java.com.error.InvalidKeyException;
-import main.java.com.error.InvalidTypeException;
+import agent.InputAgentGeo;
+import agent.InputAgentNscf;
+import agent.InputAgentOpt;
+import agent.InputAgentScf;
+import agent.WrapperBoolean;
+import agent.WrapperDouble;
+import agent.WrapperEnum;
+import agent.WrapperInteger;
+import agent.WrapperString;
+import app.input.geo.Atom;
+import app.input.geo.Element;
+import com.consts.PhysicalConstants;
+import com.consts.Constants.EnumCard;
+import com.consts.Constants.EnumMixingMode;
+import com.consts.Constants.EnumNameList;
+import com.consts.Constants.EnumOccupations;
+import com.consts.Constants.EnumSmearing;
+import com.consts.Constants.EnumUnitEnergy;
+import com.error.InvalidKeyException;
+import com.error.InvalidTypeException;
 
 public class PwInput extends QeInput{
 	

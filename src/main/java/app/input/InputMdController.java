@@ -17,22 +17,22 @@
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
 
-package main.java.app.input;
+package app.input;
 
 import java.net.URL;
 import java.util.ResourceBundle;
 
-import main.java.MainClass;
-import main.java.agent.InputAgentMd;
-import main.java.com.consts.Constants.EnumCellDoFree;
-import main.java.com.consts.Constants.EnumCellMdMethod;
-import main.java.com.consts.Constants.EnumInProgram;
-import main.java.com.consts.Constants.EnumIonMdMethod;
-import main.java.com.consts.Constants.EnumIonVcmdMethod;
-import main.java.com.consts.Constants.EnumNumCondition;
-import main.java.com.consts.Constants.EnumStep;
-import main.java.com.consts.Constants.EnumThermalstat;
-import main.java.com.consts.Constants.EnumUnitTime;
+import main.MainClass;
+import agent.InputAgentMd;
+import com.consts.Constants.EnumCellDoFree;
+import com.consts.Constants.EnumCellMdMethod;
+import com.consts.Constants.EnumInProgram;
+import com.consts.Constants.EnumIonMdMethod;
+import com.consts.Constants.EnumIonVcmdMethod;
+import com.consts.Constants.EnumNumCondition;
+import com.consts.Constants.EnumStep;
+import com.consts.Constants.EnumThermalstat;
+import com.consts.Constants.EnumUnitTime;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;

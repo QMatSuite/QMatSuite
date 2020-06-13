@@ -1,4 +1,4 @@
-package main.java.app.centerwindow;
+package app.centerwindow;
 
 import java.util.ArrayList;
 

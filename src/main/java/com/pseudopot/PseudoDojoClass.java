@@ -18,26 +18,26 @@
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
 
-package main.java.com.pseudopot;
+package com.pseudopot;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
-import main.java.com.consts.PhysicalConstants;
-import main.java.com.consts.Constants.EnumFunctional;
-import main.java.com.consts.Constants.EnumPP;
-import main.java.com.pseudopot.PseudoDojoEnum.FrPbeStandard;
-import main.java.com.pseudopot.PseudoDojoEnum.FrPbeStringent;
-import main.java.com.pseudopot.PseudoDojoEnum.FrPbesolStandard;
-import main.java.com.pseudopot.PseudoDojoEnum.FrPbesolStringent;
-import main.java.com.pseudopot.PseudoDojoEnum.SrPbeStandard;
-import main.java.com.pseudopot.PseudoDojoEnum.SrPbeStringent;
-import main.java.com.pseudopot.PseudoDojoEnum.SrPbesolStandard;
-import main.java.com.pseudopot.PseudoDojoEnum.SrPbesolStringent;
-import main.java.com.pseudopot.PseudoDojoEnum.SrPwStandard;
-import main.java.com.pseudopot.PseudoDojoEnum.SrPwStringent;
+import com.consts.PhysicalConstants;
+import com.consts.Constants.EnumFunctional;
+import com.consts.Constants.EnumPP;
+import com.pseudopot.PseudoDojoEnum.FrPbeStandard;
+import com.pseudopot.PseudoDojoEnum.FrPbeStringent;
+import com.pseudopot.PseudoDojoEnum.FrPbesolStandard;
+import com.pseudopot.PseudoDojoEnum.FrPbesolStringent;
+import com.pseudopot.PseudoDojoEnum.SrPbeStandard;
+import com.pseudopot.PseudoDojoEnum.SrPbeStringent;
+import com.pseudopot.PseudoDojoEnum.SrPbesolStandard;
+import com.pseudopot.PseudoDojoEnum.SrPbesolStringent;
+import com.pseudopot.PseudoDojoEnum.SrPwStandard;
+import com.pseudopot.PseudoDojoEnum.SrPwStringent;
 
 public class PseudoDojoClass extends PseudoPotential{
 

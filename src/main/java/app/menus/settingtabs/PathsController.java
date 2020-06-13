@@ -17,7 +17,7 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package main.java.app.menus.settingtabs;
+package app.menus.settingtabs;
 
 import java.io.File;
 import java.net.URL;
@@ -35,9 +35,9 @@ import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.CornerRadii;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
-import main.java.MainClass;
-import main.java.com.programconst.Coloring;
-import main.java.com.programconst.DefaultFileNames.SettingKeys;
+import main.MainClass;
+import com.programconst.Coloring;
+import com.programconst.DefaultFileNames.SettingKeys;
 
 public class PathsController implements Initializable{
 

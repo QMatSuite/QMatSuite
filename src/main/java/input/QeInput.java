@@ -16,24 +16,24 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package main.java.input;
+package input;
 
 import java.util.LinkedHashMap;
 import java.util.Set;
 
-import main.java.agent.InputAgentDos;
-import main.java.agent.InputAgentGeo;
-import main.java.agent.InputAgentMd;
-import main.java.agent.InputAgentNscf;
-import main.java.agent.InputAgentOpt;
-import main.java.agent.InputAgentScf;
-import main.java.agent.WrapperBoolean;
-import main.java.agent.WrapperDouble;
-import main.java.agent.WrapperInteger;
-import main.java.agent.WrapperString;
-import main.java.com.consts.Constants.EnumStep;
-import main.java.com.error.InvalidKeyException;
-import main.java.com.error.InvalidTypeException;
+import agent.InputAgentDos;
+import agent.InputAgentGeo;
+import agent.InputAgentMd;
+import agent.InputAgentNscf;
+import agent.InputAgentOpt;
+import agent.InputAgentScf;
+import agent.WrapperBoolean;
+import agent.WrapperDouble;
+import agent.WrapperInteger;
+import agent.WrapperString;
+import com.consts.Constants.EnumStep;
+import com.error.InvalidKeyException;
+import com.error.InvalidTypeException;
 
 public abstract class QeInput{ 
 	

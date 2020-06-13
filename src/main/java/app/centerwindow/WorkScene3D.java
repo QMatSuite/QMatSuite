@@ -16,7 +16,7 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package main.java.app.centerwindow;
+package app.centerwindow;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -45,13 +45,13 @@ import javafx.scene.shape.Cylinder;
 import javafx.scene.shape.Sphere;
 import javafx.scene.transform.Rotate;
 import javafx.scene.transform.Translate;
-import main.java.agent.InputAgentGeo;
-import main.java.app.input.geo.Atom;
-import main.java.com.consts.PhysicalConstants;
-import main.java.com.consts.Constants.EnumUnitAtomPos;
-import main.java.com.consts.Constants.EnumUnitCellAngle;
-import main.java.com.consts.Constants.EnumUnitCellParameter;
-import main.java.math.Thresholds;
+import agent.InputAgentGeo;
+import app.input.geo.Atom;
+import com.consts.PhysicalConstants;
+import com.consts.Constants.EnumUnitAtomPos;
+import com.consts.Constants.EnumUnitCellAngle;
+import com.consts.Constants.EnumUnitCellParameter;
+import math.Thresholds;
 
 public class WorkScene3D {
 	private AnchorPane acp;//root
