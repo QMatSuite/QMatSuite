@@ -16,7 +16,7 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package main.java.project;
+package project;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -33,14 +33,14 @@ import java.util.LinkedHashMap;
 
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
-import main.java.agent.InputAgent;
-import main.java.agent.InputAgentGeo;
-import main.java.com.consts.Constants.EnumCalc;
-import main.java.com.consts.Constants.EnumStep;
-import main.java.com.error.ErrorMsg;
-import main.java.com.programconst.DefaultFileNames;
-import main.java.input.ContainerInputString;
-import main.java.input.QeInput;
+import agent.InputAgent;
+import agent.InputAgentGeo;
+import com.consts.Constants.EnumCalc;
+import com.consts.Constants.EnumStep;
+import com.error.ErrorMsg;
+import com.programconst.DefaultFileNames;
+import input.ContainerInputString;
+import input.QeInput;
 
 public class ProjectManager {
 	public String workSpacePath;

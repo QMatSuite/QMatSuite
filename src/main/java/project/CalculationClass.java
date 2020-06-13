@@ -16,18 +16,18 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package main.java.project;
+package project;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import main.java.agent.InputAgent;
-import main.java.agent.InputAgentGeo;
-import main.java.com.consts.Constants.EnumCalc;
-import main.java.com.consts.Constants.EnumStep;
-import main.java.input.ContainerInputString;
-import main.java.input.QeInput;
+import agent.InputAgent;
+import agent.InputAgentGeo;
+import com.consts.Constants.EnumCalc;
+import com.consts.Constants.EnumStep;
+import input.ContainerInputString;
+import input.QeInput;
 
 public abstract class CalculationClass implements Serializable{
 	/**

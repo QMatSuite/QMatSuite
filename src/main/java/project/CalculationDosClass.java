@@ -16,22 +16,22 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package main.java.project;
+package project;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import main.java.agent.InputAgentDos;
-import main.java.agent.InputAgentGeo;
-import main.java.agent.InputAgentNscf;
-import main.java.agent.InputAgentScf;
-import main.java.com.consts.Constants.EnumCalc;
-import main.java.com.consts.Constants.EnumStep;
-import main.java.input.ContainerInputString;
-import main.java.input.DosInput;
-import main.java.input.PwInput;
-import main.java.input.QeInput;
+import agent.InputAgentDos;
+import agent.InputAgentGeo;
+import agent.InputAgentNscf;
+import agent.InputAgentScf;
+import com.consts.Constants.EnumCalc;
+import com.consts.Constants.EnumStep;
+import input.ContainerInputString;
+import input.DosInput;
+import input.PwInput;
+import input.QeInput;
 
 public class CalculationDosClass extends CalculationClass{
 	/**

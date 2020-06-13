@@ -1,4 +1,4 @@
-package main.java.app.input;
+package app.input;
 
 import java.lang.reflect.Field;
 
@@ -14,22 +14,22 @@ import javafx.scene.control.ToggleButton;
 import javafx.scene.control.Tooltip;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Label;
-import main.java.MainClass;
-import main.java.agent.InputAgent;
-import main.java.agent.InputAgentDos;
-import main.java.agent.InputAgentGeo;
-import main.java.agent.InputAgentMd;
-import main.java.agent.InputAgentNscf;
-import main.java.agent.InputAgentOpt;
-import main.java.agent.InputAgentScf;
-import main.java.agent.WrapperBoolean;
-import main.java.agent.WrapperDouble;
-import main.java.agent.WrapperEnum;
-import main.java.agent.WrapperInteger;
-import main.java.com.consts.QeDocumentation;
-import main.java.com.consts.Constants.EnumInProgram;
-import main.java.com.consts.Constants.EnumNumCondition;
-import main.java.com.consts.Constants.EnumStep;
+import main.MainClass;
+import agent.InputAgent;
+import agent.InputAgentDos;
+import agent.InputAgentGeo;
+import agent.InputAgentMd;
+import agent.InputAgentNscf;
+import agent.InputAgentOpt;
+import agent.InputAgentScf;
+import agent.WrapperBoolean;
+import agent.WrapperDouble;
+import agent.WrapperEnum;
+import agent.WrapperInteger;
+import com.consts.QeDocumentation;
+import com.consts.Constants.EnumInProgram;
+import com.consts.Constants.EnumNumCondition;
+import com.consts.Constants.EnumStep;
 
 public abstract class InputController implements Initializable{
 	

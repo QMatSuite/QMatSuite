@@ -17,13 +17,13 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package main.java.com.pseudopot;
+package com.pseudopot;
 
 import java.io.File;
 import java.util.ArrayList;
 
-import main.java.com.consts.Constants.EnumFunctional;
-import main.java.com.consts.Constants.EnumPP;
+import com.consts.Constants.EnumFunctional;
+import com.consts.Constants.EnumPP;
 
 public abstract class PseudoPotential {
 	protected EnumPseudoPotLib libName;

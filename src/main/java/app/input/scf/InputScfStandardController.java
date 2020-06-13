@@ -16,7 +16,7 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package main.java.app.input.scf;
+package app.input.scf;
 
 import java.net.URL;
 import java.util.ResourceBundle;
@@ -30,15 +30,15 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
-import main.java.MainClass;
-import main.java.agent.InputAgentScf;
-import main.java.app.input.InputController;
-import main.java.com.consts.Constants.EnumMixingMode;
-import main.java.com.consts.Constants.EnumNumCondition;
-import main.java.com.consts.Constants.EnumOccupations;
-import main.java.com.consts.Constants.EnumSmearing;
-import main.java.com.consts.Constants.EnumStep;
-import main.java.com.consts.Constants.EnumUnitEnergy;
+import main.MainClass;
+import agent.InputAgentScf;
+import app.input.InputController;
+import com.consts.Constants.EnumMixingMode;
+import com.consts.Constants.EnumNumCondition;
+import com.consts.Constants.EnumOccupations;
+import com.consts.Constants.EnumSmearing;
+import com.consts.Constants.EnumStep;
+import com.consts.Constants.EnumUnitEnergy;
 
 public class InputScfStandardController extends InputController{
 

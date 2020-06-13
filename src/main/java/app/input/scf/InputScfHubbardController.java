@@ -17,7 +17,7 @@
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
 
-package main.java.app.input.scf;
+package app.input.scf;
 
 import java.net.URL;
 import java.util.ArrayList;
@@ -38,12 +38,12 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
-import main.java.MainClass;
-import main.java.agent.InputAgentGeo;
-import main.java.agent.InputAgentScf;
-import main.java.app.input.InputController;
-import main.java.app.input.geo.Element;
-import main.java.com.consts.Constants.EnumStep;
+import main.MainClass;
+import agent.InputAgentGeo;
+import agent.InputAgentScf;
+import app.input.InputController;
+import app.input.geo.Element;
+import com.consts.Constants.EnumStep;
 
 
 public class InputScfHubbardController extends InputController{

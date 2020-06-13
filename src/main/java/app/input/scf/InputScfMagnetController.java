@@ -17,7 +17,7 @@
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
 
-package main.java.app.input.scf;
+package app.input.scf;
 
 import java.net.URL;
 import java.util.ResourceBundle;
@@ -39,12 +39,12 @@ import javafx.scene.control.ToggleButton;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
-import main.java.MainClass;
-import main.java.agent.InputAgentGeo;
-import main.java.agent.InputAgentScf;
-import main.java.app.input.InputController;
-import main.java.app.input.geo.Chemical;
-import main.java.com.consts.Constants.EnumStep;
+import main.MainClass;
+import agent.InputAgentGeo;
+import agent.InputAgentScf;
+import app.input.InputController;
+import app.input.geo.Chemical;
+import com.consts.Constants.EnumStep;
 
 
 public class InputScfMagnetController extends InputController{

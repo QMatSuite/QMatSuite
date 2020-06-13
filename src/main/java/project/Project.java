@@ -16,7 +16,7 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package main.java.project;
+package project;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -25,12 +25,12 @@ import java.util.HashMap;
 
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
-import main.java.agent.InputAgent;
-import main.java.agent.InputAgentGeo;
-import main.java.app.centerwindow.WorkScene3D;
-import main.java.com.consts.Constants.EnumCalc;
-import main.java.com.consts.Constants.EnumStep;
-import main.java.input.ContainerInputString;
+import agent.InputAgent;
+import agent.InputAgentGeo;
+import app.centerwindow.WorkScene3D;
+import com.consts.Constants.EnumCalc;
+import com.consts.Constants.EnumStep;
+import input.ContainerInputString;
 
 public class Project implements Serializable{
 	//EVRYTHING SHOULD BE ACCESSED ON THE PROJECT LEVEL, NOT ON THE CALCULATION CLASS LEVEL

@@ -17,16 +17,16 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package main.java.com.pseudopot;
+package com.pseudopot;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
-import main.java.com.consts.Constants.EnumFunctional;
-import main.java.com.pseudopot.SSSPEnum.Efficiency;
-import main.java.com.pseudopot.SSSPEnum.Precision;
+import com.consts.Constants.EnumFunctional;
+import com.pseudopot.SSSPEnum.Efficiency;
+import com.pseudopot.SSSPEnum.Precision;
 
 public class SSSPClass extends PseudoPotential{
 

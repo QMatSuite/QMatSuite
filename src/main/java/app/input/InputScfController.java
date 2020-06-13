@@ -17,7 +17,7 @@
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
 
-package main.java.app.input;
+package app.input;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -35,12 +35,12 @@ import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.VBox;
-import main.java.MainClass;
-import main.java.agent.InputAgentScf;
-import main.java.app.input.scf.InputScfHubbardController;
-import main.java.app.input.scf.InputScfMagnetController;
-import main.java.app.input.scf.InputScfStandardController;
-import main.java.com.consts.Constants.EnumStep;
+import main.MainClass;
+import agent.InputAgentScf;
+import app.input.scf.InputScfHubbardController;
+import app.input.scf.InputScfMagnetController;
+import app.input.scf.InputScfStandardController;
+import com.consts.Constants.EnumStep;
 
 public class InputScfController extends InputController{
 

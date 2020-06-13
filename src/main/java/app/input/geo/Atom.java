@@ -16,12 +16,12 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package main.java.app.input.geo;
+package app.input.geo;
 
 
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
-import main.java.com.consts.ChemicalElements;
+import com.consts.ChemicalElements;
 
 public class Atom extends Chemical {
 	/**

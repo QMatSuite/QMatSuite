@@ -17,7 +17,7 @@
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
 
-package main.java.app.input.geo;
+package app.input.geo;
 
 import java.net.URL;
 import java.util.ResourceBundle;
@@ -32,15 +32,15 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
-import main.java.MainClass;
-import main.java.agent.InputAgentGeo;
-import main.java.app.input.InputController;
-import main.java.com.consts.BravaisLattice;
-import main.java.com.consts.Constants.EnumNumCondition;
-import main.java.com.consts.Constants.EnumStep;
-import main.java.com.consts.Constants.EnumUnitCellAngle;
-import main.java.com.consts.Constants.EnumUnitCellLength;
-import main.java.com.consts.Constants.EnumUnitCellParameter;
+import main.MainClass;
+import agent.InputAgentGeo;
+import app.input.InputController;
+import com.consts.BravaisLattice;
+import com.consts.Constants.EnumNumCondition;
+import com.consts.Constants.EnumStep;
+import com.consts.Constants.EnumUnitCellAngle;
+import com.consts.Constants.EnumUnitCellLength;
+import com.consts.Constants.EnumUnitCellParameter;
 import javafx.scene.control.Alert.AlertType;
 
 public class InputGeoCellController extends InputController{

@@ -17,7 +17,7 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package main.java.app.menus;
+package app.menus;
 
 import java.io.IOException;
 import java.net.URL;
@@ -33,9 +33,9 @@ import javafx.scene.control.TreeView;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
-import main.java.MainClass;
-import main.java.app.menus.settingtabs.PathsController;
-import main.java.com.programconst.ProgrammingConsts.SettingsTags;
+import main.MainClass;
+import app.menus.settingtabs.PathsController;
+import com.programconst.ProgrammingConsts.SettingsTags;
 
 public class SettingsWindowController implements Initializable {
 

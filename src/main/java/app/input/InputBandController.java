@@ -17,7 +17,7 @@
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
 
-package main.java.app.input;
+package app.input;
 
 import java.net.URL;
 import java.util.ResourceBundle;
@@ -30,7 +30,7 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
-import main.java.MainClass;
+import main.MainClass;
 
 public class InputBandController extends InputController{
 	

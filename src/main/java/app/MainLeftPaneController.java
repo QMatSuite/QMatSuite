@@ -17,7 +17,7 @@
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
 
-package main.java.app;
+package app;
 import java.io.File;
 import java.net.URL;
 import java.util.HashMap;
@@ -37,9 +37,9 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.cell.TreeItemPropertyValueFactory;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
-import main.java.MainClass;
-import main.java.com.consts.Constants.EnumCalc;
-import main.java.project.ProjectCalcLog;
+import main.MainClass;
+import com.consts.Constants.EnumCalc;
+import project.ProjectCalcLog;
 
 public class MainLeftPaneController implements Initializable {
 	

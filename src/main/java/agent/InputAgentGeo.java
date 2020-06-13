@@ -16,22 +16,22 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package main.java.agent;
+package agent;
 
 import java.util.ArrayList;
 
-import main.java.app.input.geo.Atom;
-import main.java.app.input.geo.Element;
-import main.java.com.consts.ChemicalElements;
-import main.java.com.consts.PhysicalConstants;
-import main.java.com.consts.Constants.EnumFunctional;
-import main.java.com.consts.Constants.EnumPP;
-import main.java.com.consts.Constants.EnumUnitAtomPos;
-import main.java.com.consts.Constants.EnumUnitCellAngle;
-import main.java.com.consts.Constants.EnumUnitCellLength;
-import main.java.com.consts.Constants.EnumUnitCellParameter;
-import main.java.com.consts.Constants.ProgramName;
-import main.java.com.pseudopot.EnumPseudoPotLib;
+import app.input.geo.Atom;
+import app.input.geo.Element;
+import com.consts.ChemicalElements;
+import com.consts.PhysicalConstants;
+import com.consts.Constants.EnumFunctional;
+import com.consts.Constants.EnumPP;
+import com.consts.Constants.EnumUnitAtomPos;
+import com.consts.Constants.EnumUnitCellAngle;
+import com.consts.Constants.EnumUnitCellLength;
+import com.consts.Constants.EnumUnitCellParameter;
+import com.consts.Constants.ProgramName;
+import com.pseudopot.EnumPseudoPotLib;
 
 public class InputAgentGeo extends InputAgent{
 	/**

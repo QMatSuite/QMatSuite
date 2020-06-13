@@ -16,7 +16,7 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package main.java.app;
+package app;
 
 
 import java.io.File;
@@ -65,21 +65,21 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
-import main.java.MainClass;
-import main.java.app.centerwindow.OutputViewerController;
-import main.java.app.centerwindow.WorkScene3D;
-import main.java.app.input.InputGeoController;
-import main.java.app.input.InputMdController;
-import main.java.app.input.InputOptController;
-import main.java.app.input.InputScfController;
-import main.java.app.menus.SettingsWindowController;
-import main.java.com.consts.Constants.EnumCalc;
-import main.java.com.consts.Constants.EnumStep;
-import main.java.com.error.ErrorMsg;
-import main.java.com.programconst.Coloring;
-import main.java.com.programconst.DefaultFileNames.SettingKeys;
-import main.java.input.ContainerInputString;
-import main.java.job.JobNode;
+import main.MainClass;
+import app.centerwindow.OutputViewerController;
+import app.centerwindow.WorkScene3D;
+import app.input.InputGeoController;
+import app.input.InputMdController;
+import app.input.InputOptController;
+import app.input.InputScfController;
+import app.menus.SettingsWindowController;
+import com.consts.Constants.EnumCalc;
+import com.consts.Constants.EnumStep;
+import com.error.ErrorMsg;
+import com.programconst.Coloring;
+import com.programconst.DefaultFileNames.SettingKeys;
+import input.ContainerInputString;
+import job.JobNode;
 
 public class MainWindowController implements Initializable{
 	

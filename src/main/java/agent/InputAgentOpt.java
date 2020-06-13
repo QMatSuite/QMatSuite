@@ -16,13 +16,13 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package main.java.agent;
+package agent;
 
-import main.java.com.consts.Constants.EnumCellDoFree;
-import main.java.com.consts.Constants.EnumCellOptMethod;
-import main.java.com.consts.Constants.EnumIonOptMethod;
-import main.java.com.consts.Constants.EnumUnitEnergy;
-import main.java.com.consts.Constants.ProgramName;
+import com.consts.Constants.EnumCellDoFree;
+import com.consts.Constants.EnumCellOptMethod;
+import com.consts.Constants.EnumIonOptMethod;
+import com.consts.Constants.EnumUnitEnergy;
+import com.consts.Constants.ProgramName;
 
 public class InputAgentOpt extends InputAgent{
 	/**

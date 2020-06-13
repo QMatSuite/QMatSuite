@@ -17,7 +17,7 @@
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
 
-package main.java.app.input;
+package app.input;
 
 import java.io.IOException;
 import java.net.URL;
@@ -34,10 +34,10 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
-import main.java.MainClass;
-import main.java.app.input.geo.InputGeoAtomsController;
-import main.java.app.input.geo.InputGeoCellController;
-import main.java.app.input.geo.InputGeoElementsController;
+import main.MainClass;
+import app.input.geo.InputGeoAtomsController;
+import app.input.geo.InputGeoCellController;
+import app.input.geo.InputGeoElementsController;
 
 public class InputGeoController extends InputController{
 	

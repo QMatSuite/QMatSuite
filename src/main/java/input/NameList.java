@@ -16,10 +16,10 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package main.java.input;
+package input;
 import java.util.Set;
 
-import main.java.com.consts.Constants.EnumNameList;
+import com.consts.Constants.EnumNameList;
 
 public class NameList extends InputSection{
 	/**

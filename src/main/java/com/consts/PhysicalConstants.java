@@ -16,7 +16,7 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package main.java.com.consts;
+package com.consts;
 
 public interface PhysicalConstants {
 	public static final double angstPerBohr = 0.529177249;//1 bohr = 0.529177249 angstrom

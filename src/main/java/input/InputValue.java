@@ -16,15 +16,15 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package main.java.input;
+package input;
 
 import java.io.Serializable;
 
-import main.java.agent.WrapperBoolean;
-import main.java.agent.WrapperDouble;
-import main.java.agent.WrapperInteger;
-import main.java.agent.WrapperString;
-import main.java.com.error.InvalidTypeException;
+import agent.WrapperBoolean;
+import agent.WrapperDouble;
+import agent.WrapperInteger;
+import agent.WrapperString;
+import com.error.InvalidTypeException;
 
 public abstract class InputValue implements Serializable{
 	/**

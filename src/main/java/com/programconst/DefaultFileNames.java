@@ -17,7 +17,7 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package main.java.com.programconst;
+package com.programconst;
 
 public interface DefaultFileNames {
 	public String defaultSettingFile = "settings.ini";
