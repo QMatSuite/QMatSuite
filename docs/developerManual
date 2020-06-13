@@ -1,0 +1,5 @@
+
+To compile the project into an executable exe:
+clean install
+or
+mvn clean verify resources:resources jfx:native

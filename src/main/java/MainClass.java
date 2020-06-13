@@ -18,10 +18,7 @@
  *******************************************************************************/
 package main.java;
 
-import java.io.IOException;
-import java.net.URL;
 
-import javafx.fxml.FXMLLoader;
 import main.java.job.JobManager;
 import main.java.project.ProjectManager;
 
@@ -35,10 +32,10 @@ public class MainClass {
 		projectManager = new ProjectManager();
 		jobManager = new JobManager();
 	}
-	public static FXMLLoader getFxmlLoader(String filename) throws IOException {
-		//FXMLLoader fxmlLoader4 = new FXMLLoader(this.getClass().getResource("/main/resources/InputMd.fxml"));
-		//URL url = ClassLoader.getSystemResource(filename);
-		URL url = ClassLoader.getSystemClassLoader().getResource(filename);
-		return new FXMLLoader(url);
-	}
+//	public static FXMLLoader getFxmlLoader(String filename) throws IOException {
+//		//FXMLLoader fxmlLoader4 = new FXMLLoader(this.getClass().getResource("/main/resources/InputMd.fxml"));
+//		//URL url = ClassLoader.getSystemResource(filename);
+//		URL url = ClassLoader.getSystemClassLoader().getResource(filename);
+//		return new FXMLLoader(url);
+//	}
 }

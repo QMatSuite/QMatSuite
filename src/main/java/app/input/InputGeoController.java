@@ -88,17 +88,17 @@ public class InputGeoController extends InputController{
 			});
 			try {
 				contCell = new InputGeoCellController(mainClass);
-				FXMLLoader fxmlLoader1 = MainClass.getFxmlLoader("InputGeoCell.fxml");
+				FXMLLoader fxmlLoader1 = new FXMLLoader(getClass().getClassLoader().getResource("app/input/geo/InputGeoCell.fxml"));
 				fxmlLoader1.setController(contCell);
 				vboxCell = fxmlLoader1.load();
 				
 				contAtom = new InputGeoAtomsController(mainClass);
-				FXMLLoader fxmlLoader2 = MainClass.getFxmlLoader("InputGeoAtoms.fxml");
+				FXMLLoader fxmlLoader2 = new FXMLLoader(getClass().getClassLoader().getResource("app/input/geo/InputGeoAtoms.fxml"));
 				fxmlLoader2.setController(contAtom);
 				vboxAtoms = fxmlLoader2.load();
 				
 				contElem = new InputGeoElementsController(mainClass);
-				FXMLLoader fxmlLoader3 = MainClass.getFxmlLoader("InputGeoElements.fxml");
+				FXMLLoader fxmlLoader3 = new FXMLLoader(getClass().getClassLoader().getResource("app/input/geo/InputGeoElements.fxml"));
 				fxmlLoader3.setController(contElem);
 				vboxElements = fxmlLoader3.load();
 				

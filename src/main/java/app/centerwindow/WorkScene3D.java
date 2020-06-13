@@ -45,7 +45,6 @@ import javafx.scene.shape.Cylinder;
 import javafx.scene.shape.Sphere;
 import javafx.scene.transform.Rotate;
 import javafx.scene.transform.Translate;
-import main.java.MainClass;
 import main.java.agent.InputAgentGeo;
 import main.java.app.input.geo.Atom;
 import main.java.com.consts.PhysicalConstants;
@@ -101,7 +100,7 @@ public class WorkScene3D {
 		VBox hb;
 		
 		try {
-			FXMLLoader fxmlLoader2 = MainClass.getFxmlLoader("toolbar3D.fxml");
+			FXMLLoader fxmlLoader2 = new FXMLLoader(getClass().getClassLoader().getResource("app/centerwindow/toolbar3D.fxml"));
 			fxmlLoader2.setController(cont3D);
 			hb = fxmlLoader2.load();
 		} catch (IOException e) {
