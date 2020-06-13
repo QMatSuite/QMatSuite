@@ -1,8 +1,12 @@
 
 To run the project in eclipse:
 - Run configurations -> write "run" in gradle tasks
+or
 - gradlew run (in Windows cmd)
 
 To compile the project into an executable exe:
 - use Gradle 6.5 in Windows cmd (do not use in eclipse)
 - gradlew clean build jar creatExe
+
+To test in eclipse:
+- Run configurations -> write "test" in gradle tasks
