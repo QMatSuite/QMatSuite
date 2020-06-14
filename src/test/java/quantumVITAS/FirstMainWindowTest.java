@@ -1,5 +1,9 @@
 package quantumVITAS;
 
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -7,6 +11,8 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.MethodOrderer;
 import org.testfx.api.FxRobotException;
 import org.testfx.service.query.EmptyNodeQueryException;
+import org.testfx.util.WaitForAsyncUtils;
+
 import javafx.collections.ObservableList;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -14,6 +20,8 @@ import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeTableView;
 import javafx.scene.input.KeyCode;
 import project.ProjectCalcLog;
+
+import org.testfx.util.WaitForAsyncUtils;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class FirstMainWindowTest extends MainWindowTest{
@@ -59,16 +67,19 @@ public class FirstMainWindowTest extends MainWindowTest{
 		clickOn("#calcMain");
 		type(KeyCode.DOWN);
 		type(KeyCode.ENTER);
+		WaitForAsyncUtils.waitForFxEvents();
 		Assertions.assertTrue(comboCalculation.getItems().get(comboCalculation.getItems().size()-1).toLowerCase().contains("scf"));
 		
 		clickOn("#calcMain");
 		type(KeyCode.DOWN);type(KeyCode.DOWN);
 		type(KeyCode.ENTER);
+		WaitForAsyncUtils.waitForFxEvents();
 		Assertions.assertTrue(comboCalculation.getItems().get(comboCalculation.getItems().size()-1).toLowerCase().contains("opt"));
 
 		clickOn("#calcMain");
 		type(KeyCode.DOWN);type(KeyCode.DOWN);type(KeyCode.DOWN);type(KeyCode.DOWN);type(KeyCode.DOWN);
 		type(KeyCode.ENTER);
+		WaitForAsyncUtils.waitForFxEvents();
 		Assertions.assertTrue(comboCalculation.getItems().get(comboCalculation.getItems().size()-1).toLowerCase().contains("md"));
 	}
 	
