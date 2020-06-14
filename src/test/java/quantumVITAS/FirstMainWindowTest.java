@@ -65,21 +65,15 @@ public class FirstMainWindowTest extends MainWindowTest{
 		ComboBox<String> comboCalculation = lookup("#comboCalculation").queryComboBox();
 		
 		clickOn("#calcMain");
-		type(KeyCode.DOWN);
-		type(KeyCode.ENTER);
-		WaitForAsyncUtils.waitForFxEvents();
+		clickOn("#calcScf");
 		Assertions.assertTrue(comboCalculation.getItems().get(comboCalculation.getItems().size()-1).toLowerCase().contains("scf"));
 		
 		clickOn("#calcMain");
-		type(KeyCode.DOWN);type(KeyCode.DOWN);
-		type(KeyCode.ENTER);
-		WaitForAsyncUtils.waitForFxEvents();
+		clickOn("#calcOpt");
 		Assertions.assertTrue(comboCalculation.getItems().get(comboCalculation.getItems().size()-1).toLowerCase().contains("opt"));
 
 		clickOn("#calcMain");
-		type(KeyCode.DOWN);type(KeyCode.DOWN);type(KeyCode.DOWN);type(KeyCode.DOWN);type(KeyCode.DOWN);
-		type(KeyCode.ENTER);
-		WaitForAsyncUtils.waitForFxEvents();
+		clickOn("#calcMd");
 		Assertions.assertTrue(comboCalculation.getItems().get(comboCalculation.getItems().size()-1).toLowerCase().contains("md"));
 	}
 	
