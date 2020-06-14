@@ -10,3 +10,7 @@ To compile the project into an executable exe:
 
 To test in eclipse:
 - Run configurations -> write "test" in gradle tasks
+
+To also test coverage (in cmd):
+- gradlew build
+- gradlew build jacocoTestReport (for .html report)

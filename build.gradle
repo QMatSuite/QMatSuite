@@ -70,3 +70,5 @@ test {
 		exceptionFormat "full"
 	}
 }
+
+apply plugin: 'jacoco'
