@@ -139,7 +139,7 @@ public class MainLeftPaneController implements Initializable {
 			}
 		});
 		buttonRefresh.setOnAction((event) -> {
-			updateProjects();
+			updateProjects(true);
 		});
 		
 		projectTreeRoot = new TreeItem<ProjectCalcLog>(new ProjectCalcLog("Workspace","","",""));
@@ -235,14 +235,16 @@ public class MainLeftPaneController implements Initializable {
 //	    projectTreeDict.remove(pj);
 //		projectCalcTreeDict.remove(pj);
 //	}
-	public void updateProjects() {
+	public void updateProjects(boolean boolShowAlert) {
 		File wsDir = mainClass.projectManager.getWorkSpaceDir();
 
 		if (wsDir==null || !wsDir.canRead()) {
-			Alert alert1 = new Alert(AlertType.ERROR);
-	    	alert1.setTitle("Error");
-	    	alert1.setContentText("The workspace folder is not available! Please check before continuing!");
-	    	alert1.showAndWait();
+			if(boolShowAlert) {
+				Alert alert1 = new Alert(AlertType.ERROR);
+		    	alert1.setTitle("Error");
+		    	alert1.setContentText("The workspace folder is not available! Please check before continuing!");
+		    	alert1.showAndWait();
+	    	}
 			return;
 		}
 		

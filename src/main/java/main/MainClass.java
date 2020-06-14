@@ -26,16 +26,19 @@ public class MainClass {
 	public ProjectManager projectManager;
 	public JobManager jobManager;
 	
-	
+	private boolean boolTest;
 	
 	public MainClass() {
+		boolTest = false;
 		projectManager = new ProjectManager();
 		jobManager = new JobManager();
 	}
-//	public static FXMLLoader getFxmlLoader(String filename) throws IOException {
-//		//FXMLLoader fxmlLoader4 = new FXMLLoader(this.getClass().getResource("/main/resources/InputMd.fxml"));
-//		//URL url = ClassLoader.getSystemResource(filename);
-//		URL url = ClassLoader.getSystemClassLoader().getResource(filename);
-//		return new FXMLLoader(url);
-//	}
+	
+	public boolean isTestMode() {
+		return boolTest;
+	}
+	public void setTestMode(boolean bl) {
+		boolTest = bl;
+		projectManager.setTestMode(bl);
+	}
 }

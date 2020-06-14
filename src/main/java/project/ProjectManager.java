@@ -48,8 +48,17 @@ public class ProjectManager {
 	public String qePath;
 	private LinkedHashMap<String, Project> projectDict;
 	private String activeProjKey;
+	private boolean boolTest;
 	
+	public int getProjectNumber() {
+		if(projectDict==null || projectDict.isEmpty()) return 0;
+		return projectDict.size();
+	}
+	public void setTestMode(boolean bl) {
+		boolTest = bl;
+	}
 	public ProjectManager() {
+		boolTest = false;
 		projectDict = new LinkedHashMap<String, Project> ();
 		activeProjKey = null;
 		workSpacePath = null;
@@ -134,18 +143,25 @@ public class ProjectManager {
 			br.close();
 			isr.close();
 		} catch (FileNotFoundException e) {
-			Alert alert1 = new Alert(AlertType.INFORMATION);
-	    	alert1.setTitle("Warning");
-	    	alert1.setContentText("Setting file not found. Make a new one.");
-	    	alert1.showAndWait();
-	    	
+			if(!boolTest) {
+				Alert alert1 = new Alert(AlertType.INFORMATION);
+		    	alert1.setTitle("Warning");
+		    	alert1.setContentText("Probably this is your first time running QuantumVITAS because no setting "
+		    			+ "file is found. The program will make one for you, and please specify your workspace folder first"
+		    			+ ". Enjoy!");
+		    	alert1.showAndWait();
+			}
 	    	creatGlobalSettings();
 	    	
 		} catch (IOException e) {
-			Alert alert1 = new Alert(AlertType.INFORMATION);
-	    	alert1.setTitle("Error");
-	    	alert1.setContentText("IOException while reading setting file.");
-	    	alert1.showAndWait();
+			if(!boolTest) {
+				Alert alert1 = new Alert(AlertType.INFORMATION);
+		    	alert1.setTitle("Error");
+		    	alert1.setContentText("Woops! IOException while reading setting file. "
+		    			+ "Please delete the 'settings.ini' in the program root and restart the program.");
+		    	alert1.showAndWait();
+			}
+	    	e.printStackTrace();
 		}
 		return textOut;
 	}
@@ -191,6 +207,7 @@ public class ProjectManager {
 		    	alert1.setTitle("Error");
 		    	alert1.setContentText("IOException while reading setting file.");
 		    	alert1.showAndWait();
+		    	e.printStackTrace();
 			}
 		}
 	}

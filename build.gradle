@@ -55,7 +55,7 @@ launch4j {
     mainClassName = 'main.Main'
     jdkPreference = "jreOnly"
     outfile = "quantumVITAS-0.0.1-SNAPSHOT.exe"
-    //icon = "${projectDir}/src/main/resources/images/icon.ico"
+    icon = "${projectDir}/docs/images/dark_small_icon.ico"
     jar = '../libs/quantumVITAS-0.0.1-SNAPSHOT.jar'
 }
     
