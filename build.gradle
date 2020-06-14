@@ -24,7 +24,7 @@ dependencies {
 	testCompile "org.testfx:testfx-core:4.0.16-alpha"
 	//testCompile 'org.junit.jupiter:junit-jupiter-api:5.5.1'
     testCompile "org.testfx:testfx-junit5:4.0.16-alpha"
-    //testRuntime  'org.testfx:openjfx-monocle:8u76-b04'
+    testCompile  'org.testfx:openjfx-monocle:8u76-b04'
 }
 
 mainClassName = 'main.Main'

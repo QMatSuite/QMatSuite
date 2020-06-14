@@ -1,14 +1,65 @@
 dist: trusty
+
 language: java
-jdk: oraclejdk8
-install: true
-sudo: false # faster builds
-cache:
-  directories:
-    - $HOME/.m2
+
+sudo: false
+
+matrix:
+  include:
+    # Ubuntu Linux (trusty) / Oracle JDK 8 / Headed (AWT Robot)
+    - os: linux
+      dist: trusty
+      jdk: oraclejdk8
+      env:
+        - _JAVA_OPTIONS="-Dtestfx.robot=awt"
+    # Ubuntu Linux (trusty) / Oracle JDK 8 / Headed (Glass Robot) / HiDPI
+    - os: linux
+      dist: trusty
+      jdk: oraclejdk8
+      env:
+        - _JAVA_OPTIONS="-Dtestfx.robot=glass -Dglass.gtk.uiScale=2.0"
+    # Ubuntu Linux (trusty) / Oracle JDK 8 / Headless
+    - os: linux
+      dist: trusty
+      jdk: oraclejdk8
+      env:
+        - _JAVA_OPTIONS="-Djava.awt.headless=true -Dtestfx.robot=glass -Dtestfx.headless=true -Dprism.order=sw"
+    # macOS / Oracle JDK 8 / Headless
+    - os: osx
+      osx_image: xcode9.4
+      jdk: oraclejdk8
+      env:
+        - _JAVA_OPTIONS="-Djava.awt.headless=true -Dtestfx.robot=glass -Dtestfx.headless=true -Dprism.order=sw -Dprism.verbose=true"
+    # Headed macOS is not currently possible on Travis.
+    
+addons:
+  apt:
+    packages:
+      - oracle-java8-installer
 
 before_install:
  - chmod +x gradlew
+ - if [[ "${TRAVIS_OS_NAME}" == linux ]]; then export DISPLAY=:99.0; sh -e /etc/init.d/xvfb start; fi
+
+install: true
+
+before_script:
+  - if [[ "${TRAVIS_OS_NAME}" == osx ]]; then brew update; brew cask reinstall caskroom/versions/java8; fi
+
+script:
+  - ./gradlew check
+
+ before_cache:
+  - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
+  - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
+  - rm -f  $HOME/.gradle/caches/*/fileHashes/fileHashes.bin
+  - rm -f  $HOME/.gradle/caches/*/fileHashes/fileHashes.lock
+
+cache:
+  directories:
+    - $HOME/.gradle/caches/
+    - $HOME/.gradle/wrapper/
+    - $HOME/.m2
 
 after_success:
   - bash <(curl -s https://codecov.io/bash) -v
