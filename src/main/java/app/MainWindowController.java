@@ -267,19 +267,23 @@ public class MainWindowController implements Initializable{
 			
 			if(msg!=null) {
 				if(msg.contains(ErrorMsg.alreadyContainsProject)) {
-					Alert alert1 = new Alert(AlertType.INFORMATION);
-			    	alert1.setTitle("Error");
-			    	alert1.setContentText(msg);
-			    	alert1.showAndWait();
+					if(!mainClass.isTestMode()) {
+						Alert alert1 = new Alert(AlertType.INFORMATION);
+				    	alert1.setTitle("Error");
+				    	alert1.setContentText(msg);
+				    	alert1.showAndWait();
+					}
 			    	return;
 		    	}
 						
 				if(msg.contains(ErrorMsg.cannotFindProjectFolder)) {
-					contTree.updateProjects();
-					Alert alert1 = new Alert(AlertType.INFORMATION);
-			    	alert1.setTitle("Error");
-			    	alert1.setContentText(msg);
-			    	alert1.showAndWait();
+					contTree.updateProjects(true);
+					if(!mainClass.isTestMode()) {
+						Alert alert1 = new Alert(AlertType.INFORMATION);
+				    	alert1.setTitle("Error");
+				    	alert1.setContentText(msg);
+				    	alert1.showAndWait();
+					}
 					return;}
 			}
 			createProjectGui(projName);//loading GUI
@@ -287,10 +291,12 @@ public class MainWindowController implements Initializable{
 			contTree.setOpenCloseButtons(false);
 			
 			if(msg!=null) {
-				Alert alert1 = new Alert(AlertType.INFORMATION);
-		    	alert1.setTitle("Info");
-		    	alert1.setContentText(msg);
-		    	alert1.showAndWait();
+				if(!mainClass.isTestMode()) {
+					Alert alert1 = new Alert(AlertType.INFORMATION);
+			    	alert1.setTitle("Info");
+			    	alert1.setContentText(msg);
+			    	alert1.showAndWait();
+				}
 			}
 		});
 		contTree.buttonCloseSelected.setOnAction((event) -> {
@@ -314,32 +320,42 @@ public class MainWindowController implements Initializable{
 		loadEnvironmentPaths();
 		
 		createProject.setOnAction((event) -> {
-//			String oldProjectTemp = currentProject;
 			
-			TextInputDialog promptProjName = new TextInputDialog(); 
 			String projName = null;
 			String msg = null;
-			promptProjName.setHeaderText("Enter the project name");
-			do {
-				Optional<String> result = promptProjName.showAndWait();
-				if (result.isPresent()) {
-					projName = promptProjName.getEditor().getText();
-					msg = mainClass.projectManager.checkProjectName(projName);
-					promptProjName.setHeaderText(msg);
-				}else {
-					return;
-				}
-			} while (msg!=null);
+			
+			if(mainClass.isTestMode()) {
+				int projectAllCount = mainClass.projectManager.getProjectNumber();
+				projName = "testProject"+Integer.toString(projectAllCount);
+			}
+			else {
+				TextInputDialog promptProjName = new TextInputDialog(); 
+				
+				promptProjName.setHeaderText("Enter the project name");
+				do {
+					Optional<String> result = promptProjName.showAndWait();
+					if (result.isPresent()) {
+						projName = promptProjName.getEditor().getText();
+						msg = mainClass.projectManager.checkProjectName(projName);
+						promptProjName.setHeaderText(msg);
+					}else {
+						return;
+					}
+				} while (msg!=null);
+			}
+			
 			
 			File wsDir = mainClass.projectManager.getWorkSpaceDir();
 			if(wsDir==null) return;
 			File projDir = new File(wsDir,projName);
 			
 			if (projDir.exists()) {
-				Alert alert = new Alert(AlertType.INFORMATION);
-		    	alert.setTitle("Error");
-		    	alert.setContentText("Project with the same name already existed in the workspace. Please try another name.");
-		    	alert.showAndWait();
+				if(!mainClass.isTestMode()) {
+					Alert alert = new Alert(AlertType.INFORMATION);
+			    	alert.setTitle("Error");
+			    	alert.setContentText("Project with the same name already existed in the workspace. Please try another name.");
+			    	alert.showAndWait();
+				}
 				return;
 			}
 			
@@ -419,17 +435,19 @@ public class MainWindowController implements Initializable{
 		showInputButton.setOnAction((event) -> {
 			ArrayList<ContainerInputString> cis = mainClass.projectManager.genInputFromAgent();
 			
-			if (cis!=null && cis.size()>0) {
-				Alert alert = new Alert(AlertType.INFORMATION);
-		    	alert.setTitle("Input");
-		    	alert.setContentText(cis.size()+" steps in total. Show here the input for the first step:\n"+cis.get(0).toString());
-		    	alert.showAndWait();
-			}
-			else {
-				Alert alert = new Alert(AlertType.INFORMATION);
-		    	alert.setTitle("Input");
-		    	alert.setContentText("Cannot generate input file. Empty input file.");
-		    	alert.showAndWait();
+			if(!mainClass.isTestMode()) {
+				if (cis!=null && cis.size()>0) {
+					Alert alert = new Alert(AlertType.INFORMATION);
+			    	alert.setTitle("Input");
+			    	alert.setContentText(cis.size()+" steps in total. Show here the input for the first step:\n"+cis.get(0).toString());
+			    	alert.showAndWait();
+				}
+				else {
+					Alert alert = new Alert(AlertType.INFORMATION);
+			    	alert.setTitle("Input");
+			    	alert.setContentText("Cannot generate input file. Empty input file.");
+			    	alert.showAndWait();
+				}
 			}
 		});
 		
@@ -471,10 +489,12 @@ public class MainWindowController implements Initializable{
 			//save project first
 			File wsDir = mainClass.projectManager.getWorkSpaceDir();
 			if(wsDir==null || !wsDir.canWrite()) {
-				Alert alert = new Alert(AlertType.INFORMATION);
-		    	alert.setTitle("Error");
-		    	alert.setContentText("Cannot find the workspace directory when trying to run job.");
-		    	alert.showAndWait();
+				if(!mainClass.isTestMode()) {
+					Alert alert = new Alert(AlertType.INFORMATION);
+			    	alert.setTitle("Error");
+			    	alert.setContentText("Cannot find the workspace directory when trying to run job.");
+			    	alert.showAndWait();
+				}
 		    	return;
 	    	}
 			//only save current calc, do not show successfully save window
@@ -482,48 +502,58 @@ public class MainWindowController implements Initializable{
 			//get calculation directory
 			File fl = mainClass.projectManager.getCalculationDir();
 			if(fl==null || !fl.canWrite() || !fl.canRead()) {
-				Alert alert = new Alert(AlertType.INFORMATION);
-		    	alert.setTitle("Error");
-		    	alert.setContentText("Cannot find the calculation directory when trying to run job.");
-		    	alert.showAndWait();
+				if(!mainClass.isTestMode()) {
+					Alert alert = new Alert(AlertType.INFORMATION);
+			    	alert.setTitle("Error");
+			    	alert.setContentText("Cannot find the calculation directory when trying to run job.");
+			    	alert.showAndWait();
+				}
 		    	return;
 			}
 
 			//generate input file
 			ArrayList<ContainerInputString> cis = mainClass.projectManager.genInputFromAgent();
 			if(cis==null || cis.isEmpty()) {
-				Alert alert = new Alert(AlertType.INFORMATION);
-		    	alert.setTitle("Error");
-		    	alert.setContentText("No input file generated. Should not be like this! Abort...");
-		    	alert.showAndWait();
+				if(!mainClass.isTestMode()) {
+					Alert alert = new Alert(AlertType.INFORMATION);
+			    	alert.setTitle("Error");
+			    	alert.setContentText("No input file generated. Should not be like this! Abort...");
+			    	alert.showAndWait();
+				}
 		    	return;
 			}
 
 			for(int j = 0 ; j < cis.size() ; j++) {
 				if(cis.get(j)==null || (cis.get(j).log!=null && !cis.get(j).log.isEmpty()) || cis.get(j).input==null) {
-					Alert alert = new Alert(AlertType.INFORMATION);
-			    	alert.setTitle("Warning");
-			    	String stt = "Warning! Input file not complete for "+j+"th step. Please fix the following errors:\n";
-			    	stt+=(cis.get(j).input==null? "Null input string.\n":"");
-			    	alert.setContentText(cis.get(j)==null ? stt:(stt + cis.get(j).log));
-			    	alert.showAndWait();
+					if(!mainClass.isTestMode()) {
+						Alert alert = new Alert(AlertType.INFORMATION);
+				    	alert.setTitle("Warning");
+				    	String stt = "Warning! Input file not complete for "+j+"th step. Please fix the following errors:\n";
+				    	stt+=(cis.get(j).input==null? "Null input string.\n":"");
+				    	alert.setContentText(cis.get(j)==null ? stt:(stt + cis.get(j).log));
+				    	alert.showAndWait();
+					}
 			    	return;
 				}
 				if(cis.get(j).stepName==null) {
-					Alert alert = new Alert(AlertType.INFORMATION);
-			    	alert.setTitle("Warning");
-			    	alert.setContentText("Warning! EnumStep not set for "+j+"th step. Please check the code.");
-			    	alert.showAndWait();
+					if(!mainClass.isTestMode()) {
+						Alert alert = new Alert(AlertType.INFORMATION);
+				    	alert.setTitle("Warning");
+				    	alert.setContentText("Warning! EnumStep not set for "+j+"th step. Please check the code.");
+				    	alert.showAndWait();
+					}
 			    	return;
 				}
 				File calcFile = new File(fl,cis.get(j).stepName.toString()+".in");
 				try {
 		            Files.write(calcFile.toPath(), cis.get(j).input.getBytes());
 		        } catch (IOException e) {
-		        	Alert alert = new Alert(AlertType.INFORMATION);
-			    	alert.setTitle("Error");
-			    	alert.setContentText("Warning! Cannot write input file for "+j+"th step. Abort.");
-			    	alert.showAndWait();
+		        	if(!mainClass.isTestMode()) {
+			        	Alert alert = new Alert(AlertType.INFORMATION);
+				    	alert.setTitle("Error");
+				    	alert.setContentText("Warning! Cannot write input file for "+j+"th step. Abort.");
+				    	alert.showAndWait();
+		        	}
 			    	return;
 		        }
 			}
@@ -614,31 +644,46 @@ public class MainWindowController implements Initializable{
 			if(wsp1!=null) {
 				File wsDir = new File(wsp1);
 				if(mainClass.projectManager.existCurrentProject() && wsDir.canRead()) {
-					Alert alert1 = new Alert(AlertType.INFORMATION);
-			    	alert1.setTitle("Warning");
-			    	alert1.setContentText("Please close ALL projects before changing the workspace directory.");
-			    	alert1.showAndWait();
+					if(!mainClass.isTestMode()) {
+						Alert alert1 = new Alert(AlertType.INFORMATION);
+				    	alert1.setTitle("Warning");
+				    	alert1.setContentText("Please close ALL projects before changing the workspace directory.");
+				    	alert1.showAndWait();
+					}
 			    	return;
 				}
 			}
-			
-			DirectoryChooser dirChooser = new DirectoryChooser ();
-			
-			//go to current directory
-			String currentPath = Paths.get(".").toAbsolutePath().normalize().toString();
-			File tmpFile = new File(currentPath);
-			if(tmpFile.canRead()) {
-				dirChooser.setInitialDirectory(tmpFile);
+			File selectedDir=null;	
+			if(mainClass.isTestMode()) {
+				//for testFX tests
+				//go to current directory
+				String currentPath = Paths.get(".").toAbsolutePath().normalize().toString();
+				File tmpFile = new File(currentPath,"testfx");
+				//delete test workspace folder
+				if(tmpFile.exists()) {deleteDir(tmpFile);}
+				//make new folder
+				if(!tmpFile.exists() && !tmpFile.mkdirs()) {return;}
+				selectedDir = tmpFile;
 			}
-			
-			File selectedDir = dirChooser.showDialog((Stage)rootPane.getScene().getWindow());
-			
+			else {
+				//only execute when there is not test
+				DirectoryChooser dirChooser = new DirectoryChooser ();
+				
+				//go to current directory
+				String currentPath = Paths.get(".").toAbsolutePath().normalize().toString();
+				File tmpFile = new File(currentPath);
+				if(tmpFile.canRead()) {
+					dirChooser.setInitialDirectory(tmpFile);
+				}
+				
+				selectedDir = dirChooser.showDialog((Stage)rootPane.getScene().getWindow());
+			}
 			if(selectedDir!=null && selectedDir.canRead()) {
 				mainClass.projectManager.workSpacePath = selectedDir.getPath();
 				textWorkSpace.setText(mainClass.projectManager.workSpacePath);
 				mainClass.projectManager.writeGlobalSettings(SettingKeys.workspace.toString(),selectedDir.getPath());
 				setWorkSpace(true);
-				contTree.updateProjects();
+				contTree.updateProjects(true);
 				textWorkSpace.setBackground(new Background(new BackgroundFill(Coloring.validFile, 
 						CornerRadii.EMPTY, Insets.EMPTY)));
 			}
@@ -656,10 +701,12 @@ public class MainWindowController implements Initializable{
 		//***may be unnecessary for some situations
 		//remove last one. The if condition takes care of the case of first creation of a project
 		if(tabRowNum==null) {
-			Alert alert = new Alert(AlertType.INFORMATION);
-	    	alert.setTitle("Error");
-	    	alert.setContentText("Null of tabRowNum. Cannot load workscene.");
-	    	alert.showAndWait();
+			if(!mainClass.isTestMode()) {
+				Alert alert = new Alert(AlertType.INFORMATION);
+		    	alert.setTitle("Error");
+		    	alert.setContentText("Null of tabRowNum. Cannot load workscene.");
+		    	alert.showAndWait();
+			}
 		}
 		else {
 			ObservableList<Node>  obsTmp = hbTmp.getChildren();
@@ -683,6 +730,7 @@ public class MainWindowController implements Initializable{
 		thread1.interrupt();
 	}
 	private void loadEnvironmentPaths() {
+		//surpress all Alerts for tests
 		//load environment variable
 		String wsp = mainClass.projectManager.readGlobalSettings(SettingKeys.workspace.toString());
 		mainClass.projectManager.workSpacePath = wsp;
@@ -698,27 +746,27 @@ public class MainWindowController implements Initializable{
 				setWorkSpace(false);
 				textWorkSpace.setBackground(new Background(new BackgroundFill(Coloring.invalidFile, 
 						CornerRadii.EMPTY, Insets.EMPTY)));
-				Alert alert1 = new Alert(AlertType.INFORMATION);
-		    	alert1.setTitle("Warning");
-		    	alert1.setContentText("Cannot load the previous workspace directory. Please specify a new one.");
-		    	alert1.showAndWait();
+//				Alert alert1 = new Alert(AlertType.INFORMATION);
+//		    	alert1.setTitle("Warning");
+//		    	alert1.setContentText("Cannot load the previous workspace directory. Please specify a new one.");
+//		    	alert1.showAndWait();
 			}
 		}
 		else {
 			setWorkSpace(false);
 			textWorkSpace.setBackground(new Background(new BackgroundFill(Coloring.invalidFile, 
 					CornerRadii.EMPTY, Insets.EMPTY)));
-			Alert alert1 = new Alert(AlertType.INFORMATION);
-	    	alert1.setTitle("Message");
-	    	alert1.setContentText("Please specify a workspace directory to start with.");
-	    	alert1.showAndWait();
+//			Alert alert1 = new Alert(AlertType.INFORMATION);
+//	    	alert1.setTitle("Message");
+//	    	alert1.setContentText("Please specify a workspace directory to start with.");
+//	    	alert1.showAndWait();
 		}
 		
 		String qePath = mainClass.projectManager.readGlobalSettings(SettingKeys.qePath.toString());
 		mainClass.projectManager.qePath = qePath;
 		
 		
-		contTree.updateProjects();
+		contTree.updateProjects(false);
 		
 		String wsp2 = mainClass.projectManager.readGlobalSettings(SettingKeys.pseudolibroot.toString());
 		mainClass.projectManager.pseudoLibPath = wsp2;
@@ -1056,11 +1104,22 @@ public class MainWindowController implements Initializable{
 		case TDDFT:
 			break;
 		default:
-			Alert alert = new Alert(AlertType.INFORMATION);
-	    	alert.setTitle("Error");
-	    	alert.setContentText("Wrong calculation type!");
-
-	    	alert.showAndWait();
+			if(!mainClass.isTestMode()) {
+				Alert alert = new Alert(AlertType.INFORMATION);
+		    	alert.setTitle("Error");
+		    	alert.setContentText("Wrong calculation type!");
+	
+		    	alert.showAndWait();
+			}
 		}
+	}
+	boolean deleteDir(File directoryToBeDeleted) {
+	    File[] allContents = directoryToBeDeleted.listFiles();
+	    if (allContents != null) {
+	        for (File file : allContents) {
+	        	deleteDir(file);
+	        }
+	    }
+	    return directoryToBeDeleted.delete();
 	}
 }

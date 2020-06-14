@@ -31,6 +31,14 @@ import javafx.fxml.FXMLLoader;
 public class Main extends Application {
 	private MainWindowController contMain;
 	private MainClass mainClass;
+	private static boolean isTest=false;
+	
+	public static boolean isTestMode() {
+		return isTest;
+	}
+	public static void setTestMode(boolean bl) {
+		isTest = bl;
+	}
 	
 	@Override
 	public void start(Stage primaryStage) {
@@ -38,7 +46,7 @@ public class Main extends Application {
 //		primaryStage.setScene(new Scene(new Label("Hello World!")));
 //      primaryStage.show();
 		try {
-			mainClass = new MainClass();
+			mainClass = new MainClass();mainClass.setTestMode(isTest);
 			contMain = new MainWindowController(mainClass);
 			FXMLLoader fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("mainWindow.fxml"));
 			fxmlLoader.setController(contMain);
