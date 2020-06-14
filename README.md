@@ -1,4 +1,4 @@
-# QuantumVITAS
+<img src="docs/images/dark_logo.png" width="450">
 
 QuantumVITAS (Quantum Visualization Interacting Toolkit for Ab-initio Simulations) is a graphical user interface designed for ab-initio simulation software Quantum ESPRESSO, aiming at making ab-initio simulations easily accessible and intuitively controllable in various operating systems.
 
