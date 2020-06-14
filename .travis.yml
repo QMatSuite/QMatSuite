@@ -24,13 +24,7 @@ matrix:
       jdk: oraclejdk8
       env:
         - _JAVA_OPTIONS="-Djava.awt.headless=true -Dtestfx.robot=glass -Dtestfx.headless=true -Dprism.order=sw"
-    # macOS / Oracle JDK 8 / Headless
-    - os: osx
-      osx_image: xcode9.4
-      jdk: oraclejdk8
-      env:
-        - _JAVA_OPTIONS="-Djava.awt.headless=true -Dtestfx.robot=glass -Dtestfx.headless=true -Dprism.order=sw -Dprism.verbose=true"
-    # Headed macOS is not currently possible on Travis.
+
     
 addons:
   apt:

@@ -12,7 +12,6 @@ import javafx.scene.control.TreeTableView;
 import project.ProjectCalcLog;
 
 public class FirstMainWindowTest extends MainWindowTest{
-	private static int testProjectCount = 0;
 	
 	@Test
 	@Order(1)
@@ -36,14 +35,15 @@ public class FirstMainWindowTest extends MainWindowTest{
 	@Test
 	@Order(3)
 	public void testCreateProject() {
-		testProjectCount += 1;
 		clickOn("#createProject");
 		//Button createProject = lookup("#createProject").queryButton();
 		TreeTableView<ProjectCalcLog> projectTree = lookup("#projectTree").queryAs(TreeTableView.class);
 		ObservableList<TreeItem<ProjectCalcLog>> obs = projectTree.getRoot().getChildren();
-		Assertions.assertTrue(obs.size() == testProjectCount,Integer.toString(obs.size())+","+Integer.toString(testProjectCount));
-		Assertions.assertTrue(obs.get(testProjectCount-1).getValue().getProject().contains("testProject"),
-				"projectTree selected item should contain 'testProject'");
+		for(int i=0;i<obs.size();i++) {
+			Assertions.assertTrue(obs.get(i).getValue().getProject().contains("testProject"),
+					"projectTree selected item should contain 'testProject'");
+		}
+		
 	}
 	
 	
