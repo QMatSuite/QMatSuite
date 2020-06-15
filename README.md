@@ -10,7 +10,7 @@ QuantumVITAS (Quantum Visualization Interacting Toolkit for Ab-initio Simulation
 
 We want to integrate input file generation, calculation job control, result analysis and data managment into the user interface. In the future we may integrate other engines besides Quantum ESPRESSO.
 
-The project is **not done yet**, and we are continuously working on it. We expect to offer the first early access version in **mid June**. For more information, feel free check out my [introduction video](https://www.youtube.com/watch?v=S2e1TWx6DHs) and [development progress video](https://www.youtube.com/watch?v=JSX576IHaH0) on my Youtube channel.
+The project is **not done yet**, and we are continuously working on it. We expect to offer the first early access version in **July 2020**. For more information, feel free check out my [introduction video](https://www.youtube.com/watch?v=S2e1TWx6DHs) and [development progress video](https://www.youtube.com/watch?v=JSX576IHaH0) on my Youtube channel.
 
 ## Preview of the main user interface 
 
