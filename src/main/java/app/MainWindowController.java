@@ -881,7 +881,7 @@ public class MainWindowController implements Initializable{
 		vboxRight.getChildren().add(btnRight);
 		hboxRight.getChildren().add(vboxRight);
 		//right part, tab pane
-		tabPaneRight = new TabPane();
+		tabPaneRight = new TabPane();tabPaneRight.setId("idtabPaneRight");
 		//Tab tab = new Tab("3e");
 		//tabPaneRight.getTabs().add(tab);
 		tabPaneRight.setPrefSize(375, 300);
