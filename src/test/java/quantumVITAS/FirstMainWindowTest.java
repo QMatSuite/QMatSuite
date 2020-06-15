@@ -118,6 +118,7 @@ public class FirstMainWindowTest extends MainWindowTest{
 		checkRightPaneTabs(comboCalculation, 2, tabPaneRight);
 		//sleep(1000);
 		
+		
 	}
 	private void checkRightPaneTabs(ComboBox<String> cb, int iExpected, TabPane tabPaneRight) {
 		int iSelected = cb.getSelectionModel().getSelectedIndex();
@@ -141,6 +142,7 @@ public class FirstMainWindowTest extends MainWindowTest{
 			if(nd.getStyleClass().contains("list-cell")) {
 				nd_tmp = nd;
 				msg+=nd.toString()+",yes,\n";
+				
 			}
 			else {
 				msg+=nd.toString()+",no,\n";
