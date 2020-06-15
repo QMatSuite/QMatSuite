@@ -46,7 +46,7 @@ public class Main extends Application {
 //		primaryStage.setScene(new Scene(new Label("Hello World!")));
 //      primaryStage.show();
 		try {
-			mainClass = new MainClass();mainClass.setTestMode(isTest);
+			mainClass = new MainClass();
 			contMain = new MainWindowController(mainClass);
 			FXMLLoader fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("mainWindow.fxml"));
 			fxmlLoader.setController(contMain);
