@@ -10,6 +10,7 @@ To compile the project into an executable exe:
 
 To test in eclipse:
 - Run configurations -> write "test" in gradle tasks
+- Do not maximize eclipse window during testing. Best: move everything out of the way
 
 To also test coverage (in cmd):
 - gradlew build

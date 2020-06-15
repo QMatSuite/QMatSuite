@@ -26,19 +26,13 @@ public class MainClass {
 	public ProjectManager projectManager;
 	public JobManager jobManager;
 	
-	private boolean boolTest;
-	
 	public MainClass() {
-		boolTest = false;
 		projectManager = new ProjectManager();
 		jobManager = new JobManager();
 	}
 	
 	public boolean isTestMode() {
-		return boolTest;
+		return Main.isTestMode();
 	}
-	public void setTestMode(boolean bl) {
-		boolTest = bl;
-		projectManager.setTestMode(bl);
-	}
+
 }

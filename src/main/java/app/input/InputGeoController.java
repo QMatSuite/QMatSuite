@@ -52,7 +52,9 @@ public class InputGeoController extends InputController{
 	
 	@FXML private ComboBox<String> comboGeo;
 	
-	@FXML private TitledPane titlePaneElements;
+	@FXML private TitledPane titlePaneElements,
+	titlePaneCell,
+	titlePaneAtoms;
 
     private VBox vboxAtoms,
     vboxCell,

@@ -46,12 +46,12 @@
             </GridPane>
               <Accordion fx:id="accordGeo">
                   <panes>
-                      <TitledPane animated="false" text="Cell">
+                      <TitledPane fx:id="titlePaneCell" animated="false" text="Cell">
                           <content>
                               <ScrollPane fx:id="cellPane" prefWidth="375.0" />
                           </content>
                       </TitledPane>
-                      <TitledPane animated="false" text="Atoms">
+                      <TitledPane fx:id="titlePaneAtoms" animated="false" text="Atoms">
                           <content>
                               <ScrollPane fx:id="atomsPane" prefWidth="375.0" />
                           </content>

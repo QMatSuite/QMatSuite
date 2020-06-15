@@ -21,7 +21,8 @@ public abstract class MainWindowTest extends ApplicationTest{
 	}
 
 	@BeforeEach
-	public void setUp() {
+	public void setUp() throws TimeoutException {
+		FxToolkit.showStage();
 	}
 
 	@Override

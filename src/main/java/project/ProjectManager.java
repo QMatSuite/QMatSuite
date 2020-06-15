@@ -30,35 +30,29 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-
-import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import agent.InputAgent;
 import agent.InputAgentGeo;
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
 import com.error.ErrorMsg;
+import com.error.ShowAlert;
 import com.programconst.DefaultFileNames;
 import input.ContainerInputString;
 import input.QeInput;
 
-public class ProjectManager {
+public class ProjectManager{
 	public String workSpacePath;
 	public String pseudoLibPath;
 	public String qePath;
 	private LinkedHashMap<String, Project> projectDict;
 	private String activeProjKey;
-	private boolean boolTest;
 	
 	public int getProjectNumber() {
 		if(projectDict==null || projectDict.isEmpty()) return 0;
 		return projectDict.size();
 	}
-	public void setTestMode(boolean bl) {
-		boolTest = bl;
-	}
 	public ProjectManager() {
-		boolTest = false;
 		projectDict = new LinkedHashMap<String, Project> ();
 		activeProjKey = null;
 		workSpacePath = null;
@@ -83,10 +77,7 @@ public class ProjectManager {
 		File wsDir = new File(workSpacePath);
 		if(wsDir.canWrite()) {return wsDir;}
 		else {
-			Alert alert1 = new Alert(AlertType.INFORMATION);
-	    	alert1.setTitle("Error");
-	    	alert1.setContentText("Cannot load workspace. Please fix it.");
-	    	alert1.showAndWait();
+			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Cannot load workspace. Please fix it.");
 	    	return null;
 		}
 	}
@@ -99,10 +90,7 @@ public class ProjectManager {
 			}
 		}
 		//if reached here, something must be wrong
-		Alert alert1 = new Alert(AlertType.INFORMATION);
-    	alert1.setTitle("Error");
-    	alert1.setContentText("Cannot load workspace/project folder. Please fix it.");
-    	alert1.showAndWait();
+		ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Cannot load workspace/project folder. Please fix it.");
     	return null;
 	}
 	public File getCalculationDir() {
@@ -118,10 +106,7 @@ public class ProjectManager {
 		try {
 			stFile.createNewFile();
 	    } catch (IOException e1) {
-	    	Alert alert1 = new Alert(AlertType.INFORMATION);
-	    	alert1.setTitle("Error");
-	    	alert1.setContentText("IOException while creating setting file.");
-	    	alert1.showAndWait();
+	    	ShowAlert.showAlert(AlertType.INFORMATION, "Error", "IOException while creating setting file.");
 	    	e1.printStackTrace();
 	    }
 	}
@@ -143,24 +128,14 @@ public class ProjectManager {
 			br.close();
 			isr.close();
 		} catch (FileNotFoundException e) {
-			if(!boolTest) {
-				Alert alert1 = new Alert(AlertType.INFORMATION);
-		    	alert1.setTitle("Warning");
-		    	alert1.setContentText("Probably this is your first time running QuantumVITAS because no setting "
-		    			+ "file is found. The program will make one for you, and please specify your workspace folder first"
-		    			+ ". Enjoy!");
-		    	alert1.showAndWait();
-			}
+			ShowAlert.showAlert(AlertType.INFORMATION, "Warning", "Probably this is your first time running QuantumVITAS because no setting "
+	    			+ "file is found. The program will make one for you, and please specify your workspace folder first"
+	    			+ ". Enjoy!");
 	    	creatGlobalSettings();
 	    	
 		} catch (IOException e) {
-			if(!boolTest) {
-				Alert alert1 = new Alert(AlertType.INFORMATION);
-		    	alert1.setTitle("Error");
-		    	alert1.setContentText("Woops! IOException while reading setting file. "
-		    			+ "Please delete the 'settings.ini' in the program root and restart the program.");
-		    	alert1.showAndWait();
-			}
+			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Woops! IOException while reading setting file. "
+	    			+ "Please delete the 'settings.ini' in the program root and restart the program.");
 	    	e.printStackTrace();
 		}
 		return textOut;
@@ -195,18 +170,11 @@ public class ProjectManager {
 		        
 				break;
 			} catch (FileNotFoundException e) {
-				Alert alert1 = new Alert(AlertType.INFORMATION);
-		    	alert1.setTitle("Warning");
-		    	alert1.setContentText("Setting file not found. Make a new one.");
-		    	alert1.showAndWait();
-		    	
+				ShowAlert.showAlert(AlertType.INFORMATION, "Warning", "Setting file not found. Make a new one.");
 				creatGlobalSettings();
 	
 			} catch (IOException e) {
-				Alert alert1 = new Alert(AlertType.INFORMATION);
-		    	alert1.setTitle("Error");
-		    	alert1.setContentText("IOException while reading setting file.");
-		    	alert1.showAndWait();
+				ShowAlert.showAlert(AlertType.INFORMATION, "Error", "IOException while reading setting file.");
 		    	e.printStackTrace();
 			}
 		}
@@ -217,19 +185,13 @@ public class ProjectManager {
 	}
 	public void saveActiveProjectInMultipleFiles(File workSpaceDir, boolean saveCurrentCalc, boolean showSuccess) {
 		if(workSpaceDir==null || !workSpaceDir.canWrite()) {
-			Alert alert1 = new Alert(AlertType.INFORMATION);
-	    	alert1.setTitle("Error");
-	    	alert1.setContentText("No workspace! Cannot save...");
-	    	alert1.showAndWait();
+			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "No workspace! Cannot save...");
 			return;
 		}
 		
 		Project pj = getActiveProject();
 		if(pj==null) {
-			Alert alert1 = new Alert(AlertType.INFORMATION);
-	    	alert1.setTitle("Error");
-	    	alert1.setContentText("No active project! Cannot save...");
-	    	alert1.showAndWait();
+			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "No active project! Cannot save..");
 			return;
 		}
 		
@@ -238,10 +200,7 @@ public class ProjectManager {
 		if(!dirProj.exists()) {//make project directory if not existing
 			boolean dirCreated = dirProj.mkdir();
 			if(!dirCreated) {
-				Alert alert1 = new Alert(AlertType.INFORMATION);
-		    	alert1.setTitle("Error");
-		    	alert1.setContentText("Cannot make project directory.");
-		    	alert1.showAndWait();
+				ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Cannot make project directory.");
 		    	return;
 			}
 		}
@@ -266,10 +225,7 @@ public class ProjectManager {
         } 
   
         catch (IOException ex) { 
-			Alert alert1 = new Alert(AlertType.INFORMATION);
-	    	alert1.setTitle("Error");
-	    	alert1.setContentText("IOException is caught! Cannot save general project file "+"."+ex.getMessage());
-	    	alert1.showAndWait();
+        	ShowAlert.showAlert(AlertType.INFORMATION, "Error", "IOException is caught! Cannot save general project file "+"."+ex.getMessage());
         } 
 		
 		//save calculation in the calculation sub-folders (just to check integrity and in case the user renamed the calculation folders)
@@ -279,19 +235,14 @@ public class ProjectManager {
 				calcList=new ArrayList<String>();
 				calcList.add(pj.getActiveCalcName());//only save current calculation
 			}
-			else {Alert alert1 = new Alert(AlertType.INFORMATION);
-	    	alert1.setTitle("Error");
-	    	alert1.setContentText("No active calculation! Cannot save... ");
-	    	alert1.showAndWait();
+			else {
+				ShowAlert.showAlert(AlertType.INFORMATION, "Error", "No active calculation! Cannot save... ");
 	    	return;}
 		}
 		else {calcList= pj.getCalcList();}//save all calculations in the project
 		
 		if(calcList==null) {
-			Alert alert1 = new Alert(AlertType.INFORMATION);
-	    	alert1.setTitle("Error");
-	    	alert1.setContentText("Cannot access calculation list! Cannot save...");
-	    	alert1.showAndWait();
+			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Cannot access calculation list! Cannot save...");
 			return;
 		}
 		
@@ -299,19 +250,13 @@ public class ProjectManager {
 			File tmpCalc = new File(dirProj,calcList.get(i));
 			if(!tmpCalc.exists()) {
 				if(!tmpCalc.mkdir()) {
-					Alert alert1 = new Alert(AlertType.INFORMATION);
-			    	alert1.setTitle("Warning");
-			    	alert1.setContentText("Cannot create calculation folder! Try next...");
-			    	alert1.showAndWait();
+					ShowAlert.showAlert(AlertType.INFORMATION, "Warning", "Cannot create calculation folder! Try next...");
 					continue;
 				}
 			}
 			//now either exists or freshly made. Check whether canWrite
 			if(!tmpCalc.canWrite()) {
-				Alert alert1 = new Alert(AlertType.INFORMATION);
-		    	alert1.setTitle("Warning");
-		    	alert1.setContentText("No write access to the calculation folder! Try next...");
-		    	alert1.showAndWait();
+				ShowAlert.showAlert(AlertType.INFORMATION, "Warning", "No write access to the calculation folder! Try next...");
 				continue;
 			}
 			// Serialization 
@@ -332,19 +277,13 @@ public class ProjectManager {
 	        } 
 	  
 	        catch (IOException ex) { 
-				Alert alert1 = new Alert(AlertType.INFORMATION);
-		    	alert1.setTitle("Error");
-		    	alert1.setContentText("IOException is caught! Cannot save calculation "+calcList.get(i)+"."+ex.getMessage());
-		    	alert1.showAndWait();
+	        	ShowAlert.showAlert(AlertType.INFORMATION, "Error", "IOException is caught! Cannot save calculation "+calcList.get(i)+"."+ex.getMessage());
 	        }
 		}
 		
 		if(showSuccess) {
-			Alert alert1 = new Alert(AlertType.INFORMATION);
-	    	alert1.setTitle("Success");
-	    	if (saveCurrentCalc) {alert1.setContentText("Successfully saved current calculation: "+msg);}
-	    	else {alert1.setContentText("Successfully saved current project: "+msg);}
-	    	alert1.showAndWait();
+			String msgFinal = saveCurrentCalc ? ("Successfully saved current calculation: "+msg): ("Successfully saved current project: "+msg);
+			ShowAlert.showAlert(AlertType.INFORMATION, "Success", msgFinal);
 		}
     	
 	}
@@ -724,13 +663,11 @@ public class ProjectManager {
 	public ArrayList<ContainerInputString> genInputFromAgent() {
 		Project pj =  getActiveProject();
 		if(pj==null) {
-			Alert alert1 = new Alert(AlertType.INFORMATION);
-	    	alert1.setHeaderText("No project!");
-	    	alert1.setContentText("No project!");
-	    	alert1.showAndWait();
+			ShowAlert.showAlert(AlertType.INFORMATION, "No project!", "No project!");
 	    	return null;
 		}
 		else return pj.genInputFromAgent();
 	}
+	
 	
 }
