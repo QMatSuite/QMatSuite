@@ -871,7 +871,7 @@ public class MainWindowController implements Initializable{
 		//add tab
 		Tab tab = new Tab();
 		VBox hbTmp = new VBox();
-		ToggleButton tgButton = new ToggleButton("");
+		ToggleButton tgButton = new ToggleButton("");tgButton.setId("idToggleGeoInOutButton");
 		tgButton.setPrefWidth(150);
 		
 		if (mainClass.projectManager.getShow3DScene()) 

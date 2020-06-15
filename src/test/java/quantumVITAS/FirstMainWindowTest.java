@@ -144,6 +144,35 @@ public class FirstMainWindowTest extends MainWindowTest{
 		clickOn(textZ).type(KeyCode.DIGIT0,KeyCode.DECIMAL,KeyCode.DIGIT2,KeyCode.DIGIT5);//0.25
 		
 		clickOn(addButton);
+		
+		TabPane workSpaceTabPane = (TabPane) lookup("#workSpaceTabPane").query();
+		
+		Node root3DVbox = lookup("#root3DVbox").query();
+		RadioButton radio3Cart = (RadioButton) from(root3DVbox).lookup("#radio3Cart").query();
+		clickRadioButton(radio3Cart);
+		
+		TextField tfx = (TextField) from(root3DVbox).lookup("#tfx").queryTextInputControl();
+		TextField tfy = (TextField) from(root3DVbox).lookup("#tfy").queryTextInputControl();
+		TextField tfz = (TextField) from(root3DVbox).lookup("#tfz").queryTextInputControl();
+		clickOn(tfx).type(KeyCode.DIGIT1);//1
+		clickOn(tfy).type(KeyCode.DIGIT1);//1
+		clickOn(tfz).type(KeyCode.DIGIT1);//1
+		
+		Node btUpd = from(root3DVbox).lookup("#btUpd").query();//update button
+		clickOn(btUpd);
+		
+
+		RadioButton radio2Cryst = (RadioButton) from(root3DVbox).lookup("#radio2Cryst").query();
+		clickRadioButton(radio2Cryst);
+		clickOn(tfx).type(KeyCode.BACK_SPACE,KeyCode.DIGIT2);//2
+		clickOn(tfy).type(KeyCode.BACK_SPACE,KeyCode.DIGIT2);//2
+		clickOn(tfz).type(KeyCode.BACK_SPACE,KeyCode.DIGIT2);//2
+		clickOn(btUpd);
+		
+		//toggle geo and in/out
+		Node toggleGeoInOutButton = from(workSpaceTabPane.getSelectionModel().getSelectedItem().getContent()).lookup("#idToggleGeoInOutButton").query();
+		clickOn(toggleGeoInOutButton);
+		clickOn(toggleGeoInOutButton);
 	}
 	
 	@Test
@@ -349,6 +378,13 @@ public class FirstMainWindowTest extends MainWindowTest{
 	private void clickCheckBox(CheckBox cb) {
 		for (Node child : cb.getChildrenUnmodifiable()) {
 	        if (child.getStyleClass().contains("box")) {
+	            clickOn(child);
+	        }
+	    }
+	}
+	private void clickRadioButton(RadioButton rb) {
+		for (Node child : rb.getChildrenUnmodifiable()) {
+	        if (child.getStyleClass().contains("radio")) {
 	            clickOn(child);
 	        }
 	    }
