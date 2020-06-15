@@ -5,6 +5,7 @@ plugins {
     id 'application'
     id 'maven-publish'
     id 'edu.sc.seis.launch4j' version '2.4.6'
+    id 'jacoco'
 }
 
 java {
@@ -69,6 +70,14 @@ test {
 		events "passed", "skipped", "failed"
 		exceptionFormat "full"
 	}
+	finalizedBy jacocoTestReport // report is always generated after tests run
+}
+jacocoTestReport {
+    dependsOn test // tests are required to run before generating the report
+    reports {
+        xml.enabled true
+        csv.enabled true
+    }
 }
 
 apply plugin: 'jacoco'
