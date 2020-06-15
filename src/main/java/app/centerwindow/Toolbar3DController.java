@@ -37,7 +37,7 @@ import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.VBox;
 
 public class Toolbar3DController implements Initializable{
-	@FXML private VBox rootVbox,
+	@FXML private VBox root3DVbox,
 	functionVbox;
 	@FXML private ToggleButton toggleShowToolbar;
 	@FXML private Slider sliderBondScaling;
@@ -89,12 +89,12 @@ public class Toolbar3DController implements Initializable{
 		    if (newVal) {
 		    	toggleShowToolbar.setText("Hide toolbar");
 		    	
-		    	rootVbox.getChildren().add(functionVbox);
+		    	root3DVbox.getChildren().add(functionVbox);
 		    }
 		    else {
 		    	toggleShowToolbar.setText("Show toolbar");
 		    	
-		    	rootVbox.getChildren().remove(functionVbox);
+		    	root3DVbox.getChildren().remove(functionVbox);
 		    }
 		});
 		//
