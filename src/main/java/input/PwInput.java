@@ -25,6 +25,7 @@ import java.util.Set;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import agent.InputAgentGeo;
+import agent.InputAgentMd;
 import agent.InputAgentNscf;
 import agent.InputAgentOpt;
 import agent.InputAgentScf;
@@ -41,7 +42,9 @@ import com.consts.Constants.EnumMixingMode;
 import com.consts.Constants.EnumNameList;
 import com.consts.Constants.EnumOccupations;
 import com.consts.Constants.EnumSmearing;
+import com.consts.Constants.EnumThermalstat;
 import com.consts.Constants.EnumUnitEnergy;
+import com.consts.Constants.EnumUnitTime;
 import com.error.InvalidKeyException;
 import com.error.InvalidTypeException;
 
@@ -77,6 +80,7 @@ public class PwInput extends QeInput{
 		sectionDict.get("CONTROL").addParameter("tstress", new InputValueBoolean("tstress",false,false));
 		sectionDict.get("CONTROL").addParameter("pseudo_dir", new InputValueString("pseudo_dir",false));
 		sectionDict.get("CONTROL").addParameter("nstep", new InputValueInt("nstep",1,false));
+		sectionDict.get("CONTROL").addParameter("dt", new InputValueDouble("dt",20.0,false));
 		sectionDict.get("CONTROL").addParameter("etot_conv_thr", new InputValueDouble("etot_conv_thr",1.0E-4,false));
 		sectionDict.get("CONTROL").addParameter("forc_conv_thr", new InputValueDouble("forc_conv_thr",1.0E-3,false));
 		
@@ -109,9 +113,16 @@ public class PwInput extends QeInput{
 		sectionDict.get("ELECTRONS").addParameter("mixing_mode", new InputValueString("mixing_mode",EnumMixingMode.plain.toString(),false));
 		sectionDict.get("ELECTRONS").addParameter("mixing_beta", new InputValueDouble("mixing_beta",0.7,false));
 		sectionDict.get("ELECTRONS").addParameter("scf_must_converge", new InputValueBoolean("scf_must_converge",true,false));
-
+		
 		sectionDict.get("IONS").addParameter("ion_dynamics", new InputValueString("ion_dynamics","bfgs",false));
-				 
+		sectionDict.get("IONS").addParameter("ion_temperature", new InputValueString("ion_temperature","not_controlled",false));
+		
+		sectionDict.get("IONS").addParameter("tempw", new InputValueDouble("tempw",300.0,false));
+		sectionDict.get("IONS").addParameter("tolp", new InputValueDouble("tolp",100.0,false));
+		sectionDict.get("IONS").addParameter("delta_t", new InputValueDouble("delta_t",1.0,false));
+		sectionDict.get("IONS").addParameter("nraise", new InputValueInt("nraise",1,false));
+		
+		
 		sectionDict.get("CELL").addParameter("cell_dynamics", new InputValueString("cell_dynamics","bfgs",false));
 		sectionDict.get("CELL").addParameter("press", new InputValueDouble("press",0.0,false));
 		sectionDict.get("CELL").addParameter("press_conv_thr", new InputValueDouble("press_conv_thr",0.5,false));
@@ -366,7 +377,7 @@ public class PwInput extends QeInput{
 			
 			boolean boolHubbard = ia1.setU;
 			
-			if(EnumOccupations.smearing.equals((EnumOccupations)ia1.enumOccupation.getValue())) {
+			if(EnumOccupations.smearing.equals(ia1.enumOccupation.getValue())) {
 				setRequiredAndWrite("SYSTEM","degauss",true,true);setRequiredAndWrite("SYSTEM","smearing",true,true);
 				if(boolHubbard && (ia1.degauss.getValue()==null || ia1.degauss.getValue().equals(0.0))) {
 					errorMessage+="For DFT+U calculation, if you use smearing, smearing width must be positive.\n";
@@ -461,6 +472,8 @@ public class PwInput extends QeInput{
 			setSectionRequired("IONS",true);
 			
 			setValue("CONTROL","calculation",new WrapperString(ia1.boolRelaxCell.getValue()?"vc-relax":"relax",true));
+			setValue("CONTROL","tprnfor",new WrapperBoolean(true,false));
+			
 			setValue("ELECTRONS","scf_must_converge",ia1.boolScfMustConverge);
 			//default for OPT is also 50 steps, although in PwInput the default is 1 step
 			setValue("CONTROL","nstep",ia1.nMaxSteps);
@@ -471,6 +484,7 @@ public class PwInput extends QeInput{
 			
 			boolean boolCell = ia1.boolRelaxCell.getValue();
 			setSectionRequired("CELL",boolCell);
+			setValue("CONTROL","tstress",new WrapperBoolean(boolCell,false));
 			setValue("CELL","cell_dynamics",ia1.enumOptMethodCell);andExplicitWrite("CELL","cell_dynamics",boolCell);
 			setValue("CELL","cell_dofree",ia1.enumCellDoFree);andExplicitWrite("CELL","cell_dofree",boolCell);
 			setValue("CELL","press",ia1.numPTarget);andExplicitWrite("CELL","press",boolCell);
@@ -480,6 +494,49 @@ public class PwInput extends QeInput{
 			if(ia1.enumEUnit.equals(EnumUnitEnergy.eV)) {
 				((InputValueDouble) sectionDict.get("CONTROL").getValue("etot_conv_thr")).multiply(1.0/PhysicalConstants.ryInEV);
 			}
+			
+		} catch (InvalidKeyException | InvalidTypeException e) {
+			Alert alert1 = new Alert(AlertType.INFORMATION);
+	    	alert1.setTitle("Error");
+	    	alert1.setContentText("Exception!"+e.getMessage());
+	    	alert1.showAndWait();
+			e.printStackTrace();
+		}
+	}
+	@Override
+	public void loadAgent(InputAgentMd ia1) {
+		try {
+			setValue("CONTROL","nstep",ia1.mdSteps);
+			setValue("CONTROL","tprnfor",new WrapperBoolean(true,false));
+			
+			
+			setValue("CONTROL","dt",ia1.timeStep);
+			if(EnumUnitTime.fs.equals(ia1.enumTimeUnit.getValue())) {
+				((InputValueDouble) sectionDict.get("CONTROL").getValue("dt")).multiply(1.0/PhysicalConstants.ryInFs);
+			}
+			else if(!EnumUnitTime.Ry.equals(ia1.enumTimeUnit.getValue())) {
+				Alert alert1 = new Alert(AlertType.INFORMATION);
+		    	alert1.setTitle("Error");
+		    	alert1.setContentText("EnumUnitTime out of bound.");
+		    	alert1.showAndWait();
+			}
+			
+			setSectionRequired("IONS",true);
+			setValue("IONS","ion_dynamics",ia1.enumMdMethodIon);
+			setValue("IONS","ion_temperature",ia1.enumThermalstat);
+			boolean blControlT = !ia1.enumThermalstat.equals(EnumThermalstat.non);
+			setValue("IONS","tempw",ia1.temperature);andExplicitWrite("IONS","tempw",blControlT);
+			setValue("IONS","tolp",ia1.tolp);andExplicitWrite("IONS","tolp",blControlT);
+			setValue("IONS","nraise",ia1.nraise);andExplicitWrite("IONS","nraise",blControlT);
+			setValue("IONS","delta_t",ia1.deltat);andExplicitWrite("IONS","delta_t",blControlT);
+			
+			boolean boolCell = ia1.boolMoveCell.getValue();
+			setSectionRequired("CELL",boolCell);
+			setValue("CONTROL","tstress",new WrapperBoolean(boolCell,false));
+			setValue("CONTROL","calculation",new WrapperString(boolCell?"vc-md":"md",true));
+			setValue("CELL","cell_dynamics",ia1.enumMdMethodCell);andExplicitWrite("CELL","cell_dynamics",boolCell);
+			setValue("CELL","press",ia1.pressure);andExplicitWrite("CELL","press",boolCell);
+			setValue("CELL","cell_dofree",ia1.enumCellDoFree);andExplicitWrite("CELL","cell_dofree",boolCell);
 			
 		} catch (InvalidKeyException | InvalidTypeException e) {
 			Alert alert1 = new Alert(AlertType.INFORMATION);
