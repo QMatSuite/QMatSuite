@@ -54,15 +54,15 @@ public class InputAgentMd extends InputAgent{
 		mdSteps = new WrapperInteger(50);
 		timeStep = new WrapperDouble(20.0);
 		enumTimeUnit = new WrapperEnum(EnumUnitTime.Ry);
-		boolMoveCell = new WrapperBoolean(false);
-		enumMdMethodIon = new WrapperEnum(EnumIonMdMethod.verlet);
 		
+		enumMdMethodIon = new WrapperEnum(EnumIonMdMethod.verlet);
 		enumThermalstat = new WrapperEnum(EnumThermalstat.non);
 		temperature = new WrapperDouble(300.0);
 		tolp = new WrapperDouble(100.0);
 		nraise = new WrapperInteger(1);
 		deltat = new WrapperDouble(1.0);
 		
+		boolMoveCell = new WrapperBoolean(false);
 		enumMdMethodCell = new WrapperEnum(EnumCellMdMethod.pr);
 		pressure = new WrapperDouble(0.0);
 		enumCellDoFree = new WrapperEnum(EnumCellDoFree.all);

@@ -97,15 +97,15 @@ public class InputAgentScf extends InputAgent{
 		boolRestart=new WrapperBoolean(false); //false is from scratch //ok
 		boolForce=new WrapperBoolean(false);boolStress=new WrapperBoolean(false);enumOccupation=new WrapperEnum(EnumOccupations.smearing);//ok
 		enumEnergyUnit = new WrapperEnum(EnumUnitEnergy.Ry);//ok
-		ecutWfc = new WrapperDouble(null);//ok
-		ecutRho = new WrapperDouble(null);//ok
+		ecutWfc = new WrapperDouble(30.0);//ok
+		ecutRho = new WrapperDouble(120.0);//ok
 		nElecMaxStep=new WrapperInteger(100);elecConv=new WrapperDouble(1e-6);enumMixing=new WrapperEnum(EnumMixingMode.plain);
 		mixBeta=new WrapperDouble(0.7);//ok
-		nkx = new WrapperInteger(1);//ok
-		nky = new WrapperInteger(1);//ok
-		nkz = new WrapperInteger(1);//ok
+		nkx = new WrapperInteger(4);//ok
+		nky = new WrapperInteger(4);//ok
+		nkz = new WrapperInteger(4);//ok
 		enumSmearing=new WrapperEnum(EnumSmearing.gauss);//ok
-		degauss = new WrapperDouble(0.0);//ok
+		degauss = new WrapperDouble(0.02);//ok
 		//***********************/|\*********//
 		//************************|**********//
 		

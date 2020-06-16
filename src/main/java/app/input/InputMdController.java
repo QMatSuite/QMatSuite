@@ -225,6 +225,20 @@ public class InputMdController extends InputController {
 		setComboListener(comboIonDynamics, EnumIonMdMethod.values(), "enumMdMethodIon", EnumStep.BOMD);
 		
 		setComboListener(comboThermalstat, EnumThermalstat.values(), "enumThermalstat", EnumStep.BOMD);
+		comboThermalstat.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) ->
+		{ 
+			//second listener for comboThermalstat
+			boolean hasTControl = !EnumThermalstat.non.equals(newValue);
+			tempField.setVisible(hasTControl);tolpField.setVisible(hasTControl);
+			nraiseField.setVisible(hasTControl);deltatField.setVisible(hasTControl);
+			
+			checkThermAdvanced.setVisible(hasTControl);checkTargetT.setVisible(hasTControl);
+		});
+		//initialize with all invisible because comboThermalstat is defaulted to non
+		tempField.setVisible(false);tolpField.setVisible(false);
+		nraiseField.setVisible(false);deltatField.setVisible(false);
+		checkThermAdvanced.setVisible(false);checkTargetT.setVisible(false);
+		
 		setDoubleFieldListener(tempField, "temperature",EnumNumCondition.nonNegative,EnumStep.BOMD);
 		setDoubleFieldListener(tolpField, "tolp",EnumNumCondition.nonNegative,EnumStep.BOMD);
 		setIntegerFieldListener(nraiseField, "nraise",EnumNumCondition.positive,EnumStep.BOMD);

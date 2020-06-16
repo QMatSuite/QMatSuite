@@ -512,17 +512,25 @@ public class MainWindowController implements Initializable{
 			    	return;
 		        }
 			}
-			//start running the jobs
-			for(int j = 0 ; j < cis.size() ; j++) {
-				mainClass.jobManager.addNode(new JobNode(fl.getPath(),
-						mainClass.projectManager.qePath+File.separator+"pw.exe",cis.get(j).stepName.toString()));
-			}
+			//check QE path
+			if(mainClass.projectManager.qePath!=null && new File(mainClass.projectManager.qePath+File.separator+"pw.exe").canExecute()) {
+				//start running the jobs
+				for(int j = 0 ; j < cis.size() ; j++) {
+					mainClass.jobManager.addNode(new JobNode(fl.getPath(),
+							mainClass.projectManager.qePath+File.separator+"pw.exe",cis.get(j).stepName.toString()));
+				}
 			
+			}
+			else if (new File(mainClass.projectManager.qePath+File.separator+"pw.exe").exists()){
+				ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Cannot execute job because pw.exe is not executable (though exists). Please change the permission in the operating system!");
+				return;
+			}
+			else{
+				ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Cannot execute job because cannot find pw.exe in qePath. Please define the qePath in the Settings menu!");
+				return;
+			}
 			//just for test use
 //	    	mainClass.jobManager.addNode(new JobNode(null,"notepad.exe"));
-			
-//			mainClass.jobManager.addNode(new JobNode(null,"notepad.exe"));
-//			mainClass.jobManager.addNode(new JobNode(null,"notepad.exe"));
 			
 		});
 //		runJob.setOnAction((event) -> {

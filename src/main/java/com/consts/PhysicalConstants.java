@@ -22,4 +22,5 @@ public interface PhysicalConstants {
 	public static final double angstPerBohr = 0.529177249;//1 bohr = 0.529177249 angstrom
 	public static final double ryInEV = 13.6056980659;//1 Ry = 13.6056980659 eV
 	public static final double hartreeInRy = 2.0;//1 Hartree = 2 Ry
+	public static final double ryInFs = 4.8378e-2;//1 a.u.(Ry) = 4.8378 * 10^-17 s. 1 fs = 1e-15 s.
 }
