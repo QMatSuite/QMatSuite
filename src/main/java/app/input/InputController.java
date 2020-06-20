@@ -268,6 +268,9 @@ public abstract class InputController implements Initializable{
 		});
 	}
 	protected void resetTextFieldIntegerListener(CheckBox cbResetToggle, TextField tf, String fieldName, EnumStep es, CheckBox cbResetAll) {
+		resetTextFieldIntegerListener(cbResetToggle, tf, fieldName, es, cbResetAll, "");
+	}
+	protected void resetTextFieldIntegerListener(CheckBox cbResetToggle, TextField tf, String fieldName, EnumStep es, CheckBox cbResetAll, String nullString) {
 		cbResetToggle.selectedProperty().addListener((observable, oldValue, newValue) ->
 		{ 
 			if(newValue==null) return;
@@ -276,7 +279,8 @@ public abstract class InputController implements Initializable{
 			try {
 				WrapperInteger wb = (WrapperInteger) obj;
 				if (newValue) {
-					tf.setText(Integer.toString(wb.resetDefault()));
+					Integer intReset = wb.resetDefault();
+					tf.setText(intReset==null?nullString:Integer.toString(intReset));
 					tf.setDisable(true);
 					wb.setEnabled(false);}
 				else {
@@ -294,6 +298,9 @@ public abstract class InputController implements Initializable{
 		});
 	}
 	protected void resetTextFieldDoubleListener(CheckBox cbResetToggle, TextField tf, String fieldName, EnumStep es, CheckBox cbResetAll) {
+		resetTextFieldDoubleListener(cbResetToggle, tf, fieldName, es, cbResetAll, "");
+	}
+	protected void resetTextFieldDoubleListener(CheckBox cbResetToggle, TextField tf, String fieldName, EnumStep es, CheckBox cbResetAll, String nullString) {
 
 		cbResetToggle.selectedProperty().addListener((observable, oldValue, newValue) ->
 		{ 
@@ -302,8 +309,9 @@ public abstract class InputController implements Initializable{
 			if(obj==null) return;
 			try {
 				WrapperDouble wb = (WrapperDouble) obj;
+				Double doubleReset = wb.resetDefault();
 				if (newValue) {
-					tf.setText(Double.toString(wb.resetDefault()));
+					tf.setText(doubleReset==null?nullString:Double.toString(doubleReset));
 					tf.setDisable(true);
 					wb.setEnabled(false);}
 				else {

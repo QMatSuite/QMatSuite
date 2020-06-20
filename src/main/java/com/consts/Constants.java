@@ -195,6 +195,9 @@ public class Constants {
 	public enum EnumOccupations implements EnumInProgram{
 		smearing,tetrahedra,tetrahedra_lin,tetrahedra_opt,fixed
 	}
+	public enum EnumSummation implements EnumInProgram{
+		smearing,tetrahedra,tetrahedra_lin,tetrahedra_opt,from_input
+	}
 	public enum EnumPP implements EnumInProgram{
 		PAW("PAW"),
 		USPP("Ultrasoft"),
