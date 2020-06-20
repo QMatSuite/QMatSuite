@@ -99,39 +99,10 @@
                         <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                      </rowConstraints>
                   </GridPane>
-                  <Label fx:id="broadLabel" text="Smearing type" GridPane.rowIndex="5" />
-                  <Button fx:id="infoSmearing" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="5" />
-                  <ComboBox fx:id="comboSmearing" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="5" />
-                  <Label fx:id="broadWidthLabel" text="Smearing Width" GridPane.rowIndex="6" />
-                  <GridPane prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="6">
-                     <children>
-                        <TextField fx:id="textDegauss" prefWidth="100.0" />
-                        <Label fx:id="unitDegauss" text="Label" GridPane.columnIndex="1" />
-                     </children>
-                     <columnConstraints>
-                        <ColumnConstraints hgrow="SOMETIMES" prefWidth="100.0" />
-                        <ColumnConstraints hgrow="SOMETIMES" prefWidth="100.0" />
-                     </columnConstraints>
-                     <rowConstraints>
-                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-                     </rowConstraints>
-                  </GridPane>
-                  <Button fx:id="infoDegauss" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="6" />
                   <CheckBox fx:id="checkEmax" mnemonicParsing="false" GridPane.columnIndex="2" />
                   <CheckBox fx:id="checkEmin" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="1" />
                   <CheckBox fx:id="checkEstep" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="2" />
-                  <CheckBox fx:id="checkSmearing" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="5" />
-                  <CheckBox fx:id="checkDegauss" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="6" />
-                  <Label text="Summation Method" GridPane.rowIndex="4" />
-                  <CheckBox fx:id="checkSummation" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="4" />
-                  <Label styleClass="medium-text" text="Advanced" GridPane.rowIndex="3">
-                     <font>
-                        <Font name="System Bold Italic" size="14.0" />
-                     </font>
-                  </Label>
-                  <ComboBox fx:id="comboSummation" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="4" />
-                  <CheckBox fx:id="checkShowAdvanced" mnemonicParsing="false" text="Show Advanced Settings" GridPane.columnIndex="1" GridPane.rowIndex="3" />
-                  <Button fx:id="infoSummation" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="4" />
+                  <CheckBox fx:id="checkShowAdvanced" mnemonicParsing="false" text="Show Advanced Settings" GridPane.columnSpan="2" GridPane.rowIndex="3" />
                </children>
                <columnConstraints>
                   <ColumnConstraints hgrow="SOMETIMES" prefWidth="120.0" />
@@ -147,12 +118,52 @@
                   <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                   <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                   <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                </rowConstraints>
             </GridPane>
-            <BorderPane prefWidth="350.0">
+            <GridPane fx:id="panelAdvanced" hgap="5.0" vgap="5.0">
+              <columnConstraints>
+                <ColumnConstraints hgrow="SOMETIMES" maxWidth="131.0" minWidth="10.0" prefWidth="127.5" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="215.0" minWidth="10.0" prefWidth="147.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="147.0" minWidth="5.5" prefWidth="19.0" />
+                <ColumnConstraints hgrow="SOMETIMES" maxWidth="79.5" minWidth="10.0" prefWidth="18.5" />
+              </columnConstraints>
+              <rowConstraints>
+                <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+              </rowConstraints>
+               <children>
+                  <Button fx:id="infoDegauss" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="2" />
+                  <CheckBox fx:id="checkDegauss" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="2" />
+                  <CheckBox fx:id="checkSmearing" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="1" />
+                  <Button fx:id="infoSmearing" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+                  <Button fx:id="infoSummation" mnemonicParsing="false" text="i" GridPane.columnIndex="3" />
+                  <CheckBox fx:id="checkSummation" mnemonicParsing="false" GridPane.columnIndex="2" />
+                  <ComboBox fx:id="comboSummation" prefWidth="200.0" GridPane.columnIndex="1" />
+                  <ComboBox fx:id="comboSmearing" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+                  <GridPane prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
+                     <children>
+                        <TextField fx:id="textDegauss" prefWidth="100.0" />
+                        <Label fx:id="unitDegauss" text="Label" GridPane.columnIndex="1" />
+                     </children>
+                     <columnConstraints>
+                        <ColumnConstraints hgrow="SOMETIMES" prefWidth="100.0" />
+                        <ColumnConstraints hgrow="SOMETIMES" prefWidth="100.0" />
+                     </columnConstraints>
+                     <rowConstraints>
+                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                     </rowConstraints>
+                  </GridPane>
+                  <Label fx:id="broadWidthLabel" text="Smearing Width" GridPane.rowIndex="2" />
+                  <Label fx:id="broadLabel" text="Smearing type" GridPane.rowIndex="1" />
+                  <Label text="Summation Method" />
+               </children>
+               <VBox.margin>
+                  <Insets left="10.0" />
+               </VBox.margin>
+            </GridPane>
+            <Label fx:id="statusInfo" />
+            <BorderPane>
                <center>
                   <Separator prefHeight="30.0" BorderPane.alignment="CENTER" />
                </center>

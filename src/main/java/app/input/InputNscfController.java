@@ -176,16 +176,7 @@ public class InputNscfController extends InputController{
 		//check boxes
 		checkKPoint.setDisable(true);//no default for kpoints
 		checkGauss.setDisable(true);//no default for degauss
-		checknband.selectedProperty().addListener((observable, oldValue, newValue) ->
-		{ 
-			InputAgentNscf iNscf = (InputAgentNscf) mainClass.projectManager.getStepAgent(EnumStep.NSCF);
-			if (iNscf==null || newValue==null) return;
-			iNscf.nbnd.setEnabled(!newValue);
-			textnband.setDisable(newValue);
-			if(newValue) {
-				textnband.setText("Automated");
-			}
-		});
+		resetTextFieldIntegerListener(checknband, textnband, "nbnd", EnumStep.NSCF, checkResetAll,"Automated");
 		checknband.setSelected(true);
 		
 		resetComboBoxListener(checkOccup, comboOccup, "enumOccupation", EnumStep.NSCF, checkResetAll, true);//true means not QE default

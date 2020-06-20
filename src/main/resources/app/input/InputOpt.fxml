@@ -18,13 +18,13 @@
 
 <ScrollPane xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
    <content>
-      <VBox>
+      <VBox prefWidth="350.0">
          <children>
-            <GridPane hgap="5.0" vgap="5.0">
+            <GridPane hgap="5.0" prefWidth="350.0" vgap="5.0">
               <columnConstraints>
-                <ColumnConstraints halignment="RIGHT" hgrow="SOMETIMES" maxWidth="338.5" minWidth="10.0" prefWidth="336.0" />
-                <ColumnConstraints hgrow="SOMETIMES" maxWidth="127.5" minWidth="0.0" prefWidth="24.0" />
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="105.0" minWidth="10.0" prefWidth="34.0" />
+                <ColumnConstraints halignment="RIGHT" hgrow="SOMETIMES" maxWidth="338.5" minWidth="10.0" prefWidth="299.5" />
+                <ColumnConstraints hgrow="SOMETIMES" maxWidth="127.5" minWidth="0.0" prefWidth="17.5" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="105.0" minWidth="10.0" prefWidth="23.0" />
               </columnConstraints>
               <rowConstraints>
                 <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
@@ -35,7 +35,7 @@
                   <Button fx:id="infoResetAll" mnemonicParsing="false" text="i" GridPane.columnIndex="2" />
                </children>
             </GridPane>
-            <BorderPane prefWidth="395.0">
+            <BorderPane prefWidth="350.0">
                <center>
                   <Separator prefHeight="30.0" BorderPane.alignment="CENTER" />
                </center>
@@ -53,7 +53,7 @@
                   <Insets top="10.0" />
                </padding>
             </BorderPane>
-            <GridPane hgap="5.0" prefWidth="395.0" vgap="5.0">
+            <GridPane hgap="5.0" vgap="5.0">
                <children>
                   <Label fx:id="restartLabel" text="Relax Cell" />
                   <Label fx:id="maxstepLabel" text="Max Steps" GridPane.rowIndex="1" />
@@ -69,10 +69,10 @@
                   <TextField fx:id="textMaxStep" GridPane.columnIndex="1" GridPane.rowIndex="1" />
                </children>
                <columnConstraints>
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="133.5" minWidth="124.0" prefWidth="127.0" />
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="245.0" minWidth="187.0" prefWidth="191.5" />
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="65.5" minWidth="10.0" prefWidth="26.5" />
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="39.5" minWidth="24.5" prefWidth="34.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="133.5" minWidth="101.5" prefWidth="101.5" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="245.0" minWidth="169.0" prefWidth="181.5" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="65.5" minWidth="10.0" prefWidth="18.5" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="64.5" minWidth="23.0" prefWidth="23.0" />
                </columnConstraints>
                <padding>
                   <Insets left="10.0" />
@@ -83,7 +83,7 @@
                   <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                </rowConstraints>
             </GridPane>
-            <BorderPane prefWidth="395.0">
+            <BorderPane>
                <center>
                   <Separator prefHeight="30.0" BorderPane.alignment="CENTER" />
                </center>
@@ -101,7 +101,7 @@
                   <Insets top="10.0" />
                </padding>
             </BorderPane>
-            <GridPane hgap="5.0" prefWidth="395.0" vgap="5.0">
+            <GridPane hgap="5.0" prefWidth="350.0" vgap="5.0">
                <children>
                   <Label fx:id="ionConvLabel" text="Energy Conv. Thres." />
                   <Label fx:id="ionMethodLabel" text="Opt. Method" GridPane.rowIndex="2" />
@@ -141,10 +141,10 @@
                   <Button fx:id="infoFConv" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="1" />
                </children>
                <columnConstraints>
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="131.0" minWidth="122.5" prefWidth="127.5" />
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="225.5" minWidth="185.5" prefWidth="193.5" />
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="71.5" minWidth="10.0" prefWidth="24.5" />
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="41.0" minWidth="33.5" prefWidth="35.5" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="147.5" minWidth="109.0" prefWidth="111.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="225.5" minWidth="112.0" prefWidth="171.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="71.5" minWidth="10.0" prefWidth="18.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="66.5" minWidth="25.0" prefWidth="25.0" />
                </columnConstraints>
                <padding>
                   <Insets left="10.0" />
@@ -155,7 +155,7 @@
                   <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                </rowConstraints>
             </GridPane>
-            <BorderPane prefWidth="395.0">
+            <BorderPane>
                <center>
                   <Separator prefHeight="30.0" BorderPane.alignment="CENTER" />
                </center>
@@ -173,7 +173,7 @@
                   <Insets top="10.0" />
                </padding>
             </BorderPane>
-            <GridPane fx:id="gridPaneCell" hgap="5.0" prefWidth="395.0" vgap="5.0">
+            <GridPane fx:id="gridPaneCell" hgap="5.0" vgap="5.0">
                <children>
                   <Label fx:id="cellConvLabel" text="Pressure Conv. Thres." />
                   <Label fx:id="cellMethodLabel" text="Opt. Method" GridPane.rowIndex="1" />
@@ -217,10 +217,10 @@
                   <CheckBox fx:id="checkCellFree" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="3" />
                </children>
                <columnConstraints>
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="139.0" minWidth="122.5" prefWidth="127.0" />
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="242.5" minWidth="185.5" prefWidth="195.5" />
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="71.5" minWidth="10.0" prefWidth="21.5" />
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="42.0" minWidth="32.0" prefWidth="35.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="139.0" minWidth="113.5" prefWidth="113.5" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="242.5" minWidth="159.0" prefWidth="168.5" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="71.5" minWidth="10.0" prefWidth="18.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="68.0" minWidth="23.0" prefWidth="25.0" />
                </columnConstraints>
                <padding>
                   <Insets left="10.0" />
@@ -232,7 +232,7 @@
                   <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                </rowConstraints>
             </GridPane>
-            <BorderPane prefWidth="395.0">
+            <BorderPane>
                <center>
                   <Separator prefHeight="30.0" BorderPane.alignment="CENTER" />
                </center>

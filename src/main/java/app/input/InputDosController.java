@@ -21,12 +21,19 @@ package app.input;
 
 import java.net.URL;
 import java.util.ResourceBundle;
+import com.consts.Constants.EnumNumCondition;
+import com.consts.Constants.EnumSmearing;
+import com.consts.Constants.EnumStep;
+import com.consts.Constants.EnumSummation;
+import com.consts.Constants.EnumUnitEnergy;
+import agent.InputAgentDos;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.GridPane;
 import main.MainClass;
 
 public class InputDosController extends InputController {
@@ -47,7 +54,7 @@ public class InputDosController extends InputController {
     private TextField textEmax;
 
     @FXML
-    private ComboBox<?> unitEmaxCombo;
+    private ComboBox<EnumUnitEnergy> unitEmaxCombo;
 
     @FXML
     private TextField textEmin;
@@ -80,7 +87,7 @@ public class InputDosController extends InputController {
     private Button infoSmearing;
 
     @FXML
-    private ComboBox<?> comboSmearing;
+    private ComboBox<EnumSmearing> comboSmearing;
 
     @FXML
     private Label broadWidthLabel;
@@ -113,24 +120,104 @@ public class InputDosController extends InputController {
     private CheckBox checkSummation;
 
     @FXML
-    private ComboBox<?> comboSummation;
+    private ComboBox<EnumSummation> comboSummation;
 
     @FXML
     private CheckBox checkShowAdvanced;
 
     @FXML
     private Button infoSummation;
+    
+    @FXML
+    private Label statusInfo;
+    
+    @FXML
+    private GridPane panelAdvanced;
+    
 	public InputDosController(MainClass mc) {
 		super(mc);
 	}
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
-		// TODO Auto-generated method stub
+		//point all status messages to the Label statusInfo
+		setPointerStatusTextField(statusInfo);
+				
+		setDoubleFieldListener(textEmax, "emax",EnumNumCondition.no,EnumStep.DOS);
+		setDoubleFieldListener(textEmin, "emin",EnumNumCondition.no,EnumStep.DOS);
+		setDoubleFieldListener(textEstep, "estep",EnumNumCondition.no,EnumStep.DOS);
+		setComboListener(unitEmaxCombo, EnumUnitEnergy.values(), "energyUnit", EnumStep.DOS);
 		
+		setComboListener(comboSummation, EnumSummation.values(), "enumSummation", EnumStep.DOS);
+		setComboListener(comboSmearing, EnumSmearing.values(), "enumSmearing", EnumStep.DOS);//0,1,-1,-99 for input file
+		setDoubleFieldListener(textDegauss, "degauss",EnumNumCondition.nonNegative,EnumStep.DOS);
+		
+		unitEmin.textProperty().bind(unitEmaxCombo.valueProperty().asString());
+		unitEstep.textProperty().bind(unitEmaxCombo.valueProperty().asString());
+		unitDegauss.textProperty().bind(unitEmaxCombo.valueProperty().asString());
+		
+		checkShowAdvanced.selectedProperty().addListener((observable, oldValue, newValue) -> {
+			if(newValue==null) return;
+			InputAgentDos iDos = (InputAgentDos) mainClass.projectManager.getStepAgent(EnumStep.DOS);
+			iDos.setAdvanced = newValue;
+			panelAdvanced.setVisible(newValue);
+		});
+		checkShowAdvanced.setSelected(false);panelAdvanced.setVisible(false);
+		
+		
+		//reset checkBoxes
+		resetTextFieldDoubleListener(checkEmax, textEmax, "emax", EnumStep.DOS, checkResetAll,"Automated");
+		resetTextFieldDoubleListener(checkEmin, textEmin, "emin", EnumStep.DOS, checkResetAll,"Automated");
+
+		checkEstep.setDisable(true);
+		
+		//advanced
+		resetComboBoxListener(checkSummation, comboSummation, "enumSummation", EnumStep.DOS, checkResetAll);
+		resetComboBoxListener(checkSmearing, comboSmearing, "enumSmearing", EnumStep.DOS, checkResetAll);
+		resetTextFieldDoubleListener(checkDegauss, textDegauss, "degauss", EnumStep.DOS, checkResetAll,"None");
+		
+		checkResetAll.selectedProperty().addListener((observable, oldValue, newValue) ->
+		{ 
+			if(newValue!=null && !newValue.equals(allDefault)) {
+				allDefault = newValue;
+				checkEmax.setSelected(newValue);
+				checkEmin.setSelected(newValue);
+				//checkEstep.setSelected(newValue);
+				if(checkShowAdvanced.isSelected()) {
+					checkSummation.setSelected(newValue);
+					checkSmearing.setSelected(newValue);
+					checkDegauss.setSelected(newValue);
+				}
+			}
+		});
 	}
 
 	public void loadProjectParameters() {
-		
+		if (!comboSummation.getItems().isEmpty()) {
+    		InputAgentDos iDos = (InputAgentDos) mainClass.projectManager.getStepAgent(EnumStep.DOS);
+    		if (iDos!=null) {
+    			checkShowAdvanced.setSelected(iDos.setAdvanced);
+    			
+    			setField(textEmax, iDos.emax);
+    			setField(textEmin, iDos.emin);
+    			setField(textEstep, iDos.estep);
+    			setCombo(unitEmaxCombo, iDos.energyUnit);
+    			setCombo(comboSummation, iDos.enumSummation);
+    			
+    			setCombo(comboSmearing, iDos.enumSmearing);
+    			setField(textDegauss, iDos.degauss);
+    			
+    			
+    			//load default checkBoxes
+    			checkEmax.setSelected(!iDos.emax.isEnabled());
+    			checkEmin.setSelected(!iDos.emin.isEnabled());
+    			checkEstep.setSelected(!iDos.estep.isEnabled());//just for completeness. No use here
+				checkSummation.setSelected(!iDos.enumSummation.isEnabled());
+				checkSmearing.setSelected(!iDos.enumSmearing.isEnabled());
+				checkDegauss.setSelected(!iDos.degauss.isEnabled());
+
+    			
+    		}
+    	}
 	}
 
 }
