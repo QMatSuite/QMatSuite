@@ -21,15 +21,105 @@ package app.input;
 
 import java.net.URL;
 import java.util.ResourceBundle;
-
 import javafx.fxml.FXML;
-import javafx.scene.layout.AnchorPane;
+import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
 import main.MainClass;
 
 public class InputDosController extends InputController {
-	
-	@FXML private AnchorPane projectPane;
 
+	@FXML
+    private CheckBox checkResetAll;
+
+    @FXML
+    private Button infoResetAll;
+
+    @FXML
+    private Label emaxLabel;
+
+    @FXML
+    private Label eminLabel;
+
+    @FXML
+    private TextField textEmax;
+
+    @FXML
+    private ComboBox<?> unitEmaxCombo;
+
+    @FXML
+    private TextField textEmin;
+
+    @FXML
+    private Label unitEmin;
+
+    @FXML
+    private Button infoEmax;
+
+    @FXML
+    private Button infoEmin;
+
+    @FXML
+    private Label edeltaLabel;
+
+    @FXML
+    private Button infoEstep;
+
+    @FXML
+    private TextField textEstep;
+
+    @FXML
+    private Label unitEstep;
+
+    @FXML
+    private Label broadLabel;
+
+    @FXML
+    private Button infoSmearing;
+
+    @FXML
+    private ComboBox<?> comboSmearing;
+
+    @FXML
+    private Label broadWidthLabel;
+
+    @FXML
+    private TextField textDegauss;
+
+    @FXML
+    private Label unitDegauss;
+
+    @FXML
+    private Button infoDegauss;
+
+    @FXML
+    private CheckBox checkEmax;
+
+    @FXML
+    private CheckBox checkEmin;
+
+    @FXML
+    private CheckBox checkEstep;
+
+    @FXML
+    private CheckBox checkSmearing;
+
+    @FXML
+    private CheckBox checkDegauss;
+
+    @FXML
+    private CheckBox checkSummation;
+
+    @FXML
+    private ComboBox<?> comboSummation;
+
+    @FXML
+    private CheckBox checkShowAdvanced;
+
+    @FXML
+    private Button infoSummation;
 	public InputDosController(MainClass mc) {
 		super(mc);
 	}
@@ -39,5 +129,12 @@ public class InputDosController extends InputController {
 		
 	}
 
+	public void loadProjectParameters() {
+		
+	}
 
 }
+
+
+
+

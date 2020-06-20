@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<ScrollPane xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
+   <content>
+      <VBox prefWidth="350.0">
+         <children>
+            <GridPane hgap="5.0">
+              <columnConstraints>
+                <ColumnConstraints halignment="RIGHT" hgrow="SOMETIMES" maxWidth="301.0" minWidth="10.0" prefWidth="298.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="108.5" minWidth="10.0" prefWidth="16.5" />
+                <ColumnConstraints hgrow="SOMETIMES" maxWidth="101.5" minWidth="10.0" prefWidth="25.5" />
+              </columnConstraints>
+              <rowConstraints>
+                <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+              </rowConstraints>
+               <VBox.margin>
+                  <Insets />
+               </VBox.margin>
+               <children>
+                  <Label prefWidth="102.0" text="Reset all to default" />
+                  <CheckBox fx:id="checkResetAll" mnemonicParsing="false" prefHeight="17.0" prefWidth="0.0" GridPane.columnIndex="1" />
+                  <Button fx:id="infoResetAll" mnemonicParsing="false" text="i" GridPane.columnIndex="2" />
+               </children>
+            </GridPane>
+            <BorderPane prefWidth="350.0">
+               <center>
+                  <Separator prefHeight="30.0" BorderPane.alignment="CENTER" />
+               </center>
+               <left>
+                  <Label styleClass="medium-text" text="Non self-consistency" BorderPane.alignment="CENTER">
+                     <font>
+                        <Font name="System Bold Italic" size="14.0" />
+                     </font>
+                     <padding>
+                        <Insets left="10.0" right="10.0" />
+                     </padding>
+                  </Label>
+               </left>
+               <padding>
+                  <Insets top="10.0" />
+               </padding>
+            </BorderPane>
+            <GridPane hgap="5.0" prefWidth="350.0" vgap="5.0">
+               <children>
+                  <Label fx:id="kpointLabel" text="K-Points" />
+                  <Label fx:id="occupLabel" text="Occupations" GridPane.rowIndex="1" />
+                  <Label fx:id="smearLabel" text="Smearing" GridPane.rowIndex="2" />
+                  <Label fx:id="smearWidthLabel" text="Smearing Width" GridPane.rowIndex="3" />
+                  <GridPane hgap="5.0" prefWidth="200.0" GridPane.columnIndex="1">
+                     <children>
+                        <TextField fx:id="textKPoint1" />
+                        <TextField fx:id="textKPoint2" GridPane.columnIndex="1" />
+                        <TextField fx:id="textKPoint3" GridPane.columnIndex="2" />
+                     </children>
+                     <columnConstraints>
+                        <ColumnConstraints hgrow="SOMETIMES" prefWidth="60.0" />
+                        <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="60.0" />
+                        <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="60.0" />
+                     </columnConstraints>
+                     <padding>
+                        <Insets right="5.0" />
+                     </padding>
+                     <rowConstraints>
+                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                     </rowConstraints>
+                  </GridPane>
+                  <ComboBox fx:id="comboOccup" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+                  <ComboBox fx:id="comboSmear" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+                  <GridPane prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="3">
+                     <children>
+                        <TextField fx:id="textSmearing" prefWidth="100.0" />
+                        <ComboBox fx:id="unitSmearing" prefWidth="97.0" GridPane.columnIndex="1" />
+                     </children>
+                     <columnConstraints>
+                        <ColumnConstraints hgrow="SOMETIMES" prefWidth="100.0" />
+                        <ColumnConstraints hgrow="SOMETIMES" prefWidth="100.0" />
+                     </columnConstraints>
+                     <rowConstraints>
+                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                     </rowConstraints>
+                  </GridPane>
+                  <Button fx:id="infoKPoint" mnemonicParsing="false" text="i" GridPane.columnIndex="3" />
+                  <Button fx:id="infoOccup" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+                  <Button fx:id="infoSmear" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="2" />
+                  <Button fx:id="infoSmearing" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="3" />
+                  <CheckBox fx:id="checkKPoint" mnemonicParsing="false" GridPane.columnIndex="2" />
+                  <CheckBox fx:id="checkOccup" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="1" />
+                  <CheckBox fx:id="checkSmear" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="2" />
+                  <CheckBox fx:id="checkGauss" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="3" />
+               </children>
+               <columnConstraints>
+                  <ColumnConstraints hgrow="SOMETIMES" prefWidth="120.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="201.5" minWidth="168.0" prefWidth="170.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="56.5" minWidth="10.0" prefWidth="23.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="28.5" minWidth="24.0" prefWidth="24.0" />
+               </columnConstraints>
+               <padding>
+                  <Insets left="10.0" />
+               </padding>
+               <rowConstraints>
+                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+               </rowConstraints>
+            </GridPane>
+            <BorderPane prefWidth="350.0">
+               <center>
+                  <Separator prefHeight="30.0" BorderPane.alignment="CENTER" />
+               </center>
+               <padding>
+                  <Insets top="10.0" />
+               </padding>
+               <left>
+                  <Label prefWidth="94.0" text="Advanced" BorderPane.alignment="CENTER">
+                     <font>
+                        <Font name="System Bold Italic" size="14.0" />
+                     </font>
+                     <padding>
+                        <Insets left="10.0" right="10.0" />
+                     </padding>
+                  </Label>
+               </left>
+            </BorderPane>
+            <GridPane hgap="5.0" vgap="5.0">
+              <columnConstraints>
+                <ColumnConstraints hgrow="SOMETIMES" maxWidth="113.5" minWidth="10.0" prefWidth="113.5" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="195.5" minWidth="10.0" prefWidth="172.5" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="145.0" minWidth="10.0" prefWidth="20.0" />
+                <ColumnConstraints hgrow="SOMETIMES" maxWidth="83.5" minWidth="10.0" prefWidth="21.0" />
+              </columnConstraints>
+              <rowConstraints>
+                <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+              </rowConstraints>
+               <VBox.margin>
+                  <Insets bottom="10.0" left="10.0" />
+               </VBox.margin>
+               <children>
+                  <Button fx:id="infonband" mnemonicParsing="false" text="i" GridPane.columnIndex="3" />
+                  <CheckBox fx:id="checknband" mnemonicParsing="false" GridPane.columnIndex="2" />
+                  <TextField fx:id="textnband" prefWidth="200.0" GridPane.columnIndex="1" />
+                  <Label fx:id="nbandLabel" text="Number of Bands" />
+               </children>
+            </GridPane>
+            <Label fx:id="statusInfo" />
+            <BorderPane>
+               <center>
+                  <Separator prefWidth="200.0" BorderPane.alignment="CENTER" />
+               </center>
+            </BorderPane>
+         </children>
+      </VBox>
+   </content>
+</ScrollPane>

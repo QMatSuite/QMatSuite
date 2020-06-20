@@ -95,7 +95,8 @@ public class InputAgentScf extends InputAgent{
 		elementList = new ArrayList<Element>();//ok, //for scfHubbard, part of all elements
 		//standard
 		boolRestart=new WrapperBoolean(false); //false is from scratch //ok
-		boolForce=new WrapperBoolean(false);boolStress=new WrapperBoolean(false);enumOccupation=new WrapperEnum(EnumOccupations.smearing);//ok
+		boolForce=new WrapperBoolean(false);boolStress=new WrapperBoolean(false);
+		enumOccupation=new WrapperEnum(EnumOccupations.smearing);//ok
 		enumEnergyUnit = new WrapperEnum(EnumUnitEnergy.Ry);//ok
 		ecutWfc = new WrapperDouble(30.0);//ok
 		ecutRho = new WrapperDouble(120.0);//ok

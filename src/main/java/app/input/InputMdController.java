@@ -42,6 +42,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.VBox;
 
 public class InputMdController extends InputController {
 	
@@ -183,6 +184,9 @@ public class InputMdController extends InputController {
     @FXML
     private Label statusInfo;
     
+    @FXML
+    private VBox vboxOptionalThermalstat;
+    
     public InputMdController(MainClass mc) {
 		super(mc);
 	}
@@ -229,14 +233,12 @@ public class InputMdController extends InputController {
 		{ 
 			//second listener for comboThermalstat
 			boolean hasTControl = !EnumThermalstat.non.equals(newValue);
-			tempField.setVisible(hasTControl);tolpField.setVisible(hasTControl);
-			nraiseField.setVisible(hasTControl);deltatField.setVisible(hasTControl);
+			vboxOptionalThermalstat.setVisible(hasTControl);
 			
 			checkThermAdvanced.setVisible(hasTControl);checkTargetT.setVisible(hasTControl);
 		});
 		//initialize with all invisible because comboThermalstat is defaulted to non
-		tempField.setVisible(false);tolpField.setVisible(false);
-		nraiseField.setVisible(false);deltatField.setVisible(false);
+		vboxOptionalThermalstat.setVisible(false);
 		checkThermAdvanced.setVisible(false);checkTargetT.setVisible(false);
 		
 		setDoubleFieldListener(tempField, "temperature",EnumNumCondition.nonNegative,EnumStep.BOMD);

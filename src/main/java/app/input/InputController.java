@@ -72,13 +72,15 @@ public abstract class InputController implements Initializable{
 							case no:{break;}
 							case positive:
 								if(tmp<=0) {
-									if(statusTextField!=null) {statusTextField.setText("Must be positive!");}
+									if(statusTextField!=null) {statusTextField.setText("Must be positive! Set to null.");}
+									((WrapperDouble) obj).setValue(null);
 									return;
 								} 
 								break;
 							case nonNegative:
 								if(tmp<0) {
-									if(statusTextField!=null) {statusTextField.setText("Must not be negative!");}
+									if(statusTextField!=null) {statusTextField.setText("Must not be negative! Set to null.");}
+									((WrapperDouble) obj).setValue(null);
 									return;
 								} 
 								break;
@@ -89,6 +91,10 @@ public abstract class InputController implements Initializable{
 						((WrapperDouble) obj).setValue(tmp);
 						
 					}
+					else {
+						((WrapperDouble) obj).setValue(null);
+						return;
+					}
 				}
 				else if("int".equals(type)) {
 					Integer tmp = str2int(newValue);
@@ -97,13 +103,15 @@ public abstract class InputController implements Initializable{
 							case no:{break;}
 							case positive:
 								if(tmp<=0) {
-									if(statusTextField!=null) {statusTextField.setText("Must be positive!");}
+									if(statusTextField!=null) {statusTextField.setText("Must be positive! Set to null.");}
+									((WrapperInteger) obj).setValue(null);
 									return;
 								} 
 								break;
 							case nonNegative:
 								if(tmp<0) {
-									if(statusTextField!=null) {statusTextField.setText("Must not be negative!");}
+									if(statusTextField!=null) {statusTextField.setText("Must not be negative! Set to null.");}
+									((WrapperInteger) obj).setValue(null);
 									return;
 								} 
 								break;
@@ -112,6 +120,12 @@ public abstract class InputController implements Initializable{
 						}
 						if(statusTextField!=null) {statusTextField.setText("");}
 						((WrapperInteger) obj).setValue(tmp);
+					}
+					else {
+						statusTextField.setText(
+								statusTextField.getText()==null? "Null input. Set to null.":statusTextField.getText()+" Set to null.");
+						((WrapperInteger) obj).setValue(null);
+						return;
 					}
 				}
 				else {

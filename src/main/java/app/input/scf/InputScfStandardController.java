@@ -187,7 +187,7 @@ public class InputScfStandardController extends InputController{
 					}
 					else {
 						smearCombo.setDisable(true);checkSmear.setDisable(true);
-						gaussField.setDisable(true);checkGauss.setDisable(true);
+						gaussField.setDisable(true);//checkGauss.setDisable(true);
 					}
 				}
 			});
