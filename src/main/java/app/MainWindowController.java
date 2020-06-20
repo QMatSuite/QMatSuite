@@ -68,8 +68,10 @@ import javafx.stage.StageStyle;
 import main.MainClass;
 import app.centerwindow.OutputViewerController;
 import app.centerwindow.WorkScene3D;
+import app.input.InputDosController;
 import app.input.InputGeoController;
 import app.input.InputMdController;
+import app.input.InputNscfController;
 import app.input.InputOptController;
 import app.input.InputScfController;
 import app.menus.SettingsWindowController;
@@ -137,6 +139,7 @@ public class MainWindowController implements Initializable{
 	scrollOpt,
 	scrollScf,
 	scrollDos,
+	scrollNscf,
 	scrollBands,
 	scrollMd,
 	scrollTddft;
@@ -157,6 +160,10 @@ public class MainWindowController implements Initializable{
 	private InputGeoController contGeo;
 	
 	private InputOptController contOpt;
+	
+	private InputNscfController contNscf;
+	
+	private InputDosController contDos;
 	
 	private InputMdController contMd;
 			
@@ -202,51 +209,58 @@ public class MainWindowController implements Initializable{
 		// load all relevant panes and sub-panes
 		try {
 			contScf = new InputScfController(mainClass);
-			FXMLLoader fxmlLoader1 = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputScf.fxml"));
-			fxmlLoader1.setController(contScf);
-			scrollScf = fxmlLoader1.load();
+			FXMLLoader fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputScf.fxml"));
+			fxmlLoader.setController(contScf);
+			scrollScf = fxmlLoader.load();
 			//contScf.initialize();//must be later than the load
 			
 			contGeo = new InputGeoController(mainClass);
-			FXMLLoader fxmlLoader2 = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputGeo.fxml"));
-			fxmlLoader2.setController(contGeo);
-			scrollGeo = fxmlLoader2.load();
+			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputGeo.fxml"));
+			fxmlLoader.setController(contGeo);
+			scrollGeo = fxmlLoader.load();
 			//contGeo.initialize();//must be later than the load
 			
 			
 			contOpt = new InputOptController(mainClass);
-			FXMLLoader fxmlLoader3 = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputOpt.fxml"));
-			fxmlLoader3.setController(contOpt);
-			scrollOpt = fxmlLoader3.load();
+			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputOpt.fxml"));
+			fxmlLoader.setController(contOpt);
+			scrollOpt = fxmlLoader.load();
 			
 			contMd = new InputMdController(mainClass);
-			FXMLLoader fxmlLoader4 = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputMd.fxml"));
-			fxmlLoader4.setController(contMd);
-			scrollMd = fxmlLoader4.load();
+			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputMd.fxml"));
+			fxmlLoader.setController(contMd);
+			scrollMd = fxmlLoader.load();
 			
-			FXMLLoader fxmlLoader5 = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputDos.fxml"));
-			scrollDos = fxmlLoader5.load();
+			contDos = new InputDosController(mainClass);
+			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputDos.fxml"));
+			fxmlLoader.setController(contDos);
+			scrollDos = fxmlLoader.load();
+			
+			contNscf = new InputNscfController(mainClass);
+			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputNscf.fxml"));
+			fxmlLoader.setController(contNscf);
+			scrollNscf = fxmlLoader.load();
 
-			FXMLLoader fxmlLoader6 = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputBands.fxml"));
-			scrollBands = fxmlLoader6.load(); 
+			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputBands.fxml"));
+			scrollBands = fxmlLoader.load(); 
 
-			FXMLLoader fxmlLoader7 = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputTddft.fxml"));
-			scrollTddft = fxmlLoader7.load(); 
+			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputTddft.fxml"));
+			scrollTddft = fxmlLoader.load(); 
 			
 			contTree = new MainLeftPaneController(mainClass);
-			FXMLLoader fxmlLoaderTree = new FXMLLoader(getClass().getClassLoader().getResource("app/MainLeftPane.fxml"));
-			fxmlLoaderTree.setController(contTree);
-			scrollLeft = fxmlLoaderTree.load();scrollLeft.setId("mainScrollLeft");
+			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/MainLeftPane.fxml"));
+			fxmlLoader.setController(contTree);
+			scrollLeft = fxmlLoader.load();scrollLeft.setId("mainScrollLeft");
 			
 			contSettings = new SettingsWindowController(mainClass);
-			FXMLLoader fxmlLoaderSettings = new FXMLLoader(getClass().getClassLoader().getResource("app/menus/settingsWindow.fxml"));
-			fxmlLoaderSettings.setController(contSettings);
-			borderSettings = fxmlLoaderSettings.load();
+			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/menus/settingsWindow.fxml"));
+			fxmlLoader.setController(contSettings);
+			borderSettings = fxmlLoader.load();
 			
 			contOutput = new OutputViewerController(mainClass);
-			FXMLLoader fxmlLoaderOutput = new FXMLLoader(getClass().getClassLoader().getResource("app/centerwindow/outputViewer.fxml"));
-			fxmlLoaderOutput.setController(contOutput);
-			hboxOutput = fxmlLoaderOutput.load();
+			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/centerwindow/outputViewer.fxml"));
+			fxmlLoader.setController(contOutput);
+			hboxOutput = fxmlLoader.load();
 			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -948,113 +962,32 @@ public class MainWindowController implements Initializable{
 	private void openCalc(EnumCalc ec, boolean boolCreate) {
 		//if(boolCreate), open a new calculation of type EnumCalc ec
 		//if(!boolCreate), just load one existing calculation. MUST be entered through openCalc(String ecStr) in this case!
-		String calcName="";
 		if (ec==null) {return;}
-		
-		//Boolean firstFlag=false;
-//		if (mainClass.projectManager.existCurrentStep(EnumStep.SCF)) contScf.loadProjectParameters();
-//		if (mainClass.projectManager.existCurrentStep(EnumStep.GEO)) contGeo.loadProjectParameters();
 		
 		if (!mainClass.projectManager.existCurrentProject()) return;//abnormal!
 		radioCalculation.setSelected(true);
 		mainClass.projectManager.setGeoActive(false);
 		
+		EnumStep[] enumStepArray;
+		
 		switch(ec) {
 		case SCF:
-			if(boolCreate) {
-				//create new calculation even if SCF exists
-				//need to update current calculation before loading parameters
-				mainClass.projectManager.addCalcToActiveProj(EnumCalc.SCF); 
-				calcName = mainClass.projectManager.getCurrentCalcName();
-				//initialize controllers. This will be automatically done only once
-				//***moved to the beginning of the program
-				//add comboBox item
-				comboCalculation.getItems().add(calcName);
-				//update current status to trees
-				contTree.updateCalcTree(calcName);
-				
-				
-				
-			}
-			
-			//load parameters for current project and calculation
-			contGeo.loadProjectParameters();
-			contGeo.setDisabled();
-			contScf.loadProjectParameters();
-			clearRightPane();
-			addRightPane(scrollGeo,EnumStep.GEO);
-			addRightPane(scrollScf,EnumStep.SCF);
-			try {tabPaneRight.getSelectionModel().select(1);}catch (Exception e) {}//load second tab(not geo)
-			
-			calcLabel.setText(EnumCalc.SCF.getLong());
-			
-			calcName = mainClass.projectManager.getCurrentCalcName();
-			if(calcName!=null) comboCalculation.getSelectionModel().select(calcName);
-			
+			enumStepArray = new EnumStep[] {EnumStep.SCF};
+			addCalc(boolCreate, ec, enumStepArray);		
 			break;
 		case OPT:
-			if(boolCreate) {
-				//need to update current calculation before loading parameters
-				mainClass.projectManager.addCalcToActiveProj(EnumCalc.OPT); 
-				calcName = mainClass.projectManager.getCurrentCalcName();
-				//initialize controllers. This will be automatically done only once
-				//***moved to the beginning of the program
-				//add comboBox item
-				comboCalculation.getItems().add(calcName);
-				//update current status to trees
-				contTree.updateCalcTree(calcName);
-				
-			}
-			
-			//load parameters for current project and calculation
-			contGeo.loadProjectParameters();
-			contGeo.setDisabled();
-			contScf.loadProjectParameters();
-			contOpt.loadProjectParameters();
-			//update GUI
-			clearRightPane();
-			addRightPane(scrollGeo,EnumStep.GEO);
-			addRightPane(scrollScf,EnumStep.SCF);
-			addRightPane(scrollOpt,EnumStep.OPT);
-			try {tabPaneRight.getSelectionModel().select(1);}catch (Exception e) {}//load second tab(not geo)
-			
-			calcLabel.setText(EnumCalc.OPT.getLong());
-			calcName = mainClass.projectManager.getCurrentCalcName();
-			if(calcName!=null) comboCalculation.getSelectionModel().select(calcName);
+			enumStepArray = new EnumStep[] {EnumStep.SCF,EnumStep.OPT};
+			addCalc(boolCreate, ec, enumStepArray);
 			break;
 		case DOS:
+			enumStepArray = new EnumStep[] {EnumStep.SCF,EnumStep.NSCF,EnumStep.DOS};
+			addCalc(boolCreate, ec, enumStepArray);
 			break;
 		case BANDS:
 			break;
 		case BOMD:
-			if(boolCreate) {
-				//need to update current calculation before loading parameters
-				mainClass.projectManager.addCalcToActiveProj(EnumCalc.BOMD); 
-				calcName = mainClass.projectManager.getCurrentCalcName();
-				//initialize controllers. This will be automatically done only once
-				//***moved to the beginning of the program
-				//add comboBox item
-				comboCalculation.getItems().add(calcName);
-				//update current status to trees
-				contTree.updateCalcTree(calcName);
-				
-			}
-			
-			//load parameters for current project and calculation
-			contGeo.loadProjectParameters();
-			contGeo.setDisabled();
-			contScf.loadProjectParameters();
-			contMd.loadProjectParameters();
-			//update GUI
-			clearRightPane();
-			addRightPane(scrollGeo,EnumStep.GEO);
-			addRightPane(scrollScf,EnumStep.SCF);
-			addRightPane(scrollMd,EnumStep.BOMD);
-			try {tabPaneRight.getSelectionModel().select(1);}catch (Exception e) {}//load second tab(not geo)
-			
-			calcLabel.setText(EnumCalc.BOMD.getLong());
-			calcName = mainClass.projectManager.getCurrentCalcName();
-			if(calcName!=null) comboCalculation.getSelectionModel().select(calcName);
+			enumStepArray = new EnumStep[] {EnumStep.SCF,EnumStep.BOMD};
+			addCalc(boolCreate, ec, enumStepArray);
 			break;
 		case TDDFT:
 			break;
@@ -1062,7 +995,49 @@ public class MainWindowController implements Initializable{
 			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Wrong calculation type!");
 		}
 	}
-	boolean deleteDir(File directoryToBeDeleted) {
+	private void addCalc(boolean boolCreate, EnumCalc enumCalcThis, EnumStep[] enumStepArray) {
+		final int lengthArray = enumStepArray.length;
+		if(lengthArray==0) return;
+		String calcName;
+		if(boolCreate) {
+			//need to update current calculation before loading parameters
+			mainClass.projectManager.addCalcToActiveProj(enumCalcThis); 
+			calcName = mainClass.projectManager.getCurrentCalcName();
+			//initialize controllers. This will be automatically done only once
+			//***moved to the beginning of the program
+			//add comboBox item
+			comboCalculation.getItems().add(calcName);
+			//update current status to trees
+			contTree.updateCalcTree(calcName);
+			
+		}
+		
+		//prepare to load GUI
+		clearRightPane();
+		addRightPane(scrollGeo,EnumStep.GEO);
+		
+		//load parameters for current project and calculation as well as update GUI
+		contGeo.loadProjectParameters();
+		contGeo.setDisabled();
+		for (int i=0;i<lengthArray;i++) {
+			switch(enumStepArray[i]) {
+				case SCF:contScf.loadProjectParameters();addRightPane(scrollScf,enumStepArray[i]);break;
+				case OPT:contOpt.loadProjectParameters();addRightPane(scrollOpt,enumStepArray[i]);break;
+				case BOMD:contMd.loadProjectParameters();addRightPane(scrollMd,enumStepArray[i]);break;
+				case NSCF:contNscf.loadProjectParameters();addRightPane(scrollNscf,enumStepArray[i]);break;
+				case DOS:contDos.loadProjectParameters();addRightPane(scrollDos,enumStepArray[i]);break;
+				default:ShowAlert.showAlert(AlertType.INFORMATION, "Error", 
+						"Nonimplemented controller: "+(enumStepArray[i]==null?"null":enumStepArray[i].toString()));break;
+			}
+		}
+
+		try {tabPaneRight.getSelectionModel().select(1);}catch (Exception e) {}//load second tab(not geo)
+		
+		calcLabel.setText(enumCalcThis.getLong());
+		calcName = mainClass.projectManager.getCurrentCalcName();
+		if(calcName!=null) comboCalculation.getSelectionModel().select(calcName);
+	}
+	private boolean deleteDir(File directoryToBeDeleted) {
 	    File[] allContents = directoryToBeDeleted.listFiles();
 	    if (allContents != null) {
 	        for (File file : allContents) {

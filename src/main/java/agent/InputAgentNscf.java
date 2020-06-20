@@ -18,6 +18,9 @@
  *******************************************************************************/
 package agent;
 
+import com.consts.Constants.EnumOccupations;
+import com.consts.Constants.EnumSmearing;
+import com.consts.Constants.EnumUnitEnergy;
 import com.consts.Constants.ProgramName;
 
 public class InputAgentNscf extends InputAgent{
@@ -27,7 +30,25 @@ public class InputAgentNscf extends InputAgent{
 	private static final long serialVersionUID = 6359716753902151708L;
 	public final String calcMode = "nscf";
 	
+	public WrapperEnum enumOccupation;//EnumOccupations 
+	public WrapperEnum enumEnergyUnit;
+	public WrapperDouble degauss;
+	public WrapperInteger nkx,
+	nky,
+	nkz,
+	nbnd;
+	public WrapperEnum enumSmearing;//EnumSmearing
+	
 	public InputAgentNscf() {
 		super(ProgramName.PW);
+		
+		enumOccupation=new WrapperEnum(EnumOccupations.smearing);
+		enumEnergyUnit = new WrapperEnum(EnumUnitEnergy.Ry);
+		degauss = new WrapperDouble(0.02);
+		nkx = new WrapperInteger(4);
+		nky = new WrapperInteger(4);
+		nkz = new WrapperInteger(4);
+		enumSmearing=new WrapperEnum(EnumSmearing.gauss);
+		nbnd = new WrapperInteger(null);
 	}
 }

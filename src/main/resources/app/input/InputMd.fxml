@@ -18,12 +18,12 @@
 
 <ScrollPane xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
    <content>
-      <VBox>
+      <VBox prefWidth="350.0">
          <children>
             <GridPane hgap="5.0" vgap="5.0">
               <columnConstraints>
-                <ColumnConstraints halignment="RIGHT" hgrow="SOMETIMES" maxWidth="365.0" minWidth="10.0" prefWidth="350.5" />
-                <ColumnConstraints hgrow="SOMETIMES" maxWidth="130.5" minWidth="0.0" prefWidth="22.0" />
+                <ColumnConstraints halignment="RIGHT" hgrow="SOMETIMES" maxWidth="365.0" minWidth="10.0" prefWidth="302.0" />
+                <ColumnConstraints hgrow="SOMETIMES" maxWidth="130.5" minWidth="0.0" prefWidth="18.5" />
                   <ColumnConstraints hgrow="SOMETIMES" maxWidth="103.5" minWidth="10.0" prefWidth="19.5" />
               </columnConstraints>
               <rowConstraints>
@@ -96,9 +96,9 @@
                </children>
                <columnConstraints>
                   <ColumnConstraints hgrow="SOMETIMES" prefWidth="120.0" />
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="230.0" minWidth="185.5" prefWidth="223.0" />
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="71.5" minWidth="10.0" prefWidth="26.0" />
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="34.5" minWidth="18.5" prefWidth="21.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="230.0" minWidth="166.0" prefWidth="168.5" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="71.5" minWidth="10.0" prefWidth="20.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="34.5" minWidth="18.5" prefWidth="23.0" />
                </columnConstraints>
                <padding>
                   <Insets left="10.0" />
@@ -131,68 +131,77 @@
             <GridPane hgap="5.0" prefWidth="395.0" vgap="5.0">
               <columnConstraints>
                 <ColumnConstraints hgrow="SOMETIMES" maxWidth="140.0" minWidth="10.0" prefWidth="119.0" />
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="224.5" minWidth="10.0" prefWidth="223.0" />
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="126.5" minWidth="10.0" prefWidth="19.5" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="224.5" minWidth="10.0" prefWidth="168.5" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="126.5" minWidth="10.0" prefWidth="18.5" />
                   <ColumnConstraints hgrow="SOMETIMES" maxWidth="126.5" minWidth="10.0" prefWidth="20.5" />
               </columnConstraints>
               <rowConstraints>
-                <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                 <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
               </rowConstraints>
                <children>
                   <Label fx:id="ctrlTempLabel" text="Thermalstat" />
                   <ComboBox fx:id="comboThermalstat" prefWidth="240.0" GridPane.columnIndex="1" />
-                  <Button fx:id="infoThermalstat" mnemonicParsing="false" text="i" GridPane.columnIndex="3" />
-                  <Label fx:id="tempLabel" text="Temperature" GridPane.rowIndex="1" />
-                  <GridPane prefWidth="240.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
-                     <children>
-                        <TextField fx:id="tempField" prefWidth="100.0" />
-                        <Label text="Kelvin" GridPane.columnIndex="1" />
-                     </children>
-                     <columnConstraints>
-                        <ColumnConstraints hgrow="SOMETIMES" prefWidth="120.0" />
-                        <ColumnConstraints hgrow="SOMETIMES" prefWidth="120.0" />
-                     </columnConstraints>
-                     <rowConstraints>
-                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-                     </rowConstraints>
-                  </GridPane>
-                  <Button fx:id="infoTargetT" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+                  <Button fx:id="infoThermalstat" mnemonicParsing="false" prefHeight="25.0" prefWidth="13.0" text="i" GridPane.columnIndex="3" />
                   <CheckBox fx:id="checkThermalstat" mnemonicParsing="false" GridPane.columnIndex="2" />
-                  <CheckBox fx:id="checkTargetT" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="1" />
                </children>
                <VBox.margin>
                   <Insets left="10.0" />
                </VBox.margin>
             </GridPane>
-            <GridPane fx:id="gridThermAdvanced" hgap="5.0" vgap="5.0">
-              <columnConstraints>
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="34.5" />
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="65.0" />
-                <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="40.5" />
-                <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="65.0" />
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="42.5" />
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="65.0" />
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="20.0" />
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="20.0" />
-              </columnConstraints>
-              <rowConstraints>
-                <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-              </rowConstraints>
+            <VBox fx:id="vboxOptionalThermalstat">
                <children>
-                  <Label text="tolp" />
-                  <Label text="nraise" GridPane.columnIndex="2" />
-                  <Label text="delta_t" GridPane.columnIndex="4" />
-                  <TextField fx:id="tolpField" GridPane.columnIndex="1" />
-                  <TextField fx:id="nraiseField" GridPane.columnIndex="3" />
-                  <TextField fx:id="deltatField" GridPane.columnIndex="5" />
-                  <Button fx:id="infoThermAdvanced" mnemonicParsing="false" text="i" GridPane.columnIndex="7" />
-                  <CheckBox fx:id="checkThermAdvanced" mnemonicParsing="false" GridPane.columnIndex="6" />
+                  <GridPane hgap="5.0" prefWidth="395.0" vgap="5.0">
+                    <columnConstraints>
+                      <ColumnConstraints hgrow="SOMETIMES" maxWidth="155.5" minWidth="10.0" prefWidth="120.5" />
+                        <ColumnConstraints hgrow="SOMETIMES" maxWidth="239.0" minWidth="10.0" prefWidth="111.0" />
+                        <ColumnConstraints hgrow="SOMETIMES" maxWidth="239.0" minWidth="10.0" prefWidth="57.0" />
+                        <ColumnConstraints hgrow="SOMETIMES" maxWidth="113.0" minWidth="5.0" prefWidth="20.0" />
+                      <ColumnConstraints hgrow="SOMETIMES" maxWidth="95.5" minWidth="10.0" prefWidth="20.5" />
+                    </columnConstraints>
+                    <rowConstraints>
+                      <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                    </rowConstraints>
+                     <children>
+                        <Label fx:id="tempLabel" text="Temperature" />
+                        <Button fx:id="infoTargetT" mnemonicParsing="false" text="i" GridPane.columnIndex="4" />
+                        <CheckBox fx:id="checkTargetT" mnemonicParsing="false" GridPane.columnIndex="3" />
+                        <Label text="Kelvin" GridPane.columnIndex="2" />
+                        <TextField fx:id="tempField" prefWidth="100.0" GridPane.columnIndex="1" />
+                     </children>
+                     <VBox.margin>
+                        <Insets left="10.0" />
+                     </VBox.margin>
+                  </GridPane>
+                  <GridPane fx:id="gridThermAdvanced" hgap="5.0" vgap="5.0">
+                    <columnConstraints>
+                        <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="32.0" />
+                        <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="55.0" />
+                      <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="40.0" />
+                      <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="55.0" />
+                        <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="40.0" />
+                        <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="55.0" />
+                        <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="20.0" />
+                        <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="20.0" />
+                    </columnConstraints>
+                    <rowConstraints>
+                      <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                    </rowConstraints>
+                     <children>
+                        <Label text="tolp" />
+                        <Label text="nraise" GridPane.columnIndex="2" />
+                        <Label text="delta_t" GridPane.columnIndex="4" />
+                        <TextField fx:id="tolpField" GridPane.columnIndex="1" />
+                        <TextField fx:id="nraiseField" GridPane.columnIndex="3" />
+                        <TextField fx:id="deltatField" GridPane.columnIndex="5" />
+                        <Button fx:id="infoThermAdvanced" mnemonicParsing="false" text="i" GridPane.columnIndex="7" />
+                        <CheckBox fx:id="checkThermAdvanced" mnemonicParsing="false" GridPane.columnIndex="6" />
+                     </children>
+                     <VBox.margin>
+                        <Insets left="10.0" top="5.0" />
+                     </VBox.margin>
+                  </GridPane>
                </children>
-               <VBox.margin>
-                  <Insets left="10.0" top="5.0" />
-               </VBox.margin>
-            </GridPane>
+            </VBox>
             <BorderPane prefWidth="395.0">
                <center>
                   <Separator prefHeight="30.0" BorderPane.alignment="CENTER" />
@@ -240,9 +249,9 @@
                </children>
                <columnConstraints>
                   <ColumnConstraints hgrow="SOMETIMES" prefWidth="120.0" />
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="228.5" minWidth="185.5" prefWidth="223.0" />
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="71.5" minWidth="10.0" prefWidth="21.5" />
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="34.0" minWidth="17.5" prefWidth="20.5" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="228.5" minWidth="166.5" prefWidth="166.5" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="71.5" minWidth="10.0" prefWidth="18.5" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="34.0" minWidth="17.5" prefWidth="21.5" />
                </columnConstraints>
                <padding>
                   <Insets left="10.0" />
