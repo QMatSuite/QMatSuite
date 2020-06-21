@@ -100,13 +100,86 @@ public class InputGeoCellController extends InputController{
     cVecField3;//ok
 	
 	public InputGeoCellController(MainClass mc) {
-		super(mc);
+		super(mc, EnumStep.GEO);
 	}
     
     @Override
 	public void initialize(URL location, ResourceBundle resources) {
     	setPointerStatusTextField(statusInfo);//point all status messages to the Label statusInfo
-    	initialize();
+
+    	checkResetAll.setDisable(true);ibravCheck.setDisable(true);aCheck.setDisable(true);bCheck.setDisable(true);
+    	cCheck.setDisable(true);alphaCheck.setDisable(true);betaCheck.setDisable(true);gammaCheck.setDisable(true);
+    	//ibrav
+    	ObservableList<BravaisLattice> ibrav = FXCollections.observableArrayList(BravaisLattice.values());
+    	ibravCombo.setItems(ibrav);
+    	ibravCombo.setOnAction((event) -> {	
+			if (ibravCombo.getValue()!=null) {
+				InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
+				if (ia!=null) {
+					ia.ibrav.setValue(ibravCombo.getValue().getInd());
+					//if not (ibrav=0, free), disable gridPaneLattice
+					gridPaneLattice.setDisable(!(ia.ibrav.equals(0)));
+					setDisableInputFields();
+					mainClass.projectManager.updateViewerPlot();
+				}
+			}
+		});
+    	//values, 
+    	//**********not efficient because whenever parameters are loaded from InputAgentGeo, this will run again trying to write there
+    	//the use of reflection increases code simplicity
+    	//but may 1) result in error if the field name is not correct 2) much slower
+    	setDoubleFieldListener(aField,"cellA",EnumNumCondition.positive);//for any case of ibrav, A cannot be zero
+    	setDoubleFieldListener(bField,"cellB",EnumNumCondition.nonNegative);
+    	setDoubleFieldListener(cField,"cellC",EnumNumCondition.nonNegative);
+
+    	setDoubleFieldListener(alphaField,"cellAngleBC",EnumNumCondition.no);
+    	setDoubleFieldListener(betaField,"cellAngleAC",EnumNumCondition.no);
+    	setDoubleFieldListener(gammaField,"cellAngleAB",EnumNumCondition.no);
+    	setDoubleFieldListener(aVecField1,"vectorA1",EnumNumCondition.no);
+    	setDoubleFieldListener(aVecField2,"vectorA2",EnumNumCondition.no);
+    	setDoubleFieldListener(aVecField3,"vectorA3",EnumNumCondition.no);
+    	setDoubleFieldListener(bVecField1,"vectorB1",EnumNumCondition.no);
+    	setDoubleFieldListener(bVecField2,"vectorB2",EnumNumCondition.no);
+    	setDoubleFieldListener(bVecField3,"vectorB3",EnumNumCondition.no);
+    	setDoubleFieldListener(cVecField1,"vectorC1",EnumNumCondition.no);
+    	setDoubleFieldListener(cVecField2,"vectorC2",EnumNumCondition.no);
+    	setDoubleFieldListener(cVecField3,"vectorC3",EnumNumCondition.no);
+    	//units,enumUnitCellLengthNames
+    	aUnit.setItems(FXCollections.observableArrayList(EnumUnitCellLength.values()));
+    	aUnit.getSelectionModel().selectedItemProperty().addListener( (options, oldValue, newValue) -> {
+    		InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
+			if (ia!=null) {ia.unitCellLength=newValue;mainClass.projectManager.updateViewerPlot();}
+        }); 
+    	bUnit.textProperty().bind(aUnit.valueProperty().asString());
+    	cUnit.textProperty().bind(aUnit.valueProperty().asString());
+    	alphaUnit.setItems(FXCollections.observableArrayList(EnumUnitCellAngle.values()));
+    	alphaUnit.getSelectionModel().selectedItemProperty().addListener( (options, oldValue, newValue) -> {
+    		InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
+			if (ia!=null) {ia.unitCellAngle=newValue;mainClass.projectManager.updateViewerPlot();}
+        }); 
+    	betaUnit.textProperty().bind(alphaUnit.valueProperty().asString());
+    	gammaUnit.textProperty().bind(alphaUnit.valueProperty().asString());
+    	//lattUnit
+    	ObservableList<EnumUnitCellParameter> latticeUn = FXCollections.observableArrayList(EnumUnitCellParameter.values());
+    	lattUnit.setItems(latticeUn);
+    	lattUnit.setOnAction((event) -> {
+    		//*******only accessible when ibrav==0 -> this is not true when switching projects!!!???
+			if (lattUnit.getValue()!=null) {
+				InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
+				if (ia!=null) {
+					EnumUnitCellParameter tmp = lattUnit.getValue();
+					if(tmp!=null) ia.unitCellParameter=tmp;
+					if (ia.ibrav.getValue()!=null && ia.ibrav.getValue().equals(0)) {
+						if (lattUnit.getValue().equals(EnumUnitCellParameter.alat)) {
+							ia.needAlatFromCell=true;aField.setDisable(!ia.needCellA());aUnit.setDisable(!ia.needCellA());
+						}
+						else {ia.needAlatFromCell=false;aField.setDisable(!ia.needCellA());aUnit.setDisable(!ia.needCellA());}
+					}
+					mainClass.projectManager.updateViewerPlot();
+				}
+				
+			}
+		});
     }
     private void setDisableInputFields() {
     	InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
@@ -158,94 +231,12 @@ public class InputGeoCellController extends InputController{
     	aUnit.setDisable(a&&b&&c);//set the unit to disable only when all inputs are disabled
     	alphaUnit.setDisable(alpha&&beta&&gamma);
     }
-    public void initialize() {
-    	checkResetAll.setDisable(true);ibravCheck.setDisable(true);aCheck.setDisable(true);bCheck.setDisable(true);
-    	cCheck.setDisable(true);alphaCheck.setDisable(true);betaCheck.setDisable(true);gammaCheck.setDisable(true);
-    	//ibrav
-    	ObservableList<BravaisLattice> ibrav = FXCollections.observableArrayList(BravaisLattice.values());
-    	ibravCombo.setItems(ibrav);
-    	ibravCombo.setOnAction((event) -> {	
-			if (ibravCombo.getValue()!=null) {
-				InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
-				if (ia!=null) {
-					ia.ibrav.setValue(ibravCombo.getValue().getInd());
-					//if not (ibrav=0, free), disable gridPaneLattice
-					gridPaneLattice.setDisable(!(ia.ibrav.equals(0)));
-					setDisableInputFields();
-					mainClass.projectManager.updateViewerPlot();
-				}
-			}
-		});
-    	//values, 
-    	//**********not efficient because whenever parameters are loaded from InputAgentGeo, this will run again trying to write there
-    	//the use of reflection increases code simplicity
-    	//but may 1) result in error if the field name is not correct 2) much slower
-    	setDoubleFieldListener(aField,"cellA",EnumNumCondition.positive,EnumStep.GEO);//for any case of ibrav, A cannot be zero
-    	setDoubleFieldListener(bField,"cellB",EnumNumCondition.nonNegative,EnumStep.GEO);
-    	setDoubleFieldListener(cField,"cellC",EnumNumCondition.nonNegative,EnumStep.GEO);
-    	//**********do not delete the following comment. Alternative to reflection, faster but more tedious to write
-//    	aField.textProperty().addListener((observable, oldValue, newValue) -> {
-//    		InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
-//			if (ia!=null) {Double tmp = str2double(newValue);if (tmp!=null) ia.cellA=tmp;}});
-//    	bField.textProperty().addListener((observable, oldValue, newValue) -> {
-//    		InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
-//			if (ia!=null) {Double tmp = str2double(newValue);if (tmp!=null) ia.cellB=tmp;}});
-//    	cField.textProperty().addListener((observable, oldValue, newValue) -> {
-//    		InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
-//			if (ia!=null) {Double tmp = str2double(newValue);if (tmp!=null) ia.cellC=tmp;}});
-    	setDoubleFieldListener(alphaField,"cellAngleBC",EnumNumCondition.no,EnumStep.GEO);
-    	setDoubleFieldListener(betaField,"cellAngleAC",EnumNumCondition.no,EnumStep.GEO);
-    	setDoubleFieldListener(gammaField,"cellAngleAB",EnumNumCondition.no,EnumStep.GEO);
-    	setDoubleFieldListener(aVecField1,"vectorA1",EnumNumCondition.no,EnumStep.GEO);
-    	setDoubleFieldListener(aVecField2,"vectorA2",EnumNumCondition.no,EnumStep.GEO);
-    	setDoubleFieldListener(aVecField3,"vectorA3",EnumNumCondition.no,EnumStep.GEO);
-    	setDoubleFieldListener(bVecField1,"vectorB1",EnumNumCondition.no,EnumStep.GEO);
-    	setDoubleFieldListener(bVecField2,"vectorB2",EnumNumCondition.no,EnumStep.GEO);
-    	setDoubleFieldListener(bVecField3,"vectorB3",EnumNumCondition.no,EnumStep.GEO);
-    	setDoubleFieldListener(cVecField1,"vectorC1",EnumNumCondition.no,EnumStep.GEO);
-    	setDoubleFieldListener(cVecField2,"vectorC2",EnumNumCondition.no,EnumStep.GEO);
-    	setDoubleFieldListener(cVecField3,"vectorC3",EnumNumCondition.no,EnumStep.GEO);
-    	//units,enumUnitCellLengthNames
-    	aUnit.setItems(FXCollections.observableArrayList(EnumUnitCellLength.values()));
-    	aUnit.getSelectionModel().selectedItemProperty().addListener( (options, oldValue, newValue) -> {
-    		InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
-			if (ia!=null) {ia.unitCellLength=newValue;mainClass.projectManager.updateViewerPlot();}
-        }); 
-    	bUnit.textProperty().bind(aUnit.valueProperty().asString());
-    	cUnit.textProperty().bind(aUnit.valueProperty().asString());
-    	alphaUnit.setItems(FXCollections.observableArrayList(EnumUnitCellAngle.values()));
-    	alphaUnit.getSelectionModel().selectedItemProperty().addListener( (options, oldValue, newValue) -> {
-    		InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
-			if (ia!=null) {ia.unitCellAngle=newValue;mainClass.projectManager.updateViewerPlot();}
-        }); 
-    	betaUnit.textProperty().bind(alphaUnit.valueProperty().asString());
-    	gammaUnit.textProperty().bind(alphaUnit.valueProperty().asString());
-    	//lattUnit
-    	ObservableList<EnumUnitCellParameter> latticeUn = FXCollections.observableArrayList(EnumUnitCellParameter.values());
-    	lattUnit.setItems(latticeUn);
-    	lattUnit.setOnAction((event) -> {
-    		//*******only accessible when ibrav==0 -> this is not true when switching projects!!!???
-			if (lattUnit.getValue()!=null) {
-				InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
-				if (ia!=null) {
-					EnumUnitCellParameter tmp = lattUnit.getValue();
-					if(tmp!=null) ia.unitCellParameter=tmp;
-					if (ia.ibrav.getValue()!=null && ia.ibrav.getValue().equals(0)) {
-						if (lattUnit.getValue().equals(EnumUnitCellParameter.alat)) {
-							ia.needAlatFromCell=true;aField.setDisable(!ia.needCellA());aUnit.setDisable(!ia.needCellA());
-						}
-						else {ia.needAlatFromCell=false;aField.setDisable(!ia.needCellA());aUnit.setDisable(!ia.needCellA());}
-					}
-					mainClass.projectManager.updateViewerPlot();
-				}
-				
-			}
-		});
-	}
     public TextField getAField() {
     	return aField;
     }
     public void loadProjectParameters() {
+    	super.loadProjectParameters();
+    	
 		InputAgentGeo ia = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
 		if (ia==null) return;
 		BravaisLattice tmp = BravaisLattice.fromInd(ia.ibrav.getValue());//null compatible, contains situation where ia.ibrav==null

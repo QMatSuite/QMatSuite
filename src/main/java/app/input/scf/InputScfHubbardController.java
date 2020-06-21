@@ -83,7 +83,7 @@ public class InputScfHubbardController extends InputController{
     private boolean allDefault=false;
     
     public InputScfHubbardController(MainClass mc) {
-    	super(mc);
+    	super(mc,EnumStep.SCF);
     	elemData = FXCollections.observableArrayList();
 	}
     @Override
@@ -165,7 +165,7 @@ public class InputScfHubbardController extends InputController{
 			}
 			elementTableHubbard.getSelectionModel().selectNext();
 		});
-    	resetToggleListener(checkHubbardU, applyToggle, "lda_plus_u", EnumStep.SCF, checkResetAll);
+    	resetToggleListener(checkHubbardU, applyToggle, "lda_plus_u", checkResetAll);
     	checkResetAll.selectedProperty().addListener((observable, oldValue, newValue) ->
 		{ 
 			if(newValue!=null && !newValue.equals(allDefault)) {//compare wrapper with primitive, != should be ok

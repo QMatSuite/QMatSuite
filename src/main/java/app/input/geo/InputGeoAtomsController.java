@@ -44,6 +44,7 @@ import main.MainClass;
 import agent.InputAgentGeo;
 import app.input.InputController;
 import com.consts.ChemicalElements;
+import com.consts.Constants.EnumStep;
 import com.consts.Constants.EnumUnitAtomPos;
 
 public class InputGeoAtomsController extends InputController{
@@ -90,7 +91,7 @@ public class InputGeoAtomsController extends InputController{
 	
 	
 	public InputGeoAtomsController(MainClass mc) {
-		super(mc);
+		super(mc, EnumStep.GEO);
 		atomsData = FXCollections.observableArrayList();
 	}
     

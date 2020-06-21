@@ -109,7 +109,7 @@ public class InputScfMagnetController extends InputController{
 	private boolean allDefault=false;
 	
 	public InputScfMagnetController(MainClass mc) {
-		super(mc);
+		super(mc, EnumStep.SCF);
 		elemData = FXCollections.observableArrayList();
 	}
     
@@ -244,7 +244,7 @@ public class InputScfMagnetController extends InputController{
 				if (newValue) {polarizCombo.getSelectionModel().select(0);polarizCombo.setDisable(true);iScf.nspin.setEnabled(false);}
 				else {polarizCombo.setDisable(false);iScf.nspin.setEnabled(true);if(checkResetAll.isSelected()) {allDefault=false;checkResetAll.setSelected(false);}}
 			});
-			resetToggleListener(checkSoc, spinorbitToggle, "boolSoc", EnumStep.SCF, checkResetAll);
+			resetToggleListener(checkSoc, spinorbitToggle, "boolSoc", checkResetAll);
 			checkResetAll.selectedProperty().addListener((observable, oldValue, newValue) ->
     		{ 
     			if(newValue!=null && !newValue.equals(allDefault)) {

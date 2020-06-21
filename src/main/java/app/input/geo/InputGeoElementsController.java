@@ -47,6 +47,7 @@ import agent.InputAgentGeo;
 import app.input.InputController;
 import com.consts.Constants.EnumFunctional;
 import com.consts.Constants.EnumPP;
+import com.consts.Constants.EnumStep;
 import com.programconst.DefaultFileNames.SettingKeys;
 import com.pseudopot.EnumPseudoPotLib;
 import com.pseudopot.PseudoDojoClass;
@@ -105,7 +106,7 @@ public class InputGeoElementsController extends InputController{
     private SSSPClass ssspClass;
     
 	public InputGeoElementsController(MainClass mc) {
-		super(mc);
+		super(mc, EnumStep.GEO);
 		elemData = FXCollections.observableArrayList();
 		pdClass = new PseudoDojoClass();
 		ssspClass = new SSSPClass();

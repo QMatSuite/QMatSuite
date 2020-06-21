@@ -33,7 +33,6 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.layout.GridPane;
 import main.MainClass;
-import agent.InputAgentOpt;
 import com.consts.Constants.EnumCellDoFree;
 import com.consts.Constants.EnumCellOptMethod;
 import com.consts.Constants.EnumIonOptMethod;
@@ -179,65 +178,36 @@ public class InputOptController extends InputController implements Initializable
     private Label statusInfo;
     
     public InputOptController(MainClass mc) {
-		super(mc);
+		super(mc, EnumStep.OPT);
 	}
 
 	@Override
 	public void initialize(URL arg0, ResourceBundle arg1) {
 		//point all status messages to the Label statusInfo
 		setPointerStatusTextField(statusInfo);
-		//connect fields in GUI to inputAgent
-		
+		//new
+		initParameterSet(relaxCellToggle, "boolRelaxCell", "relax cell also", "only ions", checkRelaxCell, infoRelaxCell, checkResetAll);
 		relaxCellToggle.selectedProperty().addListener((observable, oldValue, newValue) ->
 		{ 
-			InputAgentOpt iOpt = (InputAgentOpt) mainClass.projectManager.getStepAgent(EnumStep.OPT);
-			if (newValue) 
-			{ 
-				relaxCellToggle.setText("relax cell also");
-				gridPaneCell.setVisible(true);
-				if (iOpt!=null)  iOpt.boolRelaxCell.setValue(true);
-			}
-			else 
-			{ 
-				relaxCellToggle.setText("only ions"); 
-				gridPaneCell.setVisible(false);
-				if (iOpt!=null)  iOpt.boolRelaxCell.setValue(false);
-			}
+			relaxCellSet(newValue);
 		});
 		//initialize without cell
-		relaxCellToggle.setSelected(false);relaxCellToggle.setText("only ions"); 
-		gridPaneCell.setVisible(false);
+		relaxCellSet(false);
 		
-		setIntegerFieldListener(textMaxStep, "nMaxSteps",EnumNumCondition.positive,EnumStep.OPT);
-		setToggleListener(scfMustToggle, "boolScfMustConverge", EnumStep.OPT, "true", "false");
-		setDoubleFieldListener(eConvText, "numEConv",EnumNumCondition.positive,EnumStep.OPT);
-		setDoubleFieldListener(fConvText, "numFConv",EnumNumCondition.positive,EnumStep.OPT);
-		setDoubleFieldListener(pConvText, "numPConv",EnumNumCondition.positive,EnumStep.OPT);
-		setDoubleFieldListener(pTargetText, "numPTarget",EnumNumCondition.no,EnumStep.OPT);
-		setComboListener(eConvUnit, EnumUnitEnergy.values(), "enumEUnit", EnumStep.OPT);//energy unit
-		setComboListener(ionRelaxCombo, EnumIonOptMethod.values(), "enumOptMethodIon", EnumStep.OPT);
-		setComboListener(cellRelaxCombo, EnumCellOptMethod.values(), "enumOptMethodCell", EnumStep.OPT);
-		setComboListener(cellDoFreeCombo, EnumCellDoFree.values(), "enumCellDoFree", EnumStep.OPT);
+		initParameterSet(scfMustToggle, "boolScfMustConverge", "true", "false", checkScfMust, infoScfMust, checkResetAll);
 		
-		//reset checkBoxes
-		resetToggleListener(checkRelaxCell, relaxCellToggle, "boolRelaxCell", EnumStep.OPT, checkResetAll);
-		resetTextFieldIntegerListener(checkMaxStep, textMaxStep, "nMaxSteps", EnumStep.OPT, checkResetAll);
-		resetToggleListener(checkScfMust, scfMustToggle, "boolScfMustConverge", EnumStep.OPT, checkResetAll);
-		checkEConv.selectedProperty().addListener((observable, oldValue, newValue) ->
-		{ 
-			InputAgentOpt iOpt = (InputAgentOpt) mainClass.projectManager.getStepAgent(EnumStep.OPT);
-			if (iOpt==null || newValue==null) return;
-			if (newValue) {eConvText.setText(Double.toString(iOpt.numEConv.resetDefault()));eConvText.setDisable(true);
-			eConvUnit.getSelectionModel().select(EnumUnitEnergy.Ry);eConvUnit.setDisable(true);iOpt.numEConv.setEnabled(false);}
-			else {eConvText.setDisable(false);iOpt.numEConv.setEnabled(true);if(checkResetAll.isSelected()) {allDefault=false;checkResetAll.setSelected(false);}}
-		});
-		resetTextFieldDoubleListener(checkFConv, fConvText, "numFConv", EnumStep.OPT, checkResetAll);
-		resetComboBoxListener(checkIonMethod, ionRelaxCombo, "enumOptMethodIon", EnumStep.OPT, checkResetAll);
-		resetTextFieldDoubleListener(checkPConv, pConvText, "numPConv", EnumStep.OPT, checkResetAll);
-		resetComboBoxListener(checkCellMethod, cellRelaxCombo, "enumOptMethodCell", EnumStep.OPT, checkResetAll);
-		resetTextFieldDoubleListener(checkTargetP, pTargetText, "numPTarget", EnumStep.OPT, checkResetAll);
-		resetComboBoxListener(checkCellFree, cellDoFreeCombo, "enumCellDoFree", EnumStep.OPT, checkResetAll);
+		initParameterSet(eConvUnit, "enumEUnit", EnumUnitEnergy.values(), checkEConv, infoEConv, checkResetAll);
+		initParameterSet(ionRelaxCombo, "enumOptMethodIon", EnumIonOptMethod.values(), checkIonMethod, infoIonMethod, checkResetAll);
+		initParameterSet(cellRelaxCombo, "enumOptMethodCell", EnumCellOptMethod.values(), checkCellMethod, infoCellMethod, checkResetAll);	
+		initParameterSet(cellDoFreeCombo, "enumCellDoFree", EnumCellDoFree.values(), checkCellFree, infoCellFree, checkResetAll);
+		
+		initIntegerParameterSet(textMaxStep, "nMaxSteps", EnumNumCondition.positive, "", checkMaxStep, infoMaxStep, checkResetAll);
+		initDoubleParameterSet(fConvText, "numFConv", EnumNumCondition.positive, "", checkFConv, infoFConv, checkResetAll);
+		initDoubleParameterSet(pConvText, "numPConv", EnumNumCondition.positive, "", checkPConv, infoPConv, checkResetAll);
+		initDoubleParameterSet(pTargetText, "numPTarget", EnumNumCondition.no, "", checkTargetP, infoTargetP, checkResetAll);
+		initDoubleParameterSet(eConvText, "numEConv", EnumNumCondition.positive, "", checkEConv, infoEConv, checkResetAll);
 
+		//reset checkBoxes
 		checkResetAll.selectedProperty().addListener((observable, oldValue, newValue) ->
 		{ 
 			if(newValue!=null && !newValue.equals(allDefault)) {
@@ -250,37 +220,19 @@ public class InputOptController extends InputController implements Initializable
 			}
 		});
 	}
+	private void relaxCellSet(boolean newValue) {
+		if (newValue) 
+		{ 
+			relaxCellToggle.setText("relax cell also");
+			gridPaneCell.setVisible(true);
+		}
+		else 
+		{ 
+			relaxCellToggle.setText("only ions"); 
+			gridPaneCell.setVisible(false);
+		}
+	}
 	public void loadProjectParameters() {
-    	if (!ionRelaxCombo.getItems().isEmpty()) {
-    		InputAgentOpt iOpt = (InputAgentOpt) mainClass.projectManager.getStepAgent(EnumStep.OPT);
-    		if (iOpt!=null) {
-    			
-    			setToggle(relaxCellToggle, iOpt.boolRelaxCell);
-    			setField(textMaxStep, iOpt.nMaxSteps);
-    			setToggle(scfMustToggle, iOpt.boolScfMustConverge);
-    			setField(eConvText, iOpt.numEConv);
-    			setField(fConvText, iOpt.numFConv);
-    			setField(pConvText, iOpt.numPConv);
-    			setField(pTargetText, iOpt.numPTarget);
-    			setCombo(eConvUnit, iOpt.enumEUnit);
-    			setCombo(ionRelaxCombo, iOpt.enumOptMethodIon);
-    			setCombo(cellRelaxCombo, iOpt.enumOptMethodCell);
-    			setCombo(cellDoFreeCombo, iOpt.enumCellDoFree);
-    			
-    			
-    			//load default checkBoxes
-    			checkRelaxCell.setSelected(!iOpt.boolRelaxCell.isEnabled());
-    			checkMaxStep.setSelected(!iOpt.nMaxSteps.isEnabled());
-    			checkScfMust.setSelected(!iOpt.boolScfMustConverge.isEnabled());
-    			checkEConv.setSelected(!iOpt.numEConv.isEnabled());
-    			checkFConv.setSelected(!iOpt.numFConv.isEnabled());
-    			checkIonMethod.setSelected(!iOpt.enumOptMethodIon.isEnabled());
-    			checkPConv.setSelected(!iOpt.numPConv.isEnabled());
-    			checkCellMethod.setSelected(!iOpt.enumOptMethodCell.isEnabled());
-    			checkTargetP.setSelected(!iOpt.numPTarget.isEnabled());
-    			checkCellFree.setSelected(!iOpt.enumCellDoFree.isEnabled());
-    			
-    		}
-    	}
+		super.loadProjectParameters();
     }
 }
