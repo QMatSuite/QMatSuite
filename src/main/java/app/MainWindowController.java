@@ -74,6 +74,7 @@ import app.input.InputMdController;
 import app.input.InputNscfController;
 import app.input.InputOptController;
 import app.input.InputScfController;
+import app.input.InputTddftController;
 import app.menus.SettingsWindowController;
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
@@ -166,6 +167,8 @@ public class MainWindowController implements Initializable{
 	private InputDosController contDos;
 	
 	private InputMdController contMd;
+	
+	private InputTddftController contTddft;
 			
 	private MainLeftPaneController contTree;
 	
@@ -244,6 +247,7 @@ public class MainWindowController implements Initializable{
 			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputBands.fxml"));
 			scrollBands = fxmlLoader.load(); 
 
+			contTddft = new InputTddftController(mainClass);
 			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputTddft.fxml"));
 			scrollTddft = fxmlLoader.load(); 
 			
