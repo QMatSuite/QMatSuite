@@ -23,6 +23,8 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.ResourceBundle;
 
+import com.consts.Constants.EnumStep;
+
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -68,7 +70,7 @@ public class InputGeoController extends InputController{
     private InputGeoElementsController contElem = null;
     
     public InputGeoController(MainClass mc) {
-		super(mc);
+		super(mc, EnumStep.GEO);
 	}
 
     @Override

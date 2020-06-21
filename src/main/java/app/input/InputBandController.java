@@ -22,6 +22,8 @@ package app.input;
 import java.net.URL;
 import java.util.ResourceBundle;
 
+import com.consts.Constants.EnumStep;
+
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
@@ -50,7 +52,7 @@ public class InputBandController extends InputController{
 	kzColumn;
 	
 	public InputBandController (MainClass mc) {
-		super(mc);
+		super(mc, EnumStep.BANDS);
 	}
 	
 	@Override

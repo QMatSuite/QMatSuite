@@ -1,6 +1,5 @@
 package app.input;
 
-import java.lang.reflect.Field;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -15,13 +14,6 @@ import javafx.scene.control.Tooltip;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Label;
 import main.MainClass;
-import agent.InputAgent;
-import agent.InputAgentDos;
-import agent.InputAgentGeo;
-import agent.InputAgentMd;
-import agent.InputAgentNscf;
-import agent.InputAgentOpt;
-import agent.InputAgentScf;
 import agent.WrapperBoolean;
 import agent.WrapperDouble;
 import agent.WrapperEnum;
@@ -36,24 +28,104 @@ public abstract class InputController implements Initializable{
 	protected MainClass mainClass;
 	private Label statusTextField;//if existed, provides status information
 	protected boolean allDefault;//whether all set to default
+	protected SetFieldList setFieldList;
+	protected final EnumStep enumStep;
 	
-	protected InputController(MainClass mc) {
+	protected InputController(MainClass mc, EnumStep es) {
 		mainClass = mc;
 		allDefault = false;
+		setFieldList = new SetFieldList(mc,es);
+		enumStep = es;
+	}
+	protected void loadProjectParameters() {
+		setFieldList.setAllFields();
+	}
+	protected void initParameterSet(ToggleButton tb, String fieldName, String onText, String offText, CheckBox checkReset, Button buttonInfo, String infoKey, CheckBox checkResetAll) {
+		initParameterSet(tb, fieldName, onText, offText, checkReset, buttonInfo, checkResetAll);
+		setInfoButton(buttonInfo,infoKey);
+	}
+	protected void initParameterSet(ToggleButton tb, String fieldName, String onText, String offText, CheckBox checkReset, Button buttonInfo, CheckBox checkResetAll) {
+		//GUI->agent
+		setToggleListener(tb, fieldName, onText, offText);
+		//agent->GUI, loadParameters
+		setFieldList.addBoolPair(tb, fieldName, checkReset);
+		//reset
+		resetToggleListener(checkReset, tb, fieldName, checkResetAll);
+	}
+	protected <T extends EnumInProgram> void initParameterSet(ComboBox<T> cb, String fieldName, T[] lstEnum, 
+			CheckBox checkReset, Button buttonInfo, CheckBox checkResetAll) {
+		//default to false: use QE default!
+		initParameterSet(cb, fieldName, lstEnum, false, checkReset, buttonInfo, checkResetAll);
+	}
+	protected <T extends EnumInProgram> void initParameterSet(ComboBox<T> cb, String fieldName, T[] lstEnum, 
+			boolean notQEDefault, CheckBox checkReset, Button buttonInfo, CheckBox checkResetAll) {
+		//GUI->agent
+		setComboListener(cb, lstEnum, fieldName);
+		//agent->GUI, loadParameters
+		setFieldList.addEnumPair(cb, fieldName, checkReset);
+		//reset
+		resetComboBoxListener(checkReset, cb, fieldName, checkResetAll, notQEDefault);
+	}
+	protected void initIntegerParameterSet(TextField tf, String fieldName, EnumNumCondition cond, String nullString, CheckBox checkReset, Button buttonInfo, CheckBox checkResetAll) {
+		//GUI->agent
+		setIntegerFieldListener(tf, fieldName, cond);
+		//agent->GUI, loadParameters
+		setFieldList.addIntPair(tf, fieldName, checkReset);
+		//reset
+		resetTextFieldIntegerListener(checkReset, tf, fieldName, checkResetAll, nullString);
+	}
+	protected void initDoubleParameterSet(TextField tf, String fieldName, EnumNumCondition cond, String nullString, CheckBox checkReset, Button buttonInfo, CheckBox checkResetAll) {
+		//GUI->agent
+		setDoubleFieldListener(tf, fieldName, cond);
+		//agent->GUI, loadParameters
+		setFieldList.addDoublePair(tf, fieldName, checkReset);
+		//reset
+		resetTextFieldDoubleListener(checkReset, tf, fieldName, checkResetAll, nullString);
 	}
 	protected void setPointerStatusTextField(Label lb) {
 		statusTextField = lb;
 	}
-	protected void setIntegerFieldListener(TextField tf, String fieldName, EnumNumCondition cond, EnumStep es) {	
-		setFieldListener(tf, fieldName, cond, es, "int");
+	protected void setToggleListener(ToggleButton tb, String fieldName, String onText, String offText) {	
+		if(enumStep==null || onText==null || offText==null || tb==null) {
+    		Alert alert1 = new Alert(AlertType.ERROR);
+	    	alert1.setTitle("Error");
+	    	alert1.setContentText("Cannot set listener! EnumStep is null or on/off text is null. Abort..");
+	    	alert1.showAndWait();
+	    	return;
+    	}
+		//take care of the starting of the program
+		if(tb.isSelected()) {tb.setText(onText);}
+		else {tb.setText(offText);}
+		
+		tb.selectedProperty().addListener((observable, oldValue, newValue) -> {
+			if(newValue==null) return;
+			if(newValue) {tb.setText(onText);}
+			else {tb.setText(offText);}
+			Object obj = mainClass.projectManager.getObject(fieldName, enumStep);
+			if(obj==null) return;
+			try {
+				if(statusTextField!=null) {statusTextField.setText("");}
+				((WrapperBoolean) obj).setValue(newValue);
+				//if(EnumStep.GEO.equals(es)) {mainClass.projectManager.updateViewerPlot();}//update the plot if it is geo
+			} catch (Exception e) {
+				Alert alert1 = new Alert(AlertType.ERROR);
+		    	alert1.setTitle("Error");
+		    	alert1.setContentText("Fail to cast! "+e.getMessage());
+		    	alert1.showAndWait();
+				e.printStackTrace();
+			}
+		});
     }
-	protected void setDoubleFieldListener(TextField tf, String fieldName, EnumNumCondition cond, EnumStep es) {	
-		setFieldListener(tf, fieldName, cond, es, "double");
+	protected void setIntegerFieldListener(TextField tf, String fieldName, EnumNumCondition cond) {	
+		setFieldListener(tf, fieldName, cond, "int");
+    }
+	protected void setDoubleFieldListener(TextField tf, String fieldName, EnumNumCondition cond) {	
+		setFieldListener(tf, fieldName, cond, "double");
 	}
-	private void setFieldListener(TextField tf, String fieldName, EnumNumCondition cond, EnumStep es, String type) {	
+	private void setFieldListener(TextField tf, String fieldName, EnumNumCondition cond, String type) {	
 		//type == "int"
 		//type == "double"
-		if(es==null) {
+		if(enumStep==null) {
     		Alert alert1 = new Alert(AlertType.ERROR);
 	    	alert1.setTitle("Error");
 	    	alert1.setContentText("Cannot set listener! EnumStep is null. Abort..");
@@ -62,7 +134,7 @@ public abstract class InputController implements Initializable{
     	}
 		tf.textProperty().addListener((observable, oldValue, newValue) -> {
 			if(newValue==null) return;
-			Object obj = getObject(fieldName, es);
+			Object obj = mainClass.projectManager.getObject(fieldName, enumStep);
 			if(obj==null) return;
 			try {
 				if("double".equals(type)) {
@@ -135,7 +207,7 @@ public abstract class InputController implements Initializable{
 			    	alert1.showAndWait();
 			    	return;
 				}
-				if(EnumStep.GEO.equals(es)) {mainClass.projectManager.updateViewerPlot();}//update the plot if it is geo
+				if(EnumStep.GEO.equals(enumStep)) {mainClass.projectManager.updateViewerPlot();}//update the plot if it is geo
 				if(statusTextField!=null) {statusTextField.setText("");}
 			} catch (Exception e) {
 				Alert alert1 = new Alert(AlertType.ERROR);
@@ -146,39 +218,8 @@ public abstract class InputController implements Initializable{
 			}
 		});
     }
-	protected void setToggleListener(ToggleButton tb, String fieldName, EnumStep es, String onText, String offText) {	
-		if(es==null || onText==null || offText==null || tb==null) {
-    		Alert alert1 = new Alert(AlertType.ERROR);
-	    	alert1.setTitle("Error");
-	    	alert1.setContentText("Cannot set listener! EnumStep is null or on/off text is null. Abort..");
-	    	alert1.showAndWait();
-	    	return;
-    	}
-		//take care of the starting of the program
-		if(tb.isSelected()) {tb.setText(onText);}
-		else {tb.setText(offText);}
-		
-		tb.selectedProperty().addListener((observable, oldValue, newValue) -> {
-			if(newValue==null) return;
-			if(newValue) {tb.setText(onText);}
-			else {tb.setText(offText);}
-			Object obj = getObject(fieldName, es);
-			if(obj==null) return;
-			try {
-				if(statusTextField!=null) {statusTextField.setText("");}
-				((WrapperBoolean) obj).setValue(newValue);
-				//if(EnumStep.GEO.equals(es)) {mainClass.projectManager.updateViewerPlot();}//update the plot if it is geo
-			} catch (Exception e) {
-				Alert alert1 = new Alert(AlertType.ERROR);
-		    	alert1.setTitle("Error");
-		    	alert1.setContentText("Fail to cast! "+e.getMessage());
-		    	alert1.showAndWait();
-				e.printStackTrace();
-			}
-		});
-    }
-	protected <T extends EnumInProgram> void setComboListener(ComboBox<T> cb, T[] lstEnum, String fieldName, EnumStep es) {	
-		if(es==null) {
+	protected <T extends EnumInProgram> void setComboListener(ComboBox<T> cb, T[] lstEnum, String fieldName) {	
+		if(enumStep==null) {
     		Alert alert1 = new Alert(AlertType.ERROR);
 	    	alert1.setTitle("Error");
 	    	alert1.setContentText("Cannot set listener! EnumStep is null. Abort..");
@@ -189,12 +230,12 @@ public abstract class InputController implements Initializable{
 		cb.setItems(mixi);
 		cb.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
 			if(newValue==null) return;
-			Object obj = getObject(fieldName, es);
+			Object obj = mainClass.projectManager.getObject(fieldName, enumStep);
 			if(obj==null) return;
 			try {
 				if(statusTextField!=null) {statusTextField.setText("");}
 				((WrapperEnum) obj).setValue((EnumInProgram) newValue);
-				if(EnumStep.GEO.equals(es)) {mainClass.projectManager.updateViewerPlot();}//update the plot if it is geo
+				if(EnumStep.GEO.equals(enumStep)) {mainClass.projectManager.updateViewerPlot();}//update the plot if it is geo
 			} catch (Exception e) {
 				Alert alert1 = new Alert(AlertType.ERROR);
 		    	alert1.setTitle("Error");
@@ -204,47 +245,12 @@ public abstract class InputController implements Initializable{
 			}
 		});
     }
-	private Object getObject(String fieldName, EnumStep es) {
-		InputAgent ia;
-		Field fd=null;
-		if(EnumStep.GEO.equals(es)) {ia = mainClass.projectManager.getCurrentGeoAgent();}
-		else {ia = mainClass.projectManager.getStepAgent(es);}
-		if (ia==null) return null;
-		try {
-			switch(es) {
-				case GEO:fd = InputAgentGeo.class.getField(fieldName);break;
-				case SCF:fd = InputAgentScf.class.getField(fieldName);break;
-				case OPT:fd = InputAgentOpt.class.getField(fieldName);break;
-				case NSCF:fd = InputAgentNscf.class.getField(fieldName);break;
-				case DOS:fd = InputAgentDos.class.getField(fieldName);break;
-				case BOMD:fd = InputAgentMd.class.getField(fieldName);break;
-				case BANDS:
-				case TDDFT:break;
-				default:break;	
-			}
-			if(fd==null) {
-				Alert alert1 = new Alert(AlertType.ERROR);
-		    	alert1.setTitle("Error");
-		    	alert1.setContentText("EnumStep undefined/not implemented detected in InputController!");
-		    	alert1.showAndWait();
-		    	return null;
-			}
-			return fd.get(ia);
-
-		} catch (Exception e) {
-			Alert alert1 = new Alert(AlertType.ERROR);
-	    	alert1.setTitle("Error");
-	    	alert1.setContentText("Cannot find field! "+e.getMessage());
-	    	alert1.showAndWait();
-			e.printStackTrace();
-			return null;
-		}
-	}
-	protected void resetToggleListener(CheckBox cbResetToggle, ToggleButton toggle, String fieldName, EnumStep es, CheckBox cbResetAll) {
+	
+	protected void resetToggleListener(CheckBox cbResetToggle, ToggleButton toggle, String fieldName, CheckBox cbResetAll) {
 		cbResetToggle.selectedProperty().addListener((observable, oldValue, newValue) ->
 		{ 
 			if(newValue==null) return;
-			Object obj = getObject(fieldName, es);
+			Object obj = mainClass.projectManager.getObject(fieldName, enumStep);
 			if(obj==null) return;
 			try {
 				WrapperBoolean wb = (WrapperBoolean) obj;
@@ -267,14 +273,14 @@ public abstract class InputController implements Initializable{
 			}
 		});
 	}
-	protected void resetTextFieldIntegerListener(CheckBox cbResetToggle, TextField tf, String fieldName, EnumStep es, CheckBox cbResetAll) {
-		resetTextFieldIntegerListener(cbResetToggle, tf, fieldName, es, cbResetAll, "");
+	protected void resetTextFieldIntegerListener(CheckBox cbResetToggle, TextField tf, String fieldName, CheckBox cbResetAll) {
+		resetTextFieldIntegerListener(cbResetToggle, tf, fieldName, cbResetAll, "");
 	}
-	protected void resetTextFieldIntegerListener(CheckBox cbResetToggle, TextField tf, String fieldName, EnumStep es, CheckBox cbResetAll, String nullString) {
+	protected void resetTextFieldIntegerListener(CheckBox cbResetToggle, TextField tf, String fieldName, CheckBox cbResetAll, String nullString) {
 		cbResetToggle.selectedProperty().addListener((observable, oldValue, newValue) ->
 		{ 
 			if(newValue==null) return;
-			Object obj = getObject(fieldName, es);
+			Object obj = mainClass.projectManager.getObject(fieldName, enumStep);
 			if(obj==null) return;
 			try {
 				WrapperInteger wb = (WrapperInteger) obj;
@@ -297,15 +303,15 @@ public abstract class InputController implements Initializable{
 			}
 		});
 	}
-	protected void resetTextFieldDoubleListener(CheckBox cbResetToggle, TextField tf, String fieldName, EnumStep es, CheckBox cbResetAll) {
-		resetTextFieldDoubleListener(cbResetToggle, tf, fieldName, es, cbResetAll, "");
+	protected void resetTextFieldDoubleListener(CheckBox cbResetToggle, TextField tf, String fieldName, CheckBox cbResetAll) {
+		resetTextFieldDoubleListener(cbResetToggle, tf, fieldName, cbResetAll, "");
 	}
-	protected void resetTextFieldDoubleListener(CheckBox cbResetToggle, TextField tf, String fieldName, EnumStep es, CheckBox cbResetAll, String nullString) {
+	protected void resetTextFieldDoubleListener(CheckBox cbResetToggle, TextField tf, String fieldName, CheckBox cbResetAll, String nullString) {
 
 		cbResetToggle.selectedProperty().addListener((observable, oldValue, newValue) ->
 		{ 
 			if(newValue==null) return;
-			Object obj = getObject(fieldName, es);
+			Object obj = mainClass.projectManager.getObject(fieldName, enumStep);
 			if(obj==null) return;
 			try {
 				WrapperDouble wb = (WrapperDouble) obj;
@@ -329,16 +335,16 @@ public abstract class InputController implements Initializable{
 		});
 	}
 	protected <T extends EnumInProgram> void resetComboBoxListener(CheckBox cbResetToggle, ComboBox<T> cb, 
-			String fieldName, EnumStep es, CheckBox cbResetAll) {
-		resetComboBoxListener(cbResetToggle, cb, fieldName, es, cbResetAll, false);
+			String fieldName, CheckBox cbResetAll) {
+		resetComboBoxListener(cbResetToggle, cb, fieldName, cbResetAll, false);
 	}
 	protected <T extends EnumInProgram> void resetComboBoxListener(CheckBox cbResetToggle, ComboBox<T> cb, 
-			String fieldName, EnumStep es, CheckBox cbResetAll, boolean notQEDefault) {
+			String fieldName, CheckBox cbResetAll, boolean notQEDefault) {
 		//if notQEDefault is true, the default in the program is not the default of QE, so always enabled in the agent
 		cbResetToggle.selectedProperty().addListener((observable, oldValue, newValue) ->
 		{ 
 			if(newValue==null) return;
-			Object obj = getObject(fieldName, es);
+			Object obj = mainClass.projectManager.getObject(fieldName, enumStep);
 			if(obj==null) return;
 			try {
 				WrapperEnum wb = (WrapperEnum) obj;
@@ -391,20 +397,24 @@ public abstract class InputController implements Initializable{
 		});
     }
 
-    protected void setField(TextField tf, WrapperDouble val) {
+    static protected void setField(TextField tf, WrapperDouble val) {
     	if(val.getValue()==null) tf.setText("");
     	else tf.setText(val.getValue().toString());
     }
-    protected void setField(TextField tf, WrapperInteger val) {
+    static protected void setField(TextField tf, WrapperInteger val) {
     	if(val.getValue()==null) tf.setText("");
     	else tf.setText(val.getValue().toString());
     }
-    protected <T> void setCombo(ComboBox<T> cb, WrapperEnum val) {
+    static protected <T> void setCombo(ComboBox<T> cb, WrapperEnum val) {
     	if(val.getValue()==null) cb.getSelectionModel().clearSelection();
     	else cb.setValue((T) val.getValue());
     }
-    protected void setToggle(ToggleButton tb, WrapperBoolean val) {
+    static protected void setToggle(ToggleButton tb, WrapperBoolean val) {
     	//val cannot be null!
     	tb.setSelected(val.getValue());
+    }
+    static protected void setCheck(CheckBox cb, Boolean bl) {
+    	if(bl==null) return;
+    	cb.setSelected(bl);
     }
 }

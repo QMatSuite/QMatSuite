@@ -29,8 +29,6 @@ import com.consts.Constants.EnumStep;
 import com.consts.Constants.EnumUnitEnergy;
 
 import agent.InputAgentNscf;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
@@ -118,70 +116,50 @@ public class InputNscfController extends InputController{
     statusInfo;
     
 	public InputNscfController(MainClass mc) {
-		super(mc);
+		super(mc, EnumStep.NSCF);
 	}
 	
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
 		setPointerStatusTextField(statusInfo);//point all status messages to the Label statusInfo
 		
-		setIntegerFieldListener(textKPoint1, "nkx",EnumNumCondition.positive,EnumStep.NSCF);
-		setIntegerFieldListener(textKPoint2, "nky",EnumNumCondition.positive,EnumStep.NSCF);
-		setIntegerFieldListener(textKPoint3, "nkz",EnumNumCondition.positive,EnumStep.NSCF);
-		
-		//occupation list
-		ObservableList<EnumOccupations> occup = 
-    		    FXCollections.observableArrayList(EnumOccupations.values());
-		comboOccup.setItems(occup);
+		//new
+		initParameterSet(comboSmear, "enumSmearing", EnumSmearing.values(), true, checkSmear, infoSmear, checkResetAll);//true means not QE default
+		initParameterSet(comboOccup, "enumOccupation", EnumOccupations.values(), true, checkOccup, infoOccup, checkResetAll);//true means not QE default
 		comboOccup.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) ->
 		{ 
-			InputAgentNscf iNscf = (InputAgentNscf) mainClass.projectManager.getStepAgent(EnumStep.NSCF);
-			if (iNscf!=null && newValue!=null) {
-				iNscf.enumOccupation.setValue(newValue);
-				if (newValue.equals(EnumOccupations.smearing)) {
-					comboSmear.setDisable(false);checkSmear.setDisable(false);
-					textSmearing.setDisable(false);
-				}
-				else {
-					comboSmear.setDisable(true);checkSmear.setDisable(true);
-					textSmearing.setDisable(true);
-				}
+			if (newValue.equals(EnumOccupations.smearing)) {
+				comboSmear.setDisable(false);checkSmear.setDisable(false);
+				textSmearing.setDisable(false);
+			}
+			else {
+				comboSmear.setDisable(true);checkSmear.setDisable(true);
+				textSmearing.setDisable(true);
 			}
 		});
+		setComboListener(unitSmearing, EnumUnitEnergy.values(), "enumEnergyUnit");
+
 		
-		setComboListener(comboSmear, EnumSmearing.values(), "enumSmearing", EnumStep.NSCF);//smearing list
+		checkGauss.setDisable(true);//no default for degauss
+		setDoubleFieldListener(textSmearing, "degauss",EnumNumCondition.nonNegative);
 		
-		setDoubleFieldListener(textSmearing, "degauss",EnumNumCondition.nonNegative,EnumStep.NSCF);
-		setComboListener(unitSmearing, EnumUnitEnergy.values(), "enumEnergyUnit", EnumStep.NSCF);//ecutwfc
+		checknband.setSelected(true);
 		
-		setIntegerFieldListener(textnband, "nbnd",EnumNumCondition.positive,EnumStep.NSCF);
+		checkKPoint.setDisable(true);//no default for kpoints
+		setIntegerFieldListener(textKPoint1, "nkx",EnumNumCondition.positive);
+		setIntegerFieldListener(textKPoint2, "nky",EnumNumCondition.positive);
+		setIntegerFieldListener(textKPoint3, "nkz",EnumNumCondition.positive);
 		
+		initIntegerParameterSet(textnband, "nbnd", EnumNumCondition.positive, "Automated", checknband, infonband, checkResetAll);
 		textnband.textProperty().addListener((observable, oldValue, newValue) -> {
 			InputAgentNscf iNscf = (InputAgentNscf) mainClass.projectManager.getStepAgent(EnumStep.NSCF);
 			if (iNscf==null) return;
 			Integer tmp = str2int(newValue);
-			if(tmp==null) {
-				statusInfo.setText("nbnd set to null!");
-				iNscf.nbnd.setValue(null);
-				iNscf.nbnd.setEnabled(false);return;
-			}
-			if (tmp!=null) {
-				if(tmp<=0) {statusInfo.setText("Must be positive! Set to null.");iNscf.nbnd.setValue(null);return;}	
-				statusInfo.setText("");
-				iNscf.nbnd.setEnabled(true);
-				iNscf.nbnd.setValue(tmp);
-			}
+			if(tmp==null) {iNscf.nbnd.setEnabled(false);return;}
+			else {if(tmp>0) {iNscf.nbnd.setEnabled(true);}}
 		});
 		
-		//check boxes
-		checkKPoint.setDisable(true);//no default for kpoints
-		checkGauss.setDisable(true);//no default for degauss
-		resetTextFieldIntegerListener(checknband, textnband, "nbnd", EnumStep.NSCF, checkResetAll,"Automated");
-		checknband.setSelected(true);
-		
-		resetComboBoxListener(checkOccup, comboOccup, "enumOccupation", EnumStep.NSCF, checkResetAll, true);//true means not QE default
-		resetComboBoxListener(checkSmear, comboSmear, "enumSmearing", EnumStep.NSCF, checkResetAll, true);//true means not QE default
-		checkGauss.setDisable(true);
+		//checkAll
 		checkResetAll.selectedProperty().addListener((observable, oldValue, newValue) ->
 		{ 
 			if(newValue!=null && !newValue.equals(allDefault)) {
@@ -196,29 +174,17 @@ public class InputNscfController extends InputController{
 	}
 	
 	public void loadProjectParameters() {
-    	if (!comboOccup.getItems().isEmpty()) {
-    		InputAgentNscf iNscf = (InputAgentNscf) mainClass.projectManager.getStepAgent(EnumStep.NSCF);
-    		if (iNscf!=null) {
-    			setCombo(comboOccup, iNscf.enumOccupation);
-    			setCombo(unitSmearing, iNscf.enumEnergyUnit);
-    			setCombo(comboSmear, iNscf.enumSmearing);
-    			setField(textKPoint1, iNscf.nkx);
-    			setField(textKPoint2, iNscf.nky);
-    			setField(textKPoint3, iNscf.nkz);
-    			setField(textSmearing, iNscf.degauss);
-    			setField(textnband, iNscf.nbnd);
-    			
-    			//load default checkBoxes
-    			checkKPoint.setSelected(!iNscf.nkx.isEnabled());//just for consistency, no use
-    			checkOccup.setSelected(!iNscf.enumOccupation.isEnabled());
-    			checkSmear.setSelected(!iNscf.enumSmearing.isEnabled());
-    			checkGauss.setSelected(!iNscf.degauss.isEnabled());
-    			checknband.setSelected(!iNscf.nbnd.isEnabled());
-    		}
-    	}
+		super.loadProjectParameters();
+
+		InputAgentNscf iNscf = (InputAgentNscf) mainClass.projectManager.getStepAgent(EnumStep.NSCF);
+		if (iNscf!=null) {
+			setField(textSmearing, iNscf.degauss);
+			setCombo(unitSmearing, iNscf.enumEnergyUnit);
+			setField(textKPoint1, iNscf.nkx);
+			setField(textKPoint2, iNscf.nky);
+			setField(textKPoint3, iNscf.nkz);
+		}
     }
 
 }
-
-
 

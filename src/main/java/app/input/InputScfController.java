@@ -85,7 +85,7 @@ public class InputScfController extends InputController{
     private InputScfStandardController contStandard=null;
     
     public InputScfController(MainClass mc) {
-		super(mc);
+		super(mc, EnumStep.SCF);
 	}
     
     @Override

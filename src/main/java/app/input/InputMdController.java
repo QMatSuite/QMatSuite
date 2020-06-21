@@ -188,7 +188,7 @@ public class InputMdController extends InputController {
     private VBox vboxOptionalThermalstat;
     
     public InputMdController(MainClass mc) {
-		super(mc);
+		super(mc, EnumStep.BOMD);
 	}
 	
 	@Override
@@ -196,72 +196,17 @@ public class InputMdController extends InputController {
 		//point all status messages to the Label statusInfo
 		setPointerStatusTextField(statusInfo);
 		
-		//connect fields in GUI to inputAgent
-		setIntegerFieldListener(mdStepField, "mdSteps",EnumNumCondition.positive,EnumStep.BOMD);
-		setDoubleFieldListener(timestepField, "timeStep",EnumNumCondition.positive,EnumStep.BOMD);
-		setComboListener(timestepUnit, EnumUnitTime.values(), "enumTimeUnit", EnumStep.BOMD);
-		
+		//new
+		initParameterSet(timestepUnit, "enumTimeUnit", EnumUnitTime.values(), checkTimeStep, infoTimeStep, checkResetAll);
+		initParameterSet(toggleCellMove, "boolMoveCell", "move cell also", "only ions", checkCellMove, infoIonDynamics, checkResetAll);
 		toggleCellMove.selectedProperty().addListener((observable, oldValue, newValue) ->
 		{ 
-			InputAgentMd iMd = (InputAgentMd) mainClass.projectManager.getStepAgent(EnumStep.BOMD);
-			if (newValue) 
-			{ 
-				toggleCellMove.setText("move cell also");
-				gridCellDynamics.setVisible(true);
-				comboIonDynamics.setItems(FXCollections.observableArrayList(EnumIonVcmdMethod.values()));
-				comboIonDynamics.getSelectionModel().select(EnumIonVcmdMethod.beeman);
-				if (iMd!=null)  {iMd.boolMoveCell.setValue(true);}
-			}
-			else 
-			{ 
-				toggleCellMove.setText("only ions"); 
-				gridCellDynamics.setVisible(false);
-				comboIonDynamics.setItems(FXCollections.observableArrayList(EnumIonMdMethod.values()));
-				//iMd.enumMdMethodIon.setValue(EnumIonMdMethod.verlet);
-				comboIonDynamics.getSelectionModel().select(EnumIonMdMethod.verlet);
-				if (iMd!=null)  {iMd.boolMoveCell.setValue(false);}
-			}
+			if(newValue!=null) {toggleCellMoveCall(newValue);}
 		});
 		//initialize without cell
-		toggleCellMove.setSelected(false);toggleCellMove.setText("only ions"); 
-		gridCellDynamics.setVisible(false);
-		comboIonDynamics.setItems(FXCollections.observableArrayList(EnumIonMdMethod.values()));
-		setComboListener(comboIonDynamics, EnumIonMdMethod.values(), "enumMdMethodIon", EnumStep.BOMD);
+		toggleCellMoveCall(false);
 		
-		setComboListener(comboThermalstat, EnumThermalstat.values(), "enumThermalstat", EnumStep.BOMD);
-		comboThermalstat.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) ->
-		{ 
-			//second listener for comboThermalstat
-			boolean hasTControl = !EnumThermalstat.non.equals(newValue);
-			vboxOptionalThermalstat.setVisible(hasTControl);
-			
-			checkThermAdvanced.setVisible(hasTControl);checkTargetT.setVisible(hasTControl);
-		});
-		//initialize with all invisible because comboThermalstat is defaulted to non
-		vboxOptionalThermalstat.setVisible(false);
-		checkThermAdvanced.setVisible(false);checkTargetT.setVisible(false);
-		
-		setDoubleFieldListener(tempField, "temperature",EnumNumCondition.nonNegative,EnumStep.BOMD);
-		setDoubleFieldListener(tolpField, "tolp",EnumNumCondition.nonNegative,EnumStep.BOMD);
-		setIntegerFieldListener(nraiseField, "nraise",EnumNumCondition.positive,EnumStep.BOMD);
-		setDoubleFieldListener(deltatField, "deltat",EnumNumCondition.no,EnumStep.BOMD);//can be negative
-		
-		setComboListener(comboCellMove, EnumCellMdMethod.values(), "enumMdMethodCell", EnumStep.BOMD);
-		setDoubleFieldListener(pressField, "pressure",EnumNumCondition.no,EnumStep.BOMD);
-		setComboListener(comboCellDoFree, EnumCellDoFree.values(), "enumCellDoFree", EnumStep.BOMD);
-		
-		//reset buttons
-		resetTextFieldIntegerListener(checkMdStep, mdStepField, "mdSteps", EnumStep.BOMD, checkResetAll);
-		checkTimeStep.selectedProperty().addListener((observable, oldValue, newValue) ->
-		{ 
-			InputAgentMd iMd = (InputAgentMd) mainClass.projectManager.getStepAgent(EnumStep.BOMD);
-			if (iMd==null || newValue==null) return;
-			if (newValue) {timestepField.setText(Double.toString(iMd.timeStep.resetDefault()));timestepField.setDisable(true);
-			timestepUnit.getSelectionModel().select(EnumUnitTime.Ry);timestepUnit.setDisable(true);iMd.timeStep.setEnabled(false);}
-			else {timestepField.setDisable(false);timestepUnit.setDisable(false);iMd.timeStep.setEnabled(true);
-			if(checkResetAll.isSelected()) {allDefault=false;checkResetAll.setSelected(false);}}
-		});
-		resetToggleListener(checkCellMove, toggleCellMove, "boolMoveCell", EnumStep.BOMD, checkResetAll);
+		setComboListener(comboIonDynamics, EnumIonMdMethod.values(), "enumMdMethodIon");
 		checkIonDynamics.selectedProperty().addListener((observable, oldValue, newValue) ->
 		{ 
 			InputAgentMd iMd = (InputAgentMd) mainClass.projectManager.getStepAgent(EnumStep.BOMD);
@@ -280,16 +225,33 @@ public class InputMdController extends InputController {
 				if(checkResetAll.isSelected()) {allDefault=false;checkResetAll.setSelected(false);}
 			}
 		});
-		resetComboBoxListener(checkThermalstat, comboThermalstat, "enumThermalstat", EnumStep.BOMD, checkResetAll);
-		resetTextFieldDoubleListener(checkTargetT, tempField, "temperature", EnumStep.BOMD, checkResetAll);
-		//same checkbox, three fields
-		resetTextFieldDoubleListener(checkThermAdvanced, tolpField, "tolp", EnumStep.BOMD, checkResetAll);
-		resetTextFieldIntegerListener(checkThermAdvanced, nraiseField, "nraise", EnumStep.BOMD, checkResetAll);
-		resetTextFieldDoubleListener(checkThermAdvanced, deltatField, "deltat", EnumStep.BOMD, checkResetAll);
 		
-		resetComboBoxListener(checkCellDynamics, comboCellMove, "enumMdMethodCell", EnumStep.BOMD, checkResetAll);
-		resetTextFieldDoubleListener(checkP, pressField, "pressure", EnumStep.BOMD, checkResetAll);
-		resetComboBoxListener(checkCellDoFree, comboCellDoFree, "enumCellDoFree", EnumStep.BOMD, checkResetAll);
+		initParameterSet(comboCellMove, "enumMdMethodCell", EnumCellMdMethod.values(), checkCellDynamics, infoCellDynamics, checkResetAll);
+		
+		initParameterSet(comboThermalstat, "enumThermalstat", EnumThermalstat.values(), checkThermalstat, infoThermalstat, checkResetAll);
+		initParameterSet(comboCellDoFree, "enumCellDoFree", EnumCellDoFree.values(), checkCellDoFree, infoCellDoFree, checkResetAll);
+
+		comboThermalstat.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) ->
+		{ 
+			//second listener for comboThermalstat
+			boolean hasTControl = !EnumThermalstat.non.equals(newValue);
+			vboxOptionalThermalstat.setVisible(hasTControl);
+			checkThermAdvanced.setVisible(hasTControl);
+			checkTargetT.setVisible(hasTControl);
+		});
+		//initialize with all invisible because comboThermalstat is defaulted to non
+		vboxOptionalThermalstat.setVisible(false);
+		checkThermAdvanced.setVisible(false);checkTargetT.setVisible(false);
+				
+		initIntegerParameterSet(mdStepField, "mdSteps", EnumNumCondition.positive, "", checkMdStep, infoMdStep, checkResetAll);
+		initDoubleParameterSet(timestepField, "timeStep", EnumNumCondition.positive, "", checkTimeStep, infoTimeStep, checkResetAll);
+		initDoubleParameterSet(tempField, "temperature", EnumNumCondition.nonNegative, "", checkTargetT, infoTargetT, checkResetAll);
+		initDoubleParameterSet(tolpField, "tolp", EnumNumCondition.nonNegative, "", checkThermAdvanced, infoThermAdvanced, checkResetAll);
+		initIntegerParameterSet(nraiseField, "nraise", EnumNumCondition.positive, "", checkThermAdvanced, infoThermAdvanced, checkResetAll);
+		initDoubleParameterSet(deltatField, "deltat", EnumNumCondition.no, "", checkThermAdvanced, infoThermAdvanced, checkResetAll);//can be negative
+		initDoubleParameterSet(pressField, "pressure", EnumNumCondition.no, "", checkP, infoP, checkResetAll);
+		
+		//resetAll
 		
 		checkResetAll.selectedProperty().addListener((observable, oldValue, newValue) ->
 		{ 
@@ -303,42 +265,29 @@ public class InputMdController extends InputController {
 			}
 		});
 	}
+	private void toggleCellMoveCall(boolean bl) {
+		if (bl) 
+		{ 
+			gridCellDynamics.setVisible(true);
+			comboIonDynamics.setItems(FXCollections.observableArrayList(EnumIonVcmdMethod.values()));
+			comboIonDynamics.getSelectionModel().select(EnumIonVcmdMethod.beeman);
+
+		}
+		else 
+		{
+			gridCellDynamics.setVisible(false);
+			comboIonDynamics.setItems(FXCollections.observableArrayList(EnumIonMdMethod.values()));
+			comboIonDynamics.getSelectionModel().select(EnumIonMdMethod.verlet);
+		}
+	}
 	public void loadProjectParameters() {
-		if (!timestepUnit.getItems().isEmpty()) {
-    		InputAgentMd iMd = (InputAgentMd) mainClass.projectManager.getStepAgent(EnumStep.BOMD);
-    		if (iMd!=null) {
-    			
-    			setField(mdStepField, iMd.mdSteps);
-    			setField(timestepField, iMd.timeStep);
-    			setCombo(timestepUnit, iMd.enumTimeUnit);
-    			setToggle(toggleCellMove, iMd.boolMoveCell);
-    			setCombo(comboIonDynamics, iMd.enumMdMethodIon);
-    			
-    			setCombo(comboThermalstat, iMd.enumThermalstat);
-    			setField(tempField, iMd.temperature);
-    			setField(tolpField, iMd.tolp);
-    			setField(nraiseField, iMd.nraise);
-    			setField(deltatField, iMd.deltat);
-    			
-    			setCombo(comboCellMove, iMd.enumMdMethodCell);
-    			setField(pressField, iMd.pressure);
-    			setCombo(comboCellDoFree, iMd.enumCellDoFree);
-    			
-    			
-    			//load default checkBoxes
-    			checkMdStep.setSelected(!iMd.mdSteps.isEnabled());
-    			checkTimeStep.setSelected(!iMd.timeStep.isEnabled());
-				checkCellMove.setSelected(!iMd.boolMoveCell.isEnabled());
-				checkIonDynamics.setSelected(!iMd.enumMdMethodIon.isEnabled());
-				checkThermalstat.setSelected(!iMd.enumThermalstat.isEnabled());
-				checkTargetT.setSelected(!iMd.temperature.isEnabled());
-				checkThermAdvanced.setSelected(!iMd.tolp.isEnabled());
-				checkCellDynamics.setSelected(!iMd.enumMdMethodCell.isEnabled());
-				checkP.setSelected(!iMd.pressure.isEnabled());
-				checkCellDoFree.setSelected(!iMd.enumCellDoFree.isEnabled());
-    			
-    		}
-    	}
+		super.loadProjectParameters();
+
+		InputAgentMd iMd = (InputAgentMd) mainClass.projectManager.getStepAgent(EnumStep.BOMD);
+		if (iMd!=null) {
+			setCombo(comboIonDynamics, iMd.enumMdMethodIon);
+			checkIonDynamics.setSelected(!iMd.enumMdMethodIon.isEnabled());	
+		}
 	}
 
 }

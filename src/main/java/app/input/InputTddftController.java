@@ -22,6 +22,8 @@ package app.input;
 import java.net.URL;
 import java.util.ResourceBundle;
 
+import com.consts.Constants.EnumStep;
+
 import javafx.fxml.FXML;
 import javafx.scene.layout.AnchorPane;
 import main.MainClass;
@@ -31,7 +33,7 @@ public class InputTddftController extends InputController{
 	@FXML private AnchorPane projectPane;
 
 	public InputTddftController(MainClass mc) {
-		super(mc);
+		super(mc, EnumStep.TDDFT);
 	}
 	
 	@Override
