@@ -419,4 +419,10 @@ public abstract class InputController implements Initializable{
     	if(bl==null) return;
     	cb.setSelected(bl);
     }
+    protected void bindProperty(Label lb, ComboBox<?> cb) {
+    	lb.textProperty().bind(cb.valueProperty().asString());
+    }
+    protected void bindProperty(Label lb, TextField tb) {
+    	lb.textProperty().bind(tb.textProperty());
+    }
 }

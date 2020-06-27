@@ -204,7 +204,8 @@ public class InputScfStandardController extends InputController{
 			
 			checkGauss.setDisable(true);
 			setDoubleFieldListener(gaussField, "degauss",EnumNumCondition.nonNegative);
-			gaussUnit.textProperty().bind(ecutwfcUnit.valueProperty().asString());
+			//gaussUnit.textProperty().bind(ecutwfcUnit.valueProperty().asString());
+			bindProperty(gaussUnit,ecutwfcUnit);
 			
 			//checkResetAll
 			checkResetAll.selectedProperty().addListener((observable, oldValue, newValue) ->
