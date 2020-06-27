@@ -70,6 +70,11 @@ public abstract class InputValue implements Serializable{
 		setValueNow(val.getValue());
 		setExplicitWrite(val.isEnabled());
 	}
+	public void setValue(WrapperDouble val, double mulFactor) throws InvalidTypeException {
+		if(val.getValue()!=null) {setValueNow(val.getValue()*mulFactor);}
+		else {setValueNow();}
+		setExplicitWrite(val.isEnabled());
+	}
 	public void setValue(WrapperDouble val) throws InvalidTypeException {
 		setValueNow(val.getValue());
 		setExplicitWrite(val.isEnabled());

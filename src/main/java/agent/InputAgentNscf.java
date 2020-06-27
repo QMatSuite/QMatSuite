@@ -27,7 +27,6 @@ public class InputAgentNscf extends InputAgent{
 	 * 
 	 */
 	private static final long serialVersionUID = 6359716753902151708L;
-	public final String calcMode = "nscf";
 	
 	public WrapperEnum enumOccupation;//EnumOccupations 
 	public WrapperEnum enumEnergyUnit;

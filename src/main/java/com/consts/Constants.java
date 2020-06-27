@@ -37,7 +37,9 @@ public class Constants {
 		SYSTEM,
 		ELECTRONS,
 		IONS,
-		CELL
+		CELL,
+		//dos.x
+		DOS
 	}
 	public enum EnumFileCategory{
 		save("QuantumVITAS save"),directory("Directory"),stdin("Input (std)"),

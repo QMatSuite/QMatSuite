@@ -67,7 +67,6 @@ public class CalculationBandsClass extends CalculationClass{
 		inputList.get(EnumStep.SCF).loadAgent((InputAgentScf)agentList.get(EnumStep.SCF));
 		cis.add(inputList.get(EnumStep.SCF).genInput(EnumStep.SCF));
 		
-		
 		inputList.get(EnumStep.BANDS).clearErrorMessage();
 		inputList.get(EnumStep.BANDS).loadAgent(geoList.get(getGeoInd()));
 		inputList.get(EnumStep.BANDS).loadAgent((InputAgentScf)agentList.get(EnumStep.SCF));
@@ -75,9 +74,6 @@ public class CalculationBandsClass extends CalculationClass{
 		cis.add(inputList.get(EnumStep.BANDS).genInput(EnumStep.BANDS));
 		
 		return cis;
-//		Alert alert1 = new Alert(AlertType.INFORMATION);
-//    	alert1.setHeaderText("Input of "+nameCalc);
-//    	alert1.setContentText(inputWrapper.toString());
-//    	alert1.showAndWait();
+
 	}
 }

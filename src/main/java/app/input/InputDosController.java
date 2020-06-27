@@ -178,11 +178,12 @@ public class InputDosController extends InputController {
 				checkEmax.setSelected(newValue);
 				checkEmin.setSelected(newValue);
 				//checkEstep.setSelected(newValue);
-				if(checkShowAdvanced.isSelected()) {
-					checkSummation.setSelected(newValue);
-					checkSmearing.setSelected(newValue);
-					checkDegauss.setSelected(newValue);
-				}
+//				if(checkShowAdvanced.isSelected()) {
+//					checkSummation.setSelected(newValue);
+//					checkSmearing.setSelected(newValue);
+//					checkDegauss.setSelected(newValue);
+//				}
+				checkShowAdvanced.setSelected(!newValue);
 			}
 		});
 	}
