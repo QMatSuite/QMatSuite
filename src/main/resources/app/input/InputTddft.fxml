@@ -31,8 +31,8 @@
               </rowConstraints>
                <children>
                   <Label text="Set all to default" />
-                  <CheckBox mnemonicParsing="false" GridPane.columnIndex="1" />
-                  <Button mnemonicParsing="false" text="i" GridPane.columnIndex="2" />
+                  <CheckBox fx:id="checkDefaultAll" mnemonicParsing="false" GridPane.columnIndex="1" />
+                  <Button fx:id="infoDefaultAll" mnemonicParsing="false" text="i" GridPane.columnIndex="2" />
                </children>
                <VBox.margin>
                   <Insets left="10.0" />
@@ -66,13 +66,13 @@
               </rowConstraints>
                <children>
                   <Label text="Max Iterations" />
-                  <TextField GridPane.columnIndex="1" />
-                  <CheckBox mnemonicParsing="false" GridPane.columnIndex="2" />
-                  <Button mnemonicParsing="false" text="i" GridPane.columnIndex="3" />
+                  <TextField fx:id="textMaxIterations" GridPane.columnIndex="1" />
+                  <CheckBox fx:id="checkMaxIterations" mnemonicParsing="false" GridPane.columnIndex="2" />
+                  <Button fx:id="infoMaxIterations" mnemonicParsing="false" text="i" GridPane.columnIndex="3" />
                   <Label text="Polarizability Type" GridPane.rowIndex="1" />
-                  <ComboBox prefHeight="25.0" prefWidth="221.0" GridPane.columnIndex="1" GridPane.rowIndex="1" />
-                  <CheckBox mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="1" />
-                  <Button mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+                  <ComboBox fx:id="comboPolarizability" prefHeight="25.0" prefWidth="221.0" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+                  <CheckBox fx:id="checkPolarizability" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="1" />
+                  <Button fx:id="infoPolarizability" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="1" />
                </children>
                <VBox.margin>
                   <Insets left="10.0" />
@@ -116,21 +116,21 @@
                   <Insets left="10.0" />
                </VBox.margin>
                <children>
-                  <CheckBox mnemonicParsing="false" GridPane.columnIndex="2" />
-                  <Button mnemonicParsing="false" text="i" GridPane.columnIndex="3" />
-                  <CheckBox mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="2" />
-                  <Button mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="2" />
+                  <CheckBox fx:id="checkLabelterations" mnemonicParsing="false" GridPane.columnIndex="2" />
+                  <Button fx:id="infoLabelterations" mnemonicParsing="false" text="i" GridPane.columnIndex="3" />
+                  <CheckBox fx:id="checkAllIterations" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="2" />
+                  <Button fx:id="infoAllIterations" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="2" />
                   <Label text="#Iterations Read" />
-                  <Label text="Label" GridPane.columnIndex="1" />
+                  <Label fx:id="labelterations" GridPane.columnIndex="1" />
                   <Label text="All Iterations" GridPane.rowIndex="2" />
-                  <TextField GridPane.columnIndex="1" GridPane.rowIndex="2" />
+                  <TextField fx:id="textAllIterations" GridPane.columnIndex="1" GridPane.rowIndex="2" />
                   <Label text="Extrapolation" GridPane.rowIndex="3" />
-                  <ComboBox prefHeight="25.0" prefWidth="201.0" GridPane.columnIndex="1" GridPane.rowIndex="3" />
-                  <CheckBox mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="3" />
-                  <Button mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="3" />
+                  <ComboBox fx:id="comboExtrapolation" prefHeight="25.0" prefWidth="201.0" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+                  <CheckBox fx:id="checkExtrapolation" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="3" />
+                  <Button fx:id="infoExtrapolation" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="3" />
                   <Label text="Broadening Term" GridPane.rowIndex="5" />
-                  <CheckBox mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="5" />
-                  <Button mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="5" />
+                  <CheckBox fx:id="checkDegauss" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="5" />
+                  <Button fx:id="infoDegauss" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="5" />
                   <GridPane hgap="5.0" vgap="5.0" GridPane.columnIndex="1" GridPane.rowIndex="5">
                     <columnConstraints>
                       <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
@@ -140,14 +140,14 @@
                       <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                     </rowConstraints>
                      <children>
-                        <TextField />
-                        <Label text="Label" GridPane.columnIndex="1" />
+                        <TextField fx:id="textDegauss" />
+                        <Label fx:id="labelDegauss" GridPane.columnIndex="1" />
                      </children>
                   </GridPane>
                   <Label text="Energy Unit" GridPane.rowIndex="4" />
-                  <ComboBox prefHeight="25.0" prefWidth="194.0" GridPane.columnIndex="1" GridPane.rowIndex="4" />
-                  <CheckBox mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="4" />
-                  <Button mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="4" />
+                  <ComboBox fx:id="comboEnergyUnit" prefHeight="25.0" prefWidth="194.0" GridPane.columnIndex="1" GridPane.rowIndex="4" />
+                  <CheckBox fx:id="checkEnergyUnit" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="4" />
+                  <Button fx:id="infoEnergyUnit" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="4" />
                   <GridPane hgap="5.0" vgap="5.0" GridPane.columnIndex="1" GridPane.rowIndex="7">
                      <columnConstraints>
                         <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
@@ -157,15 +157,15 @@
                         <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                      </rowConstraints>
                      <children>
-                        <TextField />
-                        <Label text="Label" GridPane.columnIndex="1" />
+                        <TextField fx:id="textEEnd" />
+                        <Label fx:id="labelEEnd" GridPane.columnIndex="1" />
                      </children>
                   </GridPane>
                   <Label text="Ending Energy" GridPane.rowIndex="7" />
-                  <CheckBox mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="7" />
-                  <Button mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="7" />
-                  <CheckBox mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="6" />
-                  <Button mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="6" />
+                  <CheckBox fx:id="checkEEnd" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="7" />
+                  <Button fx:id="infoEEnd" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="7" />
+                  <CheckBox fx:id="checkEStart" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="6" />
+                  <Button fx:id="infoEStart" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="6" />
                   <GridPane hgap="5.0" vgap="5.0" GridPane.columnIndex="1" GridPane.rowIndex="6">
                      <columnConstraints>
                         <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
@@ -175,8 +175,8 @@
                         <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                      </rowConstraints>
                      <children>
-                        <TextField />
-                        <Label text="Label" GridPane.columnIndex="1" />
+                        <TextField fx:id="textEStart" />
+                        <Label fx:id="labelEStart" GridPane.columnIndex="1" />
                      </children>
                   </GridPane>
                   <Label text="Starting Energy" GridPane.rowIndex="6" />
@@ -190,20 +190,20 @@
                         <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                      </rowConstraints>
                      <children>
-                        <TextField />
-                        <Label text="Label" GridPane.columnIndex="1" />
+                        <TextField fx:id="textEStep" />
+                        <Label fx:id="labelEStep" GridPane.columnIndex="1" />
                      </children>
                   </GridPane>
-                  <CheckBox mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="8" />
-                  <Button mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="8" />
+                  <CheckBox fx:id="checkEStep" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="8" />
+                  <Button fx:id="infoEStep" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="8" />
                   <Label text="Polarizability Type" GridPane.rowIndex="1" />
-                  <Label text="Label" GridPane.columnIndex="1" GridPane.rowIndex="1" />
-                  <CheckBox mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="1" />
-                  <Button mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+                  <Label fx:id="labelPolarizability" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+                  <CheckBox fx:id="checkLabelPolarizability" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="1" />
+                  <Button fx:id="infoLabelPolarizability" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="1" />
                   <Label text="EELS Calculation" GridPane.rowIndex="9" />
-                  <ToggleButton mnemonicParsing="false" prefHeight="25.0" prefWidth="222.0" GridPane.columnIndex="1" GridPane.rowIndex="9" />
-                  <CheckBox mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="9" />
-                  <Button mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="9" />
+                  <ToggleButton fx:id="toggleEELS" mnemonicParsing="false" prefHeight="25.0" prefWidth="222.0" GridPane.columnIndex="1" GridPane.rowIndex="9" />
+                  <CheckBox fx:id="checkEELS" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="9" />
+                  <Button fx:id="infoEELS" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="9" />
                </children>
             </GridPane>
             <Label fx:id="statusInfo" />

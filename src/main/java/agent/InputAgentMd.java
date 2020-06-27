@@ -23,7 +23,6 @@ import com.consts.Constants.EnumCellMdMethod;
 import com.consts.Constants.EnumIonMdMethod;
 import com.consts.Constants.EnumThermalstat;
 import com.consts.Constants.EnumUnitTime;
-import com.consts.Constants.ProgramName;
 
 public class InputAgentMd extends InputAgent{
 	/**
@@ -49,7 +48,6 @@ public class InputAgentMd extends InputAgent{
 	public WrapperEnum enumCellDoFree;
 	
 	public InputAgentMd() {
-		super(ProgramName.PW);
 		
 		mdSteps = new WrapperInteger(50);
 		timeStep = new WrapperDouble(20.0);

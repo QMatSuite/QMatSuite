@@ -21,7 +21,6 @@ package agent;
 import com.consts.Constants.EnumSmearing;
 import com.consts.Constants.EnumSummation;
 import com.consts.Constants.EnumUnitEnergy;
-import com.consts.Constants.ProgramName;
 
 public class InputAgentDos extends InputAgent{
 	/**
@@ -41,7 +40,6 @@ public class InputAgentDos extends InputAgent{
 	public WrapperDouble degauss;
 	
 	public InputAgentDos() {
-		super(ProgramName.DOS);
 		
 		emax = new WrapperDouble(null);
 		emin = new WrapperDouble(null);

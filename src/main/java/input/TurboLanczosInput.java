@@ -19,19 +19,11 @@
 package input;
 
 
-import agent.InputAgentDos;
+public class TurboLanczosInput extends QeInput{
 
-
-public class DosInput extends QeInput{
 	
-//	public DosInput() {
+//	public TurboLanczosInput() {
 //		super();
 //	}
 
-	@Override
-	public void loadAgent(InputAgentDos ia1) {
-		// TODO Auto-generated method stub
-		
-	}
-	
 }

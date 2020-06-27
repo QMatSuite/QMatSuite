@@ -22,7 +22,6 @@ import com.consts.Constants.EnumCellDoFree;
 import com.consts.Constants.EnumCellOptMethod;
 import com.consts.Constants.EnumIonOptMethod;
 import com.consts.Constants.EnumUnitEnergy;
-import com.consts.Constants.ProgramName;
 
 public class InputAgentOpt extends InputAgent{
 	/**
@@ -46,7 +45,6 @@ public class InputAgentOpt extends InputAgent{
 	
 	
 	public InputAgentOpt() {
-		super(ProgramName.PW);
 		
 		boolRelaxCell = new WrapperBoolean(false);
 		boolScfMustConverge = new WrapperBoolean(true);

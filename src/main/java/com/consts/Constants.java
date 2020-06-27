@@ -27,7 +27,9 @@ public class Constants {
 		CP,
 		BANDS,
 		DOS,
-		DYNMAT
+		DYNMAT,
+		TURBO_LANCZOS,
+		TURBO_SPECTRUM
 	}
 	public enum EnumNameList {
 		//pw.x
@@ -131,7 +133,8 @@ public class Constants {
 		DOS("DOS"),
 		BANDS("Bands"),
 		BOMD("MD"),
-		TDDFT("TDDFT");
+		TDDFT("TDDFT"),
+		TDDFT2("TDDFT(2)");
 		private String name;
 		
 		private EnumStep(String name) {

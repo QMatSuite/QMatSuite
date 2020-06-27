@@ -30,6 +30,8 @@ import agent.InputAgentGeo;
 import app.centerwindow.WorkScene3D;
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
+import com.error.ShowAlert;
+
 import input.ContainerInputString;
 
 public class Project implements Serializable{
@@ -158,12 +160,17 @@ public class Project implements Serializable{
 			case OPT:calc = new CalculationOptClass(calcName);break;
 			case DOS:calc = new CalculationDosClass(calcName);break;
 			case BOMD:calc = new CalculationMdClass(calcName);break;
+			case BANDS:calc = new CalculationBandsClass(calcName);break;
+			case TDDFT:calc = new CalculationTddftClass(calcName);break;
 			default:
 				Alert alert = new Alert(AlertType.INFORMATION);
 		    	alert.setTitle("Error");
 		    	alert.setContentText("Not implemented CalculationClass!");
 		    	alert.showAndWait();
 		    	return;
+			}
+			if(!ec.equals(calc.getCalcType())) {
+				ShowAlert.showAlert(AlertType.ERROR, "Error", "Inconsistent calculation type in addCalculation! Check programming!");
 			}
 			calcDict.put(calcName, calc);
 			calcList.add(calcName);

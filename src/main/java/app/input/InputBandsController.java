@@ -34,7 +34,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import main.MainClass;
 
-public class InputBandController extends InputController{
+public class InputBandsController extends InputController{
 	
 	@FXML private Label nbandLabel,
 	symLabel;
@@ -51,7 +51,7 @@ public class InputBandController extends InputController{
 	kyColumn,
 	kzColumn;
 	
-	public InputBandController (MainClass mc) {
+	public InputBandsController (MainClass mc) {
 		super(mc, EnumStep.BANDS);
 	}
 	
@@ -60,5 +60,8 @@ public class InputBandController extends InputController{
 		// TODO Auto-generated method stub
 		
 	}
+	public void loadProjectParameters() {
+		super.loadProjectParameters();
 
+	}
 }

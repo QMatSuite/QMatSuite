@@ -21,15 +21,148 @@ package app.input;
 
 import java.net.URL;
 import java.util.ResourceBundle;
-
 import com.consts.Constants.EnumStep;
-
 import javafx.fxml.FXML;
+import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleButton;
 import javafx.scene.layout.AnchorPane;
 import main.MainClass;
 
 public class InputTddftController extends InputController{
-	
+
+    @FXML
+    private CheckBox checkDefaultAll;
+
+    @FXML
+    private Button infoDefaultAll;
+
+    @FXML
+    private TextField textMaxIterations;
+
+    @FXML
+    private CheckBox checkMaxIterations;
+
+    @FXML
+    private Button infoMaxIterations;
+
+    @FXML
+    private ComboBox<?> comboPolarizability;
+
+    @FXML
+    private CheckBox checkPolarizability;
+
+    @FXML
+    private Button infoPolarizability;
+
+    @FXML
+    private CheckBox checkLabelterations;
+
+    @FXML
+    private Button infoLabelterations;
+
+    @FXML
+    private CheckBox checkAllIterations;
+
+    @FXML
+    private Button infoAllIterations;
+
+    @FXML
+    private Label labelterations;
+
+    @FXML
+    private TextField textAllIterations;
+
+    @FXML
+    private ComboBox<?> comboExtrapolation;
+
+    @FXML
+    private CheckBox checkExtrapolation;
+
+    @FXML
+    private Button infoExtrapolation;
+
+    @FXML
+    private CheckBox checkDegauss;
+
+    @FXML
+    private Button infoDegauss;
+
+    @FXML
+    private TextField textDegauss;
+
+    @FXML
+    private Label labelDegauss;
+
+    @FXML
+    private ComboBox<?> comboEnergyUnit;
+
+    @FXML
+    private CheckBox checkEnergyUnit;
+
+    @FXML
+    private Button infoEnergyUnit;
+
+    @FXML
+    private TextField textEEnd;
+
+    @FXML
+    private Label labelEEnd;
+
+    @FXML
+    private CheckBox checkEEnd;
+
+    @FXML
+    private Button infoEEnd;
+
+    @FXML
+    private CheckBox checkEStart;
+
+    @FXML
+    private Button infoEStart;
+
+    @FXML
+    private TextField textEStart;
+
+    @FXML
+    private Label labelEStart;
+
+    @FXML
+    private TextField textEStep;
+
+    @FXML
+    private Label labelEStep;
+
+    @FXML
+    private CheckBox checkEStep;
+
+    @FXML
+    private Button infoEStep;
+
+    @FXML
+    private Label labelPolarizability;
+
+    @FXML
+    private CheckBox checkLabelPolarizability;
+
+    @FXML
+    private Button infoLabelPolarizability;
+
+    @FXML
+    private ToggleButton toggleEELS;
+
+    @FXML
+    private CheckBox checkEELS;
+
+    @FXML
+    private Button infoEELS;
+
+    @FXML
+    private Label statusInfo;
+
 	@FXML private AnchorPane projectPane;
 
 	public InputTddftController(MainClass mc) {
@@ -41,6 +174,16 @@ public class InputTddftController extends InputController{
 		// TODO Auto-generated method stub
 		
 	}
+	public void loadProjectParameters() {
+		super.loadProjectParameters();
 
+	}
 
 }
+	
+
+
+
+
+
+

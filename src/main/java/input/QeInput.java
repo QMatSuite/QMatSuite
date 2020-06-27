@@ -21,14 +21,17 @@ package input;
 import java.util.LinkedHashMap;
 import java.util.Set;
 
+import agent.InputAgentBands;
 import agent.InputAgentDos;
 import agent.InputAgentGeo;
 import agent.InputAgentMd;
 import agent.InputAgentNscf;
 import agent.InputAgentOpt;
 import agent.InputAgentScf;
+import agent.InputAgentTddft;
 import agent.WrapperBoolean;
 import agent.WrapperDouble;
+import agent.WrapperEnum;
 import agent.WrapperInteger;
 import agent.WrapperString;
 import com.consts.Constants.EnumStep;
@@ -50,8 +53,12 @@ public abstract class QeInput{
 	public String getErrorMessage() {
 		return errorMessage;
 	}
-	public abstract String addParameter(InputValue val);
-	public abstract void print(); 
+	public void print() {
+		Set<String> keys = sectionDict.keySet();
+        for(String key: keys){
+        	sectionDict.get(key).print();
+        }
+	}
 	public ContainerInputString genInput(String startingMsg) {
 		ContainerInputString ci = new ContainerInputString();
 		ci.appendInput(startingMsg);
@@ -70,11 +77,61 @@ public abstract class QeInput{
 		ci.appendLog(errorMessage);
 		return ci;
 	} 
-	public abstract void setValue(String keySec, String keyPara) throws InvalidKeyException, InvalidTypeException;//set null
-	public abstract void setValue(String keySec, String keyPara,WrapperDouble para) throws InvalidKeyException, InvalidTypeException;
-	public abstract void setValue(String keySec, String keyPara,WrapperInteger para) throws InvalidKeyException, InvalidTypeException;
-	public abstract void setValue(String keySec, String keyPara,WrapperString para) throws InvalidKeyException, InvalidTypeException;
-	public abstract void setValue(String keySec, String keyPara,WrapperBoolean para) throws InvalidKeyException, InvalidTypeException;
+	protected void setValue(String keySec, String keyPara,WrapperDouble para) throws InvalidKeyException, InvalidTypeException {
+		if (checkKeyExistence(keySec, keyPara)) {sectionDict.get(keySec).getValue(keyPara).setValue(para);}
+		else {throw new InvalidKeyException("in PwInput setValue");}
+	}
+	protected void setValue(String keySec, String keyPara,WrapperInteger para) throws InvalidKeyException, InvalidTypeException{
+		if (checkKeyExistence(keySec, keyPara)) {sectionDict.get(keySec).getValue(keyPara).setValue(para);}
+		else {throw new InvalidKeyException("in PwInput setValue");}
+	}
+	protected void setValue(String keySec, String keyPara,WrapperString para) throws InvalidKeyException, InvalidTypeException{
+		if (checkKeyExistence(keySec, keyPara)) {sectionDict.get(keySec).getValue(keyPara).setValue(para);}
+		else {throw new InvalidKeyException("in PwInput setValue");}
+	}
+	protected void setValue(String keySec, String keyPara,WrapperBoolean para) throws InvalidKeyException, InvalidTypeException{
+		if (checkKeyExistence(keySec, keyPara)) {sectionDict.get(keySec).getValue(keyPara).setValue(para);}
+		else {throw new InvalidKeyException("in PwInput setValue");}
+	}
+	protected void setValue(String keySec, String keyPara,WrapperEnum para) throws InvalidKeyException, InvalidTypeException{
+		if (checkKeyExistence(keySec, keyPara)) {sectionDict.get(keySec).getValue(keyPara).setValue(new WrapperString(para.getValue().toString(),para.isEnabled()));}
+		else {throw new InvalidKeyException("in PwInput setValue");}
+	}
+	protected void setValue(String keySec, String keyPara) throws InvalidKeyException, InvalidTypeException{
+		if (checkKeyExistence(keySec, keyPara)) {sectionDict.get(keySec).getValue(keyPara).setValueNow();}
+		else {throw new InvalidKeyException("in PwInput setValue");}
+	}
+	protected void setExplicitWrite(String keySec, String keyPara, boolean bl) throws InvalidKeyException, InvalidTypeException{
+		if (checkKeyExistence(keySec, keyPara)) {sectionDict.get(keySec).getValue(keyPara).setExplicitWrite(bl);}
+		else {throw new InvalidKeyException("in PwInput setValue");}
+	}
+	protected void setRequiredAndWrite(String keySec, String keyPara, boolean bl1, boolean bl2) throws InvalidKeyException, InvalidTypeException{
+		if (checkKeyExistence(keySec, keyPara)) {sectionDict.get(keySec).getValue(keyPara).setRequiredAndWrite(bl1,bl2);}
+		else {throw new InvalidKeyException("in PwInput setValue");}
+	}
+	protected void andExplicitWrite(String keySec, String keyPara, boolean bl) throws InvalidKeyException, InvalidTypeException{
+		if (checkKeyExistence(keySec, keyPara)) {sectionDict.get(keySec).getValue(keyPara).andExplicitWrite(bl);}
+		else {throw new InvalidKeyException("in PwInput setValue");}
+	}
+	protected InputValue getValue(String keySec, String keyPara) throws InvalidKeyException{
+		if (checkKeyExistence(keySec, keyPara)) return sectionDict.get(keySec).getValue(keyPara);
+		else {throw new InvalidKeyException("in PwInput getValue");}
+	}
+	protected void setSectionRequired(String keySec, Boolean bl) throws InvalidKeyException, InvalidTypeException{
+		if (keySec!=null && sectionDict.containsKey(keySec) && bl!=null) {sectionDict.get(keySec).setBoolRequired(bl);}
+		else {throw new InvalidKeyException("in PwInput setValue");}
+	}
+	protected void setSectionOption(String keySec, String st) throws InvalidKeyException, InvalidTypeException{
+		if (keySec!=null && sectionDict.containsKey(keySec) && st!=null) {sectionDict.get(keySec).setOptions(st);}
+		else {throw new InvalidKeyException("in PwInput setValue");}
+	}
+	protected Boolean checkKeyExistence(String keySec, String keyPara) {
+		if (keySec==null || keyPara ==null) return false;
+		if (sectionDict.containsKey(keySec) && sectionDict.get(keySec).containsKey(keyPara)) {
+			return true;
+		}
+		return false;
+	}
 	//not abstract method, because no need to define all of them in the inherited class
 	public void loadAgent(InputAgentDos ia1) {
 		//implement in the subclasses
@@ -92,6 +149,12 @@ public abstract class QeInput{
 		//implement in the subclasses
 	}
 	public void loadAgent(InputAgentScf ia1) {
+		//implement in the subclasses
+	} 
+	public void loadAgent(InputAgentBands ia1) {
+		//implement in the subclasses
+	} 
+	public void loadAgent(InputAgentTddft ia1) {
 		//implement in the subclasses
 	} 
 }

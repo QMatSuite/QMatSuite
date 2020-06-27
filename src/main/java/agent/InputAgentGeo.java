@@ -30,7 +30,6 @@ import com.consts.Constants.EnumUnitAtomPos;
 import com.consts.Constants.EnumUnitCellAngle;
 import com.consts.Constants.EnumUnitCellLength;
 import com.consts.Constants.EnumUnitCellParameter;
-import com.consts.Constants.ProgramName;
 import com.pseudopot.EnumPseudoPotLib;
 
 public class InputAgentGeo extends InputAgent{
@@ -66,7 +65,7 @@ public class InputAgentGeo extends InputAgent{
 	public String pseudodir;//pseudodir, careful, have to sync with ProjectManager.pseudoLibPath and settings of the lib
 	
 	public InputAgentGeo() {
-		super(ProgramName.PW);
+
 		//cell
 		ibrav=new WrapperInteger(null);//no default//ok
 		unitCellLength=EnumUnitCellLength.angstrom;

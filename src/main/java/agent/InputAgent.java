@@ -24,18 +24,13 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 
-import com.consts.Constants.ProgramName;
-
 public abstract class InputAgent implements Serializable{
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = -76527194192811401L;
 	
-	public final ProgramName program;
-	public InputAgent(ProgramName pg) {
-		program = pg;
-	}
+	
 	public Object clone() {
 		try {
 			ByteArrayOutputStream outputStream = new ByteArrayOutputStream();

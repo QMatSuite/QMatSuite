@@ -25,7 +25,6 @@ import com.consts.Constants.EnumMixingMode;
 import com.consts.Constants.EnumOccupations;
 import com.consts.Constants.EnumSmearing;
 import com.consts.Constants.EnumUnitEnergy;
-import com.consts.Constants.ProgramName;
 
 public class InputAgentScf extends InputAgent{
 	/**
@@ -76,7 +75,6 @@ public class InputAgentScf extends InputAgent{
 	public ArrayList<Element> elementList;
 	
 	public InputAgentScf() {
-		super(ProgramName.PW);
 		//************************|***********//
 		//***********************\|/**********//
 		//*******already dealt with in PwInput//
