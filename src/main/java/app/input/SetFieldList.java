@@ -92,7 +92,7 @@ public class SetFieldList {
 		} catch (Exception e) {
 			Alert alert1 = new Alert(AlertType.ERROR);
 	    	alert1.setTitle("Error");
-	    	alert1.setContentText("Fail to cast! "+e.getMessage());
+	    	alert1.setContentText("Fail to cast in SetFieldList.setAllFields! "+e.getMessage());
 	    	alert1.showAndWait();
 			e.printStackTrace();
 		}

@@ -297,6 +297,21 @@ public class Constants {
 	public enum EnumCellMdMethod implements EnumInProgram{
 		none,pr,w;
 	}
+	public enum EnumKUnit implements EnumInProgram{
+		tpiba,automatic,crystal,gamma,tpiba_b,crystal_b,tpiba_c,crystal_c
+	}
+	public enum EnumKUnitBands implements EnumInProgram{
+		tpiba_b("2pi/a"),crystal_b("crystal");
+		private String name;
+		
+		private EnumKUnitBands(String name) {
+	        this.name = name;
+	    }
+		@Override
+		public String toString() {
+			return name;
+		}
+	}
 	public enum EnumCellDoFree implements EnumInProgram{
 		all("all"),
 		ibrav("ibrav"),
