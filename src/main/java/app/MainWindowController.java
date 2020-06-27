@@ -452,7 +452,10 @@ public class MainWindowController implements Initializable{
 			
 			if(!mainClass.isTestMode()) {
 				if (cis!=null && cis.size()>0) {
-					ShowAlert.showAlert(AlertType.INFORMATION, "Input", cis.size()+" steps in total. Show here the input for the first step:\n"+cis.get(0).toString());
+					for(int i=0;i<cis.size();i++) {
+						ShowAlert.showAlert(AlertType.INFORMATION, "Input", cis.size()+
+								" steps in total. Show now the input for the "+Integer.toString(i)+"th step:\n"+cis.get(i).toString());
+					}
 				}
 				else {
 					ShowAlert.showAlert(AlertType.INFORMATION, "Input", "Cannot generate input file. Empty input file.");

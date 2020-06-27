@@ -81,6 +81,10 @@ public abstract class QeInput{
 		if (checkKeyExistence(keySec, keyPara)) {sectionDict.get(keySec).getValue(keyPara).setValue(para);}
 		else {throw new InvalidKeyException("in PwInput setValue");}
 	}
+	protected void setValue(String keySec, String keyPara,WrapperDouble para, double mulFactor) throws InvalidKeyException, InvalidTypeException {
+		if (checkKeyExistence(keySec, keyPara)) {sectionDict.get(keySec).getValue(keyPara).setValue(para,mulFactor);}
+		else {throw new InvalidKeyException("in PwInput setValue");}
+	}
 	protected void setValue(String keySec, String keyPara,WrapperInteger para) throws InvalidKeyException, InvalidTypeException{
 		if (checkKeyExistence(keySec, keyPara)) {sectionDict.get(keySec).getValue(keyPara).setValue(para);}
 		else {throw new InvalidKeyException("in PwInput setValue");}

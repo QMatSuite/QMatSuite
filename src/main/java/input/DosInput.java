@@ -19,18 +19,93 @@
 package input;
 
 
+import com.consts.PhysicalConstants;
+import com.consts.Constants.EnumNameList;
+import com.consts.Constants.EnumSmearing;
+import com.consts.Constants.EnumSummation;
+import com.consts.Constants.EnumUnitEnergy;
+import com.error.InvalidKeyException;
+import com.error.InvalidTypeException;
+import com.error.ShowAlert;
+
 import agent.InputAgentDos;
+import agent.WrapperDouble;
+import agent.WrapperEnum;
+import agent.WrapperInteger;
+import agent.WrapperString;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
 
 
 public class DosInput extends QeInput{
 	
-//	public DosInput() {
-//		super();
-//	}
+	public DosInput() {
+		super();
+		sectionDict.put("DOS", new NameList(EnumNameList.DOS));
+		sectionDict.get("DOS").setBoolRequired(true);
+		
+		sectionDict.get("DOS").addParameter("Emax", new InputValueDouble("Emax",false));
+		sectionDict.get("DOS").addParameter("Emin", new InputValueDouble("Emin",false));
+		sectionDict.get("DOS").addParameter("DeltaE", new InputValueDouble("DeltaE",true));
+		
+		sectionDict.get("DOS").addParameter("bz_sum", new InputValueString("bz_sum",false));
+		sectionDict.get("DOS").addParameter("ngauss", new InputValueInt("ngauss",0,false));
+		sectionDict.get("DOS").addParameter("degauss", new InputValueDouble("degauss",false));
+		
+	}
 
 	@Override
 	public void loadAgent(InputAgentDos ia1) {
-		// TODO Auto-generated method stub
+		try {
+			final double mulFactor;
+			if(ia1.energyUnit.equals(EnumUnitEnergy.Ry)) {mulFactor=PhysicalConstants.ryInEV;}
+			else if(ia1.energyUnit.equals(EnumUnitEnergy.eV)) {mulFactor=1.0;}
+			else {
+				ShowAlert.showAlert(AlertType.ERROR, "Error", "Unidentified EnumUnitEnergy. Abort.");
+				return;
+	    	}
+				
+			//QE unit in eV
+			andExplicitWrite("DOS","Emax",ia1.emax.isNull());
+			if(!ia1.emax.isNull()) {setValue("DOS","Emax",ia1.emax,mulFactor);}
+			
+			andExplicitWrite("DOS","Emin",ia1.emin.isNull());
+			if(!ia1.emin.isNull()) {setValue("DOS","Emin",ia1.emin,mulFactor);}
+			
+			if(!ia1.estep.isNull()) {setValue("DOS","DeltaE",ia1.estep,mulFactor);}
+			
+			boolean boolAdvanced = ia1.setAdvanced;
+			
+			andExplicitWrite("DOS","bz_sum",boolAdvanced);
+			andExplicitWrite("DOS","ngauss",boolAdvanced);
+			andExplicitWrite("DOS","degauss",boolAdvanced);
+			
+			if(boolAdvanced) {
+				if(ia1.enumSummation.equals(EnumSummation.from_input)) {
+					andExplicitWrite("DOS","bz_sum",false);
+				}
+				else {
+					setValue("DOS","bz_sum",ia1.enumSummation);
+				}
+				final boolean boolWrite = ia1.enumSmearing.isEnabled();
+				final int ngauss;
+				switch((EnumSmearing)ia1.enumSmearing.getValue()) {
+					case gauss:ngauss = 0;break;
+					case fd:ngauss = -99;break;
+					case mp:ngauss = 1;break;
+					case mv:ngauss = -1;break;
+					default:
+						ShowAlert.showAlert(AlertType.ERROR, "Error", "Unidentified EnumSmearing. Abort");
+						return;
+				}
+				setValue("DOS","ngauss",new WrapperInteger(ngauss,boolWrite));
+				setValue("DOS","degauss",ia1.degauss,mulFactor/PhysicalConstants.ryInEV);//QE unit in Ry
+			}
+			
+		} catch (InvalidKeyException | InvalidTypeException e) {
+			ShowAlert.showAlert(AlertType.ERROR, "Error", "Exception!"+e.getMessage());
+		}
+		
 		
 	}
 	

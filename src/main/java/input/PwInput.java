@@ -103,6 +103,7 @@ public class PwInput extends QeInput{
 		sectionDict.get("SYSTEM").addParameter("occupations", new InputValueString("occupations",true));
 		sectionDict.get("SYSTEM").addParameter("degauss", new InputValueDouble("degauss",0.0,true));
 		sectionDict.get("SYSTEM").addParameter("smearing", new InputValueString("smearing",EnumSmearing.gauss.toString(),true));
+		sectionDict.get("SYSTEM").addParameter("nbnd", new InputValueInt("nbnd",false));
 		
 		sectionDict.get("ELECTRONS").addParameter("electron_maxstep", new InputValueInt("electron_maxstep",100,false));
 		sectionDict.get("ELECTRONS").addParameter("conv_thr", new InputValueDouble("conv_thr",1e-6,false));
@@ -480,7 +481,29 @@ public class PwInput extends QeInput{
 	}
 	@Override
 	public void loadAgent(InputAgentNscf ia1) {
-		//to do
+
+		try {
+			setValue("CONTROL","calculation",new WrapperString("nscf",true));
+			setValue("SYSTEM","occupations",ia1.enumOccupation);
+			setValue("SYSTEM","degauss",ia1.degauss);
+			setValue("SYSTEM","smearing",ia1.enumSmearing);
+			WrapperString wp = new WrapperString(" "+ia1.nkx.getValue()+" "
+					+ia1.nky.getValue()+" "+ia1.nkz.getValue()+" 0 0 0");
+					setValue("K_POINTS","body",wp);
+			//correct Units, should be always put at the end
+			if(ia1.enumEnergyUnit.equals(EnumUnitEnergy.eV)) {
+				((InputValueDouble) sectionDict.get("SYSTEM").getValue("degauss")).multiply(1.0/PhysicalConstants.ryInEV);
+			}
+			andExplicitWrite("SYSTEM","nbnd",!ia1.nbnd.isNull());
+			if(!ia1.nbnd.isNull()) {setValue("SYSTEM","nbnd",ia1.nbnd);}
+			
+		} catch (InvalidKeyException | InvalidTypeException e) {
+			Alert alert1 = new Alert(AlertType.INFORMATION);
+	    	alert1.setTitle("Error");
+	    	alert1.setContentText("Exception!"+e.getMessage());
+	    	alert1.showAndWait();
+			e.printStackTrace();
+		}
 	}
 	
 	
