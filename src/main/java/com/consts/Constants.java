@@ -312,6 +312,39 @@ public class Constants {
 			return name;
 		}
 	}
+	public enum EnumPolarizability implements EnumInProgram{
+		alpha_xx(1),//default
+		alpha_yy(2),alpha_zz(3),full(4);
+		private int index;
+		
+		private EnumPolarizability(int index) {
+	        this.index = index;
+	    }
+		public int getIndex() {
+			return this.index;
+		}
+	}
+	public enum EnumExtrapolation implements EnumInProgram{
+		osc,constant,no
+	}
+	public enum EnumTddftUnitEnergy implements EnumInProgram{
+		Ry(0,"Rydbergs"),//default
+		eV(1,"Electron volts"),nmpeV(2,"Nanometres per electron volts");
+		private int index;
+		private String fullName;
+		
+		private EnumTddftUnitEnergy(int index, String fullName) {
+	        this.index = index;
+	        this.fullName = fullName;
+	    }
+		@Override
+		public String toString() {
+			return fullName;
+		}
+		public int getIndex() {
+			return this.index;
+		}
+	}
 	public enum EnumCellDoFree implements EnumInProgram{
 		all("all"),
 		ibrav("ibrav"),

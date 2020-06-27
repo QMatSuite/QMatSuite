@@ -31,8 +31,8 @@
               </rowConstraints>
                <children>
                   <Label text="Set all to default" />
-                  <CheckBox fx:id="checkDefaultAll" mnemonicParsing="false" GridPane.columnIndex="1" />
-                  <Button fx:id="infoDefaultAll" mnemonicParsing="false" text="i" GridPane.columnIndex="2" />
+                  <CheckBox fx:id="checkResetAll" mnemonicParsing="false" GridPane.columnIndex="1" />
+                  <Button fx:id="infoResetAll" mnemonicParsing="false" text="i" GridPane.columnIndex="2" />
                </children>
                <VBox.margin>
                   <Insets left="10.0" />

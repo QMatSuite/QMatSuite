@@ -21,7 +21,14 @@ package app.input;
 
 import java.net.URL;
 import java.util.ResourceBundle;
+
+import com.consts.Constants.EnumExtrapolation;
+import com.consts.Constants.EnumMixingMode;
+import com.consts.Constants.EnumNumCondition;
+import com.consts.Constants.EnumPolarizability;
 import com.consts.Constants.EnumStep;
+import com.consts.Constants.EnumTddftUnitEnergy;
+
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
@@ -35,10 +42,10 @@ import main.MainClass;
 public class InputTddftController extends InputController{
 
     @FXML
-    private CheckBox checkDefaultAll;
+    private CheckBox checkResetAll;
 
     @FXML
-    private Button infoDefaultAll;
+    private Button infoResetAll;
 
     @FXML
     private TextField textMaxIterations;
@@ -50,7 +57,7 @@ public class InputTddftController extends InputController{
     private Button infoMaxIterations;
 
     @FXML
-    private ComboBox<?> comboPolarizability;
+    private ComboBox<EnumPolarizability> comboPolarizability;
 
     @FXML
     private CheckBox checkPolarizability;
@@ -77,7 +84,7 @@ public class InputTddftController extends InputController{
     private TextField textAllIterations;
 
     @FXML
-    private ComboBox<?> comboExtrapolation;
+    private ComboBox<EnumExtrapolation> comboExtrapolation;
 
     @FXML
     private CheckBox checkExtrapolation;
@@ -98,7 +105,7 @@ public class InputTddftController extends InputController{
     private Label labelDegauss;
 
     @FXML
-    private ComboBox<?> comboEnergyUnit;
+    private ComboBox<EnumTddftUnitEnergy> comboEnergyUnit;
 
     @FXML
     private CheckBox checkEnergyUnit;
@@ -171,8 +178,48 @@ public class InputTddftController extends InputController{
 	
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
-		// TODO Auto-generated method stub
+		initIntegerParameterSet(textMaxIterations, "itermax0", EnumNumCondition.positive, "", 
+				checkMaxIterations, infoMaxIterations, checkResetAll);
+		initParameterSet(comboPolarizability, "enumPolar", EnumPolarizability.values(), 
+				checkPolarizability, infoPolarizability, checkResetAll);
+		bindProperty(labelterations,textMaxIterations);
+		bindProperty(labelPolarizability,comboPolarizability);
+		checkLabelterations.setVisible(false);
+		checkLabelPolarizability.setVisible(false);
+		initIntegerParameterSet(textAllIterations, "itermax", EnumNumCondition.positive, "", 
+				checkAllIterations, infoAllIterations, checkResetAll);
+		initParameterSet(comboExtrapolation, "enumExtrap", EnumExtrapolation.values(), 
+				checkExtrapolation, infoExtrapolation, checkResetAll);
+		initParameterSet(comboEnergyUnit, "enumEUnit", EnumTddftUnitEnergy.values(), 
+				checkEnergyUnit, infoEnergyUnit, checkResetAll);
 		
+		bindProperty(labelDegauss,comboEnergyUnit);
+		bindProperty(labelEStart,comboEnergyUnit);
+		bindProperty(labelEEnd,comboEnergyUnit);
+		bindProperty(labelEStep,comboEnergyUnit);
+		
+		initDoubleParameterSet(textDegauss, "epsil", EnumNumCondition.positive, "", 
+				checkDegauss, infoDegauss, checkResetAll);
+		initDoubleParameterSet(textEStart, "estart", EnumNumCondition.no, "", 
+				checkEStart, infoEStart, checkResetAll);
+		initDoubleParameterSet(textEEnd, "eend", EnumNumCondition.no, "", 
+				checkEEnd, infoEEnd, checkResetAll);
+		initDoubleParameterSet(textEStep, "de", EnumNumCondition.positive, "", 
+				checkEStep, infoEStep, checkResetAll);
+		initParameterSet(toggleEELS, "eels", "ON", "OFF", 
+				checkEELS, infoEELS, checkResetAll);
+		//checkResetAll
+		checkResetAll.selectedProperty().addListener((observable, oldValue, newValue) ->
+		{ 
+			if(newValue!=null && !newValue.equals(allDefault)) {
+				checkMaxIterations.setSelected(newValue);checkPolarizability.setSelected(newValue);
+				checkAllIterations.setSelected(newValue);checkExtrapolation.setSelected(newValue);
+				checkEnergyUnit.setSelected(newValue);checkDegauss.setSelected(newValue);
+				checkEStart.setSelected(newValue);checkEEnd.setSelected(newValue);
+				checkEStep.setSelected(newValue);checkEELS.setSelected(newValue);
+				allDefault = newValue;
+			}
+		});
 	}
 	public void loadProjectParameters() {
 		super.loadProjectParameters();
