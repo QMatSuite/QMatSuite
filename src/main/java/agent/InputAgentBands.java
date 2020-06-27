@@ -16,22 +16,13 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package input;
+package agent;
 
 
-import agent.InputAgentDos;
-
-
-public class DosInput extends QeInput{
-	
-//	public DosInput() {
-//		super();
-//	}
-
-	@Override
-	public void loadAgent(InputAgentDos ia1) {
-		// TODO Auto-generated method stub
-		
-	}
+public class InputAgentBands extends InputAgent{
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -3123568374548375634L;
 	
 }

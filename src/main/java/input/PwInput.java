@@ -20,8 +20,6 @@ package input;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Set;
-
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import agent.InputAgentGeo;
@@ -30,8 +28,6 @@ import agent.InputAgentNscf;
 import agent.InputAgentOpt;
 import agent.InputAgentScf;
 import agent.WrapperBoolean;
-import agent.WrapperDouble;
-import agent.WrapperEnum;
 import agent.WrapperInteger;
 import agent.WrapperString;
 import app.input.geo.Atom;
@@ -140,72 +136,8 @@ public class PwInput extends QeInput{
 		 * System.out.println("int"); }
 		 */
 	}
-	@Override
-	public String addParameter(InputValue val) {
-		return null;
-	}
-	@Override
-	public void print() {
-		Set<String> keys = sectionDict.keySet();
-        for(String key: keys){
-        	sectionDict.get(key).print();
-        }
-	}
-	public Boolean checkKeyExistence(String keySec, String keyPara) {
-		if (keySec==null || keyPara ==null) return false;
-		if (sectionDict.containsKey(keySec) && sectionDict.get(keySec).containsKey(keyPara)) {
-			return true;
-		}
-		return false;
-	}
-	public void setValue(String keySec, String keyPara,WrapperDouble para) throws InvalidKeyException, InvalidTypeException {
-		if (checkKeyExistence(keySec, keyPara)) {sectionDict.get(keySec).getValue(keyPara).setValue(para);}
-		else {throw new InvalidKeyException("in PwInput setValue");}
-	}
-	public void setValue(String keySec, String keyPara,WrapperInteger para) throws InvalidKeyException, InvalidTypeException{
-		if (checkKeyExistence(keySec, keyPara)) {sectionDict.get(keySec).getValue(keyPara).setValue(para);}
-		else {throw new InvalidKeyException("in PwInput setValue");}
-	}
-	public void setValue(String keySec, String keyPara,WrapperString para) throws InvalidKeyException, InvalidTypeException{
-		if (checkKeyExistence(keySec, keyPara)) {sectionDict.get(keySec).getValue(keyPara).setValue(para);}
-		else {throw new InvalidKeyException("in PwInput setValue");}
-	}
-	public void setValue(String keySec, String keyPara,WrapperBoolean para) throws InvalidKeyException, InvalidTypeException{
-		if (checkKeyExistence(keySec, keyPara)) {sectionDict.get(keySec).getValue(keyPara).setValue(para);}
-		else {throw new InvalidKeyException("in PwInput setValue");}
-	}
-	public void setValue(String keySec, String keyPara,WrapperEnum para) throws InvalidKeyException, InvalidTypeException{
-		if (checkKeyExistence(keySec, keyPara)) {sectionDict.get(keySec).getValue(keyPara).setValue(new WrapperString(para.getValue().toString(),para.isEnabled()));}
-		else {throw new InvalidKeyException("in PwInput setValue");}
-	}
-	public void setValue(String keySec, String keyPara) throws InvalidKeyException, InvalidTypeException{
-		if (checkKeyExistence(keySec, keyPara)) {sectionDict.get(keySec).getValue(keyPara).setValueNow();}
-		else {throw new InvalidKeyException("in PwInput setValue");}
-	}
-	public void setExplicitWrite(String keySec, String keyPara, boolean bl) throws InvalidKeyException, InvalidTypeException{
-		if (checkKeyExistence(keySec, keyPara)) {sectionDict.get(keySec).getValue(keyPara).setExplicitWrite(bl);}
-		else {throw new InvalidKeyException("in PwInput setValue");}
-	}
-	public void setRequiredAndWrite(String keySec, String keyPara, boolean bl1, boolean bl2) throws InvalidKeyException, InvalidTypeException{
-		if (checkKeyExistence(keySec, keyPara)) {sectionDict.get(keySec).getValue(keyPara).setRequiredAndWrite(bl1,bl2);}
-		else {throw new InvalidKeyException("in PwInput setValue");}
-	}
-	public void andExplicitWrite(String keySec, String keyPara, boolean bl) throws InvalidKeyException, InvalidTypeException{
-		if (checkKeyExistence(keySec, keyPara)) {sectionDict.get(keySec).getValue(keyPara).andExplicitWrite(bl);}
-		else {throw new InvalidKeyException("in PwInput setValue");}
-	}
-	public InputValue getValue(String keySec, String keyPara) throws InvalidKeyException{
-		if (checkKeyExistence(keySec, keyPara)) return sectionDict.get(keySec).getValue(keyPara);
-		else {throw new InvalidKeyException("in PwInput getValue");}
-	}
-	public void setSectionRequired(String keySec, Boolean bl) throws InvalidKeyException, InvalidTypeException{
-		if (keySec!=null && sectionDict.containsKey(keySec) && bl!=null) {sectionDict.get(keySec).setBoolRequired(bl);}
-		else {throw new InvalidKeyException("in PwInput setValue");}
-	}
-	public void setSectionOption(String keySec, String st) throws InvalidKeyException, InvalidTypeException{
-		if (keySec!=null && sectionDict.containsKey(keySec) && st!=null) {sectionDict.get(keySec).setOptions(st);}
-		else {throw new InvalidKeyException("in PwInput setValue");}
-	}
+	
+	
 	@Override
 	public void loadAgent(InputAgentGeo ia1) {
 		flagLoadScf = false;

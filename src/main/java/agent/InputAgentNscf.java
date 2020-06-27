@@ -21,7 +21,6 @@ package agent;
 import com.consts.Constants.EnumOccupations;
 import com.consts.Constants.EnumSmearing;
 import com.consts.Constants.EnumUnitEnergy;
-import com.consts.Constants.ProgramName;
 
 public class InputAgentNscf extends InputAgent{
 	/**
@@ -40,7 +39,6 @@ public class InputAgentNscf extends InputAgent{
 	public WrapperEnum enumSmearing;//EnumSmearing
 	
 	public InputAgentNscf() {
-		super(ProgramName.PW);
 		
 		enumOccupation=new WrapperEnum(EnumOccupations.smearing);
 		enumEnergyUnit = new WrapperEnum(EnumUnitEnergy.Ry);

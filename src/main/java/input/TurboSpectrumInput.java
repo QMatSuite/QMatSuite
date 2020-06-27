@@ -19,19 +19,11 @@
 package input;
 
 
-import agent.InputAgentDos;
+public class TurboSpectrumInput extends QeInput{
 
-
-public class DosInput extends QeInput{
 	
-//	public DosInput() {
+//	public TurboSpectrumInput() {
 //		super();
 //	}
 
-	@Override
-	public void loadAgent(InputAgentDos ia1) {
-		// TODO Auto-generated method stub
-		
-	}
-	
 }

@@ -68,6 +68,7 @@ import javafx.stage.StageStyle;
 import main.MainClass;
 import app.centerwindow.OutputViewerController;
 import app.centerwindow.WorkScene3D;
+import app.input.InputBandsController;
 import app.input.InputDosController;
 import app.input.InputGeoController;
 import app.input.InputMdController;
@@ -172,6 +173,8 @@ public class MainWindowController implements Initializable{
 			
 	private MainLeftPaneController contTree;
 	
+	private InputBandsController contBands;
+	
 	private SettingsWindowController contSettings;
 	
 	private HashMap<String, Tab> projectTabDict;
@@ -244,11 +247,14 @@ public class MainWindowController implements Initializable{
 			fxmlLoader.setController(contNscf);
 			scrollNscf = fxmlLoader.load();
 
+			contBands= new InputBandsController(mainClass);
 			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputBands.fxml"));
-			scrollBands = fxmlLoader.load(); 
+			fxmlLoader.setController(contBands);
+			scrollBands = fxmlLoader.load();
 
 			contTddft = new InputTddftController(mainClass);
 			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputTddft.fxml"));
+			fxmlLoader.setController(contTddft);
 			scrollTddft = fxmlLoader.load(); 
 			
 			contTree = new MainLeftPaneController(mainClass);
@@ -988,18 +994,30 @@ public class MainWindowController implements Initializable{
 			addCalc(boolCreate, ec, enumStepArray);
 			break;
 		case BANDS:
+			enumStepArray = new EnumStep[] {EnumStep.SCF,EnumStep.BANDS};
+			addCalc(boolCreate, ec, enumStepArray);
 			break;
 		case BOMD:
 			enumStepArray = new EnumStep[] {EnumStep.SCF,EnumStep.BOMD};
 			addCalc(boolCreate, ec, enumStepArray);
 			break;
 		case TDDFT:
+			enumStepArray = new EnumStep[] {EnumStep.SCF,EnumStep.TDDFT};
+			addCalc(boolCreate, ec, enumStepArray);
 			break;
 		default:
 			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Wrong calculation type!");
 		}
 	}
 	private void addCalc(boolean boolCreate, EnumCalc enumCalcThis, EnumStep[] enumStepArray) {
+		//******inefficient here especially at the beginning of the program
+		//******check by uncommenting the following code and see
+//		String str = "\n";
+//		for(EnumStep es:enumStepArray) {
+//			str+=","+es.toString();
+//		}
+//		ShowAlert.showAlert(AlertType.INFORMATION, "Info", 
+//				str);
 		final int lengthArray = enumStepArray.length;
 		if(lengthArray==0) return;
 		String calcName;
@@ -1030,6 +1048,12 @@ public class MainWindowController implements Initializable{
 				case BOMD:contMd.loadProjectParameters();addRightPane(scrollMd,enumStepArray[i]);break;
 				case NSCF:contNscf.loadProjectParameters();addRightPane(scrollNscf,enumStepArray[i]);break;
 				case DOS:contDos.loadProjectParameters();addRightPane(scrollDos,enumStepArray[i]);break;
+				case TDDFT:
+					contTddft.loadProjectParameters();addRightPane(scrollTddft,enumStepArray[i]);
+					break;
+				case BANDS:
+					contBands.loadProjectParameters();addRightPane(scrollBands,enumStepArray[i]);
+					break;
 				default:ShowAlert.showAlert(AlertType.INFORMATION, "Error", 
 						"Nonimplemented controller: "+(enumStepArray[i]==null?"null":enumStepArray[i].toString()));break;
 			}
