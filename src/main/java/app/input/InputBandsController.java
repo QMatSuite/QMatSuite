@@ -21,35 +21,81 @@ package app.input;
 
 import java.net.URL;
 import java.util.ResourceBundle;
-
 import com.consts.Constants.EnumStep;
-
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
-import javafx.scene.control.ToggleButton;
 import main.MainClass;
 
 public class InputBandsController extends InputController{
 	
-	@FXML private Label nbandLabel,
-	symLabel;
-	@FXML private ToggleButton symToggle;
-	@FXML private Button nbandButton,
-	symButton,
-	defButton;
-	@FXML private ComboBox<?> unitCombo;
-	@FXML private TextField nbandField;
-	@FXML private TableView<?> kpointTable;
-	@FXML private TableColumn<?,?> symbolColumn,
-	nkColumn,
-	kxColumn,
-	kyColumn,
-	kzColumn;
+	@FXML
+    private Label nbandLabel;
+
+    @FXML
+    private TextField textNBands;
+
+    @FXML
+    private Button infoNBands;
+
+    @FXML
+    private CheckBox checkNBands;
+
+    @FXML
+    private ComboBox<?> comboKPathUnit;
+
+    @FXML
+    private Button infoKPath;
+
+    @FXML
+    private Button buttonDelete;
+
+    @FXML
+    private Button buttonEdit;
+
+    @FXML
+    private Button buttonClearInput;
+
+    @FXML
+    private TextField textKx;
+
+    @FXML
+    private TextField textKy;
+
+    @FXML
+    private TextField textKz;
+
+    @FXML
+    private TextField textNk;
+
+    @FXML
+    private TextField textKLabel;
+
+    @FXML
+    private Button buttonAdd;
+
+    @FXML
+    private TableView<?> tableKPath;
+
+    @FXML
+    private TableColumn<?, ?> columnLabel;
+
+    @FXML
+    private TableColumn<?, ?> columnKx;
+
+    @FXML
+    private TableColumn<?, ?> columnKy;
+
+    @FXML
+    private TableColumn<?, ?> columnKz;
+
+    @FXML
+    private TableColumn<?, ?> columnNk;
 	
 	public InputBandsController (MainClass mc) {
 		super(mc, EnumStep.BANDS);

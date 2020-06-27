@@ -1,19 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.media.*?>
-<?import javafx.scene.paint.*?>
-<?import javafx.geometry.*?>
-<?import javafx.scene.effect.*?>
-<?import javafx.scene.shape.*?>
-<?import javafx.scene.*?>
-<?import javafx.scene.text.*?>
-<?import java.lang.*?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToolBar?>
 <?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
 
-<ScrollPane prefHeight="625.0" prefWidth="375.0" xmlns="http://javafx.com/javafx/8" 
-xmlns:fx="http://javafx.com/fxml/1">
+<ScrollPane prefHeight="625.0" prefWidth="375.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
    <content>
       <VBox>
          <children>
@@ -38,10 +43,9 @@ xmlns:fx="http://javafx.com/fxml/1">
             <GridPane hgap="5.0" prefWidth="350.0" vgap="5.0">
                <children>
                   <Label fx:id="nbandLabel" text="#Bands" />
-                  <Label fx:id="symLabel" text="Symmetry of Bands" GridPane.rowIndex="1" />
                   <GridPane prefWidth="200.0" GridPane.columnIndex="1">
                      <children>
-                        <TextField fx:id="nbandField" prefWidth="200.0" />
+                        <TextField fx:id="textNBands" prefWidth="200.0" />
                      </children>
                      <columnConstraints>
                         <ColumnConstraints prefWidth="200.0" />
@@ -50,20 +54,19 @@ xmlns:fx="http://javafx.com/fxml/1">
                         <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                      </rowConstraints>
                   </GridPane>
-                  <ToggleButton fx:id="symToggle" mnemonicParsing="false" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="1" />
-                  <Button fx:id="nbandButton" mnemonicParsing="false" text="\@" GridPane.columnIndex="2" />
-                  <Button fx:id="symButton" mnemonicParsing="false" text="\@" GridPane.columnIndex="2" GridPane.rowIndex="1" />
+                  <Button fx:id="infoNBands" mnemonicParsing="false" text="i" GridPane.columnIndex="3" />
+                  <CheckBox fx:id="checkNBands" mnemonicParsing="false" GridPane.columnIndex="2" />
                </children>
                <columnConstraints>
                   <ColumnConstraints hgrow="SOMETIMES" prefWidth="120.0" />
                   <ColumnConstraints hgrow="SOMETIMES" prefWidth="205.0" />
-                  <ColumnConstraints hgrow="SOMETIMES" prefWidth="50.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="70.5" minWidth="10.0" prefWidth="36.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="68.0" minWidth="29.5" prefWidth="64.0" />
                </columnConstraints>
                <padding>
                   <Insets left="10.0" />
                </padding>
                <rowConstraints>
-                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                   <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                </rowConstraints>
             </GridPane>
@@ -72,7 +75,7 @@ xmlns:fx="http://javafx.com/fxml/1">
                   <Separator prefHeight="30.0" BorderPane.alignment="CENTER" />
                </center>
                <left>
-                  <Label styleClass="medium-text" text="Walking on B.Z." BorderPane.alignment="CENTER">
+                  <Label styleClass="medium-text" text="k-path" BorderPane.alignment="CENTER">
                      <font>
                         <Font name="System Bold Italic" size="14.0" />
                      </font>
@@ -85,42 +88,59 @@ xmlns:fx="http://javafx.com/fxml/1">
                   <Insets top="10.0" />
                </padding>
             </BorderPane>
-            <GridPane prefWidth="350.0">
+            <GridPane hgap="3.0" prefWidth="350.0" vgap="3.0">
                <children>
-                  <ToolBar prefHeight="42.0" prefWidth="200.0">
+                  <ComboBox fx:id="comboKPathUnit" prefHeight="25.0" prefWidth="77.0" GridPane.rowIndex="1" />
+                  <Button fx:id="infoKPath" mnemonicParsing="false" text="i" GridPane.columnIndex="7" GridPane.rowIndex="1" />
+                  <Label text="kx" GridPane.columnIndex="2" />
+                  <Label text="Unit" />
+                  <Label text="ky" GridPane.columnIndex="3" />
+                  <Label text="kz" GridPane.columnIndex="4" />
+                  <Label text="n points" GridPane.columnIndex="5" />
+                  <ToolBar prefHeight="35.0" prefWidth="132.0" GridPane.columnSpan="7" GridPane.rowIndex="2">
                      <items>
-                        <ComboBox fx:id="unitCombo" />
+                        <Button fx:id="buttonDelete" mnemonicParsing="false" text="Delete" />
+                        <Button fx:id="buttonEdit" mnemonicParsing="false" text="Edit" />
+                        <Button fx:id="buttonClearInput" mnemonicParsing="false" text="Clear input" />
                      </items>
                   </ToolBar>
-                  <ToolBar prefHeight="42.0" prefWidth="200.0" GridPane.columnIndex="1" />
-                  <ToolBar prefHeight="42.0" prefWidth="200.0" GridPane.columnIndex="2">
-                     <items>
-                        <Button fx:id="defButton" mnemonicParsing="false" text="\@" />
-                     </items>
-                  </ToolBar>
+                  <TextField fx:id="textKx" GridPane.columnIndex="2" GridPane.rowIndex="1" />
+                  <TextField fx:id="textKy" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+                  <TextField fx:id="textKz" GridPane.columnIndex="4" GridPane.rowIndex="1" />
+                  <TextField fx:id="textNk" GridPane.columnIndex="5" GridPane.rowIndex="1" />
+                  <Label text="Label" GridPane.columnIndex="1" />
+                  <TextField fx:id="textKLabel" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+                  <Button fx:id="buttonAdd" mnemonicParsing="false" text="Add" GridPane.columnIndex="6" GridPane.rowIndex="1" />
                </children>
                <columnConstraints>
-                  <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="285.0" />
-                  <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="45.0" />
-                  <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="55.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="55.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="0.0" prefWidth="40.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="40.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="0.0" prefWidth="40.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="40.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="40.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="35.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="45.0" />
                </columnConstraints>
                <padding>
                   <Insets top="2.0" />
                </padding>
                <rowConstraints>
-                  <RowConstraints minHeight="10.0" prefHeight="47.0" vgrow="SOMETIMES" />
+                  <RowConstraints minHeight="10.0" vgrow="SOMETIMES" />
+                  <RowConstraints minHeight="10.0" vgrow="SOMETIMES" />
+                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                </rowConstraints>
                <VBox.margin>
                   <Insets left="10.0" />
                </VBox.margin>
             </GridPane>
-            <TableView fx:id="kpointTable" editable="true" prefHeight="325.0" prefWidth="390.0">
+            <TableView fx:id="tableKPath" editable="true" prefHeight="325.0" prefWidth="390.0">
                <columns>
-                  <TableColumn fx:id="symbolColumn" prefWidth="70.0" resizable="false" sortable="false" text="Symbol" />
-                  <TableColumn fx:id="nkColumn" prefWidth="45.0" resizable="false" sortable="false" text="nk" />
-                  <TableColumn fx:id="kxColumn" prefWidth="85.0" resizable="false" sortable="false" text="kx" />
-                  <TableColumn fx:id="kyColumn" prefWidth="85.0" resizable="false" sortable="false" text="ky" />
-                  <TableColumn fx:id="kzColumn" prefWidth="85.0" resizable="false" sortable="false" text="kz" />
+                  <TableColumn fx:id="columnLabel" prefWidth="70.0" resizable="false" sortable="false" text="Symbol" />
+                  <TableColumn fx:id="columnKx" prefWidth="75.0" resizable="false" sortable="false" text="kx" />
+                  <TableColumn fx:id="columnKy" prefWidth="75.0" resizable="false" sortable="false" text="ky" />
+                  <TableColumn fx:id="columnKz" prefWidth="75.0" resizable="false" sortable="false" text="kz" />
+                  <TableColumn fx:id="columnNk" prefWidth="75.0" resizable="false" sortable="false" text="nk" />
                </columns>
                <VBox.margin>
                   <Insets left="10.0" />
