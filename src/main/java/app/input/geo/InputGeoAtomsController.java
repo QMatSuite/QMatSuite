@@ -94,15 +94,11 @@ public class InputGeoAtomsController extends InputController{
 		super(mc, EnumStep.GEO);
 		atomsData = FXCollections.observableArrayList();
 	}
-    
-    @Override
-    public void initialize(URL location, ResourceBundle resources) {
-    	initialize();
-    }
     public Label getAlat() {
     	return alat;
     }
-    public void initialize() {
+    @Override
+    public void initialize(URL location, ResourceBundle resources) {
     	alat.setMaxWidth(60);
     	fixX.setSelected(false);fixY.setSelected(false);fixZ.setSelected(false);
     	setupTable();

@@ -100,7 +100,7 @@
                   <ToolBar prefHeight="35.0" prefWidth="132.0" GridPane.columnSpan="7" GridPane.rowIndex="2">
                      <items>
                         <Button fx:id="buttonDelete" mnemonicParsing="false" text="Delete" />
-                        <Button fx:id="buttonEdit" mnemonicParsing="false" text="Edit" />
+                        <Button fx:id="buttonEdit" mnemonicParsing="false" text="Update" />
                         <Button fx:id="buttonClearInput" mnemonicParsing="false" text="Clear input" />
                      </items>
                   </ToolBar>
@@ -111,6 +111,7 @@
                   <Label text="Label" GridPane.columnIndex="1" />
                   <TextField fx:id="textKLabel" GridPane.columnIndex="1" GridPane.rowIndex="1" />
                   <Button fx:id="buttonAdd" mnemonicParsing="false" text="Add" GridPane.columnIndex="6" GridPane.rowIndex="1" />
+                  <Label fx:id="statusTextField" prefHeight="17.0" prefWidth="249.0" GridPane.columnSpan="7" GridPane.rowIndex="3" />
                </children>
                <columnConstraints>
                   <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="55.0" />
@@ -128,6 +129,7 @@
                <rowConstraints>
                   <RowConstraints minHeight="10.0" vgrow="SOMETIMES" />
                   <RowConstraints minHeight="10.0" vgrow="SOMETIMES" />
+                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                   <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                </rowConstraints>
                <VBox.margin>

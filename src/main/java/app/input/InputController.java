@@ -194,8 +194,10 @@ public abstract class InputController implements Initializable{
 						((WrapperInteger) obj).setValue(tmp);
 					}
 					else {
-						statusTextField.setText(
-								statusTextField.getText()==null? "Null input. Set to null.":statusTextField.getText()+" Set to null.");
+						if(statusTextField!=null) {
+							statusTextField.setText(
+									statusTextField.getText()==null? "Null input. Set to null.":statusTextField.getText()+" Set to null.");
+						}
 						((WrapperInteger) obj).setValue(null);
 						return;
 					}
@@ -262,7 +264,7 @@ public abstract class InputController implements Initializable{
 				else {
 					toggle.setDisable(false);
 					wb.setEnabled(true);
-					if(cbResetAll.isSelected()) {allDefault=false;cbResetAll.setSelected(false);}
+					if(cbResetAll!=null && cbResetAll.isSelected()) {allDefault=false;cbResetAll.setSelected(false);}
 				}
 			} catch (Exception e) {
 				Alert alert1 = new Alert(AlertType.ERROR);
@@ -292,7 +294,7 @@ public abstract class InputController implements Initializable{
 				else {
 					tf.setDisable(false);
 					wb.setEnabled(true);
-					if(cbResetAll.isSelected()) {allDefault=false;cbResetAll.setSelected(false);}
+					if(cbResetAll!=null && cbResetAll.isSelected()) {allDefault=false;cbResetAll.setSelected(false);}
 				}
 			} catch (Exception e) {
 				Alert alert1 = new Alert(AlertType.ERROR);
@@ -323,7 +325,7 @@ public abstract class InputController implements Initializable{
 				else {
 					tf.setDisable(false);
 					wb.setEnabled(true);
-					if(cbResetAll.isSelected()) {allDefault=false;cbResetAll.setSelected(false);}
+					if(cbResetAll!=null && cbResetAll.isSelected()) {allDefault=false;cbResetAll.setSelected(false);}
 				}
 			} catch (Exception e) {
 				Alert alert1 = new Alert(AlertType.ERROR);
@@ -355,7 +357,7 @@ public abstract class InputController implements Initializable{
 				else {
 					cb.setDisable(false);
 					wb.setEnabled(true);
-					if(cbResetAll.isSelected()) {allDefault=false;cbResetAll.setSelected(false);}
+					if(cbResetAll!=null && cbResetAll.isSelected()) {allDefault=false;cbResetAll.setSelected(false);}
 				}
 			} catch (Exception e) {
 				Alert alert1 = new Alert(AlertType.ERROR);

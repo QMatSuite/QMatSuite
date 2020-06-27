@@ -18,11 +18,25 @@
  *******************************************************************************/
 package agent;
 
+import java.util.ArrayList;
+
+import com.consts.Constants.EnumKUnitBands;
+
+import app.input.Kpoint;
+
 
 public class InputAgentBands extends InputAgent{
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = -3123568374548375634L;
+	public WrapperEnum enumKUnit;
+	public WrapperInteger intNBands;
+	public ArrayList<Kpoint> listKPoints;
 	
+	public InputAgentBands() {
+		enumKUnit = new WrapperEnum(EnumKUnitBands.crystal_b);
+		intNBands = new WrapperInteger(null);
+		listKPoints = new ArrayList<Kpoint>();
+	}
 }

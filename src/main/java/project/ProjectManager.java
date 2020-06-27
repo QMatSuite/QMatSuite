@@ -35,12 +35,14 @@ import java.util.LinkedHashMap;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import agent.InputAgent;
+import agent.InputAgentBands;
 import agent.InputAgentDos;
 import agent.InputAgentGeo;
 import agent.InputAgentMd;
 import agent.InputAgentNscf;
 import agent.InputAgentOpt;
 import agent.InputAgentScf;
+import agent.InputAgentTddft;
 
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
@@ -82,8 +84,8 @@ public class ProjectManager{
 				case NSCF:fd = InputAgentNscf.class.getField(fieldName);break;
 				case DOS:fd = InputAgentDos.class.getField(fieldName);break;
 				case BOMD:fd = InputAgentMd.class.getField(fieldName);break;
-				case BANDS:
-				case TDDFT:break;
+				case BANDS:fd = InputAgentBands.class.getField(fieldName);break;
+				case TDDFT:fd = InputAgentTddft.class.getField(fieldName);break;
 				default:break;	
 			}
 			if(fd==null) {
