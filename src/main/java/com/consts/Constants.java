@@ -39,7 +39,11 @@ public class Constants {
 		IONS,
 		CELL,
 		//dos.x
-		DOS
+		DOS,
+		//turbo_lanczos.x
+		lr_input,
+		lr_control,
+		lr_post
 	}
 	public enum EnumFileCategory{
 		save("QuantumVITAS save"),directory("Directory"),stdin("Input (std)"),
@@ -303,14 +307,19 @@ public class Constants {
 		tpiba,automatic,crystal,gamma,tpiba_b,crystal_b,tpiba_c,crystal_c
 	}
 	public enum EnumKUnitBands implements EnumInProgram{
-		tpiba_b("2pi/a"),crystal_b("crystal");
-		private String name;
+		tpiba_b("2pi/a","tpiba_b"),crystal_b("crystal","crystal_b");
+		private String displayName,
+		name;
 		
-		private EnumKUnitBands(String name) {
+		private EnumKUnitBands(String displayName, String name) {
+			this.displayName = displayName;
 	        this.name = name;
 	    }
 		@Override
 		public String toString() {
+			return displayName;
+		}
+		public String getName() {
 			return name;
 		}
 	}

@@ -18,12 +18,19 @@
  *******************************************************************************/
 package input;
 
+import com.consts.Constants.EnumNameList;
 
 public class TurboLanczosInput extends QeInput{
 
-	
-//	public TurboLanczosInput() {
-//		super();
-//	}
+	public TurboLanczosInput() {
+		super();
+		sectionDict.put("lr_input", new NameList(EnumNameList.lr_input));
+		sectionDict.put("lr_control", new NameList(EnumNameList.lr_control));
+		sectionDict.put("lr_post", new NameList(EnumNameList.lr_post));
+		
+		sectionDict.get("lr_input").setBoolRequired(true);
+		
+		
+	}
 
 }

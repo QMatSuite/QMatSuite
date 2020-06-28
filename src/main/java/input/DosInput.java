@@ -27,13 +27,8 @@ import com.consts.Constants.EnumUnitEnergy;
 import com.error.InvalidKeyException;
 import com.error.InvalidTypeException;
 import com.error.ShowAlert;
-
 import agent.InputAgentDos;
-import agent.WrapperDouble;
-import agent.WrapperEnum;
 import agent.WrapperInteger;
-import agent.WrapperString;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 
 

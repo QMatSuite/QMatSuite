@@ -21,14 +21,11 @@ package app.input;
 
 import java.net.URL;
 import java.util.ResourceBundle;
-
 import com.consts.Constants.EnumExtrapolation;
-import com.consts.Constants.EnumMixingMode;
 import com.consts.Constants.EnumNumCondition;
 import com.consts.Constants.EnumPolarizability;
 import com.consts.Constants.EnumStep;
 import com.consts.Constants.EnumTddftUnitEnergy;
-
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;

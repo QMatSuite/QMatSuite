@@ -22,6 +22,7 @@ import java.io.File;
 import java.util.ArrayList;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
+import agent.InputAgentBands;
 import agent.InputAgentGeo;
 import agent.InputAgentMd;
 import agent.InputAgentNscf;
@@ -30,10 +31,12 @@ import agent.InputAgentScf;
 import agent.WrapperBoolean;
 import agent.WrapperInteger;
 import agent.WrapperString;
+import app.input.Kpoint;
 import app.input.geo.Atom;
 import app.input.geo.Element;
 import com.consts.PhysicalConstants;
 import com.consts.Constants.EnumCard;
+import com.consts.Constants.EnumKUnitBands;
 import com.consts.Constants.EnumMixingMode;
 import com.consts.Constants.EnumNameList;
 import com.consts.Constants.EnumOccupations;
@@ -496,6 +499,41 @@ public class PwInput extends QeInput{
 			}
 			andExplicitWrite("SYSTEM","nbnd",!ia1.nbnd.isNull());
 			if(!ia1.nbnd.isNull()) {setValue("SYSTEM","nbnd",ia1.nbnd);}
+			
+		} catch (InvalidKeyException | InvalidTypeException e) {
+			Alert alert1 = new Alert(AlertType.INFORMATION);
+	    	alert1.setTitle("Error");
+	    	alert1.setContentText("Exception!"+e.getMessage());
+	    	alert1.showAndWait();
+			e.printStackTrace();
+		}
+	}
+	@Override
+	public void loadAgent(InputAgentBands ia1) {
+
+		try {
+			
+			setValue("CONTROL","calculation",new WrapperString("bands",true));
+			andExplicitWrite("SYSTEM","nbnd",!ia1.intNBands.isNull());
+			if(!ia1.intNBands.isNull()) {setValue("SYSTEM","nbnd",ia1.intNBands);}
+			
+			setRequiredAndWrite("K_POINTS","body",true,true);
+			setSectionOption("K_POINTS","("+((EnumKUnitBands)ia1.enumKUnit.getValue()).getName()+")");
+
+			String kpointTmp = "";
+			for (int i=0;i<ia1.listKPoints.size();i++) {
+				Kpoint kTmp = ia1.listKPoints.get(i);
+				kpointTmp += (
+							Double.toString(kTmp.getKx())
+							+"  "+Double.toString(kTmp.getKy())
+							+"  "+Double.toString(kTmp.getKz())
+							+"  "+Integer.toString(kTmp.getNk())
+							+"  !"+kTmp.getLabel()
+							+"\n"
+						);
+			}
+			setValue("K_POINTS","body",new WrapperString(kpointTmp));
+			
 			
 		} catch (InvalidKeyException | InvalidTypeException e) {
 			Alert alert1 = new Alert(AlertType.INFORMATION);
