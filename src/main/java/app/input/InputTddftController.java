@@ -190,7 +190,7 @@ public class InputTddftController extends InputController{
 		initParameterSet(comboEnergyUnit, "enumEUnit", EnumTddftUnitEnergy.values(), 
 				checkEnergyUnit, infoEnergyUnit, checkResetAll);
 		
-		bindProperty(labelDegauss,comboEnergyUnit);
+		//bindProperty(labelDegauss,comboEnergyUnit);//always Ry in unit for simplicity
 		bindProperty(labelEStart,comboEnergyUnit);
 		bindProperty(labelEEnd,comboEnergyUnit);
 		bindProperty(labelEStep,comboEnergyUnit);

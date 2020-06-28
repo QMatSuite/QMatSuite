@@ -55,7 +55,7 @@ public class PwInput extends QeInput{
 	private boolean flagLoadScf=false;
 	
 	public PwInput() {
-		super();
+		super("pw");
 		//namelists
 		sectionDict.put("CONTROL", new NameList(EnumNameList.CONTROL));
 		sectionDict.put("SYSTEM", new NameList(EnumNameList.SYSTEM));
@@ -520,7 +520,7 @@ public class PwInput extends QeInput{
 			setRequiredAndWrite("K_POINTS","body",true,true);
 			setSectionOption("K_POINTS","("+((EnumKUnitBands)ia1.enumKUnit.getValue()).getName()+")");
 
-			String kpointTmp = "";
+			String kpointTmp = ia1.listKPoints.size()>0 ? Integer.toString(ia1.listKPoints.size())+"\n":"";
 			for (int i=0;i<ia1.listKPoints.size();i++) {
 				Kpoint kTmp = ia1.listKPoints.get(i);
 				kpointTmp += (

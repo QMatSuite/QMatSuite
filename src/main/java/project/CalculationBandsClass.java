@@ -41,8 +41,13 @@ public class CalculationBandsClass extends CalculationClass{
 	{
 		//for loading after serialization
 	    in.defaultReadObject();
-	    inputList = new HashMap<EnumStep, QeInput>();
-	    inputList.put(EnumStep.BANDS,new PwInput());
+	    reconstructInputList();
+	}
+	@Override
+	protected void reconstructInputList() {
+		inputList = new HashMap<EnumStep, QeInput>();
+		inputList.put(EnumStep.SCF,new PwInput());
+		inputList.put(EnumStep.BANDS,new PwInput());
 	}
 	public CalculationBandsClass(String cn) {
 		super();
@@ -51,12 +56,10 @@ public class CalculationBandsClass extends CalculationClass{
 		
 		commandList.put(EnumStep.SCF,"pw.exe < espresso.in > espresso.out");
 		orderList.add(EnumStep.SCF);
-		inputList.put(EnumStep.SCF,new PwInput());
 		agentList.put(EnumStep.SCF,new InputAgentScf());
 		
 		commandList.put(EnumStep.BANDS,"pw.exe < espresso.in > espresso.out");
 		orderList.add(EnumStep.BANDS);
-		inputList.put(EnumStep.BANDS,new PwInput());
 		agentList.put(EnumStep.BANDS,new InputAgentBands());
 	}
 	public ArrayList<ContainerInputString> genInputFromAgent(ArrayList<InputAgentGeo> geoList) {
@@ -76,4 +79,5 @@ public class CalculationBandsClass extends CalculationClass{
 		return cis;
 
 	}
+	
 }

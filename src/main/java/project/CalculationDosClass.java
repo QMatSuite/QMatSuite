@@ -32,6 +32,8 @@ import input.ContainerInputString;
 import input.DosInput;
 import input.PwInput;
 import input.QeInput;
+import input.TurboLanczosInput;
+import input.TurboSpectrumInput;
 
 public class CalculationDosClass extends CalculationClass{
 	/**
@@ -42,7 +44,11 @@ public class CalculationDosClass extends CalculationClass{
 	{
 		//for loading after serialization, necessary!
 	    in.defaultReadObject();
-	    inputList = new HashMap<EnumStep, QeInput>();
+	    reconstructInputList();
+	}
+	@Override
+	protected void reconstructInputList() {
+		inputList = new HashMap<EnumStep, QeInput>();
 	    inputList.put(EnumStep.SCF, new PwInput());
 	    inputList.put(EnumStep.NSCF,new PwInput());
 	    inputList.put(EnumStep.DOS,new DosInput());
@@ -52,30 +58,16 @@ public class CalculationDosClass extends CalculationClass{
 		this.calcName = cn;
 		nameCalc = EnumCalc.DOS;
 		
-//		PwInput inp1 = new PwInput();
-		
-//		commandList.put(EnumStep.GEO,"");
-//		orderList.add(EnumStep.GEO);
-//		inputList.put(EnumStep.GEO,null);
-//		agentList.put(EnumStep.GEO,null);
-		
 		commandList.put(EnumStep.SCF,"pw.exe < espresso.in > espresso.out");
 		orderList.add(EnumStep.SCF);
-		inputList.put(EnumStep.SCF,new PwInput());
 		agentList.put(EnumStep.SCF,new InputAgentScf());
-		
-//		PwInput inp2 = new PwInput();
 		
 		commandList.put(EnumStep.NSCF,"pw.exe < espresso.in > espresso.out");
 		orderList.add(EnumStep.NSCF);
-		inputList.put(EnumStep.NSCF,new PwInput());
 		agentList.put(EnumStep.NSCF,new InputAgentNscf());
-		
-//		DosInput inp3 = new DosInput();
 		
 		commandList.put(EnumStep.DOS,"dos.exe < espresso.in > espresso.out");
 		orderList.add(EnumStep.DOS);
-		inputList.put(EnumStep.DOS,new DosInput());
 		agentList.put(EnumStep.DOS,new InputAgentDos());
 	}
 	

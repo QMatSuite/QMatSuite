@@ -43,27 +43,31 @@ public class CalculationTddftClass extends CalculationClass{
 	{
 		//for loading after serialization
 	    in.defaultReadObject();
-	    inputList = new HashMap<EnumStep, QeInput>();
-	    inputList.put(EnumStep.BANDS,new PwInput());
+	    reconstructInputList();
+	}
+	@Override
+	protected void reconstructInputList() {
+		inputList = new HashMap<EnumStep, QeInput>();
+		inputList.put(EnumStep.SCF,new PwInput());
+		inputList.put(EnumStep.TDDFT,new TurboLanczosInput());
+		inputList.put(EnumStep.TDDFT2,new TurboSpectrumInput());
 	}
 	public CalculationTddftClass(String cn) {
-		super();
+		super();//contains reconstructInputList()
 		this.calcName = cn;
 		nameCalc = EnumCalc.TDDFT;
 		
 		commandList.put(EnumStep.SCF,"pw.exe < espresso.in > espresso.out");
 		orderList.add(EnumStep.SCF);
-		inputList.put(EnumStep.SCF,new PwInput());
 		agentList.put(EnumStep.SCF,new InputAgentScf());
 		
 		commandList.put(EnumStep.TDDFT,"turbo_lanczos.exe < espresso.in > espresso.out");
 		orderList.add(EnumStep.TDDFT);
-		inputList.put(EnumStep.TDDFT,new TurboLanczosInput());
 		agentList.put(EnumStep.TDDFT,new InputAgentTddft());
 		
 		commandList.put(EnumStep.TDDFT2,"turbo_spectrum.exe < espresso.in > espresso.out");
 		orderList.add(EnumStep.TDDFT2);
-		inputList.put(EnumStep.TDDFT2,new TurboSpectrumInput());
+		
 		//no TDDFT2 agent! Use the same agent!
 	}
 	public ArrayList<ContainerInputString> genInputFromAgent(ArrayList<InputAgentGeo> geoList) {

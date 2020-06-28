@@ -540,33 +540,41 @@ public class MainWindowController implements Initializable{
 		        }
 			}
 			//check QE path
-			if(mainClass.projectManager.qePath!=null && new File(mainClass.projectManager.qePath+File.separator+"pw.exe").canExecute()) {
-				//start running the jobs
-				for(int j = 0 ; j < cis.size() ; j++) {
-					mainClass.jobManager.addNode(new JobNode(fl.getPath(),
-							mainClass.projectManager.qePath+File.separator+"pw.exe",cis.get(j).stepName.toString()));
-				}
+			if(mainClass.projectManager.qePath==null || mainClass.projectManager.qePath.isEmpty()) {
+				ShowAlert.showAlert(AlertType.INFORMATION, "Error", 
+						"Cannot execute job because cannot qePath is null/empty. Please define the qePath in the Settings menu!");
+				return;
+			}
 			
+			final String postFixCommand;
+			if(new File(mainClass.projectManager.qePath+File.separator+"pw.exe").canExecute()) {
+				postFixCommand = ".exe";
+			}else if(new File(mainClass.projectManager.qePath+File.separator+"pw.x").canExecute()) {
+				postFixCommand = ".x";
 			}
-			else if (new File(mainClass.projectManager.qePath+File.separator+"pw.exe").exists()){
-				ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Cannot execute job because pw.exe is not executable (though exists). Please change the permission in the operating system!");
+			else {
+				ShowAlert.showAlert(AlertType.INFORMATION, "Error", 
+						"Cannot execute job because cannot find pw.x/pw.exe in the qePath. Please verify the qePath in the Settings menu!");
+				postFixCommand=null;
 				return;
 			}
-			else{
-				ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Cannot execute job because cannot find pw.exe in qePath. Please define the qePath in the Settings menu!");
-				return;
+			
+			//start running the jobs
+			for(int j = 0 ; j < cis.size() ; j++) {
+				if(cis.get(j).commandName==null || cis.get(j).commandName.isEmpty()) {
+					ShowAlert.showAlert(AlertType.INFORMATION, "Error", 
+							"No command name specified for the "+Integer.toString(j)+"th step. Skip this step...");
+					continue;
+				}
+				mainClass.jobManager.addNode(new JobNode(fl.getPath(),
+						mainClass.projectManager.qePath+File.separator+cis.get(j).commandName+postFixCommand,cis.get(j).stepName.toString()));
 			}
+			
 			//just for test use
 //	    	mainClass.jobManager.addNode(new JobNode(null,"notepad.exe"));
 			
 		});
-//		runJob.setOnAction((event) -> {
-//			Alert alert = new Alert(AlertType.INFORMATION);
-//	    	alert.setTitle("Info");
-//	    	alert.setContentText("To be implemented!");
-//	    	alert.showAndWait();
-//	    	return;
-//		});
+
 		saveProjectButton.setOnAction((event) -> {
 			File wsDir = mainClass.projectManager.getWorkSpaceDir();
 			if(wsDir==null || !wsDir.canWrite()) {return;}

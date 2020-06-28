@@ -26,11 +26,13 @@ public class ContainerInputString {
 	public String input;
 	public String log;
 	public boolean boolEmpty;
+	public String commandName;
 	public ContainerInputString() {
 		input = "";
 		log = "";
 		stepName = null;
 		boolEmpty = true;
+		commandName = "";
 	}
 	public void appendInput(String st) {
 		input = input + st;
@@ -43,7 +45,8 @@ public class ContainerInputString {
 		log = log + ci.log;
 	}
 	public String toString() {
-		return (input.isEmpty()? "":"------Input file-----\n"+input)+
+		return "Run with: "+commandName+
+				(input.isEmpty()? "":"------Input file-----\n"+input)+
 				(log.isEmpty()? "":"-------Warning-------\n"+log);
 	}
 	public boolean isEmpty() {

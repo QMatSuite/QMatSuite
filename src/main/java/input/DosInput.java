@@ -35,7 +35,7 @@ import javafx.scene.control.Alert.AlertType;
 public class DosInput extends QeInput{
 	
 	public DosInput() {
-		super();
+		super("dos");
 		sectionDict.put("DOS", new NameList(EnumNameList.DOS));
 		sectionDict.get("DOS").setBoolRequired(true);
 		
