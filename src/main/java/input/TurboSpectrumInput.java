@@ -18,12 +18,15 @@
  *******************************************************************************/
 package input;
 
+import com.consts.Constants.EnumNameList;
 
 public class TurboSpectrumInput extends QeInput{
 
 	
-//	public TurboSpectrumInput() {
-//		super();
-//	}
+	public TurboSpectrumInput() {
+		super();
+		sectionDict.put("lr_input", new NameList(EnumNameList.lr_input));
+		sectionDict.get("lr_input").setBoolRequired(true);
+	}
 
 }
