@@ -141,7 +141,7 @@
                     </rowConstraints>
                      <children>
                         <TextField fx:id="textDegauss" />
-                        <Label fx:id="labelDegauss" GridPane.columnIndex="1" />
+                        <Label fx:id="labelDegauss" text="Ry" GridPane.columnIndex="1" />
                      </children>
                   </GridPane>
                   <Label text="Energy Unit" GridPane.rowIndex="4" />

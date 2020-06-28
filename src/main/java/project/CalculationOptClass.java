@@ -41,7 +41,11 @@ public class CalculationOptClass extends CalculationClass{
 	{
 		//for loading after serialization
 	    in.defaultReadObject();
-	    inputList = new HashMap<EnumStep, QeInput>();
+	    reconstructInputList();
+	}
+	@Override
+	protected void reconstructInputList() {
+		inputList = new HashMap<EnumStep, QeInput>();
 	    inputList.put(EnumStep.OPT,new PwInput());
 	}
 	public CalculationOptClass(String cn) {
@@ -55,7 +59,6 @@ public class CalculationOptClass extends CalculationClass{
 		
 		commandList.put(EnumStep.OPT,"pw.exe < espresso.in > espresso.out");
 		orderList.add(EnumStep.OPT);
-		inputList.put(EnumStep.OPT,new PwInput());
 		agentList.put(EnumStep.OPT,new InputAgentOpt());
 	}
 	public ArrayList<ContainerInputString> genInputFromAgent(ArrayList<InputAgentGeo> geoList) {

@@ -28,6 +28,7 @@ import agent.InputAgentScf;
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
 import input.ContainerInputString;
+import input.DosInput;
 import input.PwInput;
 import input.QeInput;
 
@@ -41,8 +42,12 @@ public class CalculationMdClass extends CalculationClass{
 	{
 		//for loading after serialization
 	    in.defaultReadObject();
-	    inputList = new HashMap<EnumStep, QeInput>();
-	    inputList.put(EnumStep.BOMD,new PwInput());
+	    reconstructInputList();
+	}
+	@Override
+	protected void reconstructInputList() {
+		inputList = new HashMap<EnumStep, QeInput>();
+		inputList.put(EnumStep.BOMD,new PwInput());
 	}
 	public CalculationMdClass(String cn) {
 		super();
@@ -55,7 +60,6 @@ public class CalculationMdClass extends CalculationClass{
 		
 		commandList.put(EnumStep.BOMD,"pw.exe < espresso.in > espresso.out");
 		orderList.add(EnumStep.BOMD);
-		inputList.put(EnumStep.BOMD,new PwInput());
 		agentList.put(EnumStep.BOMD,new InputAgentMd());
 	}
 	public ArrayList<ContainerInputString> genInputFromAgent(ArrayList<InputAgentGeo> geoList) {

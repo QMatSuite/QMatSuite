@@ -46,7 +46,7 @@ public abstract class CalculationClass implements Serializable{
 
 	public CalculationClass() {
 		commandList = new HashMap<EnumStep, String>();
-		inputList = new HashMap<EnumStep, QeInput>();
+		reconstructInputList();//contains new inputList
 		orderList = new ArrayList<EnumStep>();
 		agentList = new HashMap<EnumStep, InputAgent>();
 		geometryIndex = 0;
@@ -82,5 +82,6 @@ public abstract class CalculationClass implements Serializable{
 	public EnumCalc getCalcType() {
 		return nameCalc;
 	}
+	protected abstract void reconstructInputList();
 	public abstract ArrayList<ContainerInputString> genInputFromAgent(ArrayList<InputAgentGeo> geoList);
 }
