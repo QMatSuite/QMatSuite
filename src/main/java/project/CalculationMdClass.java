@@ -28,7 +28,6 @@ import agent.InputAgentScf;
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
 import input.ContainerInputString;
-import input.DosInput;
 import input.PwInput;
 import input.QeInput;
 

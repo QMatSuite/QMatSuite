@@ -32,8 +32,6 @@ import input.ContainerInputString;
 import input.DosInput;
 import input.PwInput;
 import input.QeInput;
-import input.TurboLanczosInput;
-import input.TurboSpectrumInput;
 
 public class CalculationDosClass extends CalculationClass{
 	/**

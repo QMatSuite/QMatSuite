@@ -28,9 +28,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Optional;
 import java.util.ResourceBundle;
-
 import javafx.application.Platform;
-import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
@@ -51,9 +49,7 @@ import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TabPane.TabClosingPolicy;
 import javafx.scene.control.TextInputDialog;
-import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
-import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.BorderPane;
@@ -66,8 +62,7 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import main.MainClass;
-import app.centerwindow.OutputViewerController;
-import app.centerwindow.WorkScene3D;
+import app.centerwindow.WorkTabContent;
 import app.input.InputBandsController;
 import app.input.InputDosController;
 import app.input.InputGeoController;
@@ -183,11 +178,9 @@ public class MainWindowController implements Initializable{
 	
 	private Thread thread1;
 	
-	private Integer tabRowNum;
 	
-	private OutputViewerController contOutput;
 	
-	private HBox hboxOutput;
+	private WorkTabContent workTabContent;
 			
 	public MainWindowController(MainClass mc) {
 		mainClass = mc;
@@ -267,18 +260,13 @@ public class MainWindowController implements Initializable{
 			fxmlLoader.setController(contSettings);
 			borderSettings = fxmlLoader.load();
 			
-			contOutput = new OutputViewerController(mainClass);
-			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/centerwindow/outputViewer.fxml"));
-			fxmlLoader.setController(contOutput);
-			hboxOutput = fxmlLoader.load();
 			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
-		hboxOutput.prefWidthProperty().bind(workSpaceTabPane.widthProperty());
-		hboxOutput.prefHeightProperty().bind(workSpaceTabPane.heightProperty());
+		workTabContent =  new WorkTabContent(mainClass,workSpaceTabPane,projectTabDict);
 		
 		contTree.buttonOpenSelected.setOnAction((event) -> {
 			String projName = contTree.getSelectedProject();
@@ -391,7 +379,7 @@ public class MainWindowController implements Initializable{
 				mainClass.projectManager.setActiveProject(newTab.getText());
 				
 				
-				updateWorkScene();
+				workTabContent.updateWorkScene();
 				
 				comboProject.getSelectionModel().select(newTab.getText());
 				//update calculation list
@@ -686,36 +674,7 @@ public class MainWindowController implements Initializable{
 		});
 		
 	}
-	private void updateWorkScene() {
-		String currentPj = mainClass.projectManager.getActiveProjectName();
-		if(currentPj==null) return;
-		Tab newTab = this.projectTabDict.get(currentPj);
-		if(newTab==null) return;
-		
-		VBox hbTmp = (VBox) newTab.getContent();
-		//***may be unnecessary for some situations
-		//remove last one. The if condition takes care of the case of first creation of a project
-		if(tabRowNum==null) {
-			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Null of tabRowNum. Cannot load workscene.");
-		}
-		else {
-			ObservableList<Node>  obsTmp = hbTmp.getChildren();
-			if(obsTmp.size()>=tabRowNum) {obsTmp.remove(obsTmp.size()-1);}
-			if(mainClass.projectManager.getShow3DScene()) {
-				//add 3D view
-				mainClass.projectManager.updateViewerPlot();//*******not always necessary
-				WorkScene3D workScene = mainClass.projectManager.getActiveProject().getViewer3D();
-				workScene.centerSubScene(workSpaceTabPane);
-				AnchorPane acp = workScene.getRootPane();
-				hbTmp.getChildren().add(acp);
-			}
-			else {
-				contOutput.updateProjectFolder();
-				hbTmp.getChildren().add(hboxOutput);
-			}
-		}
-		
-	}
+	
 	public void killAllThreads() {
 		thread1.interrupt();
 	}
@@ -912,31 +871,7 @@ public class MainWindowController implements Initializable{
 		comboProject.getItems().add(projName);
 		comboProject.setValue(projName);
 		//add tab
-		Tab tab = new Tab();
-		VBox hbTmp = new VBox();
-		ToggleButton tgButton = new ToggleButton("");tgButton.setId("idToggleGeoInOutButton");
-		tgButton.setPrefWidth(150);
-		
-		if (mainClass.projectManager.getShow3DScene()) 
-		{ tgButton.setSelected(false);tgButton.setText("Show input/output files");}
-		else 
-		{ tgButton.setSelected(true);tgButton.setText("Show geometry"); }
-		//reversed than in projectManager
-		tgButton.selectedProperty().addListener((observable, oldValue, newValue) ->
-		{ 
-			if(newValue==null) return;
-			if (newValue) 
-			{ tgButton.setText("Show geometry");}
-			else 
-			{ tgButton.setText("Show input/output files"); }
-			mainClass.projectManager.setShow3DScene(!newValue);
-			updateWorkScene();
-		});
-		
-		hbTmp.getChildren().add(new HBox(tgButton,new Label("Toggle geometry and in/out files")));
-		tabRowNum=2;//2 in total, including the display defined in the tab change listener
-		
-		tab.setContent(hbTmp);
+		Tab tab = workTabContent.setUpTabContent();
 		
 		final String pj = projName;
 		tab.setText(pj);
