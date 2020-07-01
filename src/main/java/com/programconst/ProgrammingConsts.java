@@ -28,4 +28,5 @@ public interface ProgrammingConsts {
 	public final String stdinExtension = ".in"; 
 	public final String stdoutExtension = ".out";
 	public final String stderrExtension = ".err";
+	public final String dosExtension = ".dos";
 }

@@ -2,12 +2,18 @@ package app.centerwindow;
 
 import java.util.ArrayList;
 
+import com.consts.Constants.EnumFileCategory;
+
 public class FileDataClass {
 	private ArrayList<ArrayList<Double>> energyArray;//Ry
 	private ArrayList<Double> fermiLevel;//eV
 	private ArrayList<Double> homoLevel;//eV
 	private ArrayList<ArrayList<Double>> totalMag;//Bohr mag/cell
 	private ArrayList<ArrayList<Double>> absoluteMag;//Bohr mag/cell
+	private ArrayList<ArrayList<Double>> dosArray;
+	private ArrayList<String> dosHeader;
+	public Double fermiDos=null;
+	public EnumFileCategory fileCategory=null;
 	
 	public int nstep=1;
 	public boolean isJobDone=false;
@@ -19,6 +25,8 @@ public class FileDataClass {
 	public boolean isOptFinished=false;
 	public boolean isNscf=false;
 	public boolean isNscfFinished=false;
+	public boolean isDos=false;
+	public boolean isDosFinished=false;
 	
 	//will be true when one scf just finished. Will be set back to false when one new mag is read
 	private boolean flagScfFinishedForTotalMag=false;
@@ -30,9 +38,17 @@ public class FileDataClass {
 		homoLevel = new ArrayList<Double>();
 		totalMag = new ArrayList<ArrayList<Double>>();
 		absoluteMag = new ArrayList<ArrayList<Double>>();
+		dosArray = new ArrayList<ArrayList<Double>>();
+		dosHeader = new ArrayList<String>();
 	}
 	public void clearAll() {
 		clearEnergyArray();
+	}
+	public ArrayList<ArrayList<Double>> getDosArray() {
+		return dosArray;
+	}
+	public ArrayList<String> getDosHeader() {
+		return dosHeader;
 	}
 	public void clearEnergyArray() {
 		for(ArrayList<Double> ard:energyArray) {
@@ -44,16 +60,21 @@ public class FileDataClass {
 		for(ArrayList<Double> ard:absoluteMag) {
 			if(ard!=null) {ard.clear();}
 		}
+		for(ArrayList<Double> ard:dosArray) {
+			if(ard!=null) {ard.clear();}
+		}
 		energyArray.clear();
 		fermiLevel.clear();
 		homoLevel.clear();
 		totalMag.clear();
 		absoluteMag.clear();
+		dosArray.clear();
+		dosHeader.clear();
 
-		nstep=1;
+		nstep=1;fermiDos=null;
 		isJobDone=false;
 		hasScf=false;hasScfFinished=false;isMD=false;isMDFinished=false;isOpt=false;isOptFinished=false;
-		isNscf=false;isNscfFinished=false;
+		isNscf=false;isNscfFinished=false;isDos=false;isDosFinished=false;
 		
 		flagScfFinishedForTotalMag=false;
 		flagScfFinishedForAbsMag=false;
@@ -84,90 +105,139 @@ public class FileDataClass {
 	public void setHomo(double hm) {
 		homoLevel.add(hm);
 	}
+	public void addDosRow(String line) {
+		ArrayList<Double> al = new ArrayList<Double>();
+		String[] splitted = line.trim().split("\\s+");//split the string by whitespaces
+		try {
+			for(int i=0;i<splitted.length;i++) {
+				al.add(Double.valueOf(splitted[i]));
+			}	
+			dosArray.add(al);
+		}
+		catch(Exception e) {
+			e.printStackTrace();
+		}
+	}
+	public void addDosHeader(String line) {
+		line = line.replace("#", "");
+		try {
+			String[] parts1 = line.split("[\\)]");
+			String[] parts2 = line.split("=");
+			String[] parts3 = parts2[1].split("e");
+			fermiDos=Double.valueOf(parts3[0]);
+			dosHeader.clear();
+			for(int i=0;i<parts1.length-1;i++) {
+				dosHeader.add(parts1[i]+")");
+			}
+		}
+		catch(Exception e) {
+			e.printStackTrace();
+		}
+	}
 	public String toString() {
 		String strTmp = "";
 		
-		//calculation type
-		strTmp+="Detected calculation type:";
-		if(nstep==1 && hasScf) {strTmp+="SCF,";}
-		if(isMD) {strTmp+="MD,";}
-		if(isOpt) {strTmp+="Optimization,";}
-		if(isNscf) {strTmp+="NSCF,";}
-		strTmp+="\n";
+		if(EnumFileCategory.dos.equals(fileCategory)) {
+			//DOS data file
+			strTmp+="DOS data file.\n";
 
-		//finished or not
-		if(hasScf) {strTmp+=(hasScfFinished?"SCF finished.":"SCF not finished.")+"\n";}
-		if(isMD) {strTmp+=(isMDFinished?"MD finished.":"MD not finished.")+"\n";}
-		if(isOpt) {strTmp+=(isOptFinished?"Optimization finished.":"Optimization not finished.")+"\n";}
-		if(isNscf) {strTmp+=(isNscfFinished?"NSCF finished.":"NSCF not finished.")+"\n";}
-		
-		//the whole job finished or not (last line of the output file)
-		strTmp+=(isJobDone?"Job done.\n":"Job not done yet.\n");
-		
-		//total energy
-		int cnt = 0;
-		strTmp+="Total energy (Ry):";
-		for(ArrayList<Double> ard:energyArray) {
-			if(ard!=null) {
-				cnt++;
-				if(ard.isEmpty()) {continue;}
-				strTmp+=("Step "+Integer.toString(cnt)+": ");
-				for(Double val:ard) {
+			if(dosHeader.size()>0) {
+				strTmp+=("Fermi level DOS: "+(fermiDos==null?"null":Double.toString(fermiDos))+"\n");
+				strTmp+=dosHeader.get(0);
+			}
+			if(dosArray.size()>0 && dosArray.get(0).size()>0 && dosArray.get(dosArray.size()-1).size()>0) {
+				strTmp+=("(E DOS) from "+Double.toString(dosArray.get(0).get(0))+" to "+
+						Double.toString(dosArray.get(dosArray.size()-1).get(0))+"\n");
+			}
+			
+		}
+		else if(EnumFileCategory.stdout.equals(fileCategory)) {
+			//stdout file
+			strTmp+="Standard output file.\n";
+			//calculation type
+			strTmp+="Detected calculation type:";
+			if(nstep==1 && hasScf) {strTmp+="SCF,";}
+			if(isMD) {strTmp+="MD,";}
+			if(isOpt) {strTmp+="Optimization,";}
+			if(isNscf) {strTmp+="NSCF,";}
+			if(isDos) {strTmp+="DOS,";}
+			
+			//finished or not
+			if(nstep==1 && hasScf) {strTmp+=(hasScfFinished?"SCF finished.":"SCF not finished.")+"\n";}
+			if(isMD) {strTmp+=(isMDFinished?"MD finished.":"MD not finished.")+"\n";}
+			if(isOpt) {strTmp+=(isOptFinished?"Optimization finished.":"Optimization not finished.")+"\n";}
+			if(isNscf) {strTmp+=(isNscfFinished?"NSCF finished.":"NSCF not finished.")+"\n";}
+			if(isDos) {strTmp+=(isDosFinished?"DOS finished.":"DOS not finished.")+"\n";}
+			
+			//the whole job finished or not (last line of the output file)
+			strTmp+=(isJobDone?"Job done.\n":"Job not done yet.\n");
+			
+			//total energy
+			int cnt = 0;
+			strTmp+="Total energy (Ry):";
+			for(ArrayList<Double> ard:energyArray) {
+				if(ard!=null) {
+					cnt++;
+					if(ard.isEmpty()) {continue;}
+					strTmp+=("Step "+Integer.toString(cnt)+": ");
+					for(Double val:ard) {
+						if(val!=null) {strTmp+=(val.toString()+",");}
+					}
+					strTmp+="\n";
+				}
+			}
+			
+			//magnetization
+			int cnt_mag = 0;
+			if(!totalMag.isEmpty() || !absoluteMag.isEmpty()) {
+				strTmp+="Total magnetization (Bohr mag/cell):";
+				for(ArrayList<Double> ard:totalMag) {
+					if(ard!=null) {
+						cnt_mag++;
+						if(ard.isEmpty()) {continue;}
+						strTmp+=("Step "+Integer.toString(cnt_mag)+": ");
+						for(Double val:ard) {
+							if(val!=null) {strTmp+=(val.toString()+",");}
+						}
+						strTmp+="\n";
+					}
+				}
+				cnt_mag = 0;
+				strTmp+="Absolute magnetization (Bohr mag/cell):";
+				for(ArrayList<Double> ard:absoluteMag) {
+					if(ard!=null) {
+						cnt_mag++;
+						if(ard.isEmpty()) {continue;}
+						strTmp+=("Step "+Integer.toString(cnt_mag)+": ");
+						for(Double val:ard) {
+							if(val!=null) {strTmp+=(val.toString()+",");}
+						}
+						strTmp+="\n";
+					}
+				}
+			}
+			
+			//Fermi
+			strTmp+="Fermi energy: ";
+			if(fermiLevel.isEmpty()) {strTmp+="Unknown\n";}
+			else {
+				for(Double val:fermiLevel) {
 					if(val!=null) {strTmp+=(val.toString()+",");}
 				}
-				strTmp+="\n";
+				strTmp+=" eV\n";
 			}
-		}
-		
-		//magnetization
-		int cnt_mag = 0;
-		if(!totalMag.isEmpty() || !absoluteMag.isEmpty()) {
-			strTmp+="Total magnetization (Bohr mag/cell):";
-			for(ArrayList<Double> ard:totalMag) {
-				if(ard!=null) {
-					cnt_mag++;
-					if(ard.isEmpty()) {continue;}
-					strTmp+=("Step "+Integer.toString(cnt_mag)+": ");
-					for(Double val:ard) {
-						if(val!=null) {strTmp+=(val.toString()+",");}
-					}
-					strTmp+="\n";
+			//HOMO
+			strTmp+="Highest occupied level: ";
+			if(homoLevel.isEmpty()) {strTmp+="Unknown\n";}
+			else {
+				for(Double val:homoLevel) {
+					if(val!=null) {strTmp+=(val.toString()+",");}
 				}
+				strTmp+=" eV\n";
 			}
-			cnt_mag = 0;
-			strTmp+="Absolute magnetization (Bohr mag/cell):";
-			for(ArrayList<Double> ard:absoluteMag) {
-				if(ard!=null) {
-					cnt_mag++;
-					if(ard.isEmpty()) {continue;}
-					strTmp+=("Step "+Integer.toString(cnt_mag)+": ");
-					for(Double val:ard) {
-						if(val!=null) {strTmp+=(val.toString()+",");}
-					}
-					strTmp+="\n";
-				}
-			}
-		}
 		
-		//Fermi
-		strTmp+="Fermi energy: ";
-		if(fermiLevel.isEmpty()) {strTmp+="Unknown\n";}
-		else {
-			for(Double val:fermiLevel) {
-				if(val!=null) {strTmp+=(val.toString()+",");}
-			}
-			strTmp+=" eV\n";
 		}
-		//HOMO
-		strTmp+="Highest occupied level: ";
-		if(homoLevel.isEmpty()) {strTmp+="Unknown\n";}
-		else {
-			for(Double val:homoLevel) {
-				if(val!=null) {strTmp+=(val.toString()+",");}
-			}
-			strTmp+=" eV\n";
-		}
-		
+		strTmp+="\n";
 		return strTmp;
 	}
 }

@@ -30,14 +30,20 @@ import java.util.Scanner;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.chart.LineChart;
+import javafx.scene.chart.NumberAxis;
+import javafx.scene.chart.XYChart.Data;
+import javafx.scene.chart.XYChart.Series;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.ToggleButton;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -72,9 +78,16 @@ public class OutputViewerController implements Initializable{
     buttonRefreshFolder,
     buttonRefreshFiles;
     
-    @FXML private Label labelFileCategory;
+    @FXML private Label labelFileCategory,
+    labelPlot;
     
     @FXML private ComboBox<EnumAnalysis> comboAnalysis;
+    
+    @FXML private ComboBox<String> comboPlot;
+    
+    @FXML private HBox hboxPlotToolbar;
+    
+    @FXML private ToggleButton buttonShowMarker;
     
     private TextFlow textFlowDisplay;
     
@@ -88,15 +101,41 @@ public class OutputViewerController implements Initializable{
     
     private FileDataClass fileData;
     
+    private NumberAxis xAxis;
+
+    private NumberAxis yAxis;
+
+    private LineChart<Double, Double> lineChart;
+    
+    private final ArrayList<String> plotTypeDos;
+    
+    private ArrayList<String> plotTypeStdOut;
+    		
     public OutputViewerController(MainClass mc) {
     	mainClass = mc;
     	textFlowDisplay = new TextFlow();
     	fileData = new FileDataClass();
+    	xAxis = new NumberAxis();
+    	yAxis = new NumberAxis();
+    	lineChart = new LineChart(xAxis, yAxis);
+    	
+    	plotTypeDos = new ArrayList<String>() {
+    		{
+	    		add("DOS"); //0
+	    		add("Integrated DOS"); //1 
+    		}
+		};
+		plotTypeStdOut= new ArrayList<String>();
 	}
 
 	@Override
 	public void initialize(URL arg0, ResourceBundle arg1) {
+		lineChart.prefWidthProperty().bind(displayScroll.widthProperty());
+		lineChart.setCreateSymbols(false);
+		//lineChart.prefHeightProperty().bind(workSpaceTabPane.heightProperty());
 		
+		//comboPlot.setVisible(false);labelPlot.setVisible(false);
+		hboxPlotToolbar.setVisible(false);
 		listCalcFolders.getSelectionModel().selectedItemProperty().addListener((ov, oldTab, newTab) -> {
 			if(newTab==null || newTab.isEmpty()) return;
 			File pjFolder = getProjectFolder();
@@ -119,6 +158,7 @@ public class OutputViewerController implements Initializable{
 			if(newTab.contains(ProgrammingConsts.stdinExtension)) {fileCategory = EnumFileCategory.stdin;}
 			else if(newTab.contains(ProgrammingConsts.stdoutExtension)) {fileCategory = EnumFileCategory.stdout;}
 			else if(newTab.contains(ProgrammingConsts.stderrExtension)) {fileCategory = EnumFileCategory.stderr;}
+			else if(newTab.contains(ProgrammingConsts.dosExtension)) {fileCategory = EnumFileCategory.dos;}
 			else if(newTab.contains(DefaultFileNames.calcSaveFile)||newTab.contains(DefaultFileNames.projSaveFile)) 
 			{fileCategory = EnumFileCategory.save;}
 			else if(newTab.contains(".xml")) {fileCategory = EnumFileCategory.xmlout;}
@@ -126,11 +166,14 @@ public class OutputViewerController implements Initializable{
 			else if(inoutFiles.isDirectory()) {fileCategory = EnumFileCategory.directory;}
 			else {fileCategory = EnumFileCategory.unknown;}
 			
+			fileData.fileCategory = fileCategory;
+			
 			if(fileCategory!=null) {labelFileCategory.setText(fileCategory.toString());}//should not be null until this point!
 			
 			if(fileCategory!=null) {
 				comboAnalysis.getItems().addAll(EnumAnalysis.info);//always has the option of show summarized info
 				comboAnalysis.getItems().addAll(EnumAnalysis.text);//always has the option of show in text
+				comboAnalysis.getItems().addAll(EnumAnalysis.plot2D);//always has the option of show in plot (can be changed later)
 				
 				if(analTmp!=null && comboAnalysis.getItems()!=null && comboAnalysis.getItems().contains(analTmp)) {
 					//select back the choice before
@@ -138,13 +181,16 @@ public class OutputViewerController implements Initializable{
 				}
 				else {
 					//select text first if there has been no selection
-					comboAnalysis.getSelectionModel().select(EnumAnalysis.text);
+					comboAnalysis.getSelectionModel().select(EnumAnalysis.plot2D);
 				}
 			}
 			updateIoDisplay();//*** not efficient because runs twice
 		});
 		comboAnalysis.getSelectionModel().selectedItemProperty().addListener((ov, oldTab, newTab) -> {
-			updateIoDisplay();
+			if(newTab!=null) {updateIoDisplay();}
+		});
+		comboPlot.getSelectionModel().selectedItemProperty().addListener((ov, oldTab, newTab) -> {
+			if(newTab!=null) {updateIoDisplay();}//very crucial to check null here!
 		});
 		openAsButton.setOnAction((event) -> {
 			if(inoutFiles==null || !inoutFiles.canRead()) return;
@@ -154,6 +200,10 @@ public class OutputViewerController implements Initializable{
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+		});
+		buttonShowMarker.selectedProperty().addListener((observable, oldValue, newValue) ->{
+			if(newValue==null) return;
+			lineChart.setCreateSymbols(newValue);
 		});
 		buttonRefreshFolder.setOnAction((event) -> {
 			int tmpInt = listCalcFolders.getSelectionModel().getSelectedIndex();
@@ -214,23 +264,188 @@ public class OutputViewerController implements Initializable{
 		displayScroll.setContent(null);
 		if(fileCategory==null || analTmp==null) return;
 		
+		boolean boolPlot = analTmp.equals(EnumAnalysis.plot2D);
+		//comboPlot.setVisible(boolPlot);labelPlot.setVisible(boolPlot);
+		hboxPlotToolbar.setVisible(boolPlot);
+		
 		if(analTmp.equals(EnumAnalysis.text)) {//show raw text
 			displayScroll.setContent(textFlowDisplay);
 			readTextFileToTextFlow();//only highlight input files
 		}
-		else if(analTmp.equals(EnumAnalysis.info)) {//show summarized information
+		else {//show analysis
 			displayScroll.setContent(textFlowDisplay);
 			textFlowDisplay.getChildren().clear();
 			if(fileCategory.equals(EnumFileCategory.stdout)) {
-				if(!summarizeInfoStdOut()) {return;}
-				textFlowDisplay.getChildren().add(new Text(fileData.toString()));
+				if(!loadStdOut()) {showCannotLoad();return;}
+				if(analTmp.equals(EnumAnalysis.info)) {textFlowDisplay.getChildren().add(new Text(fileData.toString()));}
+				else if(analTmp.equals(EnumAnalysis.plot2D)) {plot2dStdOut();}
+			}
+			else if(fileCategory.equals(EnumFileCategory.dos)){
+				if(!loadDOS()) {showCannotLoad();return;}
+				if(analTmp.equals(EnumAnalysis.info)) {textFlowDisplay.getChildren().add(new Text(fileData.toString()));}
+				else if(analTmp.equals(EnumAnalysis.plot2D)) {plot2dDos();}
 			}
 			else {
-				textFlowDisplay.getChildren().add(new Text("The information summary is not available for this file type."));
+				textFlowDisplay.getChildren().add(new Text("Analysis is not available for this file type."));
 			}
 		}
 	}
-	private boolean summarizeInfoStdOut() {//return false when error
+	private boolean isSameTypeStdout(ArrayList<String> strTest) {
+		ObservableList<String> comboTmp = comboPlot.getItems();
+		if(comboTmp.size()!=strTest.size()) {return false;}
+		for(int i=0;i<comboTmp.size();i++) {
+			if(comboTmp.get(i)==null || !comboTmp.get(i).equals(strTest.get(i))) {return false;}
+		}
+		return true;
+	}
+	private void showCannotLoad() {
+		displayScroll.setContent(textFlowDisplay);
+		textFlowDisplay.getChildren().clear();
+		textFlowDisplay.getChildren().add(new Text("Cannot load file. No plot available."));
+	}
+	private void plot2dDos() {
+		if(!isSameTypeStdout(plotTypeDos)) {
+			comboPlot.getItems().clear();
+			comboPlot.getItems().addAll(plotTypeDos);
+			//ShowAlert.showAlert(AlertType.INFORMATION, "Info", "plot2dDos. Construct comboPlot.");
+			comboPlot.getSelectionModel().select(0);
+		}
+		
+		lineChart.getData().clear();
+		
+		String strSelect = comboPlot.getSelectionModel().getSelectedItem();
+		boolean boolInteg;
+		if(plotTypeDos.get(0).equals(strSelect)) {
+			//add("DOS"); //0
+			boolInteg = false;
+		}
+		else if(plotTypeDos.get(1).equals(strSelect)){
+			//add("Integrated DOS"); //1 
+			boolInteg = true;
+		}
+		else {
+			lineChart.setTitle("Please select plotting type!");
+			return;
+		}
+		
+		Double fermiDos = fileData.fermiDos;
+		ArrayList<ArrayList<Double>> dosArray = fileData.getDosArray();
+		ArrayList<String> dosHeader = fileData.getDosHeader();
+		
+		if(dosArray.isEmpty()) {return;}
+		
+		xAxis.setLabel(dosHeader.size()>0 ? dosHeader.get(0):"Unknown (1st column)");
+		yAxis.setLabel(strSelect);
+		
+		double minY = 1000.0;
+		double maxY = -1000.0;
+		
+		for(int i=1;i<dosArray.get(0).size();i++) {//different columns (y axis)
+			
+			Series<Double,Double> dataSeries1 = new Series<Double, Double>();
+			String headerTmp = (dosHeader.size()>i ? dosHeader.get(i):"Unknown ("+Integer.toString(i)+"th column)");
+			dataSeries1.setName(headerTmp);
+			if(boolInteg != headerTmp.toLowerCase().contains("int") ) {continue;}
+			for(int j=0;j<dosArray.size();j++) {
+				if(dosArray.get(j).size()<=i) {break;}//a certain row does not have enough numbers
+				dataSeries1.getData().add(new Data<Double, Double>(dosArray.get(j).get(0), dosArray.get(j).get(i)));
+				if(dosArray.get(j).get(i)>maxY) {maxY=dosArray.get(j).get(i);}
+				if(dosArray.get(j).get(i)<minY) {minY=dosArray.get(j).get(i);}
+			}
+			lineChart.getData().add(dataSeries1);
+        }
+		
+		//Fermi energy
+		if(fermiDos!=null) {
+			Series<Double,Double> dataSeries1 = new Series<Double, Double>();
+			dataSeries1.getData().add(new Data<Double, Double>(fermiDos, minY));
+			dataSeries1.getData().add(new Data<Double, Double>(fermiDos, maxY));
+			dataSeries1.setName("Fermi Energy");
+			lineChart.getData().add(dataSeries1);
+		}
+		
+        displayScroll.setContent(lineChart);
+        
+
+	}
+
+	private void plot2dStdOut() {
+		//construct new plot type list
+		plotTypeStdOut.clear();
+		if(fileData.hasScf) {plotTypeStdOut.add("SCF E conv");}
+		if(fileData.isOpt) {plotTypeStdOut.add("OPT E conv");plotTypeStdOut.add("OPT F conv");}
+		//check whether it is the same as in the combo. If yes, no update of the combo
+		if(!isSameTypeStdout(plotTypeStdOut)) {
+			comboPlot.getItems().clear();
+			if(!plotTypeStdOut.isEmpty()) {
+				comboPlot.getItems().addAll(plotTypeStdOut);
+				//ShowAlert.showAlert(AlertType.INFORMATION, "Info", "plot2dStdOut. Construct comboPlot.");
+				comboPlot.getSelectionModel().select(0);
+			}
+		}
+		
+		if(plotTypeStdOut.isEmpty()) {textFlowDisplay.getChildren().add(new Text("No availabel plot for this file type."));return;}
+		
+		String plotType = comboPlot.getSelectionModel().getSelectedItem();
+		
+		if(plotType==null) return;
+		
+		lineChart.getData().clear();
+		
+		ArrayList<ArrayList<Double>> energyTmp = fileData.getEnergyArray();
+		
+		if(plotType.equals("SCF E conv") && !energyTmp.isEmpty()) {
+			xAxis.setLabel("Iterations");
+			yAxis.setLabel("Total Energy (Ry)");
+			Series<Double,Double> dataSeries1 = new Series<Double, Double>();
+	        dataSeries1.setName("SCF Energy Convergence");
+			ArrayList<Double> scfTmp = energyTmp.get(energyTmp.size()-1);
+			if(scfTmp.isEmpty() && energyTmp.size()>=2) {scfTmp = energyTmp.get(energyTmp.size()-2);}
+			for(int i=0;i<scfTmp.size();i++) {
+		        dataSeries1.getData().add(new Data<Double, Double>( (double) i+1, scfTmp.get(i)));
+			}
+			lineChart.getData().add(dataSeries1);
+		}
+        
+        displayScroll.setContent(lineChart);
+
+	}
+	private boolean loadDOS() {//return false when error
+		String strTmp1 = checkErrors();
+		if(strTmp1!=null && !strTmp1.isEmpty()) {return false;}
+		try {
+			fileData.clearAll();
+			
+		    Scanner sc = new Scanner(inoutFiles); 
+		  
+		    String strTmp;
+		    
+		    boolean flagHeader=false;
+		    
+		    while (sc.hasNextLine()) {
+
+		    	strTmp = sc.nextLine();
+		    	
+		    	if(strTmp==null || strTmp.isEmpty()) continue;
+		    	if(strTmp.contains("#")||strTmp.contains("=")) {
+		    		flagHeader=true;
+		    		fileData.addDosHeader(strTmp);
+		    		continue;
+		    	}
+		    	if(flagHeader) {
+		    		fileData.addDosRow(strTmp);
+		    	}
+	    	}
+		    
+		    sc.close();
+		    
+		} catch (IOException e) {
+			e.printStackTrace();
+			return false;
+		}
+		return true;
+	}
+	private boolean loadStdOut() {//return false when error
 		String strTmp1 = checkErrors();
 		if(strTmp1!=null && !strTmp1.isEmpty()) {return false;}
 		fileData.clearAll();
@@ -324,6 +539,11 @@ public class OutputViewerController implements Initializable{
 					fileData.isNscf = true;
 					if(strTmp.toLowerCase().contains("end of")) {fileData.isNscfFinished=true;}
 				}
+				if(lowerCaseStr.contains("dos")) {
+					fileData.isDos = true;
+					
+				}
+				if(fileData.isDos && strTmp.toLowerCase().contains("terminated")) {fileData.isDosFinished=true;}
 				
 				if(strTmp.toUpperCase().contains("JOB DONE")) {
 					fileData.isJobDone = true;

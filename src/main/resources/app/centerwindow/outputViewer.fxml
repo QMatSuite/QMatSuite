@@ -6,6 +6,7 @@
 <?import javafx.scene.control.ListView?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.ToggleButton?>
 <?import javafx.scene.control.ToolBar?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
@@ -47,6 +48,16 @@
                   <ComboBox fx:id="comboAnalysis" />
                   <Separator orientation="VERTICAL" />
                 <Button fx:id="openAsButton" mnemonicParsing="false" text="Open with..." />
+               </children>
+            </HBox>
+            <HBox fx:id="hboxPlotToolbar" layoutX="10.0" layoutY="135.0">
+               <children>
+                  <Label text="Plot Toolbar" />
+                  <Separator orientation="VERTICAL" />
+                  <Label fx:id="labelPlot" text="Plot Type" />
+                  <ComboBox fx:id="comboPlot" />
+                  <Separator orientation="VERTICAL" />
+                  <ToggleButton fx:id="buttonShowMarker" mnemonicParsing="false" text="Show Marker" />
                </children>
             </HBox>
             <ScrollPane fx:id="displayScroll" VBox.vgrow="ALWAYS" />
