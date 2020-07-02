@@ -19,9 +19,9 @@
 package app.input.geo;
 
 
-import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import com.consts.ChemicalElements;
+import com.error.ShowAlert;
 
 public class Atom extends Chemical {
 	/**
@@ -41,20 +41,27 @@ public class Atom extends Chemical {
 		ycoor=new Coordinate(y,fix_y);
 		zcoor=new Coordinate(z,fix_z);
 	}
+	public Atom(ChemicalElements species, Double x, Double y, Double z) {
+		super(species);
+		xcoor=new Coordinate(x,false);
+		ycoor=new Coordinate(y,false);
+		zcoor=new Coordinate(z,false);
+	}
 	public Atom(String species, Double x, Double y, Double z, Boolean fix_x,Boolean fix_y,Boolean fix_z) {
 		//super();
 		try {
 			atomSpecies = ChemicalElements.valueOf(species);
 		}catch(IllegalArgumentException e) {
-			Alert alert1 = new Alert(AlertType.INFORMATION);
-	    	alert1.setTitle("Error");
-	    	alert1.setContentText("Invalid atom found in Atom class!"+e.getMessage());
-	    	alert1.showAndWait();
+			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Invalid atom found in Atom class!"+e.getMessage());
 			e.printStackTrace();
 		}
 		xcoor=new Coordinate(x,fix_x);
 		ycoor=new Coordinate(y,fix_y);
 		zcoor=new Coordinate(z,fix_z);
+	}
+	public String printPositions() {
+		return "--"+atomSpecies.toString()+" "+Double.toString(xcoor.getX())+" "+Double.toString(ycoor.getX())
+		+" "+Double.toString(zcoor.getX());
 	}
 	public void mulX(Double mul) {
 		if (mul!=null) {

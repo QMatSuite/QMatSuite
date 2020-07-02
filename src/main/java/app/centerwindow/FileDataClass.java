@@ -2,7 +2,13 @@ package app.centerwindow;
 
 import java.util.ArrayList;
 
+import com.consts.ChemicalElements;
 import com.consts.Constants.EnumFileCategory;
+import com.error.ShowAlert;
+
+import app.input.Cell;
+import app.input.geo.Atom;
+import javafx.scene.control.Alert.AlertType;
 
 public class FileDataClass {
 	private ArrayList<ArrayList<Double>> energyArray;//Ry
@@ -14,6 +20,10 @@ public class FileDataClass {
 	private ArrayList<String> dosHeader;
 	public Double fermiDos=null;
 	public EnumFileCategory fileCategory=null;
+	
+	private ArrayList<ArrayList<Atom>> atomicPositions;
+	private Double alat = null;
+	private ArrayList<Cell> cellParameter;
 	
 	public int nstep=1;
 	public boolean isJobDone=false;
@@ -40,9 +50,74 @@ public class FileDataClass {
 		absoluteMag = new ArrayList<ArrayList<Double>>();
 		dosArray = new ArrayList<ArrayList<Double>>();
 		dosHeader = new ArrayList<String>();
+		atomicPositions = new ArrayList<ArrayList<Atom>>();
+		cellParameter = new ArrayList<Cell>();
 	}
 	public void clearAll() {
 		clearEnergyArray();
+	}
+	public void parseAlat(String strLine) {
+		if(strLine==null || !strLine.contains("=")) return;
+		String[] splitted = strLine.trim().split("=");
+		//remove everything except numbers (0-9) or dot (.) or minus sign (-)
+		try {
+			double alatTmp = Double.valueOf(splitted[1].replaceAll("[^\\d.-]", ""));
+			if(this.alat!=null && this.alat!=alatTmp) {
+				ShowAlert.showAlert(AlertType.INFORMATION, "Warning", "alat not consistent at different steps!");
+			}
+			this.alat = alatTmp;
+		}
+		catch(Exception e) {
+			e.printStackTrace();
+		}
+	}
+	public void addNewAtomPosition() {
+		atomicPositions.add(new ArrayList<Atom>());
+	}
+	public void addNewCell() {
+		cellParameter.add(new Cell());
+	}
+	public boolean addCellParameter(String strLine) {
+		
+		String[] splitted = strLine.trim().split("\\s+");//split the string by whitespaces
+		if(splitted.length<3) {return false;}//end of one cell_para
+		
+		Double x=null,
+		y=null,
+		z=null;
+		try {
+			x = Double.valueOf(splitted[0]);
+			y = Double.valueOf(splitted[1]);
+			z = Double.valueOf(splitted[2]);
+		}catch(Exception e) {
+			return false;
+		}
+		if(x==null || y==null || z==null) {return false;}
+		
+		cellParameter.get(cellParameter.size()-1).addCoor(x, y, z);
+		
+		return true;
+	}
+	public boolean addAtomicPosition(String strLine) {
+		//return false if no atom position is added
+		if(strLine==null || strLine.isEmpty() || strLine.trim().length()==0) {return false;}
+		String[] splitted = strLine.trim().split("\\s+");//split the string by whitespaces
+		if(splitted.length<4) {return false;}
+		ChemicalElements atomSpecies=null;
+		Double x=null,
+		y=null,
+		z=null;
+		try {
+			atomSpecies = ChemicalElements.valueOf(splitted[0]);
+			x = Double.valueOf(splitted[1]);
+			y = Double.valueOf(splitted[2]);
+			z = Double.valueOf(splitted[3]);
+		}catch(Exception e) {
+			return false;
+		}
+		if(atomSpecies==null || x==null || y==null || z==null) {return false;}
+		atomicPositions.get(atomicPositions.size()-1).add(new Atom(atomSpecies,x,y,z));
+		return true;
 	}
 	public ArrayList<ArrayList<Double>> getDosArray() {
 		return dosArray;
@@ -63,6 +138,9 @@ public class FileDataClass {
 		for(ArrayList<Double> ard:dosArray) {
 			if(ard!=null) {ard.clear();}
 		}
+		for(ArrayList<Atom> ard:atomicPositions) {
+			if(ard!=null) {ard.clear();}
+		}
 		energyArray.clear();
 		fermiLevel.clear();
 		homoLevel.clear();
@@ -70,7 +148,12 @@ public class FileDataClass {
 		absoluteMag.clear();
 		dosArray.clear();
 		dosHeader.clear();
-
+		
+		atomicPositions.clear();
+		alat = null;
+		cellParameter.clear();
+		
+		
 		nstep=1;fermiDos=null;
 		isJobDone=false;
 		hasScf=false;hasScfFinished=false;isMD=false;isMDFinished=false;isOpt=false;isOptFinished=false;
@@ -234,6 +317,22 @@ public class FileDataClass {
 					if(val!=null) {strTmp+=(val.toString()+",");}
 				}
 				strTmp+=" eV\n";
+			}
+			
+			//
+			if(atomicPositions.size()>0) {
+				strTmp+="ATOMIC_POSITIONS: "+Integer.toString(atomicPositions.size())+"\n";
+				strTmp+="Last position:\n";
+				for(Atom atomTmp : atomicPositions.get(atomicPositions.size()-1)) {
+					strTmp+=(atomTmp.printPositions()+"\n");
+				}
+			}
+			if(cellParameter.size()>0) {
+				strTmp+="CELL_PARAMETERS: "+Integer.toString(cellParameter.size())+"\n";
+				strTmp+=("Last cell:\n"+cellParameter.get(cellParameter.size()-1).toString()+"\n");
+			}
+			if(alat!=null) {
+				strTmp+="alat: "+Double.toString(alat)+"\n";
 			}
 		
 		}

@@ -52,7 +52,7 @@ public class Project implements Serializable{
 	
 	private ArrayList<InputAgentGeo> geoList;
 	private Integer activeGeoInd;
-	private Boolean boolGeoActive;
+	private boolean boolGeoActive;
 	private String calcScfDefault;
 	
 
@@ -99,10 +99,10 @@ public class Project implements Serializable{
 		viewer3D.buildGeometry(getAgentGeo());//null ok
 		//viewer3D.buildSampleMolecule();
 	}
-	public void setGeoActive(Boolean bl) {
+	public void setGeoActive(boolean bl) {
 		boolGeoActive = bl;
 	}
-	public Boolean getGeoActive() {
+	public boolean getGeoActive() {
 		return boolGeoActive;
 	}
 	public void setProjectDefault(EnumStep es) {
@@ -192,7 +192,19 @@ public class Project implements Serializable{
 	}
 	public void setActiveGeoInd(int ind) {
 		if (ind>=geoList.size()) return;
-		activeGeoInd = ind;
+		if(boolGeoActive) {
+			//if the main window is in the geometry page
+			activeGeoInd = ind;
+			ShowAlert.showAlert(AlertType.INFORMATION, "Info", "Geometry changed in geometry: "+Integer.toString(ind));
+		}
+		else {
+			//if the main window is in the calculation page
+			CalculationClass calc = getActiveCalc();
+			if(calc==null) {return;}
+			calc.setGeoInd(ind);
+			ShowAlert.showAlert(AlertType.INFORMATION, "Info", "Geometry changed in calculation "+calc.getCalcName()+": "+Integer.toString(ind));
+		}
+		
 	}
 	public ArrayList<String> getCalcList(){
 		return calcList;

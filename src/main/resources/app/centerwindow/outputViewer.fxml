@@ -47,6 +47,7 @@
                   <Label text="Show" />
                   <ComboBox fx:id="comboAnalysis" />
                   <Separator orientation="VERTICAL" />
+                  <Button fx:id="buttonRefresh" mnemonicParsing="false" text="refresh" />
                 <Button fx:id="openAsButton" mnemonicParsing="false" text="Open with..." />
                </children>
             </HBox>
