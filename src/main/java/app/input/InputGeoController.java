@@ -22,17 +22,13 @@ package app.input;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ResourceBundle;
-
 import com.consts.Constants.EnumStep;
-
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.Accordion;
-import javafx.scene.control.Alert;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TitledPane;
-import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
@@ -57,6 +53,8 @@ public class InputGeoController extends InputController{
 	@FXML private TitledPane titlePaneElements,
 	titlePaneCell,
 	titlePaneAtoms;
+	
+	@FXML private Label labelGeoNote;
 
     private VBox vboxAtoms,
     vboxCell,
@@ -80,15 +78,12 @@ public class InputGeoController extends InputController{
     public void initialize() {
 		// load sub panes, if not already loaded
 		if (contCell==null) {
+			setEnabled();
 			comboGeo.getItems().add("1");
 			comboGeo.getSelectionModel().select(0);
 			comboGeo.getSelectionModel().selectedIndexProperty().addListener((ov, oldVal, newVal) -> {
 				mainClass.projectManager.setCurrentGeoInd((int) newVal);
-				Alert alert1 = new Alert(AlertType.INFORMATION);
-		    	alert1.setTitle("Info");
-		    	alert1.setContentText(Integer.toString((int) newVal));
-
-		    	alert1.showAndWait();
+				loadProjectParameters();
 			});
 			try {
 				contCell = new InputGeoCellController(mainClass);
@@ -132,9 +127,11 @@ public class InputGeoController extends InputController{
     		contElem.loadProjectParameters();}
 	}
     public void setDisabled() {
-    	cellPane.setDisable(true);elementsPane.setDisable(true);atomsPane.setDisable(true);
+    	labelGeoNote.setVisible(true);
+    	titlePaneElements.setVisible(false);titlePaneCell.setVisible(false);titlePaneAtoms.setVisible(false);
     }
     public void setEnabled() {
-    	cellPane.setDisable(false);elementsPane.setDisable(false);atomsPane.setDisable(false);
+    	labelGeoNote.setVisible(false);
+    	titlePaneElements.setVisible(true);titlePaneCell.setVisible(true);titlePaneAtoms.setVisible(true);
     }
 }

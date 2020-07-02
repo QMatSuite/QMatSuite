@@ -76,7 +76,8 @@ public class OutputViewerController implements Initializable{
     deleteFileButton,
     openAsButton,
     buttonRefreshFolder,
-    buttonRefreshFiles;
+    buttonRefreshFiles,
+    buttonRefresh;
     
     @FXML private Label labelFileCategory,
     labelPlot;
@@ -115,8 +116,9 @@ public class OutputViewerController implements Initializable{
     	mainClass = mc;
     	textFlowDisplay = new TextFlow();
     	fileData = new FileDataClass();
-    	xAxis = new NumberAxis();
-    	yAxis = new NumberAxis();
+    	xAxis = new NumberAxis();xAxis.setAutoRanging(true);xAxis.setForceZeroInRange(false);
+    	yAxis = new NumberAxis();yAxis.setAutoRanging(true);yAxis.setForceZeroInRange(false);
+    	
     	lineChart = new LineChart(xAxis, yAxis);
     	
     	plotTypeDos = new ArrayList<String>() {
@@ -181,10 +183,14 @@ public class OutputViewerController implements Initializable{
 				}
 				else {
 					//select text first if there has been no selection
-					comboAnalysis.getSelectionModel().select(EnumAnalysis.plot2D);
+					comboAnalysis.getSelectionModel().select(EnumAnalysis.info);
 				}
 			}
+			loadFile();
 			updateIoDisplay();//*** not efficient because runs twice
+		});
+		buttonRefresh.setOnAction((event) -> {
+			loadFile();
 		});
 		comboAnalysis.getSelectionModel().selectedItemProperty().addListener((ov, oldTab, newTab) -> {
 			if(newTab!=null) {updateIoDisplay();}
@@ -215,6 +221,7 @@ public class OutputViewerController implements Initializable{
 		buttonRefreshFiles.setOnAction((event) -> {
 			updateFilesInCalcFolder();
 		});
+		
 		deleteFolderButton.setOnAction((event) -> {
 			try {
 				deleteDirectory(calcFolder);
@@ -258,6 +265,17 @@ public class OutputViewerController implements Initializable{
 			listFiles.getSelectionModel().select(tmpInt);//will invoke selection change listener and update "inoutFiles"
 		}
 	}
+	private boolean loadFile() {
+		//false is fail to load
+		boolean rt = false;
+		if(fileCategory==null) {rt = false;}
+		else {
+			if(fileCategory.equals(EnumFileCategory.stdout)) {rt = loadStdOut();}
+			else if(fileCategory.equals(EnumFileCategory.dos)){rt = loadDOS();}
+		}
+		if(!rt) {showCannotLoad();}
+		return rt;
+	}
 	private void updateIoDisplay() {
 		EnumAnalysis analTmp = comboAnalysis.getSelectionModel().getSelectedItem();
 		
@@ -276,12 +294,10 @@ public class OutputViewerController implements Initializable{
 			displayScroll.setContent(textFlowDisplay);
 			textFlowDisplay.getChildren().clear();
 			if(fileCategory.equals(EnumFileCategory.stdout)) {
-				if(!loadStdOut()) {showCannotLoad();return;}
 				if(analTmp.equals(EnumAnalysis.info)) {textFlowDisplay.getChildren().add(new Text(fileData.toString()));}
 				else if(analTmp.equals(EnumAnalysis.plot2D)) {plot2dStdOut();}
 			}
 			else if(fileCategory.equals(EnumFileCategory.dos)){
-				if(!loadDOS()) {showCannotLoad();return;}
 				if(analTmp.equals(EnumAnalysis.info)) {textFlowDisplay.getChildren().add(new Text(fileData.toString()));}
 				else if(analTmp.equals(EnumAnalysis.plot2D)) {plot2dDos();}
 			}
@@ -394,18 +410,40 @@ public class OutputViewerController implements Initializable{
 		
 		ArrayList<ArrayList<Double>> energyTmp = fileData.getEnergyArray();
 		
-		if(plotType.equals("SCF E conv") && !energyTmp.isEmpty()) {
-			xAxis.setLabel("Iterations");
-			yAxis.setLabel("Total Energy (Ry)");
-			Series<Double,Double> dataSeries1 = new Series<Double, Double>();
-	        dataSeries1.setName("SCF Energy Convergence");
-			ArrayList<Double> scfTmp = energyTmp.get(energyTmp.size()-1);
-			if(scfTmp.isEmpty() && energyTmp.size()>=2) {scfTmp = energyTmp.get(energyTmp.size()-2);}
-			for(int i=0;i<scfTmp.size();i++) {
-		        dataSeries1.getData().add(new Data<Double, Double>( (double) i+1, scfTmp.get(i)));
+		if(!energyTmp.isEmpty()){
+			if(plotType.equals("SCF E conv")) {
+				xAxis.setLabel("Iterations");
+				yAxis.setLabel("Total Energy (Ry)");
+				Series<Double,Double> dataSeries1 = new Series<Double, Double>();
+		        dataSeries1.setName("SCF Energy Convergence");
+				ArrayList<Double> scfTmp = energyTmp.get(energyTmp.size()-1);
+				if(scfTmp.isEmpty() && energyTmp.size()>=2) {scfTmp = energyTmp.get(energyTmp.size()-2);}
+				for(int i=0;i<scfTmp.size();i++) {
+			        dataSeries1.getData().add(new Data<Double, Double>( (double) i+1, scfTmp.get(i)));
+				}
+				//dataSeries1.getData().add(new Data<Double, Double>( 0.0, -20.0));
+				
+				lineChart.getData().add(dataSeries1);
 			}
-			lineChart.getData().add(dataSeries1);
+			else if(plotType.equals("OPT E conv")) {
+				xAxis.setLabel("Steps");
+				yAxis.setLabel("Total Energy (Ry)");
+				Series<Double,Double> dataSeries1 = new Series<Double, Double>();
+		        dataSeries1.setName("Optimization Energy Convergence");
+				
+				for(int i=0;i<energyTmp.size();i++) {
+					if(energyTmp.get(i).size()>0) {
+						Double dbTmp = energyTmp.get(i).get(energyTmp.get(i).size()-1);
+						if(dbTmp!=null) {dataSeries1.getData().add(new Data<Double, Double>( (double) i+1, dbTmp));}
+					}
+				}
+				lineChart.getData().add(dataSeries1);
+			}
+			else if(plotType.equals("OPT F conv")) {
+				
+			}
 		}
+		
         
         displayScroll.setContent(lineChart);
 
@@ -449,6 +487,8 @@ public class OutputViewerController implements Initializable{
 		String strTmp1 = checkErrors();
 		if(strTmp1!=null && !strTmp1.isEmpty()) {return false;}
 		fileData.clearAll();
+		boolean recordAtomicPos = false;
+		boolean recordCellPara = false;
 		try {
 		    Scanner sc = new Scanner(inoutFiles); 
 		  
@@ -462,6 +502,23 @@ public class OutputViewerController implements Initializable{
 		    	if(strTmp==null || strTmp.isEmpty()) continue;
 		    	
 		    	String lowerCaseStr = strTmp.toLowerCase();
+		    	if(recordAtomicPos) {
+		    		recordAtomicPos = fileData.addAtomicPosition(strTmp);
+		    	}
+		    	if(recordCellPara) {
+		    		recordCellPara = fileData.addCellParameter(strTmp);
+		    	}
+		    	if(strTmp.contains("ATOMIC_POSITIONS")) {
+		    		recordAtomicPos = true;//must be after fileData.addAtomicPosition()
+		    		fileData.addNewAtomPosition();
+		    	}
+		    	if(strTmp.contains("CELL_PARAMETERS")) {
+		    		recordCellPara = true;
+		    		fileData.addNewCell();
+		    	}
+		    	if(strTmp.contains("alat=")) {
+		    		fileData.parseAlat(strTmp);
+		    	}
 		    	if(lowerCaseStr.contains("nstep")&& strTmp.contains("=")) {
 		    		String[] splitted = strTmp.trim().split("\\s+");//split the string by whitespaces
 		    		try {

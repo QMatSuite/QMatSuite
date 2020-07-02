@@ -44,6 +44,7 @@
                   <Label fx:id="labelGeoRight" GridPane.columnIndex="2" />
                </children>
             </GridPane>
+            <Label fx:id="labelGeoNote" text="  Please go to the geometry window to view and edit the details." />
               <Accordion fx:id="accordGeo">
                   <panes>
                       <TitledPane fx:id="titlePaneCell" animated="false" text="Cell">
