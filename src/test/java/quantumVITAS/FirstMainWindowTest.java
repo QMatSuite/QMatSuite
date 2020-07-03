@@ -122,8 +122,8 @@ public class FirstMainWindowTest extends MainWindowTest{
 		
 		clickOn(nd);
 		
-		TextField textElem = (TextField) from(nd).lookup("#textElem").queryTextInputControl();
-		clickOn(textElem).type(KeyCode.CAPS,KeyCode.S,KeyCode.CAPS,KeyCode.I);//Si
+//		TextField textElem = (TextField) from(nd).lookup("#textElem").queryTextInputControl();
+//		clickOn(textElem).type(KeyCode.CAPS,KeyCode.S,KeyCode.CAPS,KeyCode.I);//Si
 		TextField textX = (TextField) from(nd).lookup("#textX").queryTextInputControl();
 		clickOn(textX).type(KeyCode.DIGIT0);//0
 		TextField textY = (TextField) from(nd).lookup("#textY").queryTextInputControl();
@@ -137,7 +137,7 @@ public class FirstMainWindowTest extends MainWindowTest{
 		clickOn(addButton);
 		clickOn(clearButton);
 		
-		clickOn(textElem).type(KeyCode.CAPS,KeyCode.S,KeyCode.CAPS,KeyCode.I);//Si
+//		clickOn(textElem).type(KeyCode.CAPS,KeyCode.S,KeyCode.CAPS,KeyCode.I);//Si
 		clickOn(textX).type(KeyCode.DIGIT0,KeyCode.DECIMAL,KeyCode.DIGIT2,KeyCode.DIGIT5);//0.25
 		clickOn(textY).type(KeyCode.DIGIT0,KeyCode.DECIMAL,KeyCode.DIGIT2,KeyCode.DIGIT5);//0.25
 		clickOn(textZ).type(KeyCode.DIGIT0,KeyCode.DECIMAL,KeyCode.DIGIT2,KeyCode.DIGIT5);//0.25
