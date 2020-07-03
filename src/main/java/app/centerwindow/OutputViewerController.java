@@ -58,6 +58,9 @@ import com.consts.Constants.EnumNameList;
 import com.programconst.DefaultFileNames;
 import com.programconst.ProgrammingConsts;
 
+import app.input.CellParameter;
+import app.input.geo.Atom;
+
 public class OutputViewerController implements Initializable{
 
     @FXML private HBox rootHbox;
@@ -77,7 +80,8 @@ public class OutputViewerController implements Initializable{
     openAsButton,
     buttonRefreshFolder,
     buttonRefreshFiles,
-    buttonRefresh;
+    buttonRefresh,
+    buttonSaveGeo;
     
     @FXML private Label labelFileCategory,
     labelPlot;
@@ -111,6 +115,8 @@ public class OutputViewerController implements Initializable{
     private final ArrayList<String> plotTypeDos;
     
     private ArrayList<String> plotTypeStdOut;
+    
+
     		
     public OutputViewerController(MainClass mc) {
     	mainClass = mc;
@@ -191,6 +197,7 @@ public class OutputViewerController implements Initializable{
 		});
 		buttonRefresh.setOnAction((event) -> {
 			loadFile();
+			updateIoDisplay();
 		});
 		comboAnalysis.getSelectionModel().selectedItemProperty().addListener((ov, oldTab, newTab) -> {
 			if(newTab!=null) {updateIoDisplay();}
@@ -207,6 +214,17 @@ public class OutputViewerController implements Initializable{
 				e.printStackTrace();
 			}
 		});
+		buttonSaveGeo.setDisable(true);
+		buttonSaveGeo.setOnAction((event) -> {
+			if(fileData==null) {return;}
+			ArrayList<Atom> atomList = fileData.getFinalAtomicPositions();
+			CellParameter cellPara = fileData.getFinalCellParameter();
+			Double alat = fileData.getAlat();
+			if(atomList==null || atomList.isEmpty() || alat==null ) {return;}
+			String calcFolderName = listCalcFolders.getSelectionModel().getSelectedItem();
+			if(calcFolderName==null) {return;}
+			mainClass.projectManager.addGeoList(calcFolderName, atomList, cellPara, alat);
+		});
 		buttonShowMarker.selectedProperty().addListener((observable, oldValue, newValue) ->{
 			if(newValue==null) return;
 			lineChart.setCreateSymbols(newValue);
@@ -221,7 +239,6 @@ public class OutputViewerController implements Initializable{
 		buttonRefreshFiles.setOnAction((event) -> {
 			updateFilesInCalcFolder();
 		});
-		
 		deleteFolderButton.setOnAction((event) -> {
 			try {
 				deleteDirectory(calcFolder);
@@ -264,17 +281,6 @@ public class OutputViewerController implements Initializable{
 		if(tmpInt>=0 && listFiles.getItems()!=null && listFiles.getItems().size()>tmpInt) {
 			listFiles.getSelectionModel().select(tmpInt);//will invoke selection change listener and update "inoutFiles"
 		}
-	}
-	private boolean loadFile() {
-		//false is fail to load
-		boolean rt = false;
-		if(fileCategory==null) {rt = false;}
-		else {
-			if(fileCategory.equals(EnumFileCategory.stdout)) {rt = loadStdOut();}
-			else if(fileCategory.equals(EnumFileCategory.dos)){rt = loadDOS();}
-		}
-		if(!rt) {showCannotLoad();}
-		return rt;
 	}
 	private void updateIoDisplay() {
 		EnumAnalysis analTmp = comboAnalysis.getSelectionModel().getSelectedItem();
@@ -448,6 +454,21 @@ public class OutputViewerController implements Initializable{
         displayScroll.setContent(lineChart);
 
 	}
+	private boolean loadFile() {
+		//false is fail to load
+		boolean rt = false;
+		buttonSaveGeo.setDisable(true);
+		if(fileCategory==null) {rt = false;}
+		else {
+			if(fileCategory.equals(EnumFileCategory.stdout)) {
+				rt = loadStdOut();
+				if(fileData.isOpt&&fileData.isOptFinished) {buttonSaveGeo.setDisable(false);}
+			}
+			else if(fileCategory.equals(EnumFileCategory.dos)){rt = loadDOS();}
+		}
+		if(!rt) {showCannotLoad();}
+		return rt;
+	}
 	private boolean loadDOS() {//return false when error
 		String strTmp1 = checkErrors();
 		if(strTmp1!=null && !strTmp1.isEmpty()) {return false;}
@@ -516,7 +537,7 @@ public class OutputViewerController implements Initializable{
 		    		recordCellPara = true;
 		    		fileData.addNewCell();
 		    	}
-		    	if(strTmp.contains("alat=")) {
+		    	if(strTmp.contains("lattice parameter (alat)")) {
 		    		fileData.parseAlat(strTmp);
 		    	}
 		    	if(lowerCaseStr.contains("nstep")&& strTmp.contains("=")) {

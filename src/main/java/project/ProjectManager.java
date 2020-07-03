@@ -43,6 +43,8 @@ import agent.InputAgentNscf;
 import agent.InputAgentOpt;
 import agent.InputAgentScf;
 import agent.InputAgentTddft;
+import app.input.CellParameter;
+import app.input.geo.Atom;
 
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
@@ -69,6 +71,21 @@ public class ProjectManager{
 		workSpacePath = null;
 		pseudoLibPath = null;
 		qePath = null;
+	}
+	public Integer getActiveGeoInd(){
+		Project pj = this.getActiveProject();
+		if(pj!=null) {return pj.getActiveGeoInd();}
+		return null;
+	}
+	public int getGeoListSize() {
+		Project pj = this.getActiveProject();
+		if(pj!=null) {return pj.getGeoListSize();}
+		return 0;
+	}
+	public boolean isGeoActive() {
+		Project pj = this.getActiveProject();
+		if(pj!=null) {return pj.getGeoActive();}
+		return false;//false if there is no project
 	}
 	public Object getObject(String fieldName, EnumStep es) {
 		InputAgent ia;
@@ -118,6 +135,12 @@ public class ProjectManager{
 			return pj.getShow3DScene();
 		}
 		else {return null;}
+	}
+	public void addGeoList(String calcFolderName, ArrayList<Atom> atomList, CellParameter cellPara, Double alat) {
+		Project pj = this.getActiveProject();
+		if(pj!=null) {
+			pj.addGeoList(calcFolderName, atomList, cellPara, alat);
+		}
 	}
 	public File getWorkSpaceDir() {
 		if(workSpacePath==null) return null;
