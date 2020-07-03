@@ -40,7 +40,7 @@ public abstract class CalculationClass implements Serializable{
 	protected HashMap<EnumStep, String> commandList;
 	transient protected HashMap<EnumStep, QeInput> inputList;
 	protected HashMap<EnumStep, InputAgent> agentList;//direct record of the GUI
-	private Integer geometryIndex;
+	private int geometryIndex;
 	
 	protected ArrayList<EnumStep> orderList;
 
@@ -57,10 +57,10 @@ public abstract class CalculationClass implements Serializable{
 	public void setCalcName(String newName) {
 		if(newName!=null && !newName.isEmpty()) {calcName = newName;}
 	}
-	public Integer getGeoInd() {
+	public int getGeoInd() {
 		return geometryIndex;
 	}
-	public void setGeoInd(Integer ind) {
+	public void setGeoInd(int ind) {
 		geometryIndex = ind;
 	}
 	public Boolean existStep(EnumStep es) {

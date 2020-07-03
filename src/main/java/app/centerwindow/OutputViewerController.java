@@ -59,6 +59,7 @@ import com.programconst.DefaultFileNames;
 import com.programconst.ProgrammingConsts;
 
 import app.input.CellParameter;
+import app.input.InputGeoController;
 import app.input.geo.Atom;
 
 public class OutputViewerController implements Initializable{
@@ -116,10 +117,11 @@ public class OutputViewerController implements Initializable{
     
     private ArrayList<String> plotTypeStdOut;
     
-
+    private InputGeoController contGeo;
     		
-    public OutputViewerController(MainClass mc) {
+    public OutputViewerController(MainClass mc, InputGeoController cg) {
     	mainClass = mc;
+    	contGeo = cg;
     	textFlowDisplay = new TextFlow();
     	fileData = new FileDataClass();
     	xAxis = new NumberAxis();xAxis.setAutoRanging(true);xAxis.setForceZeroInRange(false);
@@ -145,6 +147,8 @@ public class OutputViewerController implements Initializable{
 		//comboPlot.setVisible(false);labelPlot.setVisible(false);
 		hboxPlotToolbar.setVisible(false);
 		listCalcFolders.getSelectionModel().selectedItemProperty().addListener((ov, oldTab, newTab) -> {
+			fileData.clearAll();buttonSaveGeo.setDisable(true);
+			
 			if(newTab==null || newTab.isEmpty()) return;
 			File pjFolder = getProjectFolder();
 			if(pjFolder==null || !pjFolder.canRead()) return;
@@ -154,6 +158,7 @@ public class OutputViewerController implements Initializable{
 		});
 		listFiles.getSelectionModel().selectedItemProperty().addListener((ov, oldTab, newTab) -> {
 			fileCategory = null;
+			fileData.clearAll();buttonSaveGeo.setDisable(true);
 			labelFileCategory.setText("");
 			EnumAnalysis analTmp = comboAnalysis.getSelectionModel().getSelectedItem();//cache the selected item before clearing
 			comboAnalysis.getItems().clear();
@@ -224,6 +229,7 @@ public class OutputViewerController implements Initializable{
 			String calcFolderName = listCalcFolders.getSelectionModel().getSelectedItem();
 			if(calcFolderName==null) {return;}
 			mainClass.projectManager.addGeoList(calcFolderName, atomList, cellPara, alat);
+			if(contGeo!=null) {contGeo.loadProjectParameters();}
 		});
 		buttonShowMarker.selectedProperty().addListener((observable, oldValue, newValue) ->{
 			if(newValue==null) return;
@@ -277,9 +283,13 @@ public class OutputViewerController implements Initializable{
 		for (File f : fileList) {
 			listFiles.getItems().add(f.getName());
 		}
-		
-		if(tmpInt>=0 && listFiles.getItems()!=null && listFiles.getItems().size()>tmpInt) {
-			listFiles.getSelectionModel().select(tmpInt);//will invoke selection change listener and update "inoutFiles"
+		if(listFiles.getItems()!=null) {
+			if(tmpInt>=0 && listFiles.getItems().size()>tmpInt) {
+				listFiles.getSelectionModel().select(tmpInt);//will invoke selection change listener and update "inoutFiles"
+			}
+			else if(!listFiles.getItems().isEmpty()){
+				listFiles.getSelectionModel().select(0);//select first file
+			}
 		}
 	}
 	private void updateIoDisplay() {
