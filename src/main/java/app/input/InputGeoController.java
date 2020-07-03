@@ -21,6 +21,7 @@ package app.input;
 
 import java.io.IOException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.ResourceBundle;
 import com.consts.Constants.EnumStep;
 import com.error.ShowAlert;
@@ -31,6 +32,7 @@ import javafx.scene.control.Accordion;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TitledPane;
 import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
@@ -58,6 +60,8 @@ public class InputGeoController extends InputController{
 	
 	@FXML private Label labelGeoNote;
 
+	@FXML private Button buttonDeleteGeo;
+	
     private VBox vboxAtoms,
     vboxCell,
     vboxElements;
@@ -113,23 +117,33 @@ public class InputGeoController extends InputController{
 			
 			//when elementsPane expanded, automatically update the element table
 			accordGeo.expandedPaneProperty().addListener((obs, oldSelect, newSelect) -> {
-	                if (titlePaneElements==newSelect && contElem!=null) {//here use == because check reference
-	                	contElem.loadProjectParameters();
-	                }
-	                if (contCell!=null) {contCell.updateCellA();}
-		        });
+                if (titlePaneElements==newSelect && contElem!=null) {//here use == because check reference
+                	contElem.loadProjectParameters();
+                }
+                if (contCell!=null) {contCell.updateCellA();}
+	        });
+			buttonDeleteGeo.setOnAction((event) -> {
+				int ind = comboGeo.getSelectionModel().getSelectedIndex();
+				mainClass.projectManager.removeGeoList(ind);
+				loadGeoIndCombo();
+			});
 		}
 	}
     public void loadGeoIndCombo() {
     	int sizeGeoList = mainClass.projectManager.getGeoListSize();
-		if(sizeGeoList<=0) {
-			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "No item in geoList.");
+    	ArrayList<String> arrString = mainClass.projectManager.getGeoName();
+		if(sizeGeoList<=0 || arrString==null) {
+			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "No item in geoList/geoName.");
+			return;
+		}
+		if(sizeGeoList!=arrString.size()) {
+			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Different size of geoList and geoName.");
 			return;
 		}
 		if(comboGeo.getItems().size() != sizeGeoList) {
 			comboGeo.getItems().clear();
 			for(int i=0;i<sizeGeoList;i++) {
-				comboGeo.getItems().add(Integer.toString(i+1));
+				comboGeo.getItems().add(Integer.toString(i+1)+"_"+arrString.get(i));
 			}
 		}
 		Integer intTmp = mainClass.projectManager.getActiveGeoInd();

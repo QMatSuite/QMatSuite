@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.scene.control.Accordion?>
+<?import javafx.scene.control.Button?>
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
@@ -42,6 +43,7 @@
                   <Label fx:id="labelGeoLeft" prefHeight="17.0" prefWidth="154.0" text="Use the following geometry: " GridPane.halignment="RIGHT" />
                   <ComboBox fx:id="comboGeo" prefHeight="25.0" prefWidth="95.0" GridPane.columnIndex="1" />
                   <Label fx:id="labelGeoRight" GridPane.columnIndex="2" />
+                  <Button fx:id="buttonDeleteGeo" mnemonicParsing="false" text="Delete geometry" GridPane.columnIndex="2" />
                </children>
             </GridPane>
             <Label fx:id="labelGeoNote" text="  Please go to the geometry window to view and edit the details." />

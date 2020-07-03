@@ -11,13 +11,13 @@
 
 <ScrollPane xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
    <content>
-      <VBox prefHeight="500.0" prefWidth="280.0">
+      <VBox prefHeight="500.0" prefWidth="250.0">
          <children>
-            <GridPane hgap="5.0">
+            <GridPane hgap="2.0">
               <columnConstraints>
-                <ColumnConstraints hgrow="SOMETIMES" maxWidth="101.0" minWidth="10.0" prefWidth="94.0" />
-                <ColumnConstraints hgrow="SOMETIMES" maxWidth="101.5" minWidth="10.0" prefWidth="92.5" />
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="92.5" minWidth="10.0" prefWidth="79.5" />
+                <ColumnConstraints hgrow="SOMETIMES" maxWidth="101.0" minWidth="10.0" prefWidth="92.0" />
+                <ColumnConstraints hgrow="SOMETIMES" maxWidth="101.5" minWidth="10.0" prefWidth="92.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="92.5" minWidth="10.0" prefWidth="59.0" />
               </columnConstraints>
               <rowConstraints>
                 <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
@@ -28,7 +28,7 @@
                   <Button fx:id="buttonRefresh" mnemonicParsing="false" text="Refresh" GridPane.columnIndex="2" />
                </children>
                <VBox.margin>
-                  <Insets left="5.0" />
+                  <Insets left="2.0" />
                </VBox.margin>
             </GridPane>
             <TreeTableView fx:id="projectTree" prefHeight="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS" />

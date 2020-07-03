@@ -71,10 +71,16 @@ public class PathsController implements Initializable{
 			DirectoryChooser dirChooser = new DirectoryChooser ();
 			
 			//go to current directory
-			String currentPath = Paths.get(".").toAbsolutePath().normalize().toString();
-			File tmpFile = new File(currentPath);
-			if(tmpFile.canRead()) {
-				dirChooser.setInitialDirectory(tmpFile);
+			String pathNow = textQEPath.getText();
+			if(pathNow==null || pathNow.isEmpty() || !(new File(pathNow)).canRead()) {
+				String currentPath = Paths.get(".").toAbsolutePath().normalize().toString();
+				File tmpFile = new File(currentPath);
+				if(tmpFile.canRead()) {
+					dirChooser.setInitialDirectory(tmpFile);
+				}
+			}
+			else {
+				dirChooser.setInitialDirectory(new File(pathNow));
 			}
 			
 			File selectedDir = dirChooser.showDialog((Stage)acp.getScene().getWindow());
@@ -83,8 +89,14 @@ public class PathsController implements Initializable{
 				mainClass.projectManager.qePath = selectedDir.getPath();
 				textQEPath.setText(selectedDir.getPath());
 				mainClass.projectManager.writeGlobalSettings(SettingKeys.qePath.toString(),selectedDir.getPath());
-				textQEPath.setBackground(new Background(new BackgroundFill(Coloring.validFile, 
-						CornerRadii.EMPTY, Insets.EMPTY)));
+				if((new File(selectedDir,"pw.x")).exists() || (new File(selectedDir,"pw.exe")).exists()) {
+					textQEPath.setBackground(new Background(new BackgroundFill(Coloring.validFile, 
+							CornerRadii.EMPTY, Insets.EMPTY)));
+				}
+				else {
+					textQEPath.setBackground(new Background(new BackgroundFill(Coloring.invalidFile, 
+							CornerRadii.EMPTY, Insets.EMPTY)));
+				}
 			}
 			
 		});

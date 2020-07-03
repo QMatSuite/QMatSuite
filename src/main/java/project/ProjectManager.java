@@ -72,6 +72,11 @@ public class ProjectManager{
 		pseudoLibPath = null;
 		qePath = null;
 	}
+	public ArrayList<String> getGeoName(){
+		Project pj = this.getActiveProject();
+		if(pj!=null) {return pj.getGeoName();}
+		return null;
+	}
 	public Integer getActiveGeoInd(){
 		Project pj = this.getActiveProject();
 		if(pj!=null) {return pj.getActiveGeoInd();}
@@ -249,11 +254,30 @@ public class ProjectManager{
 			}
 		}
 	}
+	public void removeGeoList(int ind) {
+		Project pj = getActiveProject();
+		if(pj!=null) {
+			boolean bl = pj.removeGeoList(ind);
+			if(bl) {
+				File wsDir = getWorkSpaceDir();
+				if(wsDir==null || !wsDir.canWrite()) {return;}
+				saveActiveProjectInMultipleFiles(wsDir, false,false);
+				ShowAlert.showAlert(AlertType.INFORMATION, "Info", "Deleted successfully and project saved.");
+			}
+		}
+	}
+	public void saveActiveProjectInMultipleFiles() {
+		File wsDir = getWorkSpaceDir();
+		if(wsDir==null || !wsDir.canWrite()) {return;}
+		saveActiveProjectInMultipleFiles(wsDir);
+	}
 	public void saveActiveProjectInMultipleFiles(File workSpaceDir) {
 		//save all calculations, show success window
 		saveActiveProjectInMultipleFiles(workSpaceDir, false,true);
 	}
+	
 	public void saveActiveProjectInMultipleFiles(File workSpaceDir, boolean saveCurrentCalc, boolean showSuccess) {
+		//saveCurrentCalc: true -> ONLY save current calculation. false -> save all calculations
 		if(workSpaceDir==null || !workSpaceDir.canWrite()) {
 			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "No workspace! Cannot save...");
 			return;

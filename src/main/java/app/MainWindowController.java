@@ -267,7 +267,7 @@ public class MainWindowController implements Initializable{
 			e.printStackTrace();
 		}
 		
-		workTabContent =  new WorkTabContent(mainClass,workSpaceTabPane,projectTabDict);
+		workTabContent =  new WorkTabContent(mainClass,workSpaceTabPane,projectTabDict,contGeo);
 		
 		contTree.buttonOpenSelected.setOnAction((event) -> {
 			String projName = contTree.getSelectedProject();
@@ -565,9 +565,7 @@ public class MainWindowController implements Initializable{
 		});
 
 		saveProjectButton.setOnAction((event) -> {
-			File wsDir = mainClass.projectManager.getWorkSpaceDir();
-			if(wsDir==null || !wsDir.canWrite()) {return;}
-			mainClass.projectManager.saveActiveProjectInMultipleFiles(wsDir);
+			mainClass.projectManager.saveActiveProjectInMultipleFiles();
 		});
 		menuSaveProjectAs.setOnAction((event) -> {
 			
@@ -614,16 +612,15 @@ public class MainWindowController implements Initializable{
 	    	alert1.showAndWait();
 		});
 		
+		Scene sceneSettings = new Scene(borderSettings);
+        Stage stageSettings = new Stage();
+        stageSettings.setTitle("Settings");
+        stageSettings.initModality(Modality.APPLICATION_MODAL);
+        stageSettings.initStyle(StageStyle.DECORATED);
+        stageSettings.setScene(sceneSettings);
+        
 		settingsMenuItem.setOnAction((event) -> {
-			
-			//Scene scene = new Scene(borderSettings,600,450);
-			Scene scene = new Scene(borderSettings);
-	        Stage stage = new Stage();
-	        stage.setTitle("Settings");
-	        stage.initModality(Modality.APPLICATION_MODAL);
-	        stage.initStyle(StageStyle.DECORATED);
-	        stage.setScene(scene);
-	        stage.showAndWait();
+	        stageSettings.showAndWait();
 		});
 		
 		buttonOpenWorkSpace.setOnAction((event) -> {

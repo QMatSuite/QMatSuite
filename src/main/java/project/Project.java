@@ -41,7 +41,7 @@ import com.error.ShowAlert;
 import input.ContainerInputString;
 
 public class Project implements Serializable{
-	//EVRYTHING SHOULD BE ACCESSED ON THE PROJECT LEVEL, NOT ON THE CALCULATION CLASS LEVEL
+	//EVRYTHING SHOULD BE ACCESSED AT LEAST ON THE PROJECT LEVEL, NOT ON THE CALCULATION CLASS LEVEL
 	/**
 	 * 
 	 */
@@ -57,6 +57,7 @@ public class Project implements Serializable{
 	transient private Boolean show3DScene;//if true, show 3D structure in the workspace. Otherwise show in/output files
 	
 	private ArrayList<InputAgentGeo> geoList;
+	private ArrayList<String> geoName;
 	private Integer activeGeoInd;
 	private boolean boolGeoActive;
 	private String calcScfDefault;
@@ -82,13 +83,39 @@ public class Project implements Serializable{
 		nameProject = np;
 		calcDict = new HashMap<String, CalculationClass>();
 		calcList = new ArrayList<String>();
+		geoName = new ArrayList<String>();
 		projectDefault = new HashMap<EnumStep, InputAgent>();
 		geoList = new ArrayList<InputAgentGeo>();
 		geoList.add(new InputAgentGeo());//at least have one Geometry
+		geoName.add("Original");//at least have one Geometry
 		activeGeoInd = 0;
 		boolGeoActive = true;
 		calcScfDefault = null;
 		viewer3D = new WorkScene3D();
+	}
+	public ArrayList<String> getGeoName(){
+		return geoName;
+	}
+	public boolean removeGeoList(int ind) {
+		if(ind<0 || ind>geoList.size()) {
+			ShowAlert.showAlert(AlertType.INFORMATION, "Warning", "Geometry deleted out of bound.");
+			return false;
+		}
+		if(ind==0) {
+			ShowAlert.showAlert(AlertType.INFORMATION, "Warning", "Cannot delete the first geometry (the original one).");
+			return false;
+		}
+		for(CalculationClass calc : calcDict.values()) {
+			if(calc==null) {continue;}
+			if(calc.getGeoInd()==ind) {
+				ShowAlert.showAlert(AlertType.INFORMATION, "Warning", "Calculation "+calc.calcName+
+						" uses the geometry to be deleted ("+Integer.toString(ind+1)+"th). Change that and save first and then delete.");
+				return false;
+			}
+		}
+		geoList.remove(ind);geoName.remove(ind);
+		if(activeGeoInd!=null && activeGeoInd>=ind) {activeGeoInd-=1;}
+		return true;
 	}
 	public void addGeoList(String calcFolderName, ArrayList<Atom> atomList, CellParameter cellPara, Double alat) {
 		if(alat==null || atomList==null || atomList.isEmpty() || 
@@ -119,8 +146,12 @@ public class Project implements Serializable{
 		}
 		
 		iGeo.updateElemListAll();
-		geoList.add(iGeo);
-		ShowAlert.showAlert(AlertType.INFORMATION, "Geometry added", "Successfully added "+Integer.toString(geoList.size())+"th geometry");
+		String msg="";
+		int indexName = geoName.indexOf(calcFolderName);
+		if(indexName==-1) {geoList.add(iGeo);geoName.add(calcFolderName);msg="Successfully added "+Integer.toString(geoList.size());}
+		else {geoList.set(indexName,iGeo);msg="Successfully modified "+Integer.toString(indexName+1);}
+		
+		ShowAlert.showAlert(AlertType.INFORMATION, "Geometry added", msg+"th geometry");
 	}
 	public void setShow3DScene(Boolean bl) {
 		show3DScene = bl;
@@ -221,11 +252,7 @@ public class Project implements Serializable{
 			return geoList.get(activeGeoInd);//use project default
 		}
 		else {
-			Integer ind = getActiveCalc().getGeoInd();
-			if (ind != null) {
-				return geoList.get(getActiveCalc().getGeoInd());
-			}
-			else return null;
+			return geoList.get(getActiveCalc().getGeoInd());
 		}
 	}
 	public Integer getGeoListSize() {

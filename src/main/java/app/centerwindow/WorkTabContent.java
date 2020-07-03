@@ -3,6 +3,8 @@ package app.centerwindow;
 import java.io.IOException;
 import java.util.HashMap;
 import com.error.ShowAlert;
+
+import app.input.InputGeoController;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
@@ -25,13 +27,13 @@ public class WorkTabContent {
 	private OutputViewerController contOutput;
 	private HBox hboxOutput;
     
-	public WorkTabContent(MainClass mainClass,TabPane workSpaceTabPane,HashMap<String, Tab> projectTabDict) {
+	public WorkTabContent(MainClass mainClass,TabPane workSpaceTabPane,HashMap<String, Tab> projectTabDict, InputGeoController contGeo) {
 		this.mainClass = mainClass;
 		this.workSpaceTabPane = workSpaceTabPane;
 		this.projectTabDict = projectTabDict;
 
 		try {
-			contOutput = new OutputViewerController(mainClass);
+			contOutput = new OutputViewerController(mainClass,contGeo);
 			FXMLLoader fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/centerwindow/outputViewer.fxml"));
 			fxmlLoader.setController(contOutput);
 			hboxOutput = fxmlLoader.load();
