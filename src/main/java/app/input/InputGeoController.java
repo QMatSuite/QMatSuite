@@ -23,12 +23,14 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.ResourceBundle;
 import com.consts.Constants.EnumStep;
+import com.error.ShowAlert;
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.Accordion;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TitledPane;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
@@ -79,11 +81,11 @@ public class InputGeoController extends InputController{
 		// load sub panes, if not already loaded
 		if (contCell==null) {
 			setEnabled();
-			comboGeo.getItems().add("1");
-			comboGeo.getSelectionModel().select(0);
 			comboGeo.getSelectionModel().selectedIndexProperty().addListener((ov, oldVal, newVal) -> {
-				mainClass.projectManager.setCurrentGeoInd((int) newVal);
-				loadProjectParameters();
+				if((int) newVal != -1) {
+					mainClass.projectManager.setCurrentGeoInd((int) newVal);
+					loadProjectParameters();
+				}
 			});
 			try {
 				contCell = new InputGeoCellController(mainClass);
@@ -118,7 +120,28 @@ public class InputGeoController extends InputController{
 		        });
 		}
 	}
+    public void loadGeoIndCombo() {
+    	int sizeGeoList = mainClass.projectManager.getGeoListSize();
+		if(sizeGeoList<=0) {
+			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "No item in geoList.");
+			return;
+		}
+		if(comboGeo.getItems().size() != sizeGeoList) {
+			comboGeo.getItems().clear();
+			for(int i=0;i<sizeGeoList;i++) {
+				comboGeo.getItems().add(Integer.toString(i+1));
+			}
+		}
+		Integer intTmp = mainClass.projectManager.getActiveGeoInd();
+		if(intTmp==null || intTmp<0 || intTmp>=comboGeo.getItems().size()) {
+			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "active geometry index out of bound.");
+			return;
+		}
+		comboGeo.getSelectionModel().select(intTmp);
+    }
     public void loadProjectParameters() {
+    	loadGeoIndCombo();
+		
     	if (contCell!=null) {
     		contCell.loadProjectParameters();}
     	if (contAtom!=null) {

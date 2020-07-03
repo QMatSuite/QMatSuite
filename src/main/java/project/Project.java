@@ -28,8 +28,14 @@ import javafx.scene.control.Alert.AlertType;
 import agent.InputAgent;
 import agent.InputAgentGeo;
 import app.centerwindow.WorkScene3D;
+import app.input.CellParameter;
+import app.input.geo.Atom;
+
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
+import com.consts.Constants.EnumUnitAtomPos;
+import com.consts.Constants.EnumUnitCellLength;
+import com.consts.Constants.EnumUnitCellParameter;
 import com.error.ShowAlert;
 
 import input.ContainerInputString;
@@ -84,6 +90,38 @@ public class Project implements Serializable{
 		calcScfDefault = null;
 		viewer3D = new WorkScene3D();
 	}
+	public void addGeoList(String calcFolderName, ArrayList<Atom> atomList, CellParameter cellPara, Double alat) {
+		if(alat==null || atomList==null || atomList.isEmpty() || 
+				calcFolderName==null || !calcDict.containsKey(calcFolderName)) {return;}
+		CalculationClass calcClass = calcDict.get(calcFolderName);
+		Integer indGeo = calcClass.getGeoInd();
+		if(indGeo==null || indGeo<0 || indGeo>=geoList.size()) {return;}
+
+		InputAgentGeo iGeo = (InputAgentGeo) geoList.get(indGeo).deepCopy();//clone the inputAgentGeo. Check whether works or not
+		
+		iGeo.unitCellLength=EnumUnitCellLength.bohr;
+		iGeo.unitAtomPos=EnumUnitAtomPos.alat;
+		iGeo.atomList.clear();
+		iGeo.atomList = atomList;
+		
+		if(cellPara!=null) {
+			iGeo.ibrav.setValue(0);//0 is free cell
+			iGeo.unitCellParameter=EnumUnitCellParameter.alat;
+			iGeo.vectorA1.setValue(cellPara.getAx());
+			iGeo.vectorA2.setValue(cellPara.getAy());
+			iGeo.vectorA3.setValue(cellPara.getAz());
+			iGeo.vectorB1.setValue(cellPara.getBx());
+			iGeo.vectorB2.setValue(cellPara.getBy());
+			iGeo.vectorB3.setValue(cellPara.getBz());
+			iGeo.vectorC1.setValue(cellPara.getCx());
+			iGeo.vectorC2.setValue(cellPara.getCy());
+			iGeo.vectorC3.setValue(cellPara.getCz());
+		}
+		
+		iGeo.updateElemListAll();
+		geoList.add(iGeo);
+		ShowAlert.showAlert(AlertType.INFORMATION, "Geometry added", "Successfully added "+Integer.toString(geoList.size())+"th geometry");
+	}
 	public void setShow3DScene(Boolean bl) {
 		show3DScene = bl;
 	}
@@ -116,7 +154,7 @@ public class Project implements Serializable{
 	}
 	public InputAgent getProjectDefault(EnumStep es) {
 		if (es!=null && projectDefault!=null && projectDefault.containsKey(es)){
-			return (InputAgent) projectDefault.get(es).clone();
+			return (InputAgent) projectDefault.get(es).deepCopy();
 		}
 		else return null;
 	}
@@ -190,19 +228,35 @@ public class Project implements Serializable{
 			else return null;
 		}
 	}
+	public Integer getGeoListSize() {
+		if(geoList==null) {return 0;}
+		return geoList.size();
+	}
+	public Integer getActiveGeoInd() {
+		if(boolGeoActive) {
+			//if the main window is in the geometry page
+			return activeGeoInd;
+		}
+		else {
+			//if the main window is in the calculation page
+			CalculationClass calc = getActiveCalc();
+			if(calc==null) {return null;}
+			return calc.getGeoInd();
+		}
+	}
 	public void setActiveGeoInd(int ind) {
 		if (ind>=geoList.size()) return;
 		if(boolGeoActive) {
 			//if the main window is in the geometry page
 			activeGeoInd = ind;
-			ShowAlert.showAlert(AlertType.INFORMATION, "Info", "Geometry changed in geometry: "+Integer.toString(ind));
+			//ShowAlert.showAlert(AlertType.INFORMATION, "Info", "Geometry changed in geometry: "+Integer.toString(ind));
 		}
 		else {
 			//if the main window is in the calculation page
 			CalculationClass calc = getActiveCalc();
 			if(calc==null) {return;}
 			calc.setGeoInd(ind);
-			ShowAlert.showAlert(AlertType.INFORMATION, "Info", "Geometry changed in calculation "+calc.getCalcName()+": "+Integer.toString(ind));
+			//ShowAlert.showAlert(AlertType.INFORMATION, "Info", "Geometry changed in calculation "+calc.getCalcName()+": "+Integer.toString(ind));
 		}
 		
 	}

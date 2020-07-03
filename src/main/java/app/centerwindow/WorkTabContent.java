@@ -24,11 +24,12 @@ public class WorkTabContent {
 	
 	private OutputViewerController contOutput;
 	private HBox hboxOutput;
-	
+    
 	public WorkTabContent(MainClass mainClass,TabPane workSpaceTabPane,HashMap<String, Tab> projectTabDict) {
 		this.mainClass = mainClass;
 		this.workSpaceTabPane = workSpaceTabPane;
 		this.projectTabDict = projectTabDict;
+
 		try {
 			contOutput = new OutputViewerController(mainClass);
 			FXMLLoader fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/centerwindow/outputViewer.fxml"));

@@ -31,7 +31,7 @@ public abstract class InputAgent implements Serializable{
 	private static final long serialVersionUID = -76527194192811401L;
 	
 	
-	public Object clone() {
+	public Object deepCopy() {//*****is this working as expected?
 		try {
 			ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 			ObjectOutputStream outputStrm = new ObjectOutputStream(outputStream);

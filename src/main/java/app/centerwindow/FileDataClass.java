@@ -6,7 +6,7 @@ import com.consts.ChemicalElements;
 import com.consts.Constants.EnumFileCategory;
 import com.error.ShowAlert;
 
-import app.input.Cell;
+import app.input.CellParameter;
 import app.input.geo.Atom;
 import javafx.scene.control.Alert.AlertType;
 
@@ -22,8 +22,9 @@ public class FileDataClass {
 	public EnumFileCategory fileCategory=null;
 	
 	private ArrayList<ArrayList<Atom>> atomicPositions;
+	private boolean finalPosition=false;
 	private Double alat = null;
-	private ArrayList<Cell> cellParameter;
+	private ArrayList<CellParameter> cellParameter;
 	
 	public int nstep=1;
 	public boolean isJobDone=false;
@@ -51,17 +52,40 @@ public class FileDataClass {
 		dosArray = new ArrayList<ArrayList<Double>>();
 		dosHeader = new ArrayList<String>();
 		atomicPositions = new ArrayList<ArrayList<Atom>>();
-		cellParameter = new ArrayList<Cell>();
+		cellParameter = new ArrayList<CellParameter>();
 	}
 	public void clearAll() {
 		clearEnergyArray();
 	}
+	public ArrayList<Atom> getFinalAtomicPositions(){
+		if(atomicPositions==null || atomicPositions.isEmpty() || !finalPosition) {return null;}
+		return atomicPositions.get(atomicPositions.size()-1);
+	}
+	public CellParameter getFinalCellParameter(){
+		if(cellParameter==null || cellParameter.isEmpty() || !finalPosition) {return null;}
+		return cellParameter.get(cellParameter.size()-1);
+	}
+	public Double getAlat(){
+		return alat;
+		
+	}
 	public void parseAlat(String strLine) {
 		if(strLine==null || !strLine.contains("=")) return;
 		String[] splitted = strLine.trim().split("=");
-		//remove everything except numbers (0-9) or dot (.) or minus sign (-)
+//		//remove everything except numbers (0-9) or dot (.) or minus sign (-)
+//		try {
+//			double alatTmp = Double.valueOf(splitted[1].replaceAll("[^\\d.-]", ""));
+//			if(this.alat!=null && this.alat!=alatTmp) {
+//				ShowAlert.showAlert(AlertType.INFORMATION, "Warning", "alat not consistent at different steps!");
+//			}
+//			this.alat = alatTmp;
+//		}
+//		catch(Exception e) {
+//			e.printStackTrace();
+//		}
 		try {
-			double alatTmp = Double.valueOf(splitted[1].replaceAll("[^\\d.-]", ""));
+			String[] splitted2 = splitted[1].trim().split("a");
+			double alatTmp = Double.valueOf(splitted2[0]);
 			if(this.alat!=null && this.alat!=alatTmp) {
 				ShowAlert.showAlert(AlertType.INFORMATION, "Warning", "alat not consistent at different steps!");
 			}
@@ -69,13 +93,14 @@ public class FileDataClass {
 		}
 		catch(Exception e) {
 			e.printStackTrace();
+			ShowAlert.showAlert(AlertType.INFORMATION, "Warning", "Cannot read alat!");
 		}
 	}
 	public void addNewAtomPosition() {
 		atomicPositions.add(new ArrayList<Atom>());
 	}
 	public void addNewCell() {
-		cellParameter.add(new Cell());
+		cellParameter.add(new CellParameter());
 	}
 	public boolean addCellParameter(String strLine) {
 		
@@ -100,7 +125,9 @@ public class FileDataClass {
 	}
 	public boolean addAtomicPosition(String strLine) {
 		//return false if no atom position is added
+		
 		if(strLine==null || strLine.isEmpty() || strLine.trim().length()==0) {return false;}
+		if(strLine.contains("End final coordinates")) {finalPosition=true; return false;}
 		String[] splitted = strLine.trim().split("\\s+");//split the string by whitespaces
 		if(splitted.length<4) {return false;}
 		ChemicalElements atomSpecies=null;
@@ -152,7 +179,7 @@ public class FileDataClass {
 		atomicPositions.clear();
 		alat = null;
 		cellParameter.clear();
-		
+		finalPosition=false;
 		
 		nstep=1;fermiDos=null;
 		isJobDone=false;
@@ -322,7 +349,7 @@ public class FileDataClass {
 			//
 			if(atomicPositions.size()>0) {
 				strTmp+="ATOMIC_POSITIONS: "+Integer.toString(atomicPositions.size())+"\n";
-				strTmp+="Last position:\n";
+				strTmp+="Last position"+(finalPosition?"(final)":"(not final)")+"\n";
 				for(Atom atomTmp : atomicPositions.get(atomicPositions.size()-1)) {
 					strTmp+=(atomTmp.printPositions()+"\n");
 				}

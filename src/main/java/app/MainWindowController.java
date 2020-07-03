@@ -33,6 +33,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
+import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
@@ -826,7 +827,13 @@ public class MainWindowController implements Initializable{
 		// right part, default off
 		tabPaneStatusRight = false;
 		VBox vboxRight = new VBox();
-		Button btnRight = new Button("R");
+		
+		//set label of the right button
+		Button btnRight = new Button();
+		Label labelRight  = new Label("Input Settings");
+		labelRight.setRotate(-90);
+		btnRight.setGraphic(new Group(labelRight));
+		
 		vboxRight.getChildren().add(btnRight);
 		hboxRight.getChildren().add(vboxRight);
 		//right part, tab pane
@@ -845,7 +852,13 @@ public class MainWindowController implements Initializable{
 		
 		scrollLeft.setFitToHeight(true);
 		VBox vboxLeft = new VBox();
-		Button btnLeft = new Button("L");
+		
+		//set label of the left button
+		Button btnLeft = new Button();
+		Label labelLeft  = new Label("Project Treeview");
+		labelLeft.setRotate(-90);
+		btnLeft.setGraphic(new Group(labelLeft));
+		
 		vboxLeft.getChildren().add(btnLeft);
 		hboxLeft.getChildren().addAll(vboxLeft,scrollLeft);
 		

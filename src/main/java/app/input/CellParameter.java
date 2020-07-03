@@ -4,7 +4,7 @@ import com.error.ShowAlert;
 
 import javafx.scene.control.Alert.AlertType;
 
-public class Cell {
+public class CellParameter {
 	private Double ax,
 	ay,
 	az,
@@ -15,7 +15,7 @@ public class Cell {
 	cy,
 	cz;
 	private int cellCount;
-	public Cell() {
+	public CellParameter() {
 		ax=null;
 		ay=null;
 		az=null;
@@ -27,6 +27,16 @@ public class Cell {
 		cz=null;
 		cellCount = 0;
 	}
+	public Double getAx() {return ax;}
+	public Double getAy() {return ay;}
+	public Double getAz() {return az;}
+	public Double getBx() {return bx;}
+	public Double getBy() {return by;}
+	public Double getBz() {return bz;}
+	public Double getCx() {return cx;}
+	public Double getCy() {return cy;}
+	public Double getCz() {return cz;}
+	
 	public void addCoor(double x, double y, double z) {
 		if(cellCount==0) {ax=x;ay=y;az=z;}
 		else if(cellCount==1) {bx=x;by=y;bz=z;}
