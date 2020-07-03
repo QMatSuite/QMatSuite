@@ -104,8 +104,10 @@ public class FirstMainWindowTest extends MainWindowTest{
 	@Test
 	@Order(6)
 	public void testGeoBravais() {
+		Node nd = lookup("#titlePaneCell").query();
+		Node ndNew = from(nd).lookup(".title").query();
+		clickOn(ndNew);
 		
-		clickOn("#titlePaneCell");
 		//sleep(1000);
 		ComboBox<String> ibravCombo = lookup("#ibravCombo").queryComboBox();
 		selectComboBox(ibravCombo, 2);
@@ -118,12 +120,17 @@ public class FirstMainWindowTest extends MainWindowTest{
 	@Test
 	@Order(7)
 	public void testGeoAtoms() {
-		Node nd = lookup("#titlePaneAtoms").query();
+		Node nd = lookup("#titlePaneCell").query();
+		Node ndNew = from(nd).lookup(".title").query();
+		clickOn(ndNew);
 		
-		clickOn(nd);
+		nd = lookup("#titlePaneAtoms").query();
+		ndNew = from(nd).lookup(".title").query();
+		clickOn(ndNew);
 		
-//		TextField textElem = (TextField) from(nd).lookup("#textElem").queryTextInputControl();
-//		clickOn(textElem).type(KeyCode.CAPS,KeyCode.S,KeyCode.CAPS,KeyCode.I);//Si
+		sleep(1000);
+		TextField textElem = (TextField) from(nd).lookup("#textElem").queryTextInputControl();
+		clickOn(textElem).type(KeyCode.CAPS,KeyCode.S,KeyCode.CAPS,KeyCode.I);//Si
 		TextField textX = (TextField) from(nd).lookup("#textX").queryTextInputControl();
 		clickOn(textX).type(KeyCode.DIGIT0);//0
 		TextField textY = (TextField) from(nd).lookup("#textY").queryTextInputControl();
@@ -137,7 +144,7 @@ public class FirstMainWindowTest extends MainWindowTest{
 		clickOn(addButton);
 		clickOn(clearButton);
 		
-//		clickOn(textElem).type(KeyCode.CAPS,KeyCode.S,KeyCode.CAPS,KeyCode.I);//Si
+		clickOn(textElem).type(KeyCode.CAPS,KeyCode.S,KeyCode.CAPS,KeyCode.I);//Si
 		clickOn(textX).type(KeyCode.DIGIT0,KeyCode.DECIMAL,KeyCode.DIGIT2,KeyCode.DIGIT5);//0.25
 		clickOn(textY).type(KeyCode.DIGIT0,KeyCode.DECIMAL,KeyCode.DIGIT2,KeyCode.DIGIT5);//0.25
 		clickOn(textZ).type(KeyCode.DIGIT0,KeyCode.DECIMAL,KeyCode.DIGIT2,KeyCode.DIGIT5);//0.25
@@ -289,6 +296,9 @@ public class FirstMainWindowTest extends MainWindowTest{
 		String msg="\nNodes\n";
 		for(Node nd : allNodes) {
 			msg+=nd.toString()+nd.isVisible()+",\n";
+			for(Node nd_child : ((Parent)nd).getChildrenUnmodifiable()) {
+				msg+="---Children:"+nd_child.toString()+","+nd_child.getStyleClass()+",\n";
+			}
 		}
 		msg+="Parents:\n";
 		for(Node nd : allNodes) {
