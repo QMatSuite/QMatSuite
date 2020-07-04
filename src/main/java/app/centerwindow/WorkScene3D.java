@@ -30,6 +30,7 @@ import javafx.scene.PerspectiveCamera;
 import javafx.scene.SubScene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TabPane;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
@@ -51,6 +52,7 @@ import com.consts.PhysicalConstants;
 import com.consts.Constants.EnumUnitAtomPos;
 import com.consts.Constants.EnumUnitCellAngle;
 import com.consts.Constants.EnumUnitCellParameter;
+
 import math.Thresholds;
 
 public class WorkScene3D {
@@ -103,6 +105,7 @@ public class WorkScene3D {
 			FXMLLoader fxmlLoader2 = new FXMLLoader(getClass().getClassLoader().getResource("app/centerwindow/toolbar3D.fxml"));
 			fxmlLoader2.setController(cont3D);
 			hb = fxmlLoader2.load();
+			//ShowAlert.showAlert(AlertType.INFORMATION, "Info", "loaded app/centerwindow/toolbar3D.fxml");
 		} catch (IOException e) {
 			e.printStackTrace();
 			Alert alert1 = new Alert(AlertType.INFORMATION);
@@ -121,6 +124,7 @@ public class WorkScene3D {
 		root.getChildren().add(world);
 		subScene = new SubScene(root, 800, 600, true, null);
 		subScene.setFill(Color.SILVER);
+		//subScene.setFill(Color.BLUE);
 		subScene.setCamera(camera);
 		//camera.setFieldOfView(20);
 		
@@ -202,11 +206,11 @@ public class WorkScene3D {
 //		//bind the width and height of subScene and tabPane
 		subScene.heightProperty().bind(workSpaceTabPane.heightProperty());
 		subScene.widthProperty().bind(workSpaceTabPane.widthProperty());
-//		//bind the group to the center
-//		world.translateXProperty().bind(subScene.widthProperty().divide(2));
-//		world.translateYProperty().bind(subScene.heightProperty().divide(2));
-//		world.translateXProperty().bind(workSpaceTabPane.heightProperty().divide(2));
-//		world.translateYProperty().bind(workSpaceTabPane.heightProperty().divide(2));
+	}
+	public void centerSubScene(ScrollPane workSpaceTabPane) {
+//		//bind the width and height of subScene and tabPane
+		subScene.heightProperty().bind(workSpaceTabPane.heightProperty());
+		subScene.widthProperty().bind(workSpaceTabPane.widthProperty());
 	}
 	public void drawGroup(GeoGroup sg) {
 		moleculeGroup.getChildren().clear();

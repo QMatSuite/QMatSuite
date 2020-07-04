@@ -37,11 +37,13 @@ public class WorkTabContent {
 			FXMLLoader fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/centerwindow/outputViewer.fxml"));
 			fxmlLoader.setController(contOutput);
 			hboxOutput = fxmlLoader.load();
+			//ShowAlert.showAlert(AlertType.INFORMATION, "Info", "loaded app/centerwindow/outputViewer.fxml");
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		hboxOutput.prefWidthProperty().bind(workSpaceTabPane.widthProperty());
 		hboxOutput.prefHeightProperty().bind(workSpaceTabPane.heightProperty());
+		
 	}
 	public Tab setUpTabContent() {
 		Tab tab = new Tab();
@@ -77,6 +79,8 @@ public class WorkTabContent {
 		if(currentPj==null) return;
 		Tab newTab = this.projectTabDict.get(currentPj);
 		if(newTab==null) return;
+		
+		//contOutput.geometry3d.centerSubScene(workSpaceTabPane);
 		
 		VBox hbTmp = (VBox) newTab.getContent();
 		//***may be unnecessary for some situations
