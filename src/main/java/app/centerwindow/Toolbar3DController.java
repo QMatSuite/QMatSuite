@@ -59,6 +59,9 @@ public class Toolbar3DController implements Initializable{
 	public Toolbar3DController(WorkScene3D ws3dtmp) {
 		ws3d = ws3dtmp;
 	}
+	public VBox getRootVBox() {
+		return root3DVbox;
+	}
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
 		sliderBondScaling.setMin(0.8);sliderBondScaling.setMax(1.2);

@@ -117,6 +117,18 @@ public class Project implements Serializable{
 		if(activeGeoInd!=null && activeGeoInd>=ind) {activeGeoInd-=1;}
 		return true;
 	}
+	private void findAndAddGeo(String calcFolderName,InputAgentGeo iGeoCopy) {
+		String msg="";
+		int indexName = geoName.indexOf(calcFolderName);
+		if(indexName==-1) {geoList.add(iGeoCopy);geoName.add(calcFolderName);msg="Successfully added "+Integer.toString(geoList.size());}
+		else {geoList.set(indexName,iGeoCopy);msg="Successfully modified "+Integer.toString(indexName+1);}
+		
+		ShowAlert.showAlert(AlertType.INFORMATION, "Geometry added", msg+"th geometry");
+	}
+	public void addGeoList(String calcFolderName, InputAgentGeo iGeo) {
+		InputAgentGeo iGeoCopy = (InputAgentGeo) iGeo.deepCopy();//clone the inputAgentGeo
+		findAndAddGeo(calcFolderName,iGeoCopy);
+	}
 	public void addGeoList(String calcFolderName, ArrayList<Atom> atomList, CellParameter cellPara, Double alat) {
 		if(alat==null || atomList==null || atomList.isEmpty() || 
 				calcFolderName==null || !calcDict.containsKey(calcFolderName)) {return;}
@@ -146,12 +158,8 @@ public class Project implements Serializable{
 		}
 		
 		iGeo.updateElemListAll();
-		String msg="";
-		int indexName = geoName.indexOf(calcFolderName);
-		if(indexName==-1) {geoList.add(iGeo);geoName.add(calcFolderName);msg="Successfully added "+Integer.toString(geoList.size());}
-		else {geoList.set(indexName,iGeo);msg="Successfully modified "+Integer.toString(indexName+1);}
-		
-		ShowAlert.showAlert(AlertType.INFORMATION, "Geometry added", msg+"th geometry");
+
+		findAndAddGeo(calcFolderName,iGeo);
 	}
 	public void setShow3DScene(Boolean bl) {
 		show3DScene = bl;
