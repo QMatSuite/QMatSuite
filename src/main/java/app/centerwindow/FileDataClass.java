@@ -66,6 +66,47 @@ public class FileDataClass {
 		cellParameter = new ArrayList<CellParameter>();
 		iGeoTemp = new InputAgentGeo();
 	}
+	public void clearAll() {
+		for(ArrayList<Double> ard:energyArray) {
+			if(ard!=null) {ard.clear();}
+		}
+		for(ArrayList<Double> ard:totalMag) {
+			if(ard!=null) {ard.clear();}
+		}
+		for(ArrayList<Double> ard:absoluteMag) {
+			if(ard!=null) {ard.clear();}
+		}
+		for(ArrayList<Double> ard:dosArray) {
+			if(ard!=null) {ard.clear();}
+		}
+		for(ArrayList<Atom> ard:atomicPositions) {
+			if(ard!=null) {ard.clear();}
+		}
+		energyArray.clear();
+		fermiLevel.clear();
+		homoLevel.clear();
+		totalMag.clear();
+		absoluteMag.clear();
+		dosArray.clear();
+		dosHeader.clear();
+		
+		//not necessary, because atom positions not encoded there. 
+		//Further, DO NOT DO IT otherwise the workscene3d will not work for the in/out
+		//iGeoTemp = new InputAgentGeo();
+		
+		atomicPositions.clear();
+		alat = null;
+		cellParameter.clear();
+		finalPosition=false;
+		
+		nstep=1;fermiDos=null;
+		isJobDone=false;
+		hasScf=false;hasScfFinished=false;isMD=false;isMDFinished=false;isOpt=false;isOptFinished=false;
+		isNscf=false;isNscfFinished=false;isDos=false;isDosFinished=false;
+		
+		flagScfFinishedForTotalMag=false;
+		flagScfFinishedForAbsMag=false;
+	}
 	public InputAgentGeo getGeoAgent() {
 		return this.iGeoTemp;
 	}
@@ -263,7 +304,7 @@ public class FileDataClass {
 		    	return "No lines detected. File empty or binary file.";
 		    }
 		    else {
-		    	updateLatestPositions();
+		    	updateGeoAgent();
 		    }
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -271,15 +312,45 @@ public class FileDataClass {
 		}
 		return "";
 	}
-	private void updateLatestPositions() {
+	public void updateGeoAgent(int indUsed) {
+		if(indUsed<0 || indUsed>=this.atomicPositions.size()) {return;}
+		//cell parameters, if existed
+		if(indUsed<this.cellParameter.size()) {
+			loadCellParameter(indUsed);
+		}
+		//atomic positions
+		loadAtomicPositions(indUsed);
+		
+		//update element list
+		this.iGeoTemp.updateElemListAll();//***no need to do it everytime
+	}
+	public int getTotalSteps() {
 		int indTmp = -1;
 		if(this.cellParameter.size()>1) {//cell parameters also relaxes
 			indTmp = Math.min(this.cellParameter.size(), this.atomicPositions.size());
 		}
 		else {
-			indTmp = this.cellParameter.size();//must be 1
+			indTmp = this.atomicPositions.size();//cellParameter size must be 1
 		}
-		CellParameter lastCell = this.cellParameter.get(indTmp-1);
+		return indTmp;
+	}
+	private void updateGeoAgent() {
+		int indTmp = getTotalSteps();
+		
+		loadAtomicPositions(indTmp-1);
+		
+		if(this.cellParameter.size()==1) {
+			loadCellParameter(0);
+		}
+		else {
+			loadCellParameter(indTmp-1);
+		}
+
+		//update element list
+		this.iGeoTemp.updateElemListAll();
+	}
+	private void loadCellParameter(int ind) {
+		CellParameter lastCell = this.cellParameter.get(ind);
 		this.iGeoTemp.vectorA1.setValue(lastCell.getAx());
 		this.iGeoTemp.vectorA2.setValue(lastCell.getAy());
 		this.iGeoTemp.vectorA3.setValue(lastCell.getAz());
@@ -289,16 +360,11 @@ public class FileDataClass {
 		this.iGeoTemp.vectorC1.setValue(lastCell.getCx());
 		this.iGeoTemp.vectorC2.setValue(lastCell.getCy());
 		this.iGeoTemp.vectorC3.setValue(lastCell.getCz());
-		
-		if(this.cellParameter.size()<=1) {
-			indTmp = this.atomicPositions.size();
-		}
-		ArrayList<Atom> lastAtom = this.atomicPositions.get(indTmp-1);
-		this.iGeoTemp.atomList.clear();
-		this.iGeoTemp.atomList = lastAtom;//*****pass reference here. Be careful
-		
-		//update element list
-		this.iGeoTemp.updateElemListAll();
+	}
+	private void loadAtomicPositions(int ind) {
+		ArrayList<Atom> lastAtom = this.atomicPositions.get(ind);
+		//this.iGeoTemp.atomList.clear();//cannot clear here because references!
+		this.iGeoTemp.atomList = lastAtom;//*****pass reference here. Be careful. Error here!
 	}
 	private void parseIBrav(String strLine) {
 		//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", "parseIBrav!");
@@ -501,44 +567,7 @@ public class FileDataClass {
 	public ArrayList<String> getDosHeader() {
 		return dosHeader;
 	}
-	public void clearAll() {
-		for(ArrayList<Double> ard:energyArray) {
-			if(ard!=null) {ard.clear();}
-		}
-		for(ArrayList<Double> ard:totalMag) {
-			if(ard!=null) {ard.clear();}
-		}
-		for(ArrayList<Double> ard:absoluteMag) {
-			if(ard!=null) {ard.clear();}
-		}
-		for(ArrayList<Double> ard:dosArray) {
-			if(ard!=null) {ard.clear();}
-		}
-		for(ArrayList<Atom> ard:atomicPositions) {
-			if(ard!=null) {ard.clear();}
-		}
-		energyArray.clear();
-		fermiLevel.clear();
-		homoLevel.clear();
-		totalMag.clear();
-		absoluteMag.clear();
-		dosArray.clear();
-		dosHeader.clear();
-		//iGeoTemp = new InputAgentGeo();//not necessary, because atom positions not encoded there
-		
-		atomicPositions.clear();
-		alat = null;
-		cellParameter.clear();
-		finalPosition=false;
-		
-		nstep=1;fermiDos=null;
-		isJobDone=false;
-		hasScf=false;hasScfFinished=false;isMD=false;isMDFinished=false;isOpt=false;isOptFinished=false;
-		isNscf=false;isNscfFinished=false;isDos=false;isDosFinished=false;
-		
-		flagScfFinishedForTotalMag=false;
-		flagScfFinishedForAbsMag=false;
-	}
+	
 	public void addTotalEnergy(double ene, boolean isFinal) {
 		//here, ene and isFinal are primitive types that CANNOT be null
 		//energyArray==null shouldn't happen

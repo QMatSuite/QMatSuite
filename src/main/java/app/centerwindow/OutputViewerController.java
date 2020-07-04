@@ -43,6 +43,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.ScrollPane.ScrollBarPolicy;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
@@ -128,7 +129,9 @@ public class OutputViewerController implements Initializable{
     	yAxis = new NumberAxis();yAxis.setAutoRanging(true);yAxis.setForceZeroInRange(false);
     	
     	geometry3d = new WorkScene3D();
-    	geometry3d.addAnimate3D();
+    	geometry3d.addAnimate3D(fileData);//add animation panel and link the data file
+    	geometry3d.buildGeometry(fileData.getGeoAgent());//link the geoAgent in fileData to the workscene3d plot
+    	
     	
     	lineChart = new LineChart(xAxis, yAxis);
     	
@@ -302,9 +305,13 @@ public class OutputViewerController implements Initializable{
 		}
 	}
 	private void updateIoDisplay() {
+		
 		EnumAnalysis analTmp = comboAnalysis.getSelectionModel().getSelectedItem();
 		
 		displayScroll.setContent(null);
+		displayScroll.setHbarPolicy(ScrollBarPolicy.AS_NEEDED);//reset scrolling capability
+		displayScroll.setVbarPolicy(ScrollBarPolicy.AS_NEEDED);
+		
 		if(fileCategory==null || analTmp==null) return;
 		
 		boolean boolPlot = analTmp.equals(EnumAnalysis.plot2D);
@@ -431,8 +438,14 @@ public class OutputViewerController implements Initializable{
 		
 		if(plotType.equals("Geometry")) {
 			//ShowAlert.showAlert(AlertType.INFORMATION, "Info", "Plot Geometry");
+			geometry3d.buildGeometry();
+			geometry3d.updateAnimate3D();//update animate3D control panel
 			AnchorPane acp = geometry3d.getRootPane();
 			displayScroll.setContent(acp);
+
+			//disable scrolling capability of the scrollpane so that it does not interfere with zoom-in/out of the workscene3d
+			displayScroll.setHbarPolicy(ScrollBarPolicy.NEVER);
+			displayScroll.setVbarPolicy(ScrollBarPolicy.NEVER);
 		}
 	}
 	private void plot2dStdOut() {
