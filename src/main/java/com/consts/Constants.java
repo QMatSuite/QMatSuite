@@ -63,7 +63,8 @@ public class Constants {
 	public enum EnumAnalysis{
 		info("Information"),
 		text("Raw text"),
-		plot2D("Plots");
+		plot2D("Plots"),
+		plot3D("3D Geometry");
 		
 		private String name;
 		

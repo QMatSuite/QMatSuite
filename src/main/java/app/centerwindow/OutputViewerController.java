@@ -44,6 +44,7 @@ import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.ToggleButton;
+import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -57,7 +58,6 @@ import com.consts.Constants.EnumFileCategory;
 import com.consts.Constants.EnumNameList;
 import com.programconst.DefaultFileNames;
 import com.programconst.ProgrammingConsts;
-
 import app.input.CellParameter;
 import app.input.InputGeoController;
 import app.input.geo.Atom;
@@ -118,6 +118,8 @@ public class OutputViewerController implements Initializable{
     private ArrayList<String> plotTypeStdOut;
     
     private InputGeoController contGeo;
+    
+    private WorkScene3D geometry3d;
     		
     public OutputViewerController(MainClass mc, InputGeoController cg) {
     	mainClass = mc;
@@ -126,6 +128,8 @@ public class OutputViewerController implements Initializable{
     	fileData = new FileDataClass();
     	xAxis = new NumberAxis();xAxis.setAutoRanging(true);xAxis.setForceZeroInRange(false);
     	yAxis = new NumberAxis();yAxis.setAutoRanging(true);yAxis.setForceZeroInRange(false);
+    	geometry3d = new WorkScene3D();
+    	
     	
     	lineChart = new LineChart(xAxis, yAxis);
     	
@@ -140,6 +144,7 @@ public class OutputViewerController implements Initializable{
 
 	@Override
 	public void initialize(URL arg0, ResourceBundle arg1) {
+		geometry3d.centerSubScene(displayScroll);
 		lineChart.prefWidthProperty().bind(displayScroll.widthProperty());
 		lineChart.setCreateSymbols(false);
 		//lineChart.prefHeightProperty().bind(workSpaceTabPane.heightProperty());
@@ -183,10 +188,13 @@ public class OutputViewerController implements Initializable{
 			
 			if(fileCategory!=null) {labelFileCategory.setText(fileCategory.toString());}//should not be null until this point!
 			
+			loadFile();
+			
 			if(fileCategory!=null) {
 				comboAnalysis.getItems().addAll(EnumAnalysis.info);//always has the option of show summarized info
 				comboAnalysis.getItems().addAll(EnumAnalysis.text);//always has the option of show in text
 				comboAnalysis.getItems().addAll(EnumAnalysis.plot2D);//always has the option of show in plot (can be changed later)
+				if(fileData.isMD || fileData.isOpt) {comboAnalysis.getItems().addAll(EnumAnalysis.plot3D);}
 				
 				if(analTmp!=null && comboAnalysis.getItems()!=null && comboAnalysis.getItems().contains(analTmp)) {
 					//select back the choice before
@@ -194,10 +202,10 @@ public class OutputViewerController implements Initializable{
 				}
 				else {
 					//select text first if there has been no selection
-					comboAnalysis.getSelectionModel().select(EnumAnalysis.info);
+					comboAnalysis.getSelectionModel().select(EnumAnalysis.plot2D);
 				}
 			}
-			loadFile();
+			
 			updateIoDisplay();//*** not efficient because runs twice
 		});
 		buttonRefresh.setOnAction((event) -> {
@@ -312,10 +320,12 @@ public class OutputViewerController implements Initializable{
 			if(fileCategory.equals(EnumFileCategory.stdout)) {
 				if(analTmp.equals(EnumAnalysis.info)) {textFlowDisplay.getChildren().add(new Text(fileData.toString()));}
 				else if(analTmp.equals(EnumAnalysis.plot2D)) {plot2dStdOut();}
+				else if(analTmp.equals(EnumAnalysis.plot3D)) {plot3dStdOut();}
 			}
 			else if(fileCategory.equals(EnumFileCategory.dos)){
 				if(analTmp.equals(EnumAnalysis.info)) {textFlowDisplay.getChildren().add(new Text(fileData.toString()));}
 				else if(analTmp.equals(EnumAnalysis.plot2D)) {plot2dDos();}
+				else if(analTmp.equals(EnumAnalysis.plot3D)) {textFlowDisplay.getChildren().add(new Text("No 3D view of this file type."));}
 			}
 			else {
 				textFlowDisplay.getChildren().add(new Text("Analysis is not available for this file type."));
@@ -400,7 +410,35 @@ public class OutputViewerController implements Initializable{
         
 
 	}
-
+	private void plot3dStdOut() {
+		//construct new plot type list
+		plotTypeStdOut.clear();
+		if(fileData.isMD || fileData.isOpt) {plotTypeStdOut.add("Geometry");}
+		//plotTypeStdOut.add("With Force");
+		//if(fileData.isMD) {plotTypeStdOut.add("With Velocity");}
+		if(!isSameTypeStdout(plotTypeStdOut)) {
+			comboPlot.getItems().clear();
+			if(!plotTypeStdOut.isEmpty()) {
+				comboPlot.getItems().addAll(plotTypeStdOut);
+				comboPlot.getSelectionModel().select(0);//****run twice
+			}
+		}
+		
+		if(plotTypeStdOut.isEmpty()) {
+			textFlowDisplay.getChildren().add(new Text("No available plot for this file type. SHOULD NOT REACH HERE!"));
+			return;
+		}
+		
+		String plotType = comboPlot.getSelectionModel().getSelectedItem();
+		
+		if(plotType==null) return;
+		
+		if(plotType.equals("Geometry")) {
+			//ShowAlert.showAlert(AlertType.INFORMATION, "Info", "Plot Geometry");
+			AnchorPane acp = geometry3d.getRootPane();
+			displayScroll.setContent(acp);
+		}
+	}
 	private void plot2dStdOut() {
 		//construct new plot type list
 		plotTypeStdOut.clear();
@@ -412,11 +450,11 @@ public class OutputViewerController implements Initializable{
 			if(!plotTypeStdOut.isEmpty()) {
 				comboPlot.getItems().addAll(plotTypeStdOut);
 				//ShowAlert.showAlert(AlertType.INFORMATION, "Info", "plot2dStdOut. Construct comboPlot.");
-				comboPlot.getSelectionModel().select(0);
+				comboPlot.getSelectionModel().select(0);//****run twice
 			}
 		}
 		
-		if(plotTypeStdOut.isEmpty()) {textFlowDisplay.getChildren().add(new Text("No availabel plot for this file type."));return;}
+		if(plotTypeStdOut.isEmpty()) {textFlowDisplay.getChildren().add(new Text("No available plot for this file type."));return;}
 		
 		String plotType = comboPlot.getSelectionModel().getSelectedItem();
 		
