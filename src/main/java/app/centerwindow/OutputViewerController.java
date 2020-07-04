@@ -58,9 +58,7 @@ import com.consts.Constants.EnumFileCategory;
 import com.consts.Constants.EnumNameList;
 import com.programconst.DefaultFileNames;
 import com.programconst.ProgrammingConsts;
-import app.input.CellParameter;
 import app.input.InputGeoController;
-import app.input.geo.Atom;
 
 public class OutputViewerController implements Initializable{
 
@@ -128,8 +126,9 @@ public class OutputViewerController implements Initializable{
     	fileData = new FileDataClass();
     	xAxis = new NumberAxis();xAxis.setAutoRanging(true);xAxis.setForceZeroInRange(false);
     	yAxis = new NumberAxis();yAxis.setAutoRanging(true);yAxis.setForceZeroInRange(false);
-    	geometry3d = new WorkScene3D();
     	
+    	geometry3d = new WorkScene3D();
+    	geometry3d.addAnimate3D();
     	
     	lineChart = new LineChart(xAxis, yAxis);
     	
@@ -145,6 +144,7 @@ public class OutputViewerController implements Initializable{
 	@Override
 	public void initialize(URL arg0, ResourceBundle arg1) {
 		geometry3d.centerSubScene(displayScroll);
+		
 		lineChart.prefWidthProperty().bind(displayScroll.widthProperty());
 		lineChart.setCreateSymbols(false);
 		//lineChart.prefHeightProperty().bind(workSpaceTabPane.heightProperty());
@@ -230,13 +230,14 @@ public class OutputViewerController implements Initializable{
 		buttonSaveGeo.setDisable(true);
 		buttonSaveGeo.setOnAction((event) -> {
 			if(fileData==null) {return;}
-			ArrayList<Atom> atomList = fileData.getFinalAtomicPositions();
-			CellParameter cellPara = fileData.getFinalCellParameter();
-			Double alat = fileData.getAlat();
-			if(atomList==null || atomList.isEmpty() || alat==null ) {return;}
+//			ArrayList<Atom> atomList = fileData.getFinalAtomicPositions();
+//			CellParameter cellPara = fileData.getFinalCellParameter();
+//			Double alat = fileData.getAlat();
+//			if(atomList==null || atomList.isEmpty() || alat==null ) {return;}
 			String calcFolderName = listCalcFolders.getSelectionModel().getSelectedItem();
 			if(calcFolderName==null) {return;}
-			mainClass.projectManager.addGeoList(calcFolderName, atomList, cellPara, alat);
+			//mainClass.projectManager.addGeoList(calcFolderName, atomList, cellPara, alat);
+			mainClass.projectManager.addGeoList(calcFolderName, fileData.getGeoAgent());
 			if(contGeo!=null) {contGeo.loadProjectParameters();}
 		});
 		buttonShowMarker.selectedProperty().addListener((observable, oldValue, newValue) ->{
@@ -339,11 +340,6 @@ public class OutputViewerController implements Initializable{
 			if(comboTmp.get(i)==null || !comboTmp.get(i).equals(strTest.get(i))) {return false;}
 		}
 		return true;
-	}
-	private void showCannotLoad() {
-		displayScroll.setContent(textFlowDisplay);
-		textFlowDisplay.getChildren().clear();
-		textFlowDisplay.getChildren().add(new Text("Cannot load file. No plot available."));
 	}
 	private void plot2dDos() {
 		if(!isSameTypeStdout(plotTypeDos)) {
@@ -504,188 +500,25 @@ public class OutputViewerController implements Initializable{
 	}
 	private boolean loadFile() {
 		//false is fail to load
-		boolean rt = false;
-		buttonSaveGeo.setDisable(true);
-		if(fileCategory==null) {rt = false;}
-		else {
-			if(fileCategory.equals(EnumFileCategory.stdout)) {
-				rt = loadStdOut();
-				if(fileData.isOpt&&fileData.isOptFinished) {buttonSaveGeo.setDisable(false);}
-			}
-			else if(fileCategory.equals(EnumFileCategory.dos)){rt = loadDOS();}
-		}
-		if(!rt) {showCannotLoad();}
-		return rt;
-	}
-	private boolean loadDOS() {//return false when error
-		String strTmp1 = checkErrors();
-		if(strTmp1!=null && !strTmp1.isEmpty()) {return false;}
-		try {
-			fileData.clearAll();
-			
-		    Scanner sc = new Scanner(inoutFiles); 
-		  
-		    String strTmp;
-		    
-		    boolean flagHeader=false;
-		    
-		    while (sc.hasNextLine()) {
 
-		    	strTmp = sc.nextLine();
-		    	
-		    	if(strTmp==null || strTmp.isEmpty()) continue;
-		    	if(strTmp.contains("#")||strTmp.contains("=")) {
-		    		flagHeader=true;
-		    		fileData.addDosHeader(strTmp);
-		    		continue;
-		    	}
-		    	if(flagHeader) {
-		    		fileData.addDosRow(strTmp);
-		    	}
-	    	}
-		    
-		    sc.close();
-		    
-		} catch (IOException e) {
-			e.printStackTrace();
-			return false;
+		buttonSaveGeo.setDisable(true);
+		String strTmp1 = checkErrors();
+		if(strTmp1!=null && !strTmp1.isEmpty()) {showCannotLoad("Cannot load file. "+strTmp1);return false;}
+
+		if(fileCategory.equals(EnumFileCategory.stdout)) {
+			String msg = fileData.loadStdOut(inoutFiles);
+			if(fileData.isOpt&&fileData.isOptFinished) {buttonSaveGeo.setDisable(false);}
+			if(!msg.isEmpty()) {showCannotLoad(msg);return false;}
+		}
+		else if(fileCategory.equals(EnumFileCategory.dos)){
+			return fileData.loadDOS(inoutFiles);
 		}
 		return true;
 	}
-	private boolean loadStdOut() {//return false when error
-		String strTmp1 = checkErrors();
-		if(strTmp1!=null && !strTmp1.isEmpty()) {return false;}
-		fileData.clearAll();
-		boolean recordAtomicPos = false;
-		boolean recordCellPara = false;
-		try {
-		    Scanner sc = new Scanner(inoutFiles); 
-		  
-		    String strTmp;
-		    
-		    int lineCount=0;
-		    while (sc.hasNextLine()) {
-		    	lineCount++;
-		    	strTmp = sc.nextLine();
-		    	//total energy
-		    	if(strTmp==null || strTmp.isEmpty()) continue;
-		    	
-		    	String lowerCaseStr = strTmp.toLowerCase();
-		    	if(recordAtomicPos) {
-		    		recordAtomicPos = fileData.addAtomicPosition(strTmp);
-		    	}
-		    	if(recordCellPara) {
-		    		recordCellPara = fileData.addCellParameter(strTmp);
-		    	}
-		    	if(strTmp.contains("ATOMIC_POSITIONS")) {
-		    		recordAtomicPos = true;//must be after fileData.addAtomicPosition()
-		    		fileData.addNewAtomPosition();
-		    	}
-		    	if(strTmp.contains("CELL_PARAMETERS")) {
-		    		recordCellPara = true;
-		    		fileData.addNewCell();
-		    	}
-		    	if(strTmp.contains("lattice parameter (alat)")) {
-		    		fileData.parseAlat(strTmp);
-		    	}
-		    	if(lowerCaseStr.contains("nstep")&& strTmp.contains("=")) {
-		    		String[] splitted = strTmp.trim().split("\\s+");//split the string by whitespaces
-		    		try {
-		    			Integer dbTmp =  Integer.valueOf(splitted[2]);
-		    			if(dbTmp!=null) {fileData.nstep = dbTmp;}
-		    		}catch(Exception e) {
-		    			e.printStackTrace();
-		    		}
-		    	}
-		    	if(lowerCaseStr.contains("total energy") && strTmp.contains("=")) {
-		    		String[] splitted = strTmp.trim().split("\\s+");//split the string by whitespaces
-		    		try {
-		    			if(strTmp.contains("!")) {
-			    			Double dbTmp =  Double.valueOf(splitted[4]);
-			    			if(dbTmp!=null) {fileData.addTotalEnergy(dbTmp, true);}
-		    			}
-		    			else {
-		    				Double dbTmp =  Double.valueOf(splitted[3]);
-			    			if(dbTmp!=null) {fileData.addTotalEnergy(dbTmp, false);}
-		    			}
-		    		}catch(Exception e) {
-		    			e.printStackTrace();
-		    		}
-		    	}
-		    	if(lowerCaseStr.contains("total magnetization") && strTmp.contains("=")) {
-		    		String[] splitted = strTmp.trim().split("\\s+");//split the string by whitespaces
-		    		try {
-		    			Double dbTmp =  Double.valueOf(splitted[3]);
-		    			if(dbTmp!=null) {fileData.addMag(dbTmp, true);}
-		    		}catch(Exception e) {
-		    			e.printStackTrace();
-		    		}
-		    	}
-		    	if(lowerCaseStr.contains("absolute magnetization") && strTmp.contains("=")) {
-		    		String[] splitted = strTmp.trim().split("\\s+");//split the string by whitespaces
-		    		try {
-		    			Double dbTmp =  Double.valueOf(splitted[3]);
-		    			if(dbTmp!=null) {fileData.addMag(dbTmp, false);}
-		    		}catch(Exception e) {
-		    			e.printStackTrace();
-		    		}
-		    	}
-		    	//highest occupied level
-		    	if(lowerCaseStr.contains("highest occupied level")) {
-		    		String[] splitted = strTmp.trim().split("\\s+");//split the string by whitespaces
-		    		try {
-		    			Double dbTmp =  Double.valueOf(splitted[4]);
-		    			if(dbTmp!=null) {fileData.setHomo(dbTmp);}
-		    		}catch(Exception e) {
-		    			e.printStackTrace();
-		    		}
-		    	}
-				if(lowerCaseStr.contains("fermi energy")) {
-					String[] splitted = strTmp.trim().split("\\s+");//split the string by whitespaces
-					try {
-		    			Double dbTmp =  Double.valueOf(splitted[4]);
-		    			if(dbTmp!=null) {fileData.setFermi(dbTmp);}
-		    		}catch(Exception e) {
-		    			e.printStackTrace();
-		    		}
-				}
-				if(lowerCaseStr.contains("self-consistent calculation")) {
-					fileData.hasScf = true;
-					if(strTmp.toLowerCase().contains("end of")) {fileData.hasScfFinished=true;}
-				}
-				if(lowerCaseStr.contains("molecular dynamics calculation")) {
-					fileData.isMD = true;
-					if(strTmp.toLowerCase().contains("end of")) {fileData.isMDFinished=true;}
-				}
-				if(lowerCaseStr.contains("geometry optimization")) {
-					fileData.isOpt = true;
-					if(strTmp.toLowerCase().contains("end of")) {fileData.isOptFinished=true;}
-				}
-				if(lowerCaseStr.contains("band structure calculation")) {
-					fileData.isNscf = true;
-					if(strTmp.toLowerCase().contains("end of")) {fileData.isNscfFinished=true;}
-				}
-				if(lowerCaseStr.contains("dos")) {
-					fileData.isDos = true;
-					
-				}
-				if(fileData.isDos && strTmp.toLowerCase().contains("terminated")) {fileData.isDosFinished=true;}
-				
-				if(strTmp.toUpperCase().contains("JOB DONE")) {
-					fileData.isJobDone = true;
-				}
-		    }
-		    
-		    sc.close();
-		    
-		    if(lineCount==0) {
-		    	textFlowDisplay.getChildren().add(new Text("No lines detected. File empty or binary file."));
-		    }
-		} catch (IOException e) {
-			e.printStackTrace();
-			return false;
-		}
-		return true;
+	private void showCannotLoad(String msg) {
+		displayScroll.setContent(textFlowDisplay);
+		textFlowDisplay.getChildren().clear();
+		textFlowDisplay.getChildren().add(new Text(msg));
 	}
 	private String checkErrors() {
 		if(fileCategory==null) {return "Error: file category is null. Check code!";}

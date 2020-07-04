@@ -147,6 +147,12 @@ public class ProjectManager{
 			pj.addGeoList(calcFolderName, atomList, cellPara, alat);
 		}
 	}
+	public void addGeoList(String calcFolderName, InputAgentGeo iGeo) {
+		Project pj = this.getActiveProject();
+		if(pj!=null) {
+			pj.addGeoList(calcFolderName, iGeo);
+		}
+	}
 	public File getWorkSpaceDir() {
 		if(workSpacePath==null) return null;
 		File wsDir = new File(workSpacePath);

@@ -38,6 +38,7 @@ import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.CornerRadii;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.PhongMaterial;
@@ -49,6 +50,7 @@ import javafx.scene.transform.Translate;
 import agent.InputAgentGeo;
 import app.input.geo.Atom;
 import com.consts.PhysicalConstants;
+import com.error.ShowAlert;
 import com.consts.Constants.EnumUnitAtomPos;
 import com.consts.Constants.EnumUnitCellAngle;
 import com.consts.Constants.EnumUnitCellParameter;
@@ -90,7 +92,8 @@ public class WorkScene3D {
 	private double mouseOldY;
     
     private Toolbar3DController cont3D;
-    
+    private Animate3DController contAnimate;
+
     //angstrom/length in the figure
     private double scalingLength;//not good, because it is a global parameter
     
@@ -99,19 +102,19 @@ public class WorkScene3D {
 		acp = new AnchorPane();
 		
 		cont3D = new Toolbar3DController(this);
+		contAnimate = null;
+		
 		VBox hb;
 		
 		try {
-			FXMLLoader fxmlLoader2 = new FXMLLoader(getClass().getClassLoader().getResource("app/centerwindow/toolbar3D.fxml"));
-			fxmlLoader2.setController(cont3D);
-			hb = fxmlLoader2.load();
+			FXMLLoader fxmlLoader1 = new FXMLLoader(getClass().getClassLoader().getResource("app/centerwindow/toolbar3D.fxml"));
+			fxmlLoader1.setController(cont3D);
+			hb = fxmlLoader1.load();
+
 			//ShowAlert.showAlert(AlertType.INFORMATION, "Info", "loaded app/centerwindow/toolbar3D.fxml");
 		} catch (IOException e) {
 			e.printStackTrace();
-			Alert alert1 = new Alert(AlertType.INFORMATION);
-	    	alert1.setTitle("Error");
-	    	alert1.setContentText("Cannot load fxml in WorkScene3D!");
-	    	alert1.showAndWait();
+			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Cannot load toolbar3D.fxml in WorkScene3D!");
 	    	return;
 		}
 		hb.setBackground(new Background(new BackgroundFill(Color.LIGHTGRAY, CornerRadii.EMPTY, Insets.EMPTY)));
@@ -132,6 +135,27 @@ public class WorkScene3D {
 		handleMouse(subScene);
 		//initMouseControl();
 		//buildSampleMolecule();
+	}
+	public void addAnimate3D() {
+		if(contAnimate==null) {
+			contAnimate = new Animate3DController(this);
+			GridPane gp;
+			try {
+				FXMLLoader fxmlLoader2 = new FXMLLoader(getClass().getClassLoader().getResource("app/centerwindow/animation3D.fxml"));
+				fxmlLoader2.setController(contAnimate);
+				gp = fxmlLoader2.load();
+			} catch (IOException e) {
+				e.printStackTrace();
+				ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Cannot load animation3D.fxml in WorkScene3D!");
+		    	return;
+			}
+			gp.setBackground(new Background(new BackgroundFill(Color.LIGHTGRAY, CornerRadii.EMPTY, Insets.EMPTY)));
+			acp.getChildren().add(gp);
+			AnchorPane.setLeftAnchor(gp, cont3D.getRootVBox().getPrefWidth());
+		}
+		else {
+			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "contAnimate already not null in WorkScene3D! No animation3D.fxml loaded.");
+		}
 	}
 	private void buildCamera() {
 	    
