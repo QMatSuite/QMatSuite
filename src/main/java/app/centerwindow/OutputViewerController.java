@@ -211,7 +211,9 @@ public class OutputViewerController implements Initializable{
 			
 			updateIoDisplay();//*** not efficient because runs twice
 		});
+		
 		buttonRefresh.setOnAction((event) -> {
+			if((fileData.isMD || fileData.isOpt) && !comboAnalysis.getItems().contains(EnumAnalysis.plot3D)) {comboAnalysis.getItems().addAll(EnumAnalysis.plot3D);}
 			loadFile();
 			updateIoDisplay();
 		});

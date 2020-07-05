@@ -10,6 +10,7 @@ import com.consts.Constants.EnumFileCategory;
 import com.consts.Constants.EnumUnitCellAngle;
 import com.consts.Constants.EnumUnitCellLength;
 import com.consts.Constants.EnumUnitCellParameter;
+import com.consts.PhysicalConstants;
 import com.error.ShowAlert;
 import agent.InputAgentGeo;
 import app.input.CellParameter;
@@ -173,6 +174,7 @@ public class FileDataClass {
 		    Scanner sc = new Scanner(inoutFiles); 
 		  
 		    String strTmp;
+		    String argCache=null;//caches the argument like ATOMIC_POSITIONS (crystal)
 		    
 		    int lineCount=0;
 		    while (sc.hasNextLine()) {
@@ -183,10 +185,10 @@ public class FileDataClass {
 		    	
 		    	String lowerCaseStr = strTmp.toLowerCase();
 		    	if(recordAtomicPos) {
-		    		recordAtomicPos = this.addAtomicPosition(strTmp);
+		    		recordAtomicPos = this.addAtomicPosition(strTmp,argCache);
 		    	}
 		    	if(recordCellPara) {
-		    		recordCellPara = this.addCellParameter(strTmp);
+		    		recordCellPara = this.addCellParameter(strTmp,argCache);
 		    	}
 		    	if(strTmp.contains("tau(")) {
 		    		this.parseInitialAtomPos(strTmp);
@@ -197,10 +199,12 @@ public class FileDataClass {
 		    	if(strTmp.contains("ATOMIC_POSITIONS")) {
 		    		recordAtomicPos = true;//must be after fileData.addAtomicPosition()
 		    		this.addNewAtomPosition();
+		    		argCache = this.parseArg(strTmp);
 		    	}
 		    	if(strTmp.contains("CELL_PARAMETERS")) {
 		    		recordCellPara = true;
 		    		this.addNewCell();
+		    		argCache = this.parseArg(strTmp);
 		    	}
 		    	if(strTmp.contains("bravais-lattice index")) {
 		    		this.parseIBrav(strTmp);
@@ -312,6 +316,18 @@ public class FileDataClass {
 		}
 		return "";
 	}
+	private String parseArg(String strLine) {
+		if(strLine==null || !strLine.contains("(") || !strLine.contains(")")) {
+			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "missing ( or ) in the line!");
+			return null;
+		}
+		String[] splitted = strLine.trim().split("(\\))|(\\()");
+		if(splitted.length<2) {
+			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "cannot find arguments between ( and ) in the line!");
+			return null;
+		}
+		return splitted[1].trim();
+	}
 	public void updateGeoAgent(int indUsed) {
 		if(indUsed<0 || indUsed>=this.atomicPositions.size()) {return;}
 		//cell parameters, if existed
@@ -382,19 +398,26 @@ public class FileDataClass {
 	}
 	
 	private void parseCelldm(String strTmp) {
-		//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", "parseCelldm!");
+		//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", "parseCelldm!"+strTmp);
+		//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", strTmp.contains("(1)")?"(1)":"(4)");
+		//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", strTmp.contains("(4)")?"(4)":"(1)");
+		
 		if(strTmp==null || !strTmp.contains("=")) {
 			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Wrong line!");return;}
-		if(this.iGeoTemp.ibrav.equals(0)) return;
+		
+		//if(this.iGeoTemp.ibrav.equals(0)) return;//DO NOT USE THIS LINE HERE!
 		
 		boolean isSecondLine=false;
 		if(strTmp.contains("(1)")) {isSecondLine=false;}//celldm(1-3)
 		else if (strTmp.contains("(4)")) {isSecondLine=true;}//celldm(4-6)
 		else {ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Cannot detect lines in celldm");return;}
+		
 		String[] splitted = strTmp.trim().split("celldm\\(.\\)=");
+		
 //		ShowAlert.showAlert(AlertType.INFORMATION, "Debug", splitted[1]);
 //		ShowAlert.showAlert(AlertType.INFORMATION, "Debug", splitted[2]);
 //		ShowAlert.showAlert(AlertType.INFORMATION, "Debug", splitted[3]);
+		
 		try {
 			double celldmTmp1 = Double.valueOf(splitted[1].trim());
 			double celldmTmp2 = Double.valueOf(splitted[2].trim());
@@ -416,6 +439,7 @@ public class FileDataClass {
 			}
 			else {//celldm(1-3)
 				//A or alat
+				//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", Double.toString(celldmTmp1));
 				this.alat = celldmTmp1;
 				this.iGeoTemp.cellA.setValue(celldmTmp1);
 				
@@ -461,6 +485,8 @@ public class FileDataClass {
 
 	}
 	private void parseInitialAtomPos(String strLine) {
+		//here it must be in alat unit
+		
 		//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", "parseInitialAtomPos!");
 		String[] splittedForAtom = strLine.trim().split("\\s+");
 		String atomName = splittedForAtom[1].trim();
@@ -517,8 +543,8 @@ public class FileDataClass {
 	public void addNewCell() {
 		cellParameter.add(new CellParameter());
 	}
-	public boolean addCellParameter(String strLine) {
-		
+	public boolean addCellParameter(String strLine, String argCache) {
+		//now cellParameter.size() must >= 2
 		String[] splitted = strLine.trim().split("\\s+");//split the string by whitespaces
 		if(splitted.length<3) {return false;}//end of one cell_para
 		
@@ -534,11 +560,15 @@ public class FileDataClass {
 		}
 		if(x==null || y==null || z==null) {return false;}
 		
-		cellParameter.get(cellParameter.size()-1).addCoor(x, y, z);
+		//actually here it cannot be in crystal unit. But not necessary to check
+		Point3D ptNew = convert2alat(argCache, x, y, z);
+		if(ptNew==null) {return false;}
+		
+		cellParameter.get(cellParameter.size()-1).addCoor(ptNew.getX(),ptNew.getY(),ptNew.getZ());
 		
 		return true;
 	}
-	public boolean addAtomicPosition(String strLine) {
+	public boolean addAtomicPosition(String strLine, String argCache) {
 		//return false if no atom position is added
 		
 		if(strLine==null || strLine.isEmpty() || strLine.trim().length()==0) {return false;}
@@ -558,8 +588,39 @@ public class FileDataClass {
 			return false;
 		}
 		if(atomSpecies==null || x==null || y==null || z==null) {return false;}
-		atomicPositions.get(atomicPositions.size()-1).add(new Atom(atomSpecies,x,y,z));
+		
+		Point3D ptNew = convert2alat(argCache, x, y, z);
+		if(ptNew==null) {return false;}
+		
+		atomicPositions.get(atomicPositions.size()-1).add(new Atom(atomSpecies,ptNew.getX(),ptNew.getY(),ptNew.getZ()));
 		return true;
+	}
+	public Point3D convert2alat(String argCache, double x, double y, double z) {
+		Point3D ptOld = new Point3D(x,y,z);
+
+		if(argCache==null || argCache.isEmpty() || "alat".equals(argCache)) {
+			return ptOld;//use alat as a default. True for both atomic positions and cell parameters
+		}
+		else if("crystal".equals(argCache)) {
+			//cellParameter.get(0) must be in alat unit (header of stdout file)
+			return cellParameter.get(0).crystalToCoordinate(x, y, z);
+		}
+		else if("bohr".equals(argCache)) {
+			//this.alat must have the unit of bohr
+			if(this.alat == null || this.alat<=0) {
+				ShowAlert.showAlert(AlertType.INFORMATION, "Error", "alat must be positive.");return null;}
+			return ptOld.multiply(1.0/this.alat);
+		}
+		else if("angstrom".equals(argCache)) {
+			//this.alat must have the unit of bohr. Need unit conversion here
+			if(this.alat == null || this.alat<=0) {
+				ShowAlert.showAlert(AlertType.INFORMATION, "Error", "alat must be positive.");return null;}
+			return ptOld.multiply(1.0/PhysicalConstants.angstPerBohr/this.alat);
+		}
+		else {
+			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Unrecognized argument: "+argCache);
+			return null;
+		}
 	}
 	public ArrayList<ArrayList<Double>> getDosArray() {
 		return dosArray;

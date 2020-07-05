@@ -346,29 +346,29 @@ public class WorkScene3D {
 			GeoGroup latticeGroup = new GeoGroup();
 			GeoGroup atomsGroup = new GeoGroup();
 			GeoGroup bondsGroup = new GeoGroup();
-			
-			Double alat = getAlat();
-			if(alat==null) return;
 	        
 			//generate lattice vectors
-	        Point3D lattVecs[] = genVecFromGeo(alat);
+	        Point3D lattVecs[] = genVecFromGeo();
 	        if (lattVecs==null) return;//important
 	        
 	        //draw bravais lattice
-	        buildBravaisLattice(alat, lattVecs,latticeGroup);
+	        buildBravaisLattice(lattVecs,latticeGroup);
 		
 			if(iGeoCache.atomList.size()>0) {
 				
-				ArrayList<Atom> atomListClone = genAtomListInAlat(alat,lattVecs);
+				ArrayList<Atom> atomListClone = genAtomListInAlat(lattVecs);
 				if (atomListClone==null) return;//important
 				
-				addAtomsToScene(alat,atomListClone,atomsGroup,lattVecs);
+				addAtomsToScene(atomListClone,atomsGroup,lattVecs);
 				addBondsToScene(atomListClone,bondsGroup,lattVecs);
 			}
 			moleculeGroup.getChildren().addAll(latticeGroup, atomsGroup, bondsGroup);
 		}
 	}
-	private Point3D[] genVecFromGeo(Double alat) {
+	private Point3D[] genVecFromGeo() {//real vectors in bohr * scaling
+		final Double alat = getAlat();
+		if(alat==null) return null;
+		
 		if (iGeoCache == null) return null;
 		
 		Point3D aVec = null;
@@ -392,14 +392,14 @@ public class WorkScene3D {
         alpha,
         beta;
         
-        a = alat;
+        a = alat;//A(in bohr)*scaling
         
         if (!iGeoCache.cellA.isNull() && iGeoCache.cellA.getValue()>0 && !iGeoCache.cellB.isNull()) {
-        	b=iGeoCache.cellB.getValue()/iGeoCache.cellA.getValue()*alat;
+        	b=iGeoCache.cellB.getValue()/iGeoCache.cellA.getValue()*alat;//B(in bohr)*scaling
         }
         else b=null;
         if (!iGeoCache.cellA.isNull() && iGeoCache.cellA.getValue()>0 && !iGeoCache.cellC.isNull()) {
-        	c=iGeoCache.cellC.getValue()/iGeoCache.cellA.getValue()*alat;
+        	c=iGeoCache.cellC.getValue()/iGeoCache.cellA.getValue()*alat;//C(in bohr)*scaling
         }
         else c=null;
         
@@ -441,6 +441,7 @@ public class WorkScene3D {
         		aVec= new Point3D(iGeoCache.vectorA1.getValue(),iGeoCache.vectorA2.getValue(),iGeoCache.vectorA3.getValue()).multiply(scalingAll); 
 	        	bVec= new Point3D(iGeoCache.vectorB1.getValue(),iGeoCache.vectorB2.getValue(),iGeoCache.vectorB3.getValue()).multiply(scalingAll); 
 	        	cVec= new Point3D(iGeoCache.vectorC1.getValue(),iGeoCache.vectorC2.getValue(),iGeoCache.vectorC3.getValue()).multiply(scalingAll); 
+	        	//aVec(in bohr)*scaling
 	        	
 	        	double det = -aVec.getZ()*bVec.getY()*cVec.getX() + aVec.getY()*bVec.getZ()*cVec.getX() 
         				+ aVec.getZ()*bVec.getX()*cVec.getY() - aVec.getX()*bVec.getZ()*cVec.getY() 
@@ -562,8 +563,9 @@ public class WorkScene3D {
         Point3D out[] = {aVec,bVec,cVec};
         return out;
 	}
-	private void buildBravaisLattice(double alat, Point3D[] lattVecs,GeoGroup latticeGroup) {
-		
+	private void buildBravaisLattice(Point3D[] lattVecs,GeoGroup latticeGroup) {
+		final Double alat = getAlat();
+		if(alat==null) return;
         
         final int thick = 1;
         
@@ -682,7 +684,10 @@ public class WorkScene3D {
         
         
 	}
-	private ArrayList<Atom> genAtomListInAlat(Double alat,Point3D[] outPoint) {
+	private ArrayList<Atom> genAtomListInAlat(Point3D[] outPoint) {
+		final Double alat = getAlat();
+		if(alat==null) return null;
+		
 		if (iGeoCache == null) return null;
 		
 		//deep copy manually
@@ -785,7 +790,10 @@ public class WorkScene3D {
 		}
 		return atomListClone;
 	}
-	private void addAtomsToScene(double alat, ArrayList<Atom> atomListClone,GeoGroup atomsGroup,Point3D[] lattVecs) {
+	private void addAtomsToScene(ArrayList<Atom> atomListClone,GeoGroup atomsGroup,Point3D[] lattVecs) {
+		final Double alat = getAlat();
+		if(alat==null) return;
+		
 		//for supercells
 		//supercellMode 0 is no, 1 is crystal, 2 is alat
     	int nxlim=1;
