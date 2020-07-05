@@ -2,6 +2,7 @@ package app.input;
 
 import com.error.ShowAlert;
 
+import javafx.geometry.Point3D;
 import javafx.scene.control.Alert.AlertType;
 
 public class CellParameter {
@@ -53,5 +54,11 @@ public class CellParameter {
 		strTmp+=(Double.toString(bx)+" "+Double.toString(by)+" "+Double.toString(bz)+"\n");
 		strTmp+=(Double.toString(cx)+" "+Double.toString(cy)+" "+Double.toString(cz));
 		return strTmp;
+	}
+	public Point3D crystalToCoordinate(double x, double y, double z) {
+		Point3D avec = new Point3D(ax,ay,az);
+		Point3D bvec = new Point3D(bx,by,bz);
+		Point3D cvec = new Point3D(cx,cy,cz);
+		return avec.multiply(x).add(bvec.multiply(y)).add(cvec.multiply(z));
 	}
 }
