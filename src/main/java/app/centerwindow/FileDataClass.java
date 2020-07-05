@@ -170,6 +170,8 @@ public class FileDataClass {
 		this.addNewAtomPosition();//for initial positions
 		this.addNewCell();//for initial parameters
 		
+		boolean startCalc = false;
+		
 		try {
 		    Scanner sc = new Scanner(inoutFiles); 
 		  
@@ -190,29 +192,32 @@ public class FileDataClass {
 		    	if(recordCellPara) {
 		    		recordCellPara = this.addCellParameter(strTmp,argCache);
 		    	}
-		    	if(strTmp.contains("tau(")) {
+		    	if(strTmp.contains("tau(") && !startCalc) {
 		    		this.parseInitialAtomPos(strTmp);
 		    	}
-		    	if(strTmp.contains("a(") && strTmp.contains("=")) {
+		    	if(strTmp.contains("a(") && strTmp.contains("=") && !startCalc) {
 		    		this.parseInitialCellPara(strTmp);
 		    	}
 		    	if(strTmp.contains("ATOMIC_POSITIONS")) {
+		    		startCalc = true;
 		    		recordAtomicPos = true;//must be after fileData.addAtomicPosition()
 		    		this.addNewAtomPosition();
 		    		argCache = this.parseArg(strTmp);
 		    	}
 		    	if(strTmp.contains("CELL_PARAMETERS")) {
+		    		startCalc = true;
+		    		//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", Integer.toString(lineCount));
 		    		recordCellPara = true;
 		    		this.addNewCell();
 		    		argCache = this.parseArg(strTmp);
 		    	}
-		    	if(strTmp.contains("bravais-lattice index")) {
+		    	if(strTmp.contains("bravais-lattice index") && !startCalc) {
 		    		this.parseIBrav(strTmp);
 		    	}
-		    	if(strTmp.contains("celldm(")) {
+		    	if(strTmp.contains("celldm(") && !startCalc) {
 		    		this.parseCelldm(strTmp);
 		    	}
-		    	if(lowerCaseStr.contains("nstep")&& strTmp.contains("=")) {
+		    	if(lowerCaseStr.contains("nstep")&& strTmp.contains("=") && !startCalc) {
 		    		String[] splitted = strTmp.trim().split("\\s+");//split the string by whitespaces
 		    		try {
 		    			Integer dbTmp =  Integer.valueOf(splitted[2]);
@@ -222,6 +227,7 @@ public class FileDataClass {
 		    		}
 		    	}
 		    	if(lowerCaseStr.contains("total energy") && strTmp.contains("=")) {
+		    		startCalc = true;
 		    		String[] splitted = strTmp.trim().split("\\s+");//split the string by whitespaces
 		    		try {
 		    			if(strTmp.contains("!")) {
@@ -479,6 +485,7 @@ public class FileDataClass {
 		Point3D pTmp;
 		if(strLine.contains("(1)") || strLine.contains("(2)") || strLine.contains("(3)")) {
 			pTmp = getCoor(strLine);
+			//if(pTmp==null) {return;}
 			cellParameter.get(0).addCoor(pTmp.getX(),pTmp.getY(),pTmp.getZ());
 		}
 		else {ShowAlert.showAlert(AlertType.INFORMATION, "Error", "parseInitialCellPara: "+strLine);}
@@ -598,7 +605,7 @@ public class FileDataClass {
 	public Point3D convert2alat(String argCache, double x, double y, double z) {
 		Point3D ptOld = new Point3D(x,y,z);
 
-		if(argCache==null || argCache.isEmpty() || "alat".equals(argCache)) {
+		if(argCache==null || argCache.isEmpty() || argCache.contains("alat")) {
 			return ptOld;//use alat as a default. True for both atomic positions and cell parameters
 		}
 		else if("crystal".equals(argCache)) {

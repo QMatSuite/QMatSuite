@@ -70,10 +70,10 @@ public class MainLeftPaneController implements Initializable {
 		TreeTableColumn<ProjectCalcLog, String> treeTableColumn3 = new TreeTableColumn<>("Calc. Type");
 		TreeTableColumn<ProjectCalcLog, String> treeTableColumn4 = new TreeTableColumn<>("Status");
 		
-		treeTableColumn1.setPrefWidth(85);
-		treeTableColumn2.setPrefWidth(68);
-		treeTableColumn3.setPrefWidth(65);
-		treeTableColumn4.setPrefWidth(65);
+		treeTableColumn1.setPrefWidth(110);
+		treeTableColumn2.setPrefWidth(85);
+		treeTableColumn3.setPrefWidth(82);
+		treeTableColumn4.setPrefWidth(70);
 		
 		treeTableColumn1.setCellValueFactory(new TreeItemPropertyValueFactory<>("project"));
 		treeTableColumn2.setCellValueFactory(new TreeItemPropertyValueFactory<>("calculation"));
