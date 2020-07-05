@@ -43,9 +43,11 @@ public class CellParameter {
 		else if(cellCount==1) {bx=x;by=y;bz=z;}
 		else if(cellCount==2) {cx=x;cy=y;cz=z;}
 		else {
-			ShowAlert.showAlert(AlertType.INFORMATION, "Warning", ">3 cellparameters detected.");
-			return;
+			ShowAlert.showAlert(AlertType.INFORMATION, "Warning", ">3 cellparameters detected in CellParameter.");
+			//return;
 		}
+		//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", Integer.toString(cellCount)+
+		//		Double.toString(x)+","+Double.toString(y)+","+Double.toString(z));
 		cellCount++;
 	}
 	public String toString() {

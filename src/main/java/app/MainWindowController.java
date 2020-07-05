@@ -284,7 +284,7 @@ public class MainWindowController implements Initializable{
 					ShowAlert.showAlert(AlertType.INFORMATION, "Error", msg);
 			    	return;
 		    	}
-						
+				
 				if(msg.contains(ErrorMsg.cannotFindProjectFolder)) {
 					contTree.updateProjects(true);
 					ShowAlert.showAlert(AlertType.INFORMATION, "Error", msg);

@@ -42,7 +42,6 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.PhongMaterial;
-import javafx.scene.shape.Box;
 import javafx.scene.shape.Cylinder;
 import javafx.scene.shape.Sphere;
 import javafx.scene.transform.Rotate;
@@ -286,28 +285,6 @@ public class WorkScene3D {
 		}
 		axisGroup.setVisible(true);
 		
-//        final PhongMaterial materialX = new PhongMaterial();
-//        materialX.setDiffuseColor(Color.DARKRED);
-//        materialX.setSpecularColor(Color.RED);
-// 
-//        final PhongMaterial materialY = new PhongMaterial();
-//        materialY.setDiffuseColor(Color.DARKGREEN);
-//        materialY.setSpecularColor(Color.GREEN);
-// 
-//        final PhongMaterial materialZ = new PhongMaterial();
-//        materialZ.setDiffuseColor(Color.DARKBLUE);
-//        materialZ.setSpecularColor(Color.BLUE);
-// 
-//        final Box xAxis = new Box(AXIS_LENGTH, 3, 3);
-//        final Box yAxis = new Box(3, AXIS_LENGTH, 3);
-//        final Box zAxis = new Box(3, 3, AXIS_LENGTH);
-//        
-//        xAxis.setMaterial(materialX);
-//        yAxis.setMaterial(materialY);
-//        zAxis.setMaterial(materialZ);
-// 
-//        axisGroup.getChildren().addAll(xAxis, yAxis, zAxis);
-//        axisGroup.setVisible(true);
     }
 	public void buildGeometry(InputAgentGeo iGeo) {
 		if (moleculeGroup==null || iGeo == null) return;

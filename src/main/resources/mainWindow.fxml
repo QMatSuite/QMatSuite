@@ -65,8 +65,8 @@
                 <RowConstraints minHeight="10.0" vgrow="SOMETIMES" />
               </rowConstraints>
                <children>
-                  <Label text="Workspace" />
-                  <Button fx:id="buttonOpenWorkSpace" mnemonicParsing="false" prefHeight="25.0" prefWidth="55.0" text="open" GridPane.columnIndex="1" />
+                  <Label minWidth="80.0" text="Workspace" />
+                  <Button fx:id="buttonOpenWorkSpace" minWidth="45.0" mnemonicParsing="false" text="open" GridPane.columnIndex="1" />
                   <Pane fx:id="paneWorkSpace" prefHeight="25.0" prefWidth="439.0" GridPane.columnIndex="2">
                      <children>
                         <Label fx:id="textWorkSpace" />
@@ -79,13 +79,13 @@
             </GridPane>
             <HBox>
                <children>
-                  <Label minWidth="40.0" text="Project" />
-                <Button fx:id="createProject" minWidth="70.0" mnemonicParsing="false" prefWidth="90.0" text="New project" />
-                  <ComboBox fx:id="comboProject" minWidth="55.0" />
-                  <Button fx:id="saveProjectButton" minWidth="45.0" mnemonicParsing="false" prefWidth="50.0" text="Save" />
+                  <Label minWidth="38.0" text="Project" />
+                <Button fx:id="createProject" minWidth="81.0" mnemonicParsing="false" text="New project" />
+                  <ComboBox fx:id="comboProject" minWidth="60.0" />
+                  <Button fx:id="saveProjectButton" minWidth="41.0" mnemonicParsing="false" text="Save" />
                   <Separator orientation="VERTICAL" />
-                  <Label minWidth="60.0" text="Calculation" />
-                  <MenuButton fx:id="calcMain" minWidth="75.0" mnemonicParsing="false" prefWidth="90.0" text="Add calculation">
+                  <Label minWidth="59.0" text="Calculation" />
+                  <MenuButton fx:id="calcMain" minWidth="81.0" mnemonicParsing="false" prefWidth="85.0" text="Add calculation">
                      <items>
                      <MenuItem fx:id="calcScf" mnemonicParsing="false" text="Single energy" />
                       <MenuItem fx:id="calcOpt" mnemonicParsing="false" text="optimization" />
@@ -96,19 +96,19 @@
                       <MenuItem fx:id="calcCustom" mnemonicParsing="false" text="Custom..." />
                      </items>
                   </MenuButton>
-                  <ComboBox fx:id="comboCalculation" minWidth="75.0" prefWidth="80.0" />
+                  <ComboBox fx:id="comboCalculation" minWidth="75.0" />
                   <Separator orientation="VERTICAL" />
                   <Label minWidth="25.0" text="Run" />
-                <Button fx:id="showInputButton" minWidth="70.0" mnemonicParsing="false" prefWidth="90.0" text="Show Input" />
-                <Button fx:id="runJob" minWidth="40.0" mnemonicParsing="false" prefWidth="40.0" text="Run" />
+                <Button fx:id="showInputButton" minWidth="77.0" mnemonicParsing="false" text="Show Input" />
+                <Button fx:id="runJob" minWidth="40.0" mnemonicParsing="false" text="Run" />
                 <Label fx:id="currentJobLabel" text="" HBox.hgrow="ALWAYS" />
                   <Pane prefWidth="50.0" HBox.hgrow="SOMETIMES" />
                   <Separator orientation="VERTICAL" />
-                  <Label minWidth="80" text="Input settings" />
-                  <RadioButton fx:id="radioGeometry" minWidth="80.0" mnemonicParsing="false" />
-                  <RadioButton fx:id="radioCalculation" minWidth="80.0" mnemonicParsing="false" />
+                  <Label minWidth="75.0" text="Input settings" />
+                  <RadioButton fx:id="radioGeometry" minWidth="75.0" mnemonicParsing="false" />
+                  <RadioButton fx:id="radioCalculation" minWidth="75.0" mnemonicParsing="false" />
                   <Separator orientation="VERTICAL" />
-                <Label fx:id="calcLabel" minWidth="100.0" prefWidth="120.0" text="" />
+                <Label fx:id="calcLabel" minWidth="85.0" prefWidth="120.0" text="" />
                </children>
             </HBox>
          </children>
