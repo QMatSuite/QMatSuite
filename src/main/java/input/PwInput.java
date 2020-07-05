@@ -266,6 +266,7 @@ public class PwInput extends QeInput{
 			//set parameters
 			boolean boolMag = ia1.setMag;
 			setValue("SYSTEM","nspin",ia1.nspin);andExplicitWrite("SYSTEM","nspin",boolMag);
+			
 			setValue("SYSTEM","noncolin",ia1.noncolin);andExplicitWrite("SYSTEM","noncolin",boolMag);
 			setValue("SYSTEM","lspinorb",ia1.boolSoc);andExplicitWrite("SYSTEM","lspinorb",boolMag);
 			
@@ -291,6 +292,8 @@ public class PwInput extends QeInput{
 			tmpAngle1.clearAll();tmpAngle1.setExplicitWrite(false);
 			tmpAngle2.clearAll();tmpAngle2.setExplicitWrite(false);
 			if(boolMag && ia1.nspin.isNull() && ia1.noncolin.getValue()) {
+				//non colinear
+				andExplicitWrite("SYSTEM","nspin",false);
 				tmpAngle1.setExplicitWrite(true);
 				tmpAngle2.setExplicitWrite(true);
 				if(ia1.setForElements.getValue()) {
