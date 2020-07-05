@@ -195,6 +195,7 @@ public class InputScfMagnetController extends InputController{
 					if (iScf!=null)  iScf.boolSoc.setValue(false);
 				}
 			});
+			
 			setForElements.selectedProperty().addListener((observable, oldValue, newValue) ->
 			{
 				InputAgentScf iScf = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
@@ -209,6 +210,10 @@ public class InputScfMagnetController extends InputController{
 				if (newValue&&setForElements.isSelected()) {setForElements.setSelected(false);}
 				else {clearInput();updateTable();}//use else to avoid double updating
 			});
+			//for now, only allow for setForElements
+			setForElements.setSelected(true);setForElements.setDisable(true);
+			setForAtoms.setDisable(true);
+			
 			editButton.setOnAction((event) -> {	
 	    		int selec = elementTable.getSelectionModel().getSelectedIndex();
 	    		if (selec<0 || selec >= elemData.size()) {bottomStatusLabel.setText("No element/atom selected in the table.");return;}
@@ -354,8 +359,12 @@ public class InputScfMagnetController extends InputController{
 	        	if (iScf.boolSoc.getValue()) {spinorbitToggle.setText("ON");spinorbitToggle.setSelected(true);}
 	    		else {spinorbitToggle.setText("OFF");spinorbitToggle.setSelected(false);}
 	        	
-	        	setForElements.setSelected(iScf.setForElements.getValue());
-	        	setForAtoms.setSelected(iScf.setForAtoms.getValue());
+	        	//for now, only allow for setForElements
+	        	setForElements.setSelected(true);setForAtoms.setSelected(false);
+	        	iScf.setForElements.setValue(true);iScf.setForAtoms.setValue(false);
+	        	//setForElements.setSelected(iScf.setForElements.getValue());
+	        	//setForAtoms.setSelected(iScf.setForAtoms.getValue());
+	        	
 	        	clearInput();updateTable();//explicit updateTable, in case the setForElements and setForAtoms do not change
 	        	setDisable();
 			}

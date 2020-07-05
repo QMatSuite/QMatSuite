@@ -25,11 +25,12 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.ResourceBundle;
 import java.util.Scanner;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
+import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -155,6 +156,8 @@ public class OutputViewerController implements Initializable{
 		//comboPlot.setVisible(false);labelPlot.setVisible(false);
 		hboxPlotToolbar.setVisible(false);
 		listCalcFolders.getSelectionModel().selectedItemProperty().addListener((ov, oldTab, newTab) -> {
+			//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", "listCalcFolders: "+oldTab + "," + newTab);
+			
 			fileData.clearAll();buttonSaveGeo.setDisable(true);
 			
 			if(newTab==null || newTab.isEmpty()) return;
@@ -165,6 +168,8 @@ public class OutputViewerController implements Initializable{
 			updateFilesInCalcFolder();
 		});
 		listFiles.getSelectionModel().selectedItemProperty().addListener((ov, oldTab, newTab) -> {
+			//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", "listFiles: "+oldTab + "," + newTab);
+			
 			fileCategory = null;
 			fileData.clearAll();buttonSaveGeo.setDisable(true);
 			labelFileCategory.setText("");
@@ -245,10 +250,13 @@ public class OutputViewerController implements Initializable{
 			mainClass.projectManager.addGeoList(calcFolderName, fileData.getGeoAgent());
 			if(contGeo!=null) {contGeo.loadProjectParameters();}
 		});
+		
 		buttonShowMarker.selectedProperty().addListener((observable, oldValue, newValue) ->{
 			if(newValue==null) return;
 			lineChart.setCreateSymbols(newValue);
 		});
+		buttonShowMarker.setSelected(true);
+		
 		buttonRefreshFolder.setOnAction((event) -> {
 			int tmpInt = listCalcFolders.getSelectionModel().getSelectedIndex();
 			updateProjectFolder();
@@ -287,23 +295,29 @@ public class OutputViewerController implements Initializable{
 	    return directoryToBeDeleted.delete();
 	}
 	private void updateFilesInCalcFolder() {
-		int tmpInt = listFiles.getSelectionModel().getSelectedIndex();
-		
-		listFiles.getItems().clear();
 		
 		if(calcFolder==null || !calcFolder.canRead() || !calcFolder.isDirectory()) return;
 		
+		ObservableList<String> listFilesItems = FXCollections.observableArrayList();
+		
 		File[] fileList = calcFolder.listFiles();
 		for (File f : fileList) {
-			listFiles.getItems().add(f.getName());
+			listFilesItems.add(f.getName());
 		}
-		if(listFiles.getItems()!=null) {
-			if(tmpInt>=0 && listFiles.getItems().size()>tmpInt) {
-				listFiles.getSelectionModel().select(tmpInt);//will invoke selection change listener and update "inoutFiles"
-			}
-			else if(!listFiles.getItems().isEmpty()){
-				listFiles.getSelectionModel().select(0);//select first file
-			}
+		
+		if(this.checkIdentity(listFilesItems, listFiles.getItems())) {
+			return;//no change, do nothing
+		}
+		
+		int tmpInt = listFiles.getSelectionModel().getSelectedIndex();
+		listFiles.getItems().clear();
+		listFiles.getItems().addAll(listFilesItems);
+		
+		if(tmpInt>=0 && listFiles.getItems().size()>tmpInt) {
+			listFiles.getSelectionModel().select(tmpInt);//will invoke selection change listener and update "inoutFiles"
+		}
+		else if(!listFiles.getItems().isEmpty()){
+			listFiles.getSelectionModel().select(0);//select first file
 		}
 	}
 	private void updateIoDisplay() {
@@ -453,8 +467,8 @@ public class OutputViewerController implements Initializable{
 	private void plot2dStdOut() {
 		//construct new plot type list
 		plotTypeStdOut.clear();
-		if(fileData.hasScf) {plotTypeStdOut.add("SCF E conv");}
 		if(fileData.isOpt) {plotTypeStdOut.add("OPT E conv");plotTypeStdOut.add("OPT F conv");}
+		if(fileData.hasScf) {plotTypeStdOut.add("SCF E conv");}
 		//check whether it is the same as in the combo. If yes, no update of the combo
 		if(!isSameTypeStdout(plotTypeStdOut)) {
 			comboPlot.getItems().clear();
@@ -601,8 +615,23 @@ public class OutputViewerController implements Initializable{
 		if(wsp==null || pj==null || pj.isEmpty()) return null;
 		return new File(new File(wsp),pj);
 	}
+	private boolean checkIdentity(ObservableList<String> lst1, ObservableList<String> lst2) {
+		if(lst1==null && lst2==null) {return true;}//both null
+		else if(lst1==null || lst2==null) {return false;}//only one is null
+		else {//both not null
+			if(lst1.size()!=lst2.size()) {return false;}
+			else {
+				for(int i=0;i<lst1.size();i++) {
+					if(!Objects.equals(lst1.get(i),lst2.get(i))) {return false;}
+				}
+				return true;
+			}
+		}
+	}
 	public void updateProjectFolder() {
-		listCalcFolders.getItems().clear();listFiles.getItems().clear();
+		
+		
+		ObservableList<String> listCalcFoldersItems = FXCollections.observableArrayList();
 		
 		File pjFolder = getProjectFolder();
 		if(pjFolder==null || !pjFolder.canRead()) return;
@@ -610,13 +639,25 @@ public class OutputViewerController implements Initializable{
 		File[] fileList = pjFolder.listFiles();
 		int count = 0;
 		for (File f : fileList) {
-			if(f.isDirectory()) {listCalcFolders.getItems().add(f.getName());count++;}
+			if(f.isDirectory()) {listCalcFoldersItems.add(f.getName());count++;}
 		}
 		ArrayList<String> pureFiles = new ArrayList<String>();
 		for (File f : fileList) {
-			if(f.isFile()) {listCalcFolders.getItems().add(f.getName());pureFiles.add(f.getName());}
+			if(f.isFile()) {listCalcFoldersItems.add(f.getName());pureFiles.add(f.getName());}
 		}
-		if(count>0) {listCalcFolders.getSelectionModel().select(0);}//will invoke selection change listener and update "calcFolder"
+		
+		if(checkIdentity(listCalcFoldersItems,listCalcFolders.getItems())) {
+			return;//list being the same. Do nothing!
+		}
+		
+		int indFolder = listCalcFolders.getSelectionModel().getSelectedIndex();
+		listCalcFolders.getItems().clear();listFiles.getItems().clear();
+		listCalcFolders.getItems().addAll(listCalcFoldersItems);
+		
+		//will invoke selection change listener and update "calcFolder"
+		if(count>indFolder && indFolder>=0) {listCalcFolders.getSelectionModel().select(indFolder);}
+		else if(count>0) {listCalcFolders.getSelectionModel().select(0);}
+		
 		listCalcFolders.setCellFactory(new Callback<ListView<String>, ListCell<String>>() {
 	        @Override 
 	        public ListCell<String> call(ListView<String> param) {

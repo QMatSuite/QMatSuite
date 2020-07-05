@@ -73,9 +73,10 @@ public class WorkScene3D {
 	private final double cameraDistance = 1500;
 
 	private final int maxTrialCells = 8;//(maxTrialCells*2)^3 cells tried
-	private final double ballRadiusAtom = 30;
+	private final double ballRadiusAtom = 25;
 	private final int bondThick = 10;
-	public  double bondScaling=1.06;//the same across WorkScenes
+	public static final double bondScalingDefault = 1.1;
+	public  double bondScaling = bondScalingDefault;//the same across WorkScenes
 	private static final double minBondScaling=0.1;
 	public InputAgentGeo iGeoCache=null;
 	public boolean boolFoldBack=false;
@@ -254,30 +255,59 @@ public class WorkScene3D {
 	}
 	private void buildAxes() {
 		if (axisGroup==null) axisGroup = new Group();
-		final double AXIS_LENGTH = 300;
 		
-        final PhongMaterial materialX = new PhongMaterial();
-        materialX.setDiffuseColor(Color.DARKRED);
-        materialX.setSpecularColor(Color.RED);
- 
-        final PhongMaterial materialY = new PhongMaterial();
-        materialY.setDiffuseColor(Color.DARKGREEN);
-        materialY.setSpecularColor(Color.GREEN);
- 
-        final PhongMaterial materialZ = new PhongMaterial();
-        materialZ.setDiffuseColor(Color.DARKBLUE);
-        materialZ.setSpecularColor(Color.BLUE);
- 
-        final Box xAxis = new Box(AXIS_LENGTH, 1, 1);
-        final Box yAxis = new Box(1, AXIS_LENGTH, 1);
-        final Box zAxis = new Box(1, 1, AXIS_LENGTH);
-        
-        xAxis.setMaterial(materialX);
-        yAxis.setMaterial(materialY);
-        zAxis.setMaterial(materialZ);
- 
-        axisGroup.getChildren().addAll(xAxis, yAxis, zAxis);
-        axisGroup.setVisible(true);
+		final double axisUnitLength = scaling/PhysicalConstants.angstPerBohr;//1 Angstrom
+		final int totalAxisBars = 5;
+		final int thick = 3;
+		
+		PhongMaterial mat1 = new PhongMaterial();
+		mat1.setSpecularColor(Color.DARKGRAY);
+		mat1.setDiffuseColor(Color.CYAN);
+		
+		PhongMaterial mat2 = new PhongMaterial();
+		mat2.setSpecularColor(Color.DARKGRAY);
+		mat2.setDiffuseColor(Color.ORANGE);
+		
+		for(int i=0;i<totalAxisBars;i++) {
+			Cylinder clx = makeCylinderConnect(new Point3D(i*axisUnitLength,0,0), 
+					new Point3D((i+1)*axisUnitLength,0,0), thick);
+			Cylinder cly = makeCylinderConnect(new Point3D(0,i*axisUnitLength,0), 
+					new Point3D(0,(i+1)*axisUnitLength,0), thick);
+			Cylinder clz = makeCylinderConnect(new Point3D(0,0,i*axisUnitLength), 
+					new Point3D(0,0,(i+1)*axisUnitLength), thick);
+			
+			if(i%2==0) {
+				clx.setMaterial(mat1);cly.setMaterial(mat1);clz.setMaterial(mat1);
+			}
+			else {
+				clx.setMaterial(mat2);cly.setMaterial(mat2);clz.setMaterial(mat2);
+			}
+			axisGroup.getChildren().addAll(clx,cly,clz);
+		}
+		axisGroup.setVisible(true);
+		
+//        final PhongMaterial materialX = new PhongMaterial();
+//        materialX.setDiffuseColor(Color.DARKRED);
+//        materialX.setSpecularColor(Color.RED);
+// 
+//        final PhongMaterial materialY = new PhongMaterial();
+//        materialY.setDiffuseColor(Color.DARKGREEN);
+//        materialY.setSpecularColor(Color.GREEN);
+// 
+//        final PhongMaterial materialZ = new PhongMaterial();
+//        materialZ.setDiffuseColor(Color.DARKBLUE);
+//        materialZ.setSpecularColor(Color.BLUE);
+// 
+//        final Box xAxis = new Box(AXIS_LENGTH, 3, 3);
+//        final Box yAxis = new Box(3, AXIS_LENGTH, 3);
+//        final Box zAxis = new Box(3, 3, AXIS_LENGTH);
+//        
+//        xAxis.setMaterial(materialX);
+//        yAxis.setMaterial(materialY);
+//        zAxis.setMaterial(materialZ);
+// 
+//        axisGroup.getChildren().addAll(xAxis, yAxis, zAxis);
+//        axisGroup.setVisible(true);
     }
 	public void buildGeometry(InputAgentGeo iGeo) {
 		if (moleculeGroup==null || iGeo == null) return;
