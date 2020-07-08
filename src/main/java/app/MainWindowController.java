@@ -19,6 +19,7 @@
 package app;
 
 
+import java.awt.Desktop;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
@@ -102,7 +103,8 @@ public class MainWindowController implements Initializable{
     @FXML private Button showInputButton,
     runJob,
     buttonOpenWorkSpace,
-    saveProjectButton;
+    saveProjectButton,
+    buttonOpenInWindows;
     
     @FXML private Label textWorkSpace;
     
@@ -180,8 +182,8 @@ public class MainWindowController implements Initializable{
 		}
 		else {
 			String calcNameTmp = newValue.getValue().getCalculation();
-			
 			openCalc(calcNameTmp);
+			contOutput.calculationFolderChange(calcNameTmp);
 		}
 	}
 	@Override
@@ -439,6 +441,17 @@ public class MainWindowController implements Initializable{
 		});
 		contTree.calcTddft.setOnAction((event) -> {
 			openCalc(EnumCalc.TDDFT,true);
+		});
+		buttonOpenInWindows.setOnAction((event) -> {
+			File wsDir = mainClass.projectManager.getWorkSpaceDir();
+			
+			if(wsDir==null || !wsDir.canRead()) {return;}
+			
+			try {
+				Desktop.getDesktop().open(wsDir);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		});
 		showInputButton.setOnAction((event) -> {
 			ArrayList<ContainerInputString> cis = mainClass.projectManager.genInputFromAgent();
@@ -1028,8 +1041,6 @@ public class MainWindowController implements Initializable{
 		try {tabPaneRight.getSelectionModel().select(1);}catch (Exception e) {}//load second tab(not geo)
 		
 		calcLabel.setText(enumCalcThis.getLong());
-		
-		contOutput.updateProjectFolder();
 		
 		//update center workscene
 		

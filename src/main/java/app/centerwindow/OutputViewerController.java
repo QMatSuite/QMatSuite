@@ -41,7 +41,6 @@ import javafx.scene.chart.XYChart.Series;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
-import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.ScrollPane.ScrollBarPolicy;
@@ -52,7 +51,6 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
-import javafx.util.Callback;
 import main.MainClass;
 import com.consts.Constants.EnumAnalysis;
 import com.consts.Constants.EnumCard;
@@ -66,20 +64,15 @@ public class OutputViewerController implements Initializable{
 
     @FXML private HBox rootHbox;
 
-    @FXML private VBox vBoxCalcFolder,
-    vboxFiles,
+    @FXML private VBox vboxFiles,
     vboxMainPlot;
-
-    @FXML private ListView<String> listCalcFolders;
 
     @FXML private ListView<String> listFiles;
     
     @FXML private ScrollPane displayScroll;
     
-    @FXML private Button deleteFolderButton,
-    deleteFileButton,
+    @FXML private Button deleteFileButton,
     openAsButton,
-    buttonRefreshFolder,
     buttonRefreshFiles,
     buttonRefresh,
     buttonSaveGeo;
@@ -155,18 +148,6 @@ public class OutputViewerController implements Initializable{
 		
 		//comboPlot.setVisible(false);labelPlot.setVisible(false);
 		hboxPlotToolbar.setVisible(false);
-		listCalcFolders.getSelectionModel().selectedItemProperty().addListener((ov, oldTab, newTab) -> {
-			//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", "listCalcFolders: "+oldTab + "," + newTab);
-			
-			fileData.clearAll();buttonSaveGeo.setDisable(true);
-			
-			if(newTab==null || newTab.isEmpty()) return;
-			File pjFolder = getProjectFolder();
-			if(pjFolder==null || !pjFolder.canRead()) return;
-			calcFolder = new File(pjFolder,newTab);
-			
-			updateFilesInCalcFolder();
-		});
 		listFiles.getSelectionModel().selectedItemProperty().addListener((ov, oldTab, newTab) -> {
 			//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", "listFiles: "+oldTab + "," + newTab);
 			
@@ -244,7 +225,8 @@ public class OutputViewerController implements Initializable{
 //			CellParameter cellPara = fileData.getFinalCellParameter();
 //			Double alat = fileData.getAlat();
 //			if(atomList==null || atomList.isEmpty() || alat==null ) {return;}
-			String calcFolderName = listCalcFolders.getSelectionModel().getSelectedItem();
+//			String calcFolderName = listCalcFolders.getSelectionModel().getSelectedItem();
+			String calcFolderName = mainClass.projectManager.getCurrentCalcName();
 			if(calcFolderName==null) {return;}
 			//mainClass.projectManager.addGeoList(calcFolderName, atomList, cellPara, alat);
 			mainClass.projectManager.addGeoList(calcFolderName, fileData.getGeoAgent());
@@ -257,33 +239,44 @@ public class OutputViewerController implements Initializable{
 		});
 		buttonShowMarker.setSelected(true);
 		
-		buttonRefreshFolder.setOnAction((event) -> {
-			int tmpInt = listCalcFolders.getSelectionModel().getSelectedIndex();
-			updateProjectFolder();
-			if(tmpInt>=0 && listCalcFolders.getItems()!=null && listCalcFolders.getItems().size()>tmpInt) {
-				listCalcFolders.getSelectionModel().select(tmpInt);
-			}
-		});
+//		buttonRefreshFolder.setOnAction((event) -> {
+//			int tmpInt = listCalcFolders.getSelectionModel().getSelectedIndex();
+//			updateProjectFolder();
+//			if(tmpInt>=0 && listCalcFolders.getItems()!=null && listCalcFolders.getItems().size()>tmpInt) {
+//				listCalcFolders.getSelectionModel().select(tmpInt);
+//			}
+//		});
 		buttonRefreshFiles.setOnAction((event) -> {
-			updateFilesInCalcFolder();
+			updateFilesInCalcFolder(false);
 		});
-		deleteFolderButton.setOnAction((event) -> {
-			try {
-				deleteDirectory(calcFolder);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			updateProjectFolder();
-		});
+//		deleteFolderButton.setOnAction((event) -> {
+//			try {
+//				deleteDirectory(calcFolder);
+//			} catch (IOException e) {
+//				e.printStackTrace();
+//			}
+//			updateProjectFolder();
+//		});
 		deleteFileButton.setOnAction((event) -> {
 			try {
 				deleteDirectory(inoutFiles);
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
-			updateFilesInCalcFolder();
+			updateFilesInCalcFolder(true);
 		});
 		
+	}
+	public void calculationFolderChange(String newCalcFolderName) {
+		fileData.clearAll();buttonSaveGeo.setDisable(true);
+		
+		if(newCalcFolderName==null || newCalcFolderName.isEmpty()) return;
+		
+		File pjFolder = getProjectFolder();
+		if(pjFolder==null || !pjFolder.canRead()) return;
+		calcFolder = new File(pjFolder,newCalcFolderName);
+		
+		updateFilesInCalcFolder(true);
 	}
 	private boolean deleteDirectory(File directoryToBeDeleted) throws IOException {
 	    File[] contentFiles = directoryToBeDeleted.listFiles();
@@ -294,8 +287,14 @@ public class OutputViewerController implements Initializable{
 	    }
 	    return directoryToBeDeleted.delete();
 	}
-	private void updateFilesInCalcFolder() {
+	private void updateFilesInCalcFolder(boolean forceClean) {
 		
+		int tmpInt = listFiles.getSelectionModel().getSelectedIndex();
+		
+		if(forceClean) {
+			listFiles.getItems().clear();
+		}
+
 		if(calcFolder==null || !calcFolder.canRead() || !calcFolder.isDirectory()) return;
 		
 		ObservableList<String> listFilesItems = FXCollections.observableArrayList();
@@ -309,7 +308,7 @@ public class OutputViewerController implements Initializable{
 			return;//no change, do nothing
 		}
 		
-		int tmpInt = listFiles.getSelectionModel().getSelectedIndex();
+		
 		listFiles.getItems().clear();
 		listFiles.getItems().addAll(listFilesItems);
 		
@@ -628,56 +627,56 @@ public class OutputViewerController implements Initializable{
 			}
 		}
 	}
-	public void updateProjectFolder() {
-		
-		
-		ObservableList<String> listCalcFoldersItems = FXCollections.observableArrayList();
-		
-		File pjFolder = getProjectFolder();
-		if(pjFolder==null || !pjFolder.canRead()) return;
-		
-		File[] fileList = pjFolder.listFiles();
-		int count = 0;
-		for (File f : fileList) {
-			if(f.isDirectory()) {listCalcFoldersItems.add(f.getName());count++;}
-		}
-		ArrayList<String> pureFiles = new ArrayList<String>();
-		for (File f : fileList) {
-			if(f.isFile()) {listCalcFoldersItems.add(f.getName());pureFiles.add(f.getName());}
-		}
-		
-		if(checkIdentity(listCalcFoldersItems,listCalcFolders.getItems())) {
-			return;//list being the same. Do nothing!
-		}
-		
-		int indFolder = listCalcFolders.getSelectionModel().getSelectedIndex();
-		listCalcFolders.getItems().clear();listFiles.getItems().clear();
-		listCalcFolders.getItems().addAll(listCalcFoldersItems);
-		
-		//will invoke selection change listener and update "calcFolder"
-		if(count>indFolder && indFolder>=0) {listCalcFolders.getSelectionModel().select(indFolder);}
-		else if(count>0) {listCalcFolders.getSelectionModel().select(0);}
-		
-		listCalcFolders.setCellFactory(new Callback<ListView<String>, ListCell<String>>() {
-	        @Override 
-	        public ListCell<String> call(ListView<String> param) {
-	            return new ListCell<String>() {
-	                @Override 
-	                protected void updateItem(String item, boolean empty) {
-	                    super.updateItem(item, empty);
-	                    if (pureFiles.contains(item)) {
-	                        setDisable(true);setTextFill(Color.LIGHTGRAY);
-	                    } else {
-	                        setDisable(false);setTextFill(Color.BLACK);
-	                    }
-	                    setText(item);
-	                }
-
-	            };
-	        }
-	    });
-		
-	}
+//	public void updateProjectFolder() {
+//		
+//		
+//		ObservableList<String> listCalcFoldersItems = FXCollections.observableArrayList();
+//		
+//		File pjFolder = getProjectFolder();
+//		if(pjFolder==null || !pjFolder.canRead()) return;
+//		
+//		File[] fileList = pjFolder.listFiles();
+//		int count = 0;
+//		for (File f : fileList) {
+//			if(f.isDirectory()) {listCalcFoldersItems.add(f.getName());count++;}
+//		}
+//		ArrayList<String> pureFiles = new ArrayList<String>();
+//		for (File f : fileList) {
+//			if(f.isFile()) {listCalcFoldersItems.add(f.getName());pureFiles.add(f.getName());}
+//		}
+//		
+//		if(checkIdentity(listCalcFoldersItems,listCalcFolders.getItems())) {
+//			return;//list being the same. Do nothing!
+//		}
+//		
+//		int indFolder = listCalcFolders.getSelectionModel().getSelectedIndex();
+//		listCalcFolders.getItems().clear();listFiles.getItems().clear();
+//		listCalcFolders.getItems().addAll(listCalcFoldersItems);
+//		
+//		//will invoke selection change listener and update "calcFolder"
+//		if(count>indFolder && indFolder>=0) {listCalcFolders.getSelectionModel().select(indFolder);}
+//		else if(count>0) {listCalcFolders.getSelectionModel().select(0);}
+//		
+//		listCalcFolders.setCellFactory(new Callback<ListView<String>, ListCell<String>>() {
+//	        @Override 
+//	        public ListCell<String> call(ListView<String> param) {
+//	            return new ListCell<String>() {
+//	                @Override 
+//	                protected void updateItem(String item, boolean empty) {
+//	                    super.updateItem(item, empty);
+//	                    if (pureFiles.contains(item)) {
+//	                        setDisable(true);setTextFill(Color.LIGHTGRAY);
+//	                    } else {
+//	                        setDisable(false);setTextFill(Color.BLACK);
+//	                    }
+//	                    setText(item);
+//	                }
+//
+//	            };
+//	        }
+//	    });
+//		
+//	}
 
 
 }
