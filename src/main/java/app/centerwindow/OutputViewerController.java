@@ -273,7 +273,9 @@ public class OutputViewerController implements Initializable{
 		if(newCalcFolderName==null || newCalcFolderName.isEmpty()) return;
 		
 		File pjFolder = getProjectFolder();
-		if(pjFolder==null || !pjFolder.canRead()) return;
+		if(pjFolder==null || !pjFolder.canRead()) {
+			listFiles.getItems().clear();
+			return;}
 		calcFolder = new File(pjFolder,newCalcFolderName);
 		
 		updateFilesInCalcFolder(true);
