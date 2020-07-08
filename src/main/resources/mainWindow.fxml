@@ -54,8 +54,8 @@
             <GridPane hgap="5.0">
               <columnConstraints>
                 <ColumnConstraints hgrow="NEVER" maxWidth="118.5" minWidth="10.0" prefWidth="60.5" />
-                  <ColumnConstraints hgrow="NEVER" maxWidth="203.0" minWidth="0.0" prefWidth="46.0" />
-                  <ColumnConstraints hgrow="ALWAYS" maxWidth="686.5" minWidth="10.0" prefWidth="341.5" />
+                  <ColumnConstraints hgrow="NEVER" maxWidth="203.0" minWidth="0.0" prefWidth="92.5" />
+                  <ColumnConstraints hgrow="ALWAYS" maxWidth="686.5" minWidth="10.0" prefWidth="294.0" />
                 <ColumnConstraints hgrow="ALWAYS" maxWidth="400.0" minWidth="10.0" prefWidth="129.0" />
               </columnConstraints>
               <rowConstraints>
@@ -63,12 +63,13 @@
               </rowConstraints>
                <children>
                   <Label minWidth="80.0" text="Workspace" />
-                  <Button fx:id="buttonOpenWorkSpace" minWidth="45.0" mnemonicParsing="false" text="open" GridPane.columnIndex="1" />
-                  <Pane fx:id="paneWorkSpace" prefHeight="25.0" prefWidth="312.0" GridPane.columnIndex="2">
+                  <Button fx:id="buttonOpenWorkSpace" minWidth="45.0" mnemonicParsing="false" text="Change folder" GridPane.columnIndex="1" />
+                  <Pane fx:id="paneWorkSpace" prefHeight="25.0" prefWidth="325.0" GridPane.columnIndex="2">
                      <children>
                         <Label fx:id="textWorkSpace" />
                      </children>
                   </Pane>
+                  <Button fx:id="buttonOpenInWindows" mnemonicParsing="false" text="Open in system" GridPane.columnIndex="3" />
                </children>
                <VBox.margin>
                   <Insets left="5.0" right="5.0" />

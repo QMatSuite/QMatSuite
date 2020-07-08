@@ -11,14 +11,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.MethodOrderer;
 import org.testfx.api.FxRobotException;
-import org.testfx.matcher.control.ComboBoxMatchers;
 import org.testfx.service.query.EmptyNodeQueryException;
 import org.testfx.util.WaitForAsyncUtils;
-
 import javafx.collections.ObservableList;
 import javafx.scene.Node;
 import javafx.scene.Parent;
-import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.RadioButton;
@@ -29,7 +26,6 @@ import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeTableView;
 import javafx.scene.input.KeyCode;
 import project.ProjectCalcLog;
-import org.testfx.api.FxAssert;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class FirstMainWindowTest extends MainWindowTest{
@@ -59,33 +55,31 @@ public class FirstMainWindowTest extends MainWindowTest{
 		createProject();
 	}
 	
+	
 	@Test
 	@Order(4)
 	public void testAddCalculation() {
-		ComboBox<String> comboCalculation = lookup("#comboCalculation").queryComboBox();
+		TreeTableView<ProjectCalcLog> projectTree = lookup("#projectTree").query();
 		TabPane tabPaneRight = (TabPane) lookup("#idtabPaneRight").queryParent();
 		ObservableList<Tab> tabList;
-		
 		
 		clickOn("#calcMain");
 		clickOn("#calcScf");
 		
-		FxAssert.verifyThat(comboCalculation, ComboBoxMatchers.containsExactlyItems("SCF_1"));
+		Assertions.assertTrue(containsRow(projectTree,"testProject0","SCF_1"));
 		tabList = tabPaneRight.getTabs();
 		Assertions.assertTrue(tabList.size()==2);//geo and scf tab
 		//Assertions.assertTrue(comboCalculation.getSelectionModel().getSelectedItem().toLowerCase().contains("scf"));
 		
 		clickOn("#calcMain");
 		clickOn("#calcOpt");
-		FxAssert.verifyThat(comboCalculation, ComboBoxMatchers.containsExactlyItems("SCF_1","OPT_1"));
-		//Assertions.assertTrue(comboCalculation.getSelectionModel().getSelectedItem().toLowerCase().contains("opt"));
+		Assertions.assertTrue(containsRow(projectTree,"testProject0","OPT_1"));
 		tabList = tabPaneRight.getTabs();
 		Assertions.assertTrue(tabList.size()==3);//geo, scf and opt
 
 		clickOn("#calcMain");
 		clickOn("#calcMd");
-		FxAssert.verifyThat(comboCalculation, ComboBoxMatchers.containsExactlyItems("SCF_1","OPT_1","BOMD_1"));
-		//Assertions.assertTrue(comboCalculation.getSelectionModel().getSelectedItem().toLowerCase().contains("md"));
+		Assertions.assertTrue(containsRow(projectTree,"testProject0","BOMD_1"));
 		tabList = tabPaneRight.getTabs();
 		Assertions.assertTrue(tabList.size()==3);//geo, scf and md
 	}
@@ -93,7 +87,7 @@ public class FirstMainWindowTest extends MainWindowTest{
 	@Test
 	@Order(5)
 	public void testToggleToGeo() {
-		clickOn("#radioGeometry"); 
+		clickOn("Geometry"); 
 		
 		TabPane tabPaneRight = (TabPane) lookup("#idtabPaneRight").queryParent();
 		ObservableList<Tab> tabList = tabPaneRight.getTabs();
@@ -175,121 +169,121 @@ public class FirstMainWindowTest extends MainWindowTest{
 		clickOn(tfz).type(KeyCode.BACK_SPACE,KeyCode.DIGIT2);//2
 		clickOn(btUpd);
 		
-		//toggle geo and in/out
-		Node toggleGeoInOutButton = from(workSpaceTabPane.getSelectionModel().getSelectedItem().getContent()).lookup("#idToggleGeoInOutButton").query();
-		clickOn(toggleGeoInOutButton);
-		clickOn(toggleGeoInOutButton);
 	}
 	
 	@Test
 	@Order(8)
 	public void testGoToCalculation() {
-		ComboBox<String> comboCalculation = lookup("#comboCalculation").queryComboBox();
+		Node treeNode = lookup("#projectTree").query();
 		TabPane tabPaneRight = (TabPane) lookup("#idtabPaneRight").queryParent();
 		
 		
-		selectComboBox(comboCalculation, 0);
-		checkRightPaneTabs(comboCalculation, 0, tabPaneRight);
+		Node nodeScf1 = from(treeNode).lookup("SCF_1").query();
+		//sleep(1000);
+		clickOn(nodeScf1);
+		checkRightPaneTabs("scf", 0, tabPaneRight);
 		
 
-		selectComboBox(comboCalculation, 1);
-		checkRightPaneTabs(comboCalculation, 1, tabPaneRight);
+		nodeScf1 = from(treeNode).lookup("OPT_1").query();
+		clickOn(nodeScf1);
+		checkRightPaneTabs("opt", 1, tabPaneRight);
 		
 
-		selectComboBox(comboCalculation, 2);
-		checkRightPaneTabs(comboCalculation, 2, tabPaneRight);
+		nodeScf1 = from(treeNode).lookup("BOMD_1").query();
+		clickOn(nodeScf1);
+		checkRightPaneTabs("md", 2, tabPaneRight);
 
 	}
 	
-	@Test
-	@Order(9)
-	public void testCheckBoxResetAll() {
-		//VBox vboxScfStandard = (VBox)lookup("#vboxStandard").query();
-		//printQueryAll("#checkResetAll");
-		
-		
-		ComboBox<String> comboCalculation = lookup("#comboCalculation").queryComboBox();
-		TabPane tabPaneRight = (TabPane) lookup("#idtabPaneRight").queryParent();
-		
-		//go to scf
-		selectComboBox(comboCalculation, 0);
-		
-		Tab tabSelected = tabPaneRight.getSelectionModel().getSelectedItem();
-		
-		Node nodeCheckResetAll = from(tabSelected.getContent()).lookup("#checkResetAll").query();
-		//printQueryAll(tabSelected.getContent(),"#checkResetAll");
-		
-		CheckBox cb = (CheckBox) nodeCheckResetAll;
-		Node nodeScfStandard = from(tabSelected.getContent()).lookup("#standardPane").query();
-		//sleep(1000);
-		clickOn(nodeScfStandard);
-		//sleep(1000);
-		//clickOn(nodeCheckResetAll);
-		clickCheckBox(cb);
-		//sleep(1000);
-		Assertions.assertTrue(cb.isSelected(),"Reset all checkbox should be selected!");
-	}
-	
-	
-	
-	@Test
-	@Order(10)
-	public void testSaveProjectButton() {
-		ComboBox<String> comboProject = lookup("#comboProject").queryComboBox();
-		String projectFromCombo = comboProject.getSelectionModel().getSelectedItem();
-		
-		TabPane tabPaneRight = (TabPane) lookup("#workSpaceTabPane").queryParent();
-		String projectFromTab = tabPaneRight.getSelectionModel().getSelectedItem().getText();
-		
-		Assertions.assertEquals(projectFromCombo, projectFromTab,"|"+projectFromCombo+"|"+projectFromTab+"|");
-
-		clickOn("#saveProjectButton");
-	}
-	
-	@Test
-	@Order(11)
-	public void testOpenCloseProject() {
-		ComboBox<String> comboCalculation = lookup("#comboCalculation").queryComboBox();
-		ComboBox<String> comboProject = lookup("#comboProject").queryComboBox();
-		String projectFromCombo = comboProject.getSelectionModel().getSelectedItem();
-		
-		//printQueryAll("#workSpaceTabPane");
-		
-		TabPane workSpaceTabPane = (TabPane) lookup("#workSpaceTabPane").query();
-		
-		Node mainScrollLeft = lookup("#mainScrollLeft").query();
-		Node projectTreeItem = from(mainScrollLeft).lookup(projectFromCombo).query();
-		Node buttonCloseSelected = from(mainScrollLeft).lookup("#buttonCloseSelected").query();
-		Node buttonOpenSelected = from(mainScrollLeft).lookup("#buttonOpenSelected").query();
-		//printQueryAll(mainScrollLeft,projectFromCombo);
-		
-		//close the project
-		clickOn(projectTreeItem);
-		clickOn(buttonCloseSelected);
-		
-		//sleep(1000);
-		//now there should still be the treeitem, but there should not be any tab
-		projectTreeItem = from(mainScrollLeft).lookup(projectFromCombo).query();
-		int numTabs = workSpaceTabPane.getTabs().size();
-		Assertions.assertTrue(numTabs==0,projectFromCombo+Integer.toString(numTabs));
-		Assertions.assertTrue(comboCalculation.getItems().isEmpty());
-		
-		//now open the project again
-		clickOn(projectTreeItem);
-		clickOn(buttonOpenSelected);
-		
-		Tab selectedTab = workSpaceTabPane.getSelectionModel().getSelectedItem();
-		boolean fl = (selectedTab!=null) && (projectFromCombo.equals(selectedTab.getText()));
-		Assertions.assertTrue(fl);
-		Assertions.assertTrue(!comboCalculation.getItems().isEmpty());
-	}
-	
-	@Test
-	@Order(12)
-	public void testCreateProjectMore() throws TimeoutException {
-		createProject();
-		createProject();
-	}
+//	@Test
+//	@Order(9)
+//	public void testCheckBoxResetAll() {
+//		//VBox vboxScfStandard = (VBox)lookup("#vboxStandard").query();
+//		//printQueryAll("#checkResetAll");
+//		
+//		
+//		ComboBox<String> comboCalculation = lookup("#comboCalculation").queryComboBox();
+//		TabPane tabPaneRight = (TabPane) lookup("#idtabPaneRight").queryParent();
+//		
+//		//go to scf
+//		selectComboBox(comboCalculation, 0);
+//		
+//		Tab tabSelected = tabPaneRight.getSelectionModel().getSelectedItem();
+//		
+//		Node nodeCheckResetAll = from(tabSelected.getContent()).lookup("#checkResetAll").query();
+//		//printQueryAll(tabSelected.getContent(),"#checkResetAll");
+//		
+//		CheckBox cb = (CheckBox) nodeCheckResetAll;
+//		Node nodeScfStandard = from(tabSelected.getContent()).lookup("#standardPane").query();
+//		//sleep(1000);
+//		clickOn(nodeScfStandard);
+//		//sleep(1000);
+//		//clickOn(nodeCheckResetAll);
+//		clickCheckBox(cb);
+//		//sleep(1000);
+//		Assertions.assertTrue(cb.isSelected(),"Reset all checkbox should be selected!");
+//	}
+//	
+//	
+//	
+//	@Test
+//	@Order(10)
+//	public void testSaveProjectButton() {
+//		ComboBox<String> comboProject = lookup("#comboProject").queryComboBox();
+//		String projectFromCombo = comboProject.getSelectionModel().getSelectedItem();
+//		
+//		TabPane tabPaneRight = (TabPane) lookup("#workSpaceTabPane").queryParent();
+//		String projectFromTab = tabPaneRight.getSelectionModel().getSelectedItem().getText();
+//		
+//		Assertions.assertEquals(projectFromCombo, projectFromTab,"|"+projectFromCombo+"|"+projectFromTab+"|");
+//
+//		clickOn("#saveProjectButton");
+//	}
+//	
+//	@Test
+//	@Order(11)
+//	public void testOpenCloseProject() {
+//		ComboBox<String> comboCalculation = lookup("#comboCalculation").queryComboBox();
+//		ComboBox<String> comboProject = lookup("#comboProject").queryComboBox();
+//		String projectFromCombo = comboProject.getSelectionModel().getSelectedItem();
+//		
+//		//printQueryAll("#workSpaceTabPane");
+//		
+//		TabPane workSpaceTabPane = (TabPane) lookup("#workSpaceTabPane").query();
+//		
+//		Node mainScrollLeft = lookup("#mainScrollLeft").query();
+//		Node projectTreeItem = from(mainScrollLeft).lookup(projectFromCombo).query();
+//		Node buttonCloseSelected = from(mainScrollLeft).lookup("#buttonCloseSelected").query();
+//		Node buttonOpenSelected = from(mainScrollLeft).lookup("#buttonOpenSelected").query();
+//		//printQueryAll(mainScrollLeft,projectFromCombo);
+//		
+//		//close the project
+//		clickOn(projectTreeItem);
+//		clickOn(buttonCloseSelected);
+//		
+//		//sleep(1000);
+//		//now there should still be the treeitem, but there should not be any tab
+//		projectTreeItem = from(mainScrollLeft).lookup(projectFromCombo).query();
+//		int numTabs = workSpaceTabPane.getTabs().size();
+//		Assertions.assertTrue(numTabs==0,projectFromCombo+Integer.toString(numTabs));
+//		Assertions.assertTrue(comboCalculation.getItems().isEmpty());
+//		
+//		//now open the project again
+//		clickOn(projectTreeItem);
+//		clickOn(buttonOpenSelected);
+//		
+//		Tab selectedTab = workSpaceTabPane.getSelectionModel().getSelectedItem();
+//		boolean fl = (selectedTab!=null) && (projectFromCombo.equals(selectedTab.getText()));
+//		Assertions.assertTrue(fl);
+//		Assertions.assertTrue(!comboCalculation.getItems().isEmpty());
+//	}
+//	
+//	@Test
+//	@Order(12)
+//	public void testCreateProjectMore() throws TimeoutException {
+//		createProject();
+//		createProject();
+//	}
 	
 	private void printQueryAll(String queryStr) {
 		Set<Node> allNodes = lookup(queryStr).queryAll();
@@ -321,11 +315,8 @@ public class FirstMainWindowTest extends MainWindowTest{
 		}
 		Assertions.assertTrue(false,msg);
 	}
-	private void checkRightPaneTabs(ComboBox<String> cb, int iExpected, TabPane tabPaneRight) {
-		int iSelected = cb.getSelectionModel().getSelectedIndex();
-		Assertions.assertEquals(iSelected, iExpected,Integer.toString(iSelected)+Integer.toString(iExpected));
-		
-		String selectItem = cb.getSelectionModel().getSelectedItem().toLowerCase();
+	private void checkRightPaneTabs(String selectItem, int iExpected, TabPane tabPaneRight) {
+
 		ObservableList<Tab> tabList = tabPaneRight.getTabs();
 		
 		if(selectItem.contains("scf")&&!selectItem.contains("nscf")) {Assertions.assertTrue(tabList.size()==2,"scf"+Integer.toString(tabList.size()));}
@@ -381,22 +372,30 @@ public class FirstMainWindowTest extends MainWindowTest{
 			Assertions.assertTrue(obs.get(i).getValue().getProject().contains("testProject"),
 					"projectTree selected item should contain 'testProject'");
 		}
-		ComboBox<String> comboProject = lookup("#comboProject").queryComboBox();
-		Assertions.assertEquals(obs.size(), comboProject.getItems().size(),"Project number discrepency between left tree and comboProject");
 	}
-	private void clickCheckBox(CheckBox cb) {
-		for (Node child : cb.getChildrenUnmodifiable()) {
-	        if (child.getStyleClass().contains("box")) {
-	            clickOn(child);
-	        }
-	    }
-	}
+//	private void clickCheckBox(CheckBox cb) {
+//		for (Node child : cb.getChildrenUnmodifiable()) {
+//	        if (child.getStyleClass().contains("box")) {
+//	            clickOn(child);
+//	        }
+//	    }
+//	}
 	private void clickRadioButton(RadioButton rb) {
 		for (Node child : rb.getChildrenUnmodifiable()) {
 	        if (child.getStyleClass().contains("radio")) {
 	            clickOn(child);
 	        }
 	    }
+	}
+	private boolean containsRow(TreeTableView<ProjectCalcLog> projectTree,String strProj, String strCalc) {
+		TreeItem<ProjectCalcLog> rootTree = projectTree.getRoot();
+		for(TreeItem<ProjectCalcLog> tiProj: rootTree.getChildren()) {
+			String strTmpProj = tiProj.getValue().getProject();
+			for(TreeItem<ProjectCalcLog> tiCalc: tiProj.getChildren()) {
+				if(strCalc.equals(tiCalc.getValue().getCalculation()) && strProj.equals(strTmpProj)) {return true;}
+			}
+		}
+		return false;
 	}
 	
 }

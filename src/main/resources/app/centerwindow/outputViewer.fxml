@@ -13,28 +13,16 @@
 
 <HBox fx:id="rootHbox" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
    <children>
-      <VBox fx:id="vBoxCalcFolder" minWidth="105.0" prefHeight="200.0" prefWidth="105.0">
-         <children>
-            <Label text="Calc. folders" />
-            <ToolBar prefHeight="40.0" prefWidth="200.0">
-              <items>
-                <Button fx:id="deleteFolderButton" mnemonicParsing="false" text="del" />
-                  <Button fx:id="buttonRefreshFolder" mnemonicParsing="false" text="refresh" />
-              </items>
-            </ToolBar>
-            <ListView fx:id="listCalcFolders" VBox.vgrow="SOMETIMES" />
-         </children>
-      </VBox>
-      <VBox fx:id="vboxFiles" minWidth="105.0" prefHeight="200.0" prefWidth="105.0">
+      <VBox fx:id="vboxFiles" minWidth="105.0" prefHeight="200.0" prefWidth="115.0">
          <children>
             <Label text="Files" />
             <ToolBar prefHeight="40.0" prefWidth="200.0">
               <items>
-                <Button fx:id="deleteFileButton" mnemonicParsing="false" text="del" />
                   <Button fx:id="buttonRefreshFiles" mnemonicParsing="false" text="refresh" />
+                <Button fx:id="deleteFileButton" mnemonicParsing="false" text="del" />
               </items>
             </ToolBar>
-            <ListView fx:id="listFiles" VBox.vgrow="SOMETIMES" />
+            <ListView fx:id="listFiles" prefHeight="148.0" prefWidth="113.0" VBox.vgrow="SOMETIMES" />
          </children>
       </VBox>
       <VBox fx:id="vboxMainPlot" HBox.hgrow="ALWAYS">
