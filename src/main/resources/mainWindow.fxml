@@ -2,13 +2,10 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
-<?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.Menu?>
 <?import javafx.scene.control.MenuBar?>
-<?import javafx.scene.control.MenuButton?>
 <?import javafx.scene.control.MenuItem?>
-<?import javafx.scene.control.RadioButton?>
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.TabPane?>
 <?import javafx.scene.layout.BorderPane?>
@@ -56,10 +53,10 @@
             </MenuBar>
             <GridPane hgap="5.0">
               <columnConstraints>
-                <ColumnConstraints hgrow="NEVER" maxWidth="118.5" minWidth="10.0" />
-                  <ColumnConstraints hgrow="NEVER" maxWidth="203.0" minWidth="10.0" />
-                  <ColumnConstraints hgrow="ALWAYS" maxWidth="686.5" minWidth="10.0" prefWidth="568.5" />
-                <ColumnConstraints hgrow="ALWAYS" maxWidth="400.0" minWidth="10.0" prefWidth="311.5" />
+                <ColumnConstraints hgrow="NEVER" maxWidth="118.5" minWidth="10.0" prefWidth="60.5" />
+                  <ColumnConstraints hgrow="NEVER" maxWidth="203.0" minWidth="0.0" prefWidth="46.0" />
+                  <ColumnConstraints hgrow="ALWAYS" maxWidth="686.5" minWidth="10.0" prefWidth="341.5" />
+                <ColumnConstraints hgrow="ALWAYS" maxWidth="400.0" minWidth="10.0" prefWidth="129.0" />
               </columnConstraints>
               <rowConstraints>
                 <RowConstraints minHeight="10.0" vgrow="SOMETIMES" />
@@ -67,7 +64,7 @@
                <children>
                   <Label minWidth="80.0" text="Workspace" />
                   <Button fx:id="buttonOpenWorkSpace" minWidth="45.0" mnemonicParsing="false" text="open" GridPane.columnIndex="1" />
-                  <Pane fx:id="paneWorkSpace" prefHeight="25.0" prefWidth="439.0" GridPane.columnIndex="2">
+                  <Pane fx:id="paneWorkSpace" prefHeight="25.0" prefWidth="312.0" GridPane.columnIndex="2">
                      <children>
                         <Label fx:id="textWorkSpace" />
                      </children>
@@ -79,24 +76,7 @@
             </GridPane>
             <HBox>
                <children>
-                  <Label minWidth="38.0" text="Project" />
-                <Button fx:id="createProject" minWidth="81.0" mnemonicParsing="false" text="New project" />
-                  <ComboBox fx:id="comboProject" minWidth="60.0" />
-                  <Button fx:id="saveProjectButton" minWidth="41.0" mnemonicParsing="false" text="Save" />
-                  <Separator orientation="VERTICAL" />
-                  <Label minWidth="59.0" text="Calculation" />
-                  <MenuButton fx:id="calcMain" minWidth="81.0" mnemonicParsing="false" prefWidth="85.0" text="Add calculation">
-                     <items>
-                     <MenuItem fx:id="calcScf" mnemonicParsing="false" text="Single energy" />
-                      <MenuItem fx:id="calcOpt" mnemonicParsing="false" text="optimization" />
-                      <MenuItem fx:id="calcDos" mnemonicParsing="false" text="DOS" />
-                      <MenuItem fx:id="calcBands" mnemonicParsing="false" text="bands" />
-                      <MenuItem fx:id="calcMd" mnemonicParsing="false" text="MD" />
-                      <MenuItem fx:id="calcTddft" mnemonicParsing="false" text="TDDFT" />
-                      <MenuItem fx:id="calcCustom" mnemonicParsing="false" text="Custom..." />
-                     </items>
-                  </MenuButton>
-                  <ComboBox fx:id="comboCalculation" minWidth="75.0" />
+                  <Button fx:id="saveProjectButton" minWidth="41.0" mnemonicParsing="false" text="Save All" />
                   <Separator orientation="VERTICAL" />
                   <Label minWidth="25.0" text="Run" />
                 <Button fx:id="showInputButton" minWidth="77.0" mnemonicParsing="false" text="Show Input" />
@@ -104,11 +84,7 @@
                 <Label fx:id="currentJobLabel" text="" HBox.hgrow="ALWAYS" />
                   <Pane prefWidth="50.0" HBox.hgrow="SOMETIMES" />
                   <Separator orientation="VERTICAL" />
-                  <Label minWidth="75.0" text="Input settings" />
-                  <RadioButton fx:id="radioGeometry" minWidth="75.0" mnemonicParsing="false" />
-                  <RadioButton fx:id="radioCalculation" minWidth="75.0" mnemonicParsing="false" />
-                  <Separator orientation="VERTICAL" />
-                <Label fx:id="calcLabel" minWidth="85.0" prefWidth="120.0" text="" />
+                <Label fx:id="calcLabel" minWidth="90.0" prefWidth="150.0" text="" />
                </children>
             </HBox>
          </children>

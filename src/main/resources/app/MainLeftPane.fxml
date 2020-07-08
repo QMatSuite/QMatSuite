@@ -2,6 +2,8 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TreeTableView?>
 <?import javafx.scene.layout.ColumnConstraints?>
@@ -20,12 +22,24 @@
                   <ColumnConstraints hgrow="SOMETIMES" minWidth="59.0" />
               </columnConstraints>
               <rowConstraints>
+                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                 <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
               </rowConstraints>
                <children>
-                  <Button fx:id="buttonOpenSelected" mnemonicParsing="false" text="Open selected" />
-                  <Button fx:id="buttonCloseSelected" mnemonicParsing="false" text="Close selected" GridPane.columnIndex="1" />
-                  <Button fx:id="buttonRefresh" mnemonicParsing="false" text="Refresh" GridPane.columnIndex="2" />
+                  <Button fx:id="buttonOpenSelected" mnemonicParsing="false" text="Open selected" GridPane.rowIndex="1" />
+                  <Button fx:id="buttonRefresh" mnemonicParsing="false" text="Refresh" GridPane.columnIndex="2" GridPane.rowIndex="1" />
+                  <Button fx:id="createProject" mnemonicParsing="false" text="New project" />
+                  <MenuButton fx:id="calcMain" mnemonicParsing="false" text="Add calculation" GridPane.columnIndex="1" GridPane.columnSpan="2">
+                    <items>
+                     <MenuItem fx:id="calcScf" mnemonicParsing="false" text="Single energy" />
+                      <MenuItem fx:id="calcOpt" mnemonicParsing="false" text="optimization" />
+                      <MenuItem fx:id="calcDos" mnemonicParsing="false" text="DOS" />
+                      <MenuItem fx:id="calcBands" mnemonicParsing="false" text="bands" />
+                      <MenuItem fx:id="calcMd" mnemonicParsing="false" text="MD" />
+                      <MenuItem fx:id="calcTddft" mnemonicParsing="false" text="TDDFT" />
+                      <MenuItem fx:id="calcCustom" mnemonicParsing="false" text="Custom..." />
+                     </items>
+                  </MenuButton>
                </children>
                <VBox.margin>
                   <Insets left="2.0" />
