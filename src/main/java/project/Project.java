@@ -54,7 +54,6 @@ public class Project implements Serializable{
 	transient private HashMap<EnumStep, InputAgent> projectDefault;
 	transient private String activeCalcKey;
 	transient private WorkScene3D viewer3D=null;
-	transient private Boolean show3DScene;//if true, show 3D structure in the workspace. Otherwise show in/output files
 	
 	private ArrayList<InputAgentGeo> geoList;
 	private ArrayList<String> geoName;
@@ -74,11 +73,9 @@ public class Project implements Serializable{
 		activeCalcKey = null;
 		viewer3D = new WorkScene3D();
 		//if(show3DScene==null) {show3DScene=true;}//make older version compatible with newer version
-		show3DScene=true;//always show geometry when loading
 	}
 	
 	public Project(String np) {
-		show3DScene = true;
 		activeCalcKey = null;
 		nameProject = np;
 		calcDict = new HashMap<String, CalculationClass>();
@@ -160,12 +157,6 @@ public class Project implements Serializable{
 		iGeo.updateElemListAll();
 
 		findAndAddGeo(calcFolderName,iGeo);
-	}
-	public void setShow3DScene(Boolean bl) {
-		show3DScene = bl;
-	}
-	public Boolean getShow3DScene() {
-		return show3DScene;
 	}
 	public WorkScene3D getViewer3D() {
 		if (viewer3D==null) {viewer3D = new WorkScene3D();}

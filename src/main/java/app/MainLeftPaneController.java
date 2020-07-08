@@ -30,6 +30,8 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.MenuButton;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeTableColumn;
 import javafx.scene.control.TreeTableView;
@@ -39,14 +41,24 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import main.MainClass;
 import com.consts.Constants.EnumCalc;
+import com.error.ShowAlert;
+
 import project.ProjectCalcLog;
 
 public class MainLeftPaneController implements Initializable {
 	
-	@FXML private TreeTableView<ProjectCalcLog> projectTree;
+	@FXML public TreeTableView<ProjectCalcLog> projectTree;
 	@FXML public Button buttonOpenSelected,
-	buttonCloseSelected,
-	buttonRefresh;
+	buttonRefresh,
+	createProject;
+	@FXML public MenuButton calcMain;
+	@FXML public MenuItem calcScf,
+	calcOpt,
+	calcDos,
+    calcBands,
+    calcMd,
+    calcTddft,
+    calcCustom;
 	
 	private TreeItem<ProjectCalcLog> projectTreeRoot;
 	private MainClass mainClass;
@@ -90,42 +102,7 @@ public class MainLeftPaneController implements Initializable {
 //		projectTreeDict = new HashMap<String, TreeItem<ProjectCalcLog>>();
 //		projectCalcTreeDict = new HashMap<String, HashMap<EnumCalc, TreeItem<ProjectCalcLog>>>();
 				
-		//add listener
 		
-//		projectTree.getSelectionModel().selectedItemProperty().addListener((v, oldValue, newValue) -> { 
-//			if (newValue!=null || projectTreeDict == null) {
-//				/*for (String key : projectTreeDict.keySet()) {
-//				if (projectTreeDict.get(key)==newValue) {
-//					//must be project branch. A bit complicated here
-//					
-//					if (currentProject==key) return;//if project still the same!
-//					//handle old part of the tree
-//					if (currentProject!=null && projectTreeDict.containsKey(currentProject)) {
-//						projectTreeDict.get(currentProject).setExpanded(false);
-//					}
-//					//handle new project
-//					//workSpaceTabPane.getSelectionModel().select
-//					mainClass.projectManager.setActiveProject(key);
-//					currentProject=key;
-//					projectTreeDict.get(currentProject).setExpanded(true);
-//					if (currentCalcDict.get(currentProject)!=null) {
-//						openCalc(currentCalcDict.get(currentProject));
-//					}
-//					//projectCalcTreeDict.get(currentProject).get(key)
-//					//updateCalcTree();
-//					loadProjectParameters();	
-//					
-//					return;//just need first match
-//				}}*/
-//				if (currentProject==null || !projectCalcTreeDict.containsKey(currentProject)) return;
-//				for (EnumCalc key2 : projectCalcTreeDict.get(currentProject).keySet()) {
-//					if (projectCalcTreeDict.get(currentProject).get(key2)==newValue) {
-//						//must be in a calculation branch, just open the calculation
-//						openCalc(key2); return;//just need first match
-//					}
-//				}
-//			}
-//		});
 		
 		projectTree.getSelectionModel().selectedItemProperty().addListener((v, oldValue, newValue) -> { 
 			if(newValue==null || projectTreeRoot==null) return;
@@ -148,14 +125,14 @@ public class MainLeftPaneController implements Initializable {
 	}
 	public void setOpenCloseButtons(boolean bl) {
 		//true -> can open
-		//false -> can close
+		//false -> already open
 		if(bl) {
-			buttonCloseSelected.setFont(Font.font(buttonCloseSelected.getFont().toString(), FontWeight.NORMAL, buttonCloseSelected.getFont().getSize()));
 			buttonOpenSelected.setFont(Font.font(buttonOpenSelected.getFont().toString(), FontWeight.BOLD, buttonOpenSelected.getFont().getSize()));
+			buttonOpenSelected.setDisable(false);
 		}
 		else {
-			buttonCloseSelected.setFont(Font.font(buttonCloseSelected.getFont().toString(), FontWeight.BOLD, buttonCloseSelected.getFont().getSize()));
 			buttonOpenSelected.setFont(Font.font(buttonOpenSelected.getFont().toString(), FontWeight.NORMAL, buttonOpenSelected.getFont().getSize()));
+			buttonOpenSelected.setDisable(true);
 		}
 	}
 	public String getSelectedProject() {
@@ -171,16 +148,44 @@ public class MainLeftPaneController implements Initializable {
 		}
 		
 	}
-	public void closeProject(String pj) {
-		if(projectCalcTreeDict.get(pj)!=null) {
-			for (TreeItem<ProjectCalcLog> value : projectCalcTreeDict.get(pj).values()) {
-				value.getParent().getChildren().remove(value);
+	public void selectProj(String projName) {
+		if(projName==null || projectTreeDict.get(projName)==null) {return;}
+		projectTree.getSelectionModel().select(projectTreeDict.get(projName));
+	}
+	public void selectCalc(String projName, String calcName) {
+		if(projName==null || calcName==null || projectTreeDict.get(projName)==null || projectCalcTreeDict.get(projName)==null) {
+			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "No item for the project found in the TreeView.");
+			return;}
+		projectTreeDict.get(projName).setExpanded(true);
+		for (TreeItem<ProjectCalcLog> value : projectCalcTreeDict.get(projName).values()) {
+			if(calcName.equals(value.getValue().getCalculation())) {
+				projectTree.getSelectionModel().select(value);
+				return;
 			}
 		}
+		ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Cannot find calculation "+calcName+" under project "+projName+" in the TreeView.");
+	}
+	public void closeProject(String pj) {
+		if(projectCalcTreeDict.get(pj)==null) {return;}
+		
+		for (TreeItem<ProjectCalcLog> value : projectCalcTreeDict.get(pj).values()) {
+			value.getParent().getChildren().remove(value);
+		}
 		projectCalcTreeDict.get(pj).clear();
+		
+		File wsDir = mainClass.projectManager.getWorkSpaceDir();
+
+		if (wsDir==null || !wsDir.canRead()) {
+			return;
+		}
+		
+		if(!(new File(wsDir,pj)).exists()) {
+			//also remove the project from the treeview if not saved
+			removeProject(pj);
+		}
 	}
 	public void addProject(String pj) {
-		TreeItem<ProjectCalcLog> ti = new TreeItem<ProjectCalcLog>(new ProjectCalcLog(pj,"","",""));
+		TreeItem<ProjectCalcLog> ti = new TreeItem<ProjectCalcLog>(new ProjectCalcLog(pj,"Geometry","",""));
 		projectTreeRoot.getChildren().add(ti);
 		projectTreeRoot.setExpanded(true);
 		projectTreeDict.put(pj,ti);
@@ -205,12 +210,15 @@ public class MainLeftPaneController implements Initializable {
 				projectTreeDict.get(currentProject).setExpanded(true);
 				//int row = projectTree.getRow(ti);
 				//projectTree.getSelectionModel().select(row);
+				
+				//select the newly created treeitem
+				projectTree.getSelectionModel().select(ti);
 			}
 			else {
 				//expand project tree, select active calc item
 				projectTreeDict.get(currentProject).setExpanded(true);
-//				//int row = projectTree.getRow(projectCalcTreeDict.get(currentProject).get(ec));
-//				//projectTree.getSelectionModel().select(row);
+				int row = projectTree.getRow(projectCalcTreeDict.get(currentProject).get(ec));
+				projectTree.getSelectionModel().select(row);
 			}
 			
 		}
@@ -230,11 +238,11 @@ public class MainLeftPaneController implements Initializable {
 		projectTreeDict.clear();
 		projectCalcTreeDict.clear();
 	}
-//	public void removeProject(String pj) {
-//	    projectTreeRoot.getChildren().remove(projectTreeDict.get(pj));
-//	    projectTreeDict.remove(pj);
-//		projectCalcTreeDict.remove(pj);
-//	}
+	private void removeProject(String pj) {
+	    projectTreeRoot.getChildren().remove(projectTreeDict.get(pj));
+	    projectTreeDict.remove(pj);
+		projectCalcTreeDict.remove(pj);
+	}
 	public void updateProjects(boolean boolShowAlert) {
 		File wsDir = mainClass.projectManager.getWorkSpaceDir();
 
@@ -273,7 +281,7 @@ public class MainLeftPaneController implements Initializable {
 		for (File temp : directories) {
 			String tmp = temp.getName();
 			if(!projectTreeDict.containsKey(tmp)) {
-				TreeItem<ProjectCalcLog> ti = new TreeItem<ProjectCalcLog>(new ProjectCalcLog(tmp,"","",""));
+				TreeItem<ProjectCalcLog> ti = new TreeItem<ProjectCalcLog>(new ProjectCalcLog(tmp,"Geometry","",""));
 				projectTreeRoot.getChildren().add(ti);
 				projectTreeRoot.setExpanded(true);
 				projectTreeDict.put(tmp,ti);

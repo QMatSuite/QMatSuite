@@ -128,19 +128,6 @@ public class ProjectManager{
 			return null;
 		}
 	}
-	public void setShow3DScene(Boolean bl) {
-		Project pj = this.getActiveProject();
-		if(pj!=null) {
-			pj.setShow3DScene(bl);
-		}
-	}
-	public Boolean getShow3DScene() {
-		Project pj = this.getActiveProject();
-		if(pj!=null) {
-			return pj.getShow3DScene();
-		}
-		else {return null;}
-	}
 	public void addGeoList(String calcFolderName, ArrayList<Atom> atomList, CellParameter cellPara, Double alat) {
 		Project pj = this.getActiveProject();
 		if(pj!=null) {
@@ -558,6 +545,7 @@ public class ProjectManager{
 			return null;
 		}	
 	}
+	
 	public boolean containsProject(String nameProject) {
 		if (nameProject==null || nameProject.isEmpty() || projectDict==null)
 			return false;

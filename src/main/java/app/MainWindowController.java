@@ -39,18 +39,17 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
-import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
-import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
-import javafx.scene.control.RadioButton;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TabPane.TabClosingPolicy;
+import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputDialog;
-import javafx.scene.control.ToggleGroup;
+import javafx.scene.control.TreeItem;
+import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.BorderPane;
@@ -63,7 +62,9 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import main.MainClass;
-import app.centerwindow.WorkTabContent;
+import project.ProjectCalcLog;
+import app.centerwindow.OutputViewerController;
+import app.centerwindow.WorkScene3D;
 import app.input.InputBandsController;
 import app.input.InputDosController;
 import app.input.InputGeoController;
@@ -88,16 +89,9 @@ public class MainWindowController implements Initializable{
 	
     @FXML private Menu menuFile;
     
-    @FXML private MenuButton calcMain;
     
-    @FXML private MenuItem calcScf,
-    calcOpt,
-    calcDos,
-    calcBands,
-    calcMd,
-    calcTddft,
-    calcCustom,
-    menuAbout,
+    
+    @FXML private MenuItem menuAbout,
     menuSaveProjectAs,
     menuLoadProject;
     
@@ -105,8 +99,7 @@ public class MainWindowController implements Initializable{
     stopAllJobs,
     settingsMenuItem;
     
-    @FXML private Button createProject,
-    showInputButton,
+    @FXML private Button showInputButton,
     runJob,
     buttonOpenWorkSpace,
     saveProjectButton;
@@ -115,8 +108,6 @@ public class MainWindowController implements Initializable{
     
     @FXML private Pane paneWorkSpace;
     
-    @FXML private ComboBox<String> comboProject,
-    comboCalculation;
     
 	@FXML private ScrollPane inputField;
 	
@@ -128,8 +119,6 @@ public class MainWindowController implements Initializable{
 	
 	@FXML private TabPane workSpaceTabPane;
 	
-	@FXML private RadioButton radioGeometry, 
-	radioCalculation;
 	
 	@FXML private BorderPane rootPane;
 	
@@ -173,20 +162,28 @@ public class MainWindowController implements Initializable{
 	
 	private SettingsWindowController contSettings;
 	
+	private OutputViewerController contOutput;
+	
+	private HBox hboxOutput;
+	
 	private HashMap<String, Tab> projectTabDict;
 	
-	private final ToggleGroup tgGroup = new ToggleGroup();
-	
 	private Thread thread1;
-	
-	
-	
-	private WorkTabContent workTabContent;
 			
 	public MainWindowController(MainClass mc) {
 		mainClass = mc;
 	}
-	
+	private void selectGeoCalc(TreeItem<ProjectCalcLog> newValue, String pj) {
+		if(pj.equals(newValue.getValue().getProject())) {
+			//root project treeitem. Go to geometry
+			toggleGeometry();
+		}
+		else {
+			String calcNameTmp = newValue.getValue().getCalculation();
+			
+			openCalc(calcNameTmp);
+		}
+	}
 	@Override
 	public void initialize(URL arg0, ResourceBundle arg1){
 		workSpaceTabPane.setTabClosingPolicy(TabClosingPolicy.SELECTED_TAB);
@@ -261,13 +258,21 @@ public class MainWindowController implements Initializable{
 			fxmlLoader.setController(contSettings);
 			borderSettings = fxmlLoader.load();
 			
+			contOutput = new OutputViewerController(mainClass,contGeo);
+			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/centerwindow/outputViewer.fxml"));
+			fxmlLoader.setController(contOutput);
+			hboxOutput = fxmlLoader.load();
+			
 			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
-		workTabContent =  new WorkTabContent(mainClass,workSpaceTabPane,projectTabDict,contGeo);
+		hboxOutput.prefWidthProperty().bind(workSpaceTabPane.widthProperty());
+		hboxOutput.prefHeightProperty().bind(workSpaceTabPane.heightProperty());
+		
+		//workTabContent =  new WorkTabContent(mainClass,workSpaceTabPane,projectTabDict,contGeo);
 		
 		contTree.buttonOpenSelected.setOnAction((event) -> {
 			String projName = contTree.getSelectedProject();
@@ -298,19 +303,42 @@ public class MainWindowController implements Initializable{
 				ShowAlert.showAlert(AlertType.INFORMATION, "Info", msg);
 			}
 		});
-		contTree.buttonCloseSelected.setOnAction((event) -> {
-			String projName = contTree.getSelectedProject();
-			closeProject(projName);//should be null safe and empty safe
+		contTree.projectTree.getSelectionModel().selectedItemProperty().addListener((v, oldValue, newValue) -> { 
+			contTree.setOpenCloseButtons(false);
+			if (newValue!=null) {
+				//no project selected
+				String pj = contTree.getSelectedProject();
+				if(pj==null || pj.isEmpty()) {return;}
+				
+				if(pj.equals(mainClass.projectManager.getActiveProjectName())) {
+					//project already loaded and active. Check whether is root project treeitem or calculations
+					//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", newValue.getValue().getProject()+","+newValue.getValue().getCalculation()+","+pj);
+					selectGeoCalc(newValue, pj);
+				}
+				else {
+					//project not the current one
+					if(mainClass.projectManager.containsProject(pj)) {
+						//project already opened, but not the current one. Change current project
+						//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", newValue.getValue().getProject()+","+newValue.getValue().getCalculation()+","+pj);
+						workSpaceTabPane.getSelectionModel().select(projectTabDict.get(pj));
+						//project now active. Check whether is root project treeitem or calculations
+						selectGeoCalc(newValue, pj);
+					}
+					else {
+						//project not opened. Allow open button to work
+						Tab tabTmp = workSpaceTabPane.getSelectionModel().getSelectedItem();
+						if(tabTmp!=null) {
+							TextField tf = new TextField("Selected project not opened yet. Please use the 'open project' button on the left panel before continuing.");
+							tabTmp.setContent(tf);
+						}
+						contTree.setOpenCloseButtons(true);
+						return;
+					}
+					
+				}
+			}
 		});
 		
-		radioGeometry.setText("Geometry");
-		radioGeometry.setToggleGroup(tgGroup);
-		radioGeometry.setSelected(true);
-		radioCalculation.setText("Calculation");
-		radioCalculation.setToggleGroup(tgGroup);
-		tgGroup.selectedToggleProperty().addListener((ov, old_toggle, new_toggle) -> {
-			toggleGeometry();
-		});
 		
 		setProjectNull();
 		
@@ -318,7 +346,7 @@ public class MainWindowController implements Initializable{
 		
 		loadEnvironmentPaths();
 		
-		createProject.setOnAction((event) -> {
+		contTree.createProject.setOnAction((event) -> {
 			
 			String projName = null;
 			String msg = null;
@@ -377,63 +405,39 @@ public class MainWindowController implements Initializable{
 				setProjectNull();
 			}
 			else {
+				//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", newTab.getText()+","+contTree.getSelectedProject());
 				mainClass.projectManager.setActiveProject(newTab.getText());
 				
-				
-				workTabContent.updateWorkScene();
-				
-				comboProject.getSelectionModel().select(newTab.getText());
-				//update calculation list
-				comboCalculation.getItems().clear();
-				//current calculation exists, so at least one calculation exists
-				if (mainClass.projectManager.existCurrentCalc()) {
-					ArrayList<String> al = mainClass.projectManager.getCurrentCalcList();
-					for (String ec : al) {
-						comboCalculation.getItems().add(ec);//******later, organize/sort the items
+				//workTabContent.updateWorkScene();
+
+				//only try to select the treeitem if the selection change of the workspacetabpane does not come from 
+				//user selecting treeitem.
+				if(!newTab.getText().equals(contTree.getSelectedProject())) {
+					if (mainClass.projectManager.existCurrentCalc()) {
+						contTree.selectCalc(newTab.getText(),mainClass.projectManager.getCurrentCalcName());
 					}
-					openCalc(mainClass.projectManager.getCurrentCalcName());
-				}
-				else {
-					//******not the most efficient way, may run twice
-					radioGeometry.setSelected(true);
-					toggleGeometry();
+					else {
+						contTree.selectProj(newTab.getText());
+					}
 				}
 			}
 	    });
-		comboProject.getSelectionModel().selectedItemProperty().addListener((ov, oldVal, newVal) -> {
-			if (newVal!=null) {
-				//-------------********not the most efficient way*******---------------
-				//will bounce between comboProject and workSpaceTabPane
-				//no need to put the code executed when changing project again here!
-				workSpaceTabPane.getSelectionModel().select(projectTabDict.get(newVal));
-//				mainClass.projectManager.setActiveProject(newVal);
-				openCalc(mainClass.projectManager.getCurrentCalcName());//openCalc is null tolerant
-				
-			}
-	    });
-		comboCalculation.getSelectionModel().selectedItemProperty().addListener((ov, oldVal, newVal) -> {
-			if (newVal!=null && !newVal.isEmpty()) {
-				mainClass.projectManager.setActiveCalculation(newVal);
-				//-------------********not the most efficient way*******---------------
-				openCalc(mainClass.projectManager.getCurrentCalcName());//openCalc is null tolerant
-			}
-	    });
-		calcScf.setOnAction((event) -> {
+		contTree.calcScf.setOnAction((event) -> {
 			openCalc(EnumCalc.SCF,true);
 		});
-		calcOpt.setOnAction((event) -> {
+		contTree.calcOpt.setOnAction((event) -> {
 			openCalc(EnumCalc.OPT,true);
 		});
-		calcDos.setOnAction((event) -> {
+		contTree.calcDos.setOnAction((event) -> {
 			openCalc(EnumCalc.DOS,true);
 		});
-		calcBands.setOnAction((event) -> {
+		contTree.calcBands.setOnAction((event) -> {
 			openCalc(EnumCalc.BANDS,true);
 		});
-		calcMd.setOnAction((event) -> {
+		contTree.calcMd.setOnAction((event) -> {
 			openCalc(EnumCalc.BOMD,true);
 		});
-		calcTddft.setOnAction((event) -> {
+		contTree.calcTddft.setOnAction((event) -> {
 			openCalc(EnumCalc.TDDFT,true);
 		});
 		showInputButton.setOnAction((event) -> {
@@ -726,7 +730,6 @@ public class MainWindowController implements Initializable{
 		if(tab!=null) {workSpaceTabPane.getTabs().remove(tab);}
 		contTree.closeProject(pj);
 		projectTabDict.remove(pj);
-		comboProject.getItems().remove(pj);
 		//openCalc(null);//not necessary. Covered by the change tab listener
 		contTree.setOpenCloseButtons(true);
 	}
@@ -761,29 +764,35 @@ public class MainWindowController implements Initializable{
 		}
 	}
 	private void toggleGeometry() {
+		//now only toggle to geometry
 		if (tabPaneRight==null) return;
-		if (radioGeometry.isSelected()) 
-		{
-			if (!mainClass.projectManager.existCurrentProject()) return;//abnormal!
-			//radioGeometry.setSelected(true);
-			mainClass.projectManager.setGeoActive(true);
-			
-			Tab tab = new Tab();
-			tab.setText(EnumStep.GEO.getName());
-			tab.setContent(scrollGeo);
-			tabPaneRight.getTabs().clear();
-			tabPaneRight.getTabs().add(tab);
-			contGeo.loadProjectParameters();
-			contGeo.setEnabled();
-			calcLabel.setText("Geometry");
-			comboCalculation.setValue("");
-			if (!tabPaneStatusRight) {
-				hboxRight.getChildren().add(0,tabPaneRight);
-				tabPaneStatusRight = true;
-			}
+
+		if (!mainClass.projectManager.existCurrentProject()) return;//abnormal!
+		
+		mainClass.projectManager.setGeoActive(true);
+		
+		//centerpane
+		mainClass.projectManager.updateViewerPlot();//*******not always necessary?
+		WorkScene3D workScene = mainClass.projectManager.getActiveProject().getViewer3D();
+		workScene.centerSubScene(workSpaceTabPane);
+		AnchorPane acp = workScene.getRootPane();
+		Tab tabTmp = workSpaceTabPane.getSelectionModel().getSelectedItem();
+		if(tabTmp!=null) {
+			tabTmp.setContent(acp);
 		}
-		else {
-			openCalc(mainClass.projectManager.getCurrentCalcName());
+		
+		//right pane
+		Tab tab = new Tab();
+		tab.setText(EnumStep.GEO.getName());
+		tab.setContent(scrollGeo);
+		tabPaneRight.getTabs().clear();
+		tabPaneRight.getTabs().add(tab);
+		contGeo.loadProjectParameters();
+		contGeo.setEnabled();
+		calcLabel.setText("Geometry");
+		if (!tabPaneStatusRight) {
+			hboxRight.getChildren().add(0,tabPaneRight);
+			tabPaneStatusRight = true;
 		}
 		
 	}
@@ -811,11 +820,10 @@ public class MainWindowController implements Initializable{
 	}
 	private void setProjectNull() {
 		mainClass.projectManager.setActiveProject(null);
-		calcMain.setDisable(true);
+		contTree.projectTree.getSelectionModel().clearSelection();
+		contTree.calcMain.setDisable(true);
 		runJob.setDisable(true);
 		clearRightPane();
-		comboCalculation.getItems().clear();
-		radioGeometry.setSelected(true);
 		calcLabel.setText("");
 	}
 	
@@ -877,11 +885,8 @@ public class MainWindowController implements Initializable{
 	}
 	private void createProjectGui(String projName) {
 
-		//add to ComboBox
-		comboProject.getItems().add(projName);
-		comboProject.setValue(projName);
 		//add tab
-		Tab tab = workTabContent.setUpTabContent();
+		Tab tab = new Tab();
 		
 		final String pj = projName;
 		tab.setText(pj);
@@ -889,30 +894,34 @@ public class MainWindowController implements Initializable{
 		tab.setOnClosed((e) -> {
 			closeProject(pj);
 		});
-				
+		
 		//add tab
 		projectTabDict.put(pj,tab);
 		workSpaceTabPane.getTabs().add(tab);
 		workSpaceTabPane.getSelectionModel().select(tab);//must happen AFTER projectTabDict.put(pj,tab), because updateWorkScene() uses this
 
-		contTree.updateFullCalcTree();
+		contTree.updateFullCalcTree();//contains selecting calculations. MUST BE AFTER adding tabs
+		
 		//allow more interactions
-		calcMain.setDisable(false);
+		contTree.calcMain.setDisable(false);
 		runJob.setDisable(false);
-		toggleGeometry();
+		//this function was called twice:
+		//1. contTree.buttonOpenSelected
+		//2. createProject button
+		//so anyhow it should toggle to the geometry
+		//toggleGeometry(true);
 	}
 	private void openCalc(String ecStr) {
 		
 		//load an existing calculation having name String ecStr
 		if (ecStr==null || ecStr.isEmpty()) {
 			clearRightPane();
-			comboCalculation.getItems().clear();
 			calcLabel.setText("");
 			return;
 		}
 
 		mainClass.projectManager.setActiveCalculation(ecStr);
-		 
+		
 		//check again whether successfully set the active calculation
 		if(!ecStr.equals(mainClass.projectManager.getCurrentCalcName())) {
 			Alert alert = new Alert(AlertType.INFORMATION);
@@ -926,12 +935,13 @@ public class MainWindowController implements Initializable{
 		
 	}
 	private void openCalc(EnumCalc ec, boolean boolCreate) {
+		
+		
 		//if(boolCreate), open a new calculation of type EnumCalc ec
 		//if(!boolCreate), just load one existing calculation. MUST be entered through openCalc(String ecStr) in this case!
 		if (ec==null) {return;}
 		
 		if (!mainClass.projectManager.existCurrentProject()) return;//abnormal!
-		radioCalculation.setSelected(true);
 		mainClass.projectManager.setGeoActive(false);
 		
 		EnumStep[] enumStepArray;
@@ -964,6 +974,8 @@ public class MainWindowController implements Initializable{
 		default:
 			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Wrong calculation type!");
 		}
+		
+		
 	}
 	private void addCalc(boolean boolCreate, EnumCalc enumCalcThis, EnumStep[] enumStepArray) {
 		//******inefficient here especially at the beginning of the program
@@ -983,8 +995,6 @@ public class MainWindowController implements Initializable{
 			calcName = mainClass.projectManager.getCurrentCalcName();
 			//initialize controllers. This will be automatically done only once
 			//***moved to the beginning of the program
-			//add comboBox item
-			comboCalculation.getItems().add(calcName);
 			//update current status to trees
 			contTree.updateCalcTree(calcName);
 			
@@ -1018,8 +1028,25 @@ public class MainWindowController implements Initializable{
 		try {tabPaneRight.getSelectionModel().select(1);}catch (Exception e) {}//load second tab(not geo)
 		
 		calcLabel.setText(enumCalcThis.getLong());
-		calcName = mainClass.projectManager.getCurrentCalcName();
-		if(calcName!=null) comboCalculation.getSelectionModel().select(calcName);
+		
+		contOutput.updateProjectFolder();
+		
+		//update center workscene
+		
+		Tab tabTmp = workSpaceTabPane.getSelectionModel().getSelectedItem();
+		if(tabTmp!=null) {
+			//((Tab) hboxOutput.getParent()).setContent(null);
+			releaseHboxOutputContent();
+			tabTmp.setContent(hboxOutput);
+			//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", hboxOutput.toString());
+		}
+//		calcName = mainClass.projectManager.getCurrentCalcName();
+//		if(calcName!=null) comboCalculation.getSelectionModel().select(calcName);
+	}
+	private void releaseHboxOutputContent() {
+		for(Tab tb:projectTabDict.values()) {
+			if(tb.getContent()==hboxOutput) {tb.setContent(null);}
+		}
 	}
 	private boolean deleteDir(File directoryToBeDeleted) {
 	    File[] allContents = directoryToBeDeleted.listFiles();
