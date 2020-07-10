@@ -21,9 +21,7 @@ package app.input.geo;
 
 import java.io.File;
 import java.net.URL;
-import java.nio.file.Paths;
 import java.util.ResourceBundle;
-
 import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -40,16 +38,14 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
-import javafx.stage.DirectoryChooser;
-import javafx.stage.Stage;
 import main.MainClass;
 import agent.InputAgentGeo;
 import app.input.InputController;
 import com.consts.Constants.EnumFunctional;
 import com.consts.Constants.EnumPP;
 import com.consts.Constants.EnumStep;
-import com.programconst.DefaultFileNames.SettingKeys;
 import com.pseudopot.EnumPseudoPotLib;
+import com.pseudopot.PSLibraryClass;
 import com.pseudopot.PseudoDojoClass;
 import com.pseudopot.SSSPClass;
 
@@ -57,8 +53,7 @@ public class InputGeoElementsController extends InputController{
 
 	@FXML private VBox rootVbox;
 	
-	@FXML private Button defButton,
-	buttonOpenLib;
+	@FXML private Button defButton;
 
 	@FXML private TableView<Element> elementTable;
     
@@ -84,7 +79,8 @@ public class InputGeoElementsController extends InputController{
     ecutrhoLabel,
     relavLabel,
     relavPoint,
-    fullPathLabel;
+    fullPathLabel,
+    labelPrecision;
 
 	
     @FXML private ComboBox<EnumFunctional> comboFunctional;
@@ -98,29 +94,39 @@ public class InputGeoElementsController extends InputController{
     @FXML private CheckBox checkRelativ,
     resetCheck;
     
-    
     private ObservableList<Element> elemData;
 	
     private PseudoDojoClass pdClass;
     
     private SSSPClass ssspClass;
     
+    private PSLibraryClass psLibClass;
+    
 	public InputGeoElementsController(MainClass mc) {
 		super(mc, EnumStep.GEO);
 		elemData = FXCollections.observableArrayList();
 		pdClass = new PseudoDojoClass();
 		ssspClass = new SSSPClass();
+		psLibClass = new PSLibraryClass();
 	}
     
     @Override
     public void initialize(URL location, ResourceBundle resources) {
     	initialize();
     }
+    private void refreshLibList() {
+    	ObservableList<EnumPseudoPotLib> typeLib = FXCollections.observableArrayList(EnumPseudoPotLib.values());
+    	if(!pdClass.checkLibraryExistence()) {typeLib.remove(EnumPseudoPotLib.PSEUDODOJO);}
+    	if(!ssspClass.checkLibraryExistence()) {typeLib.remove(EnumPseudoPotLib.SSSP);}
+    	if(!psLibClass.checkLibraryExistence()) {typeLib.remove(EnumPseudoPotLib.PSLIBRARY);}
+    	comboLib.setItems(typeLib);
+    }
     public void initialize() {
     	//pseudoPot library
-    	ObservableList<EnumPseudoPotLib> typeLib = FXCollections.observableArrayList(EnumPseudoPotLib.values());
-    	comboLib.setItems(typeLib);
     	
+    	refreshLibList();
+    	
+    	labelPrecision.setText("Precision");
     	comboLib.getSelectionModel().selectedItemProperty().addListener((obs, oldSelect, newSelect) -> {
     		ObservableList<EnumFunctional> typeFunc;
     		ObservableList<EnumPP> typePP;
@@ -133,12 +139,21 @@ public class InputGeoElementsController extends InputController{
     			typePP = FXCollections.observableArrayList(ssspClass.getPpList());
     			typePrec = FXCollections.observableArrayList(ssspClass.getPrecisionList());
     			bl = ssspClass.getFullRelativSupport();
+    			labelPrecision.setText("Precision");
     		}
     		else if(EnumPseudoPotLib.PSEUDODOJO.equals(newSelect)) {
     			typeFunc = FXCollections.observableArrayList(pdClass.getFunctionalList());
     			typePP = FXCollections.observableArrayList(pdClass.getPpList());
     			typePrec = FXCollections.observableArrayList(pdClass.getPrecisionList());
     			bl = pdClass.getFullRelativSupport();
+    			labelPrecision.setText("Precision");
+    		}
+    		else if(EnumPseudoPotLib.PSLIBRARY.equals(newSelect)){
+    			typeFunc = FXCollections.observableArrayList(psLibClass.getFunctionalList());
+    			typePP = FXCollections.observableArrayList(psLibClass.getPpList());
+    			typePrec = FXCollections.observableArrayList(psLibClass.getPrecisionList());
+    			bl = psLibClass.getFullRelativSupport();
+    			labelPrecision.setText("Cutoff (pref.)");
     		}
     		else {
     			return;
@@ -181,32 +196,7 @@ public class InputGeoElementsController extends InputController{
     	//default use SSSP library, not necessary here
     	//comboLib.getSelectionModel().select(EnumPseudoPotLib.SSSP);
     	
-    	//open folder chooser for pseudoLib
-    	buttonOpenLib.setOnAction((event) -> {	
-			
-			DirectoryChooser dirChooser = new DirectoryChooser ();
-			
-			//go to current directory
-			String currentPath = Paths.get(".").toAbsolutePath().normalize().toString();
-			File tmpFile = new File(currentPath);
-			if(tmpFile.canRead()) {
-				dirChooser.setInitialDirectory(tmpFile);
-			}
-			
-			File selectedDir = dirChooser.showDialog((Stage)rootVbox.getScene().getWindow());
-			
-			if(selectedDir!=null && selectedDir.canRead()) {
-				mainClass.projectManager.pseudoLibPath = selectedDir.getPath();
-				mainClass.projectManager.writeGlobalSettings(SettingKeys.pseudolibroot.toString(),selectedDir.getPath());
-				labelPathPseudoLib.setText(selectedDir.getPath());
-				
-//				InputAgentGeo iGeo = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
-//				if (iGeo!=null) {iGeo.pseudodir = selectedDir.getPath();}
-				
-				//update the path
-				updatePseudoElementList();
-			}
-		});
+    	
     	//functional type
     	comboFunctional.setOnAction((event) -> {	
     		//if null, also take that
@@ -255,9 +245,14 @@ public class InputGeoElementsController extends InputController{
     	//setup element table
     	setupTable();
     }
-    private void updatePseudoElementList() {
+    public void updatePseudoElementList() {
+    	//********reconsider the efficiency!
+    	if(mainClass.projectManager.getPseudoLibPath()!=null) {
+    		labelPathPseudoLib.setText(mainClass.projectManager.getPseudoLibPath());}//may be not necessary
+    	refreshLibList();
+    	
     	InputAgentGeo iGeo = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
-
+    	
     	if(iGeo.elemListAll==null || iGeo.elemListAll.isEmpty() || elemData==null || elemData.isEmpty()) return;
     	
     	EnumPseudoPotLib eppl = comboLib.getSelectionModel().getSelectedItem();
@@ -272,6 +267,13 @@ public class InputGeoElementsController extends InputController{
     			pdClass.setRelativ(checkRelativ.isSelected());
     			pdClass.setTypeFunctional(comboFunctional.getSelectionModel().getSelectedItem());
     			pdClass.setPrecString(comboPrec.getSelectionModel().getSelectedItem());
+    			
+    			break;
+    		case PSLIBRARY:
+    			psLibClass.setRelativ(checkRelativ.isSelected());
+    			psLibClass.setTypeFunctional(comboFunctional.getSelectionModel().getSelectedItem());
+    			psLibClass.setTypePP(comboPP.getSelectionModel().getSelectedItem());
+    			psLibClass.setPrecString(comboPrec.getSelectionModel().getSelectedItem());
     			
     			break;
     		default: return;
@@ -301,9 +303,15 @@ public class InputGeoElementsController extends InputController{
 	    			pseudoPotFile=pdClass.getFile(ele1.getAtomSpecies().toString());
 		    		if(libFolderPath==null) {libFolderPath=pdClass.getFolder(ele1.getAtomSpecies().toString());}
 		    		break;
+	    		case PSLIBRARY:
+	    			pseudoPotFile=psLibClass.getFile(ele1.getAtomSpecies().toString());
+	    			//ShowAlert.showAlert(AlertType.INFORMATION, "debug", pseudoPotFile);
+		    		if(libFolderPath==null) {libFolderPath=psLibClass.getFolder(ele1.getAtomSpecies().toString());}
+		    		break;
 	    		default: 
 	    			return;
     		}
+    		
     		ele1.setPseudoPotFile(pseudoPotFile);
     		ele2.setPseudoPotFile(pseudoPotFile);
     		boolean bl = existPseudoFile(pseudoPotFile);
@@ -311,8 +319,8 @@ public class InputGeoElementsController extends InputController{
     		ele2.setPseudoValid(bl);
     		elemData.set(i, ele2);
     		
-    		if(mainClass.projectManager.pseudoLibPath!=null && libFolderPath!=null) {
-	    		iGeo.pseudodir = mainClass.projectManager.pseudoLibPath+File.separator+libFolderPath;
+    		if(mainClass.projectManager.getPseudoLibPath()!=null && libFolderPath!=null) {
+    			iGeo.pseudodir = mainClass.projectManager.getPseudoLibPath()+File.separator+libFolderPath;
 	    	}
 		}
     	
@@ -333,7 +341,7 @@ public class InputGeoElementsController extends InputController{
     		relavLabel.setText("");fullPathLabel.setText("");
     		return;}
     	
-    	String pseudoLibRoot = mainClass.projectManager.pseudoLibPath;
+    	String pseudoLibRoot = mainClass.projectManager.getPseudoLibPath();
     	if(pseudoLibRoot==null) {fullPathLabel.setText(el.getPseudoPotFile());}
     	else {fullPathLabel.setText(pseudoLibRoot+File.separator+el.getPseudoPotFile());}
     	
@@ -361,6 +369,12 @@ public class InputGeoElementsController extends InputController{
 				dual = pdClass.getDual(elemSpec);
 				ppType = pdClass.getPpType(elemSpec);
 				functionalType = pdClass.getFunctionalType(elemSpec);
+				break;
+			case PSLIBRARY:
+				ecutwfc = psLibClass.getEcutWfc(elemSpec);
+				dual = psLibClass.getDual(elemSpec);
+				ppType = psLibClass.getPpType(elemSpec);
+				functionalType = psLibClass.getFunctionalType(elemSpec);
 				break;
 			default: return;
     	}
@@ -420,7 +434,7 @@ public class InputGeoElementsController extends InputController{
 		});
     }
     private boolean existPseudoFile(String fileName) {
-		String pseudoLibRoot = mainClass.projectManager.pseudoLibPath;
+		String pseudoLibRoot = mainClass.projectManager.getPseudoLibPath();
 		if(pseudoLibRoot==null) return false;
 		File pseudoFile = new File(pseudoLibRoot+File.separator+fileName);
 		return pseudoFile.canRead();
@@ -446,6 +460,6 @@ public class InputGeoElementsController extends InputController{
 		
 		updatePseudoElementList();
 		
-		if(mainClass.projectManager.pseudoLibPath!=null) {labelPathPseudoLib.setText(mainClass.projectManager.pseudoLibPath);}
+		if(mainClass.projectManager.getPseudoLibPath()!=null) {labelPathPseudoLib.setText(mainClass.projectManager.getPseudoLibPath());}
     }
 }

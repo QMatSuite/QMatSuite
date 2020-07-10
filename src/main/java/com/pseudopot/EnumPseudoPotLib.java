@@ -21,5 +21,6 @@ package com.pseudopot;
 
 public enum EnumPseudoPotLib {
 	SSSP,
-	PSEUDODOJO
+	PSEUDODOJO,
+	PSLIBRARY
 }

@@ -26,12 +26,18 @@ import com.consts.Constants.EnumFunctional;
 import com.consts.Constants.EnumPP;
 
 public abstract class PseudoPotential {
+	protected static File rootFolder;
 	protected EnumPseudoPotLib libName;
 	protected ArrayList<EnumFunctional> functionalList;//functional list
 	protected ArrayList<EnumPP> ppList;//pseudopotential type list
 	protected ArrayList<String> precisionList;//precision settings
 	private boolean fullRelativSupport;
 	protected String libFolderName;
+	
+	static 
+    {
+		rootFolder = null;
+    }
 	
 	public PseudoPotential(EnumPseudoPotLib ln, boolean fr) {
 		libName = ln;
@@ -40,6 +46,17 @@ public abstract class PseudoPotential {
 		precisionList = new ArrayList<String>();
 		fullRelativSupport = fr;
 		libFolderName="";
+	}
+	public boolean checkLibraryExistence() {
+		if(rootFolder==null || libFolderName==null) return false;
+		File fl = new File(rootFolder,libFolderName);
+		return fl.canRead();
+	}
+	public File getRootFolder() {
+		return rootFolder;
+	}
+	public static void setRootFolder(File rt) {
+		rootFolder = rt;
 	}
 	public ArrayList<EnumFunctional> getFunctionalList(){
 		return functionalList;

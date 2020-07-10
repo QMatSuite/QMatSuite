@@ -8,6 +8,7 @@
 <?import javafx.scene.control.MenuItem?>
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
@@ -16,7 +17,7 @@
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane fx:id="rootPane" prefHeight="450.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
+<BorderPane fx:id="rootPane" prefHeight="600.0" prefWidth="900.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
    <top>
       <VBox BorderPane.alignment="CENTER">
          <children>
@@ -53,23 +54,29 @@
             </MenuBar>
             <GridPane hgap="5.0">
               <columnConstraints>
-                <ColumnConstraints hgrow="NEVER" maxWidth="118.5" minWidth="10.0" prefWidth="60.5" />
-                  <ColumnConstraints hgrow="NEVER" maxWidth="203.0" minWidth="0.0" prefWidth="92.5" />
-                  <ColumnConstraints hgrow="ALWAYS" maxWidth="686.5" minWidth="10.0" prefWidth="294.0" />
-                <ColumnConstraints hgrow="ALWAYS" maxWidth="400.0" minWidth="10.0" prefWidth="129.0" />
+                <ColumnConstraints hgrow="NEVER" maxWidth="118.5" minWidth="10.0" prefWidth="63.0" />
+                  <ColumnConstraints hgrow="NEVER" maxWidth="203.0" minWidth="0.0" prefWidth="59.0" />
+                  <ColumnConstraints hgrow="ALWAYS" maxWidth="686.5" minWidth="10.0" prefWidth="78.0" />
+                  <ColumnConstraints hgrow="NEVER" maxWidth="686.5" minWidth="10.0" prefWidth="20.0" />
+                  <ColumnConstraints hgrow="NEVER" maxWidth="686.5" minWidth="10.0" prefWidth="58.0" />
+                  <ColumnConstraints hgrow="ALWAYS" maxWidth="686.5" minWidth="10.0" prefWidth="78.0" />
+                  <ColumnConstraints hgrow="NEVER" maxWidth="686.5" minWidth="10.0" prefWidth="120.0" />
+                  <ColumnConstraints hgrow="NEVER" maxWidth="686.5" minWidth="10.0" prefWidth="58.0" />
+                <ColumnConstraints hgrow="ALWAYS" maxWidth="400.0" minWidth="10.0" prefWidth="78.0" />
               </columnConstraints>
               <rowConstraints>
                 <RowConstraints minHeight="10.0" vgrow="SOMETIMES" />
               </rowConstraints>
                <children>
                   <Label minWidth="80.0" text="Workspace" />
-                  <Button fx:id="buttonOpenWorkSpace" minWidth="45.0" mnemonicParsing="false" text="Change folder" GridPane.columnIndex="1" />
-                  <Pane fx:id="paneWorkSpace" prefHeight="25.0" prefWidth="325.0" GridPane.columnIndex="2">
-                     <children>
-                        <Label fx:id="textWorkSpace" />
-                     </children>
-                  </Pane>
-                  <Button fx:id="buttonOpenInWindows" mnemonicParsing="false" text="Open in system" GridPane.columnIndex="3" />
+                  <Button fx:id="buttonOpenWorkSpace" minWidth="45.0" mnemonicParsing="false" text="Change" GridPane.columnIndex="1" />
+                  <TextField fx:id="textWorkSpace" prefHeight="25.0" prefWidth="189.0" GridPane.columnIndex="2" GridPane.hgrow="ALWAYS" />
+                  <Label text="QE" GridPane.columnIndex="3" />
+                  <Button fx:id="openQEPathButton" mnemonicParsing="false" text="Change" GridPane.columnIndex="4" />
+                  <TextField fx:id="textQEPath" GridPane.columnIndex="5" />
+                  <TextField fx:id="labelPathPseudoLib" GridPane.columnIndex="8" />
+                  <Button fx:id="buttonOpenLib" mnemonicParsing="false" text="Change" GridPane.columnIndex="7" />
+                  <Label text="Pseudopotential Lib." GridPane.columnIndex="6" />
                </children>
                <VBox.margin>
                   <Insets left="5.0" right="5.0" />
