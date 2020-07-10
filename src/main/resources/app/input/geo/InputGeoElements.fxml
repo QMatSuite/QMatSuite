@@ -48,11 +48,10 @@
             <CheckBox fx:id="checkRelativ" mnemonicParsing="false" GridPane.columnIndex="3" GridPane.halignment="CENTER" GridPane.rowIndex="1" />
             <ComboBox fx:id="comboLib" prefWidth="150.0" GridPane.rowIndex="3" />
             <Label text="Library" GridPane.rowIndex="2" />
-            <Label text="Precision" GridPane.columnIndex="3" GridPane.rowIndex="2" />
+            <Label fx:id="labelPrecision" text="Precision" GridPane.columnIndex="3" GridPane.rowIndex="2" />
             <ComboBox fx:id="comboPrec" prefWidth="150.0" GridPane.columnIndex="3" GridPane.rowIndex="3" />
             <Label fx:id="labelPathPseudoLib" prefHeight="17.0" prefWidth="165.0" style="-fx-background-color: #FFFFFF;" GridPane.columnIndex="1" GridPane.columnSpan="2" GridPane.rowIndex="1" />
             <Label prefHeight="17.0" prefWidth="80.0" text="Lib root path" GridPane.columnIndex="1" />
-            <Button fx:id="buttonOpenLib" mnemonicParsing="false" text="open" GridPane.columnIndex="2" />
          </children>
          <columnConstraints>
             <ColumnConstraints hgrow="SOMETIMES" maxWidth="306.5" minWidth="10.0" prefWidth="85.0" />

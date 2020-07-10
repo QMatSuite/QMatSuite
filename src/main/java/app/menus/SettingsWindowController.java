@@ -92,7 +92,6 @@ public class SettingsWindowController implements Initializable {
 					borderPaneMain.setCenter(panePath);
 					BorderPane.setAlignment(panePath, Pos.TOP_LEFT);
 					//panePath.setStyle("-fx-background-color: blue");
-					contPath.loadPaths();
 					break;
 				case Viewer3D:
 					break;

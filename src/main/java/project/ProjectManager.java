@@ -51,12 +51,14 @@ import com.consts.Constants.EnumStep;
 import com.error.ErrorMsg;
 import com.error.ShowAlert;
 import com.programconst.DefaultFileNames;
+import com.pseudopot.PseudoPotential;
+
 import input.ContainerInputString;
 import input.QeInput;
 
 public class ProjectManager{
 	public String workSpacePath;
-	public String pseudoLibPath;
+	private String pseudoLibPath;
 	public String qePath;
 	private LinkedHashMap<String, Project> projectDict;
 	private String activeProjKey;
@@ -755,6 +757,13 @@ public class ProjectManager{
 	    	return null;
 		}
 		else return pj.genInputFromAgent();
+	}
+	public String getPseudoLibPath() {
+		return pseudoLibPath;
+	}
+	public void setPseudoLibPath(String pseudoLibPath) {
+		PseudoPotential.setRootFolder(new File(pseudoLibPath));
+		this.pseudoLibPath = pseudoLibPath;
 	}
 	
 	

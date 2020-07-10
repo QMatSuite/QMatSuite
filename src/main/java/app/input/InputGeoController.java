@@ -163,6 +163,9 @@ public class InputGeoController extends InputController{
     	if (contElem!=null) {
     		contElem.loadProjectParameters();}
 	}
+    public void updatePseudoElementList() {
+    	contElem.updatePseudoElementList();
+    }
     public void setDisabled() {
     	labelGeoNote.setVisible(true);
     	titlePaneElements.setVisible(false);titlePaneCell.setVisible(false);titlePaneAtoms.setVisible(false);

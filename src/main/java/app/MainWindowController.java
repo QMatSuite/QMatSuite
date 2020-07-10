@@ -40,6 +40,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
@@ -47,6 +48,7 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TabPane.TabClosingPolicy;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.TreeItem;
@@ -56,7 +58,6 @@ import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.CornerRadii;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Modality;
@@ -81,6 +82,8 @@ import com.error.ErrorMsg;
 import com.error.ShowAlert;
 import com.programconst.Coloring;
 import com.programconst.DefaultFileNames.SettingKeys;
+
+
 import input.ContainerInputString;
 import job.JobNode;
 
@@ -104,12 +107,12 @@ public class MainWindowController implements Initializable{
     runJob,
     buttonOpenWorkSpace,
     saveProjectButton,
-    buttonOpenInWindows;
+    openQEPathButton,
+    buttonOpenLib;//buttonOpenInWindows
     
-    @FXML private Label textWorkSpace;
-    
-    @FXML private Pane paneWorkSpace;
-    
+    @FXML private TextField textWorkSpace,
+    textQEPath,
+    labelPathPseudoLib;
     
 	@FXML private ScrollPane inputField;
 	
@@ -123,6 +126,7 @@ public class MainWindowController implements Initializable{
 	
 	
 	@FXML private BorderPane rootPane;
+	
 	
 	private ScrollPane scrollGeo,
 	scrollOpt,
@@ -189,16 +193,8 @@ public class MainWindowController implements Initializable{
 	@Override
 	public void initialize(URL arg0, ResourceBundle arg1){
 		workSpaceTabPane.setTabClosingPolicy(TabClosingPolicy.SELECTED_TAB);
-
 		
 		projectTabDict = new HashMap<String, Tab>();
-		
-		//set the style of workspace and QEEngine fields
-		textWorkSpace.setBackground(new Background(new BackgroundFill(Coloring.defaultFile, 
-				CornerRadii.EMPTY, Insets.EMPTY)));
-		textWorkSpace.prefWidthProperty().bind(paneWorkSpace.widthProperty());
-		textWorkSpace.prefHeightProperty().bind(paneWorkSpace.heightProperty());
-
 		
 		tabPaneRight = null;
 		tabPaneStatusRight = false;
@@ -276,6 +272,165 @@ public class MainWindowController implements Initializable{
 		
 		//workTabContent =  new WorkTabContent(mainClass,workSpaceTabPane,projectTabDict,contGeo);
 		
+		//textWorkSpace.setDisable(true);
+		textWorkSpace.setEditable(false);
+		//set the style of workspace and QEEngine fields
+		textWorkSpace.setBackground(new Background(new BackgroundFill(Coloring.defaultFile, 
+				CornerRadii.EMPTY, Insets.EMPTY)));
+		//set contextmenu
+		ContextMenu contextWsp = new ContextMenu();
+        MenuItem contextMenuWsp = new MenuItem("Open with external");
+        contextWsp.getItems().add(contextMenuWsp);
+        textWorkSpace.setContextMenu(contextWsp);
+        contextMenuWsp.setOnAction((event) -> {
+			File wsDir = mainClass.projectManager.getWorkSpaceDir();
+			
+			if(wsDir==null || !wsDir.canRead()) {return;}
+			
+			try {
+				Desktop.getDesktop().open(wsDir);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		});
+        buttonOpenWorkSpace.setOnAction((event) -> {
+			File selectedDir=null;	
+			if(mainClass.isTestMode()) {
+				//for testFX tests
+				//go to current directory
+				String currentPath = Paths.get(".").toAbsolutePath().normalize().toString();
+				File tmpFile = new File(currentPath,"testfx");
+				//delete test workspace folder
+				if(tmpFile.exists()) {deleteDir(tmpFile);}
+				//make new folder
+				if(!tmpFile.exists() && !tmpFile.mkdirs()) {return;}
+				selectedDir = tmpFile;
+				
+			}
+			else {
+				//only execute when there is not test
+				String wsp1 = mainClass.projectManager.readGlobalSettings(SettingKeys.workspace.toString());
+				if(wsp1!=null) {
+					File wsDir = new File(wsp1);
+					if(mainClass.projectManager.existCurrentProject() && wsDir.canRead()) {
+						ShowAlert.showAlert(AlertType.INFORMATION, "Warning", "Please close ALL projects before changing the workspace directory.");
+				    	return;
+					}
+				}
+				
+				DirectoryChooser dirChooser = new DirectoryChooser ();
+				
+				//go to current directory
+				chooseInitialDir(dirChooser, this.textWorkSpace.getText());
+				
+				selectedDir = dirChooser.showDialog((Stage)rootPane.getScene().getWindow());
+			}
+			if(selectedDir!=null && selectedDir.canRead()) {
+				mainClass.projectManager.workSpacePath = selectedDir.getPath();
+				textWorkSpace.setText(mainClass.projectManager.workSpacePath);
+				mainClass.projectManager.writeGlobalSettings(SettingKeys.workspace.toString(),selectedDir.getPath());
+				setWorkSpace(true);
+				contTree.updateProjects(true);
+				textWorkSpace.setBackground(new Background(new BackgroundFill(Coloring.validFile, 
+						CornerRadii.EMPTY, Insets.EMPTY)));
+			}
+			
+		});
+        
+        textQEPath.setEditable(false);
+        textQEPath.setBackground(new Background(new BackgroundFill(Coloring.defaultFile, 
+				CornerRadii.EMPTY, Insets.EMPTY)));
+        //set contextmenu
+  		ContextMenu contextQe = new ContextMenu();
+        MenuItem contextMenuQe = new MenuItem("Open with external");
+        contextQe.getItems().add(contextMenuQe);
+        textQEPath.setContextMenu(contextQe);
+        contextMenuQe.setOnAction((event) -> {
+        	File qeDir = new File(mainClass.projectManager.qePath);
+  			
+        	if(qeDir==null || !qeDir.canRead()) {
+        		
+        		return;}
+  			
+  			try {
+  				//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", qeDir.toString());
+  				Desktop.getDesktop().open(qeDir);
+  			} catch (IOException e) {
+  				e.printStackTrace();
+  			}
+  		});
+		openQEPathButton.setOnAction((event) -> {
+
+			DirectoryChooser dirChooser = new DirectoryChooser ();
+			
+			//go to current directory
+
+			chooseInitialDir(dirChooser, textQEPath.getText());
+			
+			File selectedDir = dirChooser.showDialog((Stage)rootPane.getScene().getWindow());
+			
+			if(selectedDir!=null && selectedDir.canRead()) {
+				mainClass.projectManager.qePath = selectedDir.getPath();
+				textQEPath.setText(selectedDir.getPath());
+				mainClass.projectManager.writeGlobalSettings(SettingKeys.qePath.toString(),selectedDir.getPath());
+				if((new File(selectedDir,"pw.x")).exists() || (new File(selectedDir,"pw.exe")).exists()) {
+					textQEPath.setBackground(new Background(new BackgroundFill(Coloring.validFile, 
+							CornerRadii.EMPTY, Insets.EMPTY)));
+				}
+				else {
+					textQEPath.setBackground(new Background(new BackgroundFill(Coloring.invalidFile, 
+							CornerRadii.EMPTY, Insets.EMPTY)));
+				}
+			}
+			
+		});
+		
+		
+		labelPathPseudoLib.setEditable(false);
+		labelPathPseudoLib.setBackground(new Background(new BackgroundFill(Coloring.defaultFile, 
+				CornerRadii.EMPTY, Insets.EMPTY)));
+        //set contextmenu
+  		ContextMenu contextPp = new ContextMenu();
+        MenuItem contextMenuPp = new MenuItem("Open with external");
+        contextPp.getItems().add(contextMenuPp);
+        labelPathPseudoLib.setContextMenu(contextPp);
+        contextMenuPp.setOnAction((event) -> {
+        	File ppDir = new File(mainClass.projectManager.getPseudoLibPath());
+  			
+        	if(ppDir==null || !ppDir.canRead()) {
+        		
+        		return;}
+  			
+  			try {
+  				//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", qeDir.toString());
+  				Desktop.getDesktop().open(ppDir);
+  			} catch (IOException e) {
+  				e.printStackTrace();
+  			}
+  		});
+        //open folder chooser for pseudoLib
+    	buttonOpenLib.setOnAction((event) -> {	
+			
+			DirectoryChooser dirChooser = new DirectoryChooser ();
+			
+			//go to current directory
+			chooseInitialDir(dirChooser, this.labelPathPseudoLib.getText());
+			
+			File selectedDir = dirChooser.showDialog((Stage)rootPane.getScene().getWindow());
+			
+			if(selectedDir!=null && selectedDir.canRead()) {
+				mainClass.projectManager.setPseudoLibPath(selectedDir.getPath());
+				mainClass.projectManager.writeGlobalSettings(SettingKeys.pseudolibroot.toString(),selectedDir.getPath());
+				labelPathPseudoLib.setText(selectedDir.getPath());
+				
+//				InputAgentGeo iGeo = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
+//				if (iGeo!=null) {iGeo.pseudodir = selectedDir.getPath();}
+				
+				//update the path
+				contGeo.updatePseudoElementList();
+			}
+		});
+        
 		contTree.buttonOpenSelected.setOnAction((event) -> {
 			String projName = contTree.getSelectedProject();
 			if(projName==null || projName.isEmpty()) return;
@@ -442,25 +597,22 @@ public class MainWindowController implements Initializable{
 		contTree.calcTddft.setOnAction((event) -> {
 			openCalc(EnumCalc.TDDFT,true);
 		});
-		buttonOpenInWindows.setOnAction((event) -> {
-			File wsDir = mainClass.projectManager.getWorkSpaceDir();
-			
-			if(wsDir==null || !wsDir.canRead()) {return;}
-			
-			try {
-				Desktop.getDesktop().open(wsDir);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		});
 		showInputButton.setOnAction((event) -> {
 			ArrayList<ContainerInputString> cis = mainClass.projectManager.genInputFromAgent();
 			
 			if(!mainClass.isTestMode()) {
 				if (cis!=null && cis.size()>0) {
 					for(int i=0;i<cis.size();i++) {
-						ShowAlert.showAlert(AlertType.INFORMATION, "Input", cis.size()+
-								" steps in total. Show now the input for the "+Integer.toString(i)+"th step:\n"+cis.get(i).toString());
+						Alert alert = new Alert(AlertType.INFORMATION);
+						alert.setHeaderText("Input");
+						alert.setContentText(cis.size()+
+								" steps in total. Show now the input for the "+Integer.toString(i)+"th step.");
+						TextArea area = new TextArea(cis.get(i).toString());
+						area.setWrapText(true);
+						area.setEditable(false);
+
+						alert.getDialogPane().setExpandableContent(area);
+						alert.showAndWait();
 					}
 				}
 				else {
@@ -639,54 +791,7 @@ public class MainWindowController implements Initializable{
 		settingsMenuItem.setOnAction((event) -> {
 	        stageSettings.showAndWait();
 		});
-		
-		buttonOpenWorkSpace.setOnAction((event) -> {
-			File selectedDir=null;	
-			if(mainClass.isTestMode()) {
-				//for testFX tests
-				//go to current directory
-				String currentPath = Paths.get(".").toAbsolutePath().normalize().toString();
-				File tmpFile = new File(currentPath,"testfx");
-				//delete test workspace folder
-				if(tmpFile.exists()) {deleteDir(tmpFile);}
-				//make new folder
-				if(!tmpFile.exists() && !tmpFile.mkdirs()) {return;}
-				selectedDir = tmpFile;
-				
-			}
-			else {
-				//only execute when there is not test
-				String wsp1 = mainClass.projectManager.readGlobalSettings(SettingKeys.workspace.toString());
-				if(wsp1!=null) {
-					File wsDir = new File(wsp1);
-					if(mainClass.projectManager.existCurrentProject() && wsDir.canRead()) {
-						ShowAlert.showAlert(AlertType.INFORMATION, "Warning", "Please close ALL projects before changing the workspace directory.");
-				    	return;
-					}
-				}
-				
-				DirectoryChooser dirChooser = new DirectoryChooser ();
-				
-				//go to current directory
-				String currentPath = Paths.get(".").toAbsolutePath().normalize().toString();
-				File tmpFile = new File(currentPath);
-				if(tmpFile.canRead()) {
-					dirChooser.setInitialDirectory(tmpFile);
-				}
-				
-				selectedDir = dirChooser.showDialog((Stage)rootPane.getScene().getWindow());
-			}
-			if(selectedDir!=null && selectedDir.canRead()) {
-				mainClass.projectManager.workSpacePath = selectedDir.getPath();
-				textWorkSpace.setText(mainClass.projectManager.workSpacePath);
-				mainClass.projectManager.writeGlobalSettings(SettingKeys.workspace.toString(),selectedDir.getPath());
-				setWorkSpace(true);
-				contTree.updateProjects(true);
-				textWorkSpace.setBackground(new Background(new BackgroundFill(Coloring.validFile, 
-						CornerRadii.EMPTY, Insets.EMPTY)));
-			}
-			
-		});
+
 		
 	}
 	
@@ -698,42 +803,38 @@ public class MainWindowController implements Initializable{
 		//load environment variable
 		String wsp = mainClass.projectManager.readGlobalSettings(SettingKeys.workspace.toString());
 		mainClass.projectManager.workSpacePath = wsp;
-		if (wsp!=null) {
-			File wsDir = new File(wsp);
-			if(wsDir.canRead()) {
-				textWorkSpace.setText(wsp);
-				textWorkSpace.setBackground(new Background(new BackgroundFill(Coloring.validFile, 
-						CornerRadii.EMPTY, Insets.EMPTY)));
-				setWorkSpace(true);
-			}
-			else {
-				setWorkSpace(false);
-				textWorkSpace.setBackground(new Background(new BackgroundFill(Coloring.invalidFile, 
-						CornerRadii.EMPTY, Insets.EMPTY)));
-//				Alert alert1 = new Alert(AlertType.INFORMATION);
-//		    	alert1.setTitle("Warning");
-//		    	alert1.setContentText("Cannot load the previous workspace directory. Please specify a new one.");
-//		    	alert1.showAndWait();
-			}
-		}
-		else {
-			setWorkSpace(false);
-			textWorkSpace.setBackground(new Background(new BackgroundFill(Coloring.invalidFile, 
-					CornerRadii.EMPTY, Insets.EMPTY)));
-//			Alert alert1 = new Alert(AlertType.INFORMATION);
-//	    	alert1.setTitle("Message");
-//	    	alert1.setContentText("Please specify a workspace directory to start with.");
-//	    	alert1.showAndWait();
-		}
+		setTexFieldPath(textWorkSpace, wsp);
+		setWorkSpace(wsp!=null && (new File(wsp)).canRead());
 		
 		String qePath = mainClass.projectManager.readGlobalSettings(SettingKeys.qePath.toString());
 		mainClass.projectManager.qePath = qePath;
-		
+		setTexFieldPath(textQEPath, qePath);
 		
 		contTree.updateProjects(false);
 		
 		String wsp2 = mainClass.projectManager.readGlobalSettings(SettingKeys.pseudolibroot.toString());
-		mainClass.projectManager.pseudoLibPath = wsp2;
+		mainClass.projectManager.setPseudoLibPath(wsp2);
+		setTexFieldPath(labelPathPseudoLib, wsp2);
+
+	}
+	private void setTexFieldPath(TextField tf, String qePath) {
+		if(qePath!=null) {
+			tf.setText(qePath);
+			File qeDir = new File(qePath);
+			if(qeDir.canRead()) {
+				tf.setBackground(new Background(new BackgroundFill(Coloring.validFile, 
+						CornerRadii.EMPTY, Insets.EMPTY)));
+			}
+			else {
+				tf.setBackground(new Background(new BackgroundFill(Coloring.invalidFile, 
+						CornerRadii.EMPTY, Insets.EMPTY)));
+			}
+		}
+		else {
+			tf.setText("");
+			tf.setBackground(new Background(new BackgroundFill(Coloring.invalidFile, 
+					CornerRadii.EMPTY, Insets.EMPTY)));
+		}
 	}
 
 	private void closeProject(String pj) {
@@ -773,7 +874,7 @@ public class MainWindowController implements Initializable{
 				node.setDisable(true);
 		    }
 			buttonOpenWorkSpace.setDisable(false);
-			textWorkSpace.setDisable(false);
+			//textWorkSpace.setDisable(false);
 		}
 	}
 	private void toggleGeometry() {
@@ -1067,5 +1168,17 @@ public class MainWindowController implements Initializable{
 	        }
 	    }
 	    return directoryToBeDeleted.delete();
+	}
+	private void chooseInitialDir(DirectoryChooser dirChooser, String pathNow) {
+		if(pathNow==null || pathNow.isEmpty() || !(new File(pathNow)).canRead()) {
+			String currentPath = Paths.get(".").toAbsolutePath().normalize().toString();
+			File tmpFile = new File(currentPath);
+			if(tmpFile.canRead()) {
+				dirChooser.setInitialDirectory(tmpFile);
+			}
+		}
+		else {
+			dirChooser.setInitialDirectory(new File(pathNow));
+		}
 	}
 }

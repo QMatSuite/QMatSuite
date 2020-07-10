@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
@@ -24,10 +22,6 @@
          <children>
             <Label text="Workspace path" />
             <Label text="QE path" GridPane.rowIndex="1" />
-            <Button fx:id="openWorkspaceButton" mnemonicParsing="false" text="Open" GridPane.columnIndex="1" />
-            <Button fx:id="openQEPathButton" mnemonicParsing="false" text="Open" GridPane.columnIndex="1" GridPane.rowIndex="1" />
-            <TextField fx:id="textWorkspace" GridPane.columnIndex="2" />
-            <TextField fx:id="textQEPath" GridPane.columnIndex="2" GridPane.rowIndex="1" />
          </children>
       </GridPane>
    </children>

@@ -145,8 +145,6 @@ public class FirstMainWindowTest extends MainWindowTest{
 		
 		clickOn(addButton);
 		
-		TabPane workSpaceTabPane = (TabPane) lookup("#workSpaceTabPane").query();
-		
 		Node root3DVbox = lookup("#root3DVbox").query();
 		RadioButton radio3Cart = (RadioButton) from(root3DVbox).lookup("#radio3Cart").query();
 		clickRadioButton(radio3Cart);
