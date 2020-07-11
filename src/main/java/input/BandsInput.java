@@ -1,13 +1,12 @@
 /*******************************************************************************
  * Copyright (c) 2020 Haonan Huang.
  *
- *     This file is part of QuantumVITAS (Quantum Visualization Interactive 
- *     Toolkit for Ab-initio Simulations).
+ *     This file is part of QuantumVITAS (Quantum Visualization Interactive Toolkit for Ab-initio Simulations).
  *
  *     QuantumVITAS is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
- *     the Free Software Foundation, either version 3 of the License, or any 
- *     later version.
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     any later version.
  *
  *     QuantumVITAS is distributed in the hope that it will be useful,
  *     but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -17,22 +16,21 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package com.programconst;
+package input;
 
-public interface ProgrammingConsts {
-	public enum SettingsTags{
-		Settings,//root, not visible
-		Paths,
-		Viewer3D
+
+import com.consts.Constants.EnumNameList;
+
+
+public class BandsInput extends QeInput{
+	
+	public BandsInput() {
+		super("bands");
+		sectionDict.put("BANDS", new NameList(EnumNameList.BANDS));
+		sectionDict.get("BANDS").setBoolRequired(true);
+		
+		sectionDict.get("BANDS").addParameter("filband", new InputValueString("filband","bands.out",false));
+
 	}
-	public enum PathSettings{
-		workspace,
-		qe,
-		pplib
-	}
-	public final String stdinExtension = ".in"; 
-	public final String stdoutExtension = ".out";
-	public final String stderrExtension = ".err";
-	public final String dosExtension = ".dos";
 	
 }

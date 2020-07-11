@@ -81,8 +81,9 @@ import com.consts.Constants.EnumStep;
 import com.error.ErrorMsg;
 import com.error.ShowAlert;
 import com.programconst.Coloring;
+import com.programconst.DefaultFileNames;
 import com.programconst.DefaultFileNames.SettingKeys;
-
+import com.programconst.ProgrammingConsts.PathSettings;
 
 import input.ContainerInputString;
 import job.JobNode;
@@ -135,7 +136,8 @@ public class MainWindowController implements Initializable{
 	scrollNscf,
 	scrollBands,
 	scrollMd,
-	scrollTddft;
+	scrollTddft,
+	scrollBandsPP;
 	
 	private ScrollPane scrollLeft;
 	
@@ -240,6 +242,8 @@ public class MainWindowController implements Initializable{
 			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputBands.fxml"));
 			fxmlLoader.setController(contBands);
 			scrollBands = fxmlLoader.load();
+			
+			scrollBandsPP = new ScrollPane(new Label("Nothing to control in this step."));
 
 			contTddft = new InputTddftController(mainClass);
 			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputTddft.fxml"));
@@ -371,16 +375,8 @@ public class MainWindowController implements Initializable{
 			
 			if(selectedDir!=null && selectedDir.canRead()) {
 				mainClass.projectManager.qePath = selectedDir.getPath();
-				textQEPath.setText(selectedDir.getPath());
 				mainClass.projectManager.writeGlobalSettings(SettingKeys.qePath.toString(),selectedDir.getPath());
-				if((new File(selectedDir,"pw.x")).exists() || (new File(selectedDir,"pw.exe")).exists()) {
-					textQEPath.setBackground(new Background(new BackgroundFill(Coloring.validFile, 
-							CornerRadii.EMPTY, Insets.EMPTY)));
-				}
-				else {
-					textQEPath.setBackground(new Background(new BackgroundFill(Coloring.invalidFile, 
-							CornerRadii.EMPTY, Insets.EMPTY)));
-				}
+				setTexFieldPath(textQEPath, selectedDir.getPath(),PathSettings.qe);
 			}
 			
 		});
@@ -421,8 +417,7 @@ public class MainWindowController implements Initializable{
 			if(selectedDir!=null && selectedDir.canRead()) {
 				mainClass.projectManager.setPseudoLibPath(selectedDir.getPath());
 				mainClass.projectManager.writeGlobalSettings(SettingKeys.pseudolibroot.toString(),selectedDir.getPath());
-				labelPathPseudoLib.setText(selectedDir.getPath());
-				
+				setTexFieldPath(labelPathPseudoLib, selectedDir.getPath(),PathSettings.pplib);
 //				InputAgentGeo iGeo = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
 //				if (iGeo!=null) {iGeo.pseudodir = selectedDir.getPath();}
 				
@@ -606,7 +601,7 @@ public class MainWindowController implements Initializable{
 						Alert alert = new Alert(AlertType.INFORMATION);
 						alert.setHeaderText("Input");
 						alert.setContentText(cis.size()+
-								" steps in total. Show now the input for the "+Integer.toString(i)+"th step.");
+								" steps in total. Show now the input for the "+Integer.toString(i+1)+"th step.");
 						TextArea area = new TextArea(cis.get(i).toString());
 						area.setWrapText(true);
 						area.setEditable(false);
@@ -803,25 +798,37 @@ public class MainWindowController implements Initializable{
 		//load environment variable
 		String wsp = mainClass.projectManager.readGlobalSettings(SettingKeys.workspace.toString());
 		mainClass.projectManager.workSpacePath = wsp;
-		setTexFieldPath(textWorkSpace, wsp);
+		setTexFieldPath(textWorkSpace, wsp, PathSettings.workspace);
 		setWorkSpace(wsp!=null && (new File(wsp)).canRead());
 		
 		String qePath = mainClass.projectManager.readGlobalSettings(SettingKeys.qePath.toString());
 		mainClass.projectManager.qePath = qePath;
-		setTexFieldPath(textQEPath, qePath);
+		setTexFieldPath(textQEPath, qePath,PathSettings.qe);
 		
 		contTree.updateProjects(false);
 		
 		String wsp2 = mainClass.projectManager.readGlobalSettings(SettingKeys.pseudolibroot.toString());
 		mainClass.projectManager.setPseudoLibPath(wsp2);
-		setTexFieldPath(labelPathPseudoLib, wsp2);
+		setTexFieldPath(labelPathPseudoLib, wsp2,PathSettings.pplib);
 
 	}
-	private void setTexFieldPath(TextField tf, String qePath) {
+	private void setTexFieldPath(TextField tf, String qePath, PathSettings ps) {
 		if(qePath!=null) {
 			tf.setText(qePath);
 			File qeDir = new File(qePath);
+			boolean isValid = qeDir.canRead();
 			if(qeDir.canRead()) {
+				switch(ps) {
+					case qe:isValid = ((new File(qeDir,"pw.x")).exists() || (new File(qeDir,"pw.exe")).exists());
+							break;
+					case pplib:isValid = ((new File(qeDir,DefaultFileNames.pseudoDojoDir)).exists() || 
+							(new File(qeDir,DefaultFileNames.psLibraryDir)).exists() ||
+							(new File(qeDir,DefaultFileNames.ssspDir)).exists());break;
+					case workspace: isValid = true;break;
+					default:ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Unrecognized PathSettings!");return;
+				}
+			}
+			if(isValid) {
 				tf.setBackground(new Background(new BackgroundFill(Coloring.validFile, 
 						CornerRadii.EMPTY, Insets.EMPTY)));
 			}
@@ -1074,7 +1081,7 @@ public class MainWindowController implements Initializable{
 			addCalc(boolCreate, ec, enumStepArray);
 			break;
 		case BANDS:
-			enumStepArray = new EnumStep[] {EnumStep.SCF,EnumStep.BANDS};
+			enumStepArray = new EnumStep[] {EnumStep.SCF,EnumStep.BANDS,EnumStep.BANDSPP};
 			addCalc(boolCreate, ec, enumStepArray);
 			break;
 		case BOMD:
@@ -1133,6 +1140,9 @@ public class MainWindowController implements Initializable{
 					break;
 				case BANDS:
 					contBands.loadProjectParameters();addRightPane(scrollBands,enumStepArray[i]);
+					break;
+				case BANDSPP:
+					addRightPane(scrollBandsPP,enumStepArray[i]);
 					break;
 				default:ShowAlert.showAlert(AlertType.INFORMATION, "Error", 
 						"Nonimplemented controller: "+(enumStepArray[i]==null?"null":enumStepArray[i].toString()));break;

@@ -27,6 +27,8 @@ import agent.InputAgentGeo;
 import agent.InputAgentScf;
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
+
+import input.BandsInput;
 import input.ContainerInputString;
 import input.PwInput;
 import input.QeInput;
@@ -48,6 +50,7 @@ public class CalculationBandsClass extends CalculationClass{
 		inputList = new HashMap<EnumStep, QeInput>();
 		inputList.put(EnumStep.SCF,new PwInput());
 		inputList.put(EnumStep.BANDS,new PwInput());
+		inputList.put(EnumStep.BANDSPP,new BandsInput());
 	}
 	public CalculationBandsClass(String cn) {
 		super();
@@ -61,6 +64,11 @@ public class CalculationBandsClass extends CalculationClass{
 		commandList.put(EnumStep.BANDS,"pw.exe < espresso.in > espresso.out");
 		orderList.add(EnumStep.BANDS);
 		agentList.put(EnumStep.BANDS,new InputAgentBands());
+		
+		commandList.put(EnumStep.BANDSPP,"bands.exe < espresso.in > espresso.out");
+		orderList.add(EnumStep.BANDSPP);
+		//no BANDSPP agent!
+
 	}
 	public ArrayList<ContainerInputString> genInputFromAgent(ArrayList<InputAgentGeo> geoList) {
 		ArrayList<ContainerInputString> cis = new ArrayList<ContainerInputString>();
@@ -75,6 +83,9 @@ public class CalculationBandsClass extends CalculationClass{
 		inputList.get(EnumStep.BANDS).loadAgent((InputAgentScf)agentList.get(EnumStep.SCF));
 		inputList.get(EnumStep.BANDS).loadAgent((InputAgentBands)agentList.get(EnumStep.BANDS));
 		cis.add(inputList.get(EnumStep.BANDS).genInput(EnumStep.BANDS));
+		
+		inputList.get(EnumStep.BANDSPP).clearErrorMessage();
+		cis.add(inputList.get(EnumStep.BANDSPP).genInput(EnumStep.BANDSPP));
 		
 		return cis;
 

@@ -261,6 +261,18 @@ public class ProjectManager{
 			}
 		}
 	}
+	public void duplicateGeoList(int ind) {
+		Project pj = getActiveProject();
+		if(pj!=null) {
+			boolean bl = pj.duplicateGeoList(ind);
+			if(bl) {
+				File wsDir = getWorkSpaceDir();
+				if(wsDir==null || !wsDir.canWrite()) {return;}
+				saveActiveProjectInMultipleFiles(wsDir, false,false);
+				ShowAlert.showAlert(AlertType.INFORMATION, "Info", "Duplicate successfully and project saved.");
+			}
+		}
+	}
 	public void saveActiveProjectInMultipleFiles() {
 		File wsDir = getWorkSpaceDir();
 		if(wsDir==null || !wsDir.canWrite()) {return;}

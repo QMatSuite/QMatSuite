@@ -33,8 +33,9 @@
             <GridPane>
               <columnConstraints>
                 <ColumnConstraints hgrow="SOMETIMES" maxWidth="161.5" minWidth="10.0" prefWidth="161.5" />
-                <ColumnConstraints hgrow="SOMETIMES" maxWidth="121.5" minWidth="10.0" prefWidth="90.5" />
-                  <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+                <ColumnConstraints hgrow="SOMETIMES" maxWidth="121.5" minWidth="10.0" prefWidth="85.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="40.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="55.0" />
               </columnConstraints>
               <rowConstraints>
                 <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
@@ -43,7 +44,8 @@
                   <Label fx:id="labelGeoLeft" prefHeight="17.0" prefWidth="154.0" text="Use the following geometry: " GridPane.halignment="RIGHT" />
                   <ComboBox fx:id="comboGeo" prefHeight="25.0" prefWidth="95.0" GridPane.columnIndex="1" />
                   <Label fx:id="labelGeoRight" GridPane.columnIndex="2" />
-                  <Button fx:id="buttonDeleteGeo" mnemonicParsing="false" text="Delete geometry" GridPane.columnIndex="2" />
+                  <Button fx:id="buttonDeleteGeo" mnemonicParsing="false" text="Delete" GridPane.columnIndex="2" />
+                  <Button fx:id="buttonDuplicateGeo" mnemonicParsing="false" text="Duplicate" GridPane.columnIndex="3" />
                </children>
             </GridPane>
             <Label fx:id="labelGeoNote" text="  Please go to the geometry window to view and edit the details." />

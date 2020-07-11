@@ -27,6 +27,7 @@ import java.lang.reflect.Method;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import com.consts.PhysicalConstants;
+import com.programconst.DefaultFileNames;
 import com.consts.Constants.EnumFunctional;
 import com.consts.Constants.EnumPP;
 import com.pseudopot.PseudoDojoEnum.FrPbeStandard;
@@ -52,7 +53,7 @@ public class PseudoDojoClass extends PseudoPotential{
 		functionalList.add(EnumFunctional.PBE);
 		functionalList.add(EnumFunctional.PBESOL);
 		functionalList.add(EnumFunctional.LDA);
-		libFolderName="pseudo_dojo_ONCVPSP_v0.4";
+		libFolderName = DefaultFileNames.pseudoDojoDir;
 	}
 	
 	@Override

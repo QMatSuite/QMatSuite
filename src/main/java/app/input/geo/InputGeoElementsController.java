@@ -253,7 +253,7 @@ public class InputGeoElementsController extends InputController{
     	
     	InputAgentGeo iGeo = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
     	
-    	if(iGeo.elemListAll==null || iGeo.elemListAll.isEmpty() || elemData==null || elemData.isEmpty()) return;
+    	if(iGeo == null || iGeo.elemListAll==null || iGeo.elemListAll.isEmpty() || elemData==null || elemData.isEmpty()) return;
     	
     	EnumPseudoPotLib eppl = comboLib.getSelectionModel().getSelectedItem();
     	

@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import com.consts.Constants.EnumFunctional;
 import com.consts.Constants.EnumPP;
 import com.error.ShowAlert;
+import com.programconst.DefaultFileNames;
 import com.pseudopot.PSLibraryEnum.PsLibraryV1p0;
 import javafx.scene.control.Alert.AlertType;
 
@@ -45,7 +46,7 @@ public class PSLibraryClass extends PseudoPotential{
 		functionalList.add(EnumFunctional.LDA);
 		ppList.add(EnumPP.PAW);
 		ppList.add(EnumPP.USPP);
-		libFolderName="PSlibrary_v1.0.0";
+		libFolderName=DefaultFileNames.psLibraryDir;
 	}
 
 	public String getPrecString() {
