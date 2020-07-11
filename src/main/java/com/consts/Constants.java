@@ -43,12 +43,14 @@ public class Constants {
 		//turbo_lanczos.x
 		lr_input,
 		lr_control,
-		lr_post
+		lr_post,
+		//bands.x
+		BANDS;
 	}
 	public enum EnumFileCategory{
 		save("QuantumVITAS save"),directory("Directory"),stdin("Input (std)"),
 		stdout("Output (std)"),xmlout("Output (xml)"),crash("Crash"),stderr("Error (std)"),
-		unknown("Unknown"),dos("Density of states");
+		unknown("Unknown"),dos("Density of states"),bandsDatGnu("Bands Data (gnu)");
 		
 		private String name;
 		
@@ -139,6 +141,7 @@ public class Constants {
 		OPT("OPT"),
 		DOS("DOS"),
 		BANDS("Bands"),
+		BANDSPP("Bands PP"),
 		BOMD("MD"),
 		TDDFT("TDDFT"),
 		TDDFT2("TDDFT(2)");

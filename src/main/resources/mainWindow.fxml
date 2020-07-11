@@ -54,23 +54,23 @@
             </MenuBar>
             <GridPane hgap="5.0">
               <columnConstraints>
-                <ColumnConstraints hgrow="NEVER" maxWidth="118.5" minWidth="10.0" prefWidth="63.0" />
-                  <ColumnConstraints hgrow="NEVER" maxWidth="203.0" minWidth="0.0" prefWidth="59.0" />
-                  <ColumnConstraints hgrow="ALWAYS" maxWidth="686.5" minWidth="10.0" prefWidth="78.0" />
+                <ColumnConstraints hgrow="NEVER" maxWidth="118.5" minWidth="10.0" prefWidth="75.0" />
+                  <ColumnConstraints maxWidth="203.0" minWidth="10.0" prefWidth="73.0" />
+                  <ColumnConstraints hgrow="ALWAYS" minWidth="10.0" prefWidth="78.0" />
                   <ColumnConstraints hgrow="NEVER" maxWidth="686.5" minWidth="10.0" prefWidth="20.0" />
-                  <ColumnConstraints hgrow="NEVER" maxWidth="686.5" minWidth="10.0" prefWidth="58.0" />
-                  <ColumnConstraints hgrow="ALWAYS" maxWidth="686.5" minWidth="10.0" prefWidth="78.0" />
-                  <ColumnConstraints hgrow="NEVER" maxWidth="686.5" minWidth="10.0" prefWidth="120.0" />
-                  <ColumnConstraints hgrow="NEVER" maxWidth="686.5" minWidth="10.0" prefWidth="58.0" />
-                <ColumnConstraints hgrow="ALWAYS" maxWidth="400.0" minWidth="10.0" prefWidth="78.0" />
+                  <ColumnConstraints maxWidth="686.5" minWidth="25.0" prefWidth="73.0" />
+                  <ColumnConstraints hgrow="ALWAYS" minWidth="10.0" prefWidth="78.0" />
+                  <ColumnConstraints hgrow="NEVER" maxWidth="686.5" minWidth="100.0" prefWidth="140.0" />
+                  <ColumnConstraints maxWidth="686.5" minWidth="25.0" prefWidth="73.0" />
+                <ColumnConstraints hgrow="ALWAYS" minWidth="10.0" prefWidth="78.0" />
               </columnConstraints>
               <rowConstraints>
                 <RowConstraints minHeight="10.0" vgrow="SOMETIMES" />
               </rowConstraints>
                <children>
-                  <Label minWidth="80.0" text="Workspace" />
-                  <Button fx:id="buttonOpenWorkSpace" minWidth="45.0" mnemonicParsing="false" text="Change" GridPane.columnIndex="1" />
-                  <TextField fx:id="textWorkSpace" prefHeight="25.0" prefWidth="189.0" GridPane.columnIndex="2" GridPane.hgrow="ALWAYS" />
+                  <Label text="Workspace" />
+                  <Button fx:id="buttonOpenWorkSpace" mnemonicParsing="false" text="Change" GridPane.columnIndex="1" />
+                  <TextField fx:id="textWorkSpace" GridPane.columnIndex="2" GridPane.hgrow="ALWAYS" />
                   <Label text="QE" GridPane.columnIndex="3" />
                   <Button fx:id="openQEPathButton" mnemonicParsing="false" text="Change" GridPane.columnIndex="4" />
                   <TextField fx:id="textQEPath" GridPane.columnIndex="5" />
@@ -84,7 +84,7 @@
             </GridPane>
             <HBox>
                <children>
-                  <Button fx:id="saveProjectButton" minWidth="41.0" mnemonicParsing="false" text="Save All" />
+                  <Button fx:id="saveProjectButton" minWidth="41.0" mnemonicParsing="false" text="Save Current Project" />
                   <Separator orientation="VERTICAL" />
                   <Label minWidth="25.0" text="Run" />
                 <Button fx:id="showInputButton" minWidth="77.0" mnemonicParsing="false" text="Show Input" />

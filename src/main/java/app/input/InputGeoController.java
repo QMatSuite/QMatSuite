@@ -60,7 +60,8 @@ public class InputGeoController extends InputController{
 	
 	@FXML private Label labelGeoNote;
 
-	@FXML private Button buttonDeleteGeo;
+	@FXML private Button buttonDeleteGeo,
+	buttonDuplicateGeo;
 	
     private VBox vboxAtoms,
     vboxCell,
@@ -125,6 +126,11 @@ public class InputGeoController extends InputController{
 			buttonDeleteGeo.setOnAction((event) -> {
 				int ind = comboGeo.getSelectionModel().getSelectedIndex();
 				mainClass.projectManager.removeGeoList(ind);
+				loadGeoIndCombo();
+			});
+			buttonDuplicateGeo.setOnAction((event) -> {
+				int ind = comboGeo.getSelectionModel().getSelectedIndex();
+				mainClass.projectManager.duplicateGeoList(ind);
 				loadGeoIndCombo();
 			});
 		}

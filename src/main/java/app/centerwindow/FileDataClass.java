@@ -7,11 +7,14 @@ import java.util.Scanner;
 
 import com.consts.ChemicalElements;
 import com.consts.Constants.EnumFileCategory;
+import com.consts.Constants.EnumStep;
 import com.consts.Constants.EnumUnitCellAngle;
 import com.consts.Constants.EnumUnitCellLength;
 import com.consts.Constants.EnumUnitCellParameter;
 import com.consts.PhysicalConstants;
 import com.error.ShowAlert;
+import com.programconst.ProgrammingConsts;
+
 import agent.InputAgentGeo;
 import app.input.CellParameter;
 import app.input.geo.Atom;
@@ -26,6 +29,7 @@ public class FileDataClass {
 	private ArrayList<ArrayList<Double>> absoluteMag;//Bohr mag/cell
 	private ArrayList<ArrayList<Double>> dosArray;
 	private ArrayList<String> dosHeader;
+	private ArrayList<ArrayList<ArrayList<Double>>> bandsDatArray;
 	
 	public Double fermiDos=null;
 	public EnumFileCategory fileCategory=null;
@@ -62,10 +66,14 @@ public class FileDataClass {
 		totalMag = new ArrayList<ArrayList<Double>>();
 		absoluteMag = new ArrayList<ArrayList<Double>>();
 		dosArray = new ArrayList<ArrayList<Double>>();
+		bandsDatArray = new ArrayList<ArrayList<ArrayList<Double>>>();
 		dosHeader = new ArrayList<String>();
 		atomicPositions = new ArrayList<ArrayList<Atom>>();
 		cellParameter = new ArrayList<CellParameter>();
 		iGeoTemp = new InputAgentGeo();
+	}
+	public ArrayList<ArrayList<ArrayList<Double>>> getBandsDatArray(){
+		return this.bandsDatArray;
 	}
 	public void clearAll() {
 		for(ArrayList<Double> ard:energyArray) {
@@ -80,6 +88,14 @@ public class FileDataClass {
 		for(ArrayList<Double> ard:dosArray) {
 			if(ard!=null) {ard.clear();}
 		}
+		for(ArrayList<ArrayList<Double>> ard:bandsDatArray) {
+			if(ard!=null) {
+				for(ArrayList<Double> ard1:ard) {
+					if(ard1!=null) {ard1.clear();}
+				}
+				ard.clear();
+			}
+		}
 		for(ArrayList<Atom> ard:atomicPositions) {
 			if(ard!=null) {ard.clear();}
 		}
@@ -90,6 +106,7 @@ public class FileDataClass {
 		absoluteMag.clear();
 		dosArray.clear();
 		dosHeader.clear();
+		bandsDatArray.clear();
 		
 		//not necessary, because atom positions not encoded there. 
 		//Further, DO NOT DO IT otherwise the workscene3d will not work for the in/out
@@ -123,6 +140,92 @@ public class FileDataClass {
 		return alat;
 		
 	}
+	public boolean loadBands(File gnuDatFile) {
+		if(!gnuDatFile.canRead()) {
+			return false;
+		}
+		this.clearAll();
+		
+		File scfOutFile = new File(gnuDatFile.getParentFile(),EnumStep.SCF.toString()+ProgrammingConsts.stdoutExtension);
+		
+		try {
+			//scf out file to extract Fermi energy
+			if(scfOutFile.canRead()) {
+			    Scanner sc1 = new Scanner(scfOutFile); 
+			  
+			    String strTmp;
+			    
+			    while (sc1.hasNextLine()) {
+	
+			    	strTmp = sc1.nextLine();
+			    	
+			    	if(strTmp==null || strTmp.isEmpty()) continue;
+			    	
+			    	if(strTmp.toLowerCase().contains("fermi energy")) {
+			    		String[] splitted = strTmp.trim().split("\\s+");//split the string by whitespaces
+						try {
+			    			Double dbTmp =  Double.valueOf(splitted[4]);
+			    			if(dbTmp!=null) {fermiDos = dbTmp;}
+			    		}catch(Exception e) {
+			    			e.printStackTrace();
+			    		}
+			    	}
+	
+		    	}
+			    
+			    sc1.close();
+			}
+
+		    //load .gnu file
+		    Scanner sc2 = new Scanner(gnuDatFile); 
+		    String strTmp;
+		    bandsDatArray.add(new ArrayList<ArrayList<Double>>());
+		    
+		    while (sc2.hasNextLine()) {
+
+		    	strTmp = sc2.nextLine();
+		    	
+		    	if(strTmp==null || strTmp.trim().isEmpty()) {
+		    		if(!bandsDatArray.get(bandsDatArray.size()-1).isEmpty()) {
+		    			bandsDatArray.add(new ArrayList<ArrayList<Double>>());
+		    		}
+		    		continue;
+		    	}
+		    	addDoubleRow(strTmp,bandsDatArray.get(bandsDatArray.size()-1));
+	    	}
+		    sc2.close();
+		    
+		} catch (IOException e) {
+			e.printStackTrace();
+			return false;
+		}
+		return true;
+	}
+	public void addDoubleRow(String line, ArrayList<ArrayList<Double>> arrList) {
+		ArrayList<Double> al = new ArrayList<Double>();
+		String[] splitted = line.trim().split("\\s+");//split the string by whitespaces
+		try {
+			for(int i=0;i<splitted.length;i++) {
+				al.add(Double.valueOf(splitted[i]));
+			}	
+			arrList.add(al);
+		}
+		catch(Exception e) {
+			e.printStackTrace();
+		}
+	}
+	private void setFermi(String strLine) {
+		if(strLine==null) {return;}
+		if(strLine.toLowerCase().contains("fermi energy")) {
+			String[] splitted = strLine.trim().split("\\s+");//split the string by whitespaces
+			try {
+    			Double dbTmp =  Double.valueOf(splitted[4]);
+    			if(dbTmp!=null) {this.setFermi(dbTmp);}
+    		}catch(Exception e) {
+    			e.printStackTrace();
+    		}
+		}
+	}
 	public boolean loadDOS(File inoutFiles) {//return false when error
 		
 		try {
@@ -145,7 +248,7 @@ public class FileDataClass {
 		    		continue;
 		    	}
 		    	if(flagHeader) {
-		    		this.addDosRow(strTmp);
+		    		this.addDoubleRow(strTmp,dosArray);
 		    	}
 	    	}
 		    
@@ -271,13 +374,7 @@ public class FileDataClass {
 		    		}
 		    	}
 				if(lowerCaseStr.contains("fermi energy")) {
-					String[] splitted = strTmp.trim().split("\\s+");//split the string by whitespaces
-					try {
-		    			Double dbTmp =  Double.valueOf(splitted[4]);
-		    			if(dbTmp!=null) {this.setFermi(dbTmp);}
-		    		}catch(Exception e) {
-		    			e.printStackTrace();
-		    		}
+					setFermi(strTmp);
 				}
 				if(lowerCaseStr.contains("self-consistent calculation")) {
 					this.hasScf = true;
@@ -662,19 +759,6 @@ public class FileDataClass {
 	public void setHomo(double hm) {
 		homoLevel.add(hm);
 	}
-	public void addDosRow(String line) {
-		ArrayList<Double> al = new ArrayList<Double>();
-		String[] splitted = line.trim().split("\\s+");//split the string by whitespaces
-		try {
-			for(int i=0;i<splitted.length;i++) {
-				al.add(Double.valueOf(splitted[i]));
-			}	
-			dosArray.add(al);
-		}
-		catch(Exception e) {
-			e.printStackTrace();
-		}
-	}
 	public void addDosHeader(String line) {
 		line = line.replace("#", "");
 		try {
@@ -707,6 +791,16 @@ public class FileDataClass {
 						Double.toString(dosArray.get(dosArray.size()-1).get(0))+"\n");
 			}
 			
+		}
+		else if(EnumFileCategory.bandsDatGnu.equals(fileCategory)) {
+			if(bandsDatArray.isEmpty() || (bandsDatArray.size()==1 && bandsDatArray.get(0).isEmpty())) {
+				strTmp+="Empty bands data file.\n";
+			}
+			else {
+				strTmp+=Integer.toString(
+						bandsDatArray.get(bandsDatArray.size()-1).isEmpty() ? bandsDatArray.size()-1:bandsDatArray.size());
+				strTmp+=" bands read in total.";
+			}
 		}
 		else if(EnumFileCategory.stdout.equals(fileCategory)) {
 			//stdout file
@@ -794,14 +888,14 @@ public class FileDataClass {
 			}
 			
 			//
-			if(atomicPositions.size()>0) {
+			if(atomicPositions!=null && atomicPositions.size()>0) {
 				strTmp+="ATOMIC_POSITIONS: "+Integer.toString(atomicPositions.size())+"\n";
 				strTmp+="Last position"+(finalPosition?"(final)":"(not final)")+"\n";
 				for(Atom atomTmp : atomicPositions.get(atomicPositions.size()-1)) {
 					strTmp+=(atomTmp.printPositions()+"\n");
 				}
 			}
-			if(cellParameter.size()>0) {
+			if(cellParameter!=null && cellParameter.size()>0) {
 				strTmp+="CELL_PARAMETERS: "+Integer.toString(cellParameter.size())+"\n";
 				strTmp+=("Last cell:\n"+cellParameter.get(cellParameter.size()-1).toString()+"\n");
 			}

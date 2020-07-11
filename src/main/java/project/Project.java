@@ -114,6 +114,15 @@ public class Project implements Serializable{
 		if(activeGeoInd!=null && activeGeoInd>=ind) {activeGeoInd-=1;}
 		return true;
 	}
+	public boolean duplicateGeoList(int ind) {
+		if(ind<0 || ind>geoList.size()) {
+			ShowAlert.showAlert(AlertType.INFORMATION, "Warning", "Geometry deleted out of bound.");
+			return false;
+		}
+		geoList.add((InputAgentGeo)geoList.get(ind).deepCopy());
+		geoName.add(geoName.get(ind)+"_copy");
+		return true;
+	}
 	private void findAndAddGeo(String calcFolderName,InputAgentGeo iGeoCopy) {
 		String msg="";
 		int indexName = geoName.indexOf(calcFolderName);

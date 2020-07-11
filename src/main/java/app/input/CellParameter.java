@@ -50,8 +50,14 @@ public class CellParameter {
 		//		Double.toString(x)+","+Double.toString(y)+","+Double.toString(z));
 		cellCount++;
 	}
+	private boolean isNull() {
+		return (ax==null || ay==null || az==null||
+				bx==null || by==null || bz==null||
+				cx==null || cy==null || cz==null);
+	}
 	public String toString() {
 		String strTmp="";
+		if(isNull()) {return "Null in CellParameters.";}
 		strTmp+=(Double.toString(ax)+" "+Double.toString(ay)+" "+Double.toString(az)+"\n");
 		strTmp+=(Double.toString(bx)+" "+Double.toString(by)+" "+Double.toString(bz)+"\n");
 		strTmp+=(Double.toString(cx)+" "+Double.toString(cy)+" "+Double.toString(cz));

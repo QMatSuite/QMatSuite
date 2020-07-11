@@ -162,10 +162,11 @@ public class OutputViewerController implements Initializable{
 			inoutFiles = new File(calcFolder,newTab);
 			if(!inoutFiles.canRead()) return;
 			
-			if(newTab.contains(ProgrammingConsts.stdinExtension)) {fileCategory = EnumFileCategory.stdin;}
-			else if(newTab.contains(ProgrammingConsts.stdoutExtension)) {fileCategory = EnumFileCategory.stdout;}
-			else if(newTab.contains(ProgrammingConsts.stderrExtension)) {fileCategory = EnumFileCategory.stderr;}
-			else if(newTab.contains(ProgrammingConsts.dosExtension)) {fileCategory = EnumFileCategory.dos;}
+			if(newTab.endsWith(ProgrammingConsts.stdinExtension)) {fileCategory = EnumFileCategory.stdin;}
+			else if(newTab.endsWith(ProgrammingConsts.stdoutExtension)) {fileCategory = EnumFileCategory.stdout;}
+			else if(newTab.endsWith(ProgrammingConsts.stderrExtension)) {fileCategory = EnumFileCategory.stderr;}
+			else if(newTab.endsWith(ProgrammingConsts.dosExtension)) {fileCategory = EnumFileCategory.dos;}
+			else if(newTab.contains(DefaultFileNames.bandsDatGnu)) {fileCategory = EnumFileCategory.bandsDatGnu;}
 			else if(newTab.contains(DefaultFileNames.calcSaveFile)||newTab.contains(DefaultFileNames.projSaveFile)) 
 			{fileCategory = EnumFileCategory.save;}
 			else if(newTab.contains(".xml")) {fileCategory = EnumFileCategory.xmlout;}
@@ -352,6 +353,11 @@ public class OutputViewerController implements Initializable{
 				else if(analTmp.equals(EnumAnalysis.plot2D)) {plot2dDos();}
 				else if(analTmp.equals(EnumAnalysis.plot3D)) {textFlowDisplay.getChildren().add(new Text("No 3D view of this file type."));}
 			}
+			else if(fileCategory.equals(EnumFileCategory.bandsDatGnu)){
+				if(analTmp.equals(EnumAnalysis.info)) {textFlowDisplay.getChildren().add(new Text(fileData.toString()));}
+				else if(analTmp.equals(EnumAnalysis.plot2D)) {plot2dBands();}
+				else if(analTmp.equals(EnumAnalysis.plot3D)) {textFlowDisplay.getChildren().add(new Text("No 3D view of this file type."));}
+			}
 			else {
 				textFlowDisplay.getChildren().add(new Text("Analysis is not available for this file type."));
 			}
@@ -364,6 +370,58 @@ public class OutputViewerController implements Initializable{
 			if(comboTmp.get(i)==null || !comboTmp.get(i).equals(strTest.get(i))) {return false;}
 		}
 		return true;
+	}
+	private void plot2dBands() {
+		lineChart.getData().clear();
+		
+		Double fermiDos = fileData.fermiDos;
+		ArrayList<ArrayList<ArrayList<Double>>> bandsDatArray = fileData.getBandsDatArray();
+		
+		if(bandsDatArray.isEmpty() || bandsDatArray.get(0).isEmpty()) {return;}
+		
+		xAxis.setLabel("k");
+		yAxis.setLabel("E");
+		
+		double minY = 1000.0;
+		double maxY = -1000.0;
+		double minX = 1000.0;
+		double maxX = -1000.0;
+		
+		//k,j,i
+		//bands,k points,spins (1 or 2)
+		for(int k=0;k<bandsDatArray.size();k++) {//different bands
+			if(bandsDatArray.get(k).isEmpty()) {continue;}
+			
+			for(int i=1;i<bandsDatArray.get(k).get(0).size();i++) {//different columns (spins). Starting from 1 because 0 is xaxis
+				
+				Series<Double,Double> dataSeries1 = new Series<Double, Double>();
+	
+				dataSeries1.setName("Band "+Integer.toString(k+1));
+	
+				for(int j=0;j<bandsDatArray.get(k).size();j++) {//different k points
+					
+					if(bandsDatArray.get(k).get(j).size() <= i) {break;}//a certain row does not have enough numbers
+					dataSeries1.getData().add(new Data<Double, Double>(bandsDatArray.get(k).get(j).get(0), bandsDatArray.get(k).get(j).get(i)));
+					if(bandsDatArray.get(k).get(j).get(i)>maxY) {maxY=bandsDatArray.get(k).get(j).get(i);}
+					if(bandsDatArray.get(k).get(j).get(i)<minY) {minY=bandsDatArray.get(k).get(j).get(i);}
+					if(bandsDatArray.get(k).get(j).get(0)>maxX) {maxX=bandsDatArray.get(k).get(j).get(0);}
+					if(bandsDatArray.get(k).get(j).get(0)<minX) {minX=bandsDatArray.get(k).get(j).get(0);}
+				}
+				lineChart.getData().add(dataSeries1);
+	        }
+		}
+		
+		//Fermi energy
+		if(fermiDos!=null) {
+			Series<Double,Double> dataSeries1 = new Series<Double, Double>();
+			dataSeries1.getData().add(new Data<Double, Double>(minX, fermiDos));
+			dataSeries1.getData().add(new Data<Double, Double>(maxX, fermiDos));
+			dataSeries1.setName("Fermi Energy");
+			
+			lineChart.getData().add(dataSeries1);
+		}
+		
+        displayScroll.setContent(lineChart);
 	}
 	private void plot2dDos() {
 		if(!isSameTypeStdout(plotTypeDos)) {
@@ -402,7 +460,7 @@ public class OutputViewerController implements Initializable{
 		double minY = 1000.0;
 		double maxY = -1000.0;
 		
-		for(int i=1;i<dosArray.get(0).size();i++) {//different columns (y axis)
+		for(int i=1;i<dosArray.get(0).size();i++) {//different columns (y axis). Starting from 1 because 0 is xaxis
 			
 			Series<Double,Double> dataSeries1 = new Series<Double, Double>();
 			String headerTmp = (dosHeader.size()>i ? dosHeader.get(i):"Unknown ("+Integer.toString(i)+"th column)");
@@ -542,6 +600,9 @@ public class OutputViewerController implements Initializable{
 		}
 		else if(fileCategory.equals(EnumFileCategory.dos)){
 			return fileData.loadDOS(inoutFiles);
+		}
+		else if(fileCategory.equals(EnumFileCategory.bandsDatGnu)) {
+			return fileData.loadBands(inoutFiles);
 		}
 		return true;
 	}

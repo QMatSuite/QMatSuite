@@ -20,10 +20,15 @@
 package com.programconst;
 
 public interface DefaultFileNames {
-	public String defaultSettingFile = "settings.ini";
-	public String calcSaveFile = "save.calc";
-	public String projSaveFile = "save.proj";
+	public final String defaultSettingFile = "settings.ini";
+	public final String calcSaveFile = "save.calc";
+	public final String projSaveFile = "save.proj";
 	
+	public final String bandsDatGnu = "bands.out.gnu";
+	
+	public final String pseudoDojoDir = "pseudo_dojo_ONCVPSP_v0.4";
+	public final String psLibraryDir = "PSlibrary_v1.0.0";
+	public final String ssspDir = "SSSP_v1.1";
 	
 	public enum SettingKeys {
 		workspace,
