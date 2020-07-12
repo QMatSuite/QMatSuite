@@ -21,7 +21,9 @@ package app.centerwindow;
 
 import java.awt.Desktop;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.LineNumberReader;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
@@ -201,9 +203,14 @@ public class OutputViewerController implements Initializable{
 		                    		&& !calcFolder.getName().toLowerCase().contains("nscf")
 		                    		&& item.contains(EnumStep.SCF.toString())
 		                    		&& item.endsWith(ProgrammingConsts.stdoutExtension));
+		                    boolean isOpt = (calcFolder!=null && 
+		                    		calcFolder.getName().toLowerCase().contains("opt")
+		                    		&& item.contains(EnumStep.OPT.toString())
+		                    		&& item.endsWith(ProgrammingConsts.stdoutExtension));
 		                    if (item.endsWith(ProgrammingConsts.dosExtension)
 		                    		|| item.contains(DefaultFileNames.bandsDatGnu)
-		                    		|| isScf) {
+		                    		|| item.contains(DefaultFileNames.tddftPlotSDat)
+		                    		|| isScf || isOpt) {
 		                    	setStyle("-fx-font-weight: bolder; "
 		                    			+"-fx-border-color: green; ");
 		                    } else {
@@ -236,6 +243,7 @@ public class OutputViewerController implements Initializable{
 			else if(newTab.endsWith(ProgrammingConsts.stderrExtension)) {fileCategory = EnumFileCategory.stderr;}
 			else if(newTab.endsWith(ProgrammingConsts.dosExtension)) {fileCategory = EnumFileCategory.dos;}
 			else if(newTab.contains(DefaultFileNames.bandsDatGnu)) {fileCategory = EnumFileCategory.bandsDatGnu;}
+			else if(newTab.contains(DefaultFileNames.tddftPlotSDat)){fileCategory = EnumFileCategory.tddftPlotSDat;}
 			else if(newTab.contains(DefaultFileNames.calcSaveFile)||newTab.contains(DefaultFileNames.projSaveFile)) 
 			{fileCategory = EnumFileCategory.save;}
 			else if(newTab.contains(".xml")) {fileCategory = EnumFileCategory.xmlout;}
@@ -421,6 +429,11 @@ public class OutputViewerController implements Initializable{
 				else if(analTmp.equals(EnumAnalysis.plot2D)) {plot2dDos();}
 				else if(analTmp.equals(EnumAnalysis.plot3D)) {textFlowDisplay.getChildren().add(new Text("No 3D view of this file type."));}
 			}
+			else if(fileCategory.equals(EnumFileCategory.tddftPlotSDat)){
+				if(analTmp.equals(EnumAnalysis.info)) {textFlowDisplay.getChildren().add(new Text(fileData.toString()));}
+				else if(analTmp.equals(EnumAnalysis.plot2D)) {plot2dTddft();}
+				else if(analTmp.equals(EnumAnalysis.plot3D)) {textFlowDisplay.getChildren().add(new Text("No 3D view of this file type."));}
+			}
 			else if(fileCategory.equals(EnumFileCategory.bandsDatGnu)){
 				if(analTmp.equals(EnumAnalysis.info)) {textFlowDisplay.getChildren().add(new Text(fileData.toString()));}
 				else if(analTmp.equals(EnumAnalysis.plot2D)) {plot2dBands();}
@@ -523,6 +536,36 @@ public class OutputViewerController implements Initializable{
 //		Point2D pd = lineChart.localToParent(minX, maxY);
 //		//ShowAlert.showAlert(AlertType.INFORMATION, "Warning", ""+pd.getX()+","+ pd.getY());
 //		txt.relocate(pd.getX(), 100.0);
+        displayScroll.setContent(lineChart);
+	}
+	private void plot2dTddft() {
+		buttonShowMarker.setSelected(false);
+		
+		lineChart.getData().clear();
+		
+		
+		ArrayList<ArrayList<Double>> tddftArray = fileData.getTddftArray();
+		ArrayList<String> tddftHeader = fileData.getTddftHeader();
+		
+		if(tddftArray.isEmpty()) {return;}
+		
+		xAxis.setLabel(tddftHeader.size()>0 ? tddftHeader.get(0):"Unknown (1st column)");
+		yAxis.setLabel(tddftHeader.size()>1 ? tddftHeader.get(1):"Unknown (2nd column)");
+		
+		
+		for(int i=1;i<tddftArray.get(0).size();i++) {//different columns (y axis). Starting from 1 because 0 is xaxis
+			
+			Series<Double,Double> dataSeries1 = new Series<Double, Double>();
+			String headerTmp = (tddftHeader.size()>i ? tddftHeader.get(i):"Unknown ("+Integer.toString(i)+"th column)");
+			dataSeries1.setName(headerTmp);
+			for(int j=0;j<tddftArray.size();j++) {
+				if(tddftArray.get(j).size()<=i) {break;}//a certain row does not have enough numbers
+				dataSeries1.getData().add(new Data<Double, Double>(tddftArray.get(j).get(0), 
+						tddftArray.get(j).get(i)));
+			}
+			lineChart.getData().add(dataSeries1);
+        }
+		
         displayScroll.setContent(lineChart);
 	}
 	private void plot2dDos() {
@@ -717,6 +760,9 @@ public class OutputViewerController implements Initializable{
 			comboHighSymK.getSelectionModel().select(0);
 			return blTmp;
 		}
+		else if(fileCategory.equals(EnumFileCategory.tddftPlotSDat)) {
+			return fileData.loadTddft(inoutFiles);
+		}
 		return true;
 	}
 	private void showCannotLoad(String msg) {
@@ -741,14 +787,37 @@ public class OutputViewerController implements Initializable{
 		try {
 //			String data = new String(Files.readAllBytes(inoutFiles.toPath()));
 //			textFlowDisplay.getChildren().add(new Text(data));
+			LineNumberReader count1 = new LineNumberReader(new FileReader(inoutFiles));
+			while (count1.skip(Long.MAX_VALUE) > 0)
+		    {
+				// Loop just in case the file is > Long.MAX_VALUE or skip() decides to not read the entire file
+		    }
+			int totalLineNum = count1.getLineNumber() + 1;
+			count1.close();
+			//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", totalLineNum+"");
+			
 		    Scanner sc = new Scanner(inoutFiles); 
 		  
 		    String strTmp;
 		    Text txtTmp;
 		    int lineCount=0;
+		    boolean flagSkip = false;
 		    while (sc.hasNextLine()) {
 		    	lineCount++;
 		    	strTmp = sc.nextLine();
+		    	if(lineCount > ProgrammingConsts.maxLinesShownInText && lineCount < totalLineNum-ProgrammingConsts.maxLinesShownInText){
+		    		if(!flagSkip) {
+		    			textFlowDisplay.getChildren().add(
+		    					new Text("------------------------------+------------------------+------------------------------\n"+
+		    							 "------------------------------+------------------------+------------------------------\n"+
+		    							 "------------------------------+-------skip lines-------+------------------------------\n"+
+		    							 "------------------------------+------------------------+------------------------------\n"+
+		    							 "------------------------------+------------------------+------------------------------\n"));
+		    		}
+		    		flagSkip = true;
+		    		continue;
+	    		}
+		    	
 		    	txtTmp = new Text(strTmp+"\n");
 		    	if(boolHighLight) {
 			    	if(strTmp!=null && strTmp.contains("calculation")&& strTmp.contains("=")) {txtTmp.setFill(Color.BLUE);}

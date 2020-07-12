@@ -33,6 +33,9 @@ public class FileDataClass {
 	private ArrayList<Double> bandsHighSymmetryKXCoor;
 	private ArrayList<String> bandsHighSymmetryK;
 	
+	private ArrayList<ArrayList<Double>> tddftArray;
+	private ArrayList<String> tddftHeader;
+	
 	public Double fermiDos=null;
 	public EnumFileCategory fileCategory=null;
 	
@@ -57,6 +60,10 @@ public class FileDataClass {
 	public boolean isNscfFinished=false;
 	public boolean isDos=false;
 	public boolean isDosFinished=false;
+	public boolean isPwBands = false;
+	public boolean isBandsPP = false;
+	public boolean isTddftTurbo = false;
+	
 	
 	//will be true when one scf just finished. Will be set back to false when one new mag is read
 	private boolean flagScfFinishedForTotalMag=false;
@@ -75,7 +82,8 @@ public class FileDataClass {
 		dosHeader = new ArrayList<String>();
 		atomicPositions = new ArrayList<ArrayList<Atom>>();
 		cellParameter = new ArrayList<CellParameter>();
-		
+		tddftArray = new ArrayList<ArrayList<Double>>();
+		tddftHeader = new ArrayList<String>();
 		iGeoTemp = new InputAgentGeo();
 	}
 	public ArrayList<ArrayList<ArrayList<Double>>> getBandsDatArray(){
@@ -92,6 +100,9 @@ public class FileDataClass {
 			if(ard!=null) {ard.clear();}
 		}
 		for(ArrayList<Double> ard:dosArray) {
+			if(ard!=null) {ard.clear();}
+		}
+		for(ArrayList<Double> ard:tddftArray) {
 			if(ard!=null) {ard.clear();}
 		}
 		for(ArrayList<ArrayList<Double>> ard:bandsDatArray) {
@@ -115,6 +126,8 @@ public class FileDataClass {
 		bandsDatArray.clear();
 		bandsHighSymmetryK.clear();
 		bandsHighSymmetryKXCoor.clear();
+		tddftArray.clear();
+		tddftHeader.clear();
 		
 		//not necessary, because atom positions not encoded there. 
 		//Further, DO NOT DO IT otherwise the workscene3d will not work for the in/out
@@ -130,7 +143,7 @@ public class FileDataClass {
 		isJobStart = false;
 		hasScf=false;hasScfFinished=false;isMD=false;isMDFinished=false;isOpt=false;isOptFinished=false;
 		isNscf=false;isNscfFinished=false;isDos=false;isDosFinished=false;
-		
+		isPwBands = false;isBandsPP = false;isTddftTurbo = false;
 		flagScfFinishedForTotalMag=false;
 		flagScfFinishedForAbsMag=false;
 	}
@@ -301,6 +314,39 @@ public class FileDataClass {
 		}
 		return true;
 	}
+	public boolean loadTddft(File inoutFiles) {
+		try {
+			this.clearAll();
+			
+		    Scanner sc = new Scanner(inoutFiles); 
+		  
+		    String strTmp;
+		    
+		    boolean flagHeader=false;
+		    
+		    while (sc.hasNextLine()) {
+
+		    	strTmp = sc.nextLine();
+		    	
+		    	if(strTmp==null || strTmp.isEmpty()) continue;
+		    	if(strTmp.contains("#")) {
+		    		flagHeader=true;
+		    		this.addTddftHeader(strTmp);
+		    		continue;
+		    	}
+		    	if(flagHeader) {
+		    		this.addDoubleRow(strTmp,tddftArray);
+		    	}
+	    	}
+		    
+		    sc.close();
+		    
+		} catch (IOException e) {
+			e.printStackTrace();
+			return false;
+		}
+		return true;
+	}
 	public String loadStdOut(File inoutFiles) {//return non empty string when error. Return "" (empty string) when no error
 
 		this.clearAll();
@@ -336,13 +382,22 @@ public class FileDataClass {
 		    	if(recordCellPara) {
 		    		recordCellPara = this.addCellParameter(strTmp,argCache);
 		    	}
+		    	if(strTmp.contains("plot nbnd")) {
+		    		this.isPwBands = true;
+		    	}
+		    	if(strTmp.contains("Program BANDS")) {
+		    		this.isBandsPP = true;
+		    	}
+		    	if(strTmp.contains("Program turboTDDFT")) {
+		    		this.isTddftTurbo = true;
+		    	}
 		    	if(strTmp.contains("starts")) {
 		    		this.isJobStart = true;
 		    	}
 		    	if(strTmp.contains("tau(") && !startCalc) {
 		    		this.parseInitialAtomPos(strTmp);
 		    	}
-		    	if(strTmp.contains("a(") && strTmp.contains("=") && !startCalc) {
+		    	if(strTmp.trim().startsWith("a(") && strTmp.contains(") = (") && !startCalc) {
 		    		this.parseInitialCellPara(strTmp);
 		    	}
 		    	if(strTmp.contains("ATOMIC_POSITIONS")) {
@@ -776,6 +831,12 @@ public class FileDataClass {
 	public ArrayList<String> getDosHeader() {
 		return dosHeader;
 	}
+	public ArrayList<ArrayList<Double>> getTddftArray() {
+		return tddftArray;
+	}
+	public ArrayList<String> getTddftHeader() {
+		return tddftHeader;
+	}
 	
 	public void addTotalEnergy(double ene, boolean isFinal) {
 		//here, ene and isFinal are primitive types that CANNOT be null
@@ -819,6 +880,19 @@ public class FileDataClass {
 			e.printStackTrace();
 		}
 	}
+	public void addTddftHeader(String line) {
+		line = line.replace("#", "").trim();
+		try {
+			String[] parts1 = line.split("[\\)]");
+			tddftHeader.clear();
+			for(int i=0;i<parts1.length;i++) {
+				tddftHeader.add(parts1[i].trim()+(i==parts1.length-1?"":")"));
+			}
+		}
+		catch(Exception e) {
+			e.printStackTrace();
+		}
+	}
 	public String toString() {
 		String strTmp = "";
 		
@@ -833,6 +907,24 @@ public class FileDataClass {
 			if(dosArray.size()>0 && dosArray.get(0).size()>0 && dosArray.get(dosArray.size()-1).size()>0) {
 				strTmp+=("(E DOS) from "+Double.toString(dosArray.get(0).get(0))+" to "+
 						Double.toString(dosArray.get(dosArray.size()-1).get(0))+"\n");
+			}
+			
+		}
+		else if(EnumFileCategory.tddftPlotSDat.equals(fileCategory)) {
+			//DOS data file
+			strTmp+="TDDFT Plot_S data file.\n";
+
+			if(tddftHeader.size()>0) {
+				strTmp+="Headers: ";
+				for(int i=0;i<tddftHeader.size();i++) {
+					strTmp+=(tddftHeader.get(i)+",");
+				}
+				strTmp+="\n";
+				strTmp+=tddftHeader.get(0);
+			}
+			if(tddftArray.size()>0 && tddftArray.get(0).size()>0 && tddftArray.get(tddftArray.size()-1).size()>0) {
+				strTmp+=("(Energy) from "+Double.toString(tddftArray.get(0).get(0))+" to "+
+						Double.toString(tddftArray.get(tddftArray.size()-1).get(0))+"\n");
 			}
 			
 		}
@@ -872,7 +964,10 @@ public class FileDataClass {
 			if(isOpt) {strTmp+="Optimization,";}
 			if(isNscf) {strTmp+="NSCF,";}
 			if(isDos) {strTmp+="DOS,";}
-			
+			if(this.isPwBands) {strTmp+="pwscf bands calculation.\n";}
+			if(this.isBandsPP) {strTmp+="bands program.\n";}
+			if(isTddftTurbo) {strTmp+="turbo TDDFT program.\n";}
+			if(strTmp.endsWith("type:")) {strTmp+="Unknown.\n";}
 			
 			//finished or not
 			if(nstep==1 && hasScf) {strTmp+=(hasScfFinished?"SCF finished.":"SCF not finished.")+"\n";}
@@ -954,7 +1049,7 @@ public class FileDataClass {
 				}
 			}
 			
-			//
+			//Geometry
 			if(isMD || isOpt) {
 				if(atomicPositions!=null && atomicPositions.size()>0) {
 					strTmp+="ATOMIC_POSITIONS: "+Integer.toString(atomicPositions.size())+"\n";
@@ -971,6 +1066,7 @@ public class FileDataClass {
 					strTmp+="alat: "+Double.toString(alat)+"\n";
 				}
 			}
+			
 		
 		}
 		strTmp+="\n";

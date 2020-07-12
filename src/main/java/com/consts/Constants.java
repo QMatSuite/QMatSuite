@@ -50,7 +50,8 @@ public class Constants {
 	public enum EnumFileCategory{
 		save("QuantumVITAS save"),directory("Directory"),stdin("Input (std)"),
 		stdout("Output (std)"),xmlout("Output (xml)"),crash("Crash"),stderr("Error (std)"),
-		unknown("Unknown"),dos("Density of states"),bandsDatGnu("Bands Data (gnu)");
+		unknown("Unknown"),dos("Density of states"),bandsDatGnu("Bands Data (gnu)"),
+		tddftPlotSDat("TDDFT Data (plot_S)");
 		
 		private String name;
 		
@@ -143,8 +144,8 @@ public class Constants {
 		BANDS("Bands"),
 		BANDSPP("Bands PP"),
 		BOMD("MD"),
-		TDDFT("TDDFT"),
-		TDDFT2("TDDFT(2)");
+		TDDFT("Turbo_lanczos"),
+		TDDFT2("Turbo_spectrum");
 		private String name;
 		
 		private EnumStep(String name) {

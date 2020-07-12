@@ -29,7 +29,7 @@ public class WrapperInteger extends WrapperClass{
 	public WrapperInteger(Integer val) {
 		defaultValue = val;
 		value = val;
-		enabled = true;
+		enabled = false;
 	}
 	public WrapperInteger(Integer val,Boolean bl) {
 		defaultValue = val;

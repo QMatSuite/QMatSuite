@@ -29,7 +29,7 @@ public class WrapperString extends WrapperClass{
 	public WrapperString(String val) {
 		defaultValue = val;
 		value = val;
-		enabled = true;
+		enabled = false;
 	}
 	public WrapperString(String val,Boolean bl) {
 		defaultValue = val;

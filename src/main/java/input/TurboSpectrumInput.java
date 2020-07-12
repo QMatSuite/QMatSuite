@@ -19,6 +19,7 @@
 package input;
 
 import com.consts.Constants.EnumNameList;
+import com.consts.Constants.EnumPolarizability;
 import com.consts.Constants.EnumTddftUnitEnergy;
 import com.error.InvalidKeyException;
 import com.error.InvalidTypeException;
@@ -35,7 +36,7 @@ public class TurboSpectrumInput extends QeInput{
 		sectionDict.put("lr_input", new NameList(EnumNameList.lr_input));
 		sectionDict.get("lr_input").setBoolRequired(true);
 		
-		sectionDict.get("lr_input").addParameter("itermax0", new InputValueInt("itermax0",500,false));
+		sectionDict.get("lr_input").addParameter("itermax0", new InputValueInt("itermax0",500,true));
 		sectionDict.get("lr_input").addParameter("itermax", new InputValueInt("itermax",500,false));
 		sectionDict.get("lr_input").addParameter("extrapolation", new InputValueString("extrapolation","no",false));
 		sectionDict.get("lr_input").addParameter("units", new InputValueInt("units",0,false));
@@ -44,6 +45,7 @@ public class TurboSpectrumInput extends QeInput{
 		sectionDict.get("lr_input").addParameter("end", new InputValueDouble("end",2.5,false));
 		sectionDict.get("lr_input").addParameter("increment", new InputValueDouble("increment",0.001,false));
 		sectionDict.get("lr_input").addParameter("eels", new InputValueBoolean("eels",false,false));
+		sectionDict.get("lr_input").addParameter("ipol", new InputValueInt("ipol",1,false));
 	}
 	
 	@Override
@@ -71,6 +73,20 @@ public class TurboSpectrumInput extends QeInput{
 			setValue("lr_input","end",ia1.eend);
 			setValue("lr_input","increment",ia1.de);
 			setValue("lr_input","eels",ia1.eels);
+			
+			final int ipol;
+			final boolean boolIpol=ia1.enumPolar.isEnabled();
+			switch((EnumPolarizability)ia1.enumPolar.getValue()) {
+				case alpha_xx:ipol=1;break;
+				case alpha_yy:ipol=2;break;
+				case alpha_zz:ipol=3;break;
+				case full:ipol=4;break;
+				default:
+					ipol=1;
+					ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Unknown EnumPolarizability. Use default.");
+					break;
+			}
+			setValue("lr_input","ipol",new WrapperInteger(ipol,boolIpol));
 			
 		} catch (InvalidKeyException | InvalidTypeException e) {
 	    	ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Exception!"+e.getMessage());

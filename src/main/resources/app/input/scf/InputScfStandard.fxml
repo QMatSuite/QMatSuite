@@ -238,14 +238,16 @@
             <Label text="Smearing Width" GridPane.rowIndex="3" />
             <GridPane hgap="5.0" prefWidth="200.0" GridPane.columnIndex="1">
                <children>
-                  <TextField fx:id="kxField" />
-                  <TextField fx:id="kyField" GridPane.columnIndex="1" />
-                  <TextField fx:id="kzField" GridPane.columnIndex="2" />
+                  <TextField fx:id="kxField" GridPane.columnIndex="1" />
+                  <TextField fx:id="kyField" GridPane.columnIndex="2" />
+                  <TextField fx:id="kzField" GridPane.columnIndex="3" />
+                  <ToggleButton fx:id="toggleKGamma" mnemonicParsing="false" text="Gamma" />
                </children>
                <columnConstraints>
-                  <ColumnConstraints hgrow="SOMETIMES" prefWidth="60.0" />
-                  <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="60.0" />
-                  <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="60.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="84.0" minWidth="10.0" prefWidth="77.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" minWidth="16.0" prefWidth="52.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="52.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="52.0" />
                </columnConstraints>
                <padding>
                   <Insets right="5.0" />

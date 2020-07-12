@@ -31,7 +31,7 @@ public class WrapperEnum extends WrapperClass{
 	public WrapperEnum(EnumInProgram val) {
 		defaultValue = val;
 		value = val;
-		enabled = true;
+		enabled = false;
 	}
 	public WrapperEnum(EnumInProgram val,Boolean bl) {
 		defaultValue = val;

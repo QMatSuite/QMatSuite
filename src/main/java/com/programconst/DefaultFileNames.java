@@ -25,6 +25,7 @@ public interface DefaultFileNames {
 	public final String projSaveFile = "save.proj";
 	
 	public final String bandsDatGnu = "bands.out.gnu";
+	public final String tddftPlotSDat = "pwscf.plot_S.dat";
 	
 	public final String pseudoDojoDir = "pseudo_dojo_ONCVPSP_v0.4";
 	public final String psLibraryDir = "PSlibrary_v1.0.0";
