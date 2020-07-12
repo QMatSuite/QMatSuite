@@ -35,4 +35,5 @@ public interface ProgrammingConsts {
 	public final String stderrExtension = ".err";
 	public final String dosExtension = ".dos";
 	
+	public final int maxLinesShownInText = 1000;//beginning 1000, end 1000
 }

@@ -29,7 +29,7 @@ public class WrapperDouble extends WrapperClass{
 	public WrapperDouble(Double val) {
 		defaultValue = val;
 		value = val;
-		enabled = true;
+		enabled = false;
 	}
 	public WrapperDouble(Double val,Boolean bl) {
 		defaultValue = val;

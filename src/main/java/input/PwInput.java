@@ -260,9 +260,7 @@ public class PwInput extends QeInput{
 			//set section required
 			setSectionRequired("CONTROL",true);setSectionRequired("SYSTEM",true);setSectionRequired("ELECTRONS",true);
 			setSectionRequired("ATOMIC_SPECIES",true);setSectionRequired("ATOMIC_POSITIONS",true);setSectionRequired("K_POINTS",true);
-			//set section options
-			setSectionOption("K_POINTS","(automatic)");
-			setRequiredAndWrite("K_POINTS","body",true,true);
+			
 			//set parameters
 			boolean boolMag = ia1.setMag;
 			setValue("SYSTEM","nspin",ia1.nspin);andExplicitWrite("SYSTEM","nspin",boolMag);
@@ -358,9 +356,17 @@ public class PwInput extends QeInput{
 			setValue("ELECTRONS","mixing_mode",ia1.enumMixing);
 			setValue("ELECTRONS","mixing_beta",ia1.mixBeta);
 			
-			WrapperString wp = new WrapperString(" "+ia1.nkx.getValue()+" "
-			+ia1.nky.getValue()+" "+ia1.nkz.getValue()+" 0 0 0");
-			setValue("K_POINTS","body",wp);
+			//kpoints
+			if(ia1.boolKGamma.getValue()) {
+				setSectionOption("K_POINTS","(gamma)");
+			}
+			else {
+				setSectionOption("K_POINTS","(automatic)");
+				setRequiredAndWrite("K_POINTS","body",true,true);
+				WrapperString wp = new WrapperString(" "+ia1.nkx.getValue()+" "
+				+ia1.nky.getValue()+" "+ia1.nkz.getValue()+" 0 0 0");
+				setValue("K_POINTS","body",wp);
+			}
 			
 			
 			//correct Units, should be always put at the end

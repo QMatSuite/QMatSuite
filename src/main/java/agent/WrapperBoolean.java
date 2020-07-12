@@ -29,7 +29,7 @@ public class WrapperBoolean extends WrapperClass{
 	public WrapperBoolean(Boolean val) {
 		defaultValue = val;
 		value = val;
-		enabled = true;
+		enabled = false;
 	}
 	public WrapperBoolean(Boolean val,Boolean bl) {
 		defaultValue = val;

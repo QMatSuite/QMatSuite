@@ -26,7 +26,7 @@ public abstract class WrapperClass implements Serializable{
 	 */
 	private static final long serialVersionUID = -7585441076371339484L;
 	
-	protected Boolean enabled=true;
+	protected Boolean enabled=false;
 	public void setEnabled(Boolean bl) {
 		enabled=bl;
 	}

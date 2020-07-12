@@ -77,6 +77,7 @@ import app.input.InputScfController;
 import app.input.InputTddftController;
 import app.menus.SettingsWindowController;
 import com.consts.Constants.EnumCalc;
+import com.consts.Constants.EnumOccupations;
 import com.consts.Constants.EnumStep;
 import com.error.ErrorMsg;
 import com.error.ShowAlert;
@@ -85,6 +86,7 @@ import com.programconst.DefaultFileNames;
 import com.programconst.DefaultFileNames.SettingKeys;
 import com.programconst.ProgrammingConsts.PathSettings;
 
+import agent.InputAgentScf;
 import input.ContainerInputString;
 import job.JobNode;
 
@@ -952,7 +954,8 @@ public class MainWindowController implements Initializable{
 		if (tabPaneRight==null) return;
 		
 		Tab tab = new Tab();
-		tab.setText(es.getName());
+		//tab.setText(es.getName());
+		tab.setText(es.toString());
 		tab.setContent(scroll);
 		tabPaneRight.getTabs().add(tab);
 		
@@ -1150,6 +1153,14 @@ public class MainWindowController implements Initializable{
 			//update current status to trees
 			contTree.updateCalcTree(calcName);
 			
+			//some calculation specific settings
+			if(EnumCalc.TDDFT.equals(enumCalcThis)) {
+				InputAgentScf iScf = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
+				if(iScf!=null) {
+					iScf.boolKGamma.setValue(true);//only Gamma point calculation
+					iScf.enumOccupation.setValue(EnumOccupations.fixed);//only fixed
+				}
+			}
 		}
 		
 		//prepare to load GUI

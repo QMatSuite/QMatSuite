@@ -46,7 +46,8 @@ public class InputScfStandardController extends InputController{
     @FXML
     private ToggleButton restartToggle,
     forceToggle,
-    stressToggle;
+    stressToggle,
+    toggleKGamma;
 
     @FXML
     private TextField ecutwfcField;
@@ -163,7 +164,8 @@ public class InputScfStandardController extends InputController{
 				}
 				else {iScf.ecutRho.setEnabled(true);ecutrhoField.setDisable(false);if(checkResetAll.isSelected()) {allDefault=false;checkResetAll.setSelected(false);}}
 			});
-
+    		
+    		
     		initParameterSet(restartToggle, "boolRestart", "restart", "from scratch", checkRestart, infoRestart, "infoRestart", checkResetAll);
     		initParameterSet(forceToggle, "boolForce", "on", "off", checkForce, infoForce, "infoForce", checkResetAll);
     		initParameterSet(stressToggle, "boolStress", "on", "off", checkStress, infoStress, checkResetAll);
@@ -201,7 +203,13 @@ public class InputScfStandardController extends InputController{
 			setIntegerFieldListener(kxField, "nkx",EnumNumCondition.positive);
 			setIntegerFieldListener(kyField, "nky",EnumNumCondition.positive);
 			setIntegerFieldListener(kzField, "nkz",EnumNumCondition.positive);
-			
+			setToggleListener(toggleKGamma, "boolKGamma", "Gamma", "Normal");
+			toggleKGamma.selectedProperty().addListener((observable, oldValue, newValue) ->
+    		{
+    			if(newValue==null) {return;}
+				if(newValue) {kxField.setText("1");kyField.setText("1");kzField.setText("1");}
+				kxField.setDisable(newValue);kyField.setDisable(newValue);kzField.setDisable(newValue);
+			});
 			checkGauss.setDisable(true);
 			setDoubleFieldListener(gaussField, "degauss",EnumNumCondition.nonNegative);
 			//gaussUnit.textProperty().bind(ecutwfcUnit.valueProperty().asString());
@@ -236,6 +244,7 @@ public class InputScfStandardController extends InputController{
 			setField(kxField, iScf.nkx);
 			setField(kyField, iScf.nky);
 			setField(kzField, iScf.nkz);
+			setToggle(toggleKGamma, iScf.boolKGamma);
 			setField(gaussField, iScf.degauss);
 			
 			checkEcutrho.setSelected(!iScf.ecutRho.isEnabled());

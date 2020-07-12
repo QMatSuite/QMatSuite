@@ -18,6 +18,7 @@
  *******************************************************************************/
 package agent;
 
+import java.io.IOException;
 import java.util.ArrayList;
 
 import app.input.geo.Element;
@@ -31,6 +32,13 @@ public class InputAgentScf extends InputAgent{
 	 * 
 	 */
 	private static final long serialVersionUID = -3659165710616979269L;
+	private void readObject(java.io.ObjectInputStream in)throws IOException, ClassNotFoundException 
+	{
+		//for loading after serialization
+	    in.defaultReadObject();
+	    //account for version difference in loading parameters
+	    if(boolKGamma==null) {boolKGamma = new WrapperBoolean(false);}
+	}
 	public Boolean setMag,
 	setU,
 	setHybrid,
@@ -60,6 +68,8 @@ public class InputAgentScf extends InputAgent{
 	nkx,
 	nky,
 	nkz;
+	public WrapperBoolean boolKGamma;
+	
 	public WrapperEnum enumMixing;//EnumMixingMode
 	public WrapperEnum enumSmearing;//EnumSmearing
 	
@@ -94,8 +104,8 @@ public class InputAgentScf extends InputAgent{
 		//standard
 		boolRestart=new WrapperBoolean(false); //false is from scratch //ok
 		boolForce=new WrapperBoolean(false);boolStress=new WrapperBoolean(false);
-		enumOccupation=new WrapperEnum(EnumOccupations.smearing);//ok
-		enumEnergyUnit = new WrapperEnum(EnumUnitEnergy.Ry);//ok
+		enumOccupation=new WrapperEnum(EnumOccupations.smearing,true);//ok, not QE default
+		enumEnergyUnit = new WrapperEnum(EnumUnitEnergy.Ry,true);//ok, not QE default
 		ecutWfc = new WrapperDouble(30.0);//ok
 		ecutRho = new WrapperDouble(120.0);//ok
 		nElecMaxStep=new WrapperInteger(100);elecConv=new WrapperDouble(1e-6);enumMixing=new WrapperEnum(EnumMixingMode.plain);
@@ -103,6 +113,7 @@ public class InputAgentScf extends InputAgent{
 		nkx = new WrapperInteger(4);//ok
 		nky = new WrapperInteger(4);//ok
 		nkz = new WrapperInteger(4);//ok
+		boolKGamma = new WrapperBoolean(false);
 		enumSmearing=new WrapperEnum(EnumSmearing.gauss);//ok
 		degauss = new WrapperDouble(0.02);//ok
 		//***********************/|\*********//
