@@ -30,6 +30,8 @@ public class FileDataClass {
 	private ArrayList<ArrayList<Double>> dosArray;
 	private ArrayList<String> dosHeader;
 	private ArrayList<ArrayList<ArrayList<Double>>> bandsDatArray;
+	private ArrayList<Double> bandsHighSymmetryKXCoor;
+	private ArrayList<String> bandsHighSymmetryK;
 	
 	public Double fermiDos=null;
 	public EnumFileCategory fileCategory=null;
@@ -67,9 +69,12 @@ public class FileDataClass {
 		absoluteMag = new ArrayList<ArrayList<Double>>();
 		dosArray = new ArrayList<ArrayList<Double>>();
 		bandsDatArray = new ArrayList<ArrayList<ArrayList<Double>>>();
+		bandsHighSymmetryKXCoor = new ArrayList<Double>();
+		bandsHighSymmetryK = new ArrayList<String>();
 		dosHeader = new ArrayList<String>();
 		atomicPositions = new ArrayList<ArrayList<Atom>>();
 		cellParameter = new ArrayList<CellParameter>();
+		
 		iGeoTemp = new InputAgentGeo();
 	}
 	public ArrayList<ArrayList<ArrayList<Double>>> getBandsDatArray(){
@@ -107,6 +112,8 @@ public class FileDataClass {
 		dosArray.clear();
 		dosHeader.clear();
 		bandsDatArray.clear();
+		bandsHighSymmetryK.clear();
+		bandsHighSymmetryKXCoor.clear();
 		
 		//not necessary, because atom positions not encoded there. 
 		//Further, DO NOT DO IT otherwise the workscene3d will not work for the in/out
@@ -147,7 +154,7 @@ public class FileDataClass {
 		this.clearAll();
 		
 		File scfOutFile = new File(gnuDatFile.getParentFile(),EnumStep.SCF.toString()+ProgrammingConsts.stdoutExtension);
-		
+		File bandsPpOutFile = new File(gnuDatFile.getParentFile(),EnumStep.BANDSPP.toString()+ProgrammingConsts.stdoutExtension);
 		try {
 			//scf out file to extract Fermi energy
 			if(scfOutFile.canRead()) {
@@ -194,6 +201,38 @@ public class FileDataClass {
 		    	addDoubleRow(strTmp,bandsDatArray.get(bandsDatArray.size()-1));
 	    	}
 		    sc2.close();
+		    
+		    //load bandspp.out file to get high symmetry points
+		    if(bandsPpOutFile.canRead()) {
+			    Scanner sc3 = new Scanner(bandsPpOutFile); 
+			    
+			    while (sc3.hasNextLine()) {
+			    	strTmp = sc3.nextLine();
+
+			    	if(strTmp==null || strTmp.trim().isEmpty()) {
+			    		continue;
+			    	}
+			    	if(strTmp.contains("high-symmetry point")) {
+			    		int ind1 = strTmp.indexOf(":");
+			    		int ind2 = strTmp.indexOf("x coordinate");
+			    		if(ind1==-1 || ind2==-1) {continue;}
+			    		bandsHighSymmetryK.add(strTmp.substring(ind1+1,ind2).trim());
+			    		String[] splitted = strTmp.trim().split("\\s+");//split the string by whitespaces
+						try {
+			    			Double dbTmp =  Double.valueOf(splitted[splitted.length-1]);
+			    			if(dbTmp!=null) {bandsHighSymmetryKXCoor.add(dbTmp);}
+			    		}catch(Exception e) {
+			    			e.printStackTrace();
+			    		}
+			    	}
+		    	}
+			    sc3.close();
+			    if(bandsHighSymmetryK.size()!=bandsHighSymmetryKXCoor.size()) {
+			    	ShowAlert.showAlert(AlertType.INFORMATION, "Warning", 
+							"bandsHighSymmetryK and bandsHighSymmetryKXCoor having different sizes.");
+			    	//so that we can assume they always have same size later in the program
+			    }
+		    }
 		    
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -793,13 +832,29 @@ public class FileDataClass {
 			
 		}
 		else if(EnumFileCategory.bandsDatGnu.equals(fileCategory)) {
+			if(fermiDos!=null) {
+				strTmp+="Fermi energy read: "+fermiDos.toString()+".\n\n";
+			}
 			if(bandsDatArray.isEmpty() || (bandsDatArray.size()==1 && bandsDatArray.get(0).isEmpty())) {
-				strTmp+="Empty bands data file.\n";
+				strTmp+="Empty bands data file.\n\n";
 			}
 			else {
 				strTmp+=Integer.toString(
 						bandsDatArray.get(bandsDatArray.size()-1).isEmpty() ? bandsDatArray.size()-1:bandsDatArray.size());
-				strTmp+=" bands read in total.";
+				strTmp+=" bands read in total.\n\n";
+			}
+			if(bandsHighSymmetryK.isEmpty() || bandsHighSymmetryKXCoor.isEmpty()) {
+				strTmp+="Empty high symmetry K.\n\n";
+			}
+			else if(bandsHighSymmetryK.size()!=bandsHighSymmetryKXCoor.size()) {
+				strTmp+="Inconsistent high symmetry K points.\n\n";
+			}
+			else {
+				for(int i=0;i<bandsHighSymmetryK.size();i++) {
+					strTmp+=("high-symmetry point:"+bandsHighSymmetryK.get(i)+
+							", x coordinate:"+bandsHighSymmetryKXCoor.get(i).toString()+"\n");
+				}
+				strTmp+="\n";
 			}
 		}
 		else if(EnumFileCategory.stdout.equals(fileCategory)) {
@@ -906,5 +961,11 @@ public class FileDataClass {
 		}
 		strTmp+="\n";
 		return strTmp;
+	}
+	public ArrayList<String> getBandsHighSymmetryK() {
+		return bandsHighSymmetryK;
+	}
+	public ArrayList<Double> getBandsHighSymmetryKXCoor() {
+		return bandsHighSymmetryKXCoor;
 	}
 }

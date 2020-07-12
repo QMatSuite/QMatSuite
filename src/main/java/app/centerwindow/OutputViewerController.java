@@ -41,9 +41,11 @@ import javafx.scene.chart.XYChart.Series;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.ScrollPane.ScrollBarPolicy;
+import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
@@ -51,11 +53,13 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
+import javafx.util.Callback;
 import main.MainClass;
 import com.consts.Constants.EnumAnalysis;
 import com.consts.Constants.EnumCard;
 import com.consts.Constants.EnumFileCategory;
 import com.consts.Constants.EnumNameList;
+import com.consts.Constants.EnumStep;
 import com.programconst.DefaultFileNames;
 import com.programconst.ProgrammingConsts;
 import app.input.InputGeoController;
@@ -75,16 +79,22 @@ public class OutputViewerController implements Initializable{
     openAsButton,
     buttonRefreshFiles,
     buttonRefresh,
-    buttonSaveGeo;
+    buttonSaveGeo,
+    buttonSetLabelK;
+    
+    @FXML private TextField textLabelK;
     
     @FXML private Label labelFileCategory,
-    labelPlot;
+    labelPlot,
+    labelK;
     
     @FXML private ComboBox<EnumAnalysis> comboAnalysis;
     
-    @FXML private ComboBox<String> comboPlot;
+    @FXML private ComboBox<String> comboPlot,
+    comboHighSymK;
     
-    @FXML private HBox hboxPlotToolbar;
+    @FXML private HBox hboxPlotToolbar,
+    hboxBandsToolbar;
     
     @FXML private ToggleButton buttonShowMarker;
     
@@ -113,6 +123,13 @@ public class OutputViewerController implements Initializable{
     private InputGeoController contGeo;
     
     private WorkScene3D geometry3d;
+    
+    private ArrayList<String> kpointName;
+    
+    private double minY,
+	maxY,
+	minX,
+	maxX;
     		
     public OutputViewerController(MainClass mc, InputGeoController cg) {
     	mainClass = mc;
@@ -121,6 +138,7 @@ public class OutputViewerController implements Initializable{
     	fileData = new FileDataClass();
     	xAxis = new NumberAxis();xAxis.setAutoRanging(true);xAxis.setForceZeroInRange(false);
     	yAxis = new NumberAxis();yAxis.setAutoRanging(true);yAxis.setForceZeroInRange(false);
+    	kpointName = new ArrayList<String>();
     	
     	geometry3d = new WorkScene3D();
     	geometry3d.addAnimate3D(fileData);//add animation panel and link the data file
@@ -146,8 +164,51 @@ public class OutputViewerController implements Initializable{
 		lineChart.setCreateSymbols(false);
 		//lineChart.prefHeightProperty().bind(workSpaceTabPane.heightProperty());
 		
+		comboHighSymK.getSelectionModel().selectedIndexProperty().addListener((ov, oldTab, newTab) -> {
+			if(fileData==null || !EnumFileCategory.bandsDatGnu.equals(fileCategory)) {return;}
+			if(fileData.getBandsHighSymmetryK().isEmpty()) {return;}
+			int selectInd = (int)newTab;
+			if(selectInd<0 || selectInd>=fileData.getBandsHighSymmetryK().size()) {return;} 
+			labelK.setText("k="+fileData.getBandsHighSymmetryK().get(selectInd)
+					+",x="+fileData.getBandsHighSymmetryKXCoor().get(selectInd));
+			textLabelK.setText(kpointName.get(selectInd));
+		});
+		buttonSetLabelK.setOnAction((event) -> {
+			if(fileData==null || !EnumFileCategory.bandsDatGnu.equals(fileCategory)) {return;}
+			int selectInd = comboHighSymK.getSelectionModel().getSelectedIndex();
+			if(selectInd<0 || selectInd>=kpointName.size()) {return;} 
+			kpointName.set(selectInd, textLabelK.getText());
+			this.plot2dBands();
+		});
 		//comboPlot.setVisible(false);labelPlot.setVisible(false);
 		hboxPlotToolbar.setVisible(false);
+		hboxBandsToolbar.setVisible(false);
+		listFiles.setCellFactory(new Callback<ListView<String>, ListCell<String>>() {
+	        @Override 
+	        public ListCell<String> call(ListView<String> param) {
+	            return new ListCell<String>() {
+	                @Override 
+	                protected void updateItem(String item, boolean empty) {
+	                    super.updateItem(item, empty);
+	                    if (item==null) {setText(item);return;}
+	                    boolean isScf = (calcFolder!=null && 
+	                    		calcFolder.getName().toLowerCase().contains("scf")
+	                    		&& !calcFolder.getName().toLowerCase().contains("nscf")
+	                    		&& item.contains(EnumStep.SCF.toString())
+	                    		&& item.endsWith(ProgrammingConsts.stdoutExtension));
+	                    if (item.endsWith(ProgrammingConsts.dosExtension)
+	                    		|| item.contains(DefaultFileNames.bandsDatGnu)
+	                    		|| isScf) {
+	                    	setStyle("-fx-font-weight: bold");
+	                    } else {
+	                    	setStyle("-fx-font-weight: regular");
+	                    }
+	                    setText(item);
+	                }
+
+	            };
+	        }
+		});
 		listFiles.getSelectionModel().selectedItemProperty().addListener((ov, oldTab, newTab) -> {
 			//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", "listFiles: "+oldTab + "," + newTab);
 			
@@ -311,7 +372,6 @@ public class OutputViewerController implements Initializable{
 			return;//no change, do nothing
 		}
 		
-		
 		listFiles.getItems().clear();
 		listFiles.getItems().addAll(listFilesItems);
 		
@@ -323,7 +383,7 @@ public class OutputViewerController implements Initializable{
 		}
 	}
 	private void updateIoDisplay() {
-		
+		hboxBandsToolbar.setVisible(false);
 		EnumAnalysis analTmp = comboAnalysis.getSelectionModel().getSelectedItem();
 		
 		displayScroll.setContent(null);
@@ -372,6 +432,10 @@ public class OutputViewerController implements Initializable{
 		return true;
 	}
 	private void plot2dBands() {
+		//high symmetry k points
+		hboxBandsToolbar.setVisible(true);
+	
+		buttonShowMarker.setSelected(false);
 		lineChart.getData().clear();
 		
 		Double fermiDos = fileData.fermiDos;
@@ -382,10 +446,10 @@ public class OutputViewerController implements Initializable{
 		xAxis.setLabel("k");
 		yAxis.setLabel("E");
 		
-		double minY = 1000.0;
-		double maxY = -1000.0;
-		double minX = 1000.0;
-		double maxX = -1000.0;
+		minY = 1000.0;
+		maxY = -1000.0;
+		minX = 1000.0;
+		maxX = -1000.0;
 		
 		//k,j,i
 		//bands,k points,spins (1 or 2)
@@ -395,19 +459,26 @@ public class OutputViewerController implements Initializable{
 			for(int i=1;i<bandsDatArray.get(k).get(0).size();i++) {//different columns (spins). Starting from 1 because 0 is xaxis
 				
 				Series<Double,Double> dataSeries1 = new Series<Double, Double>();
-	
+				lineChart.getData().add(dataSeries1);
+				
 				dataSeries1.setName("Band "+Integer.toString(k+1));
 	
 				for(int j=0;j<bandsDatArray.get(k).size();j++) {//different k points
 					
 					if(bandsDatArray.get(k).get(j).size() <= i) {break;}//a certain row does not have enough numbers
-					dataSeries1.getData().add(new Data<Double, Double>(bandsDatArray.get(k).get(j).get(0), bandsDatArray.get(k).get(j).get(i)));
+					Data<Double, Double> dt = new Data<Double, Double>(bandsDatArray.get(k).get(j).get(0), bandsDatArray.get(k).get(j).get(i));
+					dataSeries1.getData().add(dt);
+					//dt.getNode().setStyle("-fx-background-color: #4a86e8;");
+					
 					if(bandsDatArray.get(k).get(j).get(i)>maxY) {maxY=bandsDatArray.get(k).get(j).get(i);}
 					if(bandsDatArray.get(k).get(j).get(i)<minY) {minY=bandsDatArray.get(k).get(j).get(i);}
 					if(bandsDatArray.get(k).get(j).get(0)>maxX) {maxX=bandsDatArray.get(k).get(j).get(0);}
 					if(bandsDatArray.get(k).get(j).get(0)<minX) {minX=bandsDatArray.get(k).get(j).get(0);}
 				}
-				lineChart.getData().add(dataSeries1);
+				
+				//dataSeries1.getNode().setStyle("-fx-stroke: #4a86e8;");
+				
+				lineChart.getStyleClass().add("chart-series-line");
 	        }
 		}
 		
@@ -419,11 +490,35 @@ public class OutputViewerController implements Initializable{
 			dataSeries1.setName("Fermi Energy");
 			
 			lineChart.getData().add(dataSeries1);
+			
+			//-fx-stroke: #666666; 
+			dataSeries1.getNode().setStyle("-fx-stroke-dash-array: 2 10 10 2; ");
 		}
 		
+		//high symmetry k points
+		if(fileData.getBandsHighSymmetryK().size()!=fileData.getBandsHighSymmetryKXCoor().size()) {
+			return;}
+
+		for(int i=0;i<fileData.getBandsHighSymmetryK().size();i++) {
+			double dbTmp = fileData.getBandsHighSymmetryKXCoor().get(i);
+			Series<Double,Double> dataSeries1 = new Series<Double, Double>();
+			lineChart.getData().add(dataSeries1);
+			
+			dataSeries1.getData().add(new Data<Double, Double>(dbTmp, minY));
+			dataSeries1.getData().add(new Data<Double, Double>(dbTmp, maxY));
+			String strTmpName = kpointName.get(i).isEmpty()? "": "("+kpointName.get(i)+") ";
+			dataSeries1.setName(strTmpName +"k"+Integer.toString(i+1)+"="+
+			fileData.getBandsHighSymmetryK().get(i)+",x="+fileData.getBandsHighSymmetryKXCoor().get(i));
+		}
+//		Text txt = new Text("sdsdsd");
+//		displayScroll.setContent(new Group(lineChart,txt));
+//		Point2D pd = lineChart.localToParent(minX, maxY);
+//		//ShowAlert.showAlert(AlertType.INFORMATION, "Warning", ""+pd.getX()+","+ pd.getY());
+//		txt.relocate(pd.getX(), 100.0);
         displayScroll.setContent(lineChart);
 	}
 	private void plot2dDos() {
+		buttonShowMarker.setSelected(false);
 		if(!isSameTypeStdout(plotTypeDos)) {
 			comboPlot.getItems().clear();
 			comboPlot.getItems().addAll(plotTypeDos);
@@ -457,8 +552,8 @@ public class OutputViewerController implements Initializable{
 		xAxis.setLabel(dosHeader.size()>0 ? dosHeader.get(0):"Unknown (1st column)");
 		yAxis.setLabel(strSelect);
 		
-		double minY = 1000.0;
-		double maxY = -1000.0;
+		minY = 1000.0;
+		maxY = -1000.0;
 		
 		for(int i=1;i<dosArray.get(0).size();i++) {//different columns (y axis). Starting from 1 because 0 is xaxis
 			
@@ -602,7 +697,16 @@ public class OutputViewerController implements Initializable{
 			return fileData.loadDOS(inoutFiles);
 		}
 		else if(fileCategory.equals(EnumFileCategory.bandsDatGnu)) {
-			return fileData.loadBands(inoutFiles);
+			boolean blTmp = fileData.loadBands(inoutFiles);
+			kpointName.clear();
+			ObservableList<String> obsTmp = FXCollections.observableArrayList();
+			for(int i=0;i<fileData.getBandsHighSymmetryK().size();i++) {
+				kpointName.add("");
+				obsTmp.add(Integer.toString(i+1));
+			}
+			comboHighSymK.setItems(obsTmp);
+			comboHighSymK.getSelectionModel().select(0);
+			return blTmp;
 		}
 		return true;
 	}
