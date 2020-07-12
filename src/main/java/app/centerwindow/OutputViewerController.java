@@ -190,20 +190,28 @@ public class OutputViewerController implements Initializable{
 	                @Override 
 	                protected void updateItem(String item, boolean empty) {
 	                    super.updateItem(item, empty);
-	                    if (item==null) {setText(item);return;}
-	                    boolean isScf = (calcFolder!=null && 
-	                    		calcFolder.getName().toLowerCase().contains("scf")
-	                    		&& !calcFolder.getName().toLowerCase().contains("nscf")
-	                    		&& item.contains(EnumStep.SCF.toString())
-	                    		&& item.endsWith(ProgrammingConsts.stdoutExtension));
-	                    if (item.endsWith(ProgrammingConsts.dosExtension)
-	                    		|| item.contains(DefaultFileNames.bandsDatGnu)
-	                    		|| isScf) {
-	                    	setStyle("-fx-font-weight: bold");
-	                    } else {
-	                    	setStyle("-fx-font-weight: regular");
+	                    if (item==null) {
+	                    	setStyle("-fx-font-weight: normal; "
+	                    			+"-fx-border-color: white; ");
+	                    	setText(item);
 	                    }
-	                    setText(item);
+	                    else {
+		                    boolean isScf = (calcFolder!=null && 
+		                    		calcFolder.getName().toLowerCase().contains("scf")
+		                    		&& !calcFolder.getName().toLowerCase().contains("nscf")
+		                    		&& item.contains(EnumStep.SCF.toString())
+		                    		&& item.endsWith(ProgrammingConsts.stdoutExtension));
+		                    if (item.endsWith(ProgrammingConsts.dosExtension)
+		                    		|| item.contains(DefaultFileNames.bandsDatGnu)
+		                    		|| isScf) {
+		                    	setStyle("-fx-font-weight: bolder; "
+		                    			+"-fx-border-color: green; ");
+		                    } else {
+		                    	setStyle("-fx-font-weight: normal; "
+		                    			+"-fx-border-color: white; ");
+		                    }
+		                    setText(item);
+	                    }
 	                }
 
 	            };
@@ -619,6 +627,7 @@ public class OutputViewerController implements Initializable{
 		}
 	}
 	private void plot2dStdOut() {
+		buttonShowMarker.setSelected(true);
 		//construct new plot type list
 		plotTypeStdOut.clear();
 		if(fileData.isOpt) {plotTypeStdOut.add("OPT E conv");plotTypeStdOut.add("OPT F conv");}

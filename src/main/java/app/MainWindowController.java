@@ -141,7 +141,8 @@ public class MainWindowController implements Initializable{
 	
 	private ScrollPane scrollLeft;
 	
-	private BorderPane borderSettings;
+	private BorderPane borderSettings,
+	borderRun;
 	
 	private TabPane tabPaneRight;
 	
@@ -171,6 +172,8 @@ public class MainWindowController implements Initializable{
 	private SettingsWindowController contSettings;
 	
 	private OutputViewerController contOutput;
+	
+	private JobDialogController contRun;
 	
 	private HBox hboxOutput;
 	
@@ -259,6 +262,11 @@ public class MainWindowController implements Initializable{
 			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/menus/settingsWindow.fxml"));
 			fxmlLoader.setController(contSettings);
 			borderSettings = fxmlLoader.load();
+			
+			contRun = new JobDialogController();
+			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/JobDialog.fxml"));
+			fxmlLoader.setController(contRun);
+			borderRun = fxmlLoader.load();
 			
 			contOutput = new OutputViewerController(mainClass,contGeo);
 			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/centerwindow/outputViewer.fxml"));
@@ -647,10 +655,31 @@ public class MainWindowController implements Initializable{
 		stopAllJobs.setOnAction((event) -> {
 			mainClass.jobManager.stopAll();
 		});
+		
+		Scene sceneRun = new Scene(borderRun);
+        Stage stageRun = new Stage();
+        stageRun.setTitle("Job settings");
+        stageRun.initModality(Modality.APPLICATION_MODAL);
+        stageRun.initStyle(StageStyle.DECORATED);
+        stageRun.setScene(sceneRun);
+        stageRun.setResizable(false);
+        
 		runJob.setOnAction((event) -> {
 //			mainClass.jobManager.addNode(new JobNode(null,"notepad.exe"));
 //			mainClass.jobManager.addNode(new JobNode("C:\\Program Files\\PuTTY\\","putty.exe"));
 //			mainClass.jobManager.addNode(new JobNode(null,"notepad.exe"));
+			//check QE path
+			if(mainClass.projectManager.qePath==null || mainClass.projectManager.qePath.isEmpty()) {
+				ShowAlert.showAlert(AlertType.INFORMATION, "Error", 
+						"Cannot execute job because cannot qePath is null/empty. Please define the qePath in the Settings menu!");
+				return;
+			}
+			if(mainClass.projectManager.isGeoActive()) {
+				ShowAlert.showAlert(AlertType.INFORMATION, "Error", "In the geometry page. Please go to one calculation "
+						+ "page to start running the job.");
+				return;
+			}
+			
 			//save project first
 			File wsDir = mainClass.projectManager.getWorkSpaceDir();
 			if(wsDir==null || !wsDir.canWrite()) {
@@ -692,12 +721,6 @@ public class MainWindowController implements Initializable{
 			    	return;
 		        }
 			}
-			//check QE path
-			if(mainClass.projectManager.qePath==null || mainClass.projectManager.qePath.isEmpty()) {
-				ShowAlert.showAlert(AlertType.INFORMATION, "Error", 
-						"Cannot execute job because cannot qePath is null/empty. Please define the qePath in the Settings menu!");
-				return;
-			}
 			
 			final String postFixCommand;
 			if(new File(mainClass.projectManager.qePath+File.separator+"pw.exe").canExecute()) {
@@ -712,8 +735,16 @@ public class MainWindowController implements Initializable{
 				return;
 			}
 			
+			//final settings
+			contRun.initializeBoolRunStep(cis);
+			stageRun.showAndWait();
+			if(!contRun.isBoolRun()) {return;}
+			ArrayList<Boolean> boolRunStep = contRun.getBoolRunStep();
+			
 			//start running the jobs
 			for(int j = 0 ; j < cis.size() ; j++) {
+				if(j>=boolRunStep.size()) {ShowAlert.showAlert(AlertType.INFORMATION, "Error", "boolRunStep size too small.");break;}
+				if(!boolRunStep.get(j)) {continue;}
 				if(cis.get(j).commandName==null || cis.get(j).commandName.isEmpty()) {
 					ShowAlert.showAlert(AlertType.INFORMATION, "Error", 
 							"No command name specified for the "+Integer.toString(j)+"th step. Skip this step...");

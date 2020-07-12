@@ -45,6 +45,7 @@ public class FileDataClass {
 	private ArrayList<CellParameter> cellParameter;
 	
 	public int nstep=1;
+	public boolean isJobStart = false;
 	public boolean isJobDone=false;
 	public boolean hasScf=false;//true when there exist scf steps inside the output file. Not necessary means that it is a scf calculation
 	public boolean hasScfFinished=false;
@@ -126,6 +127,7 @@ public class FileDataClass {
 		
 		nstep=1;fermiDos=null;
 		isJobDone=false;
+		isJobStart = false;
 		hasScf=false;hasScfFinished=false;isMD=false;isMDFinished=false;isOpt=false;isOptFinished=false;
 		isNscf=false;isNscfFinished=false;isDos=false;isDosFinished=false;
 		
@@ -333,6 +335,9 @@ public class FileDataClass {
 		    	}
 		    	if(recordCellPara) {
 		    		recordCellPara = this.addCellParameter(strTmp,argCache);
+		    	}
+		    	if(strTmp.contains("starts")) {
+		    		this.isJobStart = true;
 		    	}
 		    	if(strTmp.contains("tau(") && !startCalc) {
 		    		this.parseInitialAtomPos(strTmp);
@@ -868,6 +873,7 @@ public class FileDataClass {
 			if(isNscf) {strTmp+="NSCF,";}
 			if(isDos) {strTmp+="DOS,";}
 			
+			
 			//finished or not
 			if(nstep==1 && hasScf) {strTmp+=(hasScfFinished?"SCF finished.":"SCF not finished.")+"\n";}
 			if(isMD) {strTmp+=(isMDFinished?"MD finished.":"MD not finished.")+"\n";}
@@ -876,86 +882,94 @@ public class FileDataClass {
 			if(isDos) {strTmp+=(isDosFinished?"DOS finished.":"DOS not finished.")+"\n";}
 			
 			//the whole job finished or not (last line of the output file)
-			strTmp+=(isJobDone?"Job done.\n":"Job not done yet.\n");
+			if(isJobStart) {strTmp+=(isJobDone?"Job done.\n":"Job not done yet.\n");}
 			
 			//total energy
 			int cnt = 0;
-			strTmp+="Total energy (Ry):";
-			for(ArrayList<Double> ard:energyArray) {
-				if(ard!=null) {
-					cnt++;
-					if(ard.isEmpty()) {continue;}
-					strTmp+=("Step "+Integer.toString(cnt)+": ");
-					for(Double val:ard) {
-						if(val!=null) {strTmp+=(val.toString()+",");}
+			if(isMD || isOpt || hasScf) {
+				strTmp+="Total energy (Ry):";
+				for(ArrayList<Double> ard:energyArray) {
+					if(ard!=null) {
+						cnt++;
+						if(ard.isEmpty()) {continue;}
+						strTmp+=("Step "+Integer.toString(cnt)+": ");
+						for(Double val:ard) {
+							if(val!=null) {strTmp+=(val.toString()+",");}
+						}
+						strTmp+="\n";
 					}
-					strTmp+="\n";
 				}
 			}
 			
 			//magnetization
 			int cnt_mag = 0;
-			if(!totalMag.isEmpty() || !absoluteMag.isEmpty()) {
-				strTmp+="Total magnetization (Bohr mag/cell):";
-				for(ArrayList<Double> ard:totalMag) {
-					if(ard!=null) {
-						cnt_mag++;
-						if(ard.isEmpty()) {continue;}
-						strTmp+=("Step "+Integer.toString(cnt_mag)+": ");
-						for(Double val:ard) {
-							if(val!=null) {strTmp+=(val.toString()+",");}
+			if(isMD || isOpt || hasScf) {
+				if(!totalMag.isEmpty() || !absoluteMag.isEmpty()) {
+					strTmp+="Total magnetization (Bohr mag/cell):";
+					for(ArrayList<Double> ard:totalMag) {
+						if(ard!=null) {
+							cnt_mag++;
+							if(ard.isEmpty()) {continue;}
+							strTmp+=("Step "+Integer.toString(cnt_mag)+": ");
+							for(Double val:ard) {
+								if(val!=null) {strTmp+=(val.toString()+",");}
+							}
+							strTmp+="\n";
 						}
-						strTmp+="\n";
 					}
-				}
-				cnt_mag = 0;
-				strTmp+="Absolute magnetization (Bohr mag/cell):";
-				for(ArrayList<Double> ard:absoluteMag) {
-					if(ard!=null) {
-						cnt_mag++;
-						if(ard.isEmpty()) {continue;}
-						strTmp+=("Step "+Integer.toString(cnt_mag)+": ");
-						for(Double val:ard) {
-							if(val!=null) {strTmp+=(val.toString()+",");}
+					cnt_mag = 0;
+					strTmp+="Absolute magnetization (Bohr mag/cell):";
+					for(ArrayList<Double> ard:absoluteMag) {
+						if(ard!=null) {
+							cnt_mag++;
+							if(ard.isEmpty()) {continue;}
+							strTmp+=("Step "+Integer.toString(cnt_mag)+": ");
+							for(Double val:ard) {
+								if(val!=null) {strTmp+=(val.toString()+",");}
+							}
+							strTmp+="\n";
 						}
-						strTmp+="\n";
 					}
 				}
 			}
 			
 			//Fermi
-			strTmp+="Fermi energy: ";
-			if(fermiLevel.isEmpty()) {strTmp+="Unknown\n";}
-			else {
-				for(Double val:fermiLevel) {
-					if(val!=null) {strTmp+=(val.toString()+",");}
+			if(isMD || isOpt || hasScf || isNscf || isDos) {
+				strTmp+="Fermi energy: ";
+				if(fermiLevel.isEmpty()) {strTmp+="Unknown\n";}
+				else {
+					for(Double val:fermiLevel) {
+						if(val!=null) {strTmp+=(val.toString()+",");}
+					}
+					strTmp+=" eV\n";
 				}
-				strTmp+=" eV\n";
-			}
-			//HOMO
-			strTmp+="Highest occupied level: ";
-			if(homoLevel.isEmpty()) {strTmp+="Unknown\n";}
-			else {
-				for(Double val:homoLevel) {
-					if(val!=null) {strTmp+=(val.toString()+",");}
+				//HOMO
+				strTmp+="Highest occupied level: ";
+				if(homoLevel.isEmpty()) {strTmp+="Unknown\n";}
+				else {
+					for(Double val:homoLevel) {
+						if(val!=null) {strTmp+=(val.toString()+",");}
+					}
+					strTmp+=" eV\n";
 				}
-				strTmp+=" eV\n";
 			}
 			
 			//
-			if(atomicPositions!=null && atomicPositions.size()>0) {
-				strTmp+="ATOMIC_POSITIONS: "+Integer.toString(atomicPositions.size())+"\n";
-				strTmp+="Last position"+(finalPosition?"(final)":"(not final)")+"\n";
-				for(Atom atomTmp : atomicPositions.get(atomicPositions.size()-1)) {
-					strTmp+=(atomTmp.printPositions()+"\n");
+			if(isMD || isOpt) {
+				if(atomicPositions!=null && atomicPositions.size()>0) {
+					strTmp+="ATOMIC_POSITIONS: "+Integer.toString(atomicPositions.size())+"\n";
+					strTmp+="Last position"+(finalPosition?"(final)":"(not final)")+"\n";
+					for(Atom atomTmp : atomicPositions.get(atomicPositions.size()-1)) {
+						strTmp+=(atomTmp.printPositions()+"\n");
+					}
 				}
-			}
-			if(cellParameter!=null && cellParameter.size()>0) {
-				strTmp+="CELL_PARAMETERS: "+Integer.toString(cellParameter.size())+"\n";
-				strTmp+=("Last cell:\n"+cellParameter.get(cellParameter.size()-1).toString()+"\n");
-			}
-			if(alat!=null) {
-				strTmp+="alat: "+Double.toString(alat)+"\n";
+				if(cellParameter!=null && cellParameter.size()>0) {
+					strTmp+="CELL_PARAMETERS: "+Integer.toString(cellParameter.size())+"\n";
+					strTmp+=("Last cell:\n"+cellParameter.get(cellParameter.size()-1).toString()+"\n");
+				}
+				if(alat!=null) {
+					strTmp+="alat: "+Double.toString(alat)+"\n";
+				}
 			}
 		
 		}
