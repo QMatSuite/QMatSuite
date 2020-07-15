@@ -217,8 +217,9 @@ public class InputGeoCellController extends InputController{
 				default:
 					Alert alert1 = new Alert(AlertType.INFORMATION);
 			    	alert1.setTitle("Error");
-			    	alert1.setContentText("Wrong ibrav!");
+			    	alert1.setContentText("Wrong ibrav! Set ibrav to null.");
 			    	alert1.showAndWait();
+			    	ia.ibrav.setValue(null);
 			    	return;
 	    	}
     	}

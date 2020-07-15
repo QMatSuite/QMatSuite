@@ -19,6 +19,7 @@
 package agent;
 
 import java.util.ArrayList;
+import java.util.Objects;
 
 import app.input.geo.Atom;
 import app.input.geo.Element;
@@ -152,22 +153,198 @@ public class InputAgentGeo extends InputAgent{
 	}
 	@Override
 	public boolean convertInfoFromInput(String inputStr) {
-		//false means no update
+		//false means no change
+		boolean flagChange = false;
 		if(inputStr==null || inputStr.isEmpty()) {return false;}
-		String upperCaseStr = inputStr.toUpperCase();
-		if(inputStr.toUpperCase().contains("ATOMIC_POSITIONS")) {
-			
+		
+		if(getAtomicPositions(inputStr)) {flagChange=true;}//this is not change based true/false
+		
+		//ibrav
+		//do not have to worry about improper input (tmp <0 or tmp>14). Will be corrected in the 
+		//input controllers while loading inputagents
+		if(setParameterValue("ibrav", inputStr, this.ibrav)) {flagChange=true;}
+
+		//A,B,C,AB,BC,AC
+		if(setParameterValue("A",inputStr, this.cellA)) {flagChange=true;}
+		if(setParameterValue("B",inputStr, this.cellB)) {flagChange=true;}
+		if(setParameterValue("C",inputStr, this.cellC)) {flagChange=true;}
+		if(setParameterValueArccos("cosAB",inputStr, this.cellAngleAB)) {flagChange=true;}
+		if(setParameterValueArccos("cosBC",inputStr, this.cellAngleBC)) {flagChange=true;}
+		if(setParameterValueArccos("cosAC",inputStr, this.cellAngleAC)) {flagChange=true;}
+		if(!isCellABCAllNull()) {
+			this.unitCellLength = EnumUnitCellLength.angstrom;
+			this.unitCellAngle = EnumUnitCellAngle.degree;
 		}
-		if(inputStr.toUpperCase().contains("CELL_PARAMETERS")) {
+		else {
+			//now try celldm. The two languages must not coexist in the input file as required by QE
 			
+			if(setParameterValueCelldm("celldm\\(1\\)",inputStr, 1)) {flagChange=true;}//this (1) must go before others (2-6)
+			if(setParameterValueCelldm("celldm\\(2\\)",inputStr, 2)) {flagChange=true;}
+			if(setParameterValueCelldm("celldm\\(3\\)",inputStr, 3)) {flagChange=true;}
+			if(setParameterValueCelldm("celldm\\(4\\)",inputStr, 4)) {flagChange=true;}//ibrav must go before these (4-6)
+			if(setParameterValueCelldm("celldm\\(5\\)",inputStr, 5)) {flagChange=true;}
+			if(setParameterValueCelldm("celldm\\(6\\)",inputStr, 6)) {flagChange=true;}
+			//if existed celldm, change unit to bohr
+			if(!isCellABCAllNull()) {
+				this.unitCellLength = EnumUnitCellLength.bohr;
+				this.unitCellAngle = EnumUnitCellAngle.degree;
+			}
 		}
-		return false;
+		
+		
+		return flagChange;
+	}
+	private boolean setParameterValueArccos(String paraStr, String inputStr, WrapperDouble wdVal) {
+		Double tmp = null;
+		try {
+			tmp = Double.valueOf(getParameterValue(paraStr,inputStr));
+			if(tmp!=null && tmp<=1.0 && tmp >=-1.0) {tmp = Math.toDegrees(Math.acos(tmp));}
+			else {
+				tmp=null;
+			}
+		}
+		catch(IllegalArgumentException | NullPointerException e) {
+			tmp=null;
+		}
+		if(Objects.equals(wdVal.getValue(), tmp)) {
+			return false;
+		}
+		else {
+			wdVal.setValue(tmp);return true;
+		}
+	}
+	private boolean setParameterValueCelldm(String paraStr, String inputStr, int celldmInd) {
+		Double tmp = null;
+		try {
+			tmp = Double.valueOf(getParameterValue(paraStr,inputStr));
+			return setCellABCFromCelldm(celldmInd, tmp);
+		}
+		catch(IllegalArgumentException | NullPointerException e) {
+			return false;
+		}
+	}
+	public boolean setCellABCFromCelldm(int celldmInd, Double celldmVal) {
+		
+		//!!!!must first load celldm(1), otherwise cannot load celldm(2) and celldm(3)
+		//!!!!must first load ibrav, otherwise celldm(4) and (6) not correct
+		boolean isChanged = false;
+		final Double tmp = (celldmVal==null || celldmVal>1.0 || celldmVal<-1.0)?null:Math.toDegrees(Math.acos(celldmVal));
+		switch(celldmInd) {
+			case 1:
+				isChanged=cellA.equals(celldmVal);cellA.setValue(celldmVal);
+				break;
+			case 2:
+				if(!cellA.isNull()) {isChanged=cellB.equals(cellA.getValue()*celldmVal);cellB.setValue(cellA.getValue()*celldmVal);}//cellA must be not null
+				break;
+			case 3:
+				if(!cellA.isNull()) {isChanged=cellC.equals(cellA.getValue()*celldmVal);cellC.setValue(cellA.getValue()*celldmVal);}
+				break;
+			case 4:
+				if(ibrav.equals(14)) {
+					isChanged = cellAngleBC.equals(tmp);
+					cellAngleBC.setValue(tmp);
+				}
+				else {
+					isChanged = cellAngleAB.equals(tmp);
+					cellAngleAB.setValue(tmp);
+				}
+				break;
+			case 5:
+				isChanged = cellAngleAC.equals(tmp);
+				cellAngleAC.setValue(tmp);
+				break;
+			case 6:
+				if(ibrav.equals(14)) {
+					isChanged = cellAngleAB.equals(tmp);
+					cellAngleAB.setValue(tmp);
+				}
+				else {
+					isChanged = cellAngleBC.equals(tmp);
+					cellAngleBC.setValue(tmp);
+				}
+				break;
+			default:break;
+		}
+		return isChanged;
+	}
+	private boolean getAtomicPositions(String inputStr) {	
+		//return true for successful update
+		int startInd;
+		startInd = inputStr.toUpperCase().indexOf("ATOMIC_POSITIONS");
+		if(startInd==-1) {return false;}
+		
+		atomList.clear();
+		
+		String[] lines = inputStr.substring(startInd).split("\\R");
+		//unit of atomic positions
+		if(lines[0].toLowerCase().contains("alat")) {
+			this.unitAtomPos = EnumUnitAtomPos.alat;
+		}else if(lines[0].toLowerCase().contains("bohr")) {
+			this.unitAtomPos = EnumUnitAtomPos.bohr;
+		}else if(lines[0].toLowerCase().contains("angstrom")) {
+			this.unitAtomPos = EnumUnitAtomPos.angstrom;
+		}else if(lines[0].toLowerCase().contains("crystal")) {
+			this.unitAtomPos = EnumUnitAtomPos.crystal;
+		}else {
+			this.unitAtomPos = EnumUnitAtomPos.alat;//deprecated usage of QE
+		}
+		//load atomic positions
+		for(int i=1;i<lines.length;i++) {//starting from 1 to skip the line containing "ATOMIC_POSITIONS"
+			if(lines[i].trim().isEmpty()) {continue;}//skip empty lines
+			if(!getAtomicPositionsLine(atomList,lines[i])) {break;}//break if the line does not contain atomic positions
+		}
+		//write to atomList and update elementList if atomArr is not empty
+		updateElemListAll();
+		return true;
+	}
+	
+	private boolean getAtomicPositionsLine(ArrayList<Atom> atomArr, String inputLine) {
+		//false means not containing atomic positions
+		String[] splitted = inputLine.trim().split("\\s+");//split the string by whitespaces
+		if(splitted.length < 4) {return false;}
+		try {
+			ChemicalElements atomSpecies = ChemicalElements.valueOf(splitted[0].trim());
+			Double x_coor = Double.valueOf(splitted[1].trim());
+			Double y_coor = Double.valueOf(splitted[2].trim());
+			Double z_coor = Double.valueOf(splitted[3].trim());
+			
+			if(x_coor==null || y_coor == null || z_coor == null || atomSpecies == null) {return false;}
+			
+			if(splitted.length >=7) {
+				Boolean free_x = strToBool(splitted[4].trim());
+				Boolean free_y = strToBool(splitted[5].trim());
+				Boolean free_z = strToBool(splitted[6].trim());
+				if(free_x != null && free_y != null && free_z != null) {
+					//Atom takes fixed bool, not free bool that usually exists in the input file
+					atomArr.add(new Atom(atomSpecies,x_coor,y_coor,z_coor,!free_x,!free_y,!free_z));
+				}
+				else {
+					atomArr.add(new Atom(atomSpecies,x_coor,y_coor,z_coor));
+				}
+			}
+			else {
+				atomArr.add(new Atom(atomSpecies,x_coor,y_coor,z_coor));
+			}
+			return true;
+		}
+		catch(IllegalArgumentException e){
+			//e.printStackTrace();
+			return false;
+		}
+	}
+	private Boolean strToBool(String strVal) {
+		if(strVal==null) {return null;}
+		if("1".equals(strVal.trim())) {return true;}
+		else if("0".equals(strVal.trim())) {return false;}
+		else {return null;}
+	}
+	private boolean isCellABCAllNull() {
+		return cellA.isNull() && cellB.isNull() && cellC.isNull() 
+				&& cellAngleAB.isNull() && cellAngleBC.isNull() && cellAngleAC.isNull();
 	}
 	public String genAgentSummary() {
 		String msg="";
-		if(ibrav.isNull() &&
-				cellA.isNull() && cellB.isNull() && cellC.isNull() 
-				&& cellAngleAB.isNull() && cellAngleBC.isNull() && cellAngleAC.isNull()) {
+		if(ibrav.isNull() && isCellABCAllNull()) {
 			msg+="No Bravais lattice information read.\n";//all default to null
 		}
 		else {
@@ -175,13 +352,13 @@ public class InputAgentGeo extends InputAgent{
 			msg+=this.ibrav.isNull()?"":"ibrav="+this.ibrav.getValueString()+"\n";
 			//lattice information
 			msg += "A="+cellA.getValueString()+",B="+cellB.getValueString()+",C="+cellC.getValueString()+" (Unit:"
-					+unitCellLength==null?"unknown":unitCellLength.toString()+")\n"
+					+(unitCellLength==null?"unknown":unitCellLength.toString())+")\n"
 					+"AngleAB="+cellAngleAB.getValueString()+",AngleBC="+cellAngleBC.getValueString()+",AngleAC="+cellAngleAC.getValueString()+" (Unit:"
-					+unitCellAngle==null?"unknown":unitCellAngle.toString()+")\n";
+					+(unitCellAngle==null?"unknown":unitCellAngle.toString())+")\n";
 		}
 		//atomic positions
 		msg+=("Atomic poisitions (unit:"
-		+this.unitAtomPos==null?"unknown":this.unitAtomPos.toString()
+		+(this.unitAtomPos==null?"unknown":this.unitAtomPos.toString())
 		+"):\n");
 		for(Atom atom : this.atomList) {
 			if(atom.getAtomSpecies()==null) {continue;}
@@ -192,7 +369,7 @@ public class InputAgentGeo extends InputAgent{
 		}
 		//cell parameters
 		msg+=("Cell parameters (unit:"
-		+this.unitCellParameter==null?"unknown":this.unitCellParameter.toString()
+		+(this.unitCellParameter==null?"unknown":this.unitCellParameter.toString())
 		+"):\n");
 		msg+=(this.vectorA1.getValueString()+","+this.vectorA2.getValueString()+","+this.vectorA3.getValueString()+"\n"
 		+this.vectorB1.getValueString()+","+this.vectorB2.getValueString()+","+this.vectorB3.getValueString()+"\n"

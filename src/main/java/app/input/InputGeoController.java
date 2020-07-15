@@ -141,6 +141,10 @@ public class InputGeoController extends InputController{
 	    		//after the input
 	    		if(contPaste.isBoolSave()) {
 	    			//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", "Saved.");
+	    			//****be careful here of references. In case of bug, use deepcopy
+	    			//****investigate possible RAM leak here
+	    			mainClass.projectManager.setCurrentGeoAgent(contPaste.getGeoAgent());
+	    			this.loadProjectParameters();
 	    		}
 			});
 	    	
