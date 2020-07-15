@@ -52,4 +52,9 @@ public class InputAgentTddft extends InputAgent{
 		de = new WrapperDouble(0.001);
 		eels =  new WrapperBoolean(false);
 	}
+	@Override
+	public boolean convertInfoFromInput(String inputStr) {
+		// TODO Auto-generated method stub
+		return false;
+	}
 }

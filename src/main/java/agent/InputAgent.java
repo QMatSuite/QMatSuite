@@ -46,4 +46,5 @@ public abstract class InputAgent implements Serializable{
 		}
 		
 	}
+	public abstract boolean convertInfoFromInput(String inputStr);
 }

@@ -39,4 +39,9 @@ public class InputAgentBands extends InputAgent{
 		intNBands = new WrapperInteger(null);
 		listKPoints = new ArrayList<Kpoint>();
 	}
+	@Override
+	public boolean convertInfoFromInput(String inputStr) {
+		// TODO Auto-generated method stub
+		return false;
+	}
 }

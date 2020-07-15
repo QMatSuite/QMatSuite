@@ -150,4 +150,54 @@ public class InputAgentGeo extends InputAgent{
 		}
 		return elem;
 	}
+	@Override
+	public boolean convertInfoFromInput(String inputStr) {
+		//false means no update
+		if(inputStr==null || inputStr.isEmpty()) {return false;}
+		String upperCaseStr = inputStr.toUpperCase();
+		if(inputStr.toUpperCase().contains("ATOMIC_POSITIONS")) {
+			
+		}
+		if(inputStr.toUpperCase().contains("CELL_PARAMETERS")) {
+			
+		}
+		return false;
+	}
+	public String genAgentSummary() {
+		String msg="";
+		if(ibrav.isNull() &&
+				cellA.isNull() && cellB.isNull() && cellC.isNull() 
+				&& cellAngleAB.isNull() && cellAngleBC.isNull() && cellAngleAC.isNull()) {
+			msg+="No Bravais lattice information read.\n";//all default to null
+		}
+		else {
+			//ibrav
+			msg+=this.ibrav.isNull()?"":"ibrav="+this.ibrav.getValueString()+"\n";
+			//lattice information
+			msg += "A="+cellA.getValueString()+",B="+cellB.getValueString()+",C="+cellC.getValueString()+" (Unit:"
+					+unitCellLength==null?"unknown":unitCellLength.toString()+")\n"
+					+"AngleAB="+cellAngleAB.getValueString()+",AngleBC="+cellAngleBC.getValueString()+",AngleAC="+cellAngleAC.getValueString()+" (Unit:"
+					+unitCellAngle==null?"unknown":unitCellAngle.toString()+")\n";
+		}
+		//atomic positions
+		msg+=("Atomic poisitions (unit:"
+		+this.unitAtomPos==null?"unknown":this.unitAtomPos.toString()
+		+"):\n");
+		for(Atom atom : this.atomList) {
+			if(atom.getAtomSpecies()==null) {continue;}
+			msg += ("" + atom.getAtomSpecies().toString()
+					+ ":" + atom.getXcoor().getXString() + "," + atom.getYcoor().getXString() + "," + atom.getZcoor().getXString()
+					 + "," + atom.getXcoor().getFixString() + "," + atom.getYcoor().getFixString() + "," + atom.getZcoor().getFixString()
+					 +"\n");
+		}
+		//cell parameters
+		msg+=("Cell parameters (unit:"
+		+this.unitCellParameter==null?"unknown":this.unitCellParameter.toString()
+		+"):\n");
+		msg+=(this.vectorA1.getValueString()+","+this.vectorA2.getValueString()+","+this.vectorA3.getValueString()+"\n"
+		+this.vectorB1.getValueString()+","+this.vectorB2.getValueString()+","+this.vectorB3.getValueString()+"\n"
+		+this.vectorC1.getValueString()+","+this.vectorC2.getValueString()+","+this.vectorC3.getValueString()+"\n");
+		
+		return msg;
+	}
 }

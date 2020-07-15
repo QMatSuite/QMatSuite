@@ -46,7 +46,7 @@ public class WrapperBoolean extends WrapperClass{
 		return java.util.Objects.equals(vl, value);
 	}
 	@Override
-	public Boolean isNull() {
+	public boolean isNull() {
 		return value==null;
 	}
 	public Boolean resetDefault() {
@@ -54,7 +54,12 @@ public class WrapperBoolean extends WrapperClass{
 		return defaultValue;
 	}
 	@Override
-	public Boolean isDefaultNull() {
+	public boolean isDefaultNull() {
 		return defaultValue==null;
+	}
+	@Override
+	public String getValueString() {
+		if(value==null) {return "null";}
+		return value?"true":"false";
 	}
 }

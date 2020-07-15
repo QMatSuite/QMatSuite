@@ -38,11 +38,19 @@ public class Coordinate implements Serializable{
 	public Boolean getBoolFix() {
 		return fix_x;
 	}
+	public String getFixString() {
+		if(fix_x==null) {return "null";}
+		return fix_x?"fix":"free";
+	}
 	public void setBoolFix(Boolean fix_x) {
 		this.fix_x = fix_x;
 	}
 	public Double getX() {
 		return x;
+	}
+	public String getXString() {
+		if(x==null) {return "null";}
+		return x.toString();
 	}
 	public void setX(Double x) {
 		this.x = x;
