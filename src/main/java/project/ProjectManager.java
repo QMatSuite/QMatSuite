@@ -669,6 +669,10 @@ public class ProjectManager{
 		if (!existCurrentProject()) return null;
 		return projectDict.get(activeProjKey).getAgentGeo();
 	}
+	public void setCurrentGeoAgent(InputAgentGeo iGeo) {//******investigate possibility of ram leak here
+		if (!existCurrentProject() || iGeo==null) return;
+		projectDict.get(activeProjKey).setAgentGeo(iGeo);
+	}
 	public void setCurrentGeoInd(int ind) {
 		if (!existCurrentProject()) return;
 		projectDict.get(activeProjKey).setActiveGeoInd(ind);

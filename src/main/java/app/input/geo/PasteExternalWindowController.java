@@ -1,9 +1,7 @@
 package app.input.geo;
 
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.ResourceBundle;
-
 import agent.InputAgentGeo;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -48,16 +46,18 @@ public class PasteExternalWindowController implements Initializable{
     
     private boolean boolSave = false;
     
-    private String textInput;
-    
-    private InputAgentGeo iGeoPaste;
+    private InputAgentGeo iGeoPaste = null;//***check possibility of ram leak
     
     public PasteExternalWindowController(MainClass mc) {
     	mainClass = mc;
 	}
+    public InputAgentGeo getGeoAgent() {
+    	return iGeoPaste;
+    }
     public void initializeConversion() {
-    	iGeoPaste = new InputAgentGeo();//***check possibility of ram leak
-    	textInput = "";
+    	iGeoPaste = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent().deepCopy();//should be safe to assume geoAgent exists
+    	textAreaPreview.setText("Nothing recognized yet.");
+    	textAreaInput.setText("");
     	boolSave = false;
     }
 	@Override
@@ -79,14 +79,8 @@ public class PasteExternalWindowController implements Initializable{
 	}
 	private boolean checkText(String textInput) {
 		if(textInput==null || textInput.isEmpty()) {return false;}
-//		if(textInput.toUpperCase().contains("ATOMIC_POSITIONS") || textInput.toUpperCase().contains("CELL_PARAMETERS")) {
-//			
-//		}
-//		else {
-//			return false;
-//		}	
-		if(!this.iGeoPaste.convertInfoFromInput(textInput)) {return false;}
-		return true;
+
+		return this.iGeoPaste.convertInfoFromInput(textInput);
 	}
 	private void updatePreview() {
 		
@@ -98,6 +92,8 @@ public class PasteExternalWindowController implements Initializable{
 		textAreaPreview.setText(msg);
 	}
 	private void closeStage() {
+		textAreaInput.setText("");
+		textAreaPreview.setText("");
         Stage stage  = (Stage) this.borderPaneMain.getScene().getWindow();
         stage.close();
     }

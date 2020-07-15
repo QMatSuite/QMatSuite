@@ -263,6 +263,15 @@ public class Project implements Serializable{
 			return geoList.get(getActiveCalc().getGeoInd());
 		}
 	}
+	public void setAgentGeo(InputAgentGeo iGeo) {
+		if (activeGeoInd>=geoList.size()) return;
+		if (boolGeoActive || !existCurrentCalc()){
+			geoList.set(activeGeoInd,iGeo);//use project default
+		}
+		else {
+			geoList.set(getActiveCalc().getGeoInd(),iGeo);
+		}
+	}
 	public Integer getGeoListSize() {
 		if(geoList==null) {return 0;}
 		return geoList.size();

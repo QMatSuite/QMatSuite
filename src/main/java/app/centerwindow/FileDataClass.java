@@ -624,29 +624,19 @@ public class FileDataClass {
 			double celldmTmp1 = Double.valueOf(splitted[1].trim());
 			double celldmTmp2 = Double.valueOf(splitted[2].trim());
 			double celldmTmp3 = Double.valueOf(splitted[3].trim());
+			
 			if(isSecondLine) {//celldm(4-6)
-				celldmTmp1 = Math.toDegrees(Math.acos(celldmTmp1));
-				celldmTmp2 = Math.toDegrees(Math.acos(celldmTmp2));
-				celldmTmp3 = Math.toDegrees(Math.acos(celldmTmp3));
-				if(this.iGeoTemp.ibrav.equals(14)) {
-					this.iGeoTemp.cellAngleBC.setValue(celldmTmp1);//4
-					this.iGeoTemp.cellAngleAC.setValue(celldmTmp2);//5
-					this.iGeoTemp.cellAngleAB.setValue(celldmTmp3);//6
-				}
-				else {
-					this.iGeoTemp.cellAngleAB.setValue(celldmTmp1);//4, gamma
-					this.iGeoTemp.cellAngleAC.setValue(celldmTmp2);//5, beta
-					this.iGeoTemp.cellAngleBC.setValue(celldmTmp3);//6
-				}
+				this.iGeoTemp.setCellABCFromCelldm(4, celldmTmp1);
+				this.iGeoTemp.setCellABCFromCelldm(5, celldmTmp2);
+				this.iGeoTemp.setCellABCFromCelldm(6, celldmTmp3);
 			}
 			else {//celldm(1-3)
 				//A or alat
 				//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", Double.toString(celldmTmp1));
+				this.iGeoTemp.setCellABCFromCelldm(1, celldmTmp1);
+				this.iGeoTemp.setCellABCFromCelldm(2, celldmTmp2);
+				this.iGeoTemp.setCellABCFromCelldm(3, celldmTmp3);
 				this.alat = celldmTmp1;
-				this.iGeoTemp.cellA.setValue(celldmTmp1);
-				
-				this.iGeoTemp.cellB.setValue(celldmTmp2*celldmTmp1);
-				this.iGeoTemp.cellC.setValue(celldmTmp3*celldmTmp1);
 			}
 		}
 		catch(Exception e) {

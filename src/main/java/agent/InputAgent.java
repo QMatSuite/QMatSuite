@@ -23,7 +23,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-
+import java.util.Objects;
 public abstract class InputAgent implements Serializable{
 	/**
 	 * 
@@ -47,4 +47,64 @@ public abstract class InputAgent implements Serializable{
 		
 	}
 	public abstract boolean convertInfoFromInput(String inputStr);
+	public String getParameterValue(String paraStr, String inputStr) {
+		//1. inputStr can be a line inside an input file
+		//or can be a string of the whole input file
+		//2. paraStr is the name of the parameter
+		if(paraStr==null || paraStr.isEmpty() || inputStr==null) {return null;}
+		
+		//somehow cannot use \\s+ here
+		//Adding an empty space " " to the beginning solves the problem if the parameter is right at the beginning
+		//the parameter needs to be followed with "=" with only possible whitespaces in between ("B   =1" is allowed)
+		//the parameter must not have preceeding alphabetic character (e.g. tell "cellAB=0" apart from "B=1")
+		String[] splitted0 = (" "+inputStr).split("[^a-zA-Z0-9]"+paraStr+"\\s*=");
+		//String[] splitted0 = inputStr.split("[^a-zA-Z0-9]?B\\s*=");
+		if(splitted0.length<=1) {return null;}//not found
+		
+		
+		
+		//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", splitted0[1]);
+		
+//		String[] splitted1 = splitted0[1].split("\\R",2);//array is always non-empty
+//		if(splitted1.length==0) {return null;}
+//		
+//		String[] splitted2 = splitted1[0].split(",");
+//		if(splitted2.length==0) {return null;}
+		
+//		return splitted1[0];
+		
+		return splitted0[1].split("\\R",2)[0].split(",")[0].trim();
+	}
+	public boolean setParameterValue(String paraStr, String inputStr, WrapperDouble wdVal) {
+		//return true: different and set
+		Double tmp = null;
+		try {
+			tmp = Double.valueOf(getParameterValue(paraStr,inputStr));
+		}
+		catch(IllegalArgumentException | NullPointerException e) {
+			tmp=null;
+		}
+		if(Objects.equals(wdVal.getValue(), tmp)) {
+			return false;
+		}
+		else {
+			wdVal.setValue(tmp);return true;
+		}
+	}
+	public boolean setParameterValue(String paraStr, String inputStr, WrapperInteger wiVal) {
+		//return true: different and set
+		Integer tmp = null;
+		try {
+			tmp = Integer.valueOf(getParameterValue(paraStr,inputStr));
+		}
+		catch(IllegalArgumentException | NullPointerException e) {
+			tmp=null;
+		}
+		if(Objects.equals(wiVal.getValue(), tmp)) {
+			return false;
+		}
+		else {
+			wiVal.setValue(tmp);return true;
+		}
+	}
 }
