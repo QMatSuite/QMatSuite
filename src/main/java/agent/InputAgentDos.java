@@ -50,4 +50,9 @@ public class InputAgentDos extends InputAgent{
 		enumSmearing = new WrapperEnum(EnumSmearing.gauss);
 		degauss = new WrapperDouble(null);
 	}
+	@Override
+	public boolean convertInfoFromInput(String inputStr) {
+		// TODO Auto-generated method stub
+		return false;
+	}
 }

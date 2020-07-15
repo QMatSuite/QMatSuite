@@ -65,4 +65,9 @@ public class InputAgentMd extends InputAgent{
 		pressure = new WrapperDouble(0.0);
 		enumCellDoFree = new WrapperEnum(EnumCellDoFree.all);
 	}
+	@Override
+	public boolean convertInfoFromInput(String inputStr) {
+		// TODO Auto-generated method stub
+		return false;
+	}
 }

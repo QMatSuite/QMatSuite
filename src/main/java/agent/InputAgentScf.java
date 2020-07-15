@@ -120,5 +120,9 @@ public class InputAgentScf extends InputAgent{
 		//************************|**********//
 		
 	}
-	
+	@Override
+	public boolean convertInfoFromInput(String inputStr) {
+		// TODO Auto-generated method stub
+		return false;
+	}
 }

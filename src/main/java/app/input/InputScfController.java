@@ -148,6 +148,13 @@ public class InputScfController extends InputController{
     		setBoolFieldListener(setHybrid,"setHybrid",hybridPane);setBoolFieldListener(setVdw,"setVdw",vdwPane);
     		setBoolFieldListener(setAdv,"setAdv",advancedPane);setBoolFieldListener(setE,"setE",efieldPane);
     		
+    		//----------------comment out when implemented
+    		setHybrid.setSelected(false);setHybrid.setDisable(true);
+    		setVdw.setSelected(false);setVdw.setDisable(true);
+    		setAdv.setSelected(false);setAdv.setDisable(true);
+    		setE.setSelected(false);setE.setDisable(true);
+    		//----------------
+    		
     		setExpandedListener(standardPane, "expandStandard");
     		setExpandedListener(magnetPane, "expandMag");
     		setExpandedListener(hubbardPane, "expandU");

@@ -48,4 +48,9 @@ public class InputAgentNscf extends InputAgent{
 		enumSmearing=new WrapperEnum(EnumSmearing.gauss);
 		nbnd = new WrapperInteger(null);
 	}
+	@Override
+	public boolean convertInfoFromInput(String inputStr) {
+		// TODO Auto-generated method stub
+		return false;
+	}
 }

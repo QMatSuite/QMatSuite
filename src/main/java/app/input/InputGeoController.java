@@ -28,6 +28,7 @@ import com.error.ShowAlert;
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.scene.Scene;
 import javafx.scene.control.Accordion;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TitledPane;
@@ -35,11 +36,16 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 import main.MainClass;
 import app.input.geo.InputGeoAtomsController;
 import app.input.geo.InputGeoCellController;
 import app.input.geo.InputGeoElementsController;
+import app.input.geo.PasteExternalWindowController;
 
 public class InputGeoController extends InputController{
 	
@@ -61,18 +67,22 @@ public class InputGeoController extends InputController{
 	@FXML private Label labelGeoNote;
 
 	@FXML private Button buttonDeleteGeo,
-	buttonDuplicateGeo;
+	buttonDuplicateGeo,
+	buttonPasteExternal;
 	
     private VBox vboxAtoms,
     vboxCell,
     vboxElements;
-    
     
     private InputGeoCellController contCell=null;
     
     private InputGeoAtomsController contAtom = null;
     
     private InputGeoElementsController contElem = null;
+    
+    private PasteExternalWindowController contPaste = null;
+    
+    private BorderPane borderPaste;
     
     public InputGeoController(MainClass mc) {
 		super(mc, EnumStep.GEO);
@@ -108,9 +118,32 @@ public class InputGeoController extends InputController{
 				fxmlLoader3.setController(contElem);
 				vboxElements = fxmlLoader3.load();
 				
+				contPaste = new PasteExternalWindowController(mainClass);
+				FXMLLoader fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/input/geo/PasteExternalWindow.fxml"));
+				fxmlLoader.setController(contPaste);
+				borderPaste = fxmlLoader.load();
+				
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
+			
+	    	//PasteExternalWindowController
+	    	Scene scenePaste = new Scene(borderPaste);
+	        Stage stagePaste = new Stage();
+	        stagePaste.setTitle("Paste geometry from external");
+	        stagePaste.initModality(Modality.APPLICATION_MODAL);
+	        stagePaste.initStyle(StageStyle.DECORATED);
+	        stagePaste.setScene(scenePaste);
+	        
+	    	buttonPasteExternal.setOnAction((event) -> {
+	    		contPaste.initializeConversion();
+	    		stagePaste.showAndWait();
+	    		//after the input
+	    		if(contPaste.isBoolSave()) {
+	    			//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", "Saved.");
+	    		}
+			});
+	    	
 			atomsPane.setContent(vboxAtoms);
 			cellPane.setContent(vboxCell);
 			elementsPane.setContent(vboxElements);
@@ -175,9 +208,11 @@ public class InputGeoController extends InputController{
     public void setDisabled() {
     	labelGeoNote.setVisible(true);
     	titlePaneElements.setVisible(false);titlePaneCell.setVisible(false);titlePaneAtoms.setVisible(false);
+    	buttonPasteExternal.setVisible(false);
     }
     public void setEnabled() {
     	labelGeoNote.setVisible(false);
     	titlePaneElements.setVisible(true);titlePaneCell.setVisible(true);titlePaneAtoms.setVisible(true);
+    	buttonPasteExternal.setVisible(true);
     }
 }

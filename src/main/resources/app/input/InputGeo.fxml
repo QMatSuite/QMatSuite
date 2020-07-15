@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Accordion?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.ComboBox?>
@@ -10,6 +11,7 @@
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
@@ -49,6 +51,14 @@
                </children>
             </GridPane>
             <Label fx:id="labelGeoNote" text="  Please go to the geometry window to view and edit the details." />
+            <HBox>
+               <children>
+                  <Button fx:id="buttonPasteExternal" mnemonicParsing="false" text="Paste from external" />
+               </children>
+               <VBox.margin>
+                  <Insets bottom="5.0" left="5.0" />
+               </VBox.margin>
+            </HBox>
               <Accordion fx:id="accordGeo">
                   <panes>
                       <TitledPane fx:id="titlePaneCell" animated="false" text="Cell">

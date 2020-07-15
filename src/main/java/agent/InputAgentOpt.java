@@ -60,4 +60,9 @@ public class InputAgentOpt extends InputAgent{
 		enumOptMethodCell = new WrapperEnum(EnumCellOptMethod.bfgs);
 		enumCellDoFree = new WrapperEnum(EnumCellDoFree.all);
 	}
+	@Override
+	public boolean convertInfoFromInput(String inputStr) {
+		// TODO Auto-generated method stub
+		return false;
+	}
 }

@@ -33,6 +33,7 @@ public abstract class WrapperClass implements Serializable{
 	public Boolean isEnabled() {
 		return enabled;
 	}
-	public abstract Boolean isNull();
-	public abstract Boolean isDefaultNull();
+	public abstract boolean isNull();
+	public abstract boolean isDefaultNull();
+	public abstract String getValueString();
 }
