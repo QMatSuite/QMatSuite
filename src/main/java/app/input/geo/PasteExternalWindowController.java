@@ -19,10 +19,9 @@ public class PasteExternalWindowController implements Initializable{
     private BorderPane borderPaneMain;
 
     @FXML
-    private Button buttonSave;
-
-    @FXML
-    private Button buttonCancel;
+    private Button buttonCancel,
+    buttonSave,
+    buttonClearAll;
 
     @FXML
     private TabPane tabPanePaste;
@@ -71,6 +70,11 @@ public class PasteExternalWindowController implements Initializable{
 		buttonCancel.setOnAction((event) -> {	
 			boolSave = false;
 			closeStage();
+		});
+		buttonClearAll.setOnAction((event) -> {	
+			iGeoPaste = new InputAgentGeo();
+			textAreaPreview.setText("Everything cleared.");
+	    	textAreaInput.setText("");
 		});
 		textAreaInput.textProperty().addListener((obs,oldText,newText)->{
 			if(!checkText(newText)) {return;}

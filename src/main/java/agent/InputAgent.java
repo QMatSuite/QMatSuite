@@ -24,6 +24,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Objects;
+
 public abstract class InputAgent implements Serializable{
 	/**
 	 * 
@@ -79,9 +80,11 @@ public abstract class InputAgent implements Serializable{
 		//return true: different and set
 		Double tmp = null;
 		try {
-			tmp = Double.valueOf(getParameterValue(paraStr,inputStr));
+			String strTmp = getParameterValue(paraStr,inputStr);
+			if(strTmp==null) {return false;}//when getParameterValue(paraStr,inputStr)==null -> keyword not found
+			tmp = Double.valueOf(strTmp);
 		}
-		catch(IllegalArgumentException | NullPointerException e) {
+		catch(IllegalArgumentException e) {
 			tmp=null;
 		}
 		if(Objects.equals(wdVal.getValue(), tmp)) {
@@ -95,11 +98,14 @@ public abstract class InputAgent implements Serializable{
 		//return true: different and set
 		Integer tmp = null;
 		try {
-			tmp = Integer.valueOf(getParameterValue(paraStr,inputStr));
+			String strTmp = getParameterValue(paraStr,inputStr);
+			if(strTmp==null) {return false;}//when getParameterValue(paraStr,inputStr)==null -> keyword not found
+			tmp = Integer.valueOf(strTmp);
 		}
-		catch(IllegalArgumentException | NullPointerException e) {
+		catch(IllegalArgumentException e) {
 			tmp=null;
 		}
+		
 		if(Objects.equals(wiVal.getValue(), tmp)) {
 			return false;
 		}
