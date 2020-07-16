@@ -19,6 +19,8 @@
  *******************************************************************************/
 package com.programconst;
 
+import java.io.File;
+
 public interface DefaultFileNames {
 	public final String defaultSettingFile = "settings.ini";
 	public final String calcSaveFile = "save.calc";
@@ -30,6 +32,9 @@ public interface DefaultFileNames {
 	public final String pseudoDojoDir = "pseudo_dojo_ONCVPSP_v0.4";
 	public final String psLibraryDir = "PSlibrary_v1.0.0";
 	public final String ssspDir = "SSSP_v1.1";
+	
+	public final String pseudoDirDefault = "pseudoPotLibs";
+	public final String qeDirDefault = "qe6.4.1_win"+File.separator+"qe";
 	
 	public enum SettingKeys {
 		workspace,

@@ -51,6 +51,8 @@ import com.consts.Constants.EnumStep;
 import com.error.ErrorMsg;
 import com.error.ShowAlert;
 import com.programconst.DefaultFileNames;
+import com.programconst.DefaultFileNames.SettingKeys;
+import com.programconst.ProgrammingConsts.PathSettings;
 import com.pseudopot.PseudoPotential;
 
 import input.ContainerInputString;
@@ -175,6 +177,12 @@ public class ProjectManager{
 		File stFile = new File(DefaultFileNames.defaultSettingFile);
 		try {
 			stFile.createNewFile();
+			//set default "out of box" paths for qe and pseudo
+			String homePath = new File("").getAbsolutePath();
+			if(homePath!=null) {
+				writeGlobalSettings(SettingKeys.qePath.toString(), homePath+File.separator+DefaultFileNames.qeDirDefault);
+				writeGlobalSettings(SettingKeys.pseudolibroot.toString(), homePath+File.separator+DefaultFileNames.pseudoDirDefault);
+			}
 	    } catch (IOException e1) {
 	    	ShowAlert.showAlert(AlertType.INFORMATION, "Error", "IOException while creating setting file.");
 	    	e1.printStackTrace();
@@ -198,9 +206,9 @@ public class ProjectManager{
 			br.close();
 			isr.close();
 		} catch (FileNotFoundException e) {
-			ShowAlert.showAlert(AlertType.INFORMATION, "Warning", "Probably this is your first time running QuantumVITAS because no setting "
-	    			+ "file is found. The program will make one for you, and please specify your workspace folder first"
-	    			+ ". Enjoy!");
+			ShowAlert.showAlert(AlertType.INFORMATION, "Welcome to quantumVITAS!", "- Probably this is your first time running QuantumVITAS because no setting "
+	    			+ "file is found. The program will make one for you.\n - Before anything, please specify a folder as your workspace folder.\n"
+	    			+ "- Enjoy!");
 	    	creatGlobalSettings();
 	    	
 		} catch (IOException e) {
