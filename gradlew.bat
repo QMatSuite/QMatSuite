@@ -1,3 +1,22 @@
+@rem ***************************************************************************
+@rem Copyright (c) 2020 Haonan Huang.
+@rem
+@rem     This file is part of QuantumVITAS (Quantum Visualization Interactive 
+@rem     Toolkit for Ab-initio Simulations).
+@rem
+@rem     QuantumVITAS is free software: you can redistribute it and/or modify
+@rem     it under the terms of the GNU General Public License as published by
+@rem     the Free Software Foundation, either version 3 of the License, or any 
+@rem     later version.
+@rem
+@rem     QuantumVITAS is distributed in the hope that it will be useful,
+@rem     but WITHOUT ANY WARRANTY; without even the implied warranty of
+@rem     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+@rem     GNU General Public License for more details.
+@rem
+@rem     You should have received a copy of the GNU General Public License
+@rem     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
+@rem ***************************************************************************
 @rem
 @rem Copyright 2015 the original author or authors.
 @rem
