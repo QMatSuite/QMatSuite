@@ -11,13 +11,19 @@
 <?import javafx.scene.control.ToggleButton?>
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 
 <VBox fx:id="root3DVbox" prefWidth="165.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
    <children>
       <Label text="3D toolbar" />
-      <ToggleButton fx:id="toggleShowToolbar" mnemonicParsing="false" text="ToggleButton" />
+      <HBox>
+         <children>
+            <ToggleButton fx:id="toggleShowToolbar" mnemonicParsing="false" text="ToggleButton" />
+            <Button fx:id="buttonRefresh" mnemonicParsing="false" text="Refresh" />
+         </children>
+      </HBox>
       <VBox fx:id="functionVbox">
          <children>
             <Separator prefWidth="200.0">

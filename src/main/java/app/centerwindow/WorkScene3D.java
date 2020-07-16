@@ -71,12 +71,16 @@ public class WorkScene3D {
 	private final GeoGroup cameraSys3 = new GeoGroup();
 	private final double cameraDistance = 1500;
 
-	private final int maxTrialCells = 8;//(maxTrialCells*2)^3 cells tried
-	private final double ballRadiusAtom = 25;
-	private final int bondThick = 10;
-	public static final double bondScalingDefault = 1.1;
+	private static int maxTrialCells = 8;//(maxTrialCells*2)^3 cells tried
+	private static double ballRadiusAtom = 25;
+	private static int bondThick = 10;
+	
+	private static double bondScalingDefault = 1.1;
 	public  double bondScaling = bondScalingDefault;//the same across WorkScenes
-	private static final double minBondScaling=0.1;
+	private static double minBondScaling=0.1;
+	private static Color toolBoxColor = Color.LIGHTGRAY;
+	private static Color backgroundColor = Color.SILVER;
+	
 	public InputAgentGeo iGeoCache=null;
 	public boolean boolFoldBack=false;
 	public int supercellMode = 0;//0 is no, 1 is crystal, 2 is alat, -1 is not selected
@@ -119,7 +123,7 @@ public class WorkScene3D {
 			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Cannot load toolbar3D.fxml in WorkScene3D!");
 	    	return;
 		}
-		hb.setBackground(new Background(new BackgroundFill(Color.LIGHTGRAY, CornerRadii.EMPTY, Insets.EMPTY)));
+		hb.setBackground(new Background(new BackgroundFill(toolBoxColor, CornerRadii.EMPTY, Insets.EMPTY)));
 		
 		buildAxes();//add axes
 		
@@ -128,7 +132,7 @@ public class WorkScene3D {
 		buildCamera();
 		root.getChildren().add(world);
 		subScene = new SubScene(root, 800, 600, true, null);
-		subScene.setFill(Color.SILVER);
+		subScene.setFill(backgroundColor);
 		//subScene.setFill(Color.BLUE);
 		subScene.setCamera(camera);
 		//camera.setFieldOfView(20);
@@ -137,6 +141,46 @@ public class WorkScene3D {
 		handleMouse(subScene);
 		//initMouseControl();
 		//buildSampleMolecule();
+	}
+	public static double getBondScalingDefault() {
+		return bondScalingDefault;
+	}
+	public static int getMaxTrialCells(){
+		return maxTrialCells;
+	}
+	public static String setMaxTrialCells(Integer val){
+		if(val==null || val<=0) {return "Input must be positive integer. No change commited.\n";}
+		maxTrialCells = val;
+		if(val>=10) {return "maxTrialCells >= 10 set. May result in slow performance for tilted cells.\n";}
+		else {return "";}
+	}
+	public static double getBallRadiusAtom(){
+		return ballRadiusAtom;
+	}
+	public static String setBallRadiusAtom(Double val){
+		if(val==null || val<=0) {return "Input must be positive number. No change commited.\n";}
+		ballRadiusAtom = val;
+		return "";
+	}
+	public static int getBondThick(){
+		return bondThick;
+	}
+	public static String setBondThick(Integer val){
+		if(val==null || val<=0) {return "Input must be positive integer. No change commited.";}
+		bondThick = val;
+		return "";
+	}
+	public static Color getToolBoxColor() {
+		return toolBoxColor;
+	}
+	public static void setToolBoxColor(Color toolBoxColor) {
+		WorkScene3D.toolBoxColor = toolBoxColor;
+	}
+	public static Color getBackgroundColor() {
+		return backgroundColor;
+	}
+	public static void setBackgroundColor(Color backgroundColor) {
+		WorkScene3D.backgroundColor = backgroundColor;
 	}
 	public void addAnimate3D(FileDataClass fileData) {
 		if(contAnimate==null) {
@@ -151,7 +195,7 @@ public class WorkScene3D {
 				ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Cannot load animation3D.fxml in WorkScene3D!");
 		    	return;
 			}
-			gp.setBackground(new Background(new BackgroundFill(Color.LIGHTGRAY, CornerRadii.EMPTY, Insets.EMPTY)));
+			gp.setBackground(new Background(new BackgroundFill(toolBoxColor, CornerRadii.EMPTY, Insets.EMPTY)));
 			acp.getChildren().add(gp);
 			AnchorPane.setLeftAnchor(gp, cont3D.getRootVBox().getPrefWidth());
 		}
@@ -343,7 +387,10 @@ public class WorkScene3D {
 		return null;
 	}
 	public void buildGeometry() {
+		
 		if (moleculeGroup==null || iGeoCache == null) return;
+		
+		subScene.setFill(backgroundColor);
 		
 	    //clear world to avoid plotting a lot of things
 		moleculeGroup.getChildren().clear();
@@ -1103,4 +1150,5 @@ public class WorkScene3D {
 		sm.getChildren().addAll(cy1,cy2);
 		return sm;
 	}
+	
 }

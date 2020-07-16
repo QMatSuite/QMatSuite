@@ -34,7 +34,9 @@ import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 import main.MainClass;
-import app.menus.settingtabs.PathsController;
+import app.menus.settingtabs.GeneralSettingController;
+import app.menus.settingtabs.Viewer3DController;
+
 import com.programconst.ProgrammingConsts.SettingsTags;
 
 public class SettingsWindowController implements Initializable {
@@ -43,22 +45,22 @@ public class SettingsWindowController implements Initializable {
     private TreeView<SettingsTags> treeNavigate;
 
     @FXML
-    private Button saveButton;
-
-    @FXML
-    private Button saveCloseButton;
-
-    @FXML
-    private Button cancelButton;
-
+    private Button saveButton,
+    cancelButton,
+    saveCloseButton;
+    
     @FXML
     private BorderPane borderPaneMain;
     
     private MainClass mainClass;
     
-    private PathsController contPath;
+    private GeneralSettingController contPath;
     
     private AnchorPane panePath;
+    
+    private Viewer3DController cont3d;
+    
+    private AnchorPane pane3d;
     
     public SettingsWindowController(MainClass mc) {
     	mainClass = mc;
@@ -70,14 +72,21 @@ public class SettingsWindowController implements Initializable {
 		TreeItem<SettingsTags> treeRoot = new TreeItem<SettingsTags>(SettingsTags.Settings);
 		treeNavigate.setRoot(treeRoot);treeNavigate.setShowRoot(false);//treeRoot.setExpanded(true);
 		//tree items
-		treeRoot.getChildren().add(new TreeItem<SettingsTags>(SettingsTags.Paths));
-		treeRoot.getChildren().add(new TreeItem<SettingsTags>(SettingsTags.Viewer3D));
+		treeRoot.getChildren().add(new TreeItem<SettingsTags>(SettingsTags.General));
+		TreeItem<SettingsTags> tiDefault = new TreeItem<SettingsTags>(SettingsTags.Viewer3D);
+		treeRoot.getChildren().add(tiDefault);
+		
 		
 		try {
-			contPath = new PathsController(mainClass);
-			FXMLLoader fxmlLoader1 = new FXMLLoader(getClass().getClassLoader().getResource("app/menus/settingtabs/paths.fxml"));
+			contPath = new GeneralSettingController(mainClass);
+			FXMLLoader fxmlLoader1 = new FXMLLoader(getClass().getClassLoader().getResource("app/menus/settingtabs/generalSetting.fxml"));
 			fxmlLoader1.setController(contPath);
 			panePath = fxmlLoader1.load();
+			
+			cont3d = new Viewer3DController(mainClass);
+			fxmlLoader1 = new FXMLLoader(getClass().getClassLoader().getResource("app/menus/settingtabs/viewer3d.fxml"));
+			fxmlLoader1.setController(cont3d);
+			pane3d = fxmlLoader1.load();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -88,33 +97,34 @@ public class SettingsWindowController implements Initializable {
 			
 			
 			switch(newValue.getValue()) {
-				case Paths:
+				case General:
 					borderPaneMain.setCenter(panePath);
 					BorderPane.setAlignment(panePath, Pos.TOP_LEFT);
 					//panePath.setStyle("-fx-background-color: blue");
 					break;
 				case Viewer3D:
+					borderPaneMain.setCenter(pane3d);
+					BorderPane.setAlignment(pane3d, Pos.TOP_LEFT);
 					break;
 				default:
 			}
 		});
-
-	    saveButton.setOnAction((event) -> {
-	    	saveChanges();
+		treeNavigate.getSelectionModel().select(tiDefault);
+		
+		saveButton.setOnAction((event) -> {
+			saveChanges();
+		});
+	    cancelButton.setOnAction((event) -> {
+	    	closeStage();
 		});
 	    saveCloseButton.setOnAction((event) -> {
 	    	saveChanges();
 	    	closeStage();
 		});
-	    cancelButton.setOnAction((event) -> {
-	    	cancelChanges();
-		});
-	}
-	private void cancelChanges() {
-		//to be done later
 	}
 	private void saveChanges() {
-		//to be done later
+		contPath.saveChanges();
+		cont3d.saveChanges();
 	}
 	private void closeStage() {
         Stage stage  = (Stage) borderPaneMain.getScene().getWindow();
