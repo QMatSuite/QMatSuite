@@ -320,7 +320,7 @@ public class InputGeoElementsController extends InputController{
     		elemData.set(i, ele2);
     		
     		if(mainClass.projectManager.getPseudoLibPath()!=null && libFolderPath!=null) {
-    			iGeo.pseudodir = mainClass.projectManager.getPseudoLibPath()+File.separator+libFolderPath;
+    			iGeo.setPseudodir(mainClass.projectManager.getPseudoLibPath()+File.separator+libFolderPath);
 	    	}
 		}
     	

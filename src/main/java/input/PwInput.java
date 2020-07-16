@@ -190,10 +190,11 @@ public class PwInput extends QeInput{
 			setValue("SYSTEM","nat",new WrapperInteger(ia1.atomList.size()));
 			setValue("SYSTEM","ntyp",new WrapperInteger(ia1.elemListAll.size()));
 			
-			if(ia1.pseudodir!=null) {
+			setRequiredAndWrite("CONTROL","pseudo_dir",true,true);
+			if(ia1.getPseudodir()!=null) {
 				//*****to solve the issue of QE 6.4.1 windows version
 				//*****careful when cross platform
-				setValue("CONTROL","pseudo_dir",new WrapperString(ia1.pseudodir.replace("\\", "/")));
+				setValue("CONTROL","pseudo_dir",new WrapperString(ia1.getPseudodir().replace("\\", "/")));
 			}
 					
 			setRequiredAndWrite("ATOMIC_SPECIES","body",true,true);

@@ -17,16 +17,18 @@
    <bottom>
       <GridPane BorderPane.alignment="CENTER">
          <columnConstraints>
-            <ColumnConstraints hgrow="ALWAYS" minWidth="10.0" prefWidth="207.0" />
-            <ColumnConstraints hgrow="SOMETIMES" maxWidth="216.0" minWidth="10.0" prefWidth="44.5" />
-            <ColumnConstraints hgrow="SOMETIMES" maxWidth="144.5" minWidth="10.0" prefWidth="56.5" />
+            <ColumnConstraints hgrow="ALWAYS" maxWidth="140.0" minWidth="10.0" prefWidth="83.5" />
+            <ColumnConstraints hgrow="ALWAYS" maxWidth="207.5" minWidth="10.0" prefWidth="127.5" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="216.0" minWidth="10.0" prefWidth="46.5" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="144.5" minWidth="10.0" prefWidth="55.5" />
          </columnConstraints>
          <rowConstraints>
             <RowConstraints minHeight="10.0" vgrow="SOMETIMES" />
          </rowConstraints>
          <children>
-            <Button fx:id="buttonSave" mnemonicParsing="false" text="Save" GridPane.columnIndex="1" />
-            <Button fx:id="buttonCancel" mnemonicParsing="false" text="Cancel" GridPane.columnIndex="2" />
+            <Button fx:id="buttonSave" mnemonicParsing="false" text="Save" GridPane.columnIndex="2" />
+            <Button fx:id="buttonCancel" mnemonicParsing="false" text="Cancel" GridPane.columnIndex="3" />
+            <Button fx:id="buttonClearAll" mnemonicParsing="false" text="Clear All" />
          </children>
          <BorderPane.margin>
             <Insets bottom="5.0" />
