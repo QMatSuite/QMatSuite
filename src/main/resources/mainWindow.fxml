@@ -26,12 +26,6 @@
                 <Menu fx:id="menuFile" mnemonicParsing="false" text="File">
                   <items>
                         <MenuItem fx:id="menuSaveProjectAs" mnemonicParsing="false" text="Save as..." />
-                        <MenuItem fx:id="menuLoadProject" mnemonicParsing="false" text="Load project" />
-                    <Menu fx:id="menuFile" mnemonicParsing="false" text="Examples">
-                      <MenuItem mnemonicParsing="false" text="Si" />
-                      <MenuItem mnemonicParsing="false" text="H2O" />
-                    </Menu>
-                    <MenuItem mnemonicParsing="false" text="Close" />
                   </items>
                 </Menu>
                 <Menu mnemonicParsing="false" text="Job control">

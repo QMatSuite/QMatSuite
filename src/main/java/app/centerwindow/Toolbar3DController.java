@@ -47,7 +47,8 @@ public class Toolbar3DController implements Initializable{
 	@FXML private TextField tfy;
 	@FXML private TextField tfz;
 	@FXML private Button btUpd,
-	buttonResetView;
+	buttonResetView,
+	buttonRefresh;
 	@FXML private RadioButton radio1No,
 	radio2Cryst,
 	radio3Cart;
@@ -65,7 +66,7 @@ public class Toolbar3DController implements Initializable{
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
 		sliderBondScaling.setMin(0.8);sliderBondScaling.setMax(1.3);
-		sliderBondScaling.setValue(WorkScene3D.bondScalingDefault);
+		sliderBondScaling.setValue(WorkScene3D.getBondScalingDefault());
 		sliderBondScaling.setMajorTickUnit(0.1);
 		//sliderBondScaling.setMinorTickCount(3);
 		sliderBondScaling.setSnapToTicks(true);
@@ -125,6 +126,10 @@ public class Toolbar3DController implements Initializable{
             }
 	    });
 		radio1No.setSelected(true);
+		
+		buttonRefresh.setOnAction((event) -> {
+			ws3d.buildGeometry();
+		});
 		//
 		btUpd.setText("plot");
 		btUpd.setOnAction((event) -> {

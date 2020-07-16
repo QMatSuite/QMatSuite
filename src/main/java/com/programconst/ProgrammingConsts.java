@@ -22,7 +22,7 @@ package com.programconst;
 public interface ProgrammingConsts {
 	public enum SettingsTags{
 		Settings,//root, not visible
-		Paths,
+		General,
 		Viewer3D
 	}
 	public enum PathSettings{

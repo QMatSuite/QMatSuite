@@ -95,12 +95,9 @@ public class MainWindowController implements Initializable{
 	@FXML private BorderPane basePane;
 	
     @FXML private Menu menuFile;
-    
-    
-    
+
     @FXML private MenuItem menuAbout,
-    menuSaveProjectAs,
-    menuLoadProject;
+    menuSaveProjectAs;
     
     @FXML private MenuItem stopCurrentJob,
     stopAllJobs,
@@ -782,19 +779,6 @@ public class MainWindowController implements Initializable{
 				mainClass.projectManager.saveActiveProjectInMultipleFiles(selectedDir);
 			}
 		});
-		menuLoadProject.setOnAction((event) -> {
-//			File wsDir = getWorkSpaceDir();
-//			if(wsDir==null || !wsDir.canWrite()) {return;}
-//			
-//			FileChooser fileChooser = new FileChooser();
-//			fileChooser.setInitialDirectory(wsDir);
-//			fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("project files", "*.proj"));
-//			
-//			File selectedFile = fileChooser.showOpenDialog((Stage)rootPane.getScene().getWindow());
-//			
-//			loadProject(selectedFile);
-			
-		});
 		menuAbout.setOnAction((event) -> {
 			Alert alert1 = new Alert(AlertType.INFORMATION);
 	    	alert1.setTitle("License");
@@ -815,6 +799,7 @@ public class MainWindowController implements Initializable{
         stageSettings.initModality(Modality.APPLICATION_MODAL);
         stageSettings.initStyle(StageStyle.DECORATED);
         stageSettings.setScene(sceneSettings);
+        stageSettings.setResizable(false);
         
 		settingsMenuItem.setOnAction((event) -> {
 	        stageSettings.showAndWait();

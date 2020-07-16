@@ -27,13 +27,13 @@ import javafx.fxml.Initializable;
 import javafx.scene.layout.AnchorPane;
 import main.MainClass;
 
-public class PathsController implements Initializable{
+public class GeneralSettingController implements Initializable{
 
 	@FXML private AnchorPane acp;
 
     private MainClass mainClass;
     
-    public PathsController(MainClass mc) {
+    public GeneralSettingController(MainClass mc) {
     	mainClass = mc;
 	}
 
@@ -41,5 +41,7 @@ public class PathsController implements Initializable{
 	public void initialize(URL arg0, ResourceBundle arg1) {
 		
 	}
-
+	public void saveChanges() {
+		
+	}
 }
