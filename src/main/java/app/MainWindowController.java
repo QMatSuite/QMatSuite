@@ -79,6 +79,7 @@ import app.menus.SettingsWindowController;
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumOccupations;
 import com.consts.Constants.EnumStep;
+import com.env.SystemInfo;
 import com.error.ErrorMsg;
 import com.error.ShowAlert;
 import com.programconst.Coloring;
@@ -297,11 +298,15 @@ public class MainWindowController implements Initializable{
 			File wsDir = mainClass.projectManager.getWorkSpaceDir();
 			
 			if(wsDir==null || !wsDir.canRead()) {return;}
-			
-			try {
-				Desktop.getDesktop().open(wsDir);
-			} catch (IOException e) {
-				e.printStackTrace();
+			if( Desktop.isDesktopSupported() )
+			{
+				new Thread(() -> {
+				   try {
+				       Desktop.getDesktop().open(wsDir);
+				   } catch (IOException e1) {
+				       e1.printStackTrace();
+				   }
+			       }).start();
 			}
 		});
         buttonOpenWorkSpace.setOnAction((event) -> {
@@ -362,13 +367,16 @@ public class MainWindowController implements Initializable{
         	if(qeDir==null || !qeDir.canRead()) {
         		
         		return;}
-  			
-  			try {
-  				//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", qeDir.toString());
-  				Desktop.getDesktop().open(qeDir);
-  			} catch (IOException e) {
-  				e.printStackTrace();
-  			}
+        	if( Desktop.isDesktopSupported() )
+			{
+			    new Thread(() -> {
+				   try {
+				       Desktop.getDesktop().open(qeDir);
+				   } catch (IOException e1) {
+				       e1.printStackTrace();
+				   }
+			       }).start();
+			}
   		});
 		openQEPathButton.setOnAction((event) -> {
 
@@ -403,13 +411,16 @@ public class MainWindowController implements Initializable{
         	if(ppDir==null || !ppDir.canRead()) {
         		
         		return;}
-  			
-  			try {
-  				//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", qeDir.toString());
-  				Desktop.getDesktop().open(ppDir);
-  			} catch (IOException e) {
-  				e.printStackTrace();
-  			}
+        	if( Desktop.isDesktopSupported() )
+			{
+			    new Thread(() -> {
+				   try {
+				       Desktop.getDesktop().open(ppDir);
+				   } catch (IOException e1) {
+				       e1.printStackTrace();
+				   }
+			       }).start();
+			}
   		});
         //open folder chooser for pseudoLib
     	buttonOpenLib.setOnAction((event) -> {	
@@ -722,15 +733,29 @@ public class MainWindowController implements Initializable{
 			}
 			
 			final String postFixCommand;
-			if(new File(mainClass.projectManager.qePath+File.separator+"pw.exe").canExecute()) {
+			if(SystemInfo.isWindows()) {
+				if(!new File(mainClass.projectManager.qePath+File.separator+"pw.exe").canExecute()) {
+					ShowAlert.showAlert(AlertType.INFORMATION, "Error", 
+							"Windows detected. Cannot execute job because cannot find pw.exe in the qePath. Please verify the qePath!");
+					return;
+				}
 				postFixCommand = ".exe";
-			}else if(new File(mainClass.projectManager.qePath+File.separator+"pw.x").canExecute()) {
+			}else if(SystemInfo.isUnix()) {
+				if(!new File(mainClass.projectManager.qePath+File.separator+"pw.x").canExecute()) {
+					ShowAlert.showAlert(AlertType.INFORMATION, "Error", 
+							"Linux/Unix detected. Cannot execute job because cannot find pw.x in the qePath. Please verify the qePath!");
+					return;
+				}
 				postFixCommand = ".x";
 			}
-			else {
+			else if(SystemInfo.isMac()){
 				ShowAlert.showAlert(AlertType.INFORMATION, "Error", 
-						"Cannot execute job because cannot find pw.x/pw.exe in the qePath. Please verify the qePath in the Settings menu!");
-				postFixCommand=null;
+						"Mac detected. Currently not supported.");
+				return;
+			}
+			else {	
+				ShowAlert.showAlert(AlertType.INFORMATION, "Error", 
+						"Unrecongized operating system: "+SystemInfo.getOSName()+". Cannot run job.");
 				return;
 			}
 			
@@ -837,7 +862,8 @@ public class MainWindowController implements Initializable{
 			boolean isValid = qeDir.canRead();
 			if(qeDir.canRead()) {
 				switch(ps) {
-					case qe:isValid = ((new File(qeDir,"pw.x")).exists() || (new File(qeDir,"pw.exe")).exists());
+					case qe:isValid = ((SystemInfo.isUnix() && (new File(qeDir,"pw.x")).exists() )
+							|| (SystemInfo.isWindows() &&(new File(qeDir,"pw.exe")).exists()));
 							break;
 					case pplib:isValid = ((new File(qeDir,DefaultFileNames.pseudoDojoDir)).exists() || 
 							(new File(qeDir,DefaultFileNames.psLibraryDir)).exists() ||

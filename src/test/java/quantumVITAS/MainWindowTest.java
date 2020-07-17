@@ -30,13 +30,13 @@ import org.testfx.framework.junit5.ApplicationTest;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseButton;
 import javafx.stage.Stage;
-import main.Main;
+import main.MainApplication;
 
 public abstract class MainWindowTest extends ApplicationTest{
 	@BeforeAll
 	public static void setUpClass() throws Exception {
-		Main.setTestMode(true);
-		ApplicationTest.launch(Main.class);
+		MainApplication.setTestMode(true);
+		ApplicationTest.launch(MainApplication.class);
 	}
 
 	@BeforeEach

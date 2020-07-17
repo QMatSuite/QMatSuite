@@ -32,7 +32,7 @@ public class MainClass {
 	}
 	
 	public boolean isTestMode() {
-		return Main.isTestMode();
+		return MainApplication.isTestMode();
 	}
 
 }

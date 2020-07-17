@@ -50,17 +50,19 @@ public class JobNode implements Runnable {
 	
 	@Override
 	public void run() {
+		if(workingDir==null || stdInOutFileStem==null){return;}
+		
 		ProcessBuilder builder = null;
 		boolean boolError = false;
 		
 		builder = new ProcessBuilder();
-		if(workingDir!=null) {builder.directory(new File(workingDir));}
-        builder.command(commandName);
-        if(stdInOutFileStem!=null){
-        	builder.redirectInput(new File(workingDir,stdInOutFileStem + ProgrammingConsts.stdinExtension));
+		
+		builder.directory(new File(workingDir));
+		builder.command(commandName,"-inp",stdInOutFileStem + ProgrammingConsts.stdinExtension);
+        	//builder.redirectInput(new File(workingDir,stdInOutFileStem + ProgrammingConsts.stdinExtension));
         	builder.redirectOutput(new File(workingDir,stdInOutFileStem + ProgrammingConsts.stdoutExtension));
         	builder.redirectError(new File(workingDir,stdInOutFileStem + ProgrammingConsts.stderrExtension));
-    	}
+    	
         try {
             synchronized (this) {
                 this.jobProcess = builder.start();
@@ -85,7 +87,14 @@ public class JobNode implements Runnable {
         }
     }
 	public synchronized String getName() {
-        return commandName;
+		String workName;
+		try {
+			workName = (new File(workingDir)).getParentFile().getName() +File.separator+ (new File(workingDir)).getName();
+		}
+		catch(Exception e) {
+			workName = "Unknown.";
+		}
+        return commandName+": step "+stdInOutFileStem+" from "+workName;
     }
 
 }

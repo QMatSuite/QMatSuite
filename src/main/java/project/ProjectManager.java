@@ -52,7 +52,6 @@ import com.error.ErrorMsg;
 import com.error.ShowAlert;
 import com.programconst.DefaultFileNames;
 import com.programconst.DefaultFileNames.SettingKeys;
-import com.programconst.ProgrammingConsts.PathSettings;
 import com.pseudopot.PseudoPotential;
 
 import input.ContainerInputString;

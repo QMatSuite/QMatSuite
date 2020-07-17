@@ -289,11 +289,15 @@ public class OutputViewerController implements Initializable{
 		});
 		openAsButton.setOnAction((event) -> {
 			if(inoutFiles==null || !inoutFiles.canRead()) return;
-			try {
-				Desktop.getDesktop().open(inoutFiles);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+			if( Desktop.isDesktopSupported() )
+			{
+			    new Thread(() -> {
+				   try {
+				       Desktop.getDesktop().open(inoutFiles);
+				   } catch (IOException e1) {
+				       e1.printStackTrace();
+				   }
+			       }).start();
 			}
 		});
 		buttonSaveGeo.setDisable(true);
