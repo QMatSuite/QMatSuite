@@ -64,7 +64,7 @@ public class FirstMainWindowTest extends MainWindowTest{
 	@Order(2)
 	public void testSetupWorkSpace() throws TimeoutException {
 		clickOn("#buttonOpenWorkSpace");
-		Label textWorkSpace = (Label) lookup("#textWorkSpace").queryLabeled();
+		TextField textWorkSpace = (TextField) lookup("#textWorkSpace").query();
 		Assertions.assertTrue(textWorkSpace.getText().contains("testfx"),"textWorkSpace string should contain 'testfx' in the folder name");
 	}
 	
