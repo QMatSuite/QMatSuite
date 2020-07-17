@@ -20,61 +20,10 @@ package main;
 
 
 import javafx.application.Application;
-import javafx.application.Platform;
-import javafx.stage.Stage;
-import app.MainWindowController;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
-import javafx.fxml.FXMLLoader;
 
-
-public class Main extends Application {
-	private MainWindowController contMain;
-	private MainClass mainClass;
-	private static boolean isTest=false;
-	
-	public static boolean isTestMode() {
-		return isTest;
-	}
-	public static void setTestMode(boolean bl) {
-		isTest = bl;
-	}
-	
-	@Override
-	public void start(Stage primaryStage) {
-		System.out.println("QuantumVITAS is launching.");
-//		primaryStage.setScene(new Scene(new Label("Hello World!")));
-//      primaryStage.show();
-		try {
-			mainClass = new MainClass();
-			contMain = new MainWindowController(mainClass);
-			FXMLLoader fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("mainWindow.fxml"));
-			fxmlLoader.setController(contMain);
-            Parent root = fxmlLoader.load();
-            
-			Scene scene = new Scene(root,1280,800);
-			scene.getStylesheets().add(getClass().getClassLoader().getResource("application.css").toExternalForm());
-			
-			primaryStage.setScene(scene);
-			primaryStage.setOnCloseRequest(e->{
-				System.out.println("QuantumVITAS is closing.");
-				//close custom threads
-			    if(mainClass!=null) {mainClass.jobManager.stop();}
-			    if(contMain!=null) {contMain.killAllThreads();}
-			    //standard closing
-				Platform.exit();
-				System.exit(0);
-			});
-
-			primaryStage.show();
-		} catch(Exception e) {
-			e.printStackTrace();
-			Platform.exit();
-			System.exit(0);
-		}
-	}
+public class Main{
 	public static void main(String[] args) {
-		
-		Application.launch(args);
+		Application.launch(MainApplication.class);
+		//LauncherImpl.launchApplication(MainApplication.class, SplashScreenPreloader.class, args);
 	}
 }
