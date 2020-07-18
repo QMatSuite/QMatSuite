@@ -4,7 +4,7 @@ QuantumVITAS (Quantum Visualization Interacting Toolkit for Ab-initio Simulation
 
 [![OpenHub](https://www.openhub.net/p/quantumVITAS/widgets/project_thin_badge.gif)](https://www.openhub.net/p/quantumVITAS)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-![GitHub All Releases](https://img.shields.io/github/downloads/quantumVITAS/quantumVITAS/total)
+![GitHub All Releases](https://img.shields.io/github/downloads-pre/quantumVITAS/quantumVITAS/total)
 [![Build Status](https://travis-ci.com/quantumVITAS/quantumVITAS.svg?branch=master)](https://travis-ci.com/quantumVITAS/quantumVITAS)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/e587f90f42f64b63bb3065b40b138e8c)](https://www.codacy.com/gh/quantumVITAS/quantumVITAS?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=quantumVITAS/quantumVITAS&amp;utm_campaign=Badge_Grade)
 [![codecov](https://codecov.io/gh/quantumVITAS/quantumVITAS/branch/master/graph/badge.svg)](https://codecov.io/gh/quantumVITAS/quantumVITAS)
