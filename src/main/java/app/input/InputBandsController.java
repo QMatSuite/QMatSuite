@@ -27,10 +27,6 @@ import com.consts.Constants.EnumKUnitBands;
 import com.consts.Constants.EnumNumCondition;
 import com.consts.Constants.EnumStep;
 import agent.InputAgentBands;
-import agent.InputAgentGeo;
-import app.input.geo.InputGeoAtomsController;
-import app.input.geo.InputGeoCellController;
-import app.input.geo.InputGeoElementsController;
 import app.input.geo.PasteExternalWindowController;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -132,7 +128,7 @@ public class InputBandsController extends InputController{
 		setupTable();
 		
 		try {
-			contPaste = new PasteExternalWindowController(mainClass, EnumStep.BANDS);
+			contPaste = new PasteExternalWindowController(mainClass, enumStep);
 			FXMLLoader fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/input/geo/PasteExternalWindow.fxml"));
 			fxmlLoader.setController(contPaste);
 			borderPaste = fxmlLoader.load();
@@ -247,7 +243,7 @@ public class InputBandsController extends InputController{
     private void clearInput() {
     	statusTextField.setText("");
     	textKLabel.setText("");textKx.setText("");textKy.setText("");textKz.setText("");
-		textKz.setText("");
+    	textNBands.setText("");
 		tableKPath.getSelectionModel().clearSelection();
     }
     public void loadProjectParameters() {

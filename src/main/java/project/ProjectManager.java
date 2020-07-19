@@ -31,7 +31,6 @@ import java.io.ObjectOutputStream;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import agent.InputAgent;
@@ -45,7 +44,6 @@ import agent.InputAgentScf;
 import agent.InputAgentTddft;
 import app.input.CellParameter;
 import app.input.geo.Atom;
-
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
 import com.error.ErrorMsg;
@@ -53,7 +51,6 @@ import com.error.ShowAlert;
 import com.programconst.DefaultFileNames;
 import com.programconst.DefaultFileNames.SettingKeys;
 import com.pseudopot.PseudoPotential;
-
 import input.ContainerInputString;
 import input.QeInput;
 
@@ -179,8 +176,8 @@ public class ProjectManager{
 			//set default "out of box" paths for qe and pseudo
 			String homePath = new File("").getAbsolutePath();
 			if(homePath!=null) {
-				writeGlobalSettings(SettingKeys.qePath.toString(), homePath+File.separator+DefaultFileNames.qeDirDefault);
-				writeGlobalSettings(SettingKeys.pseudolibroot.toString(), homePath+File.separator+DefaultFileNames.pseudoDirDefault);
+				writePathSettings(SettingKeys.qePath.toString(), homePath+File.separator+DefaultFileNames.qeDirDefault);
+				writePathSettings(SettingKeys.pseudolibroot.toString(), homePath+File.separator+DefaultFileNames.pseudoDirDefault);
 			}
 	    } catch (IOException e1) {
 	    	ShowAlert.showAlert(AlertType.INFORMATION, "Error", "IOException while creating setting file.");
@@ -217,7 +214,19 @@ public class ProjectManager{
 		}
 		return textOut;
 	}
-	public void writeGlobalSettings(String key, String msg) {
+	public String writePathSettings(String key, String msg) {
+		if(msg==null) {return null;}//should not be null
+		//use relative path if it is in the home folder of this software
+		String homePath = new File("").getAbsolutePath();
+		String msgPath = new File(msg).getAbsolutePath();
+		if(msgPath.startsWith(homePath)){
+			//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", msg+" is in the current folder");
+			msg = "."+msgPath.substring(homePath.length());
+		}
+		writeGlobalSettings(key, msg);
+		return msg;
+	}
+	private void writeGlobalSettings(String key, String msg) {
 		//go to current directory
 		File stFile = new File(DefaultFileNames.defaultSettingFile);
 		for(int i=0;i<3;i++) {

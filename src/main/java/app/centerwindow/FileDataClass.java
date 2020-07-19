@@ -23,7 +23,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Scanner;
-
 import com.consts.ChemicalElements;
 import com.consts.Constants.EnumFileCategory;
 import com.consts.Constants.EnumStep;
@@ -33,7 +32,6 @@ import com.consts.Constants.EnumUnitCellParameter;
 import com.consts.PhysicalConstants;
 import com.error.ShowAlert;
 import com.programconst.ProgrammingConsts;
-
 import agent.InputAgentGeo;
 import app.input.CellParameter;
 import app.input.geo.Atom;
@@ -59,6 +57,8 @@ public class FileDataClass {
 	
 	private ArrayList<ArrayList<Double>> tddftArray;
 	private ArrayList<String> tddftHeader;
+	
+	private ArrayList<ArrayList<Double>> dataMd;//4*n dimension
 	
 	public Double fermiDos=null;
 	public EnumFileCategory fileCategory=null;
@@ -112,6 +112,12 @@ public class FileDataClass {
 		tddftArray = new ArrayList<ArrayList<Double>>();
 		tddftHeader = new ArrayList<String>();
 		iGeoTemp = new InputAgentGeo();
+		
+		dataMd = new ArrayList<ArrayList<Double>>();//DO NOT CLEAR dataMd itself!
+		dataMd.add(new ArrayList<Double>());//time in ps
+		dataMd.add(new ArrayList<Double>());//Ekin
+		dataMd.add(new ArrayList<Double>());//temperature
+		dataMd.add(new ArrayList<Double>());//total energy (should be constant)
 	}
 	public ArrayList<ArrayList<ArrayList<Double>>> getBandsDatArray(){
 		return this.bandsDatArray;
@@ -142,6 +148,9 @@ public class FileDataClass {
 		}
 		for(ArrayList<Atom> ard:atomicPositions) {
 			if(ard!=null) {ard.clear();}
+		}
+		for(ArrayList<Double> arr:dataMd) {
+			arr.clear();//DO NOT CLEAR dataMd itself!
 		}
 		energyArray.clear();
 		fermiLevel.clear();
@@ -377,6 +386,52 @@ public class FileDataClass {
 		}
 		return true;
 	}
+	private void setDataMd(int indexMd, String strLine, int stepNum) {
+		//indexMd:
+		//0, time in ps
+		//1, Ekin in Ry
+		//2, temperature in K
+		//3, total energy (should be constant) in Ry
+		if(strLine==null || strLine.trim().isEmpty() || stepNum<0) {return;}
+		Double valTmp = null;
+		final int indexOfNumber;
+		if(indexMd==0) {
+			indexOfNumber = 2;
+		}
+		else if(indexMd==1) {
+			indexOfNumber = 4;
+		}
+		else if(indexMd==2) {
+			indexOfNumber = 2;
+		}
+		else if(indexMd==3) {
+			indexOfNumber = 5;
+		}
+		else {
+			indexOfNumber = -1;
+			return;
+		}
+		
+		String[] splitted = strLine.trim().split("\\s+");//split the string by whitespaces
+		try {
+			valTmp = Double.valueOf(splitted[indexOfNumber]);
+			if(valTmp==null) {valTmp = Double.NaN;}
+		}catch(Exception e) {
+			valTmp = Double.NaN;
+		}
+		
+		int sz = this.dataMd.get(indexMd).size();
+		if(stepNum < sz) {this.dataMd.get(indexMd).set(stepNum, valTmp);}
+		else if(stepNum == sz) {this.dataMd.get(indexMd).add(valTmp);}
+		else {
+			//the following should not happen unless the output file is corrupted.
+			for(int i=sz;i<stepNum;i++) {
+				this.dataMd.get(indexMd).add(Double.NaN);
+			}
+			//after this, this.dataMd.get(indexMd).size()==stepNum
+			this.dataMd.get(indexMd).add(valTmp);
+		}
+	}
 	public String loadStdOut(File inoutFiles) {//return non empty string when error. Return "" (empty string) when no error
 
 		this.clearAll();
@@ -399,6 +454,8 @@ public class FileDataClass {
 		    String argCache=null;//caches the argument like ATOMIC_POSITIONS (crystal)
 		    
 		    int lineCount=0;
+		    int iterationMD = -1;
+		    
 		    while (sc.hasNextLine()) {
 		    	lineCount++;
 		    	strTmp = sc.nextLine();
@@ -412,6 +469,7 @@ public class FileDataClass {
 		    	if(recordCellPara) {
 		    		recordCellPara = this.addCellParameter(strTmp,argCache);
 		    	}
+		    	
 		    	if(strTmp.contains("plot nbnd")) {
 		    		this.isPwBands = true;
 		    	}
@@ -429,6 +487,23 @@ public class FileDataClass {
 		    	}
 		    	if(strTmp.trim().startsWith("a(") && strTmp.contains(") = (") && !startCalc) {
 		    		this.parseInitialCellPara(strTmp);
+		    	}
+		    	if(this.isMD) {
+			    	if(strTmp.contains("Entering Dynamics") && strTmp.contains("iteration")) {
+			    		iterationMD++;
+			    	}
+			    	if(strTmp.contains("time") && strTmp.contains("pico-seconds") && strTmp.contains("=")) {
+			    		setDataMd(0,strTmp,iterationMD);
+			    	}
+			    	if(strTmp.contains("kinetic energy") && strTmp.contains("Ekin") && strTmp.contains("=")) {
+			    		setDataMd(1,strTmp,iterationMD);
+			    	}
+			    	if(strTmp.contains("temperature") && strTmp.contains("=")) {
+			    		setDataMd(2,strTmp,iterationMD);
+			    	}
+			    	if(strTmp.contains("Ekin + Etot (const)") && strTmp.contains("=")) {
+			    		setDataMd(3,strTmp,iterationMD);
+			    	}
 		    	}
 		    	if(strTmp.contains("ATOMIC_POSITIONS")) {
 		    		startCalc = true;
@@ -1120,6 +1195,31 @@ public class FileDataClass {
 				}
 			}
 			
+			if(isMD) {
+				//indexMd:
+				//0, time in ps
+				//1, Ekin in Ry
+				//2, temperature in K
+				//3, total energy (should be constant) in Ry
+				strTmp+="Time in ps: ";
+				for(int i=0;i<this.dataMd.get(0).size();i++) {
+					strTmp+=Double.toString(this.dataMd.get(0).get(i))+",";
+				}
+				strTmp+="\nKinetic Energy in Ry: ";
+				for(int i=0;i<this.dataMd.get(1).size();i++) {
+					strTmp+=Double.toString(this.dataMd.get(1).get(i))+",";
+				}
+				strTmp+="\nTemperature in K: ";
+				for(int i=0;i<this.dataMd.get(2).size();i++) {
+					strTmp+=Double.toString(this.dataMd.get(2).get(i))+",";
+				}
+				strTmp+="\nTotal energy (constant) in Ry: ";
+				for(int i=0;i<this.dataMd.get(3).size();i++) {
+					strTmp+=Double.toString(this.dataMd.get(3).get(i))+",";
+				}
+				strTmp+="\n";
+			}
+			
 		
 		}
 		strTmp+="\n";
@@ -1136,5 +1236,8 @@ public class FileDataClass {
 	}
 	public ArrayList<Double> getTotalPressure() {
 		return totalPressure;
+	}
+	public ArrayList<ArrayList<Double>> getDataMd(){
+		return this.dataMd;
 	}
 }
