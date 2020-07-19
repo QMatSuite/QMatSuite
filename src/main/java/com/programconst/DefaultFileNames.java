@@ -36,6 +36,8 @@ public interface DefaultFileNames {
 	public final String pseudoDirDefault = "pseudoPotLibs";
 	public final String qeDirDefault = "qe6.4.1_win"+File.separator+"qe";
 	
+	public final String outDir = "."+File.separator+"outdir";
+	
 	public enum SettingKeys {
 		workspace,
 		pseudolibroot,

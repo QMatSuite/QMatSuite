@@ -90,28 +90,29 @@
             </BorderPane>
             <GridPane hgap="3.0" prefWidth="350.0" vgap="3.0">
                <children>
-                  <ComboBox fx:id="comboKPathUnit" prefHeight="25.0" prefWidth="77.0" GridPane.rowIndex="1" />
-                  <Button fx:id="infoKPath" mnemonicParsing="false" text="i" GridPane.columnIndex="7" GridPane.rowIndex="1" />
-                  <Label text="kx" GridPane.columnIndex="2" />
-                  <Label text="Unit" />
-                  <Label text="ky" GridPane.columnIndex="3" />
-                  <Label text="kz" GridPane.columnIndex="4" />
-                  <Label text="n points" GridPane.columnIndex="5" />
-                  <ToolBar prefHeight="35.0" prefWidth="132.0" GridPane.columnSpan="7" GridPane.rowIndex="2">
+                  <ComboBox fx:id="comboKPathUnit" prefHeight="25.0" prefWidth="77.0" GridPane.rowIndex="2" />
+                  <Button fx:id="infoKPath" mnemonicParsing="false" text="i" GridPane.columnIndex="7" GridPane.rowIndex="2" />
+                  <Label text="kx" GridPane.columnIndex="2" GridPane.rowIndex="1" />
+                  <Label text="Unit" GridPane.rowIndex="1" />
+                  <Label text="ky" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+                  <Label text="kz" GridPane.columnIndex="4" GridPane.rowIndex="1" />
+                  <Label text="n points" GridPane.columnIndex="5" GridPane.rowIndex="1" />
+                  <ToolBar prefHeight="35.0" prefWidth="132.0" GridPane.columnSpan="7" GridPane.rowIndex="3">
                      <items>
                         <Button fx:id="buttonDelete" mnemonicParsing="false" text="Delete" />
                         <Button fx:id="buttonEdit" mnemonicParsing="false" text="Update" />
                         <Button fx:id="buttonClearInput" mnemonicParsing="false" text="Clear input" />
                      </items>
                   </ToolBar>
-                  <TextField fx:id="textKx" GridPane.columnIndex="2" GridPane.rowIndex="1" />
-                  <TextField fx:id="textKy" GridPane.columnIndex="3" GridPane.rowIndex="1" />
-                  <TextField fx:id="textKz" GridPane.columnIndex="4" GridPane.rowIndex="1" />
-                  <TextField fx:id="textNk" GridPane.columnIndex="5" GridPane.rowIndex="1" />
-                  <Label text="Label" GridPane.columnIndex="1" />
-                  <TextField fx:id="textKLabel" GridPane.columnIndex="1" GridPane.rowIndex="1" />
-                  <Button fx:id="buttonAdd" mnemonicParsing="false" text="Add" GridPane.columnIndex="6" GridPane.rowIndex="1" />
-                  <Label fx:id="statusTextField" prefHeight="17.0" prefWidth="249.0" GridPane.columnSpan="7" GridPane.rowIndex="3" />
+                  <TextField fx:id="textKx" GridPane.columnIndex="2" GridPane.rowIndex="2" />
+                  <TextField fx:id="textKy" GridPane.columnIndex="3" GridPane.rowIndex="2" />
+                  <TextField fx:id="textKz" GridPane.columnIndex="4" GridPane.rowIndex="2" />
+                  <TextField fx:id="textNk" GridPane.columnIndex="5" GridPane.rowIndex="2" />
+                  <Label text="Label" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+                  <TextField fx:id="textKLabel" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+                  <Button fx:id="buttonAdd" mnemonicParsing="false" text="Add" GridPane.columnIndex="6" GridPane.rowIndex="2" />
+                  <Label fx:id="statusTextField" prefHeight="17.0" prefWidth="249.0" GridPane.columnSpan="7" GridPane.rowIndex="4" />
+                  <Button fx:id="buttonPasteExternal" mnemonicParsing="false" text="Paste from external" GridPane.columnSpan="4" />
                </children>
                <columnConstraints>
                   <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="65.0" />
@@ -127,6 +128,7 @@
                   <Insets top="2.0" />
                </padding>
                <rowConstraints>
+                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                   <RowConstraints minHeight="10.0" vgrow="SOMETIMES" />
                   <RowConstraints minHeight="10.0" vgrow="SOMETIMES" />
                   <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />

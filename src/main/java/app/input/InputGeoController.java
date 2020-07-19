@@ -25,6 +25,8 @@ import java.util.ArrayList;
 import java.util.ResourceBundle;
 import com.consts.Constants.EnumStep;
 import com.error.ShowAlert;
+
+import agent.InputAgentGeo;
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -118,7 +120,7 @@ public class InputGeoController extends InputController{
 				fxmlLoader3.setController(contElem);
 				vboxElements = fxmlLoader3.load();
 				
-				contPaste = new PasteExternalWindowController(mainClass);
+				contPaste = new PasteExternalWindowController(mainClass, EnumStep.GEO);
 				FXMLLoader fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/input/geo/PasteExternalWindow.fxml"));
 				fxmlLoader.setController(contPaste);
 				borderPaste = fxmlLoader.load();
@@ -128,6 +130,7 @@ public class InputGeoController extends InputController{
 			}
 			
 	    	//PasteExternalWindowController
+			//******later please generalize this
 	    	Scene scenePaste = new Scene(borderPaste);
 	        Stage stagePaste = new Stage();
 	        stagePaste.setTitle("Paste geometry from external");
@@ -143,7 +146,7 @@ public class InputGeoController extends InputController{
 	    			//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", "Saved.");
 	    			//****be careful here of references. In case of bug, use deepcopy
 	    			//****investigate possible RAM leak here
-	    			mainClass.projectManager.setCurrentGeoAgent(contPaste.getGeoAgent());
+	    			mainClass.projectManager.setCurrentGeoAgent((InputAgentGeo) contPaste.getGeoAgent());
 	    			this.loadProjectParameters();
 	    		}
 			});

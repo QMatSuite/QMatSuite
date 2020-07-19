@@ -612,6 +612,9 @@ public class MainWindowController implements Initializable{
 		contTree.calcTddft.setOnAction((event) -> {
 			openCalc(EnumCalc.TDDFT,true);
 		});
+		contTree.calcCustom.setOnAction((event) -> {
+			ShowAlert.showAlert(AlertType.INFORMATION, "Info", "Customized calculation not yet implemented.");
+		});
 		showInputButton.setOnAction((event) -> {
 			ArrayList<ContainerInputString> cis = mainClass.projectManager.genInputFromAgent();
 			

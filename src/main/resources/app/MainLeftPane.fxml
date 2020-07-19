@@ -32,9 +32,9 @@
                   <MenuButton fx:id="calcMain" mnemonicParsing="false" text="Add calculation" GridPane.columnIndex="1" GridPane.columnSpan="2">
                     <items>
                      <MenuItem fx:id="calcScf" mnemonicParsing="false" text="Single energy" />
-                      <MenuItem fx:id="calcOpt" mnemonicParsing="false" text="optimization" />
+                      <MenuItem fx:id="calcOpt" mnemonicParsing="false" text="Optimization" />
                       <MenuItem fx:id="calcDos" mnemonicParsing="false" text="DOS" />
-                      <MenuItem fx:id="calcBands" mnemonicParsing="false" text="bands" />
+                      <MenuItem fx:id="calcBands" mnemonicParsing="false" text="Bands" />
                       <MenuItem fx:id="calcMd" mnemonicParsing="false" text="MD" />
                       <MenuItem fx:id="calcTddft" mnemonicParsing="false" text="TDDFT" />
                       <MenuItem fx:id="calcCustom" mnemonicParsing="false" text="Custom..." />

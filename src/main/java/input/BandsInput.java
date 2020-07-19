@@ -20,6 +20,7 @@ package input;
 
 
 import com.consts.Constants.EnumNameList;
+import com.programconst.DefaultFileNames;
 
 
 public class BandsInput extends QeInput{
@@ -28,9 +29,9 @@ public class BandsInput extends QeInput{
 		super("bands");
 		sectionDict.put("BANDS", new NameList(EnumNameList.BANDS));
 		sectionDict.get("BANDS").setBoolRequired(true);
-		
+		sectionDict.get("BANDS").addParameter("outdir", new InputValueString("outdir",DefaultFileNames.outDir,true));//always write
 		sectionDict.get("BANDS").addParameter("filband", new InputValueString("filband","bands.out",false));
-
+		
 	}
 	
 }
