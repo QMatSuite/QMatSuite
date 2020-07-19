@@ -19,21 +19,22 @@
  *******************************************************************************/
 package com.programconst;
 
-public interface ProgrammingConsts {
-	public enum SettingsTags{
+public class ProgrammingConsts {
+	private ProgrammingConsts() {}
+	public static enum SettingsTags{
 		Settings,//root, not visible
 		General,
 		Viewer3D
 	}
-	public enum PathSettings{
+	public static enum PathSettings{
 		workspace,
 		qe,
 		pplib
 	}
-	public final String stdinExtension = ".in"; 
-	public final String stdoutExtension = ".out";
-	public final String stderrExtension = ".err";
-	public final String dosExtension = ".dos";
+	public static final String stdinExtension = ".in"; 
+	public static final String stdoutExtension = ".out";
+	public static final String stderrExtension = ".err";
+	public static final String dosExtension = ".dos";
 	
-	public final int maxLinesShownInText = 1000;//beginning 1000, end 1000
+	public static int maxLinesShownInText = 500;//beginning 500, end 500
 }

@@ -43,7 +43,7 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import main.MainClass;
 
-public class Viewer3DController implements Initializable{
+public class Viewer3DController implements Initializable, SettingTabController{
 
 	@FXML
     private AnchorPane acp;

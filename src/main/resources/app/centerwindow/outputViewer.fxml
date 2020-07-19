@@ -6,14 +6,16 @@
 <?import javafx.scene.control.ListView?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.control.ToggleButton?>
 <?import javafx.scene.control.ToolBar?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
-<HBox fx:id="rootHbox" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
-   <children>
+
+<SplitPane dividerPositions="0.17391304347826086" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
+   <items>
       <VBox fx:id="vboxFiles" minWidth="105.0" prefHeight="200.0" prefWidth="115.0">
          <children>
             <Label text="Files" />
@@ -26,7 +28,7 @@
             <ListView fx:id="listFiles" prefHeight="148.0" prefWidth="113.0" VBox.vgrow="SOMETIMES" />
          </children>
       </VBox>
-      <VBox fx:id="vboxMainPlot" HBox.hgrow="ALWAYS">
+      <VBox fx:id="vboxMainPlot">
          <children>
             <HBox>
                <children>
@@ -65,5 +67,5 @@
             <ScrollPane fx:id="displayScroll" VBox.vgrow="ALWAYS" />
          </children>
       </VBox>
-   </children>
-</HBox>
+   </items>
+</SplitPane>

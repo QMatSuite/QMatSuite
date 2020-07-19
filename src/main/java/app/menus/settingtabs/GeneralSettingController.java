@@ -22,14 +22,27 @@ package app.menus.settingtabs;
 
 import java.net.URL;
 import java.util.ResourceBundle;
+
+import com.error.ShowAlert;
+import com.programconst.ProgrammingConsts;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.AnchorPane;
 import main.MainClass;
 
-public class GeneralSettingController implements Initializable{
+public class GeneralSettingController implements Initializable, SettingTabController{
 
-	@FXML private AnchorPane acp;
+	@FXML
+    private AnchorPane acp;
+
+    @FXML
+    private TextField textMaxLines;
+
+    @FXML
+    private Label labelMaxLines;
 
     private MainClass mainClass;
     
@@ -39,9 +52,30 @@ public class GeneralSettingController implements Initializable{
 
 	@Override
 	public void initialize(URL arg0, ResourceBundle arg1) {
-		
+		loadValues();
+	}
+	public void loadValues() {
+		labelMaxLines.setText(Integer.toString(ProgrammingConsts.maxLinesShownInText));
+		textMaxLines.setText(labelMaxLines.getText());
 	}
 	public void saveChanges() {
-		
+
+		try {
+			Integer intTmp = Integer.valueOf(textMaxLines.getText());
+			if(intTmp==null) {
+				ShowAlert.showAlert(AlertType.INFORMATION, "Warning", "Null input for max lines.");
+			}
+			else if(intTmp<=0){
+				ShowAlert.showAlert(AlertType.INFORMATION, "Warning", "Input must be positive integer for max lines.");
+			}
+			else {
+				ProgrammingConsts.maxLinesShownInText = intTmp;
+			}
+		}
+		catch(Exception e) {
+			ShowAlert.showAlert(AlertType.INFORMATION, "Warning", "Input must be integer for max lines.");
+		}
+
+		loadValues();
 	}
 }

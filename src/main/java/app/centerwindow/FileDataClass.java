@@ -428,6 +428,7 @@ public class FileDataClass {
 		    	if(strTmp.contains("CELL_PARAMETERS")) {
 		    		startCalc = true;
 		    		//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", Integer.toString(lineCount));
+		    		this.iGeoTemp.ibrav.setValue(0);//only in case of vc-relax will this be found.
 		    		recordCellPara = true;
 		    		this.addNewCell();
 		    		argCache = this.parseArg(strTmp);

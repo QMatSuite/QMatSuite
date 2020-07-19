@@ -230,7 +230,7 @@ public class OutputViewerController implements Initializable{
 			fileCategory = null;
 			fileData.clearAll();buttonSaveGeo.setDisable(true);
 			labelFileCategory.setText("");
-			EnumAnalysis analTmp = comboAnalysis.getSelectionModel().getSelectedItem();//cache the selected item before clearing
+//			EnumAnalysis analTmp = comboAnalysis.getSelectionModel().getSelectedItem();//cache the selected item before clearing
 			comboAnalysis.getItems().clear();
 			
 			if(newTab==null || newTab.isEmpty()) return;
@@ -258,18 +258,32 @@ public class OutputViewerController implements Initializable{
 			loadFile();
 			
 			if(fileCategory!=null) {
-				comboAnalysis.getItems().addAll(EnumAnalysis.info);//always has the option of show summarized info
 				comboAnalysis.getItems().addAll(EnumAnalysis.text);//always has the option of show in text
-				comboAnalysis.getItems().addAll(EnumAnalysis.plot2D);//always has the option of show in plot (can be changed later)
+				if(EnumFileCategory.stdout.equals(fileCategory) || EnumFileCategory.dos.equals(fileCategory) 
+						|| EnumFileCategory.bandsDatGnu.equals(fileCategory) || EnumFileCategory.tddftPlotSDat.equals(fileCategory)) {
+					comboAnalysis.getItems().addAll(EnumAnalysis.info);
+					comboAnalysis.getItems().addAll(EnumAnalysis.plot2D);
+				}
 				if(fileData.isMD || fileData.isOpt) {comboAnalysis.getItems().addAll(EnumAnalysis.plot3D);}
 				
-				if(analTmp!=null && comboAnalysis.getItems()!=null && comboAnalysis.getItems().contains(analTmp)) {
-					//select back the choice before
-					comboAnalysis.getSelectionModel().select(analTmp);
+//				if(analTmp!=null && comboAnalysis.getItems().contains(analTmp)) {
+//					//select back the choice before
+//					comboAnalysis.getSelectionModel().select(analTmp);
+//				}
+//				else {
+//					//select text first if there has been no selection
+//					if(comboAnalysis.getItems().contains(EnumAnalysis.plot2D)) {
+//						comboAnalysis.getSelectionModel().select(EnumAnalysis.plot2D);
+//					}
+//					else {
+//						comboAnalysis.getSelectionModel().select(EnumAnalysis.text);
+//					}
+//				}
+				if(comboAnalysis.getItems().contains(EnumAnalysis.plot2D)) {
+					comboAnalysis.getSelectionModel().select(EnumAnalysis.plot2D);
 				}
 				else {
-					//select text first if there has been no selection
-					comboAnalysis.getSelectionModel().select(EnumAnalysis.plot2D);
+					comboAnalysis.getSelectionModel().select(EnumAnalysis.text);
 				}
 			}
 			
@@ -357,7 +371,9 @@ public class OutputViewerController implements Initializable{
 		File pjFolder = getProjectFolder();
 		if(pjFolder==null || !pjFolder.canRead()) {
 			listFiles.getItems().clear();
-			return;}
+			//return;//comment out so that calcFolder is always updated
+		}
+		if(pjFolder==null) {return;}
 		calcFolder = new File(pjFolder,newCalcFolderName);
 		
 		updateFilesInCalcFolder(true);
@@ -777,6 +793,7 @@ public class OutputViewerController implements Initializable{
 	private String checkErrors() {
 		if(fileCategory==null) {return "Error: file category is null. Check code!";}
 		if(fileCategory.equals(EnumFileCategory.directory)) {return "Target file is a directory.";}
+		if(fileCategory.equals(EnumFileCategory.save)) {return "Target file is quantumVITAS save file.";}
 		if(inoutFiles==null || !inoutFiles.canRead()) {return "Error: cannot read file.";}
 		return "";
 	}
@@ -786,7 +803,7 @@ public class OutputViewerController implements Initializable{
 		if(strTmp1!=null && !strTmp1.isEmpty()) {textFlowDisplay.getChildren().add(new Text(strTmp1));return;}
 		
 		boolean boolHighLight = false;
-		if(fileCategory.equals(EnumFileCategory.stdin)) {boolHighLight=true;}
+		if(EnumFileCategory.stdin.equals(fileCategory)) {boolHighLight=true;}
 		
 		try {
 //			String data = new String(Files.readAllBytes(inoutFiles.toPath()));
@@ -799,11 +816,14 @@ public class OutputViewerController implements Initializable{
 			int totalLineNum = count1.getLineNumber() + 1;
 			count1.close();
 			//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", totalLineNum+"");
-			
+			Text txtTmp;
+			txtTmp = new Text(Integer.toString(totalLineNum)+" lines in total.\n\n");
+			txtTmp.setFill(Color.AQUA);
+			textFlowDisplay.getChildren().add(txtTmp);
 		    Scanner sc = new Scanner(inoutFiles); 
 		  
 		    String strTmp;
-		    Text txtTmp;
+		    
 		    int lineCount=0;
 		    boolean flagSkip = false;
 		    while (sc.hasNextLine()) {
@@ -814,7 +834,8 @@ public class OutputViewerController implements Initializable{
 		    			textFlowDisplay.getChildren().add(
 		    					new Text("------------------------------+------------------------+------------------------------\n"+
 		    							 "------------------------------+------------------------+------------------------------\n"+
-		    							 "------------------------------+-------skip lines-------+------------------------------\n"+
+		    							 "------------------------------+-------skip "+
+		    							 Integer.toString(totalLineNum-2*ProgrammingConsts.maxLinesShownInText)+" lines-------+------------------------------\n"+
 		    							 "------------------------------+------------------------+------------------------------\n"+
 		    							 "------------------------------+------------------------+------------------------------\n"));
 		    		}
@@ -833,7 +854,7 @@ public class OutputViewerController implements Initializable{
 		    sc.close();
 		    
 		    if(lineCount==0) {
-		    	textFlowDisplay.getChildren().add(new Text("No lines detected. File empty or binary file."));
+		    	textFlowDisplay.getChildren().add(new Text("No normal lines detected. File empty or binary file."));
 		    }
 		} catch (IOException e) {
 			e.printStackTrace();

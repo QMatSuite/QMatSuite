@@ -40,11 +40,13 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.SplitPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TabPane.TabClosingPolicy;
@@ -175,7 +177,7 @@ public class MainWindowController implements Initializable{
 	
 	private JobDialogController contRun;
 	
-	private HBox hboxOutput;
+	private SplitPane splitOutput;
 	
 	private HashMap<String, Tab> projectTabDict;
 	
@@ -271,7 +273,7 @@ public class MainWindowController implements Initializable{
 			contOutput = new OutputViewerController(mainClass,contGeo);
 			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/centerwindow/outputViewer.fxml"));
 			fxmlLoader.setController(contOutput);
-			hboxOutput = fxmlLoader.load();
+			splitOutput = fxmlLoader.load();
 			
 			
 		} catch (IOException e) {
@@ -279,8 +281,8 @@ public class MainWindowController implements Initializable{
 			e.printStackTrace();
 		}
 		
-		hboxOutput.prefWidthProperty().bind(workSpaceTabPane.widthProperty());
-		hboxOutput.prefHeightProperty().bind(workSpaceTabPane.heightProperty());
+		splitOutput.prefWidthProperty().bind(workSpaceTabPane.widthProperty());
+		splitOutput.prefHeightProperty().bind(workSpaceTabPane.heightProperty());
 		
 		//workTabContent =  new WorkTabContent(mainClass,workSpaceTabPane,projectTabDict,contGeo);
 		
@@ -626,6 +628,12 @@ public class MainWindowController implements Initializable{
 
 						alert.getDialogPane().setExpandableContent(area);
 						alert.showAndWait();
+						if(alert.getResult() == ButtonType.OK || alert.getResult() == ButtonType.YES) {
+							continue;
+						}
+						else {
+							break;
+						}
 					}
 				}
 				else {
@@ -1212,7 +1220,7 @@ public class MainWindowController implements Initializable{
 		if(tabTmp!=null) {
 			//((Tab) hboxOutput.getParent()).setContent(null);
 			releaseHboxOutputContent();
-			tabTmp.setContent(hboxOutput);
+			tabTmp.setContent(splitOutput);
 			//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", hboxOutput.toString());
 		}
 //		calcName = mainClass.projectManager.getCurrentCalcName();
@@ -1220,7 +1228,7 @@ public class MainWindowController implements Initializable{
 	}
 	private void releaseHboxOutputContent() {
 		for(Tab tb:projectTabDict.values()) {
-			if(tb.getContent()==hboxOutput) {tb.setContent(null);}
+			if(tb.getContent()==splitOutput) {tb.setContent(null);}
 		}
 	}
 	private boolean deleteDir(File directoryToBeDeleted) {
