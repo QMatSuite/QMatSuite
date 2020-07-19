@@ -113,4 +113,5 @@ public abstract class InputAgent implements Serializable{
 			wiVal.setValue(tmp);return true;
 		}
 	}
+	public String genAgentSummary() {return "";} 
 }

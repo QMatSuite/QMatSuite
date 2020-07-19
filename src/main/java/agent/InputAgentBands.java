@@ -20,9 +20,12 @@ package agent;
 
 import java.util.ArrayList;
 
+import com.consts.ChemicalElements;
 import com.consts.Constants.EnumKUnitBands;
+import com.consts.Constants.EnumUnitAtomPos;
 
 import app.input.Kpoint;
+import app.input.geo.Atom;
 
 
 public class InputAgentBands extends InputAgent{
@@ -41,7 +44,65 @@ public class InputAgentBands extends InputAgent{
 	}
 	@Override
 	public boolean convertInfoFromInput(String inputStr) {
-		// TODO Auto-generated method stub
-		return false;
+		if(inputStr==null || inputStr.isEmpty()) {return false;}
+		//return true for detecting keyword
+		int startInd;
+		startInd = inputStr.toUpperCase().indexOf("K_POINTS");
+		if(startInd==-1) {return false;}
+		
+		listKPoints.clear();
+		
+		String[] lines = inputStr.substring(startInd).split("\\R");
+		//unit of atomic positions
+		if(lines[0].toLowerCase().contains("crystal_b")) {
+			this.enumKUnit.setValue(EnumKUnitBands.crystal_b);
+		}else if(lines[0].toLowerCase().contains("tpiba_b")) {
+			this.enumKUnit.setValue(EnumKUnitBands.tpiba_b);
+		}else {
+			this.enumKUnit.setValue(EnumKUnitBands.tpiba_b);//not necessarily the default of QE
+		}
+		//load k points
+		for(int i=1;i<lines.length;i++) {//starting from 1 to skip the line containing "ATOMIC_POSITIONS"
+			if(lines[i].trim().isEmpty()) {continue;}//skip empty lines
+			if(!getKPointsLine(listKPoints,lines[i])) {break;}//break if the line does not contain atomic positions
+		}
+		return true;
+	}
+	private boolean getKPointsLine(ArrayList<Kpoint> listKPoints, String inputLine) {
+		//false means not containing atomic positions
+		String[] splitted = inputLine.trim().split("\\s+");//split the string by whitespaces
+		if(splitted.length == 1) {return true;}//skip the line with one number (total k points) without breaking
+		if(splitted.length < 4) {return false;}
+		try {
+			Double kx = Double.valueOf(splitted[0].trim());
+			Double ky = Double.valueOf(splitted[1].trim());
+			Double kz = Double.valueOf(splitted[2].trim());
+			Integer nk = Integer.valueOf(splitted[3].trim());
+			
+			if(kx==null || ky == null || kz == null || nk == null) {return false;}
+			
+			String strLabel="";
+			if(splitted.length >=5 && splitted[4].contains("!")) {
+				strLabel = splitted[4].trim().replace('!', '\0');
+			}
+			listKPoints.add(new Kpoint(strLabel, kx, ky, kz, nk));
+			return true;
+		}
+		catch(IllegalArgumentException e){
+			//e.printStackTrace();
+			return false;
+		}
+	}
+	public String genAgentSummary() {
+		String msg="";
+		if(listKPoints==null || listKPoints.isEmpty()) {msg+="No k-point detected.\n";}
+		else {
+			msg+="K-points read:\n";
+			for(int i=0;i<listKPoints.size();i++) {
+				msg+=(listKPoints.get(i).getLabel()+": "+Double.toString(listKPoints.get(i).getKx())+","+Double.toString(listKPoints.get(i).getKy())+","+
+						Double.toString(listKPoints.get(i).getKz())+","+Integer.toString(listKPoints.get(i).getNk())+"\n");
+			}
+		}
+		return msg;
 	}
 }

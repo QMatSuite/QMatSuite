@@ -14,7 +14,7 @@
 <?import javafx.scene.layout.VBox?>
 
 
-<SplitPane dividerPositions="0.17391304347826086" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
+<SplitPane dividerPositions="0.1932367149758454" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
    <items>
       <VBox fx:id="vboxFiles" minWidth="105.0" prefHeight="200.0" prefWidth="115.0">
          <children>
@@ -23,6 +23,11 @@
               <items>
                   <Button fx:id="buttonRefreshFiles" mnemonicParsing="false" text="refresh" />
                 <Button fx:id="deleteFileButton" mnemonicParsing="false" text="del" />
+              </items>
+            </ToolBar>
+            <ToolBar prefHeight="40.0" prefWidth="200.0">
+              <items>
+                <Button fx:id="buttonShowInSystem" mnemonicParsing="false" text="Show in system" />
               </items>
             </ToolBar>
             <ListView fx:id="listFiles" prefHeight="148.0" prefWidth="113.0" VBox.vgrow="SOMETIMES" />

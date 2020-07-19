@@ -21,6 +21,12 @@ package app.input.geo;
 
 import java.net.URL;
 import java.util.ResourceBundle;
+
+import com.consts.Constants.EnumStep;
+import com.error.ShowAlert;
+
+import agent.InputAgent;
+import agent.InputAgentBands;
 import agent.InputAgentGeo;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -29,6 +35,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TextArea;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 import main.MainClass;
@@ -58,22 +65,42 @@ public class PasteExternalWindowController implements Initializable{
     private TextArea textAreaPreview;
     
     @FXML
-    private Label labelStatus;
+    private Label labelStatus,
+    labelTitle;
     
     private MainClass mainClass;
     
     private boolean boolSave = false;
     
-    private InputAgentGeo iGeoPaste = null;//***check possibility of ram leak
+    private InputAgent iAgent = null;//***check possibility of ram leak
     
-    public PasteExternalWindowController(MainClass mc) {
+    private final EnumStep enumStep; 
+    
+    public PasteExternalWindowController(MainClass mc, EnumStep es) {
     	mainClass = mc;
+    	enumStep = es;
+    	if(es==null) {
+    		ShowAlert.showAlert(AlertType.ERROR, "Error", "EnumStep is null in class PasteExternalWindowController. Check programming.");
+    	}
 	}
-    public InputAgentGeo getGeoAgent() {
-    	return iGeoPaste;
+    public InputAgent getGeoAgent() {
+    	return iAgent;
     }
     public void initializeConversion() {
-    	iGeoPaste = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent().deepCopy();//should be safe to assume geoAgent exists
+    	switch(enumStep) {
+    		case GEO:
+    			labelTitle.setText("Paste the atomic positions/cell parameters below:");
+    			iAgent = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent().deepCopy();//should be safe to assume geoAgent exists
+    			break;
+    		case BANDS:
+    			labelTitle.setText("Paste the k-points below:");
+    			iAgent = (InputAgentBands) mainClass.projectManager.getStepAgent(enumStep).deepCopy();//should be safe to assume not null
+    			break;
+    		default:
+    			ShowAlert.showAlert(AlertType.INFORMATION, "Warning", "EnumStep "+enumStep+" unsupported in PasteExternalWindowController.");
+    			break;
+    	}
+    	
     	textAreaPreview.setText("Nothing recognized yet.");
     	textAreaInput.setText("");
     	boolSave = false;
@@ -91,7 +118,7 @@ public class PasteExternalWindowController implements Initializable{
 			closeStage();
 		});
 		buttonClearAll.setOnAction((event) -> {	
-			iGeoPaste = new InputAgentGeo();
+			iAgent = new InputAgentGeo();
 			textAreaPreview.setText("Everything cleared.");
 	    	textAreaInput.setText("");
 		});
@@ -103,13 +130,13 @@ public class PasteExternalWindowController implements Initializable{
 	private boolean checkText(String textInput) {
 		if(textInput==null || textInput.isEmpty()) {return false;}
 
-		return this.iGeoPaste.convertInfoFromInput(textInput);
+		return this.iAgent.convertInfoFromInput(textInput);
 	}
 	private void updatePreview() {
 		
 		String msg = "Information read from the input:\n";
 		
-		msg += this.iGeoPaste.genAgentSummary();
+		msg += this.iAgent.genAgentSummary();
 		
 		//update preview
 		textAreaPreview.setText(msg);

@@ -44,7 +44,12 @@ public class FileDataClass {
 	private ArrayList<ArrayList<Double>> energyArray;//Ry
 	private ArrayList<Double> fermiLevel;//eV
 	private ArrayList<Double> homoLevel;//eV
+	private ArrayList<Double> totalForce;//Ry/Bohr
+	private ArrayList<Double> totalPressure;//kBar
+	
 	private ArrayList<ArrayList<Double>> totalMag;//Bohr mag/cell
+	
+	
 	private ArrayList<ArrayList<Double>> absoluteMag;//Bohr mag/cell
 	private ArrayList<ArrayList<Double>> dosArray;
 	private ArrayList<String> dosHeader;
@@ -92,6 +97,9 @@ public class FileDataClass {
 		energyArray = new ArrayList<ArrayList<Double>>();
 		fermiLevel = new ArrayList<Double>();
 		homoLevel = new ArrayList<Double>();
+		totalForce = new ArrayList<Double>();
+		totalPressure = new ArrayList<Double>();
+		
 		totalMag = new ArrayList<ArrayList<Double>>();
 		absoluteMag = new ArrayList<ArrayList<Double>>();
 		dosArray = new ArrayList<ArrayList<Double>>();
@@ -138,6 +146,9 @@ public class FileDataClass {
 		energyArray.clear();
 		fermiLevel.clear();
 		homoLevel.clear();
+		totalForce.clear();
+		totalPressure.clear();
+		
 		totalMag.clear();
 		absoluteMag.clear();
 		dosArray.clear();
@@ -460,6 +471,24 @@ public class FileDataClass {
 		    				Double dbTmp =  Double.valueOf(splitted[3]);
 			    			if(dbTmp!=null) {this.addTotalEnergy(dbTmp, false);}
 		    			}
+		    		}catch(Exception e) {
+		    			e.printStackTrace();
+		    		}
+		    	}
+		    	if(lowerCaseStr.contains("total force") && strTmp.contains("=")) {
+		    		String[] splitted = strTmp.trim().split("\\s+");//split the string by whitespaces
+		    		try {
+		    			Double dbTmp =  Double.valueOf(splitted[3]);
+		    			if(dbTmp!=null) {this.totalForce.add(dbTmp);}
+		    		}catch(Exception e) {
+		    			e.printStackTrace();
+		    		}
+		    	}
+		    	if(lowerCaseStr.contains("total   stress") && strTmp.contains("=")) {
+		    		String[] splitted = strTmp.trim().split("=");//split the string by =
+		    		try {
+		    			Double dbTmp =  Double.valueOf(splitted[1].trim());
+		    			if(dbTmp!=null) {this.totalPressure.add(dbTmp);}
 		    		}catch(Exception e) {
 		    			e.printStackTrace();
 		    		}
@@ -1004,6 +1033,20 @@ public class FileDataClass {
 						strTmp+="\n";
 					}
 				}
+				if(totalForce!=null && !totalForce.isEmpty()) {
+					strTmp+="Total force (Ry/Bohr):";
+					for(Double val:this.totalForce) {
+						if(val!=null) {strTmp+=(val.toString()+",");}
+					}
+					strTmp+="\n";
+				}
+				if(this.totalPressure!=null && !totalPressure.isEmpty()) {
+					strTmp+="Pressure (kbar):";
+					for(Double val:this.totalPressure) {
+						if(val!=null) {strTmp+=(val.toString()+",");}
+					}
+					strTmp+="\n";
+				}
 			}
 			
 			//magnetization
@@ -1087,5 +1130,11 @@ public class FileDataClass {
 	}
 	public ArrayList<Double> getBandsHighSymmetryKXCoor() {
 		return bandsHighSymmetryKXCoor;
+	}
+	public ArrayList<Double> getTotalForce() {
+		return totalForce;
+	}
+	public ArrayList<Double> getTotalPressure() {
+		return totalPressure;
 	}
 }

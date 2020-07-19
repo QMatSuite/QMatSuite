@@ -46,6 +46,7 @@ import com.consts.Constants.EnumUnitEnergy;
 import com.consts.Constants.EnumUnitTime;
 import com.error.InvalidKeyException;
 import com.error.InvalidTypeException;
+import com.programconst.DefaultFileNames;
 
 public class PwInput extends QeInput{
 	
@@ -72,6 +73,7 @@ public class PwInput extends QeInput{
 		sectionDict.put("ATOMIC_FORCES", new Card(EnumCard.ATOMIC_FORCES));
 		//add relevant parameters
 		sectionDict.get("CONTROL").setBoolRequired(true);
+		sectionDict.get("CONTROL").addParameter("outdir", new InputValueString("outdir",DefaultFileNames.outDir,true));//always write
 		sectionDict.get("CONTROL").addParameter("calculation", new InputValueString("calculation","scf",true));//always write to make clear
 		sectionDict.get("CONTROL").addParameter("restart_mode", new InputValueString("restart_mode","from_scratch",false));
 		sectionDict.get("CONTROL").addParameter("max_seconds", new InputValueDouble("max_seconds",1.0E7,false));

@@ -82,7 +82,8 @@ public class OutputViewerController implements Initializable{
     buttonRefreshFiles,
     buttonRefresh,
     buttonSaveGeo,
-    buttonSetLabelK;
+    buttonSetLabelK,
+	buttonShowInSystem;
     
     @FXML private TextField textLabelK;
     
@@ -308,6 +309,19 @@ public class OutputViewerController implements Initializable{
 			    new Thread(() -> {
 				   try {
 				       Desktop.getDesktop().open(inoutFiles);
+				   } catch (IOException e1) {
+				       e1.printStackTrace();
+				   }
+			       }).start();
+			}
+		});
+		buttonShowInSystem.setOnAction((event) -> {
+			if(calcFolder==null || !calcFolder.canRead() || !calcFolder.isDirectory()) return;
+			if( Desktop.isDesktopSupported() )
+			{
+			    new Thread(() -> {
+				   try {
+				       Desktop.getDesktop().open(calcFolder);
 				   } catch (IOException e1) {
 				       e1.printStackTrace();
 				   }
@@ -693,7 +707,11 @@ public class OutputViewerController implements Initializable{
 		buttonShowMarker.setSelected(true);
 		//construct new plot type list
 		plotTypeStdOut.clear();
-		if(fileData.isOpt) {plotTypeStdOut.add("OPT E conv");plotTypeStdOut.add("OPT F conv");}
+		if(fileData.isOpt) {
+			plotTypeStdOut.add("OPT E conv");//if change here, remember to change later in this function
+			plotTypeStdOut.add("OPT F conv");
+			plotTypeStdOut.add("OPT P conv");
+		}
 		if(fileData.hasScf) {plotTypeStdOut.add("SCF E conv");}
 		//check whether it is the same as in the combo. If yes, no update of the combo
 		if(!isSameTypeStdout(plotTypeStdOut)) {
@@ -717,7 +735,7 @@ public class OutputViewerController implements Initializable{
 		
 		if(!energyTmp.isEmpty()){
 			if(plotType.equals("SCF E conv")) {
-				xAxis.setLabel("Iterations");
+				xAxis.setLabel("SCF Iterations");
 				yAxis.setLabel("Total Energy (Ry)");
 				Series<Double,Double> dataSeries1 = new Series<Double, Double>();
 		        dataSeries1.setName("SCF Energy Convergence");
@@ -731,7 +749,7 @@ public class OutputViewerController implements Initializable{
 				lineChart.getData().add(dataSeries1);
 			}
 			else if(plotType.equals("OPT E conv")) {
-				xAxis.setLabel("Steps");
+				xAxis.setLabel("Optimization Steps");
 				yAxis.setLabel("Total Energy (Ry)");
 				Series<Double,Double> dataSeries1 = new Series<Double, Double>();
 		        dataSeries1.setName("Optimization Energy Convergence");
@@ -745,13 +763,29 @@ public class OutputViewerController implements Initializable{
 				lineChart.getData().add(dataSeries1);
 			}
 			else if(plotType.equals("OPT F conv")) {
-				
+				plotArray(fileData.getTotalForce(), "Optimization Steps", "Total Force (Ry/Bohr)","Optimization Force Convergence",false);
+			}
+			else if(plotType.equals("OPT P conv")) {
+				plotArray(fileData.getTotalPressure(), "Optimization Steps", "Pressure (kbar)","Optimization Pressure/Stress Convergence",false);
 			}
 		}
-		
         
         displayScroll.setContent(lineChart);
 
+	}
+	private void plotArray(ArrayList<Double> dataArray, String xlabel, String ylabel, String titleStr, boolean boolClear) {
+		if(boolClear) {lineChart.getData().clear();}
+		if(dataArray==null) {return;}
+		xAxis.setLabel(xlabel);
+		yAxis.setLabel(ylabel);
+		Series<Double,Double> dataSeries1 = new Series<Double, Double>();
+        dataSeries1.setName(titleStr);
+		
+		for(int i=0;i<dataArray.size();i++) {
+			if(dataArray.get(i)==null) {continue;}
+			dataSeries1.getData().add(new Data<Double, Double>( (double) i+1, dataArray.get(i)));
+		}
+		lineChart.getData().add(dataSeries1);
 	}
 	private boolean loadFile() {
 		//false is fail to load
@@ -818,7 +852,7 @@ public class OutputViewerController implements Initializable{
 			//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", totalLineNum+"");
 			Text txtTmp;
 			txtTmp = new Text(Integer.toString(totalLineNum)+" lines in total.\n\n");
-			txtTmp.setFill(Color.AQUA);
+			txtTmp.setFill(Color.YELLOWGREEN);
 			textFlowDisplay.getChildren().add(txtTmp);
 		    Scanner sc = new Scanner(inoutFiles); 
 		  

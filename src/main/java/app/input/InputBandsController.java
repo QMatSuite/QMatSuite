@@ -19,6 +19,7 @@
 
 package app.input;
 
+import java.io.IOException;
 import java.net.URL;
 import java.util.ResourceBundle;
 
@@ -26,9 +27,16 @@ import com.consts.Constants.EnumKUnitBands;
 import com.consts.Constants.EnumNumCondition;
 import com.consts.Constants.EnumStep;
 import agent.InputAgentBands;
+import agent.InputAgentGeo;
+import app.input.geo.InputGeoAtomsController;
+import app.input.geo.InputGeoCellController;
+import app.input.geo.InputGeoElementsController;
+import app.input.geo.PasteExternalWindowController;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
@@ -37,6 +45,10 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.BorderPane;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 import main.MainClass;
 
 public class InputBandsController extends InputController{
@@ -57,16 +69,11 @@ public class InputBandsController extends InputController{
     private ComboBox<EnumKUnitBands> comboKPathUnit;
 
     @FXML
-    private Button infoKPath;
-
-    @FXML
-    private Button buttonDelete;
-
-    @FXML
-    private Button buttonEdit;
-
-    @FXML
-    private Button buttonClearInput;
+    private Button infoKPath,
+    buttonDelete,
+    buttonEdit,
+    buttonClearInput,
+    buttonPasteExternal;
 
     @FXML
     private TextField textKx;
@@ -109,6 +116,10 @@ public class InputBandsController extends InputController{
 	
     private ObservableList<Kpoint> kpointsData;
     
+    private PasteExternalWindowController contPaste = null;
+    
+    private BorderPane borderPaste;
+    
 	public InputBandsController (MainClass mc) {
 		super(mc, EnumStep.BANDS);
 		kpointsData = FXCollections.observableArrayList();
@@ -119,7 +130,38 @@ public class InputBandsController extends InputController{
 		setPointerStatusTextField(statusTextField);
 		initIntegerParameterSet(textNBands, "intNBands", EnumNumCondition.positive, "Automated", checkNBands, infoNBands, null);
 		setupTable();
-    	
+		
+		try {
+			contPaste = new PasteExternalWindowController(mainClass, EnumStep.BANDS);
+			FXMLLoader fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/input/geo/PasteExternalWindow.fxml"));
+			fxmlLoader.setController(contPaste);
+			borderPaste = fxmlLoader.load();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+    	//PasteExternalWindowController
+		//******later please generalize this
+    	Scene scenePaste = new Scene(borderPaste);
+        Stage stagePaste = new Stage();
+        stagePaste.setTitle("Paste bands from external");
+        stagePaste.initModality(Modality.APPLICATION_MODAL);
+        stagePaste.initStyle(StageStyle.DECORATED);
+        stagePaste.setScene(scenePaste);
+        
+        buttonPasteExternal.setOnAction((event) -> {	
+        	contPaste.initializeConversion();
+    		stagePaste.showAndWait();
+    		//after the input
+    		if(contPaste.isBoolSave()) {
+    			//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", "Saved.");
+    			//****be careful here of references. In case of bug, use deepcopy
+    			//****investigate possible RAM leak here
+    			mainClass.projectManager.setStepAgent(enumStep, (InputAgentBands) contPaste.getGeoAgent());
+    			this.loadProjectParameters();
+    		}
+		});
+        
 		buttonAdd.setOnAction((event) -> {	
     		Kpoint tmp = genKpointFromInput();
     		if (tmp==null) return;
@@ -156,7 +198,6 @@ public class InputBandsController extends InputController{
 		buttonClearInput.setOnAction((event) -> {	
     		clearInput();
 		});
-    	
 		setComboListener(comboKPathUnit, EnumKUnitBands.values(), "enumKUnit");
 	}
 	private void setupTable() {

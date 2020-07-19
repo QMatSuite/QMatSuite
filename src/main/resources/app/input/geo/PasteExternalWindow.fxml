@@ -38,7 +38,7 @@
    <top>
       <VBox BorderPane.alignment="CENTER_LEFT">
          <children>
-            <Label text="Paste the atomic positions/cell parameters below:" />
+            <Label fx:id="labelTitle" text="TBA" />
             <Label text="(Currently only supports QE format)" />
             <Label fx:id="labelStatus" text="TBA" />
             <Separator prefWidth="200.0" />
