@@ -49,6 +49,8 @@ public class TurboLanczosInput extends QeInput{
 
 		try {		
 			setValue("lr_control","itermax",ia1.itermax0);
+			setRequiredAndWrite("lr_control","itermax",true,true);//from QE, not necessary, but in practice yes, otherwise give error
+			
 			final int ipol;
 			final boolean boolIpol=ia1.enumPolar.isEnabled();
 			switch((EnumPolarizability)ia1.enumPolar.getValue()) {

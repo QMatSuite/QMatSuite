@@ -70,6 +70,7 @@ public class FileDataClass {
 	private ArrayList<ArrayList<Atom>> atomicPositions;
 	private boolean finalPosition=false;
 	private ArrayList<CellParameter> cellParameter;
+	private String errorMessage = "";
 	
 	public int nstep=1;
 	public boolean isJobStart = false;
@@ -87,6 +88,7 @@ public class FileDataClass {
 	public boolean isPwBands = false;
 	public boolean isBandsPP = false;
 	public boolean isTddftTurbo = false;
+	public boolean isTddftSpectrum = false;
 	
 	
 	//will be true when one scf just finished. Will be set back to false when one new mag is read
@@ -112,7 +114,7 @@ public class FileDataClass {
 		tddftArray = new ArrayList<ArrayList<Double>>();
 		tddftHeader = new ArrayList<String>();
 		iGeoTemp = new InputAgentGeo();
-		
+				
 		dataMd = new ArrayList<ArrayList<Double>>();//DO NOT CLEAR dataMd itself!
 		dataMd.add(new ArrayList<Double>());//time in ps
 		dataMd.add(new ArrayList<Double>());//Ekin
@@ -167,6 +169,7 @@ public class FileDataClass {
 		bandsHighSymmetryKXCoor.clear();
 		tddftArray.clear();
 		tddftHeader.clear();
+		errorMessage = "";
 		
 		//not necessary, because atom positions not encoded there. 
 		//Further, DO NOT DO IT otherwise the workscene3d will not work for the in/out
@@ -182,7 +185,7 @@ public class FileDataClass {
 		isJobStart = false;
 		hasScf=false;hasScfFinished=false;isMD=false;isMDFinished=false;isOpt=false;isOptFinished=false;
 		isNscf=false;isNscfFinished=false;isDos=false;isDosFinished=false;
-		isPwBands = false;isBandsPP = false;isTddftTurbo = false;
+		isPwBands = false;isBandsPP = false;isTddftTurbo = false;isTddftSpectrum=false;
 		flagScfFinishedForTotalMag=false;
 		flagScfFinishedForAbsMag=false;
 	}
@@ -455,6 +458,8 @@ public class FileDataClass {
 		    
 		    int lineCount=0;
 		    int iterationMD = -1;
+		    int errorLineNum = 0;
+		    boolean flagError = false;
 		    
 		    while (sc.hasNextLine()) {
 		    	lineCount++;
@@ -478,6 +483,9 @@ public class FileDataClass {
 		    	}
 		    	if(strTmp.contains("Program turboTDDFT")) {
 		    		this.isTddftTurbo = true;
+		    	}
+		    	if(strTmp.contains("Program TDDFPT_PP")) {
+		    		this.isTddftSpectrum = true;
 		    	}
 		    	if(strTmp.contains("starts")) {
 		    		this.isJobStart = true;
@@ -623,6 +631,14 @@ public class FileDataClass {
 				
 				if(strTmp.toUpperCase().contains("JOB DONE")) {
 					this.isJobDone = true;
+				}
+				if(strTmp.contains("%%%")) {//there are two lines sandwiching the error message
+					flagError = (!flagError);
+					if(!flagError) {errorMessage+=(strTmp+"\n");}//record the last "%%%%%%%%%%%%%" line
+				}
+				if(flagError && errorLineNum<100) {//limit error message to 100 lines to prevent programming pitfalls
+					errorLineNum++;
+					errorMessage+=(strTmp+"\n");
 				}
 		    }
 		    
@@ -1009,7 +1025,7 @@ public class FileDataClass {
 	}
 	public String toString() {
 		String strTmp = "";
-		
+
 		if(EnumFileCategory.dos.equals(fileCategory)) {
 			//DOS data file
 			strTmp+="DOS data file.\n";
@@ -1081,6 +1097,7 @@ public class FileDataClass {
 			if(this.isPwBands) {strTmp+="pwscf bands calculation.\n";}
 			if(this.isBandsPP) {strTmp+="bands program.\n";}
 			if(isTddftTurbo) {strTmp+="turbo TDDFT program.\n";}
+			if(isTddftSpectrum) {strTmp+="TDDFT spectrum (post-processing) program.\n";}
 			if(strTmp.endsWith("type:")) {strTmp+="Unknown.\n";}
 			
 			//finished or not
@@ -1093,20 +1110,43 @@ public class FileDataClass {
 			//the whole job finished or not (last line of the output file)
 			if(isJobStart) {strTmp+=(isJobDone?"Job done.\n":"Job not done yet.\n");}
 			
+			//error message or not
+			if(!errorMessage.isEmpty()) {
+				strTmp+=("Error message detected:\n"+errorMessage+"\n");
+			}
+			
 			//total energy
 			int cnt = 0;
 			if(isMD || isOpt || hasScf) {
-				strTmp+="Total energy (Ry):";
-				for(ArrayList<Double> ard:energyArray) {
-					if(ard!=null) {
-						cnt++;
-						if(ard.isEmpty()) {continue;}
-						strTmp+=("Step "+Integer.toString(cnt)+": ");
-						for(Double val:ard) {
-							if(val!=null) {strTmp+=(val.toString()+",");}
+				
+				if(energyArray.size()<=2) {
+					strTmp+="Total energy (Ry):";
+					for(ArrayList<Double> ard:energyArray) {
+						if(ard!=null) {
+							cnt++;
+							if(ard.isEmpty()) {continue;}
+							strTmp+=("Step "+Integer.toString(cnt)+": ");
+							for(Double val:ard) {
+								if(val!=null) {strTmp+=(val.toString()+",");}
+							}
+							strTmp+="\n";
 						}
-						strTmp+="\n";
 					}
+				}
+				else {
+					strTmp+="Total energy converged (Ry):";
+					for(ArrayList<Double> ard:energyArray) {
+						if(ard!=null) {
+							cnt++;
+							if(ard.isEmpty()) {continue;}
+							strTmp+=("Step "+Integer.toString(cnt)+": "+ard.get(ard.size()-1).toString()+",");
+						}
+						if((cnt % 5) == 0) {
+							strTmp+="\n";
+						}
+					}
+					strTmp+="\n";
+					
 				}
 				if(totalForce!=null && !totalForce.isEmpty()) {
 					strTmp+="Total force (Ry/Bohr):";
