@@ -7,25 +7,23 @@
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.SplitPane?>
-<?import javafx.scene.control.TextField?>
 <?import javafx.scene.control.ToggleButton?>
 <?import javafx.scene.control.ToolBar?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
-
-<SplitPane dividerPositions="0.1932367149758454" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
+<SplitPane dividerPositions="0.1825525040387722" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
    <items>
-      <VBox fx:id="vboxFiles" minWidth="105.0" prefHeight="200.0" prefWidth="115.0">
+      <VBox fx:id="vboxFiles" minWidth="110.0">
          <children>
             <Label text="Files" />
-            <ToolBar prefHeight="40.0" prefWidth="200.0">
+            <ToolBar>
               <items>
                   <Button fx:id="buttonRefreshFiles" mnemonicParsing="false" text="refresh" />
                 <Button fx:id="deleteFileButton" mnemonicParsing="false" text="del" />
               </items>
             </ToolBar>
-            <ToolBar prefHeight="40.0" prefWidth="200.0">
+            <ToolBar minWidth="100.0">
               <items>
                 <Button fx:id="buttonShowInSystem" mnemonicParsing="false" text="Show in system" />
               </items>
@@ -65,8 +63,6 @@
                   <Label text="High symm. k" />
                   <ComboBox fx:id="comboHighSymK" prefHeight="25.0" prefWidth="58.0" />
                   <Label fx:id="labelK" prefWidth="185.0" text="k information" />
-                  <TextField fx:id="textLabelK" prefHeight="25.0" prefWidth="39.0" />
-                  <Button fx:id="buttonSetLabelK" mnemonicParsing="false" text="Set Label" />
                </children>
             </HBox>
             <ScrollPane fx:id="displayScroll" VBox.vgrow="ALWAYS" />

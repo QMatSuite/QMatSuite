@@ -19,13 +19,8 @@
 package agent;
 
 import java.util.ArrayList;
-
-import com.consts.ChemicalElements;
 import com.consts.Constants.EnumKUnitBands;
-import com.consts.Constants.EnumUnitAtomPos;
-
 import app.input.Kpoint;
-import app.input.geo.Atom;
 
 
 public class InputAgentBands extends InputAgent{

@@ -120,7 +120,7 @@ public class InputGeoController extends InputController{
 				fxmlLoader3.setController(contElem);
 				vboxElements = fxmlLoader3.load();
 				
-				contPaste = new PasteExternalWindowController(mainClass, EnumStep.GEO);
+				contPaste = new PasteExternalWindowController(mainClass, enumStep);
 				FXMLLoader fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/input/geo/PasteExternalWindow.fxml"));
 				fxmlLoader.setController(contPaste);
 				borderPaste = fxmlLoader.load();

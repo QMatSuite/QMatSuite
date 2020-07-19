@@ -344,13 +344,16 @@ public class MainWindowController implements Initializable{
 				selectedDir = dirChooser.showDialog((Stage)rootPane.getScene().getWindow());
 			}
 			if(selectedDir!=null && selectedDir.canRead()) {
-				mainClass.projectManager.workSpacePath = selectedDir.getPath();
-				textWorkSpace.setText(mainClass.projectManager.workSpacePath);
-				mainClass.projectManager.writeGlobalSettings(SettingKeys.workspace.toString(),selectedDir.getPath());
+				//mainClass.projectManager.workSpacePath = selectedDir.getPath();
+				//textWorkSpace.setText(mainClass.projectManager.workSpacePath);
+				String pathWritten = mainClass.projectManager.writePathSettings(SettingKeys.workspace.toString(),selectedDir.getPath());
+				setTexFieldPath(textWorkSpace, pathWritten,PathSettings.workspace);
+				mainClass.projectManager.workSpacePath = pathWritten;
+				
 				setWorkSpace(true);
 				contTree.updateProjects(true);
-				textWorkSpace.setBackground(new Background(new BackgroundFill(Coloring.validFile, 
-						CornerRadii.EMPTY, Insets.EMPTY)));
+				//textWorkSpace.setBackground(new Background(new BackgroundFill(Coloring.validFile, 
+				//		CornerRadii.EMPTY, Insets.EMPTY)));
 			}
 			
 		});
@@ -391,9 +394,19 @@ public class MainWindowController implements Initializable{
 			File selectedDir = dirChooser.showDialog((Stage)rootPane.getScene().getWindow());
 			
 			if(selectedDir!=null && selectedDir.canRead()) {
-				mainClass.projectManager.qePath = selectedDir.getPath();
-				mainClass.projectManager.writeGlobalSettings(SettingKeys.qePath.toString(),selectedDir.getPath());
-				setTexFieldPath(textQEPath, selectedDir.getPath(),PathSettings.qe);
+				String selectedPathStr = selectedDir.getPath();
+				if(!isQePathValid(selectedDir)) {
+					if(isQePathValid(new File(selectedDir,"qe"))) {
+						selectedPathStr = new File(selectedDir,"qe").getPath();
+					}
+					else if(isQePathValid(new File(selectedDir,"bin"))) {
+						selectedPathStr = new File(selectedDir,"bin").getPath();
+					}
+				}
+				
+				String pathWritten = mainClass.projectManager.writePathSettings(SettingKeys.qePath.toString(),selectedPathStr);
+				mainClass.projectManager.qePath = pathWritten;
+				setTexFieldPath(textQEPath, pathWritten,PathSettings.qe);
 			}
 			
 		});
@@ -435,9 +448,11 @@ public class MainWindowController implements Initializable{
 			File selectedDir = dirChooser.showDialog((Stage)rootPane.getScene().getWindow());
 			
 			if(selectedDir!=null && selectedDir.canRead()) {
-				mainClass.projectManager.setPseudoLibPath(selectedDir.getPath());
-				mainClass.projectManager.writeGlobalSettings(SettingKeys.pseudolibroot.toString(),selectedDir.getPath());
-				setTexFieldPath(labelPathPseudoLib, selectedDir.getPath(),PathSettings.pplib);
+				
+				String pathWritten = mainClass.projectManager.writePathSettings(SettingKeys.pseudolibroot.toString(),selectedDir.getPath());
+				setTexFieldPath(labelPathPseudoLib, pathWritten,PathSettings.pplib);
+				mainClass.projectManager.setPseudoLibPath(pathWritten);
+				
 //				InputAgentGeo iGeo = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
 //				if (iGeo!=null) {iGeo.pseudodir = selectedDir.getPath();}
 				
@@ -848,6 +863,7 @@ public class MainWindowController implements Initializable{
 		thread1.interrupt();
 	}
 	private void loadEnvironmentPaths() {
+		//***********not efficient. Read setting file three times!
 		//surpress all Alerts for tests
 		//load environment variable
 		String wsp = mainClass.projectManager.readGlobalSettings(SettingKeys.workspace.toString());
@@ -866,6 +882,11 @@ public class MainWindowController implements Initializable{
 		setTexFieldPath(labelPathPseudoLib, wsp2,PathSettings.pplib);
 
 	}
+	private boolean isQePathValid(File qeDir) {
+		if(qeDir==null || !qeDir.canRead()) {return false;}
+		return (SystemInfo.isUnix() && (new File(qeDir,"pw.x")).exists() )
+				|| (SystemInfo.isWindows() &&(new File(qeDir,"pw.exe")).exists());
+	}
 	private void setTexFieldPath(TextField tf, String qePath, PathSettings ps) {
 		if(qePath!=null) {
 			tf.setText(qePath);
@@ -873,8 +894,7 @@ public class MainWindowController implements Initializable{
 			boolean isValid = qeDir.canRead();
 			if(qeDir.canRead()) {
 				switch(ps) {
-					case qe:isValid = ((SystemInfo.isUnix() && (new File(qeDir,"pw.x")).exists() )
-							|| (SystemInfo.isWindows() &&(new File(qeDir,"pw.exe")).exists()));
+					case qe:isValid = isQePathValid(qeDir);
 							break;
 					case pplib:isValid = ((new File(qeDir,DefaultFileNames.pseudoDojoDir)).exists() || 
 							(new File(qeDir,DefaultFileNames.psLibraryDir)).exists() ||
@@ -893,7 +913,7 @@ public class MainWindowController implements Initializable{
 			}
 		}
 		else {
-			tf.setText("");
+			tf.setText("null");
 			tf.setBackground(new Background(new BackgroundFill(Coloring.invalidFile, 
 					CornerRadii.EMPTY, Insets.EMPTY)));
 		}

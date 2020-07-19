@@ -47,7 +47,6 @@ import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.ScrollPane.ScrollBarPolicy;
-import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
@@ -82,10 +81,7 @@ public class OutputViewerController implements Initializable{
     buttonRefreshFiles,
     buttonRefresh,
     buttonSaveGeo,
-    buttonSetLabelK,
 	buttonShowInSystem;
-    
-    @FXML private TextField textLabelK;
     
     @FXML private Label labelFileCategory,
     labelPlot,
@@ -127,8 +123,6 @@ public class OutputViewerController implements Initializable{
     
     private WorkScene3D geometry3d;
     
-    private ArrayList<String> kpointName;
-    
     private double minY,
 	maxY,
 	minX,
@@ -141,7 +135,6 @@ public class OutputViewerController implements Initializable{
     	fileData = new FileDataClass();
     	xAxis = new NumberAxis();xAxis.setAutoRanging(true);xAxis.setForceZeroInRange(false);
     	yAxis = new NumberAxis();yAxis.setAutoRanging(true);yAxis.setForceZeroInRange(false);
-    	kpointName = new ArrayList<String>();
     	
     	geometry3d = new WorkScene3D();
     	geometry3d.addAnimate3D(fileData);//add animation panel and link the data file
@@ -174,15 +167,15 @@ public class OutputViewerController implements Initializable{
 			if(selectInd<0 || selectInd>=fileData.getBandsHighSymmetryK().size()) {return;} 
 			labelK.setText("k="+fileData.getBandsHighSymmetryK().get(selectInd)
 					+",x="+fileData.getBandsHighSymmetryKXCoor().get(selectInd));
-			textLabelK.setText(kpointName.get(selectInd));
+			//textLabelK.setText(kpointName.get(selectInd));
 		});
-		buttonSetLabelK.setOnAction((event) -> {
-			if(fileData==null || !EnumFileCategory.bandsDatGnu.equals(fileCategory)) {return;}
-			int selectInd = comboHighSymK.getSelectionModel().getSelectedIndex();
-			if(selectInd<0 || selectInd>=kpointName.size()) {return;} 
-			kpointName.set(selectInd, textLabelK.getText());
-			this.plot2dBands();
-		});
+//		buttonSetLabelK.setOnAction((event) -> {
+//			if(fileData==null || !EnumFileCategory.bandsDatGnu.equals(fileCategory)) {return;}
+//			int selectInd = comboHighSymK.getSelectionModel().getSelectedIndex();
+//			if(selectInd<0 || selectInd>=kpointName.size()) {return;} 
+//			kpointName.set(selectInd, textLabelK.getText());
+//			this.plot2dBands();
+//		});
 		//comboPlot.setVisible(false);labelPlot.setVisible(false);
 		hboxPlotToolbar.setVisible(false);
 		hboxBandsToolbar.setVisible(false);
@@ -204,14 +197,16 @@ public class OutputViewerController implements Initializable{
 		                    		&& !calcFolder.getName().toLowerCase().contains("nscf")
 		                    		&& item.contains(EnumStep.SCF.toString())
 		                    		&& item.endsWith(ProgrammingConsts.stdoutExtension));
-		                    boolean isOpt = (calcFolder!=null && 
-		                    		calcFolder.getName().toLowerCase().contains("opt")
+		                    boolean isOpt = (calcFolder!=null
 		                    		&& item.contains(EnumStep.OPT.toString())
+		                    		&& item.endsWith(ProgrammingConsts.stdoutExtension));
+		                    boolean isMd = (calcFolder!=null
+		                    		&& item.contains(EnumStep.BOMD.toString())
 		                    		&& item.endsWith(ProgrammingConsts.stdoutExtension));
 		                    if (item.endsWith(ProgrammingConsts.dosExtension)
 		                    		|| item.contains(DefaultFileNames.bandsDatGnu)
 		                    		|| item.contains(DefaultFileNames.tddftPlotSDat)
-		                    		|| isScf || isOpt) {
+		                    		|| isScf || isOpt || isMd) {
 		                    	setStyle("-fx-font-weight: bolder; "
 		                    			+"-fx-border-color: green; ");
 		                    } else {
@@ -561,8 +556,8 @@ public class OutputViewerController implements Initializable{
 			
 			dataSeries1.getData().add(new Data<Double, Double>(dbTmp, minY));
 			dataSeries1.getData().add(new Data<Double, Double>(dbTmp, maxY));
-			String strTmpName = kpointName.get(i).isEmpty()? "": "("+kpointName.get(i)+") ";
-			dataSeries1.setName(strTmpName +"k"+Integer.toString(i+1)+"="+
+			//String strTmpName = kpointName.get(i).isEmpty()? "": "("+kpointName.get(i)+") ";
+			dataSeries1.setName("k"+Integer.toString(i+1)+"="+
 			fileData.getBandsHighSymmetryK().get(i)+",x="+fileData.getBandsHighSymmetryKXCoor().get(i));
 		}
 //		Text txt = new Text("sdsdsd");
@@ -712,6 +707,11 @@ public class OutputViewerController implements Initializable{
 			plotTypeStdOut.add("OPT F conv");
 			plotTypeStdOut.add("OPT P conv");
 		}
+		if(fileData.isMD) {
+			plotTypeStdOut.add("Ekin");//if change here, remember to change later in this function
+			plotTypeStdOut.add("Temperature");
+			plotTypeStdOut.add("Ekin + Etot");
+		}
 		if(fileData.hasScf) {plotTypeStdOut.add("SCF E conv");}
 		//check whether it is the same as in the combo. If yes, no update of the combo
 		if(!isSameTypeStdout(plotTypeStdOut)) {
@@ -733,57 +733,84 @@ public class OutputViewerController implements Initializable{
 		
 		ArrayList<ArrayList<Double>> energyTmp = fileData.getEnergyArray();
 		
-		if(!energyTmp.isEmpty()){
-			if(plotType.equals("SCF E conv")) {
-				xAxis.setLabel("SCF Iterations");
-				yAxis.setLabel("Total Energy (Ry)");
-				Series<Double,Double> dataSeries1 = new Series<Double, Double>();
-		        dataSeries1.setName("SCF Energy Convergence");
+
+		if(plotType.equals("SCF E conv")) {
+			xAxis.setLabel("SCF Iterations");
+			yAxis.setLabel("Total Energy (Ry)");
+			Series<Double,Double> dataSeries1 = new Series<Double, Double>();
+	        dataSeries1.setName("SCF Energy Convergence");
+	        if(!energyTmp.isEmpty()) {
 				ArrayList<Double> scfTmp = energyTmp.get(energyTmp.size()-1);
 				if(scfTmp.isEmpty() && energyTmp.size()>=2) {scfTmp = energyTmp.get(energyTmp.size()-2);}
 				for(int i=0;i<scfTmp.size();i++) {
 			        dataSeries1.getData().add(new Data<Double, Double>( (double) i+1, scfTmp.get(i)));
 				}
 				//dataSeries1.getData().add(new Data<Double, Double>( 0.0, -20.0));
-				
-				lineChart.getData().add(dataSeries1);
-			}
-			else if(plotType.equals("OPT E conv")) {
-				xAxis.setLabel("Optimization Steps");
-				yAxis.setLabel("Total Energy (Ry)");
-				Series<Double,Double> dataSeries1 = new Series<Double, Double>();
-		        dataSeries1.setName("Optimization Energy Convergence");
-				
-				for(int i=0;i<energyTmp.size();i++) {
-					if(energyTmp.get(i).size()>0) {
-						Double dbTmp = energyTmp.get(i).get(energyTmp.get(i).size()-1);
-						if(dbTmp!=null) {dataSeries1.getData().add(new Data<Double, Double>( (double) i+1, dbTmp));}
-					}
+	        }
+	        lineChart.getData().add(dataSeries1);
+		}
+		else if(plotType.equals("OPT E conv")) {
+			xAxis.setLabel("Optimization Steps");
+			yAxis.setLabel("Total Energy (Ry)");
+			Series<Double,Double> dataSeries1 = new Series<Double, Double>();
+	        dataSeries1.setName("Optimization Energy Convergence");
+			
+			for(int i=0;i<energyTmp.size();i++) {
+				if(energyTmp.get(i).size()>0) {
+					Double dbTmp = energyTmp.get(i).get(energyTmp.get(i).size()-1);
+					if(dbTmp!=null) {dataSeries1.getData().add(new Data<Double, Double>( (double) i+1, dbTmp));}
 				}
-				lineChart.getData().add(dataSeries1);
 			}
-			else if(plotType.equals("OPT F conv")) {
-				plotArray(fileData.getTotalForce(), "Optimization Steps", "Total Force (Ry/Bohr)","Optimization Force Convergence",false);
-			}
-			else if(plotType.equals("OPT P conv")) {
-				plotArray(fileData.getTotalPressure(), "Optimization Steps", "Pressure (kbar)","Optimization Pressure/Stress Convergence",false);
-			}
+			lineChart.getData().add(dataSeries1);
+		}
+		else if(plotType.equals("OPT F conv")) {
+			plotArray(fileData.getTotalForce(), "Optimization Steps", "Total Force (Ry/Bohr)","Optimization Force Convergence",false);
+		}
+		else if(plotType.equals("OPT P conv")) {
+			plotArray(fileData.getTotalPressure(), "Optimization Steps", "Pressure (kbar)","Optimization Pressure/Stress Convergence",false);
+		}
+		else if(plotType.equals("Ekin")) {
+			plotArray(fileData.getDataMd().get(0), fileData.getDataMd().get(1),
+					"Time/ps", "Ekin (kinetic energy)/Ry","Kinetic energy",false);
+		}
+		else if(plotType.equals("Temperature")) {
+			plotArray(fileData.getDataMd().get(0), fileData.getDataMd().get(2),
+					"Time/ps", "T (temperature)/K","Temperature",false);
+		}
+		else if(plotType.equals("Ekin + Etot")) {
+			plotArray(fileData.getDataMd().get(0), fileData.getDataMd().get(3),
+					"Time/ps", "Totoal energy (Ekin + Etot)/Ry","Total energy (should be constant)",false);
 		}
         
         displayScroll.setContent(lineChart);
 
 	}
-	private void plotArray(ArrayList<Double> dataArray, String xlabel, String ylabel, String titleStr, boolean boolClear) {
+	private void plotArray(ArrayList<Double> dataY, String xlabel, String ylabel, String titleStr, boolean boolClear) {
 		if(boolClear) {lineChart.getData().clear();}
-		if(dataArray==null) {return;}
+		if(dataY==null) {return;}
 		xAxis.setLabel(xlabel);
 		yAxis.setLabel(ylabel);
 		Series<Double,Double> dataSeries1 = new Series<Double, Double>();
         dataSeries1.setName(titleStr);
 		
-		for(int i=0;i<dataArray.size();i++) {
-			if(dataArray.get(i)==null) {continue;}
-			dataSeries1.getData().add(new Data<Double, Double>( (double) i+1, dataArray.get(i)));
+		for(int i=0;i<dataY.size();i++) {
+			if(dataY.get(i)==null) {continue;}
+			dataSeries1.getData().add(new Data<Double, Double>( (double) i+1, dataY.get(i)));
+		}
+		lineChart.getData().add(dataSeries1);
+	}
+	private void plotArray(ArrayList<Double> dataX, ArrayList<Double> dataY, String xlabel, String ylabel, String titleStr, boolean boolClear) {
+		if(boolClear) {lineChart.getData().clear();}
+		if(dataX == null || dataY == null) {return;}
+		xAxis.setLabel(xlabel);
+		yAxis.setLabel(ylabel);
+		Series<Double,Double> dataSeries1 = new Series<Double, Double>();
+        dataSeries1.setName(titleStr);
+		
+		for(int i=0;i<Math.min(dataX.size(), dataY.size());i++) {
+			if(dataX.get(i)==null || dataX.get(i).isNaN() ||
+					dataY.get(i)==null || dataY.get(i).isNaN()) {continue;}
+			dataSeries1.getData().add(new Data<Double, Double>( dataX.get(i), dataY.get(i)));
 		}
 		lineChart.getData().add(dataSeries1);
 	}
@@ -804,10 +831,10 @@ public class OutputViewerController implements Initializable{
 		}
 		else if(fileCategory.equals(EnumFileCategory.bandsDatGnu)) {
 			boolean blTmp = fileData.loadBands(inoutFiles);
-			kpointName.clear();
+			//kpointName.clear();
 			ObservableList<String> obsTmp = FXCollections.observableArrayList();
 			for(int i=0;i<fileData.getBandsHighSymmetryK().size();i++) {
-				kpointName.add("");
+				//kpointName.add("");
 				obsTmp.add(Integer.toString(i+1));
 			}
 			comboHighSymK.setItems(obsTmp);
@@ -931,56 +958,5 @@ public class OutputViewerController implements Initializable{
 			}
 		}
 	}
-//	public void updateProjectFolder() {
-//		
-//		
-//		ObservableList<String> listCalcFoldersItems = FXCollections.observableArrayList();
-//		
-//		File pjFolder = getProjectFolder();
-//		if(pjFolder==null || !pjFolder.canRead()) return;
-//		
-//		File[] fileList = pjFolder.listFiles();
-//		int count = 0;
-//		for (File f : fileList) {
-//			if(f.isDirectory()) {listCalcFoldersItems.add(f.getName());count++;}
-//		}
-//		ArrayList<String> pureFiles = new ArrayList<String>();
-//		for (File f : fileList) {
-//			if(f.isFile()) {listCalcFoldersItems.add(f.getName());pureFiles.add(f.getName());}
-//		}
-//		
-//		if(checkIdentity(listCalcFoldersItems,listCalcFolders.getItems())) {
-//			return;//list being the same. Do nothing!
-//		}
-//		
-//		int indFolder = listCalcFolders.getSelectionModel().getSelectedIndex();
-//		listCalcFolders.getItems().clear();listFiles.getItems().clear();
-//		listCalcFolders.getItems().addAll(listCalcFoldersItems);
-//		
-//		//will invoke selection change listener and update "calcFolder"
-//		if(count>indFolder && indFolder>=0) {listCalcFolders.getSelectionModel().select(indFolder);}
-//		else if(count>0) {listCalcFolders.getSelectionModel().select(0);}
-//		
-//		listCalcFolders.setCellFactory(new Callback<ListView<String>, ListCell<String>>() {
-//	        @Override 
-//	        public ListCell<String> call(ListView<String> param) {
-//	            return new ListCell<String>() {
-//	                @Override 
-//	                protected void updateItem(String item, boolean empty) {
-//	                    super.updateItem(item, empty);
-//	                    if (pureFiles.contains(item)) {
-//	                        setDisable(true);setTextFill(Color.LIGHTGRAY);
-//	                    } else {
-//	                        setDisable(false);setTextFill(Color.BLACK);
-//	                    }
-//	                    setText(item);
-//	                }
-//
-//	            };
-//	        }
-//	    });
-//		
-//	}
-
 
 }
