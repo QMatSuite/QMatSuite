@@ -192,27 +192,13 @@ public class OutputViewerController implements Initializable{
 	                    	setText(item);
 	                    }
 	                    else {
-		                    boolean isScf = (calcFolder!=null && 
-		                    		calcFolder.getName().toLowerCase().contains("scf")
-		                    		&& !calcFolder.getName().toLowerCase().contains("nscf")
-		                    		&& item.contains(EnumStep.SCF.toString())
-		                    		&& item.endsWith(ProgrammingConsts.stdoutExtension));
-		                    boolean isOpt = (calcFolder!=null
-		                    		&& item.contains(EnumStep.OPT.toString())
-		                    		&& item.endsWith(ProgrammingConsts.stdoutExtension));
-		                    boolean isMd = (calcFolder!=null
-		                    		&& item.contains(EnumStep.BOMD.toString())
-		                    		&& item.endsWith(ProgrammingConsts.stdoutExtension));
-		                    if (item.endsWith(ProgrammingConsts.dosExtension)
-		                    		|| item.contains(DefaultFileNames.bandsDatGnu)
-		                    		|| item.contains(DefaultFileNames.tddftPlotSDat)
-		                    		|| isScf || isOpt || isMd) {
-		                    	setStyle("-fx-font-weight: bolder; "
-		                    			+"-fx-border-color: green; ");
-		                    } else {
-		                    	setStyle("-fx-font-weight: normal; "
-		                    			+"-fx-border-color: white; ");
-		                    }
+	                    	if (isFileImportant(item)) {
+	                        	setStyle("-fx-font-weight: bolder; "
+	                        			+"-fx-border-color: green; ");
+	                        } else {
+	                        	setStyle("-fx-font-weight: normal; "
+	                        			+"-fx-border-color: white; ");
+	                        }
 		                    setText(item);
 	                    }
 	                }
@@ -276,7 +262,13 @@ public class OutputViewerController implements Initializable{
 //					}
 //				}
 				if(comboAnalysis.getItems().contains(EnumAnalysis.plot2D)) {
-					comboAnalysis.getSelectionModel().select(EnumAnalysis.plot2D);
+					if(EnumFileCategory.stdout.equals(fileCategory) && !this.fileData.isMD  && !this.fileData.isOpt  
+							&& !this.fileData.hasScf) {
+						comboAnalysis.getSelectionModel().select(EnumAnalysis.info);
+					}
+					else {
+						comboAnalysis.getSelectionModel().select(EnumAnalysis.plot2D);
+					}
 				}
 				else {
 					comboAnalysis.getSelectionModel().select(EnumAnalysis.text);
@@ -372,6 +364,23 @@ public class OutputViewerController implements Initializable{
 		});
 		
 	}
+	private boolean isFileImportant(String item) {
+		boolean isScf = (calcFolder!=null && 
+        		calcFolder.getName().toLowerCase().contains("scf")
+        		&& !calcFolder.getName().toLowerCase().contains("nscf")
+        		&& item.contains(EnumStep.SCF.toString())
+        		&& item.endsWith(ProgrammingConsts.stdoutExtension));
+        boolean isOpt = (calcFolder!=null
+        		&& item.contains(EnumStep.OPT.toString())
+        		&& item.endsWith(ProgrammingConsts.stdoutExtension));
+        boolean isMd = (calcFolder!=null
+        		&& item.contains(EnumStep.BOMD.toString())
+        		&& item.endsWith(ProgrammingConsts.stdoutExtension));
+        return (item.endsWith(ProgrammingConsts.dosExtension)
+        		|| item.contains(DefaultFileNames.bandsDatGnu)
+        		|| item.contains(DefaultFileNames.tddftPlotSDat)
+        		|| isScf || isOpt || isMd);
+	}
 	public void calculationFolderChange(String newCalcFolderName) {
 		fileData.clearAll();buttonSaveGeo.setDisable(true);
 		
@@ -420,11 +429,22 @@ public class OutputViewerController implements Initializable{
 		listFiles.getItems().clear();
 		listFiles.getItems().addAll(listFilesItems);
 		
-		if(tmpInt>=0 && listFiles.getItems().size()>tmpInt) {
-			listFiles.getSelectionModel().select(tmpInt);//will invoke selection change listener and update "inoutFiles"
+		String itemImportant = null;
+		for(String item:listFilesItems) {
+			if(isFileImportant(item)) {
+				itemImportant = item;//only take the first important one
+				break;
+			}
 		}
-		else if(!listFiles.getItems().isEmpty()){
-			listFiles.getSelectionModel().select(0);//select first file
+		if(itemImportant!=null) {
+			listFiles.getSelectionModel().select(itemImportant);//automatically select the "important/highlighted" output file
+			//will invoke selection change listener and update "inoutFiles"
+		}
+		else if(tmpInt>=0 && listFiles.getItems().size()>tmpInt) {//if no important file, just keep selected index
+			listFiles.getSelectionModel().select(tmpInt);
+		}
+		else if(!listFiles.getItems().isEmpty()){//select first file if nothing works
+			listFiles.getSelectionModel().select(0);
 		}
 	}
 	private void updateIoDisplay() {
