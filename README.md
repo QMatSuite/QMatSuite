@@ -2,11 +2,12 @@
 
 QuantumVITAS (Quantum Visualization Interacting Toolkit for Ab-initio Simulations) is a graphical user interface designed for ab-initio simulation software Quantum ESPRESSO, aiming at making ab-initio simulations easily accessible and intuitively controllable in various operating systems.
 
+[![OpenHub](https://www.openhub.net/p/quantumVITAS/widgets/project_thin_badge.gif)](https://www.openhub.net/p/quantumVITAS)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+![GitHub All Releases](https://img.shields.io/github/downloads-pre/quantumVITAS/quantumVITAS/total)
 [![Build Status](https://travis-ci.com/quantumVITAS/quantumVITAS.svg?branch=master)](https://travis-ci.com/quantumVITAS/quantumVITAS)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/e587f90f42f64b63bb3065b40b138e8c)](https://www.codacy.com/gh/quantumVITAS/quantumVITAS?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=quantumVITAS/quantumVITAS&amp;utm_campaign=Badge_Grade)
-[![OpenHub](https://www.openhub.net/p/quantumVITAS/widgets/project_thin_badge.gif)](https://www.openhub.net/p/quantumVITAS)
 [![codecov](https://codecov.io/gh/quantumVITAS/quantumVITAS/branch/master/graph/badge.svg)](https://codecov.io/gh/quantumVITAS/quantumVITAS)
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Join the chat at https://gitter.im/quantumVITAS/quantumvitas](https://badges.gitter.im/quantumVITAS/quantumvitas.svg)](https://gitter.im/quantumVITAS/quantumvitas?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 We want to integrate input file generation, calculation job control, result analysis and data managment into the user interface. In the future we may integrate other engines besides Quantum ESPRESSO.
