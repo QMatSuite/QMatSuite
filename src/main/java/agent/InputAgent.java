@@ -58,7 +58,7 @@ public abstract class InputAgent implements Serializable{
 		//Adding an empty space " " to the beginning solves the problem if the parameter is right at the beginning
 		//the parameter needs to be followed with "=" with only possible whitespaces in between ("B   =1" is allowed)
 		//the parameter must not have preceeding alphabetic character (e.g. tell "cellAB=0" apart from "B=1")
-		String[] splitted0 = (" "+inputStr).split("[^a-zA-Z0-9]"+paraStr+"\\s*=");
+		String[] splitted0 = (" "+inputStr.toLowerCase()).split("[^a-zA-Z0-9]"+paraStr.toLowerCase()+"\\s*=");
 		//String[] splitted0 = inputStr.split("[^a-zA-Z0-9]?B\\s*=");
 		if(splitted0.length<=1) {return null;}//not found
 		

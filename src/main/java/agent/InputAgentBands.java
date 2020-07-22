@@ -78,7 +78,11 @@ public class InputAgentBands extends InputAgent{
 			
 			String strLabel="";
 			if(splitted.length >=5 && splitted[4].contains("!")) {
-				strLabel = splitted[4].trim().replace('!', '\0');
+				String postFix = "";
+				for(int i=4;i<splitted.length;i++) {
+					postFix+=splitted[i];
+				}
+				strLabel = postFix.trim().replace('!', '\0');
 			}
 			listKPoints.add(new Kpoint(strLabel, kx, ky, kz, nk));
 			return true;

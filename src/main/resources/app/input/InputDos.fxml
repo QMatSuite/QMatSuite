@@ -54,25 +54,12 @@
             </BorderPane>
             <GridPane hgap="5.0" prefWidth="350.0" vgap="5.0">
                <children>
-                  <Label fx:id="emaxLabel" text="Max Energy" />
-                  <Label fx:id="eminLabel" text="Min Energy" GridPane.rowIndex="1" />
-                  <GridPane prefWidth="200.0" GridPane.columnIndex="1">
-                     <children>
-                        <TextField fx:id="textEmax" prefWidth="100.0" />
-                        <ComboBox fx:id="unitEmaxCombo" prefWidth="97.0" GridPane.columnIndex="1" />
-                     </children>
-                     <columnConstraints>
-                        <ColumnConstraints hgrow="SOMETIMES" prefWidth="100.0" />
-                        <ColumnConstraints hgrow="SOMETIMES" prefWidth="100.0" />
-                     </columnConstraints>
-                     <rowConstraints>
-                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-                     </rowConstraints>
-                  </GridPane>
+                  <Label fx:id="emaxLabel" text="Max Energy" GridPane.rowIndex="1" />
+                  <Label fx:id="eminLabel" text="Min Energy" />
                   <GridPane prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
                      <children>
-                        <TextField fx:id="textEmin" prefWidth="100.0" />
-                        <Label fx:id="unitEmin" text="Label" GridPane.columnIndex="1" />
+                        <TextField fx:id="textEmax" prefWidth="100.0" />
+                        <Label fx:id="unitEmax" text="Label" GridPane.columnIndex="1" />
                      </children>
                      <columnConstraints>
                         <ColumnConstraints hgrow="SOMETIMES" prefWidth="100.0" />
@@ -82,8 +69,21 @@
                         <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                      </rowConstraints>
                   </GridPane>
-                  <Button fx:id="infoEmax" mnemonicParsing="false" text="i" GridPane.columnIndex="3" />
-                  <Button fx:id="infoEmin" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+                  <GridPane prefWidth="200.0" GridPane.columnIndex="1">
+                     <children>
+                        <TextField fx:id="textEmin" prefWidth="100.0" />
+                        <ComboBox fx:id="unitEminCombo" prefWidth="97.0" GridPane.columnIndex="1" />
+                     </children>
+                     <columnConstraints>
+                        <ColumnConstraints hgrow="SOMETIMES" prefWidth="100.0" />
+                        <ColumnConstraints hgrow="SOMETIMES" prefWidth="100.0" />
+                     </columnConstraints>
+                     <rowConstraints>
+                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                     </rowConstraints>
+                  </GridPane>
+                  <Button fx:id="infoEmax" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+                  <Button fx:id="infoEmin" mnemonicParsing="false" text="i" GridPane.columnIndex="3" />
                   <Label fx:id="edeltaLabel" text="Energy Step" GridPane.rowIndex="2" />
                   <Button fx:id="infoEstep" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="2" />
                   <GridPane prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
@@ -99,8 +99,8 @@
                         <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                      </rowConstraints>
                   </GridPane>
-                  <CheckBox fx:id="checkEmax" mnemonicParsing="false" GridPane.columnIndex="2" />
-                  <CheckBox fx:id="checkEmin" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="1" />
+                  <CheckBox fx:id="checkEmax" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="1" />
+                  <CheckBox fx:id="checkEmin" mnemonicParsing="false" GridPane.columnIndex="2" />
                   <CheckBox fx:id="checkEstep" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="2" />
                   <CheckBox fx:id="checkShowAdvanced" mnemonicParsing="false" text="Show Advanced Settings" GridPane.columnSpan="2" GridPane.rowIndex="3" />
                </children>

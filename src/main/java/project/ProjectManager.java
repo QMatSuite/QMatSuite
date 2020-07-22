@@ -219,10 +219,12 @@ public class ProjectManager{
 		//use relative path if it is in the home folder of this software
 		String homePath = new File("").getAbsolutePath();
 		String msgPath = new File(msg).getAbsolutePath();
+		
 		if(msgPath.startsWith(homePath)){
 			//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", msg+" is in the current folder");
 			msg = "."+msgPath.substring(homePath.length());
 		}
+		//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", msg);
 		writeGlobalSettings(key, msg);
 		return msg;
 	}
@@ -794,8 +796,16 @@ public class ProjectManager{
 		return pseudoLibPath;
 	}
 	public void setPseudoLibPath(String pseudoLibPath) {
-		PseudoPotential.setRootFolder(new File(pseudoLibPath));
-		this.pseudoLibPath = pseudoLibPath;
+		//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", pseudoLibPath);
+		String newPath;
+		try {
+			newPath = new File(pseudoLibPath).getCanonicalPath();
+		} catch (IOException e) {
+			newPath = new File(pseudoLibPath).getAbsolutePath();
+			e.printStackTrace();
+		}
+		PseudoPotential.setRootFolder(new File(newPath));
+		this.pseudoLibPath = newPath;
 	}
 	
 	

@@ -18,6 +18,7 @@
  *******************************************************************************/
 package agent;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Objects;
 
@@ -453,7 +454,8 @@ public class InputAgentGeo extends InputAgent{
 		return msg;
 	}
 	public String getPseudodir() {
-		return pseudodir;
+		if(pseudodir==null || pseudodir.isEmpty()) {return pseudodir;}
+		return (new File(pseudodir)).getAbsolutePath();
 	}
 	public void setPseudodir(String pseudodir) {
 		this.pseudodir = pseudodir;

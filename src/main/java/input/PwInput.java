@@ -274,7 +274,7 @@ public class PwInput extends QeInput{
 			InputValueDoubleArray tmp2 = ((InputValueDoubleArray) sectionDict.get("SYSTEM").getValue("starting_magnetization"));
 			tmp2.clearAll();tmp2.setExplicitWrite(false);
 			
-			if(boolMag && (ia1.nspin.isNull() || !ia1.nspin.getValue().equals(1))) {
+			if(boolMag && !ia1.nspin.equals(1)) {
 				tmp2.setExplicitWrite(true);
 				if(ia1.setForElements.getValue()) {
 					for(int iele=0;iele<elementList.size();iele++) {
