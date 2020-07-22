@@ -356,8 +356,11 @@ public class InputScfMagnetController extends InputController{
 	            	alert.setContentText("Wrong magnet! "+iScf.nspin.getValue()+"  "+iScf.noncolin.getValue());
 	            	alert.showAndWait();
 	    		}
-	        	if (iScf.boolSoc.getValue()) {spinorbitToggle.setText("ON");spinorbitToggle.setSelected(true);}
-	    		else {spinorbitToggle.setText("OFF");spinorbitToggle.setSelected(false);}
+	        	
+	        	checkPolariz.setSelected(!iScf.nspin.isEnabled());
+	        	
+	        	setToggle(spinorbitToggle, iScf.boolSoc);
+	        	checkSoc.setSelected(!iScf.boolSoc.isEnabled());
 	        	
 	        	//for now, only allow for setForElements
 	        	setForElements.setSelected(true);setForAtoms.setSelected(false);

@@ -243,7 +243,7 @@ public class InputBandsController extends InputController{
     private void clearInput() {
     	statusTextField.setText("");
     	textKLabel.setText("");textKx.setText("");textKy.setText("");textKz.setText("");
-    	textNBands.setText("");
+    	textNk.setText("");
 		tableKPath.getSelectionModel().clearSelection();
     }
     public void loadProjectParameters() {

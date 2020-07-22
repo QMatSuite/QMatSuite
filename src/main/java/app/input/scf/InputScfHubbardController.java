@@ -228,6 +228,8 @@ public class InputScfHubbardController extends InputController{
 	    		else {applyToggle.setText("OFF");applyToggle.setSelected(false);hubbardHbox.setDisable(true);elementTableHubbard.setDisable(true);}
 	    		elemData.clear();
 	    		elemData.addAll(iScf.elementList);
+	    		
+	    		checkHubbardU.setSelected(!iScf.lda_plus_u.isEnabled());
 			}
 			
 			InputAgentGeo iGeo = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
@@ -236,6 +238,8 @@ public class InputScfHubbardController extends InputController{
 				ObservableList<String> elem_obs = FXCollections.observableArrayList(elem);
 				comboElements.setItems(elem_obs);
 			}
+			
+			
     	}
 	}
 }

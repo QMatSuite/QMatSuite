@@ -449,9 +449,9 @@ public class MainWindowController implements Initializable{
 			
 			if(selectedDir!=null && selectedDir.canRead()) {
 				
-				String pathWritten = mainClass.projectManager.writePathSettings(SettingKeys.pseudolibroot.toString(),selectedDir.getPath());
-				setTexFieldPath(labelPathPseudoLib, pathWritten,PathSettings.pplib);
-				mainClass.projectManager.setPseudoLibPath(pathWritten);
+				String fieldName = mainClass.projectManager.writePathSettings(SettingKeys.pseudolibroot.toString(),selectedDir.getPath());
+				setTexFieldPath(labelPathPseudoLib, fieldName,PathSettings.pplib);
+				mainClass.projectManager.setPseudoLibPath(fieldName);
 				
 //				InputAgentGeo iGeo = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
 //				if (iGeo!=null) {iGeo.pseudodir = selectedDir.getPath();}
@@ -879,6 +879,7 @@ public class MainWindowController implements Initializable{
 		
 		String wsp2 = mainClass.projectManager.readGlobalSettings(SettingKeys.pseudolibroot.toString());
 		mainClass.projectManager.setPseudoLibPath(wsp2);
+		
 		setTexFieldPath(labelPathPseudoLib, wsp2,PathSettings.pplib);
 
 	}

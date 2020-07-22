@@ -55,13 +55,13 @@ public class InputDosController extends InputController {
     private TextField textEmax;
 
     @FXML
-    private ComboBox<EnumUnitEnergy> unitEmaxCombo;
+    private ComboBox<EnumUnitEnergy> unitEminCombo;
 
     @FXML
     private TextField textEmin;
 
     @FXML
-    private Label unitEmin;
+    private Label unitEmax;
 
     @FXML
     private Button infoEmax;
@@ -148,9 +148,9 @@ public class InputDosController extends InputController {
 		initDoubleParameterSet(textEmax, "emax", EnumNumCondition.no, "Automated", checkEmax, infoEmax, checkResetAll);
 		initDoubleParameterSet(textEmin, "emin", EnumNumCondition.no, "Automated", checkEmin, infoEmin, checkResetAll);
 		
-		unitEmin.textProperty().bind(unitEmaxCombo.valueProperty().asString());
-		unitEstep.textProperty().bind(unitEmaxCombo.valueProperty().asString());
-		unitDegauss.textProperty().bind(unitEmaxCombo.valueProperty().asString());
+		unitEmax.textProperty().bind(unitEminCombo.valueProperty().asString());
+		unitEstep.textProperty().bind(unitEminCombo.valueProperty().asString());
+		unitDegauss.textProperty().bind(unitEminCombo.valueProperty().asString());
 		
 		checkEstep.setDisable(true);
 		setDoubleFieldListener(textEstep, "estep",EnumNumCondition.no);
@@ -164,7 +164,7 @@ public class InputDosController extends InputController {
 		
 		//advanced
 		checkShowAdvanced.setSelected(false);panelAdvanced.setVisible(false);
-		setComboListener(unitEmaxCombo, EnumUnitEnergy.values(), "energyUnit");
+		setComboListener(unitEminCombo, EnumUnitEnergy.values(), "energyUnit");
 		initParameterSet(comboSummation, "enumSummation", EnumSummation.values(), false, checkSummation, infoSummation, checkResetAll);
 		//0,1,-1,-99 for input file
 		initParameterSet(comboSmearing, "enumSmearing", EnumSmearing.values(), false, checkSmearing, infoSmearing, checkResetAll);
@@ -194,7 +194,7 @@ public class InputDosController extends InputController {
 		InputAgentDos iDos = (InputAgentDos) mainClass.projectManager.getStepAgent(EnumStep.DOS);
 		if (iDos!=null) {
 			checkShowAdvanced.setSelected(iDos.setAdvanced);
-			setCombo(unitEmaxCombo, iDos.energyUnit);
+			setCombo(unitEminCombo, iDos.energyUnit);
 			setField(textEstep, iDos.estep);	
 		}
 	}

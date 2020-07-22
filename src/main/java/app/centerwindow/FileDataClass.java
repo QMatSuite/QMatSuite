@@ -45,7 +45,9 @@ public class FileDataClass {
 	private ArrayList<Double> totalForce;//Ry/Bohr
 	private ArrayList<Double> totalPressure;//kBar
 	
-	private ArrayList<ArrayList<Double>> totalMag;//Bohr mag/cell
+	private ArrayList<ArrayList<Double>> totalMag,
+	totalMagy,
+	totalMagz;//Bohr mag/cell
 	
 	
 	private ArrayList<ArrayList<Double>> absoluteMag;//Bohr mag/cell
@@ -93,6 +95,8 @@ public class FileDataClass {
 	
 	//will be true when one scf just finished. Will be set back to false when one new mag is read
 	private boolean flagScfFinishedForTotalMag=false;
+	private boolean flagScfFinishedForTotalMagy=false;
+	private boolean flagScfFinishedForTotalMagz=false;
 	private boolean flagScfFinishedForAbsMag=false;
 	
 	public FileDataClass() {
@@ -103,6 +107,9 @@ public class FileDataClass {
 		totalPressure = new ArrayList<Double>();
 		
 		totalMag = new ArrayList<ArrayList<Double>>();
+		totalMagy = new ArrayList<ArrayList<Double>>();
+		totalMagz = new ArrayList<ArrayList<Double>>();
+		
 		absoluteMag = new ArrayList<ArrayList<Double>>();
 		dosArray = new ArrayList<ArrayList<Double>>();
 		bandsDatArray = new ArrayList<ArrayList<ArrayList<Double>>>();
@@ -129,6 +136,12 @@ public class FileDataClass {
 			if(ard!=null) {ard.clear();}
 		}
 		for(ArrayList<Double> ard:totalMag) {
+			if(ard!=null) {ard.clear();}
+		}
+		for(ArrayList<Double> ard:totalMagy) {
+			if(ard!=null) {ard.clear();}
+		}
+		for(ArrayList<Double> ard:totalMagz) {
 			if(ard!=null) {ard.clear();}
 		}
 		for(ArrayList<Double> ard:absoluteMag) {
@@ -160,7 +173,7 @@ public class FileDataClass {
 		totalForce.clear();
 		totalPressure.clear();
 		
-		totalMag.clear();
+		totalMag.clear();totalMagy.clear();totalMagz.clear();
 		absoluteMag.clear();
 		dosArray.clear();
 		dosHeader.clear();
@@ -187,6 +200,8 @@ public class FileDataClass {
 		isNscf=false;isNscfFinished=false;isDos=false;isDosFinished=false;
 		isPwBands = false;isBandsPP = false;isTddftTurbo = false;isTddftSpectrum=false;
 		flagScfFinishedForTotalMag=false;
+		flagScfFinishedForTotalMagy=false;
+		flagScfFinishedForTotalMagz=false;
 		flagScfFinishedForAbsMag=false;
 	}
 	public InputAgentGeo getGeoAgent() {
@@ -577,19 +592,13 @@ public class FileDataClass {
 		    		}
 		    	}
 		    	if(lowerCaseStr.contains("total magnetization") && strTmp.contains("=")) {
-		    		String[] splitted = strTmp.trim().split("\\s+");//split the string by whitespaces
-		    		try {
-		    			Double dbTmp =  Double.valueOf(splitted[3]);
-		    			if(dbTmp!=null) {this.addMag(dbTmp, true);}
-		    		}catch(Exception e) {
-		    			e.printStackTrace();
-		    		}
+		    		parseTotalMagnetization(strTmp);
 		    	}
 		    	if(lowerCaseStr.contains("absolute magnetization") && strTmp.contains("=")) {
 		    		String[] splitted = strTmp.trim().split("\\s+");//split the string by whitespaces
 		    		try {
 		    			Double dbTmp =  Double.valueOf(splitted[3]);
-		    			if(dbTmp!=null) {this.addMag(dbTmp, false);}
+		    			if(dbTmp!=null) {this.addMag(dbTmp, 0);}
 		    		}catch(Exception e) {
 		    			e.printStackTrace();
 		    		}
@@ -657,6 +666,26 @@ public class FileDataClass {
 			return "IOException: "+e.getMessage();
 		}
 		return "";
+	}
+	private void parseTotalMagnetization(String strLine) {
+		String[] splitted = strLine.trim().split("\\s+");//split the string by whitespaces
+		try {
+			Double dbTmpx =  Double.valueOf(splitted[3]);
+			if(dbTmpx!=null) {this.addMag(dbTmpx, 1);}
+			try {
+				Double dbTmpy =  Double.valueOf(splitted[4]);
+				Double dbTmpz =  Double.valueOf(splitted[5]);
+				if(dbTmpy!=null && dbTmpz!=null) {
+					this.addMag(dbTmpy, 2);
+					this.addMag(dbTmpz, 3);
+				}
+			}
+			catch(Exception e) {
+				//nothing to do
+			}
+		}catch(Exception e) {
+			e.printStackTrace();
+		}
 	}
 	private String parseArg(String strLine) {
 		if(strLine==null || !strLine.contains("(") || !strLine.contains(")")) {
@@ -973,17 +1002,36 @@ public class FileDataClass {
 		//energyArray==null shouldn't happen
 		if(energyArray.isEmpty()) {energyArray.add(new ArrayList<Double>());}
 		energyArray.get(energyArray.size()-1).add(ene);
-		if(isFinal) {energyArray.add(new ArrayList<Double>());
-		flagScfFinishedForTotalMag=true;
-		flagScfFinishedForAbsMag=true;}
+		if(isFinal) {
+			energyArray.add(new ArrayList<Double>());
+			flagScfFinishedForTotalMag=true;
+			flagScfFinishedForAbsMag=true;
+			flagScfFinishedForTotalMagy=true;
+			flagScfFinishedForTotalMagz=true;
+		}
 	}
-	public void addMag(double mag, boolean isTotal) {
-		ArrayList<ArrayList<Double>> tmpMag = isTotal?totalMag:absoluteMag;
-		//tmpMag==null shouldn't happen
+//	public void addMag(double mag, boolean isTotal) {
+//		ArrayList<ArrayList<Double>> tmpMag = isTotal?totalMag:absoluteMag;
+//		//tmpMag==null shouldn't happen
+//		if(tmpMag.isEmpty()) {tmpMag.add(new ArrayList<Double>());}
+//		tmpMag.get(tmpMag.size()-1).add(mag);
+//		if(flagScfFinishedForTotalMag&&isTotal) {flagScfFinishedForTotalMag=false;tmpMag.add(new ArrayList<Double>());}
+//		if(flagScfFinishedForAbsMag&&!isTotal) {flagScfFinishedForAbsMag=false;tmpMag.add(new ArrayList<Double>());}
+//	}
+	public void addMag(double mag, int ind) {
+		//int == 0: absoluteMag
+		//int == 1: totalMag
+		//int == 2: totalMagy
+		//int == 3: totalMagz
+		ArrayList<ArrayList<Double>> tmpMag = (ind==0 ? absoluteMag : (ind==1 ? totalMag : (ind==2 ? totalMagy : (ind==3 ? totalMagz : null))));
+		if(tmpMag==null) {return;}
 		if(tmpMag.isEmpty()) {tmpMag.add(new ArrayList<Double>());}
 		tmpMag.get(tmpMag.size()-1).add(mag);
-		if(flagScfFinishedForTotalMag&&isTotal) {flagScfFinishedForTotalMag=false;tmpMag.add(new ArrayList<Double>());}
-		if(flagScfFinishedForAbsMag&&!isTotal) {flagScfFinishedForAbsMag=false;tmpMag.add(new ArrayList<Double>());}
+		
+		if(flagScfFinishedForAbsMag && ind==0) {flagScfFinishedForAbsMag=false;tmpMag.add(new ArrayList<Double>());}
+		if(flagScfFinishedForTotalMag && ind==1) {flagScfFinishedForTotalMag=false;tmpMag.add(new ArrayList<Double>());}
+		if(flagScfFinishedForTotalMagy && ind==2) {flagScfFinishedForTotalMagy=false;tmpMag.add(new ArrayList<Double>());}
+		if(flagScfFinishedForTotalMagz && ind==3) {flagScfFinishedForTotalMagz=false;tmpMag.add(new ArrayList<Double>());}
 	}
 	public ArrayList<ArrayList<Double>> getEnergyArray(){
 		return this.energyArray;
@@ -1115,39 +1163,12 @@ public class FileDataClass {
 				strTmp+=("Error message detected:\n"+errorMessage+"\n");
 			}
 			
+			strTmp += "\n";
+			
 			//total energy
 			int cnt = 0;
 			if(isMD || isOpt || hasScf) {
-				
-				if(energyArray.size()<=2) {
-					strTmp+="Total energy (Ry):";
-					for(ArrayList<Double> ard:energyArray) {
-						if(ard!=null) {
-							cnt++;
-							if(ard.isEmpty()) {continue;}
-							strTmp+=("Step "+Integer.toString(cnt)+": ");
-							for(Double val:ard) {
-								if(val!=null) {strTmp+=(val.toString()+",");}
-							}
-							strTmp+="\n";
-						}
-					}
-				}
-				else {
-					strTmp+="Total energy converged (Ry):";
-					for(ArrayList<Double> ard:energyArray) {
-						if(ard!=null) {
-							cnt++;
-							if(ard.isEmpty()) {continue;}
-							strTmp+=("Step "+Integer.toString(cnt)+": "+ard.get(ard.size()-1).toString()+",");
-						}
-						if((cnt % 5) == 0) {
-							strTmp+="\n";
-						}
-					}
-					strTmp+="\n";
-					
-				}
+				strTmp += printArray(energyArray, "Total energy (Ry):", "Total energy converged (Ry):");
 				if(totalForce!=null && !totalForce.isEmpty()) {
 					strTmp+="Total force (Ry/Bohr):";
 					for(Double val:this.totalForce) {
@@ -1168,31 +1189,26 @@ public class FileDataClass {
 			int cnt_mag = 0;
 			if(isMD || isOpt || hasScf) {
 				if(!totalMag.isEmpty() || !absoluteMag.isEmpty()) {
-					strTmp+="Total magnetization (Bohr mag/cell):";
-					for(ArrayList<Double> ard:totalMag) {
-						if(ard!=null) {
-							cnt_mag++;
-							if(ard.isEmpty()) {continue;}
-							strTmp+=("Step "+Integer.toString(cnt_mag)+": ");
-							for(Double val:ard) {
-								if(val!=null) {strTmp+=(val.toString()+",");}
-							}
-							strTmp+="\n";
-						}
+					if(!totalMagy.isEmpty() || !totalMagz.isEmpty()) {
+						strTmp+="Non collinear magnetism detected.\nTotal magnetization in x (Bohr mag/cell):";
 					}
-					cnt_mag = 0;
+					else {
+						strTmp+="Collinear magnetism calculation.\nTotal magnetization (Bohr mag/cell):";
+					}
+					
+					strTmp += printArray(totalMag, "", "");
+					
+					if(!totalMagy.isEmpty() || !totalMagz.isEmpty()) {
+						strTmp +="Total magnetization in y(Bohr mag/cell):";
+						strTmp += printArray(totalMagy, "", "");
+						
+						strTmp +="Total magnetization in z(Bohr mag/cell):";
+						strTmp += printArray(totalMagy, "", "");
+					}
+					
 					strTmp+="Absolute magnetization (Bohr mag/cell):";
-					for(ArrayList<Double> ard:absoluteMag) {
-						if(ard!=null) {
-							cnt_mag++;
-							if(ard.isEmpty()) {continue;}
-							strTmp+=("Step "+Integer.toString(cnt_mag)+": ");
-							for(Double val:ard) {
-								if(val!=null) {strTmp+=(val.toString()+",");}
-							}
-							strTmp+="\n";
-						}
-					}
+					strTmp += printArray(absoluteMag, "", "");
+					
 				}
 			}
 			
@@ -1216,6 +1232,8 @@ public class FileDataClass {
 					strTmp+=" eV\n";
 				}
 			}
+			
+			strTmp += "\n";
 			
 			//Geometry
 			if(isMD || isOpt) {
@@ -1265,6 +1283,39 @@ public class FileDataClass {
 		strTmp+="\n";
 		return strTmp;
 	}
+	private String printArray(ArrayList<ArrayList<Double>> arrTmp, String smallTitle, String largeTitle) {
+		String strTmp = "";
+		int cnt = 0;
+		if(arrTmp.size()<=2) {
+			strTmp+=smallTitle;
+			for(ArrayList<Double> ard:arrTmp) {
+				if(ard!=null) {
+					cnt++;
+					if(ard.isEmpty()) {continue;}
+					strTmp+=("Step "+Integer.toString(cnt)+": ");
+					for(Double val:ard) {
+						if(val!=null) {strTmp+=(val.toString()+",");}
+					}
+					strTmp+="\n";
+				}
+			}
+		}
+		else {
+			strTmp+=largeTitle;
+			for(ArrayList<Double> ard:arrTmp) {
+				if(ard!=null) {
+					cnt++;
+					if(ard.isEmpty()) {continue;}
+					strTmp+=("Step "+Integer.toString(cnt)+": "+ard.get(ard.size()-1).toString()+",");
+				}
+				if((cnt % 5) == 0) {
+					strTmp+="\n";
+				}
+			}
+			strTmp+="\n";
+		}
+		return strTmp;
+	}
 	public ArrayList<String> getBandsHighSymmetryK() {
 		return bandsHighSymmetryK;
 	}
@@ -1279,5 +1330,17 @@ public class FileDataClass {
 	}
 	public ArrayList<ArrayList<Double>> getDataMd(){
 		return this.dataMd;
+	}
+	public ArrayList<ArrayList<Double>> getTotalMag(){
+		return this.totalMag;
+	}
+	public ArrayList<ArrayList<Double>> getTotalMagy(){
+		return this.totalMagy;
+	}
+	public ArrayList<ArrayList<Double>> getTotalMagz(){
+		return this.totalMagz;
+	}
+	public ArrayList<ArrayList<Double>> getAbsoluteMag(){
+		return this.absoluteMag;
 	}
 }

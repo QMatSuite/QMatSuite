@@ -157,6 +157,7 @@ public class OutputViewerController implements Initializable{
 		geometry3d.centerSubScene(displayScroll);
 		
 		lineChart.prefWidthProperty().bind(displayScroll.widthProperty());
+		lineChart.prefHeightProperty().bind(displayScroll.heightProperty());
 		lineChart.setCreateSymbols(false);
 		//lineChart.prefHeightProperty().bind(workSpaceTabPane.heightProperty());
 		
@@ -383,6 +384,10 @@ public class OutputViewerController implements Initializable{
 	}
 	public void calculationFolderChange(String newCalcFolderName) {
 		fileData.clearAll();buttonSaveGeo.setDisable(true);
+		this.displayScroll.setContent(null);
+		this.lineChart.getData().clear();
+		this.xAxis.setLabel("");
+		this.yAxis.setLabel("");
 		
 		if(newCalcFolderName==null || newCalcFolderName.isEmpty()) return;
 		
@@ -724,15 +729,25 @@ public class OutputViewerController implements Initializable{
 		plotTypeStdOut.clear();
 		if(fileData.isOpt) {
 			plotTypeStdOut.add("OPT E conv");//if change here, remember to change later in this function
+			if(!fileData.getAbsoluteMag().isEmpty() || !fileData.getTotalMag().isEmpty()) {
+				plotTypeStdOut.add("OPT magnet");
+			}
 			plotTypeStdOut.add("OPT F conv");
-			plotTypeStdOut.add("OPT P conv");
+			if(!fileData.getTotalPressure().isEmpty()) {
+				plotTypeStdOut.add("OPT P conv");
+			}
 		}
 		if(fileData.isMD) {
 			plotTypeStdOut.add("Ekin");//if change here, remember to change later in this function
 			plotTypeStdOut.add("Temperature");
 			plotTypeStdOut.add("Ekin + Etot");
 		}
-		if(fileData.hasScf) {plotTypeStdOut.add("SCF E conv");}
+		if(fileData.hasScf) {
+			plotTypeStdOut.add("SCF E conv");
+			if(!fileData.getAbsoluteMag().isEmpty() || !fileData.getTotalMag().isEmpty()) {
+				plotTypeStdOut.add("SCF magnet");
+			}
+		}
 		//check whether it is the same as in the combo. If yes, no update of the combo
 		if(!isSameTypeStdout(plotTypeStdOut)) {
 			comboPlot.getItems().clear();
@@ -752,36 +767,28 @@ public class OutputViewerController implements Initializable{
 		lineChart.getData().clear();
 		
 		ArrayList<ArrayList<Double>> energyTmp = fileData.getEnergyArray();
-		
+		ArrayList<ArrayList<Double>> absMagTmp = fileData.getAbsoluteMag();
+		ArrayList<ArrayList<Double>> magTmp = fileData.getTotalMag();
+		ArrayList<ArrayList<Double>> magTmpy = fileData.getTotalMagy();
+		ArrayList<ArrayList<Double>> magTmpz = fileData.getTotalMagz();
 
 		if(plotType.equals("SCF E conv")) {
-			xAxis.setLabel("SCF Iterations");
-			yAxis.setLabel("Total Energy (Ry)");
-			Series<Double,Double> dataSeries1 = new Series<Double, Double>();
-	        dataSeries1.setName("SCF Energy Convergence");
-	        if(!energyTmp.isEmpty()) {
-				ArrayList<Double> scfTmp = energyTmp.get(energyTmp.size()-1);
-				if(scfTmp.isEmpty() && energyTmp.size()>=2) {scfTmp = energyTmp.get(energyTmp.size()-2);}
-				for(int i=0;i<scfTmp.size();i++) {
-			        dataSeries1.getData().add(new Data<Double, Double>( (double) i+1, scfTmp.get(i)));
-				}
-				//dataSeries1.getData().add(new Data<Double, Double>( 0.0, -20.0));
-	        }
-	        lineChart.getData().add(dataSeries1);
+			plotScfArray(energyTmp, "SCF Iterations", "Total Energy (Ry)", "SCF Energy Convergence");
+		}
+		else if(plotType.equals("SCF magnet")){
+			plotScfArray(absMagTmp, "SCF Iterations", "Magnetic moment (uB)", "absolute magnetic moment");
+			plotScfArray(magTmp, "SCF Iterations", "Magnetic moment (uB)", (magTmpy.isEmpty()?"total magnetic moment":"total magnetic moment (x)"));
+			plotScfArray(magTmpy, "SCF Iterations", "Magnetic moment (uB)", "total magnetic moment (y)");
+			plotScfArray(magTmpz, "SCF Iterations", "Magnetic moment (uB)", "total magnetic moment (z)");
 		}
 		else if(plotType.equals("OPT E conv")) {
-			xAxis.setLabel("Optimization Steps");
-			yAxis.setLabel("Total Energy (Ry)");
-			Series<Double,Double> dataSeries1 = new Series<Double, Double>();
-	        dataSeries1.setName("Optimization Energy Convergence");
-			
-			for(int i=0;i<energyTmp.size();i++) {
-				if(energyTmp.get(i).size()>0) {
-					Double dbTmp = energyTmp.get(i).get(energyTmp.get(i).size()-1);
-					if(dbTmp!=null) {dataSeries1.getData().add(new Data<Double, Double>( (double) i+1, dbTmp));}
-				}
-			}
-			lineChart.getData().add(dataSeries1);
+			plotOptArray(energyTmp, "Optimization Steps", "Total Energy (Ry)", "Optimization Energy Convergence");
+		}
+		else if(plotType.equals("OPT magnet")) {
+			plotOptArray(absMagTmp, "Optimization Steps", "Magnetic moment (uB)", "absolute magnetic moment");
+			plotOptArray(magTmp, "Optimization Steps", "Magnetic moment (uB)", (magTmpy.isEmpty()?"total magnetic moment":"total magnetic moment (x)"));
+			plotOptArray(magTmpy, "Optimization Steps", "Magnetic moment (uB)", "total magnetic moment (y)");
+			plotOptArray(magTmpz, "Optimization Steps", "Magnetic moment (uB)", "total magnetic moment (z)");
 		}
 		else if(plotType.equals("OPT F conv")) {
 			plotArray(fileData.getTotalForce(), "Optimization Steps", "Total Force (Ry/Bohr)","Optimization Force Convergence",false);
@@ -804,6 +811,36 @@ public class OutputViewerController implements Initializable{
         
         displayScroll.setContent(lineChart);
 
+	}
+	private void plotOptArray(ArrayList<ArrayList<Double>> dataY, String xlabel, String ylabel, String titleStr) {
+		xAxis.setLabel(xlabel);
+		yAxis.setLabel(ylabel);
+		if(dataY!=null && !dataY.isEmpty()) {
+			Series<Double,Double> dataSeries1 = new Series<Double, Double>();
+	        dataSeries1.setName(titleStr);
+			
+			for(int i=0;i<dataY.size();i++) {
+				if(dataY.get(i).size()>0) {
+					Double dbTmp = dataY.get(i).get(dataY.get(i).size()-1);
+					if(dbTmp!=null) {dataSeries1.getData().add(new Data<Double, Double>( (double) i+1, dbTmp));}
+				}
+			}
+			lineChart.getData().add(dataSeries1);
+		}
+	}
+	private void plotScfArray(ArrayList<ArrayList<Double>> dataY, String xlabel, String ylabel, String titleStr) {
+		xAxis.setLabel(xlabel);
+		yAxis.setLabel(ylabel);
+        if(dataY!=null && !dataY.isEmpty()) {
+        	Series<Double,Double> dataSeries1 = new Series<Double, Double>();
+            dataSeries1.setName(titleStr);
+			ArrayList<Double> scfTmp = dataY.get(dataY.size()-1);
+			if(scfTmp.isEmpty() && dataY.size()>=2) {scfTmp = dataY.get(dataY.size()-2);}
+			for(int i=0;i<scfTmp.size();i++) {
+		        dataSeries1.getData().add(new Data<Double, Double>( (double) i+1, scfTmp.get(i)));
+			}
+			lineChart.getData().add(dataSeries1);
+        }
 	}
 	private void plotArray(ArrayList<Double> dataY, String xlabel, String ylabel, String titleStr, boolean boolClear) {
 		if(boolClear) {lineChart.getData().clear();}
