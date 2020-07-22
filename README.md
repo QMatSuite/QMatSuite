@@ -10,9 +10,9 @@ QuantumVITAS (Quantum Visualization Interacting Toolkit for Ab-initio Simulation
 [![codecov](https://codecov.io/gh/quantumVITAS/quantumVITAS/branch/master/graph/badge.svg)](https://codecov.io/gh/quantumVITAS/quantumVITAS)
 [![Join the chat at https://gitter.im/quantumVITAS/quantumvitas](https://badges.gitter.im/quantumVITAS/quantumvitas.svg)](https://gitter.im/quantumVITAS/quantumvitas?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-We want to integrate input file generation, calculation job control, result analysis and data managment into the user interface. In the future we may integrate other engines besides Quantum ESPRESSO.
+We want to integrate input file generation, calculation job control, result analysis and data managment into the user interface. In the future we may integrate other engines besides Quantum ESPRESSO. For more information, feel free check out my [introduction video](https://www.youtube.com/watch?v=S2e1TWx6DHs).
 
-The project is **not done yet**, and we are continuously working on it. We expect to offer the first early access version in **July 2020**. For more information, feel free check out my [introduction video](https://www.youtube.com/watch?v=S2e1TWx6DHs) and [development progress video](https://www.youtube.com/watch?v=JSX576IHaH0) on my Youtube channel.
+The project is actively evolving, and we have offered [the first early access release](https://github.com/quantumVITAS/quantumVITAS/releases/tag/v0.1.0). We appreciate any bug report or suggestion for feature implementation for the next step.
 
 ## Preview of the main user interface 
 
