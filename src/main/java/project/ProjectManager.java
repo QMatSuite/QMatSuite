@@ -40,6 +40,7 @@ import agent.InputAgentGeo;
 import agent.InputAgentMd;
 import agent.InputAgentNscf;
 import agent.InputAgentOpt;
+import agent.InputAgentPhonon;
 import agent.InputAgentScf;
 import agent.InputAgentTddft;
 import app.input.CellParameter;
@@ -108,6 +109,7 @@ public class ProjectManager{
 				case BOMD:fd = InputAgentMd.class.getField(fieldName);break;
 				case BANDS:fd = InputAgentBands.class.getField(fieldName);break;
 				case TDDFT:fd = InputAgentTddft.class.getField(fieldName);break;
+				case PH:fd = InputAgentPhonon.class.getField(fieldName);break;
 				default:break;	
 			}
 			if(fd==null) {

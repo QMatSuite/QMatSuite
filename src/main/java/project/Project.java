@@ -239,6 +239,7 @@ public class Project implements Serializable{
 			case BOMD:calc = new CalculationMdClass(calcName);break;
 			case BANDS:calc = new CalculationBandsClass(calcName);break;
 			case TDDFT:calc = new CalculationTddftClass(calcName);break;
+			case PHONON:calc = new CalculationPhononClass(calcName);break;
 			default:
 				Alert alert = new Alert(AlertType.INFORMATION);
 		    	alert.setTitle("Error");

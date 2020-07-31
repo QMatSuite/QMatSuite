@@ -45,7 +45,9 @@ public class Constants {
 		lr_control,
 		lr_post,
 		//bands.x
-		BANDS;
+		BANDS,
+		//ph.x
+		INPUTPH
 	}
 	public enum EnumFileCategory{
 		save("QuantumVITAS save"),directory("Directory"),stdin("Input (std)"),
@@ -106,7 +108,8 @@ public class Constants {
 		DOS("Electronic density of states (DOS)", "DOS"),
 		BANDS("Electronic band structure", "Bands"),
 		BOMD("Molecular Dynamics (Born–Oppenheimer type, BOMD)", "MD"),
-		TDDFT("TDDFT", "TDDFT");
+		TDDFT("TDDFT", "TDDFT"),
+		PHONON("Phonon","PH");
 
 		private String longName,
 		shortName;
@@ -130,6 +133,7 @@ public class Constants {
 				case "Bands":return BANDS;
 				case "MD":return BOMD;
 				case "TDDFT":return TDDFT;
+				case "PH":return PHONON;
 				default:return null;
 			}
 		}
@@ -145,7 +149,10 @@ public class Constants {
 		BANDSPP("Bands PP"),
 		BOMD("MD"),
 		TDDFT("Turbo_lanczos"),
-		TDDFT2("Turbo_spectrum");
+		TDDFT2("Turbo_spectrum"),
+		PH("ph.x"),
+		Q2R("q2r.x"),
+		MATDYN("matdyn.x");
 		private String name;
 		
 		private EnumStep(String name) {
