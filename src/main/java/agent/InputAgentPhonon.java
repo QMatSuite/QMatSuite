@@ -20,43 +20,63 @@ package agent;
 
 import com.consts.Constants.EnumKUnitBands;
 
-
-public class InputAgentBands extends InputAgentK{
+public class InputAgentPhonon extends InputAgentK{
 	/**
 	 * 
 	 */
-	private static final long serialVersionUID = -3123568374548375634L;
+	private static final long serialVersionUID = -514978220626504472L;
 	
-	public WrapperInteger intNBands;
+//	public WrapperInteger itermax0;//from turbo_lanczos.x, and number of coefficients read in turbo_spectrum.x
+//	public WrapperEnum enumPolar;
+	public WrapperInteger nq1,
+	nq2,
+	nq3;
+//	public WrapperEnum enumExtrap;
+//	public WrapperEnum enumEUnit;
+	public WrapperDouble tr2_ph;
+//	estart,
+//	eend,
+//	de;
+//	public WrapperBoolean eels;
 	
-	public InputAgentBands() {
-		intNBands = new WrapperInteger(null);
+	
+	public InputAgentPhonon() {
+//		itermax0 =  new WrapperInteger(500);
+//		enumPolar = new WrapperEnum(EnumPolarizability.alpha_xx);
+//		itermax =  new WrapperInteger(500);
+//		enumExtrap = new WrapperEnum(EnumExtrapolation.no);
+//		enumEUnit = new WrapperEnum(EnumTddftUnitEnergy.Ry);
+		tr2_ph = new WrapperDouble(1E-12);//in Ry
+		nq1 = new WrapperInteger(4,true);
+		nq2 = new WrapperInteger(4,true);
+		nq3 = new WrapperInteger(4,true);
+//		estart = new WrapperDouble(0.0);
+//		eend = new WrapperDouble(2.5);
+//		de = new WrapperDouble(0.001);
+//		eels =  new WrapperBoolean(false);
 	}
 	@Override
 	public boolean convertInfoFromInput(String inputStr) {
 		if(inputStr==null || inputStr.isEmpty()) {return false;}
 		//return true for detecting keyword
 		int startInd;
-		startInd = inputStr.toUpperCase().indexOf("K_POINTS");
-		if(startInd==-1) {return false;}
+		startInd = inputStr.toUpperCase().indexOf("/");
+		if(startInd==-1) {startInd=0;}
 		
 		listKPoints.clear();
 		
 		String[] lines = inputStr.substring(startInd).split("\\R");
+		
 		//unit of atomic positions
-		if(lines[0].toLowerCase().contains("crystal_b")) {
-			this.enumKUnit.setValue(EnumKUnitBands.crystal_b);
-		}else if(lines[0].toLowerCase().contains("tpiba_b")) {
-			this.enumKUnit.setValue(EnumKUnitBands.tpiba_b);
-		}else {
-			this.enumKUnit.setValue(EnumKUnitBands.tpiba_b);//not necessarily the default of QE
-		}
+		this.enumKUnit.setValue(EnumKUnitBands.crystal_b);
+
+		getKPointsLine(listKPoints,lines[0]);
+		
 		//load k points
-		for(int i=1;i<lines.length;i++) {//starting from 1 to skip the line containing "ATOMIC_POSITIONS"
+		for(int i=1;i<lines.length;i++) {
 			if(lines[i].trim().isEmpty()) {continue;}//skip empty lines
 			if(!getKPointsLine(listKPoints,lines[i])) {break;}//break if the line does not contain atomic positions
 		}
 		return true;
 	}
-	
 }

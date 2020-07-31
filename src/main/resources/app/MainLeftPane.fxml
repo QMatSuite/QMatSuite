@@ -37,6 +37,7 @@
                       <MenuItem fx:id="calcBands" mnemonicParsing="false" text="Bands" />
                       <MenuItem fx:id="calcMd" mnemonicParsing="false" text="MD" />
                       <MenuItem fx:id="calcTddft" mnemonicParsing="false" text="TDDFT" />
+                        <MenuItem fx:id="calcPhonon" mnemonicParsing="false" text="Phonon" />
                       <MenuItem fx:id="calcCustom" mnemonicParsing="false" text="Custom..." />
                      </items>
                   </MenuButton>

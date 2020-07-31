@@ -28,6 +28,7 @@ import com.error.ShowAlert;
 import agent.InputAgent;
 import agent.InputAgentBands;
 import agent.InputAgentGeo;
+import agent.InputAgentPhonon;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
@@ -95,6 +96,10 @@ public class PasteExternalWindowController implements Initializable{
     		case BANDS:
     			labelTitle.setText("Paste the k-points below:");
     			iAgent = (InputAgentBands) mainClass.projectManager.getStepAgent(enumStep).deepCopy();//should be safe to assume not null
+    			break;
+    		case PH:
+    			labelTitle.setText("Paste the q-points below:");
+    			iAgent = (InputAgentPhonon) mainClass.projectManager.getStepAgent(enumStep).deepCopy();//should be safe to assume not null
     			break;
     		default:
     			ShowAlert.showAlert(AlertType.INFORMATION, "Warning", "EnumStep "+enumStep+" unsupported in PasteExternalWindowController.");

@@ -27,6 +27,7 @@ import agent.InputAgentGeo;
 import agent.InputAgentMd;
 import agent.InputAgentNscf;
 import agent.InputAgentOpt;
+import agent.InputAgentPhonon;
 import agent.InputAgentScf;
 import agent.InputAgentTddft;
 import agent.WrapperBoolean;
@@ -164,4 +165,7 @@ public abstract class QeInput{
 	public void loadAgent(InputAgentTddft ia1) {
 		//implement in the subclasses
 	} 
+	public void loadAgent(InputAgentPhonon ia1) {
+		//implement in the subclasses
+	}
 }

@@ -19,45 +19,34 @@
 
 package app.input;
 
-
 import java.net.URL;
 import java.util.ResourceBundle;
-import com.consts.Constants.EnumNumCondition;
 import com.consts.Constants.EnumStep;
 import javafx.fxml.FXML;
-import javafx.scene.control.Button;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
 import main.MainClass;
 
-public class InputBandsController extends InputK{
+public class InputPhononController extends InputK{
 	
 	@FXML
-    private Label nbandLabel;
+    private VBox vboxK;
 
-    @FXML
-    private TextField textNBands;
-
-    @FXML
-    private Button infoNBands;
-
-    @FXML
-    private CheckBox checkNBands;
-    
-    @FXML
-    private VBox vboxKpath;
-    
-	public InputBandsController (MainClass mc) {
-		super(mc, EnumStep.BANDS);
+	public InputPhononController(MainClass mc) {
+		super(mc, EnumStep.PH);
 	}
 	
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
 		super.initialize(location, resources);
-		setChild(vboxKpath);
-		
-		initIntegerParameterSet(textNBands, "intNBands", EnumNumCondition.positive, "Automated", checkNBands, infoNBands, null);
+		super.disableUnit();
+		setChild(vboxK);
 	}
+
 }
+	
+
+
+
+
+
+

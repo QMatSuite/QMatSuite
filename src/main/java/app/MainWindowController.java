@@ -75,6 +75,7 @@ import app.input.InputGeoController;
 import app.input.InputMdController;
 import app.input.InputNscfController;
 import app.input.InputOptController;
+import app.input.InputPhononController;
 import app.input.InputScfController;
 import app.input.InputTddftController;
 import app.menus.SettingsWindowController;
@@ -139,7 +140,8 @@ public class MainWindowController implements Initializable{
 	scrollBands,
 	scrollMd,
 	scrollTddft,
-	scrollBandsPP;
+	scrollBandsPP,
+	scrollPhonon;
 	
 	private ScrollPane scrollLeft;
 	
@@ -166,6 +168,8 @@ public class MainWindowController implements Initializable{
 	private InputMdController contMd;
 	
 	private InputTddftController contTddft;
+	
+	private InputPhononController contPhonon;
 			
 	private MainLeftPaneController contTree;
 	
@@ -254,6 +258,11 @@ public class MainWindowController implements Initializable{
 			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputTddft.fxml"));
 			fxmlLoader.setController(contTddft);
 			scrollTddft = fxmlLoader.load(); 
+			
+			contPhonon = new InputPhononController(mainClass);
+			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputPhonon.fxml"));
+			fxmlLoader.setController(contPhonon);
+			scrollPhonon = fxmlLoader.load(); 
 			
 			contTree = new MainLeftPaneController(mainClass);
 			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/MainLeftPane.fxml"));
@@ -626,6 +635,9 @@ public class MainWindowController implements Initializable{
 		});
 		contTree.calcTddft.setOnAction((event) -> {
 			openCalc(EnumCalc.TDDFT,true);
+		});
+		contTree.calcPhonon.setOnAction((event) -> {
+			openCalc(EnumCalc.PHONON,true);
 		});
 		contTree.calcCustom.setOnAction((event) -> {
 			ShowAlert.showAlert(AlertType.INFORMATION, "Info", "Customized calculation not yet implemented.");
@@ -1169,6 +1181,10 @@ public class MainWindowController implements Initializable{
 			enumStepArray = new EnumStep[] {EnumStep.SCF,EnumStep.TDDFT};
 			addCalc(boolCreate, ec, enumStepArray);
 			break;
+		case PHONON:
+			enumStepArray = new EnumStep[] {EnumStep.SCF,EnumStep.PH};//,EnumStep.Q2R,EnumStep.MATDYN
+			addCalc(boolCreate, ec, enumStepArray);
+			break;
 		default:
 			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Wrong calculation type!");
 		}
@@ -1222,6 +1238,9 @@ public class MainWindowController implements Initializable{
 				case DOS:contDos.loadProjectParameters();addRightPane(scrollDos,enumStepArray[i]);break;
 				case TDDFT:
 					contTddft.loadProjectParameters();addRightPane(scrollTddft,enumStepArray[i]);
+					break;
+				case PH:
+					contPhonon.loadProjectParameters();addRightPane(scrollPhonon,enumStepArray[i]);
 					break;
 				case BANDS:
 					contBands.loadProjectParameters();addRightPane(scrollBands,enumStepArray[i]);
