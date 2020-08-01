@@ -52,8 +52,6 @@ public class CalculationScfClass extends CalculationClass{
 		this.calcName = cn;
 		nameCalc = EnumCalc.SCF;
 		
-		commandList.put(EnumStep.SCF,"pw.exe < espresso.in > espresso.out");
-		orderList.add(EnumStep.SCF);
 		agentList.put(EnumStep.SCF,new InputAgentScf());
 	}
 	public ArrayList<ContainerInputString> genInputFromAgent(ArrayList<InputAgentGeo> geoList) {

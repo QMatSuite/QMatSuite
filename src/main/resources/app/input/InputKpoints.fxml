@@ -13,10 +13,9 @@
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 
-
-<VBox fx:id="vboxKpath" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
+<VBox fx:id="vboxKpath" prefWidth="360.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
    <children>
-      <GridPane hgap="3.0" prefWidth="350.0" vgap="3.0">
+      <GridPane hgap="3.0" prefWidth="360.0" vgap="3.0">
          <children>
             <ComboBox fx:id="comboKPathUnit" prefHeight="25.0" prefWidth="77.0" GridPane.rowIndex="2" />
             <Button fx:id="infoKPath" mnemonicParsing="false" text="i" GridPane.columnIndex="7" GridPane.rowIndex="2" />
@@ -43,14 +42,14 @@
             <Button fx:id="buttonPasteExternal" mnemonicParsing="false" text="Paste from external" GridPane.columnSpan="4" />
          </children>
          <columnConstraints>
-            <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="65.0" />
-            <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="0.0" prefWidth="35.0" />
-            <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="38.0" />
-            <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="0.0" prefWidth="38.0" />
-            <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="38.0" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="79.5" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="0.0" prefWidth="40.5" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="42.0" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="0.0" prefWidth="34.0" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="33.5" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="54.0" />
             <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="40.0" />
-            <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="35.0" />
-            <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="45.0" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="25.5" />
          </columnConstraints>
          <padding>
             <Insets top="2.0" />
@@ -66,13 +65,13 @@
             <Insets left="10.0" />
          </VBox.margin>
       </GridPane>
-      <TableView fx:id="tableKPath" editable="true" prefHeight="325.0" prefWidth="390.0">
+      <TableView fx:id="tableKPath" editable="true" prefHeight="325.0" prefWidth="370.0">
          <columns>
             <TableColumn fx:id="columnLabel" prefWidth="70.0" resizable="false" sortable="false" text="Symbol" />
-            <TableColumn fx:id="columnKx" prefWidth="75.0" resizable="false" sortable="false" text="kx" />
-            <TableColumn fx:id="columnKy" prefWidth="75.0" resizable="false" sortable="false" text="ky" />
-            <TableColumn fx:id="columnKz" prefWidth="75.0" resizable="false" sortable="false" text="kz" />
-            <TableColumn fx:id="columnNk" prefWidth="75.0" resizable="false" sortable="false" text="nk" />
+            <TableColumn fx:id="columnKx" prefWidth="72.0" resizable="false" sortable="false" text="kx" />
+            <TableColumn fx:id="columnKy" prefWidth="72.0" resizable="false" sortable="false" text="ky" />
+            <TableColumn fx:id="columnKz" prefWidth="72.0" resizable="false" sortable="false" text="kz" />
+            <TableColumn fx:id="columnNk" prefWidth="72.0" resizable="false" sortable="false" text="nk" />
          </columns>
          <VBox.margin>
             <Insets left="10.0" />

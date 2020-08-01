@@ -57,16 +57,8 @@ public class CalculationTddftClass extends CalculationClass{
 		this.calcName = cn;
 		nameCalc = EnumCalc.TDDFT;
 		
-		commandList.put(EnumStep.SCF,"pw.exe < espresso.in > espresso.out");
-		orderList.add(EnumStep.SCF);
 		agentList.put(EnumStep.SCF,new InputAgentScf());
-		
-		commandList.put(EnumStep.TDDFT,"turbo_lanczos.exe < espresso.in > espresso.out");
-		orderList.add(EnumStep.TDDFT);
 		agentList.put(EnumStep.TDDFT,new InputAgentTddft());
-		
-		commandList.put(EnumStep.TDDFT2,"turbo_spectrum.exe < espresso.in > espresso.out");
-		orderList.add(EnumStep.TDDFT2);
 		
 		//no TDDFT2 agent! Use the same agent!
 	}

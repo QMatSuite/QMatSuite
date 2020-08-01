@@ -56,16 +56,8 @@ public class CalculationDosClass extends CalculationClass{
 		this.calcName = cn;
 		nameCalc = EnumCalc.DOS;
 		
-		commandList.put(EnumStep.SCF,"pw.exe < espresso.in > espresso.out");
-		orderList.add(EnumStep.SCF);
-		agentList.put(EnumStep.SCF,new InputAgentScf());
-		
-		commandList.put(EnumStep.NSCF,"pw.exe < espresso.in > espresso.out");
-		orderList.add(EnumStep.NSCF);
+		agentList.put(EnumStep.SCF,new InputAgentScf());	
 		agentList.put(EnumStep.NSCF,new InputAgentNscf());
-		
-		commandList.put(EnumStep.DOS,"dos.exe < espresso.in > espresso.out");
-		orderList.add(EnumStep.DOS);
 		agentList.put(EnumStep.DOS,new InputAgentDos());
 	}
 	

@@ -53,12 +53,7 @@ public class CalculationMdClass extends CalculationClass{
 		this.calcName = cn;
 		nameCalc = EnumCalc.BOMD;
 		
-		commandList.put(EnumStep.SCF,"");
-		orderList.add(EnumStep.SCF);
 		agentList.put(EnumStep.SCF,new InputAgentScf());
-		
-		commandList.put(EnumStep.BOMD,"pw.exe < espresso.in > espresso.out");
-		orderList.add(EnumStep.BOMD);
 		agentList.put(EnumStep.BOMD,new InputAgentMd());
 	}
 	public ArrayList<ContainerInputString> genInputFromAgent(ArrayList<InputAgentGeo> geoList) {

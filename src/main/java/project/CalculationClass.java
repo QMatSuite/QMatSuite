@@ -37,17 +37,17 @@ public abstract class CalculationClass implements Serializable{
 	
 	protected String calcName;
 	protected EnumCalc nameCalc;
-	protected HashMap<EnumStep, String> commandList;
+	//protected HashMap<EnumStep, String> commandList;
 	transient protected HashMap<EnumStep, QeInput> inputList;
 	protected HashMap<EnumStep, InputAgent> agentList;//direct record of the GUI
 	private int geometryIndex;
 	
-	protected ArrayList<EnumStep> orderList;
+	//protected ArrayList<EnumStep> orderList;
 
 	public CalculationClass() {
-		commandList = new HashMap<EnumStep, String>();
+		//commandList = new HashMap<EnumStep, String>();
 		reconstructInputList();//contains new inputList
-		orderList = new ArrayList<EnumStep>();
+		//orderList = new ArrayList<EnumStep>();
 		agentList = new HashMap<EnumStep, InputAgent>();
 		geometryIndex = 0;
 	}
@@ -64,8 +64,8 @@ public abstract class CalculationClass implements Serializable{
 		geometryIndex = ind;
 	}
 	public Boolean existStep(EnumStep es) {
-		if (commandList==null || es == null) return false;
-		return commandList.containsKey(es);
+		if (inputList==null || es == null) return false;
+		return inputList.containsKey(es);
 	}
 	public InputAgent getAgent(EnumStep es) {
 		if (es==null ) return null;
