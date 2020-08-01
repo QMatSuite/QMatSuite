@@ -32,6 +32,7 @@ import javafx.scene.control.ToggleButton;
 import javafx.scene.control.Tooltip;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Label;
+import javafx.scene.control.RadioButton;
 import main.MainClass;
 import agent.WrapperBoolean;
 import agent.WrapperDouble;
@@ -105,7 +106,8 @@ public abstract class InputController implements Initializable{
 		statusTextField = lb;
 	}
 	protected void setToggleListener(ToggleButton tb, String fieldName, String onText, String offText) {	
-		if(enumStep==null || onText==null || offText==null || tb==null) {
+		//tb is also compatible with RadioButton
+		if(enumStep==null || tb==null) {
     		Alert alert1 = new Alert(AlertType.ERROR);
 	    	alert1.setTitle("Error");
 	    	alert1.setContentText("Cannot set listener! EnumStep is null or on/off text is null. Abort..");
@@ -113,13 +115,17 @@ public abstract class InputController implements Initializable{
 	    	return;
     	}
 		//take care of the starting of the program
-		if(tb.isSelected()) {tb.setText(onText);}
-		else {tb.setText(offText);}
+		if(onText!=null && offText!=null) {
+			if(tb.isSelected()) {tb.setText(onText);}
+			else {tb.setText(offText);}
+		}
 		
 		tb.selectedProperty().addListener((observable, oldValue, newValue) -> {
 			if(newValue==null) return;
-			if(newValue) {tb.setText(onText);}
-			else {tb.setText(offText);}
+			if(onText!=null && offText!=null) {
+				if(newValue) {tb.setText(onText);}
+				else {tb.setText(offText);}
+			}
 			Object obj = mainClass.projectManager.getObject(fieldName, enumStep);
 			if(obj==null) return;
 			try {
@@ -268,6 +274,8 @@ public abstract class InputController implements Initializable{
     }
 	
 	protected void resetToggleListener(CheckBox cbResetToggle, ToggleButton toggle, String fieldName, CheckBox cbResetAll) {
+		if(cbResetToggle==null) {return;}
+		
 		cbResetToggle.selectedProperty().addListener((observable, oldValue, newValue) ->
 		{ 
 			if(newValue==null) return;
@@ -435,7 +443,7 @@ public abstract class InputController implements Initializable{
     	tb.setSelected(val.getValue());
     }
     static protected void setCheck(CheckBox cb, Boolean bl) {
-    	if(bl==null) return;
+    	if(bl==null || cb==null) return;
     	cb.setSelected(bl);
     }
     protected void bindProperty(Label lb, ComboBox<?> cb) {

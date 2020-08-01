@@ -350,6 +350,23 @@ public class Constants {
 	public enum EnumExtrapolation implements EnumInProgram{
 		osc,constant,no
 	}
+	public enum EnumAsr implements EnumInProgram{
+		no("no"),
+		simple("simple"),
+		crystal("crystal"),
+		oneDimensional("one-dim"),
+		zeroDimensional("zero-dim");
+		
+		private String name;
+		
+		private EnumAsr(String name) {
+	        this.name = name;
+	    }
+		@Override
+		public String toString() {
+			return name;
+		}
+	}
 	public enum EnumTddftUnitEnergy implements EnumInProgram{
 		Ry(0,"Rydbergs"),//default
 		eV(1,"Electron volts"),nmpeV(2,"Nanometres per electron volts");

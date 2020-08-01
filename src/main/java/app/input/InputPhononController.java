@@ -21,7 +21,11 @@ package app.input;
 
 import java.net.URL;
 import java.util.ResourceBundle;
+
+import com.consts.Constants.EnumNumCondition;
 import com.consts.Constants.EnumStep;
+
+import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
@@ -155,7 +159,11 @@ public class InputPhononController extends InputK{
     private CheckBox checkRaman;
 
     @FXML
-    private Label statusInfo;
+    private Label statusInfo,
+    labelAsrMatdyn;
+    
+    @FXML
+    private Button infoAsrMatdyn;
 
 	public InputPhononController(MainClass mc) {
 		super(mc, EnumStep.PH);
@@ -166,11 +174,9 @@ public class InputPhononController extends InputK{
 		super.initialize(location, resources);
 		super.disableUnit();
 		
-		final ToggleGroup tgGroup1 = new ToggleGroup();
-		radioGamma.setToggleGroup(tgGroup1);radioGrid.setToggleGroup(tgGroup1);
-		
-		radioGamma.selectedProperty().addListener((obs, oldVal, newVal) -> {
-		    if(newVal) {
+		radioGrid.selectedProperty().addListener((obs, oldVal, newVal) -> {
+			this.radioGamma.setSelected(!newVal);
+		    if(!newVal) {
 		    	if(vboxRoot.getChildren().contains(vboxNonGammaQ)) {
 		    		vboxRoot.getChildren().remove(vboxNonGammaQ);
 		    	}
@@ -187,8 +193,14 @@ public class InputPhononController extends InputK{
 		    	}
 		    }
 		}); 
+		radioGamma.selectedProperty().addListener((obs, oldVal, newVal) -> {
+			this.radioGrid.setSelected(!newVal);
+		}); 
+		//radioGamma.setSelected(true);
 		
-		radioGamma.setSelected(true);
+		initParameterSet(radioGrid, "ldisp", null, null, null, infoGamma, checkResetAll);
+		initDoubleParameterSet(textConvThr, "tr2_ph", EnumNumCondition.positive, "", 
+				checkConvThr, infoConvThr, checkResetAll);
 		
 		final ToggleGroup tgGroup2 = new ToggleGroup();
 		radioDos.setToggleGroup(tgGroup2);radioDisp.setToggleGroup(tgGroup2);
@@ -204,7 +216,10 @@ public class InputPhononController extends InputK{
 		
 		radioDos.setSelected(true);
 	}
+	public void loadProjectParameters() {
+		super.loadProjectParameters();
 
+	}
 }
 	
 
