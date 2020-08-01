@@ -57,16 +57,9 @@ public class CalculationBandsClass extends CalculationClass{
 		this.calcName = cn;
 		nameCalc = EnumCalc.BANDS;
 		
-		commandList.put(EnumStep.SCF,"pw.exe < espresso.in > espresso.out");
-		orderList.add(EnumStep.SCF);
+
 		agentList.put(EnumStep.SCF,new InputAgentScf());
-		
-		commandList.put(EnumStep.BANDS,"pw.exe < espresso.in > espresso.out");
-		orderList.add(EnumStep.BANDS);
 		agentList.put(EnumStep.BANDS,new InputAgentBands());
-		
-		commandList.put(EnumStep.BANDSPP,"bands.exe < espresso.in > espresso.out");
-		orderList.add(EnumStep.BANDSPP);
 		//no BANDSPP agent!
 
 	}

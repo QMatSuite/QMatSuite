@@ -60,20 +60,8 @@ public class CalculationPhononClass extends CalculationClass{
 		this.calcName = cn;
 		nameCalc = EnumCalc.PHONON;
 		
-		commandList.put(EnumStep.SCF,"pw.exe < espresso.in > espresso.out");
-		orderList.add(EnumStep.SCF);
 		agentList.put(EnumStep.SCF,new InputAgentScf());
-		
-		commandList.put(EnumStep.PH,"ph.exe < espresso.in > espresso.out");
-		orderList.add(EnumStep.PH);
 		agentList.put(EnumStep.PH,new InputAgentPhonon());
-		
-		commandList.put(EnumStep.Q2R,"q2r.exe < espresso.in > espresso.out");
-		orderList.add(EnumStep.Q2R);
-		
-		commandList.put(EnumStep.MATDYN,"matdyn.exe < espresso.in > espresso.out");
-		orderList.add(EnumStep.MATDYN);
-		
 		//no Q2R or MATDYN agent! Use the same agent (PH)!
 	}
 	public ArrayList<ContainerInputString> genInputFromAgent(ArrayList<InputAgentGeo> geoList) {
