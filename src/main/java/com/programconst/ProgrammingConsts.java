@@ -36,5 +36,7 @@ public class ProgrammingConsts {
 	public static final String stderrExtension = ".err";
 	public static final String dosExtension = ".dos";
 	
+	public static final String endPart = "end";
+	
 	public static int maxLinesShownInText = 500;//beginning 500, end 500
 }

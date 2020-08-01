@@ -22,9 +22,13 @@ package app.input;
 import java.net.URL;
 import java.util.ResourceBundle;
 
+import com.consts.Constants.EnumAsr;
 import com.consts.Constants.EnumNumCondition;
 import com.consts.Constants.EnumStep;
+import com.consts.Constants.EnumTddftUnitEnergy;
 
+import agent.InputAgentPhonon;
+import agent.InputAgentScf;
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -98,7 +102,7 @@ public class InputPhononController extends InputK{
     private Label labelterations1;
 
     @FXML
-    private ComboBox<?> comboAsr;
+    private ComboBox<EnumAsr> comboAsr;
 
     @FXML
     private Button infoCalcType;
@@ -196,16 +200,23 @@ public class InputPhononController extends InputK{
 		radioGamma.selectedProperty().addListener((obs, oldVal, newVal) -> {
 			this.radioGrid.setSelected(!newVal);
 		}); 
-		//radioGamma.setSelected(true);
 		
-		initParameterSet(radioGrid, "ldisp", null, null, null, infoGamma, checkResetAll);
+		radioGamma.setSelected(true);//no necessary here but for robustness
+		
+		initParameterSet(radioGrid, "ldisp", null, null, null, infoGamma, null);
+		
 		initDoubleParameterSet(textConvThr, "tr2_ph", EnumNumCondition.positive, "", 
 				checkConvThr, infoConvThr, checkResetAll);
 		
-		final ToggleGroup tgGroup2 = new ToggleGroup();
-		radioDos.setToggleGroup(tgGroup2);radioDisp.setToggleGroup(tgGroup2);
+		setIntegerFieldListener(nqxPh, "nq1",EnumNumCondition.positive);
+		setIntegerFieldListener(nqyPh, "nq2",EnumNumCondition.positive);
+		setIntegerFieldListener(nqzPh, "nq3",EnumNumCondition.positive);
+		
+		initParameterSet(comboAsr, "asr", EnumAsr.values(), 
+				checkAsr, infoAsr, checkResetAll);
 		
 		radioDos.selectedProperty().addListener((obs, oldVal, newVal) -> {
+			this.radioDisp.setSelected(!newVal);
 		    if(newVal) {
 		    	vboxK.getChildren().clear();
 		    }
@@ -213,12 +224,54 @@ public class InputPhononController extends InputK{
 		    	setChild(vboxK);
 		    }
 		}); 
+		radioDisp.selectedProperty().addListener((obs, oldVal, newVal) -> {
+			this.radioDos.setSelected(!newVal);
+		}); 
 		
-		radioDos.setSelected(true);
+		radioDos.setSelected(true);//no necessary here but for robustness
+		
+		initParameterSet(this.radioDos, "dos", null, null, null, infoCalcType, null);
+		
+		bindProperty(labelAsrMatdyn,comboAsr);
+		
+		setIntegerFieldListener(nqxMat, "nk1",EnumNumCondition.positive);
+		setIntegerFieldListener(nqyMat, "nk2",EnumNumCondition.positive);
+		setIntegerFieldListener(nqzMat, "nk3",EnumNumCondition.positive);
+		
+		initParameterSet(toggleEpsil, "epsil", "on", "off", checkEpsil, infoEpsil, checkResetAll);
+		initParameterSet(toggleRaman, "lraman", "on", "off", checkRaman, infoRaman, checkResetAll);
+		
+		initDoubleParameterSet(ramanRps, "eth_rps", EnumNumCondition.positive, "", checkRamamPara, infoRamanPara, checkResetAll);
+		initDoubleParameterSet(ramanNs, "eth_ns", EnumNumCondition.positive, "", checkRamamPara, infoRamanPara, checkResetAll);
+		initDoubleParameterSet(ramanDek, "dek", EnumNumCondition.positive, "", checkRamamPara, infoRamanPara, checkResetAll);
+		
+//		toggleRaman.selectedProperty().addListener((observable, oldValue, newValue) ->
+//		{ 
+//			gridRamanPara.setVisible(newValue);
+//		});
+		gridRamanPara.visibleProperty().bind(toggleRaman.selectedProperty());
+		
+		checkResetAll.selectedProperty().addListener((observable, oldValue, newValue) ->
+		{ 
+			if(newValue!=null && !newValue.equals(allDefault)) {
+				checkConvThr.setSelected(newValue);checkAsr.setSelected(newValue);
+				checkEpsil.setSelected(newValue);checkRaman.setSelected(newValue);
+				checkRamamPara.setSelected(newValue);
+			}
+		});
 	}
 	public void loadProjectParameters() {
 		super.loadProjectParameters();
-
+		InputAgentPhonon iPh = (InputAgentPhonon) mainClass.projectManager.getStepAgent(EnumStep.PH);
+		if (iPh!=null) {
+			setField(nqxPh, iPh.nq1);
+			setField(nqyPh, iPh.nq2);
+			setField(nqzPh, iPh.nq3);
+			
+			setField(nqxMat, iPh.nk1);
+			setField(nqyMat, iPh.nk2);
+			setField(nqzMat, iPh.nk3);
+		}
 	}
 }
 	

@@ -77,13 +77,15 @@ public class CalculationPhononClass extends CalculationClass{
 		inputList.get(EnumStep.PH).loadAgent((InputAgentPhonon)agentList.get(EnumStep.PH));
 		cis.add(inputList.get(EnumStep.PH).genInput(EnumStep.PH));
 		
-		inputList.get(EnumStep.Q2R).clearErrorMessage();
-		inputList.get(EnumStep.Q2R).loadAgent((InputAgentPhonon)agentList.get(EnumStep.PH));
-		cis.add(inputList.get(EnumStep.Q2R).genInput(EnumStep.Q2R));
-		
-		inputList.get(EnumStep.MATDYN).clearErrorMessage();
-		inputList.get(EnumStep.MATDYN).loadAgent((InputAgentPhonon)agentList.get(EnumStep.PH));
-		cis.add(inputList.get(EnumStep.MATDYN).genInput(EnumStep.MATDYN));
+		if(((InputAgentPhonon)agentList.get(EnumStep.PH)).ldisp.getValue()) {
+			inputList.get(EnumStep.Q2R).clearErrorMessage();
+			inputList.get(EnumStep.Q2R).loadAgent((InputAgentPhonon)agentList.get(EnumStep.PH));
+			cis.add(inputList.get(EnumStep.Q2R).genInput(EnumStep.Q2R));
+			
+			inputList.get(EnumStep.MATDYN).clearErrorMessage();
+			inputList.get(EnumStep.MATDYN).loadAgent((InputAgentPhonon)agentList.get(EnumStep.PH));
+			cis.add(inputList.get(EnumStep.MATDYN).genInput(EnumStep.MATDYN));
+		}
 		
 		return cis;
 

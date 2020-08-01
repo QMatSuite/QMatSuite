@@ -20,6 +20,9 @@ package input;
 import java.util.Set;
 
 import com.consts.Constants.EnumCard;
+import com.error.ShowAlert;
+
+import javafx.scene.control.Alert.AlertType;
 
 public class Card extends InputSection{
 	/**
@@ -41,15 +44,21 @@ public class Card extends InputSection{
 			//only add "&" in front when not containing "body", i.e. "...=..." syntax
 			if (!keys.contains("body")) {ci.appendInput("&");}
 			
-			ci.appendInput(cardEnum.name()+" "+ options +" \n");
+			if(!EnumCard.END.equals(cardEnum)) {
+				ci.appendInput(cardEnum.name()+" "+ options +" \n");
+			}
 	        for(String key: keys){
+//	        	if(EnumCard.END.equals(cardEnum)) {
+//        			ShowAlert.showAlert(AlertType.INFORMATION, "Debug", parameterDict.get(key).toString());
+//        		}
 	        	if (parameterDict.get(key).isExplicitWrite() || parameterDict.get(key).isRequired()) {
 	        		strTmp = parameterDict.get(key).toString();
+	        		
 	        		if (strTmp==null) {ci.appendLog(cardEnum.name()+"-"+key+": required but not set\n");}
 	        		else if (!strTmp.isEmpty()) {ci.appendInput(strTmp+"\n");ci.boolEmpty=false;}
 	        	}
 	        }
-	        if (!keys.contains("body")) {ci.appendInput("/\n");}
+	        if (!EnumCard.END.equals(cardEnum) && !keys.contains("body")) {ci.appendInput("/\n");}
 		}
 		return ci;
 	}

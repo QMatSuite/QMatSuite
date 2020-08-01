@@ -49,9 +49,9 @@ public class InputAgentPhonon extends InputAgentK{
 		//ph.x
 		ldisp = new WrapperBoolean(false);
 		tr2_ph = new WrapperDouble(1E-12);//in Ry
-		nq1 = new WrapperInteger(4,true);//no QE default
-		nq2 = new WrapperInteger(4,true);
-		nq3 = new WrapperInteger(4,true);
+		nq1 = new WrapperInteger(4);//no QE default
+		nq2 = new WrapperInteger(4);
+		nq3 = new WrapperInteger(4);
 		epsil = new WrapperBoolean(false);
 		lraman = new WrapperBoolean(false);
 		eth_rps = new WrapperDouble(1E-9);
@@ -60,10 +60,10 @@ public class InputAgentPhonon extends InputAgentK{
 		//q2r.x and matdyn.x
 		asr = new WrapperEnum(EnumAsr.no);
 		//matdyn.x
-		dos = new WrapperBoolean(true,true);//not the same as QE default
-		nk1 = new WrapperInteger(8,true);//required if not dos, no QE default
-		nk2 = new WrapperInteger(8,true);
-		nk3 = new WrapperInteger(8,true);
+		dos = new WrapperBoolean(true,true);//not the same as QE default, so always write
+		nk1 = new WrapperInteger(8);//required if not dos, no QE default
+		nk2 = new WrapperInteger(8);
+		nk3 = new WrapperInteger(8);
 	}
 	@Override
 	public boolean convertInfoFromInput(String inputStr) {

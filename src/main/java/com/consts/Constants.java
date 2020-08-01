@@ -47,7 +47,9 @@ public class Constants {
 		//bands.x
 		BANDS,
 		//ph.x
-		INPUTPH
+		INPUTPH,
+		//q2r.x and matdyn.x
+		input
 	}
 	public enum EnumFileCategory{
 		save("QuantumVITAS save"),directory("Directory"),stdin("Input (std)"),
@@ -98,7 +100,9 @@ public class Constants {
 		CELL_PARAMETERS,
 		CONSTRAINTS,
 		OCCUPATIONS,
-		ATOMIC_FORCES
+		ATOMIC_FORCES,
+		//any program, end part
+		END;
 	}
 	public enum EnumCalc{
 		//NULL,//no calculation
