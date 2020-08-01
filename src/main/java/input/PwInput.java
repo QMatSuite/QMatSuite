@@ -528,8 +528,7 @@ public class PwInput extends QeInput{
 			setValue("CONTROL","calculation",new WrapperString("bands",true));
 			andExplicitWrite("SYSTEM","nbnd",!ia1.intNBands.isNull());
 			if(!ia1.intNBands.isNull()) {setValue("SYSTEM","nbnd",ia1.intNBands);}
-			
-			setRequiredAndWrite("K_POINTS","body",true,true);
+
 			setSectionOption("K_POINTS","("+((EnumKUnitBands)ia1.enumKUnit.getValue()).getName()+")");
 
 			String kpointTmp = ia1.listKPoints.size()>0 ? Integer.toString(ia1.listKPoints.size())+"\n":"";
@@ -545,7 +544,7 @@ public class PwInput extends QeInput{
 						);
 			}
 			setValue("K_POINTS","body",new WrapperString(kpointTmp));
-			
+			setRequiredAndWrite("K_POINTS","body",true,true);
 			
 		} catch (InvalidKeyException | InvalidTypeException e) {
 			Alert alert1 = new Alert(AlertType.INFORMATION);

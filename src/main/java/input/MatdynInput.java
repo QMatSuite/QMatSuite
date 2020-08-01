@@ -18,46 +18,93 @@
  *******************************************************************************/
 package input;
 
+import com.consts.Constants.EnumCard;
+import com.consts.Constants.EnumKUnitBands;
+import com.consts.Constants.EnumNameList;
+import com.error.InvalidKeyException;
+import com.error.InvalidTypeException;
+import com.error.ShowAlert;
+import com.programconst.DefaultFileNames;
+import com.programconst.ProgrammingConsts;
+
 import agent.InputAgentPhonon;
+import agent.WrapperBoolean;
+import agent.WrapperString;
+import app.input.Kpoint;
+import javafx.scene.control.Alert.AlertType;
 
 
 public class MatdynInput extends QeInput{
 
 	public MatdynInput() {
-		super("q2r");
-//		sectionDict.put("lr_input", new NameList(EnumNameList.lr_input));
-//		sectionDict.put("lr_control", new NameList(EnumNameList.lr_control));
-//		sectionDict.put("lr_post", new NameList(EnumNameList.lr_post));
-//		
-//		sectionDict.get("lr_input").setBoolRequired(true);
-//		sectionDict.get("lr_input").addParameter("outdir", new InputValueString("outdir",DefaultFileNames.outDir,true));//always write
-//		sectionDict.get("lr_control").addParameter("itermax", new InputValueInt("itermax",500,false));
-//		sectionDict.get("lr_control").addParameter("ipol", new InputValueInt("ipol",1,false));
+		super("matdyn");
+		sectionDict.put("input", new NameList(EnumNameList.input));
+		sectionDict.put(ProgrammingConsts.endPart, new Card(EnumCard.END));
 		
+		sectionDict.get("input").setBoolRequired(true);
+		
+		sectionDict.get("input").addParameter("flfrc", new InputValueString("flfrc",DefaultFileNames.flfrc,true));//needed
+		sectionDict.get("input").addParameter("fldos", new InputValueString("fldos",DefaultFileNames.fldos,false));
+		sectionDict.get("input").addParameter("flfrq", new InputValueString("flfrq",DefaultFileNames.flfrq,false));
+		
+		sectionDict.get("input").addParameter("dos", new InputValueBoolean("dos",true,true));//not QE default, so required
+		sectionDict.get("input").addParameter("asr", new InputValueString("asr","no",false));
+		
+		sectionDict.get("input").addParameter("nk1", new InputValueInt("nk1",false));
+		sectionDict.get("input").addParameter("nk2", new InputValueInt("nk2",false));
+		sectionDict.get("input").addParameter("nk3", new InputValueInt("nk3",false));
+		
+		sectionDict.get("input").addParameter("q_in_band_form", new InputValueBoolean("q_in_band_form",false));
+		sectionDict.get("input").addParameter("q_in_cryst_coord", new InputValueBoolean("q_in_cryst_coord",false));
+		
+		sectionDict.get(ProgrammingConsts.endPart).addParameter("body",new InputValueString("body","",false));
+		 
 	}
 	@Override
 	public void loadAgent(InputAgentPhonon ia1) {
-
-//		try {		
-//			setValue("lr_control","itermax",ia1.itermax0);
-//			setRequiredAndWrite("lr_control","itermax",true,true);//from QE, not necessary, but in practice yes, otherwise give error
-//			
-//			final int ipol;
-//			final boolean boolIpol=ia1.enumPolar.isEnabled();
-//			switch((EnumPolarizability)ia1.enumPolar.getValue()) {
-//				case alpha_xx:ipol=1;break;
-//				case alpha_yy:ipol=2;break;
-//				case alpha_zz:ipol=3;break;
-//				case full:ipol=4;break;
-//				default:
-//					ipol=1;
-//					ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Unknown EnumPolarizability. Use default.");
-//					break;
-//			}
-//			setValue("lr_control","ipol",new WrapperInteger(ipol,boolIpol));
-//
-//		} catch (InvalidKeyException | InvalidTypeException e) {
-//	    	ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Exception!"+e.getMessage());
-//		}
+		try {		
+			boolean isDos = ia1.dos.getValue();//should not be null
+			
+			setValue("input","dos",ia1.dos);
+			setRequiredAndWrite("input","dos",true,true);
+			
+			setRequiredAndWrite("input","fldos",isDos,isDos);
+			setRequiredAndWrite("input","flfrq",!isDos,!isDos);
+			
+			setValue("input","nk1",ia1.nk1);
+			setValue("input","nk2",ia1.nk2);
+			setValue("input","nk3",ia1.nk3);
+			
+			setRequiredAndWrite("input","nk1",isDos,isDos);
+			setRequiredAndWrite("input","nk2",isDos,isDos);
+			setRequiredAndWrite("input","nk3",isDos,isDos);
+			
+			setValue("input","q_in_band_form",new WrapperBoolean(!isDos,!isDos));
+			setValue("input","q_in_cryst_coord",new WrapperBoolean(!isDos,!isDos));
+			
+			setValue("input","asr",ia1.asr);
+			
+			setSectionRequired(ProgrammingConsts.endPart,!isDos);
+			
+			String kpointTmp = ia1.listKPoints.size()>0 ? Integer.toString(ia1.listKPoints.size())+"\n":"";
+			for (int i=0;i<ia1.listKPoints.size();i++) {
+				Kpoint kTmp = ia1.listKPoints.get(i);
+				kpointTmp += (
+							Double.toString(kTmp.getKx())
+							+"  "+Double.toString(kTmp.getKy())
+							+"  "+Double.toString(kTmp.getKz())
+							+"  "+Integer.toString(kTmp.getNk())
+							+"  !"+kTmp.getLabel()
+							+"\n"
+						);
+			}
+			//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", kpointTmp);
+			setValue(ProgrammingConsts.endPart,"body",new WrapperString(kpointTmp));
+			
+			setRequiredAndWrite(ProgrammingConsts.endPart,"body",!isDos,!isDos);
+			
+		} catch (InvalidKeyException | InvalidTypeException e) {
+	    	ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Exception!"+e.getMessage());
+		}
 	}
 }

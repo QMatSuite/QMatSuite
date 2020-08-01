@@ -38,6 +38,11 @@ public interface DefaultFileNames {
 	
 	public final String outDir = "."+File.separator+"outdir";
 	
+	public final String fildyn = "matdyn";
+	public final String flfrc = "flfrc";
+	public final String fldos = "matdyn.dos";//QE default for matdyn.x
+	public final String flfrq = "matdyn.freq";//QE default for matdyn.x
+	
 	public enum SettingKeys {
 		workspace,
 		pseudolibroot,

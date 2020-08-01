@@ -18,46 +18,33 @@
  *******************************************************************************/
 package input;
 
+import com.consts.Constants.EnumNameList;
+import com.error.InvalidKeyException;
+import com.error.InvalidTypeException;
+import com.error.ShowAlert;
+import com.programconst.DefaultFileNames;
+
 import agent.InputAgentPhonon;
+import javafx.scene.control.Alert.AlertType;
 
 
 public class Q2rInput extends QeInput{
 
 	public Q2rInput() {
-		super("matdyn");
-//		sectionDict.put("lr_input", new NameList(EnumNameList.lr_input));
-//		sectionDict.put("lr_control", new NameList(EnumNameList.lr_control));
-//		sectionDict.put("lr_post", new NameList(EnumNameList.lr_post));
-//		
-//		sectionDict.get("lr_input").setBoolRequired(true);
-//		sectionDict.get("lr_input").addParameter("outdir", new InputValueString("outdir",DefaultFileNames.outDir,true));//always write
-//		sectionDict.get("lr_control").addParameter("itermax", new InputValueInt("itermax",500,false));
-//		sectionDict.get("lr_control").addParameter("ipol", new InputValueInt("ipol",1,false));
+		super("q2r");
+		sectionDict.put("input", new NameList(EnumNameList.input));
+		sectionDict.get("input").setBoolRequired(true);
 		
+		sectionDict.get("input").addParameter("fildyn", new InputValueString("fildyn",DefaultFileNames.fildyn,true));
+		sectionDict.get("input").addParameter("flfrc", new InputValueString("flfrc",DefaultFileNames.flfrc,true));
+		sectionDict.get("input").addParameter("zasr", new InputValueString("zasr","no",false));
 	}
 	@Override
 	public void loadAgent(InputAgentPhonon ia1) {
-
-//		try {		
-//			setValue("lr_control","itermax",ia1.itermax0);
-//			setRequiredAndWrite("lr_control","itermax",true,true);//from QE, not necessary, but in practice yes, otherwise give error
-//			
-//			final int ipol;
-//			final boolean boolIpol=ia1.enumPolar.isEnabled();
-//			switch((EnumPolarizability)ia1.enumPolar.getValue()) {
-//				case alpha_xx:ipol=1;break;
-//				case alpha_yy:ipol=2;break;
-//				case alpha_zz:ipol=3;break;
-//				case full:ipol=4;break;
-//				default:
-//					ipol=1;
-//					ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Unknown EnumPolarizability. Use default.");
-//					break;
-//			}
-//			setValue("lr_control","ipol",new WrapperInteger(ipol,boolIpol));
-//
-//		} catch (InvalidKeyException | InvalidTypeException e) {
-//	    	ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Exception!"+e.getMessage());
-//		}
+		try {		
+			setValue("input","zasr",ia1.asr);
+		} catch (InvalidKeyException | InvalidTypeException e) {
+	    	ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Exception!"+e.getMessage());
+		}
 	}
 }

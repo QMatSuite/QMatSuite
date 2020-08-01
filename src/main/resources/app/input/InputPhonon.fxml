@@ -88,8 +88,8 @@
                   </GridPane>
                   <VBox GridPane.columnSpan="2">
                      <children>
-                        <Label text="For dielectric constant/raman, choose Gamma only." />
-                        <Label text="For DOS/dispersion, choose q grid." />
+                        <Label text="- For dielectric constant/raman, choose Gamma only." />
+                        <Label text="- For DOS/dispersion, choose q grid." />
                      </children>
                   </VBox>
                </children>

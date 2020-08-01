@@ -79,6 +79,7 @@ public class FileDataClass {
 	public boolean isJobDone=false;
 	public boolean hasScf=false;//true when there exist scf steps inside the output file. Not necessary means that it is a scf calculation
 	public boolean hasScfFinished=false;
+	public boolean isPW = false;
 	public boolean isMD=false;
 	public boolean isMDFinished=false;
 	public boolean isOpt=false;
@@ -91,6 +92,7 @@ public class FileDataClass {
 	public boolean isBandsPP = false;
 	public boolean isTddftTurbo = false;
 	public boolean isTddftSpectrum = false;
+	public boolean isPH = false;
 	
 	
 	//will be true when one scf just finished. Will be set back to false when one new mag is read
@@ -197,7 +199,7 @@ public class FileDataClass {
 		isJobDone=false;
 		isJobStart = false;
 		hasScf=false;hasScfFinished=false;isMD=false;isMDFinished=false;isOpt=false;isOptFinished=false;
-		isNscf=false;isNscfFinished=false;isDos=false;isDosFinished=false;
+		isNscf=false;isNscfFinished=false;isDos=false;isDosFinished=false;isPW=false;isPH=false;
 		isPwBands = false;isBandsPP = false;isTddftTurbo = false;isTddftSpectrum=false;
 		flagScfFinishedForTotalMag=false;
 		flagScfFinishedForTotalMagy=false;
@@ -490,6 +492,9 @@ public class FileDataClass {
 		    		recordCellPara = this.addCellParameter(strTmp,argCache);
 		    	}
 		    	
+		    	if(strTmp.contains("Program PWSCF")) {
+		    		this.isPW = true;
+		    	}
 		    	if(strTmp.contains("plot nbnd")) {
 		    		this.isPwBands = true;
 		    	}
@@ -501,6 +506,9 @@ public class FileDataClass {
 		    	}
 		    	if(strTmp.contains("Program TDDFPT_PP")) {
 		    		this.isTddftSpectrum = true;
+		    	}
+		    	if(strTmp.contains("Program PHONON")) {
+		    		this.isPH = true;
 		    	}
 		    	if(strTmp.contains("starts")) {
 		    		this.isJobStart = true;
@@ -528,110 +536,112 @@ public class FileDataClass {
 			    		setDataMd(3,strTmp,iterationMD);
 			    	}
 		    	}
-		    	if(strTmp.contains("ATOMIC_POSITIONS")) {
-		    		startCalc = true;
-		    		recordAtomicPos = true;//must be after fileData.addAtomicPosition()
-		    		this.addNewAtomPosition();
-		    		argCache = this.parseArg(strTmp);
-		    	}
-		    	if(strTmp.contains("CELL_PARAMETERS")) {
-		    		startCalc = true;
-		    		//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", Integer.toString(lineCount));
-		    		this.iGeoTemp.ibrav.setValue(0);//only in case of vc-relax will this be found.
-		    		recordCellPara = true;
-		    		this.addNewCell();
-		    		argCache = this.parseArg(strTmp);
-		    	}
-		    	if(strTmp.contains("bravais-lattice index") && !startCalc) {
-		    		this.parseIBrav(strTmp);
-		    	}
-		    	if(strTmp.contains("celldm(") && !startCalc) {
-		    		this.parseCelldm(strTmp);
-		    	}
-		    	if(lowerCaseStr.contains("nstep")&& strTmp.contains("=") && !startCalc) {
-		    		String[] splitted = strTmp.trim().split("\\s+");//split the string by whitespaces
-		    		try {
-		    			Integer dbTmp =  Integer.valueOf(splitted[2]);
-		    			if(dbTmp!=null) {this.nstep = dbTmp;}
-		    		}catch(Exception e) {
-		    			e.printStackTrace();
-		    		}
-		    	}
-		    	if(lowerCaseStr.contains("total energy") && strTmp.contains("=")) {
-		    		startCalc = true;
-		    		String[] splitted = strTmp.trim().split("\\s+");//split the string by whitespaces
-		    		try {
-		    			if(strTmp.contains("!")) {
+		    	if(this.isPW) {
+			    	if(strTmp.contains("ATOMIC_POSITIONS")) {
+			    		startCalc = true;
+			    		recordAtomicPos = true;//must be after fileData.addAtomicPosition()
+			    		this.addNewAtomPosition();
+			    		argCache = this.parseArg(strTmp);
+			    	}
+			    	if(strTmp.contains("CELL_PARAMETERS")) {
+			    		startCalc = true;
+			    		//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", Integer.toString(lineCount));
+			    		this.iGeoTemp.ibrav.setValue(0);//only in case of vc-relax will this be found.
+			    		recordCellPara = true;
+			    		this.addNewCell();
+			    		argCache = this.parseArg(strTmp);
+			    	}
+			    	if(strTmp.contains("bravais-lattice index") && !startCalc) {
+			    		this.parseIBrav(strTmp);
+			    	}
+			    	if(strTmp.contains("celldm(") && !startCalc) {
+			    		this.parseCelldm(strTmp);
+			    	}
+			    	if(lowerCaseStr.contains("nstep")&& strTmp.contains("=") && !startCalc) {
+			    		String[] splitted = strTmp.trim().split("\\s+");//split the string by whitespaces
+			    		try {
+			    			Integer dbTmp =  Integer.valueOf(splitted[2]);
+			    			if(dbTmp!=null) {this.nstep = dbTmp;}
+			    		}catch(Exception e) {
+			    			e.printStackTrace();
+			    		}
+			    	}
+			    	if(lowerCaseStr.contains("total energy") && strTmp.contains("=")) {
+			    		startCalc = true;
+			    		String[] splitted = strTmp.trim().split("\\s+");//split the string by whitespaces
+			    		try {
+			    			if(strTmp.contains("!")) {
+				    			Double dbTmp =  Double.valueOf(splitted[4]);
+				    			if(dbTmp!=null) {this.addTotalEnergy(dbTmp, true);}
+			    			}
+			    			else {
+			    				Double dbTmp =  Double.valueOf(splitted[3]);
+				    			if(dbTmp!=null) {this.addTotalEnergy(dbTmp, false);}
+			    			}
+			    		}catch(Exception e) {
+			    			e.printStackTrace();
+			    		}
+			    	}
+			    	if(lowerCaseStr.contains("total force") && strTmp.contains("=")) {
+			    		String[] splitted = strTmp.trim().split("\\s+");//split the string by whitespaces
+			    		try {
+			    			Double dbTmp =  Double.valueOf(splitted[3]);
+			    			if(dbTmp!=null) {this.totalForce.add(dbTmp);}
+			    		}catch(Exception e) {
+			    			e.printStackTrace();
+			    		}
+			    	}
+			    	if(lowerCaseStr.contains("total   stress") && strTmp.contains("=")) {
+			    		String[] splitted = strTmp.trim().split("=");//split the string by =
+			    		try {
+			    			Double dbTmp =  Double.valueOf(splitted[1].trim());
+			    			if(dbTmp!=null) {this.totalPressure.add(dbTmp);}
+			    		}catch(Exception e) {
+			    			e.printStackTrace();
+			    		}
+			    	}
+			    	if(lowerCaseStr.contains("total magnetization") && strTmp.contains("=")) {
+			    		parseTotalMagnetization(strTmp);
+			    	}
+			    	if(lowerCaseStr.contains("absolute magnetization") && strTmp.contains("=")) {
+			    		String[] splitted = strTmp.trim().split("\\s+");//split the string by whitespaces
+			    		try {
+			    			Double dbTmp =  Double.valueOf(splitted[3]);
+			    			if(dbTmp!=null) {this.addMag(dbTmp, 0);}
+			    		}catch(Exception e) {
+			    			e.printStackTrace();
+			    		}
+			    	}
+			    	//highest occupied level
+			    	if(lowerCaseStr.contains("highest occupied level")) {
+			    		String[] splitted = strTmp.trim().split("\\s+");//split the string by whitespaces
+			    		try {
 			    			Double dbTmp =  Double.valueOf(splitted[4]);
-			    			if(dbTmp!=null) {this.addTotalEnergy(dbTmp, true);}
-		    			}
-		    			else {
-		    				Double dbTmp =  Double.valueOf(splitted[3]);
-			    			if(dbTmp!=null) {this.addTotalEnergy(dbTmp, false);}
-		    			}
-		    		}catch(Exception e) {
-		    			e.printStackTrace();
-		    		}
+			    			if(dbTmp!=null) {this.setHomo(dbTmp);}
+			    		}catch(Exception e) {
+			    			e.printStackTrace();
+			    		}
+			    	}
+					if(lowerCaseStr.contains("fermi energy")) {
+						setFermi(strTmp);
+					}
+					if(lowerCaseStr.contains("self-consistent calculation")) {
+						this.hasScf = true;
+						if(strTmp.toLowerCase().contains("end of")) {this.hasScfFinished=true;}
+					}
+					if(lowerCaseStr.contains("molecular dynamics calculation")) {
+						this.isMD = true;
+						if(strTmp.toLowerCase().contains("end of")) {this.isMDFinished=true;}
+					}
+					if(lowerCaseStr.contains("geometry optimization")) {
+						this.isOpt = true;
+						if(strTmp.toLowerCase().contains("end of")) {this.isOptFinished=true;}
+					}
+					if(lowerCaseStr.contains("band structure calculation")) {
+						this.isNscf = true;
+						if(strTmp.toLowerCase().contains("end of")) {this.isNscfFinished=true;}
+					}
 		    	}
-		    	if(lowerCaseStr.contains("total force") && strTmp.contains("=")) {
-		    		String[] splitted = strTmp.trim().split("\\s+");//split the string by whitespaces
-		    		try {
-		    			Double dbTmp =  Double.valueOf(splitted[3]);
-		    			if(dbTmp!=null) {this.totalForce.add(dbTmp);}
-		    		}catch(Exception e) {
-		    			e.printStackTrace();
-		    		}
-		    	}
-		    	if(lowerCaseStr.contains("total   stress") && strTmp.contains("=")) {
-		    		String[] splitted = strTmp.trim().split("=");//split the string by =
-		    		try {
-		    			Double dbTmp =  Double.valueOf(splitted[1].trim());
-		    			if(dbTmp!=null) {this.totalPressure.add(dbTmp);}
-		    		}catch(Exception e) {
-		    			e.printStackTrace();
-		    		}
-		    	}
-		    	if(lowerCaseStr.contains("total magnetization") && strTmp.contains("=")) {
-		    		parseTotalMagnetization(strTmp);
-		    	}
-		    	if(lowerCaseStr.contains("absolute magnetization") && strTmp.contains("=")) {
-		    		String[] splitted = strTmp.trim().split("\\s+");//split the string by whitespaces
-		    		try {
-		    			Double dbTmp =  Double.valueOf(splitted[3]);
-		    			if(dbTmp!=null) {this.addMag(dbTmp, 0);}
-		    		}catch(Exception e) {
-		    			e.printStackTrace();
-		    		}
-		    	}
-		    	//highest occupied level
-		    	if(lowerCaseStr.contains("highest occupied level")) {
-		    		String[] splitted = strTmp.trim().split("\\s+");//split the string by whitespaces
-		    		try {
-		    			Double dbTmp =  Double.valueOf(splitted[4]);
-		    			if(dbTmp!=null) {this.setHomo(dbTmp);}
-		    		}catch(Exception e) {
-		    			e.printStackTrace();
-		    		}
-		    	}
-				if(lowerCaseStr.contains("fermi energy")) {
-					setFermi(strTmp);
-				}
-				if(lowerCaseStr.contains("self-consistent calculation")) {
-					this.hasScf = true;
-					if(strTmp.toLowerCase().contains("end of")) {this.hasScfFinished=true;}
-				}
-				if(lowerCaseStr.contains("molecular dynamics calculation")) {
-					this.isMD = true;
-					if(strTmp.toLowerCase().contains("end of")) {this.isMDFinished=true;}
-				}
-				if(lowerCaseStr.contains("geometry optimization")) {
-					this.isOpt = true;
-					if(strTmp.toLowerCase().contains("end of")) {this.isOptFinished=true;}
-				}
-				if(lowerCaseStr.contains("band structure calculation")) {
-					this.isNscf = true;
-					if(strTmp.toLowerCase().contains("end of")) {this.isNscfFinished=true;}
-				}
 				if(lowerCaseStr.contains("dos")) {
 					this.isDos = true;
 					
@@ -1044,18 +1054,33 @@ public class FileDataClass {
 	}
 	public void addDosHeader(String line) {
 		line = line.replace("#", "");
-		try {
-			String[] parts1 = line.split("[\\)]");
-			String[] parts2 = line.split("=");
-			String[] parts3 = parts2[1].split("e");
-			fermiDos=Double.valueOf(parts3[0]);
-			dosHeader.clear();
-			for(int i=0;i<parts1.length-1;i++) {
-				dosHeader.add(parts1[i]+")");
+		if(line.contains("Frequency")) {//phonon DOS
+			try {
+				String[] parts1 = line.trim().split("\\s+");//split the string by whitespaces
+				fermiDos=null;
+				dosHeader.clear();
+				for(int i=0;i<parts1.length;i++) {
+					dosHeader.add(parts1[i]);
+				}
+			}
+			catch(Exception e) {
+				e.printStackTrace();
 			}
 		}
-		catch(Exception e) {
-			e.printStackTrace();
+		else {//electronic DOS, from dos.x
+			try {
+				String[] parts1 = line.split("[\\)]");
+				String[] parts2 = line.split("=");
+				String[] parts3 = parts2[1].split("e");
+				fermiDos=Double.valueOf(parts3[0]);
+				dosHeader.clear();
+				for(int i=0;i<parts1.length-1;i++) {
+					dosHeader.add(parts1[i]+")");
+				}
+			}
+			catch(Exception e) {
+				e.printStackTrace();
+			}
 		}
 	}
 	public void addTddftHeader(String line) {

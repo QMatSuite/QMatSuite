@@ -22,6 +22,7 @@ import com.consts.Constants.EnumNameList;
 import com.error.InvalidKeyException;
 import com.error.InvalidTypeException;
 import com.error.ShowAlert;
+import com.programconst.DefaultFileNames;
 
 import agent.InputAgentPhonon;
 import javafx.scene.control.Alert.AlertType;
@@ -34,23 +35,52 @@ public class PhInput extends QeInput{
 		sectionDict.put("INPUTPH", new NameList(EnumNameList.INPUTPH));
 		sectionDict.get("INPUTPH").setBoolRequired(true);
 		
+		sectionDict.get("INPUTPH").addParameter("outdir", new InputValueString("outdir",DefaultFileNames.outDir,true));//always write
+		sectionDict.get("INPUTPH").addParameter("fildyn", new InputValueString("fildyn",DefaultFileNames.fildyn,true));
 		sectionDict.get("INPUTPH").addParameter("tr2_ph", new InputValueDouble("tr2_ph",1E-12,false));
-		sectionDict.get("INPUTPH").addParameter("ldisp", new InputValueBoolean("ldisp",true,true));//always write, user cannot change
+		sectionDict.get("INPUTPH").addParameter("ldisp", new InputValueBoolean("ldisp",false,false));
 		//amass defined in scf calculation from pw.x, no need to define here
-		sectionDict.get("INPUTPH").addParameter("nq1", new InputValueInt("nq1",true));
-		sectionDict.get("INPUTPH").addParameter("nq2", new InputValueInt("nq2",true));
-		sectionDict.get("INPUTPH").addParameter("nq3", new InputValueInt("nq3",true));
+		sectionDict.get("INPUTPH").addParameter("nq1", new InputValueInt("nq1",false));
+		sectionDict.get("INPUTPH").addParameter("nq2", new InputValueInt("nq2",false));
+		sectionDict.get("INPUTPH").addParameter("nq3", new InputValueInt("nq3",false));
+		
+		sectionDict.get("INPUTPH").addParameter("epsil", new InputValueBoolean("epsil",false,false));
+		sectionDict.get("INPUTPH").addParameter("lraman", new InputValueBoolean("lraman",false,false));
+		sectionDict.get("INPUTPH").addParameter("eth_rps", new InputValueDouble("eth_rps",1E-9,false));
+		sectionDict.get("INPUTPH").addParameter("eth_ns", new InputValueDouble("eth_ns",1E-12,false));
+		sectionDict.get("INPUTPH").addParameter("dek", new InputValueDouble("dek",1E-3,false));	
+		
 	}
 	@Override
 	public void loadAgent(InputAgentPhonon ia1) {
 
 		try {		
 			setValue("INPUTPH","tr2_ph",ia1.tr2_ph);
-			//setRequiredAndWrite("lr_control","itermax",true,true);//from QE, not necessary, but in practice yes, otherwise give error
+
+			setValue("INPUTPH","ldisp",ia1.ldisp);
+			setRequiredAndWrite("INPUTPH","ldisp",true,true);//not necessary, just for clarity
 			
 			setValue("INPUTPH","nq1",ia1.nq1);
 			setValue("INPUTPH","nq2",ia1.nq2);
 			setValue("INPUTPH","nq3",ia1.nq3);
+			
+			setValue("INPUTPH","epsil",ia1.epsil);
+			setValue("INPUTPH","lraman",ia1.lraman);
+			setValue("INPUTPH","eth_rps",ia1.eth_rps);
+			setValue("INPUTPH","eth_ns",ia1.eth_ns);
+			setValue("INPUTPH","dek",ia1.dek);
+			
+			boolean boolGrid = ia1.ldisp.getValue();//should not be null
+			setRequiredAndWrite("INPUTPH","nq1",boolGrid,boolGrid);
+			setRequiredAndWrite("INPUTPH","nq2",boolGrid,boolGrid);
+			setRequiredAndWrite("INPUTPH","nq3",boolGrid,boolGrid);
+			
+			boolean boolRaman = ia1.lraman.getValue();//should not be null
+			andExplicitWrite("INPUTPH", "epsil", !boolGrid);
+			andExplicitWrite("INPUTPH", "lraman", !boolGrid);
+			andExplicitWrite("INPUTPH", "eth_rps", (!boolGrid)&&boolRaman);
+			andExplicitWrite("INPUTPH", "eth_ns", (!boolGrid)&&boolRaman);
+			andExplicitWrite("INPUTPH", "dek", (!boolGrid)&&boolRaman);
 
 		} catch (InvalidKeyException | InvalidTypeException e) {
 	    	ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Exception!"+e.getMessage());

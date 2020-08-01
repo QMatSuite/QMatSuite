@@ -274,7 +274,7 @@ public abstract class InputController implements Initializable{
     }
 	
 	protected void resetToggleListener(CheckBox cbResetToggle, ToggleButton toggle, String fieldName, CheckBox cbResetAll) {
-		if(cbResetToggle==null) {return;}
+		if(cbResetToggle==null || cbResetAll==null) {return;}
 		
 		cbResetToggle.selectedProperty().addListener((observable, oldValue, newValue) ->
 		{ 
