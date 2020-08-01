@@ -18,6 +18,7 @@
  *******************************************************************************/
 package agent;
 
+import com.consts.Constants.EnumAsr;
 import com.consts.Constants.EnumKUnitBands;
 
 public class InputAgentPhonon extends InputAgentK{
@@ -26,34 +27,43 @@ public class InputAgentPhonon extends InputAgentK{
 	 */
 	private static final long serialVersionUID = -514978220626504472L;
 	
-//	public WrapperInteger itermax0;//from turbo_lanczos.x, and number of coefficients read in turbo_spectrum.x
-//	public WrapperEnum enumPolar;
+	//ph.x
+	public WrapperBoolean ldisp;//true for grid, false for gamma only
+	public WrapperDouble tr2_ph;
 	public WrapperInteger nq1,
 	nq2,
 	nq3;
-//	public WrapperEnum enumExtrap;
-//	public WrapperEnum enumEUnit;
-	public WrapperDouble tr2_ph;
-//	estart,
-//	eend,
-//	de;
-//	public WrapperBoolean eels;
-	
-	
+	public WrapperBoolean epsil,
+	lraman;
+	public WrapperDouble eth_rps,
+	eth_ns,
+	dek;
+	//q2r.x and matdyn.x
+	public WrapperEnum asr;
+	//matdyn.x
+	public WrapperBoolean dos;
+	public WrapperInteger nk1,
+	nk2,
+	nk3;
 	public InputAgentPhonon() {
-//		itermax0 =  new WrapperInteger(500);
-//		enumPolar = new WrapperEnum(EnumPolarizability.alpha_xx);
-//		itermax =  new WrapperInteger(500);
-//		enumExtrap = new WrapperEnum(EnumExtrapolation.no);
-//		enumEUnit = new WrapperEnum(EnumTddftUnitEnergy.Ry);
+		//ph.x
+		ldisp = new WrapperBoolean(false);
 		tr2_ph = new WrapperDouble(1E-12);//in Ry
-		nq1 = new WrapperInteger(4,true);
+		nq1 = new WrapperInteger(4,true);//no QE default
 		nq2 = new WrapperInteger(4,true);
 		nq3 = new WrapperInteger(4,true);
-//		estart = new WrapperDouble(0.0);
-//		eend = new WrapperDouble(2.5);
-//		de = new WrapperDouble(0.001);
-//		eels =  new WrapperBoolean(false);
+		epsil = new WrapperBoolean(false);
+		lraman = new WrapperBoolean(false);
+		eth_rps = new WrapperDouble(1E-9);
+		eth_ns = new WrapperDouble(1E-12);
+		dek = new WrapperDouble(1E-3);
+		//q2r.x and matdyn.x
+		asr = new WrapperEnum(EnumAsr.no);
+		//matdyn.x
+		dos = new WrapperBoolean(true,true);//not the same as QE default
+		nk1 = new WrapperInteger(8,true);//required if not dos, no QE default
+		nk2 = new WrapperInteger(8,true);
+		nk3 = new WrapperInteger(8,true);
 	}
 	@Override
 	public boolean convertInfoFromInput(String inputStr) {
