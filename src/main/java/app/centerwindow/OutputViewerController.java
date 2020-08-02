@@ -259,7 +259,9 @@ public class OutputViewerController implements Initializable{
 						|| EnumFileCategory.bandsDatGnu.equals(fileCategory) || EnumFileCategory.tddftPlotSDat.equals(fileCategory)
 						|| EnumFileCategory.phononBandsGnu.equals(fileCategory)) {
 					comboAnalysis.getItems().addAll(EnumAnalysis.info);
-					comboAnalysis.getItems().addAll(EnumAnalysis.plot2D);
+					if(!fileData.isPH) {
+						comboAnalysis.getItems().addAll(EnumAnalysis.plot2D);
+					}
 				}
 				if(fileData.isMD || fileData.isOpt) {comboAnalysis.getItems().addAll(EnumAnalysis.plot3D);}
 				
@@ -276,18 +278,16 @@ public class OutputViewerController implements Initializable{
 //						comboAnalysis.getSelectionModel().select(EnumAnalysis.text);
 //					}
 //				}
-				if(comboAnalysis.getItems().contains(EnumAnalysis.plot2D)) {
-					if(EnumFileCategory.stdout.equals(fileCategory) && !this.fileData.isMD  && !this.fileData.isOpt  
-							&& !this.fileData.hasScf) {
-						comboAnalysis.getSelectionModel().select(EnumAnalysis.info);
-					}
-					else {
-						comboAnalysis.getSelectionModel().select(EnumAnalysis.plot2D);
-					}
+				if(EnumFileCategory.stdout.equals(fileCategory) && !this.fileData.isMD  && !this.fileData.isOpt  
+						&& !this.fileData.hasScf) {
+					comboAnalysis.getSelectionModel().select(EnumAnalysis.info);//no need to check existence
 				}
 				else {
-					comboAnalysis.getSelectionModel().select(EnumAnalysis.text);
+					comboAnalysis.getSelectionModel().select(EnumAnalysis.plot2D);//no need to check existence
 				}
+				
+				if(comboAnalysis.getSelectionModel().getSelectedIndex()==-1) {comboAnalysis.getSelectionModel().select(EnumAnalysis.text);}
+
 			}
 			
 			updateIoDisplay();//*** not efficient because runs twice
@@ -391,11 +391,15 @@ public class OutputViewerController implements Initializable{
         boolean isMd = (calcFolder!=null
         		&& item.contains(EnumStep.BOMD.toString())
         		&& item.endsWith(ProgrammingConsts.stdoutExtension));
+        boolean isPhonon = (calcFolder!=null
+        		&& item.contains(EnumStep.PH.toString())
+        		&& item.endsWith(ProgrammingConsts.stdoutExtension));
         return (item.endsWith(ProgrammingConsts.dosExtension)
         		|| item.contains(DefaultFileNames.bandsDatGnu)
         		|| item.contains(DefaultFileNames.tddftPlotSDat)
         		|| isScf || isOpt || isMd 
         		|| (item.contains(DefaultFileNames.flfrq)&&item.endsWith(ProgrammingConsts.phononGnuExtension))
+        		|| isPhonon
         		);
 	}
 	public void calculationFolderChange(String newCalcFolderName) {
