@@ -62,8 +62,10 @@ public class FileDataClass {
 	private ArrayList<String> bandsHighSymmetryK;
 	
 	//phonon
+	private ArrayList<String> phOutInfo;
 	private ArrayList<ArrayList<Double>> phononBandsDatArray;
 	private ArrayList<Kpoint> phononKPoints;
+	private String phononDielectricInfo = "";
 	
 	private ArrayList<ArrayList<Double>> tddftArray;
 	private ArrayList<String> tddftHeader;
@@ -132,6 +134,7 @@ public class FileDataClass {
 		tddftHeader = new ArrayList<String>();
 		iGeoTemp = new InputAgentGeo();
 				
+		phOutInfo = new ArrayList<String>();
 		phononBandsDatArray = new ArrayList<ArrayList<Double>>();
 		phononKPoints = new ArrayList<Kpoint>();
 		
@@ -199,8 +202,10 @@ public class FileDataClass {
 		tddftArray.clear();
 		tddftHeader.clear();
 		
+		phOutInfo.clear();
 		phononBandsDatArray.clear();
 		phononKPoints.clear();
+		phononDielectricInfo = "";
 		
 		errorMessage = "";
 		
@@ -578,6 +583,9 @@ public class FileDataClass {
 		    int iterationMD = -1;
 		    int errorLineNum = 0;
 		    boolean flagError = false;
+		    String phononCache = "";
+		    boolean flagPhononStop = true;//true is not recording
+		    boolean flagDielectricStop = true;//true is not recording
 		    
 		    while (sc.hasNextLine()) {
 		    	lineCount++;
@@ -624,6 +632,42 @@ public class FileDataClass {
 			    	if(strTmp.trim().startsWith("a(") && strTmp.contains(") = (") && !startCalc) {
 			    		this.parseInitialCellPara(strTmp);
 			    	}
+		    	}
+		    	if(this.isPH) {
+		    		
+		    		//stdout file for ph.x
+		    		if(strTmp.contains("Diagonalizing the dynamical matrix")) {
+		    			flagPhononStop = false;
+		    			phononCache = "";
+		    		}
+		    		else if(strTmp.contains("*******") || strTmp.trim().isEmpty() || strTmp.contains("Mode symmetry") 
+		    				|| (strTmp.contains(")") && strTmp.contains("="))) {
+		    			if(!flagPhononStop) {
+		    				phononCache+=(strTmp+"\n");
+		    			}
+		    		}
+		    		else{
+		    			if(!phononCache.isEmpty()) {
+			    			flagPhononStop = true;
+			    			this.phOutInfo.add(phononCache);
+			    			phononCache = "";
+		    			}
+		    		}
+		    		
+		    		//dielectric constant and effective charges (the information will appear twice in the file. This will read twice and take the last one)
+		    		if(strTmp.contains("Dielectric constant in cartesian axis")) {
+		    			flagDielectricStop = false;
+		    			phononDielectricInfo = "";
+		    		}
+		    		else if(!strTmp.trim().isEmpty() && !strTmp.contains("(") 
+		    				&& !strTmp.contains("Effective charges") && !strTmp.contains("atom")){
+		    			flagDielectricStop = true;
+		    		}
+		    		if(!flagDielectricStop) {
+		    			phononDielectricInfo+=(strTmp+"\n");
+		    		}
+		    		
+		    		
 		    	}
 		    	if(this.isMD) {
 			    	if(strTmp.contains("Entering Dynamics") && strTmp.contains("iteration")) {
@@ -1425,6 +1469,28 @@ public class FileDataClass {
 					strTmp+=Double.toString(this.dataMd.get(3).get(i))+",";
 				}
 				strTmp+="\n";
+			}
+			
+			if(this.isPH) {
+				int i=0;
+				if(!this.phOutInfo.isEmpty()) {
+					strTmp+="Phonon frequencies on the following q points:\n";
+				}
+				for(String st : phOutInfo) {
+					i++;
+					strTmp+=("----"+i+"th q-point:\n"+st+"\n");	
+				}
+				
+				strTmp+="\n";
+				if(!phononDielectricInfo.isEmpty()) {
+					strTmp+="Dielectric tensor calculation detected. ";
+					if(phononDielectricInfo.contains("Effective charges")) {
+						strTmp+="Effective charge calculation detected.";
+					}
+					strTmp+=("\n"+phononDielectricInfo);
+					
+				}
+				
 			}
 		
 		}
