@@ -19,17 +19,41 @@
  *******************************************************************************/
 package com.error;
 
+import java.time.Duration;
+import java.time.Instant;
+
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import main.MainApplication;
 
-public interface ShowAlert {
-	static void showAlert(AlertType at, String headerText, String contentText) {
+public class ShowAlert {
+	private ShowAlert() {}
+	
+	private static boolean boolShow = true;
+	private static Instant startTime = Instant.now();  
+	
+	public static void showAlert(AlertType at, String headerText, String contentText) {
 		if(!MainApplication.isTestMode()) {
-			Alert alert1 = new Alert(at);
-			alert1.setHeaderText(headerText);
-			alert1.setContentText(contentText);
-			alert1.showAndWait();
+			Instant endTime = Instant.now();
+			Duration timeElapsed = Duration.between(startTime, endTime); 
+			if(timeElapsed.toMillis()<100) {
+				//too many alerts shown within a short time. Suppress alerts
+				if(boolShow) {
+					Alert alert1 = new Alert(at);
+					alert1.setHeaderText("Multiple warnings. Further alerts suppressed tempararily.");
+					alert1.setContentText(contentText);
+					alert1.showAndWait();
+				}
+				boolShow=false;
+			}
+			else {
+				boolShow = true;
+				Alert alert1 = new Alert(at);
+				alert1.setHeaderText(headerText);
+				alert1.setContentText(contentText);
+				alert1.showAndWait();
+			}
+			startTime = Instant.now();
 		}
 	}
 }

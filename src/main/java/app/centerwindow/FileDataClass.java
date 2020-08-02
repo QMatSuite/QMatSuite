@@ -485,11 +485,14 @@ public class FileDataClass {
 		    	if(strTmp==null || strTmp.isEmpty()) continue;
 		    	
 		    	String lowerCaseStr = strTmp.toLowerCase();
-		    	if(recordAtomicPos) {
-		    		recordAtomicPos = this.addAtomicPosition(strTmp,argCache);
-		    	}
-		    	if(recordCellPara) {
-		    		recordCellPara = this.addCellParameter(strTmp,argCache);
+		    	
+		    	if(this.isPW) {
+			    	if(recordAtomicPos) {
+			    		recordAtomicPos = this.addAtomicPosition(strTmp,argCache);
+			    	}
+			    	if(recordCellPara) {
+			    		recordCellPara = this.addCellParameter(strTmp,argCache);
+			    	}
 		    	}
 		    	
 		    	if(strTmp.contains("Program PWSCF")) {
@@ -513,11 +516,13 @@ public class FileDataClass {
 		    	if(strTmp.contains("starts")) {
 		    		this.isJobStart = true;
 		    	}
-		    	if(strTmp.contains("tau(") && !startCalc) {
-		    		this.parseInitialAtomPos(strTmp);
-		    	}
-		    	if(strTmp.trim().startsWith("a(") && strTmp.contains(") = (") && !startCalc) {
-		    		this.parseInitialCellPara(strTmp);
+		    	if(this.isPW) {
+			    	if(strTmp.contains("tau(") && !startCalc) {
+			    		this.parseInitialAtomPos(strTmp);
+			    	}
+			    	if(strTmp.trim().startsWith("a(") && strTmp.contains(") = (") && !startCalc) {
+			    		this.parseInitialCellPara(strTmp);
+			    	}
 		    	}
 		    	if(this.isMD) {
 			    	if(strTmp.contains("Entering Dynamics") && strTmp.contains("iteration")) {
@@ -642,9 +647,8 @@ public class FileDataClass {
 						if(strTmp.toLowerCase().contains("end of")) {this.isNscfFinished=true;}
 					}
 		    	}
-				if(lowerCaseStr.contains("dos")) {
+				if(lowerCaseStr.contains("dos") && !lowerCaseStr.contains("local")) {
 					this.isDos = true;
-					
 				}
 				if(this.isDos && strTmp.toLowerCase().contains("terminated")) {this.isDosFinished=true;}
 				
@@ -1163,10 +1167,12 @@ public class FileDataClass {
 			//calculation type
 			strTmp+="Detected calculation type:";
 			if(nstep==1 && hasScf) {strTmp+="SCF,";}
+			if(isPW) {strTmp+="pw program:";}
 			if(isMD) {strTmp+="MD,";}
 			if(isOpt) {strTmp+="Optimization,";}
 			if(isNscf) {strTmp+="NSCF,";}
 			if(isDos) {strTmp+="DOS,";}
+			if(isPH) {strTmp+="Phonon,";}
 			if(this.isPwBands) {strTmp+="pwscf bands calculation.\n";}
 			if(this.isBandsPP) {strTmp+="bands program.\n";}
 			if(isTddftTurbo) {strTmp+="turbo TDDFT program.\n";}
