@@ -43,7 +43,7 @@ public class PhInput extends QeInput{
 		sectionDict.get("INPUTPH").addParameter("fildyn", new InputValueString("fildyn",DefaultFileNames.fildyn,true));
 		sectionDict.get("INPUTPH").addParameter("tr2_ph", new InputValueDouble("tr2_ph",1E-12,false));
 		sectionDict.get("INPUTPH").addParameter("ldisp", new InputValueBoolean("ldisp",false,false));
-		//amass defined in scf calculation from pw.x, no need to define here
+		//amass defined in scf calculation from pw.x, no need to define here. Verified by test calculation.
 		sectionDict.get("INPUTPH").addParameter("nq1", new InputValueInt("nq1",false));
 		sectionDict.get("INPUTPH").addParameter("nq2", new InputValueInt("nq2",false));
 		sectionDict.get("INPUTPH").addParameter("nq3", new InputValueInt("nq3",false));

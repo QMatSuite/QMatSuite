@@ -30,24 +30,35 @@ public class ShowAlert {
 	private ShowAlert() {}
 	
 	private static boolean boolShow = true;
-	private static Instant startTime = Instant.now();  
+	public static Instant startTime; //initialize in MainApplication class, at the beginning of the program
 	
 	public static void showAlert(AlertType at, String headerText, String contentText) {
+		showAlert(at, headerText, contentText, true);
+	}
+	public static void showAlert(AlertType at, String headerText, String contentText, boolean supressBunched) {
 		if(!MainApplication.isTestMode()) {
-			Instant endTime = Instant.now();
-			Duration timeElapsed = Duration.between(startTime, endTime); 
-			if(timeElapsed.toMillis()<100) {
-				//too many alerts shown within a short time. Suppress alerts
-				if(boolShow) {
+			if(supressBunched) {
+				Instant endTime = Instant.now();
+				Duration timeElapsed = Duration.between(startTime, endTime); 
+				if(timeElapsed.toMillis()<100) {
+					//too many alerts shown within a short time. Suppress alerts
+					if(boolShow) {
+						Alert alert1 = new Alert(at);
+						alert1.setHeaderText("Multiple warnings. Further alerts suppressed tempararily.");
+						alert1.setContentText(contentText);
+						alert1.showAndWait();
+					}
+					boolShow=false;
+				}
+				else {
+					boolShow = true;
 					Alert alert1 = new Alert(at);
-					alert1.setHeaderText("Multiple warnings. Further alerts suppressed tempararily.");
+					alert1.setHeaderText(headerText);
 					alert1.setContentText(contentText);
 					alert1.showAndWait();
 				}
-				boolShow=false;
 			}
 			else {
-				boolShow = true;
 				Alert alert1 = new Alert(at);
 				alert1.setHeaderText(headerText);
 				alert1.setContentText(contentText);

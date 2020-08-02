@@ -20,9 +20,6 @@ package input;
 import java.util.Set;
 
 import com.consts.Constants.EnumCard;
-import com.error.ShowAlert;
-
-import javafx.scene.control.Alert.AlertType;
 
 public class Card extends InputSection{
 	/**

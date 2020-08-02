@@ -32,7 +32,6 @@ import javafx.scene.control.ToggleButton;
 import javafx.scene.control.Tooltip;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Label;
-import javafx.scene.control.RadioButton;
 import main.MainClass;
 import agent.WrapperBoolean;
 import agent.WrapperDouble;

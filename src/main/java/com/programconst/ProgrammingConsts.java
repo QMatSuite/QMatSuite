@@ -35,6 +35,7 @@ public class ProgrammingConsts {
 	public static final String stdoutExtension = ".out";
 	public static final String stderrExtension = ".err";
 	public static final String dosExtension = ".dos";
+	public static final String phononGnuExtension = ".gp";
 	
 	public static final String endPart = "end";
 	
