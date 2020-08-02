@@ -18,13 +18,16 @@
  *******************************************************************************/
 package input;
 
+import com.consts.Constants.EnumCard;
 import com.consts.Constants.EnumNameList;
 import com.error.InvalidKeyException;
 import com.error.InvalidTypeException;
 import com.error.ShowAlert;
 import com.programconst.DefaultFileNames;
+import com.programconst.ProgrammingConsts;
 
 import agent.InputAgentPhonon;
+import agent.WrapperString;
 import javafx.scene.control.Alert.AlertType;
 
 
@@ -34,6 +37,7 @@ public class PhInput extends QeInput{
 		super("ph");
 		sectionDict.put("INPUTPH", new NameList(EnumNameList.INPUTPH));
 		sectionDict.get("INPUTPH").setBoolRequired(true);
+		sectionDict.put(ProgrammingConsts.endPart, new Card(EnumCard.END));
 		
 		sectionDict.get("INPUTPH").addParameter("outdir", new InputValueString("outdir",DefaultFileNames.outDir,true));//always write
 		sectionDict.get("INPUTPH").addParameter("fildyn", new InputValueString("fildyn",DefaultFileNames.fildyn,true));
@@ -50,6 +54,7 @@ public class PhInput extends QeInput{
 		sectionDict.get("INPUTPH").addParameter("eth_ns", new InputValueDouble("eth_ns",1E-12,false));
 		sectionDict.get("INPUTPH").addParameter("dek", new InputValueDouble("dek",1E-3,false));	
 		
+		sectionDict.get(ProgrammingConsts.endPart).addParameter("body",new InputValueString("body","",false));
 	}
 	@Override
 	public void loadAgent(InputAgentPhonon ia1) {
@@ -81,6 +86,17 @@ public class PhInput extends QeInput{
 			andExplicitWrite("INPUTPH", "eth_rps", (!boolGrid)&&boolRaman);
 			andExplicitWrite("INPUTPH", "eth_ns", (!boolGrid)&&boolRaman);
 			andExplicitWrite("INPUTPH", "dek", (!boolGrid)&&boolRaman);
+			
+			setSectionRequired(ProgrammingConsts.endPart,!boolGrid);
+			if(!boolGrid) {
+				setValue(ProgrammingConsts.endPart,"body",new WrapperString("0 0 0"));
+				setRequiredAndWrite(ProgrammingConsts.endPart,"body",true,true);
+			}
+			else {
+				setValue(ProgrammingConsts.endPart,"body",new WrapperString(""));
+				setRequiredAndWrite(ProgrammingConsts.endPart,"body",false,false);
+			}
+
 
 		} catch (InvalidKeyException | InvalidTypeException e) {
 	    	ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Exception!"+e.getMessage());

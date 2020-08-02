@@ -51,7 +51,8 @@ public class InputPhononController extends InputK{
     vboxGammaQ;
 	
 	@FXML
-    private GridPane gridRamanPara;
+    private GridPane gridRamanPara,
+    gridQGrid;
 
     @FXML
     private CheckBox checkResetAll;
@@ -180,6 +181,7 @@ public class InputPhononController extends InputK{
 		
 		radioGrid.selectedProperty().addListener((obs, oldVal, newVal) -> {
 			this.radioGamma.setSelected(!newVal);
+			gridQGrid.setVisible(newVal);
 		    if(!newVal) {
 		    	if(vboxRoot.getChildren().contains(vboxNonGammaQ)) {
 		    		vboxRoot.getChildren().remove(vboxNonGammaQ);
@@ -202,6 +204,7 @@ public class InputPhononController extends InputK{
 		}); 
 		
 		radioGamma.setSelected(true);//no necessary here but for robustness
+		gridQGrid.setVisible(false);
 		
 		initParameterSet(radioGrid, "ldisp", null, null, null, infoGamma, null);
 		
