@@ -64,6 +64,7 @@ import com.consts.Constants.EnumStep;
 import com.programconst.DefaultFileNames;
 import com.programconst.ProgrammingConsts;
 import app.input.InputGeoController;
+import app.input.Kpoint;
 
 public class OutputViewerController implements Initializable{
 
@@ -162,13 +163,24 @@ public class OutputViewerController implements Initializable{
 		//lineChart.prefHeightProperty().bind(workSpaceTabPane.heightProperty());
 		
 		comboHighSymK.getSelectionModel().selectedIndexProperty().addListener((ov, oldTab, newTab) -> {
-			if(fileData==null || !EnumFileCategory.bandsDatGnu.equals(fileCategory)) {return;}
-			if(fileData.getBandsHighSymmetryK().isEmpty()) {return;}
-			int selectInd = (int)newTab;
-			if(selectInd<0 || selectInd>=fileData.getBandsHighSymmetryK().size()) {return;} 
-			labelK.setText("k="+fileData.getBandsHighSymmetryK().get(selectInd)
-					+",x="+fileData.getBandsHighSymmetryKXCoor().get(selectInd));
-			//textLabelK.setText(kpointName.get(selectInd));
+			if(fileData==null) {return;}
+			if(EnumFileCategory.bandsDatGnu.equals(fileCategory)) {
+				int selectInd = (int)newTab;
+
+				if(selectInd<0 || selectInd>=fileData.getBandsHighSymmetryK().size()) {return;} 
+				labelK.setText("k="+fileData.getBandsHighSymmetryK().get(selectInd)
+						+",x="+fileData.getBandsHighSymmetryKXCoor().get(selectInd));
+				//textLabelK.setText(kpointName.get(selectInd));
+			}
+			else if(EnumFileCategory.phononBandsGnu.equals(fileCategory)) {
+				int selectInd = (int)newTab;
+
+				if(selectInd<0 || selectInd>=fileData.getPhononK().size()) {return;} 
+				Kpoint kp = fileData.getPhononK().get(selectInd);
+				labelK.setText("k=("+kp.getKx()+","+kp.getKy()+","+kp.getKz()+"),"
+						+(kp.getLabel().isEmpty()?"":":")+kp.getLabel());
+			}
+			
 		});
 //		buttonSetLabelK.setOnAction((event) -> {
 //			if(fileData==null || !EnumFileCategory.bandsDatGnu.equals(fileCategory)) {return;}
@@ -227,6 +239,7 @@ public class OutputViewerController implements Initializable{
 			else if(newTab.endsWith(ProgrammingConsts.dosExtension)) {fileCategory = EnumFileCategory.dos;}
 			else if(newTab.contains(DefaultFileNames.bandsDatGnu)) {fileCategory = EnumFileCategory.bandsDatGnu;}
 			else if(newTab.contains(DefaultFileNames.tddftPlotSDat)){fileCategory = EnumFileCategory.tddftPlotSDat;}
+			else if(newTab.contains(DefaultFileNames.flfrq)&&newTab.endsWith(ProgrammingConsts.phononGnuExtension)){fileCategory = EnumFileCategory.phononBandsGnu;}
 			else if(newTab.contains(DefaultFileNames.calcSaveFile)||newTab.contains(DefaultFileNames.projSaveFile)) 
 			{fileCategory = EnumFileCategory.save;}
 			else if(newTab.contains(".xml")) {fileCategory = EnumFileCategory.xmlout;}
@@ -243,7 +256,8 @@ public class OutputViewerController implements Initializable{
 			if(fileCategory!=null) {
 				comboAnalysis.getItems().addAll(EnumAnalysis.text);//always has the option of show in text
 				if(EnumFileCategory.stdout.equals(fileCategory) || EnumFileCategory.dos.equals(fileCategory) 
-						|| EnumFileCategory.bandsDatGnu.equals(fileCategory) || EnumFileCategory.tddftPlotSDat.equals(fileCategory)) {
+						|| EnumFileCategory.bandsDatGnu.equals(fileCategory) || EnumFileCategory.tddftPlotSDat.equals(fileCategory)
+						|| EnumFileCategory.phononBandsGnu.equals(fileCategory)) {
 					comboAnalysis.getItems().addAll(EnumAnalysis.info);
 					comboAnalysis.getItems().addAll(EnumAnalysis.plot2D);
 				}
@@ -380,7 +394,9 @@ public class OutputViewerController implements Initializable{
         return (item.endsWith(ProgrammingConsts.dosExtension)
         		|| item.contains(DefaultFileNames.bandsDatGnu)
         		|| item.contains(DefaultFileNames.tddftPlotSDat)
-        		|| isScf || isOpt || isMd);
+        		|| isScf || isOpt || isMd 
+        		|| (item.contains(DefaultFileNames.flfrq)&&item.endsWith(ProgrammingConsts.phononGnuExtension))
+        		);
 	}
 	public void calculationFolderChange(String newCalcFolderName) {
 		fileData.clearAll();buttonSaveGeo.setDisable(true);
@@ -481,17 +497,18 @@ public class OutputViewerController implements Initializable{
 			else if(fileCategory.equals(EnumFileCategory.dos)){
 				if(analTmp.equals(EnumAnalysis.info)) {textFlowDisplay.getChildren().add(new Text(fileData.toString()));}
 				else if(analTmp.equals(EnumAnalysis.plot2D)) {plot2dDos();}
-				else if(analTmp.equals(EnumAnalysis.plot3D)) {textFlowDisplay.getChildren().add(new Text("No 3D view of this file type."));}
 			}
 			else if(fileCategory.equals(EnumFileCategory.tddftPlotSDat)){
 				if(analTmp.equals(EnumAnalysis.info)) {textFlowDisplay.getChildren().add(new Text(fileData.toString()));}
 				else if(analTmp.equals(EnumAnalysis.plot2D)) {plot2dTddft();}
-				else if(analTmp.equals(EnumAnalysis.plot3D)) {textFlowDisplay.getChildren().add(new Text("No 3D view of this file type."));}
 			}
 			else if(fileCategory.equals(EnumFileCategory.bandsDatGnu)){
 				if(analTmp.equals(EnumAnalysis.info)) {textFlowDisplay.getChildren().add(new Text(fileData.toString()));}
 				else if(analTmp.equals(EnumAnalysis.plot2D)) {plot2dBands();}
-				else if(analTmp.equals(EnumAnalysis.plot3D)) {textFlowDisplay.getChildren().add(new Text("No 3D view of this file type."));}
+			}
+			else if(fileCategory.equals(EnumFileCategory.phononBandsGnu)){
+				if(analTmp.equals(EnumAnalysis.info)) {textFlowDisplay.getChildren().add(new Text(fileData.toString()));}
+				else if(analTmp.equals(EnumAnalysis.plot2D)) {plotPhBands();}
 			}
 			else {
 				textFlowDisplay.getChildren().add(new Text("Analysis is not available for this file type."));
@@ -505,6 +522,54 @@ public class OutputViewerController implements Initializable{
 			if(comboTmp.get(i)==null || !comboTmp.get(i).equals(strTest.get(i))) {return false;}
 		}
 		return true;
+	}
+	private void plotPhBands() {
+		//high symmetry k points
+		hboxBandsToolbar.setVisible(true);
+	
+		buttonShowMarker.setSelected(false);
+		lineChart.getData().clear();
+		
+		ArrayList<ArrayList<Double>> pdat = fileData.getPhononDat();
+		
+		if(pdat.isEmpty()) {return;}
+		
+		xAxis.setLabel("k");
+		yAxis.setLabel("Frequency (cm-1)");
+		
+		minY = 10000.0;
+		maxY = -10000.0;
+		
+		//k,j,i
+		//bands,k points,spins (1 or 2)
+		for(int i=1;i<pdat.get(0).size();i++) {//different bands (y axis). Starting from 1 because 0 is x axis
+			Series<Double,Double> dataSeries1 = new Series<Double, Double>();
+			for(int j=0;j<pdat.size();j++) {
+				if(pdat.get(j).size()<=i) {break;}//a certain row does not have enough numbers
+				dataSeries1.getData().add(new Data<Double, Double>(pdat.get(j).get(0), pdat.get(j).get(i)));
+				if(pdat.get(j).get(i)>maxY) {maxY=pdat.get(j).get(i);}
+				if(pdat.get(j).get(i)<minY) {minY=pdat.get(j).get(i);}
+			}
+			lineChart.getData().add(dataSeries1);
+        }
+		
+		int i=0;
+		int nkPassed = 0;
+		for(Kpoint kp : fileData.getPhononK()) {
+			i++;
+			//high symmetry q points
+			Series<Double,Double> dataSeries1 = new Series<Double, Double>();
+			lineChart.getData().add(dataSeries1);
+			double dbTmp = pdat.get(nkPassed).get(0);
+			nkPassed+=kp.getNk();
+			dataSeries1.getData().add(new Data<Double, Double>(dbTmp, minY));
+			dataSeries1.getData().add(new Data<Double, Double>(dbTmp, maxY));
+
+			dataSeries1.setName("q"+Integer.toString(i)+"=("+
+					kp.getKx()+","+kp.getKy()+","+kp.getKz()+"),x="+dbTmp+(kp.getLabel().isEmpty()?"":":")+kp.getLabel());
+		}
+
+        displayScroll.setContent(lineChart);
 	}
 	private void plot2dBands() {
 		//high symmetry k points
@@ -657,8 +722,8 @@ public class OutputViewerController implements Initializable{
 		xAxis.setLabel(dosHeader.size()>0 ? dosHeader.get(0):"Unknown (1st column)");
 		yAxis.setLabel(strSelect);
 		
-		minY = 1000.0;
-		maxY = -1000.0;
+		minY = 10000.0;
+		maxY = -10000.0;
 		
 		for(int i=1;i<dosArray.get(0).size();i++) {//different columns (y axis). Starting from 1 because 0 is xaxis
 			
@@ -891,6 +956,18 @@ public class OutputViewerController implements Initializable{
 			//kpointName.clear();
 			ObservableList<String> obsTmp = FXCollections.observableArrayList();
 			for(int i=0;i<fileData.getBandsHighSymmetryK().size();i++) {
+				//kpointName.add("");
+				obsTmp.add(Integer.toString(i+1));
+			}
+			comboHighSymK.setItems(obsTmp);
+			comboHighSymK.getSelectionModel().select(0);
+			return blTmp;
+		}
+		else if(fileCategory.equals(EnumFileCategory.phononBandsGnu)) {
+			boolean blTmp = fileData.loadPhononBands(inoutFiles);
+			//kpointName.clear();
+			ObservableList<String> obsTmp = FXCollections.observableArrayList();
+			for(int i=0;i<fileData.getPhononK().size();i++) {
 				//kpointName.add("");
 				obsTmp.add(Integer.toString(i+1));
 			}

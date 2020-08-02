@@ -54,7 +54,7 @@ public class Constants {
 	public enum EnumFileCategory{
 		save("QuantumVITAS save"),directory("Directory"),stdin("Input (std)"),
 		stdout("Output (std)"),xmlout("Output (xml)"),crash("Crash"),stderr("Error (std)"),
-		unknown("Unknown"),dos("Density of states"),bandsDatGnu("Bands Data (gnu)"),
+		unknown("Unknown"),dos("Density of states"),bandsDatGnu("Bands Data (gnu)"),phononBandsGnu("Phonon Bands (gnu)"),
 		tddftPlotSDat("TDDFT Data (plot_S)");
 		
 		private String name;

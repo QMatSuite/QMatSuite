@@ -87,6 +87,7 @@ import com.error.ErrorMsg;
 import com.error.ShowAlert;
 import com.programconst.Coloring;
 import com.programconst.DefaultFileNames;
+import com.programconst.ProgrammingConsts;
 import com.programconst.DefaultFileNames.SettingKeys;
 import com.programconst.ProgrammingConsts.PathSettings;
 
@@ -761,7 +762,7 @@ public class MainWindowController implements Initializable{
 					ShowAlert.showAlert(AlertType.INFORMATION, "Warning", "Warning! EnumStep not set for "+j+"th step. Please check the code.");
 			    	return;
 				}
-				File calcFile = new File(fl,cis.get(j).stepName.toString()+".in");
+				File calcFile = new File(fl,cis.get(j).stepName.toString()+ProgrammingConsts.stdinExtension);
 				try {
 		            Files.write(calcFile.toPath(), cis.get(j).input.getBytes());
 		        } catch (IOException e) {

@@ -19,7 +19,6 @@
 package input;
 
 import com.consts.Constants.EnumCard;
-import com.consts.Constants.EnumKUnitBands;
 import com.consts.Constants.EnumNameList;
 import com.error.InvalidKeyException;
 import com.error.InvalidTypeException;
@@ -38,6 +37,8 @@ public class MatdynInput extends QeInput{
 
 	public MatdynInput() {
 		super("matdyn");
+		//amass defined in scf calculation from pw.x, no need to define here. Verified by test calculation.
+		
 		sectionDict.put("input", new NameList(EnumNameList.input));
 		sectionDict.put(ProgrammingConsts.endPart, new Card(EnumCard.END));
 		

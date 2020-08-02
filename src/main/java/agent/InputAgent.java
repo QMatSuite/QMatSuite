@@ -45,7 +45,6 @@ public abstract class InputAgent implements Serializable{
 			e.printStackTrace();
 			return null;
 		}
-		
 	}
 	public abstract boolean convertInfoFromInput(String inputStr);
 	public String getParameterValue(String paraStr, String inputStr) {

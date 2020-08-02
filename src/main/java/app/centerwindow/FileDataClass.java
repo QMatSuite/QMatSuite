@@ -20,7 +20,9 @@
 package app.centerwindow;
 
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.LineNumberReader;
 import java.util.ArrayList;
 import java.util.Scanner;
 import com.consts.ChemicalElements;
@@ -33,7 +35,9 @@ import com.consts.PhysicalConstants;
 import com.error.ShowAlert;
 import com.programconst.ProgrammingConsts;
 import agent.InputAgentGeo;
+import agent.InputAgentPhonon;
 import app.input.CellParameter;
+import app.input.Kpoint;
 import app.input.geo.Atom;
 import javafx.geometry.Point3D;
 import javafx.scene.control.Alert.AlertType;
@@ -56,6 +60,10 @@ public class FileDataClass {
 	private ArrayList<ArrayList<ArrayList<Double>>> bandsDatArray;
 	private ArrayList<Double> bandsHighSymmetryKXCoor;
 	private ArrayList<String> bandsHighSymmetryK;
+	
+	//phonon
+	private ArrayList<ArrayList<Double>> phononBandsDatArray;
+	private ArrayList<Kpoint> phononKPoints;
 	
 	private ArrayList<ArrayList<Double>> tddftArray;
 	private ArrayList<String> tddftHeader;
@@ -124,6 +132,9 @@ public class FileDataClass {
 		tddftHeader = new ArrayList<String>();
 		iGeoTemp = new InputAgentGeo();
 				
+		phononBandsDatArray = new ArrayList<ArrayList<Double>>();
+		phononKPoints = new ArrayList<Kpoint>();
+		
 		dataMd = new ArrayList<ArrayList<Double>>();//DO NOT CLEAR dataMd itself!
 		dataMd.add(new ArrayList<Double>());//time in ps
 		dataMd.add(new ArrayList<Double>());//Ekin
@@ -150,6 +161,9 @@ public class FileDataClass {
 			if(ard!=null) {ard.clear();}
 		}
 		for(ArrayList<Double> ard:dosArray) {
+			if(ard!=null) {ard.clear();}
+		}
+		for(ArrayList<Double> ard:phononBandsDatArray) {
 			if(ard!=null) {ard.clear();}
 		}
 		for(ArrayList<Double> ard:tddftArray) {
@@ -184,6 +198,10 @@ public class FileDataClass {
 		bandsHighSymmetryKXCoor.clear();
 		tddftArray.clear();
 		tddftHeader.clear();
+		
+		phononBandsDatArray.clear();
+		phononKPoints.clear();
+		
 		errorMessage = "";
 		
 		//not necessary, because atom positions not encoded there. 
@@ -220,6 +238,89 @@ public class FileDataClass {
 	public Double getAlat(){
 		return alat;
 		
+	}
+	public boolean loadPhononBands(File gnuDatFile) {
+		if(!gnuDatFile.canRead()) {
+			return false;
+		}
+		this.clearAll();
+		
+		try {
+			//load .gnu file
+		    Scanner sc2 = new Scanner(gnuDatFile); 
+		    String strTmp;
+		    
+		    while (sc2.hasNextLine()) {
+
+		    	strTmp = sc2.nextLine();
+		    	
+		    	if(strTmp==null || strTmp.trim().isEmpty()) {
+		    		continue;
+		    	}
+		    	addDoubleRow(strTmp,phononBandsDatArray);
+	    	}
+		    sc2.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+			return false;
+		} 
+		
+		File matDynInputFile = new File(gnuDatFile.getParentFile(),EnumStep.MATDYN.toString()+ProgrammingConsts.stdinExtension);
+
+		if(matDynInputFile.canRead()) {
+			//ShowAlert.showAlert(AlertType.INFORMATION, "debug", matDynInputFile.toString());
+			InputAgentPhonon iPh = new InputAgentPhonon();
+			//ShowAlert.showAlert(AlertType.INFORMATION, "debug", readStringFromFile(matDynInputFile));
+			iPh.convertInfoFromInput(readStringFromFile(matDynInputFile));
+			if(!iPh.listKPoints.isEmpty()) {phononKPoints = iPh.listKPoints;}
+		}
+		return true;
+	}
+	private String readStringFromFile(File fl) {
+		if(fl==null || !fl.canRead()) {return "";}
+
+		if(fl.canRead()) {
+			try {
+				LineNumberReader count1 = new LineNumberReader(new FileReader(fl));
+				while (count1.skip(Long.MAX_VALUE) > 0)
+			    {
+					// Loop just in case the file is > Long.MAX_VALUE or skip() decides to not read the entire file
+			    }
+				int totalLineNum = count1.getLineNumber() + 1;
+				count1.close();
+				
+			    Scanner sc = new Scanner(fl); 
+			  
+			    String strTmp="";
+			    int lineCount=0;
+			    boolean flagSkip = false;
+			    
+			    while (sc.hasNextLine()) {
+			    	lineCount++;
+			    	if(lineCount > ProgrammingConsts.maxLinesShownInText && lineCount < totalLineNum-ProgrammingConsts.maxLinesShownInText){
+			    		if(!flagSkip) {
+			    			strTmp+=("------------------------------+------------------------+------------------------------\n"+
+			    							 "------------------------------+------------------------+------------------------------\n"+
+			    							 "------------------------------+-------skip "+
+			    							 Integer.toString(totalLineNum-2*ProgrammingConsts.maxLinesShownInText)+" lines-------+------------------------------\n"+
+			    							 "------------------------------+------------------------+------------------------------\n"+
+			    							 "------------------------------+------------------------+------------------------------\n");
+			    		}
+			    		flagSkip = true;
+			    		continue;
+		    		}
+			    	else {
+			    		strTmp+= (sc.nextLine()+"\n");
+			    	}
+	
+		    	}
+			    sc.close();
+			    return strTmp;
+			} catch (IOException e) {
+				e.printStackTrace();
+			} 
+		}
+		return "";
 	}
 	public boolean loadBands(File gnuDatFile) {
 		if(!gnuDatFile.canRead()) {
@@ -1161,6 +1262,23 @@ public class FileDataClass {
 				strTmp+="\n";
 			}
 		}
+		else if(EnumFileCategory.phononBandsGnu.equals(fileCategory)) {
+			if(!phononBandsDatArray.isEmpty()) {
+				strTmp+="Phonon: "+phononBandsDatArray.get(0).size()+" bands, "+
+						phononBandsDatArray.size()+" q-points detected.\n";
+				if(!this.phononKPoints.isEmpty()) {
+					strTmp+="High symmetry q-points read from matdyn input file:\n";
+				}
+				for(Kpoint kp : this.phononKPoints) {
+					if(kp!=null) {
+						strTmp+="("+kp.getKx()+","+kp.getKy()+","+kp.getKz()+"),"+kp.getNk()+" points, "+kp.getLabel()+"\n";
+					}
+				}
+			}
+			else {
+				strTmp+="Phonon bands: no data read.\n";
+			}
+		}
 		else if(EnumFileCategory.stdout.equals(fileCategory)) {
 			//stdout file
 			strTmp+="Standard output file.\n";
@@ -1197,7 +1315,7 @@ public class FileDataClass {
 			strTmp += "\n";
 			
 			//total energy
-			int cnt = 0;
+			//int cnt = 0;
 			if(isMD || isOpt || hasScf) {
 				strTmp += printArray(energyArray, "Total energy (Ry):", "Total energy converged (Ry):");
 				if(totalForce!=null && !totalForce.isEmpty()) {
@@ -1217,7 +1335,7 @@ public class FileDataClass {
 			}
 			
 			//magnetization
-			int cnt_mag = 0;
+			//int cnt_mag = 0;
 			if(isMD || isOpt || hasScf) {
 				if(!totalMag.isEmpty() || !absoluteMag.isEmpty()) {
 					if(!totalMagy.isEmpty() || !totalMagz.isEmpty()) {
@@ -1308,7 +1426,6 @@ public class FileDataClass {
 				}
 				strTmp+="\n";
 			}
-			
 		
 		}
 		strTmp+="\n";
@@ -1374,4 +1491,11 @@ public class FileDataClass {
 	public ArrayList<ArrayList<Double>> getAbsoluteMag(){
 		return this.absoluteMag;
 	}
+	public ArrayList<Kpoint> getPhononK() {
+		return this.phononKPoints;
+	}
+	public ArrayList<ArrayList<Double>> getPhononDat(){
+		return this.phononBandsDatArray;
+	}
+	
 }
