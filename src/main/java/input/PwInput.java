@@ -36,6 +36,7 @@ import app.input.geo.Atom;
 import app.input.geo.Element;
 import com.consts.PhysicalConstants;
 import com.consts.Constants.EnumCard;
+import com.consts.Constants.EnumHybridFunc;
 import com.consts.Constants.EnumKUnitBands;
 import com.consts.Constants.EnumMixingMode;
 import com.consts.Constants.EnumNameList;
@@ -109,6 +110,14 @@ public class PwInput extends QeInput{
 		sectionDict.get("SYSTEM").addParameter("degauss", new InputValueDouble("degauss",0.0,true));
 		sectionDict.get("SYSTEM").addParameter("smearing", new InputValueString("smearing",EnumSmearing.gauss.toString(),true));
 		sectionDict.get("SYSTEM").addParameter("nbnd", new InputValueInt("nbnd",false));
+		//hybrid
+		sectionDict.get("SYSTEM").addParameter("input_dft", new InputValueString("input_dft",false));
+		sectionDict.get("SYSTEM").addParameter("exxdiv_treatment", new InputValueString("exxdiv_treatment","gygi-baldereschi",false));
+		sectionDict.get("SYSTEM").addParameter("x_gamma_extrapolation", new InputValueBoolean("x_gamma_extrapolation",false,false));
+		sectionDict.get("SYSTEM").addParameter("ecutvcut", new InputValueDouble("ecutvcut",0.0,false));
+		sectionDict.get("SYSTEM").addParameter("nqx1", new InputValueInt("nqx1",1,false));//actually not 1 for QE default now
+		sectionDict.get("SYSTEM").addParameter("nqx2", new InputValueInt("nqx2",1,false));
+		sectionDict.get("SYSTEM").addParameter("nqx3", new InputValueInt("nqx3",1,false));
 		
 		sectionDict.get("ELECTRONS").addParameter("electron_maxstep", new InputValueInt("electron_maxstep",100,false));
 		sectionDict.get("ELECTRONS").addParameter("conv_thr", new InputValueDouble("conv_thr",1e-6,false));
@@ -315,6 +324,7 @@ public class PwInput extends QeInput{
 			setValue("SYSTEM","degauss",ia1.degauss);
 			setValue("SYSTEM","smearing",ia1.enumSmearing);
 			
+			//Hubbard U
 			boolean boolHubbard = ia1.setU;
 			
 			if(EnumOccupations.smearing.equals(ia1.enumOccupation.getValue())) {
@@ -347,7 +357,20 @@ public class PwInput extends QeInput{
 				}
 			}
 			
+			setValue("SYSTEM","lda_plus_u",ia1.lda_plus_u);andExplicitWrite("SYSTEM","lda_plus_u",boolHubbard);
 			
+			//hybrid
+			boolean boolHybrid= (ia1.setHybrid && !EnumHybridFunc.defaultFunctional.equals(ia1.enumHybrid.getValue()));
+			
+			setValue("SYSTEM","input_dft",ia1.enumHybrid);andExplicitWrite("SYSTEM","input_dft",boolHybrid);
+			setValue("SYSTEM","exxdiv_treatment",ia1.enumTreat);andExplicitWrite("SYSTEM","exxdiv_treatment",boolHybrid);
+			setValue("SYSTEM","ecutvcut",ia1.ecutvcut);andExplicitWrite("SYSTEM","ecutvcut",boolHybrid);
+			setValue("SYSTEM","x_gamma_extrapolation",ia1.xgammaextrap);andExplicitWrite("SYSTEM","x_gamma_extrapolation",boolHybrid);
+			setValue("SYSTEM","nqx1",ia1.nqx);andExplicitWrite("SYSTEM","nqx1",boolHybrid);
+			setValue("SYSTEM","nqx2",ia1.nqy);andExplicitWrite("SYSTEM","nqx2",boolHybrid);
+			setValue("SYSTEM","nqx3",ia1.nqz);andExplicitWrite("SYSTEM","nqx3",boolHybrid);
+			
+			//standard
 			setValue("SYSTEM","ecutwfc",ia1.ecutWfc);
 			setValue("SYSTEM","ecutrho",ia1.ecutRho);
 			setValue("CONTROL","restart_mode",new WrapperString(ia1.boolRestart.getValue()?"restart":"from_scratch",ia1.boolRestart.isEnabled()));

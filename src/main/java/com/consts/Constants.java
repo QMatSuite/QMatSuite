@@ -322,6 +322,26 @@ public class Constants {
 	public enum EnumKUnit implements EnumInProgram{
 		tpiba,automatic,crystal,gamma,tpiba_b,crystal_b,tpiba_c,crystal_c
 	}
+	public enum EnumHybridFunc implements EnumInProgram{
+		defaultFunctional,
+		pbe0,hse,b3lyp,gaupbe
+	}
+	public enum EnumHybridTreat implements EnumInProgram{
+		gb("gygi-baldereschi"),
+		vs("vcut_spherical"),
+		vw("vcut_ws"),
+		no("none");
+		
+		private String name;
+		
+		private EnumHybridTreat(String name) {
+	        this.name = name;
+	    }
+		@Override
+		public String toString() {
+			return name;
+		}
+	}
 	public enum EnumKUnitBands implements EnumInProgram{
 		tpiba_b("2pi/a","tpiba_b"),crystal_b("crystal","crystal_b");
 		private String displayName,

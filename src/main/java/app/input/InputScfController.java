@@ -38,6 +38,7 @@ import javafx.scene.layout.VBox;
 import main.MainClass;
 import agent.InputAgentScf;
 import app.input.scf.InputScfHubbardController;
+import app.input.scf.InputScfHybridController;
 import app.input.scf.InputScfMagnetController;
 import app.input.scf.InputScfStandardController;
 import com.consts.Constants.EnumStep;
@@ -84,6 +85,8 @@ public class InputScfController extends InputController{
     
     private InputScfStandardController contStandard=null;
     
+    private InputScfHybridController contHybrid = null;
+    
     public InputScfController(MainClass mc) {
 		super(mc, EnumStep.SCF);
 	}
@@ -112,7 +115,9 @@ public class InputScfController extends InputController{
 				fxmlLoader2.setController(contHubb);
 				vboxHubbard = fxmlLoader2.load();
 				
+				contHybrid = new InputScfHybridController(mainClass);
 				FXMLLoader fxmlLoader3 = new FXMLLoader(getClass().getClassLoader().getResource("app/input/scf/InputScfHybrid.fxml"));
+				fxmlLoader3.setController(contHybrid);
 				vboxHybrid = fxmlLoader3.load();
 				
 				FXMLLoader fxmlLoader4 = new FXMLLoader(getClass().getClassLoader().getResource("app/input/scf/InputScfVdw.fxml"));
@@ -148,8 +153,10 @@ public class InputScfController extends InputController{
     		setBoolFieldListener(setHybrid,"setHybrid",hybridPane);setBoolFieldListener(setVdw,"setVdw",vdwPane);
     		setBoolFieldListener(setAdv,"setAdv",advancedPane);setBoolFieldListener(setE,"setE",efieldPane);
     		
+    		
+    		
     		//----------------comment out when implemented
-    		setHybrid.setSelected(false);setHybrid.setDisable(true);
+    		setHybrid.setSelected(false);setHybrid.setDisable(false);
     		setVdw.setSelected(false);setVdw.setDisable(true);
     		setAdv.setSelected(false);setAdv.setDisable(true);
     		setE.setSelected(false);setE.setDisable(true);
@@ -162,6 +169,16 @@ public class InputScfController extends InputController{
     		setExpandedListener(vdwPane, "expandVdw");
     		setExpandedListener(advancedPane, "expandAdv");
     		setExpandedListener(efieldPane, "expandE");
+    		
+    		//additional listener for hybrid pane to update the nq1,2,3 defaults
+    		hybridPane.expandedProperty().addListener((observable, oldValue, newValue) -> {
+    			if(newValue==null) {return;}
+    			InputAgentScf ia = (InputAgentScf) mainClass.projectManager.getStepAgent(EnumStep.SCF);
+    			if(ia==null) {return;}
+    			if(newValue && contHybrid!=null) {
+    				contHybrid.loadProjectParameters();
+    			}
+    		});
     		
     		checkSetProjectDefault.setSelected(false);
     		checkSetProjectDefault.selectedProperty().addListener((observable, oldValue, newValue) -> {
@@ -190,6 +207,7 @@ public class InputScfController extends InputController{
 		if (contStandard!=null) contStandard.loadProjectParameters();
 		if (contMagnet!=null) contMagnet.loadProjectParameters();
 		if (contHubb!=null) contHubb.loadProjectParameters();
+		if (contHybrid!=null) contHybrid.loadProjectParameters();
 		
 		if (mainClass.projectManager.isDefault()) {
 			checkSetProjectDefault.setSelected(true);//********not efficient, will double set

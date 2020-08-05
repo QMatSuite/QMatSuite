@@ -658,6 +658,7 @@ public class MainWindowController implements Initializable{
 						area.setEditable(false);
 
 						alert.getDialogPane().setExpandableContent(area);
+						alert.getDialogPane().setExpanded(true);
 						alert.showAndWait();
 						if(alert.getResult() == ButtonType.OK || alert.getResult() == ButtonType.YES) {
 							continue;
@@ -1033,6 +1034,7 @@ public class MainWindowController implements Initializable{
 		mainClass.projectManager.setActiveProject(null);
 		contTree.projectTree.getSelectionModel().clearSelection();
 		contTree.calcMain.setDisable(true);
+		showInputButton.setDisable(true);
 		runJob.setDisable(true);
 		clearRightPane();
 		calcLabel.setText("");
@@ -1115,6 +1117,7 @@ public class MainWindowController implements Initializable{
 		
 		//allow more interactions
 		contTree.calcMain.setDisable(false);
+		showInputButton.setDisable(false);
 		runJob.setDisable(false);
 		//this function was called twice:
 		//1. contTree.buttonOpenSelected
