@@ -22,6 +22,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import app.input.geo.Element;
+
+import com.consts.Constants.EnumHybridFunc;
+import com.consts.Constants.EnumHybridTreat;
 import com.consts.Constants.EnumMixingMode;
 import com.consts.Constants.EnumOccupations;
 import com.consts.Constants.EnumSmearing;
@@ -32,13 +35,7 @@ public class InputAgentScf extends InputAgent{
 	 * 
 	 */
 	private static final long serialVersionUID = -3659165710616979269L;
-	private void readObject(java.io.ObjectInputStream in)throws IOException, ClassNotFoundException 
-	{
-		//for loading after serialization
-	    in.defaultReadObject();
-	    //account for version difference in loading parameters
-	    if(boolKGamma==null) {boolKGamma = new WrapperBoolean(false);}
-	}
+	
 	public Boolean setMag,
 	setU,
 	setHybrid,
@@ -84,6 +81,32 @@ public class InputAgentScf extends InputAgent{
 	public WrapperBoolean lda_plus_u;
 	public ArrayList<Element> elementList;
 	
+	//hybrid
+	public WrapperEnum enumHybrid;
+	public WrapperEnum enumTreat;
+	public WrapperDouble ecutvcut;
+	public WrapperBoolean xgammaextrap;
+	public WrapperInteger nqx,
+	nqy,
+	nqz;
+	
+	//for compatibility 
+	private void readObject(java.io.ObjectInputStream in)throws IOException, ClassNotFoundException 
+	{
+		//for loading after serialization
+	    in.defaultReadObject();
+	    //account for version difference in loading parameters
+	    if(boolKGamma==null) {boolKGamma = new WrapperBoolean(false);}
+	    //hybrid, added in v0.2.0
+	    if(enumHybrid==null) {enumHybrid = new WrapperEnum(EnumHybridFunc.defaultFunctional);}
+	    if(enumTreat==null) {enumTreat = new WrapperEnum(EnumHybridTreat.gb);}
+	    if(ecutvcut==null) {ecutvcut = new WrapperDouble(0.0);}
+	    if(xgammaextrap==null) {xgammaextrap = new WrapperBoolean(true);}
+	    if(nqx==null) {nqx = new WrapperInteger(1);}
+	    if(nqy==null) {nqy = new WrapperInteger(1);}
+	    if(nqz==null) {nqz = new WrapperInteger(1);}
+	}
+	
 	public InputAgentScf() {
 		//************************|***********//
 		//***********************\|/**********//
@@ -118,6 +141,15 @@ public class InputAgentScf extends InputAgent{
 		degauss = new WrapperDouble(0.02);//ok
 		//***********************/|\*********//
 		//************************|**********//
+		
+		//hybrid functional
+		enumHybrid = new WrapperEnum(EnumHybridFunc.defaultFunctional);
+		enumTreat = new WrapperEnum(EnumHybridTreat.gb);
+		ecutvcut = new WrapperDouble(0.0);
+		xgammaextrap = new WrapperBoolean(true);
+		nqx = new WrapperInteger(1);
+		nqy = new WrapperInteger(1);
+		nqz = new WrapperInteger(1);
 		
 	}
 	@Override
