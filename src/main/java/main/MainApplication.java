@@ -22,11 +22,7 @@ package main;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.stage.Stage;
-
-import java.time.Instant;
-
 import com.error.ShowAlert;
-
 import app.MainWindowController;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -54,7 +50,7 @@ public class MainApplication extends Application {
 		try {
 			mainClass = new MainClass();
 			contMain = new MainWindowController(mainClass);
-			ShowAlert.startTime = Instant.now();
+			//ShowAlert.startTime = Instant.now();
 			
 			FXMLLoader fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("mainWindow.fxml"));
 			fxmlLoader.setController(contMain);

@@ -171,7 +171,7 @@ public class ProjectManager{
 		}
 		return null;
 	}
-	public void creatGlobalSettings() {
+	public static void creatGlobalSettings() {
 		File stFile = new File(DefaultFileNames.defaultSettingFile);
 		try {
 			stFile.createNewFile();
@@ -186,7 +186,7 @@ public class ProjectManager{
 	    	e1.printStackTrace();
 	    }
 	}
-	public String readGlobalSettings(String key) {
+	public static String readGlobalSettings(String key) {
 		String textOut=null;
 		//go to current directory
 		File stFile = new File(DefaultFileNames.defaultSettingFile);
@@ -216,7 +216,7 @@ public class ProjectManager{
 		}
 		return textOut;
 	}
-	public String writePathSettings(String key, String msg) {
+	public static String writePathSettings(String key, String msg) {
 		if(msg==null) {return null;}//should not be null
 		//use relative path if it is in the home folder of this software
 		String homePath = new File("").getAbsolutePath();
@@ -230,7 +230,7 @@ public class ProjectManager{
 		writeGlobalSettings(key, msg);
 		return msg;
 	}
-	private void writeGlobalSettings(String key, String msg) {
+	public static void writeGlobalSettings(String key, String msg) {
 		//go to current directory
 		File stFile = new File(DefaultFileNames.defaultSettingFile);
 		for(int i=0;i<3;i++) {

@@ -30,9 +30,12 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleButton;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import job.JobManager;
 
 
 public class JobDialogController implements Initializable{
@@ -53,6 +56,17 @@ public class JobDialogController implements Initializable{
 
     @FXML
     private VBox vboxText;
+    
+    @FXML
+    private Label labelCpu,
+    labelWarning;
+    
+    @FXML
+    private TextField textOmp,
+    textMpi;
+    
+    @FXML
+    private ToggleButton toggleParallel;
     
     private ArrayList<Boolean> boolRunStep;
     
@@ -75,9 +89,69 @@ public class JobDialogController implements Initializable{
 			boolRun = false;
 	    	closeStage();
 		});
+		//openmp
 		
+		textOmp.textProperty().addListener((obs, oldVal, newVal) -> {
+		    try {
+		    	int intOmp = Integer.valueOf(newVal);
+		    	if(intOmp>0) {
+		    		JobManager.setOmpNumThreads(intOmp);
+		    		checkSetting();
+		    		textOmp.setStyle("-fx-control-inner-background: white");
+		    	}
+		    	else {
+		    		textOmp.setStyle("-fx-control-inner-background: red");
+		    	}
+		    }catch(Exception e) {
+		    	textOmp.setStyle("-fx-control-inner-background: red");
+		    }
+		});
+		
+		//mpirun
+		
+		textMpi.textProperty().addListener((obs, oldVal, newVal) -> {
+		    try {
+		    	int intMpi = Integer.valueOf(newVal);
+		    	if(intMpi>0) {
+		    		JobManager.setMpirunNum(intMpi);
+		    		checkSetting();
+		    		textMpi.setStyle("-fx-control-inner-background: white");
+		    		
+		    	}
+		    	else {
+		    		textMpi.setStyle("-fx-control-inner-background: red");
+		    	}
+		    }catch(Exception e) {
+		    	textMpi.setStyle("-fx-control-inner-background: red");
+		    }
+		});
+		
+		//
+		toggleParallel.selectedProperty().addListener((obs, oldVal, newVal) -> {
+			JobManager.setBoolParallel(newVal);
+			setParallelSelected(newVal);
+		});
+		
+		setParallelSelected(JobManager.isBoolParallel());
 	}
-	
+	private void setParallelSelected(boolean newVal) {
+		textOmp.setDisable(!newVal);textMpi.setDisable(!newVal);
+		if(newVal) {
+			toggleParallel.setText("ON");
+		}
+		else {
+			toggleParallel.setText("OFF");
+		}
+	}
+	private void checkSetting() {
+		if(JobManager.getMpirunNum()*JobManager.getOmpNumThreads()>JobManager.numCPUs) {
+			labelWarning.setText("Efficiency warning: "+JobManager.getMpirunNum()+"*"+JobManager.getOmpNumThreads()+
+					">"+JobManager.numCPUs+"");
+		}
+		else {
+			labelWarning.setText("");
+		}
+	}
 	private void closeStage() {
 		for(int i=0;i<listCheckBox.size();i++) {
 			boolRunStep.set(i,listCheckBox.get(i).isSelected());
@@ -94,6 +168,7 @@ public class JobDialogController implements Initializable{
 		listCheckBox.clear();
 		textAreaTitle.setText(Integer.toString(cis.size())+
 				(cis.size()==1? " step in total." : " steps in total."));
+		labelCpu.setText(""+JobManager.numCPUs/2+" cores "+JobManager.numCPUs+" threads detected.");
 		for(int i=0;i<cis.size();i++) {
 			boolRunStep.add(true);
 			CheckBox cbNew = new CheckBox("");cbNew.setSelected(true);
@@ -103,6 +178,10 @@ public class JobDialogController implements Initializable{
 					+ cis.get(i).stepName.toString()
 					+"("+cis.get(i).stepName.getName()+")"));
 		}
+		//***********reconsider efficiency
+		textOmp.setText(Integer.toString(JobManager.getOmpNumThreads()));
+		textMpi.setText(Integer.toString(JobManager.getMpirunNum()));
+		toggleParallel.setSelected(JobManager.isBoolParallel());
 		
 	}
 	public ArrayList<Boolean> getBoolRunStep(){

@@ -46,6 +46,8 @@ public interface DefaultFileNames {
 	public enum SettingKeys {
 		workspace,
 		pseudolibroot,
-		qePath
+		qePath,
+		ompNumThreads,
+		mpirunNumCores
 	}
 }
