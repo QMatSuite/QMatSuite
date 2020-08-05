@@ -20,13 +20,46 @@ package job;
 
 import java.util.LinkedList;
 import java.util.Queue;
+import com.error.ShowAlert;
+import com.programconst.DefaultFileNames.SettingKeys;
+
+import javafx.scene.control.Alert.AlertType;
+import project.ProjectManager;
 
 public class JobManager implements Runnable {
 	
 	//always alive during the execution of the main program. Only used when exiting the main program
 	private boolean alive;
+	private static boolean boolParallel;
+	private static int ompNumThreads=1;
+	private static int mpirunNum=1;
+	public static final int numCPUs = Runtime.getRuntime().availableProcessors();
 
 	private JobNode currentNode;
+	
+	static {
+		String ompNumStr = ProjectManager.readGlobalSettings(SettingKeys.ompNumThreads.toString());
+		//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", ompNumStr);
+		try {
+			int ompNum = Integer.valueOf(ompNumStr);
+			if(ompNum>0) {setOmpNumThreads(ompNum,false);}
+			else {setOmpNumThreads(1);}
+		}catch(Exception e) {
+			setOmpNumThreads(1);
+		}
+		
+		String mpiNumStr = ProjectManager.readGlobalSettings(SettingKeys.mpirunNumCores.toString());
+		try {
+			int mpiNum = Integer.valueOf(mpiNumStr);
+			
+			if(mpiNum>0) {setMpirunNum(mpiNum,false);}
+			else {setMpirunNum(1);}
+		}catch(Exception e) {
+			setMpirunNum(1);
+		}
+		
+		boolParallel = false;
+	}
 	
     private Queue<JobNode> nodeList;
     
@@ -110,6 +143,51 @@ public class JobManager implements Runnable {
 		if(this.currentNode!=null) {
 		return this.currentNode.getName();}
 		else {return null;}
+	}
+
+	public static int getOmpNumThreads() {
+		return ompNumThreads;
+	}
+	public static void setOmpNumThreads(int omp) {
+		setOmpNumThreads(omp, true);
+	}
+	private static void setOmpNumThreads(int omp, boolean boolWrite) {
+		if(omp>0) {
+			JobManager.ompNumThreads = omp;
+			if(boolWrite) {
+				ProjectManager.writeGlobalSettings(SettingKeys.ompNumThreads.toString(), Integer.toString(omp));
+			}
+		}
+		else {
+			ShowAlert.showAlert(AlertType.ERROR, "Error", "OpenMP thread number must be positive (not "+omp+")");
+		}
+	}
+
+	public static int getMpirunNum() {
+		return mpirunNum;
+	}
+	public static void setMpirunNum(int mpirunNumb) {
+		setMpirunNum(mpirunNumb, true);
+	}
+	private static void setMpirunNum(int mpirunNumb, boolean boolWrite) {
+		//ShowAlert.showAlert(AlertType.ERROR, "Debug", "mpirun number must be positive (not "+mpirunNum+")");
+		if(mpirunNumb>0) {
+			JobManager.mpirunNum = mpirunNumb;
+			if(boolWrite) {
+				ProjectManager.writeGlobalSettings(SettingKeys.mpirunNumCores.toString(), Integer.toString(mpirunNumb));
+			}
+		}
+		else {
+			ShowAlert.showAlert(AlertType.ERROR, "Error", "mpirun number must be positive (not "+mpirunNumb+")");
+		}
+	}
+
+	public static boolean isBoolParallel() {
+		return boolParallel;
+	}
+
+	public static void setBoolParallel(boolean bp) {
+		JobManager.boolParallel = bp;
 	}
 
 }

@@ -67,6 +67,7 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import main.MainClass;
 import project.ProjectCalcLog;
+import project.ProjectManager;
 import app.centerwindow.OutputViewerController;
 import app.centerwindow.WorkScene3D;
 import app.input.InputBandsController;
@@ -90,9 +91,9 @@ import com.programconst.DefaultFileNames;
 import com.programconst.ProgrammingConsts;
 import com.programconst.DefaultFileNames.SettingKeys;
 import com.programconst.ProgrammingConsts.PathSettings;
-
 import agent.InputAgentScf;
 import input.ContainerInputString;
+import job.JobManager;
 import job.JobNode;
 
 public class MainWindowController implements Initializable{
@@ -356,7 +357,7 @@ public class MainWindowController implements Initializable{
 			if(selectedDir!=null && selectedDir.canRead()) {
 				//mainClass.projectManager.workSpacePath = selectedDir.getPath();
 				//textWorkSpace.setText(mainClass.projectManager.workSpacePath);
-				String pathWritten = mainClass.projectManager.writePathSettings(SettingKeys.workspace.toString(),selectedDir.getPath());
+				String pathWritten = ProjectManager.writePathSettings(SettingKeys.workspace.toString(),selectedDir.getPath());
 				setTexFieldPath(textWorkSpace, pathWritten,PathSettings.workspace);
 				mainClass.projectManager.workSpacePath = pathWritten;
 				
@@ -414,7 +415,7 @@ public class MainWindowController implements Initializable{
 					}
 				}
 				
-				String pathWritten = mainClass.projectManager.writePathSettings(SettingKeys.qePath.toString(),selectedPathStr);
+				String pathWritten = ProjectManager.writePathSettings(SettingKeys.qePath.toString(),selectedPathStr);
 				mainClass.projectManager.qePath = pathWritten;
 				setTexFieldPath(textQEPath, pathWritten,PathSettings.qe);
 			}
@@ -459,7 +460,7 @@ public class MainWindowController implements Initializable{
 			
 			if(selectedDir!=null && selectedDir.canRead()) {
 				
-				String fieldName = mainClass.projectManager.writePathSettings(SettingKeys.pseudolibroot.toString(),selectedDir.getPath());
+				String fieldName = ProjectManager.writePathSettings(SettingKeys.pseudolibroot.toString(),selectedDir.getPath());
 				setTexFieldPath(labelPathPseudoLib, fieldName,PathSettings.pplib);
 				mainClass.projectManager.setPseudoLibPath(fieldName);
 				
@@ -773,6 +774,7 @@ public class MainWindowController implements Initializable{
 			}
 			
 			final String postFixCommand;
+			
 			if(SystemInfo.isWindows()) {
 				if(!new File(mainClass.projectManager.qePath+File.separator+"pw.exe").canExecute()) {
 					ShowAlert.showAlert(AlertType.INFORMATION, "Error", 
@@ -805,6 +807,28 @@ public class MainWindowController implements Initializable{
 			if(!contRun.isBoolRun()) {return;}
 			ArrayList<Boolean> boolRunStep = contRun.getBoolRunStep();
 			
+			//read mpi settings
+			String mpiCommand = "";
+			if(SystemInfo.isWindows()) {
+				if(JobManager.isBoolParallel()) {
+					File qeRoot = new File(mainClass.projectManager.qePath).getParentFile();
+					if(qeRoot!=null) {
+						File mpiFile = new File(qeRoot+File.separator+"mpi"+File.separator+"mpiexec.exe");
+						if(mpiFile.canExecute()) {
+							mpiCommand = mpiFile.getAbsolutePath();
+						}
+					}
+				}
+			}else if(SystemInfo.isUnix()) {
+				if(JobManager.isBoolParallel()) {
+					mpiCommand = "mpirun";
+				}
+			}
+			else if(SystemInfo.isMac()){
+			}
+			else {
+			}
+			
 			//start running the jobs
 			for(int j = 0 ; j < cis.size() ; j++) {
 				if(j>=boolRunStep.size()) {ShowAlert.showAlert(AlertType.INFORMATION, "Error", "boolRunStep size too small.");break;}
@@ -814,7 +838,7 @@ public class MainWindowController implements Initializable{
 							"No command name specified for the "+Integer.toString(j)+"th step. Skip this step...");
 					continue;
 				}
-				mainClass.jobManager.addNode(new JobNode(fl.getPath(),
+				mainClass.jobManager.addNode(new JobNode(fl.getPath(),mpiCommand,
 						mainClass.projectManager.qePath+File.separator+cis.get(j).commandName+postFixCommand,cis.get(j).stepName.toString()));
 			}
 			
@@ -880,18 +904,18 @@ public class MainWindowController implements Initializable{
 		//***********not efficient. Read setting file three times!
 		//surpress all Alerts for tests
 		//load environment variable
-		String wsp = mainClass.projectManager.readGlobalSettings(SettingKeys.workspace.toString());
+		String wsp = ProjectManager.readGlobalSettings(SettingKeys.workspace.toString());
 		mainClass.projectManager.workSpacePath = wsp;
 		setTexFieldPath(textWorkSpace, wsp, PathSettings.workspace);
 		setWorkSpace(wsp!=null && (new File(wsp)).canRead());
 		
-		String qePath = mainClass.projectManager.readGlobalSettings(SettingKeys.qePath.toString());
+		String qePath = ProjectManager.readGlobalSettings(SettingKeys.qePath.toString());
 		mainClass.projectManager.qePath = qePath;
 		setTexFieldPath(textQEPath, qePath,PathSettings.qe);
 		
 		contTree.updateProjects(false);
 		
-		String wsp2 = mainClass.projectManager.readGlobalSettings(SettingKeys.pseudolibroot.toString());
+		String wsp2 = ProjectManager.readGlobalSettings(SettingKeys.pseudolibroot.toString());
 		mainClass.projectManager.setPseudoLibPath(wsp2);
 		
 		setTexFieldPath(labelPathPseudoLib, wsp2,PathSettings.pplib);
