@@ -27,11 +27,11 @@ import agent.InputAgentGeo;
 import agent.InputAgentScf;
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
-
 import input.BandsInput;
 import input.ContainerInputString;
 import input.PwInput;
 import input.QeInput;
+
 
 public class CalculationBandsClass extends CalculationClass{
 	/**
@@ -42,7 +42,7 @@ public class CalculationBandsClass extends CalculationClass{
 	private void readObject(java.io.ObjectInputStream in)throws IOException, ClassNotFoundException 
 	{
 		//for loading after serialization
-	    in.defaultReadObject();
+		in.defaultReadObject();
 	    reconstructInputList();
 	}
 	@Override
@@ -51,6 +51,9 @@ public class CalculationBandsClass extends CalculationClass{
 		inputList.put(EnumStep.SCF,new PwInput());
 		inputList.put(EnumStep.BANDS,new PwInput());
 		inputList.put(EnumStep.BANDSPP,new BandsInput());
+		
+		
+		//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", "Calc. bands "+agentList.containsKey(EnumStep.BANDS));
 	}
 	public CalculationBandsClass(String cn) {
 		super();

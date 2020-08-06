@@ -145,7 +145,12 @@ public class OutputViewerController implements Initializable{
     	lineChart = new LineChart(xAxis, yAxis);
     	
     	plotTypeDos = new ArrayList<String>() {
-    		{
+    		/**
+			 * 
+			 */
+			private static final long serialVersionUID = 4387010690557940911L;
+
+			{
 	    		add("DOS"); //0
 	    		add("Integrated DOS"); //1 
     		}

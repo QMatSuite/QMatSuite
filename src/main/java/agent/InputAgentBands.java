@@ -18,7 +18,11 @@
  *******************************************************************************/
 package agent;
 
+import java.io.IOException;
+import java.util.ArrayList;
+
 import com.consts.Constants.EnumKUnitBands;
+import app.input.Kpoint;
 
 
 public class InputAgentBands extends InputAgentK{
@@ -28,6 +32,27 @@ public class InputAgentBands extends InputAgentK{
 	private static final long serialVersionUID = -3123568374548375634L;
 	
 	public WrapperInteger intNBands;
+	
+	private void readObject(java.io.ObjectInputStream in)throws IOException, ClassNotFoundException 
+	{
+		//************to be compatible with v0.1.0
+		//************to change this class, must append to the following manually!
+		//************later restored to default
+		
+		//for loading after serialization
+		//in.defaultReadObject();//this does not work!
+		java.io.ObjectInputStream.GetField gf = in.readFields();
+		
+		intNBands = (WrapperInteger) gf.get("intNBands", new WrapperInteger(null));
+		//try to get the two fields that belong originally to this class
+		//but in v0.2.0 moved to InputAgentK class
+		try {
+			enumKUnit = (WrapperEnum) gf.get("enumKUnit", new WrapperEnum(EnumKUnitBands.crystal_b));
+			listKPoints = (ArrayList<Kpoint>) gf.get("listKPoints", new ArrayList<Kpoint>());
+		}catch(Exception e) {
+			
+		}
+	}
 	
 	public InputAgentBands() {
 		intNBands = new WrapperInteger(null);

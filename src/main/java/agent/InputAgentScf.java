@@ -97,6 +97,7 @@ public class InputAgentScf extends InputAgent{
 	    in.defaultReadObject();
 	    //account for version difference in loading parameters
 	    if(boolKGamma==null) {boolKGamma = new WrapperBoolean(false);}
+	    
 	    //hybrid, added in v0.2.0
 	    if(enumHybrid==null) {enumHybrid = new WrapperEnum(EnumHybridFunc.defaultFunctional);}
 	    if(enumTreat==null) {enumTreat = new WrapperEnum(EnumHybridTreat.gb);}
