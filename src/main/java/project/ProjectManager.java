@@ -514,15 +514,15 @@ public class ProjectManager{
 			for (File temp : directories) {
 				calcCount++;
 				String calcName = temp.getName();
+				File fl = new File(new File(projDir,calcName),DefaultFileNames.calcSaveFile);
+				if (calcName==null || calcName.isEmpty() || !fl.canRead()) {msg3+="Cannot load calculation in "+calcName+". ";continue;}
 				try { 
 		            // Reading the object from a file 
-					File fl = new File(new File(projDir,calcName),DefaultFileNames.calcSaveFile);
-					if (calcName==null || calcName.isEmpty() || !fl.canRead()) {msg3+="Cannot load calculation in "+calcName+". ";continue;}
 		            FileInputStream file = new FileInputStream (fl); 
 		            ObjectInputStream in = new ObjectInputStream (file); 
 		  
 		            // Method for deserialization of object 
-		            clc = (CalculationClass)in.readObject(); 
+		            clc = (CalculationClass)in.readObject();
 		  
 		            in.close(); 
 		            file.close(); 
@@ -535,6 +535,7 @@ public class ProjectManager{
 		            pjNew.addCalculation(calcName, clc);
 		        } 
 		        catch (IOException ex) { 
+		        	ex.printStackTrace();
 		        	msg3+="IOException is caught! Cannot load calculation file "+calcName+". ";
 		        } 
 		        catch (ClassNotFoundException ex) { 
