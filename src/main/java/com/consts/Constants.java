@@ -326,6 +326,29 @@ public class Constants {
 		defaultFunctional,
 		pbe0,hse,b3lyp,gaupbe
 	}
+	public enum EnumVdw implements EnumInProgram{
+		no("none","none"),
+		dftd2("dft-d","Grimme's DFT-D2"),
+		dftd3("dft-d3","Grimme's DFT-D3"),
+		ts("ts-vdw","Tkatchenko-Scheffler dispersion corrections"),
+		xdm("xdm","XDM (Exchange-hole dipole-moment model)");
+		
+		private String displayName,
+		name;
+		
+		private EnumVdw(String name, String displayName) {
+			this.displayName = displayName;
+	        this.name = name;
+	    }
+		@Override
+		public String toString() {
+			return displayName;
+		}
+		public String getName() {
+			return name;
+		}
+		
+	}
 	public enum EnumHybridTreat implements EnumInProgram{
 		gb("gygi-baldereschi"),
 		vs("vcut_spherical"),

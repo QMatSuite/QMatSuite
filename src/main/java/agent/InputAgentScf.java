@@ -29,6 +29,7 @@ import com.consts.Constants.EnumMixingMode;
 import com.consts.Constants.EnumOccupations;
 import com.consts.Constants.EnumSmearing;
 import com.consts.Constants.EnumUnitEnergy;
+import com.consts.Constants.EnumVdw;
 
 public class InputAgentScf extends InputAgent{
 	/**
@@ -90,6 +91,9 @@ public class InputAgentScf extends InputAgent{
 	nqy,
 	nqz;
 	
+	//vdw
+	public WrapperEnum enumVdw;
+	
 	//for compatibility 
 	private void readObject(java.io.ObjectInputStream in)throws IOException, ClassNotFoundException 
 	{
@@ -106,6 +110,9 @@ public class InputAgentScf extends InputAgent{
 	    if(nqx==null) {nqx = new WrapperInteger(1);}
 	    if(nqy==null) {nqy = new WrapperInteger(1);}
 	    if(nqz==null) {nqz = new WrapperInteger(1);}
+	    
+	    //vdw, added in v0.2.0
+	    if(enumVdw==null) {enumVdw = new WrapperEnum(EnumVdw.no);}
 	}
 	
 	public InputAgentScf() {
@@ -152,6 +159,8 @@ public class InputAgentScf extends InputAgent{
 		nqy = new WrapperInteger(1);
 		nqz = new WrapperInteger(1);
 		
+		//vdw
+		enumVdw = new WrapperEnum(EnumVdw.no);
 	}
 	@Override
 	public boolean convertInfoFromInput(String inputStr) {

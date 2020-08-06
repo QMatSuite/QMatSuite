@@ -25,8 +25,8 @@
           <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
         </rowConstraints>
          <children>
-            <Button mnemonicParsing="false" text="i" GridPane.columnIndex="2" />
-            <CheckBox mnemonicParsing="false" GridPane.columnIndex="1" />
+            <Button fx:id="infoResetAll" mnemonicParsing="false" text="i" GridPane.columnIndex="2" />
+            <CheckBox fx:id="checkResetAll" mnemonicParsing="false" GridPane.columnIndex="1" />
             <Label text="Reset to default" GridPane.halignment="RIGHT" />
          </children>
       </GridPane>
@@ -60,9 +60,9 @@
           </rowConstraints>
           <children>
             <Label fx:id="applyLabel" text="Correction type" />
-            <Button fx:id="applyButton" mnemonicParsing="false" text="i" GridPane.columnIndex="3" />
-            <ComboBox prefWidth="150.0" GridPane.columnIndex="1" />
-            <CheckBox mnemonicParsing="false" GridPane.columnIndex="2" />
+            <Button fx:id="infoVdw" mnemonicParsing="false" text="i" GridPane.columnIndex="3" />
+            <ComboBox fx:id="comboVdw" prefHeight="25.0" prefWidth="188.0" GridPane.columnIndex="1" />
+            <CheckBox fx:id="checkVdw" mnemonicParsing="false" GridPane.columnIndex="2" />
           </children>
           <padding>
               <Insets left="10.0" />
@@ -87,6 +87,7 @@
          </padding>
       </BorderPane>
       <Label text="*All parameters are set as default. Options not implemented yet." />
+      <Label fx:id="statusInfo" />
       <BorderPane prefWidth="350.0">
          <center>
             <Separator prefHeight="30.0" BorderPane.alignment="CENTER" />

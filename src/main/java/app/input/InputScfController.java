@@ -41,6 +41,8 @@ import app.input.scf.InputScfHubbardController;
 import app.input.scf.InputScfHybridController;
 import app.input.scf.InputScfMagnetController;
 import app.input.scf.InputScfStandardController;
+import app.input.scf.InputScfVdwController;
+
 import com.consts.Constants.EnumStep;
 
 public class InputScfController extends InputController{
@@ -87,6 +89,8 @@ public class InputScfController extends InputController{
     
     private InputScfHybridController contHybrid = null;
     
+    private InputScfVdwController contVdw = null;
+    
     public InputScfController(MainClass mc) {
 		super(mc, EnumStep.SCF);
 	}
@@ -120,7 +124,9 @@ public class InputScfController extends InputController{
 				fxmlLoader3.setController(contHybrid);
 				vboxHybrid = fxmlLoader3.load();
 				
+				contVdw = new InputScfVdwController(mainClass);
 				FXMLLoader fxmlLoader4 = new FXMLLoader(getClass().getClassLoader().getResource("app/input/scf/InputScfVdw.fxml"));
+				fxmlLoader4.setController(contVdw);
 				vboxVdw = fxmlLoader4.load();
 				
 				FXMLLoader fxmlLoader5 = new FXMLLoader(getClass().getClassLoader().getResource("app/input/scf/InputScfEfield.fxml"));
@@ -157,7 +163,7 @@ public class InputScfController extends InputController{
     		
     		//----------------comment out when implemented
     		setHybrid.setSelected(false);setHybrid.setDisable(false);
-    		setVdw.setSelected(false);setVdw.setDisable(true);
+    		setVdw.setSelected(false);setVdw.setDisable(false);
     		setAdv.setSelected(false);setAdv.setDisable(true);
     		setE.setSelected(false);setE.setDisable(true);
     		//----------------
@@ -208,6 +214,7 @@ public class InputScfController extends InputController{
 		if (contMagnet!=null) contMagnet.loadProjectParameters();
 		if (contHubb!=null) contHubb.loadProjectParameters();
 		if (contHybrid!=null) contHybrid.loadProjectParameters();
+		if (contVdw!=null) contVdw.loadProjectParameters();
 		
 		if (mainClass.projectManager.isDefault()) {
 			checkSetProjectDefault.setSelected(true);//********not efficient, will double set

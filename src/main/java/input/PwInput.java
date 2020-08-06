@@ -45,6 +45,7 @@ import com.consts.Constants.EnumSmearing;
 import com.consts.Constants.EnumThermalstat;
 import com.consts.Constants.EnumUnitEnergy;
 import com.consts.Constants.EnumUnitTime;
+import com.consts.Constants.EnumVdw;
 import com.error.InvalidKeyException;
 import com.error.InvalidTypeException;
 import com.programconst.DefaultFileNames;
@@ -118,6 +119,8 @@ public class PwInput extends QeInput{
 		sectionDict.get("SYSTEM").addParameter("nqx1", new InputValueInt("nqx1",1,false));//actually not 1 for QE default now
 		sectionDict.get("SYSTEM").addParameter("nqx2", new InputValueInt("nqx2",1,false));
 		sectionDict.get("SYSTEM").addParameter("nqx3", new InputValueInt("nqx3",1,false));
+		//vdw
+		sectionDict.get("SYSTEM").addParameter("vdw_corr", new InputValueString("vdw_corr","none",false));
 		
 		sectionDict.get("ELECTRONS").addParameter("electron_maxstep", new InputValueInt("electron_maxstep",100,false));
 		sectionDict.get("ELECTRONS").addParameter("conv_thr", new InputValueDouble("conv_thr",1e-6,false));
@@ -369,6 +372,12 @@ public class PwInput extends QeInput{
 			setValue("SYSTEM","nqx1",ia1.nqx);andExplicitWrite("SYSTEM","nqx1",boolHybrid);
 			setValue("SYSTEM","nqx2",ia1.nqy);andExplicitWrite("SYSTEM","nqx2",boolHybrid);
 			setValue("SYSTEM","nqx3",ia1.nqz);andExplicitWrite("SYSTEM","nqx3",boolHybrid);
+			
+			//vdw
+			boolean boolVdw= ia1.setVdw;
+			setValue("SYSTEM","vdw_corr",
+					new WrapperString(((EnumVdw)ia1.enumVdw.getValue()).getName(),
+							ia1.enumVdw.isEnabled()));andExplicitWrite("SYSTEM","vdw_corr",boolVdw);
 			
 			//standard
 			setValue("SYSTEM","ecutwfc",ia1.ecutWfc);
