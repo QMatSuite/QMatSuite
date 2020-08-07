@@ -124,7 +124,10 @@ public class InputScfHybridController extends InputController{
 			boolean isGauPbe = EnumHybridFunc.gaupbe.equals(newValue);
 			checkTreat.setDisable(isGauPbe);comboTreat.setDisable(isGauPbe);
 			if(checkTreat.isSelected()&&isGauPbe) {checkTreat.setSelected(false);}
-			checkEcut.setDisable(isGauPbe);checkEcut.setSelected(isGauPbe);
+			checkEcut.setDisable(isGauPbe);
+			
+			if(EnumHybridFunc.gaupbe.equals(oldValue) || isGauPbe) {checkEcut.setSelected(isGauPbe);}
+			
 			if(isGauPbe) {
 				comboTreat.getSelectionModel().select(EnumHybridTreat.no);
 			}

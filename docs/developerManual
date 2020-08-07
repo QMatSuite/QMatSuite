@@ -15,3 +15,5 @@ To test in eclipse:
 To also test coverage (in cmd):
 - gradlew build
 - gradlew build jacocoTestReport (for .html report)
+
+
