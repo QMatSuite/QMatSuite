@@ -20,10 +20,13 @@
 package job;
 
 import java.io.File;
+import java.lang.reflect.Field;
 import java.nio.file.Paths;
 import java.util.Map;
-
+import com.error.ShowAlert;
 import com.programconst.ProgrammingConsts;
+
+import javafx.scene.control.Alert.AlertType;
 
 
 public class JobNode implements Runnable {
@@ -105,7 +108,40 @@ public class JobNode implements Runnable {
 	}
 	public synchronized void stop() {
         if (this.jobProcess != null) {
-            this.jobProcess.destroy();
+        	
+            //try to solve the mpirun won't stop problem in linux
+            //ShowAlert.showAlert(AlertType.INFORMATION, "Debug", jobProcess.getClass().getName(),false);
+            if(!mpiCommand.isEmpty() && "java.lang.UNIXProcess".equals(jobProcess.getClass().getName())) {
+            	
+	        	// get the PID on unix/linux systems
+				try {
+					Field f = jobProcess.getClass().getDeclaredField("pid");
+					f.setAccessible(true);
+					int pid = f.getInt(jobProcess);
+					//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", "pkill -P "+Integer.toString(pid),false);
+					
+					//kills all children of the current given process
+					//Runtime.getRuntime().exec(new String[]{"bash","-c","pkill -P "+Integer.toString(pid)});
+					Process p = Runtime.getRuntime().exec("pkill -P "+Integer.toString(pid));
+					int intVal = p.waitFor();
+					//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", ""+intVal,false);
+					
+					if(intVal!=0){
+						//in case pkill is not available
+						p = Runtime.getRuntime().exec("kill $(ps -o pid= --ppid "+pid+")");
+						intVal = p.waitFor();
+						if(intVal!=0){
+							ShowAlert.showAlert(AlertType.WARNING, "Warning", 
+						"The mpirun processes might not have been successfully terminated. Please check manually.");
+						}
+					}
+
+				} catch (Throwable e) {
+					e.printStackTrace();
+				}
+        	}
+		this.jobProcess.destroy();
+            
         }
     }
 	public synchronized String getName() {
