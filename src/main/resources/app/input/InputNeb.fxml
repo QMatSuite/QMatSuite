@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<ScrollPane xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
+   <content>
+      <VBox prefWidth="350.0">
+         <children>
+            <GridPane hgap="5.0" vgap="5.0">
+              <columnConstraints>
+                <ColumnConstraints halignment="RIGHT" hgrow="SOMETIMES" maxWidth="307.5" minWidth="10.0" prefWidth="301.5" />
+                <ColumnConstraints hgrow="SOMETIMES" maxWidth="111.0" minWidth="0.0" prefWidth="20.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="99.5" minWidth="10.0" prefWidth="18.5" />
+              </columnConstraints>
+              <rowConstraints>
+                <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+              </rowConstraints>
+               <children>
+                  <Label text="Reset All to Default" />
+                  <CheckBox fx:id="checkResetAll" mnemonicParsing="false" GridPane.columnIndex="1" />
+                  <Button fx:id="infoResetAll" mnemonicParsing="false" text="i" GridPane.columnIndex="2" />
+               </children>
+            </GridPane>
+            <BorderPane prefWidth="350.0">
+               <center>
+                  <Separator prefHeight="30.0" BorderPane.alignment="CENTER" />
+               </center>
+               <padding>
+                  <Insets top="10.0" />
+               </padding>
+               <left>
+                  <Label styleClass="medium-text" text="NEB images" BorderPane.alignment="CENTER">
+                     <font>
+                        <Font name="System Bold Italic" size="14.0" />
+                     </font>
+                     <padding>
+                        <Insets left="10.0" right="10.0" />
+                     </padding>
+                  </Label>
+               </left>
+            </BorderPane>
+            <GridPane hgap="5.0" prefWidth="350.0" vgap="5.0">
+               <children>
+                  <Label text="Starting geometry" />
+                  <ComboBox fx:id="comboGeoStart" prefHeight="25.0" prefWidth="181.0" GridPane.columnIndex="1" />
+                  <Button fx:id="infoGeoStart" mnemonicParsing="false" text="i" GridPane.columnIndex="3" />
+                  <Label text="End geometry" GridPane.rowIndex="1" />
+                  <ComboBox fx:id="comboGeoEnd" prefHeight="25.0" prefWidth="181.0" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+                  <Button fx:id="infoGeoEnd" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+                  <Label text="Minimum image" GridPane.rowIndex="2" />
+                  <ToggleButton fx:id="toggleMinImage" mnemonicParsing="false" prefHeight="25.0" prefWidth="180.0" text="OFF" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+                  <CheckBox fx:id="checkMinImage" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="2" />
+                  <Button fx:id="infoMinImage" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="2" />
+               </children>
+               <columnConstraints>
+                  <ColumnConstraints hgrow="SOMETIMES" prefWidth="120.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="199.5" minWidth="169.5" prefWidth="172.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="56.5" minWidth="10.0" prefWidth="22.5" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="28.5" minWidth="21.0" prefWidth="26.5" />
+               </columnConstraints>
+               <padding>
+                  <Insets left="10.0" />
+               </padding>
+               <rowConstraints>
+                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+               </rowConstraints>
+            </GridPane>
+            <BorderPane prefWidth="350.0">
+               <center>
+                  <Separator prefHeight="30.0" BorderPane.alignment="CENTER" />
+               </center>
+               <padding>
+                  <Insets top="10.0" />
+               </padding>
+               <left>
+                  <Label styleClass="medium-text" text="NEB settings" BorderPane.alignment="CENTER">
+                     <font>
+                        <Font name="System Bold Italic" size="14.0" />
+                     </font>
+                     <padding>
+                        <Insets left="10.0" right="10.0" />
+                     </padding>
+                  </Label>
+               </left>
+            </BorderPane>
+            <GridPane fx:id="panelAdvanced" hgap="5.0" vgap="5.0">
+              <columnConstraints>
+                <ColumnConstraints hgrow="SOMETIMES" maxWidth="131.0" minWidth="10.0" prefWidth="116.5" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="215.0" minWidth="10.0" prefWidth="165.5" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="147.0" minWidth="5.5" prefWidth="19.0" />
+                <ColumnConstraints hgrow="SOMETIMES" maxWidth="79.5" minWidth="10.0" prefWidth="18.5" />
+              </columnConstraints>
+              <rowConstraints>
+                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+              </rowConstraints>
+               <children>
+                  <Label text="Restart mode" GridPane.rowIndex="1" />
+                  <ToggleButton fx:id="toggleRestart" mnemonicParsing="false" prefHeight="25.0" prefWidth="180.0" text="from scratch" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+                  <CheckBox fx:id="checkRestart" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="1" />
+                  <Button fx:id="infoRestart" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+                  <Label text="Image number (&gt;=3)" GridPane.rowIndex="2" />
+                  <TextField fx:id="textNumImage" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+                  <Button fx:id="infoNumImage" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="2" />
+                  <Label text="Max. calc. steps" GridPane.rowIndex="3" />
+                  <TextField fx:id="textMaxSteps" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+                  <Button fx:id="infoMaxSteps" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="3" />
+                  <Label text="Optimization scheme" GridPane.rowIndex="6" />
+                  <ComboBox fx:id="comboOptScheme" prefHeight="25.0" prefWidth="181.0" GridPane.columnIndex="1" GridPane.rowIndex="6" />
+                  <CheckBox fx:id="checkOptScheme" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="6" />
+                  <Button fx:id="infoOptScheme" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="6" />
+                  <Label text="Climbing image" GridPane.rowIndex="7" />
+                  <ToggleButton fx:id="toggleCi" mnemonicParsing="false" prefHeight="25.0" prefWidth="180.0" text="OFF" GridPane.columnIndex="1" GridPane.rowIndex="7" />
+                  <CheckBox fx:id="checkCi" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="7" />
+                  <Button fx:id="infoCi" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="7" />
+                  <Label text="First last optimize" GridPane.rowIndex="8" />
+                  <ToggleButton fx:id="toggleFirstLastOpt" mnemonicParsing="false" prefHeight="25.0" prefWidth="180.0" text="OFF" GridPane.columnIndex="1" GridPane.rowIndex="8" />
+                  <CheckBox fx:id="checkFirstLastOpt" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="8" />
+                  <Button fx:id="infoFirstLastOpt" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="8" />
+                  <Label text="Converge threshold" GridPane.rowIndex="4" />
+                  <GridPane hgap="5.0" vgap="5.0" GridPane.columnIndex="1" GridPane.rowIndex="4">
+                    <columnConstraints>
+                      <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+                      <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+                    </columnConstraints>
+                    <rowConstraints>
+                      <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                    </rowConstraints>
+                     <children>
+                        <TextField fx:id="textConv" />
+                        <Label text="eV/Angstrom" GridPane.columnIndex="1" />
+                     </children>
+                  </GridPane>
+                  <CheckBox fx:id="checkConv" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="4" />
+                  <Button fx:id="infoConv" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="4" />
+                  <Label text="Opt. step length" GridPane.rowIndex="5" />
+                  <GridPane hgap="5.0" vgap="5.0" GridPane.columnIndex="1" GridPane.rowIndex="5">
+                     <columnConstraints>
+                        <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+                        <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+                     </columnConstraints>
+                     <rowConstraints>
+                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                     </rowConstraints>
+                     <children>
+                        <TextField fx:id="textStepLength" />
+                        <Label text="Hartree a.u." GridPane.columnIndex="1" />
+                     </children>
+                  </GridPane>
+                  <CheckBox fx:id="checkStepLength" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="5" />
+                  <Button fx:id="infoStepLength" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="5" />
+                  <Label text="Method" />
+                  <ComboBox fx:id="comboMethod" prefHeight="25.0" prefWidth="181.0" GridPane.columnIndex="1" />
+                  <CheckBox fx:id="checkMethod" mnemonicParsing="false" GridPane.columnIndex="2" />
+                  <Button fx:id="infoMethod" mnemonicParsing="false" text="i" GridPane.columnIndex="3" />
+               </children>
+               <VBox.margin>
+                  <Insets left="10.0" />
+               </VBox.margin>
+            </GridPane>
+            <Label fx:id="statusInfo" />
+            <BorderPane>
+               <center>
+                  <Separator prefHeight="30.0" BorderPane.alignment="CENTER" />
+               </center>
+               <padding>
+                  <Insets top="10.0" />
+               </padding>
+            </BorderPane>
+         </children>
+      </VBox>
+   </content>
+</ScrollPane>

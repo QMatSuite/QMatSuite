@@ -38,6 +38,7 @@ import agent.InputAgentBands;
 import agent.InputAgentDos;
 import agent.InputAgentGeo;
 import agent.InputAgentMd;
+import agent.InputAgentNeb;
 import agent.InputAgentNscf;
 import agent.InputAgentOpt;
 import agent.InputAgentPhonon;
@@ -88,6 +89,11 @@ public class ProjectManager{
 		if(pj!=null) {return pj.getGeoListSize();}
 		return 0;
 	}
+	public ArrayList<InputAgentGeo> getGeoList() {
+		Project pj = this.getActiveProject();
+		if(pj!=null) {return pj.getGeoList();}
+		return null;
+	}
 	public boolean isGeoActive() {
 		Project pj = this.getActiveProject();
 		if(pj!=null) {return pj.getGeoActive();}
@@ -110,6 +116,7 @@ public class ProjectManager{
 				case BANDS:fd = InputAgentBands.class.getField(fieldName);break;
 				case TDDFT:fd = InputAgentTddft.class.getField(fieldName);break;
 				case PH:fd = InputAgentPhonon.class.getField(fieldName);break;
+				case NEB:fd = InputAgentNeb.class.getField(fieldName);break;
 				default:break;	
 			}
 			if(fd==null) {

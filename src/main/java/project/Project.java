@@ -93,6 +93,9 @@ public class Project implements Serializable{
 	public ArrayList<String> getGeoName(){
 		return geoName;
 	}
+	public ArrayList<InputAgentGeo> getGeoList(){
+		return geoList;
+	}
 	public boolean removeGeoList(int ind) {
 		if(ind<0 || ind>geoList.size()) {
 			ShowAlert.showAlert(AlertType.INFORMATION, "Warning", "Geometry deleted out of bound.");
@@ -240,6 +243,7 @@ public class Project implements Serializable{
 			case BANDS:calc = new CalculationBandsClass(calcName);break;
 			case TDDFT:calc = new CalculationTddftClass(calcName);break;
 			case PHONON:calc = new CalculationPhononClass(calcName);break;
+			case NEB:calc = new CalculationNebClass(calcName);break;
 			default:
 				Alert alert = new Alert(AlertType.INFORMATION);
 		    	alert.setTitle("Error");

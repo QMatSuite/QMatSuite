@@ -25,6 +25,7 @@ import agent.InputAgentBands;
 import agent.InputAgentDos;
 import agent.InputAgentGeo;
 import agent.InputAgentMd;
+import agent.InputAgentNeb;
 import agent.InputAgentNscf;
 import agent.InputAgentOpt;
 import agent.InputAgentPhonon;
@@ -166,6 +167,9 @@ public abstract class QeInput{
 		//implement in the subclasses
 	} 
 	public void loadAgent(InputAgentPhonon ia1) {
+		//implement in the subclasses
+	}
+	public void loadAgent(InputAgentNeb ia1) {
 		//implement in the subclasses
 	}
 }

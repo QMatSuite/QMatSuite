@@ -74,6 +74,7 @@ import app.input.InputBandsController;
 import app.input.InputDosController;
 import app.input.InputGeoController;
 import app.input.InputMdController;
+import app.input.InputNebController;
 import app.input.InputNscfController;
 import app.input.InputOptController;
 import app.input.InputPhononController;
@@ -143,7 +144,8 @@ public class MainWindowController implements Initializable{
 	scrollMd,
 	scrollTddft,
 	scrollBandsPP,
-	scrollPhonon;
+	scrollPhonon,
+	scrollNeb;
 	
 	private ScrollPane scrollLeft;
 	
@@ -172,6 +174,8 @@ public class MainWindowController implements Initializable{
 	private InputTddftController contTddft;
 	
 	private InputPhononController contPhonon;
+	
+	private InputNebController contNeb;
 			
 	private MainLeftPaneController contTree;
 	
@@ -266,6 +270,11 @@ public class MainWindowController implements Initializable{
 			fxmlLoader.setController(contPhonon);
 			scrollPhonon = fxmlLoader.load(); 
 			
+			contNeb = new InputNebController(mainClass);
+			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputNeb.fxml"));
+			fxmlLoader.setController(contNeb);
+			scrollNeb = fxmlLoader.load(); 
+			
 			contTree = new MainLeftPaneController(mainClass);
 			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/MainLeftPane.fxml"));
 			fxmlLoader.setController(contTree);
@@ -338,7 +347,7 @@ public class MainWindowController implements Initializable{
 			}
 			else {
 				//only execute when there is not test
-				String wsp1 = mainClass.projectManager.readGlobalSettings(SettingKeys.workspace.toString());
+				String wsp1 = ProjectManager.readGlobalSettings(SettingKeys.workspace.toString());
 				if(wsp1!=null) {
 					File wsDir = new File(wsp1);
 					if(mainClass.projectManager.existCurrentProject() && wsDir.canRead()) {
@@ -640,6 +649,9 @@ public class MainWindowController implements Initializable{
 		});
 		contTree.calcPhonon.setOnAction((event) -> {
 			openCalc(EnumCalc.PHONON,true);
+		});
+		contTree.calcNeb.setOnAction((event) -> {
+			openCalc(EnumCalc.NEB,true);
 		});
 		contTree.calcCustom.setOnAction((event) -> {
 			ShowAlert.showAlert(AlertType.INFORMATION, "Info", "Customized calculation not yet implemented.");
@@ -1213,6 +1225,10 @@ public class MainWindowController implements Initializable{
 			enumStepArray = new EnumStep[] {EnumStep.SCF,EnumStep.PH};//,EnumStep.Q2R,EnumStep.MATDYN
 			addCalc(boolCreate, ec, enumStepArray);
 			break;
+		case NEB:
+			enumStepArray = new EnumStep[] {EnumStep.SCF,EnumStep.NEB};
+			addCalc(boolCreate, ec, enumStepArray);
+			break;
 		default:
 			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Wrong calculation type!");
 		}
@@ -1252,11 +1268,14 @@ public class MainWindowController implements Initializable{
 		
 		//prepare to load GUI
 		clearRightPane();
-		addRightPane(scrollGeo,EnumStep.GEO);
+		//some calculation specific settings
+		if(!EnumCalc.NEB.equals(enumCalcThis)) {
+			addRightPane(scrollGeo,EnumStep.GEO);
+			//load parameters for current project and calculation as well as update GUI
+			contGeo.loadProjectParameters();
+			contGeo.setDisabled();
+		}
 		
-		//load parameters for current project and calculation as well as update GUI
-		contGeo.loadProjectParameters();
-		contGeo.setDisabled();
 		for (int i=0;i<lengthArray;i++) {
 			switch(enumStepArray[i]) {
 				case SCF:contScf.loadProjectParameters();addRightPane(scrollScf,enumStepArray[i]);break;
@@ -1275,6 +1294,9 @@ public class MainWindowController implements Initializable{
 					break;
 				case BANDSPP:
 					addRightPane(scrollBandsPP,enumStepArray[i]);
+					break;
+				case NEB:
+					contNeb.loadProjectParameters();addRightPane(scrollNeb,enumStepArray[i]);
 					break;
 				default:ShowAlert.showAlert(AlertType.INFORMATION, "Error", 
 						"Nonimplemented controller: "+(enumStepArray[i]==null?"null":enumStepArray[i].toString()));break;
