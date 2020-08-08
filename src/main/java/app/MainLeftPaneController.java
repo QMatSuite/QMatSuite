@@ -59,6 +59,7 @@ public class MainLeftPaneController implements Initializable {
     calcMd,
     calcTddft,
     calcPhonon,
+    calcNeb,
     calcCustom;
 	
 	private TreeItem<ProjectCalcLog> projectTreeRoot;

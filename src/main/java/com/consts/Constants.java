@@ -113,7 +113,8 @@ public class Constants {
 		BANDS("Electronic band structure", "Bands"),
 		BOMD("Molecular Dynamics (Born–Oppenheimer type, BOMD)", "MD"),
 		TDDFT("TDDFT", "TDDFT"),
-		PHONON("Phonon","PH");
+		PHONON("Phonon","PH"),
+		NEB("Nudget Elastic Band","NEB");
 
 		private String longName,
 		shortName;
@@ -138,6 +139,7 @@ public class Constants {
 				case "MD":return BOMD;
 				case "TDDFT":return TDDFT;
 				case "PH":return PHONON;
+				case "NEB":return NEB;
 				default:return null;
 			}
 		}
@@ -154,9 +156,10 @@ public class Constants {
 		BOMD("MD"),
 		TDDFT("Turbo_lanczos"),
 		TDDFT2("Turbo_spectrum"),
-		PH("ph.x"),
+		PH("ph.x"),//no relation to the actual command name. Can be anything, just for display in the GUI
 		Q2R("q2r.x"),
-		MATDYN("matdyn.x");
+		MATDYN("matdyn.x"),
+		NEB("NEB");
 		private String name;
 		
 		private EnumStep(String name) {
@@ -239,7 +242,7 @@ public class Constants {
 		}
 	}
 	public enum EnumNumCondition implements EnumInProgram{
-		no,positive,nonNegative
+		no,positive,nonNegative,gt3//gt3 is >=3, for NEB
 	}
 	public enum EnumSmearing implements EnumInProgram{
 		gauss("gaussian"),
@@ -298,6 +301,43 @@ public class Constants {
 		public String toString() {
 			return name;
 		}
+	}
+	public enum EnumStringMethod implements EnumInProgram{
+		neb("nudget-elastic-band (NEB)"),
+		smd("string-method-dynamics (SMD)");
+		
+		private String name;
+		
+		private EnumStringMethod(String name) {
+	        this.name = name;
+	    }
+		@Override
+		public String toString() {
+			return name;
+		}
+	}
+	public enum EnumOptSchemeNeb implements EnumInProgram{
+		sd("sd","(sd) steepest descent"),
+		bd("broyden","(broyden) quasi-Newton Broyden"),
+		bd2("broyden2","(broyden2) quasi-Newton Broyden variant"),
+		qm("quick-min","(quick-min) projected velocity Verlet"),
+		lg("langevin","(langevin) finite temperature langevin");
+		
+		private String displayName,
+		name;
+		
+		private EnumOptSchemeNeb(String name, String displayName) {
+			this.displayName = displayName;
+	        this.name = name;
+	    }
+		@Override
+		public String toString() {
+			return displayName;
+		}
+		public String getName() {
+			return name;
+		}
+		
 	}
 	public enum EnumCellOptMethod implements EnumInProgram{
 		no("none"),

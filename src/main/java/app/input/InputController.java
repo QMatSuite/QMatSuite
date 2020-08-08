@@ -211,6 +211,13 @@ public abstract class InputController implements Initializable{
 									return;
 								} 
 								break;
+							case gt3:
+								if(tmp<3) {
+									if(statusTextField!=null) {statusTextField.setText("Must be >=3! Set to null.");}
+									((WrapperInteger) obj).setValue(null);
+									return;
+								} 
+								break;
 							default:
 								break;
 						}
