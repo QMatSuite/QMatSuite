@@ -49,7 +49,9 @@ public class Constants {
 		//ph.x
 		INPUTPH,
 		//q2r.x and matdyn.x
-		input
+		input,
+		//neb.x
+		PATH
 	}
 	public enum EnumFileCategory{
 		save("QuantumVITAS save"),directory("Directory"),stdin("Input (std)"),
@@ -303,16 +305,21 @@ public class Constants {
 		}
 	}
 	public enum EnumStringMethod implements EnumInProgram{
-		neb("nudget-elastic-band (NEB)"),
-		smd("string-method-dynamics (SMD)");
+		neb("neb","nudget-elastic-band (NEB)"),
+		smd("sm","string-method-dynamics (SMD)");
 		
-		private String name;
+		private String displayName,
+		name;
 		
-		private EnumStringMethod(String name) {
+		private EnumStringMethod(String name, String displayName) {
+			this.displayName = displayName;
 	        this.name = name;
 	    }
 		@Override
 		public String toString() {
+			return displayName;
+		}
+		public String getName() {
 			return name;
 		}
 	}
