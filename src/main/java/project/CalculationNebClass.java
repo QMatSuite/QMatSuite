@@ -21,16 +21,13 @@ package project;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-
 import agent.InputAgentGeo;
-import agent.InputAgentMd;
 import agent.InputAgentNeb;
 import agent.InputAgentScf;
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
 import input.ContainerInputString;
 import input.NebInput;
-import input.PwInput;
 import input.QeInput;
 
 public class CalculationNebClass extends CalculationClass{
@@ -63,8 +60,8 @@ public class CalculationNebClass extends CalculationClass{
 		
 		inputList.get(EnumStep.NEB).clearErrorMessage();
 		((NebInput)inputList.get(EnumStep.NEB)).loadAgent(geoList);//different from others, need to pass the whole list
-		inputList.get(EnumStep.NEB).loadAgent((InputAgentScf)agentList.get(EnumStep.SCF));
-		inputList.get(EnumStep.NEB).loadAgent((InputAgentNeb)agentList.get(EnumStep.NEB));
+		inputList.get(EnumStep.NEB).loadAgent((InputAgentNeb)agentList.get(EnumStep.NEB));//load NEB first to load chosen geometries
+		inputList.get(EnumStep.NEB).loadAgent((InputAgentScf)agentList.get(EnumStep.SCF));//then load SCF to get corresponding SCF pseudo
 		cis.add(inputList.get(EnumStep.NEB).genInput(EnumStep.NEB));
 		
 		return cis;

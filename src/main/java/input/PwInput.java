@@ -48,6 +48,7 @@ import com.consts.Constants.EnumUnitTime;
 import com.consts.Constants.EnumVdw;
 import com.error.InvalidKeyException;
 import com.error.InvalidTypeException;
+import com.error.ShowAlert;
 import com.programconst.DefaultFileNames;
 
 public class PwInput extends QeInput{
@@ -154,7 +155,31 @@ public class PwInput extends QeInput{
 		 * System.out.println("int"); }
 		 */
 	}
-	
+	public void surpressAtomPositions() {
+		try {
+			setSectionRequired("ATOMIC_POSITIONS",false);
+			setRequiredAndWrite("ATOMIC_POSITIONS","body",false,false);
+		} catch (InvalidKeyException | InvalidTypeException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	public void surpressCalculationType() {
+		try {
+			setRequiredAndWrite("CONTROL","calculation",false,false);
+		} catch (InvalidKeyException | InvalidTypeException e) {
+			e.printStackTrace();
+		}
+	}
+	public ContainerInputString genAtomPositionInput() {
+		ContainerInputString ci = new ContainerInputString();
+		ContainerInputString ciTmp = sectionDict.get("ATOMIC_POSITIONS").toStringWrapper();
+    	if (!ciTmp.isEmpty()) {
+    		ci.append(ciTmp);
+    	}
+        ci.commandName = this.commandName;
+		return ci;
+	} 
 	
 	@Override
 	public void loadAgent(InputAgentGeo ia1) {
@@ -253,10 +278,7 @@ public class PwInput extends QeInput{
 			flagLoadGeo = true;
 			
 		} catch (InvalidKeyException | InvalidTypeException e) {
-			Alert alert1 = new Alert(AlertType.INFORMATION);
-	    	alert1.setTitle("Error");
-	    	alert1.setContentText("Exception!"+e.getMessage());
-	    	alert1.showAndWait();
+	    	ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Exception!"+e.getMessage());
 			e.printStackTrace();
 		}
 		
