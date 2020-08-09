@@ -194,6 +194,9 @@ public class MainLeftPaneController implements Initializable {
 		projectCalcTreeDict.put(pj, new HashMap<String, TreeItem<ProjectCalcLog>>());
 	}
 	public void updateCalcTree(String ec) {
+		updateCalcTree(ec,true);
+	}
+	public void updateCalcTree(String ec,boolean boolSelect) {
 		String currentProject = mainClass.projectManager.getActiveProjectName();
 		if (currentProject!=null && projectTreeDict.containsKey(currentProject) && projectCalcTreeDict.containsKey(currentProject)) {
 			if (ec==null || ec.isEmpty()) {
@@ -214,15 +217,23 @@ public class MainLeftPaneController implements Initializable {
 				//projectTree.getSelectionModel().select(row);
 				
 				//select the newly created treeitem
-				projectTree.getSelectionModel().select(ti);
+				if(boolSelect) {//boolSelect false in case of loading calculation
+					projectTree.getSelectionModel().select(ti);
+				}
 			}
-			else {
-				//expand project tree, select active calc item
-				projectTreeDict.get(currentProject).setExpanded(true);
-				int row = projectTree.getRow(projectCalcTreeDict.get(currentProject).get(ec));
-				projectTree.getSelectionModel().select(row);
-			}
+			//no need anymore because tree selection takes all control
+//			else {
+//				//expand project tree, select active calc item
+//				projectTreeDict.get(currentProject).setExpanded(true);
+//				int row = projectTree.getRow(projectCalcTreeDict.get(currentProject).get(ec));
+//				projectTree.getSelectionModel().select(row);
+//			}
 			
+		}
+	}
+	public void updateFullCalcTree(boolean boolSelect) {
+		for(String ec : mainClass.projectManager.getCurrentCalcList()) {
+			updateCalcTree(ec,boolSelect);
 		}
 	}
 	public void updateFullCalcTree() {

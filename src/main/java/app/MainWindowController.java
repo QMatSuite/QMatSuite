@@ -506,6 +506,7 @@ public class MainWindowController implements Initializable{
 					return;}
 			}
 			createProjectGui(projName);//loading GUI
+			toggleGeometry();
 			
 			contTree.setOpenCloseButtons(false);
 			
@@ -1152,7 +1153,7 @@ public class MainWindowController implements Initializable{
 		workSpaceTabPane.getTabs().add(tab);
 		workSpaceTabPane.getSelectionModel().select(tab);//must happen AFTER projectTabDict.put(pj,tab), because updateWorkScene() uses this
 
-		contTree.updateFullCalcTree();//contains selecting calculations. MUST BE AFTER adding tabs
+		contTree.updateFullCalcTree(false);//do not select calculations. MUST BE AFTER adding tabs
 		
 		//allow more interactions
 		contTree.calcMain.setDisable(false);

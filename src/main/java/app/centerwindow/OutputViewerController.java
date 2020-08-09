@@ -43,6 +43,7 @@ import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart.Data;
 import javafx.scene.chart.XYChart.Series;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -241,12 +242,13 @@ public class OutputViewerController implements Initializable{
 		});
 		listFiles.getSelectionModel().selectedItemProperty().addListener((ov, oldTab, newTab) -> {
 			//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", "listFiles: "+oldTab + "," + newTab);
+			//final int comboAnalysisSelect = comboAnalysis.getSelectionModel().getSelectedIndex();
 			
 			fileCategory = null;
 			fileData.clearAll();buttonSaveGeo.setDisable(true);
 			labelFileCategory.setText("");
 //			EnumAnalysis analTmp = comboAnalysis.getSelectionModel().getSelectedItem();//cache the selected item before clearing
-			comboAnalysis.getItems().clear();
+			comboAnalysis.getItems().clear();//do not change this, because this ensures that this will trigger the selection listener of comboAnalysis
 			
 			if(newTab==null || newTab.isEmpty()) return;
 			if(calcFolder==null || !calcFolder.canRead() || !calcFolder.isDirectory()) return;
@@ -307,22 +309,36 @@ public class OutputViewerController implements Initializable{
 				}
 				
 				if(comboAnalysis.getSelectionModel().getSelectedIndex()==-1) {comboAnalysis.getSelectionModel().select(EnumAnalysis.text);}
+				
+				//necessary to always has one selection, so that the efficiency improvement in comboAnalysis works
 
 			}
 			
-			updateIoDisplay();//*** not efficient because runs twice
+			//not necessary to have updateIoDisplay() here because it will ALWAYS trigger the selection listener of comboAnalysis
+			
+//			updateIoDisplay();
+//			ShowAlert.showAlert(AlertType.INFORMATION, "Debug", "updateIoDisplay involked by listFiles.", false);
 		});
 		
 		buttonRefresh.setOnAction((event) -> {
 			if((fileData.isMD || fileData.isOpt) && !comboAnalysis.getItems().contains(EnumAnalysis.plot3D)) {comboAnalysis.getItems().addAll(EnumAnalysis.plot3D);}
 			loadFile();
 			updateIoDisplay();
+			//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", "updateIoDisplay involked by buttonRefresh.", false);
 		});
 		comboAnalysis.getSelectionModel().selectedItemProperty().addListener((ov, oldTab, newTab) -> {
-			if(newTab!=null) {updateIoDisplay();}
+			if(newTab!=null) {//very crucial to check null here!
+				updateIoDisplay();
+				//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", "updateIoDisplay involked by comboAnalysis.", false);
+			}
 		});
 		comboPlot.getSelectionModel().selectedItemProperty().addListener((ov, oldTab, newTab) -> {
-			if(newTab!=null) {updateIoDisplay();}//very crucial to check null here!
+			if(newTab!=null) {//very crucial to check null here!
+				if(oldTab!=null) {//better efficiency, since only user made changes will be carried out (selection after clear will not do anything)
+					updateIoDisplay();
+					//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", "updateIoDisplay involked by comboPlot.", false);
+				}
+			}
 		});
 		openAsButton.setOnAction((event) -> {
 			if(inoutFiles==null || !inoutFiles.canRead()) return;
@@ -521,6 +537,7 @@ public class OutputViewerController implements Initializable{
 		}
 	}
 	private void updateIoDisplay() {
+		//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", "updateIoDisplay involked.", false);
 		
 		hboxBandsToolbar.setVisible(false);
 		EnumAnalysis analTmp = comboAnalysis.getSelectionModel().getSelectedItem();

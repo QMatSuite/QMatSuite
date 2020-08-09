@@ -218,15 +218,26 @@ public class InputNebController extends InputController{
 			}
 		});
 	}
-	
+	private ArrayList<String> genGeoNames(){
+		final ArrayList<String> arr = new ArrayList<String>();
+		int cnt = 1;
+		for(String strTmp : mainClass.projectManager.getGeoName()) {
+			arr.add(""+cnt+"_"+strTmp);
+			cnt++;
+		}
+		return arr;
+	}
 	public void loadProjectParameters() {
 		super.loadProjectParameters();
 		
 		comboGeoStart.getItems().clear();
-		comboGeoStart.getItems().addAll(mainClass.projectManager.getGeoName());
+		
+		final ArrayList<String> arr = genGeoNames();
+		
+		comboGeoStart.getItems().addAll(arr);
 		
 		comboGeoEnd.getItems().clear();
-		comboGeoEnd.getItems().addAll(mainClass.projectManager.getGeoName());
+		comboGeoEnd.getItems().addAll(arr);
 		
 		InputAgentNeb iNeb = (InputAgentNeb) mainClass.projectManager.getStepAgent(EnumStep.NEB);
 		if (iNeb!=null) {
