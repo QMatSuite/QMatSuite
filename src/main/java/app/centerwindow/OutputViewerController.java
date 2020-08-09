@@ -33,7 +33,6 @@ import java.util.ResourceBundle;
 import java.util.Scanner;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -43,7 +42,6 @@ import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart.Data;
 import javafx.scene.chart.XYChart.Series;
-import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -93,7 +91,8 @@ public class OutputViewerController implements Initializable{
     buttonSaveGeo,
 	buttonShowInSystem;
     
-    @FXML private ToggleButton toggleAutoRange;
+    @FXML private ToggleButton toggleAutoRange,
+    toggleShiftFermi;
     
     @FXML private TextField textXlimLow,
     textXlimHigh,
@@ -112,7 +111,8 @@ public class OutputViewerController implements Initializable{
     @FXML private HBox hboxPlotToolbar,
     hboxBandsToolbar;
     
-    @FXML private ToggleButton buttonShowMarker;
+    @FXML private ToggleButton buttonShowMarker,
+    toggleLegend;
     
     private TextFlow textFlowDisplay;
     
@@ -181,7 +181,15 @@ public class OutputViewerController implements Initializable{
 		lineChart.prefWidthProperty().bind(displayScroll.widthProperty());
 		lineChart.prefHeightProperty().bind(displayScroll.heightProperty());
 		lineChart.setCreateSymbols(false);
+		lineChart.setAnimated(false);
+		lineChart.setLegendVisible(true);
 		//lineChart.prefHeightProperty().bind(workSpaceTabPane.heightProperty());
+		
+		toggleShiftFermi.selectedProperty().addListener((ov, oldVal, newVal) -> {
+			if(EnumAnalysis.plot2D.equals(comboAnalysis.getSelectionModel().getSelectedItem())) {
+				updateIoDisplay();
+			}
+		});
 		
 		comboHighSymK.getSelectionModel().selectedIndexProperty().addListener((ov, oldTab, newTab) -> {
 			if(fileData==null) {return;}
@@ -259,7 +267,7 @@ public class OutputViewerController implements Initializable{
 			else if(newTab.endsWith(ProgrammingConsts.stdoutExtension)) {fileCategory = EnumFileCategory.stdout;}
 			else if(newTab.endsWith(ProgrammingConsts.stderrExtension)) {fileCategory = EnumFileCategory.stderr;}
 			else if(newTab.endsWith(ProgrammingConsts.dosExtension)) {fileCategory = EnumFileCategory.dos;}
-			else if(newTab.contains(DefaultFileNames.bandsDatGnu)) {fileCategory = EnumFileCategory.bandsDatGnu;}
+			else if(newTab.contains(DefaultFileNames.bandsDatGnu) && newTab.endsWith(".gnu")) {fileCategory = EnumFileCategory.bandsDatGnu;}
 			else if(newTab.contains(DefaultFileNames.tddftPlotSDat)){fileCategory = EnumFileCategory.tddftPlotSDat;}
 			else if(newTab.contains(DefaultFileNames.flfrq)&&newTab.endsWith(ProgrammingConsts.phononGnuExtension)){fileCategory = EnumFileCategory.phononBandsGnu;}
 			else if(newTab.contains(DefaultFileNames.calcSaveFile)||newTab.contains(DefaultFileNames.projSaveFile)) 
@@ -392,6 +400,10 @@ public class OutputViewerController implements Initializable{
 			if(newValue==null) return;
 			lineChart.setCreateSymbols(newValue);
 		});
+		toggleLegend.selectedProperty().addListener((observable, oldValue, newValue) ->{
+			if(newValue==null) return;
+			lineChart.setLegendVisible(newValue);
+		});
 
 
 		toggleAutoRange.setSelected(true);
@@ -459,7 +471,7 @@ public class OutputViewerController implements Initializable{
         		&& item.contains(EnumStep.NEB.toString())
         		&& item.endsWith(ProgrammingConsts.stdoutExtension));
         return (item.endsWith(ProgrammingConsts.dosExtension)
-        		|| item.contains(DefaultFileNames.bandsDatGnu)
+        		|| (item.contains(DefaultFileNames.bandsDatGnu) && item.endsWith(".gnu"))
         		|| item.contains(DefaultFileNames.tddftPlotSDat)
         		|| isScf || isOpt || isMd || isNeb
         		|| (item.contains(DefaultFileNames.flfrq)&&item.endsWith(ProgrammingConsts.phononGnuExtension))
@@ -566,19 +578,19 @@ public class OutputViewerController implements Initializable{
 			}
 			else if(fileCategory.equals(EnumFileCategory.dos)){
 				if(analTmp.equals(EnumAnalysis.info)) {textFlowDisplay.getChildren().add(new Text(fileData.toString()));}
-				else if(analTmp.equals(EnumAnalysis.plot2D)) {plot2dDos();}
+				else if(analTmp.equals(EnumAnalysis.plot2D)) {plot2dDos();}//efficient
 			}
 			else if(fileCategory.equals(EnumFileCategory.tddftPlotSDat)){
 				if(analTmp.equals(EnumAnalysis.info)) {textFlowDisplay.getChildren().add(new Text(fileData.toString()));}
-				else if(analTmp.equals(EnumAnalysis.plot2D)) {plot2dTddft();}
+				else if(analTmp.equals(EnumAnalysis.plot2D)) {plot2dTddft();}//efficient
 			}
 			else if(fileCategory.equals(EnumFileCategory.bandsDatGnu)){
 				if(analTmp.equals(EnumAnalysis.info)) {textFlowDisplay.getChildren().add(new Text(fileData.toString()));}
-				else if(analTmp.equals(EnumAnalysis.plot2D)) {plot2dBands();}
+				else if(analTmp.equals(EnumAnalysis.plot2D)) {plot2dBands();}//efficient
 			}
 			else if(fileCategory.equals(EnumFileCategory.phononBandsGnu)){
 				if(analTmp.equals(EnumAnalysis.info)) {textFlowDisplay.getChildren().add(new Text(fileData.toString()));}
-				else if(analTmp.equals(EnumAnalysis.plot2D)) {plotPhBands();}
+				else if(analTmp.equals(EnumAnalysis.plot2D)) {plotPhBands();}//efficient
 			}
 			else {
 				textFlowDisplay.getChildren().add(new Text("Analysis is not available for this file type."));
@@ -612,16 +624,20 @@ public class OutputViewerController implements Initializable{
 		minY = 10000.0;
 		maxY = -10000.0;
 		
+		ArrayList<Data<Double, Double>> lstData = new ArrayList<Data<Double, Double>>();
+		
 		//k,j,i
 		//bands,k points,spins (1 or 2)
 		for(int i=1;i<pdat.get(0).size();i++) {//different bands (y axis). Starting from 1 because 0 is x axis
 			Series<Double,Double> dataSeries1 = new Series<Double, Double>();
+			lstData.clear();
 			for(int j=0;j<pdat.size();j++) {
 				if(pdat.get(j).size()<=i) {break;}//a certain row does not have enough numbers
-				dataSeries1.getData().add(new Data<Double, Double>(pdat.get(j).get(0), pdat.get(j).get(i)));
+				lstData.add(new Data<Double, Double>(pdat.get(j).get(0), pdat.get(j).get(i)));
 				if(pdat.get(j).get(i)>maxY) {maxY=pdat.get(j).get(i);}
 				if(pdat.get(j).get(i)<minY) {minY=pdat.get(j).get(i);}
 			}
+			dataSeries1.getData().addAll(lstData);
 			lineChart.getData().add(dataSeries1);
         }
 		
@@ -665,10 +681,15 @@ public class OutputViewerController implements Initializable{
 		minX = 1000.0;
 		maxX = -1000.0;
 		
+		double dbShift = (toggleShiftFermi.isSelected() && fermiDos!=null)?fermiDos:0.0;
+		
 		//k,j,i
 		//bands,k points,spins (1 or 2)
+		ArrayList<Data<Double, Double>> lstData = new ArrayList<Data<Double, Double>>();
+		
 		for(int k=0;k<bandsDatArray.size();k++) {//different bands
 			if(bandsDatArray.get(k).isEmpty()) {continue;}
+			lstData.clear();
 			
 			for(int i=1;i<bandsDatArray.get(k).get(0).size();i++) {//different columns (spins). Starting from 1 because 0 is xaxis
 				
@@ -680,16 +701,17 @@ public class OutputViewerController implements Initializable{
 				for(int j=0;j<bandsDatArray.get(k).size();j++) {//different k points
 					
 					if(bandsDatArray.get(k).get(j).size() <= i) {break;}//a certain row does not have enough numbers
-					Data<Double, Double> dt = new Data<Double, Double>(bandsDatArray.get(k).get(j).get(0), bandsDatArray.get(k).get(j).get(i));
-					dataSeries1.getData().add(dt);
+					lstData.add(new Data<Double, Double>(bandsDatArray.get(k).get(j).get(0), bandsDatArray.get(k).get(j).get(i)-dbShift));
+					
 					//dt.getNode().setStyle("-fx-background-color: #4a86e8;");
 					
-					if(bandsDatArray.get(k).get(j).get(i)>maxY) {maxY=bandsDatArray.get(k).get(j).get(i);}
-					if(bandsDatArray.get(k).get(j).get(i)<minY) {minY=bandsDatArray.get(k).get(j).get(i);}
+					if(bandsDatArray.get(k).get(j).get(i)-dbShift>maxY) {maxY=bandsDatArray.get(k).get(j).get(i)-dbShift;}
+					if(bandsDatArray.get(k).get(j).get(i)-dbShift<minY) {minY=bandsDatArray.get(k).get(j).get(i)-dbShift;}
 					if(bandsDatArray.get(k).get(j).get(0)>maxX) {maxX=bandsDatArray.get(k).get(j).get(0);}
 					if(bandsDatArray.get(k).get(j).get(0)<minX) {minX=bandsDatArray.get(k).get(j).get(0);}
 				}
 				
+				dataSeries1.getData().addAll(lstData);
 				//dataSeries1.getNode().setStyle("-fx-stroke: #4a86e8;");
 				
 				lineChart.getStyleClass().add("chart-series-line");
@@ -699,8 +721,8 @@ public class OutputViewerController implements Initializable{
 		//Fermi energy
 		if(fermiDos!=null) {
 			Series<Double,Double> dataSeries1 = new Series<Double, Double>();
-			dataSeries1.getData().add(new Data<Double, Double>(minX, fermiDos));
-			dataSeries1.getData().add(new Data<Double, Double>(maxX, fermiDos));
+			dataSeries1.getData().add(new Data<Double, Double>(minX, fermiDos-dbShift));
+			dataSeries1.getData().add(new Data<Double, Double>(maxX, fermiDos-dbShift));
 			dataSeries1.setName("Fermi Energy");
 			
 			lineChart.getData().add(dataSeries1);
@@ -747,17 +769,20 @@ public class OutputViewerController implements Initializable{
 		xAxis.setLabel(tddftHeader.size()>0 ? tddftHeader.get(0):"Unknown (1st column)");
 		yAxis.setLabel(tddftHeader.size()>1 ? tddftHeader.get(1):"Unknown (2nd column)");
 		
+		ArrayList<Data<Double, Double>> lstData = new ArrayList<Data<Double, Double>>();
 		
 		for(int i=1;i<tddftArray.get(0).size();i++) {//different columns (y axis). Starting from 1 because 0 is xaxis
+			lstData.clear();
 			
 			Series<Double,Double> dataSeries1 = new Series<Double, Double>();
 			String headerTmp = (tddftHeader.size()>i ? tddftHeader.get(i):"Unknown ("+Integer.toString(i)+"th column)");
 			dataSeries1.setName(headerTmp);
 			for(int j=0;j<tddftArray.size();j++) {
 				if(tddftArray.get(j).size()<=i) {break;}//a certain row does not have enough numbers
-				dataSeries1.getData().add(new Data<Double, Double>(tddftArray.get(j).get(0), 
+				lstData.add(new Data<Double, Double>(tddftArray.get(j).get(0), 
 						tddftArray.get(j).get(i)));
 			}
+			dataSeries1.getData().addAll(lstData);
 			lineChart.getData().add(dataSeries1);
         }
 		
@@ -802,26 +827,42 @@ public class OutputViewerController implements Initializable{
 		minY = 10000.0;
 		maxY = -10000.0;
 		
+		double dbShift = (toggleShiftFermi.isSelected() && fermiDos!=null)?fermiDos:0.0;
+		
+		//ShowAlert.showAlert("Debug", ""+dosArray.size());
+		ArrayList<Data<Double, Double>> lstData = new ArrayList<Data<Double, Double>>();
+		
 		for(int i=1;i<dosArray.get(0).size();i++) {//different columns (y axis). Starting from 1 because 0 is xaxis
+			lstData.clear();
 			
 			Series<Double,Double> dataSeries1 = new Series<Double, Double>();
 			String headerTmp = (dosHeader.size()>i ? dosHeader.get(i):"Unknown ("+Integer.toString(i)+"th column)");
 			dataSeries1.setName(headerTmp);
 			if(boolInteg != headerTmp.toLowerCase().contains("int") ) {continue;}
+
 			for(int j=0;j<dosArray.size();j++) {
 				if(dosArray.get(j).size()<=i) {break;}//a certain row does not have enough numbers
-				dataSeries1.getData().add(new Data<Double, Double>(dosArray.get(j).get(0), dosArray.get(j).get(i)));
+				
+				lstData.add(new Data<Double, Double>(dosArray.get(j).get(0)-dbShift, dosArray.get(j).get(i)));
+				
 				if(dosArray.get(j).get(i)>maxY) {maxY=dosArray.get(j).get(i);}
 				if(dosArray.get(j).get(i)<minY) {minY=dosArray.get(j).get(i);}
 			}
+			
+			dataSeries1.getData().addAll(lstData);
+			
+			//ShowAlert.showAlert("Debug", ""+i+"th,finished!");
 			lineChart.getData().add(dataSeries1);
+			//ShowAlert.showAlert("Debug", ""+i+"th,loaded!");
         }
+		
+		//ShowAlert.showAlert("Debug", ""+dosArray.size()+",finished!");
 		
 		//Fermi energy
 		if(fermiDos!=null) {
 			Series<Double,Double> dataSeries1 = new Series<Double, Double>();
-			dataSeries1.getData().add(new Data<Double, Double>(fermiDos, minY));
-			dataSeries1.getData().add(new Data<Double, Double>(fermiDos, maxY));
+			dataSeries1.getData().add(new Data<Double, Double>(fermiDos-dbShift, minY));
+			dataSeries1.getData().add(new Data<Double, Double>(fermiDos-dbShift, maxY));
 			dataSeries1.setName("Fermi Energy");
 			lineChart.getData().add(dataSeries1);
 		}
@@ -894,6 +935,9 @@ public class OutputViewerController implements Initializable{
 			if(!fileData.getAbsoluteMag().isEmpty() || !fileData.getTotalMag().isEmpty()) {
 				plotTypeStdOut.add("SCF magnet");
 			}
+			if(fileData.isHybrid) {
+				plotTypeStdOut.add("Hybrid steps");
+			}
 		}
 		//check whether it is the same as in the combo. If yes, no update of the combo
 		if(!isSameTypeStdout(plotTypeStdOut)) {
@@ -927,6 +971,9 @@ public class OutputViewerController implements Initializable{
 			plotScfArray(magTmp, "SCF Iterations", "Magnetic moment (uB)", (magTmpy.isEmpty()?"total magnetic moment":"total magnetic moment (x)"));
 			plotScfArray(magTmpy, "SCF Iterations", "Magnetic moment (uB)", "total magnetic moment (y)");
 			plotScfArray(magTmpz, "SCF Iterations", "Magnetic moment (uB)", "total magnetic moment (z)");
+		}
+		else if(plotType.equals("Hybrid steps")) {
+			plotOptArray(energyTmp, "Hybrid Steps", "Total Energy (Ry)", "Hybrid Functional Energy Convergence");
 		}
 		else if(plotType.equals("OPT E conv")) {
 			plotOptArray(energyTmp, "Optimization Steps", "Total Energy (Ry)", "Optimization Energy Convergence");

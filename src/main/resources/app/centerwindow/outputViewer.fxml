@@ -56,12 +56,12 @@
                   <Separator orientation="VERTICAL" />
                   <GridPane prefWidth="370.0">
                     <columnConstraints>
-                        <ColumnConstraints hgrow="SOMETIMES" minWidth="50.0" prefWidth="50.0" />
-                        <ColumnConstraints hgrow="SOMETIMES" minWidth="70.0" prefWidth="105.0" />
-                      <ColumnConstraints hgrow="SOMETIMES" minWidth="40.0" prefWidth="50.0" />
-                      <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="70.0" />
-                        <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="70.0" />
-                        <ColumnConstraints hgrow="SOMETIMES" minWidth="40.0" prefWidth="50.0" />
+                        <ColumnConstraints hgrow="SOMETIMES" maxWidth="76.5" minWidth="50.0" prefWidth="58.0" />
+                        <ColumnConstraints hgrow="SOMETIMES" maxWidth="95.5" minWidth="70.0" prefWidth="88.0" />
+                      <ColumnConstraints hgrow="SOMETIMES" maxWidth="47.5" minWidth="33.0" prefWidth="44.0" />
+                      <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="55.0" />
+                        <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="55.0" />
+                        <ColumnConstraints hgrow="SOMETIMES" minWidth="40.0" prefWidth="55.0" />
                     </columnConstraints>
                     <rowConstraints>
                       <RowConstraints vgrow="SOMETIMES" />
@@ -77,7 +77,9 @@
                         <ComboBox fx:id="comboPlot" prefHeight="25.0" prefWidth="99.0" GridPane.columnIndex="1" />
                         <Label fx:id="labelPlot" text="Plot Type" />
                         <ToggleButton fx:id="buttonShowMarker" mnemonicParsing="false" prefHeight="25.0" prefWidth="98.0" text="Show Marker" GridPane.columnIndex="1" GridPane.rowIndex="1" />
-                        <ToggleButton fx:id="toggleAutoRange" mnemonicParsing="false" text="Auto" GridPane.columnIndex="5" />
+                        <ToggleButton fx:id="toggleAutoRange" mnemonicParsing="false" prefHeight="25.0" prefWidth="55.0" text="Auto" GridPane.columnIndex="5" />
+                        <ToggleButton fx:id="toggleShiftFermi" mnemonicParsing="false" selected="true" text="Shift E_F" GridPane.rowIndex="1" />
+                        <ToggleButton fx:id="toggleLegend" mnemonicParsing="false" selected="true" text="Legend" GridPane.columnIndex="5" GridPane.rowIndex="1" />
                      </children>
                   </GridPane>
                   <Separator orientation="VERTICAL" />

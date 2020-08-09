@@ -55,6 +55,11 @@ public class CalculationNebClass extends CalculationClass{
 		agentList.put(EnumStep.SCF,new InputAgentScf());
 		agentList.put(EnumStep.NEB,new InputAgentNeb());
 	}
+	public boolean checkUsedGeoIndex(int ind) {
+		//true is used, false is not used -> ok
+		InputAgentNeb iNeb = (InputAgentNeb) agentList.get(EnumStep.NEB);
+		return (iNeb.startGeo==ind || iNeb.endGeo==ind);
+	}
 	public ArrayList<ContainerInputString> genInputFromAgent(ArrayList<InputAgentGeo> geoList) {
 		ArrayList<ContainerInputString> cis = new ArrayList<ContainerInputString>();
 		

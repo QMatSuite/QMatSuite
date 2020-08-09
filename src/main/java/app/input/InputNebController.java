@@ -147,7 +147,9 @@ public class InputNebController extends InputController{
     private Button infoMethod;
 
     @FXML
-    private Label statusInfo;
+    private Label statusInfo,
+    labelIndexStart,
+    labelIndexEnd;
 
     
 	public InputNebController(MainClass mc) {
@@ -186,6 +188,9 @@ public class InputNebController extends InputController{
 			}
 		});
 		
+		labelIndexStart.textProperty().bind(comboGeoStart.getSelectionModel().selectedIndexProperty().add(1).asString());
+	    labelIndexEnd.textProperty().bind(comboGeoEnd.getSelectionModel().selectedIndexProperty().add(1).asString());
+	    
 		initParameterSet(toggleMinImage, "boolMinImage", "on", "off", checkMinImage, infoMinImage, checkResetAll);
 		initParameterSet(comboMethod, "enumMethod", EnumStringMethod.values(), checkMethod, infoMethod, checkResetAll);
 		initParameterSet(toggleRestart, "boolRestart", "restart", "from scratch", checkRestart, infoRestart, checkResetAll);
@@ -219,21 +224,21 @@ public class InputNebController extends InputController{
 		});
 	}
 	private ArrayList<String> genGeoNames(){
-		final ArrayList<String> arr = new ArrayList<String>();
-		int cnt = 1;
-		for(String strTmp : mainClass.projectManager.getGeoName()) {
-			arr.add(""+cnt+"_"+strTmp);
-			cnt++;
-		}
-		return arr;
+//		final ArrayList<String> arr = new ArrayList<String>();
+//		int cnt = 1;
+//		for(String strTmp : mainClass.projectManager.getGeoName()) {
+//			arr.add(""+cnt+"_"+strTmp);
+//			cnt++;
+//		}
+//		return arr;
+		return mainClass.projectManager.getGeoName();
 	}
 	public void loadProjectParameters() {
 		super.loadProjectParameters();
 		
-		comboGeoStart.getItems().clear();
-		
 		final ArrayList<String> arr = genGeoNames();
 		
+		comboGeoStart.getItems().clear();
 		comboGeoStart.getItems().addAll(arr);
 		
 		comboGeoEnd.getItems().clear();

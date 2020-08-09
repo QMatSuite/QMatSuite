@@ -93,6 +93,12 @@ public class Project implements Serializable{
 	public ArrayList<String> getGeoName(){
 		return geoName;
 	}
+	public boolean setGeoName(int ind, String newName) {
+		if(newName==null || newName.isEmpty() || geoName.contains(newName)) {return false;}//contains, either same position or other position
+		if(ind<0 || ind >=geoName.size()) {return false;}//out of boundary
+		geoName.set(ind, newName);
+		return true;
+	}
 	public ArrayList<InputAgentGeo> getGeoList(){
 		return geoList;
 	}
@@ -107,9 +113,11 @@ public class Project implements Serializable{
 		}
 		for(CalculationClass calc : calcDict.values()) {
 			if(calc==null) {continue;}
-			if(calc.getGeoInd()==ind) {
+			if((!EnumCalc.NEB.equals(calc.getCalcType()) && calc.getGeoInd()==ind) 
+					|| (EnumCalc.NEB.equals(calc.getCalcType()) 
+					&& ((CalculationNebClass)calc).checkUsedGeoIndex(ind)) ) {
 				ShowAlert.showAlert(AlertType.INFORMATION, "Warning", "Calculation "+calc.calcName+
-						" uses the geometry to be deleted ("+Integer.toString(ind+1)+"th). Change that and save first and then delete.");
+						" uses the geometry to be deleted ("+Integer.toString(ind+1)+"th). Change that, save project and try to delete again.");
 				return false;
 			}
 		}
@@ -260,11 +268,15 @@ public class Project implements Serializable{
 		activeCalcKey = calcName;//set active no matter whether already contains or not
 	}
 	public InputAgentGeo getAgentGeo() {
-		if (activeGeoInd>=geoList.size()) return null;
+		
 		if (boolGeoActive || !existCurrentCalc()){
+			if (activeGeoInd>=geoList.size()) {this.setActiveGeoInd(geoList.size()-1);}
+			else if(activeGeoInd<0) {this.setActiveGeoInd(0);}
 			return geoList.get(activeGeoInd);//use project default
 		}
 		else {
+			if (getActiveCalc().getGeoInd()>=geoList.size()) {getActiveCalc().setGeoInd(geoList.size()-1);}
+			else if(getActiveCalc().getGeoInd()<0) {getActiveCalc().setGeoInd(0);}
 			return geoList.get(getActiveCalc().getGeoInd());
 		}
 	}
@@ -368,4 +380,6 @@ public class Project implements Serializable{
 	public void setcalcScfDefault(String calcScfDefault) {
 		this.calcScfDefault = calcScfDefault;
 	}
+
+	
 }

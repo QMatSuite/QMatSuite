@@ -110,6 +110,7 @@ public class FileDataClass {
 	public boolean isTddftSpectrum = false;
 	public boolean isPH = false;
 	public boolean isNeb = false;
+	public boolean isHybrid = false;
 	
 	
 	//will be true when one scf just finished. Will be set back to false when one new mag is read
@@ -231,7 +232,7 @@ public class FileDataClass {
 		isJobStart = false;
 		hasScf=false;hasScfFinished=false;isMD=false;isMDFinished=false;isOpt=false;isOptFinished=false;
 		isNscf=false;isNscfFinished=false;isDos=false;isDosFinished=false;isPW=false;isPH=false;
-		isPwBands = false;isBandsPP = false;isTddftTurbo = false;isTddftSpectrum=false;isNeb = false;
+		isPwBands = false;isBandsPP = false;isTddftTurbo = false;isTddftSpectrum=false;isNeb = false;isHybrid = false;
 		flagScfFinishedForTotalMag=false;
 		flagScfFinishedForTotalMagy=false;
 		flagScfFinishedForTotalMagz=false;
@@ -636,6 +637,9 @@ public class FileDataClass {
 		    	}
 		    	if(strTmp.contains("starts")) {
 		    		this.isJobStart = true;
+		    	}
+		    	if(strTmp.contains("EXX: now go back to refine")) {
+		    		this.isHybrid = true;
 		    	}
 		    	if(this.isNeb) {
 		    		if(strTmp.contains("--- iteration")){
@@ -1403,6 +1407,7 @@ public class FileDataClass {
 			if(isDos) {strTmp+="DOS,";}
 			if(isPH) {strTmp+="Phonon,";}
 			if(isNeb) {strTmp+="NEB,";}
+			if(isHybrid) {strTmp+="Hybrid functional,";}
 			
 			if(this.isPwBands) {strTmp+="pwscf bands calculation.\n";}
 			if(this.isBandsPP) {strTmp+="bands program.\n";}

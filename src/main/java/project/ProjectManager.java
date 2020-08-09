@@ -79,6 +79,16 @@ public class ProjectManager{
 		if(pj!=null) {return pj.getGeoName();}
 		return null;
 	}
+	public boolean setGeoName(int ind, String newName) {
+		//return true is success
+		Project pj = this.getActiveProject();
+		if(pj!=null) {
+			return pj.setGeoName(ind,newName);
+		}
+		else {
+			return false;
+		}
+	}
 	public Integer getActiveGeoInd(){
 		Project pj = this.getActiveProject();
 		if(pj!=null) {return pj.getActiveGeoInd();}

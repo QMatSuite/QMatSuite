@@ -155,6 +155,7 @@ public class Constants {
 		DOS("DOS"),
 		BANDS("Bands"),
 		BANDSPP("Bands PP"),
+		BANDSPP2("Bands PP 2"),
 		BOMD("MD"),
 		TDDFT("Turbo_lanczos"),
 		TDDFT2("Turbo_spectrum"),
