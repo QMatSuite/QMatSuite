@@ -18,19 +18,13 @@
  *******************************************************************************/
 package input;
 
-import java.io.Serializable;
-
 import agent.WrapperBoolean;
 import agent.WrapperDouble;
 import agent.WrapperInteger;
 import agent.WrapperString;
 import com.error.InvalidTypeException;
 
-public abstract class InputValue implements Serializable{
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = 4608210422008015737L;
+public abstract class InputValue{
 	
 	protected final String nameString;
 	protected Boolean boolRequired;

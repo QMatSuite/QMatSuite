@@ -58,7 +58,15 @@ public class JobManager implements Runnable {
 			setMpirunNum(1);
 		}
 		
-		boolParallel = false;
+		String mpiParallel = ProjectManager.readGlobalSettings(SettingKeys.useParallel.toString());
+		try {
+			Boolean mpiNum = Boolean.valueOf(mpiParallel);
+			
+			if(mpiNum!=null) {setBoolParallel(mpiNum,false);}//not write to settings file
+			else {setBoolParallel(false);}//write to settings file
+		}catch(Exception e) {
+			setBoolParallel(false);
+		}
 	}
 	
     private Queue<JobNode> nodeList;
@@ -185,9 +193,14 @@ public class JobManager implements Runnable {
 	public static boolean isBoolParallel() {
 		return boolParallel;
 	}
-
 	public static void setBoolParallel(boolean bp) {
+		setBoolParallel(bp, true);
+	}
+	public static void setBoolParallel(boolean bp, boolean boolWrite) {
 		JobManager.boolParallel = bp;
+		if(boolWrite) {
+			ProjectManager.writeGlobalSettings(SettingKeys.useParallel.toString(), Boolean.toString(bp));
+		}
 	}
 
 }

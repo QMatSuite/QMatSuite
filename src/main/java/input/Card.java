@@ -22,10 +22,7 @@ import java.util.Set;
 import com.consts.Constants.EnumCard;
 
 public class Card extends InputSection{
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = -7515062976251781681L;
+
 	private EnumCard cardEnum;
 	public Card(EnumCard cardE) {
 		super();

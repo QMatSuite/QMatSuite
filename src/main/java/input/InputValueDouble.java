@@ -21,10 +21,7 @@ package input;
 import com.error.InvalidTypeException;
 
 public class InputValueDouble extends InputValue {
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = 6246154679191L;
+
 	private final Double paraDefault;
 	private Double paraNow;//only show up in generating input from agent
 	
