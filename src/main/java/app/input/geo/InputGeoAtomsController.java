@@ -50,11 +50,16 @@ public class InputGeoAtomsController extends InputController{
 
 	@FXML private ComboBox<String> unitCombo;//ok
 
-    @FXML private Button addAtom,
-    infoButton,
+    @FXML private Button infoButton,
     deleteAtom,
     editAtom,
     clearInput;//ok except infoButton
+    
+    @FXML
+    private Button buttonAddEnd,
+    buttonAddBegin,
+    buttonAddAfter,
+    buttonAddBefore;
 
     @FXML private TableView<Atom> atomTable;//ok
 
@@ -102,7 +107,19 @@ public class InputGeoAtomsController extends InputController{
     	fixX.setSelected(false);fixY.setSelected(false);fixZ.setSelected(false);
     	setupTable();
     	
-    	addAtom.setOnAction((event) -> {	
+    	buttonAddBegin.setOnAction((event) -> {	
+    		Atom tmp = genAtomFromInput();
+    		if (tmp==null) return;
+			atomsData.add(0,tmp);
+			InputAgentGeo iGeo = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
+			if (iGeo!=null) {
+				iGeo.atomList.add(0,tmp);
+				iGeo.updateElemListAll();//*********very inefficient
+				mainClass.projectManager.updateViewerPlot();
+			}
+			atomTable.getSelectionModel().select(0);
+		});
+    	buttonAddEnd.setOnAction((event) -> {	
     		Atom tmp = genAtomFromInput();
     		if (tmp==null) return;
 			atomsData.add(tmp);
@@ -113,6 +130,40 @@ public class InputGeoAtomsController extends InputController{
 				mainClass.projectManager.updateViewerPlot();
 			}
 			atomTable.getSelectionModel().selectLast();
+		});
+    	buttonAddBefore.setOnAction((event) -> {
+    		int selec = atomTable.getSelectionModel().getSelectedIndex();
+    		if (selec<0 || selec >= atomsData.size()) {labelBottom.setText("Nothing selected. Cannot add relative to the selection.");return;}
+    		labelBottom.setText("");
+    		
+    		Atom tmp = genAtomFromInput();
+    		if (tmp==null) return;
+    		
+			atomsData.add(selec,tmp);
+			InputAgentGeo iGeo = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
+			if (iGeo!=null) {
+				iGeo.atomList.add(selec,tmp);
+				iGeo.updateElemListAll();//*********very inefficient
+				mainClass.projectManager.updateViewerPlot();
+			}
+			atomTable.getSelectionModel().select(selec);
+		});
+    	buttonAddAfter.setOnAction((event) -> {	
+    		int selec = atomTable.getSelectionModel().getSelectedIndex();
+    		if (selec<0 || selec >= atomsData.size()) {labelBottom.setText("Nothing selected. Cannot add relative to the selection.");return;}
+    		labelBottom.setText("");
+    		
+    		Atom tmp = genAtomFromInput();
+    		if (tmp==null) return;
+    		
+			atomsData.add(selec+1,tmp);
+			InputAgentGeo iGeo = (InputAgentGeo) mainClass.projectManager.getCurrentGeoAgent();
+			if (iGeo!=null) {
+				iGeo.atomList.add(selec+1,tmp);
+				iGeo.updateElemListAll();//*********very inefficient
+				mainClass.projectManager.updateViewerPlot();
+			}
+			atomTable.getSelectionModel().select(selec+1);
 		});
     	editAtom.setOnAction((event) -> {	
     		int selec = atomTable.getSelectionModel().getSelectedIndex();

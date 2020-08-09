@@ -78,7 +78,10 @@ public class InputKpointsController implements Initializable{
     private TextField textKLabel;
 
     @FXML
-    private Button buttonAdd;
+    private Button buttonAddEnd,
+    buttonAddBegin,
+    buttonAddAfter,
+    buttonAddBefore;
 
     @FXML
     private TableView<Kpoint> tableKPath;
@@ -156,7 +159,16 @@ public class InputKpointsController implements Initializable{
     		}
 		});
         
-		buttonAdd.setOnAction((event) -> {	
+		buttonAddBegin.setOnAction((event) -> {	
+    		Kpoint tmp = genKpointFromInput();
+    		if (tmp==null) return;
+			kpointsData.add(0,tmp);
+			InputAgentK iBands = (InputAgentK) mainClass.projectManager.getStepAgent(enumStep);
+			if (iBands==null) {statusTextField.setText("Null input bands agent.");return;}
+			iBands.listKPoints.add(0,tmp);
+			tableKPath.getSelectionModel().select(0);
+		});
+		buttonAddEnd.setOnAction((event) -> {	
     		Kpoint tmp = genKpointFromInput();
     		if (tmp==null) return;
 			kpointsData.add(tmp);
@@ -165,9 +177,36 @@ public class InputKpointsController implements Initializable{
 			iBands.listKPoints.add(tmp);
 			tableKPath.getSelectionModel().selectLast();
 		});
+		buttonAddBefore.setOnAction((event) -> {	
+			int selec = tableKPath.getSelectionModel().getSelectedIndex();
+    		if (selec<0 || selec >= kpointsData.size()) {statusTextField.setText("Nothing selected. Cannot add relative to the selection.");return;}
+    		statusTextField.setText("");
+    		
+    		Kpoint tmp = genKpointFromInput();
+    		if (tmp==null) return;
+			kpointsData.add(selec,tmp);
+			InputAgentK iBands = (InputAgentK) mainClass.projectManager.getStepAgent(enumStep);
+			if (iBands==null) {statusTextField.setText("Null input bands agent.");return;}
+			iBands.listKPoints.add(selec,tmp);
+			tableKPath.getSelectionModel().select(selec);
+		});
+		buttonAddAfter.setOnAction((event) -> {	
+			int selec = tableKPath.getSelectionModel().getSelectedIndex();
+    		if (selec<0 || selec >= kpointsData.size()) {statusTextField.setText("Nothing selected. Cannot add relative to the selection.");return;}
+    		statusTextField.setText("");
+    		
+    		Kpoint tmp = genKpointFromInput();
+    		if (tmp==null) return;
+			kpointsData.add(selec+1,tmp);
+			InputAgentK iBands = (InputAgentK) mainClass.projectManager.getStepAgent(enumStep);
+			if (iBands==null) {statusTextField.setText("Null input bands agent.");return;}
+			iBands.listKPoints.add(selec+1,tmp);
+			tableKPath.getSelectionModel().select(selec+1);
+		});
+		
 		buttonEdit.setOnAction((event) -> {	
     		int selec = tableKPath.getSelectionModel().getSelectedIndex();
-    		if (selec<0 || selec >= kpointsData.size()) {statusTextField.setText("Index out of bound to be editted.");return;}
+    		if (selec<0 || selec >= kpointsData.size()) {statusTextField.setText("No data is selected to be edited.");return;}
     		statusTextField.setText("");
     		
     		Kpoint tmp = genKpointFromInput();//******is this efficient or shall we change properties of Kpoint?
@@ -187,7 +226,7 @@ public class InputKpointsController implements Initializable{
     		InputAgentK iBands = (InputAgentK) mainClass.projectManager.getStepAgent(enumStep);
     		if (iBands==null) {statusTextField.setText("Null input bands agent.");return;}
     		iBands.listKPoints.remove(selec);
-			tableKPath.getSelectionModel().selectNext();
+			tableKPath.getSelectionModel().select(selec);
 		});
 		buttonClearInput.setOnAction((event) -> {	
     		clearInput();

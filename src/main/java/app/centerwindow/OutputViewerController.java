@@ -20,6 +20,7 @@
 package app.centerwindow;
 
 import java.awt.Desktop;
+import java.awt.Desktop.Action;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -32,6 +33,8 @@ import java.util.ResourceBundle;
 import java.util.Scanner;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -47,6 +50,8 @@ import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.ScrollPane.ScrollBarPolicy;
+import javafx.scene.control.SplitPane;
+import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
@@ -55,12 +60,15 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
 import javafx.util.Callback;
+import javafx.util.StringConverter;
+import javafx.util.converter.NumberStringConverter;
 import main.MainClass;
 import com.consts.Constants.EnumAnalysis;
 import com.consts.Constants.EnumCard;
 import com.consts.Constants.EnumFileCategory;
 import com.consts.Constants.EnumNameList;
 import com.consts.Constants.EnumStep;
+import com.error.ShowAlert;
 import com.programconst.DefaultFileNames;
 import com.programconst.ProgrammingConsts;
 import app.input.InputGeoController;
@@ -68,8 +76,8 @@ import app.input.Kpoint;
 
 public class OutputViewerController implements Initializable{
 
-    @FXML private HBox rootHbox;
-
+	@FXML private SplitPane rootSplitPane;
+	
     @FXML private VBox vboxFiles,
     vboxMainPlot;
 
@@ -83,6 +91,13 @@ public class OutputViewerController implements Initializable{
     buttonRefresh,
     buttonSaveGeo,
 	buttonShowInSystem;
+    
+    @FXML private ToggleButton toggleAutoRange;
+    
+    @FXML private TextField textXlimLow,
+    textXlimHigh,
+    textYlimLow,
+    textYlimHigh;
     
     @FXML private Label labelFileCategory,
     labelPlot,
@@ -311,7 +326,8 @@ public class OutputViewerController implements Initializable{
 		});
 		openAsButton.setOnAction((event) -> {
 			if(inoutFiles==null || !inoutFiles.canRead()) return;
-			if( Desktop.isDesktopSupported() )
+			
+			if( Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Action.OPEN))
 			{
 			    new Thread(() -> {
 				   try {
@@ -321,10 +337,13 @@ public class OutputViewerController implements Initializable{
 				   }
 			       }).start();
 			}
+			else {
+				ShowAlert.showAlert("Information", "Opening files externally not supported in the current operating system.");
+			}
 		});
 		buttonShowInSystem.setOnAction((event) -> {
 			if(calcFolder==null || !calcFolder.canRead() || !calcFolder.isDirectory()) return;
-			if( Desktop.isDesktopSupported() )
+			if( Desktop.isDesktopSupported()  && Desktop.getDesktop().isSupported(Action.OPEN))
 			{
 			    new Thread(() -> {
 				   try {
@@ -333,6 +352,9 @@ public class OutputViewerController implements Initializable{
 				       e1.printStackTrace();
 				   }
 			       }).start();
+			}
+			else {
+				ShowAlert.showAlert("Information", "Opening files externally not supported in the current operating system.");
 			}
 		});
 		buttonSaveGeo.setDisable(true);
@@ -354,6 +376,24 @@ public class OutputViewerController implements Initializable{
 			if(newValue==null) return;
 			lineChart.setCreateSymbols(newValue);
 		});
+
+
+		toggleAutoRange.setSelected(true);
+		
+		textXlimLow.disableProperty().bind(toggleAutoRange.selectedProperty());
+		textXlimHigh.disableProperty().bind(toggleAutoRange.selectedProperty());
+		textYlimLow.disableProperty().bind(toggleAutoRange.selectedProperty());
+		textYlimHigh.disableProperty().bind(toggleAutoRange.selectedProperty());
+		
+		xAxis.autoRangingProperty().bindBidirectional(toggleAutoRange.selectedProperty());
+		yAxis.autoRangingProperty().bindBidirectional(toggleAutoRange.selectedProperty());
+		
+		StringConverter<Number> converter = new NumberStringConverter();
+		Bindings.bindBidirectional(textXlimLow.textProperty(), xAxis.lowerBoundProperty(), converter);
+		Bindings.bindBidirectional(textXlimHigh.textProperty(), xAxis.upperBoundProperty(), converter);
+		Bindings.bindBidirectional(textYlimLow.textProperty(), yAxis.lowerBoundProperty(), converter);
+		Bindings.bindBidirectional(textYlimHigh.textProperty(), yAxis.upperBoundProperty(), converter);
+	    
 		buttonShowMarker.setSelected(true);
 		
 //		buttonRefreshFolder.setOnAction((event) -> {

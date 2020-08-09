@@ -303,6 +303,9 @@ public class MainWindowController implements Initializable{
 		
 		splitOutput.prefWidthProperty().bind(workSpaceTabPane.widthProperty());
 		splitOutput.prefHeightProperty().bind(workSpaceTabPane.heightProperty());
+		splitOutput.widthProperty().addListener((obs, oldVal, newVal) -> {
+			splitOutput.setDividerPosition(0, 0.1);
+		});
 		
 		//workTabContent =  new WorkTabContent(mainClass,workSpaceTabPane,projectTabDict,contGeo);
 		
@@ -1303,7 +1306,8 @@ public class MainWindowController implements Initializable{
 			}
 		}
 
-		try {tabPaneRight.getSelectionModel().select(1);}catch (Exception e) {}//load second tab(not geo)
+		//try {tabPaneRight.getSelectionModel().select(0);}catch (Exception e) {}//load second tab(not geo)
+		try {tabPaneRight.getSelectionModel().select(0);}catch (Exception e) {}//load geo tab
 		
 		calcLabel.setText(enumCalcThis.getLong());
 		

@@ -21,6 +21,7 @@ package app.centerwindow;
 import java.net.URL;
 import java.util.ResourceBundle;
 
+import javafx.beans.binding.Bindings;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.fxml.FXML;
@@ -35,12 +36,15 @@ import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.VBox;
+import javafx.util.StringConverter;
+import javafx.util.converter.NumberStringConverter;
 
 public class Toolbar3DController implements Initializable{
 	@FXML private VBox root3DVbox,
 	functionVbox;
 	@FXML private ToggleButton toggleShowToolbar;
 	@FXML private Slider sliderBondScaling;
+	@FXML private TextField textBondScaling;
 	@FXML private CheckBox checkFoldBack;
 	@FXML private Label labelStatus;
 	@FXML private TextField tfx;
@@ -69,14 +73,28 @@ public class Toolbar3DController implements Initializable{
 		sliderBondScaling.setValue(WorkScene3D.getBondScalingDefault());
 		sliderBondScaling.setMajorTickUnit(0.1);
 		//sliderBondScaling.setMinorTickCount(3);
-		sliderBondScaling.setSnapToTicks(true);
+		sliderBondScaling.setSnapToTicks(false);
 		sliderBondScaling.setShowTickLabels(true);
-		sliderBondScaling.valueProperty().addListener((obs, oldVal, newVal) -> {
-		    if (newVal != null && newVal.doubleValue() > 0.0) {
-		    	ws3d.bondScaling = newVal.doubleValue();
-		    	ws3d.buildGeometry();//******not efficient!
-		    }
+		textBondScaling.textProperty().addListener((obs, oldVal, newVal) -> {
+			try {
+				Double dbTmp = Double.valueOf(newVal);
+				if(dbTmp>0.0) {
+					labelStatus.setText("");
+					ws3d.bondScaling = dbTmp;
+			    	ws3d.buildGeometry();//******not efficient!
+				}
+				else {
+					labelStatus.setText("Bond scaling must be positive!");
+				}
+			}
+			catch(Exception e) {
+				labelStatus.setText("Bond scaling must be a number!");
+			}
 		});
+		
+		StringConverter<Number> converter = new NumberStringConverter();
+		Bindings.bindBidirectional(textBondScaling.textProperty(), sliderBondScaling.valueProperty(), converter);
+
 		checkFoldBack.setText("Fold atoms into cell");
 		checkFoldBack.setSelected(false);ws3d.boolFoldBack=false;
 		checkFoldBack.selectedProperty().addListener((obs, oldVal, newVal) -> {

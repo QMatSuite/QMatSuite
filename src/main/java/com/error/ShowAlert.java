@@ -32,6 +32,9 @@ public class ShowAlert {
 	private static boolean boolShow = true;
 	public static Instant startTime=Instant.EPOCH; //initialize in MainApplication class, at the beginning of the program
 	
+	public static void showAlert(String headerText, String contentText) {
+		showAlert(AlertType.INFORMATION, headerText, contentText, true);
+	}
 	public static void showAlert(AlertType at, String headerText, String contentText) {
 		showAlert(at, headerText, contentText, true);
 	}

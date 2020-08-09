@@ -15,7 +15,7 @@
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox fx:id="root3DVbox" prefWidth="165.0" xmlns="http://javafx.com/javafx/8.0.1" xmlns:fx="http://javafx.com/fxml/1">
+<VBox fx:id="root3DVbox" prefWidth="165.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
    <children>
       <Label text="3D toolbar" />
       <HBox>
@@ -30,7 +30,12 @@
                <VBox.margin>
                   <Insets top="5.0" />
                </VBox.margin></Separator>
-            <Label text="Bond Scaling:" />
+            <HBox>
+               <children>
+                  <Label text="Bond Scaling:" />
+                  <TextField fx:id="textBondScaling" prefHeight="25.0" prefWidth="76.0" />
+               </children>
+            </HBox>
             <Slider fx:id="sliderBondScaling" />
             <Separator prefWidth="200.0">
                <VBox.margin>

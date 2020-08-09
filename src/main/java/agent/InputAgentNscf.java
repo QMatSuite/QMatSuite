@@ -42,9 +42,9 @@ public class InputAgentNscf extends InputAgent{
 		enumOccupation=new WrapperEnum(EnumOccupations.smearing);
 		enumEnergyUnit = new WrapperEnum(EnumUnitEnergy.Ry);
 		degauss = new WrapperDouble(0.02);
-		nkx = new WrapperInteger(4);
-		nky = new WrapperInteger(4);
-		nkz = new WrapperInteger(4);
+		nkx = new WrapperInteger(8);
+		nky = new WrapperInteger(8);
+		nkz = new WrapperInteger(8);
 		enumSmearing=new WrapperEnum(EnumSmearing.gauss);
 		nbnd = new WrapperInteger(null);
 	}
