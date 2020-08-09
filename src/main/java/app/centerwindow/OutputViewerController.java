@@ -299,7 +299,7 @@ public class OutputViewerController implements Initializable{
 //					}
 //				}
 				if(EnumFileCategory.stdout.equals(fileCategory) && !this.fileData.isMD  && !this.fileData.isOpt  
-						&& !this.fileData.hasScf) {
+						&& !this.fileData.hasScf && !this.fileData.isNeb) {
 					comboAnalysis.getSelectionModel().select(EnumAnalysis.info);//no need to check existence
 				}
 				else {
@@ -439,10 +439,13 @@ public class OutputViewerController implements Initializable{
         boolean isPhonon = (calcFolder!=null
         		&& item.contains(EnumStep.PH.toString())
         		&& item.endsWith(ProgrammingConsts.stdoutExtension));
+        boolean isNeb = (calcFolder!=null 
+        		&& item.contains(EnumStep.NEB.toString())
+        		&& item.endsWith(ProgrammingConsts.stdoutExtension));
         return (item.endsWith(ProgrammingConsts.dosExtension)
         		|| item.contains(DefaultFileNames.bandsDatGnu)
         		|| item.contains(DefaultFileNames.tddftPlotSDat)
-        		|| isScf || isOpt || isMd 
+        		|| isScf || isOpt || isMd || isNeb
         		|| (item.contains(DefaultFileNames.flfrq)&&item.endsWith(ProgrammingConsts.phononGnuExtension))
         		|| isPhonon
         		);
@@ -518,6 +521,7 @@ public class OutputViewerController implements Initializable{
 		}
 	}
 	private void updateIoDisplay() {
+		
 		hboxBandsToolbar.setVisible(false);
 		EnumAnalysis analTmp = comboAnalysis.getSelectionModel().getSelectedItem();
 		
@@ -573,6 +577,8 @@ public class OutputViewerController implements Initializable{
 		return true;
 	}
 	private void plotPhBands() {
+		comboPlot.getItems().clear();
+		
 		//high symmetry k points
 		hboxBandsToolbar.setVisible(true);
 	
@@ -621,6 +627,8 @@ public class OutputViewerController implements Initializable{
         displayScroll.setContent(lineChart);
 	}
 	private void plot2dBands() {
+		comboPlot.getItems().clear();
+		
 		//high symmetry k points
 		hboxBandsToolbar.setVisible(true);
 	
@@ -707,6 +715,8 @@ public class OutputViewerController implements Initializable{
         displayScroll.setContent(lineChart);
 	}
 	private void plot2dTddft() {
+		comboPlot.getItems().clear();
+		
 		buttonShowMarker.setSelected(false);
 		
 		lineChart.getData().clear();
@@ -737,6 +747,7 @@ public class OutputViewerController implements Initializable{
         displayScroll.setContent(lineChart);
 	}
 	private void plot2dDos() {
+		
 		buttonShowMarker.setSelected(false);
 		if(!isSameTypeStdout(plotTypeDos)) {
 			comboPlot.getItems().clear();
@@ -856,6 +867,11 @@ public class OutputViewerController implements Initializable{
 			plotTypeStdOut.add("Temperature");
 			plotTypeStdOut.add("Ekin + Etot");
 		}
+		if(fileData.isNeb) {
+			plotTypeStdOut.add("E, last step");//if change here, remember to change later in this function
+			plotTypeStdOut.add("Error, last step");
+			plotTypeStdOut.add("Activation E");
+		}
 		if(fileData.hasScf) {
 			plotTypeStdOut.add("SCF E conv");
 			if(!fileData.getAbsoluteMag().isEmpty() || !fileData.getTotalMag().isEmpty()) {
@@ -921,6 +937,16 @@ public class OutputViewerController implements Initializable{
 		else if(plotType.equals("Ekin + Etot")) {
 			plotArray(fileData.getDataMd().get(0), fileData.getDataMd().get(3),
 					"Time/ps", "Totoal energy (Ekin + Etot)/Ry","Total energy (should be constant)",false);
+		}
+		else if(plotType.equals("E, last step")) {
+			plotScfArray(fileData.getNebEnergy(), "Image index", "Energy (eV)", "Total energy of each image");
+		}
+		else if(plotType.equals("Error, last step")) {
+			plotScfArray(fileData.getNebError(), "Image index", "Error (eV/A)", "Error of each image");
+		}
+		else if(plotType.equals("Activation E")) {
+			plotArray(fileData.getNebBarrierFwd(), "NEB Steps", "Activation energy (eV)", "Energy barrier forward",false);
+			plotArray(fileData.getNebBarrierBwd(), "NEB Steps", "Activation energy (eV)", "Energy barrier backward",false);
 		}
         
         displayScroll.setContent(lineChart);

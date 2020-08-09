@@ -72,6 +72,12 @@ public class FileDataClass {
 	
 	private ArrayList<ArrayList<Double>> dataMd;//4*n dimension
 	
+	//NEB
+	private ArrayList<ArrayList<Double>> nebEnergy;
+	private ArrayList<ArrayList<Double>> nebError;
+	private ArrayList<Double> nebBarrierFwd;
+	private ArrayList<Double> nebBarrierBwd;
+	
 	public Double fermiDos=null;
 	public EnumFileCategory fileCategory=null;
 	
@@ -103,6 +109,7 @@ public class FileDataClass {
 	public boolean isTddftTurbo = false;
 	public boolean isTddftSpectrum = false;
 	public boolean isPH = false;
+	public boolean isNeb = false;
 	
 	
 	//will be true when one scf just finished. Will be set back to false when one new mag is read
@@ -143,35 +150,39 @@ public class FileDataClass {
 		dataMd.add(new ArrayList<Double>());//Ekin
 		dataMd.add(new ArrayList<Double>());//temperature
 		dataMd.add(new ArrayList<Double>());//total energy (should be constant)
+		
+		nebEnergy = new ArrayList<ArrayList<Double>>();
+		nebError = new ArrayList<ArrayList<Double>>();
+		nebBarrierFwd = new ArrayList<Double>();
+		nebBarrierBwd = new ArrayList<Double>();
 	}
 	public ArrayList<ArrayList<ArrayList<Double>>> getBandsDatArray(){
 		return this.bandsDatArray;
 	}
+	public <T> void clearArray(ArrayList<T> arr) {
+		if(arr!=null) {
+			for(T ard:arr) {
+				if(ard!=null && ard.getClass()==ArrayList.class) {
+					//ShowAlert.showAlert("Debug", ard.toString());
+					((ArrayList<?>)ard).clear();
+				}
+			}
+			arr.clear();
+		}
+	}
 	public void clearAll() {
-		for(ArrayList<Double> ard:energyArray) {
-			if(ard!=null) {ard.clear();}
-		}
-		for(ArrayList<Double> ard:totalMag) {
-			if(ard!=null) {ard.clear();}
-		}
-		for(ArrayList<Double> ard:totalMagy) {
-			if(ard!=null) {ard.clear();}
-		}
-		for(ArrayList<Double> ard:totalMagz) {
-			if(ard!=null) {ard.clear();}
-		}
-		for(ArrayList<Double> ard:absoluteMag) {
-			if(ard!=null) {ard.clear();}
-		}
-		for(ArrayList<Double> ard:dosArray) {
-			if(ard!=null) {ard.clear();}
-		}
-		for(ArrayList<Double> ard:phononBandsDatArray) {
-			if(ard!=null) {ard.clear();}
-		}
-		for(ArrayList<Double> ard:tddftArray) {
-			if(ard!=null) {ard.clear();}
-		}
+		clearArray(energyArray);
+		clearArray(totalMag);
+		clearArray(totalMagy);
+		clearArray(totalMagz);
+		clearArray(absoluteMag);
+		clearArray(dosArray);
+		clearArray(phononBandsDatArray);
+		clearArray(tddftArray);
+		clearArray(nebEnergy);
+		clearArray(nebError);
+		clearArray(atomicPositions);
+
 		for(ArrayList<ArrayList<Double>> ard:bandsDatArray) {
 			if(ard!=null) {
 				for(ArrayList<Double> ard1:ard) {
@@ -180,32 +191,30 @@ public class FileDataClass {
 				ard.clear();
 			}
 		}
-		for(ArrayList<Atom> ard:atomicPositions) {
-			if(ard!=null) {ard.clear();}
-		}
+		bandsDatArray.clear();
+		
 		for(ArrayList<Double> arr:dataMd) {
 			arr.clear();//DO NOT CLEAR dataMd itself!
 		}
-		energyArray.clear();
+
 		fermiLevel.clear();
 		homoLevel.clear();
 		totalForce.clear();
 		totalPressure.clear();
-		
-		totalMag.clear();totalMagy.clear();totalMagz.clear();
-		absoluteMag.clear();
-		dosArray.clear();
+
 		dosHeader.clear();
-		bandsDatArray.clear();
+		
 		bandsHighSymmetryK.clear();
 		bandsHighSymmetryKXCoor.clear();
-		tddftArray.clear();
+
 		tddftHeader.clear();
 		
 		phOutInfo.clear();
-		phononBandsDatArray.clear();
 		phononKPoints.clear();
 		phononDielectricInfo = "";
+		
+		nebBarrierFwd.clear();
+		nebBarrierBwd.clear();
 		
 		errorMessage = "";
 		
@@ -213,7 +222,6 @@ public class FileDataClass {
 		//Further, DO NOT DO IT otherwise the workscene3d will not work for the in/out
 		//iGeoTemp = new InputAgentGeo();
 		
-		atomicPositions.clear();
 		alat = null;
 		cellParameter.clear();
 		finalPosition=false;
@@ -223,7 +231,7 @@ public class FileDataClass {
 		isJobStart = false;
 		hasScf=false;hasScfFinished=false;isMD=false;isMDFinished=false;isOpt=false;isOptFinished=false;
 		isNscf=false;isNscfFinished=false;isDos=false;isDosFinished=false;isPW=false;isPH=false;
-		isPwBands = false;isBandsPP = false;isTddftTurbo = false;isTddftSpectrum=false;
+		isPwBands = false;isBandsPP = false;isTddftTurbo = false;isTddftSpectrum=false;isNeb = false;
 		flagScfFinishedForTotalMag=false;
 		flagScfFinishedForTotalMagy=false;
 		flagScfFinishedForTotalMagz=false;
@@ -586,6 +594,7 @@ public class FileDataClass {
 		    String phononCache = "";
 		    boolean flagPhononStop = true;//true is not recording
 		    boolean flagDielectricStop = true;//true is not recording
+		    boolean flagNebRecord = false;//false is not recording
 		    
 		    while (sc.hasNextLine()) {
 		    	lineCount++;
@@ -613,6 +622,9 @@ public class FileDataClass {
 		    	if(strTmp.contains("Program BANDS")) {
 		    		this.isBandsPP = true;
 		    	}
+		    	if(strTmp.contains("Program NEB")) {
+		    		this.isNeb = true;
+		    	}
 		    	if(strTmp.contains("Program turboTDDFT")) {
 		    		this.isTddftTurbo = true;
 		    	}
@@ -624,6 +636,32 @@ public class FileDataClass {
 		    	}
 		    	if(strTmp.contains("starts")) {
 		    		this.isJobStart = true;
+		    	}
+		    	if(this.isNeb) {
+		    		if(strTmp.contains("--- iteration")){
+		    			this.nebEnergy.add(new ArrayList<Double>());
+		    			this.nebError.add(new ArrayList<Double>());
+		    		}
+		    		if(strTmp.contains("activation energy (->) =")){
+		    			Double dbTmp =  parseDouble(strTmp,4);
+		    			if(dbTmp!=null) {this.nebBarrierFwd.add(dbTmp);}
+		    			else{
+		    				ShowAlert.showAlert("Warning", "Cannot extract activation energy from line "+strTmp);
+		    			}
+		    		}
+		    		if(strTmp.contains("activation energy (<-) =")){
+		    			Double dbTmp =  parseDouble(strTmp,4);
+		    			if(dbTmp!=null) {this.nebBarrierBwd.add(dbTmp);}
+		    			else{
+		    				ShowAlert.showAlert("Warning", "Cannot extract activation energy from line "+strTmp);
+		    			}
+		    		}
+		    		if(flagNebRecord) {
+		    			flagNebRecord = parseNebEnergy(strTmp);
+		    		}
+		    		if(strTmp.contains("image        energy (eV)")){
+		    			flagNebRecord = true;
+		    		}
 		    	}
 		    	if(this.isPW) {
 			    	if(strTmp.contains("tau(") && !startCalc) {
@@ -825,6 +863,35 @@ public class FileDataClass {
 			return "IOException: "+e.getMessage();
 		}
 		return "";
+	}
+	private Double parseDouble(String strLine, int index) {
+		String[] splitted = strLine.trim().split("\\s+");//split the string by whitespaces
+		try {
+			Double dbTmpx =  Double.valueOf(splitted[index]);
+			return dbTmpx;
+		}catch(Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+	private boolean parseNebEnergy(String strLine) {
+		//return true to continue
+		//return false to abort recording
+		if(strLine.trim().isEmpty()) {return true;}
+		
+		String[] splitted = strLine.trim().split("\\s+");//split the string by whitespaces
+		try {
+			Double dbTmpEnergy =  Double.valueOf(splitted[1]);
+			Double dbTmpError =  Double.valueOf(splitted[2]);
+			if(dbTmpEnergy!=null && dbTmpError!=null) {//&& !nebEnergy.isEmpty() && !nebError.isEmpty()
+				nebEnergy.get(nebEnergy.size()-1).add(dbTmpEnergy);
+				nebError.get(nebError.size()-1).add(dbTmpError);
+				return true;
+			}
+		}catch(Exception e) {
+			//e.printStackTrace();
+		}
+		return false;
 	}
 	private void parseTotalMagnetization(String strLine) {
 		String[] splitted = strLine.trim().split("\\s+");//split the string by whitespaces
@@ -1335,6 +1402,8 @@ public class FileDataClass {
 			if(isNscf) {strTmp+="NSCF,";}
 			if(isDos) {strTmp+="DOS,";}
 			if(isPH) {strTmp+="Phonon,";}
+			if(isNeb) {strTmp+="NEB,";}
+			
 			if(this.isPwBands) {strTmp+="pwscf bands calculation.\n";}
 			if(this.isBandsPP) {strTmp+="bands program.\n";}
 			if(isTddftTurbo) {strTmp+="turbo TDDFT program.\n";}
@@ -1347,6 +1416,7 @@ public class FileDataClass {
 			if(isOpt) {strTmp+=(isOptFinished?"Optimization finished.":"Optimization not finished.")+"\n";}
 			if(isNscf) {strTmp+=(isNscfFinished?"NSCF finished.":"NSCF not finished.")+"\n";}
 			if(isDos) {strTmp+=(isDosFinished?"DOS finished.":"DOS not finished.")+"\n";}
+			
 			
 			//the whole job finished or not (last line of the output file)
 			if(isJobStart) {strTmp+=(isJobDone?"Job done.\n":"Job not done yet.\n");}
@@ -1375,6 +1445,31 @@ public class FileDataClass {
 						if(val!=null) {strTmp+=(val.toString()+",");}
 					}
 					strTmp+="\n";
+				}
+			}
+			
+			//NEB
+			if(isNeb) {
+				if(!this.nebBarrierFwd.isEmpty() || !this.nebBarrierBwd.isEmpty()) {
+					strTmp+="Activation energy forward:";
+					for(Double val:nebBarrierFwd) {
+						if(val!=null) {strTmp+=(val.toString()+",");}
+					}
+					strTmp+=" eV\n";
+					
+					strTmp+="Activation energy backward:";
+					for(Double val:nebBarrierBwd) {
+						if(val!=null) {strTmp+=(val.toString()+",");}
+					}
+					strTmp+=" eV\n";
+				}
+				if(!nebEnergy.isEmpty() || !nebError.isEmpty()) {
+					//+nebEnergy.size()+","+nebEnergy.get(0).size()
+					strTmp += "Total energy of each image(eV):";
+					strTmp += this.printArray(nebEnergy, "", "");
+					
+					strTmp += "Error of each image(eV/A):";
+					strTmp += this.printArray(nebError, "", "");
 				}
 			}
 			
@@ -1508,7 +1603,9 @@ public class FileDataClass {
 					if(ard.isEmpty()) {continue;}
 					strTmp+=("Step "+Integer.toString(cnt)+": ");
 					for(Double val:ard) {
-						if(val!=null) {strTmp+=(val.toString()+",");}
+						if(val!=null) {strTmp+=(val.toString()+",");
+							//ShowAlert.showAlert("Debug", val.toString());
+						}
 					}
 					strTmp+="\n";
 				}
@@ -1562,6 +1659,18 @@ public class FileDataClass {
 	}
 	public ArrayList<ArrayList<Double>> getPhononDat(){
 		return this.phononBandsDatArray;
+	}
+	public ArrayList<ArrayList<Double>> getNebEnergy(){
+		return this.nebEnergy;
+	}
+	public ArrayList<ArrayList<Double>> getNebError(){
+		return this.nebError;
+	}
+	public ArrayList<Double> getNebBarrierBwd(){
+		return this.nebBarrierBwd;
+	}
+	public ArrayList<Double> getNebBarrierFwd(){
+		return this.nebBarrierFwd;
 	}
 	
 }

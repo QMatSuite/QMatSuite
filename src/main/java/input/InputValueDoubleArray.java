@@ -23,10 +23,7 @@ import java.util.ArrayList;
 import com.error.InvalidTypeException;
 
 public class InputValueDoubleArray extends InputValue {
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = 6246154679191533185L;
+
 	private ArrayList<Double> paraNow = null;
 	private ArrayList<Integer> index = null;
 

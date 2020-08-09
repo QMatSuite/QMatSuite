@@ -18,14 +18,9 @@
  *******************************************************************************/
 package input;
 
-import java.io.Serializable;
 import java.util.LinkedHashMap;
 
-public abstract class InputSection implements Serializable{
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = -5978615968104371200L;
+public abstract class InputSection{
 	
 	protected LinkedHashMap<String, InputValue> parameterDict; 
 	protected Boolean boolRequired=false;

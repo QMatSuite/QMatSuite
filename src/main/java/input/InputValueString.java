@@ -21,10 +21,7 @@ package input;
 import com.error.InvalidTypeException;
 
 public class InputValueString extends InputValue {
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = 2924455053168830612L;
+
 	private final String paraDefault;
 	private String paraNow;
 	

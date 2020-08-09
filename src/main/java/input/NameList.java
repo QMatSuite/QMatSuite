@@ -22,10 +22,7 @@ import java.util.Set;
 import com.consts.Constants.EnumNameList;
 
 public class NameList extends InputSection{
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = -7707997872165494410L;
+
 	private EnumNameList nameEnum;
 	public NameList(EnumNameList nameE) {
 		super();

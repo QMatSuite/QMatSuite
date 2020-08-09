@@ -47,6 +47,7 @@ public interface DefaultFileNames {
 		workspace,
 		pseudolibroot,
 		qePath,
+		useParallel,
 		ompNumThreads,
 		mpirunNumCores
 	}

@@ -21,10 +21,6 @@ package input;
 import com.error.InvalidTypeException;
 
 public class InputValueBoolean extends InputValue {
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = 1372244252110504167L;
 	private final Boolean paraDefault;
 	private Boolean paraNow = null;//only show up in generating input from agent
 	
