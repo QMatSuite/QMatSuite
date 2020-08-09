@@ -16,7 +16,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<ScrollPane xmlns="http://javafx.com/javafx/8.0.1" xmlns:fx="http://javafx.com/fxml/1">
+<ScrollPane xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
    <content>
       <VBox>
          <children>
@@ -34,17 +34,17 @@
             </BorderPane>
             <GridPane>
               <columnConstraints>
-                <ColumnConstraints hgrow="SOMETIMES" maxWidth="161.5" minWidth="10.0" prefWidth="161.5" />
-                <ColumnConstraints hgrow="SOMETIMES" maxWidth="121.5" minWidth="10.0" prefWidth="85.0" />
-                  <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="40.0" />
-                  <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="55.0" />
+                <ColumnConstraints hgrow="SOMETIMES" maxWidth="161.5" minWidth="10.0" prefWidth="103.5" />
+                <ColumnConstraints hgrow="SOMETIMES" maxWidth="157.5" minWidth="10.0" prefWidth="150.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="79.5" minWidth="10.0" prefWidth="55.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="75.5" minWidth="10.0" prefWidth="69.0" />
               </columnConstraints>
               <rowConstraints>
                 <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
               </rowConstraints>
                <children>
-                  <Label fx:id="labelGeoLeft" prefHeight="17.0" prefWidth="154.0" text="Use the following geometry: " GridPane.halignment="RIGHT" />
-                  <ComboBox fx:id="comboGeo" prefHeight="25.0" prefWidth="95.0" GridPane.columnIndex="1" />
+                  <Label fx:id="labelGeoLeft" prefHeight="17.0" prefWidth="154.0" text="Use this geometry: " GridPane.halignment="RIGHT" />
+                  <ComboBox fx:id="comboGeo" prefHeight="25.0" prefWidth="142.0" GridPane.columnIndex="1" />
                   <Label fx:id="labelGeoRight" GridPane.columnIndex="2" />
                   <Button fx:id="buttonDeleteGeo" mnemonicParsing="false" text="Delete" GridPane.columnIndex="2" />
                   <Button fx:id="buttonDuplicateGeo" mnemonicParsing="false" text="Duplicate" GridPane.columnIndex="3" />
