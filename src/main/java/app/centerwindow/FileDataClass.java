@@ -1466,10 +1466,10 @@ public class FileDataClass {
 				if(!nebEnergy.isEmpty() || !nebError.isEmpty()) {
 					//+nebEnergy.size()+","+nebEnergy.get(0).size()
 					strTmp += "Total energy of each image(eV):";
-					strTmp += this.printArray(nebEnergy, "", "");
+					strTmp += this.printArray(nebEnergy, "", "","image");
 					
 					strTmp += "Error of each image(eV/A):";
-					strTmp += this.printArray(nebError, "", "");
+					strTmp += this.printArray(nebError, "", "","image");
 				}
 			}
 			
@@ -1593,6 +1593,9 @@ public class FileDataClass {
 		return strTmp;
 	}
 	private String printArray(ArrayList<ArrayList<Double>> arrTmp, String smallTitle, String largeTitle) {
+		return printArray(arrTmp, smallTitle, largeTitle,"Step ");
+	}
+	private String printArray(ArrayList<ArrayList<Double>> arrTmp, String smallTitle, String largeTitle, String seperatStr) {
 		String strTmp = "";
 		int cnt = 0;
 		if(arrTmp.size()<=2) {
@@ -1601,7 +1604,7 @@ public class FileDataClass {
 				if(ard!=null) {
 					cnt++;
 					if(ard.isEmpty()) {continue;}
-					strTmp+=("Step "+Integer.toString(cnt)+": ");
+					strTmp+=(seperatStr+Integer.toString(cnt)+": ");
 					for(Double val:ard) {
 						if(val!=null) {strTmp+=(val.toString()+",");
 							//ShowAlert.showAlert("Debug", val.toString());
@@ -1617,7 +1620,7 @@ public class FileDataClass {
 				if(ard!=null) {
 					cnt++;
 					if(ard.isEmpty()) {continue;}
-					strTmp+=("Step "+Integer.toString(cnt)+": "+ard.get(ard.size()-1).toString()+",");
+					strTmp+=(seperatStr+Integer.toString(cnt)+": "+ard.get(ard.size()-1).toString()+",");
 				}
 				if((cnt % 5) == 0) {
 					strTmp+="\n";
