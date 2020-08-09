@@ -22,10 +22,10 @@ package app.input;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Objects;
 import java.util.ResourceBundle;
 import com.consts.Constants.EnumStep;
 import com.error.ShowAlert;
-
 import agent.InputAgentGeo;
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
@@ -33,6 +33,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.control.Accordion;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextField;
 import javafx.scene.control.TitledPane;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
@@ -58,7 +59,10 @@ public class InputGeoController extends InputController{
 	atomsPane;
 	
 	@FXML private Label labelGeoLeft,
-	labelGeoRight;
+	labelGeoRight,
+	labelIndex;
+	
+	@FXML private TextField textGeoName;
 	
 	@FXML private ComboBox<String> comboGeo;
 	
@@ -70,7 +74,8 @@ public class InputGeoController extends InputController{
 
 	@FXML private Button buttonDeleteGeo,
 	buttonDuplicateGeo,
-	buttonPasteExternal;
+	buttonPasteExternal,
+	buttonRename;
 	
     private VBox vboxAtoms,
     vboxCell,
@@ -101,7 +106,11 @@ public class InputGeoController extends InputController{
 			comboGeo.getSelectionModel().selectedIndexProperty().addListener((ov, oldVal, newVal) -> {
 				if((int) newVal != -1) {
 					mainClass.projectManager.setCurrentGeoInd((int) newVal);
+					textGeoName.setText(comboGeo.getSelectionModel().getSelectedItem());
 					loadProjectParameters();
+				}
+				else {
+					textGeoName.setText("");
 				}
 			});
 			try {
@@ -128,6 +137,23 @@ public class InputGeoController extends InputController{
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
+			
+			labelIndex.textProperty().bind(comboGeo.getSelectionModel().selectedIndexProperty().add(1).asString());
+			buttonRename.setOnAction((event) -> {
+				String strTmp = textGeoName.getText();
+				String originalTmp = comboGeo.getSelectionModel().getSelectedItem();
+				int indTmp = comboGeo.getSelectionModel().getSelectedIndex();
+				if(strTmp!=null && !strTmp.isEmpty() && !strTmp.equals(originalTmp)) {
+				//indTmp!=-1 check not necessary. In principle !strTmp.equals(originalTmp) check is also not necessary
+					boolean isSet = mainClass.projectManager.setGeoName(indTmp, strTmp);
+					if(isSet) {
+						comboGeo.getItems().set(indTmp, strTmp);
+						return;
+					}
+				}
+				ShowAlert.showAlert("Warning", "Cannot change geometry name. "
+						+ "Either the name is the same as original, or conflicts with other existing names.");
+			});
 			
 	    	//PasteExternalWindowController
 			//******later please generalize this
@@ -175,6 +201,21 @@ public class InputGeoController extends InputController{
 			});
 		}
 	}
+    private boolean checkSameCombo() {
+    	//return true means same
+    	ArrayList<String> geoNameArr = mainClass.projectManager.getGeoName();//should not be null
+
+    	if(comboGeo.getItems().size() != geoNameArr.size()) {
+    		return false;
+    	}
+    	else {
+    		for(int i=0;i<comboGeo.getItems().size();i++) {
+    			if(!Objects.equals(comboGeo.getItems().get(i), geoNameArr.get(i))) {return false;}
+    		}
+    		return true;
+    	}
+    	
+    }
     public void loadGeoIndCombo() {
     	int sizeGeoList = mainClass.projectManager.getGeoListSize();
     	ArrayList<String> arrString = mainClass.projectManager.getGeoName();
@@ -186,11 +227,12 @@ public class InputGeoController extends InputController{
 			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Different size of geoList and geoName.");
 			return;
 		}
-		if(comboGeo.getItems().size() != sizeGeoList) {
+		if(!checkSameCombo()) {
 			comboGeo.getItems().clear();
-			for(int i=0;i<sizeGeoList;i++) {
-				comboGeo.getItems().add(Integer.toString(i+1)+"_"+arrString.get(i));
-			}
+//			for(int i=0;i<sizeGeoList;i++) {
+//				comboGeo.getItems().add(Integer.toString(i+1)+"_"+arrString.get(i));
+//			}
+			comboGeo.getItems().addAll(arrString);
 		}
 		Integer intTmp = mainClass.projectManager.getActiveGeoInd();
 		if(intTmp==null || intTmp<0 || intTmp>=comboGeo.getItems().size()) {
@@ -216,10 +258,12 @@ public class InputGeoController extends InputController{
     	labelGeoNote.setVisible(true);
     	titlePaneElements.setVisible(false);titlePaneCell.setVisible(false);titlePaneAtoms.setVisible(false);
     	buttonPasteExternal.setVisible(false);
+    	buttonDeleteGeo.setDisable(true);
     }
     public void setEnabled() {
     	labelGeoNote.setVisible(false);
     	titlePaneElements.setVisible(true);titlePaneCell.setVisible(true);titlePaneAtoms.setVisible(true);
     	buttonPasteExternal.setVisible(true);
+    	buttonDeleteGeo.setDisable(false);
     }
 }

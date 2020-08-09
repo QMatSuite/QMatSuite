@@ -51,6 +51,7 @@ public class CalculationBandsClass extends CalculationClass{
 		inputList.put(EnumStep.SCF,new PwInput());
 		inputList.put(EnumStep.BANDS,new PwInput());
 		inputList.put(EnumStep.BANDSPP,new BandsInput());
+		inputList.put(EnumStep.BANDSPP2,new BandsInput());//for spin polarized bands calculation, second spin
 		
 		
 		//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", "Calc. bands "+agentList.containsKey(EnumStep.BANDS));
@@ -81,7 +82,22 @@ public class CalculationBandsClass extends CalculationClass{
 		cis.add(inputList.get(EnumStep.BANDS).genInput(EnumStep.BANDS));
 		
 		inputList.get(EnumStep.BANDSPP).clearErrorMessage();
-		cis.add(inputList.get(EnumStep.BANDSPP).genInput(EnumStep.BANDSPP));
+		
+		InputAgentScf iScf = (InputAgentScf)agentList.get(EnumStep.SCF);
+		if(iScf.setMag && iScf.nspin.equals(2)) {//collinear calculation
+			((BandsInput)inputList.get(EnumStep.BANDSPP)).setSpinUp();
+			cis.add(inputList.get(EnumStep.BANDSPP).genInput(EnumStep.BANDSPP));
+			
+			inputList.get(EnumStep.BANDSPP2).clearErrorMessage();
+			((BandsInput)inputList.get(EnumStep.BANDSPP2)).setSpinDown();
+			cis.add(inputList.get(EnumStep.BANDSPP2).genInput(EnumStep.BANDSPP2));
+		}
+		else {
+			((BandsInput)inputList.get(EnumStep.BANDSPP)).setNoSpin();
+			cis.add(inputList.get(EnumStep.BANDSPP).genInput(EnumStep.BANDSPP));
+		}
+		
+		
 		
 		return cis;
 
