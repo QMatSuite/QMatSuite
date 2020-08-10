@@ -824,6 +824,7 @@ public class ProjectManager{
 			newPath = new File(pseudoLibPath).getAbsolutePath();
 			e.printStackTrace();
 		}
+		//ShowAlert.showAlert("Debug", newPath+"\n"+pseudoLibPath);
 		PseudoPotential.setRootFolder(new File(newPath));
 		this.pseudoLibPath = newPath;
 	}

@@ -202,6 +202,8 @@ public class MainWindowController implements Initializable{
 			toggleGeometry();
 		}
 		else {
+			this.showInputButton.setDisable(false);
+			this.runJob.setDisable(false);
 			String calcNameTmp = newValue.getValue().getCalculation();
 			openCalc(calcNameTmp);
 			contOutput.calculationFolderChange(calcNameTmp);
@@ -304,7 +306,7 @@ public class MainWindowController implements Initializable{
 		splitOutput.prefWidthProperty().bind(workSpaceTabPane.widthProperty());
 		splitOutput.prefHeightProperty().bind(workSpaceTabPane.heightProperty());
 		splitOutput.widthProperty().addListener((obs, oldVal, newVal) -> {
-			splitOutput.setDividerPosition(0, 0.1);
+			splitOutput.setDividerPosition(0, 0.13);
 		});
 		
 		//workTabContent =  new WorkTabContent(mainClass,workSpaceTabPane,projectTabDict,contGeo);
@@ -543,6 +545,8 @@ public class MainWindowController implements Initializable{
 							tabTmp.setContent(tf);
 						}
 						contTree.setOpenCloseButtons(true);
+						this.showInputButton.setDisable(true);//disable show input
+						this.runJob.setDisable(true);//disable run job
 						return;
 					}
 					
@@ -953,7 +957,7 @@ public class MainWindowController implements Initializable{
 							break;
 					case pplib:isValid = ((new File(qeDir,DefaultFileNames.pseudoDojoDir)).exists() || 
 							(new File(qeDir,DefaultFileNames.psLibraryDir)).exists() ||
-							(new File(qeDir,DefaultFileNames.ssspDir)).exists());break;
+							(new File(qeDir,DefaultFileNames.ssspDir)).exists());break;//if add more libs, remember to change also iGeo.getPseudodir()
 					case workspace: isValid = true;break;
 					default:ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Unrecognized PathSettings!");return;
 				}
@@ -1046,6 +1050,8 @@ public class MainWindowController implements Initializable{
 			tabPaneStatusRight = true;
 		}
 		
+		this.showInputButton.setDisable(true);
+		this.runJob.setDisable(true);
 	}
 	public void addRightPane(ScrollPane scroll,EnumStep es) {
 		if (tabPaneRight==null) return;

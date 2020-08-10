@@ -157,7 +157,7 @@ public class InputGeoController extends InputController{
 			
 	    	//PasteExternalWindowController
 			//******later please generalize this
-	    	Scene scenePaste = new Scene(borderPaste);
+	    	Scene scenePaste = new Scene(borderPaste);//,360,310
 	        Stage stagePaste = new Stage();
 	        stagePaste.setTitle("Paste geometry from external");
 	        stagePaste.initModality(Modality.APPLICATION_MODAL);

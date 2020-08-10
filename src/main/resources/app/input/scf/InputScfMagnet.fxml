@@ -131,12 +131,12 @@
       </GridPane>
       <GridPane fx:id="grid2">
          <columnConstraints>
-            <ColumnConstraints hgrow="SOMETIMES" maxWidth="53.5" minWidth="10.0" prefWidth="25.0" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="53.5" minWidth="10.0" prefWidth="20.0" />
             <ColumnConstraints hgrow="SOMETIMES" maxWidth="105.5" minWidth="10.0" prefWidth="30.0" />
             <ColumnConstraints hgrow="SOMETIMES" maxWidth="132.5" minWidth="10.0" prefWidth="55.0" />
             <ColumnConstraints hgrow="SOMETIMES" maxWidth="190.5" minWidth="10.0" prefWidth="55.0" />
             <ColumnConstraints hgrow="SOMETIMES" maxWidth="190.5" minWidth="10.0" prefWidth="55.0" />
-            <ColumnConstraints hgrow="SOMETIMES" maxWidth="190.5" minWidth="10.0" prefWidth="44.5" />
+            <ColumnConstraints hgrow="SOMETIMES" maxWidth="190.5" minWidth="10.0" prefWidth="60.0" />
          </columnConstraints>
          <rowConstraints>
             <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />

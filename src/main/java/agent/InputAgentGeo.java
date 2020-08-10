@@ -32,7 +32,9 @@ import com.consts.Constants.EnumUnitAtomPos;
 import com.consts.Constants.EnumUnitCellAngle;
 import com.consts.Constants.EnumUnitCellLength;
 import com.consts.Constants.EnumUnitCellParameter;
+import com.programconst.DefaultFileNames;
 import com.pseudopot.EnumPseudoPotLib;
+import com.pseudopot.PseudoPotential;
 
 public class InputAgentGeo extends InputAgent{
 	/**
@@ -64,7 +66,7 @@ public class InputAgentGeo extends InputAgent{
 	public Integer typePrec;
 	public WrapperBoolean isRelativ;//whether or not fully relativistic
 	public ArrayList<Element> elemListAll;
-	private String pseudodir;//pseudodir, careful, have to sync with ProjectManager.pseudoLibPath and settings of the lib
+	private String pseudodir;//pseudodir, CAREFUL, have to sync with Psettings of the lib. No longer contains mainClass.projectManager.getPseudoLibPath()
 	
 	public InputAgentGeo() {
 
@@ -454,10 +456,23 @@ public class InputAgentGeo extends InputAgent{
 		return msg;
 	}
 	public String getPseudodir() {
-		if(pseudodir==null || pseudodir.isEmpty()) {return pseudodir;}
-		return (new File(pseudodir)).getAbsolutePath();
+		if(pseudodir==null) {return null;}
+		//to be compatible with previous versions, where the root folder is included
+		int i1 = pseudodir.indexOf(DefaultFileNames.pseudoDojoDir);
+		int i2 = pseudodir.indexOf(DefaultFileNames.psLibraryDir);
+		int i3 = pseudodir.indexOf(DefaultFileNames.ssspDir);
+		if(i1!=-1) {
+			pseudodir=pseudodir.substring(i1);
+		}
+		if(i2!=-1) {
+			pseudodir=pseudodir.substring(i2);
+		}
+		if(i3!=-1) {
+			pseudodir=pseudodir.substring(i3);
+		}
+		return (new File(PseudoPotential.getRootFolder(),pseudodir)).getAbsolutePath();
 	}
 	public void setPseudodir(String pseudodir) {
-		this.pseudodir = pseudodir;
+		this.pseudodir = pseudodir;//without root folder directory
 	}
 }

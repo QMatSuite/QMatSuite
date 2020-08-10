@@ -76,9 +76,9 @@
             </BorderPane>
             <GridPane>
               <columnConstraints>
-                <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
-                <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
-                  <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+                <ColumnConstraints hgrow="SOMETIMES" maxWidth="143.99998779296874" minWidth="10.0" prefWidth="140.00003662109376" />
+                <ColumnConstraints hgrow="SOMETIMES" maxWidth="121.20000457763672" minWidth="10.0" prefWidth="97.60001220703126" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="144.79999999999998" minWidth="10.0" prefWidth="141.59998779296873" />
               </columnConstraints>
               <rowConstraints>
                 <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
