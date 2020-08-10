@@ -150,7 +150,7 @@ public class FirstMainWindowTest extends MainWindowTest{
 		TextField textZ = (TextField) from(nd).lookup("#textZ").queryTextInputControl();
 		clickOn(textZ).type(KeyCode.DIGIT0);//0.0
 
-		Node addButton = from(nd).lookup("#addAtom").query();
+		Node addButton = from(nd).lookup("#buttonAddEnd").query();
 		Node clearButton = from(nd).lookup("#clearInput").query();
 		
 		clickOn(addButton);

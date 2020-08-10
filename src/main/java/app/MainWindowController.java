@@ -303,6 +303,7 @@ public class MainWindowController implements Initializable{
 			e.printStackTrace();
 		}
 		
+		
 		splitOutput.prefWidthProperty().bind(workSpaceTabPane.widthProperty());
 		splitOutput.prefHeightProperty().bind(workSpaceTabPane.heightProperty());
 		splitOutput.widthProperty().addListener((obs, oldVal, newVal) -> {
@@ -859,7 +860,7 @@ public class MainWindowController implements Initializable{
 					continue;
 				}
 				mainClass.jobManager.addNode(new JobNode(fl.getPath(),mpiCommand,
-						mainClass.projectManager.qePath+File.separator+cis.get(j).commandName+postFixCommand,cis.get(j).stepName.toString()));
+						new File(mainClass.projectManager.qePath,cis.get(j).commandName+postFixCommand).getAbsolutePath(),cis.get(j).stepName.toString()));
 			}
 			
 			//just for test use
