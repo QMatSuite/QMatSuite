@@ -52,7 +52,7 @@ public abstract class PseudoPotential {
 		File fl = new File(rootFolder,libFolderName);
 		return fl.canRead();
 	}
-	public File getRootFolder() {
+	public static File getRootFolder() {
 		return rootFolder;
 	}
 	public static void setRootFolder(File rt) {

@@ -13,9 +13,9 @@
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox fx:id="vboxKpath" prefWidth="363.0" xmlns="http://javafx.com/javafx/8.0.1" xmlns:fx="http://javafx.com/fxml/1">
+<VBox fx:id="vboxKpath" prefWidth="370.0" xmlns="http://javafx.com/javafx/8.0.1" xmlns:fx="http://javafx.com/fxml/1">
    <children>
-      <GridPane hgap="3.0" prefWidth="360.0" vgap="3.0">
+      <GridPane hgap="2.0" prefWidth="370.0" vgap="2.0">
          <children>
             <ComboBox fx:id="comboKPathUnit" prefHeight="25.0" prefWidth="77.0" GridPane.rowIndex="2" />
             <Button fx:id="infoKPath" mnemonicParsing="false" text="i" GridPane.columnIndex="7" GridPane.rowIndex="2" />
@@ -24,13 +24,13 @@
             <Label text="ky" GridPane.columnIndex="3" GridPane.rowIndex="1" />
             <Label text="kz" GridPane.columnIndex="4" GridPane.rowIndex="1" />
             <Label text="n points" GridPane.columnIndex="5" GridPane.rowIndex="1" />
-            <ToolBar prefHeight="35.0" prefWidth="132.0" GridPane.columnSpan="8" GridPane.rowIndex="3">
+            <ToolBar GridPane.columnSpan="8" GridPane.rowIndex="3">
                <items>
                   <Label text="Add to" />
                   <Button fx:id="buttonAddEnd" mnemonicParsing="false" text="End" />
                   <Button fx:id="buttonAddBegin" mnemonicParsing="false" text="Begin" />
-                  <Button fx:id="buttonAddAfter" mnemonicParsing="false" text="After selection" />
-                  <Button fx:id="buttonAddBefore" mnemonicParsing="false" text="Before selection" />
+                  <Button fx:id="buttonAddAfter" mnemonicParsing="false" text="After select" />
+                  <Button fx:id="buttonAddBefore" mnemonicParsing="false" text="Before select" />
                </items>
             </ToolBar>
             <TextField fx:id="textKx" GridPane.columnIndex="2" GridPane.rowIndex="2" />
@@ -41,7 +41,7 @@
             <TextField fx:id="textKLabel" GridPane.columnIndex="1" GridPane.rowIndex="2" />
             <Label fx:id="statusTextField" GridPane.columnSpan="7" GridPane.rowIndex="5" />
             <Button fx:id="buttonPasteExternal" mnemonicParsing="false" text="Paste from external" GridPane.columnSpan="4" />
-            <ToolBar prefHeight="40.0" prefWidth="200.0" GridPane.columnSpan="8" GridPane.rowIndex="4">
+            <ToolBar GridPane.columnSpan="8" GridPane.rowIndex="4">
                <items>
                   <Button fx:id="buttonDelete" mnemonicParsing="false" text="Delete" />
                   <Button fx:id="buttonEdit" mnemonicParsing="false" text="Update" />

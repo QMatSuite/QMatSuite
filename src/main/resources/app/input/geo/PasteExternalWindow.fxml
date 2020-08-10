@@ -13,26 +13,28 @@
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane fx:id="borderPaneMain" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="300.0" prefWidth="310.0" xmlns="http://javafx.com/javafx/8.0.1" xmlns:fx="http://javafx.com/fxml/1">
+<BorderPane fx:id="borderPaneMain" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="310.0" prefWidth="350.0" xmlns="http://javafx.com/javafx/8.0.1" xmlns:fx="http://javafx.com/fxml/1">
    <bottom>
-      <GridPane BorderPane.alignment="CENTER">
+      <GridPane hgap="3.0" BorderPane.alignment="CENTER">
          <columnConstraints>
-            <ColumnConstraints hgrow="ALWAYS" maxWidth="140.0" minWidth="10.0" prefWidth="83.5" />
-            <ColumnConstraints hgrow="ALWAYS" maxWidth="207.5" minWidth="10.0" prefWidth="127.5" />
-            <ColumnConstraints hgrow="SOMETIMES" maxWidth="216.0" minWidth="10.0" prefWidth="46.5" />
-            <ColumnConstraints hgrow="SOMETIMES" maxWidth="144.5" minWidth="10.0" prefWidth="55.5" />
+            <ColumnConstraints hgrow="ALWAYS" maxWidth="1.7976931348623157E308" minWidth="10.0" />
+            <ColumnConstraints maxWidth="216.0" minWidth="70.0" prefWidth="75.0" />
+            <ColumnConstraints maxWidth="144.5" minWidth="70.0" prefWidth="75.0" />
          </columnConstraints>
          <rowConstraints>
             <RowConstraints minHeight="10.0" vgrow="SOMETIMES" />
          </rowConstraints>
          <children>
-            <Button fx:id="buttonSave" mnemonicParsing="false" text="Save" GridPane.columnIndex="2" />
-            <Button fx:id="buttonCancel" mnemonicParsing="false" text="Cancel" GridPane.columnIndex="3" />
+            <Button fx:id="buttonSave" mnemonicParsing="false" prefWidth="80.0" text="Save" GridPane.columnIndex="1" />
+            <Button fx:id="buttonCancel" mnemonicParsing="false" prefWidth="80.0" text="Cancel" GridPane.columnIndex="2" />
             <Button fx:id="buttonClearAll" mnemonicParsing="false" text="Clear All" />
          </children>
          <BorderPane.margin>
             <Insets bottom="5.0" />
          </BorderPane.margin>
+         <padding>
+            <Insets right="5.0" />
+         </padding>
       </GridPane>
    </bottom>
    <top>
@@ -46,7 +48,7 @@
       </VBox>
    </top>
    <center>
-      <TabPane fx:id="tabPanePaste" prefHeight="200.0" prefWidth="200.0" tabClosingPolicy="UNAVAILABLE" BorderPane.alignment="CENTER">
+      <TabPane fx:id="tabPanePaste" tabClosingPolicy="UNAVAILABLE" BorderPane.alignment="CENTER">
         <tabs>
           <Tab fx:id="tabInput" text="Input">
                <content>

@@ -16,9 +16,9 @@
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 
-<SplitPane fx:id="rootSplitPane" dividerPositions="0.18" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
+<SplitPane fx:id="rootSplitPane" dividerPositions="0.18" prefWidth="650.0" xmlns="http://javafx.com/javafx/8.0.1" xmlns:fx="http://javafx.com/fxml/1">
    <items>
-      <VBox fx:id="vboxFiles" minWidth="110.0">
+      <VBox fx:id="vboxFiles" minWidth="145.0">
          <children>
             <Label text="Files" />
             <ToolBar>
@@ -32,7 +32,7 @@
                 <Button fx:id="buttonShowInSystem" mnemonicParsing="false" text="Show in system" />
               </items>
             </ToolBar>
-            <ListView fx:id="listFiles" prefHeight="148.0" prefWidth="113.0" VBox.vgrow="SOMETIMES" />
+            <ListView fx:id="listFiles" prefHeight="148.0" VBox.vgrow="SOMETIMES" />
          </children>
       </VBox>
       <VBox fx:id="vboxMainPlot">
@@ -52,16 +52,17 @@
             </HBox>
             <HBox fx:id="hboxPlotToolbar" layoutX="10.0" layoutY="135.0">
                <children>
-                  <Label text="Plot Toolbar" />
+                  <Label minWidth="85.0" prefWidth="90.0" text="Plot Toolbar" />
                   <Separator orientation="VERTICAL" />
-                  <GridPane prefWidth="370.0">
+                  <GridPane hgap="2.0" HBox.hgrow="ALWAYS">
                     <columnConstraints>
-                        <ColumnConstraints hgrow="SOMETIMES" maxWidth="76.5" minWidth="50.0" prefWidth="58.0" />
-                        <ColumnConstraints hgrow="SOMETIMES" maxWidth="95.5" minWidth="70.0" prefWidth="88.0" />
-                      <ColumnConstraints hgrow="SOMETIMES" maxWidth="47.5" minWidth="33.0" prefWidth="44.0" />
-                      <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="55.0" />
-                        <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="55.0" />
-                        <ColumnConstraints hgrow="SOMETIMES" minWidth="40.0" prefWidth="55.0" />
+                        <ColumnConstraints minWidth="65.0" />
+                        <ColumnConstraints minWidth="95.0" />
+                      <ColumnConstraints maxWidth="47.5" minWidth="50.0" />
+                      <ColumnConstraints minWidth="30.0" prefWidth="120.0" />
+                        <ColumnConstraints minWidth="30.0" prefWidth="120.0" />
+                        <ColumnConstraints minWidth="75.0" />
+                        <ColumnConstraints hgrow="SOMETIMES" />
                     </columnConstraints>
                     <rowConstraints>
                       <RowConstraints vgrow="SOMETIMES" />
@@ -74,12 +75,12 @@
                         <TextField fx:id="textYlimLow" GridPane.columnIndex="3" GridPane.rowIndex="1" />
                         <TextField fx:id="textYlimHigh" GridPane.columnIndex="4" GridPane.rowIndex="1" />
                         <Label text="y range" GridPane.columnIndex="2" GridPane.rowIndex="1" />
-                        <ComboBox fx:id="comboPlot" prefHeight="25.0" prefWidth="99.0" GridPane.columnIndex="1" />
+                        <ComboBox fx:id="comboPlot" prefWidth="130.0" GridPane.columnIndex="1" />
                         <Label fx:id="labelPlot" text="Plot Type" />
-                        <ToggleButton fx:id="buttonShowMarker" mnemonicParsing="false" prefHeight="25.0" prefWidth="98.0" text="Show Marker" GridPane.columnIndex="1" GridPane.rowIndex="1" />
-                        <ToggleButton fx:id="toggleAutoRange" mnemonicParsing="false" prefHeight="25.0" prefWidth="55.0" text="Auto" GridPane.columnIndex="5" />
+                        <ToggleButton fx:id="buttonShowMarker" mnemonicParsing="false" prefWidth="130.0" text="Show Marker" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+                        <ToggleButton fx:id="toggleAutoRange" mnemonicParsing="false" prefWidth="75.0" text="Auto" GridPane.columnIndex="5" />
                         <ToggleButton fx:id="toggleShiftFermi" mnemonicParsing="false" selected="true" text="Shift E_F" GridPane.rowIndex="1" />
-                        <ToggleButton fx:id="toggleLegend" mnemonicParsing="false" selected="true" text="Legend" GridPane.columnIndex="5" GridPane.rowIndex="1" />
+                        <ToggleButton fx:id="toggleLegend" mnemonicParsing="false" prefWidth="75.0" selected="true" text="Legend" GridPane.columnIndex="5" GridPane.rowIndex="1" />
                      </children>
                   </GridPane>
                   <Separator orientation="VERTICAL" />
