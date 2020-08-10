@@ -55,7 +55,9 @@ launch4j {
     headerType="gui"
     mainClassName = 'main.Main'
     jdkPreference = "jreOnly"
-    outfile = "quantumVITAS-0.0.1-SNAPSHOT.exe"
+    outfile = "quantumVITAS-0.2.0.exe"
+    version = "0.2.0"
+    copyright = "Haonan Huang"
     icon = "${projectDir}/docs/images/dark_small_icon.ico"
     jar = '../libs/quantumVITAS-0.0.1-SNAPSHOT.jar'
 }
