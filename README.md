@@ -21,7 +21,7 @@ The project is actively evolving, and we have offered [the first two early acces
 
 ## Main user interface 
 
-![main user interface](docs/images/uipreview.PNG)
+![main user interface](docs/images/uipreview_v2.PNG)
 
 ## License
 
