@@ -33,10 +33,24 @@ import javafx.scene.control.Tooltip;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Label;
 import main.MainClass;
+import agent.InputAgent;
+import agent.InputAgentBands;
+import agent.InputAgentDos;
+import agent.InputAgentGeo;
+import agent.InputAgentMd;
+import agent.InputAgentNeb;
+import agent.InputAgentNscf;
+import agent.InputAgentOpt;
+import agent.InputAgentPhonon;
+import agent.InputAgentScf;
+import agent.InputAgentTddft;
 import agent.WrapperBoolean;
 import agent.WrapperDouble;
 import agent.WrapperEnum;
 import agent.WrapperInteger;
+
+import java.lang.reflect.Field;
+
 import com.consts.QeDocumentation;
 import com.consts.Constants.EnumInProgram;
 import com.consts.Constants.EnumNumCondition;
@@ -56,8 +70,8 @@ public abstract class InputController implements Initializable{
 		setFieldList = new SetFieldList(mc,es);
 		enumStep = es;
 	}
-	protected void loadProjectParameters() {
-		setFieldList.setAllFields();
+	public void loadProjectParameters() {
+		setFieldList.setAllFields(this);
 	}
 	protected void initParameterSet(ToggleButton tb, String fieldName, String onText, String offText, CheckBox checkReset, Button buttonInfo, String infoKey, CheckBox checkResetAll) {
 		initParameterSet(tb, fieldName, onText, offText, checkReset, buttonInfo, checkResetAll);
@@ -125,7 +139,7 @@ public abstract class InputController implements Initializable{
 				if(newValue) {tb.setText(onText);}
 				else {tb.setText(offText);}
 			}
-			Object obj = mainClass.projectManager.getObject(fieldName, enumStep);
+			Object obj = getObject(fieldName, enumStep);
 			if(obj==null) return;
 			try {
 				if(statusTextField!=null) {statusTextField.setText("");}
@@ -158,7 +172,7 @@ public abstract class InputController implements Initializable{
     	}
 		tf.textProperty().addListener((observable, oldValue, newValue) -> {
 			if(newValue==null) return;
-			Object obj = mainClass.projectManager.getObject(fieldName, enumStep);
+			Object obj = getObject(fieldName, enumStep);
 			if(obj==null) return;
 			try {
 				if("double".equals(type)) {
@@ -263,7 +277,7 @@ public abstract class InputController implements Initializable{
 		cb.setItems(mixi);
 		cb.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
 			if(newValue==null) return;
-			Object obj = mainClass.projectManager.getObject(fieldName, enumStep);
+			Object obj = getObject(fieldName, enumStep);
 			if(obj==null) return;
 			try {
 				if(statusTextField!=null) {statusTextField.setText("");}
@@ -285,7 +299,7 @@ public abstract class InputController implements Initializable{
 		cbResetToggle.selectedProperty().addListener((observable, oldValue, newValue) ->
 		{ 
 			if(newValue==null) return;
-			Object obj = mainClass.projectManager.getObject(fieldName, enumStep);
+			Object obj = getObject(fieldName, enumStep);
 			if(obj==null) return;
 			try {
 				WrapperBoolean wb = (WrapperBoolean) obj;
@@ -315,7 +329,7 @@ public abstract class InputController implements Initializable{
 		cbResetToggle.selectedProperty().addListener((observable, oldValue, newValue) ->
 		{ 
 			if(newValue==null) return;
-			Object obj = mainClass.projectManager.getObject(fieldName, enumStep);
+			Object obj = getObject(fieldName, enumStep);
 			if(obj==null) return;
 			try {
 				WrapperInteger wb = (WrapperInteger) obj;
@@ -346,7 +360,7 @@ public abstract class InputController implements Initializable{
 		cbResetToggle.selectedProperty().addListener((observable, oldValue, newValue) ->
 		{ 
 			if(newValue==null) return;
-			Object obj = mainClass.projectManager.getObject(fieldName, enumStep);
+			Object obj = getObject(fieldName, enumStep);
 			if(obj==null) return;
 			try {
 				WrapperDouble wb = (WrapperDouble) obj;
@@ -379,7 +393,7 @@ public abstract class InputController implements Initializable{
 		cbResetToggle.selectedProperty().addListener((observable, oldValue, newValue) ->
 		{ 
 			if(newValue==null) return;
-			Object obj = mainClass.projectManager.getObject(fieldName, enumStep);
+			Object obj = getObject(fieldName, enumStep);
 			if(obj==null) return;
 			try {
 				WrapperEnum wb = (WrapperEnum) obj;
@@ -458,4 +472,42 @@ public abstract class InputController implements Initializable{
     protected void bindProperty(Label lb, TextField tb) {
     	lb.textProperty().bind(tb.textProperty());
     }
+    public Object getObject(String fieldName, EnumStep es) {
+		InputAgent ia;
+		Field fd=null;
+		if(EnumStep.GEO.equals(es)) {ia = mainClass.projectManager.getCurrentGeoAgent();}
+		else {ia = mainClass.projectManager.getStepAgent(es);}
+		if (ia==null) return null;
+		try {
+			switch(es) {
+				case GEO:fd = InputAgentGeo.class.getField(fieldName);break;
+				case SCF:fd = InputAgentScf.class.getField(fieldName);break;
+				case OPT:fd = InputAgentOpt.class.getField(fieldName);break;
+				case NSCF:fd = InputAgentNscf.class.getField(fieldName);break;
+				case DOS:fd = InputAgentDos.class.getField(fieldName);break;
+				case BOMD:fd = InputAgentMd.class.getField(fieldName);break;
+				case BANDS:fd = InputAgentBands.class.getField(fieldName);break;
+				case TDDFT:fd = InputAgentTddft.class.getField(fieldName);break;
+				case PH:fd = InputAgentPhonon.class.getField(fieldName);break;
+				case NEB:fd = InputAgentNeb.class.getField(fieldName);break;
+				default:break;	
+			}
+			if(fd==null) {
+				Alert alert1 = new Alert(AlertType.ERROR);
+		    	alert1.setTitle("Error");
+		    	alert1.setContentText("EnumStep undefined/not implemented detected in InputController!");
+		    	alert1.showAndWait();
+		    	return null;
+			}
+			return fd.get(ia);
+
+		} catch (Exception e) {
+			Alert alert1 = new Alert(AlertType.ERROR);
+	    	alert1.setTitle("Error");
+	    	alert1.setContentText("Cannot find field! "+e.getMessage());
+	    	alert1.showAndWait();
+			e.printStackTrace();
+			return null;
+		}
+	}
 }

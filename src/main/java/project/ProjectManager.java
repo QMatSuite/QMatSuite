@@ -28,22 +28,11 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import agent.InputAgent;
-import agent.InputAgentBands;
-import agent.InputAgentDos;
 import agent.InputAgentGeo;
-import agent.InputAgentMd;
-import agent.InputAgentNeb;
-import agent.InputAgentNscf;
-import agent.InputAgentOpt;
-import agent.InputAgentPhonon;
-import agent.InputAgentScf;
-import agent.InputAgentTddft;
 import app.input.CellParameter;
 import app.input.geo.Atom;
 import com.consts.Constants.EnumCalc;
@@ -109,44 +98,7 @@ public class ProjectManager{
 		if(pj!=null) {return pj.getGeoActive();}
 		return false;//false if there is no project
 	}
-	public Object getObject(String fieldName, EnumStep es) {
-		InputAgent ia;
-		Field fd=null;
-		if(EnumStep.GEO.equals(es)) {ia = getCurrentGeoAgent();}
-		else {ia = getStepAgent(es);}
-		if (ia==null) return null;
-		try {
-			switch(es) {
-				case GEO:fd = InputAgentGeo.class.getField(fieldName);break;
-				case SCF:fd = InputAgentScf.class.getField(fieldName);break;
-				case OPT:fd = InputAgentOpt.class.getField(fieldName);break;
-				case NSCF:fd = InputAgentNscf.class.getField(fieldName);break;
-				case DOS:fd = InputAgentDos.class.getField(fieldName);break;
-				case BOMD:fd = InputAgentMd.class.getField(fieldName);break;
-				case BANDS:fd = InputAgentBands.class.getField(fieldName);break;
-				case TDDFT:fd = InputAgentTddft.class.getField(fieldName);break;
-				case PH:fd = InputAgentPhonon.class.getField(fieldName);break;
-				case NEB:fd = InputAgentNeb.class.getField(fieldName);break;
-				default:break;	
-			}
-			if(fd==null) {
-				Alert alert1 = new Alert(AlertType.ERROR);
-		    	alert1.setTitle("Error");
-		    	alert1.setContentText("EnumStep undefined/not implemented detected in InputController!");
-		    	alert1.showAndWait();
-		    	return null;
-			}
-			return fd.get(ia);
-
-		} catch (Exception e) {
-			Alert alert1 = new Alert(AlertType.ERROR);
-	    	alert1.setTitle("Error");
-	    	alert1.setContentText("Cannot find field! "+e.getMessage());
-	    	alert1.showAndWait();
-			e.printStackTrace();
-			return null;
-		}
-	}
+	
 	public void addGeoList(String calcFolderName, ArrayList<Atom> atomList, CellParameter cellPara, Double alat) {
 		Project pj = this.getActiveProject();
 		if(pj!=null) {

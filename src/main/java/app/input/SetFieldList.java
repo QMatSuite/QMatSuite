@@ -54,12 +54,10 @@ public class SetFieldList {
 	private ArrayList<String> wrapperDoubleList;
 	private ArrayList<CheckBox> checkDoubleList;
 	
-	private MainClass mainClass;
 	
 	private EnumStep enumStep;
 	
 	public SetFieldList(MainClass mc, EnumStep es) {
-		mainClass = mc;
 		enumStep = es;
 		comboList = new ArrayList<ComboBox<?>>();
 		wrapperEnumList = new ArrayList<String>();
@@ -86,25 +84,25 @@ public class SetFieldList {
 	public void addDoublePair(TextField tf, String wd, CheckBox checkB) {
 		textDoubleList.add(tf);wrapperDoubleList.add(wd);checkDoubleList.add(checkB);
 	}
-	public void setAllFields() {
+	public void setAllFields(InputController ic) {
 		try {
 			for(int i=0;i<comboList.size();i++) {	
-				Object obj = mainClass.projectManager.getObject(wrapperEnumList.get(i), enumStep);
+				Object obj = ic.getObject(wrapperEnumList.get(i), enumStep);
 				InputController.setCombo(comboList.get(i), (WrapperEnum) obj);	
 				InputController.setCheck(checkEnumList.get(i), !((WrapperEnum) obj).isEnabled());
 			}
 			for(int i=0;i<toggleList.size();i++) {
-				Object obj = mainClass.projectManager.getObject(wrapperBooleanList.get(i), enumStep);
+				Object obj = ic.getObject(wrapperBooleanList.get(i), enumStep);
 				InputController.setToggle(toggleList.get(i), (WrapperBoolean) obj);
 				InputController.setCheck(checkBooleanList.get(i), !((WrapperBoolean) obj).isEnabled());
 			}
 			for(int i=0;i<textIntegerList.size();i++) {
-				Object obj = mainClass.projectManager.getObject(wrapperIntegerList.get(i), enumStep);
+				Object obj = ic.getObject(wrapperIntegerList.get(i), enumStep);
 				InputController.setField(textIntegerList.get(i), (WrapperInteger) obj);
 				InputController.setCheck(checkIntegerList.get(i), !((WrapperInteger) obj).isEnabled());
 			}
 			for(int i=0;i<textDoubleList.size();i++) {
-				Object obj = mainClass.projectManager.getObject(wrapperDoubleList.get(i), enumStep);
+				Object obj = ic.getObject(wrapperDoubleList.get(i), enumStep);
 				InputController.setField(textDoubleList.get(i), (WrapperDouble) obj);
 				InputController.setCheck(checkDoubleList.get(i), !((WrapperDouble) obj).isEnabled());
 			}
