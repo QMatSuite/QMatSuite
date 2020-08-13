@@ -30,9 +30,9 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.fxml.FXMLLoader;
 
 
-public class MainApplication extends Application {
-	private MainWindowController contMain;
-	private MainClass mainClass;
+public abstract class MainApplication extends Application {
+	protected MainWindowController contMain;
+	protected MainClass mainClass;
 	private static boolean isTest=false;
 	
 	public static boolean isTestMode() {
@@ -41,6 +41,8 @@ public class MainApplication extends Application {
 	public static void setTestMode(boolean bl) {
 		isTest = bl;
 	}
+	@Override
+	public abstract void init() throws Exception;//defines contMain and mainClass, necessary
 	
 	@Override
 	public void start(Stage primaryStage) {
@@ -48,9 +50,6 @@ public class MainApplication extends Application {
 //		primaryStage.setScene(new Scene(new Label("Hello World!")));
 //      primaryStage.show();
 		try {
-			mainClass = new MainClass();
-			contMain = new MainWindowController(mainClass);
-			//ShowAlert.startTime = Instant.now();
 			
 			FXMLLoader fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("mainWindow.fxml"));
 			fxmlLoader.setController(contMain);

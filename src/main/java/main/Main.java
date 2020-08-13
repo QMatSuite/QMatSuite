@@ -23,7 +23,8 @@ import javafx.application.Application;
 
 public class Main{
 	public static void main(String[] args) {
-		Application.launch(MainApplication.class);
+		Application.launch(MainApplicationQE.class);
+		//Application.launch(MainApplicationCP2K.class);
 		//LauncherImpl.launchApplication(MainApplication.class, SplashScreenPreloader.class, args);
 	}
 }

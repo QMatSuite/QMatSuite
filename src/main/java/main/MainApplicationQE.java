@@ -16,20 +16,16 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
+package main;
 
-package app.input;
 
-import com.consts.Constants.EnumStep;
-import main.MainClass;
+import app.MainWindowControllerQE;
 
-public abstract class InputGeoController extends InputController{
-    
-    public InputGeoController(MainClass mc) {
-		super(mc, EnumStep.GEO);
+public class MainApplicationQE extends MainApplication {
+	@Override
+	public void init() throws Exception{
+		mainClass = new MainClassQE();
+		contMain = new MainWindowControllerQE(mainClass);
+		//ShowAlert.startTime = Instant.now();
 	}
-
-    public abstract void loadProjectParameters();
-    public abstract void updatePseudoElementList();
-    public abstract void setDisabled();
-    public abstract void setEnabled();
 }

@@ -22,7 +22,7 @@ package main;
 import job.JobManager;
 import project.ProjectManager;
 
-public class MainClass {
+public abstract class MainClass {
 	public ProjectManager projectManager;
 	public JobManager jobManager;
 	
