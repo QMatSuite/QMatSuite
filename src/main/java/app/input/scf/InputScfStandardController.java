@@ -27,9 +27,10 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
-import main.MainClass;
 import agent.InputAgentScf;
-import app.input.InputController;
+import core.app.input.InputController;
+import core.main.MainClass;
+
 import com.consts.Constants.EnumMixingMode;
 import com.consts.Constants.EnumNumCondition;
 import com.consts.Constants.EnumOccupations;

@@ -18,9 +18,13 @@
  *******************************************************************************/
 package com.consts;
 
-public class Constants {
+import core.com.consts.ConstantsGeneral;
+
+public class Constants extends ConstantsGeneral{
+	//cannot change name! Otherwise incompatible with previous saved calculation files
 	private Constants() {
 	}
+	
 	public enum ProgramName{
 		PW,
 		PH,
@@ -106,7 +110,7 @@ public class Constants {
 		//any program, end part
 		END;
 	}
-	public enum EnumCalc{
+	public enum EnumCalc implements core.com.consts.ConstantsGeneral.EnumCalcInterface{
 		//NULL,//no calculation
 		//GEO,//not a calculation, just here for programming convenience
 		SCF("Self consistency (scf)", "SCF"),
@@ -146,7 +150,7 @@ public class Constants {
 			}
 		}
 	}
-	public enum EnumStep{
+	public enum EnumStep implements core.com.consts.ConstantsGeneral.EnumStepInterface{
 		//NULL,//no calculation
 		GEO("GEO"),
 		SCF("SCF"),
@@ -172,8 +176,7 @@ public class Constants {
 			return name;
 		}
 	}
-	public interface EnumInProgram {
-    }
+	
 	public enum EnumUnitCellLength implements EnumInProgram{
 		bohr,angstrom,pm
 	}

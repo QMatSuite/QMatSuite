@@ -20,12 +20,14 @@ package input;
 
 
 import com.consts.Constants.EnumNameList;
-import com.error.InvalidKeyException;
-import com.error.InvalidTypeException;
-import com.programconst.DefaultFileNames;
+import com.programconst.DefaultFileNamesQE;
 
 import agent.WrapperInteger;
 import agent.WrapperString;
+import core.com.error.InvalidKeyException;
+import core.com.error.InvalidTypeException;
+import core.input.InputValueInt;
+import core.input.InputValueString;
 
 
 public class BandsInput extends QeInput{
@@ -34,7 +36,7 @@ public class BandsInput extends QeInput{
 		super("bands");
 		sectionDict.put("BANDS", new NameList(EnumNameList.BANDS));
 		sectionDict.get("BANDS").setBoolRequired(true);
-		sectionDict.get("BANDS").addParameter("outdir", new InputValueString("outdir",DefaultFileNames.outDir,true));//always write
+		sectionDict.get("BANDS").addParameter("outdir", new InputValueString("outdir",DefaultFileNamesQE.outDir,true));//always write
 		sectionDict.get("BANDS").addParameter("filband", new InputValueString("filband","bands.out",true));//always write
 		
 		sectionDict.get("BANDS").addParameter("spin_component", new InputValueInt("spin_component",false));
@@ -42,7 +44,7 @@ public class BandsInput extends QeInput{
 	public void setNoSpin() {
 		try {
 			setRequiredAndWrite("BANDS","spin_component",false,false);
-			setValue("BANDS","filband",new WrapperString(DefaultFileNames.bandsDatGnu,true));
+			setValue("BANDS","filband",new WrapperString(DefaultFileNamesQE.bandsDatGnu,true));
 			
 		} catch (InvalidKeyException | InvalidTypeException e) {
 			e.printStackTrace();
@@ -51,7 +53,7 @@ public class BandsInput extends QeInput{
 	public void setSpinUp() {
 		try {
 			setValue("BANDS","spin_component",new WrapperInteger(1,true));setRequiredAndWrite("BANDS","spin_component",true,true);
-			setValue("BANDS","filband",new WrapperString(DefaultFileNames.bandsDatGnu+".spinup",true));
+			setValue("BANDS","filband",new WrapperString(DefaultFileNamesQE.bandsDatGnu+".spinup",true));
 		} catch (InvalidKeyException | InvalidTypeException e) {
 			e.printStackTrace();
 		}
@@ -59,7 +61,7 @@ public class BandsInput extends QeInput{
 	public void setSpinDown() {
 		try {
 			setValue("BANDS","spin_component",new WrapperInteger(2,true));setRequiredAndWrite("BANDS","spin_component",true,true);
-			setValue("BANDS","filband",new WrapperString(DefaultFileNames.bandsDatGnu+".spindown",true));
+			setValue("BANDS","filband",new WrapperString(DefaultFileNamesQE.bandsDatGnu+".spindown",true));
 		} catch (InvalidKeyException | InvalidTypeException e) {
 			e.printStackTrace();
 		}

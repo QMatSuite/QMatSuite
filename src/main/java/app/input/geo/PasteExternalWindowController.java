@@ -23,12 +23,13 @@ import java.net.URL;
 import java.util.ResourceBundle;
 
 import com.consts.Constants.EnumStep;
-import com.error.ShowAlert;
 
-import agent.InputAgent;
 import agent.InputAgentBands;
 import agent.InputAgentGeo;
 import agent.InputAgentPhonon;
+import core.agent.InputAgent;
+import core.com.error.ShowAlert;
+import core.main.MainClass;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
@@ -39,7 +40,6 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
-import main.MainClass;
 
 public class PasteExternalWindowController implements Initializable{
 	@FXML

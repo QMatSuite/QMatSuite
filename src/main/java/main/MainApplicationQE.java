@@ -20,12 +20,15 @@ package main;
 
 
 import app.MainWindowControllerQE;
+import core.main.MainApplication;
+import javafx.stage.Stage;
 
 public class MainApplicationQE extends MainApplication {
 	@Override
-	public void init() throws Exception{
+	public void start(Stage primaryStage) {
 		mainClass = new MainClassQE();
 		contMain = new MainWindowControllerQE(mainClass);
+		super.start(primaryStage);
 		//ShowAlert.startTime = Instant.now();
 	}
 }

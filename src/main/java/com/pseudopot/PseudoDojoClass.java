@@ -26,8 +26,8 @@ import java.lang.reflect.Method;
 
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
-import com.consts.PhysicalConstants;
-import com.programconst.DefaultFileNames;
+
+import com.programconst.DefaultFileNamesQE;
 import com.consts.Constants.EnumFunctional;
 import com.consts.Constants.EnumPP;
 import com.pseudopot.PseudoDojoEnum.FrPbeStandard;
@@ -41,6 +41,8 @@ import com.pseudopot.PseudoDojoEnum.SrPbesolStringent;
 import com.pseudopot.PseudoDojoEnum.SrPwStandard;
 import com.pseudopot.PseudoDojoEnum.SrPwStringent;
 
+import core.com.consts.PhysicalConstants;
+
 public class PseudoDojoClass extends PseudoPotential{
 
 	private EnumFunctional typeFunctional;
@@ -53,7 +55,7 @@ public class PseudoDojoClass extends PseudoPotential{
 		functionalList.add(EnumFunctional.PBE);
 		functionalList.add(EnumFunctional.PBESOL);
 		functionalList.add(EnumFunctional.LDA);
-		libFolderName = DefaultFileNames.pseudoDojoDir;
+		libFolderName = DefaultFileNamesQE.pseudoDojoDir;
 	}
 	
 	@Override

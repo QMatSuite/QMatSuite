@@ -28,6 +28,8 @@ import com.consts.Constants.EnumStep;
 import com.consts.Constants.EnumSummation;
 import com.consts.Constants.EnumUnitEnergy;
 import agent.InputAgentDos;
+import core.app.input.InputController;
+import core.main.MainClass;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
@@ -35,7 +37,6 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
-import main.MainClass;
 
 public class InputDosController extends InputController {
 

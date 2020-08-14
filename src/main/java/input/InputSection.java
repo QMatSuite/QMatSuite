@@ -20,6 +20,9 @@ package input;
 
 import java.util.LinkedHashMap;
 
+import core.input.InputValue;
+import core.input.InputValueString;
+
 public abstract class InputSection{
 	
 	protected LinkedHashMap<String, InputValue> parameterDict; 

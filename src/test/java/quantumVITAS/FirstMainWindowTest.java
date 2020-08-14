@@ -32,6 +32,8 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.testfx.api.FxRobotException;
 import org.testfx.service.query.EmptyNodeQueryException;
 import org.testfx.util.WaitForAsyncUtils;
+
+import core.project.ProjectCalcLog;
 import javafx.collections.ObservableList;
 import javafx.scene.Node;
 import javafx.scene.Parent;
@@ -43,7 +45,6 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeTableView;
 import javafx.scene.input.KeyCode;
-import project.ProjectCalcLog;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class FirstMainWindowTest extends MainWindowTest{

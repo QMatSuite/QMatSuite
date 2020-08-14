@@ -32,13 +32,16 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.layout.GridPane;
-import main.MainClass;
+
 import com.consts.Constants.EnumCellDoFree;
 import com.consts.Constants.EnumCellOptMethod;
 import com.consts.Constants.EnumIonOptMethod;
 import com.consts.Constants.EnumNumCondition;
 import com.consts.Constants.EnumStep;
 import com.consts.Constants.EnumUnitEnergy;
+
+import core.app.input.InputController;
+import core.main.MainClass;
 
 public class InputOptController extends InputController implements Initializable {
 

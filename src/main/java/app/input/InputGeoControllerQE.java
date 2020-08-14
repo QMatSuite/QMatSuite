@@ -24,7 +24,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Objects;
 import java.util.ResourceBundle;
-import com.error.ShowAlert;
+
 import agent.InputAgentGeo;
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
@@ -43,11 +43,13 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
-import main.MainClass;
 import app.input.geo.InputGeoAtomsController;
 import app.input.geo.InputGeoCellController;
 import app.input.geo.InputGeoElementsController;
 import app.input.geo.PasteExternalWindowController;
+import core.app.input.InputGeoController;
+import core.com.error.ShowAlert;
+import core.main.MainClass;
 
 public class InputGeoControllerQE extends InputGeoController{
 	

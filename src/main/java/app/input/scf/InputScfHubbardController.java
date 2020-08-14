@@ -38,11 +38,12 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
-import main.MainClass;
 import agent.InputAgentGeo;
 import agent.InputAgentScf;
-import app.input.InputController;
 import app.input.geo.Element;
+import core.app.input.InputController;
+import core.main.MainClass;
+
 import com.consts.Constants.EnumStep;
 
 

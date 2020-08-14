@@ -25,18 +25,18 @@ import java.util.HashMap;
 
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
-import agent.InputAgent;
 import agent.InputAgentGeo;
-import app.centerwindow.WorkScene3D;
 import app.input.CellParameter;
 import app.input.geo.Atom;
+import core.agent.InputAgent;
+import core.app.centerwindow.WorkScene3D;
+import core.com.error.ShowAlert;
 
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
 import com.consts.Constants.EnumUnitAtomPos;
 import com.consts.Constants.EnumUnitCellLength;
 import com.consts.Constants.EnumUnitCellParameter;
-import com.error.ShowAlert;
 
 import input.ContainerInputString;
 
@@ -116,7 +116,7 @@ public class Project implements Serializable{
 			if((!EnumCalc.NEB.equals(calc.getCalcType()) && calc.getGeoInd()==ind) 
 					|| (EnumCalc.NEB.equals(calc.getCalcType()) 
 					&& ((CalculationNebClass)calc).checkUsedGeoIndex(ind)) ) {
-				ShowAlert.showAlert(AlertType.INFORMATION, "Warning", "Calculation "+calc.calcName+
+				ShowAlert.showAlert(AlertType.INFORMATION, "Warning", "Calculation "+calc.getCalcName()+
 						" uses the geometry to be deleted ("+Integer.toString(ind+1)+"th). Change that, save project and try to delete again.");
 				return false;
 			}

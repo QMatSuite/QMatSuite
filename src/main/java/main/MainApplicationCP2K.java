@@ -20,12 +20,15 @@ package main;
 
 
 import app.MainWindowControllerCP2K;
+import core.main.MainApplication;
+import javafx.stage.Stage;
 
 public class MainApplicationCP2K extends MainApplication {
 	@Override
-	public void init() throws Exception{
+	public void start(Stage primaryStage) {
 		mainClass = new MainClassCP2K();
 		contMain = new MainWindowControllerCP2K(mainClass);
+		super.start(primaryStage);
 		//ShowAlert.startTime = Instant.now();
 	}
 }

@@ -23,9 +23,9 @@ package app.menus.settingtabs;
 import java.net.URL;
 import java.util.ResourceBundle;
 
-import com.error.ShowAlert;
-
-import app.centerwindow.WorkScene3D;
+import core.app.centerwindow.WorkScene3D;
+import core.com.error.ShowAlert;
+import core.main.MainClass;
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -41,7 +41,6 @@ import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.CornerRadii;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
-import main.MainClass;
 
 public class Viewer3DController implements Initializable, SettingTabController{
 

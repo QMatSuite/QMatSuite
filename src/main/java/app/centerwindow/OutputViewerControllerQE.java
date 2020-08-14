@@ -37,16 +37,20 @@ import javafx.scene.control.ScrollPane.ScrollBarPolicy;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
-import main.MainClass;
+
 import com.consts.Constants.EnumAnalysis;
 import com.consts.Constants.EnumCard;
 import com.consts.Constants.EnumFileCategory;
 import com.consts.Constants.EnumNameList;
 import com.consts.Constants.EnumStep;
-import com.programconst.DefaultFileNames;
-import com.programconst.ProgrammingConsts;
-import app.input.InputGeoController;
+import com.programconst.DefaultFileNamesQE;
+import com.programconst.ProgrammingConstsQE;
+
 import app.input.Kpoint;
+import core.app.centerwindow.OutputViewerController;
+import core.app.input.InputGeoController;
+import core.com.programconst.ProgrammingConsts;
+import core.main.MainClass;
 
 public class OutputViewerControllerQE extends OutputViewerController{
     
@@ -130,11 +134,11 @@ public class OutputViewerControllerQE extends OutputViewerController{
         boolean isNeb = (calcFolder!=null 
         		&& item.contains(EnumStep.NEB.toString())
         		&& item.endsWith(ProgrammingConsts.stdoutExtension));
-        return (item.endsWith(ProgrammingConsts.dosExtension)
-        		|| (item.contains(DefaultFileNames.bandsDatGnu) && item.endsWith(".gnu"))
-        		|| item.contains(DefaultFileNames.tddftPlotSDat)
+        return (item.endsWith(ProgrammingConstsQE.dosExtension)
+        		|| (item.contains(DefaultFileNamesQE.bandsDatGnu) && item.endsWith(".gnu"))
+        		|| item.contains(DefaultFileNamesQE.tddftPlotSDat)
         		|| isScf || isOpt || isMd || isNeb
-        		|| (item.contains(DefaultFileNames.flfrq)&&item.endsWith(ProgrammingConsts.phononGnuExtension))
+        		|| (item.contains(DefaultFileNamesQE.flfrq)&&item.endsWith(ProgrammingConstsQE.phononGnuExtension))
         		|| isPhonon
         		);
 	}
@@ -760,11 +764,11 @@ public class OutputViewerControllerQE extends OutputViewerController{
 		if(newTab.endsWith(ProgrammingConsts.stdinExtension)) {fileCategory = EnumFileCategory.stdin;}
 		else if(newTab.endsWith(ProgrammingConsts.stdoutExtension)) {fileCategory = EnumFileCategory.stdout;}
 		else if(newTab.endsWith(ProgrammingConsts.stderrExtension)) {fileCategory = EnumFileCategory.stderr;}
-		else if(newTab.endsWith(ProgrammingConsts.dosExtension)) {fileCategory = EnumFileCategory.dos;}
-		else if(newTab.contains(DefaultFileNames.bandsDatGnu) && newTab.endsWith(".gnu")) {fileCategory = EnumFileCategory.bandsDatGnu;}
-		else if(newTab.contains(DefaultFileNames.tddftPlotSDat)){fileCategory = EnumFileCategory.tddftPlotSDat;}
-		else if(newTab.contains(DefaultFileNames.flfrq)&&newTab.endsWith(ProgrammingConsts.phononGnuExtension)){fileCategory = EnumFileCategory.phononBandsGnu;}
-		else if(newTab.contains(DefaultFileNames.calcSaveFile)||newTab.contains(DefaultFileNames.projSaveFile)) 
+		else if(newTab.endsWith(ProgrammingConstsQE.dosExtension)) {fileCategory = EnumFileCategory.dos;}
+		else if(newTab.contains(DefaultFileNamesQE.bandsDatGnu) && newTab.endsWith(".gnu")) {fileCategory = EnumFileCategory.bandsDatGnu;}
+		else if(newTab.contains(DefaultFileNamesQE.tddftPlotSDat)){fileCategory = EnumFileCategory.tddftPlotSDat;}
+		else if(newTab.contains(DefaultFileNamesQE.flfrq)&&newTab.endsWith(ProgrammingConstsQE.phononGnuExtension)){fileCategory = EnumFileCategory.phononBandsGnu;}
+		else if(newTab.contains(DefaultFileNamesQE.calcSaveFile)||newTab.contains(DefaultFileNamesQE.projSaveFile)) 
 		{fileCategory = EnumFileCategory.save;}
 		else if(newTab.contains(".xml")) {fileCategory = EnumFileCategory.xmlout;}
 		else if(newTab.toLowerCase().contains("crash")) {fileCategory = EnumFileCategory.crash;}

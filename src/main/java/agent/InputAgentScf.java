@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import app.input.geo.Element;
+import core.agent.InputAgent;
 
 import com.consts.Constants.EnumHybridFunc;
 import com.consts.Constants.EnumHybridTreat;

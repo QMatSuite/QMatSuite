@@ -27,6 +27,8 @@ import com.consts.Constants.EnumKUnitBands;
 import com.consts.Constants.EnumStep;
 import agent.InputAgentK;
 import app.input.geo.PasteExternalWindowController;
+import core.app.input.InputController;
+import core.main.MainClass;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -45,7 +47,6 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
-import main.MainClass;
 
 public class InputKpointsController implements Initializable{
     

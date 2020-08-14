@@ -26,6 +26,9 @@ import com.consts.Constants.EnumNumCondition;
 import com.consts.Constants.EnumPolarizability;
 import com.consts.Constants.EnumStep;
 import com.consts.Constants.EnumTddftUnitEnergy;
+
+import core.app.input.InputController;
+import core.main.MainClass;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
@@ -34,7 +37,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.layout.AnchorPane;
-import main.MainClass;
 
 public class InputTddftController extends InputController{
 

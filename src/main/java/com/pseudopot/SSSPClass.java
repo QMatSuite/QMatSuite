@@ -25,7 +25,7 @@ import java.lang.reflect.Method;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import com.consts.Constants.EnumFunctional;
-import com.programconst.DefaultFileNames;
+import com.programconst.DefaultFileNamesQE;
 import com.pseudopot.SSSPEnum.Efficiency;
 import com.pseudopot.SSSPEnum.Precision;
 
@@ -37,7 +37,7 @@ public class SSSPClass extends PseudoPotential{
 		super(EnumPseudoPotLib.SSSP, false);
 		precisionList.add("Efficiency");precisionList.add("Precision");
 		functionalList.add(EnumFunctional.PBE);
-		libFolderName=DefaultFileNames.ssspDir;
+		libFolderName=DefaultFileNamesQE.ssspDir;
 	}
 	@Override
 	public Double getEcutWfc(String element) {

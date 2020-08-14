@@ -18,7 +18,7 @@
  *******************************************************************************/
 package agent;
 
-import com.consts.Constants.EnumInProgram;
+import core.com.consts.ConstantsGeneral.EnumInProgram;
 
 public class WrapperEnum extends WrapperClass{
 	/**

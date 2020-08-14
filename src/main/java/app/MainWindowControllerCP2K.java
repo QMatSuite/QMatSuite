@@ -26,8 +26,11 @@ import com.consts.Constants.EnumCalc;
 import app.centerwindow.OutputViewerControllerCP2K;
 import app.input.InputGeoControllerQE;
 import app.menus.SettingsWindowController;
+import core.app.JobDialogController;
+import core.app.MainLeftPaneController;
+import core.app.MainWindowController;
+import core.main.MainClass;
 import javafx.fxml.FXMLLoader;
-import main.MainClass;
 
 
 public class MainWindowControllerCP2K extends MainWindowController{

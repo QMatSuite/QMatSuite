@@ -18,6 +18,8 @@
  *******************************************************************************/
 package main;
 
+import core.main.MainClass;
+
 public class MainClassCP2K extends MainClass{
 
 }

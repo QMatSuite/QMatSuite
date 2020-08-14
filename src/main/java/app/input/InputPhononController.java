@@ -25,6 +25,7 @@ import com.consts.Constants.EnumAsr;
 import com.consts.Constants.EnumNumCondition;
 import com.consts.Constants.EnumStep;
 import agent.InputAgentPhonon;
+import core.main.MainClass;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
@@ -35,7 +36,6 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
-import main.MainClass;
 
 public class InputPhononController extends InputK{
 	

@@ -19,18 +19,21 @@
 package input;
 
 
-import com.consts.PhysicalConstants;
 import com.consts.Constants.EnumNameList;
 import com.consts.Constants.EnumSmearing;
 import com.consts.Constants.EnumSummation;
 import com.consts.Constants.EnumUnitEnergy;
-import com.error.InvalidKeyException;
-import com.error.InvalidTypeException;
-import com.error.ShowAlert;
-import com.programconst.DefaultFileNames;
+import com.programconst.DefaultFileNamesQE;
 
 import agent.InputAgentDos;
 import agent.WrapperInteger;
+import core.com.consts.PhysicalConstants;
+import core.com.error.InvalidKeyException;
+import core.com.error.InvalidTypeException;
+import core.com.error.ShowAlert;
+import core.input.InputValueDouble;
+import core.input.InputValueInt;
+import core.input.InputValueString;
 import javafx.scene.control.Alert.AlertType;
 
 
@@ -40,7 +43,7 @@ public class DosInput extends QeInput{
 		super("dos");
 		sectionDict.put("DOS", new NameList(EnumNameList.DOS));
 		sectionDict.get("DOS").setBoolRequired(true);
-		sectionDict.get("DOS").addParameter("outdir", new InputValueString("outdir",DefaultFileNames.outDir,true));//always write
+		sectionDict.get("DOS").addParameter("outdir", new InputValueString("outdir",DefaultFileNamesQE.outDir,true));//always write
 		sectionDict.get("DOS").addParameter("Emax", new InputValueDouble("Emax",false));
 		sectionDict.get("DOS").addParameter("Emin", new InputValueDouble("Emin",false));
 		sectionDict.get("DOS").addParameter("DeltaE", new InputValueDouble("DeltaE",true));

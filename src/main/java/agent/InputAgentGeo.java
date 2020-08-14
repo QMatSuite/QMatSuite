@@ -24,15 +24,17 @@ import java.util.Objects;
 
 import app.input.geo.Atom;
 import app.input.geo.Element;
+import core.agent.InputAgent;
+import core.com.consts.PhysicalConstants;
+
 import com.consts.ChemicalElements;
-import com.consts.PhysicalConstants;
 import com.consts.Constants.EnumFunctional;
 import com.consts.Constants.EnumPP;
 import com.consts.Constants.EnumUnitAtomPos;
 import com.consts.Constants.EnumUnitCellAngle;
 import com.consts.Constants.EnumUnitCellLength;
 import com.consts.Constants.EnumUnitCellParameter;
-import com.programconst.DefaultFileNames;
+import com.programconst.DefaultFileNamesQE;
 import com.pseudopot.EnumPseudoPotLib;
 import com.pseudopot.PseudoPotential;
 
@@ -458,9 +460,9 @@ public class InputAgentGeo extends InputAgent{
 	public String getPseudodir() {
 		if(pseudodir==null) {return null;}
 		//to be compatible with previous versions, where the root folder is included
-		int i1 = pseudodir.indexOf(DefaultFileNames.pseudoDojoDir);
-		int i2 = pseudodir.indexOf(DefaultFileNames.psLibraryDir);
-		int i3 = pseudodir.indexOf(DefaultFileNames.ssspDir);
+		int i1 = pseudodir.indexOf(DefaultFileNamesQE.pseudoDojoDir);
+		int i2 = pseudodir.indexOf(DefaultFileNamesQE.psLibraryDir);
+		int i3 = pseudodir.indexOf(DefaultFileNamesQE.ssspDir);
 		if(i1!=-1) {
 			pseudodir=pseudodir.substring(i1);
 		}

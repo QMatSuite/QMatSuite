@@ -23,6 +23,8 @@ import com.consts.Constants.EnumCellOptMethod;
 import com.consts.Constants.EnumIonOptMethod;
 import com.consts.Constants.EnumUnitEnergy;
 
+import core.agent.InputAgent;
+
 public class InputAgentOpt extends InputAgent{
 	/**
 	 * 

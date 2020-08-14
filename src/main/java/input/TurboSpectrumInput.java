@@ -21,13 +21,17 @@ package input;
 import com.consts.Constants.EnumNameList;
 import com.consts.Constants.EnumPolarizability;
 import com.consts.Constants.EnumTddftUnitEnergy;
-import com.error.InvalidKeyException;
-import com.error.InvalidTypeException;
-import com.error.ShowAlert;
-import com.programconst.DefaultFileNames;
+import com.programconst.DefaultFileNamesQE;
 
 import agent.InputAgentTddft;
 import agent.WrapperInteger;
+import core.com.error.InvalidKeyException;
+import core.com.error.InvalidTypeException;
+import core.com.error.ShowAlert;
+import core.input.InputValueBoolean;
+import core.input.InputValueDouble;
+import core.input.InputValueInt;
+import core.input.InputValueString;
 import javafx.scene.control.Alert.AlertType;
 
 public class TurboSpectrumInput extends QeInput{
@@ -37,7 +41,7 @@ public class TurboSpectrumInput extends QeInput{
 		super("turbo_spectrum");
 		sectionDict.put("lr_input", new NameList(EnumNameList.lr_input));
 		sectionDict.get("lr_input").setBoolRequired(true);
-		sectionDict.get("lr_input").addParameter("outdir", new InputValueString("outdir",DefaultFileNames.outDir,true));//always write
+		sectionDict.get("lr_input").addParameter("outdir", new InputValueString("outdir",DefaultFileNamesQE.outDir,true));//always write
 		sectionDict.get("lr_input").addParameter("itermax0", new InputValueInt("itermax0",500,true));
 		sectionDict.get("lr_input").addParameter("itermax", new InputValueInt("itermax",500,false));
 		sectionDict.get("lr_input").addParameter("extrapolation", new InputValueString("extrapolation","no",false));

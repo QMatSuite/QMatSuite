@@ -23,13 +23,14 @@ import java.net.URL;
 import java.util.ResourceBundle;
 import com.consts.Constants.EnumStep;
 import com.consts.Constants.EnumVdw;
-import app.input.InputController;
+
+import core.app.input.InputController;
+import core.main.MainClass;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
-import main.MainClass;
 
 public class InputScfVdwController extends InputController{
 

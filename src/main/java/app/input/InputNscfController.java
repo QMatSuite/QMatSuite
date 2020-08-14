@@ -29,13 +29,14 @@ import com.consts.Constants.EnumStep;
 import com.consts.Constants.EnumUnitEnergy;
 
 import agent.InputAgentNscf;
+import core.app.input.InputController;
+import core.main.MainClass;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
-import main.MainClass;
 
 public class InputNscfController extends InputController{
 
