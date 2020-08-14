@@ -24,6 +24,8 @@ import com.consts.Constants.EnumIonMdMethod;
 import com.consts.Constants.EnumThermalstat;
 import com.consts.Constants.EnumUnitTime;
 
+import core.agent.InputAgent;
+
 public class InputAgentMd extends InputAgent{
 	/**
 	 * 

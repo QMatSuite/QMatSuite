@@ -35,13 +35,14 @@ import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.VBox;
-import main.MainClass;
 import agent.InputAgentScf;
 import app.input.scf.InputScfHubbardController;
 import app.input.scf.InputScfHybridController;
 import app.input.scf.InputScfMagnetController;
 import app.input.scf.InputScfStandardController;
 import app.input.scf.InputScfVdwController;
+import core.app.input.InputController;
+import core.main.MainClass;
 
 import com.consts.Constants.EnumStep;
 

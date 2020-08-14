@@ -32,9 +32,10 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
-import main.MainClass;
 import agent.InputAgentGeo;
-import app.input.InputController;
+import core.app.input.InputController;
+import core.main.MainClass;
+
 import com.consts.BravaisLattice;
 import com.consts.Constants.EnumNumCondition;
 import com.consts.Constants.EnumStep;

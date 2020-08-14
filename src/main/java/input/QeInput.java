@@ -36,9 +36,11 @@ import agent.WrapperDouble;
 import agent.WrapperEnum;
 import agent.WrapperInteger;
 import agent.WrapperString;
+import core.com.error.InvalidKeyException;
+import core.com.error.InvalidTypeException;
+import core.input.InputValue;
+
 import com.consts.Constants.EnumStep;
-import com.error.InvalidKeyException;
-import com.error.InvalidTypeException;
 
 public abstract class QeInput{ 
 	

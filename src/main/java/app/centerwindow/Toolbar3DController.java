@@ -21,6 +21,7 @@ package app.centerwindow;
 import java.net.URL;
 import java.util.ResourceBundle;
 
+import core.app.centerwindow.WorkScene3D;
 import javafx.beans.binding.Bindings;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;

@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public enum ChemicalElements {
+	//cannot change package because of deserialization
 	//radius 0.0 means no data! Just to avoid null pointer
 	H(1, "Hydrogen", 1.008, 25.0, "1s1", "FFFFFF", "FFFFFF"),
 	He(2, "Helium", 4.0026022, 120.0, "1s2", "D9FFFF", "FFC0CB"),

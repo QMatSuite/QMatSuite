@@ -18,9 +18,10 @@
  *******************************************************************************/
 package app.input.geo;
 
+import com.consts.ChemicalElements;
+
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
-import com.consts.ChemicalElements;
 
 public class Element extends Chemical{
 	/**

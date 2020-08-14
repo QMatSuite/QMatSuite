@@ -23,15 +23,17 @@ package app.menus.settingtabs;
 import java.net.URL;
 import java.util.ResourceBundle;
 
-import com.error.ShowAlert;
-import com.programconst.ProgrammingConsts;
+import com.programconst.ProgrammingConstsQE;
+
+import core.com.error.ShowAlert;
+import core.com.programconst.ProgrammingConsts;
+import core.main.MainClass;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.AnchorPane;
-import main.MainClass;
 
 public class GeneralSettingController implements Initializable, SettingTabController{
 

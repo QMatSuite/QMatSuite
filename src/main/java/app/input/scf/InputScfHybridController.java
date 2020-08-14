@@ -26,7 +26,8 @@ import com.consts.Constants.EnumHybridTreat;
 import com.consts.Constants.EnumNumCondition;
 import com.consts.Constants.EnumStep;
 import agent.InputAgentScf;
-import app.input.InputController;
+import core.app.input.InputController;
+import core.main.MainClass;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
@@ -35,7 +36,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.layout.VBox;
-import main.MainClass;
 
 public class InputScfHybridController extends InputController{
 

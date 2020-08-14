@@ -39,9 +39,10 @@ import javafx.scene.control.ToggleButton;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.paint.Color;
-import main.MainClass;
 import agent.InputAgentGeo;
-import app.input.InputController;
+import core.app.input.InputController;
+import core.main.MainClass;
+
 import com.consts.ChemicalElements;
 import com.consts.Constants.EnumStep;
 import com.consts.Constants.EnumUnitAtomPos;

@@ -22,6 +22,8 @@ import com.consts.Constants.EnumExtrapolation;
 import com.consts.Constants.EnumPolarizability;
 import com.consts.Constants.EnumTddftUnitEnergy;
 
+import core.agent.InputAgent;
+
 public class InputAgentTddft extends InputAgent{
 	/**
 	 * 

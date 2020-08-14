@@ -23,13 +23,18 @@ import com.consts.Constants.EnumNameList;
 import com.consts.Constants.EnumOptSchemeNeb;
 import com.consts.Constants.EnumStep;
 import com.consts.Constants.EnumStringMethod;
-import com.error.InvalidKeyException;
-import com.error.InvalidTypeException;
-import com.error.ShowAlert;
+
 import agent.InputAgentGeo;
 import agent.InputAgentNeb;
 import agent.InputAgentScf;
 import agent.WrapperString;
+import core.com.error.InvalidKeyException;
+import core.com.error.InvalidTypeException;
+import core.com.error.ShowAlert;
+import core.input.InputValueBoolean;
+import core.input.InputValueDouble;
+import core.input.InputValueInt;
+import core.input.InputValueString;
 import javafx.scene.control.Alert.AlertType;
 
 public class NebInput extends QeInput{

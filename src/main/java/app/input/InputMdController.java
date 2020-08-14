@@ -22,11 +22,13 @@ package app.input;
 import java.net.URL;
 import java.util.ResourceBundle;
 
-import main.MainClass;
 import agent.InputAgentMd;
+import core.app.input.InputController;
+import core.com.consts.ConstantsGeneral.EnumInProgram;
+import core.main.MainClass;
+
 import com.consts.Constants.EnumCellDoFree;
 import com.consts.Constants.EnumCellMdMethod;
-import com.consts.Constants.EnumInProgram;
 import com.consts.Constants.EnumIonMdMethod;
 import com.consts.Constants.EnumIonVcmdMethod;
 import com.consts.Constants.EnumNumCondition;

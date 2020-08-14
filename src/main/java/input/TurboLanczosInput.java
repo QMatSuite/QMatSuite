@@ -21,13 +21,15 @@ package input;
 
 import com.consts.Constants.EnumNameList;
 import com.consts.Constants.EnumPolarizability;
-import com.error.InvalidKeyException;
-import com.error.InvalidTypeException;
-import com.error.ShowAlert;
-import com.programconst.DefaultFileNames;
+import com.programconst.DefaultFileNamesQE;
 
 import agent.InputAgentTddft;
 import agent.WrapperInteger;
+import core.com.error.InvalidKeyException;
+import core.com.error.InvalidTypeException;
+import core.com.error.ShowAlert;
+import core.input.InputValueInt;
+import core.input.InputValueString;
 import javafx.scene.control.Alert.AlertType;
 
 public class TurboLanczosInput extends QeInput{
@@ -39,7 +41,7 @@ public class TurboLanczosInput extends QeInput{
 		sectionDict.put("lr_post", new NameList(EnumNameList.lr_post));
 		
 		sectionDict.get("lr_input").setBoolRequired(true);
-		sectionDict.get("lr_input").addParameter("outdir", new InputValueString("outdir",DefaultFileNames.outDir,true));//always write
+		sectionDict.get("lr_input").addParameter("outdir", new InputValueString("outdir",DefaultFileNamesQE.outDir,true));//always write
 		sectionDict.get("lr_control").addParameter("itermax", new InputValueInt("itermax",500,false));
 		sectionDict.get("lr_control").addParameter("ipol", new InputValueInt("ipol",1,false));
 		

@@ -20,16 +20,19 @@ package input;
 
 import com.consts.Constants.EnumCard;
 import com.consts.Constants.EnumNameList;
-import com.error.InvalidKeyException;
-import com.error.InvalidTypeException;
-import com.error.ShowAlert;
-import com.programconst.DefaultFileNames;
-import com.programconst.ProgrammingConsts;
+import com.programconst.DefaultFileNamesQE;
+import com.programconst.ProgrammingConstsQE;
 
 import agent.InputAgentPhonon;
 import agent.WrapperBoolean;
 import agent.WrapperString;
 import app.input.Kpoint;
+import core.com.error.InvalidKeyException;
+import core.com.error.InvalidTypeException;
+import core.com.error.ShowAlert;
+import core.input.InputValueBoolean;
+import core.input.InputValueInt;
+import core.input.InputValueString;
 import javafx.scene.control.Alert.AlertType;
 
 
@@ -40,13 +43,13 @@ public class MatdynInput extends QeInput{
 		//amass defined in scf calculation from pw.x, no need to define here. Verified by test calculation.
 		
 		sectionDict.put("input", new NameList(EnumNameList.input));
-		sectionDict.put(ProgrammingConsts.endPart, new Card(EnumCard.END));
+		sectionDict.put(ProgrammingConstsQE.endPart, new Card(EnumCard.END));
 		
 		sectionDict.get("input").setBoolRequired(true);
 		
-		sectionDict.get("input").addParameter("flfrc", new InputValueString("flfrc",DefaultFileNames.flfrc,true));//needed
-		sectionDict.get("input").addParameter("fldos", new InputValueString("fldos",DefaultFileNames.fldos,false));
-		sectionDict.get("input").addParameter("flfrq", new InputValueString("flfrq",DefaultFileNames.flfrq,false));
+		sectionDict.get("input").addParameter("flfrc", new InputValueString("flfrc",DefaultFileNamesQE.flfrc,true));//needed
+		sectionDict.get("input").addParameter("fldos", new InputValueString("fldos",DefaultFileNamesQE.fldos,false));
+		sectionDict.get("input").addParameter("flfrq", new InputValueString("flfrq",DefaultFileNamesQE.flfrq,false));
 		
 		sectionDict.get("input").addParameter("dos", new InputValueBoolean("dos",true,true));//not QE default, so required
 		sectionDict.get("input").addParameter("asr", new InputValueString("asr","no",false));
@@ -58,7 +61,7 @@ public class MatdynInput extends QeInput{
 		sectionDict.get("input").addParameter("q_in_band_form", new InputValueBoolean("q_in_band_form",false));
 		sectionDict.get("input").addParameter("q_in_cryst_coord", new InputValueBoolean("q_in_cryst_coord",false));
 		
-		sectionDict.get(ProgrammingConsts.endPart).addParameter("body",new InputValueString("body","",false));
+		sectionDict.get(ProgrammingConstsQE.endPart).addParameter("body",new InputValueString("body","",false));
 		 
 	}
 	@Override
@@ -85,7 +88,7 @@ public class MatdynInput extends QeInput{
 			
 			setValue("input","asr",ia1.asr);
 			
-			setSectionRequired(ProgrammingConsts.endPart,!isDos);
+			setSectionRequired(ProgrammingConstsQE.endPart,!isDos);
 			
 			String kpointTmp = ia1.listKPoints.size()>0 ? Integer.toString(ia1.listKPoints.size())+"\n":"";
 			for (int i=0;i<ia1.listKPoints.size();i++) {
@@ -100,9 +103,9 @@ public class MatdynInput extends QeInput{
 						);
 			}
 			//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", kpointTmp);
-			setValue(ProgrammingConsts.endPart,"body",new WrapperString(kpointTmp));
+			setValue(ProgrammingConstsQE.endPart,"body",new WrapperString(kpointTmp));
 			
-			setRequiredAndWrite(ProgrammingConsts.endPart,"body",!isDos,!isDos);
+			setRequiredAndWrite(ProgrammingConstsQE.endPart,"body",!isDos,!isDos);
 			
 		} catch (InvalidKeyException | InvalidTypeException e) {
 	    	ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Exception!"+e.getMessage());

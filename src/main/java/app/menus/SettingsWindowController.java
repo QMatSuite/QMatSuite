@@ -33,11 +33,11 @@ import javafx.scene.control.TreeView;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
-import main.MainClass;
 import app.menus.settingtabs.GeneralSettingController;
 import app.menus.settingtabs.Viewer3DController;
+import core.main.MainClass;
 
-import com.programconst.ProgrammingConsts.SettingsTags;
+import com.programconst.ProgrammingConstsQE.SettingsTags;
 
 public class SettingsWindowController implements Initializable {
 

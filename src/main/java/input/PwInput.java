@@ -34,7 +34,16 @@ import agent.WrapperString;
 import app.input.Kpoint;
 import app.input.geo.Atom;
 import app.input.geo.Element;
-import com.consts.PhysicalConstants;
+import core.com.consts.PhysicalConstants;
+import core.com.error.InvalidKeyException;
+import core.com.error.InvalidTypeException;
+import core.com.error.ShowAlert;
+import core.input.InputValueBoolean;
+import core.input.InputValueDouble;
+import core.input.InputValueDoubleArray;
+import core.input.InputValueInt;
+import core.input.InputValueString;
+
 import com.consts.Constants.EnumCard;
 import com.consts.Constants.EnumHybridFunc;
 import com.consts.Constants.EnumKUnitBands;
@@ -46,10 +55,7 @@ import com.consts.Constants.EnumThermalstat;
 import com.consts.Constants.EnumUnitEnergy;
 import com.consts.Constants.EnumUnitTime;
 import com.consts.Constants.EnumVdw;
-import com.error.InvalidKeyException;
-import com.error.InvalidTypeException;
-import com.error.ShowAlert;
-import com.programconst.DefaultFileNames;
+import com.programconst.DefaultFileNamesQE;
 
 public class PwInput extends QeInput{
 	
@@ -76,7 +82,7 @@ public class PwInput extends QeInput{
 		sectionDict.put("ATOMIC_FORCES", new Card(EnumCard.ATOMIC_FORCES));
 		//add relevant parameters
 		sectionDict.get("CONTROL").setBoolRequired(true);
-		sectionDict.get("CONTROL").addParameter("outdir", new InputValueString("outdir",DefaultFileNames.outDir,true));//always write
+		sectionDict.get("CONTROL").addParameter("outdir", new InputValueString("outdir",DefaultFileNamesQE.outDir,true));//always write
 		sectionDict.get("CONTROL").addParameter("calculation", new InputValueString("calculation","scf",true));//always write to make clear
 		sectionDict.get("CONTROL").addParameter("restart_mode", new InputValueString("restart_mode","from_scratch",false));
 		sectionDict.get("CONTROL").addParameter("max_seconds", new InputValueDouble("max_seconds",1.0E7,false));

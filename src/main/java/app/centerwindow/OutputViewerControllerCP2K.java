@@ -20,8 +20,9 @@
 package app.centerwindow;
 
 
-import main.MainClass;
-import app.input.InputGeoController;
+import core.app.centerwindow.OutputViewerController;
+import core.app.input.InputGeoController;
+import core.main.MainClass;
 
 
 public class OutputViewerControllerCP2K extends OutputViewerController{

@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import com.consts.Constants.EnumKUnitBands;
 
 import app.input.Kpoint;
+import core.agent.InputAgent;
 
 public abstract class InputAgentK extends InputAgent{
 	/**

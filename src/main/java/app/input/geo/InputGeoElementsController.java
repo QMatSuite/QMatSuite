@@ -38,9 +38,10 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
-import main.MainClass;
 import agent.InputAgentGeo;
-import app.input.InputController;
+import core.app.input.InputController;
+import core.main.MainClass;
+
 import com.consts.Constants.EnumFunctional;
 import com.consts.Constants.EnumPP;
 import com.consts.Constants.EnumStep;

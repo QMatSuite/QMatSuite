@@ -19,8 +19,7 @@
  *******************************************************************************/
 package app.input;
 
-import com.error.ShowAlert;
-
+import core.com.error.ShowAlert;
 import javafx.geometry.Point3D;
 import javafx.scene.control.Alert.AlertType;
 

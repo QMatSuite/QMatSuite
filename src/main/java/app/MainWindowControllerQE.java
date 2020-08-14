@@ -25,12 +25,11 @@ import java.util.ResourceBundle;
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumOccupations;
 import com.consts.Constants.EnumStep;
-import com.error.ShowAlert;
+
 import agent.InputAgentScf;
 import app.centerwindow.OutputViewerControllerQE;
 import app.input.InputBandsController;
 import app.input.InputDosController;
-import app.input.InputGeoController;
 import app.input.InputGeoControllerQE;
 import app.input.InputMdController;
 import app.input.InputNebController;
@@ -40,13 +39,18 @@ import app.input.InputPhononController;
 import app.input.InputScfController;
 import app.input.InputTddftController;
 import app.menus.SettingsWindowController;
+import core.app.JobDialogController;
+import core.app.MainLeftPaneController;
+import core.app.MainWindowController;
+import core.app.input.InputGeoController;
+import core.com.error.ShowAlert;
+import core.main.MainClass;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.Alert.AlertType;
-import main.MainClass;
 
 
 public class MainWindowControllerQE extends MainWindowController{
@@ -178,7 +182,7 @@ public class MainWindowControllerQE extends MainWindowController{
 			//contGeo.initialize();//must be later than the load
 			
 			contTree = new MainLeftPaneController(mainClass);
-			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/MainLeftPane.fxml"));
+			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("core/MainLeftPane.fxml"));
 			fxmlLoader.setController(contTree);
 			scrollLeft = fxmlLoader.load();scrollLeft.setId("mainScrollLeft");
 			
@@ -188,12 +192,12 @@ public class MainWindowControllerQE extends MainWindowController{
 			borderSettings = fxmlLoader.load();
 			
 			contRun = new JobDialogController();
-			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/JobDialog.fxml"));
+			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("core/JobDialog.fxml"));
 			fxmlLoader.setController(contRun);
 			borderRun = fxmlLoader.load();
 			
 			contOutput = new OutputViewerControllerQE(mainClass,contGeo);
-			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/centerwindow/outputViewer.fxml"));
+			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("core/outputViewer.fxml"));
 			fxmlLoader.setController(contOutput);
 			splitOutput = fxmlLoader.load();
 			

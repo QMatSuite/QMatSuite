@@ -22,6 +22,8 @@ import com.consts.Constants.EnumSmearing;
 import com.consts.Constants.EnumSummation;
 import com.consts.Constants.EnumUnitEnergy;
 
+import core.agent.InputAgent;
+
 public class InputAgentDos extends InputAgent{
 	/**
 	 * 

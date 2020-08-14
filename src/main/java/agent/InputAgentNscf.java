@@ -22,6 +22,8 @@ import com.consts.Constants.EnumOccupations;
 import com.consts.Constants.EnumSmearing;
 import com.consts.Constants.EnumUnitEnergy;
 
+import core.agent.InputAgent;
+
 public class InputAgentNscf extends InputAgent{
 	/**
 	 * 

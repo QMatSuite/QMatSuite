@@ -21,6 +21,8 @@ package agent;
 import com.consts.Constants.EnumOptSchemeNeb;
 import com.consts.Constants.EnumStringMethod;
 
+import core.agent.InputAgent;
+
 public class InputAgentNeb extends InputAgent{
 	/**
 	 * 

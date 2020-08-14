@@ -20,14 +20,18 @@ package input;
 
 import com.consts.Constants.EnumCard;
 import com.consts.Constants.EnumNameList;
-import com.error.InvalidKeyException;
-import com.error.InvalidTypeException;
-import com.error.ShowAlert;
-import com.programconst.DefaultFileNames;
-import com.programconst.ProgrammingConsts;
+import com.programconst.DefaultFileNamesQE;
+import com.programconst.ProgrammingConstsQE;
 
 import agent.InputAgentPhonon;
 import agent.WrapperString;
+import core.com.error.InvalidKeyException;
+import core.com.error.InvalidTypeException;
+import core.com.error.ShowAlert;
+import core.input.InputValueBoolean;
+import core.input.InputValueDouble;
+import core.input.InputValueInt;
+import core.input.InputValueString;
 import javafx.scene.control.Alert.AlertType;
 
 
@@ -37,10 +41,10 @@ public class PhInput extends QeInput{
 		super("ph");
 		sectionDict.put("INPUTPH", new NameList(EnumNameList.INPUTPH));
 		sectionDict.get("INPUTPH").setBoolRequired(true);
-		sectionDict.put(ProgrammingConsts.endPart, new Card(EnumCard.END));
+		sectionDict.put(ProgrammingConstsQE.endPart, new Card(EnumCard.END));
 		
-		sectionDict.get("INPUTPH").addParameter("outdir", new InputValueString("outdir",DefaultFileNames.outDir,true));//always write
-		sectionDict.get("INPUTPH").addParameter("fildyn", new InputValueString("fildyn",DefaultFileNames.fildyn,true));
+		sectionDict.get("INPUTPH").addParameter("outdir", new InputValueString("outdir",DefaultFileNamesQE.outDir,true));//always write
+		sectionDict.get("INPUTPH").addParameter("fildyn", new InputValueString("fildyn",DefaultFileNamesQE.fildyn,true));
 		sectionDict.get("INPUTPH").addParameter("tr2_ph", new InputValueDouble("tr2_ph",1E-12,false));
 		sectionDict.get("INPUTPH").addParameter("ldisp", new InputValueBoolean("ldisp",false,false));
 		//amass defined in scf calculation from pw.x, no need to define here. Verified by test calculation.
@@ -54,7 +58,7 @@ public class PhInput extends QeInput{
 		sectionDict.get("INPUTPH").addParameter("eth_ns", new InputValueDouble("eth_ns",1E-12,false));
 		sectionDict.get("INPUTPH").addParameter("dek", new InputValueDouble("dek",1E-3,false));	
 		
-		sectionDict.get(ProgrammingConsts.endPart).addParameter("body",new InputValueString("body","",false));
+		sectionDict.get(ProgrammingConstsQE.endPart).addParameter("body",new InputValueString("body","",false));
 	}
 	@Override
 	public void loadAgent(InputAgentPhonon ia1) {
@@ -87,14 +91,14 @@ public class PhInput extends QeInput{
 			andExplicitWrite("INPUTPH", "eth_ns", (!boolGrid)&&boolRaman);
 			andExplicitWrite("INPUTPH", "dek", (!boolGrid)&&boolRaman);
 			
-			setSectionRequired(ProgrammingConsts.endPart,!boolGrid);
+			setSectionRequired(ProgrammingConstsQE.endPart,!boolGrid);
 			if(!boolGrid) {
-				setValue(ProgrammingConsts.endPart,"body",new WrapperString("0 0 0"));
-				setRequiredAndWrite(ProgrammingConsts.endPart,"body",true,true);
+				setValue(ProgrammingConstsQE.endPart,"body",new WrapperString("0 0 0"));
+				setRequiredAndWrite(ProgrammingConstsQE.endPart,"body",true,true);
 			}
 			else {
-				setValue(ProgrammingConsts.endPart,"body",new WrapperString(""));
-				setRequiredAndWrite(ProgrammingConsts.endPart,"body",false,false);
+				setValue(ProgrammingConstsQE.endPart,"body",new WrapperString(""));
+				setRequiredAndWrite(ProgrammingConstsQE.endPart,"body",false,false);
 			}
 
 

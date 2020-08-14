@@ -22,8 +22,9 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import agent.InputAgent;
 import agent.InputAgentGeo;
+import core.agent.InputAgent;
+
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
 import input.ContainerInputString;

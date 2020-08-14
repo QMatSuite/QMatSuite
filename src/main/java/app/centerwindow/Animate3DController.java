@@ -20,6 +20,8 @@ package app.centerwindow;
 
 import java.net.URL;
 import java.util.ResourceBundle;
+
+import core.app.centerwindow.WorkScene3D;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
