@@ -24,9 +24,9 @@ import com.programconst.DefaultFileNamesQE;
 import com.programconst.ProgrammingConstsQE;
 
 import agent.InputAgentPhonon;
-import agent.WrapperBoolean;
-import agent.WrapperString;
 import app.input.Kpoint;
+import core.agent.WrapperBoolean;
+import core.agent.WrapperString;
 import core.com.error.InvalidKeyException;
 import core.com.error.InvalidTypeException;
 import core.com.error.ShowAlert;

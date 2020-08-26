@@ -24,7 +24,7 @@ import com.consts.Constants.EnumTddftUnitEnergy;
 import com.programconst.DefaultFileNamesQE;
 
 import agent.InputAgentTddft;
-import agent.WrapperInteger;
+import core.agent.WrapperInteger;
 import core.com.error.InvalidKeyException;
 import core.com.error.InvalidTypeException;
 import core.com.error.ShowAlert;

@@ -26,7 +26,7 @@ import com.consts.Constants.EnumUnitEnergy;
 import com.programconst.DefaultFileNamesQE;
 
 import agent.InputAgentDos;
-import agent.WrapperInteger;
+import core.agent.WrapperInteger;
 import core.com.consts.PhysicalConstants;
 import core.com.error.InvalidKeyException;
 import core.com.error.InvalidTypeException;

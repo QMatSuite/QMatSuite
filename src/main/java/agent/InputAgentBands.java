@@ -23,6 +23,9 @@ import java.util.ArrayList;
 
 import com.consts.Constants.EnumKUnitBands;
 import app.input.Kpoint;
+import core.agent.InputAgentK;
+import core.agent.WrapperEnum;
+import core.agent.WrapperInteger;
 
 
 public class InputAgentBands extends InputAgentK{

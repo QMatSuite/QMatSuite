@@ -24,7 +24,7 @@ import com.programconst.DefaultFileNamesQE;
 import com.programconst.ProgrammingConstsQE;
 
 import agent.InputAgentPhonon;
-import agent.WrapperString;
+import core.agent.WrapperString;
 import core.com.error.InvalidKeyException;
 import core.com.error.InvalidTypeException;
 import core.com.error.ShowAlert;

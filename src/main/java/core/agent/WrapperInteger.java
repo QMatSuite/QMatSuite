@@ -16,42 +16,40 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package agent;
+package core.agent;
 
-import core.com.consts.ConstantsGeneral.EnumInProgram;
-
-public class WrapperEnum extends WrapperClass{
+public class WrapperInteger extends WrapperClass{
 	/**
 	 * 
 	 */
-	private static final long serialVersionUID = -5526687023913245151L;
-	private EnumInProgram value;
-	final private EnumInProgram defaultValue;
+	private static final long serialVersionUID = 834652343873610631L;
+	private Integer value;
+	final private Integer defaultValue;
 	
-	public WrapperEnum(EnumInProgram val) {
+	public WrapperInteger(Integer val) {
 		defaultValue = val;
 		value = val;
 		enabled = false;
 	}
-	public WrapperEnum(EnumInProgram val,Boolean bl) {
+	public WrapperInteger(Integer val,Boolean bl) {
 		defaultValue = val;
 		value = val;
 		enabled = bl;
 	}
-	public EnumInProgram getValue() {
+	public Integer getValue() {
 		return value;
 	}
-	public void setValue(EnumInProgram val) {
+	public void setValue(Integer val) {
 		value = val;
 	}
-	public Boolean equals(EnumInProgram vl) {
+	public Boolean equals(Integer vl) {
 		return java.util.Objects.equals(vl, value);
 	}
 	@Override
 	public boolean isNull() {
 		return value==null;
 	}
-	public EnumInProgram resetDefault() {
+	public Integer resetDefault() {
 		value = defaultValue;
 		return defaultValue;
 	}

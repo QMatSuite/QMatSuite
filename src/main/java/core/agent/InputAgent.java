@@ -25,9 +25,6 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Objects;
 
-import agent.WrapperDouble;
-import agent.WrapperInteger;
-
 public abstract class InputAgent implements Serializable{
 	/**
 	 * 

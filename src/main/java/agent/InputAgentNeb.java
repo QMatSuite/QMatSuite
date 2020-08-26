@@ -22,6 +22,10 @@ import com.consts.Constants.EnumOptSchemeNeb;
 import com.consts.Constants.EnumStringMethod;
 
 import core.agent.InputAgent;
+import core.agent.WrapperBoolean;
+import core.agent.WrapperDouble;
+import core.agent.WrapperEnum;
+import core.agent.WrapperInteger;
 
 public class InputAgentNeb extends InputAgent{
 	/**

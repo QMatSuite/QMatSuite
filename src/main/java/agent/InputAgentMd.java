@@ -25,6 +25,10 @@ import com.consts.Constants.EnumThermalstat;
 import com.consts.Constants.EnumUnitTime;
 
 import core.agent.InputAgent;
+import core.agent.WrapperBoolean;
+import core.agent.WrapperDouble;
+import core.agent.WrapperEnum;
+import core.agent.WrapperInteger;
 
 public class InputAgentMd extends InputAgent{
 	/**

@@ -25,6 +25,9 @@ import java.util.Objects;
 import app.input.geo.Atom;
 import app.input.geo.Element;
 import core.agent.InputAgent;
+import core.agent.WrapperBoolean;
+import core.agent.WrapperDouble;
+import core.agent.WrapperInteger;
 import core.com.consts.PhysicalConstants;
 
 import com.consts.ChemicalElements;

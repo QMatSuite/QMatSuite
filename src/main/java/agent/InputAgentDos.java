@@ -23,6 +23,8 @@ import com.consts.Constants.EnumSummation;
 import com.consts.Constants.EnumUnitEnergy;
 
 import core.agent.InputAgent;
+import core.agent.WrapperDouble;
+import core.agent.WrapperEnum;
 
 public class InputAgentDos extends InputAgent{
 	/**

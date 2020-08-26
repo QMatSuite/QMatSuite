@@ -21,6 +21,12 @@ package agent;
 import com.consts.Constants.EnumAsr;
 import com.consts.Constants.EnumKUnitBands;
 
+import core.agent.InputAgentK;
+import core.agent.WrapperBoolean;
+import core.agent.WrapperDouble;
+import core.agent.WrapperEnum;
+import core.agent.WrapperInteger;
+
 public class InputAgentPhonon extends InputAgentK{
 	/**
 	 * 

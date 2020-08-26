@@ -16,40 +16,40 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package agent;
+package core.agent;
 
-public class WrapperDouble extends WrapperClass{
+public class WrapperBoolean extends WrapperClass{
 	/**
 	 * 
 	 */
-	private static final long serialVersionUID = 1129334485712449681L;
-	private Double value;
-	final private Double defaultValue;
+	private static final long serialVersionUID = -1515304239289393505L;
+	private Boolean value;
+	final private Boolean defaultValue;
 	
-	public WrapperDouble(Double val) {
+	public WrapperBoolean(Boolean val) {
 		defaultValue = val;
 		value = val;
 		enabled = false;
 	}
-	public WrapperDouble(Double val,Boolean bl) {
+	public WrapperBoolean(Boolean val,Boolean bl) {
 		defaultValue = val;
 		value = val;
 		enabled = bl;
 	}
-	public Double getValue() {
+	public Boolean getValue() {
 		return value;
 	}
-	public void setValue(Double val) {
+	public void setValue(Boolean val) {
 		value = val;
 	}
-	public Boolean equals(Double vl) {
+	public Boolean equals(Boolean vl) {
 		return java.util.Objects.equals(vl, value);
 	}
 	@Override
 	public boolean isNull() {
 		return value==null;
 	}
-	public Double resetDefault() {
+	public Boolean resetDefault() {
 		value = defaultValue;
 		return defaultValue;
 	}
@@ -60,6 +60,6 @@ public class WrapperDouble extends WrapperClass{
 	@Override
 	public String getValueString() {
 		if(value==null) {return "null";}
-		return Double.toString(value);
+		return value?"true":"false";
 	}
 }
