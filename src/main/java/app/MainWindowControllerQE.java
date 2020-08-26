@@ -48,6 +48,7 @@ import core.main.MainClass;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.Alert.AlertType;
@@ -143,31 +144,42 @@ public class MainWindowControllerQE extends MainWindowController{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		contTree.calcScf.setOnAction((event) -> {
+		MenuItem calcScf = new MenuItem("Single energy");
+		MenuItem calcOpt = new MenuItem("Optimization");
+		MenuItem calcDos = new MenuItem("DOS");
+		MenuItem calcBands = new MenuItem("Bands");
+		MenuItem calcMd = new MenuItem("MD");
+		MenuItem calcTddft = new MenuItem("TDDFT");
+		MenuItem calcPhonon = new MenuItem("Phonon");
+		MenuItem calcNeb = new MenuItem("NEB");
+		MenuItem calcCustom = new MenuItem("Custom...");
+		contTree.calcMain.getItems().addAll(calcScf,calcOpt,calcDos,calcBands,calcMd,calcTddft,
+				calcPhonon,calcNeb,calcCustom);
+		calcScf.setOnAction((event) -> {
 			openCalc(EnumCalc.SCF,true);
 		});
-		contTree.calcOpt.setOnAction((event) -> {
+		calcOpt.setOnAction((event) -> {
 			openCalc(EnumCalc.OPT,true);
 		});
-		contTree.calcDos.setOnAction((event) -> {
+		calcDos.setOnAction((event) -> {
 			openCalc(EnumCalc.DOS,true);
 		});
-		contTree.calcBands.setOnAction((event) -> {
+		calcBands.setOnAction((event) -> {
 			openCalc(EnumCalc.BANDS,true);
 		});
-		contTree.calcMd.setOnAction((event) -> {
+		calcMd.setOnAction((event) -> {
 			openCalc(EnumCalc.BOMD,true);
 		});
-		contTree.calcTddft.setOnAction((event) -> {
+		calcTddft.setOnAction((event) -> {
 			openCalc(EnumCalc.TDDFT,true);
 		});
-		contTree.calcPhonon.setOnAction((event) -> {
+		calcPhonon.setOnAction((event) -> {
 			openCalc(EnumCalc.PHONON,true);
 		});
-		contTree.calcNeb.setOnAction((event) -> {
+		calcNeb.setOnAction((event) -> {
 			openCalc(EnumCalc.NEB,true);
 		});
-		contTree.calcCustom.setOnAction((event) -> {
+		calcCustom.setOnAction((event) -> {
 			ShowAlert.showAlert(AlertType.INFORMATION, "Info", "Customized calculation not yet implemented.");
 		});
 	}

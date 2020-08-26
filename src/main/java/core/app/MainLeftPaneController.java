@@ -31,7 +31,6 @@ import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.MenuButton;
-import javafx.scene.control.MenuItem;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeTableColumn;
 import javafx.scene.control.TreeTableView;
@@ -39,9 +38,7 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.cell.TreeItemPropertyValueFactory;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
-
 import com.consts.Constants.EnumCalc;
-
 import core.com.error.ShowAlert;
 import core.main.MainClass;
 import core.project.ProjectCalcLog;
@@ -53,15 +50,6 @@ public class MainLeftPaneController implements Initializable {
 	buttonRefresh,
 	createProject;
 	@FXML public MenuButton calcMain;
-	@FXML public MenuItem calcScf,
-	calcOpt,
-	calcDos,
-    calcBands,
-    calcMd,
-    calcTddft,
-    calcPhonon,
-    calcNeb,
-    calcCustom;
 	
 	private TreeItem<ProjectCalcLog> projectTreeRoot;
 	private MainClass mainClass;

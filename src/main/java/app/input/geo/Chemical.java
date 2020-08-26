@@ -21,7 +21,7 @@ package app.input.geo;
 
 import java.io.Serializable;
 
-import com.consts.ChemicalElements;
+import core.com.consts.ChemicalElements;
 
 public abstract class Chemical implements Serializable{
 

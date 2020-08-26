@@ -41,9 +41,9 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.paint.Color;
 import agent.InputAgentGeo;
 import core.app.input.InputController;
+import core.com.consts.ChemicalElements;
 import core.main.MainClass;
 
-import com.consts.ChemicalElements;
 import com.consts.Constants.EnumStep;
 import com.consts.Constants.EnumUnitAtomPos;
 

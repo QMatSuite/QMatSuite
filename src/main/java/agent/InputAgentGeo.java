@@ -28,9 +28,9 @@ import core.agent.InputAgent;
 import core.agent.WrapperBoolean;
 import core.agent.WrapperDouble;
 import core.agent.WrapperInteger;
+import core.com.consts.ChemicalElements;
 import core.com.consts.PhysicalConstants;
 
-import com.consts.ChemicalElements;
 import com.consts.Constants.EnumFunctional;
 import com.consts.Constants.EnumPP;
 import com.consts.Constants.EnumUnitAtomPos;

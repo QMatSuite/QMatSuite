@@ -20,9 +20,7 @@ package app.input.geo;
 
 
 import javafx.scene.control.Alert.AlertType;
-
-import com.consts.ChemicalElements;
-
+import core.com.consts.ChemicalElements;
 import core.com.error.ShowAlert;
 
 public class Atom extends Chemical {
