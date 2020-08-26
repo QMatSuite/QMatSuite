@@ -18,10 +18,10 @@
  *******************************************************************************/
 package core.input;
 
-import agent.WrapperBoolean;
-import agent.WrapperDouble;
-import agent.WrapperInteger;
-import agent.WrapperString;
+import core.agent.WrapperBoolean;
+import core.agent.WrapperDouble;
+import core.agent.WrapperInteger;
+import core.agent.WrapperString;
 import core.com.error.InvalidTypeException;
 
 public abstract class InputValue{

@@ -22,8 +22,8 @@ package input;
 import com.consts.Constants.EnumNameList;
 import com.programconst.DefaultFileNamesQE;
 
-import agent.WrapperInteger;
-import agent.WrapperString;
+import core.agent.WrapperInteger;
+import core.agent.WrapperString;
 import core.com.error.InvalidKeyException;
 import core.com.error.InvalidTypeException;
 import core.input.InputValueInt;

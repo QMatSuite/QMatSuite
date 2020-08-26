@@ -27,7 +27,7 @@ import com.consts.Constants.EnumStringMethod;
 import agent.InputAgentGeo;
 import agent.InputAgentNeb;
 import agent.InputAgentScf;
-import agent.WrapperString;
+import core.agent.WrapperString;
 import core.com.error.InvalidKeyException;
 import core.com.error.InvalidTypeException;
 import core.com.error.ShowAlert;

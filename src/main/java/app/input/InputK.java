@@ -25,7 +25,8 @@ import java.util.ResourceBundle;
 
 import com.consts.Constants.EnumKUnitBands;
 import com.consts.Constants.EnumStep;
-import agent.InputAgentK;
+
+import core.agent.InputAgentK;
 import core.app.input.InputController;
 import core.main.MainClass;
 import javafx.fxml.FXMLLoader;

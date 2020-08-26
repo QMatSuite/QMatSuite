@@ -16,7 +16,7 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package project;
+package core.project;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -25,6 +25,14 @@ import java.util.HashMap;
 
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
+import project.CalculationBandsClass;
+import project.CalculationDosClass;
+import project.CalculationMdClass;
+import project.CalculationNebClass;
+import project.CalculationOptClass;
+import project.CalculationPhononClass;
+import project.CalculationScfClass;
+import project.CalculationTddftClass;
 import agent.InputAgentGeo;
 import app.input.CellParameter;
 import app.input.geo.Atom;

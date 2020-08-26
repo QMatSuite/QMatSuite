@@ -26,17 +26,16 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.ObjectInputStream;
+
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import javafx.scene.control.Alert.AlertType;
-import project.CalculationClass;
-import project.Project;
 import agent.InputAgentGeo;
 import app.input.CellParameter;
 import app.input.geo.Atom;
 import core.agent.InputAgent;
+import core.com.customclasses.CustomObjectInputStream;
 import core.com.error.ErrorMsg;
 import core.com.error.ShowAlert;
 import core.com.programconst.DefaultFileNames.SettingKeys;
@@ -419,7 +418,7 @@ public class ProjectManager{
 	        try { 
 	            // Reading the object from a file 
 	            FileInputStream file1 = new FileInputStream (projSaveFile); 
-	            ObjectInputStream in = new ObjectInputStream (file1); 
+	            CustomObjectInputStream in = new CustomObjectInputStream (file1); 
 	  
 	            // Method for deserialization of object 
 	            pj = (Project)in.readObject(); 
@@ -492,7 +491,7 @@ public class ProjectManager{
 				try { 
 		            // Reading the object from a file 
 		            FileInputStream file = new FileInputStream (fl); 
-		            ObjectInputStream in = new ObjectInputStream (file); 
+		            CustomObjectInputStream in = new CustomObjectInputStream (file); 
 		  
 		            // Method for deserialization of object 
 		            clc = (CalculationClass)in.readObject();

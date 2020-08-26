@@ -23,6 +23,9 @@ import com.consts.Constants.EnumSmearing;
 import com.consts.Constants.EnumUnitEnergy;
 
 import core.agent.InputAgent;
+import core.agent.WrapperDouble;
+import core.agent.WrapperEnum;
+import core.agent.WrapperInteger;
 
 public class InputAgentNscf extends InputAgent{
 	/**

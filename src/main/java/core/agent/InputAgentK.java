@@ -16,14 +16,13 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package agent;
+package core.agent;
 
 import java.util.ArrayList;
 
 import com.consts.Constants.EnumKUnitBands;
 
 import app.input.Kpoint;
-import core.agent.InputAgent;
 
 public abstract class InputAgentK extends InputAgent{
 	/**

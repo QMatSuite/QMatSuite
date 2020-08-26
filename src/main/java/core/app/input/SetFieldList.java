@@ -23,10 +23,10 @@ import java.util.ArrayList;
 
 import com.consts.Constants.EnumStep;
 
-import agent.WrapperBoolean;
-import agent.WrapperDouble;
-import agent.WrapperEnum;
-import agent.WrapperInteger;
+import core.agent.WrapperBoolean;
+import core.agent.WrapperDouble;
+import core.agent.WrapperEnum;
+import core.agent.WrapperInteger;
 import core.com.consts.ConstantsGeneral.EnumInProgram;
 import core.main.MainClass;
 import javafx.scene.control.Alert;

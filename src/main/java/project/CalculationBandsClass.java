@@ -25,6 +25,7 @@ import java.util.HashMap;
 import agent.InputAgentBands;
 import agent.InputAgentGeo;
 import agent.InputAgentScf;
+import core.project.CalculationClass;
 
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;

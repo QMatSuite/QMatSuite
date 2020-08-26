@@ -16,40 +16,42 @@
  *     You should have received a copy of the GNU General Public License
  *     along with QuantumVITAS.  If not, see <https://www.gnu.org/licenses/gpl-3.0.txt>.
  *******************************************************************************/
-package agent;
+package core.agent;
 
-public class WrapperString extends WrapperClass{
+import core.com.consts.ConstantsGeneral.EnumInProgram;
+
+public class WrapperEnum extends WrapperClass{
 	/**
 	 * 
 	 */
-	private static final long serialVersionUID = 6353893107280121267L;
-	private String value;
-	final private String defaultValue;
+	private static final long serialVersionUID = -5526687023913245151L;
+	private EnumInProgram value;
+	final private EnumInProgram defaultValue;
 	
-	public WrapperString(String val) {
+	public WrapperEnum(EnumInProgram val) {
 		defaultValue = val;
 		value = val;
 		enabled = false;
 	}
-	public WrapperString(String val,Boolean bl) {
+	public WrapperEnum(EnumInProgram val,Boolean bl) {
 		defaultValue = val;
 		value = val;
 		enabled = bl;
 	}
-	public String getValue() {
+	public EnumInProgram getValue() {
 		return value;
 	}
-	public void setValue(String val) {
+	public void setValue(EnumInProgram val) {
 		value = val;
 	}
-	public Boolean equals(String vl) {
+	public Boolean equals(EnumInProgram vl) {
 		return java.util.Objects.equals(vl, value);
 	}
 	@Override
 	public boolean isNull() {
-		return value==null || value.isEmpty();
+		return value==null;
 	}
-	public String resetDefault() {
+	public EnumInProgram resetDefault() {
 		value = defaultValue;
 		return defaultValue;
 	}
@@ -60,6 +62,6 @@ public class WrapperString extends WrapperClass{
 	@Override
 	public String getValueString() {
 		if(value==null) {return "null";}
-		return value;
+		return value.toString();
 	}
 }
