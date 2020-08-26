@@ -26,7 +26,6 @@ import java.io.LineNumberReader;
 import java.util.ArrayList;
 import java.util.Scanner;
 
-import com.consts.ChemicalElements;
 import com.consts.Constants.EnumFileCategory;
 import com.consts.Constants.EnumStep;
 import com.consts.Constants.EnumUnitCellAngle;
@@ -38,6 +37,7 @@ import agent.InputAgentPhonon;
 import app.input.CellParameter;
 import app.input.Kpoint;
 import app.input.geo.Atom;
+import core.com.consts.ChemicalElements;
 import core.com.consts.PhysicalConstants;
 import core.com.error.ShowAlert;
 import core.com.programconst.ProgrammingConsts;
