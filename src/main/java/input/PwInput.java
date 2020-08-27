@@ -118,6 +118,7 @@ public class PwInput extends QeInput{
 		sectionDict.get("SYSTEM").addParameter("degauss", new InputValueDouble("degauss",0.0,true));
 		sectionDict.get("SYSTEM").addParameter("smearing", new InputValueString("smearing",EnumSmearing.gauss.toString(),true));
 		sectionDict.get("SYSTEM").addParameter("nbnd", new InputValueInt("nbnd",false));
+		sectionDict.get("SYSTEM").addParameter("nosym", new InputValueBoolean("nosym",false,false));
 		//hybrid
 		sectionDict.get("SYSTEM").addParameter("input_dft", new InputValueString("input_dft",false));
 		sectionDict.get("SYSTEM").addParameter("exxdiv_treatment", new InputValueString("exxdiv_treatment","gygi-baldereschi",false));
@@ -516,7 +517,7 @@ public class PwInput extends QeInput{
 		try {
 			setValue("CONTROL","nstep",ia1.mdSteps);
 			setValue("CONTROL","tprnfor",new WrapperBoolean(true,false));
-			
+			setValue("SYSTEM","nosym",ia1.boolNoSym);
 			
 			setValue("CONTROL","dt",ia1.timeStep);
 			if(EnumUnitTime.fs.equals(ia1.enumTimeUnit.getValue())) {

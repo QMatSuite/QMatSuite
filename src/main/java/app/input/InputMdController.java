@@ -166,28 +166,26 @@ public class InputMdController extends InputController {
     private ComboBox<EnumCellDoFree> comboCellDoFree;
 
     @FXML
-    private Button infoCellDynamics;
+    private Button infoCellDynamics,
+    infoP,
+    infoCellDoFree,
+    infoNoSym;
 
     @FXML
-    private Button infoP;
-
-    @FXML
-    private Button infoCellDoFree;
-
-    @FXML
-    private CheckBox checkCellDynamics;
-
-    @FXML
-    private CheckBox checkP;
-
-    @FXML
-    private CheckBox checkCellDoFree;
+    private CheckBox checkCellDynamics,
+    checkP,
+    checkCellDoFree,
+    checkNoSym;
     
     @FXML
     private Label statusInfo;
     
     @FXML
     private VBox vboxOptionalThermalstat;
+    
+    @FXML
+    private ToggleButton toggleNoSym;
+    
     
     public InputMdController(MainClass mc) {
 		super(mc, EnumStep.BOMD);
@@ -208,6 +206,7 @@ public class InputMdController extends InputController {
 		//initialize without cell
 		toggleCellMoveCall(false);
 		
+		initParameterSet(toggleNoSym, "boolNoSym", "ON", "OFF", checkNoSym, infoNoSym, checkResetAll);
 		setComboListener(comboIonDynamics, EnumIonMdMethod.values(), "enumMdMethodIon");
 		checkIonDynamics.selectedProperty().addListener((observable, oldValue, newValue) ->
 		{ 
