@@ -93,6 +93,10 @@
                   <CheckBox fx:id="checkTimeStep" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="1" />
                   <CheckBox fx:id="checkIonDynamics" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="3" />
                   <CheckBox fx:id="checkCellMove" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="2" />
+                  <Label text="No symmetry" GridPane.rowIndex="4" />
+                  <ToggleButton fx:id="toggleNoSym" mnemonicParsing="false" prefHeight="25.0" prefWidth="199.0" text="OFF" GridPane.columnIndex="1" GridPane.rowIndex="4" />
+                  <CheckBox fx:id="checkNoSym" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="4" />
+                  <Button fx:id="infoNoSym" mnemonicParsing="false" text="i" GridPane.columnIndex="3" GridPane.rowIndex="4" />
                </children>
                <columnConstraints>
                   <ColumnConstraints hgrow="SOMETIMES" prefWidth="120.0" />
@@ -104,6 +108,7 @@
                   <Insets left="10.0" />
                </padding>
                <rowConstraints>
+                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                   <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                   <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                   <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />

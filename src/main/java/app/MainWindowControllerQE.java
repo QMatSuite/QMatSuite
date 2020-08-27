@@ -144,15 +144,15 @@ public class MainWindowControllerQE extends MainWindowController{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		MenuItem calcScf = new MenuItem("Single energy");
-		MenuItem calcOpt = new MenuItem("Optimization");
-		MenuItem calcDos = new MenuItem("DOS");
-		MenuItem calcBands = new MenuItem("Bands");
-		MenuItem calcMd = new MenuItem("MD");
-		MenuItem calcTddft = new MenuItem("TDDFT");
-		MenuItem calcPhonon = new MenuItem("Phonon");
-		MenuItem calcNeb = new MenuItem("NEB");
-		MenuItem calcCustom = new MenuItem("Custom...");
+		MenuItem calcScf = new MenuItem("Single energy");calcScf.setId("calcScf");
+		MenuItem calcOpt = new MenuItem("Optimization");calcOpt.setId("calcOpt");
+		MenuItem calcDos = new MenuItem("DOS");calcDos.setId("calcDos");
+		MenuItem calcBands = new MenuItem("Bands");calcBands.setId("calcBands");
+		MenuItem calcMd = new MenuItem("MD");calcMd.setId("calcMd");
+		MenuItem calcTddft = new MenuItem("TDDFT");calcTddft.setId("calcTddft");
+		MenuItem calcPhonon = new MenuItem("Phonon");calcPhonon.setId("calcPhonon");
+		MenuItem calcNeb = new MenuItem("NEB");calcNeb.setId("calcNeb");
+		MenuItem calcCustom = new MenuItem("Custom...");calcCustom.setId("calcCustom");
 		contTree.calcMain.getItems().addAll(calcScf,calcOpt,calcDos,calcBands,calcMd,calcTddft,
 				calcPhonon,calcNeb,calcCustom);
 		calcScf.setOnAction((event) -> {

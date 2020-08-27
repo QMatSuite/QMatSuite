@@ -18,11 +18,16 @@
  *******************************************************************************/
 package agent;
 
+import java.io.IOException;
+
 import com.consts.Constants.EnumCellDoFree;
 import com.consts.Constants.EnumCellMdMethod;
+import com.consts.Constants.EnumHybridFunc;
+import com.consts.Constants.EnumHybridTreat;
 import com.consts.Constants.EnumIonMdMethod;
 import com.consts.Constants.EnumThermalstat;
 import com.consts.Constants.EnumUnitTime;
+import com.consts.Constants.EnumVdw;
 
 import core.agent.InputAgent;
 import core.agent.WrapperBoolean;
@@ -41,7 +46,7 @@ public class InputAgentMd extends InputAgent{
 	public WrapperEnum enumTimeUnit;
 	public WrapperBoolean boolMoveCell;
 	public WrapperEnum enumMdMethodIon;
-	
+	public WrapperBoolean boolNoSym;
 	
 	public WrapperEnum enumThermalstat;
 	public WrapperDouble temperature;
@@ -58,7 +63,8 @@ public class InputAgentMd extends InputAgent{
 		mdSteps = new WrapperInteger(50);
 		timeStep = new WrapperDouble(20.0);
 		enumTimeUnit = new WrapperEnum(EnumUnitTime.Ry);
-		
+		boolNoSym = new WrapperBoolean(false); 
+				
 		enumMdMethodIon = new WrapperEnum(EnumIonMdMethod.verlet);
 		enumThermalstat = new WrapperEnum(EnumThermalstat.non);
 		temperature = new WrapperDouble(300.0);
@@ -70,6 +76,14 @@ public class InputAgentMd extends InputAgent{
 		enumMdMethodCell = new WrapperEnum(EnumCellMdMethod.pr);
 		pressure = new WrapperDouble(0.0);
 		enumCellDoFree = new WrapperEnum(EnumCellDoFree.all);
+	}
+	//for compatibility 
+	private void readObject(java.io.ObjectInputStream in)throws IOException, ClassNotFoundException 
+	{
+		//for default loading after serialization
+	    in.defaultReadObject();
+	    //no symmetry, added in v0.3.0
+	    if(boolNoSym==null) {boolNoSym = new WrapperBoolean(false);}
 	}
 	@Override
 	public boolean convertInfoFromInput(String inputStr) {
