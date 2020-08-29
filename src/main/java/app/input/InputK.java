@@ -62,7 +62,7 @@ public abstract class InputK extends InputController{
 	}
 	public void disableUnit() {
 		contK.comboKPathUnit.setDisable(true);
-		contK.comboKPathUnit.getSelectionModel().select(EnumKUnitBands.crystal_b);
+		contK.comboKPathUnit.getSelectionModel().select(EnumKUnitBands.crystal_b);//**********check here. Will try to invoke combolistener even when no agent
 	}
 	public void setChild(VBox vb) {
 		vb.getChildren().clear();

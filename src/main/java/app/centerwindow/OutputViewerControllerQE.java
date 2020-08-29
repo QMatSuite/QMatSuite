@@ -171,7 +171,7 @@ public class OutputViewerControllerQE extends OutputViewerController{
 				else if(analTmp.equals(EnumAnalysis.plot2D)) {plot2dStdOut();}
 				else if(analTmp.equals(EnumAnalysis.plot3D)) {plot3dStdOut();}
 			}
-			else if(fileCategory.equals(EnumFileCategory.dos)){
+			else if(fileCategory.equals(EnumFileCategory.dos) || fileCategory.equals(EnumFileCategory.pdosall)){
 				if(analTmp.equals(EnumAnalysis.info)) {textFlowDisplay.getChildren().add(new Text(fileData.toString()));}
 				else if(analTmp.equals(EnumAnalysis.plot2D)) {plot2dDos();}//efficient
 			}
@@ -633,7 +633,7 @@ public class OutputViewerControllerQE extends OutputViewerController{
 			if(fileData.isOpt&&fileData.isOptFinished) {buttonSaveGeo.setDisable(false);}
 			if(!msg.isEmpty()) {showCannotLoad(msg);return false;}
 		}
-		else if(fileCategory.equals(EnumFileCategory.dos)){
+		else if(fileCategory.equals(EnumFileCategory.dos) || fileCategory.equals(EnumFileCategory.pdosall)){
 			return fileData.loadDOS(inoutFiles);
 		}
 		else if(fileCategory.equals(EnumFileCategory.bandsDatGnu)) {
@@ -770,6 +770,7 @@ public class OutputViewerControllerQE extends OutputViewerController{
 		else if(newTab.contains(DefaultFileNamesQE.flfrq)&&newTab.endsWith(ProgrammingConstsQE.phononGnuExtension)){fileCategory = EnumFileCategory.phononBandsGnu;}
 		else if(newTab.contains(DefaultFileNamesQE.calcSaveFile)||newTab.contains(DefaultFileNamesQE.projSaveFile)) 
 		{fileCategory = EnumFileCategory.save;}
+		else if(newTab.startsWith(DefaultFileNamesQE.filpdos+".")) {fileCategory = EnumFileCategory.pdosall;}
 		else if(newTab.contains(".xml")) {fileCategory = EnumFileCategory.xmlout;}
 		else if(newTab.toLowerCase().contains("crash")) {fileCategory = EnumFileCategory.crash;}
 		else if(inoutFiles.isDirectory()) {fileCategory = EnumFileCategory.directory;}
@@ -783,7 +784,7 @@ public class OutputViewerControllerQE extends OutputViewerController{
 			comboAnalysis.getItems().addAll(EnumAnalysis.text);//always has the option of show in text
 			if(EnumFileCategory.stdout.equals(fileCategory) || EnumFileCategory.dos.equals(fileCategory) 
 					|| EnumFileCategory.bandsDatGnu.equals(fileCategory) || EnumFileCategory.tddftPlotSDat.equals(fileCategory)
-					|| EnumFileCategory.phononBandsGnu.equals(fileCategory)) {
+					|| EnumFileCategory.phononBandsGnu.equals(fileCategory) || EnumFileCategory.pdosall.equals(fileCategory)) {
 				comboAnalysis.getItems().addAll(EnumAnalysis.info);
 				if(!fileData.isPH) {
 					comboAnalysis.getItems().addAll(EnumAnalysis.plot2D);

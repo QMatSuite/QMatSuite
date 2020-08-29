@@ -40,5 +40,6 @@ public interface DefaultFileNamesQE extends DefaultFileNames{
 	public final String flfrc = "flfrc";
 	public final String fldos = "matdyn.dos";//QE default for matdyn.x
 	public final String flfrq = "matdyn.freq";//QE default for matdyn.x
+	public final String filpdos = "pdos";//not QE default
 	
 }

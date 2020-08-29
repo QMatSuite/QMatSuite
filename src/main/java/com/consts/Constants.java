@@ -44,6 +44,8 @@ public class Constants extends ConstantsGeneral{
 		CELL,
 		//dos.x
 		DOS,
+		//projwfc.x
+		PROJWFC,
 		//turbo_lanczos.x
 		lr_input,
 		lr_control,
@@ -61,7 +63,8 @@ public class Constants extends ConstantsGeneral{
 		save("QuantumVITAS save"),directory("Directory"),stdin("Input (std)"),
 		stdout("Output (std)"),xmlout("Output (xml)"),crash("Crash"),stderr("Error (std)"),
 		unknown("Unknown"),dos("Density of states"),bandsDatGnu("Bands Data (gnu)"),phononBandsGnu("Phonon Bands (gnu)"),
-		tddftPlotSDat("TDDFT Data (plot_S)");
+		tddftPlotSDat("TDDFT Data (plot_S)"),
+		pdosall("All PDOS files");
 		
 		private String name;
 		
@@ -157,6 +160,7 @@ public class Constants extends ConstantsGeneral{
 		NSCF("NSCF"),
 		OPT("OPT"),
 		DOS("DOS"),
+		PDOS("PDOS"),
 		BANDS("Bands"),
 		BANDSPP("Bands PP"),
 		BANDSPP2("Bands PP 2"),

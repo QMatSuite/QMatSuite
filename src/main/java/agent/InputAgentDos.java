@@ -18,13 +18,17 @@
  *******************************************************************************/
 package agent;
 
+import java.io.IOException;
+
 import com.consts.Constants.EnumSmearing;
 import com.consts.Constants.EnumSummation;
 import com.consts.Constants.EnumUnitEnergy;
 
 import core.agent.InputAgent;
+import core.agent.WrapperBoolean;
 import core.agent.WrapperDouble;
 import core.agent.WrapperEnum;
+import core.com.error.ShowAlert;
 
 public class InputAgentDos extends InputAgent{
 	/**
@@ -43,8 +47,22 @@ public class InputAgentDos extends InputAgent{
 	public WrapperEnum enumSmearing;
 	public WrapperDouble degauss;
 	
+	//pdos, added in v0.3.0
+	public WrapperBoolean boolPdos;
+	public WrapperBoolean boolLwrite;
+	
+	//for compatibility 
+	private void readObject(java.io.ObjectInputStream in)throws IOException, ClassNotFoundException 
+	{
+		//for default loading after serialization
+	    in.defaultReadObject();
+	    //pdos, added in v0.3.0
+	    if(boolLwrite==null) {boolLwrite=new WrapperBoolean(false);
+	    	//ShowAlert.showAlert("Debug", "boolLwrite here");
+	    }
+	    if(boolPdos==null) {boolPdos=new WrapperBoolean(false);}
+	}
 	public InputAgentDos() {
-		
 		emax = new WrapperDouble(null);
 		emin = new WrapperDouble(null);
 		estep = new WrapperDouble(0.1);
@@ -53,6 +71,10 @@ public class InputAgentDos extends InputAgent{
 		enumSummation = new WrapperEnum(EnumSummation.from_input);
 		enumSmearing = new WrapperEnum(EnumSmearing.gauss);
 		degauss = new WrapperDouble(null);
+		
+		//pdos
+		boolLwrite=new WrapperBoolean(false);
+		boolPdos=new WrapperBoolean(false);
 	}
 	@Override
 	public boolean convertInfoFromInput(String inputStr) {
