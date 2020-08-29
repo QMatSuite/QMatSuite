@@ -53,13 +53,13 @@ public class InputDosController extends InputController {
     private Label eminLabel;
 
     @FXML
-    private TextField textEmax;
+    public TextField textEmax;
 
     @FXML
-    private ComboBox<EnumUnitEnergy> unitEminCombo;
+    public ComboBox<EnumUnitEnergy> unitEminCombo;
 
     @FXML
-    private TextField textEmin;
+    public TextField textEmin;
 
     @FXML
     private Label unitEmax;
@@ -77,7 +77,7 @@ public class InputDosController extends InputController {
     private Button infoEstep;
 
     @FXML
-    private TextField textEstep;
+    public TextField textEstep;
 
     @FXML
     private Label unitEstep;

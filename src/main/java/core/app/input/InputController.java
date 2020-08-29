@@ -48,6 +48,7 @@ import core.agent.WrapperDouble;
 import core.agent.WrapperEnum;
 import core.agent.WrapperInteger;
 import core.com.consts.ConstantsGeneral.EnumInProgram;
+import core.com.error.ShowAlert;
 import core.main.MainClass;
 
 import java.lang.reflect.Field;
@@ -459,6 +460,15 @@ public abstract class InputController implements Initializable{
     }
     static protected void setToggle(ToggleButton tb, WrapperBoolean val) {
     	//val cannot be null!
+    	if(tb==null) {
+    		ShowAlert.showAlert("Debug setToggle","ToggleButton null");
+    	}
+    	else if(val==null) {
+    		ShowAlert.showAlert("Debug setToggle","WrapperBoolean null. Toggle is "+tb.getId());
+    	}
+    	else if(val.getValue()==null) {
+    		ShowAlert.showAlert("Debug setToggle","WrapperBoolean value null.");
+    	}
     	tb.setSelected(val.getValue());
     }
     protected static void setCheck(CheckBox cb, Boolean bl) {
@@ -476,7 +486,11 @@ public abstract class InputController implements Initializable{
 		Field fd=null;
 		if(EnumStep.GEO.equals(es)) {ia = mainClass.projectManager.getCurrentGeoAgent();}
 		else {ia = mainClass.projectManager.getStepAgent(es);}
-		if (ia==null) return null;
+		if (ia==null) {
+			//ShowAlert.showAlert("Error", "Undefined step agent "+es.toString()+" in InputController.");
+			//ia.getClass();
+			return null;
+		}
 		try {
 			switch(es) {
 				case GEO:fd = InputAgentGeo.class.getField(fieldName);break;
@@ -489,7 +503,8 @@ public abstract class InputController implements Initializable{
 				case TDDFT:fd = InputAgentTddft.class.getField(fieldName);break;
 				case PH:fd = InputAgentPhonon.class.getField(fieldName);break;
 				case NEB:fd = InputAgentNeb.class.getField(fieldName);break;
-				default:break;	
+				default:
+					break;	
 			}
 			if(fd==null) {
 				Alert alert1 = new Alert(AlertType.ERROR);

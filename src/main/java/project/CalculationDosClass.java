@@ -32,6 +32,7 @@ import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
 import input.ContainerInputString;
 import input.DosInput;
+import input.ProjwfcInput;
 import input.PwInput;
 import input.QeInput;
 
@@ -52,6 +53,7 @@ public class CalculationDosClass extends CalculationClass{
 	    inputList.put(EnumStep.SCF, new PwInput());
 	    inputList.put(EnumStep.NSCF,new PwInput());
 	    inputList.put(EnumStep.DOS,new DosInput());
+	    inputList.put(EnumStep.PDOS,new ProjwfcInput());
 	}
 	public CalculationDosClass(String cn) {
 		super();
@@ -60,7 +62,7 @@ public class CalculationDosClass extends CalculationClass{
 		
 		agentList.put(EnumStep.SCF,new InputAgentScf());	
 		agentList.put(EnumStep.NSCF,new InputAgentNscf());
-		agentList.put(EnumStep.DOS,new InputAgentDos());
+		agentList.put(EnumStep.DOS,new InputAgentDos());//contains both DOS and PDOS
 	}
 	
 	public ArrayList<ContainerInputString> genInputFromAgent(ArrayList<InputAgentGeo> geoList) {
@@ -88,9 +90,18 @@ public class CalculationDosClass extends CalculationClass{
 //    	alert1.setContentText(inputWrapper.toString());
 //    	alert1.showAndWait();
     	
+		InputAgentDos agentDos = (InputAgentDos) agentList.get(EnumStep.DOS);
+		
     	inputList.get(EnumStep.DOS).clearErrorMessage();
-		inputList.get(EnumStep.DOS).loadAgent((InputAgentDos) agentList.get(EnumStep.DOS));
+		inputList.get(EnumStep.DOS).loadAgent(agentDos);
 		cis.add(inputList.get(EnumStep.DOS).genInput(EnumStep.DOS));
+		
+		//PDOS
+		if(agentDos.boolPdos!=null && agentDos.boolPdos.getValue()!=null && agentDos.boolPdos.getValue()) {
+			inputList.get(EnumStep.PDOS).clearErrorMessage();
+			inputList.get(EnumStep.PDOS).loadAgent(agentDos);
+			cis.add(inputList.get(EnumStep.PDOS).genInput(EnumStep.PDOS));
+		}
 		
 		return cis;
 		

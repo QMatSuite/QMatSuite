@@ -35,6 +35,7 @@ import app.input.InputMdController;
 import app.input.InputNebController;
 import app.input.InputNscfController;
 import app.input.InputOptController;
+import app.input.InputPdosController;
 import app.input.InputPhononController;
 import app.input.InputScfController;
 import app.input.InputTddftController;
@@ -65,7 +66,8 @@ public class MainWindowControllerQE extends MainWindowController{
 	scrollTddft,
 	scrollBandsPP,
 	scrollPhonon,
-	scrollNeb;
+	scrollNeb,
+	scrollPdos;
 	
 	private InputScfController contScf;
 	
@@ -84,6 +86,8 @@ public class MainWindowControllerQE extends MainWindowController{
 	private InputNebController contNeb;
 	
 	private InputBandsController contBands;
+	
+	private InputPdosController contPdos;
 	
 	public MainWindowControllerQE(MainClass mc) {
 		super(mc);
@@ -112,6 +116,11 @@ public class MainWindowControllerQE extends MainWindowController{
 			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputDos.fxml"));
 			fxmlLoader.setController(contDos);
 			scrollDos = fxmlLoader.load();
+			
+			contPdos = new InputPdosController(mainClass,contDos);
+			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputPDos.fxml"));
+			fxmlLoader.setController(contPdos);
+			scrollPdos = fxmlLoader.load();
 			
 			contNscf = new InputNscfController(mainClass);
 			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputNscf.fxml"));
@@ -243,7 +252,7 @@ public class MainWindowControllerQE extends MainWindowController{
 			addCalc(boolCreate, ec, enumStepArray);
 			break;
 		case DOS:
-			enumStepArray = new EnumStep[] {EnumStep.SCF,EnumStep.NSCF,EnumStep.DOS};
+			enumStepArray = new EnumStep[] {EnumStep.SCF,EnumStep.NSCF,EnumStep.DOS,EnumStep.PDOS};
 			addCalc(boolCreate, ec, enumStepArray);
 			break;
 		case BANDS:
@@ -320,6 +329,7 @@ public class MainWindowControllerQE extends MainWindowController{
 				case BOMD:contMd.loadProjectParameters();addRightPane(scrollMd,enumStepArray[i]);break;
 				case NSCF:contNscf.loadProjectParameters();addRightPane(scrollNscf,enumStepArray[i]);break;
 				case DOS:contDos.loadProjectParameters();addRightPane(scrollDos,enumStepArray[i]);break;
+				case PDOS:contPdos.loadProjectParameters();addRightPane(scrollPdos,enumStepArray[i]);break;
 				case TDDFT:
 					contTddft.loadProjectParameters();addRightPane(scrollTddft,enumStepArray[i]);
 					break;
