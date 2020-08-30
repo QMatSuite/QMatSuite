@@ -202,6 +202,7 @@ public abstract class InputController implements Initializable{
 						
 					}
 					else {
+						statusTextField.setText(statusTextField.getText()+ ". Set to null.");
 						((WrapperDouble) obj).setValue(null);
 						return;
 					}

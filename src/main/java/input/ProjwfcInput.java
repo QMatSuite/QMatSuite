@@ -70,10 +70,10 @@ public class ProjwfcInput extends QeInput{
 	    	}
 				
 			//QE unit in eV
-			andExplicitWrite("projwfc","Emax",ia1.emax.isNull());
+			andExplicitWrite("projwfc","Emax",!ia1.emax.isNull());
 			if(!ia1.emax.isNull()) {setValue("projwfc","Emax",ia1.emax,mulFactor);}
 			
-			andExplicitWrite("projwfc","Emin",ia1.emin.isNull());
+			andExplicitWrite("projwfc","Emin",!ia1.emin.isNull());
 			if(!ia1.emin.isNull()) {setValue("projwfc","Emin",ia1.emin,mulFactor);}
 			
 			if(!ia1.estep.isNull()) {setValue("projwfc","DeltaE",ia1.estep,mulFactor);}
