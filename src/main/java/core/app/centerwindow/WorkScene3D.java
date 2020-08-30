@@ -26,6 +26,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
 import javafx.geometry.Point3D;
 import javafx.scene.Group;
+import javafx.scene.Node;
 import javafx.scene.PerspectiveCamera;
 import javafx.scene.SubScene;
 import javafx.scene.control.Alert;
@@ -33,6 +34,7 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TabPane;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.input.PickResult;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Background;
@@ -102,7 +104,9 @@ public class WorkScene3D {
     private Toolbar3DController cont3D;
     private Animate3DController contAnimate;
 
-    
+    private GeoGroup atomsGroup;
+    private ArrayList<Atom> atomListClone;
+    private ArrayList<Integer> atomIndexList;
     //determine scale
 	private final double scaling = 30.0;//30 pixel per bohr
     private final double scalingLength = PhysicalConstants.angstPerBohr/scaling;//*****angstrom/length in the figure. Historically exists, should remove!
@@ -132,6 +136,25 @@ public class WorkScene3D {
 		buildAxes();//add axes
 		
 		world.getChildren().addAll(axisGroup,moleculeGroup);
+		
+		moleculeGroup.setOnMouseClicked((event)->{
+            PickResult res = event.getPickResult();
+            String contentText = "";
+            Node selectedNode = res.getIntersectedNode();
+            if(selectedNode instanceof Sphere) {//selectedNode.getClass().getName()
+	            contentText+="Atom selected.\n";
+	            contentText+=getSelectedAtomInfo(selectedNode)+"\n";
+	            contentText+="Position = ("+selectedNode.getTranslateX()*scalingLength+","
+	            		+selectedNode.getTranslateY()*scalingLength+","
+	            				+selectedNode.getTranslateZ()*scalingLength+") (Angstrom)";
+	            ShowAlert.showAlert("Information of selected item", contentText);
+	            //cont3D.setStatus("position "+selectedNode.getTranslateX());
+//            if (res.getIntersectedNode() instanceof Sphere){
+//                ((Sphere)res.getIntersectedNode()).setMaterial(
+//                        new PhongMaterial(event.isShiftDown() ? Color.BLACK : Color.RED));
+//            }
+            }
+		});
 		
 		buildCamera();
 		root.getChildren().add(world);
@@ -390,6 +413,17 @@ public class WorkScene3D {
 		}
 		return null;
 	}
+	private String getSelectedAtomInfo(Node ndSelected) {
+		if(ndSelected==null || atomsGroup==null) {return "No selection/atoms in the scene.";}
+		int index = atomsGroup.getChildren().indexOf(ndSelected);
+		if(index==-1) {return "Selected node does not belong to atoms.";}
+		
+		if(atomIndexList==null || atomIndexList.size()<=index) {return "Cannot find atom in atomIndexList.";}
+		if(atomIndexList.get(index)==null || atomIndexList.get(index)>=atomListClone.size()) {return "Selected atom index out of bound.";}
+		Integer intTmp = atomIndexList.get(index)+1;
+		return "Atom "+intTmp+": "+atomListClone.get(atomIndexList.get(index)).getAtomSpecies().toString()+" selected.";
+		
+	}
 	public void buildGeometry() {
 		
 		if (moleculeGroup==null || iGeoCache == null) return;
@@ -402,7 +436,7 @@ public class WorkScene3D {
 		if(!iGeoCache.ibrav.isNull()) { //a bravais lattice is always necessary!
 			
 			GeoGroup latticeGroup = new GeoGroup();
-			GeoGroup atomsGroup = new GeoGroup();
+			atomsGroup = new GeoGroup();//new group
 			GeoGroup bondsGroup = new GeoGroup();
 	        
 			//generate lattice vectors
@@ -414,7 +448,7 @@ public class WorkScene3D {
 		
 			if(iGeoCache.atomList.size()>0) {
 				
-				ArrayList<Atom> atomListClone = genAtomListInAlat(lattVecs);
+				atomListClone = genAtomListInAlat(lattVecs);
 				if (atomListClone==null) return;//important
 				
 				addAtomsToScene(atomListClone,atomsGroup,lattVecs);
@@ -918,6 +952,8 @@ public class WorkScene3D {
         if (supercellMode==2) {
         	atomListCacheSC = new ArrayList<Atom>();
         }
+        atomIndexList = new ArrayList<Integer>();
+        
 		//now we can start adding atoms using the normalized positions in the list atomListClone
 		for (int i=0;i<atomListClone.size();i++) {
 			
@@ -966,6 +1002,7 @@ public class WorkScene3D {
 	        			tmpAtom.setTranslateX(vx+pointOriginNew.getX());
 						tmpAtom.setTranslateY(vy+pointOriginNew.getY());
 						tmpAtom.setTranslateZ(vz+pointOriginNew.getZ());
+						atomIndexList.add(i);
 						atomsGroup.getChildren().add(tmpAtom);
 	        		}
 	        	}
