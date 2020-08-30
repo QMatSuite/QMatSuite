@@ -66,10 +66,10 @@ public class DosInput extends QeInput{
 	    	}
 				
 			//QE unit in eV
-			andExplicitWrite("DOS","Emax",ia1.emax.isNull());
+			andExplicitWrite("DOS","Emax",!ia1.emax.isNull());
 			if(!ia1.emax.isNull()) {setValue("DOS","Emax",ia1.emax,mulFactor);}
 			
-			andExplicitWrite("DOS","Emin",ia1.emin.isNull());
+			andExplicitWrite("DOS","Emin",!ia1.emin.isNull());
 			if(!ia1.emin.isNull()) {setValue("DOS","Emin",ia1.emin,mulFactor);}
 			
 			if(!ia1.estep.isNull()) {setValue("DOS","DeltaE",ia1.estep,mulFactor);}

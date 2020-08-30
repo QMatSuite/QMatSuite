@@ -445,15 +445,22 @@ public class FileDataClass {
 		}
 	}
 	private void setFermi(String strLine) {
-		if(strLine==null) {return;}
+		Double dbTmp =  getFermi(strLine);
+		if(dbTmp!=null) {this.setFermi(dbTmp);}
+	}
+	private Double getFermi(String strLine) {
+		if(strLine==null) {return null;}
 		if(strLine.toLowerCase().contains("fermi energy")) {
 			String[] splitted = strLine.trim().split("\\s+");//split the string by whitespaces
 			try {
     			Double dbTmp =  Double.valueOf(splitted[4]);
-    			if(dbTmp!=null) {this.setFermi(dbTmp);}
+    			return dbTmp;
     		}catch(Exception e) {
-    			e.printStackTrace();
+    			return null;
     		}
+		}
+		else {
+			return null;
 		}
 	}
 	public boolean loadDOS(File inoutFiles) {//return false when error
@@ -474,7 +481,7 @@ public class FileDataClass {
 		    	if(strTmp==null || strTmp.isEmpty()) continue;
 		    	if(strTmp.contains("#")||strTmp.contains("=")) {
 		    		flagHeader=true;
-		    		this.addDosHeader(strTmp);
+		    		this.addDosHeader(strTmp,inoutFiles);
 		    		continue;
 		    	}
 		    	if(flagHeader) {
@@ -1274,7 +1281,7 @@ public class FileDataClass {
 	public void setHomo(double hm) {
 		homoLevel.add(hm);
 	}
-	public void addDosHeader(String line) {
+	public void addDosHeader(String line,File inoutFiles) {
 		line = line.replace("#", "");
 		if(line.contains("Frequency")) {//phonon DOS
 			try {
@@ -1289,6 +1296,114 @@ public class FileDataClass {
 				e.printStackTrace();
 			}
 		}
+		else if(line.contains("pdos")) {//electronic PDOS, from projwfc.x
+			try {
+				String[] parts1 = line.trim().split("\\s+(?![\\(])");//split the string by whitespaces not followed by (  (to take into account of E (eV))
+				fermiDos=null;//no Fermi read from the pdos file
+				dosHeader.clear();
+				//check how many occurences of pdos
+				int lastIndex = 0;
+				int orbitCount = 0;
+
+				while(lastIndex != -1){
+
+				    lastIndex = line.indexOf("pdos",lastIndex);
+
+				    if(lastIndex != -1){
+				    	orbitCount ++;
+				        lastIndex += "pdos".length();
+				    }
+				}
+				//cross-check with file name
+				final int orbitCountFromFileName;
+				ArrayList<String> arrOrbit = new ArrayList<String>();
+				String fileName = inoutFiles.getName();
+				if(fileName.contains("(s)")) {
+					orbitCountFromFileName = 1;
+					arrOrbit.add("s");
+				}
+				else if(fileName.contains("(p)")) {
+					orbitCountFromFileName = 3;
+					arrOrbit.add("pz");//m=0
+					arrOrbit.add("px");arrOrbit.add("py");//m=+-1
+				}
+				else if(fileName.contains("(d)")) {
+					orbitCountFromFileName = 5;
+					arrOrbit.add("dz2");//m=0
+					arrOrbit.add("dzx");arrOrbit.add("dzy");//m=+-1
+					arrOrbit.add("dx2-y2");arrOrbit.add("dxy");//m=+-2
+				}
+				else if(fileName.contains("(f)")) {
+					orbitCountFromFileName = 7;
+					arrOrbit.add("fz3");//m=0
+					arrOrbit.add("fz2x");arrOrbit.add("fz2y");//m=+-1
+					arrOrbit.add("fz(x2-y2)");arrOrbit.add("fzxy");//m=+-2
+					arrOrbit.add("fx(x2-3y2)");arrOrbit.add("fy(3x2-y2)");//m=+-3
+				}
+				//now non-collinear
+				else if(fileName.contains("_j")) {
+					Integer int2jp1 = get2jp1(fileName);
+					if(int2jp1==null) {
+						orbitCountFromFileName = -1;
+						ShowAlert.showAlert("Warning", "Cannot read j from filename "+inoutFiles.getName());
+					}
+					else {
+						orbitCountFromFileName = int2jp1;
+					}
+				}
+				else if(fileName.contains("_tot")) {
+					orbitCountFromFileName = 1;//total pdos
+				}
+				else {
+					orbitCountFromFileName = -1;
+					ShowAlert.showAlert("Warning", "Unsupported orbital from file "+inoutFiles.getName());
+				}
+					
+				if(orbitCount==orbitCountFromFileName) {
+					int j = 0;
+					for(int i=0;i<parts1.length;i++) {
+						if(parts1[i].contains("pdos") && arrOrbit.size()>j) {
+							dosHeader.add(arrOrbit.get(j));
+							j++;
+						}
+						else {
+							dosHeader.add(parts1[i]);
+						}
+						
+					}
+				}
+				else if(orbitCount==2*orbitCountFromFileName){//spin polarized case
+					int j = 0;
+					for(int i=0;i<parts1.length;i++) {
+						if(parts1[i].contains("pdos") && arrOrbit.size()>j) {
+							if(parts1[i].contains("dw")) {//spin down
+								dosHeader.add(arrOrbit.get(j)+", down");
+								j++;
+							}
+							else if(parts1[i].contains("up")) {//spin up
+								dosHeader.add(arrOrbit.get(j)+", up");
+							}
+							else {
+								dosHeader.add(arrOrbit.get(j)+", unknown spin");
+							}
+						}
+						else {
+							dosHeader.add(parts1[i]);
+						}
+						
+					}
+				}
+				else {
+					ShowAlert.showAlert("Warning", "Non consistent orbital count in file "+inoutFiles.getName()+","+orbitCount+","+orbitCountFromFileName);
+					for(int i=0;i<parts1.length;i++) {
+						dosHeader.add(parts1[i]);
+					}
+				}
+			}
+			catch(Exception e) {
+				e.printStackTrace();
+			}
+		} 
 		else {//electronic DOS, from dos.x
 			try {
 				String[] parts1 = line.split("[\\)]");
@@ -1303,6 +1418,43 @@ public class FileDataClass {
 			catch(Exception e) {
 				e.printStackTrace();
 			}
+		}
+		
+		//load EFermi from NSCF if electronic DOS and no Fermi from DOS file is read
+		if(!line.contains("Frequency") && fermiDos==null) {
+			File nscfFile = new File(inoutFiles.getParentFile(),EnumStep.NSCF.toString()+ProgrammingConsts.stdoutExtension);
+			if(nscfFile!=null && nscfFile.canRead()) {
+				try {
+				    Scanner sc = new Scanner(nscfFile); 
+				    
+				    String strTmp;
+				    
+				    while (sc.hasNextLine()) {
+				    	strTmp = sc.nextLine();
+				    	if(strTmp==null || strTmp.isEmpty()) continue;
+				    	
+				    	if(strTmp.toLowerCase().contains("fermi energy")) {
+				    		//ShowAlert.showAlert("Debug", strTmp);
+				    		fermiDos = getFermi(strTmp);//can be null!
+				    		break;
+				    	}
+				    }
+				    sc.close();
+				}
+				catch(Exception e) {
+				}
+			}
+		}
+	}
+	private Integer get2jp1(String fileName) {
+		if(fileName==null || !fileName.contains("_j")) {return null;}
+		try {
+			String[] parts1 = fileName.trim().split("j");
+			String jNum = parts1[parts1.length-1].replace(")", "");
+			return (int) Math.round(Double.valueOf(jNum)*2+1);
+		}
+		catch(Exception e) {
+			return null;
 		}
 	}
 	public void addTddftHeader(String line) {
