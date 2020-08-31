@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<ScrollPane xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
+   <content>
+      <VBox prefWidth="350.0">
+         <children>
+            <GridPane hgap="5.0">
+              <columnConstraints>
+                <ColumnConstraints halignment="RIGHT" hgrow="SOMETIMES" maxWidth="301.0" minWidth="10.0" prefWidth="298.0" />
+                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="108.5" minWidth="10.0" prefWidth="16.5" />
+                <ColumnConstraints hgrow="SOMETIMES" maxWidth="101.5" minWidth="10.0" prefWidth="25.5" />
+              </columnConstraints>
+              <rowConstraints>
+                <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+              </rowConstraints>
+               <VBox.margin>
+                  <Insets />
+               </VBox.margin>
+               <children>
+                  <Label prefWidth="102.0" text="Reset all to default" />
+                  <CheckBox fx:id="checkResetAll" mnemonicParsing="false" prefHeight="17.0" prefWidth="0.0" GridPane.columnIndex="1" />
+                  <Button fx:id="infoResetAll" mnemonicParsing="false" text="i" GridPane.columnIndex="2" />
+               </children>
+            </GridPane>
+            <VBox fx:id="vboxPdos">
+               <children>
+                  <BorderPane prefWidth="350.0">
+                     <center>
+                        <Separator prefHeight="30.0" BorderPane.alignment="CENTER" />
+                     </center>
+                     <left>
+                        <Label styleClass="medium-text" text="bands.x" BorderPane.alignment="CENTER">
+                           <font>
+                              <Font name="System Bold Italic" size="14.0" />
+                           </font>
+                           <padding>
+                              <Insets right="10.0" />
+                           </padding>
+                        </Label>
+                     </left>
+                     <padding>
+                        <Insets top="10.0" />
+                     </padding>
+                  </BorderPane>
+                  <Label text="Currently no option to control this step." />
+                  <BorderPane prefWidth="350.0">
+                     <center>
+                        <Separator prefHeight="30.0" BorderPane.alignment="CENTER" />
+                     </center>
+                     <padding>
+                        <Insets top="10.0" />
+                     </padding>
+                     <left>
+                        <Label prefWidth="94.0" text="projwfc.x" BorderPane.alignment="CENTER">
+                           <font>
+                              <Font name="System Bold Italic" size="14.0" />
+                           </font>
+                           <padding>
+                              <Insets right="10.0" />
+                           </padding>
+                        </Label>
+                     </left>
+                  </BorderPane>
+                  <GridPane hgap="5.0" vgap="5.0">
+                     <columnConstraints>
+                        <ColumnConstraints hgrow="SOMETIMES" maxWidth="148.5" minWidth="10.0" prefWidth="137.5" />
+                        <ColumnConstraints hgrow="SOMETIMES" maxWidth="195.5" minWidth="10.0" prefWidth="144.5" />
+                        <ColumnConstraints hgrow="SOMETIMES" maxWidth="145.0" minWidth="10.0" prefWidth="18.0" />
+                        <ColumnConstraints hgrow="SOMETIMES" maxWidth="83.5" minWidth="10.0" prefWidth="25.0" />
+                     </columnConstraints>
+                     <rowConstraints>
+                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                     </rowConstraints>
+                     <children>
+                        <Label text="Project to atomic orbitals" />
+                        <ToggleButton fx:id="toggleProjwfc" mnemonicParsing="false" prefHeight="25.0" prefWidth="207.0" text="OFF" GridPane.columnIndex="1" />
+                        <CheckBox fx:id="checkProjwfc" mnemonicParsing="false" GridPane.columnIndex="2" />
+                        <Button fx:id="infoProjwfc" mnemonicParsing="false" text="i" GridPane.columnIndex="3" />
+                     </children>
+                     <VBox.margin>
+                        <Insets />
+                     </VBox.margin>
+                  </GridPane>
+                  <Label fx:id="statusInfo" />
+                  <BorderPane>
+                     <center>
+                        <Separator prefWidth="200.0" BorderPane.alignment="CENTER" />
+                     </center>
+                  </BorderPane>
+               </children>
+               <VBox.margin>
+                  <Insets left="10.0" />
+               </VBox.margin>
+            </VBox>
+         </children>
+      </VBox>
+   </content>
+</ScrollPane>
