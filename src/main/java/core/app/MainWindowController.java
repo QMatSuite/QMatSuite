@@ -84,7 +84,6 @@ import core.project.ProjectManager;
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
 import com.programconst.DefaultFileNamesQE;
-import com.programconst.ProgrammingConstsQE;
 
 import input.ContainerInputString;
 

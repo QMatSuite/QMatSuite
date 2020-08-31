@@ -31,7 +31,7 @@ import com.consts.Constants.EnumStep;
 import com.consts.Constants.EnumUnitCellAngle;
 import com.consts.Constants.EnumUnitCellLength;
 import com.consts.Constants.EnumUnitCellParameter;
-import com.programconst.ProgrammingConstsQE;
+import com.programconst.DefaultFileNamesQE;
 import agent.InputAgentGeo;
 import agent.InputAgentPhonon;
 import app.input.CellParameter;
@@ -62,6 +62,10 @@ public class FileDataClass {
 	private ArrayList<ArrayList<ArrayList<Double>>> bandsDatArray;
 	private ArrayList<Double> bandsHighSymmetryKXCoor;
 	private ArrayList<String> bandsHighSymmetryK;
+	
+	//projected bands
+	private ArrayList<ArrayList<ArrayList<Double>>> projBandsArray;
+	private ArrayList<String> projBandsHeader;
 	
 	//phonon
 	private ArrayList<String> phOutInfo;
@@ -135,6 +139,8 @@ public class FileDataClass {
 		absoluteMag = new ArrayList<ArrayList<Double>>();
 		dosArray = new ArrayList<ArrayList<Double>>();
 		bandsDatArray = new ArrayList<ArrayList<ArrayList<Double>>>();
+		projBandsArray = new ArrayList<ArrayList<ArrayList<Double>>>();
+		projBandsHeader = new ArrayList<String>();
 		bandsHighSymmetryKXCoor = new ArrayList<Double>();
 		bandsHighSymmetryK = new ArrayList<String>();
 		dosHeader = new ArrayList<String>();
@@ -161,6 +167,12 @@ public class FileDataClass {
 	}
 	public ArrayList<ArrayList<ArrayList<Double>>> getBandsDatArray(){
 		return this.bandsDatArray;
+	}
+	public ArrayList<ArrayList<ArrayList<Double>>> getProjBandsArray(){
+		return this.projBandsArray;
+	}
+	public ArrayList<String> getProjBandsHeader(){
+		return this.projBandsHeader;
 	}
 	public <T> void clearArray(ArrayList<T> arr) {
 		if(arr!=null) {
@@ -196,6 +208,16 @@ public class FileDataClass {
 		}
 		bandsDatArray.clear();
 		
+		for(ArrayList<ArrayList<Double>> ard:projBandsArray) {
+			if(ard!=null) {
+				for(ArrayList<Double> ard1:ard) {
+					if(ard1!=null) {ard1.clear();}
+				}
+				ard.clear();
+			}
+		}
+		projBandsArray.clear();
+		
 		for(ArrayList<Double> arr:dataMd) {
 			arr.clear();//DO NOT CLEAR dataMd itself!
 		}
@@ -206,6 +228,7 @@ public class FileDataClass {
 		totalPressure.clear();
 
 		dosHeader.clear();
+		projBandsHeader.clear();
 		
 		bandsHighSymmetryK.clear();
 		bandsHighSymmetryKXCoor.clear();
@@ -337,6 +360,88 @@ public class FileDataClass {
 			} 
 		}
 		return "";
+	}
+	public boolean loadProjBands(File inoutFiles) {
+		this.clearAll();//not necessary, but just for clarity
+		
+		File parentFolder = inoutFiles.getParentFile();
+		File[] fileList = parentFolder.listFiles();
+		String nameTmp = null;
+		File gnuDatFile = null;
+		for (File f : fileList) {
+			nameTmp = f.getName();
+			if(nameTmp!=null && nameTmp.contains(DefaultFileNamesQE.bandsDatGnu) && nameTmp.endsWith(".gnu")) {
+				gnuDatFile = f;
+				break;//only take the first one if more available
+			}
+		}
+		boolean boolTmp = false;
+		if (gnuDatFile==null || !gnuDatFile.canRead()) {
+			ShowAlert.showAlert("Warning", "Projected bands plot needs normal band calculation (file "+
+					DefaultFileNamesQE.bandsDatGnu+".gnu) to proceed, which is missing right now.");
+			boolTmp = false;
+		}
+		else {
+			boolTmp = loadBands(gnuDatFile);//this will invoke clearAll()
+		}
+		
+		try {
+			Scanner sc2 = new Scanner(inoutFiles); 
+		    String strTmp;
+//		    bandsDatArray.add(new ArrayList<ArrayList<Double>>());
+		    boolean startRecording = false;
+		    int ind1=-10;
+		    int indTmp;
+		    while (sc2.hasNextLine()) {
+
+		    	strTmp = sc2.nextLine();
+		    	String[] splitted = strTmp.trim().split("\\s+");//split the string by whitespaces
+		    	
+		    	if(splitted.length==7) {
+		    		try {
+		    			Double.valueOf(splitted[2]);
+		    		}catch(Exception e) {
+		    			//the header line we are looking for
+		    			projBandsHeader.add(strTmp.trim());
+		    			this.projBandsArray.add(new ArrayList<ArrayList<Double>>());
+		    			startRecording = true;//now projBandsArray must be non empty
+		    			ind1=-10;
+		    			//ShowAlert.showAlert("Debug", strTmp);
+		    		}
+		    	}
+		    	else if(splitted.length==3 && startRecording) {
+		    		try {
+		    			indTmp = Integer.valueOf(splitted[0]);
+		    			if(indTmp!=ind1) {
+		    				//first integer increments
+		    				ind1=indTmp;
+		    				projBandsArray.get(projBandsArray.size()-1).add(new ArrayList<Double>());
+	    				}
+		    			Integer.valueOf(splitted[1]);
+		    			projBandsArray.get(projBandsArray.size()-1).
+	    					get(projBandsArray.get(projBandsArray.size()-1).size()-1).
+	    					add(Double.valueOf(splitted[2]));
+		    		}catch(Exception e) {
+		    			e.printStackTrace();
+		    		}
+		    	}
+		    	
+//		    	if(strTmp==null || strTmp.trim().isEmpty()) {
+//		    		if(!bandsDatArray.get(bandsDatArray.size()-1).isEmpty()) {
+//		    			bandsDatArray.add(new ArrayList<ArrayList<Double>>());
+//		    		}
+//		    		continue;
+//		    	}
+//		    	addDoubleRow(strTmp,bandsDatArray.get(bandsDatArray.size()-1));
+	    	}
+		    sc2.close();
+		}
+		catch(IOException e) {
+			e.printStackTrace();
+			return false;
+		}
+		
+		return boolTmp;
 	}
 	public boolean loadBands(File gnuDatFile) {
 		if(!gnuDatFile.canRead()) {
@@ -1505,7 +1610,7 @@ public class FileDataClass {
 			}
 			
 		}
-		else if(EnumFileCategory.bandsDatGnu.equals(fileCategory)) {
+		else if(EnumFileCategory.bandsDatGnu.equals(fileCategory) || EnumFileCategory.pbands.equals(fileCategory)) {
 			if(fermiDos!=null) {
 				strTmp+="Fermi energy read: "+fermiDos.toString()+".\n\n";
 			}
@@ -1529,6 +1634,14 @@ public class FileDataClass {
 							", x coordinate:"+bandsHighSymmetryKXCoor.get(i).toString()+"\n");
 				}
 				strTmp+="\n";
+			}
+			
+			if(EnumFileCategory.pbands.equals(fileCategory)) {
+				strTmp+="Projected bands calculation:\n";
+				strTmp+="Found "+this.projBandsHeader.size()+" headers.\n";
+				strTmp+="Found "+this.projBandsArray.size()+" projections, ";
+				strTmp+=""+this.projBandsArray.get(0).size()+" k-points, ";
+				strTmp+=""+this.projBandsArray.get(0).get(0).size()+" bands.\n";
 			}
 		}
 		else if(EnumFileCategory.phononBandsGnu.equals(fileCategory)) {

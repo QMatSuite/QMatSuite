@@ -22,9 +22,6 @@ package app.menus.settingtabs;
 
 import java.net.URL;
 import java.util.ResourceBundle;
-
-import com.programconst.ProgrammingConstsQE;
-
 import core.com.error.ShowAlert;
 import core.com.programconst.ProgrammingConsts;
 import core.main.MainClass;

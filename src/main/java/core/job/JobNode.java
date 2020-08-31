@@ -23,9 +23,6 @@ import java.io.File;
 import java.lang.reflect.Field;
 import java.nio.file.Paths;
 import java.util.Map;
-
-import com.programconst.ProgrammingConstsQE;
-
 import core.com.error.ShowAlert;
 import core.com.programconst.ProgrammingConsts;
 import javafx.scene.control.Alert.AlertType;
