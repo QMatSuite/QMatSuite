@@ -28,7 +28,6 @@ import core.agent.InputAgent;
 import core.agent.WrapperBoolean;
 import core.agent.WrapperDouble;
 import core.agent.WrapperEnum;
-import core.com.error.ShowAlert;
 
 public class InputAgentDos extends InputAgent{
 	/**

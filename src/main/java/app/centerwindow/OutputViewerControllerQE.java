@@ -31,6 +31,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.scene.Node;
 import javafx.scene.chart.XYChart.Data;
 import javafx.scene.chart.XYChart.Series;
 import javafx.scene.control.ScrollPane.ScrollBarPolicy;
@@ -45,7 +46,6 @@ import com.consts.Constants.EnumNameList;
 import com.consts.Constants.EnumStep;
 import com.programconst.DefaultFileNamesQE;
 import com.programconst.ProgrammingConstsQE;
-
 import app.input.Kpoint;
 import core.app.centerwindow.OutputViewerController;
 import core.app.input.InputGeoController;
@@ -57,6 +57,8 @@ public class OutputViewerControllerQE extends OutputViewerController{
     private final ArrayList<String> plotTypeDos;
     
     private ArrayList<String> plotTypeStdOut;
+    
+    private ArrayList<String> plotTypeProjBands;
     		
     public OutputViewerControllerQE(MainClass mc, InputGeoController contGeo){
     	super(mc,contGeo);
@@ -71,7 +73,8 @@ public class OutputViewerControllerQE extends OutputViewerController{
 	    		add("Integrated DOS"); //1 
     		}
 		};
-		plotTypeStdOut= new ArrayList<String>();
+		plotTypeStdOut = new ArrayList<String>();
+		plotTypeProjBands = new ArrayList<String>();
 	}
 
 	@Override
@@ -87,7 +90,7 @@ public class OutputViewerControllerQE extends OutputViewerController{
 		
 		comboHighSymK.getSelectionModel().selectedIndexProperty().addListener((ov, oldTab, newTab) -> {
 			if(fileData==null) {return;}
-			if(EnumFileCategory.bandsDatGnu.equals(fileCategory)) {
+			if(EnumFileCategory.bandsDatGnu.equals(fileCategory) || EnumFileCategory.pbands.equals(fileCategory)) {
 				int selectInd = (int)newTab;
 
 				if(selectInd<0 || selectInd>=fileData.getBandsHighSymmetryK().size()) {return;} 
@@ -181,7 +184,11 @@ public class OutputViewerControllerQE extends OutputViewerController{
 			}
 			else if(fileCategory.equals(EnumFileCategory.bandsDatGnu)){
 				if(analTmp.equals(EnumAnalysis.info)) {textFlowDisplay.getChildren().add(new Text(fileData.toString()));}
-				else if(analTmp.equals(EnumAnalysis.plot2D)) {plot2dBands();}//efficient
+				else if(analTmp.equals(EnumAnalysis.plot2D)) {comboPlot.getItems().clear();plot2dBands();}//efficient
+			}
+			else if(fileCategory.equals(EnumFileCategory.pbands)){
+				if(analTmp.equals(EnumAnalysis.info)) {textFlowDisplay.getChildren().add(new Text(fileData.toString()));}
+				else if(analTmp.equals(EnumAnalysis.plot2D)) {plot2dProjBands();}//efficient
 			}
 			else if(fileCategory.equals(EnumFileCategory.phononBandsGnu)){
 				if(analTmp.equals(EnumAnalysis.info)) {textFlowDisplay.getChildren().add(new Text(fileData.toString()));}
@@ -247,8 +254,57 @@ public class OutputViewerControllerQE extends OutputViewerController{
 
         displayScroll.setContent(lineChart);
 	}
+	private void plot2dProjBands() {
+		plot2dBands();
+		buttonShowMarker.setSelected(true);
+		Series<Double, Double> series;
+		Data<Double, Double> data;
+		
+		ArrayList<ArrayList<ArrayList<Double>>> projBandsArray = fileData.getProjBandsArray();
+		plotTypeProjBands = fileData.getProjBandsHeader();//reference type, should NEVER clear or modify here
+		
+		if(!isSameTypeStdout(plotTypeProjBands)) {
+			comboPlot.getItems().clear();
+			comboPlot.getItems().addAll(plotTypeProjBands);
+			comboPlot.getSelectionModel().select(0);
+		}
+		
+		int projIndex = comboPlot.getSelectionModel().getSelectedIndex();
+		
+		//ShowAlert.showAlert("Debug", ""+projIndex);
+		
+		if(projIndex < 0 || projIndex >= projBandsArray.size() || projIndex >= plotTypeProjBands.size()) {
+			return;
+		}
+		
+		ArrayList<ArrayList<Double>> projBands = projBandsArray.get(projIndex);
+		String projHeader = plotTypeProjBands.get(projIndex);
+		
+		for (int i=0;i<lineChart.getData().size();i++) {
+			//different bands AND OTHER HELPING LINES
+			series = lineChart.getData().get(i);
+			
+			for (int j=0;j<series.getData().size();j++) {
+				//different k points
+				//ShowAlert.showAlert("Debug", ""+lineChart.getData().size()+","+series.getData().size());
+				data = series.getData().get(j);
+				// this node is StackPane
+				Node node = data.getNode();
+				//ShowAlert.showAlert("Debug", node.toString());
+				if(node!=null) {
+					try {
+						node.setScaleX(projBands.get(j).get(i));
+						node.setScaleY(projBands.get(j).get(i));
+					}
+					catch(Exception e) {
+						node.setVisible(false);
+						node.setVisible(false);
+					}
+				}
+			}
+		}
+	}
 	private void plot2dBands() {
-		comboPlot.getItems().clear();
 		
 		//high symmetry k points
 		hboxBandsToolbar.setVisible(true);
@@ -306,6 +362,7 @@ public class OutputViewerControllerQE extends OutputViewerController{
 	        }
 		}
 		
+		//the following must be plot AFTER the bands, otherwise need to modify plot2dProjBands()
 		//Fermi energy
 		if(fermiDos!=null) {
 			Series<Double,Double> dataSeries1 = new Series<Double, Double>();
@@ -638,21 +695,21 @@ public class OutputViewerControllerQE extends OutputViewerController{
 		}
 		else if(fileCategory.equals(EnumFileCategory.bandsDatGnu)) {
 			boolean blTmp = fileData.loadBands(inoutFiles);
-			//kpointName.clear();
-			ObservableList<String> obsTmp = FXCollections.observableArrayList();
-			for(int i=0;i<fileData.getBandsHighSymmetryK().size();i++) {
-				//kpointName.add("");
-				obsTmp.add(Integer.toString(i+1));
-			}
-			comboHighSymK.setItems(obsTmp);
-			comboHighSymK.getSelectionModel().select(0);
+			setHighSymK();
+			
+			return blTmp;
+		}
+		else if(fileCategory.equals(EnumFileCategory.pbands)) {
+			boolean blTmp = fileData.loadProjBands(inoutFiles);
+			setHighSymK();
+			
 			return blTmp;
 		}
 		else if(fileCategory.equals(EnumFileCategory.phononBandsGnu)) {
 			boolean blTmp = fileData.loadPhononBands(inoutFiles);
 			//kpointName.clear();
 			ObservableList<String> obsTmp = FXCollections.observableArrayList();
-			for(int i=0;i<fileData.getPhononK().size();i++) {
+			for(int i=0;i<fileData.getPhononK().size();i++) {//do not use setHighSymK()
 				//kpointName.add("");
 				obsTmp.add(Integer.toString(i+1));
 			}
@@ -664,6 +721,16 @@ public class OutputViewerControllerQE extends OutputViewerController{
 			return fileData.loadTddft(inoutFiles);
 		}
 		return true;
+	}
+	private void setHighSymK() {
+		//kpointName.clear();
+		ObservableList<String> obsTmp = FXCollections.observableArrayList();
+		for(int i=0;i<fileData.getBandsHighSymmetryK().size();i++) {
+			//kpointName.add("");
+			obsTmp.add(Integer.toString(i+1));
+		}
+		comboHighSymK.setItems(obsTmp);
+		comboHighSymK.getSelectionModel().select(0);
 	}
 	private void showCannotLoad(String msg) {
 		displayScroll.setContent(textFlowDisplay);
@@ -771,6 +838,7 @@ public class OutputViewerControllerQE extends OutputViewerController{
 		else if(newTab.contains(DefaultFileNamesQE.calcSaveFile)||newTab.contains(DefaultFileNamesQE.projSaveFile)) 
 		{fileCategory = EnumFileCategory.save;}
 		else if(newTab.startsWith(DefaultFileNamesQE.filpdos+".")) {fileCategory = EnumFileCategory.pdosall;}
+		else if(newTab.startsWith(DefaultFileNamesQE.filproj+".") && newTab.contains("projwfc")) {fileCategory = EnumFileCategory.pbands;}
 		else if(newTab.contains(".xml")) {fileCategory = EnumFileCategory.xmlout;}
 		else if(newTab.toLowerCase().contains("crash")) {fileCategory = EnumFileCategory.crash;}
 		else if(inoutFiles.isDirectory()) {fileCategory = EnumFileCategory.directory;}
@@ -784,7 +852,8 @@ public class OutputViewerControllerQE extends OutputViewerController{
 			comboAnalysis.getItems().addAll(EnumAnalysis.text);//always has the option of show in text
 			if(EnumFileCategory.stdout.equals(fileCategory) || EnumFileCategory.dos.equals(fileCategory) 
 					|| EnumFileCategory.bandsDatGnu.equals(fileCategory) || EnumFileCategory.tddftPlotSDat.equals(fileCategory)
-					|| EnumFileCategory.phononBandsGnu.equals(fileCategory) || EnumFileCategory.pdosall.equals(fileCategory)) {
+					|| EnumFileCategory.phononBandsGnu.equals(fileCategory) || EnumFileCategory.pdosall.equals(fileCategory)
+					|| EnumFileCategory.pbands.equals(fileCategory)) {
 				comboAnalysis.getItems().addAll(EnumAnalysis.info);
 				if(!fileData.isPH) {
 					comboAnalysis.getItems().addAll(EnumAnalysis.plot2D);

@@ -262,10 +262,11 @@ public abstract class OutputViewerController implements Initializable{
 				ShowAlert.showAlert("Information", "Opening files externally not supported in the current operating system.");
 			}
 		});
-		buttonShowMarker.selectedProperty().addListener((observable, oldValue, newValue) ->{
-			if(newValue==null) return;
-			lineChart.setCreateSymbols(newValue);
-		});
+		buttonShowMarker.selectedProperty().bindBidirectional(lineChart.createSymbolsProperty());
+//		buttonShowMarker.selectedProperty().addListener((observable, oldValue, newValue) ->{
+//			if(newValue==null) return;
+//			lineChart.setCreateSymbols(newValue);
+//		});
 		toggleLegend.selectedProperty().addListener((observable, oldValue, newValue) ->{
 			if(newValue==null) return;
 			lineChart.setLegendVisible(newValue);
@@ -444,10 +445,14 @@ public abstract class OutputViewerController implements Initializable{
             dataSeries1.setName(titleStr);
 			ArrayList<Double> scfTmp = dataY.get(dataY.size()-1);
 			if(scfTmp.isEmpty() && dataY.size()>=2) {scfTmp = dataY.get(dataY.size()-2);}
+			Data<Double, Double> dataTmp;
 			for(int i=0;i<scfTmp.size();i++) {
-		        dataSeries1.getData().add(new Data<Double, Double>( (double) i+1, scfTmp.get(i)));
+				dataTmp = new Data<Double, Double>( (double) i+1, scfTmp.get(i));
+				//ShowAlert.showAlert("Debug", dataTmp.getNode().toString());
+		        dataSeries1.getData().add(dataTmp);
 			}
 			lineChart.getData().add(dataSeries1);
+			
         }
 	}
 	protected void plotArray(ArrayList<Double> dataY, String xlabel, String ylabel, String titleStr, boolean boolClear) {
