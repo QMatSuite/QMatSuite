@@ -24,7 +24,9 @@ import com.consts.Constants.EnumSmearing;
 import com.consts.Constants.EnumUnitEnergy;
 import com.programconst.DefaultFileNamesQE;
 
+import agent.InputAgentBands;
 import agent.InputAgentDos;
+import core.agent.WrapperBoolean;
 import core.agent.WrapperInteger;
 import core.com.consts.PhysicalConstants;
 import core.com.error.InvalidKeyException;
@@ -44,21 +46,38 @@ public class ProjwfcInput extends QeInput{
 		sectionDict.put("projwfc", new NameList(EnumNameList.PROJWFC));
 		sectionDict.get("projwfc").setBoolRequired(true);
 		sectionDict.get("projwfc").addParameter("outdir", new InputValueString("outdir",DefaultFileNamesQE.outDir,true));//always write
+		
+		//for PDOS
 		sectionDict.get("projwfc").addParameter("Emax", new InputValueDouble("Emax",false));//yes
 		sectionDict.get("projwfc").addParameter("Emin", new InputValueDouble("Emin",false));//yes
-		sectionDict.get("projwfc").addParameter("DeltaE", new InputValueDouble("DeltaE",true));//yes
-		
+		sectionDict.get("projwfc").addParameter("DeltaE", new InputValueDouble("DeltaE",false));//yes
 		
 		sectionDict.get("projwfc").addParameter("ngauss", new InputValueInt("ngauss",0,false));//yes
 		sectionDict.get("projwfc").addParameter("degauss", new InputValueDouble("degauss",0.0,false));//yes
 		
 		sectionDict.get("projwfc").addParameter("lwrite_overlaps", new InputValueBoolean("lwrite_overlaps",false,false));
-		sectionDict.get("projwfc").addParameter("filpdos", new InputValueString("filpdos",DefaultFileNamesQE.filpdos,true));//always write
+		sectionDict.get("projwfc").addParameter("filpdos", new InputValueString("filpdos",DefaultFileNamesQE.filpdos,false));
+		
+		//for projected bands
+		sectionDict.get("projwfc").addParameter("filproj", new InputValueString("filproj",DefaultFileNamesQE.filproj,false));
+		sectionDict.get("projwfc").addParameter("lsym", new InputValueBoolean("lsym",true,false));
 	}
-
+	@Override
+	public void loadAgent(InputAgentBands ia1) {
+		try {
+			setRequiredAndWrite("projwfc","filproj",true,true);
+			setValue("projwfc","lsym",new WrapperBoolean(true,true));
+			setRequiredAndWrite("projwfc","lsym",true,true);
+		} catch (InvalidKeyException | InvalidTypeException e) {
+			ShowAlert.showAlert(AlertType.ERROR, "Error", "Exception!"+e.getMessage());
+		}
+		
+		
+	}
 	@Override
 	public void loadAgent(InputAgentDos ia1) {
 		try {
+			setRequiredAndWrite("projwfc","filpdos",true,true);
 			
 			//from dos.x
 			final double mulFactor;

@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import com.consts.Constants.EnumKUnitBands;
 import app.input.Kpoint;
 import core.agent.InputAgentK;
+import core.agent.WrapperBoolean;
 import core.agent.WrapperEnum;
 import core.agent.WrapperInteger;
 
@@ -35,6 +36,7 @@ public class InputAgentBands extends InputAgentK{
 	private static final long serialVersionUID = -3123568374548375634L;
 	
 	public WrapperInteger intNBands;
+	public WrapperBoolean boolProjwfc;//added in v0.3.0
 	
 	private void readObject(java.io.ObjectInputStream in)throws IOException, ClassNotFoundException 
 	{
@@ -47,6 +49,8 @@ public class InputAgentBands extends InputAgentK{
 		java.io.ObjectInputStream.GetField gf = in.readFields();
 		
 		intNBands = (WrapperInteger) gf.get("intNBands", new WrapperInteger(null));
+		boolProjwfc = (WrapperBoolean) gf.get("boolProjwfc", new WrapperBoolean(false));//hopefully this works
+		
 		//try to get the two fields that belong originally to this class
 		//but in v0.2.0 moved to InputAgentK class
 		try {
@@ -59,6 +63,7 @@ public class InputAgentBands extends InputAgentK{
 	
 	public InputAgentBands() {
 		intNBands = new WrapperInteger(null);
+		boolProjwfc = new WrapperBoolean(false);
 	}
 	@Override
 	public boolean convertInfoFromInput(String inputStr) {

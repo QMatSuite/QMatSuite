@@ -29,6 +29,7 @@ import com.consts.Constants.EnumStep;
 import agent.InputAgentScf;
 import app.centerwindow.OutputViewerControllerQE;
 import app.input.InputBandsController;
+import app.input.InputBandsPPController;
 import app.input.InputDosController;
 import app.input.InputGeoControllerQE;
 import app.input.InputMdController;
@@ -89,6 +90,8 @@ public class MainWindowControllerQE extends MainWindowController{
 	
 	private InputPdosController contPdos;
 	
+	private InputBandsPPController contBandsPP;
+	
 	public MainWindowControllerQE(MainClass mc) {
 		super(mc);
 	}
@@ -132,7 +135,10 @@ public class MainWindowControllerQE extends MainWindowController{
 			fxmlLoader.setController(contBands);
 			scrollBands = fxmlLoader.load();
 			
-			scrollBandsPP = new ScrollPane(new Label("Nothing to control in this step."));
+			contBandsPP= new InputBandsPPController(mainClass);
+			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputBandsPP.fxml"));
+			fxmlLoader.setController(contBandsPP);
+			scrollBandsPP = fxmlLoader.load();
 
 			contTddft = new InputTddftController(mainClass);
 			fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("app/input/InputTddft.fxml"));
@@ -340,7 +346,7 @@ public class MainWindowControllerQE extends MainWindowController{
 					contBands.loadProjectParameters();addRightPane(scrollBands,enumStepArray[i]);
 					break;
 				case BANDSPP:
-					addRightPane(scrollBandsPP,enumStepArray[i]);
+					contBandsPP.loadProjectParameters();addRightPane(scrollBandsPP,enumStepArray[i]);
 					break;
 				case NEB:
 					contNeb.loadProjectParameters();addRightPane(scrollNeb,enumStepArray[i]);
