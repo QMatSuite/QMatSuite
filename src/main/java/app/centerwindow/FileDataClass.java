@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.io.LineNumberReader;
 import java.util.ArrayList;
 import java.util.Scanner;
-
 import com.consts.Constants.EnumFileCategory;
 import com.consts.Constants.EnumStep;
 import com.consts.Constants.EnumUnitCellAngle;
@@ -64,8 +63,12 @@ public class FileDataClass {
 	private ArrayList<String> bandsHighSymmetryK;
 	
 	//projected bands
+	//raw, atoms
 	private ArrayList<ArrayList<ArrayList<Double>>> projBandsArray;
 	private ArrayList<String> projBandsHeader;
+	//sum up, elements
+	private ArrayList<ArrayList<ArrayList<Double>>> projBandsElementsArray;
+	private ArrayList<String> projBandsElementsHeader;
 	
 	//phonon
 	private ArrayList<String> phOutInfo;
@@ -140,7 +143,9 @@ public class FileDataClass {
 		dosArray = new ArrayList<ArrayList<Double>>();
 		bandsDatArray = new ArrayList<ArrayList<ArrayList<Double>>>();
 		projBandsArray = new ArrayList<ArrayList<ArrayList<Double>>>();
+		projBandsElementsArray = new ArrayList<ArrayList<ArrayList<Double>>>();
 		projBandsHeader = new ArrayList<String>();
+		projBandsElementsHeader = new ArrayList<String>();
 		bandsHighSymmetryKXCoor = new ArrayList<Double>();
 		bandsHighSymmetryK = new ArrayList<String>();
 		dosHeader = new ArrayList<String>();
@@ -173,6 +178,12 @@ public class FileDataClass {
 	}
 	public ArrayList<String> getProjBandsHeader(){
 		return this.projBandsHeader;
+	}
+	public ArrayList<ArrayList<ArrayList<Double>>> getProjBandsElementsArray(){
+		return this.projBandsElementsArray;
+	}
+	public ArrayList<String> getProjBandsElementsHeader(){
+		return this.projBandsElementsHeader;
 	}
 	public <T> void clearArray(ArrayList<T> arr) {
 		if(arr!=null) {
@@ -218,6 +229,17 @@ public class FileDataClass {
 		}
 		projBandsArray.clear();
 		
+		
+		for(ArrayList<ArrayList<Double>> ard:projBandsElementsArray) {
+			if(ard!=null) {
+				for(ArrayList<Double> ard1:ard) {
+					if(ard1!=null) {ard1.clear();}
+				}
+				ard.clear();
+			}
+		}
+		projBandsElementsArray.clear();
+		
 		for(ArrayList<Double> arr:dataMd) {
 			arr.clear();//DO NOT CLEAR dataMd itself!
 		}
@@ -229,6 +251,7 @@ public class FileDataClass {
 
 		dosHeader.clear();
 		projBandsHeader.clear();
+		projBandsElementsHeader.clear();
 		
 		bandsHighSymmetryK.clear();
 		bandsHighSymmetryKXCoor.clear();
@@ -390,8 +413,11 @@ public class FileDataClass {
 		    String strTmp;
 //		    bandsDatArray.add(new ArrayList<ArrayList<Double>>());
 		    boolean startRecording = false;
-		    int ind1=-10;
+		    //int ind1=-10;
 		    int indTmp;
+		    int countAtom = 0;
+		    Integer headerIndex=0;
+		    String strElementHeader;
 		    while (sc2.hasNextLine()) {
 
 		    	strTmp = sc2.nextLine();
@@ -404,35 +430,47 @@ public class FileDataClass {
 		    			//the header line we are looking for
 		    			projBandsHeader.add(strTmp.trim());
 		    			this.projBandsArray.add(new ArrayList<ArrayList<Double>>());
+		    			countAtom++;
+		    			
+		    			strElementHeader = splitted[2]+" "+splitted[3]+" "+splitted[4]+" "+splitted[5]+" "+splitted[6];
+		    			headerIndex = findIndexProjBandsElementHeader(strElementHeader);
+		    			if(headerIndex==null) {
+		    				this.projBandsElementsHeader.add(strElementHeader);
+		    				this.projBandsElementsArray.add(new ArrayList<ArrayList<Double>>());
+		    				headerIndex = this.projBandsElementsArray.size()-1;
+	    				}
+		    			
 		    			startRecording = true;//now projBandsArray must be non empty
-		    			ind1=-10;
+		    			//ind1=-10;
 		    			//ShowAlert.showAlert("Debug", strTmp);
 		    		}
 		    	}
 		    	else if(splitted.length==3 && startRecording) {
 		    		try {
+//		    			indTmp = Integer.valueOf(splitted[0]);
+//		    			if(indTmp!=ind1) {
+//		    				//first integer increments
+//		    				ind1=indTmp;
+//		    				projBandsArray.get(projBandsArray.size()-1).add(new ArrayList<Double>());
+//	    				}
+//		    			Integer.valueOf(splitted[1]);
+//		    			projBandsArray.get(projBandsArray.size()-1).
+//	    					get(projBandsArray.get(projBandsArray.size()-1).size()-1).
+//	    					add(Double.valueOf(splitted[2]));
 		    			indTmp = Integer.valueOf(splitted[0]);
-		    			if(indTmp!=ind1) {
-		    				//first integer increments
-		    				ind1=indTmp;
-		    				projBandsArray.get(projBandsArray.size()-1).add(new ArrayList<Double>());
-	    				}
-		    			Integer.valueOf(splitted[1]);
-		    			projBandsArray.get(projBandsArray.size()-1).
-	    					get(projBandsArray.get(projBandsArray.size()-1).size()-1).
-	    					add(Double.valueOf(splitted[2]));
+		    			int indTmp2 = Integer.valueOf(splitted[1]);
+		    			double db = Double.valueOf(splitted[2]);
+		    			if(!addToMatrix(projBandsArray,countAtom-1,indTmp-1,indTmp2-1,db) || 
+		    					!addToMatrix(projBandsElementsArray,headerIndex,indTmp-1,indTmp2-1,db)) {
+		    				ShowAlert.showAlert("Error", "Error when loading projected bands file. Abort.");
+		    				sc2.close();
+		    				throw new IOException();
+		    			}
 		    		}catch(Exception e) {
 		    			e.printStackTrace();
 		    		}
 		    	}
 		    	
-//		    	if(strTmp==null || strTmp.trim().isEmpty()) {
-//		    		if(!bandsDatArray.get(bandsDatArray.size()-1).isEmpty()) {
-//		    			bandsDatArray.add(new ArrayList<ArrayList<Double>>());
-//		    		}
-//		    		continue;
-//		    	}
-//		    	addDoubleRow(strTmp,bandsDatArray.get(bandsDatArray.size()-1));
 	    	}
 		    sc2.close();
 		}
@@ -442,6 +480,32 @@ public class FileDataClass {
 		}
 		
 		return boolTmp;
+	}
+	private boolean addToMatrix(ArrayList<ArrayList<ArrayList<Double>>> arrList, int ind1, int ind2, int ind3, double val) {
+		if(arrList==null) {return false;}
+		if(arrList.size()==ind1) {arrList.add(new ArrayList<ArrayList<Double>>());}
+		else if(arrList.size()<ind1) {return false;}//do not allow for sudden index jump > 1
+		
+		ArrayList<ArrayList<Double>> lastArr = arrList.get(ind1);//ind1 = arrList.size()-1
+		if(lastArr.size()==ind2) {lastArr.add(new ArrayList<Double>());}
+		else if(lastArr.size()<ind2) {return false;}//do not allow for sudden index jump > 1
+		
+		ArrayList<Double> lastArrDouble = lastArr.get(ind2);//ind2 = lastArr.size()-1
+		if(ind3>=0 && ind3<lastArrDouble.size()) {lastArrDouble.set(ind3, lastArrDouble.get(ind3)+val);}//already exist
+		else if(ind3==lastArrDouble.size()) {lastArrDouble.add(val);}
+		else {return false;}//do not allow for sudden index jump > 1
+		
+		return true;
+	}
+	private Integer findIndexProjBandsElementHeader(String strTmp) {
+		if(strTmp==null || strTmp.isEmpty() || this.projBandsElementsHeader==null || this.projBandsElementsHeader.isEmpty()) {return null;}
+		for(int i=0;i<this.projBandsElementsHeader.size();i++) {
+			if(this.projBandsElementsHeader.get(i)==null) {continue;}
+			if(strTmp.trim().equals(this.projBandsElementsHeader.get(i).trim())) {
+				return i;
+			}
+		}
+		return null;
 	}
 	public boolean loadBands(File gnuDatFile) {
 		if(!gnuDatFile.canRead()) {
