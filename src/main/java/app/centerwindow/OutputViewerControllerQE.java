@@ -38,7 +38,6 @@ import javafx.scene.control.ScrollPane.ScrollBarPolicy;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
-
 import com.consts.Constants.EnumAnalysis;
 import com.consts.Constants.EnumCard;
 import com.consts.Constants.EnumFileCategory;
@@ -59,6 +58,8 @@ public class OutputViewerControllerQE extends OutputViewerController{
     private ArrayList<String> plotTypeStdOut;
     
     private ArrayList<String> plotTypeProjBands;
+    
+    private double markerScale = 2.0;
     		
     public OutputViewerControllerQE(MainClass mc, InputGeoController contGeo){
     	super(mc,contGeo);
@@ -81,13 +82,18 @@ public class OutputViewerControllerQE extends OutputViewerController{
 	public void initialize(URL arg0, ResourceBundle arg1) {
 		super.initialize(arg0, arg1);
 		
+		textMarkerScale.setText(Double.toString(markerScale));
 		
 		toggleShiftFermi.selectedProperty().addListener((ov, oldVal, newVal) -> {
 			if(EnumAnalysis.plot2D.equals(comboAnalysis.getSelectionModel().getSelectedItem())) {
 				updateIoDisplay();
 			}
 		});
-		
+		setToggleElementOrAtom(false);
+		toggleElementOrAtom.selectedProperty().addListener((ov, oldVal, newVal) -> {
+			setToggleElementOrAtom(newVal);
+			if(newVal!=null) {updateIoDisplay();}
+		});
 		comboHighSymK.getSelectionModel().selectedIndexProperty().addListener((ov, oldTab, newTab) -> {
 			if(fileData==null) {return;}
 			if(EnumFileCategory.bandsDatGnu.equals(fileCategory) || EnumFileCategory.pbands.equals(fileCategory)) {
@@ -108,6 +114,20 @@ public class OutputViewerControllerQE extends OutputViewerController{
 			}
 			
 		});
+		textMarkerScale.textProperty().addListener((ov, oldTab, newTab) -> {
+			try {
+				Double dbTmp = Double.valueOf(newTab);
+				if(dbTmp!=null && dbTmp>=0) {
+					markerScale = dbTmp;
+					textMarkerScale.setStyle("-fx-background-color: white;");
+					updateIoDisplay();
+				}
+				else {textMarkerScale.setStyle("-fx-background-color: red;");}
+			}
+			catch(Exception e) {
+				textMarkerScale.setStyle("-fx-background-color: red;");
+			}
+		});
 //		buttonSetLabelK.setOnAction((event) -> {
 //			if(fileData==null || !EnumFileCategory.bandsDatGnu.equals(fileCategory)) {return;}
 //			int selectInd = comboHighSymK.getSelectionModel().getSelectedIndex();
@@ -117,6 +137,12 @@ public class OutputViewerControllerQE extends OutputViewerController{
 //		});
 		//comboPlot.setVisible(false);labelPlot.setVisible(false);
 		
+	}
+	private void setToggleElementOrAtom(Boolean bl) {
+		if(bl==null) {return;}
+		toggleElementOrAtom.setSelected(bl);
+		if(bl) {toggleElementOrAtom.setText("per atom");}
+		else {toggleElementOrAtom.setText("per element");}
 	}
 	@Override
 	protected boolean isFileImportant(String item) {
@@ -139,6 +165,7 @@ public class OutputViewerControllerQE extends OutputViewerController{
         		&& item.endsWith(ProgrammingConsts.stdoutExtension));
         return (item.endsWith(ProgrammingConstsQE.dosExtension)
         		|| (item.contains(DefaultFileNamesQE.bandsDatGnu) && item.endsWith(".gnu"))
+        		|| (item.startsWith(DefaultFileNamesQE.filproj+".") && item.contains("projwfc"))
         		|| item.contains(DefaultFileNamesQE.tddftPlotSDat)
         		|| isScf || isOpt || isMd || isNeb
         		|| (item.contains(DefaultFileNamesQE.flfrq)&&item.endsWith(ProgrammingConstsQE.phononGnuExtension))
@@ -147,6 +174,9 @@ public class OutputViewerControllerQE extends OutputViewerController{
 	}
 	@Override
 	protected void updateIoDisplay() {
+		buttonShowMarker.setDisable(false);
+		textMarkerScale.setDisable(true);
+		toggleElementOrAtom.setDisable(true);
 		//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", "updateIoDisplay involked.", false);
 		
 		hboxBandsToolbar.setVisible(false);
@@ -257,11 +287,21 @@ public class OutputViewerControllerQE extends OutputViewerController{
 	private void plot2dProjBands() {
 		plot2dBands();
 		buttonShowMarker.setSelected(true);
+		buttonShowMarker.setDisable(true);//do not allow user to turn off markers
+		textMarkerScale.setDisable(false);
+		toggleElementOrAtom.setDisable(false);
 		Series<Double, Double> series;
 		Data<Double, Double> data;
 		
-		ArrayList<ArrayList<ArrayList<Double>>> projBandsArray = fileData.getProjBandsArray();
-		plotTypeProjBands = fileData.getProjBandsHeader();//reference type, should NEVER clear or modify here
+		ArrayList<ArrayList<ArrayList<Double>>> projBandsArray;
+		if(toggleElementOrAtom.isSelected()) {
+			projBandsArray = fileData.getProjBandsArray();
+			plotTypeProjBands = fileData.getProjBandsHeader();//reference type, should NEVER clear or modify here
+		}
+		else {
+			projBandsArray = fileData.getProjBandsElementsArray();
+			plotTypeProjBands = fileData.getProjBandsElementsHeader();//reference type, should NEVER clear or modify here
+		}
 		
 		if(!isSameTypeStdout(plotTypeProjBands)) {
 			comboPlot.getItems().clear();
@@ -293,8 +333,8 @@ public class OutputViewerControllerQE extends OutputViewerController{
 				//ShowAlert.showAlert("Debug", node.toString());
 				if(node!=null) {
 					try {
-						node.setScaleX(projBands.get(j).get(i));
-						node.setScaleY(projBands.get(j).get(i));
+						node.setScaleX(markerScale*projBands.get(j).get(i));
+						node.setScaleY(markerScale*projBands.get(j).get(i));
 					}
 					catch(Exception e) {
 						node.setVisible(false);

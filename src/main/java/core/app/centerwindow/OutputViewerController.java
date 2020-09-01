@@ -99,7 +99,10 @@ public abstract class OutputViewerController implements Initializable{
     hboxBandsToolbar;
     
     @FXML protected ToggleButton buttonShowMarker,
-    toggleLegend;
+    toggleLegend,
+    toggleElementOrAtom;
+    
+    @FXML protected TextField textMarkerScale;
     
 	protected MainClass mainClass;//yes
 	
