@@ -31,7 +31,7 @@ dependencies {
 mainClassName = 'main.Main'
 
 group = 'quantumVITAS'
-version = '0.0.1-SNAPSHOT'
+version = '0.3.0'
 sourceCompatibility = '1.8'
 
 publishing {
@@ -55,11 +55,11 @@ launch4j {
     headerType="gui"
     mainClassName = 'main.Main'
     jdkPreference = "jreOnly"
-    outfile = "quantumVITAS-0.2.0.exe"
-    version = "0.2.0"
+    outfile = "quantumVITAS-0.3.0.exe"
+    version = "0.3.0"
     copyright = "Haonan Huang"
     icon = "${projectDir}/docs/images/dark_small_icon.ico"
-    jar = '../libs/quantumVITAS-0.0.1-SNAPSHOT.jar'
+    jar = '../libs/quantumVITAS-0.3.0.jar'
 }
     
 tasks.withType(JavaCompile) {

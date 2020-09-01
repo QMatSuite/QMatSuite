@@ -386,13 +386,8 @@ public abstract class OutputViewerController implements Initializable{
 		listFiles.getItems().clear();
 		listFiles.getItems().addAll(listFilesItems);
 		
-		String itemImportant = null;
-		for(String item:listFilesItems) {
-			if(isFileImportant(item)) {
-				itemImportant = item;//only take the first important one
-				break;
-			}
-		}
+		String itemImportant = getItemImportantToSelect(listFilesItems);
+		
 		if(itemImportant!=null) {
 			listFiles.getSelectionModel().select(itemImportant);//automatically select the "important/highlighted" output file
 			//will invoke selection change listener and update "inoutFiles"
@@ -403,6 +398,14 @@ public abstract class OutputViewerController implements Initializable{
 		else if(!listFiles.getItems().isEmpty()){//select first file if nothing works
 			listFiles.getSelectionModel().select(0);
 		}
+	}
+	protected String getItemImportantToSelect(ObservableList<String> listFilesItems) {
+		for(String item:listFilesItems) {
+			if(isFileImportant(item)) {
+				return item;//only take the first important one
+			}
+		}
+		return null;
 	}
 	protected File getProjectFolder() {
 		String wsp = mainClass.projectManager.workSpacePath;

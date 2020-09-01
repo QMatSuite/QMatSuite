@@ -59,7 +59,7 @@ public class OutputViewerControllerQE extends OutputViewerController{
     
     private ArrayList<String> plotTypeProjBands;
     
-    private double markerScale = 2.0;
+    private double markerScale = 1.5;
     		
     public OutputViewerControllerQE(MainClass mc, InputGeoController contGeo){
     	super(mc,contGeo);
@@ -143,6 +143,27 @@ public class OutputViewerControllerQE extends OutputViewerController{
 		toggleElementOrAtom.setSelected(bl);
 		if(bl) {toggleElementOrAtom.setText("per atom");}
 		else {toggleElementOrAtom.setText("per element");}
+	}
+	@Override
+	protected String getItemImportantToSelect(ObservableList<String> listFilesItems) {
+		String itemTmp = null;
+		//prefer projected bands over normal bands
+		for(String item:listFilesItems) {
+			if(isFileImportant(item)) {
+				if(item.contains(DefaultFileNamesQE.bandsDatGnu) && item.endsWith(".gnu")) {
+					//normal bands
+					itemTmp = item;
+				}
+				else {
+					return item;//only take the first important one
+				}
+				if(item.startsWith(DefaultFileNamesQE.filproj+".") && item.contains("projwfc")) {
+					//projected bands
+					return item;
+				}
+			}
+		}
+		return itemTmp;
 	}
 	@Override
 	protected boolean isFileImportant(String item) {
