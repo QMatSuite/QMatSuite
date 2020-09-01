@@ -66,7 +66,7 @@ public class ProjwfcInput extends QeInput{
 	public void loadAgent(InputAgentBands ia1) {
 		try {
 			setRequiredAndWrite("projwfc","filproj",true,true);
-			setValue("projwfc","lsym",new WrapperBoolean(true,true));
+			setValue("projwfc","lsym",new WrapperBoolean(false,true));
 			setRequiredAndWrite("projwfc","lsym",true,true);
 		} catch (InvalidKeyException | InvalidTypeException e) {
 			ShowAlert.showAlert(AlertType.ERROR, "Error", "Exception!"+e.getMessage());

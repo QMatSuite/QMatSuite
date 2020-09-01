@@ -428,11 +428,12 @@ public class FileDataClass {
 		    			Double.valueOf(splitted[2]);
 		    		}catch(Exception e) {
 		    			//the header line we are looking for
-		    			projBandsHeader.add(strTmp.trim());
+		    			//projBandsHeader.add(strTmp.trim());
+		    			projBandsHeader.add(genLongHeader(splitted));
 		    			this.projBandsArray.add(new ArrayList<ArrayList<Double>>());
 		    			countAtom++;
 		    			
-		    			strElementHeader = splitted[2]+" "+splitted[3]+" "+splitted[4]+" "+splitted[5]+" "+splitted[6];
+		    			strElementHeader = genShortHeader(splitted);
 		    			headerIndex = findIndexProjBandsElementHeader(strElementHeader);
 		    			if(headerIndex==null) {
 		    				this.projBandsElementsHeader.add(strElementHeader);
@@ -480,6 +481,57 @@ public class FileDataClass {
 		}
 		
 		return boolTmp;
+	}
+	private String genLongHeader(String[] splitted) {
+		if(splitted==null || splitted.length!=7) {return "Error";}
+		return splitted[0]+" "+splitted[1]+" "+splitted[2]+" "+
+				splitted[3]+" "+splitted[4]+" "+splitted[5]+" "+splitted[6]+" "+genComment(splitted);
+	}
+	private String genShortHeader(String[] splitted) {
+		if(splitted==null || splitted.length!=7) {return "Error";}
+		return splitted[2]+" "+splitted[3]+" "+splitted[4]+" "+splitted[5]+" "+splitted[6]+" "+genComment(splitted);
+	}
+	private String genComment(String[] splitted) {//splitted[3]="3D, 2P" etc.., slitted[6]=index of orbital
+		try {
+			String strOrbit = splitted[3].toLowerCase();
+			Integer indOrbit = Integer.valueOf(splitted[6]);
+			if(indOrbit==null) {throw new NullPointerException();}
+			
+			if(strOrbit.contains("s")) {
+				return "(s)";
+			}
+			else if(strOrbit.contains("p")) {
+				switch(indOrbit) {
+					case 1:return "(pz)";
+					case 2:return "(px)";
+					case 3:return "(py)";
+				}
+			}
+			else if(strOrbit.contains("d")) {
+				switch(indOrbit) {
+					case 1:return "(dz2)";
+					case 2:return "(dzx)";
+					case 3:return "(dzy)";
+					case 4:return "(dx2-y2)";
+					case 5:return "(dxy)";
+				}
+			}
+			else if(strOrbit.contains("f")) {
+				switch(indOrbit) {
+					case 1:return "(fz3)";
+					case 2:return "(fz2x)";
+					case 3:return "(fz2y)";
+					case 4:return "(fz(x2-y2))";
+					case 5:return "(fzxy)";
+					case 6:return "(fx(x2-3y2))";
+					case 7:return "(fy(3x2-y2))";
+				}
+			}
+		}
+		catch(Exception e) {
+			return "Error recognizing orbitals.";
+		}
+		return "Error recognizing orbitals.";
 	}
 	private boolean addToMatrix(ArrayList<ArrayList<ArrayList<Double>>> arrList, int ind1, int ind2, int ind3, double val) {
 		if(arrList==null) {return false;}

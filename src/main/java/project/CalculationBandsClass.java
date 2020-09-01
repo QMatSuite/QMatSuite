@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import agent.InputAgentBands;
+import agent.InputAgentDos;
 import agent.InputAgentGeo;
 import agent.InputAgentScf;
 import core.project.CalculationClass;
@@ -31,6 +32,7 @@ import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
 import input.BandsInput;
 import input.ContainerInputString;
+import input.ProjwfcInput;
 import input.PwInput;
 import input.QeInput;
 
@@ -54,6 +56,7 @@ public class CalculationBandsClass extends CalculationClass{
 		inputList.put(EnumStep.BANDS,new PwInput());
 		inputList.put(EnumStep.BANDSPP,new BandsInput());
 		inputList.put(EnumStep.BANDSPP2,new BandsInput());//for spin polarized bands calculation, second spin
+		inputList.put(EnumStep.PDOS, new ProjwfcInput());//for projected bands calculation
 		
 		
 		//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", "Calc. bands "+agentList.containsKey(EnumStep.BANDS));
@@ -86,6 +89,8 @@ public class CalculationBandsClass extends CalculationClass{
 		inputList.get(EnumStep.BANDSPP).clearErrorMessage();
 		
 		InputAgentScf iScf = (InputAgentScf)agentList.get(EnumStep.SCF);
+		InputAgentBands agentBands = (InputAgentBands) agentList.get(EnumStep.BANDS);
+		
 		if(iScf.setMag && iScf.nspin.equals(2)) {//collinear calculation
 			((BandsInput)inputList.get(EnumStep.BANDSPP)).setSpinUp();
 			cis.add(inputList.get(EnumStep.BANDSPP).genInput(EnumStep.BANDSPP));
@@ -97,6 +102,13 @@ public class CalculationBandsClass extends CalculationClass{
 		else {
 			((BandsInput)inputList.get(EnumStep.BANDSPP)).setNoSpin();
 			cis.add(inputList.get(EnumStep.BANDSPP).genInput(EnumStep.BANDSPP));
+		}
+		
+		if(agentBands.boolProjwfc.getValue()) {
+			//calculate projected bands
+			inputList.get(EnumStep.PDOS).clearErrorMessage();
+			inputList.get(EnumStep.PDOS).loadAgent(agentBands);
+			cis.add(inputList.get(EnumStep.PDOS).genInput(EnumStep.PDOS));
 		}
 		
 		
