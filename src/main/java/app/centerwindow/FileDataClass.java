@@ -58,6 +58,7 @@ public class FileDataClass {
 	private ArrayList<ArrayList<Double>> absoluteMag;//Bohr mag/cell
 	private ArrayList<ArrayList<Double>> dosArray;
 	private ArrayList<String> dosHeader;
+	public String dosRawHeader = "";
 	private ArrayList<ArrayList<ArrayList<Double>>> bandsDatArray;
 	private ArrayList<Double> bandsHighSymmetryKXCoor;
 	private ArrayList<String> bandsHighSymmetryK;
@@ -702,6 +703,7 @@ public class FileDataClass {
 		    	if(strTmp==null || strTmp.isEmpty()) continue;
 		    	if(strTmp.contains("#")||strTmp.contains("=")) {
 		    		flagHeader=true;
+		    		dosRawHeader = strTmp;
 		    		this.addDosHeader(strTmp,inoutFiles);
 		    		continue;
 		    	}

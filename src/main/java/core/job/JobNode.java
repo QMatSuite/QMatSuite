@@ -22,6 +22,7 @@ package core.job;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Map;
 import core.com.error.ShowAlert;
 import core.com.programconst.ProgrammingConsts;
@@ -40,11 +41,13 @@ public class JobNode implements Runnable {
 	
 	private String mpiCommand;
 	
-	private String commandArguments = "";
+	private ArrayList<String> commandArguments = null;
 	
 	private boolean boolNoInput=false;//if true, no stdin
 	
 	private int ompNumThreads = 0;
+	
+	public boolean boolWriteStdErr = true;
 	
 	public JobNode(String workingDir, String commandName) {
 		//commandName must be full path + command
@@ -52,7 +55,7 @@ public class JobNode implements Runnable {
 		this.workingDir = workingDir;
 		this.stdInOutFileStem = null;
 		this.mpiCommand = "";
-		commandArguments="";
+		commandArguments=null;
 		boolNoInput=false;
 	}
 	public JobNode(String workingDir, String commandName, String stdInOutFileStem) {
@@ -61,7 +64,7 @@ public class JobNode implements Runnable {
 		this.workingDir = workingDir;
 		this.stdInOutFileStem = stdInOutFileStem;
 		this.mpiCommand = "";
-		commandArguments="";
+		commandArguments=null;
 		boolNoInput=false;
 	}
 	public JobNode(String workingDir, String mpiCommand, String commandName, String stdInOutFileStem) {
@@ -70,10 +73,10 @@ public class JobNode implements Runnable {
 		this.workingDir = workingDir;
 		this.stdInOutFileStem = stdInOutFileStem;
 		this.mpiCommand = mpiCommand;
-		commandArguments="";
+		commandArguments=null;
 		boolNoInput=false;
 	}
-	public JobNode(String workingDir, String mpiCommand, String commandName, String stdInOutFileStem, String commandArguments, boolean boolNoInput) {
+	public JobNode(String workingDir, String mpiCommand, String commandName, String stdInOutFileStem, ArrayList<String> commandArguments, boolean boolNoInput) {
 		//commandName must be full path + command
 		this.commandName = commandName;
 		this.workingDir = workingDir;
@@ -81,6 +84,16 @@ public class JobNode implements Runnable {
 		this.mpiCommand = mpiCommand;
 		this.commandArguments=commandArguments;
 		this.boolNoInput = boolNoInput;
+	}
+	public JobNode(String workingDir, String mpiCommand, String commandName, String stdInOutFileStem, ArrayList<String> commandArguments, boolean boolNoInput, boolean boolWriteStdErr) {
+		//commandName must be full path + command
+		this.commandName = commandName;
+		this.workingDir = workingDir;
+		this.stdInOutFileStem = stdInOutFileStem;
+		this.mpiCommand = mpiCommand;
+		this.commandArguments=commandArguments;
+		this.boolNoInput = boolNoInput;
+		this.boolWriteStdErr = boolWriteStdErr;
 	}
 	
 	@Override
@@ -97,25 +110,22 @@ public class JobNode implements Runnable {
 	    
 		builder.directory(new File(workingDir));
 		
-		if(mpiCommand.isEmpty()) {
-			if(boolNoInput) {
-				builder.command(commandName,commandArguments);
-			}
-			else {
-				builder.command(commandName,commandArguments,"-inp",stdInOutFileStem + ProgrammingConsts.stdinExtension);
-			}
+		//construct command list
+		ArrayList<String> stringArr = new ArrayList<String>();
+		if(!mpiCommand.isEmpty()) {
+			stringArr.add(mpiCommand);stringArr.add("-np");stringArr.add(Integer.toString(JobManager.getMpirunNum()));
 		}
-		else {
-			if(boolNoInput)  {
-				builder.command(mpiCommand,"-np",Integer.toString(JobManager.getMpirunNum()),commandName,commandArguments);
-			}
-			else {
-				builder.command(mpiCommand,"-np",Integer.toString(JobManager.getMpirunNum()),commandName,commandArguments,"-inp",stdInOutFileStem + ProgrammingConsts.stdinExtension);
-			}
+		stringArr.add(commandName);
+		if(commandArguments!=null) {stringArr.addAll(commandArguments);}
+		if(!boolNoInput) {
+			stringArr.add("-inp");stringArr.add(stdInOutFileStem + ProgrammingConsts.stdinExtension);
 		}
-        	//builder.redirectInput(new File(workingDir,stdInOutFileStem + ProgrammingConsts.stdinExtension));
-        	builder.redirectOutput(new File(workingDir,stdInOutFileStem + ProgrammingConsts.stdoutExtension));
-        	builder.redirectError(new File(workingDir,stdInOutFileStem + ProgrammingConsts.stderrExtension));
+		//add command list to the process
+		builder.command(stringArr);
+		
+    	//builder.redirectInput(new File(workingDir,stdInOutFileStem + ProgrammingConsts.stdinExtension));
+    	builder.redirectOutput(new File(workingDir,stdInOutFileStem + ProgrammingConsts.stdoutExtension));
+    	if(boolWriteStdErr) {builder.redirectError(new File(workingDir,stdInOutFileStem + ProgrammingConsts.stderrExtension));}
     	
         try {
             synchronized (this) {

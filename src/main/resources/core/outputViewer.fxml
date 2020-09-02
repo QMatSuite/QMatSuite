@@ -16,7 +16,7 @@
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 
-<SplitPane fx:id="rootSplitPane" dividerPositions="0.18" prefWidth="650.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
+<SplitPane fx:id="rootSplitPane" dividerPositions="0.18" prefWidth="660.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
    <items>
       <VBox fx:id="vboxFiles" minWidth="145.0">
          <children>
@@ -48,6 +48,7 @@
                   <Button fx:id="buttonRefresh" mnemonicParsing="false" text="Refresh" />
                   <Button fx:id="buttonSaveGeo" mnemonicParsing="false" text="Save Geo" />
                 <Button fx:id="openAsButton" mnemonicParsing="false" text="Open with..." />
+                  <Button fx:id="buttonSumPdos" mnemonicParsing="false" text="Sum pdos" />
                </children>
             </HBox>
             <HBox fx:id="hboxPlotToolbar" layoutX="10.0" layoutY="135.0">
@@ -61,12 +62,13 @@
                       <ColumnConstraints maxWidth="47.5" minWidth="50.0" />
                       <ColumnConstraints minWidth="30.0" prefWidth="120.0" />
                         <ColumnConstraints minWidth="30.0" prefWidth="120.0" />
-                        <ColumnConstraints minWidth="75.0" />
+                        <ColumnConstraints minWidth="65.0" />
                         <ColumnConstraints hgrow="SOMETIMES" />
                     </columnConstraints>
                     <rowConstraints>
                       <RowConstraints vgrow="SOMETIMES" />
                         <RowConstraints vgrow="SOMETIMES" />
+                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                     </rowConstraints>
                      <children>
                         <Label text="x range" GridPane.columnIndex="2" />
@@ -78,9 +80,9 @@
                         <ComboBox fx:id="comboPlot" prefWidth="130.0" GridPane.columnIndex="1" />
                         <Label fx:id="labelPlot" text="Plot Type" />
                         <ToggleButton fx:id="buttonShowMarker" mnemonicParsing="false" prefWidth="130.0" text="Show Marker" GridPane.columnIndex="1" GridPane.rowIndex="1" />
-                        <ToggleButton fx:id="toggleAutoRange" mnemonicParsing="false" prefWidth="75.0" text="Auto" GridPane.columnIndex="5" />
+                        <ToggleButton fx:id="toggleAutoRange" mnemonicParsing="false" prefWidth="70.0" text="Auto" GridPane.columnIndex="5" />
                         <ToggleButton fx:id="toggleShiftFermi" mnemonicParsing="false" selected="true" text="Shift E_F" GridPane.rowIndex="1" />
-                        <ToggleButton fx:id="toggleLegend" mnemonicParsing="false" prefWidth="75.0" selected="true" text="Legend" GridPane.columnIndex="5" GridPane.rowIndex="1" />
+                        <ToggleButton fx:id="toggleLegend" mnemonicParsing="false" prefWidth="70.0" selected="true" text="Legend" GridPane.columnIndex="5" GridPane.rowIndex="1" />
                      </children>
                   </GridPane>
                   <Separator orientation="VERTICAL" />

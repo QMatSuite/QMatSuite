@@ -647,33 +647,8 @@ public abstract class MainWindowController implements Initializable{
 				}
 			}
 			
-			final String postFixCommand;
-			
-			if(SystemInfo.isWindows()) {
-				if(!new File(mainClass.projectManager.qePath+File.separator+"pw.exe").canExecute()) {
-					ShowAlert.showAlert(AlertType.INFORMATION, "Error", 
-							"Windows detected. Cannot execute job because cannot find pw.exe in the qePath. Please verify the qePath!");
-					return;
-				}
-				postFixCommand = ".exe";
-			}else if(SystemInfo.isUnix()) {
-				if(!new File(mainClass.projectManager.qePath+File.separator+"pw.x").canExecute()) {
-					ShowAlert.showAlert(AlertType.INFORMATION, "Error", 
-							"Linux/Unix detected. Cannot execute job because cannot find pw.x in the qePath. Please verify the qePath!");
-					return;
-				}
-				postFixCommand = ".x";
-			}
-			else if(SystemInfo.isMac()){
-				ShowAlert.showAlert(AlertType.INFORMATION, "Error", 
-						"Mac detected. Currently not supported.");
-				return;
-			}
-			else {	
-				ShowAlert.showAlert(AlertType.INFORMATION, "Error", 
-						"Unrecongized operating system: "+SystemInfo.getOSName()+". Cannot run job.");
-				return;
-			}
+			final String postFixCommand = mainClass.projectManager.getCommandPostfix();
+			if(postFixCommand==null) {return;}
 			
 			//final settings
 			contRun.initializeBoolRunStep(cis);
@@ -713,13 +688,13 @@ public abstract class MainWindowController implements Initializable{
 							"No command name specified for the "+Integer.toString(j)+"th step. Skip this step...");
 					continue;
 				}
-				ShowAlert.showAlert("Debug", fl.getPath());
+				//ShowAlert.showAlert("Debug", fl.getPath());
 				stdInOutStem = (cis.get(j).overrideStdInOutStem.isEmpty()? cis.get(j).stepName.toString():cis.get(j).overrideStdInOutStem);
 				if(cis.get(j).boolNoMpi) {//step does not allow mpi, e.g. sumpdos
 					if(cis.get(j).boolNoInputFile) {//directly pass the input string to the command line
 						mainClass.jobManager.addNode(new JobNode(fl.getPath(),"",
 								new File(mainClass.projectManager.qePath,cis.get(j).commandName+postFixCommand).getAbsolutePath(),
-								stdInOutStem,cis.get(j).input,true));
+								stdInOutStem,cis.get(j).inputToArguments(),true));
 					}
 					else {
 						mainClass.jobManager.addNode(new JobNode(fl.getPath(),"",
@@ -730,7 +705,7 @@ public abstract class MainWindowController implements Initializable{
 					if(cis.get(j).boolNoInputFile) {//directly pass the input string to the command line
 						mainClass.jobManager.addNode(new JobNode(fl.getPath(),mpiCommand,
 								new File(mainClass.projectManager.qePath,cis.get(j).commandName+postFixCommand).getAbsolutePath(),
-								stdInOutStem,cis.get(j).input,true));
+								stdInOutStem,cis.get(j).inputToArguments(),true));
 					}
 					else {
 						mainClass.jobManager.addNode(new JobNode(fl.getPath(),mpiCommand,

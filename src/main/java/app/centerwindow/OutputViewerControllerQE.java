@@ -19,10 +19,12 @@
  *******************************************************************************/
 package app.centerwindow;
 
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.LineNumberReader;
 import java.net.URL;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
@@ -48,6 +50,7 @@ import com.programconst.ProgrammingConstsQE;
 import app.input.Kpoint;
 import core.app.centerwindow.OutputViewerController;
 import core.app.input.InputGeoController;
+import core.com.error.ShowAlert;
 import core.com.programconst.ProgrammingConsts;
 import core.main.MainClass;
 
@@ -114,6 +117,21 @@ public class OutputViewerControllerQE extends OutputViewerController{
 			}
 			
 		});
+		buttonSumPdos.setOnAction((event) -> {
+			new Thread(new Runnable() {
+				@Override
+				public void run() {
+					try {
+						sumPdos();
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+			}).start();
+			
+		});
+		
+		
 		textMarkerScale.textProperty().addListener((ov, oldTab, newTab) -> {
 			try {
 				Double dbTmp = Double.valueOf(newTab);
@@ -137,6 +155,126 @@ public class OutputViewerControllerQE extends OutputViewerController{
 //		});
 		//comboPlot.setVisible(false);labelPlot.setVisible(false);
 		
+	}
+	private void sumPdos() throws Exception {
+		ObservableList<String> obsLst = listFiles.getItems();
+		if(obsLst==null || obsLst.isEmpty()) {return;}
+		
+		ArrayList<String> fileNamePart = new ArrayList<String>();
+		ArrayList<ArrayList<Integer>> indexArr = new ArrayList<ArrayList<Integer>>();
+		String shortName = "";
+		
+		for(int i=0;i<obsLst.size();i++) {
+			if(!obsLst.get(i).startsWith(DefaultFileNamesQE.filpdos) || !obsLst.get(i).contains("atm")) {
+				continue;
+			}
+			String[] strTmp = obsLst.get(i).trim().split("\\(");
+			if(strTmp.length<3) {continue;}//should be 3
+			else {
+				shortName = "("+strTmp[1]+"("+strTmp[2];
+				int intTmp = -1;
+				for(int j=0;j<fileNamePart.size();j++) {
+					if(shortName.equals(fileNamePart.get(j))) {
+						intTmp = j;
+						break;
+					}
+				}
+				if(intTmp==-1) {
+					fileNamePart.add(shortName);
+					indexArr.add(new ArrayList<Integer>());
+					indexArr.get(indexArr.size()-1).add(i);
+				}
+				else {
+					indexArr.get(intTmp).add(i);
+				}
+			}
+		}
+		
+		File fl = this.calcFolder;
+		if(fl==null || !fl.canWrite() || !fl.canRead()) {
+			throw new Exception("Cannot find the calculation directory when trying to run job.");
+		}
+//		final String postFixCommand = mainClass.projectManager.getCommandPostfix();
+//		if(postFixCommand==null) {return;}
+		
+		if(!indexArr.isEmpty()) {
+			//sumpdos DOES NOT DISTINGUISH DIFFERENT m_l!!!!
+//			ContainerInputString cisSumPdos = new ContainerInputString();
+//			cisSumPdos.boolNoInputFile = true;//no input file is written. The string is directly passed to the command line
+//			cisSumPdos.boolNoMpi = true;//do not allow mpirun
+//			cisSumPdos.stepName = EnumStep.SUMPDOS;
+//			cisSumPdos.commandName = "sumpdos";
+//			cisSumPdos.boolEmpty = false;
+//			for(int i=0;i<indexArr.size();i++) {
+//				cisSumPdos.overrideStdInOutStem = DefaultFileNamesQE.filpdos+".element"+fileNamePart.get(i);
+//				String strTmp = "";
+//				for(Integer intTmp : indexArr.get(i)) {
+//					strTmp+=(obsLst.get(intTmp)+" ");
+//				}
+//				cisSumPdos.input = strTmp;
+//				mainClass.jobManager.addNode(new JobNode(fl.getPath(),"",
+//						new File(mainClass.projectManager.qePath,cisSumPdos.commandName+postFixCommand).getAbsolutePath(),
+//						cisSumPdos.overrideStdInOutStem,cisSumPdos.inputToArguments(),true));
+//			}
+			FileDataClass fdc = new FileDataClass();
+			
+			ArrayList<ArrayList<Double>> dosArray;
+			String dosHeader;
+			
+			for(int i=0;i<indexArr.size();i++) {
+				dosArray = null;
+				dosHeader = null;
+				File fileOut = new File(fl,DefaultFileNamesQE.filpdos+".element"+fileNamePart.get(i));
+				for(Integer intTmp : indexArr.get(i)) {
+					
+					fdc.loadDOS(new File(fl,obsLst.get(intTmp)));
+					if(dosArray==null) {
+						dosArray = arrayCopyDeep(fdc.getDosArray());
+						dosHeader = fdc.dosRawHeader;
+					}
+					else {
+						addToDosArray(dosArray,fdc.getDosArray());
+						if(dosHeader.trim().length()!=fdc.dosRawHeader.trim().length()) {
+							throw new Exception("Different dimensions (columns) in the pdos files to sum up.");
+						}
+					}
+				}
+				try {
+					String strInput = ""+dosHeader+"\n";
+					for(ArrayList<Double> ard : dosArray) {
+						for(Double db : ard) {
+							strInput+=(String.format("%.4f", db)+" ");
+						}
+						strInput+="\n";
+					}
+		            Files.write(fileOut.toPath(), strInput.getBytes());
+		        } catch (Exception e) {
+		        	throw new Exception("Cannot write sum pdos file.");
+		        }
+			}
+			
+		}
+	}
+	private ArrayList<ArrayList<Double>> arrayCopyDeep(ArrayList<ArrayList<Double>> targetArray){
+		ArrayList<ArrayList<Double>> arrNew = new ArrayList<ArrayList<Double>>();
+		for(ArrayList<Double> ard:targetArray) {
+			arrNew.add(new ArrayList<Double>());
+			for(Double db:ard) {
+				arrNew.get(arrNew.size()-1).add(db);
+			}
+		}
+		return arrNew;
+	}
+	private void addToDosArray(ArrayList<ArrayList<Double>> targetArray,ArrayList<ArrayList<Double>> arrayToAdd) {
+		if(targetArray.size()!=arrayToAdd.size()) {
+			ShowAlert.showAlert("Warning", "Different dimensions (lines) in the pdos files to sum up.");
+		}
+		for(int i=0;i<Math.min(targetArray.size(), arrayToAdd.size());i++) {
+			for(int j=1;j<Math.min(targetArray.get(i).size(), arrayToAdd.get(i).size());j++) {
+				//do not add up first dimension
+				targetArray.get(i).set(j,targetArray.get(i).get(j)+arrayToAdd.get(i).get(j));
+			}
+		}
 	}
 	private void setToggleElementOrAtom(Boolean bl) {
 		if(bl==null) {return;}
@@ -191,6 +329,7 @@ public class OutputViewerControllerQE extends OutputViewerController{
         		|| isScf || isOpt || isMd || isNeb
         		|| (item.contains(DefaultFileNamesQE.flfrq)&&item.endsWith(ProgrammingConstsQE.phononGnuExtension))
         		|| isPhonon
+        		|| item.startsWith(DefaultFileNamesQE.filpdos+".element") //sumpdos
         		);
 	}
 	@Override
@@ -225,7 +364,7 @@ public class OutputViewerControllerQE extends OutputViewerController{
 				else if(analTmp.equals(EnumAnalysis.plot2D)) {plot2dStdOut();}
 				else if(analTmp.equals(EnumAnalysis.plot3D)) {plot3dStdOut();}
 			}
-			else if(fileCategory.equals(EnumFileCategory.dos) || fileCategory.equals(EnumFileCategory.pdosall)){
+			else if(fileCategory.equals(EnumFileCategory.dos) || fileCategory.equals(EnumFileCategory.pdosall) || fileCategory.equals(EnumFileCategory.pdossum)){
 				if(analTmp.equals(EnumAnalysis.info)) {textFlowDisplay.getChildren().add(new Text(fileData.toString()));}
 				else if(analTmp.equals(EnumAnalysis.plot2D)) {plot2dDos();}//efficient
 			}
@@ -751,7 +890,7 @@ public class OutputViewerControllerQE extends OutputViewerController{
 			if(fileData.isOpt&&fileData.isOptFinished) {buttonSaveGeo.setDisable(false);}
 			if(!msg.isEmpty()) {showCannotLoad(msg);return false;}
 		}
-		else if(fileCategory.equals(EnumFileCategory.dos) || fileCategory.equals(EnumFileCategory.pdosall)){
+		else if(fileCategory.equals(EnumFileCategory.dos) || fileCategory.equals(EnumFileCategory.pdosall) || fileCategory.equals(EnumFileCategory.pdossum)){
 			return fileData.loadDOS(inoutFiles);
 		}
 		else if(fileCategory.equals(EnumFileCategory.bandsDatGnu)) {
@@ -890,7 +1029,7 @@ public class OutputViewerControllerQE extends OutputViewerController{
 	@Override
 	protected void getFileCategory(String newTab) {
 		if(newTab.endsWith(ProgrammingConsts.stdinExtension)) {fileCategory = EnumFileCategory.stdin;}
-		else if(newTab.endsWith(ProgrammingConsts.stdoutExtension)) {fileCategory = EnumFileCategory.stdout;}
+		else if(newTab.endsWith(ProgrammingConsts.stdoutExtension) && !newTab.startsWith(DefaultFileNamesQE.filpdos)) {fileCategory = EnumFileCategory.stdout;}
 		else if(newTab.endsWith(ProgrammingConsts.stderrExtension)) {fileCategory = EnumFileCategory.stderr;}
 		else if(newTab.endsWith(ProgrammingConstsQE.dosExtension)) {fileCategory = EnumFileCategory.dos;}
 		else if(newTab.contains(DefaultFileNamesQE.bandsDatGnu) && newTab.endsWith(".gnu")) {fileCategory = EnumFileCategory.bandsDatGnu;}
@@ -903,6 +1042,7 @@ public class OutputViewerControllerQE extends OutputViewerController{
 		else if(newTab.contains(".xml")) {fileCategory = EnumFileCategory.xmlout;}
 		else if(newTab.toLowerCase().contains("crash")) {fileCategory = EnumFileCategory.crash;}
 		else if(inoutFiles.isDirectory()) {fileCategory = EnumFileCategory.directory;}
+		else if(newTab.startsWith(DefaultFileNamesQE.filpdos+".element")) {fileCategory = EnumFileCategory.pdossum;}
 		else {fileCategory = EnumFileCategory.unknown;}
 		
 	}
@@ -914,7 +1054,7 @@ public class OutputViewerControllerQE extends OutputViewerController{
 			if(EnumFileCategory.stdout.equals(fileCategory) || EnumFileCategory.dos.equals(fileCategory) 
 					|| EnumFileCategory.bandsDatGnu.equals(fileCategory) || EnumFileCategory.tddftPlotSDat.equals(fileCategory)
 					|| EnumFileCategory.phononBandsGnu.equals(fileCategory) || EnumFileCategory.pdosall.equals(fileCategory)
-					|| EnumFileCategory.pbands.equals(fileCategory)) {
+					|| EnumFileCategory.pbands.equals(fileCategory) || EnumFileCategory.pdossum.equals(fileCategory)) {
 				comboAnalysis.getItems().addAll(EnumAnalysis.info);
 				if(!fileData.isPH) {
 					comboAnalysis.getItems().addAll(EnumAnalysis.plot2D);
