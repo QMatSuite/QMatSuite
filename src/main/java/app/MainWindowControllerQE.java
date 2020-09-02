@@ -256,7 +256,7 @@ public class MainWindowControllerQE extends MainWindowController{
 			addCalc(boolCreate, ec, enumStepArray);
 			break;
 		case DOS:
-			enumStepArray = new EnumStep[] {EnumStep.SCF,EnumStep.NSCF,EnumStep.DOS,EnumStep.PDOS};
+			enumStepArray = new EnumStep[] {EnumStep.SCF,EnumStep.NSCF,EnumStep.DOS,EnumStep.PROJWFC};
 			addCalc(boolCreate, ec, enumStepArray);
 			break;
 		case BANDS:
@@ -333,7 +333,7 @@ public class MainWindowControllerQE extends MainWindowController{
 				case BOMD:contMd.loadProjectParameters();addRightPane(scrollMd,enumStepArray[i]);break;
 				case NSCF:contNscf.loadProjectParameters();addRightPane(scrollNscf,enumStepArray[i]);break;
 				case DOS:contDos.loadProjectParameters();addRightPane(scrollDos,enumStepArray[i]);break;
-				case PDOS:contPdos.loadProjectParameters();addRightPane(scrollPdos,enumStepArray[i]);break;
+				case PROJWFC:contPdos.loadProjectParameters();addRightPane(scrollPdos,enumStepArray[i]);break;
 				case TDDFT:
 					contTddft.loadProjectParameters();addRightPane(scrollTddft,enumStepArray[i]);
 					break;

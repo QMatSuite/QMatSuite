@@ -40,6 +40,10 @@ public class JobNode implements Runnable {
 	
 	private String mpiCommand;
 	
+	private String commandArguments = "";
+	
+	private boolean boolNoInput=false;//if true, no stdin
+	
 	private int ompNumThreads = 0;
 	
 	public JobNode(String workingDir, String commandName) {
@@ -48,6 +52,8 @@ public class JobNode implements Runnable {
 		this.workingDir = workingDir;
 		this.stdInOutFileStem = null;
 		this.mpiCommand = "";
+		commandArguments="";
+		boolNoInput=false;
 	}
 	public JobNode(String workingDir, String commandName, String stdInOutFileStem) {
 		//commandName must be full path + command
@@ -55,6 +61,8 @@ public class JobNode implements Runnable {
 		this.workingDir = workingDir;
 		this.stdInOutFileStem = stdInOutFileStem;
 		this.mpiCommand = "";
+		commandArguments="";
+		boolNoInput=false;
 	}
 	public JobNode(String workingDir, String mpiCommand, String commandName, String stdInOutFileStem) {
 		//commandName must be full path + command
@@ -62,6 +70,17 @@ public class JobNode implements Runnable {
 		this.workingDir = workingDir;
 		this.stdInOutFileStem = stdInOutFileStem;
 		this.mpiCommand = mpiCommand;
+		commandArguments="";
+		boolNoInput=false;
+	}
+	public JobNode(String workingDir, String mpiCommand, String commandName, String stdInOutFileStem, String commandArguments, boolean boolNoInput) {
+		//commandName must be full path + command
+		this.commandName = commandName;
+		this.workingDir = workingDir;
+		this.stdInOutFileStem = stdInOutFileStem;
+		this.mpiCommand = mpiCommand;
+		this.commandArguments=commandArguments;
+		this.boolNoInput = boolNoInput;
 	}
 	
 	@Override
@@ -77,11 +96,22 @@ public class JobNode implements Runnable {
 	    environment.put("OMP_NUM_THREADS", Integer.toString(ompNumThreads));
 	    
 		builder.directory(new File(workingDir));
+		
 		if(mpiCommand.isEmpty()) {
-			builder.command(commandName,"-inp",stdInOutFileStem + ProgrammingConsts.stdinExtension);
+			if(boolNoInput) {
+				builder.command(commandName,commandArguments);
+			}
+			else {
+				builder.command(commandName,commandArguments,"-inp",stdInOutFileStem + ProgrammingConsts.stdinExtension);
+			}
 		}
 		else {
-			builder.command(mpiCommand,"-np",Integer.toString(JobManager.getMpirunNum()),commandName,"-inp",stdInOutFileStem + ProgrammingConsts.stdinExtension);
+			if(boolNoInput)  {
+				builder.command(mpiCommand,"-np",Integer.toString(JobManager.getMpirunNum()),commandName,commandArguments);
+			}
+			else {
+				builder.command(mpiCommand,"-np",Integer.toString(JobManager.getMpirunNum()),commandName,commandArguments,"-inp",stdInOutFileStem + ProgrammingConsts.stdinExtension);
+			}
 		}
         	//builder.redirectInput(new File(workingDir,stdInOutFileStem + ProgrammingConsts.stdinExtension));
         	builder.redirectOutput(new File(workingDir,stdInOutFileStem + ProgrammingConsts.stdoutExtension));

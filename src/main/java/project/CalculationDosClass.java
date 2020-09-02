@@ -30,6 +30,8 @@ import core.project.CalculationClass;
 
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
+import com.programconst.DefaultFileNamesQE;
+
 import input.ContainerInputString;
 import input.DosInput;
 import input.ProjwfcInput;
@@ -53,7 +55,7 @@ public class CalculationDosClass extends CalculationClass{
 	    inputList.put(EnumStep.SCF, new PwInput());
 	    inputList.put(EnumStep.NSCF,new PwInput());
 	    inputList.put(EnumStep.DOS,new DosInput());
-	    inputList.put(EnumStep.PDOS,new ProjwfcInput());
+	    inputList.put(EnumStep.PROJWFC,new ProjwfcInput());
 	}
 	public CalculationDosClass(String cn) {
 		super();
@@ -98,9 +100,19 @@ public class CalculationDosClass extends CalculationClass{
 		
 		//PDOS
 		if(agentDos.boolPdos!=null && agentDos.boolPdos.getValue()!=null && agentDos.boolPdos.getValue()) {
-			inputList.get(EnumStep.PDOS).clearErrorMessage();
-			inputList.get(EnumStep.PDOS).loadAgent(agentDos);
-			cis.add(inputList.get(EnumStep.PDOS).genInput(EnumStep.PDOS));
+			inputList.get(EnumStep.PROJWFC).clearErrorMessage();
+			inputList.get(EnumStep.PROJWFC).loadAgent(agentDos);
+			cis.add(inputList.get(EnumStep.PROJWFC).genInput(EnumStep.PROJWFC));
+			
+			ContainerInputString cisSumPdos = new ContainerInputString();
+			cisSumPdos.boolNoInputFile = true;//no input file is written. The string is directly passed to the command line
+			cisSumPdos.boolNoMpi = true;//do not allow mpirun
+			cisSumPdos.stepName = EnumStep.SUMPDOS;
+			cisSumPdos.commandName = "sumpdos";
+			cisSumPdos.input = "pdos.pdos_atm#1(Co)_wfc#1(s)";
+			cisSumPdos.boolEmpty = false;
+			cisSumPdos.overrideStdInOutStem = DefaultFileNamesQE.filpdos+".Element_Co_s";
+			cis.add(cisSumPdos);
 		}
 		
 		return cis;
