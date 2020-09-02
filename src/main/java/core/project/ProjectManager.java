@@ -36,6 +36,7 @@ import app.input.CellParameter;
 import app.input.geo.Atom;
 import core.agent.InputAgent;
 import core.com.customclasses.CustomObjectInputStream;
+import core.com.env.SystemInfo;
 import core.com.error.ErrorMsg;
 import core.com.error.ShowAlert;
 import core.com.programconst.DefaultFileNames.SettingKeys;
@@ -64,6 +65,33 @@ public class ProjectManager{
 		workSpacePath = null;
 		pseudoLibPath = null;
 		qePath = null;
+	}
+	public String getCommandPostfix() {
+		if(SystemInfo.isWindows()) {
+			if(!new File(this.qePath+File.separator+"pw.exe").canExecute()) {
+				ShowAlert.showAlert(AlertType.INFORMATION, "Error", 
+						"Windows detected. Cannot execute job because cannot find pw.exe in the qePath. Please verify the qePath!");
+				return null;
+			}
+			return ".exe";
+		}else if(SystemInfo.isUnix()) {
+			if(!new File(this.qePath+File.separator+"pw.x").canExecute()) {
+				ShowAlert.showAlert(AlertType.INFORMATION, "Error", 
+						"Linux/Unix detected. Cannot execute job because cannot find pw.x in the qePath. Please verify the qePath!");
+				return null;
+			}
+			return ".x";
+		}
+		else if(SystemInfo.isMac()){
+			ShowAlert.showAlert(AlertType.INFORMATION, "Error", 
+					"Mac detected. Currently not supported.");
+			return null;
+		}
+		else {	
+			ShowAlert.showAlert(AlertType.INFORMATION, "Error", 
+					"Unrecongized operating system: "+SystemInfo.getOSName()+". Cannot run job.");
+			return null;
+		}
 	}
 	public ArrayList<String> getGeoName(){
 		Project pj = this.getActiveProject();

@@ -156,7 +156,7 @@
                         <Insets top="10.0" />
                      </padding>
                   </BorderPane>
-                  <Label text="Currently no option. Will compute all combinations." />
+                  <Label text="Please manually sum PDOS in the output file viewer." />
                   <Label fx:id="statusInfo" />
                   <BorderPane>
                      <center>

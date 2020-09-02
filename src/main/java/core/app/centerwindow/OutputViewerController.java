@@ -104,6 +104,8 @@ public abstract class OutputViewerController implements Initializable{
     
     @FXML protected TextField textMarkerScale;
     
+    @FXML protected Button buttonSumPdos;
+    
 	protected MainClass mainClass;//yes
 	
 	protected InputGeoController contGeo;//yes

@@ -21,13 +21,10 @@ package project;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-
 import agent.InputAgentBands;
-import agent.InputAgentDos;
 import agent.InputAgentGeo;
 import agent.InputAgentScf;
 import core.project.CalculationClass;
-
 import com.consts.Constants.EnumCalc;
 import com.consts.Constants.EnumStep;
 import input.BandsInput;

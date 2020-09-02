@@ -19,6 +19,9 @@
  *******************************************************************************/
 package input;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+
 import com.consts.Constants.EnumStep;
 
 public class ContainerInputString {
@@ -60,6 +63,10 @@ public class ContainerInputString {
 	public boolean isEmpty() {
 		//return (input.isEmpty()&&log.isEmpty());
 		return boolEmpty;
+	}
+	public ArrayList<String> inputToArguments(){
+		String[] splitted = input.trim().split("\\s+");//split the string by whitespaces
+		return new ArrayList<String>(Arrays.asList(splitted));//ArrayList<String> arrLst = 
 	}
 	
 }
