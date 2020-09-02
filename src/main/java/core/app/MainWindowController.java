@@ -591,9 +591,6 @@ public abstract class MainWindowController implements Initializable{
         stageRun.setResizable(false);
         
 		runJob.setOnAction((event) -> {
-//			mainClass.jobManager.addNode(new JobNode(null,"notepad.exe"));
-//			mainClass.jobManager.addNode(new JobNode("C:\\Program Files\\PuTTY\\","putty.exe"));
-//			mainClass.jobManager.addNode(new JobNode(null,"notepad.exe"));
 			//check QE path
 			if(mainClass.projectManager.qePath==null || mainClass.projectManager.qePath.isEmpty()) {
 				ShowAlert.showAlert(AlertType.INFORMATION, "Error", 
@@ -639,13 +636,15 @@ public abstract class MainWindowController implements Initializable{
 					ShowAlert.showAlert(AlertType.INFORMATION, "Warning", "Warning! EnumStep not set for "+j+"th step. Please check the code.");
 			    	return;
 				}
-				File calcFile = new File(fl,cis.get(j).stepName.toString()+ProgrammingConsts.stdinExtension);
-				try {
-		            Files.write(calcFile.toPath(), cis.get(j).input.getBytes());
-		        } catch (IOException e) {
-		        	ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Warning! Cannot write input file for "+j+"th step. Abort.");
-			    	return;
-		        }
+				if(!cis.get(j).boolNoInputFile) {//not directly pass the input string to the command line
+					File calcFile = new File(fl,cis.get(j).stepName.toString()+ProgrammingConsts.stdinExtension);
+					try {
+			            Files.write(calcFile.toPath(), cis.get(j).input.getBytes());
+			        } catch (IOException e) {
+			        	ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Warning! Cannot write input file for "+j+"th step. Abort.");
+				    	return;
+			        }
+				}
 			}
 			
 			final String postFixCommand;
@@ -704,6 +703,7 @@ public abstract class MainWindowController implements Initializable{
 			else {
 			}
 			
+			String stdInOutStem = "";
 			//start running the jobs
 			for(int j = 0 ; j < cis.size() ; j++) {
 				if(j>=boolRunStep.size()) {ShowAlert.showAlert(AlertType.INFORMATION, "Error", "boolRunStep size too small.");break;}
@@ -713,13 +713,36 @@ public abstract class MainWindowController implements Initializable{
 							"No command name specified for the "+Integer.toString(j)+"th step. Skip this step...");
 					continue;
 				}
-				mainClass.jobManager.addNode(new JobNode(fl.getPath(),mpiCommand,
-						new File(mainClass.projectManager.qePath,cis.get(j).commandName+postFixCommand).getAbsolutePath(),cis.get(j).stepName.toString()));
+				ShowAlert.showAlert("Debug", fl.getPath());
+				stdInOutStem = (cis.get(j).overrideStdInOutStem.isEmpty()? cis.get(j).stepName.toString():cis.get(j).overrideStdInOutStem);
+				if(cis.get(j).boolNoMpi) {//step does not allow mpi, e.g. sumpdos
+					if(cis.get(j).boolNoInputFile) {//directly pass the input string to the command line
+						mainClass.jobManager.addNode(new JobNode(fl.getPath(),"",
+								new File(mainClass.projectManager.qePath,cis.get(j).commandName+postFixCommand).getAbsolutePath(),
+								stdInOutStem,cis.get(j).input,true));
+					}
+					else {
+						mainClass.jobManager.addNode(new JobNode(fl.getPath(),"",
+								new File(mainClass.projectManager.qePath,cis.get(j).commandName+postFixCommand).getAbsolutePath(),stdInOutStem));
+					}
+				}
+				else {
+					if(cis.get(j).boolNoInputFile) {//directly pass the input string to the command line
+						mainClass.jobManager.addNode(new JobNode(fl.getPath(),mpiCommand,
+								new File(mainClass.projectManager.qePath,cis.get(j).commandName+postFixCommand).getAbsolutePath(),
+								stdInOutStem,cis.get(j).input,true));
+					}
+					else {
+						mainClass.jobManager.addNode(new JobNode(fl.getPath(),mpiCommand,
+								new File(mainClass.projectManager.qePath,cis.get(j).commandName+postFixCommand).getAbsolutePath(),stdInOutStem));
+					}
+				}
 			}
 			
 			//just for test use
 //	    	mainClass.jobManager.addNode(new JobNode(null,"notepad.exe"));
-			
+//			File fl = mainClass.projectManager.getCalculationDir();
+//			mainClass.jobManager.addNode(new JobNode(fl.getPath(),new File(mainClass.projectManager.qePath,"sumpdos.exe").getAbsolutePath(),"test"));
 		});
 
 		saveProjectButton.setOnAction((event) -> {

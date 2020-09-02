@@ -27,12 +27,18 @@ public class ContainerInputString {
 	public String log;
 	public boolean boolEmpty;
 	public String commandName;
+	public boolean boolNoInputFile;//set to true if the input string is to be directly passed to the command line
+	public boolean boolNoMpi;//set to true if the command cannot use mpirun
+	public String overrideStdInOutStem = "";//set to non-empty to override custom stdin and stdout file name
 	public ContainerInputString() {
 		input = "";
 		log = "";
 		stepName = null;
 		boolEmpty = true;
 		commandName = "";
+		boolNoInputFile = false;
+		boolNoMpi = false;
+		overrideStdInOutStem = "";
 	}
 	public void appendInput(String st) {
 		input = input + st;
@@ -45,7 +51,9 @@ public class ContainerInputString {
 		log = log + ci.log;
 	}
 	public String toString() {
-		return "Run with: "+commandName+
+		return "Run with: "+commandName+"\n"+
+				(boolNoInputFile?"Direct command\n":"With input file\n")+
+				(boolNoMpi?"No mpi\n":"Allow mpi\n")+
 				(input.isEmpty()? "":"------Input file-----\n"+input)+
 				(log.isEmpty()? "":"-------Warning-------\n"+log);
 	}

@@ -56,7 +56,7 @@ public class CalculationBandsClass extends CalculationClass{
 		inputList.put(EnumStep.BANDS,new PwInput());
 		inputList.put(EnumStep.BANDSPP,new BandsInput());
 		inputList.put(EnumStep.BANDSPP2,new BandsInput());//for spin polarized bands calculation, second spin
-		inputList.put(EnumStep.PDOS, new ProjwfcInput());//for projected bands calculation
+		inputList.put(EnumStep.PROJWFC, new ProjwfcInput());//for projected bands calculation
 		
 		
 		//ShowAlert.showAlert(AlertType.INFORMATION, "Debug", "Calc. bands "+agentList.containsKey(EnumStep.BANDS));
@@ -106,9 +106,9 @@ public class CalculationBandsClass extends CalculationClass{
 		
 		if(agentBands.boolProjwfc.getValue()) {
 			//calculate projected bands
-			inputList.get(EnumStep.PDOS).clearErrorMessage();
-			inputList.get(EnumStep.PDOS).loadAgent(agentBands);
-			cis.add(inputList.get(EnumStep.PDOS).genInput(EnumStep.PDOS));
+			inputList.get(EnumStep.PROJWFC).clearErrorMessage();
+			inputList.get(EnumStep.PROJWFC).loadAgent(agentBands);
+			cis.add(inputList.get(EnumStep.PROJWFC).genInput(EnumStep.PROJWFC));
 		}
 		
 		
