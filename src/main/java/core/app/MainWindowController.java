@@ -556,14 +556,18 @@ public abstract class MainWindowController implements Initializable{
         		try {
 		            while (!interrupted()) {        
 	                    //sleep
-	                    Thread.sleep(500);
+	                    Thread.sleep(350);
 		                
 		                // update currentJobLabel on FX thread
 		                Platform.runLater(new Runnable() {
 		
 		                    public void run() {
 		                    	String st = mainClass.jobManager.getCurrentJobName();
-		                    	if(st==null) {currentJobLabel.setText("Idle...");}
+		                    	if(st==null) {
+		                    		File fl = mainClass.projectManager.getCalculationDir();
+		                    		currentJobLabel.setText("Idle..."+
+		                    	((fl!=null && fl.canRead() && new File(fl,DefaultFileNamesQE.crashFile).exists())?"Previoius calculation crash detected.":"")
+		                    	);}
 		                    	else {currentJobLabel.setText("Running: "+st);}
 		                    }
 		                });
