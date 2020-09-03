@@ -1029,7 +1029,7 @@ public class OutputViewerControllerQE extends OutputViewerController{
 	@Override
 	protected void getFileCategory(String newTab) {
 		if(newTab.endsWith(ProgrammingConsts.stdinExtension)) {fileCategory = EnumFileCategory.stdin;}
-		else if(newTab.endsWith(ProgrammingConsts.stdoutExtension) && !newTab.startsWith(DefaultFileNamesQE.filpdos)) {fileCategory = EnumFileCategory.stdout;}
+		else if(newTab.endsWith(ProgrammingConsts.stdoutExtension)) {fileCategory = EnumFileCategory.stdout;}
 		else if(newTab.endsWith(ProgrammingConsts.stderrExtension)) {fileCategory = EnumFileCategory.stderr;}
 		else if(newTab.endsWith(ProgrammingConstsQE.dosExtension)) {fileCategory = EnumFileCategory.dos;}
 		else if(newTab.contains(DefaultFileNamesQE.bandsDatGnu) && newTab.endsWith(".gnu")) {fileCategory = EnumFileCategory.bandsDatGnu;}

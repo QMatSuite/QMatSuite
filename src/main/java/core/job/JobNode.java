@@ -24,6 +24,9 @@ import java.lang.reflect.Field;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Map;
+
+import com.programconst.DefaultFileNamesQE;
+
 import core.com.error.ShowAlert;
 import core.com.programconst.ProgrammingConsts;
 import javafx.scene.control.Alert.AlertType;
@@ -49,6 +52,8 @@ public class JobNode implements Runnable {
 	
 	public boolean boolWriteStdErr = true;
 	
+	public boolean boolStopWhenCrashFileDetected = true;
+	
 	public JobNode(String workingDir, String commandName) {
 		//commandName must be full path + command
 		this.commandName = commandName;
@@ -56,7 +61,17 @@ public class JobNode implements Runnable {
 		this.stdInOutFileStem = null;
 		this.mpiCommand = "";
 		commandArguments=null;
-		boolNoInput=false;
+		boolNoInput=true;
+	}
+	public JobNode(String workingDir, ArrayList<String> commandArgument, boolean boolStopWhenCrashFileDetected) {
+		//commandName must be full path + command
+		this.commandName = "";
+		this.workingDir = workingDir;
+		this.stdInOutFileStem = null;
+		this.mpiCommand = "";
+		this.commandArguments=commandArgument;
+		this.boolNoInput=true;
+		this.boolStopWhenCrashFileDetected = boolStopWhenCrashFileDetected;
 	}
 	public JobNode(String workingDir, String commandName, String stdInOutFileStem) {
 		//commandName must be full path + command
@@ -98,7 +113,11 @@ public class JobNode implements Runnable {
 	
 	@Override
 	public void run() {
-		if(workingDir==null || stdInOutFileStem==null){return;}
+		//System.out.println("shshs");
+		
+		if(workingDir==null){return;} // || stdInOutFileStem==null
+		//not execute the command if there is a file called "CRASH" in the working directory
+		if(boolStopWhenCrashFileDetected && new File(workingDir,DefaultFileNamesQE.crashFile).exists()) {return;}
 		
 		ProcessBuilder builder = null;
 		boolean boolError = false;
@@ -115,18 +134,22 @@ public class JobNode implements Runnable {
 		if(!mpiCommand.isEmpty()) {
 			stringArr.add(mpiCommand);stringArr.add("-np");stringArr.add(Integer.toString(JobManager.getMpirunNum()));
 		}
-		stringArr.add(commandName);
-		if(commandArguments!=null) {stringArr.addAll(commandArguments);}
-		if(!boolNoInput) {
+		if(commandName!=null && !commandName.isEmpty()) {stringArr.add(commandName);}
+		if(commandArguments!=null && !commandArguments.isEmpty()) {stringArr.addAll(commandArguments);}
+		if(!boolNoInput && stdInOutFileStem!=null) {
 			stringArr.add("-inp");stringArr.add(stdInOutFileStem + ProgrammingConsts.stdinExtension);
 		}
 		//add command list to the process
 		builder.command(stringArr);
 		
     	//builder.redirectInput(new File(workingDir,stdInOutFileStem + ProgrammingConsts.stdinExtension));
-    	builder.redirectOutput(new File(workingDir,stdInOutFileStem + ProgrammingConsts.stdoutExtension));
-    	if(boolWriteStdErr) {builder.redirectError(new File(workingDir,stdInOutFileStem + ProgrammingConsts.stderrExtension));}
-    	
+		if(stdInOutFileStem!=null) {
+			builder.redirectOutput(new File(workingDir,stdInOutFileStem + ProgrammingConsts.stdoutExtension));
+			if(boolWriteStdErr) {
+				builder.redirectError(new File(workingDir,stdInOutFileStem + ProgrammingConsts.stderrExtension));
+			}
+		}
+		
         try {
             synchronized (this) {
                 this.jobProcess = builder.start();
