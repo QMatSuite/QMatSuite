@@ -25,6 +25,7 @@ import core.com.programconst.DefaultFileNames;
 
 public interface DefaultFileNamesQE extends DefaultFileNames{
 	
+	public final String crashFile = "CRASH";
 	public final String bandsDatGnu = "bands.out";
 	public final String tddftPlotSDat = "pwscf.plot_S.dat";
 	

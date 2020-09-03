@@ -417,6 +417,7 @@ public class FileDataClass {
 		    //int ind1=-10;
 		    int indTmp;
 		    int countAtom = 0;
+		    Integer startCount = null;
 		    Integer headerIndex=0;
 		    String strElementHeader;
 		    while (sc2.hasNextLine()) {
@@ -462,8 +463,12 @@ public class FileDataClass {
 		    			indTmp = Integer.valueOf(splitted[0]);
 		    			int indTmp2 = Integer.valueOf(splitted[1]);
 		    			double db = Double.valueOf(splitted[2]);
-		    			if(!addToMatrix(projBandsArray,countAtom-1,indTmp-1,indTmp2-1,db) || 
-		    					!addToMatrix(projBandsElementsArray,headerIndex,indTmp-1,indTmp2-1,db)) {
+		    			//to account for the situation where it does not start with 1 in the left most column (spin polarized projwfc)
+		    			if(startCount==null) {
+		    				startCount = indTmp;
+		    			}
+		    			if(!addToMatrix(projBandsArray,countAtom-1,indTmp-startCount,indTmp2-1,db) || 
+		    					!addToMatrix(projBandsElementsArray,headerIndex,indTmp-startCount,indTmp2-1,db)) {
 		    				ShowAlert.showAlert("Error", "Error when loading projected bands file. Abort.");
 		    				sc2.close();
 		    				throw new IOException();

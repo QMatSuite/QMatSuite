@@ -103,7 +103,7 @@ public class JobManager implements Runnable {
                     }
                 }
             }
-
+			
             if (this.currentNode != null && isAlive()) {
             	
                 this.currentNode.run();

@@ -658,7 +658,9 @@ public abstract class MainWindowController implements Initializable{
 			
 			//read mpi settings
 			String mpiCommand = "";
+			ArrayList<String> deleteCommand = new ArrayList<String>();
 			if(SystemInfo.isWindows()) {
+				deleteCommand.add("cmd");deleteCommand.add("/c");deleteCommand.add("del");
 				if(JobManager.isBoolParallel()) {
 					File qeRoot = new File(mainClass.projectManager.qePath).getParentFile();
 					if(qeRoot!=null) {
@@ -669,6 +671,7 @@ public abstract class MainWindowController implements Initializable{
 					}
 				}
 			}else if(SystemInfo.isUnix()) {
+				deleteCommand.add("rm");
 				if(JobManager.isBoolParallel()) {
 					mpiCommand = "mpirun";
 				}
@@ -679,6 +682,11 @@ public abstract class MainWindowController implements Initializable{
 			}
 			
 			String stdInOutStem = "";
+			//delete any possible crash file first
+			if(deleteCommand.isEmpty()) {ShowAlert.showAlert("Error", "Operating system is not currectly supported. Cannot run.");return;}
+			deleteCommand.add(DefaultFileNamesQE.crashFile);
+			mainClass.jobManager.addNode(new JobNode(fl.getPath(),deleteCommand,false));//false->crash file will not stop the execution of this
+			
 			//start running the jobs
 			for(int j = 0 ; j < cis.size() ; j++) {
 				if(j>=boolRunStep.size()) {ShowAlert.showAlert(AlertType.INFORMATION, "Error", "boolRunStep size too small.");break;}
