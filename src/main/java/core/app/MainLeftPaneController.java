@@ -18,7 +18,9 @@
  *******************************************************************************/
 
 package core.app;
+import java.awt.Desktop;
 import java.io.File;
+import java.io.IOException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -30,7 +32,9 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuButton;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeTableColumn;
 import javafx.scene.control.TreeTableView;
@@ -93,7 +97,42 @@ public class MainLeftPaneController implements Initializable {
 //		projectTreeDict = new HashMap<String, TreeItem<ProjectCalcLog>>();
 //		projectCalcTreeDict = new HashMap<String, HashMap<EnumCalc, TreeItem<ProjectCalcLog>>>();
 				
-		
+		ContextMenu contextWsp = new ContextMenu();
+        MenuItem contextMenuWsp = new MenuItem("Open with external");
+        contextWsp.getItems().add(contextMenuWsp);
+        projectTree.setContextMenu(contextWsp);
+        contextMenuWsp.setOnAction((event) -> {     	
+			File wsDir = mainClass.projectManager.getWorkSpaceDir();
+			if(wsDir==null || !wsDir.canRead()) {return;}
+			
+			File openFile = wsDir;
+			
+			TreeItem<ProjectCalcLog> newValue = projectTree.getSelectionModel().getSelectedItem();
+			
+			if(newValue!=null) {
+				String pj = getSelectedProject();
+				if(pj!=null && !pj.isEmpty() && new File(openFile,pj).exists()) {
+					openFile = new File(openFile,pj);
+				}
+				String calc = newValue.getValue().getCalculation();
+				if(calc!=null && !calc.isEmpty() && new File(openFile,calc).exists()) {
+					openFile = new File(openFile,calc);
+				}
+			}
+			
+			final File finalOpen = openFile;
+			
+			if( Desktop.isDesktopSupported() )
+			{
+				new Thread(() -> {
+				   try {
+				       Desktop.getDesktop().open(finalOpen);
+				   } catch (IOException e1) {
+				       e1.printStackTrace();
+				   }
+			       }).start();
+			}
+		});
 		
 		projectTree.getSelectionModel().selectedItemProperty().addListener((v, oldValue, newValue) -> { 
 			if(newValue==null || projectTreeRoot==null) return;

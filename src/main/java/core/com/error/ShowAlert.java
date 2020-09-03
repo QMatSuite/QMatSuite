@@ -43,7 +43,7 @@ public class ShowAlert {
 			if(supressBunched) {
 				Instant endTime = Instant.now();
 				Duration timeElapsed = Duration.between(startTime, endTime); 
-				if(timeElapsed.toMillis()<100) {
+				if(timeElapsed.toMillis()<150) {
 					//too many alerts shown within a short time. Suppress alerts
 					if(boolShow) {
 						Alert alert1 = new Alert(at);

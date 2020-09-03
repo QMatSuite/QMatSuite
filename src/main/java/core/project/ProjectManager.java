@@ -159,7 +159,7 @@ public class ProjectManager{
 			}
 		}
 		//if reached here, something must be wrong
-		ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Cannot load workspace/project folder. Please fix it.");
+		//ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Cannot load workspace/project folder. Please fix it.");
     	return null;
 	}
 	public File getCalculationDir() {
