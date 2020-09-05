@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 
 import java.io.ObjectOutputStream;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import javafx.scene.control.Alert.AlertType;
@@ -301,18 +302,17 @@ public class ProjectManager{
 		//save all calculations, show success window
 		saveActiveProjectInMultipleFiles(workSpaceDir, false,true);
 	}
-	
-	public void saveActiveProjectInMultipleFiles(File workSpaceDir, boolean saveCurrentCalc, boolean showSuccess) {
+	public String saveJustProject(File workSpaceDir) {
 		//saveCurrentCalc: true -> ONLY save current calculation. false -> save all calculations
 		if(workSpaceDir==null || !workSpaceDir.canWrite()) {
 			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "No workspace! Cannot save...");
-			return;
+			return null;
 		}
 		
 		Project pj = getActiveProject();
 		if(pj==null) {
 			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "No active project! Cannot save..");
-			return;
+			return null;
 		}
 		
 		File dirProj = new File(workSpaceDir,pj.getName());
@@ -321,11 +321,44 @@ public class ProjectManager{
 			boolean dirCreated = dirProj.mkdir();
 			if(!dirCreated) {
 				ShowAlert.showAlert(AlertType.INFORMATION, "Error", "Cannot make project directory.");
-		    	return;
+		    	return null;
 			}
 		}
 		
 		String msg="";
+		
+		//save project in one file in the project directory
+		try { 
+            // Saving of object in a file 
+        	FileOutputStream file;
+        	file = new FileOutputStream (new File(dirProj,DefaultFileNamesQE.projSaveFile), false);
+            
+            ObjectOutputStream out = new ObjectOutputStream (file); 
+  
+            // Method for serialization of object 
+            out.writeObject(pj); 
+  
+            out.close(); 
+            file.close(); 
+            
+            msg+=" Project saved to "+dirProj.getAbsolutePath()+File.separator+DefaultFileNamesQE.projSaveFile+". ";
+        } 
+  
+        catch (IOException ex) { 
+        	ShowAlert.showAlert(AlertType.INFORMATION, "Error", "IOException is caught! Cannot save general project file "+"."+ex.getMessage());
+        	return null;
+        }
+		return msg;
+	}
+	public void saveActiveProjectInMultipleFiles(File workSpaceDir, boolean saveCurrentCalc, boolean showSuccess) {
+		//saveCurrentCalc: true -> ONLY save current calculation. false -> save all calculations
+		
+		Project pj = getActiveProject();
+		
+		File dirProj = new File(workSpaceDir,pj.getName());
+		
+		String msg = saveJustProject(workSpaceDir);
+		if(msg==null) {return;}
 		
 		//save project in one file in the project directory
 		try { 
@@ -408,16 +441,37 @@ public class ProjectManager{
     	
 	}
 	
-	public void changeProjectName(String newName) {
-		if(newName==null || newName.isEmpty() || projectDict==null || projectDict.containsKey(newName)) return;
+	public String changeProjectName(String newName) {
+		if(newName==null || newName.isEmpty() || projectDict==null || projectDict.containsKey(newName)) {
+			return "New project name invalid (empty/already exists). Please choose another name.";
+		}
 		
 		String projName = getActiveProjectName();
-		if (projName==null) return;
+		if (projName==null) {return "Project name is null.";}
 		Project pj = projectDict.get(projName);
 		pj.setName(newName);
 		projectDict.remove(projName);
 		projectDict.put(newName,pj);
 		activeProjKey=newName;
+		
+		return null;
+	}
+	public String renameProjectFolder(String oldName, String newName) {
+		File wspFile = this.getWorkSpaceDir();
+		if(wspFile==null) {return "Workspace is null.";}
+		if(new File(wspFile,newName).exists()) {
+			return "Target project folder already exists in the workspace. Please choose another name.";
+		}
+		File pjFile = new File(wspFile,oldName);
+		if(pjFile.exists()) {
+			try {
+				Files.move(pjFile.toPath(), pjFile.toPath().resolveSibling(newName));
+			} catch (Exception e) {
+				e.printStackTrace();
+				return "Cannot rename project folder. Please close the program and do it manually.";
+			}
+		}//else no need to do anything
+		return null;
 	}
 	public String loadProject(File wsDir, String projName) {
 		

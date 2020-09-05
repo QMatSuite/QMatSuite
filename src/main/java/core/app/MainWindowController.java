@@ -397,6 +397,62 @@ public abstract class MainWindowController implements Initializable{
 				ShowAlert.showAlert(AlertType.INFORMATION, "Info", msg);
 			}
 		});
+		contTree.contextMenuTreeRename.setOnAction((event) -> {     	
+			File wsDir = mainClass.projectManager.getWorkSpaceDir();
+			if(wsDir==null || !wsDir.canRead()) {return;}
+			
+			TreeItem<ProjectCalcLog> newValue = contTree.projectTree.getSelectionModel().getSelectedItem();
+			
+			if (newValue!=null) {
+				//no project selected
+				String pj = contTree.getSelectedProject();
+				if(pj==null || pj.isEmpty()) {return;}
+				
+				if(pj.equals(newValue.getValue().getProject())) {
+					//geometry or project selected
+					TextInputDialog promptProjName = new TextInputDialog(); 
+					
+					promptProjName.setHeaderText("Enter new project name");
+					Optional<String> result = promptProjName.showAndWait();
+					String projName = null;
+					if (result.isPresent()) {
+						projName = promptProjName.getEditor().getText();
+					}else {
+						return;
+					}
+					//rename project folder, if any
+					String returnStr = mainClass.projectManager.renameProjectFolder(pj, projName);
+					if(returnStr!=null) {
+						ShowAlert.showAlert("Error renaming project folder", returnStr);
+						return;
+					}
+					//rename project in the program structure
+					if(mainClass.projectManager.containsProject(pj)) {
+						//project already opened
+						returnStr = mainClass.projectManager.changeProjectName(projName);
+						if(returnStr!=null) {
+							ShowAlert.showAlert("Error renaming project", returnStr);
+							return;
+						}
+						//change tab name
+						Tab tabTmp = projectTabDict.get(pj);
+						tabTmp.setText(projName);
+						projectTabDict.remove(pj);
+						projectTabDict.put(projName,tabTmp);
+						
+						
+					}//else, project not opened, nothing additional to do
+					//change project name in the left tree
+					contTree.renameProject(pj, projName);
+					mainClass.projectManager.saveJustProject(wsDir);
+				}
+				else {
+					//calculation selected, the project must already be opened
+				}
+				
+			}
+			
+		});
 		contTree.projectTree.getSelectionModel().selectedItemProperty().addListener((v, oldValue, newValue) -> { 
 			contTree.setOpenCloseButtons(false);
 			if (newValue!=null) {
@@ -1012,15 +1068,16 @@ public abstract class MainWindowController implements Initializable{
 		//add tab
 		Tab tab = new Tab();
 		
-		final String pj = projName;
-		tab.setText(pj);
+
+		tab.setText(projName);
 		tab.setClosable(true);
 		tab.setOnClosed((e) -> {
+			String pj = tab.getText();
 			closeProject(pj);
 		});
 		
 		//add tab
-		projectTabDict.put(pj,tab);
+		projectTabDict.put(projName,tab);
 		workSpaceTabPane.getTabs().add(tab);
 		workSpaceTabPane.getSelectionModel().select(tab);//must happen AFTER projectTabDict.put(pj,tab), because updateWorkScene() uses this
 
