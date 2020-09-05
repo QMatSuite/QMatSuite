@@ -59,6 +59,7 @@ public class MainLeftPaneController implements Initializable {
 	private MainClass mainClass;
 	private HashMap<String, TreeItem<ProjectCalcLog>> projectTreeDict;
 	private HashMap<String, HashMap<String, TreeItem<ProjectCalcLog>>> projectCalcTreeDict;
+	public MenuItem contextMenuTreeRename;
 	
     public MainLeftPaneController(MainClass mc) {
     	mainClass = mc;
@@ -98,10 +99,12 @@ public class MainLeftPaneController implements Initializable {
 //		projectCalcTreeDict = new HashMap<String, HashMap<EnumCalc, TreeItem<ProjectCalcLog>>>();
 				
 		ContextMenu contextWsp = new ContextMenu();
-        MenuItem contextMenuWsp = new MenuItem("Open with external");
-        contextWsp.getItems().add(contextMenuWsp);
+        MenuItem contextMenuTreeExternal = new MenuItem("Show in external");
+        contextMenuTreeRename= new MenuItem("Rename");
+        contextWsp.getItems().add(contextMenuTreeExternal);
+        contextWsp.getItems().add(contextMenuTreeRename);
         projectTree.setContextMenu(contextWsp);
-        contextMenuWsp.setOnAction((event) -> {     	
+        contextMenuTreeExternal.setOnAction((event) -> {     	
 			File wsDir = mainClass.projectManager.getWorkSpaceDir();
 			if(wsDir==null || !wsDir.canRead()) {return;}
 			
@@ -283,6 +286,24 @@ public class MainLeftPaneController implements Initializable {
 	    projectTreeRoot.getChildren().remove(projectTreeDict.get(pj));
 	    projectTreeDict.remove(pj);
 		projectCalcTreeDict.remove(pj);
+	}
+	public void renameProject(String pj, String newName) {
+		if(pj==null || newName==null || newName.isEmpty() || projectCalcTreeDict.get(pj)==null) {return;}
+		if(projectCalcTreeDict.get(newName)!=null) {return;}
+		
+		//newValue.getValue().setProject(pj);
+		HashMap<String, TreeItem<ProjectCalcLog>> calcTree = projectCalcTreeDict.get(pj);
+		projectCalcTreeDict.remove(pj);
+		projectCalcTreeDict.put(newName, calcTree);
+		
+		TreeItem<ProjectCalcLog> projTree = projectTreeDict.get(pj);
+		projectTreeDict.remove(pj);
+		projectTreeDict.put(newName, projTree);
+		
+		//newValue.getValue().setProject(pj);
+		ProjectCalcLog pcl = projTree.getValue();
+		projTree.setValue(new ProjectCalcLog(newName,
+				pcl.getCalculation(),pcl.getCalcType(),pcl.getStatus()));
 	}
 	public void updateProjects(boolean boolShowAlert) {
 		File wsDir = mainClass.projectManager.getWorkSpaceDir();
