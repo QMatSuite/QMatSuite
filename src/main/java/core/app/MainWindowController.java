@@ -397,6 +397,9 @@ public abstract class MainWindowController implements Initializable{
 				ShowAlert.showAlert(AlertType.INFORMATION, "Info", msg);
 			}
 		});
+		contTree.contextMenuTreeDelete.setOnAction((event) -> {  
+			ShowAlert.showAlert("Information", "Not yet implemented. Please close the project and do it manually in your operating system.");
+		});
 		contTree.contextMenuTreeRename.setOnAction((event) -> {     	
 			File wsDir = mainClass.projectManager.getWorkSpaceDir();
 			if(wsDir==null || !wsDir.canRead()) {return;}
@@ -404,24 +407,26 @@ public abstract class MainWindowController implements Initializable{
 			TreeItem<ProjectCalcLog> newValue = contTree.projectTree.getSelectionModel().getSelectedItem();
 			
 			if (newValue!=null) {
-				//no project selected
 				String pj = contTree.getSelectedProject();
-				if(pj==null || pj.isEmpty()) {return;}
+				if(pj==null || pj.isEmpty()) {return;}//no project selected
 				
 				if(pj.equals(newValue.getValue().getProject())) {
 					//geometry or project selected
-					TextInputDialog promptProjName = new TextInputDialog(); 
-					
+					TextInputDialog promptProjName = new TextInputDialog(pj); 
 					promptProjName.setHeaderText("Enter new project name");
+
 					Optional<String> result = promptProjName.showAndWait();
-					String projName = null;
+					String newName = null;
 					if (result.isPresent()) {
-						projName = promptProjName.getEditor().getText();
+						newName = promptProjName.getEditor().getText();
 					}else {
 						return;
 					}
+					if(pj.equals(newName)) {
+						return;
+					}
 					//rename project folder, if any
-					String returnStr = mainClass.projectManager.renameProjectFolder(pj, projName);
+					String returnStr = mainClass.projectManager.renameProjectFolder(pj, newName);
 					if(returnStr!=null) {
 						ShowAlert.showAlert("Error renaming project folder", returnStr);
 						return;
@@ -429,25 +434,65 @@ public abstract class MainWindowController implements Initializable{
 					//rename project in the program structure
 					if(mainClass.projectManager.containsProject(pj)) {
 						//project already opened
-						returnStr = mainClass.projectManager.changeProjectName(projName);
+						returnStr = mainClass.projectManager.changeProjectName(newName);
 						if(returnStr!=null) {
 							ShowAlert.showAlert("Error renaming project", returnStr);
 							return;
 						}
 						//change tab name
 						Tab tabTmp = projectTabDict.get(pj);
-						tabTmp.setText(projName);
+						tabTmp.setText(newName);
 						projectTabDict.remove(pj);
-						projectTabDict.put(projName,tabTmp);
+						projectTabDict.put(newName,tabTmp);
 						
-						
+						if(new File(wsDir,newName).exists()) {
+							mainClass.projectManager.saveJustProject(wsDir);
+						}
 					}//else, project not opened, nothing additional to do
 					//change project name in the left tree
-					contTree.renameProject(pj, projName);
-					mainClass.projectManager.saveJustProject(wsDir);
+					contTree.renameProject(pj, newName);
+					
 				}
 				else {
-					//calculation selected, the project must already be opened
+					//calculation selected, the project must have already been opened
+					//geometry or project selected. newValue must contains calculation string
+					String calcOldName = newValue.getValue().getCalculation();
+					if(calcOldName==null || calcOldName.isEmpty()) {return;}
+					
+					TextInputDialog promptProjName = new TextInputDialog(calcOldName); 
+					promptProjName.setHeaderText("Enter new calculation name");
+
+					Optional<String> result = promptProjName.showAndWait();
+					String newName = null;
+					if (result.isPresent()) {
+						newName = promptProjName.getEditor().getText();
+					}else {
+						return;
+					}
+					if(calcOldName.equals(newName)) {
+						return;
+					}
+					//rename calculation folder, if any
+					String returnStr = mainClass.projectManager.renameCalcFolder(pj, calcOldName, newName);
+					if(returnStr!=null) {
+						ShowAlert.showAlert("Error renaming calculation folder", returnStr);
+						return;
+					}
+					//rename project in the program structure
+					if(mainClass.projectManager.existCalcInCurrentProject(calcOldName)) {//not necessary check
+						returnStr = mainClass.projectManager.renameCalcInProject(pj, calcOldName, newName);
+						if(returnStr!=null) {
+							ShowAlert.showAlert("Error renaming calculation", returnStr);
+							return;
+						}
+						//save all, only if calculation folder exists
+						if(new File(new File(wsDir,pj),newName).exists()) {
+							mainClass.projectManager.saveActiveProjectInMultipleFiles(wsDir, true, false);//save all calculations
+						}
+					}
+					//update left pane
+					contTree.renameCalc(pj, calcOldName, newName);
+					
 				}
 				
 			}

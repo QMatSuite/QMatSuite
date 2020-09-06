@@ -303,8 +303,11 @@ public class ProjectManager{
 		saveActiveProjectInMultipleFiles(workSpaceDir, false,true);
 	}
 	public String saveJustProject(File workSpaceDir) {
+		String msg="";
+		
 		//saveCurrentCalc: true -> ONLY save current calculation. false -> save all calculations
 		if(workSpaceDir==null || !workSpaceDir.canWrite()) {
+			
 			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "No workspace! Cannot save...");
 			return null;
 		}
@@ -325,7 +328,7 @@ public class ProjectManager{
 			}
 		}
 		
-		String msg="";
+		
 		
 		//save project in one file in the project directory
 		try { 
@@ -359,27 +362,6 @@ public class ProjectManager{
 		
 		String msg = saveJustProject(workSpaceDir);
 		if(msg==null) {return;}
-		
-		//save project in one file in the project directory
-		try { 
-            // Saving of object in a file 
-        	FileOutputStream file;
-        	file = new FileOutputStream (new File(dirProj,DefaultFileNamesQE.projSaveFile), false);
-            
-            ObjectOutputStream out = new ObjectOutputStream (file); 
-  
-            // Method for serialization of object 
-            out.writeObject(pj); 
-  
-            out.close(); 
-            file.close(); 
-            
-            msg+=" Project saved to "+dirProj.getAbsolutePath()+File.separator+DefaultFileNamesQE.projSaveFile+". ";
-        } 
-  
-        catch (IOException ex) { 
-        	ShowAlert.showAlert(AlertType.INFORMATION, "Error", "IOException is caught! Cannot save general project file "+"."+ex.getMessage());
-        } 
 		
 		//save calculation in the calculation sub-folders (just to check integrity and in case the user renamed the calculation folders)
 		ArrayList<String> calcList;
@@ -442,7 +424,9 @@ public class ProjectManager{
 	}
 	
 	public String changeProjectName(String newName) {
-		if(newName==null || newName.isEmpty() || projectDict==null || projectDict.containsKey(newName)) {
+		if(newName==null || newName.isEmpty()) {return "New name empty";}
+		
+		if(projectDict==null || projectDict.containsKey(newName)) {
 			return "New project name invalid (empty/already exists). Please choose another name.";
 		}
 		
@@ -457,6 +441,9 @@ public class ProjectManager{
 		return null;
 	}
 	public String renameProjectFolder(String oldName, String newName) {
+		if(oldName==null || oldName.isEmpty()) {return "Old name empty";}
+		if(newName==null || newName.isEmpty()) {return "New name empty";}
+		
 		File wspFile = this.getWorkSpaceDir();
 		if(wspFile==null) {return "Workspace is null.";}
 		if(new File(wspFile,newName).exists()) {
@@ -469,6 +456,38 @@ public class ProjectManager{
 			} catch (Exception e) {
 				e.printStackTrace();
 				return "Cannot rename project folder. Please close the program and do it manually.";
+			}
+		}//else no need to do anything
+		return null;
+	}
+	public String renameCalcInProject(String projName, String oldCalc, String newCalc) {
+		if(projName==null || projName.isEmpty()) {return "Project name empty";}
+		if(oldCalc==null || oldCalc.isEmpty()) {return "Old name empty";}
+		if(newCalc==null || newCalc.isEmpty()) {return "New name empty";}
+		if(projectDict==null) {return "No projectdict.";}
+		Project pj = projectDict.get(projName);
+		if(pj==null) {return "No project";}
+		return pj.renameCalc(oldCalc, newCalc);
+		
+	}
+	public String renameCalcFolder(String projName, String oldName, String newName) {
+		if(projName==null || projName.isEmpty()) {return "Project name empty";}
+		if(oldName==null || oldName.isEmpty()) {return "Old name empty";}
+		if(newName==null || newName.isEmpty()) {return "New name empty";}
+		
+		File wspFile = this.getWorkSpaceDir();
+		if(wspFile==null) {return "Workspace is null.";}
+		File pjFile = new File(wspFile,projName);
+		File oldCalcFile = new File(pjFile,oldName);
+		if(new File(pjFile,newName).exists()) {
+			return "Target calculation folder already exists in the project folder. Please choose another name.";
+		}
+		if(pjFile.canWrite() && pjFile.canRead() && oldCalcFile.canWrite() && oldCalcFile.canRead()) {
+			try {
+				Files.move(oldCalcFile.toPath(), oldCalcFile.toPath().resolveSibling(newName));
+			} catch (Exception e) {
+				e.printStackTrace();
+				return "Cannot rename calculation folder. Please close the program and do it manually.";
 			}
 		}//else no need to do anything
 		return null;
