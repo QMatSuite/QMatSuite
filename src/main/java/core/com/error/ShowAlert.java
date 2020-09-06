@@ -47,7 +47,7 @@ public class ShowAlert {
 					//too many alerts shown within a short time. Suppress alerts
 					if(boolShow) {
 						Alert alert1 = new Alert(at);
-						alert1.setHeaderText("Multiple warnings. Further alerts suppressed tempararily.");
+						alert1.setHeaderText("Multiple messages. Further info suppressed tempararily.");
 						alert1.setContentText(contentText);
 						alert1.showAndWait();
 					}

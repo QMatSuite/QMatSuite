@@ -13,7 +13,7 @@
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox fx:id="vboxKpath" prefWidth="370.0" xmlns="http://javafx.com/javafx/8.0.1" xmlns:fx="http://javafx.com/fxml/1">
+<VBox fx:id="vboxKpath" prefWidth="370.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
    <children>
       <GridPane hgap="2.0" prefWidth="370.0" vgap="2.0">
          <children>
@@ -27,7 +27,7 @@
             <ToolBar GridPane.columnSpan="8" GridPane.rowIndex="3">
                <items>
                   <Label text="Add to" />
-                  <Button fx:id="buttonAddEnd" mnemonicParsing="false" text="End" />
+                  <Button fx:id="buttonAddEnd" mnemonicParsing="false" style="-fx-background-color: yellowgreen;" text="End" />
                   <Button fx:id="buttonAddBegin" mnemonicParsing="false" text="Begin" />
                   <Button fx:id="buttonAddAfter" mnemonicParsing="false" text="After select" />
                   <Button fx:id="buttonAddBefore" mnemonicParsing="false" text="Before select" />

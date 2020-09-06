@@ -21,12 +21,19 @@ package core.main;
 
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
+
+import java.util.Optional;
+
 import core.app.MainWindowController;
 import core.com.error.ShowAlert;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
 import javafx.fxml.FXMLLoader;
 
 
@@ -58,7 +65,35 @@ public abstract class MainApplication extends Application {
 			
 			primaryStage.setScene(scene);
 			primaryStage.setOnCloseRequest(e->{
-				System.out.println("QuantumVITAS is closing.");
+				System.out.println("Exit button clicked.");
+				
+				Alert closeConfirmation = new Alert(Alert.AlertType.CONFIRMATION);
+				closeConfirmation.setTitle("Closing QuantumVITAS...");
+				
+				ButtonType okButton = new ButtonType("Save all and exit", ButtonBar.ButtonData.YES);
+				ButtonType noButton = new ButtonType("Just exit", ButtonBar.ButtonData.NO);
+				ButtonType cancelButton = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+				
+				closeConfirmation.getButtonTypes().setAll(okButton, noButton,cancelButton);
+		        
+		        closeConfirmation.setHeaderText("Save all when exiting?");
+		        closeConfirmation.initModality(Modality.APPLICATION_MODAL);
+		        closeConfirmation.initOwner(primaryStage);
+		        
+		        Optional<ButtonType> closeResponse = closeConfirmation.showAndWait();
+		        if (okButton.equals(closeResponse.get())) {
+		        	mainClass.projectManager.saveAllProjects();
+		        }
+		        else if (!noButton.equals(closeResponse.get())) {
+		        	//if no, exit normally
+		        	//if else (below), stop exiting
+		            e.consume();
+		            System.out.println("User aborts closing action.");
+		            return;
+		        }
+		        
+		        System.out.println("QuantumVITAS is closing.");
+		        
 				//close custom threads
 			    if(mainClass!=null) {mainClass.jobManager.stop();}
 			    if(contMain!=null) {contMain.killAllThreads();}

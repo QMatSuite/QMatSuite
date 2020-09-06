@@ -17,7 +17,7 @@
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane fx:id="rootPane" prefHeight="450.0" prefWidth="700.0" xmlns="http://javafx.com/javafx/8.0.1" xmlns:fx="http://javafx.com/fxml/1">
+<BorderPane fx:id="rootPane" prefHeight="450.0" prefWidth="700.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
    <top>
       <VBox BorderPane.alignment="CENTER">
          <children>
@@ -78,7 +78,9 @@
             </GridPane>
             <HBox>
                <children>
-                  <Button fx:id="saveProjectButton" minWidth="41.0" mnemonicParsing="false" text="Save Current Project" />
+                  <Label text="Save" />
+                  <Button fx:id="saveProjectButton" minWidth="41.0" mnemonicParsing="false" text="Current Project" />
+                  <Button fx:id="buttonSaveAll" mnemonicParsing="false" text="All" />
                   <Separator orientation="VERTICAL" />
                   <Label minWidth="25.0" text="Run" />
                 <Button fx:id="showInputButton" minWidth="77.0" mnemonicParsing="false" text="Show Input" />
