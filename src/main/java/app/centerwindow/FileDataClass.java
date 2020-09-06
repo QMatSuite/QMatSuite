@@ -385,18 +385,42 @@ public class FileDataClass {
 		}
 		return "";
 	}
+
 	public boolean loadProjBands(File inoutFiles) {
 		this.clearAll();//not necessary, but just for clarity
-		
+		if(inoutFiles==null || !inoutFiles.exists()) {return false;}
 		File parentFolder = inoutFiles.getParentFile();
 		File[] fileList = parentFolder.listFiles();
+		
+		String preferedKeyword;
+		if(inoutFiles.getName().contains("up")) {
+			preferedKeyword = DefaultFileNamesQE.bandsDatSpinUp;
+		}
+		else if(inoutFiles.getName().contains("down")){
+			preferedKeyword = DefaultFileNamesQE.bandsDatSpinDown;
+		}
+		else {
+			preferedKeyword = "";
+		}
+		
 		String nameTmp = null;
 		File gnuDatFile = null;
 		for (File f : fileList) {
 			nameTmp = f.getName();
-			if(nameTmp!=null && nameTmp.contains(DefaultFileNamesQE.bandsDatGnu) && nameTmp.endsWith(".gnu")) {
+			if(nameTmp!=null && nameTmp.contains(DefaultFileNamesQE.bandsDatGnu) 
+					&& nameTmp.endsWith(".gnu") && nameTmp.contains(preferedKeyword)) {
 				gnuDatFile = f;
 				break;//only take the first one if more available
+			}
+		}
+		if(gnuDatFile==null) {
+			//in case of spin non-polarized case
+			for (File f : fileList) {
+				nameTmp = f.getName();
+				if(nameTmp!=null && nameTmp.contains(DefaultFileNamesQE.bandsDatGnu) && nameTmp.endsWith(".gnu")) {
+					gnuDatFile = f;
+					break;//only take the first one if more available
+				}
 			}
 		}
 		boolean boolTmp = false;

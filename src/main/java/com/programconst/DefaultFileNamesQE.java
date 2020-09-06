@@ -27,6 +27,8 @@ public interface DefaultFileNamesQE extends DefaultFileNames{
 	
 	public final String crashFile = "CRASH";
 	public final String bandsDatGnu = "bands.out";
+	public final String bandsDatSpinUp = ".spinup";
+	public final String bandsDatSpinDown = ".spindown";
 	public final String tddftPlotSDat = "pwscf.plot_S.dat";
 	
 	public final String pseudoDojoDir = "pseudo_dojo_ONCVPSP_v0.4";
