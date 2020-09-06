@@ -730,7 +730,16 @@ public abstract class MainWindowController implements Initializable{
 		    	return;
 			}
 
+			//final settings
+			contRun.initializeBoolRunStep(cis);
+			stageRun.showAndWait();
+			if(!contRun.isBoolRun()) {return;}
+			ArrayList<Boolean> boolRunStep = contRun.getBoolRunStep();
+			
 			for(int j = 0 ; j < cis.size() ; j++) {
+				if(j>=boolRunStep.size()) {ShowAlert.showAlert(AlertType.INFORMATION, "Error", "boolRunStep size too small.");break;}
+				if(!boolRunStep.get(j)) {continue;}
+				
 				if(cis.get(j)==null || (cis.get(j).log!=null && !cis.get(j).log.isEmpty()) || cis.get(j).input==null) {
 					String stt = "Warning! Input file not complete for "+j+"th step. Please fix the following errors:\n";
 			    	stt+=(cis.get(j).input==null? "Null input string.\n":"");
@@ -755,11 +764,6 @@ public abstract class MainWindowController implements Initializable{
 			final String postFixCommand = mainClass.projectManager.getCommandPostfix();
 			if(postFixCommand==null) {return;}
 			
-			//final settings
-			contRun.initializeBoolRunStep(cis);
-			stageRun.showAndWait();
-			if(!contRun.isBoolRun()) {return;}
-			ArrayList<Boolean> boolRunStep = contRun.getBoolRunStep();
 			
 			//read mpi settings
 			String mpiCommand = "";
