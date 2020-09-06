@@ -12,12 +12,36 @@ QuantumVITAS (Quantum Visualization Interacting Toolkit for Ab-initio Simulation
 
 ## Download releases 
 
-The project is actively evolving, and we have offered [the first two early access releases](https://github.com/quantumVITAS/quantumVITAS/releases/) with detailed feature lists. We appreciate any bug report or suggestion for feature implementation for the next step. A guide of [download](https://www.quantumvitas.org/download/) and [quick start](https://www.quantumvitas.org/quick-start/) can be found in the official website.
+The project is actively evolving, and we have offered [the first three early access releases](https://github.com/quantumVITAS/quantumVITAS/releases/) with detailed feature lists. We appreciate any bug report or suggestion for feature implementation for the next step. A guide of [download](https://www.quantumvitas.org/download/) and [quick start](https://www.quantumvitas.org/quick-start/) can be found in the official website.
 
 ## Requirements
 
 *   Java Runtime Environment (JRE) 1.8: https://java.com/en/download/
 *   Windows/Linux/Mac OS
+
+## Highlighted features
+
+Please refer to the [release page](https://github.com/quantumVITAS/quantumVITAS/releases/) for a detailed feature list. We would like to highlight the following features below:
+* Calculations implemented:
+    * Self-consistency (SCF)
+        * Magnetism and spin orbital coupling (SOC)
+        * DFT+U
+        * Hybrid functionals
+        * Van der Waals corrections
+    * Structural optimization/relaxation (OPT)
+    * Density of states (DOS)
+    * Band structure (including spin polarized and SOC)
+    * Molecular dynamics (Born–Oppenheimer MD)
+    * Time-dependent density-functional theory (TDDFT)
+    * Phonon (gamma point, DOS, dispersion, raman, dielectric constant)
+    * NEB (Nudged Elastic Band) for transition energy barrier calculation
+    * Projection to atomic orbitals (to each atom or to each element, also in the spin polarized case and SOC)
+        * Projected DOS calculation
+        * Projected band structure (fat bands)
+* Parallel/multicore computing supported (both openmp and mpirun) and job control
+* Visualizations:
+    * 3D viewer
+    * Visualizations of the output of all calculations
 
 ## Main user interface 
 
