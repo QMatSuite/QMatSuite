@@ -60,6 +60,7 @@ public class MainLeftPaneController implements Initializable {
 	private HashMap<String, TreeItem<ProjectCalcLog>> projectTreeDict;
 	private HashMap<String, HashMap<String, TreeItem<ProjectCalcLog>>> projectCalcTreeDict;
 	public MenuItem contextMenuTreeRename;
+	public MenuItem contextMenuTreeDelete;
 	
     public MainLeftPaneController(MainClass mc) {
     	mainClass = mc;
@@ -100,9 +101,11 @@ public class MainLeftPaneController implements Initializable {
 				
 		ContextMenu contextWsp = new ContextMenu();
         MenuItem contextMenuTreeExternal = new MenuItem("Show in external");
-        contextMenuTreeRename= new MenuItem("Rename");
+        contextMenuTreeRename = new MenuItem("Rename");
+        contextMenuTreeDelete = new MenuItem("Delete");
         contextWsp.getItems().add(contextMenuTreeExternal);
         contextWsp.getItems().add(contextMenuTreeRename);
+        contextWsp.getItems().add(contextMenuTreeDelete);
         projectTree.setContextMenu(contextWsp);
         contextMenuTreeExternal.setOnAction((event) -> {     	
 			File wsDir = mainClass.projectManager.getWorkSpaceDir();
@@ -304,6 +307,17 @@ public class MainLeftPaneController implements Initializable {
 		ProjectCalcLog pcl = projTree.getValue();
 		projTree.setValue(new ProjectCalcLog(newName,
 				pcl.getCalculation(),pcl.getCalcType(),pcl.getStatus()));
+	}
+	public void renameCalc(String pj, String oldName, String newName) {
+		if(pj==null || oldName==null || oldName.isEmpty() || newName==null || newName.isEmpty() 
+				|| projectCalcTreeDict.get(pj)==null) {return;}
+		TreeItem<ProjectCalcLog> treeCalc = projectCalcTreeDict.get(pj).get(oldName);
+		if(treeCalc==null) {return;}
+		ProjectCalcLog pcl = treeCalc.getValue();
+		treeCalc.setValue(new ProjectCalcLog(pcl.getProject(),
+				newName,pcl.getCalcType(),pcl.getStatus()));
+		projectCalcTreeDict.get(pj).remove(oldName);
+		projectCalcTreeDict.get(pj).put(newName,treeCalc);
 	}
 	public void updateProjects(boolean boolShowAlert) {
 		File wsDir = mainClass.projectManager.getWorkSpaceDir();

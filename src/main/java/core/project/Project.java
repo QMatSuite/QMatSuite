@@ -101,6 +101,26 @@ public class Project implements Serializable{
 	public ArrayList<String> getGeoName(){
 		return geoName;
 	}
+	public String renameCalc(String oldCalc, String newCalc) {
+		if(!existCalc(oldCalc)) {return "No old calculation";}
+		if(existCalc(newCalc)) {return "New calculation name exists";}
+		
+		int indexCalcString = getCalcListIndex(oldCalc);
+		CalculationClass calcCls = calcDict.get(oldCalc);
+		//up till now both must exist
+		if(indexCalcString==-1 || calcCls==null) {
+			return "Programming error. Cannot find calculation class or index.";
+		}
+		
+		calcCls.setCalcName(newCalc);
+		calcList.set(indexCalcString, newCalc);
+		calcDict.remove(oldCalc);
+		calcDict.put(newCalc, calcCls);
+		if(oldCalc.equals(this.activeCalcKey)) {
+			this.activeCalcKey = newCalc;
+		}
+		return null;
+	}
 	public boolean setGeoName(int ind, String newName) {
 		if(newName==null || newName.isEmpty() || geoName.contains(newName)) {return false;}//contains, either same position or other position
 		if(ind<0 || ind >=geoName.size()) {return false;}//out of boundary
@@ -329,6 +349,10 @@ public class Project implements Serializable{
 		}
 		
 	}
+	public int getCalcListIndex(String calcName) {
+		if(calcList==null || calcList.isEmpty()) {return -1;}
+		return calcList.indexOf(calcName);
+	}
 	public ArrayList<String> getCalcList(){
 		return calcList;
 	}
@@ -357,7 +381,7 @@ public class Project implements Serializable{
 		return calcDict.containsKey(activeCalcKey);
 	}
 	public Boolean existCalc(String key) {
-		if (key == null)  return false;
+		if (key == null || calcDict == null)  return false;
 		return calcDict.containsKey(key);
 	}
 	public CalculationClass getCalc(String key) {
