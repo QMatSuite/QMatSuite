@@ -303,6 +303,10 @@ public class ProjectManager{
 		saveActiveProjectInMultipleFiles(workSpaceDir, false,true);
 	}
 	public String saveJustProject(File workSpaceDir) {
+		Project pj = getActiveProject();
+		return saveJustProject(pj, workSpaceDir);
+	}
+	private String saveJustProject(Project pj, File workSpaceDir) {
 		String msg="";
 		
 		//saveCurrentCalc: true -> ONLY save current calculation. false -> save all calculations
@@ -312,7 +316,6 @@ public class ProjectManager{
 			return null;
 		}
 		
-		Project pj = getActiveProject();
 		if(pj==null) {
 			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "No active project! Cannot save..");
 			return null;
@@ -355,12 +358,33 @@ public class ProjectManager{
 	}
 	public void saveActiveProjectInMultipleFiles(File workSpaceDir, boolean saveCurrentCalc, boolean showSuccess) {
 		//saveCurrentCalc: true -> ONLY save current calculation. false -> save all calculations
-		
 		Project pj = getActiveProject();
+		saveActiveProjectInMultipleFiles(workSpaceDir, pj, saveCurrentCalc, showSuccess);
+	}
+	public void saveSelectedProjectInMultipleFiles(String projName, boolean saveCurrentCalc, boolean showSuccess) {
+		if(projName==null || projName.isEmpty() || !this.projectDict.containsKey(projName)) {return;}
+		File wsDir = getWorkSpaceDir();
+		if(wsDir==null || !wsDir.canWrite()) {return;}
+		Project pj = this.projectDict.get(projName);
+		saveActiveProjectInMultipleFiles(wsDir, pj, saveCurrentCalc, showSuccess);
+	}
+	public void saveAllProjects() {
+		File wsDir = getWorkSpaceDir();
+		if(wsDir==null || !wsDir.canWrite()) {return;}
+		for(Project pj : this.projectDict.values()) {
+			saveActiveProjectInMultipleFiles(wsDir, pj, false, true);
+		}
+	}
+	private void saveActiveProjectInMultipleFiles(File workSpaceDir, Project pj, boolean saveCurrentCalc, boolean showSuccess) {
+		//saveCurrentCalc: true -> ONLY save current calculation. false -> save all calculations
+
+		if(pj==null) {
+			ShowAlert.showAlert(AlertType.INFORMATION, "Error", "No project! Cannot save... ");
+			return;}
 		
 		File dirProj = new File(workSpaceDir,pj.getName());
 		
-		String msg = saveJustProject(workSpaceDir);
+		String msg = saveJustProject(pj, workSpaceDir);
 		if(msg==null) {return;}
 		
 		//save calculation in the calculation sub-folders (just to check integrity and in case the user renamed the calculation folders)
@@ -372,7 +396,8 @@ public class ProjectManager{
 			}
 			else {
 				ShowAlert.showAlert(AlertType.INFORMATION, "Error", "No active calculation! Cannot save... ");
-	    	return;}
+				return;
+			}
 		}
 		else {calcList= pj.getCalcList();}//save all calculations in the project
 		

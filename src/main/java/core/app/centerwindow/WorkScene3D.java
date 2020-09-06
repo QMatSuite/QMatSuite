@@ -144,9 +144,10 @@ public class WorkScene3D {
             if(selectedNode instanceof Sphere) {//selectedNode.getClass().getName()
 	            contentText+="Atom selected.\n";
 	            contentText+=getSelectedAtomInfo(selectedNode)+"\n";
-	            contentText+="Position = ("+selectedNode.getTranslateX()*scalingLength+","
-	            		+selectedNode.getTranslateY()*scalingLength+","
-	            				+selectedNode.getTranslateZ()*scalingLength+") (Angstrom)";
+	            contentText+="Position = ("+
+	            		String.format("%.4f", selectedNode.getTranslateX()*scalingLength)+","
+	            		+String.format("%.4f", selectedNode.getTranslateY()*scalingLength)+","
+	            				+String.format("%.4f", selectedNode.getTranslateZ()*scalingLength)+") (Angstrom)";
 	            ShowAlert.showAlert("Information of selected item", contentText);
 	            //cont3D.setStatus("position "+selectedNode.getTranslateX());
 //            if (res.getIntersectedNode() instanceof Sphere){

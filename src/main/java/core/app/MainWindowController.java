@@ -39,6 +39,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
@@ -123,6 +124,8 @@ public abstract class MainWindowController implements Initializable{
 	protected TabPane workSpaceTabPane;
 	
 	@FXML private BorderPane rootPane;
+	
+	@FXML private Button buttonSaveAll;
 	
 	protected ScrollPane scrollGeo;
 	
@@ -840,6 +843,9 @@ public abstract class MainWindowController implements Initializable{
 		saveProjectButton.setOnAction((event) -> {
 			mainClass.projectManager.saveActiveProjectInMultipleFiles();
 		});
+		buttonSaveAll.setOnAction((event) -> {
+			mainClass.projectManager.saveAllProjects();
+		});
 		menuSaveProjectAs.setOnAction((event) -> {
 			
 			DirectoryChooser dirChooser = new DirectoryChooser ();
@@ -1122,6 +1128,16 @@ public abstract class MainWindowController implements Initializable{
 		tab.setClosable(true);
 		tab.setOnClosed((e) -> {
 			String pj = tab.getText();
+			Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+			alert.setTitle("Closing project...");
+			alert.setContentText("Save the project?");
+			ButtonType okButton = new ButtonType("Yes", ButtonBar.ButtonData.YES);
+			ButtonType noButton = new ButtonType("No", ButtonBar.ButtonData.NO);
+			alert.getButtonTypes().setAll(okButton, noButton);
+			Optional<ButtonType> result = alert.showAndWait();
+			if (result.get() == okButton){
+				mainClass.projectManager.saveSelectedProjectInMultipleFiles(pj, false, true);
+			}
 			closeProject(pj);
 		});
 		

@@ -17,7 +17,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefWidth="350.0" xmlns="http://javafx.com/javafx/8.0.1" xmlns:fx="http://javafx.com/fxml/1">
+<VBox maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefWidth="350.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
    <children>
       <BorderPane prefWidth="350.0">
          <center>
@@ -85,7 +85,7 @@
             <ToolBar prefHeight="35.0" prefWidth="132.0" GridPane.columnSpan="5" GridPane.rowIndex="2">
                <items>
                   <Label text="Add to" />
-                  <Button fx:id="buttonAddEnd" mnemonicParsing="false" text="End" />
+                  <Button fx:id="buttonAddEnd" mnemonicParsing="false" style="-fx-background-color: yellowgreen;" text="End" />
                   <Button fx:id="buttonAddBegin" mnemonicParsing="false" text="Begin" />
                   <Button fx:id="buttonAddAfter" mnemonicParsing="false" text="After select" />
                   <Button fx:id="buttonAddBefore" mnemonicParsing="false" text="Before select" />
