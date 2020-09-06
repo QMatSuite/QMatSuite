@@ -53,7 +53,7 @@ public class BandsInput extends QeInput{
 	public void setSpinUp() {
 		try {
 			setValue("BANDS","spin_component",new WrapperInteger(1,true));setRequiredAndWrite("BANDS","spin_component",true,true);
-			setValue("BANDS","filband",new WrapperString(DefaultFileNamesQE.bandsDatGnu+".spinup",true));
+			setValue("BANDS","filband",new WrapperString(DefaultFileNamesQE.bandsDatGnu+DefaultFileNamesQE.bandsDatSpinUp,true));
 		} catch (InvalidKeyException | InvalidTypeException e) {
 			e.printStackTrace();
 		}
@@ -61,7 +61,7 @@ public class BandsInput extends QeInput{
 	public void setSpinDown() {
 		try {
 			setValue("BANDS","spin_component",new WrapperInteger(2,true));setRequiredAndWrite("BANDS","spin_component",true,true);
-			setValue("BANDS","filband",new WrapperString(DefaultFileNamesQE.bandsDatGnu+".spindown",true));
+			setValue("BANDS","filband",new WrapperString(DefaultFileNamesQE.bandsDatGnu+DefaultFileNamesQE.bandsDatSpinDown,true));
 		} catch (InvalidKeyException | InvalidTypeException e) {
 			e.printStackTrace();
 		}
