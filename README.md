@@ -1,3 +1,11 @@
+> **Status (2025)**: The original Java GUI is now in *maintenance / deprecated* mode.
+> I am working on a full Python rewrite (v2) with a modern workflow engine,
+> cross-platform GUI (PySide6), and easier integration with Quantum ESPRESSO,
+> Wannier90, LAMMPS and online materials databases.
+>
+> Java v1 releases are still available below. Python v2 is under active development
+> in the `v2-python` branch.
+
 <img src="docs/images/dark_logo.png" width="450">
 
 QuantumVITAS (Quantum Visualization Interacting Toolkit for Ab-initio Simulations) is a graphical user interface designed for ab-initio simulation software Quantum ESPRESSO, aiming at making ab-initio simulations easily accessible and intuitively controllable in various operating systems. It integrates input file generation, calculation job control, result analysis and data managment into a user interface. In the future we might integrate other engines besides Quantum ESPRESSO. For more information, feel free check out my [introduction video](https://www.youtube.com/watch?v=S2e1TWx6DHs).
