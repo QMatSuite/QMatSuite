@@ -1,0 +1,66 @@
+Bidirectional Conversion Test Results
+================================================================================
+
+epw_qdpt/pp.in
+  Original file has no namelists or cards
+
+epw_base/pp.in
+  Original file has no namelists or cards
+
+epw_mob_ibte_sym/pp.in
+  Original file has no namelists or cards
+
+epw_hall/pp.in
+  Original file has no namelists or cards
+
+ph_metal/lambda.in
+  Original file has no namelists or cards
+
+epw_mob_polar/pp.in
+  Original file has no namelists or cards
+
+epw_plrn/pp.in
+  Original file has no namelists or cards
+
+epw_metal/pp.in
+  Original file has no namelists or cards
+
+epw_mob/pp.in
+  Original file has no namelists or cards
+
+epw_wfpt/pp.in
+  Original file has no namelists or cards
+
+epw_pl/pp.in
+  Original file has no namelists or cards
+
+not_epw_scdm/pp.in
+  Original file has no namelists or cards
+
+epw_polar/pp.in
+  Original file has no namelists or cards
+
+epw_tdbe/pp.in
+  Original file has no namelists or cards
+
+epw_2D/pp.in
+  Original file has no namelists or cards
+
+epw_trev_paw/pp.in
+  Original file has no namelists or cards
+
+epw_trev/pp.in
+  Original file has no namelists or cards
+
+epw_trev_uspp/pp.in
+  Original file has no namelists or cards
+
+epw_super/pp.in
+  Original file has no namelists or cards
+
+epw_mob_ibte/pp.in
+  Original file has no namelists or cards
+
+epw_soc/pp.in
+  Original file has no namelists or cards
+
