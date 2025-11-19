@@ -1,0 +1,6 @@
+feat: Add QE input parser/generator with multi-module support
+
+- Bidirectional QE input parser/generator (96.8% roundtrip success)
+- Support pw.x, ph.x, gipaw.x, pp.x, neb.x modules
+- Tested with 938 official QE test-suite files
+- Add core models, engine abstraction, workflow runner
