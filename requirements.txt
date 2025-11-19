@@ -1,0 +1,12 @@
+# quantumvitas
+# name = "quantumvitas"
+# version = "1.0.1"
+# description = "Python rewrite of QuantumVITAS - an open-source GUI & workflow engine for Quantum ESPRESSO and related codes."
+
+numpy
+scipy
+ase
+matplotlib
+pytest>=7.0.0
+pytest-cov>=4.0.0
+
