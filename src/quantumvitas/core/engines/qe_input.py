@@ -190,6 +190,16 @@ class QEInputParser:
                     values.append(item)
             return values
         
+        # Handle Fortran double precision format (1.0d-8 -> 1.0e-8)
+        # Also handle uppercase D
+        if 'd' in value_str.lower():
+            try:
+                # Replace 'd' or 'D' with 'e' for Python float parsing
+                float_str = value_str.lower().replace('d', 'e')
+                return float(float_str)
+            except ValueError:
+                pass
+        
         # Try to parse as number
         try:
             if '.' in value_str:
@@ -351,14 +361,40 @@ class QEInputParser:
         
         # Special handling for different card types
         if card_type == QECardType.K_POINTS:
-            # K_POINTS can be automatic, crystal/crystal_b, or without option
-            if option and 'automatic' in option.lower():
+            # K_POINTS can be automatic, crystal/crystal_b, gamma, or without option
+            if option and 'gamma' in option.lower():
+                # Gamma point - no data lines needed, but check next line for new card
+                if i < len(lines):
+                    next_line = lines[i].strip()
+                    if next_line:
+                        card_match = QEInputParser.CARD_PATTERN.match(next_line)
+                        if card_match:
+                            card_name = card_match.group(1).upper()
+                            try:
+                                QECardType[card_name]
+                                # This is a new card, don't read data - i stays the same
+                                pass
+                            except KeyError:
+                                pass
+            elif option and 'automatic' in option.lower():
                 # Format: nk1 nk2 nk3 k1 k2 k3
                 if i < len(lines):
                     data_line = lines[i].strip()
                     if data_line:
-                        card.add_line(data_line.split())
-                        i += 1
+                        # Check if this is actually a new card
+                        card_match = QEInputParser.CARD_PATTERN.match(data_line)
+                        if card_match:
+                            card_name = card_match.group(1).upper()
+                            try:
+                                QECardType[card_name]
+                                # This is a new card, don't read data - i stays the same
+                                pass
+                            except KeyError:
+                                card.add_line(data_line.split())
+                                i += 1
+                        else:
+                            card.add_line(data_line.split())
+                            i += 1
             elif option and ('crystal' in option.lower() or 'tpiba' in option.lower()):
                 # Format: n_points, then n_points lines of k-points
                 if i < len(lines):
@@ -387,6 +423,18 @@ class QEInputParser:
                 if i < len(lines):
                     first_line = lines[i].strip()
                     if first_line:
+                        # Check if this is actually a new card
+                        card_match = QEInputParser.CARD_PATTERN.match(first_line)
+                        if card_match:
+                            card_name = card_match.group(1).upper()
+                            try:
+                                QECardType[card_name]
+                                # This is a new card, don't read data - i stays the same
+                                # The outer loop will handle it
+                                pass
+                            except KeyError:
+                                pass
+                        
                         parts = first_line.split()
                         # Check if first line is a single number (n_points format)
                         if len(parts) == 1:
@@ -396,18 +444,29 @@ class QEInputParser:
                                 i += 1
                                 # Read n_points lines of k-points
                                 for _ in range(n_points):
-                                    if i < len(lines):
-                                        k_line = lines[i].strip()
-                                        if not k_line:
-                                            i += 1
-                                            continue
-                                        # Remove comments but keep the line
-                                        comment_match = QEInputParser.COMMENT_PATTERN.search(k_line)
-                                        if comment_match:
-                                            k_line = k_line[:comment_match.start()].strip()
-                                        if k_line:
-                                            card.add_line(k_line.split())
+                                    if i >= len(lines):
+                                        break
+                                    k_line = lines[i].strip()
+                                    if not k_line:
                                         i += 1
+                                        continue
+                                    # Check if this is a new card
+                                    card_match = QEInputParser.CARD_PATTERN.match(k_line)
+                                    if card_match:
+                                        card_name = card_match.group(1).upper()
+                                        try:
+                                            QECardType[card_name]
+                                            # This is a new card, stop reading
+                                            break
+                                        except KeyError:
+                                            pass
+                                    # Remove comments but keep the line
+                                    comment_match = QEInputParser.COMMENT_PATTERN.search(k_line)
+                                    if comment_match:
+                                        k_line = k_line[:comment_match.start()].strip()
+                                    if k_line:
+                                        card.add_line(k_line.split())
+                                    i += 1
                             except ValueError:
                                 # Not a number, treat as automatic format
                                 card.add_line(parts)
@@ -423,17 +482,28 @@ class QEInputParser:
                                 card.add_line([n_points])
                                 i += 1
                                 for _ in range(n_points):
-                                    if i < len(lines):
-                                        k_line = lines[i].strip()
-                                        if not k_line:
-                                            i += 1
-                                            continue
-                                        comment_match = QEInputParser.COMMENT_PATTERN.search(k_line)
-                                        if comment_match:
-                                            k_line = k_line[:comment_match.start()].strip()
-                                        if k_line:
-                                            card.add_line(k_line.split())
+                                    if i >= len(lines):
+                                        break
+                                    k_line = lines[i].strip()
+                                    if not k_line:
                                         i += 1
+                                        continue
+                                    # Check if this is a new card
+                                    card_match = QEInputParser.CARD_PATTERN.match(k_line)
+                                    if card_match:
+                                        card_name = card_match.group(1).upper()
+                                        try:
+                                            QECardType[card_name]
+                                            # This is a new card, stop reading
+                                            break
+                                        except KeyError:
+                                            pass
+                                    comment_match = QEInputParser.COMMENT_PATTERN.search(k_line)
+                                    if comment_match:
+                                        k_line = k_line[:comment_match.start()].strip()
+                                    if k_line:
+                                        card.add_line(k_line.split())
+                                    i += 1
                             except (ValueError, IndexError):
                                 # Fallback: just add the line
                                 card.add_line(parts)
@@ -541,10 +611,8 @@ class QEInputParser:
             QEInput object
         """
         filepath = Path(filepath)
-        with open(filepath, 'r') as f:
-            lines = f.readlines()
-        
-        return cls.parse_string('\n'.join(lines))
+        content = filepath.read_text()
+        return cls.parse_string(content)
     
     @classmethod
     def parse_string(cls, content: str) -> QEInput:

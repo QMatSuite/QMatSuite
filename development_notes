@@ -1,0 +1,53 @@
+xcode-select --install
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+brew install gcc cmake fftw openblas wget git 
+# mpich is not needed if open-mpi is installed: brew install open-mpi
+which mpicc
+which mpifort
+
+ls /opt/homebrew/bin/gfortran-*
+# 假设输出 gfortran-15
+
+mkdir src
+cd ~/src   # 随便找个目录
+brew install wget
+wget https://gitlab.com/QEF/q-e/-/archive/qe-7.5/q-e-qe-7.5.tar.gz
+tar zxf q-e-qe-7.5.tar.gz
+cd q-e-qe-7.5
+
+# 指明用 Homebrew 的 gcc/gfortran（根据你的版本号改）
+export CC=/opt/homebrew/bin/gcc-15
+export FC=/opt/homebrew/bin/gfortran-15
+
+# 方案 A1：让 configure 自动找库（经常会找到 Accelerate）
+./configure
+
+# this is also possible
+./configure FFT_LIBS="-L/opt/homebrew/lib -lfftw3"
+
+#finally use the following command
+./configure \
+  BLAS_LIBS="-framework Accelerate" \
+  LAPACK_LIBS="" \
+  FFT_LIBS="-L/opt/homebrew/lib -lfftw3"
+
+# change this in make.inc
+DFLAGS         =  -D__MPI -D__MPI_MODULE -D__FFTW3
+CPP = /opt/homebrew/bin/gcc-15 -E
+IFLAGS         = -I. -I$(TOPDIR)/include -I/opt/homebrew/opt/fftw/include
+
+#make the binaries
+ #make -j8 pw ph pp
+make -j8 pw
+
+#add the following to your ~/.zshrc
+nano ~/.zshrc
+export PATH="$HOME/src/q-e-qe-7.5/bin:$PATH"
+source ~/.zshrc
+which pw.x
+
+#run the tests
+cd test-suite
+make run-tests NPROCS=4
+
+
