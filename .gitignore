@@ -31,3 +31,14 @@ hs_err_pid*
 /.gradle/
 /build/
 /testfx/
+
+# Python tests and test data
+tests/
+test/
+*_test.py
+test_*.py
+*.pyc
+__pycache__/
+.pytest_cache/
+.coverage
+htmlcov/

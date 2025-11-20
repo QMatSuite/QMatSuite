@@ -8,6 +8,8 @@ of the Engine interface.
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 import shutil
+import platform
+import os
 
 from .base import Engine, EngineConfig
 from .qe_input import (
@@ -58,16 +60,114 @@ class QuantumEspressoEngine(Engine):
         """Initialize Quantum ESPRESSO engine."""
         super().__init__(config)
         self.qe_bin_dir = config.executable_path or Path()
+        self._detected_executables = {}  # Cache for detected executables
     
-    def detect_executable(self) -> bool:
-        """Detect if QE executables are available."""
-        # Check for at least one common executable
-        test_executables = ["pw.x", "pw.exe"]
-        for exe in test_executables:
-            exe_path = self.qe_bin_dir / exe
+    def find_executable(self, executable_name: str, search_paths: Optional[List[Path]] = None) -> Optional[Path]:
+        """
+        Find QE executable in specified paths or system PATH.
+        
+        Args:
+            executable_name: Name of executable (e.g., "pw.x", "pw.exe")
+            search_paths: Optional list of paths to search. If None, uses:
+                         - self.qe_bin_dir
+                         - self.qe_bin_dir / "bin" (if qe_bin_dir is QE root)
+                         - System PATH
+            
+        Returns:
+            Path to executable if found, None otherwise
+        """
+        # Determine executable name based on platform
+        system = platform.system()
+        if system == "Windows":
+            if not executable_name.endswith(".exe"):
+                executable_name = executable_name.replace(".x", ".exe")
+        else:
+            # Linux/Mac: use .x extension
+            executable_name = executable_name.replace(".exe", ".x")
+        
+        # Build search paths
+        if search_paths is None:
+            search_paths = []
+            
+            # Add configured bin directory
+            if self.qe_bin_dir:
+                search_paths.append(self.qe_bin_dir)
+                # If qe_bin_dir is QE root, also check bin subdirectory
+                bin_subdir = self.qe_bin_dir / "bin"
+                if bin_subdir.exists() and bin_subdir not in search_paths:
+                    search_paths.append(bin_subdir)
+        
+        # Search in specified paths
+        for search_path in search_paths:
+            exe_path = search_path / executable_name
+            if exe_path.exists() and exe_path.is_file() and os.access(exe_path, os.X_OK):
+                return exe_path
+        
+        # Search in system PATH
+        exe_in_path = shutil.which(executable_name)
+        if exe_in_path:
+            exe_path = Path(exe_in_path)
             if exe_path.exists() and exe_path.is_file():
-                return True
-        return False
+                return exe_path
+        
+        return None
+    
+    def detect_executable(self, executable_name: str = "pw.x") -> bool:
+        """
+        Detect if a QE executable is available.
+        
+        Args:
+            executable_name: Name of executable to detect (default: "pw.x")
+            
+        Returns:
+            True if executable is found and accessible
+        """
+        exe_path = self.find_executable(executable_name)
+        return exe_path is not None
+    
+    def get_executable_path(self, executable_name: str) -> Path:
+        """
+        Get full path to QE executable.
+        
+        Args:
+            executable_name: Name of executable (e.g., "pw.x", "ph.x")
+            
+        Returns:
+            Path to executable
+            
+        Raises:
+            FileNotFoundError: If executable is not found
+        """
+        # Check cache first
+        if executable_name in self._detected_executables:
+            return self._detected_executables[executable_name]
+        
+        exe_path = self.find_executable(executable_name)
+        
+        if exe_path is None:
+            # Build helpful error message
+            system = platform.system()
+            if system == "Windows":
+                expected_name = executable_name.replace(".x", ".exe")
+            else:
+                expected_name = executable_name.replace(".exe", ".x")
+            
+            search_locations = []
+            if self.qe_bin_dir:
+                search_locations.append(str(self.qe_bin_dir))
+                search_locations.append(str(self.qe_bin_dir / "bin"))
+            search_locations.append("system PATH")
+            
+            error_msg = (
+                f"QE executable '{expected_name}' not found.\n"
+                f"Searched in: {', '.join(search_locations)}\n"
+                f"Please set executable_path in EngineConfig or ensure '{expected_name}' is in PATH."
+            )
+            raise FileNotFoundError(error_msg)
+        
+        # Cache the result
+        self._detected_executables[executable_name] = exe_path
+        return exe_path
     
     def generate_input(
         self,
@@ -127,16 +227,24 @@ class QuantumEspressoEngine(Engine):
         input_file: Path,
         working_dir: Path
     ) -> List[str]:
-        """Build QE command with MPI support if configured."""
+        """
+        Build QE command with MPI support if configured.
+        
+        Args:
+            step_type: Type of calculation step
+            input_file: Path to input file
+            working_dir: Working directory for execution
+            
+        Returns:
+            List of command arguments for subprocess
+            
+        Raises:
+            FileNotFoundError: If executable is not found
+        """
         executable = self.EXECUTABLE_MAP.get(step_type, "pw.x")
-        exe_path = self.qe_bin_dir / executable
         
-        # Check for .exe on Windows
-        if not exe_path.exists():
-            exe_path = self.qe_bin_dir / f"{executable}.exe"
-        
-        if not exe_path.exists():
-            raise FileNotFoundError(f"QE executable not found: {executable}")
+        # Get executable path (handles platform-specific names and search)
+        exe_path = self.get_executable_path(executable)
         
         command = [str(exe_path)]
         
