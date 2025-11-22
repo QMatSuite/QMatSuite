@@ -169,7 +169,7 @@ All tests pass successfully:
 
 ### Example Files
 
-- `tests/examples/qe_tutorial_examples/` - Downloaded from GitHub repository
+- `temp/downloads/qe_tutorial_examples/` - Auto-downloaded from [GitHub repository](https://github.com/quantumNerd/Quantum-Espresso-Tutorial-2019-Projects)
 
 ## Future Enhancements
 
