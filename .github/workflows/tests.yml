@@ -1,0 +1,89 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  quick-tests:
+    name: Quick Tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov pytest-xdist
+    
+    - name: Run quick tests
+      run: |
+        pytest tests/ -m quick -v --cov=src/quantumvitas --cov-report=xml --cov-report=term
+      env:
+        # QE tests will be skipped if QE_BIN_DIR is not set
+        QE_BIN_DIR: ""
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: quick-tests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  extended-tests:
+    name: Extended Tests (Manual)
+    runs-on: ubuntu-latest
+    # Only run on manual trigger or schedule
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov
+    
+    - name: Setup QE (if available)
+      run: |
+        # This would need to be configured based on your CI setup
+        # For now, extended tests will be skipped if QE is not available
+        echo "QE setup would go here"
+    
+    - name: Run extended tests
+      run: |
+        pytest extended-tests/ -m extended -v --maxfail=10
+      continue-on-error: true  # Don't fail CI if extended tests fail
+    
+    - name: Analyze results
+      if: always()
+      run: |
+        # If results file exists, analyze it
+        if [ -f extended_test_results.json ]; then
+          python extended-tests/analyze_results.py extended_test_results.json
+        fi
+

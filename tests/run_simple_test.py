@@ -79,7 +79,13 @@ K_POINTS (automatic)
 
 def test_real_example():
     """Test with a real example file if available."""
-    examples_dir = Path(__file__).parent / "examples" / "qe_tutorial_examples"
+    # Use auto-downloaded tutorial examples
+    import sys
+    from pathlib import Path
+    project_root = Path(__file__).parent.parent
+    sys.path.insert(0, str(project_root / "extended-tests"))
+    from utils.download_tutorial_examples import ensure_tutorial_examples
+    examples_dir = ensure_tutorial_examples()
     example_file = examples_dir / "0_Si_scf" / "si.scf.in"
     
     if not example_file.exists():

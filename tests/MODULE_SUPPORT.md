@@ -15,12 +15,12 @@ QuantumVITAS now supports multiple Quantum ESPRESSO modules, each with their own
 ### ph.x (Phonon Calculations)
 - **Namelist**: `&inputph`
 - **Use cases**: Phonon frequencies, dielectric constants, Raman spectra
-- **Example**: `tests/examples/qe_tutorial_examples/9_Si_phonon/1_gamma_point/si.2_ph.in`
+- **Example**: `temp/downloads/qe_tutorial_examples/9_Si_phonon/1_gamma_point/si.2_ph.in` (auto-downloaded from [GitHub](https://github.com/quantumNerd/Quantum-Espresso-Tutorial-2019-Projects))
 
 ### gipaw.x (NMR/EPR Calculations)
 - **Namelist**: `&inputgipaw`
 - **Use cases**: Nuclear magnetic resonance, electron paramagnetic resonance
-- **Example**: `tests/examples/qe_tutorial_examples/12_NMR_gipaw/2_benzene/benzene.2_gipaw.in`
+- **Example**: `temp/downloads/qe_tutorial_examples/12_NMR_gipaw/2_benzene/benzene.2_gipaw.in` (auto-downloaded from [GitHub](https://github.com/quantumNerd/Quantum-Espresso-Tutorial-2019-Projects))
 
 ### pp.x (Post-Processing)
 - **Namelist**: `&inputpp`
