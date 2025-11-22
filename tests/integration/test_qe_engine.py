@@ -133,7 +133,13 @@ class TestRealWorldWorkflow:
     @pytest.fixture
     def examples_dir(self):
         """Get path to example files."""
-        examples_path = Path(__file__).parent.parent / "examples" / "qe_tutorial_examples"
+        # Use auto-downloaded tutorial examples
+        import sys
+        from pathlib import Path
+        project_root = Path(__file__).parent.parent.parent
+        sys.path.insert(0, str(project_root / "extended-tests"))
+        from utils.download_tutorial_examples import ensure_tutorial_examples
+        examples_path = ensure_tutorial_examples()
         if not examples_path.exists():
             pytest.skip("Example files not found")
         return examples_path

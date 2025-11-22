@@ -1,44 +1,74 @@
-# For quantumVITAS
-*.proj
-*.ini
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Compiled class file
-*.class
+# Virtual environments
+venv/
+ENV/
+env/
 
-# Log file
-*.log
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-# BlueJ files
-*.ctxt
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+coverage.xml
+*.cover
+.hypothesis/
 
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
-*.jar
-!gradle/**/*.jar
-*.war
-*.nar
-*.ear
-*.zip
-*.tar.gz
-*.rar
-
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
-hs_err_pid*
-/bin/
-/target/
-/.gradle/
-/build/
-/testfx/
-
-# Python tests and test data
-tests/
-test/
-*_test.py
-test_*.py
+# Test outputs (but tests/ and extended-tests/ code IS tracked)
+tests/__pycache__/
+tests/*/__pycache__/
+extended-tests/__pycache__/
+extended-tests/*/__pycache__/
 *.pyc
 __pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Extended tests results (output files only)
+extended-tests/results/
+extended-tests/*.json
+extended-tests/*.txt
+extended-tests/*.log
+
+# Test output files
+*.tmp
+*.log
+*.out
+*.err
+
+# Temporary directory (downloads, cache, etc.) - NOT tracked
+temp/
+.temp/
+.cache/
+
+# OS
+.DS_Store
+Thumbs.db
