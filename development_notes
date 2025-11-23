@@ -36,9 +36,10 @@ DFLAGS         =  -D__MPI -D__MPI_MODULE -D__FFTW3
 CPP = /opt/homebrew/bin/gcc-15 -E
 IFLAGS         = -I. -I$(TOPDIR)/include -I/opt/homebrew/opt/fftw/include
 
-#make the binaries
- #make -j8 pw ph pp
-make -j8 pw
+#make the binaries (do not use make -j 8 because it will cause some modules to not be built)
+ #make pwall
+ #make pw
+make all
 
 #add the following to your ~/.zshrc
 nano ~/.zshrc
