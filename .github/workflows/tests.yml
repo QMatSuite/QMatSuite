@@ -75,6 +75,13 @@ jobs:
         
         echo "PATH=$GCC_PREFIX/bin:$PATH" >> $GITHUB_ENV
     
+    - name: Cache QE source
+      if: matrix.os == 'macos-latest'
+      uses: actions/cache@v3
+      with:
+        path: $HOME/src/q-e-qe-7.5
+        key: qe-source-7.5-${{ runner.os }}
+    
     - name: Install Quantum ESPRESSO (macOS - from source)
       if: matrix.os == 'macos-latest'
       run: |
@@ -82,7 +89,7 @@ jobs:
         mkdir -p $HOME/src
         cd $HOME/src
         
-        # Download QE 7.5 source
+        # Download QE 7.5 source (if not cached)
         if [ ! -d "q-e-qe-7.5" ]; then
           wget -q https://gitlab.com/QEF/q-e/-/archive/qe-7.5/q-e-qe-7.5.tar.gz
           tar -xzf q-e-qe-7.5.tar.gz
@@ -113,10 +120,12 @@ jobs:
           sed -i.bak "s|^FFLAGS.*|& -I${FFTW_PREFIX}/include|" make.inc
         fi
         
-        # Build QE (essential modules for testing)
-        make pw
-        make ph
-        make pp
+        # Build QE (essential modules for testing) with parallel compilation
+        # Use 2 cores for compilation to speed up
+        make pw -j2 || make pw
+        make ph -j2 || make ph
+        make pp -j2 || make pp
+        # dos.x is built automatically with pw.x, no need for explicit make
         
         # Set QE_HOME environment variable
         echo "QE_HOME=$HOME/src/q-e-qe-7.5" >> $GITHUB_ENV

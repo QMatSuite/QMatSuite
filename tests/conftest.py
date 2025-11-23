@@ -65,3 +65,26 @@ def pytest_collection_modifyitems(config, items):
         if "extended-tests" in str(item.fspath):
             item.add_marker(pytest.mark.extended)
 
+
+@pytest.fixture(autouse=True)
+def cleanup_temp_outdir(project_root_path):
+    """Automatically clean up temp/outdir after each test."""
+    import shutil
+    temp_outdir = project_root_path / "temp" / "outdir"
+    
+    # Clean up before test (in case previous test failed)
+    if temp_outdir.exists():
+        try:
+            shutil.rmtree(temp_outdir)
+        except Exception:
+            pass  # Ignore cleanup errors
+    
+    yield
+    
+    # Clean up after test
+    if temp_outdir.exists():
+        try:
+            shutil.rmtree(temp_outdir)
+        except Exception:
+            pass  # Ignore cleanup errors
+
