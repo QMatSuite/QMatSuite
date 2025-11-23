@@ -50,11 +50,21 @@ jobs:
       run: |
         brew update
         brew install gcc gfortran openmpi fftw wget make
-        # Set compiler paths for QE build
-        GCC_PREFIX=$(brew --prefix gcc)
-        echo "CC=${GCC_PREFIX}/bin/gcc" >> $GITHUB_ENV
-        echo "FC=${GCC_PREFIX}/bin/gfortran" >> $GITHUB_ENV
-        echo "PATH=${GCC_PREFIX}/bin:$PATH" >> $GITHUB_ENV
+        # Find actual gcc and gfortran paths
+        # On macOS, gcc might be in /opt/homebrew/bin or /usr/local/bin
+        GCC_PATH=$(which gcc-13 || which gcc-12 || which gcc-11 || which gcc || echo "/usr/bin/gcc")
+        GFORTRAN_PATH=$(which gfortran || echo "/usr/bin/gfortran")
+        GCC_DIR=$(dirname "$GCC_PATH")
+        
+        echo "CC=$GCC_PATH" >> $GITHUB_ENV
+        echo "FC=$GFORTRAN_PATH" >> $GITHUB_ENV
+        echo "PATH=$GCC_DIR:$PATH" >> $GITHUB_ENV
+        
+        # Verify compilers
+        echo "Using CC: $GCC_PATH"
+        echo "Using FC: $GFORTRAN_PATH"
+        $GCC_PATH --version || true
+        $GFORTRAN_PATH --version || true
     
     - name: Install Quantum ESPRESSO (macOS - from source)
       if: matrix.os == 'macos-latest'
@@ -73,16 +83,29 @@ jobs:
         cd q-e-qe-7.5
         
         # Get brew paths
-        GCC_PREFIX=$(brew --prefix gcc)
         FFTW_PREFIX=$(brew --prefix fftw)
         
+        # Use environment variables set in previous step
+        # CC and FC should already be set in GITHUB_ENV
+        
         # Configure QE for macOS
+        # Use CC and FC from environment, with fallback
+        export CC=${CC:-gcc}
+        export FC=${FC:-gfortran}
+        
+        # Configure QE
+        ./configure \
+          CC="$CC" \
+          FC="$FC" \
+          BLAS_LIBS="-framework Accelerate" \
+          LAPACK_LIBS="" \
+          FFT_LIBS="-L${FFTW_PREFIX}/lib -lfftw3" \
+          MPIF90=mpif90 || \
         ./configure \
           BLAS_LIBS="-framework Accelerate" \
           LAPACK_LIBS="" \
           FFT_LIBS="-L${FFTW_PREFIX}/lib -lfftw3" \
-          MPIF90=mpif90 \
-          CPP="${GCC_PREFIX}/bin/gcc -E"
+          MPIF90=mpif90
         
         # Build QE (essential modules for testing)
         make pw -j2 || make pw
