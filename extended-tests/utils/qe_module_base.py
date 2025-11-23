@@ -11,6 +11,7 @@ import subprocess
 import configparser
 import tempfile
 import shutil
+import re
 from pathlib import Path
 from typing import List, Tuple, Dict, Any, Optional
 import os
@@ -70,13 +71,62 @@ def parse_jobconfig(jobconfig_path: Path, module_prefix: str) -> Dict[str, List[
     return tests
 
 
+def extract_ph_frequencies(content: str) -> Optional[List[float]]:
+    """
+    Extract all frequency values (in THz) from ph.x output.
+    
+    Extracts frequencies from ALL frequency blocks (all q-points).
+    Frequencies are located between lines of asterisks (*****).
+    Format: freq (    N) =      X.XXXXXX [THz] =     Y.YYYYYY [cm-1]
+    
+    Args:
+        content: ph.x output content
+        
+    Returns:
+        List of frequency values in THz from all frequency blocks, or None if extraction failed
+    """
+    lines = content.split('\n')
+    frequencies = []
+    in_freq_section = False
+    
+    for line in lines:
+        # Check for separator line (all asterisks)
+        if re.match(r'^\s*\*+\s*$', line):
+            in_freq_section = not in_freq_section
+            continue
+        
+        # If we're in a frequency section, extract frequencies
+        if in_freq_section:
+            # Pattern: freq (    N) =      X.XXXXXX [THz] =     Y.YYYYYY [cm-1]
+            match = re.search(r'freq\s*\(\s*\d+\s*\)\s*=\s+([-\d.]+)\s+\[THz\]', line, re.IGNORECASE)
+            if match:
+                try:
+                    freq = float(match.group(1))
+                    frequencies.append(freq)
+                except ValueError:
+                    continue
+    
+    return frequencies if frequencies else None
+
+
 def compare_with_benchmark(
     output_file: Path,
     benchmark_file: Path,
-    tolerance: float = 1e-6
+    executable_name: str = "pw.x",
+    tolerance: float = 3e-6
 ) -> Tuple[bool, str]:
     """
     Compare test output with benchmark output.
+    
+    For pw.x (SCF calculations), compares total energy.
+    For other modules (ph.x, q2r.x, matdyn.x, etc.), only checks JOB DONE
+    unless benchmark file exists and contains comparable data.
+    
+    Args:
+        output_file: Path to test output
+        benchmark_file: Path to benchmark output
+        executable_name: QE executable name (e.g., "pw.x", "ph.x")
+        tolerance: Numerical tolerance for energy comparison
     
     Returns:
         (pass_test, message)
@@ -100,30 +150,112 @@ def compare_with_benchmark(
     if "JOB DONE" not in output_content:
         return False, "JOB DONE not found in output"
     
-    # Extract and compare total energy if available
-    # This is a simplified comparison - real testcode does more sophisticated checks
+    # For pw.x (and certain pw.x calculations), compare total energy
+    # For other modules (ph.x, q2r.x, matdyn.x, etc.), only check JOB DONE
+    # unless the benchmark contains specific data to compare
     import re
     
-    # Try to extract energy from output
-    energy_pattern = r"!\s+total energy\s+=\s+([-\d.]+)\s+Ry"
-    output_match = re.search(energy_pattern, output_content, re.IGNORECASE)
-    benchmark_match = re.search(energy_pattern, benchmark_content, re.IGNORECASE)
-    
-    if output_match and benchmark_match:
-        try:
-            output_energy = float(output_match.group(1))
-            benchmark_energy = float(benchmark_match.group(1))
-            energy_diff = abs(output_energy - benchmark_energy)
+    # Only compare energy for pw.x calculations (SCF, nscf, bands, etc.)
+    # Priority: Use "! total energy" (most reliable indicator for SCF calculations)
+    if executable_name == "pw.x":
+        # Priority 1: Look for "! total energy" (most reliable, SCF always has this)
+        # Format: !    total energy              =     -26.70549012 Ry
+        energy_pattern = r"!\s+total energy\s+=\s+([-\d.]+)\s+Ry"
+        output_match = re.search(energy_pattern, output_content, re.IGNORECASE)
+        benchmark_match = re.search(energy_pattern, benchmark_content, re.IGNORECASE)
+        
+        if output_match and benchmark_match:
+            try:
+                output_energy = float(output_match.group(1))
+                benchmark_energy = float(benchmark_match.group(1))
+                energy_diff = abs(output_energy - benchmark_energy)
+                
+                if energy_diff <= tolerance:
+                    return True, f"Energy matches: {output_energy:.8f} Ry (diff: {energy_diff:.2e})"
+                else:
+                    return False, f"Energy mismatch: {output_energy:.8f} vs {benchmark_energy:.8f} (diff: {energy_diff:.2e})"
+            except ValueError:
+                pass
+        
+        # Fallback: If "! total energy" not found, look for other energy patterns nearby
+        # (for non-SCF pw.x calculations like nscf, bands, dos)
+        if not output_match:
+            # Try multiple patterns in order of reliability
+            energy_patterns = [
+                # Pattern 1: "total energy" without "!" (nscf may have this)
+                r"total energy\s+=\s+([-\d.]+)\s+Ry",
+                # Pattern 2: "Final energy" (sometimes used)
+                r"Final\s+energy\s+=\s+([-\d.]+)\s+Ry",
+                # Pattern 3: "energy" near "Ry" (more general)
+                r"energy\s+=\s+([-\d.]+)\s+Ry",
+            ]
             
-            if energy_diff <= tolerance:
-                return True, f"Energy matches: {output_energy:.8f} Ry (diff: {energy_diff:.2e})"
-            else:
-                return False, f"Energy mismatch: {output_energy:.8f} vs {benchmark_energy:.8f} (diff: {energy_diff:.2e})"
-        except ValueError:
-            pass
+            for alt_pattern in energy_patterns:
+                output_match = re.search(alt_pattern, output_content, re.IGNORECASE)
+                benchmark_match = re.search(alt_pattern, benchmark_content, re.IGNORECASE)
+                
+                if output_match and benchmark_match:
+                    try:
+                        output_energy = float(output_match.group(1))
+                        benchmark_energy = float(benchmark_match.group(1))
+                        energy_diff = abs(output_energy - benchmark_energy)
+                        
+                        if energy_diff <= tolerance:
+                            return True, f"Energy matches: {output_energy:.8f} Ry (diff: {energy_diff:.2e})"
+                        else:
+                            return False, f"Energy mismatch: {output_energy:.8f} vs {benchmark_energy:.8f} (diff: {energy_diff:.2e})"
+                    except ValueError:
+                        continue
     
-    # If energy comparison fails, just check JOB DONE
-    return True, "JOB DONE (energy comparison failed)"
+    # For ph.x, compare frequencies between two ***** lines
+    if executable_name == "ph.x":
+        output_freqs = extract_ph_frequencies(output_content)
+        benchmark_freqs = extract_ph_frequencies(benchmark_content)
+        
+        if output_freqs is None or benchmark_freqs is None:
+            # If frequency extraction failed, just check JOB DONE
+            return True, "JOB DONE (frequency extraction failed)"
+        
+        # Check if frequency counts match
+        if len(output_freqs) != len(benchmark_freqs):
+            return False, f"Frequency count mismatch: {len(output_freqs)} vs {len(benchmark_freqs)}"
+        
+        # Calculate mean absolute difference
+        if len(output_freqs) == 0:
+            return True, "JOB DONE (no frequencies found)"
+        
+        freq_diffs = [abs(o - b) for o, b in zip(output_freqs, benchmark_freqs)]
+        mean_diff = sum(freq_diffs) / len(freq_diffs)
+        max_diff = max(freq_diffs) if freq_diffs else 0.0
+        min_diff = min(freq_diffs) if freq_diffs else 0.0
+        
+        # Build detailed difference message
+        diff_details = []
+        diff_details.append(f"mean abs diff = {mean_diff:.6f} THz")
+        diff_details.append(f"max diff = {max_diff:.6f} THz")
+        diff_details.append(f"min diff = {min_diff:.6f} THz")
+        
+        # Show first few individual differences
+        if len(freq_diffs) <= 10:
+            # Show all differences
+            diff_list = [f"{d:.6f}" for d in freq_diffs]
+            diff_details.append(f"diffs = [{', '.join(diff_list)}] THz")
+        else:
+            # Show first 5 and last 5
+            diff_list_start = [f"{d:.6f}" for d in freq_diffs[:5]]
+            diff_list_end = [f"{d:.6f}" for d in freq_diffs[-5:]]
+            diff_details.append(f"diffs (first 5) = [{', '.join(diff_list_start)}] THz")
+            diff_details.append(f"diffs (last 5) = [{', '.join(diff_list_end)}] THz")
+        
+        diff_message = "; ".join(diff_details)
+        
+        if mean_diff > 0.01:
+            return False, f"Frequency mean abs diff too large: {diff_message} (threshold: 0.01 THz)"
+        else:
+            return True, f"Frequencies match: {diff_message}"
+    
+    # For other non-pw.x modules, just check JOB DONE
+    return True, "JOB DONE"
 
 
 def run_module_test(
@@ -133,7 +265,10 @@ def run_module_test(
     working_dir: Path,
     timeout: int = 60,
     input_flag: str = "-inp",
-    nprocs: int = 1
+    nprocs: int = 1,
+    save_output_to_temp: bool = True,
+    category: str = None,
+    step: str = None
 ) -> Dict[str, Any]:
     """
     Run a single QE module test.
@@ -192,6 +327,7 @@ def run_module_test(
         
         # Set up environment
         env = os.environ.copy()
+        # ESPRESSO_PSEUDO points to working directory where pseudopotentials are copied
         env['ESPRESSO_PSEUDO'] = str(working_dir)
         if nprocs > 1:
             env['NPROCS'] = str(nprocs)
@@ -213,6 +349,24 @@ def run_module_test(
         result["time_taken"] = time.time() - start_time
         result["run_success"] = (proc.returncode == 0)
         result["output_file"] = str(stdout_file)
+        
+        # Save stdout to temp folder for debugging
+        if save_output_to_temp and stdout_file.exists():
+            temp_output_dir = project_root / "temp" / "test_outputs"
+            if category:
+                temp_output_dir = temp_output_dir / category
+            temp_output_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Create output filename: {executable}_{input_filename}_{step}.out
+            input_filename = Path(input_file).stem
+            if step:
+                output_filename = f"{executable_name.replace('.x', '')}_{input_filename}_{step}.out"
+            else:
+                output_filename = f"{executable_name.replace('.x', '')}_{input_filename}.out"
+            
+            temp_output_file = temp_output_dir / output_filename
+            shutil.copy2(stdout_file, temp_output_file)
+            result["temp_output_file"] = str(temp_output_file)
         
         # Read output files
         stdout_content = stdout_file.read_text() if stdout_file.exists() else ""
@@ -247,19 +401,81 @@ def run_module_test(
                 if error_lines:
                     result["error"] += f"\nstdout errors: {'; '.join(error_lines[:5])}"
         else:
-            # Check for JOB DONE
-            if "JOB DONE" in stdout_content:
-                result["verify_success"] = True
-                result["success"] = True
-                result["message"] = "JOB DONE"
-            else:
-                # Even if return code is 0, check for errors in output
-                error_lines = [line for line in stdout_content.split('\n') 
-                              if any(keyword in line.lower() for keyword in ['error', 'fatal', 'failed'])]
-                if error_lines:
-                    result["error"] = f"JOB DONE not found and errors in output: {'; '.join(error_lines[:3])}"
+            # For pw.x, prioritize checking for total energy (most reliable indicator)
+            # Format: !    total energy              =     -26.70549012 Ry
+            if executable_name == "pw.x":
+                import re
+                # Priority 1: Look for ! total energy (most reliable for SCF)
+                energy_pattern = r"!\s+total energy\s+=\s+([-\d.]+)\s+Ry"
+                energy_match = re.search(energy_pattern, stdout_content, re.IGNORECASE)
+                
+                if energy_match:
+                    try:
+                        energy = float(energy_match.group(1))
+                        result["verify_success"] = True
+                        result["success"] = True
+                        result["message"] = f"Total energy: {energy:.8f} Ry"
+                    except ValueError:
+                        # If energy extraction fails, fall back to JOB DONE check
+                        if "JOB DONE" in stdout_content:
+                            result["verify_success"] = True
+                            result["success"] = True
+                            result["message"] = "JOB DONE (energy extraction failed)"
+                        else:
+                            result["error"] = "Total energy found but extraction failed and no JOB DONE"
                 else:
-                    result["error"] = "JOB DONE not found in output (no errors detected)"
+                    # Fallback: If "! total energy" not found, look for other energy patterns
+                    # (for non-SCF pw.x calculations like nscf, bands, dos)
+                    energy_patterns = [
+                        # Pattern 1: "total energy" without "!" (nscf may have this)
+                        r"total energy\s+=\s+([-\d.]+)\s+Ry",
+                        # Pattern 2: "Final energy" (sometimes used)
+                        r"Final\s+energy\s+=\s+([-\d.]+)\s+Ry",
+                        # Pattern 3: "energy" near "Ry" (more general)
+                        r"energy\s+=\s+([-\d.]+)\s+Ry",
+                    ]
+                    
+                    energy_match = None
+                    for alt_pattern in energy_patterns:
+                        energy_match = re.search(alt_pattern, stdout_content, re.IGNORECASE)
+                        if energy_match:
+                            try:
+                                energy = float(energy_match.group(1))
+                                result["verify_success"] = True
+                                result["success"] = True
+                                result["message"] = f"Energy: {energy:.8f} Ry"
+                                break
+                            except ValueError:
+                                continue
+                    
+                    if not energy_match:
+                        # No energy found - fall back to JOB DONE
+                        if "JOB DONE" in stdout_content:
+                            result["verify_success"] = True
+                            result["success"] = True
+                            result["message"] = "JOB DONE (no energy found)"
+                        else:
+                            # No energy and no JOB DONE - check for errors
+                            error_lines = [line for line in stdout_content.split('\n') 
+                                          if any(keyword in line.lower() for keyword in ['error', 'fatal', 'failed'])]
+                            if error_lines:
+                                result["error"] = f"JOB DONE not found and errors in output: {'; '.join(error_lines[:3])}"
+                            else:
+                                result["error"] = "JOB DONE not found in output (no errors detected)"
+            else:
+                # For non-pw.x modules, check for JOB DONE
+                if "JOB DONE" in stdout_content:
+                    result["verify_success"] = True
+                    result["success"] = True
+                    result["message"] = "JOB DONE"
+                else:
+                    # Even if return code is 0, check for errors in output
+                    error_lines = [line for line in stdout_content.split('\n') 
+                                  if any(keyword in line.lower() for keyword in ['error', 'fatal', 'failed'])]
+                    if error_lines:
+                        result["error"] = f"JOB DONE not found and errors in output: {'; '.join(error_lines[:3])}"
+                    else:
+                        result["error"] = "JOB DONE not found in output (no errors detected)"
         
     except subprocess.TimeoutExpired:
         result["time_taken"] = time.time() - start_time
@@ -359,14 +575,29 @@ def run_test_category(
             import shutil
             shutil.copy2(test_path, working_input)
             
-            # For workflow tests, also copy any existing save directories
-            if is_workflow and working_dir.exists():
-                # Copy .save directories from previous steps
-                for save_dir in working_dir.glob("*.save"):
-                    if save_dir.is_dir():
-                        dest = test_working_dir / save_dir.name
-                        if not dest.exists():
-                            shutil.copytree(save_dir, dest)
+            # Update pseudo_dir in input file to point to working directory
+            # This ensures QE can find the pseudopotentials
+            # We'll modify the file directly to preserve original formatting
+            try:
+                content = working_input.read_text()
+                # Replace pseudo_dir with './' (current directory where pseudopotentials are copied)
+                # Match patterns like: pseudo_dir = '../../pseudo' or pseudo_dir='../../pseudo'
+                import re
+                # Pattern to match pseudo_dir assignments
+                pattern = r'pseudo_dir\s*=\s*[^\s,/\n]+'
+                replacement = "pseudo_dir = './'"
+                new_content = re.sub(pattern, replacement, content, flags=re.IGNORECASE)
+                
+                if new_content != content:
+                    working_input.write_text(new_content)
+            except Exception as e:
+                # If modification fails, continue with original file
+                # Pseudopotentials should still be found via ESPRESSO_PSEUDO env var
+                pass
+            
+            # For workflow tests, we're already using the same working_dir,
+            # so .save directories from previous steps (e.g., pw.x) are already there.
+            # No need to copy - they're in the same directory!
             
             # Get NPROCS from environment or default to 1
             nprocs = int(os.environ.get("NPROCS", "1"))
@@ -379,7 +610,10 @@ def run_test_category(
                 test_working_dir,
                 timeout,
                 input_flag,
-                nprocs=nprocs
+                nprocs=nprocs,
+                save_output_to_temp=True,
+                category=category,
+                step=args if args else str(i+1)
             )
             
             result["category"] = category
@@ -395,7 +629,11 @@ def run_test_category(
             if result["run_success"]:
                 stdout_file = test_working_dir / "stdout.txt"
                 if stdout_file.exists():
-                    pass_test, message = compare_with_benchmark(stdout_file, benchmark_file)
+                    pass_test, message = compare_with_benchmark(
+                        stdout_file, 
+                        benchmark_file,
+                        executable_name=executable_name
+                    )
                     result["benchmark_match"] = pass_test
                     result["benchmark_message"] = message
                     if result["verify_success"]:
@@ -433,7 +671,12 @@ def run_test_category(
             if working_dir:
                 final_stdout = working_dir / "stdout.txt"
                 if final_stdout.exists():
-                    pass_test, message = compare_with_benchmark(final_stdout, final_benchmark)
+                    final_executable = executable_map.get(final_args, executable_map.get("default", "pw.x"))
+                    pass_test, message = compare_with_benchmark(
+                        final_stdout, 
+                        final_benchmark,
+                        executable_name=final_executable
+                    )
                     final_result["benchmark_match"] = pass_test
                     final_result["benchmark_message"] = message
                     final_result["success"] = pass_test

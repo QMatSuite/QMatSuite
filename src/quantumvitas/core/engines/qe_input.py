@@ -6,12 +6,35 @@ and structured Python data (namelists and cards).
 
 Supports multiple QE modules:
 - pw.x: &CONTROL, &system, &ELECTRONS, &IONS, &CELL
+  Documentation: https://www.quantum-espresso.org/Doc/INPUT_PW.html
 - ph.x: &inputph
+  Documentation: https://www.quantum-espresso.org/Doc/INPUT_PH.html
+- q2r.x: &input
+  Documentation: https://www.quantum-espresso.org/Doc/INPUT_Q2R.html
+- matdyn.x: &input
+  Documentation: https://www.quantum-espresso.org/Doc/INPUT_MATDYN.html
 - pp.x: &inputpp
+  Documentation: https://www.quantum-espresso.org/Doc/INPUT_PP.html
 - gipaw.x: &inputgipaw
 - neb.x: &PATH (plus embedded pw.x input)
+  Documentation: https://www.quantum-espresso.org/Doc/INPUT_NEB.html
+- cp.x: &CONTROL, &SYSTEM, &ELECTRONS, &IONS, &CELL (Car-Parrinello MD)
+  Documentation: https://www.quantum-espresso.org/Doc/INPUT_CP.html
+- ld1.x: &input (atomic calculations)
+  Documentation: https://www.quantum-espresso.org/Doc/INPUT_LD1.html
+- hp.x: &inputhp (Hubbard U parameters)
+  Documentation: https://www.quantum-espresso.org/Doc/INPUT_HP.html
+- pwcond.x: &cond (conductance calculations)
+  Documentation: https://www.quantum-espresso.org/Doc/INPUT_PWCOND.html
 - bands.x, dos.x, projwfc.x: Similar to pw.x
 - And other QE modules
+
+Workflow Note:
+  Many QE workflows run modules sequentially where:
+  - Previous step's OUTPUT determines next step's INPUT filename
+  - Example: pw.x generates .save directory -> ph.x reads from .save
+  - Example: ph.x generates dyn files -> q2r.x reads dyn files -> matdyn.x reads .fc file
+  - The prefix/outdir from previous step's input determines output filenames
 """
 
 import re
@@ -22,15 +45,56 @@ from enum import Enum
 
 
 class QEModule(Enum):
-    """Quantum ESPRESSO modules."""
+    """
+    Quantum ESPRESSO modules.
+    
+    Official Documentation Links:
+    - PW: https://www.quantum-espresso.org/Doc/INPUT_PW.html
+    - PH: https://www.quantum-espresso.org/Doc/INPUT_PH.html
+    - Q2R: https://www.quantum-espresso.org/Doc/INPUT_Q2R.html
+    - MATDYN: https://www.quantum-espresso.org/Doc/INPUT_MATDYN.html
+    - PP: https://www.quantum-espresso.org/Doc/INPUT_PP.html
+    - NEB: https://www.quantum-espresso.org/Doc/INPUT_NEB.html
+    - CP: https://www.quantum-espresso.org/Doc/INPUT_CP.html
+    - LD1: https://www.quantum-espresso.org/Doc/INPUT_LD1.html
+    - HP: https://www.quantum-espresso.org/Doc/INPUT_HP.html
+    - PWCOND: https://www.quantum-espresso.org/Doc/INPUT_PWCOND.html
+    - BANDS: https://www.quantum-espresso.org/Doc/INPUT_BANDS.html
+    - DOS: https://www.quantum-espresso.org/Doc/INPUT_DOS.html
+    - PROJWFC: https://www.quantum-espresso.org/Doc/INPUT_PROJWFC.html
+    - POSTAHC: https://www.quantum-espresso.org/Doc/INPUT_POSTAHC.html
+    - DYNMAT: https://www.quantum-espresso.org/Doc/INPUT_DYNMAT.html
+    - OSCDFT_ET: https://www.quantum-espresso.org/Doc/INPUT_OSCDFT_ET.html
+    - OSCDFT_PP: https://www.quantum-espresso.org/Doc/INPUT_OSCDFT_PP.html
+    - BAND_INTERPOLATION: https://www.quantum-espresso.org/Doc/INPUT_BAND_INTERPOLATION.html
+    - CPPP: https://www.quantum-espresso.org/Doc/INPUT_CPPP.html
+    - D3HESS: https://www.quantum-espresso.org/Doc/INPUT_D3HESS.html
+    - PPACF: https://www.quantum-espresso.org/Doc/INPUT_PPACF.html
+    - PPRISM: https://www.quantum-espresso.org/Doc/INPUT_PPRISM.html
+    """
     PW = "pw"  # pw.x - main DFT code
     PH = "ph"  # ph.x - phonon calculations
+    Q2R = "q2r"  # q2r.x - q-point to real space conversion
+    MATDYN = "matdyn"  # matdyn.x - phonon frequency calculation
     PP = "pp"  # pp.x - post-processing
     GIPAW = "gipaw"  # gipaw.x - NMR/EPR calculations
     NEB = "neb"  # neb.x - nudged elastic band
+    CP = "cp"  # cp.x - Car-Parrinello molecular dynamics
+    LD1 = "ld1"  # ld1.x - atomic calculations
+    HP = "hp"  # hp.x - Hubbard U parameters
+    PWCOND = "pwcond"  # pwcond.x - conductance calculations
     BANDS = "bands"  # bands.x - band structure
     DOS = "dos"  # dos.x - density of states
     PROJWFC = "projwfc"  # projwfc.x - projected wavefunctions
+    POSTAHC = "postahc"  # postahc.x - post-processing for AHC
+    DYNMAT = "dynmat"  # dynmat.x - dynamical matrix diagonalization
+    OSCDFT_ET = "oscdft_et"  # oscdft_et.x - OSCDFT eigenvalue tracking
+    OSCDFT_PP = "oscdft_pp"  # oscdft_pp.x - OSCDFT post-processing
+    BAND_INTERPOLATION = "band_interpolation"  # band_interpolation.x - band interpolation
+    CPPP = "cppp"  # cppp.x - CP post-processing
+    D3HESS = "d3hess"  # d3hess.x - third-order force constants
+    PPACF = "ppacf"  # ppacf.x - post-processing ACF
+    PPRISM = "pprism"  # pprism.x - post-processing RISM
     UNKNOWN = "unknown"  # Unknown module
 
 
@@ -53,14 +117,21 @@ class QENamelist:
     """A QE namelist (e.g., &control, &system)."""
     name: str
     parameters: Dict[str, Any] = field(default_factory=dict)
+    parameter_comments: Dict[str, str] = field(default_factory=dict)  # Comments for each parameter
     
     def get(self, key: str, default: Any = None) -> Any:
         """Get a parameter value."""
         return self.parameters.get(key, default)
     
-    def set(self, key: str, value: Any):
+    def set(self, key: str, value: Any, comment: Optional[str] = None):
         """Set a parameter value."""
         self.parameters[key] = value
+        if comment:
+            self.parameter_comments[key] = comment
+    
+    def get_comment(self, key: str) -> Optional[str]:
+        """Get comment for a parameter."""
+        return self.parameter_comments.get(key)
 
 
 @dataclass
@@ -101,9 +172,74 @@ class QEInput:
         """Get all cards of a given type."""
         return [card for card in self.cards if card.card_type == card_type]
     
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert QEInput to dictionary format for comparison.
+        
+        Returns:
+            Dictionary representation of the input
+        """
+        # Normalize parameters for comparison (handle float precision)
+        def normalize_value(v):
+            """Normalize values for comparison."""
+            if isinstance(v, float):
+                # Round to avoid precision issues
+                return round(v, 12)
+            elif isinstance(v, (list, tuple)):
+                return [normalize_value(item) for item in v]
+            else:
+                return v
+        
+        normalized_namelists = {}
+        for nl in self.namelists:
+            normalized_params = {k: normalize_value(v) for k, v in nl.parameters.items()}
+            normalized_namelists[nl.name] = normalized_params
+        
+        return {
+            'namelists': normalized_namelists,
+            'cards': [
+                {
+                    'type': card.card_type.value,
+                    'option': card.option,
+                    'data': card.data
+                }
+                for card in self.cards
+            ],
+            'module': self.module.value if self.module else None
+        }
+    
     def detect_module(self) -> QEModule:
         """
         Detect QE module from namelist names.
+        
+        Detection order:
+        1. ph.x: &inputph namelist
+           Documentation: https://www.quantum-espresso.org/Doc/INPUT_PH.html
+        2. hp.x: &inputhp namelist
+           Documentation: https://www.quantum-espresso.org/Doc/INPUT_HP.html
+        3. pp.x: &inputpp namelist
+           Documentation: https://www.quantum-espresso.org/Doc/INPUT_PP.html
+        4. gipaw.x: &inputgipaw namelist
+        5. neb.x: &PATH namelist
+           Documentation: https://www.quantum-espresso.org/Doc/INPUT_NEB.html
+        6. pwcond.x: &cond namelist
+           Documentation: https://www.quantum-espresso.org/Doc/INPUT_PWCOND.html
+        7. q2r.x: &input namelist (but check for q2r-specific parameters)
+           Documentation: https://www.quantum-espresso.org/Doc/INPUT_Q2R.html
+        8. matdyn.x: &input namelist (but check for matdyn-specific parameters)
+           Documentation: https://www.quantum-espresso.org/Doc/INPUT_MATDYN.html
+        9. ld1.x: &input namelist (atomic calculations, check for ld1-specific parameters)
+           Documentation: https://www.quantum-espresso.org/Doc/INPUT_LD1.html
+        10. cp.x: &CONTROL, &SYSTEM, &ELECTRONS (similar to pw.x but for MD)
+            Documentation: https://www.quantum-espresso.org/Doc/INPUT_CP.html
+        11. bands.x: &BANDS namelist
+            Documentation: https://www.quantum-espresso.org/Doc/INPUT_BANDS.html
+        12. dos.x: &DOS namelist
+            Documentation: https://www.quantum-espresso.org/Doc/INPUT_DOS.html
+        13. projwfc.x: &PROJWFC namelist
+            Documentation: https://www.quantum-espresso.org/Doc/INPUT_PROJWFC.html
+        14. pw.x: &CONTROL, &system, &ELECTRONS (default for these namelists)
+            Documentation: https://www.quantum-espresso.org/Doc/INPUT_PW.html
         
         Returns:
             Detected QE module
@@ -113,22 +249,94 @@ class QEInput:
         # Module-specific namelist detection
         if 'inputph' in namelist_names:
             return QEModule.PH
+        elif 'inputhp' in namelist_names:
+            return QEModule.HP
         elif 'inputpp' in namelist_names:
+            # Both pp.x and cppp.x, pprism.x use &inputpp
+            # Check for module-specific indicators
+            inputpp_nl = self.get_namelist('inputpp')
+            if inputpp_nl:
+                # cppp.x and pprism.x may have specific parameters
+                # For now, check if there are other indicators
+                if 'plot' in namelist_names:
+                    # pprism.x uses both &inputpp and &plot
+                    return QEModule.PPRISM
+            # Default to pp.x
             return QEModule.PP
         elif 'inputgipaw' in namelist_names:
             return QEModule.GIPAW
         elif 'path' in namelist_names:
             return QEModule.NEB
+        elif 'cond' in namelist_names:
+            return QEModule.PWCOND
+        elif 'oscdft_et_namelist' in namelist_names:
+            return QEModule.OSCDFT_ET
+        elif 'oscdft_pp_namelist' in namelist_names:
+            return QEModule.OSCDFT_PP
+        elif 'interpolation' in namelist_names:
+            return QEModule.BAND_INTERPOLATION
+        elif 'plot' in namelist_names:
+            # ppacf.x uses &plot namelist
+            if 'ppacf' in str(self).lower() or any('ppacf' in str(card) for card in self.cards):
+                return QEModule.PPACF
+            # Could be other plot modules, but ppacf is the main one
+            return QEModule.PPACF
+        elif 'input' in namelist_names:
+            # q2r.x, matdyn.x, ld1.x, postahc.x, dynmat.x, d3hess.x all use &input namelist
+            # Check for module-specific parameters
+            input_nl = self.get_namelist('input')
+            if input_nl:
+                # Check for ld1.x specific parameters (atomic calculations)
+                # ld1.x typically has atom, zed, xmin, dx, etc.
+                if input_nl.get('atom') is not None or input_nl.get('zed') is not None:
+                    return QEModule.LD1
+                
+                # Check for postahc.x, dynmat.x, d3hess.x specific parameters
+                # These modules are typically used after ph.x calculations
+                # postahc.x: typically has fildyn, filq, etc.
+                # dynmat.x: typically has fildyn, asr, etc.
+                # d3hess.x: typically has fildyn, etc.
+                # For now, we'll need additional context to distinguish them
+                # Default to dynmat.x if we can't determine
+                
+                # q2r.x typically has flfrc parameter (force constant file)
+                # matdyn.x typically has flfrc parameter too, but also has dos, flfrq, etc.
+                if input_nl.get('flfrc') is not None:
+                    # Check for matdyn-specific parameters
+                    if input_nl.get('dos') is not None or input_nl.get('flfrq') is not None:
+                        return QEModule.MATDYN
+                    # q2r.x typically has fildyn parameter (dynamical matrix file)
+                    elif input_nl.get('fildyn') is not None:
+                        return QEModule.Q2R
+                    # Default to q2r if we have flfrc but no matdyn indicators
+                    # (q2r writes .fc file that matdyn reads)
+                    return QEModule.Q2R
+            # If we have &input but can't determine, check for ld1-specific cards
+            # ld1.x may have ATOMIC_SPECIES or other atomic-specific cards
+            if any(card.card_type == QECardType.ATOMIC_SPECIES for card in self.cards):
+                # Could be ld1.x or pw.x, but if we have &input, more likely ld1.x
+                return QEModule.LD1
+            # Default to q2r for &input namelist (most common)
+            return QEModule.Q2R
+        elif 'bands' in namelist_names:
+            # bands.x uses &BANDS namelist
+            return QEModule.BANDS
+        elif 'dos' in namelist_names:
+            # dos.x uses &DOS namelist
+            return QEModule.DOS
+        elif 'projwfc' in namelist_names:
+            # projwfc.x uses &PROJWFC namelist
+            return QEModule.PROJWFC
         elif any(name in namelist_names for name in ['control', 'system', 'electrons']):
-            # pw.x, bands.x, dos.x, projwfc.x all use these namelists
+            # pw.x, cp.x use these namelists
             # Check for module-specific indicators
             control = self.get_namelist('control')
             if control:
                 calculation = control.get('calculation', '').lower()
-                if 'bands' in calculation:
-                    return QEModule.BANDS
-                elif 'dos' in calculation:
-                    return QEModule.DOS
+                # cp.x uses 'cp' or 'cp-wf' calculation type
+                if 'cp' in calculation:
+                    return QEModule.CP
+            # Default to pw.x for standard namelists
             return QEModule.PW
         
         return QEModule.UNKNOWN
@@ -200,9 +408,12 @@ class QEInputParser:
             except ValueError:
                 pass
         
-        # Try to parse as number
+        # Try to parse as number (including scientific notation like 1e-08)
         try:
-            if '.' in value_str:
+            # Check if it looks like a number (including scientific notation)
+            if 'e' in value_str.lower() or 'E' in value_str:
+                return float(value_str)
+            elif '.' in value_str:
                 return float(value_str)
             else:
                 return int(value_str)
@@ -229,20 +440,24 @@ class QEInputParser:
         # Parse parameters
         i = start_idx + 1
         current_line = ""
+        current_comment = ""
         
         while i < len(lines):
             line = lines[i].strip()
+            original_line = lines[i]  # Keep original for comment extraction
             
-            # Remove comments
+            # Extract inline comments (preserve them)
             comment_match = QEInputParser.COMMENT_PATTERN.search(line)
+            inline_comment = ""
             if comment_match:
+                inline_comment = comment_match.group(0).strip()  # Keep the '!' and comment text
                 line = line[:comment_match.start()].strip()
             
             # Check for namelist end
             if QEInputParser.NAMELIST_END_PATTERN.match(line):
                 # Parse any remaining parameters in current_line
                 if current_line:
-                    QEInputParser._parse_parameters(current_line, namelist)
+                    QEInputParser._parse_parameters(current_line, namelist, comment=inline_comment)
                 break
             
             # Accumulate line (parameters can span multiple lines)
@@ -253,20 +468,39 @@ class QEInputParser:
             
             # Try to parse parameters if line ends with comma or we have complete statements
             if current_line and (current_line.endswith(',') or '=' in current_line):
-                QEInputParser._parse_parameters(current_line, namelist)
+                # Pass inline comment to parameter parser
+                QEInputParser._parse_parameters(current_line, namelist, comment=inline_comment)
                 current_line = ""
+                inline_comment = ""  # Reset after parsing
             
             i += 1
         
         return namelist, i + 1
     
     @staticmethod
-    def _parse_parameters(line: str, namelist: QENamelist):
-        """Parse parameter assignments from a line."""
+    def _parse_parameters(line: str, namelist: QENamelist, comment: str = ""):
+        """Parse parameter assignments from a line.
+        
+        Args:
+            line: Line containing parameter assignments
+            namelist: QENamelist to add parameters to
+            comment: Optional inline comment to associate with the last parameter
+        """
         # Remove trailing comma
         line = line.rstrip(',').strip()
         if not line:
             return
+        
+        # Extract inline comment if present
+        comment_match = QEInputParser.COMMENT_PATTERN.search(line)
+        inline_comment = ""
+        if comment_match:
+            inline_comment = comment_match.group(0).strip()  # Keep '!' and comment text
+            line = line[:comment_match.start()].strip()
+        
+        # Use provided comment if no inline comment found
+        if not inline_comment and comment:
+            inline_comment = comment
         
         # Split by commas, but be careful with arrays and strings
         parts = []
@@ -301,13 +535,17 @@ class QEInputParser:
             parts.append(current.strip())
         
         # Parse each part
-        for part in parts:
+        for i, part in enumerate(parts):
             match = QEInputParser.KEY_VALUE_PATTERN.match(part)
             if match:
                 key = match.group(1)
                 value_str = match.group(2)
                 value = QEInputParser.parse_value(value_str)
-                namelist.set(key, value)
+                # Associate comment with the last parameter (most common case)
+                if i == len(parts) - 1 and inline_comment:
+                    namelist.set(key, value, comment=inline_comment)
+                else:
+                    namelist.set(key, value)
     
     @staticmethod
     def parse_card(lines: List[str], start_idx: int) -> Tuple[QECard, int]:
@@ -692,7 +930,11 @@ class QEInputGenerator:
         if isinstance(value, bool):
             return '.true.' if value else '.false.'
         elif isinstance(value, str):
-            # Always quote strings in QE input
+            # For paths (like pseudo_dir), QE typically uses quoted strings
+            # However, some paths like './' or '../../pseudo' may work without quotes
+            # To be safe, always quote strings unless they are simple relative paths
+            # Special case: simple relative paths like './' should be quoted for consistency
+            # Actually, QE accepts both, but let's use quotes for safety
             return f"'{value}'"
         elif isinstance(value, (list, tuple)):
             # For arrays, format each element and join
@@ -703,12 +945,17 @@ class QEInputGenerator:
     
     @staticmethod
     def generate_namelist(namelist: QENamelist, indent: str = "    ") -> str:
-        """Generate namelist string."""
+        """Generate namelist string, preserving inline comments."""
         lines = [f"&{namelist.name}"]
         
         for key, value in namelist.parameters.items():
             formatted_value = QEInputGenerator.format_value(value)
-            lines.append(f"{indent}{key} = {formatted_value}")
+            # Add inline comment if present
+            comment = namelist.get_comment(key)
+            if comment:
+                lines.append(f"{indent}{key} = {formatted_value}  {comment}")
+            else:
+                lines.append(f"{indent}{key} = {formatted_value}")
         
         lines.append("/")
         return '\n'.join(lines)

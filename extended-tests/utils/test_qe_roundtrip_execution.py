@@ -108,6 +108,8 @@ def ensure_pseudopotentials(input_file: Path, working_dir: Path, test_suite_dir:
     """
     Ensure all required pseudopotentials are available.
     
+    All pseudopotentials are downloaded to temp/pseudo/ and then copied to working_dir.
+    
     Args:
         input_file: QE input file path
         working_dir: Working directory for calculation
@@ -125,13 +127,10 @@ def ensure_pseudopotentials(input_file: Path, working_dir: Path, test_suite_dir:
     if not atomic_species or not atomic_species.data:
         return True  # No pseudopotentials needed
     
-    # Determine pseudo directory
-    if test_suite_dir:
-        # Use test suite pseudo directory
-        pseudo_dir = test_suite_dir.parent / "pseudo"
-    else:
-        # Use working directory
-        pseudo_dir = working_dir / "pseudo"
+    # Unified pseudo directory: temp/pseudo/
+    project_root = Path(__file__).parent.parent.parent
+    unified_pseudo_dir = project_root / "temp" / "pseudo"
+    unified_pseudo_dir.mkdir(parents=True, exist_ok=True)
     
     # Network URL for downloading
     network_url = "https://pseudopotentials.quantum-espresso.org/upf_files/"
@@ -145,31 +144,38 @@ def ensure_pseudopotentials(input_file: Path, working_dir: Path, test_suite_dir:
     # Check and download each pseudopotential
     all_available = True
     for pp_name in required_pps:
-        # First check in test suite directory structure
         found = False
         
-        if test_suite_dir:
-            # Check common locations
-            search_dirs = [
-                test_suite_dir.parent / "pseudo",
-                test_suite_dir / "pseudo",
-                test_suite_dir.parent.parent / "pseudo",
-            ]
+        # First check in unified pseudo directory
+        unified_pp_path = unified_pseudo_dir / pp_name
+        if unified_pp_path.exists():
+            # Copy to working directory
+            (working_dir / pp_name).write_bytes(unified_pp_path.read_bytes())
+            found = True
+        else:
+            # Check in test suite directory structure (if available)
+            if test_suite_dir:
+                search_dirs = [
+                    test_suite_dir.parent / "pseudo",
+                    test_suite_dir / "pseudo",
+                    test_suite_dir.parent.parent / "pseudo",
+                ]
+                
+                for search_dir in search_dirs:
+                    pp_file = search_dir / pp_name
+                    if pp_file.exists():
+                        # Copy to unified directory first, then to working directory
+                        unified_pp_path.write_bytes(pp_file.read_bytes())
+                        (working_dir / pp_name).write_bytes(pp_file.read_bytes())
+                        found = True
+                        break
             
-            for search_dir in search_dirs:
-                pp_file = search_dir / pp_name
-                if pp_file.exists():
+            # If not found, try downloading to unified directory
+            if not found:
+                if download_pseudopotential(pp_name, unified_pseudo_dir, network_url):
                     # Copy to working directory
-                    (working_dir / pp_name).write_bytes(pp_file.read_bytes())
+                    (working_dir / pp_name).write_bytes(unified_pp_path.read_bytes())
                     found = True
-                    break
-        
-        # If not found, try downloading
-        if not found:
-            if download_pseudopotential(pp_name, pseudo_dir, network_url):
-                # Copy to working directory
-                (working_dir / pp_name).write_bytes((pseudo_dir / pp_name).read_bytes())
-                found = True
         
         if not found:
             print(f"  Error: Pseudopotential {pp_name} not found and download failed")
@@ -181,6 +187,9 @@ def ensure_pseudopotentials(input_file: Path, working_dir: Path, test_suite_dir:
 def verify_qe_output(output_file: Path) -> tuple[bool, str]:
     """
     Verify QE output file indicates successful completion.
+    
+    Priority: For pw.x (SCF calculations), check for "! total energy" first (most reliable).
+    If not found, fall back to JOB DONE check.
     
     Args:
         output_file: Path to QE output file
@@ -194,7 +203,41 @@ def verify_qe_output(output_file: Path) -> tuple[bool, str]:
     try:
         content = output_file.read_text()
         
-        # Check for JOB DONE (standard QE completion marker)
+        # Priority 1: For SCF calculations, check for "! total energy" (most reliable)
+        # Format: !    total energy              =     -26.70549012 Ry
+        import re
+        energy_pattern = r"!\s+total energy\s+=\s+([-\d.]+)\s+Ry"
+        energy_match = re.search(energy_pattern, content, re.IGNORECASE)
+        
+        if energy_match:
+            try:
+                energy = float(energy_match.group(1))
+                # If we have energy, calculation is successful (SCF always has this)
+                return True, f"Total energy: {energy:.8f} Ry"
+            except ValueError:
+                pass
+        else:
+            # Fallback: If "! total energy" not found, look for other energy patterns
+            # (for non-SCF pw.x calculations like nscf, bands, dos)
+            energy_patterns = [
+                # Pattern 1: "total energy" without "!" (nscf may have this)
+                r"total energy\s+=\s+([-\d.]+)\s+Ry",
+                # Pattern 2: "Final energy" (sometimes used)
+                r"Final\s+energy\s+=\s+([-\d.]+)\s+Ry",
+                # Pattern 3: "energy" near "Ry" (more general)
+                r"energy\s+=\s+([-\d.]+)\s+Ry",
+            ]
+            
+            for alt_pattern in energy_patterns:
+                energy_match = re.search(alt_pattern, content, re.IGNORECASE)
+                if energy_match:
+                    try:
+                        energy = float(energy_match.group(1))
+                        return True, f"Energy: {energy:.8f} Ry"
+                    except ValueError:
+                        continue
+        
+        # Priority 2: Check for JOB DONE (standard QE completion marker)
         if "JOB DONE" in content:
             # Check for errors
             if "error" in content.lower() and "convergence" not in content.lower():
@@ -203,20 +246,19 @@ def verify_qe_output(output_file: Path) -> tuple[bool, str]:
                 if error_lines:
                     return False, f"Errors found: {error_lines[0][:100]}"
             
-            # Extract total energy if available
+            # Try to extract energy from other patterns if "! total energy" not found
             energy = None
-            for line in content.split('\n'):
-                if 'total energy' in line.lower() or '!    total energy' in line.lower():
-                    # Try to extract energy value
-                    parts = line.split()
-                    for i, part in enumerate(parts):
-                        if 'ry' in part.lower() or 'ev' in part.lower():
-                            if i > 0:
-                                try:
-                                    energy = float(parts[i-1])
-                                    break
-                                except ValueError:
-                                    pass
+            if not energy_match:
+                for line in content.split('\n'):
+                    if 'total energy' in line.lower():
+                        try:
+                            # Look for pattern: total energy = -26.70549012 Ry
+                            match = re.search(r'=\s+([-\d.]+)\s+Ry', line)
+                            if match:
+                                energy = float(match.group(1))
+                                break
+                        except (ValueError, IndexError):
+                            continue
             
             return True, f"JOB DONE (energy: {energy} Ry)" if energy else "JOB DONE"
         else:
