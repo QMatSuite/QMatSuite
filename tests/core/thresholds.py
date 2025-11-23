@@ -17,6 +17,10 @@ ENERGY_TOLERANCE_PW_SCF: float = 3e-6
 ENERGY_TOLERANCE_PW_NSCF: float = 1e-6
 ENERGY_TOLERANCE_PW_RELAX: float = 3e-6
 
+# Fermi energy tolerance for NSCF calculations (in Ry)
+# NSCF calculations should compare Fermi energy instead of total energy
+FERMI_ENERGY_TOLERANCE: float = 0.01  # 0.01 Ry tolerance for Fermi energy
+
 # ============================================================================
 # Frequency comparison thresholds (for ph.x and phonon-related tests)
 # ============================================================================
@@ -88,4 +92,14 @@ def get_frequency_threshold(category: str = None) -> float:
             return FREQUENCY_THRESHOLD_PH_ALL
     
     return DEFAULT_FREQUENCY_THRESHOLD
+
+
+def get_fermi_energy_tolerance() -> float:
+    """
+    Get Fermi energy tolerance for NSCF calculations.
+    
+    Returns:
+        Fermi energy tolerance value (in Ry)
+    """
+    return FERMI_ENERGY_TOLERANCE
 

@@ -24,6 +24,7 @@ sys.path.insert(0, str(project_root))
 
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.base import EngineConfig
+from quantumvitas.core.engines.qe_input import QEInput
 
 # Import shared test utilities from tests/core
 from tests.core.qe_test_utils import (
@@ -40,6 +41,16 @@ if test_file.exists():
     test_module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(test_module)
     ensure_pseudopotentials = test_module.ensure_pseudopotentials
+    set_outdir_to_temp = test_module.set_outdir_to_temp
+else:
+    # Fallback: define set_outdir_to_temp locally
+    def set_outdir_to_temp(qe_input: QEInput, project_root: Path) -> None:
+        """Set outdir parameter in QE input to temp/outdir if it exists."""
+        for namelist in qe_input.namelists:
+            if "outdir" in namelist.parameters:
+                temp_outdir = project_root / "temp" / "outdir"
+                temp_outdir.mkdir(parents=True, exist_ok=True)
+                namelist.parameters["outdir"] = str(temp_outdir.absolute())
 else:
     # Fallback: define a simple version if file doesn't exist
     def ensure_pseudopotentials(input_file: Path, working_dir: Path, test_suite_dir: Path = None) -> bool:
@@ -106,6 +117,9 @@ def run_module_test(
             
             # Parse the input file
             qe_input = QEInputParser.parse_file(input_file)
+            
+            # Set outdir to temp/outdir if it exists
+            set_outdir_to_temp(qe_input, project_root)
             
             # Generate parsed input file
             parsed_content = QEInputGenerator.generate(qe_input)
