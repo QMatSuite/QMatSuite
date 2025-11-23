@@ -25,6 +25,13 @@ sys.path.insert(0, str(project_root))
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.base import EngineConfig
 
+# Import shared test utilities from tests/core
+from tests.core.qe_test_utils import (
+    parse_jobconfig,
+    extract_ph_frequencies,
+    compare_with_benchmark
+)
+
 # Import test function from extended-tests/utils
 import importlib.util
 test_file = project_root / "extended-tests" / "utils" / "test_qe_roundtrip_execution.py"
@@ -40,222 +47,17 @@ else:
         return True
 
 
-def parse_jobconfig(jobconfig_path: Path, module_prefix: str) -> Dict[str, List[Tuple[str, str]]]:
-    """
-    Parse jobconfig file to get test order for a specific module.
-    
-    Args:
-        jobconfig_path: Path to jobconfig file
-        module_prefix: Module prefix (e.g., "ph_", "pp_", "cp_")
-    
-    Returns:
-        Dict mapping category name to list of (input_file, args) tuples
-    """
-    config = configparser.ConfigParser()
-    config.read(jobconfig_path)
-    
-    tests = {}
-    for section in config.sections():
-        section_name = section.rstrip('/')
-        if section_name.startswith(module_prefix):
-            if 'inputs_args' in config[section]:
-                try:
-                    inputs = eval(config[section]['inputs_args'])
-                    tests[section_name] = inputs
-                except Exception as e:
-                    print(f"Warning: Could not parse inputs_args for {section}: {e}")
-                    tests[section_name] = []
-            else:
-                tests[section_name] = []
-    
-    return tests
+# Re-export for backward compatibility
+__all__ = [
+    "parse_jobconfig",
+    "extract_ph_frequencies",
+    "compare_with_benchmark",
+    "ensure_pseudopotentials",
+]
 
 
-def extract_ph_frequencies(content: str) -> Optional[List[float]]:
-    """
-    Extract all frequency values (in THz) from ph.x output.
-    
-    Extracts frequencies from ALL frequency blocks (all q-points).
-    Frequencies are located between lines of asterisks (*****).
-    Format: freq (    N) =      X.XXXXXX [THz] =     Y.YYYYYY [cm-1]
-    
-    Args:
-        content: ph.x output content
-        
-    Returns:
-        List of frequency values in THz from all frequency blocks, or None if extraction failed
-    """
-    lines = content.split('\n')
-    frequencies = []
-    in_freq_section = False
-    
-    for line in lines:
-        # Check for separator line (all asterisks)
-        if re.match(r'^\s*\*+\s*$', line):
-            in_freq_section = not in_freq_section
-            continue
-        
-        # If we're in a frequency section, extract frequencies
-        if in_freq_section:
-            # Pattern: freq (    N) =      X.XXXXXX [THz] =     Y.YYYYYY [cm-1]
-            match = re.search(r'freq\s*\(\s*\d+\s*\)\s*=\s+([-\d.]+)\s+\[THz\]', line, re.IGNORECASE)
-            if match:
-                try:
-                    freq = float(match.group(1))
-                    frequencies.append(freq)
-                except ValueError:
-                    continue
-    
-    return frequencies if frequencies else None
-
-
-def compare_with_benchmark(
-    output_file: Path,
-    benchmark_file: Path,
-    executable_name: str = "pw.x",
-    tolerance: float = 3e-6
-) -> Tuple[bool, str]:
-    """
-    Compare test output with benchmark output.
-    
-    For pw.x (SCF calculations), compares total energy.
-    For other modules (ph.x, q2r.x, matdyn.x, etc.), only checks JOB DONE
-    unless benchmark file exists and contains comparable data.
-    
-    Args:
-        output_file: Path to test output
-        benchmark_file: Path to benchmark output
-        executable_name: QE executable name (e.g., "pw.x", "ph.x")
-        tolerance: Numerical tolerance for energy comparison
-    
-    Returns:
-        (pass_test, message)
-    """
-    if not benchmark_file.exists():
-        # No benchmark to compare - just check for JOB DONE
-        if output_file.exists():
-            content = output_file.read_text()
-            if "JOB DONE" in content:
-                return True, "JOB DONE (no benchmark to compare)"
-        return False, "No benchmark and no JOB DONE"
-    
-    # Read both files
-    try:
-        output_content = output_file.read_text()
-        benchmark_content = benchmark_file.read_text()
-    except Exception as e:
-        return False, f"Error reading files: {e}"
-    
-    # Check for JOB DONE
-    if "JOB DONE" not in output_content:
-        return False, "JOB DONE not found in output"
-    
-    # For pw.x (and certain pw.x calculations), compare total energy
-    # For other modules (ph.x, q2r.x, matdyn.x, etc.), only check JOB DONE
-    # unless the benchmark contains specific data to compare
-    import re
-    
-    # Only compare energy for pw.x calculations (SCF, nscf, bands, etc.)
-    # Priority: Use "! total energy" (most reliable indicator for SCF calculations)
-    if executable_name == "pw.x":
-        # Priority 1: Look for "! total energy" (most reliable, SCF always has this)
-        # Format: !    total energy              =     -26.70549012 Ry
-        energy_pattern = r"!\s+total energy\s+=\s+([-\d.]+)\s+Ry"
-        output_match = re.search(energy_pattern, output_content, re.IGNORECASE)
-        benchmark_match = re.search(energy_pattern, benchmark_content, re.IGNORECASE)
-        
-        if output_match and benchmark_match:
-            try:
-                output_energy = float(output_match.group(1))
-                benchmark_energy = float(benchmark_match.group(1))
-                energy_diff = abs(output_energy - benchmark_energy)
-                
-                if energy_diff <= tolerance:
-                    return True, f"Energy matches: {output_energy:.8f} Ry (diff: {energy_diff:.2e})"
-                else:
-                    return False, f"Energy mismatch: {output_energy:.8f} vs {benchmark_energy:.8f} (diff: {energy_diff:.2e})"
-            except ValueError:
-                pass
-        
-        # Fallback: If "! total energy" not found, look for other energy patterns nearby
-        # (for non-SCF pw.x calculations like nscf, bands, dos)
-        if not output_match:
-            # Try multiple patterns in order of reliability
-            energy_patterns = [
-                # Pattern 1: "total energy" without "!" (nscf may have this)
-                r"total energy\s+=\s+([-\d.]+)\s+Ry",
-                # Pattern 2: "Final energy" (sometimes used)
-                r"Final\s+energy\s+=\s+([-\d.]+)\s+Ry",
-                # Pattern 3: "energy" near "Ry" (more general)
-                r"energy\s+=\s+([-\d.]+)\s+Ry",
-            ]
-            
-            for alt_pattern in energy_patterns:
-                output_match = re.search(alt_pattern, output_content, re.IGNORECASE)
-                benchmark_match = re.search(alt_pattern, benchmark_content, re.IGNORECASE)
-                
-                if output_match and benchmark_match:
-                    try:
-                        output_energy = float(output_match.group(1))
-                        benchmark_energy = float(benchmark_match.group(1))
-                        energy_diff = abs(output_energy - benchmark_energy)
-                        
-                        if energy_diff <= tolerance:
-                            return True, f"Energy matches: {output_energy:.8f} Ry (diff: {energy_diff:.2e})"
-                        else:
-                            return False, f"Energy mismatch: {output_energy:.8f} vs {benchmark_energy:.8f} (diff: {energy_diff:.2e})"
-                    except ValueError:
-                        continue
-    
-    # For ph.x, compare frequencies between two ***** lines
-    if executable_name == "ph.x":
-        output_freqs = extract_ph_frequencies(output_content)
-        benchmark_freqs = extract_ph_frequencies(benchmark_content)
-        
-        if output_freqs is None or benchmark_freqs is None:
-            # If frequency extraction failed, just check JOB DONE
-            return True, "JOB DONE (frequency extraction failed)"
-        
-        # Check if frequency counts match
-        if len(output_freqs) != len(benchmark_freqs):
-            return False, f"Frequency count mismatch: {len(output_freqs)} vs {len(benchmark_freqs)}"
-        
-        # Calculate mean absolute difference
-        if len(output_freqs) == 0:
-            return True, "JOB DONE (no frequencies found)"
-        
-        freq_diffs = [abs(o - b) for o, b in zip(output_freqs, benchmark_freqs)]
-        mean_diff = sum(freq_diffs) / len(freq_diffs)
-        max_diff = max(freq_diffs) if freq_diffs else 0.0
-        min_diff = min(freq_diffs) if freq_diffs else 0.0
-        
-        # Build detailed difference message
-        diff_details = []
-        diff_details.append(f"mean abs diff = {mean_diff:.6f} THz")
-        diff_details.append(f"max diff = {max_diff:.6f} THz")
-        diff_details.append(f"min diff = {min_diff:.6f} THz")
-        
-        # Show first few individual differences
-        if len(freq_diffs) <= 10:
-            # Show all differences
-            diff_list = [f"{d:.6f}" for d in freq_diffs]
-            diff_details.append(f"diffs = [{', '.join(diff_list)}] THz")
-        else:
-            # Show first 5 and last 5
-            diff_list_start = [f"{d:.6f}" for d in freq_diffs[:5]]
-            diff_list_end = [f"{d:.6f}" for d in freq_diffs[-5:]]
-            diff_details.append(f"diffs (first 5) = [{', '.join(diff_list_start)}] THz")
-            diff_details.append(f"diffs (last 5) = [{', '.join(diff_list_end)}] THz")
-        
-        diff_message = "; ".join(diff_details)
-        
-        if mean_diff > 0.01:
-            return False, f"Frequency mean abs diff too large: {diff_message} (threshold: 0.01 THz)"
-        else:
-            return True, f"Frequencies match: {diff_message}"
-    
-    # For other non-pw.x modules, just check JOB DONE
-    return True, "JOB DONE"
+# Functions extract_ph_frequencies and compare_with_benchmark are now imported
+# from tests.core.qe_test_utils above. Legacy implementations removed.
 
 
 def run_module_test(
@@ -298,6 +100,39 @@ def run_module_test(
     start_time = time.time()
     
     try:
+        # Parse and write input file to temp for debugging
+        try:
+            from quantumvitas.core.engines.qe_input import QEInputParser, QEInputGenerator
+            
+            # Parse the input file
+            qe_input = QEInputParser.parse_file(input_file)
+            
+            # Generate parsed input file
+            parsed_content = QEInputGenerator.generate(qe_input)
+            
+            # Save to temp folder
+            if save_output_to_temp:
+                temp_output_dir = project_root / "temp" / "test_outputs"
+                if category:
+                    temp_output_dir = temp_output_dir / category
+                temp_output_dir.mkdir(parents=True, exist_ok=True)
+                
+                # Create parsed filename: {input_filename}_parsed.in
+                input_filename = Path(input_file).name
+                parsed_filename = input_filename.replace(".in", "_parsed.in")
+                if not parsed_filename.endswith(".in"):
+                    parsed_filename = f"{input_filename}_parsed.in"
+                
+                if step:
+                    parsed_filename = f"{Path(input_filename).stem}_{step}_parsed.in"
+                
+                parsed_output_path = temp_output_dir / parsed_filename
+                parsed_output_path.write_text(parsed_content)
+                result["parsed_input_file"] = str(parsed_output_path)
+        except Exception as e:
+            # If parsing fails, log but don't fail the test
+            result["parse_warning"] = f"Failed to parse input file: {e}"
+        
         # Find executable
         exe_path = qe_engine.get_executable_path(executable_name)
         if not exe_path or not exe_path.exists():
@@ -632,7 +467,8 @@ def run_test_category(
                     pass_test, message = compare_with_benchmark(
                         stdout_file, 
                         benchmark_file,
-                        executable_name=executable_name
+                        executable_name=executable_name,
+                        category=category
                     )
                     result["benchmark_match"] = pass_test
                     result["benchmark_message"] = message
@@ -675,7 +511,8 @@ def run_test_category(
                     pass_test, message = compare_with_benchmark(
                         final_stdout, 
                         final_benchmark,
-                        executable_name=final_executable
+                        executable_name=final_executable,
+                        category=category
                     )
                     final_result["benchmark_match"] = pass_test
                     final_result["benchmark_message"] = message

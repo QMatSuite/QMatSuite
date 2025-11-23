@@ -2,16 +2,15 @@ name: Tests
 
 on:
   push:
-    branches: [ main, develop ]
+    # Only run on v2-python branch
+    branches: [ v2-python ]
   pull_request:
-    branches: [ main, develop ]
-  schedule:
-    # Run tests daily at 2 AM UTC
-    - cron: '0 2 * * *'
+    # Only run PRs targeting v2-python branch
+    branches: [ v2-python ]
 
 jobs:
-  quick-tests:
-    name: Quick Tests
+  tests-with-qe:
+    name: Tests with QE (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -27,24 +26,117 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     
-    - name: Install dependencies
+    - name: Install Quantum ESPRESSO (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get upgrade -y
+        sudo apt-get install --no-install-recommends -y \
+          libfftw3-dev \
+          quantum-espresso
+        # Find QE installation directory
+        # QE executables are typically in /usr/bin
+        # QE_HOME might be /usr or /usr/share/quantum-espresso
+        if [ -d "/usr/share/quantum-espresso" ]; then
+          echo "QE_HOME=/usr/share/quantum-espresso" >> $GITHUB_ENV
+        elif [ -f "/usr/bin/pw.x" ]; then
+          echo "QE_HOME=/usr" >> $GITHUB_ENV
+        else
+          echo "QE_HOME=/usr" >> $GITHUB_ENV
+        fi
+    
+    - name: Install system dependencies (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew update
+        brew install gcc gfortran openmpi fftw wget make
+        # Set compiler paths for QE build
+        GCC_PREFIX=$(brew --prefix gcc)
+        echo "CC=${GCC_PREFIX}/bin/gcc" >> $GITHUB_ENV
+        echo "FC=${GCC_PREFIX}/bin/gfortran" >> $GITHUB_ENV
+        echo "PATH=${GCC_PREFIX}/bin:$PATH" >> $GITHUB_ENV
+    
+    - name: Install Quantum ESPRESSO (macOS - from source)
+      if: matrix.os == 'macos-latest'
+      run: |
+        # Create QE installation directory
+        mkdir -p $HOME/src
+        cd $HOME/src
+        
+        # Download QE 7.5 source
+        if [ ! -d "q-e-qe-7.5" ]; then
+          wget -q https://gitlab.com/QEF/q-e/-/archive/qe-7.5/q-e-qe-7.5.tar.gz
+          tar -xzf q-e-qe-7.5.tar.gz
+          rm q-e-qe-7.5.tar.gz
+        fi
+        
+        cd q-e-qe-7.5
+        
+        # Get brew paths
+        GCC_PREFIX=$(brew --prefix gcc)
+        FFTW_PREFIX=$(brew --prefix fftw)
+        
+        # Configure QE for macOS
+        ./configure \
+          BLAS_LIBS="-framework Accelerate" \
+          LAPACK_LIBS="" \
+          FFT_LIBS="-L${FFTW_PREFIX}/lib -lfftw3" \
+          MPIF90=mpif90 \
+          CPP="${GCC_PREFIX}/bin/gcc -E"
+        
+        # Build QE (essential modules for testing)
+        make pw -j2 || make pw
+        make ph -j2 || make ph
+        make pp -j2 || make pp
+        
+        # Set QE_HOME environment variable
+        echo "QE_HOME=$HOME/src/q-e-qe-7.5" >> $GITHUB_ENV
+        echo "$HOME/src/q-e-qe-7.5/bin" >> $GITHUB_PATH
+    
+    - name: Verify QE installation
+      run: |
+        if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+          # On Ubuntu, QE is installed via apt
+          which pw.x || (echo "pw.x not found in PATH" && exit 1)
+          pw.x --version || echo "pw.x version check failed (may be normal)"
+          # QE_HOME should already be set from install step
+        else
+          # On macOS, QE is compiled from source
+          QE_HOME=$HOME/src/q-e-qe-7.5
+          export QE_HOME
+          export PATH="$QE_HOME/bin:$PATH"
+          which pw.x || (echo "pw.x not found in PATH" && exit 1)
+          pw.x --version || echo "pw.x version check failed (may be normal)"
+          ls -la $QE_HOME/bin/pw.x || exit 1
+          echo "QE_HOME=$QE_HOME" >> $GITHUB_ENV
+        fi
+    
+    - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install pytest pytest-cov pytest-xdist
     
-    - name: Run quick tests
+    - name: Run all tests in tests/ directory
       run: |
-        pytest tests/ -m quick -v --cov=src/quantumvitas --cov-report=xml --cov-report=term
+        if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+          # Ubuntu: QE installed via apt, already in PATH
+          # QE_HOME should be set from install step
+          export QE_HOME=${QE_HOME:-/usr}
+        else
+          # macOS: QE compiled from source
+          export QE_HOME=$HOME/src/q-e-qe-7.5
+          export PATH="$QE_HOME/bin:$PATH"
+        fi
+        pytest tests/ -v --cov=src/quantumvitas --cov-report=xml --cov-report=term
       env:
-        # QE tests will be skipped if QE_BIN_DIR is not set
-        QE_BIN_DIR: ""
+        QE_HOME: ${{ env.QE_HOME }}
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
       with:
         file: ./coverage.xml
-        flags: quick-tests
+        flags: tests-qe
         name: codecov-umbrella
         fail_ci_if_error: false
 
@@ -86,4 +178,3 @@ jobs:
         if [ -f extended_test_results.json ]; then
           python extended-tests/analyze_results.py extended_test_results.json
         fi
-

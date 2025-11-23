@@ -8,7 +8,9 @@ import tempfile
 
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.base import EngineConfig
-from quantumvitas.core.engines.qe_input import QEInputParser, QEInputGenerator
+from quantumvitas.core.engines.qe_input import (
+    QEInputParser, QEInputGenerator, QEInput, QENamelist, QECard, QECardType
+)
 
 
 class TestQEEngineInputGeneration:
@@ -127,84 +129,6 @@ ATOMIC_SPECIES
         assert system.get('ecutwfc') == 50.0
 
 
-class TestRealWorldWorkflow:
-    """Test real-world workflow scenarios."""
-    
-    @pytest.fixture
-    def examples_dir(self):
-        """Get path to example files."""
-        # Use auto-downloaded tutorial examples
-        import sys
-        from pathlib import Path
-        project_root = Path(__file__).parent.parent.parent
-        sys.path.insert(0, str(project_root / "extended-tests"))
-        from utils.download_tutorial_examples import ensure_tutorial_examples
-        examples_path = ensure_tutorial_examples()
-        if not examples_path.exists():
-            pytest.skip("Example files not found")
-        return examples_path
-    
-    def test_workflow_scf_to_nscf(self, examples_dir, tmp_path):
-        """Test workflow: parse SCF, modify for NSCF."""
-        # Find an SCF input
-        scf_file = examples_dir / "4_Si_DOS" / "si.scf.in"
-        if not scf_file.exists():
-            pytest.skip("SCF example not found")
-        
-        # Parse SCF
-        qe_input = QEInputParser.parse_file(scf_file)
-        
-        # Modify for NSCF
-        control = qe_input.get_namelist('control')
-        if control:
-            control.set('calculation', 'nscf')
-        
-        system = qe_input.get_namelist('system')
-        if system:
-            system.set('occupations', 'tetrahedra')
-        
-        # Generate NSCF input
-        nscf_file = tmp_path / "si.nscf.in"
-        QEInputGenerator.write_file(qe_input, nscf_file)
-        
-        # Verify
-        nscf_input = QEInputParser.parse_file(nscf_file)
-        nscf_control = nscf_input.get_namelist('control')
-        assert nscf_control.get('calculation') == 'nscf'
-    
-    def test_extract_structure_info(self, examples_dir):
-        """Test extracting structure information from input."""
-        input_file = examples_dir / "0_Si_scf" / "si.scf.in"
-        if not input_file.exists():
-            pytest.skip("Example file not found")
-        
-        qe_input = QEInputParser.parse_file(input_file)
-        
-        # Extract atomic species
-        atomic_species = qe_input.get_card(QECardType.ATOMIC_SPECIES)
-        if atomic_species:
-            species_info = {}
-            for line in atomic_species.data:
-                if len(line) >= 3:
-                    element = line[0]
-                    mass = line[1]
-                    pseudo = line[2]
-                    species_info[element] = {'mass': mass, 'pseudo': pseudo}
-            
-            assert len(species_info) > 0
-        
-        # Extract atomic positions
-        atomic_pos = qe_input.get_card(QECardType.ATOMIC_POSITIONS)
-        if atomic_pos:
-            positions = []
-            for line in atomic_pos.data:
-                if len(line) >= 4:
-                    positions.append({
-                        'element': line[0],
-                        'x': float(line[1]),
-                        'y': float(line[2]),
-                        'z': float(line[3])
-                    })
-            
-            assert len(positions) > 0
+# TestRealWorldWorkflow class moved to extended-tests/suites/tutorial_examples/test_qe_engine_workflow.py
+# These tests require downloading tutorial examples and are now in extended-tests/
 

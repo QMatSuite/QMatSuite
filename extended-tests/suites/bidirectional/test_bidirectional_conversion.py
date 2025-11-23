@@ -21,6 +21,8 @@ import shutil
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from quantumvitas.core.engines.qe_input import QEInputParser, QEInputGenerator, QEModule, QECardType
+from quantumvitas.core.engines.qe import QuantumEspressoEngine
+from quantumvitas.core.engines.base import EngineConfig
 
 
 def compare_namelists(nl1, nl2, name: str) -> tuple[bool, list[str]]:
@@ -179,10 +181,10 @@ def main():
     
     parser = argparse.ArgumentParser(description="Test bidirectional QE input conversion")
     parser.add_argument(
-        "--qe-path",
+        "--qe-home",
         type=Path,
-        default=Path.home() / "src" / "q-e-qe-7.5" / "bin",
-        help="Path to QE bin directory"
+        default=None,
+        help="Path to QE home directory (contains bin/ and test-suite/). If not specified, will auto-detect."
     )
     parser.add_argument(
         "--test-dir",
@@ -192,21 +194,25 @@ def main():
     )
     args = parser.parse_args()
     
-    # Infer test-suite directory from QE path if not provided
+    # Setup QE engine (auto-detect if not provided)
+    if args.qe_home:
+        config = EngineConfig(name="qe", executable_path=args.qe_home)
+    else:
+        config = EngineConfig(name="qe")
+    engine = QuantumEspressoEngine(config)
+    
+    # Use auto-detected test-suite directory if not provided
     if args.test_dir is None:
-        # QE bin is typically at $QE_ROOT/bin, test-suite is at $QE_ROOT/test-suite
-        qe_bin = args.qe_path
-        if qe_bin.is_dir():
-            # If qe_path is a directory (bin), go up one level
-            qe_root = qe_bin.parent
+        if engine.installation.is_valid():
+            args.test_dir = engine.test_suite_dir
         else:
-            # If qe_path is a file (pw.x), go up two levels
-            qe_root = qe_bin.parent.parent
-        args.test_dir = qe_root / "test-suite"
+            print("ERROR: QE installation not found and --test-dir not specified.")
+            print("Please specify --qe-home or --test-dir")
+            sys.exit(1)
     
     test_suite_dir = args.test_dir
     
-    if not test_suite_dir.exists():
+    if not test_suite_dir or not test_suite_dir.exists():
         print(f"❌ Test-suite directory not found: {test_suite_dir}")
         print(f"   Please specify --test-dir or ensure QE is installed with test-suite")
         print(f"   Expected location: {test_suite_dir}")

@@ -12,6 +12,7 @@ import platform
 import os
 
 from .base import Engine, EngineConfig
+from .qe_installation import QEInstallation
 from .qe_input import (
     QEInputParser, QEInputGenerator, QEInput, QENamelist, QECard, QECardType, QEModule
 )
@@ -108,10 +109,45 @@ class QuantumEspressoEngine(Engine):
     }
     
     def __init__(self, config: EngineConfig):
-        """Initialize Quantum ESPRESSO engine."""
+        """
+        Initialize Quantum ESPRESSO engine.
+        
+        Automatically detects QE installation if executable_path is not provided.
+        
+        Args:
+            config: Engine configuration. If executable_path is provided, it should
+                   point to QE home directory (contains bin/ and test-suite/).
+                   If None, will auto-detect.
+        """
         super().__init__(config)
-        self.qe_bin_dir = config.executable_path or Path()
+        
+        # Use qe_home if provided, otherwise fallback to executable_path, otherwise auto-detect
+        if config.qe_home:
+            self._installation = QEInstallation(qe_home=config.qe_home)
+        elif config.executable_path:
+            # Backward compatibility: treat executable_path as QE home
+            self._installation = QEInstallation(qe_home=config.executable_path)
+        else:
+            self._installation = QEInstallation()
+        
+        # For backward compatibility
+        self.qe_bin_dir = self._installation.bin_dir or Path()
         self._detected_executables = {}  # Cache for detected executables
+    
+    @property
+    def installation(self) -> QEInstallation:
+        """Get QE installation information."""
+        return self._installation
+    
+    @property
+    def test_suite_dir(self) -> Optional[Path]:
+        """Get QE test-suite directory (auto-detected)."""
+        return self._installation.test_suite_dir
+    
+    @property
+    def pseudo_dir(self) -> Optional[Path]:
+        """Get QE pseudopotential directory (auto-detected)."""
+        return self._installation.pseudo_dir
     
     def find_executable(self, executable_name: str, search_paths: Optional[List[Path]] = None) -> Optional[Path]:
         """

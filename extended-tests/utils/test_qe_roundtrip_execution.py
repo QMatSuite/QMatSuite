@@ -335,6 +335,37 @@ def test_input_roundtrip_execution(
                 generated_input = working_dir / "test_input.in"
             QEInputGenerator.write_file(qe_input, generated_input)
             result["generate_success"] = True
+            
+            # Save parsed input to temp for debugging
+            project_root = Path(__file__).parent.parent.parent
+            temp_output_dir = project_root / "temp" / "test_outputs"
+            
+            # Try to determine category from input_file path
+            category = None
+            input_path = Path(input_file)
+            if "test-suite" in str(input_path):
+                parts = input_path.parts
+                for i, part in enumerate(parts):
+                    if part == "test-suite" and i + 1 < len(parts):
+                        category = parts[i + 1]  # Category is usually the first subdirectory
+                        break
+            
+            if category:
+                temp_output_dir = temp_output_dir / category
+            temp_output_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Create parsed filename
+            input_filename = input_path.name
+            parsed_filename = input_filename.replace(".in", "_parsed.in")
+            if not parsed_filename.endswith(".in"):
+                parsed_filename = f"{input_filename}_parsed.in"
+            
+            if step_number:
+                parsed_filename = f"{Path(input_filename).stem}_step{step_number}_parsed.in"
+            
+            temp_parsed_input = temp_output_dir / parsed_filename
+            QEInputGenerator.write_file(qe_input, temp_parsed_input)
+            result["parsed_input_file"] = str(temp_parsed_input)
         except Exception as e:
             result["error"] = f"Generate failed: {e}"
             return result
@@ -451,16 +482,16 @@ def main():
     
     parser = argparse.ArgumentParser(description="Test QE input roundtrip execution")
     parser.add_argument(
-        "--qe-path",
+        "--qe-home",
         type=Path,
-        default=Path.home() / "src" / "q-e-qe-7.5" / "bin",
-        help="Path to QE bin directory"
+        default=None,
+        help="Path to QE home directory (contains bin/ and test-suite/). If not specified, will auto-detect."
     )
     parser.add_argument(
         "--test-dir",
         type=Path,
         default=None,
-        help="Path to QE test suite directory (default: inferred from --qe-path). Required for extended tests."
+        help="Path to QE test suite directory (default: auto-detected from QE installation). Required for extended tests."
     )
     parser.add_argument(
         "--download-pseudo",
@@ -489,33 +520,33 @@ def main():
     
     args = parser.parse_args()
     
-    # Infer test-suite directory from QE path if not provided
-    if args.test_dir is None:
-        # QE bin is typically at $QE_ROOT/bin, test-suite is at $QE_ROOT/test-suite
-        qe_bin = args.qe_path
-        if qe_bin.is_dir():
-            # If qe_path is a directory (bin), go up one level
-            qe_root = qe_bin.parent
-        else:
-            # If qe_path is a file (pw.x), go up two levels
-            qe_root = qe_bin.parent.parent
-        args.test_dir = qe_root / "test-suite"
+    # Setup QE engine (auto-detect if not provided)
+    if args.qe_home:
+        config = EngineConfig(name="qe", executable_path=args.qe_home)
+    else:
+        config = EngineConfig(name="qe")
+    engine = QuantumEspressoEngine(config)
     
-    if not args.test_dir.exists():
+    if not engine.installation.is_valid():
+        print("ERROR: QE installation not found.")
+        print("Please specify --qe-home or ensure QE is installed and accessible.")
+        sys.exit(1)
+    
+    # Use auto-detected test-suite directory if not provided
+    if args.test_dir is None:
+        args.test_dir = engine.test_suite_dir
+    
+    if not args.test_dir or not args.test_dir.exists():
         print(f"Error: Test suite directory not found: {args.test_dir}")
         print(f"Please specify --test-dir or ensure QE is installed with test-suite")
         sys.exit(1)
     
-    # Setup QE engine
-    config = EngineConfig(name="qe", executable_path=args.qe_path)
-    engine = QuantumEspressoEngine(config)
-    
     # Check if pw.x is available
     if not engine.detect_executable("pw.x"):
-        print(f"ERROR: pw.x not found at {args.qe_path}")
-        print("Please specify correct path with --qe-path")
+        print(f"ERROR: pw.x not found")
         sys.exit(1)
     
+    print(f"QE home: {engine.installation.qe_home}")
     print(f"QE Engine configured: {engine.get_executable_path('pw.x')}")
     print(f"Test directory: {args.test_dir}")
     print(f"Test category: {args.test_category}")

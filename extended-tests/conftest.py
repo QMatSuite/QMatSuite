@@ -14,41 +14,45 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
 sys.path.insert(0, str(project_root))
 
+from quantumvitas.core.engines.qe import QuantumEspressoEngine
+from quantumvitas.core.engines.base import EngineConfig
 
-@pytest.fixture
-def qe_bin_dir():
-    """Return QE bin directory path."""
-    # Try to find from environment or default location
-    qe_bin = os.environ.get("QE_BIN_DIR")
-    if qe_bin:
-        return Path(qe_bin)
+
+@pytest.fixture(scope="session")
+def qe_engine():
+    """Return QE engine (auto-detects installation)."""
+    config = EngineConfig(name="qe")
+    engine = QuantumEspressoEngine(config)
     
-    # Default location
-    return Path.home() / "src" / "q-e-qe-7.5" / "bin"
+    if not engine.installation.is_valid():
+        pytest.skip("QE installation not found")
+    
+    return engine
 
 
-@pytest.fixture
-def qe_test_suite_dir(qe_bin_dir):
+@pytest.fixture(scope="session")
+def qe_bin_dir(qe_engine):
+    """Return QE bin directory path (for backward compatibility)."""
+    return qe_engine.installation.bin_dir
+
+
+@pytest.fixture(scope="session")
+def qe_test_suite_dir(qe_engine):
     """Return QE test-suite directory path."""
-    # Infer from bin directory
-    if qe_bin_dir.is_dir():
-        qe_root = qe_bin_dir.parent
-    else:
-        qe_root = qe_bin_dir.parent.parent
-    return qe_root / "test-suite"
+    return qe_engine.test_suite_dir
 
 
 @pytest.fixture
-def skip_if_no_qe(qe_bin_dir):
+def skip_if_no_qe(qe_engine):
     """Skip test if QE is not available."""
-    if not qe_bin_dir.exists():
+    if not qe_engine.installation.is_valid():
         pytest.skip("QE installation not found")
 
 
 @pytest.fixture
 def skip_if_no_test_suite(qe_test_suite_dir):
     """Skip test if QE test-suite is not available."""
-    if not qe_test_suite_dir.exists():
+    if not qe_test_suite_dir or not qe_test_suite_dir.exists():
         pytest.skip("QE test-suite not found")
 
 
