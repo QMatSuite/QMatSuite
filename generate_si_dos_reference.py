@@ -27,6 +27,7 @@ test_qe_roundtrip = importlib.util.module_from_spec(test_qe_roundtrip_spec)
 test_qe_roundtrip_spec.loader.exec_module(test_qe_roundtrip)
 run_input_roundtrip_execution = test_qe_roundtrip.run_input_roundtrip_execution
 set_outdir_to_temp = test_qe_roundtrip.set_outdir_to_temp
+set_pseudo_dir_to_temp = test_qe_roundtrip.set_pseudo_dir_to_temp
 ensure_pseudopotentials = test_qe_roundtrip.ensure_pseudopotentials
 
 def generate_reference_outputs():
@@ -79,11 +80,9 @@ def generate_reference_outputs():
     scf_file = si_dos_dir / "si.1_scf.in"
     scf_input = QEInputParser.parse_file(scf_file)
     
-    # 设置 pseudo_dir 和 outdir
-    control = scf_input.get_namelist("control")
-    if control:
-        control.parameters["pseudo_dir"] = str(work_dir)
+    # 设置 pseudo_dir 和 outdir（统一使用 temp/pseudo 和 temp/outdir）
     set_outdir_to_temp(scf_input, project_root)
+    set_pseudo_dir_to_temp(scf_input, project_root)
     
     # 保存修改后的输入文件
     modified_scf = work_dir / "si.1_scf.in"
@@ -126,11 +125,20 @@ def generate_reference_outputs():
     nscf_file = si_dos_dir / "si.2_nscf.in"
     nscf_input = QEInputParser.parse_file(nscf_file)
     
-    # 设置 pseudo_dir 和 outdir
-    nscf_control = nscf_input.get_namelist("control")
-    if nscf_control:
-        nscf_control.parameters["pseudo_dir"] = str(work_dir)
+    # 设置 pseudo_dir 和 outdir（统一使用 temp/pseudo 和 temp/outdir，与 SCF 一致）
     set_outdir_to_temp(nscf_input, project_root)
+    set_pseudo_dir_to_temp(nscf_input, project_root)
+    
+    # 确保 NSCF 使用与 SCF 相同的 prefix 和 outdir
+    scf_control = scf_input.get_namelist("control")
+    nscf_control = nscf_input.get_namelist("control")
+    if scf_control and nscf_control:
+        scf_prefix = scf_control.get("prefix", "si")
+        nscf_control.parameters["prefix"] = scf_prefix
+        # outdir 已经通过 set_outdir_to_temp 统一设置
+        # NSCF 需要 restart_mode='restart' 来读取 SCF 的输出
+        if nscf_control.get("restart_mode") == "from_scratch":
+            nscf_control.parameters["restart_mode"] = "restart"
     
     # 保存修改后的输入文件
     modified_nscf = work_dir / "si.2_nscf.in"
@@ -212,8 +220,10 @@ def generate_reference_outputs():
     
     # 运行 dos.x
     import os
+    temp_pseudo_dir = project_root / "temp" / "pseudo"
+    temp_pseudo_dir.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
-    env['ESPRESSO_PSEUDO'] = str(work_dir)
+    env['ESPRESSO_PSEUDO'] = str(temp_pseudo_dir.absolute())
     
     print(f"运行命令: {' '.join(dos_command)}")
     result = subprocess.run(
