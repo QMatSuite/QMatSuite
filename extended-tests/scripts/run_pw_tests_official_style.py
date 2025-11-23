@@ -36,7 +36,7 @@ if not test_file.exists():
 spec = importlib.util.spec_from_file_location("test_qe_roundtrip_execution", test_file)
 test_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(test_module)
-test_input_roundtrip_execution = test_module.test_input_roundtrip_execution
+run_input_roundtrip_execution = test_module.run_input_roundtrip_execution
 ensure_pseudopotentials = test_module.ensure_pseudopotentials
 
 
@@ -284,9 +284,9 @@ def run_test_category(
             # Run test
             # For workflow tests, reuse the same working directory and pass step number
             if is_workflow:
-                result = test_input_roundtrip_execution(test_path, qe_engine, timeout, working_dir, args)
+                result = run_input_roundtrip_execution(test_path, qe_engine, timeout, working_dir, args)
             else:
-                result = test_input_roundtrip_execution(test_path, qe_engine, timeout, None, None)
+                result = run_input_roundtrip_execution(test_path, qe_engine, timeout, None, None)
             result["category"] = category
             result["file"] = input_file
             result["step"] = args if args else str(i+1)

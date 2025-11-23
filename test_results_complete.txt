@@ -1,0 +1,87 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.12, pytest-9.0.1, pluggy-1.6.0 -- /opt/homebrew/Caskroom/miniforge/base/bin/python3
+cachedir: .pytest_cache
+rootdir: <HOME>/Code/quantumVITAS
+configfile: pytest.ini
+plugins: cov-7.0.0
+collecting ... collected 52 items
+
+tests/integration/test_ci_validation.py::test_imports PASSED             [  1%]
+tests/integration/test_ci_validation.py::test_basic_parsing PASSED       [  3%]
+tests/integration/test_ci_validation.py::test_stats_file PASSED          [  5%]
+tests/integration/test_ph_quick_tests.py::TestPHQuickTests::test_ph_quick[test_info0] PASSED [  7%]
+tests/integration/test_ph_quick_tests.py::TestPHQuickTests::test_ph_quick[test_info1] PASSED [  9%]
+tests/integration/test_ph_quick_tests.py::test_ph_basic_parsing PASSED   [ 11%]
+tests/integration/test_pw_quick_tests_ci.py::TestPWQuickParsing::test_parse_basic_scf PASSED [ 13%]
+tests/integration/test_pw_quick_tests_ci.py::TestPWQuickParsing::test_generate_basic_input PASSED [ 15%]
+tests/integration/test_pw_quick_tests_ci.py::TestPWQuickParsing::test_roundtrip_parsing PASSED [ 17%]
+tests/integration/test_qe_engine.py::TestQEEngineInputGeneration::test_generate_input_from_data PASSED [ 19%]
+tests/integration/test_qe_engine.py::TestQEEngineInputGeneration::test_parse_input_file PASSED [ 21%]
+tests/integration/test_qe_engine.py::TestQEEngineInputGeneration::test_modify_input_file PASSED [ 23%]
+tests/integration/test_qe_executable_integration.py::TestRealWorldScenarios::test_qe_installation_in_home PASSED [ 25%]
+tests/integration/test_qe_executable_integration.py::TestRealWorldScenarios::test_multiple_qe_installations PASSED [ 26%]
+tests/integration/test_qe_executable_integration.py::TestRealWorldScenarios::test_error_message_helpfulness PASSED [ 28%]
+tests/integration/test_si_dos_workflow.py::TestSiDOSWorkflow::test_parse_scf_input PASSED [ 30%]
+tests/integration/test_si_dos_workflow.py::TestSiDOSWorkflow::test_parse_nscf_input PASSED [ 32%]
+tests/integration/test_si_dos_workflow.py::TestSiDOSWorkflow::test_parse_dos_input PASSED [ 34%]
+tests/integration/test_si_dos_workflow.py::TestSiDOSWorkflow::test_workflow_prefix_consistency PASSED [ 36%]
+tests/integration/test_si_dos_workflow.py::TestSiDOSWorkflow::test_roundtrip_generation PASSED [ 38%]
+tests/integration/test_si_dos_workflow.py::TestSiDOSWorkflow::test_workflow_sequence PASSED [ 40%]
+tests/integration/test_si_dos_workflow.py::TestSiDOSWorkflow::test_structure_consistency PASSED [ 42%]
+tests/integration/test_si_dos_workflow.py::TestSiDOSWorkflow::test_run_scf_calculation PASSED [ 44%]
+tests/integration/test_si_dos_workflow.py::TestSiDOSWorkflow::test_run_nscf_calculation PASSED [ 46%]
+tests/integration/test_si_dos_workflow.py::TestSiDOSWorkflow::test_run_full_workflow PASSED [ 48%]
+tests/run_simple_test.py::test_simple_parse_generate PASSED              [ 50%]
+tests/run_simple_test.py::test_real_example PASSED                       [ 51%]
+tests/unit/test_qe_executable_detection.py::TestQEExecutableDetection::test_find_executable_in_bin_dir PASSED [ 53%]
+tests/unit/test_qe_executable_detection.py::TestQEExecutableDetection::test_find_executable_in_qe_root PASSED [ 55%]
+tests/unit/test_qe_executable_detection.py::TestQEExecutableDetection::test_executable_not_found PASSED [ 57%]
+tests/unit/test_qe_executable_detection.py::TestQEExecutableDetection::test_get_executable_path_raises_error PASSED [ 59%]
+tests/unit/test_qe_executable_detection.py::TestQEExecutableDetection::test_detect_executable PASSED [ 61%]
+tests/unit/test_qe_executable_detection.py::TestQEExecutableDetection::test_platform_specific_executable_names PASSED [ 63%]
+tests/unit/test_qe_executable_detection.py::TestQEExecutableDetection::test_build_command_uses_detected_executable PASSED [ 65%]
+tests/unit/test_qe_executable_detection.py::TestQEExecutableDetection::test_build_command_raises_error_when_not_found PASSED [ 67%]
+tests/unit/test_qe_executable_detection.py::TestQEExecutableDetection::test_executable_caching PASSED [ 69%]
+tests/unit/test_qe_executable_detection.py::TestQEExecutableSearchPaths::test_search_in_multiple_locations PASSED [ 71%]
+tests/unit/test_qe_input.py::TestQEInputParser::test_parse_simple_scf PASSED [ 73%]
+tests/unit/test_qe_input.py::TestQEInputParser::test_parse_namelist_parameters PASSED [ 75%]
+tests/unit/test_qe_input.py::TestQEInputParser::test_parse_cards PASSED  [ 76%]
+tests/unit/test_qe_input.py::TestQEInputParser::test_parse_fortran_d_format PASSED [ 78%]
+tests/unit/test_qe_input.py::TestQEInputGenerator::test_generate_simple_input PASSED [ 80%]
+tests/unit/test_qe_input.py::TestQEInputGenerator::test_roundtrip_conversion PASSED [ 82%]
+tests/unit/test_qe_input.py::TestQEInputFileIO::test_parse_file PASSED   [ 84%]
+tests/unit/test_qe_input.py::TestQEInputFileIO::test_generate_file PASSED [ 86%]
+tests/unit/test_qe_modules.py::TestQEModuleDetection::test_detect_pw_module PASSED [ 88%]
+tests/unit/test_qe_modules.py::TestQEModuleDetection::test_detect_ph_module PASSED [ 90%]
+tests/unit/test_qe_modules.py::TestQEModuleDetection::test_detect_gipaw_module PASSED [ 92%]
+tests/unit/test_qe_modules.py::TestQEModuleDetection::test_detect_neb_module PASSED [ 94%]
+tests/unit/test_qe_modules.py::TestQEEngineModuleSupport::test_detect_module_from_file PASSED [ 96%]
+tests/unit/test_qe_modules.py::TestQEEngineModuleSupport::test_generate_ph_input PASSED [ 98%]
+tests/unit/test_qe_modules.py::TestQEEngineModuleSupport::test_generate_gipaw_input PASSED [100%]
+
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.12.12-final-0 _______________
+
+Name                                               Stmts   Miss  Cover   Missing
+--------------------------------------------------------------------------------
+src/quantumvitas/__init__.py                           6      0   100%
+src/quantumvitas/cli/__init__.py                       0      0   100%
+src/quantumvitas/cli/main.py                          36     36     0%   7-73
+src/quantumvitas/core/__init__.py                      4      0   100%
+src/quantumvitas/core/engines/__init__.py              4      0   100%
+src/quantumvitas/core/engines/base.py                 42      8    81%   55, 77, 97, 115, 128, 142, 156, 168
+src/quantumvitas/core/engines/qe.py                  125     18    86%   129, 150, 169-170, 185, 196-198, 238, 342, 348-349, 382-393, 451-452
+src/quantumvitas/core/engines/qe_input.py            588    175    70%   169, 173, 183-198, 253, 257-265, 271, 273, 275, 277, 280-283, 292, 313, 318, 323, 329, 338, 371, 377, 388-399, 435, 460, 465, 492, 498-499, 563, 567, 590-593, 608-616, 625-632, 638-658, 667-674, 686, 689-690, 694-700, 704, 708-748, 758, 773, 786, 801, 807-836, 887-889, 941-942, 987-990
+src/quantumvitas/core/engines/qe_installation.py     174     54    69%   60, 82-84, 92-94, 99, 114, 136, 141-142, 158, 173, 188, 193-194, 205-226, 269-272, 280, 287, 292, 301, 306-319, 335-342, 346
+src/quantumvitas/core/models.py                      120     39    68%   69-71, 88-89, 105-108, 112-115, 120-135, 153, 157-160, 164, 168-171, 175, 180-181, 187-192
+src/quantumvitas/core/registry.py                     58     36    38%   45, 48, 61-71, 75, 88-108, 112-138, 147
+src/quantumvitas/core/runner.py                       89     76    15%   34-36, 50-97, 110-199, 203
+src/quantumvitas/io/__init__.py                        2      2     0%   3-5
+src/quantumvitas/io/structure_io.py                   14     14     0%   8-73
+src/quantumvitas/viz/__init__.py                       2      2     0%   3-5
+src/quantumvitas/viz/data_models.py                   38     38     0%   10-62
+--------------------------------------------------------------------------------
+TOTAL                                               1302    498    62%
+Coverage HTML written to dir htmlcov
+Coverage XML written to file coverage.xml
+============================= 52 passed in 29.30s ==============================
