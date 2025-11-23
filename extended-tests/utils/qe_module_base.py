@@ -51,7 +51,7 @@ else:
                 temp_outdir = project_root / "temp" / "outdir"
                 temp_outdir.mkdir(parents=True, exist_ok=True)
                 namelist.parameters["outdir"] = str(temp_outdir.absolute())
-else:
+    
     # Fallback: define a simple version if file doesn't exist
     def ensure_pseudopotentials(input_file: Path, working_dir: Path, test_suite_dir: Path = None) -> bool:
         """Placeholder for pseudopotential download."""
