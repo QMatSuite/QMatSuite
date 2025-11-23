@@ -51,9 +51,18 @@ jobs:
         brew update
         brew install gcc gfortran openmpi fftw wget make
         # Find actual gcc and gfortran paths
-        # On macOS, gcc might be in /opt/homebrew/bin or /usr/local/bin
+        # On macOS, we need matching versions (gcc-13 with gfortran-13)
         GCC_PATH=$(which gcc-13 || which gcc-12 || which gcc-11 || which gcc || echo "/usr/bin/gcc")
-        GFORTRAN_PATH=$(which gfortran || echo "/usr/bin/gfortran")
+        # Extract version number from gcc path if possible
+        if [[ "$GCC_PATH" == *"gcc-13"* ]]; then
+          GFORTRAN_PATH=$(which gfortran-13 || which gfortran || echo "/usr/bin/gfortran")
+        elif [[ "$GCC_PATH" == *"gcc-12"* ]]; then
+          GFORTRAN_PATH=$(which gfortran-12 || which gfortran || echo "/usr/bin/gfortran")
+        elif [[ "$GCC_PATH" == *"gcc-11"* ]]; then
+          GFORTRAN_PATH=$(which gfortran-11 || which gfortran || echo "/usr/bin/gfortran")
+        else
+          GFORTRAN_PATH=$(which gfortran || echo "/usr/bin/gfortran")
+        fi
         GCC_DIR=$(dirname "$GCC_PATH")
         
         echo "CC=$GCC_PATH" >> $GITHUB_ENV
@@ -65,6 +74,15 @@ jobs:
         echo "Using FC: $GFORTRAN_PATH"
         $GCC_PATH --version || true
         $GFORTRAN_PATH --version || true
+        
+        # Test if Fortran compiler actually works
+        echo "Testing Fortran compiler..."
+        cat > /tmp/test_fortran.f90 << 'EOF'
+        program test
+        write(*,*) 'Hello from Fortran'
+        end program test
+        EOF
+        $GFORTRAN_PATH -o /tmp/test_fortran /tmp/test_fortran.f90 && /tmp/test_fortran || echo "Fortran compiler test failed"
     
     - name: Install Quantum ESPRESSO (macOS - from source)
       if: matrix.os == 'macos-latest'
@@ -84,24 +102,34 @@ jobs:
         
         # Get brew paths
         FFTW_PREFIX=$(brew --prefix fftw)
+        OPENMPI_PREFIX=$(brew --prefix openmpi)
         
         # Use environment variables set in previous step
         # CC and FC should already be set in GITHUB_ENV
+        export CC=${CC}
+        export FC=${FC}
+        export PATH="${OPENMPI_PREFIX}/bin:$PATH"
+        
+        # Verify compilers are accessible
+        echo "Verifying compilers before configure:"
+        which $CC || echo "CC not found: $CC"
+        which $FC || echo "FC not found: $FC"
+        $CC --version || true
+        $FC --version || true
         
         # Configure QE for macOS
-        # Use CC and FC from environment, with fallback
-        export CC=${CC:-gcc}
-        export FC=${FC:-gfortran}
-        
-        # Configure QE
+        # Explicitly set all compiler paths
         ./configure \
           CC="$CC" \
           FC="$FC" \
+          F77="$FC" \
           BLAS_LIBS="-framework Accelerate" \
           LAPACK_LIBS="" \
           FFT_LIBS="-L${FFTW_PREFIX}/lib -lfftw3" \
-          MPIF90=mpif90 || \
+          MPIF90="${OPENMPI_PREFIX}/bin/mpif90" || \
         ./configure \
+          CC="$CC" \
+          FC="$FC" \
           BLAS_LIBS="-framework Accelerate" \
           LAPACK_LIBS="" \
           FFT_LIBS="-L${FFTW_PREFIX}/lib -lfftw3" \
