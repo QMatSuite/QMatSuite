@@ -291,7 +291,7 @@ def verify_qe_output(output_file: Path) -> tuple[bool, str]:
         return False, f"Error reading output: {e}"
 
 
-def test_input_roundtrip_execution(
+def run_input_roundtrip_execution(
     input_file: Path,
     qe_engine: QuantumEspressoEngine,
     timeout: int = 60,
@@ -416,6 +416,10 @@ def test_input_roundtrip_execution(
             return result
         
         # Step 4: Build and run command
+        # Initialize output file variables
+        output_out_file = None
+        stdout_file = None
+        
         try:
             command = qe_engine.build_command("scf", generated_input, working_dir)
             
@@ -427,16 +431,15 @@ def test_input_roundtrip_execution(
             if control_nl:
                 prefix = control_nl.parameters.get("prefix", None)
             
-            if prefix:
-                output_file = working_dir / f"{prefix}.out"
-            else:
-                # QE writes to stdout, so we'll check stdout.txt instead
-                input_stem = generated_input.stem
-                output_file = working_dir / f"{input_stem}.out"
-            
             # QE actually writes to stdout, so the output is in stdout.txt
-            # But we'll also check for prefix-based files
             stdout_file = working_dir / "stdout.txt"
+            
+            # Determine the .out file name (will be written after execution)
+            if prefix:
+                output_out_file = working_dir / f"{prefix}.out"
+            else:
+                input_stem = generated_input.stem
+                output_out_file = working_dir / f"{input_stem}.out"
             
             # Set ESPRESSO_PSEUDO environment variable to point to working directory
             # so pw.x can find the pseudopotentials
@@ -447,28 +450,34 @@ def test_input_roundtrip_execution(
             returncode, stdout, stderr = run_with_timeout(command, working_dir, timeout, env=env)
             
             # Write stdout/stderr to files for debugging
-            (working_dir / "stdout.txt").write_text(stdout)
+            stdout_file.write_text(stdout)
             (working_dir / "stderr.txt").write_text(stderr)
             
-            # Also save as .out file for consistency
-            if prefix:
-                output_out_file = working_dir / f"{prefix}.out"
+            # Also save as .out file for consistency (only if stdout has content)
+            if stdout and len(stdout.strip()) > 0:
+                output_out_file.write_text(stdout)
             else:
-                input_stem = generated_input.stem
-                output_out_file = working_dir / f"{input_stem}.out"
-            output_out_file.write_text(stdout)
+                # If stdout is empty, create empty file but log warning
+                output_out_file.write_text("")
+                result["error"] = "Warning: QE output is empty"
             
             # Also save generated input for debugging
             (working_dir / "generated_input.in").write_text(generated_input.read_text())
             
             result["run_success"] = (returncode == 0)
             result["returncode"] = returncode
-            result["output_file"] = str(output_file)
+            # Use the actual output file that was written (output_out_file), not the predicted one
+            # This ensures the file exists and has content
+            result["output_file"] = str(output_out_file)
             
             if not result["run_success"]:
                 # Check if output file exists (might have been created before error)
-                if output_file.exists():
-                    output_preview = output_file.read_text()[:500]
+                # Use output_out_file which was actually written, or stdout_file as fallback
+                if output_out_file.exists() and output_out_file.stat().st_size > 0:
+                    output_preview = output_out_file.read_text()[:500]
+                    result["error"] = f"pw.x returned {returncode}\nstderr: {stderr[:200]}\noutput preview: {output_preview}"
+                elif stdout_file.exists() and stdout_file.stat().st_size > 0:
+                    output_preview = stdout_file.read_text()[:500]
                     result["error"] = f"pw.x returned {returncode}\nstderr: {stderr[:200]}\noutput preview: {output_preview}"
                 else:
                     result["error"] = f"pw.x returned {returncode}\nstderr: {stderr[:200]}"
@@ -483,13 +492,20 @@ def test_input_roundtrip_execution(
             return result
         
         # Step 5: Verify output
-        # QE writes to stdout, so check stdout.txt file
-        stdout_file = working_dir / "stdout.txt"
-        if stdout_file.exists():
-            # Create a symlink or copy for verification
+        # Use the actual output file that was written (output_out_file)
+        # Fallback to stdout.txt if output_out_file doesn't exist or is empty
+        if output_out_file and output_out_file.exists() and output_out_file.stat().st_size > 0:
+            verify_file = output_out_file
+        elif stdout_file and stdout_file.exists() and stdout_file.stat().st_size > 0:
             verify_file = stdout_file
         else:
-            verify_file = output_file
+            # Last resort: try to find any output file
+            stdout_file = working_dir / "stdout.txt"
+            if stdout_file.exists() and stdout_file.stat().st_size > 0:
+                verify_file = stdout_file
+            else:
+                # If no valid output file found, use output_out_file anyway (may be empty)
+                verify_file = output_out_file if output_out_file else stdout_file
         
         verify_success, verify_message = verify_qe_output(verify_file)
         result["verify_success"] = verify_success
@@ -604,7 +620,7 @@ def main():
     for i, input_file in enumerate(input_files[:args.max_tests]):
         print(f"[{i+1}/{min(args.max_tests, len(input_files))}] Testing {input_file.name}...")
         
-        result = test_input_roundtrip_execution(input_file, engine, args.timeout)
+        result = run_input_roundtrip_execution(input_file, engine, args.timeout)
         results.append(result)
         
         if result["success"]:

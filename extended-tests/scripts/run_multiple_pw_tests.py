@@ -22,7 +22,7 @@ test_file = project_root / "tests" / "test_qe_roundtrip_execution.py"
 spec = importlib.util.spec_from_file_location("test_qe_roundtrip_execution", test_file)
 test_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(test_module)
-test_input_roundtrip_execution = test_module.test_input_roundtrip_execution
+run_input_roundtrip_execution = test_module.run_input_roundtrip_execution
 
 
 def main():
@@ -120,7 +120,7 @@ def main():
         input_file = input_files[0]
         print(f"  File: {input_file.name}")
         
-        result = test_input_roundtrip_execution(input_file, engine, args.timeout)
+        result = run_input_roundtrip_execution(input_file, engine, args.timeout)
         all_results.append({
             "category": pw_dir.name,
             "file": input_file.name,
