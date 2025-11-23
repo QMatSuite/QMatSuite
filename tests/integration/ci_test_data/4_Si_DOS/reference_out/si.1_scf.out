@@ -1,5 +1,5 @@
 
-     Program PWSCF v.7.5 starts on 23Nov2025 at 16:45:15 
+     Program PWSCF v.7.5 starts on 23Nov2025 at 16:58:21 
 
      This program is part of the open-source Quantum ESPRESSO suite
      for quantum simulation of materials; please cite
@@ -29,15 +29,15 @@
      G-vector sticks info
      --------------------
      sticks:   dense  smooth     PW     G-vecs:    dense   smooth      PW
-     Sum         187     187     61                 1591     1591     307
+     Sum         163     163     55                 1459     1459     283
 
      Using Slab Decomposition
 
 
 
      bravais-lattice index     =            2
-     lattice parameter (alat)  =      10.4109  a.u.
-     unit-cell volume          =     282.1019 (a.u.)^3
+     lattice parameter (alat)  =      10.2000  a.u.
+     unit-cell volume          =     265.3020 (a.u.)^3
      number of atoms/cell      =            2
      number of atomic types    =            1
      number of electrons       =         8.00
@@ -50,7 +50,7 @@
      Exchange-correlation= SLA  PZ   NOGX NOGC
                            (   1   1   0   0   0   0   0)
 
-     celldm(1)=  10.410909  celldm(2)=   0.000000  celldm(3)=   0.000000
+     celldm(1)=  10.200000  celldm(2)=   0.000000  celldm(3)=   0.000000
      celldm(4)=   0.000000  celldm(5)=   0.000000  celldm(6)=   0.000000
 
      crystal axes: (cart. coord. in units of alat)
@@ -91,9 +91,9 @@
         k(    1) = (   0.2500000   0.2500000   0.2500000), wk =   0.5000000
         k(    2) = (   0.2500000   0.2500000   0.7500000), wk =   1.5000000
 
-     Dense  grid:     1591 G-vectors     FFT dimensions: (  20,  20,  20)
+     Dense  grid:     1459 G-vectors     FFT dimensions: (  16,  16,  16)
 
-     Estimated max dynamical RAM per process >       1.34 MB
+     Estimated max dynamical RAM per process >       1.02 MB
 
      Initial potential from superposition of free atoms
 
@@ -106,66 +106,66 @@
 
      iteration #  1     ecut=    12.00 Ry     beta= 0.70
      CG style diagonalization
-     ethr =  1.00E-06,  avg # of iterations =  6.9
+     ethr =  1.00E-05,  avg # of iterations =  5.4
 
      total cpu time spent up to now is        0.0 secs
 
-     total energy              =     -15.79116659 Ry
-     estimated scf accuracy    <       0.05900479 Ry
+     total energy              =     -15.79069144 Ry
+     estimated scf accuracy    <       0.06487029 Ry
 
      iteration #  2     ecut=    12.00 Ry     beta= 0.70
      CG style diagonalization
-     ethr =  7.38E-04,  avg # of iterations =  3.0
+     ethr =  8.11E-04,  avg # of iterations =  3.0
 
      total cpu time spent up to now is        0.0 secs
 
-     total energy              =     -15.79390745 Ry
-     estimated scf accuracy    <       0.00221701 Ry
+     total energy              =     -15.79398790 Ry
+     estimated scf accuracy    <       0.00223507 Ry
 
      iteration #  3     ecut=    12.00 Ry     beta= 0.70
      CG style diagonalization
-     ethr =  2.77E-05,  avg # of iterations =  3.8
+     ethr =  2.79E-05,  avg # of iterations =  3.9
 
      total cpu time spent up to now is        0.0 secs
 
-     total energy              =     -15.79432643 Ry
-     estimated scf accuracy    <       0.00005112 Ry
+     total energy              =     -15.79448108 Ry
+     estimated scf accuracy    <       0.00006005 Ry
 
      iteration #  4     ecut=    12.00 Ry     beta= 0.70
      CG style diagonalization
-     ethr =  6.39E-07,  avg # of iterations =  4.0
+     ethr =  7.51E-07,  avg # of iterations =  4.0
 
      total cpu time spent up to now is        0.0 secs
 
-     total energy              =     -15.79433851 Ry
-     estimated scf accuracy    <       0.00000331 Ry
+     total energy              =     -15.79449488 Ry
+     estimated scf accuracy    <       0.00000445 Ry
 
      iteration #  5     ecut=    12.00 Ry     beta= 0.70
      CG style diagonalization
-     ethr =  4.14E-08,  avg # of iterations =  4.1
+     ethr =  5.57E-08,  avg # of iterations =  3.9
 
      total cpu time spent up to now is        0.0 secs
 
      End of self-consistent calculation
 
-          k = 0.2500 0.2500 0.2500 (   193 PWs)   bands (ev):
+          k = 0.2500 0.2500 0.2500 (   180 PWs)   bands (ev):
 
-    -5.1412   1.8572   4.9399   4.9399
+    -4.8701   2.3792   5.5371   5.5371
 
-          k = 0.2500 0.2500 0.7500 (   197 PWs)   bands (ev):
+          k = 0.2500 0.2500 0.7500 (   186 PWs)   bands (ev):
 
-    -3.2926  -0.5282   2.2425   3.5276
+    -2.9165  -0.0653   2.6795   4.0355
 
-     highest occupied level (ev):     4.9399
+     highest occupied level (ev):     5.5371
 
-!    total energy              =     -15.79433905 Ry
-     estimated scf accuracy    <       0.00000005 Ry
+!    total energy              =     -15.79449554 Ry
+     estimated scf accuracy    <       0.00000004 Ry
 
      The total energy is the sum of the following terms:
-     one-electron contribution =       4.37407368 Ry
-     hartree contribution      =       1.13642109 Ry
-     xc contribution           =      -4.74743872 Ry
-     ewald contribution        =     -16.55739509 Ry
+     one-electron contribution =       4.83378216 Ry
+     hartree contribution      =       1.08429875 Ry
+     xc contribution           =      -4.81281787 Ry
+     ewald contribution        =     -16.89975858 Ry
 
      convergence has been achieved in   5 iterations
 
@@ -178,42 +178,42 @@
      Called by init_run:
      wfcinit      :      0.00s CPU      0.00s WALL (       1 calls)
      potinit      :      0.00s CPU      0.00s WALL (       1 calls)
-     hinit0       :      0.01s CPU      0.01s WALL (       1 calls)
+     hinit0       :      0.00s CPU      0.00s WALL (       1 calls)
 
      Called by electrons:
-     c_bands      :      0.01s CPU      0.01s WALL (       5 calls)
+     c_bands      :      0.00s CPU      0.00s WALL (       5 calls)
      sum_band     :      0.00s CPU      0.00s WALL (       5 calls)
      v_of_rho     :      0.00s CPU      0.00s WALL (       6 calls)
      mix_rho      :      0.00s CPU      0.00s WALL (       5 calls)
 
      Called by c_bands:
      init_us_2    :      0.00s CPU      0.00s WALL (      22 calls)
-     ccgdiagg     :      0.01s CPU      0.01s WALL (      10 calls)
+     ccgdiagg     :      0.00s CPU      0.00s WALL (      10 calls)
      wfcrot       :      0.00s CPU      0.00s WALL (      10 calls)
 
      Called by *cgdiagg:
-     h_psi        :      0.01s CPU      0.01s WALL (     152 calls)
+     h_psi        :      0.00s CPU      0.00s WALL (     139 calls)
 
      Called by h_psi:
-     h_psi:calbec :      0.00s CPU      0.00s WALL (     152 calls)
-     vloc_psi     :      0.01s CPU      0.01s WALL (     152 calls)
-                                        0.00s GPU  (     152 calls)
-     add_vuspsi   :      0.00s CPU      0.00s WALL (     152 calls)
-     hs_1psi      :      0.01s CPU      0.01s WALL (     142 calls)
-     s_1psi       :      0.00s CPU      0.00s WALL (     142 calls)
+     h_psi:calbec :      0.00s CPU      0.00s WALL (     139 calls)
+     vloc_psi     :      0.00s CPU      0.00s WALL (     139 calls)
+                                        0.00s GPU  (     139 calls)
+     add_vuspsi   :      0.00s CPU      0.00s WALL (     139 calls)
+     hs_1psi      :      0.00s CPU      0.00s WALL (     129 calls)
+     s_1psi       :      0.00s CPU      0.00s WALL (     129 calls)
 
      General routines
-     calbec       :      0.00s CPU      0.00s WALL (     294 calls)
+     calbec       :      0.00s CPU      0.00s WALL (     268 calls)
      fft          :      0.00s CPU      0.00s WALL (      17 calls)
      ffts         :      0.00s CPU      0.00s WALL (       5 calls)
-     fftw         :      0.01s CPU      0.01s WALL (     420 calls)
+     fftw         :      0.00s CPU      0.00s WALL (     394 calls)
 
      Parallel routines
 
-     PWSCF        :      0.02s CPU      0.03s WALL
+     PWSCF        :      0.02s CPU      0.02s WALL
 
 
-   This run was terminated on:  16:45:15  23Nov2025            
+   This run was terminated on:  16:58:21  23Nov2025            
 
 =------------------------------------------------------------------------------=
    JOB DONE.

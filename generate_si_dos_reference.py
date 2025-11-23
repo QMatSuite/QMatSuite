@@ -84,6 +84,11 @@ def generate_reference_outputs():
     set_outdir_to_temp(scf_input, project_root)
     set_pseudo_dir_to_temp(scf_input, project_root)
     
+    # 确保 SCF 有 prefix（QE 需要它）
+    scf_control = scf_input.get_namelist("control")
+    if scf_control and not scf_control.get("prefix"):
+        scf_control.parameters["prefix"] = "si"
+    
     # 保存修改后的输入文件
     modified_scf = work_dir / "si.1_scf.in"
     QEInputGenerator.write_file(scf_input, modified_scf)
@@ -117,6 +122,10 @@ def generate_reference_outputs():
         print(f"❌ SCF 输出文件不存在: {scf_output}")
         return False
     
+    # 等待文件系统同步
+    import time
+    time.sleep(0.5)
+    
     # Step 2: 运行 NSCF 计算
     print("\n" + "=" * 80)
     print("Step 2: 运行 NSCF 计算")
@@ -129,13 +138,12 @@ def generate_reference_outputs():
     set_outdir_to_temp(nscf_input, project_root)
     set_pseudo_dir_to_temp(nscf_input, project_root)
     
-    # 确保 NSCF 使用与 SCF 相同的 prefix 和 outdir
+    # 确保 NSCF 有 prefix（与 SCF 一致）
     scf_control = scf_input.get_namelist("control")
     nscf_control = nscf_input.get_namelist("control")
     if scf_control and nscf_control:
         scf_prefix = scf_control.get("prefix", "si")
         nscf_control.parameters["prefix"] = scf_prefix
-        # outdir 已经通过 set_outdir_to_temp 统一设置
         # NSCF 需要 restart_mode='restart' 来读取 SCF 的输出
         if nscf_control.get("restart_mode") == "from_scratch":
             nscf_control.parameters["restart_mode"] = "restart"
