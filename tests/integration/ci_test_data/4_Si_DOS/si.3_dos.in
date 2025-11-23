@@ -1,5 +1,4 @@
 &DOS
-    prefix='si'
     outdir='./outdir/'
     fildos='si.dos.dat'
     emin=-9.0
