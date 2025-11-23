@@ -33,22 +33,31 @@ def main():
         description="Check which QE modules are available"
     )
     parser.add_argument(
-        "--qe-path",
+        "--qe-home",
         type=Path,
-        default=Path.home() / "src" / "q-e-qe-7.5" / "bin",
-        help="Path to QE bin directory"
+        default=None,
+        help="Path to QE home directory (contains bin/ and test-suite/). If not specified, will auto-detect."
     )
     
     args = parser.parse_args()
     
-    # Setup engine
-    config = EngineConfig(name="qe", executable_path=args.qe_path)
+    # Setup engine (auto-detect if not provided)
+    if args.qe_home:
+        config = EngineConfig(name="qe", executable_path=args.qe_home)
+    else:
+        config = EngineConfig(name="qe")
     engine = QuantumEspressoEngine(config)
+    
+    if not engine.installation.is_valid():
+        print("ERROR: QE installation not found.")
+        print("Please specify --qe-home or ensure QE is installed and accessible.")
+        sys.exit(1)
     
     print("=" * 70)
     print("QE Module Availability Check")
     print("=" * 70)
-    print(f"QE bin directory: {args.qe_path}")
+    print(f"QE home: {engine.installation.qe_home}")
+    print(f"QE bin directory: {engine.installation.bin_dir}")
     print()
     
     # Check all modules

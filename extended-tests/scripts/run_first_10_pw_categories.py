@@ -30,16 +30,16 @@ def main():
     
     parser = argparse.ArgumentParser(description="Run first 10 pw test categories")
     parser.add_argument(
-        "--qe-path",
+        "--qe-home",
         type=Path,
-        default=Path.home() / "src" / "q-e-qe-7.5" / "bin",
-        help="Path to QE bin directory"
+        default=None,
+        help="Path to QE home directory (contains bin/ and test-suite/). If not specified, will auto-detect."
     )
     parser.add_argument(
         "--test-dir",
         type=Path,
         default=None,
-        help="Path to QE test suite directory (default: inferred from --qe-path)"
+        help="Path to QE test suite directory (default: auto-detected from QE installation)"
     )
     parser.add_argument(
         "--timeout",
@@ -50,19 +50,26 @@ def main():
     
     args = parser.parse_args()
     
-    # Infer test-suite directory from QE path if not provided
-    if args.test_dir is None:
-        # QE bin is typically at $QE_ROOT/bin, test-suite is at $QE_ROOT/test-suite
-        qe_bin = args.qe_path
-        if qe_bin.is_dir():
-            # If qe_path is a directory (bin), go up one level
-            qe_root = qe_bin.parent
-        else:
-            # If qe_path is a file (pw.x), go up two levels
-            qe_root = qe_bin.parent.parent
-        args.test_dir = qe_root / "test-suite"
+    # Setup QE engine (auto-detect if not provided)
+    from quantumvitas.core.engines.qe import QuantumEspressoEngine
+    from quantumvitas.core.engines.base import EngineConfig
     
-    if not args.test_dir.exists():
+    if args.qe_home:
+        config = EngineConfig(name="qe", executable_path=args.qe_home)
+    else:
+        config = EngineConfig(name="qe")
+    engine = QuantumEspressoEngine(config)
+    
+    if not engine.installation.is_valid():
+        print("ERROR: QE installation not found.")
+        print("Please specify --qe-home or ensure QE is installed and accessible.")
+        sys.exit(1)
+    
+    # Use auto-detected test-suite directory if not provided
+    if args.test_dir is None:
+        args.test_dir = engine.test_suite_dir
+    
+    if not args.test_dir or not args.test_dir.exists():
         print(f"Error: Test suite directory not found: {args.test_dir}")
         print(f"Please specify --test-dir or ensure QE is installed with test-suite")
         sys.exit(1)

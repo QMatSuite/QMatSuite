@@ -28,7 +28,8 @@ sys.path.insert(0, str(project_root / "extended-tests"))
 
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.base import EngineConfig
-from utils.qe_module_base import parse_jobconfig, run_test_category
+from utils.qe_module_base import run_test_category
+from tests.core.qe_test_utils import parse_jobconfig
 
 
 def run_pw_test_with_stats(
@@ -121,10 +122,10 @@ def main():
     )
     
     parser.add_argument(
-        "--qe-path",
+        "--qe-home",
         type=Path,
-        default=Path.home() / "src" / "q-e-qe-7.5" / "bin",
-        help="Path to QE bin directory"
+        default=None,
+        help="Path to QE home directory (contains bin/ and test-suite/). If not specified, will auto-detect."
     )
     parser.add_argument(
         "--test-dir",
@@ -157,22 +158,25 @@ def main():
     
     args = parser.parse_args()
     
-    # Infer test-suite directory
-    if args.test_dir is None:
-        qe_bin = args.qe_path
-        if qe_bin.is_dir():
-            qe_root = qe_bin.parent
-        else:
-            qe_root = qe_bin.parent.parent
-        args.test_dir = qe_root / "test-suite"
+    # Setup QE engine (auto-detect if not provided)
+    if args.qe_home:
+        config = EngineConfig(name="qe", executable_path=args.qe_home)
+    else:
+        config = EngineConfig(name="qe")
+    qe_engine = QuantumEspressoEngine(config)
     
-    if not args.test_dir.exists():
-        print(f"Error: Test suite directory not found: {args.test_dir}")
+    if not qe_engine.installation.is_valid():
+        print("ERROR: QE installation not found.")
+        print("Please specify --qe-home or ensure QE is installed and accessible.")
         sys.exit(1)
     
-    # Setup engine
-    config = EngineConfig(name="qe", executable_path=args.qe_path)
-    qe_engine = QuantumEspressoEngine(config)
+    # Use auto-detected test-suite directory if not provided
+    if args.test_dir is None:
+        args.test_dir = qe_engine.test_suite_dir
+    
+    if not args.test_dir or not args.test_dir.exists():
+        print(f"Error: Test suite directory not found: {args.test_dir}")
+        sys.exit(1)
     
     # Set NPROCS in environment
     os.environ["NPROCS"] = str(args.nprocs)
@@ -195,7 +199,7 @@ def main():
     print(f"\n{'='*60}")
     print(f"Running PW Tests with Statistics")
     print(f"{'='*60}")
-    print(f"QE Path: {args.qe_path}")
+    print(f"QE home: {qe_engine.installation.qe_home}")
     print(f"Test Suite: {args.test_dir}")
     print(f"NPROCS: {args.nprocs}")
     print(f"Total Categories: {len(category_list)}")

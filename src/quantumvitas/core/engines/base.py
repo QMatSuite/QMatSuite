@@ -16,6 +16,7 @@ class EngineConfig:
     """Configuration for a computational engine."""
     name: str
     executable_path: Optional[Path] = None
+    qe_home: Optional[Path] = None  # For QE: path to QE home directory (contains bin/ and test-suite/)
     mpi_command: Optional[str] = None
     mpi_cores: int = 1
     omp_threads: int = 1

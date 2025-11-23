@@ -19,7 +19,7 @@ from suites.qe_testsuite import QETestSuite
 from tests.core.runner import TestRunner
 
 
-def create_suites(qe_bin_dir: Path, test_suite_dir: Path) -> dict:
+def create_suites(qe_home: Path, test_suite_dir: Path) -> dict:
     """Create and register all extended test suites."""
     suites = {}
     
@@ -40,7 +40,7 @@ def create_suites(qe_bin_dir: Path, test_suite_dir: Path) -> dict:
     for module_name, prefix in qe_modules.items():
         suite = QETestSuite(
             test_suite_dir=test_suite_dir,
-            qe_bin_dir=qe_bin_dir,
+            qe_home=qe_home,
             module_prefix=prefix,
             description=f"QE official test-suite for {module_name} module (extended)"
         )
@@ -59,10 +59,10 @@ def main():
     )
     
     parser.add_argument(
-        "--qe-path",
+        "--qe-home",
         type=Path,
-        default=Path.home() / "src" / "q-e-qe-7.5" / "bin",
-        help="Path to QE bin directory"
+        default=None,
+        help="Path to QE home directory (contains bin/ and test-suite/). If not specified, will auto-detect."
     )
     parser.add_argument(
         "--test-dir",
@@ -99,42 +99,40 @@ def main():
     
     args = parser.parse_args()
     
-    # List suites if requested
-    if args.list:
-        # Create temporary suites to list them
-        if args.test_dir is None:
-            qe_bin = args.qe_path
-            if qe_bin.is_dir():
-                qe_root = qe_bin.parent
-            else:
-                qe_root = qe_bin.parent.parent
-            args.test_dir = qe_root / "test-suite"
-        
-        if args.test_dir.exists():
-            suites = create_suites(args.qe_path, args.test_dir)
-            print("Available extended test suites:")
-            print("=" * 60)
-            for name, suite in sorted(suites.items()):
-                print(f"  {name:20s} - {suite.description}")
-        else:
-            print(f"Error: Test suite directory not found: {args.test_dir}")
-        sys.exit(0)
+    # Setup QE engine (auto-detect if not provided)
+    from quantumvitas.core.engines.qe import QuantumEspressoEngine
+    from quantumvitas.core.engines.base import EngineConfig
     
-    # Infer test-suite directory
+    if args.qe_home:
+        config = EngineConfig(name="qe", executable_path=args.qe_home)
+    else:
+        config = EngineConfig(name="qe")
+    engine = QuantumEspressoEngine(config)
+    
+    if not engine.installation.is_valid():
+        print("ERROR: QE installation not found.")
+        print("Please specify --qe-home or ensure QE is installed and accessible.")
+        sys.exit(1)
+    
+    # Use auto-detected test-suite directory if not provided
     if args.test_dir is None:
-        qe_bin = args.qe_path
-        if qe_bin.is_dir():
-            qe_root = qe_bin.parent
-        else:
-            qe_root = qe_bin.parent.parent
-        args.test_dir = qe_root / "test-suite"
+        args.test_dir = engine.test_suite_dir
     
-    if not args.test_dir.exists():
+    if not args.test_dir or not args.test_dir.exists():
         print(f"Error: Test suite directory not found: {args.test_dir}")
         sys.exit(1)
     
+    # List suites if requested
+    if args.list:
+        suites = create_suites(engine.installation.qe_home, args.test_dir)
+        print("Available extended test suites:")
+        print("=" * 60)
+        for name, suite in sorted(suites.items()):
+            print(f"  {name:20s} - {suite.description}")
+        sys.exit(0)
+    
     # Create suites
-    suites = create_suites(args.qe_path, args.test_dir)
+    suites = create_suites(engine.installation.qe_home, args.test_dir)
     
     # Create runner
     runner = TestRunner()
