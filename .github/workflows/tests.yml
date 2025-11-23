@@ -96,13 +96,18 @@ jobs:
         
         # Configure QE for macOS
         # CC, FC, and CPP should already be set in GITHUB_ENV
+        # Set FFT environment variables for configure
+        export FFT_LIBS="-L${FFTW_PREFIX}/lib -lfftw3"
+        export FFT_CPPFLAGS="-I${FFTW_PREFIX}/include"
+        
         ./configure \
           CC="$CC" \
           FC="$FC" \
           CPP="$CPP" \
           BLAS_LIBS="-framework Accelerate" \
           LAPACK_LIBS="" \
-          FFT_LIBS="-L${FFTW_PREFIX}/lib -lfftw3" \
+          FFT_LIBS="$FFT_LIBS" \
+          FFT_CPPFLAGS="$FFT_CPPFLAGS" \
           MPIF90=mpif90
         
         # Build QE (essential modules for testing)
