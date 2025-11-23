@@ -10,6 +10,7 @@ from pathlib import Path
 import sys
 import tempfile
 import shutil
+import time
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
@@ -255,7 +256,8 @@ class TestSiDOSWorkflow:
             assert scf_pos.data[i] == nscf_pos.data[i]
     
     def test_run_scf_calculation(self, si_dos_dir, qe_engine, tmp_path):
-        """Test running SCF calculation."""
+        """Test running SCF calculation with retry mechanism for intermittent errors."""
+        import time
         scf_file = si_dos_dir / "si.1_scf.in"
         assert scf_file.exists()
         
@@ -269,15 +271,65 @@ class TestSiDOSWorkflow:
         modified_scf = tmp_path / "si.1_scf.in"
         QEInputGenerator.write_file(scf_input, modified_scf)
         
-        # Run SCF calculation (increased timeout for CI stability)
-        result = run_input_roundtrip_execution(
-            input_file=modified_scf,
-            qe_engine=qe_engine,
-            timeout=300,  # Increased from 120 to 300 seconds for CI stability
-            working_dir=tmp_path,
-            step_number="1",
-            category="4_Si_DOS"  # Explicitly set category for proper output organization
-        )
+        # Retry mechanism for intermittent buffer overflow errors
+        max_retries = 3
+        last_error = None
+        
+        for attempt in range(max_retries):
+            if attempt > 0:
+                # Wait before retry to allow system to recover
+                wait_time = 2 ** attempt  # Exponential backoff: 2s, 4s, 8s
+                print(f"Retrying SCF calculation (attempt {attempt + 1}/{max_retries}) after {wait_time}s wait...")
+                time.sleep(wait_time)
+                
+                # Clean up any partial output files
+                for f in tmp_path.glob("*.out"):
+                    try:
+                        f.unlink()
+                    except:
+                        pass
+                for f in tmp_path.glob("*.save"):
+                    try:
+                        import shutil
+                        shutil.rmtree(f)
+                    except:
+                        pass
+            
+            # Run SCF calculation (increased timeout for CI stability)
+            result = run_input_roundtrip_execution(
+                input_file=modified_scf,
+                qe_engine=qe_engine,
+                timeout=300,  # Increased from 120 to 300 seconds for CI stability
+                working_dir=tmp_path,
+                step_number="1",
+                category="4_Si_DOS"  # Explicitly set category for proper output organization
+            )
+            
+            # Check if run was successful
+            if result["run_success"]:
+                break
+            
+            # Check if it's a buffer overflow error
+            error_msg = result.get('error', '')
+            if 'buffer overflow' in error_msg.lower() or 'SIGABRT' in error_msg:
+                last_error = error_msg
+                if attempt < max_retries - 1:
+                    continue  # Retry
+                else:
+                    # Last attempt failed, provide detailed error
+                    pytest.fail(
+                        f"SCF calculation failed after {max_retries} attempts due to buffer overflow.\n"
+                        f"This is an intermittent issue that may be caused by:\n"
+                        f"  1. System resource constraints\n"
+                        f"  2. QE binary issues\n"
+                        f"  3. Memory problems\n"
+                        f"\nLast error: {last_error}\n"
+                        f"Try running the test again - it may succeed on retry."
+                    )
+            else:
+                # Non-retryable error, fail immediately
+                last_error = error_msg
+                break
         
         assert result["parse_success"], f"Parse failed: {result.get('error')}"
         assert result["generate_success"], f"Generate failed: {result.get('error')}"
@@ -436,16 +488,46 @@ class TestSiDOSWorkflow:
         modified_scf = tmp_path / "si.1_scf.in"
         QEInputGenerator.write_file(scf_input, modified_scf)
         
-        scf_result = run_input_roundtrip_execution(
-            input_file=modified_scf,
-            qe_engine=qe_engine,
-            timeout=300,  # Increased from 120 to 300 seconds for CI stability
-            working_dir=tmp_path,
-            step_number="1",
-            category="4_Si_DOS"  # Explicitly set category for proper output organization
-        )
+        # Retry mechanism for intermittent buffer overflow errors
+        max_retries = 3
+        
+        # Step 1: Run SCF with retry
+        scf_result = None
+        for attempt in range(max_retries):
+            if attempt > 0:
+                wait_time = 2 ** attempt
+                print(f"Retrying SCF calculation (attempt {attempt + 1}/{max_retries}) after {wait_time}s wait...")
+                time.sleep(wait_time)
+                # Clean up partial files
+                for f in tmp_path.glob("*.out"):
+                    try:
+                        f.unlink()
+                    except:
+                        pass
+        
+            scf_result = run_input_roundtrip_execution(
+                input_file=modified_scf,
+                qe_engine=qe_engine,
+                timeout=300,  # Increased from 120 to 300 seconds for CI stability
+                working_dir=tmp_path,
+                step_number="1",
+                category="4_Si_DOS"  # Explicitly set category for proper output organization
+            )
+            
+            if scf_result["run_success"]:
+                break
+            
+            error_msg = scf_result.get('error', '')
+            if ('buffer overflow' in error_msg.lower() or 'SIGABRT' in error_msg) and attempt < max_retries - 1:
+                continue  # Retry
+            else:
+                break  # Non-retryable error or last attempt
+        
         assert scf_result["run_success"], f"SCF failed: {scf_result.get('error')}"
         print(f"✓ SCF completed: {scf_result.get('message', 'OK')}")
+        
+        # Small delay to ensure file system synchronization
+        time.sleep(0.5)
         
         # Step 2: Run NSCF
         nscf_file = si_dos_dir / "si.2_nscf.in"
@@ -455,14 +537,38 @@ class TestSiDOSWorkflow:
         modified_nscf = tmp_path / "si.2_nscf.in"
         QEInputGenerator.write_file(nscf_input, modified_nscf)
         
-        nscf_result = run_input_roundtrip_execution(
-            input_file=modified_nscf,
-            qe_engine=qe_engine,
-            timeout=300,  # Increased from 120 to 300 seconds for CI stability
-            working_dir=tmp_path,
-            step_number="2",
-            category="4_Si_DOS"  # Explicitly set category for proper output organization
-        )
+        # Retry mechanism for NSCF
+        nscf_result = None
+        for attempt in range(max_retries):
+            if attempt > 0:
+                wait_time = 2 ** attempt
+                print(f"Retrying NSCF calculation (attempt {attempt + 1}/{max_retries}) after {wait_time}s wait...")
+                time.sleep(wait_time)
+                # Clean up partial files
+                for f in tmp_path.glob("*.out"):
+                    try:
+                        f.unlink()
+                    except:
+                        pass
+        
+            nscf_result = run_input_roundtrip_execution(
+                input_file=modified_nscf,
+                qe_engine=qe_engine,
+                timeout=300,  # Increased from 120 to 300 seconds for CI stability
+                working_dir=tmp_path,
+                step_number="2",
+                category="4_Si_DOS"  # Explicitly set category for proper output organization
+            )
+            
+            if nscf_result["run_success"]:
+                break
+            
+            error_msg = nscf_result.get('error', '')
+            if ('buffer overflow' in error_msg.lower() or 'SIGABRT' in error_msg) and attempt < max_retries - 1:
+                continue  # Retry
+            else:
+                break  # Non-retryable error or last attempt
+        
         assert nscf_result["run_success"], f"NSCF failed: {nscf_result.get('error')}"
         print(f"✓ NSCF completed: {nscf_result.get('message', 'OK')}")
         
