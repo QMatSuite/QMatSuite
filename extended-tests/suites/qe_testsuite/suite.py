@@ -25,7 +25,7 @@ class QETestSuite(TestSuite):
     def __init__(
         self,
         test_suite_dir: Path,
-        qe_bin_dir: Path,
+        qe_home: Path,
         module_prefix: str = "pw_",
         description: str = ""
     ):
@@ -34,14 +34,14 @@ class QETestSuite(TestSuite):
         
         Args:
             test_suite_dir: Path to QE test-suite directory
-            qe_bin_dir: Path to QE bin directory
+            qe_home: Path to QE home directory (contains bin/ and test-suite/)
             module_prefix: Module prefix to filter tests (e.g., "pw_", "ph_")
             description: Suite description
         """
         name = f"QE Test Suite ({module_prefix.rstrip('_')})"
         super().__init__(name, description or f"QE official test-suite for {module_prefix.rstrip('_')} module")
         self.test_suite_dir = test_suite_dir
-        self.qe_bin_dir = qe_bin_dir
+        self.qe_home = qe_home
         self.module_prefix = module_prefix
         self.jobconfig_path = test_suite_dir / "jobconfig"
     
@@ -66,7 +66,7 @@ class QETestSuite(TestSuite):
                                 category=section_name,
                                 test_files=inputs,
                                 test_suite_dir=self.test_suite_dir,
-                                qe_bin_dir=self.qe_bin_dir
+                                qe_home=self.qe_home
                             )
                             test_cases.append(test_case)
                     except Exception:

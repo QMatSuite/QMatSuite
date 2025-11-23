@@ -29,7 +29,7 @@ class QECategoryTestCase(TestCase):
         category: str,
         test_files: List[Tuple[str, str]],
         test_suite_dir: Path,
-        qe_bin_dir: Path,
+        qe_home: Path,
         executable_map: Dict[str, str] = None,
         timeout: int = 60
     ):
@@ -41,7 +41,7 @@ class QECategoryTestCase(TestCase):
             category: Category name (e.g., "pw_atom")
             test_files: List of (input_file, args) tuples
             test_suite_dir: Test suite root directory
-            qe_bin_dir: QE bin directory
+            qe_home: QE home directory (contains bin/ and test-suite/)
             executable_map: Maps step args to executable names
             timeout: Timeout per test
         """
@@ -49,7 +49,7 @@ class QECategoryTestCase(TestCase):
         self.category = category
         self.test_files = test_files
         self.test_suite_dir = test_suite_dir
-        self.qe_bin_dir = qe_bin_dir
+        self.qe_home = qe_home
         self.executable_map = executable_map or {"default": "pw.x"}
         self.timeout = timeout
     
@@ -60,7 +60,7 @@ class QECategoryTestCase(TestCase):
         
         try:
             # Setup engine
-            config = EngineConfig(name="qe", executable_path=self.qe_bin_dir)
+            config = EngineConfig(name="qe", executable_path=self.qe_home)
             engine = QuantumEspressoEngine(config)
             
             # Run tests in category
@@ -111,7 +111,7 @@ class QESingleTestCase(TestCase):
         self,
         name: str,
         input_file: Path,
-        qe_bin_dir: Path,
+        qe_home: Path,
         executable_name: str = "pw.x",
         timeout: int = 60
     ):
@@ -121,13 +121,13 @@ class QESingleTestCase(TestCase):
         Args:
             name: Test case name
             input_file: Input file path
-            qe_bin_dir: QE bin directory
+            qe_home: QE home directory (contains bin/ and test-suite/)
             executable_name: QE executable to run
             timeout: Timeout in seconds
         """
         super().__init__(name, input_file=str(input_file))
         self.input_file = input_file
-        self.qe_bin_dir = qe_bin_dir
+        self.qe_home = qe_home
         self.executable_name = executable_name
         self.timeout = timeout
     
@@ -139,7 +139,7 @@ class QESingleTestCase(TestCase):
         import tempfile
         
         try:
-            config = EngineConfig(name="qe", executable_path=self.qe_bin_dir)
+            config = EngineConfig(name="qe", executable_path=self.qe_home)
             engine = QuantumEspressoEngine(config)
             
             working_dir = Path(tempfile.mkdtemp(prefix="qe_test_"))

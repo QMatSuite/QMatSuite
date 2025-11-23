@@ -25,17 +25,14 @@ from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.base import EngineConfig
 from quantumvitas.core.engines.qe_input import QEInputParser, QEInputGenerator
 
+# Import shared test utilities
+from tests.core.qe_test_utils import parse_jobconfig
+
 # Import from extended-tests/utils
 try:
-    from utils.qe_module_base import (
-        parse_jobconfig,
-        run_test_category,
-        compare_with_benchmark
-    )
+    from utils.qe_module_base import run_test_category
 except ImportError:
     # Fallback if extended-tests not available
-    def parse_jobconfig(*args, **kwargs):
-        return {}
     def run_test_category(*args, **kwargs):
         return []
 
@@ -57,61 +54,48 @@ PH_CI_TESTS = [
 
 @pytest.fixture(scope="module")
 def qe_engine():
-    """Create QE engine instance."""
-    # Try to find QE from environment or default location
-    qe_bin = os.environ.get("QE_BIN_DIR")
-    if qe_bin:
-        qe_bin = Path(qe_bin)
-    else:
-        # In CI, QE might not be available - skip gracefully
-        qe_bin = Path.home() / "src" / "q-e-qe-7.5" / "bin"
+    """Get QE engine (auto-detects installation)."""
+    # Create engine without explicit path - it will auto-detect
+    config = EngineConfig(name="qe")
+    engine = QuantumEspressoEngine(config)
     
-    if not qe_bin.exists():
-        pytest.skip("QE installation not found (QE_BIN_DIR not set and default location not found)")
+    # Check if installation is valid
+    if not engine.installation.is_valid():
+        pytest.skip("QE installation not found. "
+                   f"Reason: QE_BIN_DIR environment variable not set, default location not found, "
+                   f"and pw.x not found in system PATH. "
+                   f"Please set QE_BIN_DIR or install QE at the default location.")
     
     # Check if required executables exist
     required_exes = ["pw.x", "ph.x"]
+    missing_exes = []
     for exe in required_exes:
-        exe_path = qe_bin / exe
-        if not exe_path.exists():
-            pytest.skip(f"{exe} not found in {qe_bin}")
+        if not engine.get_executable_path(exe):
+            missing_exes.append(exe)
     
-    config = EngineConfig(name="qe", executable_path=qe_bin)
-    engine = QuantumEspressoEngine(config)
-    
-    # Verify engine can find executables
-    if not engine.get_executable_path("pw.x") or not engine.get_executable_path("ph.x"):
-        pytest.skip("Cannot find required QE executables")
+    if missing_exes:
+        pytest.skip(f"Required QE executables not found. "
+                   f"Reason: Missing executables: {', '.join(missing_exes)}. "
+                   f"These are required for PH workflow tests.")
     
     return engine
 
 
 @pytest.fixture(scope="module")
-def test_suite_dir():
+def test_suite_dir(qe_engine):
     """Get test suite directory (prefer local copy, fallback to test-suite)."""
     # First, try local copy in tests directory
     local_test_data = Path(__file__).parent / "ci_test_data"
     if local_test_data.exists() and (local_test_data / "ph_1d").exists():
         return local_test_data
     
-    # Fallback to QE test-suite directory
-    qe_bin = os.environ.get("QE_BIN_DIR")
-    if qe_bin:
-        qe_bin = Path(qe_bin)
-    else:
-        qe_bin = Path.home() / "src" / "q-e-qe-7.5" / "bin"
-    
-    if not qe_bin.exists():
-        pytest.skip("QE installation not found and local test data not available")
-    
-    if qe_bin.is_dir():
-        qe_root = qe_bin.parent
-    else:
-        qe_root = qe_bin.parent.parent
-    
-    test_suite = qe_root / "test-suite"
-    if not test_suite.exists():
-        pytest.skip("QE test-suite not found and local test data not available")
+    # Use engine's auto-detected test-suite directory
+    test_suite = qe_engine.test_suite_dir
+    if not test_suite or not test_suite.exists():
+        pytest.skip("QE test-suite not found and local test data not available. "
+                   f"Reason: Test suite directory not found and "
+                   f"local test data in ci_test_data/ is not available. "
+                   f"Either install QE with test-suite or ensure ci_test_data/ contains test files.")
     
     return test_suite
 
@@ -132,35 +116,41 @@ class TestPHQuickTests:
         # Get test category directory
         category_dir = test_suite_dir / category
         if not category_dir.exists():
-            pytest.skip(f"Test category not found: {category_dir}")
+            pytest.skip(f"Test category directory not found: {category_dir}. "
+                       f"Reason: Category '{category}' does not exist in test suite.")
         
         # Parse jobconfig to get test files
         # Try multiple locations for jobconfig
         jobconfig_paths = [
-            test_suite_dir.parent / "test-suite" / "jobconfig",
-            Path(test_suite_dir) / ".." / ".." / "test-suite" / "jobconfig",
-            Path.home() / "src" / "q-e-qe-7.5" / "test-suite" / "jobconfig",
-            test_suite_dir / "jobconfig"
+            test_suite_dir / "jobconfig",
         ]
+        
+        # Also try from engine's test_suite_dir if different
+        if qe_engine.test_suite_dir and qe_engine.test_suite_dir != test_suite_dir:
+            jobconfig_paths.insert(0, qe_engine.test_suite_dir / "jobconfig")
         
         jobconfig_path = None
         for path in jobconfig_paths:
-            path = Path(path).resolve()
-            if path.exists():
-                jobconfig_path = path
+            if path and path.exists():
+                jobconfig_path = Path(path).resolve()
                 break
         
         if not jobconfig_path:
-            pytest.skip(f"jobconfig not found. Tried: {jobconfig_paths}")
+            pytest.skip(f"jobconfig file not found. "
+                       f"Reason: Cannot locate QE test-suite jobconfig file. "
+                       f"This file is required to determine test order and files.")
         
         all_tests = parse_jobconfig(jobconfig_path, "ph_")
         
         if category not in all_tests:
-            pytest.skip(f"Category '{category}' not found in jobconfig")
+            pytest.skip(f"Category '{category}' not found in jobconfig. "
+                       f"Reason: The category '{category}' is not defined in the jobconfig file. "
+                       f"Available categories: {list(all_tests.keys())}")
         
         test_files = all_tests[category]
         if not test_files:
-            pytest.skip(f"No test files found for category '{category}'")
+            pytest.skip(f"No test files found for category '{category}'. "
+                       f"Reason: Category '{category}' exists in jobconfig but has no test files defined.")
         
         # Executable map for ph workflow
         executable_map = {
@@ -206,8 +196,7 @@ class TestPHQuickTests:
             qe_engine,
             executable_map,
             timeout=300,  # 5 minute timeout for ph tests
-            max_tests=None,
-            nprocs=1  # Use 1 process for CI to avoid MPI issues
+            max_tests=None
         )
         
         # Check results

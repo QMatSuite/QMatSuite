@@ -14,7 +14,7 @@ import subprocess
 import configparser
 import tempfile
 from pathlib import Path
-from typing import List, Tuple, Dict, Any
+from typing import List, Tuple, Dict, Any, Optional
 import os
 import time
 
@@ -25,10 +25,14 @@ sys.path.insert(0, str(project_root))
 
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.base import EngineConfig
+from quantumvitas.core.engines.qe_input import QEInputParser, QEInputGenerator
 
 # Import test function
 import importlib.util
-test_file = project_root / "tests" / "test_qe_roundtrip_execution.py"
+# Try extended-tests/utils first, then fallback to tests
+test_file = project_root / "extended-tests" / "utils" / "test_qe_roundtrip_execution.py"
+if not test_file.exists():
+    test_file = project_root / "tests" / "test_qe_roundtrip_execution.py"
 spec = importlib.util.spec_from_file_location("test_qe_roundtrip_execution", test_file)
 test_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(test_module)
@@ -69,7 +73,8 @@ def parse_jobconfig(jobconfig_path: Path) -> Dict[str, List[Tuple[str, str]]]:
 def compare_with_benchmark(
     output_file: Path,
     benchmark_file: Path,
-    tolerance: float = 1e-6
+    tolerance: Optional[float] = None,
+    category: Optional[str] = None
 ) -> Tuple[bool, str]:
     """
     Compare test output with benchmark output.
@@ -82,11 +87,18 @@ def compare_with_benchmark(
     Args:
         output_file: Path to test output
         benchmark_file: Path to benchmark output
-        tolerance: Numerical tolerance for energy comparison
+        tolerance: Numerical tolerance for energy comparison (if None, uses threshold from thresholds.py)
+        category: Test category name for category-specific thresholds
         
     Returns:
         Tuple of (pass, message)
     """
+    # Import unified thresholds
+    from tests.core.thresholds import get_energy_tolerance
+    
+    # Use unified thresholds if tolerance not provided
+    if tolerance is None:
+        tolerance = get_energy_tolerance(category, "pw.x")
     if not output_file.exists():
         return False, "Output file not found"
     

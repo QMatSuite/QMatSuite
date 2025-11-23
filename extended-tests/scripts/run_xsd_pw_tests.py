@@ -25,13 +25,13 @@ def main():
         "--test-dir",
         type=Path,
         default=None,
-        help="Path to QE test suite directory (default: inferred from --qe-path)"
+        help="Path to QE test suite directory (default: auto-detected from QE installation)"
     )
     parser.add_argument(
-        "--qe-path",
+        "--qe-home",
         type=Path,
-        default=Path.home() / "src" / "q-e-qe-7.5" / "bin",
-        help="Path to QE bin directory (used to infer test-dir)"
+        default=None,
+        help="Path to QE home directory (contains bin/ and test-suite/). If not specified, will auto-detect."
     )
     parser.add_argument(
         "--timeout",
@@ -44,7 +44,19 @@ def main():
     
     # Infer test-suite directory from QE path if not provided
     if args.test_dir is None:
-        qe_bin = args.qe_path
+        # Setup QE engine (auto-detect if not provided)
+        if args.qe_home:
+            config = EngineConfig(name="qe", executable_path=args.qe_home)
+        else:
+            config = EngineConfig(name="qe")
+        engine = QuantumEspressoEngine(config)
+        
+        if not engine.installation.is_valid():
+            print("ERROR: QE installation not found.")
+            print("Please specify --qe-home or ensure QE is installed and accessible.")
+            sys.exit(1)
+        
+        qe_bin = engine.installation.bin_dir
         if qe_bin.is_dir():
             qe_root = qe_bin.parent
         else:

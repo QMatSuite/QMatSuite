@@ -135,18 +135,18 @@ class TestQEInputGenerator:
         control = QENamelist("control")
         control.set("calculation", "scf")
         control.set("prefix", "si")
-        qe_input.add_namelist(control)
+        qe_input.namelists.append(control)
         
         system = QENamelist("system")
         system.set("ibrav", 0)
         system.set("nat", 2)
         system.set("ntyp", 1)
         system.set("ecutwfc", 30.0)
-        qe_input.add_namelist(system)
+        qe_input.namelists.append(system)
         
         atomic_species = QECard(QECardType.ATOMIC_SPECIES)
-        atomic_species.add_data(["Si", "28.085", "Si.pbe-n-rrkjus.UPF"])
-        qe_input.add_card(atomic_species)
+        atomic_species.add_line(["Si", "28.085", "Si.pbe-n-rrkjus.UPF"])
+        qe_input.cards.append(atomic_species)
         
         generated = QEInputGenerator.generate(qe_input)
         
@@ -209,7 +209,7 @@ class TestQEInputFileIO:
         qe_input = QEInput()
         control = QENamelist("control")
         control.set("calculation", "scf")
-        qe_input.add_namelist(control)
+        qe_input.namelists.append(control)
         
         output_file = tmp_path / "output.in"
         QEInputGenerator.write_file(qe_input, output_file)
