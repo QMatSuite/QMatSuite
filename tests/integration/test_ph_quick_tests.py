@@ -23,7 +23,7 @@ sys.path.insert(0, str(project_root))
 
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.base import EngineConfig
-from quantumvitas.core.engines.qe_input import QEInputParser, QEInputGenerator
+from quantumvitas.core.engines.qe_input import QEInputParser, QEInputGenerator, QEInput
 
 # Import shared test utilities
 from tests.core.qe_test_utils import parse_jobconfig

@@ -24,16 +24,35 @@ import urllib.error
 import os
 
 # Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.base import EngineConfig
-from quantumvitas.core.engines.qe_input import QEInputParser, QEInputGenerator, QECardType
+from quantumvitas.core.engines.qe_input import QEInputParser, QEInputGenerator, QECardType, QEInput
 
 
 class TimeoutError(Exception):
     """Raised when a test times out."""
     pass
+
+
+def set_outdir_to_temp(qe_input: QEInput, project_root: Path) -> None:
+    """
+    Set outdir parameter in QE input to temp/outdir if it exists.
+    
+    Args:
+        qe_input: Parsed QE input object
+        project_root: Project root directory
+    """
+    # Check all namelists for outdir parameter
+    for namelist in qe_input.namelists:
+        if "outdir" in namelist.parameters:
+            # Set outdir to temp/outdir (relative to project root)
+            temp_outdir = project_root / "temp" / "outdir"
+            temp_outdir.mkdir(parents=True, exist_ok=True)
+            # Use absolute path to avoid issues
+            namelist.parameters["outdir"] = str(temp_outdir.absolute())
 
 
 def run_with_timeout(command: list, cwd: Path, timeout: int = 60, env: Optional[Dict[str, str]] = None) -> tuple[int, str, str]:
@@ -322,6 +341,10 @@ def test_input_roundtrip_execution(
         try:
             qe_input = QEInputParser.parse_file(input_file)
             result["parse_success"] = True
+            
+            # Set outdir to temp/outdir if it exists
+            project_root = Path(__file__).parent.parent.parent
+            set_outdir_to_temp(qe_input, project_root)
         except Exception as e:
             result["error"] = f"Parse failed: {e}"
             return result
@@ -426,6 +449,14 @@ def test_input_roundtrip_execution(
             # Write stdout/stderr to files for debugging
             (working_dir / "stdout.txt").write_text(stdout)
             (working_dir / "stderr.txt").write_text(stderr)
+            
+            # Also save as .out file for consistency
+            if prefix:
+                output_out_file = working_dir / f"{prefix}.out"
+            else:
+                input_stem = generated_input.stem
+                output_out_file = working_dir / f"{input_stem}.out"
+            output_out_file.write_text(stdout)
             
             # Also save generated input for debugging
             (working_dir / "generated_input.in").write_text(generated_input.read_text())

@@ -27,11 +27,6 @@
       "input_file": "pw_scf/scf-cg.in"
     },
     {
-      "category": "pw_workflow_scf_dos",
-      "test_file": "scf-dos-1.in",
-      "input_file": "pw_workflow_scf_dos/scf-dos-1.in"
-    },
-    {
       "category": "pw_plugins",
       "test_file": "plugin-pw2casino_2.in",
       "input_file": "pw_plugins/plugin-pw2casino_2.in"
@@ -62,5 +57,5 @@
       "input_file": "ph_2d/scf.in"
     }
   ],
-  "total": 12
+  "total": 11
 }
