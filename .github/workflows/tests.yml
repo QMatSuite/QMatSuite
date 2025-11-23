@@ -35,8 +35,6 @@ jobs:
           libfftw3-dev \
           quantum-espresso
         # Find QE installation directory
-        # QE executables are typically in /usr/bin
-        # QE_HOME might be /usr or /usr/share/quantum-espresso
         if [ -d "/usr/share/quantum-espresso" ]; then
           echo "QE_HOME=/usr/share/quantum-espresso" >> $GITHUB_ENV
         elif [ -f "/usr/bin/pw.x" ]; then
@@ -45,76 +43,34 @@ jobs:
           echo "QE_HOME=/usr" >> $GITHUB_ENV
         fi
     
-    - name: Install system dependencies (macOS)
+    - name: Install system dependencies and setup compilers (macOS)
       if: matrix.os == 'macos-latest'
       run: |
         brew update
         brew install gcc gfortran openmpi fftw wget make
         
-        # Find all gcc and gfortran versions, match the highest common version
-        # Method 1: Check brew's gcc installation directory
-        GCC_PREFIX=$(brew --prefix gcc 2>/dev/null || echo "")
-        if [ -n "$GCC_PREFIX" ] && [ -d "$GCC_PREFIX/bin" ]; then
-          # Find all gcc-* versions
-          GCC_VERSIONS=$(ls "$GCC_PREFIX/bin"/gcc-* 2>/dev/null | grep -oE 'gcc-[0-9]+' | grep -oE '[0-9]+' | sort -rn | uniq)
-          # Find all gfortran-* versions
-          GFORTRAN_VERSIONS=$(ls "$GCC_PREFIX/bin"/gfortran-* 2>/dev/null | grep -oE 'gfortran-[0-9]+' | grep -oE '[0-9]+' | sort -rn | uniq)
-          
-          # Find common versions (versions that exist in both)
-          COMMON_VERSIONS=""
-          for v in $GCC_VERSIONS; do
-            if echo "$GFORTRAN_VERSIONS" | grep -q "^$v$"; then
-              COMMON_VERSIONS="$COMMON_VERSIONS $v"
-            fi
-          done
-          
-          # Use the highest common version
-          HIGHEST_COMMON=$(echo "$COMMON_VERSIONS" | tr ' ' '\n' | sort -rn | head -1)
-          
-          if [ -n "$HIGHEST_COMMON" ]; then
-            GCC_CMD="$GCC_PREFIX/bin/gcc-$HIGHEST_COMMON"
-            GFORTRAN_CMD="$GCC_PREFIX/bin/gfortran-$HIGHEST_COMMON"
-          else
-            # No common version found, use defaults
-            GCC_CMD=$(which gcc || echo "$GCC_PREFIX/bin/gcc")
-            GFORTRAN_CMD=$(which gfortran || echo "$GCC_PREFIX/bin/gfortran")
-          fi
+        # Get gcc prefix and detect versioned gcc
+        GCC_PREFIX=$(brew --prefix gcc)
+        
+        # Find all versioned gcc (gcc-15, gcc-16, gcc-17, etc.) and select the highest version
+        GCC_VERSIONS=$(ls "$GCC_PREFIX/bin"/gcc-* 2>/dev/null | grep -E 'gcc-[0-9]+$' | sed 's/.*gcc-\([0-9]*\)$/\1/' | sort -rn)
+        if [ -n "$GCC_VERSIONS" ]; then
+          # Use the highest version found
+          HIGHEST_VERSION=$(echo "$GCC_VERSIONS" | head -1)
+          echo "CC=$GCC_PREFIX/bin/gcc-$HIGHEST_VERSION" >> $GITHUB_ENV
         else
-          # Method 2: Search in PATH
-          # Find all gcc-* versions in common paths
-          GCC_VERSIONS=$(ls /opt/homebrew/bin/gcc-* /usr/local/bin/gcc-* 2>/dev/null | grep -oE 'gcc-[0-9]+' | grep -oE '[0-9]+' | sort -rn | uniq)
-          # Find all gfortran-* versions
-          GFORTRAN_VERSIONS=$(ls /opt/homebrew/bin/gfortran-* /usr/local/bin/gfortran-* 2>/dev/null | grep -oE 'gfortran-[0-9]+' | grep -oE '[0-9]+' | sort -rn | uniq)
-          
-          # Find common versions
-          COMMON_VERSIONS=""
-          for v in $GCC_VERSIONS; do
-            if echo "$GFORTRAN_VERSIONS" | grep -q "^$v$"; then
-              COMMON_VERSIONS="$COMMON_VERSIONS $v"
-            fi
-          done
-          
-          # Use the highest common version
-          HIGHEST_COMMON=$(echo "$COMMON_VERSIONS" | tr ' ' '\n' | sort -rn | head -1)
-          
-          if [ -n "$HIGHEST_COMMON" ]; then
-            GCC_CMD=$(which gcc-$HIGHEST_COMMON || which gcc)
-            GFORTRAN_CMD=$(which gfortran-$HIGHEST_COMMON || which gfortran)
-          else
-            # Fallback to default
-            GCC_CMD=$(which gcc)
-            GFORTRAN_CMD=$(which gfortran)
-          fi
+          # Fallback to non-versioned
+          echo "CC=$GCC_PREFIX/bin/gcc" >> $GITHUB_ENV
         fi
         
-        echo "CC=$GCC_CMD" >> $GITHUB_ENV
-        echo "FC=$GFORTRAN_CMD" >> $GITHUB_ENV
+        # Use symbolic link gfortran (if exists), otherwise fallback
+        if [ -f "$GCC_PREFIX/bin/gfortran" ]; then
+          echo "FC=$GCC_PREFIX/bin/gfortran" >> $GITHUB_ENV
+        else
+          echo "FC=$(which gfortran)" >> $GITHUB_ENV
+        fi
         
-        # Verify compilers
-        echo "Using CC: $GCC_CMD"
-        echo "Using FC: $GFORTRAN_CMD"
-        $GCC_CMD --version || true
-        $GFORTRAN_CMD --version || true
+        echo "PATH=$GCC_PREFIX/bin:$PATH" >> $GITHUB_ENV
     
     - name: Install Quantum ESPRESSO (macOS - from source)
       if: matrix.os == 'macos-latest'
@@ -134,10 +90,6 @@ jobs:
         
         # Get brew paths
         FFTW_PREFIX=$(brew --prefix fftw)
-        
-        # Use CC and FC from environment
-        export CC=${CC}
-        export FC=${FC}
         
         # Configure QE for macOS
         ./configure \
@@ -160,12 +112,9 @@ jobs:
     - name: Verify QE installation
       run: |
         if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
-          # On Ubuntu, QE is installed via apt
           which pw.x || (echo "pw.x not found in PATH" && exit 1)
           pw.x --version || echo "pw.x version check failed (may be normal)"
-          # QE_HOME should already be set from install step
         else
-          # On macOS, QE is compiled from source
           QE_HOME=$HOME/src/q-e-qe-7.5
           export QE_HOME
           export PATH="$QE_HOME/bin:$PATH"
@@ -184,11 +133,8 @@ jobs:
     - name: Run all tests in tests/ directory
       run: |
         if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
-          # Ubuntu: QE installed via apt, already in PATH
-          # QE_HOME should be set from install step
           export QE_HOME=${QE_HOME:-/usr}
         else
-          # macOS: QE compiled from source
           export QE_HOME=$HOME/src/q-e-qe-7.5
           export PATH="$QE_HOME/bin:$PATH"
         fi
