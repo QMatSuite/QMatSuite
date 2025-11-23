@@ -69,7 +69,7 @@ class TestSiDOSWorkflow:
         assert system.get('ibrav') == 2
         assert system.get('nat') == 2
         assert system.get('ntyp') == 1
-        assert system.get('ecutwfc') == 50
+        assert system.get('ecutwfc') == 12  # Actual value in si.1_scf.in file
         
         # Verify atomic species card
         atomic_species = scf_input.get_card(QECardType.ATOMIC_SPECIES)
