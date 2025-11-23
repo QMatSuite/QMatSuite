@@ -50,13 +50,71 @@ jobs:
       run: |
         brew update
         brew install gcc gfortran openmpi fftw wget make
-        # Just use gcc and gfortran directly
-        echo "CC=gcc" >> $GITHUB_ENV
-        echo "FC=gfortran" >> $GITHUB_ENV
+        
+        # Find all gcc and gfortran versions, match the highest common version
+        # Method 1: Check brew's gcc installation directory
+        GCC_PREFIX=$(brew --prefix gcc 2>/dev/null || echo "")
+        if [ -n "$GCC_PREFIX" ] && [ -d "$GCC_PREFIX/bin" ]; then
+          # Find all gcc-* versions
+          GCC_VERSIONS=$(ls "$GCC_PREFIX/bin"/gcc-* 2>/dev/null | grep -oE 'gcc-[0-9]+' | grep -oE '[0-9]+' | sort -rn | uniq)
+          # Find all gfortran-* versions
+          GFORTRAN_VERSIONS=$(ls "$GCC_PREFIX/bin"/gfortran-* 2>/dev/null | grep -oE 'gfortran-[0-9]+' | grep -oE '[0-9]+' | sort -rn | uniq)
+          
+          # Find common versions (versions that exist in both)
+          COMMON_VERSIONS=""
+          for v in $GCC_VERSIONS; do
+            if echo "$GFORTRAN_VERSIONS" | grep -q "^$v$"; then
+              COMMON_VERSIONS="$COMMON_VERSIONS $v"
+            fi
+          done
+          
+          # Use the highest common version
+          HIGHEST_COMMON=$(echo "$COMMON_VERSIONS" | tr ' ' '\n' | sort -rn | head -1)
+          
+          if [ -n "$HIGHEST_COMMON" ]; then
+            GCC_CMD="$GCC_PREFIX/bin/gcc-$HIGHEST_COMMON"
+            GFORTRAN_CMD="$GCC_PREFIX/bin/gfortran-$HIGHEST_COMMON"
+          else
+            # No common version found, use defaults
+            GCC_CMD=$(which gcc || echo "$GCC_PREFIX/bin/gcc")
+            GFORTRAN_CMD=$(which gfortran || echo "$GCC_PREFIX/bin/gfortran")
+          fi
+        else
+          # Method 2: Search in PATH
+          # Find all gcc-* versions in common paths
+          GCC_VERSIONS=$(ls /opt/homebrew/bin/gcc-* /usr/local/bin/gcc-* 2>/dev/null | grep -oE 'gcc-[0-9]+' | grep -oE '[0-9]+' | sort -rn | uniq)
+          # Find all gfortran-* versions
+          GFORTRAN_VERSIONS=$(ls /opt/homebrew/bin/gfortran-* /usr/local/bin/gfortran-* 2>/dev/null | grep -oE 'gfortran-[0-9]+' | grep -oE '[0-9]+' | sort -rn | uniq)
+          
+          # Find common versions
+          COMMON_VERSIONS=""
+          for v in $GCC_VERSIONS; do
+            if echo "$GFORTRAN_VERSIONS" | grep -q "^$v$"; then
+              COMMON_VERSIONS="$COMMON_VERSIONS $v"
+            fi
+          done
+          
+          # Use the highest common version
+          HIGHEST_COMMON=$(echo "$COMMON_VERSIONS" | tr ' ' '\n' | sort -rn | head -1)
+          
+          if [ -n "$HIGHEST_COMMON" ]; then
+            GCC_CMD=$(which gcc-$HIGHEST_COMMON || which gcc)
+            GFORTRAN_CMD=$(which gfortran-$HIGHEST_COMMON || which gfortran)
+          else
+            # Fallback to default
+            GCC_CMD=$(which gcc)
+            GFORTRAN_CMD=$(which gfortran)
+          fi
+        fi
+        
+        echo "CC=$GCC_CMD" >> $GITHUB_ENV
+        echo "FC=$GFORTRAN_CMD" >> $GITHUB_ENV
         
         # Verify compilers
-        gcc --version || true
-        gfortran --version || true
+        echo "Using CC: $GCC_CMD"
+        echo "Using FC: $GFORTRAN_CMD"
+        $GCC_CMD --version || true
+        $GFORTRAN_CMD --version || true
     
     - name: Install Quantum ESPRESSO (macOS - from source)
       if: matrix.os == 'macos-latest'
@@ -77,17 +135,23 @@ jobs:
         # Get brew paths
         FFTW_PREFIX=$(brew --prefix fftw)
         
+        # Use CC and FC from environment
+        export CC=${CC}
+        export FC=${FC}
+        
         # Configure QE for macOS
         ./configure \
+          CC="$CC" \
+          FC="$FC" \
           BLAS_LIBS="-framework Accelerate" \
           LAPACK_LIBS="" \
           FFT_LIBS="-L${FFTW_PREFIX}/lib -lfftw3" \
           MPIF90=mpif90
         
         # Build QE (essential modules for testing)
-        make pw -j2 || make pw
-        make ph -j2 || make ph
-        make pp -j2 || make pp
+        make pw || make pw
+        make ph || make ph
+        make pp || make pp
         
         # Set QE_HOME environment variable
         echo "QE_HOME=$HOME/src/q-e-qe-7.5" >> $GITHUB_ENV
