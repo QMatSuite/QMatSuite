@@ -1,5 +1,5 @@
 
-     Program DOS v.7.5 starts on 23Nov2025 at 16:45:15 
+     Program DOS v.7.5 starts on 23Nov2025 at 16:58:22 
 
      This program is part of the open-source Quantum ESPRESSO suite
      for quantum simulation of materials; please cite
@@ -30,7 +30,7 @@
      G-vector sticks info
      --------------------
      sticks:   dense  smooth     PW     G-vecs:    dense   smooth      PW
-     Sum         187     187     61                 1591     1591     331
+     Sum         163     163     61                 1459     1459     331
 
      Using Slab Decomposition
 
@@ -38,10 +38,10 @@
      Tetrahedra used
 
 
-     DOS          :      0.11s CPU      0.11s WALL
+     DOS          :      0.10s CPU      0.11s WALL
 
 
-   This run was terminated on:  16:45:15  23Nov2025            
+   This run was terminated on:  16:58:22  23Nov2025            
 
 =------------------------------------------------------------------------------=
    JOB DONE.

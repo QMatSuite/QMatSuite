@@ -41,19 +41,40 @@ class TimeoutError(Exception):
 def set_outdir_to_temp(qe_input: QEInput, project_root: Path) -> None:
     """
     Set outdir parameter in QE input to temp/outdir if it exists.
+    If outdir is not present, add it to the control namelist.
     
     Args:
         qe_input: Parsed QE input object
         project_root: Project root directory
     """
+    # Set outdir to temp/outdir (relative to project root)
+    temp_outdir = project_root / "temp" / "outdir"
+    temp_outdir.mkdir(parents=True, exist_ok=True)
+    outdir_abs = str(temp_outdir.absolute())
+    
     # Check all namelists for outdir parameter
+    found_outdir = False
     for namelist in qe_input.namelists:
         if "outdir" in namelist.parameters:
-            # Set outdir to temp/outdir (relative to project root)
-            temp_outdir = project_root / "temp" / "outdir"
-            temp_outdir.mkdir(parents=True, exist_ok=True)
-            # Use absolute path to avoid issues
-            namelist.parameters["outdir"] = str(temp_outdir.absolute())
+            # Set outdir to temp/outdir
+            namelist.parameters["outdir"] = outdir_abs
+            found_outdir = True
+    
+    # If outdir not found, add it to control namelist
+    if not found_outdir:
+        control_namelist = None
+        for namelist in qe_input.namelists:
+            if namelist.name.lower() == "control":
+                control_namelist = namelist
+                break
+        
+        if control_namelist:
+            control_namelist.parameters["outdir"] = outdir_abs
+        else:
+            # Create control namelist if it doesn't exist
+            from quantumvitas.core.engines.qe_input import QENamelist
+            control_namelist = QENamelist("control", {"outdir": outdir_abs})
+            qe_input.namelists.insert(0, control_namelist)
 
 
 def set_pseudo_dir_to_temp(qe_input: QEInput, project_root: Path) -> None:
