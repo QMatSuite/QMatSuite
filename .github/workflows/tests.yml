@@ -105,9 +105,12 @@ jobs:
           FFT_LIBS="-L${FFTW_PREFIX}/lib -lfftw3" \
           MPIF90=mpif90
         
-        # Add -D__FFTW3 to DFLAGS in make.inc
+        # Modify make.inc to add FFTW3 support
         if [ -f make.inc ]; then
+          # Add -D__FFTW3 to DFLAGS
           sed -i.bak 's/^DFLAGS.*/& -D__FFTW3/' make.inc
+          # Add FFTW3 include path to FFLAGS
+          sed -i.bak "s|^FFLAGS.*|& -I${FFTW_PREFIX}/include|" make.inc
         fi
         
         # Build QE (essential modules for testing)
