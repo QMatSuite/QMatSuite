@@ -96,24 +96,24 @@ jobs:
         
         # Configure QE for macOS
         # CC, FC, and CPP should already be set in GITHUB_ENV
-        # Set FFT environment variables for configure
-        export FFT_LIBS="-L${FFTW_PREFIX}/lib -lfftw3"
-        export FFT_CPPFLAGS="-I${FFTW_PREFIX}/include"
-        
         ./configure \
           CC="$CC" \
           FC="$FC" \
           CPP="$CPP" \
           BLAS_LIBS="-framework Accelerate" \
           LAPACK_LIBS="" \
-          FFT_LIBS="$FFT_LIBS" \
-          FFT_CPPFLAGS="$FFT_CPPFLAGS" \
+          FFT_LIBS="-L${FFTW_PREFIX}/lib -lfftw3" \
           MPIF90=mpif90
         
+        # Add -D__FFTW3 to DFLAGS in make.inc
+        if [ -f make.inc ]; then
+          sed -i.bak 's/^DFLAGS.*/& -D__FFTW3/' make.inc
+        fi
+        
         # Build QE (essential modules for testing)
-        make pw || make pw
-        make ph || make ph
-        make pp || make pp
+        make pw
+        make ph
+        make pp
         
         # Set QE_HOME environment variable
         echo "QE_HOME=$HOME/src/q-e-qe-7.5" >> $GITHUB_ENV
