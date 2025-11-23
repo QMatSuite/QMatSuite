@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        python-version: ['3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.12']
     
     steps:
     - uses: actions/checkout@v4
@@ -58,9 +58,12 @@ jobs:
           # Use the highest version found
           HIGHEST_VERSION=$(echo "$GCC_VERSIONS" | head -1)
           echo "CC=$GCC_PREFIX/bin/gcc-$HIGHEST_VERSION" >> $GITHUB_ENV
+          # Use matching versioned cpp
+          echo "CPP=$GCC_PREFIX/bin/cpp-$HIGHEST_VERSION" >> $GITHUB_ENV
         else
           # Fallback to non-versioned
           echo "CC=$GCC_PREFIX/bin/gcc" >> $GITHUB_ENV
+          echo "CPP=$GCC_PREFIX/bin/cpp" >> $GITHUB_ENV
         fi
         
         # Use symbolic link gfortran (if exists), otherwise fallback
@@ -92,9 +95,11 @@ jobs:
         FFTW_PREFIX=$(brew --prefix fftw)
         
         # Configure QE for macOS
+        # CC, FC, and CPP should already be set in GITHUB_ENV
         ./configure \
           CC="$CC" \
           FC="$FC" \
+          CPP="$CPP" \
           BLAS_LIBS="-framework Accelerate" \
           LAPACK_LIBS="" \
           FFT_LIBS="-L${FFTW_PREFIX}/lib -lfftw3" \
