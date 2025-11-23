@@ -50,7 +50,17 @@
       "category": "pw_atom",
       "test_file": "atom.in",
       "input_file": "pw_atom/atom.in"
+    },
+    {
+      "category": "ph_1d",
+      "test_file": "ch4.scf.in",
+      "input_file": "ph_1d/ch4.scf.in"
+    },
+    {
+      "category": "ph_2d",
+      "test_file": "scf.in",
+      "input_file": "ph_2d/scf.in"
     }
   ],
-  "total": 10
+  "total": 12
 }

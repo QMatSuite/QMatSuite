@@ -42,18 +42,69 @@ class QuantumEspressoEngine(Engine):
         "neb": "neb.x",
         "pp": "pp.x",
         "gipaw": "gipaw.x",
+        "cp": "cp.x",
+        "ld1": "ld1.x",
+        "hp": "hp.x",
+        "pwcond": "pwcond.x",
+        "postahc": "postahc.x",
+        "dynmat": "dynmat.x",
+        "oscdft_et": "oscdft_et.x",
+        "oscdft_pp": "oscdft_pp.x",
+        "band_interpolation": "band_interpolation.x",
+        "cppp": "cppp.x",
+        "d3hess": "d3hess.x",
+        "ppacf": "ppacf.x",
+        "pprism": "pprism.x",
     }
     
     # Mapping of QE modules to their primary namelists
+    # Documentation links:
+    # - pw: https://www.quantum-espresso.org/Doc/INPUT_PW.html
+    # - ph: https://www.quantum-espresso.org/Doc/INPUT_PH.html
+    # - q2r: https://www.quantum-espresso.org/Doc/INPUT_Q2R.html
+    # - matdyn: https://www.quantum-espresso.org/Doc/INPUT_MATDYN.html
+    # - pp: https://www.quantum-espresso.org/Doc/INPUT_PP.html
+    # - neb: https://www.quantum-espresso.org/Doc/INPUT_NEB.html
+    # - cp: https://www.quantum-espresso.org/Doc/INPUT_CP.html
+    # - ld1: https://www.quantum-espresso.org/Doc/INPUT_LD1.html
+    # - hp: https://www.quantum-espresso.org/Doc/INPUT_HP.html
+    # - pwcond: https://www.quantum-espresso.org/Doc/INPUT_PWCOND.html
+    # - bands: https://www.quantum-espresso.org/Doc/INPUT_BANDS.html
+    # - dos: https://www.quantum-espresso.org/Doc/INPUT_DOS.html
+    # - projwfc: https://www.quantum-espresso.org/Doc/INPUT_PROJWFC.html
+    # - postahc: https://www.quantum-espresso.org/Doc/INPUT_POSTAHC.html
+    # - dynmat: https://www.quantum-espresso.org/Doc/INPUT_DYNMAT.html
+    # - oscdft_et: https://www.quantum-espresso.org/Doc/INPUT_OSCDFT_ET.html
+    # - oscdft_pp: https://www.quantum-espresso.org/Doc/INPUT_OSCDFT_PP.html
+    # - band_interpolation: https://www.quantum-espresso.org/Doc/INPUT_BAND_INTERPOLATION.html
+    # - cppp: https://www.quantum-espresso.org/Doc/INPUT_CPPP.html
+    # - d3hess: https://www.quantum-espresso.org/Doc/INPUT_D3HESS.html
+    # - ppacf: https://www.quantum-espresso.org/Doc/INPUT_PPACF.html
+    # - pprism: https://www.quantum-espresso.org/Doc/INPUT_PPRISM.html
     MODULE_NAMELISTS = {
         "pw": ["control", "system", "electrons", "ions", "cell"],
         "ph": ["inputph"],
+        "q2r": ["input"],  # q2r.x uses &input namelist
+        "matdyn": ["input"],  # matdyn.x uses &input namelist
         "pp": ["inputpp"],
         "gipaw": ["inputgipaw"],
-        "neb": ["path"],
-        "bands": ["control", "system", "electrons", "bands"],
-        "dos": ["control", "system", "electrons", "dos"],
-        "projwfc": ["control", "system", "electrons", "projwfc"],
+        "neb": ["path"],  # neb.x uses &PATH namelist (plus embedded pw.x input)
+        "cp": ["control", "system", "electrons", "ions", "cell"],  # cp.x similar to pw.x
+        "ld1": ["input"],  # ld1.x uses &input namelist
+        "hp": ["inputhp"],  # hp.x uses &inputhp namelist
+        "pwcond": ["cond"],  # pwcond.x uses &cond namelist
+        "bands": ["bands"],  # bands.x uses &BANDS namelist
+        "dos": ["dos"],  # dos.x uses &DOS namelist
+        "projwfc": ["projwfc"],  # projwfc.x uses &PROJWFC namelist
+        "postahc": ["input"],  # postahc.x uses &input namelist
+        "dynmat": ["input"],  # dynmat.x uses &input namelist
+        "oscdft_et": ["oscdft_et_namelist"],  # oscdft_et.x uses &oscdft_et_namelist
+        "oscdft_pp": ["oscdft_pp_namelist"],  # oscdft_pp.x uses &oscdft_pp_namelist
+        "band_interpolation": ["interpolation"],  # band_interpolation.x uses &interpolation namelist
+        "cppp": ["inputpp"],  # cppp.x uses &inputpp namelist
+        "d3hess": ["input"],  # d3hess.x uses &input namelist
+        "ppacf": ["plot"],  # ppacf.x uses &plot namelist
+        "pprism": ["inputpp", "plot"],  # pprism.x uses &inputpp and &plot namelists
     }
     
     def __init__(self, config: EngineConfig):
