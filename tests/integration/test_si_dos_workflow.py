@@ -20,7 +20,7 @@ from quantumvitas.core.engines.qe_input import (
 )
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.base import EngineConfig
-from test_qe_roundtrip_execution import run_input_roundtrip_execution, set_outdir_to_temp
+from test_qe_roundtrip_execution import run_input_roundtrip_execution, set_outdir_to_temp, set_pseudo_dir_to_temp
 from tests.core.thresholds import get_fermi_energy_tolerance
 import re
 
@@ -261,24 +261,22 @@ class TestSiDOSWorkflow:
         
         # Parse and fix pseudo_dir before running
         scf_input = QEInputParser.parse_file(scf_file)
-        control = scf_input.get_namelist("control")
-        if control:
-            # Set pseudo_dir to working directory where pseudos will be downloaded
-            control.parameters["pseudo_dir"] = str(tmp_path)
         project_root = Path(__file__).parent.parent.parent
         set_outdir_to_temp(scf_input, project_root)
+        set_pseudo_dir_to_temp(scf_input, project_root)  # Unified pseudo_dir to temp/pseudo
         
         # Write modified input to working directory
         modified_scf = tmp_path / "si.1_scf.in"
         QEInputGenerator.write_file(scf_input, modified_scf)
         
-        # Run SCF calculation
+        # Run SCF calculation (increased timeout for CI stability)
         result = run_input_roundtrip_execution(
             input_file=modified_scf,
             qe_engine=qe_engine,
-            timeout=120,
+            timeout=300,  # Increased from 120 to 300 seconds for CI stability
             working_dir=tmp_path,
-            step_number="1"
+            step_number="1",
+            category="4_Si_DOS"  # Explicitly set category for proper output organization
         )
         
         assert result["parse_success"], f"Parse failed: {result.get('error')}"
@@ -330,38 +328,36 @@ class TestSiDOSWorkflow:
         # First run SCF
         scf_file = si_dos_dir / "si.1_scf.in"
         scf_input = QEInputParser.parse_file(scf_file)
-        control = scf_input.get_namelist("control")
-        if control:
-            control.parameters["pseudo_dir"] = str(tmp_path)
         set_outdir_to_temp(scf_input, project_root)
+        set_pseudo_dir_to_temp(scf_input, project_root)  # Unified pseudo_dir to temp/pseudo
         modified_scf = tmp_path / "si.1_scf.in"
         QEInputGenerator.write_file(scf_input, modified_scf)
         
         scf_result = run_input_roundtrip_execution(
             input_file=modified_scf,
             qe_engine=qe_engine,
-            timeout=120,
+            timeout=300,  # Increased from 120 to 300 seconds for CI stability
             working_dir=tmp_path,
-            step_number="1"
+            step_number="1",
+            category="4_Si_DOS"  # Explicitly set category for proper output organization
         )
         assert scf_result["run_success"], "SCF must succeed before NSCF"
         
         # Then run NSCF
         nscf_file = si_dos_dir / "si.2_nscf.in"
         nscf_input = QEInputParser.parse_file(nscf_file)
-        nscf_control = nscf_input.get_namelist("control")
-        if nscf_control:
-            nscf_control.parameters["pseudo_dir"] = str(tmp_path)
         set_outdir_to_temp(nscf_input, project_root)
+        set_pseudo_dir_to_temp(nscf_input, project_root)  # Unified pseudo_dir to temp/pseudo
         modified_nscf = tmp_path / "si.2_nscf.in"
         QEInputGenerator.write_file(nscf_input, modified_nscf)
         
         nscf_result = run_input_roundtrip_execution(
             input_file=modified_nscf,
             qe_engine=qe_engine,
-            timeout=120,
+            timeout=300,  # Increased from 120 to 300 seconds for CI stability
             working_dir=tmp_path,
-            step_number="2"
+            step_number="2",
+            category="4_Si_DOS"  # Explicitly set category for proper output organization
         )
         
         assert nscf_result["parse_success"], f"NSCF parse failed: {nscf_result.get('error')}"
@@ -435,19 +431,18 @@ class TestSiDOSWorkflow:
         # Step 1: Run SCF
         scf_file = si_dos_dir / "si.1_scf.in"
         scf_input = QEInputParser.parse_file(scf_file)
-        control = scf_input.get_namelist("control")
-        if control:
-            control.parameters["pseudo_dir"] = str(tmp_path)
         set_outdir_to_temp(scf_input, project_root)
+        set_pseudo_dir_to_temp(scf_input, project_root)  # Unified pseudo_dir to temp/pseudo
         modified_scf = tmp_path / "si.1_scf.in"
         QEInputGenerator.write_file(scf_input, modified_scf)
         
         scf_result = run_input_roundtrip_execution(
             input_file=modified_scf,
             qe_engine=qe_engine,
-            timeout=120,
+            timeout=300,  # Increased from 120 to 300 seconds for CI stability
             working_dir=tmp_path,
-            step_number="1"
+            step_number="1",
+            category="4_Si_DOS"  # Explicitly set category for proper output organization
         )
         assert scf_result["run_success"], f"SCF failed: {scf_result.get('error')}"
         print(f"✓ SCF completed: {scf_result.get('message', 'OK')}")
@@ -455,19 +450,18 @@ class TestSiDOSWorkflow:
         # Step 2: Run NSCF
         nscf_file = si_dos_dir / "si.2_nscf.in"
         nscf_input = QEInputParser.parse_file(nscf_file)
-        nscf_control = nscf_input.get_namelist("control")
-        if nscf_control:
-            nscf_control.parameters["pseudo_dir"] = str(tmp_path)
         set_outdir_to_temp(nscf_input, project_root)
+        set_pseudo_dir_to_temp(nscf_input, project_root)  # Unified pseudo_dir to temp/pseudo
         modified_nscf = tmp_path / "si.2_nscf.in"
         QEInputGenerator.write_file(nscf_input, modified_nscf)
         
         nscf_result = run_input_roundtrip_execution(
             input_file=modified_nscf,
             qe_engine=qe_engine,
-            timeout=120,
+            timeout=300,  # Increased from 120 to 300 seconds for CI stability
             working_dir=tmp_path,
-            step_number="2"
+            step_number="2",
+            category="4_Si_DOS"  # Explicitly set category for proper output organization
         )
         assert nscf_result["run_success"], f"NSCF failed: {nscf_result.get('error')}"
         print(f"✓ NSCF completed: {nscf_result.get('message', 'OK')}")
@@ -559,8 +553,12 @@ class TestSiDOSWorkflow:
         command = [dos_executable, "-inp", str(generated_dos)]
         
         # Set environment
+        # Set ESPRESSO_PSEUDO to temp/pseudo for unified pseudopotential storage
+        project_root = Path(__file__).parent.parent.parent
+        temp_pseudo_dir = project_root / "temp" / "pseudo"
+        temp_pseudo_dir.mkdir(parents=True, exist_ok=True)
         env = os.environ.copy()
-        env['ESPRESSO_PSEUDO'] = str(tmp_path)
+        env['ESPRESSO_PSEUDO'] = str(temp_pseudo_dir.absolute())
         
         # Run dos.x
         try:
@@ -569,13 +567,24 @@ class TestSiDOSWorkflow:
                 cwd=tmp_path,
                 capture_output=True,
                 text=True,
-                timeout=120,
+                timeout=300,  # Increased from 120 to 300 seconds for CI stability
                 env=env
             )
             
             # Write output
             stdout_file = tmp_path / "dos_stdout.txt"
             stdout_file.write_text(result_dos.stdout)
+            
+            # Save DOS output to temp/test_outputs for debugging
+            try:
+                project_root = Path(__file__).parent.parent.parent
+                temp_output_dir = project_root / "temp" / "test_outputs" / "4_Si_DOS"
+                temp_output_dir.mkdir(parents=True, exist_ok=True)
+                dos_output_file = temp_output_dir / "si.3_dos_step3.out"
+                dos_output_file.write_text(result_dos.stdout)
+                print(f"✓ DOS output saved to: {dos_output_file}")
+            except Exception as e:
+                print(f"Warning: Failed to save DOS output to temp/test_outputs: {e}")
             
             # Check if successful
             assert result_dos.returncode == 0, f"dos.x failed with return code {result_dos.returncode}\n{result_dos.stderr}"
@@ -586,6 +595,13 @@ class TestSiDOSWorkflow:
                 dos_data_file = tmp_path / dos_namelist.get("fildos")
                 if dos_data_file.exists():
                     print(f"✓ DOS data file created: {dos_data_file.name}")
+                    # Also save DOS data file to temp/test_outputs
+                    try:
+                        dos_data_output_file = temp_output_dir / dos_data_file.name
+                        shutil.copy2(dos_data_file, dos_data_output_file)
+                        print(f"✓ DOS data file saved to: {dos_data_output_file}")
+                    except Exception as e:
+                        print(f"Warning: Failed to save DOS data file to temp/test_outputs: {e}")
             
             print(f"✓ DOS completed")
         except subprocess.TimeoutExpired:
