@@ -176,8 +176,11 @@ def run_module_test(
         
         # Set up environment
         env = os.environ.copy()
-        # ESPRESSO_PSEUDO points to working directory where pseudopotentials are copied
-        env['ESPRESSO_PSEUDO'] = str(working_dir)
+        # ESPRESSO_PSEUDO points to temp/pseudo for unified pseudopotential storage
+        project_root = Path(__file__).parent.parent.parent
+        temp_pseudo_dir = project_root / "temp" / "pseudo"
+        temp_pseudo_dir.mkdir(parents=True, exist_ok=True)
+        env['ESPRESSO_PSEUDO'] = str(temp_pseudo_dir.absolute())
         if nprocs > 1:
             env['NPROCS'] = str(nprocs)
         
@@ -424,21 +427,36 @@ def run_test_category(
             import shutil
             shutil.copy2(test_path, working_input)
             
-            # Update pseudo_dir in input file to point to working directory
-            # This ensures QE can find the pseudopotentials
+            # Update pseudo_dir in input file to point to temp/pseudo
+            # This ensures QE can find the pseudopotentials from unified location
             # We'll modify the file directly to preserve original formatting
             try:
                 content = working_input.read_text()
-                # Replace pseudo_dir with './' (current directory where pseudopotentials are copied)
+                # Replace pseudo_dir with temp/pseudo absolute path
                 # Match patterns like: pseudo_dir = '../../pseudo' or pseudo_dir='../../pseudo'
                 import re
+                project_root = Path(__file__).parent.parent.parent
+                temp_pseudo_dir = project_root / "temp" / "pseudo"
+                temp_pseudo_dir.mkdir(parents=True, exist_ok=True)
+                pseudo_dir_abs = str(temp_pseudo_dir.absolute())
+                
                 # Pattern to match pseudo_dir assignments
                 pattern = r'pseudo_dir\s*=\s*[^\s,/\n]+'
-                replacement = "pseudo_dir = './'"
+                replacement = f"pseudo_dir = '{pseudo_dir_abs}'"
                 new_content = re.sub(pattern, replacement, content, flags=re.IGNORECASE)
                 
                 if new_content != content:
                     working_input.write_text(new_content)
+                else:
+                    # If pseudo_dir doesn't exist, add it to control namelist
+                    # Check if control namelist exists
+                    if "&control" in content.lower() or "&CONTROL" in content:
+                        # Add pseudo_dir to existing control namelist
+                        control_pattern = r'(&control[^\n]*\n(?:[^&]*\n)*?)(/)'
+                        replacement_with_pseudo = f"\\1    pseudo_dir = '{pseudo_dir_abs}'\n\\2"
+                        new_content = re.sub(control_pattern, replacement_with_pseudo, content, flags=re.IGNORECASE | re.MULTILINE)
+                        if new_content != content:
+                            working_input.write_text(new_content)
             except Exception as e:
                 # If modification fails, continue with original file
                 # Pseudopotentials should still be found via ESPRESSO_PSEUDO env var
