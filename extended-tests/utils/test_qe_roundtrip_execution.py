@@ -22,6 +22,7 @@ import shutil
 import urllib.request
 import urllib.error
 import os
+import socket
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
@@ -53,6 +54,44 @@ def set_outdir_to_temp(qe_input: QEInput, project_root: Path) -> None:
             temp_outdir.mkdir(parents=True, exist_ok=True)
             # Use absolute path to avoid issues
             namelist.parameters["outdir"] = str(temp_outdir.absolute())
+
+
+def set_pseudo_dir_to_temp(qe_input: QEInput, project_root: Path) -> None:
+    """
+    Set pseudo_dir parameter in QE input to temp/pseudo.
+    All pseudopotentials should be stored in temp/pseudo/.
+    
+    Args:
+        qe_input: Parsed QE input object
+        project_root: Project root directory
+    """
+    # Check all namelists for pseudo_dir parameter
+    for namelist in qe_input.namelists:
+        if "pseudo_dir" in namelist.parameters:
+            # Set pseudo_dir to temp/pseudo (relative to project root)
+            temp_pseudo_dir = project_root / "temp" / "pseudo"
+            temp_pseudo_dir.mkdir(parents=True, exist_ok=True)
+            # Use absolute path to avoid issues
+            namelist.parameters["pseudo_dir"] = str(temp_pseudo_dir.absolute())
+        else:
+            # If pseudo_dir doesn't exist, add it to control namelist
+            # Find or create control namelist
+            control_namelist = None
+            for nl in qe_input.namelists:
+                if nl.name.lower() == "control":
+                    control_namelist = nl
+                    break
+            
+            if control_namelist is None:
+                # Create control namelist if it doesn't exist
+                from quantumvitas.core.engines.qe_input import QENamelist
+                control_namelist = QENamelist("control", {})
+                qe_input.namelists.insert(0, control_namelist)  # Insert at beginning
+            
+            # Set pseudo_dir in control namelist
+            temp_pseudo_dir = project_root / "temp" / "pseudo"
+            temp_pseudo_dir.mkdir(parents=True, exist_ok=True)
+            control_namelist.parameters["pseudo_dir"] = str(temp_pseudo_dir.absolute())
 
 
 def run_with_timeout(command: list, cwd: Path, timeout: int = 60, env: Optional[Dict[str, str]] = None) -> tuple[int, str, str]:
@@ -112,15 +151,34 @@ def download_pseudopotential(pp_name: str, pseudo_dir: Path, network_url: str = 
     if pp_path.exists():
         return True
     
-    # Try to download
+    # Try to download with timeout and retry
     download_url = network_url + pp_name
-    try:
-        print(f"  Downloading {pp_name}...")
-        urllib.request.urlretrieve(download_url, pp_path)
-        return pp_path.exists()
-    except (urllib.error.URLError, urllib.error.HTTPError) as e:
-        print(f"  Warning: Failed to download {pp_name}: {e}")
-        return False
+    max_retries = 3
+    timeout = 30  # 30 seconds timeout per attempt
+    
+    for attempt in range(max_retries):
+        try:
+            print(f"  Downloading {pp_name}... (attempt {attempt + 1}/{max_retries})")
+            # Use urlretrieve with timeout
+            import socket
+            socket.setdefaulttimeout(timeout)
+            urllib.request.urlretrieve(download_url, pp_path)
+            socket.setdefaulttimeout(None)  # Reset timeout
+            if pp_path.exists() and pp_path.stat().st_size > 0:
+                print(f"  ✓ Successfully downloaded {pp_name}")
+                return True
+            else:
+                print(f"  Warning: Downloaded file is empty or missing")
+        except (urllib.error.URLError, urllib.error.HTTPError, socket.timeout, Exception) as e:
+            socket.setdefaulttimeout(None)  # Reset timeout
+            if attempt < max_retries - 1:
+                print(f"  Warning: Attempt {attempt + 1} failed: {e}, retrying...")
+                time.sleep(2)  # Wait 2 seconds before retry
+            else:
+                print(f"  Error: Failed to download {pp_name} after {max_retries} attempts: {e}")
+                return False
+    
+    return False
 
 
 def ensure_pseudopotentials(input_file: Path, working_dir: Path, test_suite_dir: Optional[Path] = None) -> bool:
@@ -296,7 +354,8 @@ def run_input_roundtrip_execution(
     qe_engine: QuantumEspressoEngine,
     timeout: int = 60,
     working_dir: Optional[Path] = None,
-    step_number: Optional[str] = None
+    step_number: Optional[str] = None,
+    category: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Test roundtrip execution: parse -> generate -> run -> verify.
@@ -345,6 +404,8 @@ def run_input_roundtrip_execution(
             # Set outdir to temp/outdir if it exists
             project_root = Path(__file__).parent.parent.parent
             set_outdir_to_temp(qe_input, project_root)
+            # Set pseudo_dir to temp/pseudo for unified pseudopotential storage
+            set_pseudo_dir_to_temp(qe_input, project_root)
         except Exception as e:
             result["error"] = f"Parse failed: {e}"
             return result
@@ -363,15 +424,22 @@ def run_input_roundtrip_execution(
             project_root = Path(__file__).parent.parent.parent
             temp_output_dir = project_root / "temp" / "test_outputs"
             
-            # Try to determine category from input_file path
-            category = None
+            # Try to determine category from input_file path or use provided category
             input_path = Path(input_file)
-            if "test-suite" in str(input_path):
-                parts = input_path.parts
-                for i, part in enumerate(parts):
-                    if part == "test-suite" and i + 1 < len(parts):
-                        category = parts[i + 1]  # Category is usually the first subdirectory
-                        break
+            if category is None:
+                if "test-suite" in str(input_path):
+                    parts = input_path.parts
+                    for i, part in enumerate(parts):
+                        if part == "test-suite" and i + 1 < len(parts):
+                            category = parts[i + 1]  # Category is usually the first subdirectory
+                            break
+                # Also check for ci_test_data structure (e.g., 4_Si_DOS, pw_scf)
+                elif "ci_test_data" in str(input_path):
+                    parts = input_path.parts
+                    for i, part in enumerate(parts):
+                        if part == "ci_test_data" and i + 1 < len(parts):
+                            category = parts[i + 1]  # Category is the first subdirectory after ci_test_data
+                            break
             
             if category:
                 temp_output_dir = temp_output_dir / category
@@ -412,7 +480,21 @@ def run_input_roundtrip_execution(
             pass
         
         if not ensure_pseudopotentials(input_file, working_dir, test_suite_dir):
-            result["error"] = "Failed to obtain required pseudopotentials"
+            # Provide more detailed error information
+            qe_input_check = QEInputParser.parse_file(input_file)
+            atomic_species = qe_input_check.get_card(QECardType.ATOMIC_SPECIES)
+            required_pps = []
+            if atomic_species and atomic_species.data:
+                for line in atomic_species.data:
+                    if len(line) >= 3:
+                        required_pps.append(line[2])
+            
+            error_msg = f"Failed to obtain required pseudopotentials: {', '.join(required_pps) if required_pps else 'unknown'}"
+            error_msg += f"\nThis may be due to network issues in CI. Please check:"
+            error_msg += f"\n  1. Network connectivity to https://pseudopotentials.quantum-espresso.org/"
+            error_msg += f"\n  2. Pseudopotential files in temp/pseudo/ directory"
+            error_msg += f"\n  3. Working directory: {working_dir}"
+            result["error"] = error_msg
             return result
         
         # Step 4: Build and run command
@@ -441,10 +523,13 @@ def run_input_roundtrip_execution(
                 input_stem = generated_input.stem
                 output_out_file = working_dir / f"{input_stem}.out"
             
-            # Set ESPRESSO_PSEUDO environment variable to point to working directory
-            # so pw.x can find the pseudopotentials
+            # Set ESPRESSO_PSEUDO environment variable to point to temp/pseudo
+            # This ensures QE can find pseudopotentials even if pseudo_dir is not set
+            project_root = Path(__file__).parent.parent.parent
+            temp_pseudo_dir = project_root / "temp" / "pseudo"
+            temp_pseudo_dir.mkdir(parents=True, exist_ok=True)
             env = os.environ.copy()
-            env['ESPRESSO_PSEUDO'] = str(working_dir)
+            env['ESPRESSO_PSEUDO'] = str(temp_pseudo_dir.absolute())
             
             # Run with timeout
             returncode, stdout, stderr = run_with_timeout(command, working_dir, timeout, env=env)
@@ -469,6 +554,47 @@ def run_input_roundtrip_execution(
             # Use the actual output file that was written (output_out_file), not the predicted one
             # This ensures the file exists and has content
             result["output_file"] = str(output_out_file)
+            
+            # Save output file to temp/test_outputs for debugging (similar to parsed input)
+            if output_out_file.exists() and output_out_file.stat().st_size > 0:
+                try:
+                    project_root = Path(__file__).parent.parent.parent
+                    temp_output_dir = project_root / "temp" / "test_outputs"
+                    
+                    # Determine category from input_file path (same logic as for parsed input)
+                    # Use provided category if available, otherwise try to detect from path
+                    input_path = Path(input_file)
+                    if category is None:
+                        if "test-suite" in str(input_path):
+                            parts = input_path.parts
+                            for i, part in enumerate(parts):
+                                if part == "test-suite" and i + 1 < len(parts):
+                                    category = parts[i + 1]
+                                    break
+                        elif "ci_test_data" in str(input_path):
+                            parts = input_path.parts
+                            for i, part in enumerate(parts):
+                                if part == "ci_test_data" and i + 1 < len(parts):
+                                    category = parts[i + 1]
+                                    break
+                    
+                    if category:
+                        temp_output_dir = temp_output_dir / category
+                    temp_output_dir.mkdir(parents=True, exist_ok=True)
+                    
+                    # Create output filename
+                    input_filename = input_path.stem
+                    if step_number:
+                        output_filename = f"{input_filename}_step{step_number}.out"
+                    else:
+                        output_filename = f"{input_filename}.out"
+                    
+                    temp_output_file = temp_output_dir / output_filename
+                    shutil.copy2(output_out_file, temp_output_file)
+                    result["temp_output_file"] = str(temp_output_file)
+                except Exception as e:
+                    # Don't fail the test if saving to temp fails
+                    print(f"Warning: Failed to save output to temp/test_outputs: {e}")
             
             if not result["run_success"]:
                 # Check if output file exists (might have been created before error)
