@@ -8,7 +8,7 @@
 &system
     ibrav=2, celldm(1) =10.410909236, 
     nat=2, ntyp=1,
-    ecutwfc=50
+    ecutwfc=12
 /
 &electrons
     conv_thr=1e-8
