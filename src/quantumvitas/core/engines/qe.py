@@ -176,21 +176,31 @@ class QuantumEspressoEngine(Engine):
         if search_paths is None:
             search_paths = []
             
-            # Add configured bin directory
+            # Priority 1: Add configured bin directory from QE_HOME
+            # First check if installation has a valid qe_home
+            if self._installation and self._installation.qe_home:
+                qe_home_bin = self._installation.qe_home / "bin"
+                if qe_home_bin.exists() and qe_home_bin not in search_paths:
+                    search_paths.append(qe_home_bin)
+            
+            # Priority 2: Add configured bin directory (backward compatibility)
             if self.qe_bin_dir:
-                search_paths.append(self.qe_bin_dir)
-                # If qe_bin_dir is QE root, also check bin subdirectory
-                bin_subdir = self.qe_bin_dir / "bin"
-                if bin_subdir.exists() and bin_subdir not in search_paths:
-                    search_paths.append(bin_subdir)
+                # If qe_bin_dir is QE root, check bin subdirectory
+                if (self.qe_bin_dir / "bin").exists():
+                    bin_subdir = self.qe_bin_dir / "bin"
+                    if bin_subdir not in search_paths:
+                        search_paths.append(bin_subdir)
+                elif self.qe_bin_dir not in search_paths:
+                    # qe_bin_dir is already a bin directory
+                    search_paths.append(self.qe_bin_dir)
         
-        # Search in specified paths
+        # Search in specified paths (QE_HOME/bin first)
         for search_path in search_paths:
             exe_path = search_path / executable_name
             if exe_path.exists() and exe_path.is_file() and os.access(exe_path, os.X_OK):
                 return exe_path
         
-        # Search in system PATH
+        # Fallback: Search in system PATH (only if not found in QE_HOME)
         exe_in_path = shutil.which(executable_name)
         if exe_in_path:
             exe_path = Path(exe_in_path)
