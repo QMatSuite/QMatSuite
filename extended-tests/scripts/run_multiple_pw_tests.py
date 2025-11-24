@@ -16,13 +16,9 @@ sys.path.insert(0, str(project_root / "extended-tests"))
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.base import EngineConfig
 
-# Import test function directly
-import importlib.util
-test_file = project_root / "tests" / "test_qe_roundtrip_execution.py"
-spec = importlib.util.spec_from_file_location("test_qe_roundtrip_execution", test_file)
-test_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(test_module)
-run_input_roundtrip_execution = test_module.run_input_roundtrip_execution
+# Import from new locations
+from quantumvitas.core.engines import ensure_pseudopotentials
+from tests.core import run_and_verify_step_with_assert
 
 
 def main():
@@ -120,12 +116,34 @@ def main():
         input_file = input_files[0]
         print(f"  File: {input_file.name}")
         
-        result = run_input_roundtrip_execution(input_file, engine, args.timeout)
-        all_results.append({
-            "category": pw_dir.name,
-            "file": input_file.name,
-            **result
-        })
+        # Use standardized step execution
+        import tempfile
+        test_working_dir = Path(tempfile.mkdtemp(prefix="qe_test_"))
+        try:
+            step_result = run_and_verify_step_with_assert(
+                input_file=input_file,
+                qe_engine=engine,
+                working_dir=test_working_dir,
+                reference_file=None,
+                category=pw_dir.name,
+                timeout=args.timeout
+            )
+            all_results.append({
+                "category": pw_dir.name,
+                "file": input_file.name,
+                "success": step_result.success,
+                "error": step_result.error,
+                "message": f"Step {step_result.step_type} completed",
+                "time_taken": step_result.execution_time
+            })
+        except AssertionError as e:
+            all_results.append({
+                "category": pw_dir.name,
+                "file": input_file.name,
+                "success": False,
+                "error": str(e),
+                "time_taken": 0
+            })
         
         if result["success"]:
             print(f"  ✓ PASS ({result['time_taken']:.1f}s): {result.get('message', 'OK')}")

@@ -25,6 +25,7 @@ sys.path.insert(0, str(project_root))
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.base import EngineConfig
 from quantumvitas.core.engines.qe_input import QEInput
+from tests.core import run_command_with_timeout, TimeoutError
 
 # Import shared test utilities from tests/core
 from tests.core.qe_test_utils import (
@@ -33,29 +34,9 @@ from tests.core.qe_test_utils import (
     compare_with_benchmark
 )
 
-# Import test function from extended-tests/utils
-import importlib.util
-test_file = project_root / "extended-tests" / "utils" / "test_qe_roundtrip_execution.py"
-if test_file.exists():
-    spec = importlib.util.spec_from_file_location("test_qe_roundtrip_execution", test_file)
-    test_module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(test_module)
-    ensure_pseudopotentials = test_module.ensure_pseudopotentials
-    set_outdir_to_temp = test_module.set_outdir_to_temp
-else:
-    # Fallback: define set_outdir_to_temp locally
-    def set_outdir_to_temp(qe_input: QEInput, project_root: Path) -> None:
-        """Set outdir parameter in QE input to temp/outdir if it exists."""
-        for namelist in qe_input.namelists:
-            if "outdir" in namelist.parameters:
-                temp_outdir = project_root / "temp" / "outdir"
-                temp_outdir.mkdir(parents=True, exist_ok=True)
-                namelist.parameters["outdir"] = str(temp_outdir.absolute())
-    
-    # Fallback: define a simple version if file doesn't exist
-    def ensure_pseudopotentials(input_file: Path, working_dir: Path, test_suite_dir: Path = None) -> bool:
-        """Placeholder for pseudopotential download."""
-        return True
+# Import from new locations
+from quantumvitas.core.engines import ensure_pseudopotentials
+from tests.core.qe_step_runner import set_outdir_to_temp, set_pseudo_dir_to_temp
 
 
 # Re-export for backward compatibility

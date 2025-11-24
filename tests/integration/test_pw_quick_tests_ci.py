@@ -17,7 +17,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "extended-tests" / 
 from quantumvitas.core.engines.qe_input import QEInputParser, QEInputGenerator
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.base import EngineConfig
-from test_qe_roundtrip_execution import run_input_roundtrip_execution
+# Removed: run_input_roundtrip_execution
+# Now using run_and_verify_step_with_assert from tests.core
+from tests.core import run_and_verify_step_with_assert
 
 # Mark as quick test (but not requires_qe, so it runs in CI)
 pytestmark = pytest.mark.quick
@@ -173,21 +175,31 @@ class TestPWQuickExecution:
             test_working_dir = tmp_path / category / test_name.replace(".in", "")
             test_working_dir.mkdir(parents=True, exist_ok=True)
             
-            # Run the test
-            result = run_input_roundtrip_execution(
-                input_file=input_file,
-                qe_engine=qe_engine,
-                timeout=300,  # 5 minute timeout
-                working_dir=test_working_dir,
-                category=category
-            )
-            
-            results.append({
-                "test": f"{category}/{test_name}",
-                "success": result.get("run_success", False),
-                "error": result.get("error"),
-                "message": result.get("message")
-            })
+            # Run the test using standardized step execution
+            project_root = Path(__file__).parent.parent.parent
+            try:
+                step_result = run_and_verify_step_with_assert(
+                    input_file=input_file,
+                    qe_engine=qe_engine,
+                    working_dir=test_working_dir,
+                    reference_file=None,  # No reference file for quick tests
+                    category=category,
+                    timeout=300,
+                    project_root=project_root
+                )
+                results.append({
+                    "test": f"{category}/{test_name}",
+                    "success": step_result.success,
+                    "error": step_result.error,
+                    "message": f"Step {step_result.step_type} completed"
+                })
+            except AssertionError as e:
+                results.append({
+                    "test": f"{category}/{test_name}",
+                    "success": False,
+                    "error": str(e),
+                    "message": "Verification failed"
+                })
         
         # Check results
         passed = sum(1 for r in results if r["success"])

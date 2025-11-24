@@ -27,17 +27,12 @@ from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.base import EngineConfig
 from quantumvitas.core.engines.qe_input import QEInputParser, QEInputGenerator
 
-# Import test function
-import importlib.util
-# Try extended-tests/utils first, then fallback
-test_file = project_root / "extended-tests" / "utils" / "test_qe_roundtrip_execution.py"
-if not test_file.exists():
-    test_file = project_root / "extended-tests" / "utils" / "qe_module_base.py"
-spec = importlib.util.spec_from_file_location("test_qe_roundtrip_execution", test_file)
-test_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(test_module)
-run_input_roundtrip_execution = test_module.run_input_roundtrip_execution
-ensure_pseudopotentials = test_module.ensure_pseudopotentials
+# Import from new locations
+from quantumvitas.core.engines import ensure_pseudopotentials
+from tests.core.qe_step_runner import set_outdir_to_temp, set_pseudo_dir_to_temp
+from tests.core import run_command_with_timeout, TimeoutError
+from tests.core.qe_test_utils import compare_with_benchmark
+from quantumvitas.core.engines.qe_input import QEInputParser, QEInputGenerator
 
 
 def parse_jobconfig(jobconfig_path: Path) -> Dict[str, List[Tuple[str, str]]]:
@@ -281,16 +276,131 @@ def run_test_category(
             except Exception:
                 pass
             
-            # Run test
-            # For workflow tests, reuse the same working directory and pass step number
-            if is_workflow:
-                result = run_input_roundtrip_execution(test_path, qe_engine, timeout, working_dir, args)
+            # Run test using standardized step execution
+            # Parse and prepare input
+            qe_input = QEInputParser.parse_file(test_path)
+            project_root = Path(__file__).parent.parent.parent
+            set_outdir_to_temp(qe_input, project_root)
+            set_pseudo_dir_to_temp(qe_input, project_root)
+            
+            # Generate input file in working directory
+            if is_workflow and working_dir:
+                test_working_dir = working_dir
             else:
-                result = run_input_roundtrip_execution(test_path, qe_engine, timeout, None, None)
-            result["category"] = category
-            result["file"] = input_file
-            result["step"] = args if args else str(i+1)
-            result["is_nscf"] = is_nscf_calc  # Store NSCF flag for comparison
+                import tempfile
+                test_working_dir = Path(tempfile.mkdtemp(prefix="qe_test_"))
+            
+            test_working_dir.mkdir(parents=True, exist_ok=True)
+            generated_input = test_working_dir / test_path.name
+            QEInputGenerator.write_file(qe_input, generated_input)
+            
+            # Ensure pseudopotentials
+            if not ensure_pseudopotentials(test_path, test_working_dir, test_suite_dir):
+                results.append({
+                    "category": category,
+                    "file": input_file,
+                    "success": False,
+                    "error": "Failed to obtain pseudopotentials",
+                    "time_taken": 0
+                })
+                continue
+            
+            # Detect step type and get executable
+            step_type = qe_engine.detect_step_type(generated_input)
+            executable_name = qe_engine.EXECUTABLE_MAP.get(step_type, "pw.x")
+            
+            # Build command
+            command = qe_engine.build_command(step_type, generated_input, test_working_dir)
+            
+            # Set environment
+            temp_pseudo_dir = project_root / "temp" / "pseudo"
+            temp_pseudo_dir.mkdir(parents=True, exist_ok=True)
+            env = os.environ.copy()
+            env['ESPRESSO_PSEUDO'] = str(temp_pseudo_dir.absolute())
+            env['OMP_NUM_THREADS'] = '1'
+            
+            # Run command
+            start_time = time.time()
+            try:
+                returncode, stdout, stderr = run_command_with_timeout(
+                    command, test_working_dir, timeout, env=env, stdin_file=generated_input
+                )
+                
+                # Write output files
+                stdout_file = test_working_dir / "stdout.txt"
+                stdout_file.write_text(stdout)
+                (test_working_dir / "stderr.txt").write_text(stderr)
+                
+                # Determine output file
+                input_stem = generated_input.stem
+                output_file = test_working_dir / f"{input_stem}.out"
+                if stdout and len(stdout.strip()) > 0:
+                    output_file.write_text(stdout)
+                
+                # Create result dictionary
+                result = {
+                    "category": category,
+                    "file": input_file,
+                    "step": args if args else str(i+1),
+                    "is_nscf": is_nscf_calc,
+                    "run_success": (returncode == 0),
+                    "returncode": returncode,
+                    "output_file": str(output_file),
+                    "time_taken": time.time() - start_time,
+                    "verify_success": False,
+                    "success": False,
+                    "error": None,
+                    "message": None
+                }
+                
+                # Verify output
+                if returncode == 0:
+                    verify_file = output_file if output_file.exists() and output_file.stat().st_size > 0 else stdout_file
+                    if verify_file.exists():
+                        from tests.core.qe_step_verification import verify_step_result
+                        from quantumvitas.core.engines.qe_workflow import StepResult
+                        
+                        step_result = StepResult(
+                            step_type=step_type,
+                            input_file=generated_input,
+                            output_file=verify_file,
+                            success=(returncode == 0),
+                            return_code=returncode,
+                            stdout=stdout,
+                            stderr=stderr
+                        )
+                        
+                        verify_success, verify_message = verify_step_result(step_result, None, category)
+                        result["verify_success"] = verify_success
+                        result["message"] = verify_message
+                        result["success"] = verify_success
+                    else:
+                        result["error"] = "Output file not found"
+                else:
+                    result["error"] = f"{executable_name} returned {returncode}\nstderr: {stderr[:200]}"
+                    
+            except TimeoutError as e:
+                result = {
+                    "category": category,
+                    "file": input_file,
+                    "step": args if args else str(i+1),
+                    "is_nscf": is_nscf_calc,
+                    "run_success": False,
+                    "time_taken": time.time() - start_time,
+                    "error": str(e),
+                    "success": False
+                }
+            except Exception as e:
+                result = {
+                    "category": category,
+                    "file": input_file,
+                    "step": args if args else str(i+1),
+                    "is_nscf": is_nscf_calc,
+                    "run_success": False,
+                    "time_taken": time.time() - start_time,
+                    "error": f"Error running test: {e}",
+                    "success": False
+                }
             
             # Compare with benchmark if available
             # For workflow tests, benchmark filename includes step number

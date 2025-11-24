@@ -17,18 +17,10 @@ sys.path.insert(0, str(project_root / "extended-tests" / "utils"))
 
 from quantumvitas.core.engines.qe import QuantumEspressoEngine, EngineConfig
 from quantumvitas.core.engines.qe_input import QEInputParser, QEInputGenerator
-# Import from extended-tests/utils
-import importlib.util
-test_qe_roundtrip_spec = importlib.util.spec_from_file_location(
-    "test_qe_roundtrip_execution",
-    project_root / "extended-tests" / "utils" / "test_qe_roundtrip_execution.py"
-)
-test_qe_roundtrip = importlib.util.module_from_spec(test_qe_roundtrip_spec)
-test_qe_roundtrip_spec.loader.exec_module(test_qe_roundtrip)
-run_input_roundtrip_execution = test_qe_roundtrip.run_input_roundtrip_execution
-set_outdir_to_temp = test_qe_roundtrip.set_outdir_to_temp
-set_pseudo_dir_to_temp = test_qe_roundtrip.set_pseudo_dir_to_temp
-ensure_pseudopotentials = test_qe_roundtrip.ensure_pseudopotentials
+# Import from new locations
+from quantumvitas.core.engines import ensure_pseudopotentials
+from tests.core.qe_step_runner import set_outdir_to_temp, set_pseudo_dir_to_temp
+from tests.core import run_and_verify_step_with_assert
 
 def generate_reference_outputs():
     """生成所有 reference 输出文件。"""
@@ -93,20 +85,28 @@ def generate_reference_outputs():
     modified_scf = work_dir / "si.1_scf.in"
     QEInputGenerator.write_file(scf_input, modified_scf)
     
-    scf_result = run_input_roundtrip_execution(
-        input_file=modified_scf,
-        qe_engine=qe_engine,
-        timeout=300,
-        working_dir=work_dir,
-        step_number="1"
-    )
+    # Run SCF using standardized step execution
+    scf_reference = None  # No reference for generation
+    try:
+        scf_result = run_and_verify_step_with_assert(
+            input_file=modified_scf,
+            qe_engine=qe_engine,
+            working_dir=work_dir,
+            reference_file=scf_reference,
+            category="4_Si_DOS",
+            timeout=300,
+            project_root=project_root
+        )
+    except AssertionError as e:
+        print(f"❌ SCF 计算失败: {e}")
+        return False
     
-    if not scf_result["run_success"]:
-        print(f"❌ SCF 计算失败: {scf_result.get('error')}")
+    if not scf_result.success:
+        print(f"❌ SCF 计算失败: {scf_result.error}")
         return False
     
     # 复制输出文件到 reference_out
-    scf_output = Path(scf_result["output_file"])
+    scf_output = scf_result.output_file
     if scf_output.exists():
         reference_scf = reference_out_dir / "si.1_scf.out"
         shutil.copy2(scf_output, reference_scf)
@@ -152,20 +152,28 @@ def generate_reference_outputs():
     modified_nscf = work_dir / "si.2_nscf.in"
     QEInputGenerator.write_file(nscf_input, modified_nscf)
     
-    nscf_result = run_input_roundtrip_execution(
-        input_file=modified_nscf,
-        qe_engine=qe_engine,
-        timeout=300,
-        working_dir=work_dir,
-        step_number="2"
-    )
+    # Run NSCF using standardized step execution
+    nscf_reference = None  # No reference for generation
+    try:
+        nscf_result = run_and_verify_step_with_assert(
+            input_file=modified_nscf,
+            qe_engine=qe_engine,
+            working_dir=work_dir,
+            reference_file=nscf_reference,
+            category="4_Si_DOS",
+            timeout=300,
+            project_root=project_root
+        )
+    except AssertionError as e:
+        print(f"❌ NSCF 计算失败: {e}")
+        return False
     
-    if not nscf_result["run_success"]:
-        print(f"❌ NSCF 计算失败: {nscf_result.get('error')}")
+    if not nscf_result.success:
+        print(f"❌ NSCF 计算失败: {nscf_result.error}")
         return False
     
     # 复制输出文件到 reference_out
-    nscf_output = Path(nscf_result["output_file"])
+    nscf_output = nscf_result.output_file
     if nscf_output.exists():
         reference_nscf = reference_out_dir / "si.2_nscf.out"
         shutil.copy2(nscf_output, reference_nscf)

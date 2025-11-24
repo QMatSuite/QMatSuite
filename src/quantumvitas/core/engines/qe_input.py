@@ -291,26 +291,60 @@ class QEInput:
                 if input_nl.get('atom') is not None or input_nl.get('zed') is not None:
                     return QEModule.LD1
                 
-                # Check for postahc.x, dynmat.x, d3hess.x specific parameters
-                # These modules are typically used after ph.x calculations
+                # Distinguish q2r.x, matdyn.x, and dynmat.x based on official documentation:
+                # https://www.quantum-espresso.org/Doc/INPUT_Q2R.html
+                # https://www.quantum-espresso.org/Doc/INPUT_MATDYN.html
+                # https://www.quantum-espresso.org/Doc/INPUT_DYNMAT.html
+                #
+                # q2r.x: 
+                #   - Input: fildyn (dynamical matrix files from ph.x) - REQUIRED
+                #   - Output: flfrc (force constants file)
+                #   - Key: q2r.x has BOTH fildyn (input) AND flfrc (output)
+                #
+                # matdyn.x:
+                #   - Input: flfrc (force constants file from q2r.x) - REQUIRED
+                #   - Other params: asr, dos, flfrq, flvec, fleig, fldyn, etc.
+                #   - Key: matdyn.x has flfrc (input, required) but NO fildyn
+                #
+                # dynmat.x:
+                #   - Input: fildyn (dynamical matrix files) - REQUIRED
+                #   - Other params: asr (acoustic sum rule)
+                #   - Key: dynmat.x has fildyn and asr, but NO flfrc
+                #
+                # Detection logic:
+                # 1. If has fildyn AND flfrc -> q2r.x (reads fildyn, writes flfrc)
+                # 2. If has flfrc but NO fildyn -> matdyn.x (reads flfrc from q2r)
+                # 3. If has fildyn and asr but NO flfrc -> dynmat.x (reads fildyn, applies asr)
+                # 4. If has only fildyn (no flfrc, no asr) -> q2r.x (default)
+                
+                has_fildyn = input_nl.get('fildyn') is not None
+                has_flfrc = input_nl.get('flfrc') is not None
+                has_asr = input_nl.get('asr') is not None
+                
+                # q2r.x: has BOTH fildyn (input) AND flfrc (output)
+                if has_fildyn and has_flfrc:
+                    return QEModule.Q2R
+                
+                # matdyn.x: has flfrc (input, required) but NO fildyn
+                if has_flfrc and not has_fildyn:
+                    return QEModule.MATDYN
+                
+                # dynmat.x: has fildyn but NO flfrc
+                # According to https://www.quantum-espresso.org/Doc/INPUT_DYNMAT.html:
+                # - fildyn is REQUIRED (input dynamical matrix file, default 'matdyn')
+                # - asr is optional (default 'no')
+                # - dynmat.x reads dynamical matrices directly (fildyn) and applies asr if specified
+                # Key: dynmat.x has fildyn but NO flfrc (unlike q2r.x which has both fildyn and flfrc)
+                if has_fildyn and not has_flfrc:
+                    return QEModule.DYNMAT
+                
+                # Check for postahc.x, d3hess.x specific parameters
                 # postahc.x: typically has fildyn, filq, etc.
-                # dynmat.x: typically has fildyn, asr, etc.
                 # d3hess.x: typically has fildyn, etc.
                 # For now, we'll need additional context to distinguish them
-                # Default to dynmat.x if we can't determine
                 
-                # q2r.x typically has flfrc parameter (force constant file)
-                # matdyn.x typically has flfrc parameter too, but also has dos, flfrq, etc.
-                if input_nl.get('flfrc') is not None:
-                    # Check for matdyn-specific parameters
-                    if input_nl.get('dos') is not None or input_nl.get('flfrq') is not None:
-                        return QEModule.MATDYN
-                    # q2r.x typically has fildyn parameter (dynamical matrix file)
-                    elif input_nl.get('fildyn') is not None:
-                        return QEModule.Q2R
-                    # Default to q2r if we have flfrc but no matdyn indicators
-                    # (q2r writes .fc file that matdyn reads)
-                    return QEModule.Q2R
+                # If we have fildyn but no flfrc or asr, could be q2r.x (already handled above)
+                # If we have flfrc but no fildyn, could be matdyn.x (already handled above)
             # If we have &input but can't determine, check for ld1-specific cards
             # ld1.x may have ATOMIC_SPECIES or other atomic-specific cards
             if any(card.card_type == QECardType.ATOMIC_SPECIES for card in self.cards):

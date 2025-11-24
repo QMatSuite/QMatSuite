@@ -1,0 +1,11 @@
+[ph_1d/]
+inputs_args = ('ch4.scf.in','1'), ('ch4.ph.in', '2'), ('ch4.dynmat.in', '9')
+
+[ph_2d/]
+inputs_args = ('scf.in', '1'), ('ph.in', '2'), ('q2r1.in', '3'), ('matdyn1.in', '8'), ('q2r2.in', '3'), ('matdyn2.in', '8')
+
+[4_Si_DOS/]
+inputs_args = ('si.1_scf.in', '1'), ('si.2_nscf.in', '1'), ('si.3_dos.in', '10')
+
+[7_Si_bandStructure/]
+inputs_args = ('si.0_scf.in', '1'), ('si.1_nscf.in', '1'), ('si.2_bands.in', '1'), ('si.3_bands.pp.in', '11')
