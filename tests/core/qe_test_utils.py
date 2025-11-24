@@ -89,6 +89,64 @@ def extract_ph_frequencies(content: str) -> Optional[List[float]]:
     return frequencies if frequencies else None
 
 
+class TimeoutError(Exception):
+    """Raised when a command times out."""
+    pass
+
+
+def run_command_with_timeout(
+    command: list,
+    cwd: Path,
+    timeout: int = 60,
+    env: Optional[Dict[str, str]] = None,
+    stdin_file: Optional[Path] = None
+) -> Tuple[int, str, str]:
+    """
+    Run command with timeout and optional stdin redirection.
+    
+    Args:
+        command: Command to run (without input file flags)
+        cwd: Working directory
+        timeout: Timeout in seconds
+        env: Optional environment variables dict
+        stdin_file: Optional path to input file for stdin redirection
+        
+    Returns:
+        Tuple of (returncode, stdout, stderr)
+        
+    Raises:
+        TimeoutError: If command exceeds timeout
+    """
+    try:
+        stdin_handle = None
+        if stdin_file and stdin_file.exists():
+            stdin_handle = open(stdin_file, 'r')
+        
+        process = subprocess.Popen(
+            command,
+            cwd=cwd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            stdin=stdin_handle,
+            text=True,
+            env=env,
+            preexec_fn=None if sys.platform == "win32" else lambda: signal.signal(signal.SIGINT, signal.SIG_IGN)
+        )
+        
+        try:
+            stdout, stderr = process.communicate(timeout=timeout)
+            return process.returncode, stdout, stderr
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
+            raise TimeoutError(f"Command exceeded {timeout}s timeout")
+        finally:
+            if stdin_handle:
+                stdin_handle.close()
+    except Exception as e:
+        raise TimeoutError(f"Error running command: {e}")
+
+
 def compare_with_benchmark(
     output_file: Path,
     benchmark_file: Path,

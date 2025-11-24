@@ -6,7 +6,7 @@ of the Engine interface.
 """
 
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 import shutil
 import platform
 import os
@@ -16,6 +16,7 @@ from .qe_installation import QEInstallation
 from .qe_input import (
     QEInputParser, QEInputGenerator, QEInput, QENamelist, QECard, QECardType, QEModule
 )
+from .qe_workflow import QEWorkflowRunner, StepResult, WorkflowResult
 
 
 class QuantumEspressoEngine(Engine):
@@ -31,10 +32,11 @@ class QuantumEspressoEngine(Engine):
         "nscf": "pw.x",
         "opt": "pw.x",
         "md": "pw.x",
+        "bands_pw": "pw.x",  # pw.x bands calculation (calculation='bands')
         "ph": "ph.x",
         "q2r": "q2r.x",
         "matdyn": "matdyn.x",
-        "bands": "bands.x",
+        "bands": "bands.x",  # bands.x post-processing tool
         "dos": "dos.x",
         "projwfc": "projwfc.x",
         "sumpdos": "sumpdos.x",
@@ -133,6 +135,9 @@ class QuantumEspressoEngine(Engine):
         # For backward compatibility
         self.qe_bin_dir = self._installation.bin_dir or Path()
         self._detected_executables = {}  # Cache for detected executables
+        
+        # Workflow runner for step/workflow execution
+        self.workflow_runner = QEWorkflowRunner(self)
     
     @property
     def installation(self) -> QEInstallation:
@@ -457,4 +462,80 @@ class QuantumEspressoEngine(Engine):
         # QE typically uses .out or .pwo for output files
         base = Path(input_filename).stem
         return f"{base}.out"
+    
+    def detect_step_type(self, input_file: Path) -> str:
+        """
+        Detect step type from input file.
+        
+        This is a convenience method that delegates to the workflow runner.
+        
+        Args:
+            input_file: Path to QE input file
+            
+        Returns:
+            Step type string (e.g., "scf", "nscf", "dos", "bands", "ph", etc.)
+        """
+        return self.workflow_runner.detect_step_type(input_file)
+    
+    def run_step(
+        self,
+        input_file: Path,
+        working_dir: Path,
+        step_type: Optional[str] = None,
+        timeout: Optional[float] = None,
+        environment: Optional[Dict[str, str]] = None
+    ) -> StepResult:
+        """
+        Run a single QE calculation step.
+        
+        This is a convenience method that delegates to the workflow runner.
+        
+        Args:
+            input_file: Path to QE input file
+            working_dir: Working directory for execution
+            step_type: Optional step type (auto-detected if not provided)
+            timeout: Optional timeout in seconds
+            environment: Optional environment variables dict
+            
+        Returns:
+            StepResult with execution results
+        """
+        return self.workflow_runner.run_step(
+            input_file=input_file,
+            working_dir=working_dir,
+            step_type=step_type,
+            timeout=timeout,
+            environment=environment
+        )
+    
+    def run_workflow(
+        self,
+        steps: List[Tuple[Path, Optional[str]]],
+        working_dir: Path,
+        timeout: Optional[float] = None,
+        environment: Optional[Dict[str, str]] = None,
+        stop_on_error: bool = True
+    ) -> WorkflowResult:
+        """
+        Run a workflow of multiple QE calculation steps sequentially.
+        
+        This is a convenience method that delegates to the workflow runner.
+        
+        Args:
+            steps: List of (input_file, step_type) tuples. step_type can be None for auto-detection.
+            working_dir: Working directory for execution
+            timeout: Optional timeout per step (in seconds)
+            environment: Optional environment variables dict
+            stop_on_error: If True, stop workflow on first error
+            
+        Returns:
+            WorkflowResult with all step results
+        """
+        return self.workflow_runner.run_workflow(
+            steps=steps,
+            working_dir=working_dir,
+            timeout=timeout,
+            environment=environment,
+            stop_on_error=stop_on_error
+        )
 

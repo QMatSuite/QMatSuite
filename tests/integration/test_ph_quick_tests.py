@@ -86,68 +86,51 @@ def qe_engine():
 
 
 @pytest.fixture(scope="module")
-def test_suite_dir(qe_engine):
-    """Get test suite directory (prefer local copy, fallback to test-suite)."""
-    # First, try local copy in tests directory
+def test_data_dir():
+    """Get local test data directory (no dependency on QE test-suite)."""
     local_test_data = Path(__file__).parent / "ci_test_data"
-    if local_test_data.exists() and (local_test_data / "ph_1d").exists():
-        return local_test_data
-    
-    # Use engine's auto-detected test-suite directory
-    test_suite = qe_engine.test_suite_dir
-    if not test_suite or not test_suite.exists():
+    if not local_test_data.exists():
         raise RuntimeError(
-            "QE test-suite not found and local test data not available. "
-            f"Reason: Test suite directory not found and "
-            f"local test data in ci_test_data/ is not available. "
-            f"Either install QE with test-suite or ensure ci_test_data/ contains test files."
+            f"Local test data directory not found: {local_test_data}. "
+            f"Reason: ci_test_data/ directory is required for PH tests."
         )
     
-    return test_suite
+    if not (local_test_data / "ph_1d").exists():
+        raise RuntimeError(
+            f"PH test data not found: {local_test_data / 'ph_1d'}. "
+            f"Reason: ph_1d directory is required in ci_test_data/."
+        )
+    
+    return local_test_data
 
 
 class TestPHQuickTests:
     """Quick PH tests selected from official test-suite."""
     
     @pytest.mark.parametrize("test_info", PH_CI_TESTS)
-    def test_ph_quick(self, test_info, qe_engine, test_suite_dir, tmp_path):
+    def test_ph_quick(self, test_info, qe_engine, test_data_dir, tmp_path):
         """
-        Run a quick PH test from the official test-suite.
+        Run a quick PH test using local test data (no dependency on QE test-suite).
         
         This test runs the full ph.x workflow (pw.x -> ph.x -> q2r.x -> matdyn.x),
         verifying that each step completes successfully.
         """
         category = test_info["category"]
         
-        # Get test category directory
-        category_dir = test_suite_dir / category
+        # Get test category directory from local test data
+        category_dir = test_data_dir / category
         if not category_dir.exists():
             raise RuntimeError(
                 f"Test category directory not found: {category_dir}. "
-                f"Reason: Category '{category}' does not exist in test suite."
+                f"Reason: Category '{category}' does not exist in local test data."
             )
         
-        # Parse jobconfig to get test files
-        # Try multiple locations for jobconfig
-        jobconfig_paths = [
-            test_suite_dir / "jobconfig",
-        ]
-        
-        # Also try from engine's test_suite_dir if different
-        if qe_engine.test_suite_dir and qe_engine.test_suite_dir != test_suite_dir:
-            jobconfig_paths.insert(0, qe_engine.test_suite_dir / "jobconfig")
-        
-        jobconfig_path = None
-        for path in jobconfig_paths:
-            if path and path.exists():
-                jobconfig_path = Path(path).resolve()
-                break
-        
-        if not jobconfig_path:
+        # Parse jobconfig from local test data (no dependency on QE test-suite)
+        jobconfig_path = test_data_dir / "jobconfig"
+        if not jobconfig_path.exists():
             raise RuntimeError(
-                f"jobconfig file not found. "
-                f"Reason: Cannot locate QE test-suite jobconfig file. "
-                f"This file is required to determine test order and files."
+                f"jobconfig file not found: {jobconfig_path}. "
+                f"Reason: jobconfig file is required in ci_test_data/ to determine test order and files."
             )
         
         all_tests = parse_jobconfig(jobconfig_path, "ph_")
@@ -187,26 +170,12 @@ class TestPHQuickTests:
         working_dir = tmp_path / f"test_{category}"
         working_dir.mkdir()
         
-        # Determine test suite directory
-        actual_test_suite = test_suite_dir
-        if (test_suite_dir.parent / "test-suite").exists():
-            actual_test_suite = test_suite_dir.parent / "test-suite"
-        elif Path(test_suite_dir).name != "test-suite":
-            # Try to find test-suite
-            possible_paths = [
-                Path.home() / "src" / "q-e-qe-7.5" / "test-suite",
-                test_suite_dir.parent / "test-suite"
-            ]
-            for path in possible_paths:
-                if Path(path).exists():
-                    actual_test_suite = Path(path)
-                    break
-        
+        # Use local test data directory (no dependency on QE test-suite)
         # Run test category
         results = run_test_category(
             category,
             test_files,
-            actual_test_suite,
+            test_data_dir,  # Use local test data, not QE test-suite
             qe_engine,
             executable_map,
             timeout=300,  # 5 minute timeout for ph tests
