@@ -35,9 +35,9 @@ jobs:
           libfftw3-dev \
           quantum-espresso
         # Find QE installation directory
-        if [ -d "/usr/share/quantum-espresso" ]; then
-          echo "QE_HOME=/usr/share/quantum-espresso" >> $GITHUB_ENV
-        elif [ -f "/usr/bin/pw.x" ]; then
+        # Ubuntu apt installs pw.x to /usr/bin/pw.x, so QE_HOME should be /usr
+        # (not /usr/share/quantum-espresso, which may exist but doesn't contain bin/pw.x)
+        if [ -f "/usr/bin/pw.x" ]; then
           echo "QE_HOME=/usr" >> $GITHUB_ENV
         else
           echo "QE_HOME=/usr" >> $GITHUB_ENV
