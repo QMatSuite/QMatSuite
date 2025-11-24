@@ -115,15 +115,16 @@ def set_pseudo_dir_to_temp(qe_input: QEInput, project_root: Path) -> None:
             control_namelist.parameters["pseudo_dir"] = str(temp_pseudo_dir.absolute())
 
 
-def run_with_timeout(command: list, cwd: Path, timeout: int = 60, env: Optional[Dict[str, str]] = None) -> tuple[int, str, str]:
+def run_with_timeout(command: list, cwd: Path, timeout: int = 60, env: Optional[Dict[str, str]] = None, stdin_file: Optional[Path] = None) -> tuple[int, str, str]:
     """
-    Run command with timeout.
+    Run command with timeout and optional stdin redirection.
     
     Args:
-        command: Command to run
+        command: Command to run (without input file flags)
         cwd: Working directory
         timeout: Timeout in seconds
         env: Optional environment variables dict
+        stdin_file: Optional path to input file for stdin redirection
         
     Returns:
         Tuple of (returncode, stdout, stderr)
@@ -132,11 +133,16 @@ def run_with_timeout(command: list, cwd: Path, timeout: int = 60, env: Optional[
         TimeoutError: If command exceeds timeout
     """
     try:
+        stdin_handle = None
+        if stdin_file and stdin_file.exists():
+            stdin_handle = open(stdin_file, 'r')
+        
         process = subprocess.Popen(
             command,
             cwd=cwd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            stdin=stdin_handle,
             text=True,
             env=env,
             preexec_fn=None if sys.platform == "win32" else lambda: signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -149,6 +155,9 @@ def run_with_timeout(command: list, cwd: Path, timeout: int = 60, env: Optional[
             process.kill()
             process.wait()
             raise TimeoutError(f"Command exceeded {timeout}s timeout")
+        finally:
+            if stdin_handle:
+                stdin_handle.close()
     except Exception as e:
         raise TimeoutError(f"Error running command: {e}")
 
@@ -551,9 +560,11 @@ def run_input_roundtrip_execution(
             temp_pseudo_dir.mkdir(parents=True, exist_ok=True)
             env = os.environ.copy()
             env['ESPRESSO_PSEUDO'] = str(temp_pseudo_dir.absolute())
+            # Set OMP_NUM_THREADS=1 to ensure single-threaded execution
+            env['OMP_NUM_THREADS'] = '1'
             
-            # Run with timeout
-            returncode, stdout, stderr = run_with_timeout(command, working_dir, timeout, env=env)
+            # Run with timeout and stdin redirection (pw.x < input.in)
+            returncode, stdout, stderr = run_with_timeout(command, working_dir, timeout, env=env, stdin_file=generated_input)
             
             # Write stdout/stderr to files for debugging
             stdout_file.write_text(stdout)

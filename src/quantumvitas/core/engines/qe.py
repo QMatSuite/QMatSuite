@@ -317,13 +317,15 @@ class QuantumEspressoEngine(Engine):
         """
         Build QE command with MPI support if configured.
         
+        Uses stdin redirection (pw.x < input.in) instead of command-line flags.
+        
         Args:
             step_type: Type of calculation step
             input_file: Path to input file
             working_dir: Working directory for execution
             
         Returns:
-            List of command arguments for subprocess
+            List of command arguments for subprocess (without input file flags)
             
         Raises:
             FileNotFoundError: If executable is not found
@@ -335,13 +337,8 @@ class QuantumEspressoEngine(Engine):
         
         command = [str(exe_path)]
         
-        # Add input file flag (different modules may use different flags)
-        # Most use -inp, but some use -i or other flags
-        if step_type in ["ph", "pp", "gipaw"]:
-            # Some modules use -i instead of -inp
-            command.extend(["-i", str(input_file.name)])
-        else:
-            command.extend(["-inp", str(input_file.name)])
+        # No longer add input file flags (-inp or -i)
+        # Input will be provided via stdin redirection
         
         # Add MPI wrapper if configured
         if self.config.mpi_command and self.config.mpi_cores > 1:
