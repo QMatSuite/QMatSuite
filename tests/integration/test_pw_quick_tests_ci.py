@@ -115,7 +115,7 @@ class TestPWQuickExecution:
         config = EngineConfig(name="qe")
         engine = QuantumEspressoEngine(config)
         if not engine.detect_executable("pw.x"):
-            pytest.skip("pw.x not found. QE installation required.")
+            raise RuntimeError("pw.x not found. QE installation required.")
         return engine
     
     @pytest.fixture(scope="module")
