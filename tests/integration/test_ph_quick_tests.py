@@ -4,7 +4,7 @@ Quick integration tests for PH module.
 These tests are selected from the QE official test-suite as representative
 tests for CI. They test the ph.x workflow (pw.x -> ph.x -> q2r.x -> matdyn.x).
 
-These tests require QE installation and will be skipped gracefully if not available.
+These tests require QE installation and will fail if QE is not available.
 """
 
 import pytest
@@ -59,24 +59,28 @@ def qe_engine():
     config = EngineConfig(name="qe")
     engine = QuantumEspressoEngine(config)
     
-    # Check if installation is valid
+    # Check if installation is valid - fail if not found (don't skip)
     if not engine.installation.is_valid():
-        pytest.skip("QE installation not found. "
-                   f"Reason: QE_BIN_DIR environment variable not set, default location not found, "
-                   f"and pw.x not found in system PATH. "
-                   f"Please set QE_BIN_DIR or install QE at the default location.")
+        raise RuntimeError(
+            "QE installation not found. "
+            f"Reason: QE_BIN_DIR environment variable not set, default location not found, "
+            f"and pw.x not found in system PATH. "
+            f"Please set QE_BIN_DIR or install QE at the default location."
+        )
     
-    # Check if required executables exist
+    # Check if required executables exist - fail if not found (don't skip)
     required_exes = ["pw.x", "ph.x"]
     missing_exes = []
     for exe in required_exes:
-        if not engine.get_executable_path(exe):
+        if not engine.detect_executable(exe):
             missing_exes.append(exe)
     
     if missing_exes:
-        pytest.skip(f"Required QE executables not found. "
-                   f"Reason: Missing executables: {', '.join(missing_exes)}. "
-                   f"These are required for PH workflow tests.")
+        raise RuntimeError(
+            f"Required QE executables not found. "
+            f"Reason: Missing executables: {', '.join(missing_exes)}. "
+            f"These are required for PH workflow tests."
+        )
     
     return engine
 
@@ -92,10 +96,12 @@ def test_suite_dir(qe_engine):
     # Use engine's auto-detected test-suite directory
     test_suite = qe_engine.test_suite_dir
     if not test_suite or not test_suite.exists():
-        pytest.skip("QE test-suite not found and local test data not available. "
-                   f"Reason: Test suite directory not found and "
-                   f"local test data in ci_test_data/ is not available. "
-                   f"Either install QE with test-suite or ensure ci_test_data/ contains test files.")
+        raise RuntimeError(
+            "QE test-suite not found and local test data not available. "
+            f"Reason: Test suite directory not found and "
+            f"local test data in ci_test_data/ is not available. "
+            f"Either install QE with test-suite or ensure ci_test_data/ contains test files."
+        )
     
     return test_suite
 
@@ -116,8 +122,10 @@ class TestPHQuickTests:
         # Get test category directory
         category_dir = test_suite_dir / category
         if not category_dir.exists():
-            pytest.skip(f"Test category directory not found: {category_dir}. "
-                       f"Reason: Category '{category}' does not exist in test suite.")
+            raise RuntimeError(
+                f"Test category directory not found: {category_dir}. "
+                f"Reason: Category '{category}' does not exist in test suite."
+            )
         
         # Parse jobconfig to get test files
         # Try multiple locations for jobconfig
@@ -136,21 +144,27 @@ class TestPHQuickTests:
                 break
         
         if not jobconfig_path:
-            pytest.skip(f"jobconfig file not found. "
-                       f"Reason: Cannot locate QE test-suite jobconfig file. "
-                       f"This file is required to determine test order and files.")
+            raise RuntimeError(
+                f"jobconfig file not found. "
+                f"Reason: Cannot locate QE test-suite jobconfig file. "
+                f"This file is required to determine test order and files."
+            )
         
         all_tests = parse_jobconfig(jobconfig_path, "ph_")
         
         if category not in all_tests:
-            pytest.skip(f"Category '{category}' not found in jobconfig. "
-                       f"Reason: The category '{category}' is not defined in the jobconfig file. "
-                       f"Available categories: {list(all_tests.keys())}")
+            raise RuntimeError(
+                f"Category '{category}' not found in jobconfig. "
+                f"Reason: The category '{category}' is not defined in the jobconfig file. "
+                f"Available categories: {list(all_tests.keys())}"
+            )
         
         test_files = all_tests[category]
         if not test_files:
-            pytest.skip(f"No test files found for category '{category}'. "
-                       f"Reason: Category '{category}' exists in jobconfig but has no test files defined.")
+            raise RuntimeError(
+                f"No test files found for category '{category}'. "
+                f"Reason: Category '{category}' exists in jobconfig but has no test files defined."
+            )
         
         # Executable map for ph workflow
         executable_map = {

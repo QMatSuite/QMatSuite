@@ -153,13 +153,8 @@ def run_module_test(
             result["error"] = f"{executable_name} not found"
             return result
         
-        # Build command
-        if input_flag == "-i":
-            # ph.x, pp.x, gipaw.x use -i flag
-            base_command = [str(exe_path), "-i", str(input_file)]
-        else:
-            # pw.x and others use -inp flag
-            base_command = [str(exe_path), "-inp", str(input_file)]
+        # Build command (without input file flags, will use stdin redirection)
+        base_command = [str(exe_path)]
         
         # Add MPI if NPROCS > 1
         if nprocs > 1:
@@ -181,22 +176,32 @@ def run_module_test(
         temp_pseudo_dir = project_root / "temp" / "pseudo"
         temp_pseudo_dir.mkdir(parents=True, exist_ok=True)
         env['ESPRESSO_PSEUDO'] = str(temp_pseudo_dir.absolute())
+        # Set OMP_NUM_THREADS=1 to ensure single-threaded execution
+        env['OMP_NUM_THREADS'] = '1'
         if nprocs > 1:
             env['NPROCS'] = str(nprocs)
         
-        # Run command
+        # Run command with stdin redirection (pw.x < input.in)
         stdout_file = working_dir / "stdout.txt"
         stderr_file = working_dir / "stderr.txt"
         
         with open(stdout_file, 'w') as fout, open(stderr_file, 'w') as ferr:
-            proc = subprocess.run(
-                command,
-                cwd=working_dir,
-                env=env,
-                stdout=fout,
-                stderr=ferr,
-                timeout=timeout
-            )
+            stdin_handle = None
+            if input_file.exists():
+                stdin_handle = open(input_file, 'r')
+            try:
+                proc = subprocess.run(
+                    command,
+                    cwd=working_dir,
+                    env=env,
+                    stdin=stdin_handle,
+                    stdout=fout,
+                    stderr=ferr,
+                    timeout=timeout
+                )
+            finally:
+                if stdin_handle:
+                    stdin_handle.close()
         
         result["time_taken"] = time.time() - start_time
         result["run_success"] = (proc.returncode == 0)

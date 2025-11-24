@@ -8,6 +8,7 @@ from tests/integration/ci_test_data/4_Si_DOS/ and actually runs QE calculations.
 import pytest
 from pathlib import Path
 import sys
+import os
 import tempfile
 import shutil
 import time
@@ -679,12 +680,12 @@ class TestSiDOSWorkflow:
         import subprocess
         import os
         
-        # Build command for dos.x
+        # Build command for dos.x (without input file flag, will use stdin redirection)
         dos_executable = qe_engine.get_executable_path("dos.x")
         if not dos_executable or not Path(dos_executable).exists():
             pytest.skip("dos.x not found")
         
-        command = [dos_executable, "-inp", str(generated_dos)]
+        command = [str(dos_executable)]  # No -inp flag, will use stdin redirection
         
         # Set environment
         # Set ESPRESSO_PSEUDO to temp/pseudo for unified pseudopotential storage
@@ -693,17 +694,20 @@ class TestSiDOSWorkflow:
         temp_pseudo_dir.mkdir(parents=True, exist_ok=True)
         env = os.environ.copy()
         env['ESPRESSO_PSEUDO'] = str(temp_pseudo_dir.absolute())
+        env['OMP_NUM_THREADS'] = '1'
         
-        # Run dos.x
+        # Run dos.x with stdin redirection (dos.x < input.in)
         try:
-            result_dos = subprocess.run(
-                command,
-                cwd=tmp_path,
-                capture_output=True,
-                text=True,
-                timeout=300,  # Increased from 120 to 300 seconds for CI stability
-                env=env
-            )
+            with open(generated_dos, 'r') as stdin_file:
+                result_dos = subprocess.run(
+                    command,
+                    cwd=tmp_path,
+                    stdin=stdin_file,
+                    capture_output=True,
+                    text=True,
+                    timeout=300,  # Increased from 120 to 300 seconds for CI stability
+                    env=env
+                )
             
             # Write output
             stdout_file = tmp_path / "dos_stdout.txt"
