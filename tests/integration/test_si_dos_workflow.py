@@ -22,8 +22,11 @@ from quantumvitas.core.engines.qe_input import (
 )
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.base import EngineConfig
-from test_qe_roundtrip_execution import run_input_roundtrip_execution, set_outdir_to_temp, set_pseudo_dir_to_temp
+# Removed: run_input_roundtrip_execution, set_outdir_to_temp, set_pseudo_dir_to_temp
+# Now using run_and_verify_step_with_assert from tests.core
 from tests.core.thresholds import get_fermi_energy_tolerance
+from tests.core.qe_test_utils import parse_jobconfig
+from tests.core import run_and_verify_step_with_assert
 import re
 
 
@@ -31,13 +34,21 @@ class TestSiDOSWorkflow:
     """Test SCF -> NSCF -> DOS workflow using 4_Si_DOS examples."""
     
     @pytest.fixture
-    def si_dos_dir(self):
-        """Get path to 4_Si_DOS test data directory."""
+    def test_data_dir(self):
+        """Get path to ci_test_data directory."""
         project_root = Path(__file__).parent.parent.parent
-        ci_test_data_dir = project_root / "tests" / "integration" / "ci_test_data" / "4_Si_DOS"
+        ci_test_data_dir = project_root / "tests" / "integration" / "ci_test_data"
         if not ci_test_data_dir.exists():
             pytest.skip(f"CI test data not found: {ci_test_data_dir}")
         return ci_test_data_dir
+    
+    @pytest.fixture
+    def si_dos_dir(self, test_data_dir):
+        """Get path to 4_Si_DOS test data directory."""
+        si_dos_dir = test_data_dir / "4_Si_DOS"
+        if not si_dos_dir.exists():
+            pytest.skip(f"4_Si_DOS test data not found: {si_dos_dir}")
+        return si_dos_dir
     
     @pytest.fixture
     def qe_engine(self):
@@ -195,15 +206,25 @@ class TestSiDOSWorkflow:
         assert dos_reparsed_namelist is not None
         assert dos_reparsed_namelist.get('fildos') == 'si.dos.dat'
     
-    def test_workflow_sequence(self, si_dos_dir):
-        """Test that workflow files are in correct sequence."""
-        # Verify files exist in order
-        files = [
-            si_dos_dir / "si.1_scf.in",
-            si_dos_dir / "si.2_nscf.in",
-            si_dos_dir / "si.3_dos.in"
-        ]
+    def test_workflow_sequence(self, si_dos_dir, test_data_dir):
+        """Test that workflow files are in correct sequence from jobconfig."""
+        # Parse jobconfig to get workflow order
+        jobconfig_path = test_data_dir / "jobconfig"
+        if not jobconfig_path.exists():
+            pytest.skip(f"jobconfig file not found: {jobconfig_path}")
         
+        all_tests = parse_jobconfig(jobconfig_path, "")
+        category = "4_Si_DOS"
+        
+        if category not in all_tests:
+            pytest.skip(f"Category '{category}' not found in jobconfig")
+        
+        test_files = all_tests[category]
+        
+        # Build file paths from jobconfig
+        files = [si_dos_dir / input_file for input_file, args in test_files]
+        
+        # Verify all files exist and are in correct sequence
         for file in files:
             assert file.exists(), f"Workflow file not found: {file}"
         
@@ -250,14 +271,15 @@ class TestSiDOSWorkflow:
             assert scf_pos.data[i] == nscf_pos.data[i]
     
     def test_run_scf_calculation(self, si_dos_dir, qe_engine, tmp_path):
-        """Test running SCF calculation with retry mechanism for intermittent errors."""
+        """Test running SCF calculation using standardized step execution and verification."""
         import time
+        project_root = Path(__file__).parent.parent.parent
+        
         scf_file = si_dos_dir / "si.1_scf.in"
         assert scf_file.exists()
         
-        # Note: set_outdir_to_temp and set_pseudo_dir_to_temp are called inside
-        # run_input_roundtrip_execution, so we don't need to call them here.
-        # Just pass the original file to run_input_roundtrip_execution.
+        reference_out = si_dos_dir / "reference_out" / "si.1_scf.out"
+        assert reference_out.exists(), f"Reference file not found: {reference_out}. Reference files should be generated once locally."
         
         # Retry mechanism for intermittent buffer overflow errors
         max_retries = 3
@@ -283,183 +305,135 @@ class TestSiDOSWorkflow:
                     except:
                         pass
             
-            # Run SCF calculation (increased timeout for CI stability)
-            # run_input_roundtrip_execution will handle set_outdir_to_temp and set_pseudo_dir_to_temp
-            result = run_input_roundtrip_execution(
-                input_file=scf_file,  # Use original file, not modified
-                qe_engine=qe_engine,
-                timeout=300,  # Increased from 120 to 300 seconds for CI stability
-                working_dir=tmp_path,
-                step_number="1",
-                category="4_Si_DOS"  # Explicitly set category for proper output organization
-            )
-            
-            # Check if run was successful
-            if result["run_success"]:
-                break
-            
-            # Check if it's a buffer overflow error
-            error_msg = result.get('error', '')
-            if 'buffer overflow' in error_msg.lower() or 'SIGABRT' in error_msg:
-                last_error = error_msg
-                if attempt < max_retries - 1:
-                    continue  # Retry
+            try:
+                # Use standardized step execution and verification
+                # This automatically:
+                # 1. Detects step type (scf)
+                # 2. Sets outdir and pseudo_dir to temp
+                # 3. Runs the step
+                # 4. Verifies total energy against reference
+                step_result = run_and_verify_step_with_assert(
+                    input_file=scf_file,
+                    qe_engine=qe_engine,
+                    working_dir=tmp_path,
+                    reference_file=reference_out,
+                    category="4_Si_DOS",
+                    timeout=300,
+                    project_root=project_root
+                )
+                
+                # If we get here, verification passed
+                print(f"✓ SCF step completed and verified: {step_result.step_type}")
+                return
+                
+            except AssertionError as e:
+                error_msg = str(e)
+                if 'buffer overflow' in error_msg.lower() or 'SIGABRT' in error_msg or 'MPI_ABORT' in error_msg:
+                    last_error = error_msg
+                    if attempt < max_retries - 1:
+                        continue  # Retry
+                    else:
+                        # Last attempt failed
+                        pytest.fail(
+                            f"SCF calculation failed after {max_retries} attempts due to buffer overflow.\n"
+                            f"This is an intermittent issue that may be caused by:\n"
+                            f"  1. System resource constraints\n"
+                            f"  2. QE binary issues\n"
+                            f"  3. Memory problems\n"
+                            f"\nLast error: {last_error}\n"
+                            f"Try running the test again - it may succeed on retry."
+                        )
                 else:
-                    # Last attempt failed, provide detailed error
-                    pytest.fail(
-                        f"SCF calculation failed after {max_retries} attempts due to buffer overflow.\n"
-                        f"This is an intermittent issue that may be caused by:\n"
-                        f"  1. System resource constraints\n"
-                        f"  2. QE binary issues\n"
-                        f"  3. Memory problems\n"
-                        f"\nLast error: {last_error}\n"
-                        f"Try running the test again - it may succeed on retry."
-                    )
-            else:
-                # Non-retryable error, fail immediately
-                last_error = error_msg
-                break
-        
-        assert result["parse_success"], f"Parse failed: {result.get('error')}"
-        assert result["generate_success"], f"Generate failed: {result.get('error')}"
-        assert result["run_success"], f"Run failed: {result.get('error')}"
-        assert result["verify_success"], f"Verify failed: {result.get('message')}"
-        
-        # Check output file exists
-        assert result.get("output_file") is not None
-        output_file = Path(result["output_file"])
-        assert output_file.exists(), "Output file should exist"
-        
-        # Check for JOB DONE
-        output_content = output_file.read_text()
-        assert "JOB DONE" in output_content, "Output should contain JOB DONE"
-        
-        # Compare total energy with reference (required, not optional)
-        reference_out = si_dos_dir / "reference_out" / "si.1_scf.out"
-        assert reference_out.exists(), f"Reference file not found: {reference_out}. Reference files should be generated once locally."
-        
-        from tests.core.thresholds import get_energy_tolerance
-        
-        energy_tolerance = get_energy_tolerance("pw_scf", "pw.x")
-        
-        # Extract total energy from actual output
-        energy_pattern = r"!\s+total energy\s+=\s+([-\d.]+)\s+Ry"
-        output_match = re.search(energy_pattern, output_content, re.IGNORECASE)
-        
-        # Extract total energy from reference
-        reference_content = reference_out.read_text()
-        reference_match = re.search(energy_pattern, reference_content, re.IGNORECASE)
-        
-        assert output_match is not None, "Could not extract total energy from output"
-        assert reference_match is not None, "Could not extract total energy from reference"
-        
-        output_energy = float(output_match.group(1))
-        reference_energy = float(reference_match.group(1))
-        energy_diff = abs(output_energy - reference_energy)
-        
-        assert energy_diff <= energy_tolerance, \
-            f"Total energy mismatch: {output_energy:.8f} vs {reference_energy:.8f} Ry " \
-            f"(diff: {energy_diff:.2e}, tolerance: {energy_tolerance:.2e})"
-        print(f"✓ Total energy matches: {output_energy:.8f} Ry (diff: {energy_diff:.2e}, ref: {reference_energy:.8f} Ry)")
+                    # Non-retryable error, fail immediately
+                    raise
     
     def test_run_nscf_calculation(self, si_dos_dir, qe_engine, tmp_path):
-        """Test running NSCF calculation (requires SCF output)."""
+        """Test running NSCF calculation (requires SCF output) using standardized step execution."""
         project_root = Path(__file__).parent.parent.parent
         
         # First run SCF
-        # Note: set_outdir_to_temp and set_pseudo_dir_to_temp are called inside run_input_roundtrip_execution
         scf_file = si_dos_dir / "si.1_scf.in"
+        scf_reference = si_dos_dir / "reference_out" / "si.1_scf.out"
         
-        scf_result = run_input_roundtrip_execution(
-            input_file=scf_file,  # Use original file
+        scf_result = run_and_verify_step_with_assert(
+            input_file=scf_file,
             qe_engine=qe_engine,
-            timeout=300,  # Increased from 120 to 300 seconds for CI stability
             working_dir=tmp_path,
-            step_number="1",
-            category="4_Si_DOS"  # Explicitly set category for proper output organization
+            reference_file=scf_reference,
+            category="4_Si_DOS",
+            timeout=300,
+            project_root=project_root
         )
-        assert scf_result["run_success"], "SCF must succeed before NSCF"
+        assert scf_result.success, "SCF must succeed before NSCF"
+        
+        # Small delay to ensure file system synchronization
+        time.sleep(0.5)
         
         # Then run NSCF
-        # Note: set_outdir_to_temp and set_pseudo_dir_to_temp are called inside run_input_roundtrip_execution
+        # This automatically detects step type (nscf) and verifies Fermi energy
         nscf_file = si_dos_dir / "si.2_nscf.in"
+        nscf_reference = si_dos_dir / "reference_out" / "si.2_nscf.out"
+        assert nscf_reference.exists(), f"Reference file not found: {nscf_reference}. Reference files should be generated once locally."
         
-        nscf_result = run_input_roundtrip_execution(
-            input_file=nscf_file,  # Use original file
+        nscf_result = run_and_verify_step_with_assert(
+            input_file=nscf_file,
             qe_engine=qe_engine,
-            timeout=300,  # Increased from 120 to 300 seconds for CI stability
             working_dir=tmp_path,
-            step_number="2",
-            category="4_Si_DOS"  # Explicitly set category for proper output organization
+            reference_file=nscf_reference,
+            category="4_Si_DOS",
+            timeout=300,
+            project_root=project_root
         )
         
-        assert nscf_result["parse_success"], f"NSCF parse failed: {nscf_result.get('error')}"
-        assert nscf_result["generate_success"], f"NSCF generate failed: {nscf_result.get('error')}"
-        assert nscf_result["run_success"], f"NSCF run failed: {nscf_result.get('error')}"
-        assert nscf_result["verify_success"], f"NSCF verify failed: {nscf_result.get('message')}"
-        
-        # Check output file
-        assert nscf_result.get("output_file") is not None
-        nscf_output = Path(nscf_result["output_file"])
-        assert nscf_output.exists()
-        
-        # Check for JOB DONE
-        nscf_content = nscf_output.read_text()
-        assert "JOB DONE" in nscf_content, "NSCF output should contain JOB DONE"
-        
-        # Extract and compare Fermi energy with reference (required, not optional)
-        reference_out = si_dos_dir / "reference_out" / "si.2_nscf.out"
-        assert reference_out.exists(), f"Reference file not found: {reference_out}. Reference files should be generated once locally."
-        
-        fermi_tolerance = get_fermi_energy_tolerance()  # 0.01 Ry
-        
-        # Extract Fermi energy from actual output
-        fermi_patterns = [
-            r"the\s+Fermi\s+energy\s+is\s+([-\d.]+)\s+ev",
-            r"Fermi\s+energy\s*=\s*([-\d.]+)\s+Ry",
-            r"the\s+Fermi\s+energy\s+is\s+([-\d.]+)\s+Ry",
-        ]
-        
-        actual_fermi = None
-        for pattern in fermi_patterns:
-            match = re.search(pattern, nscf_content, re.IGNORECASE)
-            if match:
-                try:
-                    actual_fermi = float(match.group(1))
-                    # Convert eV to Ry if needed (1 Ry = 13.6057 eV)
-                    if "ev" in pattern.lower():
-                        actual_fermi = actual_fermi / 13.6057
-                    break
-                except ValueError:
-                    continue
-        
-        # Extract Fermi energy from reference output
-        reference_content = reference_out.read_text()
-        reference_fermi = None
-        for pattern in fermi_patterns:
-            match = re.search(pattern, reference_content, re.IGNORECASE)
-            if match:
-                try:
-                    reference_fermi = float(match.group(1))
-                    if "ev" in pattern.lower():
-                        reference_fermi = reference_fermi / 13.6057
-                    break
-                except ValueError:
-                    continue
-        
-        # Compare Fermi energies (both must be found)
-        assert actual_fermi is not None, "Could not extract Fermi energy from output"
-        assert reference_fermi is not None, "Could not extract Fermi energy from reference"
-        
-        fermi_diff = abs(actual_fermi - reference_fermi)
-        assert fermi_diff <= fermi_tolerance, \
-            f"Fermi energy mismatch: {actual_fermi:.8f} vs {reference_fermi:.8f} Ry " \
-            f"(diff: {fermi_diff:.2e}, tolerance: {fermi_tolerance:.2e})"
-        print(f"✓ Fermi energy matches: {actual_fermi:.8f} Ry (diff: {fermi_diff:.2e}, ref: {reference_fermi:.8f} Ry)")
+        print(f"✓ NSCF step completed and verified: {nscf_result.step_type}")
     
-    def test_run_full_workflow(self, si_dos_dir, qe_engine, tmp_path):
-        """Test running full SCF -> NSCF -> DOS workflow."""
+    def test_run_full_workflow(self, si_dos_dir, qe_engine, test_data_dir, tmp_path):
+        """Test running full SCF -> NSCF -> DOS workflow using jobconfig."""
         project_root = Path(__file__).parent.parent.parent
+        
+        # Parse jobconfig to get workflow order
+        jobconfig_path = test_data_dir / "jobconfig"
+        if not jobconfig_path.exists():
+            raise RuntimeError(
+                f"jobconfig file not found: {jobconfig_path}. "
+                f"Reason: jobconfig file is required to determine workflow order."
+            )
+        
+        all_tests = parse_jobconfig(jobconfig_path, "")
+        category = "4_Si_DOS"
+        
+        if category not in all_tests:
+            raise RuntimeError(
+                f"Category '{category}' not found in jobconfig. "
+                f"Reason: The category '{category}' is not defined in the jobconfig file. "
+                f"Available categories: {list(all_tests.keys())}"
+            )
+        
+        test_files = all_tests[category]
+        if not test_files:
+            raise RuntimeError(
+                f"No test files found for category '{category}'. "
+                f"Reason: Category '{category}' exists in jobconfig but has no test files defined."
+            )
+        
+        # Verify workflow files exist
+        for input_file, args in test_files:
+            test_path = si_dos_dir / input_file
+            if not test_path.exists():
+                raise RuntimeError(
+                    f"Workflow file not found: {test_path}. "
+                    f"Reason: File '{input_file}' from jobconfig does not exist."
+                )
+        
+        # Get workflow files from jobconfig
+        scf_file = si_dos_dir / test_files[0][0]  # si.1_scf.in
+        nscf_file = si_dos_dir / test_files[1][0]  # si.2_nscf.in
+        dos_file = si_dos_dir / test_files[2][0]  # si.3_dos.in
+        
+        # Verify we have the expected files
+        assert scf_file.name == "si.1_scf.in", f"Expected si.1_scf.in, got {scf_file.name}"
+        assert nscf_file.name == "si.2_nscf.in", f"Expected si.2_nscf.in, got {nscf_file.name}"
+        assert dos_file.name == "si.3_dos.in", f"Expected si.3_dos.in, got {dos_file.name}"
         
         # Step 1: Run SCF
         # Note: set_outdir_to_temp and set_pseudo_dir_to_temp are called inside run_input_roundtrip_execution
@@ -469,6 +443,7 @@ class TestSiDOSWorkflow:
         max_retries = 3
         
         # Step 1: Run SCF with retry
+        scf_reference = si_dos_dir / "reference_out" / "si.1_scf.out"
         scf_result = None
         for attempt in range(max_retries):
             if attempt > 0:
@@ -482,26 +457,26 @@ class TestSiDOSWorkflow:
                     except:
                         pass
             
-            scf_result = run_input_roundtrip_execution(
-                input_file=scf_file,  # Use original file
-                qe_engine=qe_engine,
-                timeout=300,  # Increased from 120 to 300 seconds for CI stability
-                working_dir=tmp_path,
-                step_number="1",
-                category="4_Si_DOS"  # Explicitly set category for proper output organization
-            )
-            
-            if scf_result["run_success"]:
-                break
-            
-            error_msg = scf_result.get('error', '')
-            if ('buffer overflow' in error_msg.lower() or 'SIGABRT' in error_msg) and attempt < max_retries - 1:
-                continue  # Retry
-            else:
-                break  # Non-retryable error or last attempt
+            try:
+                scf_result = run_and_verify_step_with_assert(
+                    input_file=scf_file,
+                    qe_engine=qe_engine,
+                    working_dir=tmp_path,
+                    reference_file=scf_reference,
+                    category="4_Si_DOS",
+                    timeout=300,
+                    project_root=project_root
+                )
+                break  # Success
+            except AssertionError as e:
+                error_msg = str(e)
+                if ('buffer overflow' in error_msg.lower() or 'SIGABRT' in error_msg or 'MPI_ABORT' in error_msg) and attempt < max_retries - 1:
+                    continue  # Retry
+                else:
+                    raise  # Non-retryable error or last attempt
         
-        assert scf_result["run_success"], f"SCF failed: {scf_result.get('error')}"
-        print(f"✓ SCF completed: {scf_result.get('message', 'OK')}")
+        assert scf_result.success, f"SCF failed: {scf_result.error}"
+        print(f"✓ SCF completed and verified: {scf_result.step_type}")
         
         # Small delay to ensure file system synchronization
         time.sleep(0.5)
@@ -517,11 +492,10 @@ class TestSiDOSWorkflow:
                 import shutil
                 shutil.copytree(working_save, save_dir, dirs_exist_ok=True)
         
-        # Step 2: Run NSCF
-        # Note: set_outdir_to_temp and set_pseudo_dir_to_temp are called inside run_input_roundtrip_execution
+        # Step 2: Run NSCF with retry
         nscf_file = si_dos_dir / "si.2_nscf.in"
+        nscf_reference = si_dos_dir / "reference_out" / "si.2_nscf.out"
         
-        # Retry mechanism for NSCF
         nscf_result = None
         for attempt in range(max_retries):
             if attempt > 0:
@@ -535,77 +509,26 @@ class TestSiDOSWorkflow:
                     except:
                         pass
             
-            nscf_result = run_input_roundtrip_execution(
-                input_file=nscf_file,  # Use original file
-                qe_engine=qe_engine,
-                timeout=300,  # Increased from 120 to 300 seconds for CI stability
-                working_dir=tmp_path,
-                step_number="2",
-                category="4_Si_DOS"  # Explicitly set category for proper output organization
-            )
-            
-            if nscf_result["run_success"]:
-                break
-            
-            error_msg = nscf_result.get('error', '')
-            if ('buffer overflow' in error_msg.lower() or 'SIGABRT' in error_msg) and attempt < max_retries - 1:
-                continue  # Retry
-            else:
-                break  # Non-retryable error or last attempt
+            try:
+                nscf_result = run_and_verify_step_with_assert(
+                    input_file=nscf_file,
+                    qe_engine=qe_engine,
+                    working_dir=tmp_path,
+                    reference_file=nscf_reference,
+                    category="4_Si_DOS",
+                    timeout=300,
+                    project_root=project_root
+                )
+                break  # Success
+            except AssertionError as e:
+                error_msg = str(e)
+                if ('buffer overflow' in error_msg.lower() or 'SIGABRT' in error_msg or 'MPI_ABORT' in error_msg) and attempt < max_retries - 1:
+                    continue  # Retry
+                else:
+                    raise  # Non-retryable error or last attempt
         
-        assert nscf_result["run_success"], f"NSCF failed: {nscf_result.get('error')}"
-        print(f"✓ NSCF completed: {nscf_result.get('message', 'OK')}")
-        
-        # Compare Fermi energy with reference (required, not optional)
-        reference_out = si_dos_dir / "reference_out" / "si.2_nscf.out"
-        assert reference_out.exists(), f"Reference file not found: {reference_out}. Reference files should be generated once locally."
-        assert nscf_result.get("output_file") is not None, "NSCF output file not found"
-        
-        nscf_output = Path(nscf_result["output_file"])
-        assert nscf_output.exists(), "NSCF output file does not exist"
-        
-        fermi_tolerance = get_fermi_energy_tolerance()  # 0.01 Ry
-        nscf_content = nscf_output.read_text()
-        reference_content = reference_out.read_text()
-        
-        fermi_patterns = [
-            r"the\s+Fermi\s+energy\s+is\s+([-\d.]+)\s+ev",
-            r"Fermi\s+energy\s*=\s*([-\d.]+)\s+Ry",
-            r"the\s+Fermi\s+energy\s+is\s+([-\d.]+)\s+Ry",
-        ]
-        
-        actual_fermi = None
-        for pattern in fermi_patterns:
-            match = re.search(pattern, nscf_content, re.IGNORECASE)
-            if match:
-                try:
-                    actual_fermi = float(match.group(1))
-                    if "ev" in pattern.lower():
-                        actual_fermi = actual_fermi / 13.6057
-                    break
-                except ValueError:
-                    continue
-        
-        reference_fermi = None
-        for pattern in fermi_patterns:
-            match = re.search(pattern, reference_content, re.IGNORECASE)
-            if match:
-                try:
-                    reference_fermi = float(match.group(1))
-                    if "ev" in pattern.lower():
-                        reference_fermi = reference_fermi / 13.6057
-                    break
-                except ValueError:
-                    continue
-        
-        assert actual_fermi is not None, "Could not extract Fermi energy from output"
-        assert reference_fermi is not None, "Could not extract Fermi energy from reference"
-        
-        fermi_diff = abs(actual_fermi - reference_fermi)
-        assert fermi_diff <= fermi_tolerance, \
-            f"Fermi energy mismatch: {actual_fermi:.8f} vs {reference_fermi:.8f} Ry " \
-            f"(diff: {fermi_diff:.2e}, tolerance: {fermi_tolerance:.2e})"
-        print(f"✓ Fermi energy matches: {actual_fermi:.8f} Ry (diff: {fermi_diff:.2e}, ref: {reference_fermi:.8f} Ry)")
+        assert nscf_result.success, f"NSCF failed: {nscf_result.error}"
+        print(f"✓ NSCF completed and verified: {nscf_result.step_type}")
         
         # Verify that .save directory exists in temp/outdir before running DOS
         temp_outdir = project_root / "temp" / "outdir"
@@ -748,8 +671,8 @@ class TestSiDOSWorkflow:
             pytest.fail(f"DOS calculation failed: {e}")
         
         # Verify all steps succeeded
-        assert scf_result["run_success"], "SCF must succeed"
-        assert nscf_result["run_success"], "NSCF must succeed"
+        assert scf_result.success, "SCF must succeed"
+        assert nscf_result.success, "NSCF must succeed"
         
         # Clean up temp/outdir
         temp_outdir = project_root / "temp" / "outdir"

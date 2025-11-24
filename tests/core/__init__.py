@@ -9,13 +9,25 @@ from .runner import TestRunner
 from .qe_test_utils import (
     parse_jobconfig,
     extract_ph_frequencies,
-    compare_with_benchmark
+    compare_with_benchmark,
+    run_command_with_timeout,
+    TimeoutError,
 )
 from .thresholds import (
     get_energy_tolerance,
     get_frequency_threshold,
+    get_fermi_energy_tolerance,
     DEFAULT_ENERGY_TOLERANCE,
     DEFAULT_FREQUENCY_THRESHOLD,
+    FERMI_ENERGY_TOLERANCE,
+)
+from .qe_step_verification import (
+    verify_step_result,
+    verify_step_with_reference,
+)
+from .qe_step_runner import (
+    run_and_verify_step,
+    run_and_verify_step_with_assert,
 )
 
 __all__ = [
@@ -26,9 +38,17 @@ __all__ = [
     "parse_jobconfig",
     "extract_ph_frequencies",
     "compare_with_benchmark",
+    "run_command_with_timeout",
+    "TimeoutError",
     "get_energy_tolerance",
     "get_frequency_threshold",
+    "get_fermi_energy_tolerance",
     "DEFAULT_ENERGY_TOLERANCE",
     "DEFAULT_FREQUENCY_THRESHOLD",
+    "FERMI_ENERGY_TOLERANCE",
+    "verify_step_result",
+    "verify_step_with_reference",
+    "run_and_verify_step",
+    "run_and_verify_step_with_assert",
 ]
 
