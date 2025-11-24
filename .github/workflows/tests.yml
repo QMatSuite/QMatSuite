@@ -26,22 +26,24 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     
-    - name: Install Quantum ESPRESSO (Ubuntu)
+    - name: Install system dependencies (Ubuntu)
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
         sudo apt-get upgrade -y
         sudo apt-get install --no-install-recommends -y \
+          build-essential \
+          gfortran \
           libfftw3-dev \
-          quantum-espresso
-        # Find QE installation directory
-        # Ubuntu apt installs pw.x to /usr/bin/pw.x, so QE_HOME should be /usr
-        # (not /usr/share/quantum-espresso, which may exist but doesn't contain bin/pw.x)
-        if [ -f "/usr/bin/pw.x" ]; then
-          echo "QE_HOME=/usr" >> $GITHUB_ENV
-        else
-          echo "QE_HOME=/usr" >> $GITHUB_ENV
-        fi
+          libopenblas-dev \
+          liblapack-dev \
+          libscalapack-mpi-dev \
+          libfftw3-mpi-dev \
+          libhdf5-serial-dev \
+          mpich \
+          libmpich-dev \
+          wget \
+          make
     
     - name: Install system dependencies and setup compilers (macOS)
       if: matrix.os == 'macos-latest'
@@ -76,14 +78,12 @@ jobs:
         echo "PATH=$GCC_PREFIX/bin:$PATH" >> $GITHUB_ENV
     
     - name: Cache QE source
-      if: matrix.os == 'macos-latest'
       uses: actions/cache@v3
       with:
         path: $HOME/src/q-e-qe-7.5
         key: qe-source-7.5-${{ runner.os }}
     
-    - name: Install Quantum ESPRESSO (macOS - from source)
-      if: matrix.os == 'macos-latest'
+    - name: Install Quantum ESPRESSO (from source)
       run: |
         # Create QE installation directory
         mkdir -p $HOME/src
@@ -98,26 +98,43 @@ jobs:
         
         cd q-e-qe-7.5
         
-        # Get brew paths
-        FFTW_PREFIX=$(brew --prefix fftw)
-        
-        # Configure QE for macOS
-        # CC, FC, and CPP should already be set in GITHUB_ENV
-        ./configure \
-          CC="$CC" \
-          FC="$FC" \
-          CPP="$CPP" \
-          BLAS_LIBS="-framework Accelerate" \
-          LAPACK_LIBS="" \
-          FFT_LIBS="-L${FFTW_PREFIX}/lib -lfftw3" \
-          MPIF90=mpif90
-        
-        # Modify make.inc to add FFTW3 support
-        if [ -f make.inc ]; then
-          # Add -D__FFTW3 to DFLAGS
-          sed -i.bak 's/^DFLAGS.*/& -D__FFTW3/' make.inc
-          # Add FFTW3 include path to FFLAGS
-          sed -i.bak "s|^FFLAGS.*|& -I${FFTW_PREFIX}/include|" make.inc
+        if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+          # Configure QE for Ubuntu
+          # Let configure auto-detect most libraries, but explicitly set MPI
+          ./configure \
+            MPIF90=mpif90
+          
+          # Modify make.inc to add FFTW3 support and ensure correct library paths
+          if [ -f make.inc ]; then
+            # Add -D__FFTW3 to DFLAGS
+            sed -i.bak 's/^DFLAGS.*/& -D__FFTW3/' make.inc
+            # Add FFTW3 include path to FFLAGS (if not already present)
+            if ! grep -q "I/usr/include" make.inc; then
+              sed -i.bak "s|^FFLAGS.*|& -I/usr/include|" make.inc
+            fi
+          fi
+        else
+          # Configure QE for macOS
+          # Get brew paths
+          FFTW_PREFIX=$(brew --prefix fftw)
+          
+          # CC, FC, and CPP should already be set in GITHUB_ENV
+          ./configure \
+            CC="$CC" \
+            FC="$FC" \
+            CPP="$CPP" \
+            BLAS_LIBS="-framework Accelerate" \
+            LAPACK_LIBS="" \
+            FFT_LIBS="-L${FFTW_PREFIX}/lib -lfftw3" \
+            MPIF90=mpif90
+          
+          # Modify make.inc to add FFTW3 support
+          if [ -f make.inc ]; then
+            # Add -D__FFTW3 to DFLAGS
+            sed -i.bak 's/^DFLAGS.*/& -D__FFTW3/' make.inc
+            # Add FFTW3 include path to FFLAGS
+            sed -i.bak "s|^FFLAGS.*|& -I${FFTW_PREFIX}/include|" make.inc
+          fi
         fi
         
         # Build QE (essential modules for testing) with parallel compilation
@@ -133,18 +150,13 @@ jobs:
     
     - name: Verify QE installation
       run: |
-        if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
-          which pw.x || (echo "pw.x not found in PATH" && exit 1)
-          pw.x --version || echo "pw.x version check failed (may be normal)"
-        else
-          QE_HOME=$HOME/src/q-e-qe-7.5
-          export QE_HOME
-          export PATH="$QE_HOME/bin:$PATH"
-          which pw.x || (echo "pw.x not found in PATH" && exit 1)
-          pw.x --version || echo "pw.x version check failed (may be normal)"
-          ls -la $QE_HOME/bin/pw.x || exit 1
-          echo "QE_HOME=$QE_HOME" >> $GITHUB_ENV
-        fi
+        QE_HOME=$HOME/src/q-e-qe-7.5
+        export QE_HOME
+        export PATH="$QE_HOME/bin:$PATH"
+        which pw.x || (echo "pw.x not found in PATH" && exit 1)
+        pw.x --version || echo "pw.x version check failed (may be normal)"
+        ls -la $QE_HOME/bin/pw.x || exit 1
+        echo "QE_HOME=$QE_HOME" >> $GITHUB_ENV
     
     - name: Install Python dependencies
       run: |
@@ -154,12 +166,8 @@ jobs:
     
     - name: Run all tests in tests/ directory
       run: |
-        if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
-          export QE_HOME=${QE_HOME:-/usr}
-        else
-          export QE_HOME=$HOME/src/q-e-qe-7.5
-          export PATH="$QE_HOME/bin:$PATH"
-        fi
+        export QE_HOME=$HOME/src/q-e-qe-7.5
+        export PATH="$QE_HOME/bin:$PATH"
         pytest tests/ -v --cov=src/quantumvitas --cov-report=xml --cov-report=term
       env:
         QE_HOME: ${{ env.QE_HOME }}
