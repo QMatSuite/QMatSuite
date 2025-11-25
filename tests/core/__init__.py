@@ -10,6 +10,7 @@ from .qe_test_utils import (
     parse_jobconfig,
     extract_ph_frequencies,
     compare_with_benchmark,
+    run_test_category_workflow,  # Replacement for qe_module_base.run_test_category
     run_command_with_timeout,
     TimeoutError,
 )
@@ -38,6 +39,7 @@ __all__ = [
     "parse_jobconfig",
     "extract_ph_frequencies",
     "compare_with_benchmark",
+    "run_test_category_workflow",  # Replacement for qe_module_base.run_test_category
     "run_command_with_timeout",
     "TimeoutError",
     "get_energy_tolerance",

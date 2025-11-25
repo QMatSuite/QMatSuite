@@ -1,0 +1,5 @@
+# Pseudopotentials are tracked in git for CI tests
+# Do not ignore pseudo/ directory
+!pseudo/
+!pseudo/*.upf
+!pseudo/*.UPF

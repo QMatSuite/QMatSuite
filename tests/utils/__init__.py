@@ -2,19 +2,22 @@
 Test utilities and helper functions.
 
 Shared utilities used across different test suites.
+
+Note: This module is deprecated. Use tests.core instead.
+All functionality has been moved to tests.core:
+- parse_jobconfig -> tests.core.qe_test_utils
+- run_and_verify_step_with_assert -> tests.core.qe_step_runner
+- compare_with_benchmark -> tests.core.qe_test_utils
 """
 
-from .qe_module_base import (
+# Re-export from tests.core for backward compatibility
+from tests.core.qe_test_utils import (
     parse_jobconfig,
-    run_module_test,
-    run_test_category,
     compare_with_benchmark
 )
 
 __all__ = [
     "parse_jobconfig",
-    "run_module_test",
-    "run_test_category",
     "compare_with_benchmark"
 ]
 

@@ -28,7 +28,7 @@ sys.path.insert(0, str(project_root / "extended-tests"))
 
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.base import EngineConfig
-from utils.qe_module_base import run_test_category
+from tests.core.qe_test_utils import run_test_category_workflow
 from tests.core.qe_test_utils import parse_jobconfig
 
 
@@ -65,7 +65,7 @@ def run_pw_test_with_stats(
     start_time = time.time()
     
     try:
-        results = run_test_category(
+        results = run_test_category_workflow(
             category,
             test_files,
             test_suite_dir,

@@ -161,46 +161,77 @@ class QEWorkflowRunner:
         if 'OMP_NUM_THREADS' not in env:
             env['OMP_NUM_THREADS'] = str(self.engine.config.omp_threads)
         
+        # Set ESPRESSO_PSEUDO to project_root/pseudo if not already set
+        # This ensures QE can find pseudopotentials even if pseudo_dir is not in input
+        if 'ESPRESSO_PSEUDO' not in env:
+            # Try to find project root and set to pseudo/
+            from pathlib import Path
+            # Look for project root (where src/quantumvitas exists)
+            current = Path(__file__).parent
+            project_root = None
+            while current != current.parent:
+                if (current / "src" / "quantumvitas").exists():
+                    project_root = current
+                    break
+                current = current.parent
+            if project_root:
+                unified_pseudo_dir = project_root / "pseudo"
+                unified_pseudo_dir.mkdir(parents=True, exist_ok=True)
+                env['ESPRESSO_PSEUDO'] = str(unified_pseudo_dir.absolute())
+        
+        # Also ensure pseudopotentials are in working_dir (QE may look there too)
+        # This is handled by run_and_verify_step, but we ensure it here as well
+        # by checking if working_dir has the pseudopotentials
+        
         # Prepare stdin
         stdin_file = input_file
         
-        # Determine output file
+        # Determine output file (use relative path in working_dir)
         input_stem = input_file.stem
-        output_file = working_dir / f"{input_stem}.out"
+        output_filename = f"{input_stem}.out"
+        output_file = working_dir / output_filename
         
         # Execute command with stdin redirection
+        # Write stdout directly to output file in working_dir
         try:
             with open(stdin_file, 'r') as stdin_handle:
-                process = subprocess.Popen(
-                    command,
-                    stdin=stdin_handle,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    cwd=str(working_dir),
-                    env=env,
-                    text=True
-                )
-                
-                try:
-                    stdout, stderr = process.communicate(timeout=timeout)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                    stdout, stderr = process.communicate()
-                    return StepResult(
-                        step_type=step_type,
-                        input_file=input_file,
-                        success=False,
-                        error=f"Step execution timed out after {timeout}s",
-                        stdout=stdout,
-                        stderr=stderr,
-                        execution_time=time.time() - start_time
+                with open(output_file, 'w') as output_handle:
+                    process = subprocess.Popen(
+                        command,
+                        stdin=stdin_handle,
+                        stdout=output_handle,  # Write directly to output file
+                        stderr=subprocess.PIPE,
+                        cwd=str(working_dir),  # Run in working_dir
+                        env=env,
+                        text=True
                     )
+                    
+                    try:
+                        _, stderr = process.communicate(timeout=timeout)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                        _, stderr = process.communicate()
+                        return StepResult(
+                            step_type=step_type,
+                            input_file=input_file,
+                            success=False,
+                            error=f"Step execution timed out after {timeout}s",
+                            stdout="",  # Output already written to file
+                            stderr=stderr,
+                            execution_time=time.time() - start_time
+                        )
                 
                 return_code = process.returncode
                 
-                # Write output to file
-                if stdout:
-                    output_file.write_text(stdout)
+                # Read stdout from output file for StepResult
+                stdout = output_file.read_text() if output_file.exists() else ""
+                
+                # Ensure output file ends with a newline
+                # This is required for some QE modules (e.g., dynmat.x) that expect
+                # output files to end with a newline character
+                if stdout and not stdout.endswith('\n'):
+                    output_file.write_text(stdout + '\n')
+                    stdout = stdout + '\n'
                 
                 # Parse output if successful
                 parsed_output = None

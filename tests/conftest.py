@@ -24,18 +24,23 @@ def project_root_path():
 def sample_input_file(project_root_path):
     """Return path to a sample QE input file for testing."""
     # Use a simple test file from examples if available
-    # Use auto-downloaded tutorial examples
+    # Only check if tutorial examples exist, don't auto-download
+    # (downloads should only happen in extended-tests, not in tests/)
     import sys
     project_root = Path(__file__).parent.parent
-    sys.path.insert(0, str(project_root / "extended-tests"))
-    from utils.download_tutorial_examples import ensure_tutorial_examples
-    try:
-        tutorial_dir = ensure_tutorial_examples()
-        example_file = tutorial_dir / "0_Si_scf" / "si.scf.in" if tutorial_dir else None
-    except Exception:
-        example_file = None
-    if example_file.exists():
-        return example_file
+    tutorial_dir = project_root / "temp" / "downloads" / "qe_tutorial_examples"
+    
+    # Only use if already downloaded (don't trigger download)
+    if tutorial_dir.exists() and (tutorial_dir / ".git").exists():
+        example_file = tutorial_dir / "0_Si_scf" / "si.scf.in"
+        if example_file.exists():
+            return example_file
+    
+    # Fallback: use a local test file if available
+    local_test_file = project_root / "tests" / "integration" / "ci_test_data" / "pw_scf" / "scf-cg.in"
+    if local_test_file.exists():
+        return local_test_file
+    
     return None
 
 
