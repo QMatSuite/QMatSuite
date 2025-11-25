@@ -61,7 +61,6 @@ extended-tests/*.log
 # Test output files
 *.tmp
 *.log
-*.out
 *.err
 
 # Temporary directory (downloads, cache, etc.) - NOT tracked

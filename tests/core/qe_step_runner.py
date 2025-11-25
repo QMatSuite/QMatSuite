@@ -9,80 +9,122 @@ from pathlib import Path
 from typing import Optional, Tuple
 import time
 
-from src.quantumvitas.core.engines.qe import QuantumEspressoEngine
-from src.quantumvitas.core.engines.qe_workflow import StepResult
-from src.quantumvitas.core.engines.qe_input import QEInputParser, QEInput
+from quantumvitas.core.engines.qe import QuantumEspressoEngine
+from quantumvitas.core.engines.qe_workflow import StepResult
+from quantumvitas.core.engines.qe_input import QEInputParser, QEInput, QEInputGenerator, QENamelist, QEModule
+from quantumvitas.core.engines import ensure_pseudopotentials
 from .qe_step_verification import verify_step_result, verify_step_with_reference
 
 
 def set_outdir_to_temp(qe_input: QEInput, project_root: Path) -> None:
     """
-    Set outdir parameter in QE input to temp/outdir.
+    Set outdir parameter in QE input to ./outdir (relative to working directory).
+    
+    All QE runs execute in their working directory, and outdir is created as
+    a subdirectory ./outdir within the working directory.
+    
+    Some modules (ph.x, q2r.x, matdyn.x, dynmat.x) don't use &control namelist.
+    For these modules, outdir should be added to their own namelist if present.
     
     Args:
         qe_input: Parsed QE input object
-        project_root: Project root directory
+        project_root: Project root directory (not used, kept for compatibility)
     """
-    temp_outdir = project_root / "temp" / "outdir"
-    temp_outdir.mkdir(parents=True, exist_ok=True)
-    outdir_abs = str(temp_outdir.absolute())
+    # Use relative path: ./outdir (relative to working directory)
+    # All QE runs execute in working_dir, and outdir is ./outdir within working_dir
+    outdir_rel = "./outdir"
+    
+    # Detect module type
+    module = qe_input.module or qe_input.detect_module()
+    
+    # Modules that don't use &control namelist
+    no_control_modules = [QEModule.PH, QEModule.Q2R, QEModule.MATDYN, QEModule.DYNMAT]
     
     # Check all namelists for outdir parameter
     found_outdir = False
     for namelist in qe_input.namelists:
         if "outdir" in namelist.parameters:
-            namelist.parameters["outdir"] = outdir_abs
+            namelist.parameters["outdir"] = outdir_rel
             found_outdir = True
     
-    # If outdir not found, add it to control namelist
+    # If outdir not found, add it to appropriate namelist
     if not found_outdir:
-        control_namelist = None
-        for namelist in qe_input.namelists:
-            if namelist.name.lower() == "control":
-                control_namelist = namelist
-                break
-        
-        if control_namelist:
-            control_namelist.parameters["outdir"] = outdir_abs
+        if module in no_control_modules:
+            # For modules without &control:
+            # ph.x: add outdir to &inputph (ph.x needs outdir to read from pw.x output)
+            # q2r.x, matdyn.x, dynmat.x: don't add outdir (they read from files, not .save directories)
+            if module == QEModule.PH:
+                for namelist in qe_input.namelists:
+                    if namelist.name.lower() == "inputph":
+                        namelist.parameters["outdir"] = outdir_rel
+                        found_outdir = True
+                        break
+            # For q2r.x, matdyn.x, dynmat.x, don't add outdir if not present
         else:
-            from src.quantumvitas.core.engines.qe_input import QENamelist
-            control_namelist = QENamelist("control", {"outdir": outdir_abs})
-            qe_input.namelists.insert(0, control_namelist)
+            # For modules with &control (pw.x, etc.), add to &control
+            control_namelist = None
+            for namelist in qe_input.namelists:
+                if namelist.name.lower() == "control":
+                    control_namelist = namelist
+                    break
+            
+            if control_namelist:
+                control_namelist.parameters["outdir"] = outdir_rel
+            else:
+                control_namelist = QENamelist("control", {"outdir": outdir_rel})
+                qe_input.namelists.insert(0, control_namelist)
 
 
 def set_pseudo_dir_to_temp(qe_input: QEInput, project_root: Path) -> None:
     """
-    Set pseudo_dir parameter in QE input to temp/pseudo.
+    Set pseudo_dir parameter in QE input to ../../pseudo (relative path).
+    
+    Some modules (ph.x, q2r.x, matdyn.x, dynmat.x) don't use &control namelist
+    and typically don't need pseudo_dir (they read from pw.x output).
+    For these modules, we don't add pseudo_dir unless it's already present.
     
     Args:
         qe_input: Parsed QE input object
         project_root: Project root directory
     """
-    temp_pseudo_dir = project_root / "temp" / "pseudo"
-    temp_pseudo_dir.mkdir(parents=True, exist_ok=True)
-    pseudo_dir_abs = str(temp_pseudo_dir.absolute())
+    # Use relative path: ../../../pseudo (relative to temp/test_outputs/{category}/)
+    # From temp/test_outputs/{category}/, go up 3 levels to reach project root, then pseudo/
+    # This ensures QE uses relative paths when running in test_outputs directory
+    pseudo_dir_rel = "../../../pseudo"
+    
+    # Detect module type
+    module = qe_input.module or qe_input.detect_module()
+    
+    # Modules that don't use &control namelist and typically don't need pseudo_dir
+    no_control_modules = [QEModule.PH, QEModule.Q2R, QEModule.MATDYN, QEModule.DYNMAT]
     
     # Check all namelists for pseudo_dir parameter
     found_pseudo_dir = False
     for namelist in qe_input.namelists:
         if "pseudo_dir" in namelist.parameters:
-            namelist.parameters["pseudo_dir"] = pseudo_dir_abs
+            namelist.parameters["pseudo_dir"] = pseudo_dir_rel
             found_pseudo_dir = True
     
-    # If pseudo_dir not found, add it to control namelist
+    # If pseudo_dir not found, add it to appropriate namelist
+    # For modules without &control, only add if it's already present (don't add new)
     if not found_pseudo_dir:
-        control_namelist = None
-        for namelist in qe_input.namelists:
-            if namelist.name.lower() == "control":
-                control_namelist = namelist
-                break
-        
-        if control_namelist:
-            control_namelist.parameters["pseudo_dir"] = pseudo_dir_abs
+        if module in no_control_modules:
+            # For ph.x, q2r.x, etc., don't add pseudo_dir (they don't need it)
+            # They read from pw.x output files
+            pass
         else:
-            from src.quantumvitas.core.engines.qe_input import QENamelist
-            control_namelist = QENamelist("control", {"pseudo_dir": pseudo_dir_abs})
-            qe_input.namelists.insert(0, control_namelist)
+            # For modules with &control (pw.x, etc.), add to &control
+            control_namelist = None
+            for namelist in qe_input.namelists:
+                if namelist.name.lower() == "control":
+                    control_namelist = namelist
+                    break
+            
+            if control_namelist:
+                control_namelist.parameters["pseudo_dir"] = pseudo_dir_rel
+            else:
+                control_namelist = QENamelist("control", {"pseudo_dir": pseudo_dir_rel})
+                qe_input.namelists.insert(0, control_namelist)
 
 
 def run_and_verify_step(
@@ -131,27 +173,91 @@ def run_and_verify_step(
         if project_root is None:
             project_root = Path.cwd()
     
-    # Parse input file and set outdir/pseudo_dir
-    qe_input = QEInputParser.parse_file(input_file)
-    set_outdir_to_temp(qe_input, project_root)
-    set_pseudo_dir_to_temp(qe_input, project_root)
+    # Ensure pseudopotentials are available before running
+    # Use unified pseudo directory at project root
+    unified_pseudo_dir = project_root / "pseudo"
+    if not ensure_pseudopotentials(input_file, working_dir, unified_pseudo_dir, None):
+        # If pseudopotentials are missing, return error result
+        return StepResult(
+            step_type=step_type or "unknown",
+            input_file=input_file,
+            success=False,
+            error="Failed to obtain required pseudopotentials"
+        ), False, "Failed to obtain required pseudopotentials"
     
-    # Generate modified input file in working directory
-    from src.quantumvitas.core.engines.qe_input import QEInputGenerator
-    modified_input = working_dir / input_file.name
-    QEInputGenerator.write_file(qe_input, modified_input)
+    # Use working_dir as the execution directory
+    # For tests, working_dir should be temp/test_outputs/{category}/
+    # If working_dir is not provided or is a tmp_path, use temp/test_outputs/{category}/
+    if working_dir is None or "pytest" in str(working_dir) or "tmp" in str(working_dir):
+        # Use temp/test_outputs/{category}/ as working directory
+        temp_output_dir = project_root / "temp" / "test_outputs"
+        if category:
+            temp_output_dir = temp_output_dir / category
+        temp_output_dir.mkdir(parents=True, exist_ok=True)
+        working_dir = temp_output_dir
+    else:
+        # Use provided working_dir, but ensure it exists
+        working_dir = Path(working_dir)
+        working_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Create outdir subdirectory in working_dir
+    outdir_path = working_dir / "outdir"
+    outdir_path.mkdir(parents=True, exist_ok=True)
+    
+    # Parse input file and set outdir/pseudo_dir
+    # The parser now correctly handles all modules including format-sensitive ones
+    # (ph.x q-points, q2r.x simple format, etc.) via extra_data_lines
+    try:
+        qe_input = QEInputParser.parse_file(input_file)
+        set_outdir_to_temp(qe_input, project_root)
+        set_pseudo_dir_to_temp(qe_input, project_root)
+        
+        # Generate modified input file directly in working directory
+        # The generator now correctly handles extra_data_lines (e.g., ph.x q-points)
+        working_dir_input = working_dir / input_file.name
+        QEInputGenerator.write_file(qe_input, working_dir_input)
+    except Exception as e:
+        # If parsing fails, fall back to original file
+        import shutil
+        working_dir_input = working_dir / input_file.name
+        if working_dir_input != input_file:
+            shutil.copy2(input_file, working_dir_input)
+        else:
+            working_dir_input = input_file
+    
+    # Save original input file to temp/test_outputs for debugging
+    try:
+        import shutil
+        input_filename = input_file.stem
+        original_input_copy = working_dir / f"{input_filename}_original.in"
+        if original_input_copy != input_file:
+            shutil.copy2(input_file, original_input_copy)
+    except Exception as e:
+        # Don't fail the test if saving input files fails
+        pass
+    
+    input_filename = input_file.stem
     
     # Auto-detect step type if not provided
     if step_type is None:
-        step_type = qe_engine.detect_step_type(modified_input)
+        step_type = qe_engine.detect_step_type(working_dir_input)
     
-    # Run the step
+    # Run the step in the working directory
+    # QE will execute in working_dir, and outdir will be ./outdir within working_dir
     step_result = qe_engine.run_step(
-        input_file=modified_input,
-        working_dir=working_dir,
+        input_file=working_dir_input,
+        working_dir=working_dir,  # Run in working directory
         step_type=step_type,
         timeout=timeout
     )
+    
+    # The output file should already be in working_dir
+    # Ensure step_result.output_file points to the correct location
+    expected_output = working_dir / f"{input_filename}.out"
+    if step_result.output_file and step_result.output_file.exists():
+        # If output file is in a different location, update the reference
+        if step_result.output_file != expected_output:
+            step_result.output_file = expected_output
     
     # Verify the result
     success, message = verify_step_result(

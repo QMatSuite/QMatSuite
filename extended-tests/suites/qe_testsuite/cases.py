@@ -13,7 +13,7 @@ sys.path.insert(0, str(project_root))
 sys.path.insert(0, str(project_root / "extended-tests"))
 
 from tests.core.base import TestCase, TestResult, TestStatus
-from utils.qe_module_base import run_test_category
+from tests.core.qe_test_utils import run_test_category_workflow
 
 
 class QECategoryTestCase(TestCase):
@@ -63,8 +63,8 @@ class QECategoryTestCase(TestCase):
             config = EngineConfig(name="qe", executable_path=self.qe_home)
             engine = QuantumEspressoEngine(config)
             
-            # Run tests in category
-            results = run_test_category(
+            # Run tests in category using centralized workflow system
+            results = run_test_category_workflow(
                 self.category,
                 self.test_files,
                 self.test_suite_dir,
@@ -133,9 +133,9 @@ class QESingleTestCase(TestCase):
     
     def run(self) -> TestResult:
         """Run the single test."""
-        from utils.qe_module_base import run_module_test
         from quantumvitas.core.engines.qe import QuantumEspressoEngine
         from quantumvitas.core.engines.base import EngineConfig
+        from tests.core.qe_step_runner import run_and_verify_step
         import tempfile
         
         try:
@@ -143,25 +143,37 @@ class QESingleTestCase(TestCase):
             engine = QuantumEspressoEngine(config)
             
             working_dir = Path(tempfile.mkdtemp(prefix="qe_test_"))
-            result = run_module_test(
-                self.input_file,
-                self.executable_name,
-                engine,
-                working_dir,
-                self.timeout
+            step_result, success, message = run_and_verify_step(
+                input_file=self.input_file,
+                qe_engine=engine,
+                working_dir=working_dir,
+                reference_file=None,
+                category=None,
+                timeout=self.timeout,
+                step_type=None  # Auto-detect from input
             )
             
-            if result.get("success", False):
+            if success:
                 status = TestStatus.PASSED
-                message = result.get("message", "Test passed")
+                msg = message or "Test passed"
             else:
                 status = TestStatus.FAILED
-                message = result.get("error", "Test failed")
+                msg = step_result.error or message or "Test failed"
+            
+            result = {
+                "success": success,
+                "run_success": step_result.success,
+                "verify_success": success,
+                "output_file": str(step_result.output_file) if step_result.output_file else None,
+                "time_taken": step_result.time_taken or 0,
+                "message": msg,
+                "error": step_result.error
+            }
             
             return TestResult(
                 name=self.name,
                 status=status,
-                message=message,
+                message=msg,
                 details=result
             )
             

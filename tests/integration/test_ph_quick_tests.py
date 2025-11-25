@@ -27,14 +27,7 @@ from quantumvitas.core.engines.qe_input import QEInputParser, QEInputGenerator, 
 
 # Import shared test utilities
 from tests.core.qe_test_utils import parse_jobconfig
-
-# Import from extended-tests/utils
-try:
-    from utils.qe_module_base import run_test_category
-except ImportError:
-    # Fallback if extended-tests not available
-    def run_test_category(*args, **kwargs):
-        return []
+from tests.core.qe_step_runner import run_and_verify_step_with_assert
 
 # Mark as quick test
 pytestmark = [pytest.mark.quick, pytest.mark.requires_qe]
@@ -149,7 +142,7 @@ class TestPHQuickTests:
                 f"Reason: Category '{category}' exists in jobconfig but has no test files defined."
             )
         
-        # Executable map for ph workflow
+        # Executable map for ph workflow (maps jobconfig args to executable names)
         executable_map = {
             "1": "pw.x",
             "2": "ph.x",
@@ -166,41 +159,52 @@ class TestPHQuickTests:
             "default": "ph.x"
         }
         
-        # Create working directory
+        # Create working directory for workflow (all steps share the same directory)
         working_dir = tmp_path / f"test_{category}"
         working_dir.mkdir()
         
-        # Use local test data directory (no dependency on QE test-suite)
-        # Run test category
-        results = run_test_category(
-            category,
-            test_files,
-            test_data_dir,  # Use local test data, not QE test-suite
-            qe_engine,
-            executable_map,
-            timeout=300,  # 5 minute timeout for ph tests
-            max_tests=None
-        )
-        
-        # Check results
-        passed = sum(1 for r in results if r.get("success", False))
-        failed = len(results) - passed
-        
-        # Print summary
-        if failed > 0:
-            failed_tests = [r for r in results if not r.get("success", False)]
-            error_messages = []
-            for r in failed_tests:
-                error = r.get("error") or r.get("message") or "Unknown error"
-                error_messages.append(f"{r.get('file', 'unknown')}: {str(error)[:100]}")
+        # Run each step sequentially and verify immediately (step1 -> test step1 -> step2 -> test step2)
+        failed_steps = []
+        for i, (input_file, args) in enumerate(test_files):
+            input_path = category_dir / input_file
+            if not input_path.exists():
+                pytest.fail(f"Input file not found: {input_path}")
             
-            pytest.fail(
-                f"PH test category '{category}' failed: {failed}/{len(results)} tests failed.\n"
-                f"Failed tests:\n" + "\n".join(error_messages)
-            )
+            # Determine executable from args
+            executable_name = executable_map.get(args, executable_map.get("default", "pw.x"))
+            
+            # Check for reference output file
+            reference_file = None
+            # Try to find reference file (if exists)
+            ref_dir = category_dir / "reference_out"
+            if ref_dir.exists():
+                ref_name = input_path.stem + ".out"
+                ref_path = ref_dir / ref_name
+                if ref_path.exists():
+                    reference_file = ref_path
+            
+            # Run and verify step using centralized function
+            try:
+                run_and_verify_step_with_assert(
+                    input_file=input_path,
+                    qe_engine=qe_engine,
+                    working_dir=working_dir,
+                    reference_file=reference_file,
+                    category=category,
+                    timeout=300,  # 5 minute timeout for ph tests
+                    step_type=None,  # Auto-detect from input
+                )
+            except AssertionError as e:
+                failed_steps.append(f"{input_file} (step {i+1}/{len(test_files)}): {str(e)}")
+                # For workflow tests, stop on first failure
+                break
         
-        # All tests passed
-        assert passed == len(results), f"Expected all {len(results)} tests to pass, but {failed} failed"
+        # Report failures
+        if failed_steps:
+            pytest.fail(
+                f"PH test category '{category}' failed: {len(failed_steps)}/{len(test_files)} steps failed.\n"
+                f"Failed steps:\n" + "\n".join(failed_steps)
+            )
 
 
 # Fallback: Simple test that doesn't require QE installation

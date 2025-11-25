@@ -148,10 +148,17 @@ class QECard:
 
 @dataclass
 class QEInput:
-    """Complete QE input file structure."""
+    """
+    Complete QE input file structure.
+    
+    Some modules (like ph.x) have data lines after namelists that are not cards.
+    For example, ph.x has q-point coordinates after &inputph namelist.
+    These are stored in extra_data_lines.
+    """
     namelists: List[QENamelist] = field(default_factory=list)
     cards: List[QECard] = field(default_factory=list)
     comments: List[Tuple[int, str]] = field(default_factory=list)  # (line_number, comment)
+    extra_data_lines: List[str] = field(default_factory=list)  # Data lines after namelists (e.g., ph.x q-points)
     module: Optional[QEModule] = None  # Detected QE module
     
     def get_namelist(self, name: str) -> Optional[QENamelist]:
@@ -385,6 +392,17 @@ class QEInputParser:
     CARD_PATTERN = re.compile(r'^\s*([A-Z_]+)\s*(\([^)]+\))?', re.IGNORECASE)  # Allow leading whitespace
     COMMENT_PATTERN = re.compile(r'!.*$')
     KEY_VALUE_PATTERN = re.compile(r'(\w+(?:\([^)]+\))?)\s*=\s*(.+?)(?:\s*,\s*|$)')
+    # Pattern to match a complete parameter: key=value (handles strings, arrays, etc.)
+    PARAMETER_PATTERN = re.compile(
+        r'(\w+(?:\([^)]+\))?)\s*=\s*'
+        r'('
+        r"'(?:[^'\\]|\\.)*'|"  # Single-quoted string
+        r'"(?:[^"\\]|\\.)*"|'  # Double-quoted string
+        r'[^,\s]+(?:\([^)]+\))?|'  # Value with parentheses (arrays, function calls)
+        r'[^,\s]+'  # Simple value
+        r')(?:\s*,\s*|\s+|$)',
+        re.IGNORECASE
+    )
     SEPARATOR_PATTERN = re.compile(r'^---+\s*$')  # Separator lines like "---"
     
     @staticmethod
@@ -471,79 +489,134 @@ class QEInputParser:
         name = match.group(1)
         namelist = QENamelist(name=name)
         
-        # Parse parameters
+        # Collect all parameter lines until we find the closing /
+        # Rules:
+        # 1. Parameters are separated by commas OR newlines
+        # 2. Everything after ! is a comment (discard)
+        # 3. Namelist ends when a line (after removing spaces) contains only /
         i = start_idx + 1
-        current_line = ""
-        current_comment = ""
+        parameter_lines = []
         
         while i < len(lines):
-            line = lines[i].strip()
-            original_line = lines[i]  # Keep original for comment extraction
+            original_line = lines[i]
+            stripped_line = original_line.strip()
             
-            # Extract inline comments (preserve them)
-            comment_match = QEInputParser.COMMENT_PATTERN.search(line)
-            inline_comment = ""
-            if comment_match:
-                inline_comment = comment_match.group(0).strip()  # Keep the '!' and comment text
-                line = line[:comment_match.start()].strip()
+            # Remove comments (everything after !)
+            if '!' in stripped_line:
+                comment_pos = stripped_line.find('!')
+                stripped_line = stripped_line[:comment_pos].strip()
             
-            # Check for namelist end
-            if QEInputParser.NAMELIST_END_PATTERN.match(line):
-                # Parse any remaining parameters in current_line
-                if current_line:
-                    QEInputParser._parse_parameters(current_line, namelist, comment=inline_comment)
-                break
+            # Check if this line contains the namelist terminator /
+            # Rule: / ends the namelist if it's not inside a string
+            # Check if / exists and is not inside quotes
+            if '/' in stripped_line:
+                # Find / that's not inside a string
+                in_string = False
+                string_char = None
+                slash_pos = -1
+                
+                for j, char in enumerate(original_line):
+                    if char in ["'", '"'] and not in_string:
+                        in_string = True
+                        string_char = char
+                    elif char == string_char and in_string:
+                        in_string = False
+                        string_char = None
+                    elif char == '/' and not in_string:
+                        slash_pos = j
+                        break
+                
+                if slash_pos >= 0:
+                    # Found / that's not in a string - this is the namelist terminator
+                    # Extract content before / if any
+                    before_slash = original_line[:slash_pos].strip()
+                    # Remove comment from before_slash
+                    if '!' in before_slash:
+                        before_slash = before_slash[:before_slash.find('!')].strip()
+                    if before_slash:
+                        parameter_lines.append(before_slash)
+                    i += 1
+                    break
             
-            # Accumulate line (parameters can span multiple lines)
-            if current_line:
-                current_line += " " + line
-            else:
-                current_line = line
+            # Skip empty lines
+            if not stripped_line:
+                i += 1
+                continue
             
-            # Try to parse parameters if line ends with comma or we have complete statements
-            if current_line and (current_line.endswith(',') or '=' in current_line):
-                # Pass inline comment to parameter parser
-                QEInputParser._parse_parameters(current_line, namelist, comment=inline_comment)
-                current_line = ""
-                inline_comment = ""  # Reset after parsing
-            
+            # This is a parameter line, add it
+            parameter_lines.append(stripped_line)
             i += 1
         
-        return namelist, i + 1
+        # Parse all parameter lines
+        # Parameters are separated by commas OR newlines
+        if parameter_lines:
+            QEInputParser._parse_parameters(parameter_lines, namelist)
+        
+        return namelist, i
     
     @staticmethod
-    def _parse_parameters(line: str, namelist: QENamelist, comment: str = ""):
-        """Parse parameter assignments from a line.
+    def _parse_parameters(parameter_lines: List[str], namelist: QENamelist):
+        """
+        Parse parameter assignments from a list of parameter lines.
+        
+        Rules:
+        1. Parameters are separated by commas OR newlines (each line is a separate parameter if no comma)
+        2. Comments (everything after !) have already been removed
         
         Args:
-            line: Line containing parameter assignments
+            parameter_lines: List of parameter lines (comments already removed)
             namelist: QENamelist to add parameters to
-            comment: Optional inline comment to associate with the last parameter
         """
-        # Remove trailing comma
-        line = line.rstrip(',').strip()
-        if not line:
+        if not parameter_lines:
             return
         
-        # Extract inline comment if present
-        comment_match = QEInputParser.COMMENT_PATTERN.search(line)
-        inline_comment = ""
-        if comment_match:
-            inline_comment = comment_match.group(0).strip()  # Keep '!' and comment text
-            line = line[:comment_match.start()].strip()
+        # Join all lines with spaces to create one continuous string
+        # But we need to be careful: parameters can be separated by commas OR newlines
+        # So we'll process line by line, splitting by commas when present
         
-        # Use provided comment if no inline comment found
-        if not inline_comment and comment:
-            inline_comment = comment
+        for line in parameter_lines:
+            if not line.strip():
+                continue
+            
+            # Split by commas, but respect strings and parentheses
+            parts = QEInputParser._split_by_commas(line)
+            
+            # Parse each part as key=value
+            for part in parts:
+                part = part.strip()
+                if not part:
+                    continue
+                
+                # Match key=value pattern
+                match = QEInputParser.KEY_VALUE_PATTERN.match(part)
+                if match:
+                    key = match.group(1)
+                    value_str = match.group(2).strip()
+                    value = QEInputParser.parse_value(value_str)
+                    namelist.set(key, value)
+    
+    @staticmethod
+    def _split_by_commas(line: str) -> List[str]:
+        """
+        Split a line by commas, respecting strings and parentheses.
         
-        # Split by commas, but be careful with arrays and strings
+        Args:
+            line: Line to split
+            
+        Returns:
+            List of parts (each part is a parameter assignment)
+        """
         parts = []
         current = ""
         in_string = False
         string_char = None
         paren_depth = 0
         
-        for char in line:
+        i = 0
+        while i < len(line):
+            char = line[i]
+            
+            # Handle string delimiters
             if char in ["'", '"'] and not in_string:
                 in_string = True
                 string_char = char
@@ -552,34 +625,28 @@ class QEInputParser:
                 in_string = False
                 string_char = None
                 current += char
+            # Handle parentheses (for arrays and function calls like amass(1))
             elif char == '(' and not in_string:
                 paren_depth += 1
                 current += char
             elif char == ')' and not in_string:
                 paren_depth -= 1
                 current += char
+            # Handle commas (parameter separators)
             elif char == ',' and not in_string and paren_depth == 0:
                 if current.strip():
                     parts.append(current.strip())
                 current = ""
             else:
                 current += char
+            
+            i += 1
         
+        # Add the last part if any
         if current.strip():
             parts.append(current.strip())
         
-        # Parse each part
-        for i, part in enumerate(parts):
-            match = QEInputParser.KEY_VALUE_PATTERN.match(part)
-            if match:
-                key = match.group(1)
-                value_str = match.group(2)
-                value = QEInputParser.parse_value(value_str)
-                # Associate comment with the last parameter (most common case)
-                if i == len(parts) - 1 and inline_comment:
-                    namelist.set(key, value, comment=inline_comment)
-                else:
-                    namelist.set(key, value)
+        return parts
     
     @staticmethod
     def parse_card(lines: List[str], start_idx: int) -> Tuple[QECard, int]:
@@ -891,6 +958,15 @@ class QEInputParser:
         """
         Parse QE input from string.
         
+        This is a general parser that handles:
+        - Namelists (e.g., &control, &inputph)
+        - Cards (e.g., ATOMIC_SPECIES, K_POINTS)
+        - Extra data lines after namelists (e.g., ph.x q-point coordinates)
+        
+        Module-specific formats are handled:
+        - ph.x: q-point coordinates after &inputph (e.g., "0.0 0.0 0.0")
+        - q2r.x, matdyn.x, dynmat.x: only namelist, no cards
+        
         Args:
             content: QE input file content as string
             
@@ -927,6 +1003,28 @@ class QEInputParser:
                 namelist, next_idx = cls.parse_namelist(lines, i)
                 qe_input.namelists.append(namelist)
                 i = next_idx
+                
+                # For certain modules, check for data lines immediately after namelist
+                # ph.x: q-point coordinates after &inputph (e.g., "0.0 0.0 0.0")
+                # These are not cards, just data lines
+                # Store them with the namelist for proper ordering during generation
+                if namelist.name.lower() == 'inputph' and i < len(lines):
+                    # Look ahead for q-point coordinates (3 numbers on a line)
+                    # This is module-specific: ph.x expects q-points after &inputph
+                    while i < len(lines):
+                        next_line = lines[i].strip()
+                        if not next_line:
+                            i += 1
+                            continue
+                        if next_line.startswith('!') or next_line.startswith('&'):
+                            break
+                        # Check if it looks like q-point coordinates (3 numbers)
+                        q_point_pattern = r'^\s*([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)'
+                        if re.match(q_point_pattern, next_line):
+                            qe_input.extra_data_lines.append(lines[i].rstrip())
+                            i += 1
+                        else:
+                            break
                 continue
             
             # Check for card (match on original line to preserve position)
@@ -946,7 +1044,19 @@ class QEInputParser:
                     # Not a card, might be data line - continue
                     pass
             
-            # Unrecognized line - might be continuation or comment
+            # Unrecognized line - might be continuation, data line, or comment
+            # Only store as extra data line if it looks like actual data
+            # (not a comment, not empty, not starting with &, not just whitespace and /)
+            if (line_stripped and 
+                not line_stripped.startswith('!') and 
+                not line_stripped.startswith('&') and
+                not cls.CARD_PATTERN.match(line_stripped) and
+                not line_stripped.strip() in ['/', ' /']):  # Don't store standalone / as data
+                # Could be a data line for modules like ph.x, q2r.x, etc.
+                # But we've already handled ph.x q-points above, so this is for other cases
+                # Only add if it's not already in extra_data_lines (avoid duplicates)
+                if line.rstrip() not in qe_input.extra_data_lines:
+                    qe_input.extra_data_lines.append(line.rstrip())
             i += 1
         
         # Detect module type
@@ -1030,6 +1140,15 @@ class QEInputGenerator:
         """
         Generate QE input file string from QEInput object.
         
+        This is a general generator that handles:
+        - Namelists (e.g., &control, &inputph)
+        - Cards (e.g., ATOMIC_SPECIES, K_POINTS)
+        - Extra data lines after namelists (e.g., ph.x q-point coordinates)
+        
+        Module-specific formats are handled:
+        - ph.x: q-point coordinates after &inputph (e.g., "0.0 0.0 0.0")
+        - q2r.x, matdyn.x, dynmat.x: only namelist, no cards
+        
         Args:
             qe_input: QEInput object
             
@@ -1037,22 +1156,49 @@ class QEInputGenerator:
             QE input file content as string
         """
         lines = []
+        used_extra_lines = set()  # Track which extra_data_lines have been used
         
         # Generate namelists
-        for namelist in qe_input.namelists:
+        for i, namelist in enumerate(qe_input.namelists):
             lines.append(cls.generate_namelist(namelist))
-            lines.append("")  # Empty line between sections
+            
+            # For ph.x: if this is &inputph, add q-point coordinates immediately after
+            # (q-point coordinates should come right after &inputph namelist)
+            if namelist.name.lower() == 'inputph':
+                # Find q-point coordinates in extra_data_lines (3 numbers pattern)
+                q_point_pattern = re.compile(r'^\s*([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)')
+                for data_line in qe_input.extra_data_lines:
+                    if data_line not in used_extra_lines and q_point_pattern.match(data_line.strip()):
+                        lines.append(data_line)
+                        used_extra_lines.add(data_line)
+                        break  # Only add first q-point line (ph.x typically has one)
+            
+            if i < len(qe_input.namelists) - 1 or qe_input.cards:
+                lines.append("")  # Empty line between sections
         
         # Generate cards
         for card in qe_input.cards:
             lines.append(cls.generate_card(card))
             lines.append("")  # Empty line between sections
         
-        # Remove trailing empty lines
+        # Add any remaining extra_data_lines that haven't been used
+        # (for modules that don't have cards or other special cases)
+        for data_line in qe_input.extra_data_lines:
+            if data_line not in used_extra_lines:
+                lines.append(data_line)
+        
+        # Remove trailing empty lines (but we'll add one back at the end)
         while lines and not lines[-1].strip():
             lines.pop()
         
-        return '\n'.join(lines)
+        # Add a trailing newline at the end of the file
+        # This is required for some QE modules (e.g., dynmat.x) that expect
+        # the input file to end with a newline character
+        content = '\n'.join(lines)
+        if content and not content.endswith('\n'):
+            content += '\n'
+        
+        return content
     
     @classmethod
     def write_file(cls, qe_input: QEInput, filepath: Union[str, Path]):
