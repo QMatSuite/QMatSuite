@@ -101,11 +101,15 @@ def run_module_test(
             
             # Set outdir to temp/outdir if it exists
             set_outdir_to_temp(qe_input, project_root)
+            # Set pseudo_dir to temp/pseudo for unified pseudopotential storage
+            set_pseudo_dir_to_temp(qe_input, project_root)
             
-            # Generate parsed input file
-            parsed_content = QEInputGenerator.generate(qe_input)
+            # Generate modified input file in working directory (with standardized paths)
+            input_filename = Path(input_file).name
+            generated_input_file = working_dir / input_filename
+            QEInputGenerator.write_file(qe_input, generated_input_file)
             
-            # Save to temp folder
+            # Save to temp folder for debugging
             if save_output_to_temp:
                 temp_output_dir = project_root / "temp" / "test_outputs"
                 if category:
@@ -113,7 +117,6 @@ def run_module_test(
                 temp_output_dir.mkdir(parents=True, exist_ok=True)
                 
                 # Create parsed filename: {input_filename}_parsed.in
-                input_filename = Path(input_file).name
                 parsed_filename = input_filename.replace(".in", "_parsed.in")
                 if not parsed_filename.endswith(".in"):
                     parsed_filename = f"{input_filename}_parsed.in"
@@ -122,11 +125,19 @@ def run_module_test(
                     parsed_filename = f"{Path(input_filename).stem}_{step}_parsed.in"
                 
                 parsed_output_path = temp_output_dir / parsed_filename
-                parsed_output_path.write_text(parsed_content)
+                QEInputGenerator.write_file(qe_input, parsed_output_path)
                 result["parsed_input_file"] = str(parsed_output_path)
         except Exception as e:
             # If parsing fails, log but don't fail the test
             result["parse_warning"] = f"Failed to parse input file: {e}"
+            # Fallback to original input file
+            generated_input_file = input_file
+        else:
+            # Use generated input file with standardized paths
+            generated_input_file = working_dir / Path(input_file).name
+        
+        # Use generated input file if available, otherwise use original
+        actual_input_file = generated_input_file if generated_input_file.exists() else input_file
         
         # Find executable
         exe_path = qe_engine.get_executable_path(executable_name)
@@ -168,8 +179,8 @@ def run_module_test(
         
         with open(stdout_file, 'w') as fout, open(stderr_file, 'w') as ferr:
             stdin_handle = None
-            if input_file.exists():
-                stdin_handle = open(input_file, 'r')
+            if actual_input_file.exists():
+                stdin_handle = open(actual_input_file, 'r')
             try:
                 proc = subprocess.run(
                     command,
@@ -369,7 +380,9 @@ def run_test_category(
         if test_files:
             first_test_path = category_dir / test_files[0][0]
             if first_test_path.exists():
-                ensure_pseudopotentials(first_test_path, working_dir, test_suite_dir)
+                project_root = Path(__file__).parent.parent.parent
+                temp_pseudo_dir = project_root / "temp" / "pseudo"
+                ensure_pseudopotentials(first_test_path, working_dir, temp_pseudo_dir, test_suite_dir)
     else:
         working_dir = None
     
@@ -404,7 +417,9 @@ def run_test_category(
             else:
                 test_working_dir = Path(tempfile.mkdtemp(prefix=f"qe_test_{category}_{i}_"))
                 # Ensure pseudopotentials
-                ensure_pseudopotentials(test_path, test_working_dir, test_suite_dir)
+                project_root = Path(__file__).parent.parent.parent
+                temp_pseudo_dir = project_root / "temp" / "pseudo"
+                ensure_pseudopotentials(test_path, test_working_dir, temp_pseudo_dir, test_suite_dir)
             
             # Copy input file to working directory
             # input_file is a string, so we need to get the filename
