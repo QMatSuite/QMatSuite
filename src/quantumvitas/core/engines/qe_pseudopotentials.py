@@ -78,16 +78,16 @@ def ensure_pseudopotentials(
     
     This function:
     1. Parses the input file to find required pseudopotentials
-    2. Checks if they exist in the specified pseudo_dir
-    3. If not found, searches in test_suite_dir (if provided)
+    2. Checks if they exist in the specified pseudo_dir (usually project_root/pseudo)
+    3. If not found, searches in test_suite_dir (if provided) as fallback
     4. If still not found, attempts to download from network
     5. Copies found/downloaded pseudopotentials to working_dir
     
     Args:
         input_file: QE input file path
         working_dir: Working directory for calculation (where pseudopotentials will be copied)
-        pseudo_dir: Directory to search/store pseudopotentials (default: working_dir / "pseudo")
-        test_suite_dir: Optional test suite directory (for finding pseudo directory)
+        pseudo_dir: Directory to search/store pseudopotentials (default: project_root/pseudo)
+        test_suite_dir: Optional test suite directory (for finding pseudo directory as fallback)
         
     Returns:
         True if all pseudopotentials are available
@@ -99,9 +99,20 @@ def ensure_pseudopotentials(
     if not atomic_species or not atomic_species.data:
         return True  # No pseudopotentials needed
     
-    # Use provided pseudo_dir or default to working_dir / "pseudo"
+    # Use provided pseudo_dir or try to find project_root/pseudo
     if pseudo_dir is None:
-        pseudo_dir = working_dir / "pseudo"
+        # Try to find project root
+        current = Path(input_file).parent
+        project_root = None
+        while current != current.parent:
+            if (current / "pseudo").exists() or (current / "src" / "quantumvitas").exists():
+                project_root = current
+                break
+            current = current.parent
+        if project_root:
+            pseudo_dir = project_root / "pseudo"
+        else:
+            pseudo_dir = working_dir / "pseudo"
     pseudo_dir.mkdir(parents=True, exist_ok=True)
     
     # Network URL for downloading

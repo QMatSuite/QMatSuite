@@ -302,3 +302,163 @@ def compare_with_benchmark(
     # For other non-pw.x modules, just check JOB DONE
     return True, "JOB DONE"
 
+
+def run_test_category_workflow(
+    category: str,
+    test_files: List[Tuple[str, str]],
+    test_suite_dir: Path,
+    qe_engine: "QuantumEspressoEngine",
+    executable_map: Dict[str, str],
+    timeout: int = 60,
+    max_tests: Optional[int] = None,
+    project_root: Optional[Path] = None
+) -> List[Dict[str, Any]]:
+    """
+    Run all tests in a category using the centralized step execution system.
+    
+    This function replaces the old run_test_category from qe_module_base.
+    It uses run_and_verify_step for each step.
+    
+    Args:
+        category: Category name (e.g., "ph_base")
+        test_files: List of (input_file, args) tuples from jobconfig
+        test_suite_dir: Test suite root directory
+        qe_engine: Configured QuantumEspressoEngine
+        executable_map: Maps step args (like "1", "2") to executable names
+        timeout: Timeout per test
+        max_tests: Maximum number of tests to run
+        project_root: Project root directory (auto-detected if not provided)
+    
+    Returns:
+        List of test results (dict with success, error, message, etc.)
+    """
+    import tempfile
+    
+    # Auto-detect project root if not provided
+    if project_root is None:
+        project_root = Path(__file__).parent.parent.parent
+    
+    category_dir = test_suite_dir / category
+    results = []
+    
+    # Limit number of tests if specified
+    if max_tests:
+        test_files = test_files[:max_tests]
+    
+    # Check if this is a workflow test (multiple sequential tests)
+    is_workflow = len(test_files) > 1 and any(args for _, args in test_files)
+    
+    # For workflow tests, use a single working directory for all tests
+    if is_workflow:
+        working_dir = Path(tempfile.mkdtemp(prefix=f"qe_workflow_{category}_"))
+    else:
+        working_dir = None
+    
+    try:
+        for i, (input_file, args) in enumerate(test_files):
+            test_path = category_dir / input_file
+            
+            if not test_path.exists():
+                results.append({
+                    "category": category,
+                    "file": input_file,
+                    "success": False,
+                    "error": "Test file not found",
+                    "time_taken": 0
+                })
+                continue
+            
+            # For non-workflow tests, create a new working directory for each test
+            if not is_workflow:
+                working_dir = Path(tempfile.mkdtemp(prefix=f"qe_test_{category}_{i}_"))
+            
+            # Determine executable from args
+            executable_name = executable_map.get(args, executable_map.get("default", "pw.x"))
+            
+            # Check for reference output file
+            reference_file = None
+            # Try to find benchmark file (QE test-suite format)
+            if args:
+                benchmark_file = category_dir / f"benchmark.out.git.inp={input_file}.args={args}"
+            else:
+                benchmark_file = category_dir / f"benchmark.out.git.inp={input_file}"
+            
+            if benchmark_file.exists():
+                reference_file = benchmark_file
+            
+            # Run and verify step using centralized function
+            try:
+                from tests.core.qe_step_runner import run_and_verify_step
+                from tests.core.qe_step_verification import verify_step_result
+                
+                step_result, success, message = run_and_verify_step(
+                    input_file=test_path,
+                    qe_engine=qe_engine,
+                    working_dir=working_dir,
+                    reference_file=reference_file,
+                    category=category,
+                    timeout=timeout,
+                    step_type=None,  # Auto-detect from input
+                    project_root=project_root
+                )
+                
+                result = {
+                    "category": category,
+                    "file": input_file,
+                    "step": args if args else str(i+1),
+                    "success": success,
+                    "run_success": step_result.success,
+                    "verify_success": success,
+                    "output_file": str(step_result.output_file) if step_result.output_file else None,
+                    "time_taken": step_result.time_taken or 0,
+                    "message": message,
+                    "error": step_result.error
+                }
+                
+            except Exception as e:
+                result = {
+                    "category": category,
+                    "file": input_file,
+                    "step": args if args else str(i+1),
+                    "success": False,
+                    "run_success": False,
+                    "verify_success": False,
+                    "output_file": None,
+                    "time_taken": 0,
+                    "message": None,
+                    "error": f"Error running test: {e}"
+                }
+            
+            results.append(result)
+            
+            # For workflow tests, stop on first failure
+            if is_workflow and not result.get("success", False):
+                break
+            
+            # Clean up non-workflow working directories
+            if not is_workflow and working_dir.exists():
+                import shutil
+                try:
+                    shutil.rmtree(working_dir)
+                except:
+                    pass
+    
+    except Exception as e:
+        results.append({
+            "category": category,
+            "file": "unknown",
+            "success": False,
+            "error": f"Category execution failed: {e}",
+            "time_taken": 0
+        })
+    
+    # Clean up workflow working directory
+    if is_workflow and working_dir and working_dir.exists():
+        import shutil
+        try:
+            shutil.rmtree(working_dir)
+        except:
+            pass
+    
+    return results
+

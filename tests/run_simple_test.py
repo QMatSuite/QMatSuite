@@ -79,14 +79,17 @@ K_POINTS (automatic)
 
 def test_real_example():
     """Test with a real example file if available."""
-    # Use auto-downloaded tutorial examples
-    import sys
+    # Use local test file instead of downloading
     from pathlib import Path
     project_root = Path(__file__).parent.parent
-    sys.path.insert(0, str(project_root / "extended-tests"))
-    from utils.download_tutorial_examples import ensure_tutorial_examples
-    examples_dir = ensure_tutorial_examples()
-    example_file = examples_dir / "0_Si_scf" / "si.scf.in"
+    # Try local test file first
+    example_file = project_root / "tests" / "integration" / "ci_test_data" / "pw_scf" / "scf-cg.in"
+    
+    # Fallback: check if tutorial examples already downloaded (don't trigger download)
+    if not example_file.exists():
+        tutorial_dir = project_root / "temp" / "downloads" / "qe_tutorial_examples"
+        if tutorial_dir.exists():
+            example_file = tutorial_dir / "0_Si_scf" / "si.scf.in"
     
     if not example_file.exists():
         print("\n⚠️  Real example file not found, skipping real example test")

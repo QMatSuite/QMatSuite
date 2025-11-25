@@ -24,9 +24,9 @@ sys.path.insert(0, str(project_root / "extended-tests"))
 
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.base import EngineConfig
-from utils.qe_module_base import (
+from tests.core.qe_test_utils import (
     parse_jobconfig,
-    run_test_category,
+    run_test_category_workflow,
 )
 
 
@@ -141,7 +141,7 @@ def main():
         print(f"\n[{i}/{len(categories_to_run)}] Category: {category}")
         print(f"  Running {len(test_files)} tests...")
         
-        category_results = run_test_category(
+        category_results = run_test_category_workflow(
             category,
             test_files,
             args.test_dir,
