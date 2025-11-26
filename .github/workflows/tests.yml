@@ -163,12 +163,14 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install pytest pytest-cov pytest-xdist
+        pip install -e .[dev]
     
     - name: Run all tests in tests/ directory
       run: |
         export QE_HOME=$HOME/src/q-e-qe-7.5
         export PATH="$QE_HOME/bin:$PATH"
         pytest tests/ -v --cov=src/quantumvitas --cov-report=xml --cov-report=term
+        echo "QE_HOME=$HOME/src/q-e-qe-7.5" >> $GITHUB_ENV
       env:
         QE_HOME: ${{ env.QE_HOME }}
     
