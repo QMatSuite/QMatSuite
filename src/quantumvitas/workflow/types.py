@@ -12,7 +12,7 @@ class StepType(str, Enum):
     NSCF = "nscf"
     DOS = "dos"
     BANDS_PW = "bands_pw"      # pw.x calculation with calculation='bands'
-    BANDS_POST = "bands_x"     # bands.x post-processing
+    BANDS = "bands"            # bands.x post-processing
     PH = "ph"
     Q2R = "q2r"
     MATDYN = "matdyn"
