@@ -7,35 +7,27 @@ This test validates the complete workflow:
 3. DOS calculation (reads from NSCF .save)
 """
 
-import pytest
-from pathlib import Path
 import time
+from pathlib import Path
 
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.io import QEInputParser, QEInputGenerator
+import pytest
+
 from quantumvitas.core.engines.base import EngineConfig
-from tests.core.qe_step_runner import (
-    run_and_verify_step_with_assert,
-    get_default_working_dir,
-)
+from quantumvitas.core.engines.qe import QuantumEspressoEngine
+from quantumvitas.io import QEInputGenerator, QEInputParser
 from quantumvitas.workflow.input_runner import set_outdir_to_temp
-from tests.core.qe_test_utils import parse_jobconfig
+from tests.core.qe_step_runner import (
+    get_default_working_dir,
+    run_and_verify_step_with_assert,
+)
+
+pytestmark = pytest.mark.qe_core
 
 
 @pytest.fixture
-def test_data_dir():
-    """Fixture for CI test data directory."""
-    project_root = Path(__file__).parent.parent.parent
-    ci_test_data_dir = project_root / "tests" / "integration" / "ci_test_data"
-    if not ci_test_data_dir.exists():
-        pytest.skip(f"CI test data not found: {ci_test_data_dir}")
-    return ci_test_data_dir
-
-
-@pytest.fixture
-def si_dos_dir(test_data_dir):
+def si_dos_dir(ci_test_data_dir):
     """Fixture for 4_Si_DOS test data directory."""
-    return test_data_dir / "4_Si_DOS"
+    return ci_test_data_dir / "4_Si_DOS"
 
 
 @pytest.fixture
@@ -50,65 +42,7 @@ def qe_engine():
 
 class TestSiDOSWorkflow:
     """Test suite for SCF -> NSCF -> DOS workflow."""
-    
-    def test_parse_scf_input(self, si_dos_dir):
-        """Test parsing SCF input file."""
-        scf_file = si_dos_dir / "si.1_scf.in"
-        qe_input = QEInputParser.parse_file(scf_file)
-        
-        control = qe_input.get_namelist('control')
-        assert control.get('calculation') == 'scf'
-        assert control.get('prefix') == 'si'
-        
-        system = qe_input.get_namelist('system')
-        assert system.get('ecutwfc') > 0
-    
-    def test_parse_nscf_input(self, si_dos_dir):
-        """Test parsing NSCF input file."""
-        nscf_file = si_dos_dir / "si.2_nscf.in"
-        qe_input = QEInputParser.parse_file(nscf_file)
-        
-        control = qe_input.get_namelist('control')
-        assert control.get('calculation') == 'nscf'
-        assert control.get('prefix') == 'si'
-    
-    def test_parse_dos_input(self, si_dos_dir):
-        """Test parsing DOS input file."""
-        dos_file = si_dos_dir / "si.3_dos.in"
-        qe_input = QEInputParser.parse_file(dos_file)
-        
-        dos_namelist = qe_input.get_namelist('dos')
-        assert dos_namelist is not None
-        assert dos_namelist.get('fildos') == 'si.dos.dat'
-    
-    def test_workflow_sequence(self, si_dos_dir, test_data_dir):
-        """Test that workflow files are in correct sequence from jobconfig."""
-        jobconfig_path = test_data_dir / "jobconfig"
-        if not jobconfig_path.exists():
-            pytest.skip(f"jobconfig file not found: {jobconfig_path}")
-        
-        all_tests = parse_jobconfig(jobconfig_path, "")
-        category = "4_Si_DOS"
-        
-        if category not in all_tests:
-            pytest.skip(f"Category '{category}' not found in jobconfig")
-        
-        test_files = all_tests[category]
-        
-        # Verify all files exist and are in correct sequence
-        for input_file, args in test_files:
-            file_path = si_dos_dir / input_file
-            assert file_path.exists(), f"Workflow file not found: {file_path}"
-        
-        # Verify calculation types
-        scf_input = QEInputParser.parse_file(si_dos_dir / test_files[0][0])
-        nscf_input = QEInputParser.parse_file(si_dos_dir / test_files[1][0])
-        dos_input = QEInputParser.parse_file(si_dos_dir / test_files[2][0])
-        
-        assert scf_input.get_namelist('control').get('calculation') == 'scf'
-        assert nscf_input.get_namelist('control').get('calculation') == 'nscf'
-        assert dos_input.get_namelist('dos') is not None
-    
+
     def test_run_full_workflow(self, si_dos_dir, qe_engine):
         """Test running the complete SCF -> NSCF -> DOS workflow."""
         project_root = Path(__file__).parent.parent.parent

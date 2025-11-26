@@ -147,7 +147,10 @@ def prepare_input_step(
     if not ensure_pseudopotentials(input_file, working_dir, unified_pseudo_dir, None):
         raise RuntimeError("Failed to obtain required pseudopotentials")
 
-    working_dir_input = working_dir / Path(input_file).name
+    input_path = Path(input_file)
+    working_dir_input = working_dir / input_path.name
+    if input_path.resolve().parent == working_dir.resolve():
+        working_dir_input = working_dir / f"{input_path.stem}_work.in"
     try:
         qe_input = QEInputParser.parse_file(input_file)
         set_outdir_to_temp(qe_input)
@@ -159,7 +162,7 @@ def prepare_input_step(
         else:
             working_dir_input = input_file
 
-    input_stem = Path(input_file).stem
+    input_stem = input_path.stem
     original_copy = working_dir / f"{input_stem}_original.in"
     modified_copy = working_dir / f"{input_stem}_modified.in"
     _safe_copy(input_file, original_copy)

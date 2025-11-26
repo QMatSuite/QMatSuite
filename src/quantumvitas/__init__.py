@@ -7,27 +7,17 @@ A modern Python-based GUI and workflow engine for Quantum ESPRESSO and related c
 __version__ = "1.0.1"
 __author__ = "Haonan Huang"
 
-# Core imports
-from .core.models import (
-    Project,
-    Workflow,
-    Step,
-    Structure,
-    CalculationType,
-    StepType,
-)
-
-from .core.runner import WorkflowRunner
-from .core.registry import get_registry
+# Public API exports
+from .project.model import Project, ProjectSettings, StructureRef, WorkflowRef
+from .workflow.workflow import Workflow
+from .workflow.runner import WorkflowRunner
 
 __all__ = [
     "Project",
+    "ProjectSettings",
+    "StructureRef",
+    "WorkflowRef",
     "Workflow",
-    "Step",
-    "Structure",
-    "CalculationType",
-    "StepType",
     "WorkflowRunner",
-    "get_registry",
 ]
 

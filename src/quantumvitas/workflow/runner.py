@@ -34,8 +34,14 @@ class WorkflowRunner:
             raw_dir = workflow.raw_dir
             raw_dir.mkdir(parents=True, exist_ok=True)
 
-            result = engine.run_step(step, working_dir=raw_dir)
-            output_text = result.output_file.read_text() if result.output_file.exists() else ""
+            result = step.run(
+                engine=engine,
+                workflow_raw_dir=raw_dir,
+                project_root=workflow.project.root,
+            )
+            output_text = ""
+            if result.output_file and result.output_file.exists():
+                output_text = result.output_file.read_text()
             step_mode = StepMode.STRICT if workflow.mode == StepMode.STRICT else step.mode
 
             step_status, message = evaluate_step_result(

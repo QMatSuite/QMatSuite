@@ -1,7 +1,148 @@
-
- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-     task #         0
-     from phq_readin : error #         1
-     reading input file
- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+Cursor 设计文档（精简版）
+(适合直接粘贴给 Cursor，让它理解整个项目结构并按此自动生成/重构代码)
+🎯 目标
+构建一个完整的 QMATSuite 核心架构，包括：
+core API（可被 CLI、GUI、AI 统一调用）
+project / workflow / step 模型
+Typer CLI
+可扩展至 GUI（PyQt）和 AI Copilot
+项目重点是：
+用简单一致的 API 管理项目 → workflow → steps → QE engine → output 解析。
+🔧 核心概念（Cursor 应遵循）
+1. Project
+表示一个物理计算项目，存储在磁盘：
+project_dir/
+    project.qv.yml
+    workflows/
+    inputs/
+    outputs/
+    results/
+Project 负责：
+读取并管理 workflows
+生成新的 workflow
+提供运行/分析入口
+存储元数据（QE 安装、结构文件、settings）
+project = Project.open("path/to/project")
+project.run_workflow("scf.yml")
+2. Workflow
+由多个 Step 组成，每个 Step 对应一个 QE 输入（scf/nscf/ph/...）。
+Workflow 的运行方式：
+workflow.run()  
+→ 按顺序执行 steps  
+→ 输出 WorkflowResult
+Workflow 文件（YAML）：
+steps:
+  - type: scf
+    input: inputs/scf.in
+  - type: nscf
+    input: inputs/nscf.in
+  - type: bands
+    input: inputs/bands.in
+类结构：
+class Workflow:
+    steps: list[Step]
+    working_dir: Path
+3. Step
+Step = 单个 QE 任务（pw.x / ph.x / dos.x 等）
+step = Step(
+    type="scf",
+    input_file="inputs/scf.in",
+)
+result = step.run(engine)
+Step 运行返回：
+class StepResult:
+    success: bool
+    output_file: Path
+    parsed: dict
+4. Engine（QE）
+核心：QuantumEspressoEngine 封装 QE 调用逻辑：
+engine.run_step(input_file, working_dir)
+engine.run_workflow(list_of_steps)
+Engine 自动：
+查找 pw.x 等 executable
+设置 working_dir/outdir
+调用 subprocess
+返回结果
+CLI 和 GUI 都通过 engine 调用，不重复逻辑。
+🚀 Typer CLI（Cursor 按此生成）
+主命令：qv
+qv init
+创建一个新 project：
+qv init myproj
+生成：
+myproj/
+    project.qv.yml
+    workflows/
+    inputs/
+    outputs/
+    results/
+qv detect-qe
+检测 QE 安装：
+qv detect-qe
+输出 pw.x, ph.x 的路径。
+qv run step
+直接运行一个单独的 QE 输入：
+qv run step inputs/scf.in --workdir tmp/
+选项：
+--workdir
+--prefix
+--engine=qespresso
+qv run workflow
+直接运行 YAML 定义的 workflow：
+qv run workflow workflows/scf_band.yml
+qv analyze
+简单的 post-processing：
+qv analyze energy outputs/scf.out
+qv analyze band outputs/bands.out
+qv analyze dos results/dos.dat
+analysis API 先做 minimal：
+total energy
+Fermi energy
+band eigenvalues（不画图）
+DOS 读取
+📦 目录布局（Cursor 用此生成文件结构）
+quantumvitas/
+    core/
+        project.py
+        workflow.py
+        step.py
+        engines/
+            base.py
+            qe.py
+        parsing/
+            pw_output.py
+            dos_output.py
+    cli/
+        __init__.py
+        app.py
+        commands/
+            init.py
+            detect_qe.py
+            run_step.py
+            run_workflow.py
+            analyze.py
+    gui/     # 暂时空壳，未来扩展
+    utils/
+🧩 Cursor 具体任务（你可以直接给它）
+请基于以上架构：
+创建 quantumvitas/cli/app.py，使用 Typer 注册以下命令：
+init
+detect-qe
+run step
+run workflow
+analyze energy|band|dos
+在 core 里创建：
+Project
+Workflow
+Step
+StepResult / WorkflowResult
+让 CLI 完整调用 core，避免重复 subprocess 逻辑。
+确保 CLI → Workflow → Step → Engine 的调用链稳定。
+所有命令必须能从任何目录运行（基于 project.qv.yml 定位 project 根目录）。
+👍 最终效果（Cursor 按这个实现）
+qv init graphene
+qv detect-qe
+qv run step inputs/scf.in
+qv run workflow workflows/scf_band.yml
+qv analyze energy outputs/scf.out
+这是一个完整、清晰、可扩展到 GUI 和 AI 的架构。

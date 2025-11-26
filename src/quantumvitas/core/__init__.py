@@ -1,17 +1,10 @@
-"""Core modules for QuantumVITAS."""
+"""Legacy core namespace kept for backward-compatible imports.
 
-from .models import Project, Workflow, Step, Structure, CalculationType, StepType
-from .runner import WorkflowRunner
-from .registry import get_registry
+Only the ``core.engines`` package remains active; all other components have
+been migrated into the new layered architecture.
+"""
 
-__all__ = [
-    "Project",
-    "Workflow",
-    "Step",
-    "Structure",
-    "CalculationType",
-    "StepType",
-    "WorkflowRunner",
-    "get_registry",
-]
+from . import engines
+
+__all__ = ["engines"]
 

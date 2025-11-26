@@ -49,6 +49,31 @@ python -m pytest tests/ -v --tb=short
 Extended tests still live under `extended-tests/`; they continue to work when
 invoked from the repository root and benefit from the same editable install.
 
+### Command-Line Interface (Typer CLI)
+
+The new runtime exposes a Typer-powered CLI named `qv`. Key commands:
+
+```bash
+# Create a scaffolded project with a sample workflow
+qv init my_project
+
+# Detect QE binaries (pw.x, ph.x, etc.)
+qv detect-qe
+
+# Run a single QE input file in isolation (uses temp/raw directories)
+qv run-step path/to/si.scf.in --workdir temp/run_scf
+
+# Execute a workflow defined under workflows/<id>/workflow.yaml
+qv run-workflow si_dos --project /path/to/my_project
+
+# Lightweight analysis (energy / band / dos summaries)
+qv analyze energy workflows/si_dos/raw/si.1_scf.out
+```
+
+`qv run-workflow` automatically locates `project.qv.yml` (walking up from the
+current directory). Each workflow owns a `raw/` folder where all QE input/output
+data lives, so restart files persist between steps.
+
 ### QE Input Roundtrip Helper
 
 Need to parse a QE input, optionally tweak it, and regenerate the file?
