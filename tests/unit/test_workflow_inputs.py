@@ -30,6 +30,7 @@ def test_si_dos_parse_inputs(si_dos_dir: Path):
     assert scf.get_namelist("control").get("calculation") == "scf"
     assert nscf.get_namelist("control").get("calculation") == "nscf"
     assert dos.get_namelist("dos") is not None
+    assert (si_dos_dir / "reference" / "si.1_scf.out").exists()
 
 
 def test_si_dos_jobconfig_sequence(ci_test_data_dir: Path, si_dos_dir: Path):
@@ -56,6 +57,7 @@ def test_si_bands_parse_inputs(si_bands_dir: Path):
     assert nscf.get_namelist("control").get("calculation") == "nscf"
     assert bands.get_namelist("control").get("calculation") == "bands"
     assert bands_pp.get_namelist("bands") is not None
+    assert (si_bands_dir / "reference" / "si.0_scf.out").exists()
 
 
 def test_si_bands_jobconfig_sequence(ci_test_data_dir: Path, si_bands_dir: Path):

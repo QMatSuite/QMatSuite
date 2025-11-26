@@ -27,9 +27,10 @@ pytest tests/ -m quick
 # Run with coverage
 pytest tests/ --cov=src/quantumvitas --cov-report=html
 
-# Run specific category
-pytest tests/unit/
-pytest tests/integration/
+# Run individual slices
+pytest -m unit
+pytest -m qe_core
+pytest -m qe_cli
 ```
 
 ### Extended Tests (Developer)
@@ -68,8 +69,9 @@ See `.github/workflows/tests.yml` for details.
 
 - `@pytest.mark.quick` - Quick tests (tests/)
 - `@pytest.mark.extended` - Extended tests (extended-tests/)
-- `@pytest.mark.unit` - Unit tests
-- `@pytest.mark.integration` - Integration tests
+- `@pytest.mark.unit` - Pure Python/unit tests
+- `@pytest.mark.qe_core` - QE integration via engine helpers
+- `@pytest.mark.qe_cli` - QE integration via Typer CLI
 - `@pytest.mark.requires_qe` - Requires QE installation
 - `@pytest.mark.requires_test_suite` - Requires QE test-suite
 
@@ -78,8 +80,9 @@ See `.github/workflows/tests.yml` for details.
 ```
 .
 ├── tests/                    # Quick tests (CI)
-│   ├── unit/               # Unit tests
-│   ├── integration/         # Integration tests
+│   ├── unit/               # Unit tests (no QE)
+│   ├── integration/        # QE engine integration
+│   ├── cli/                # CLI-driven QE workflows
 │   ├── core/               # Test framework
 │   └── conftest.py         # Pytest config
 │

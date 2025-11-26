@@ -9,7 +9,7 @@
 ================================================================================
 
 ✅ 所有 reference 文件已成功生成到:
-   tests/integration/ci_test_data/4_Si_DOS/reference_out/
+   tests/integration/ci_test_data/4_Si_DOS/reference/
 
 生成的文件列表:
   1. si.1_scf.out (9.4 KB)

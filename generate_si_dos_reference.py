@@ -22,7 +22,7 @@ def generate_reference_outputs():
     
     # 设置路径
     si_dos_dir = project_root / "tests" / "integration" / "ci_test_data" / "4_Si_DOS"
-    reference_out_dir = si_dos_dir / "reference_out"
+    reference_out_dir = si_dos_dir / "reference"
     reference_out_dir.mkdir(exist_ok=True)
     
     # 创建临时工作目录
@@ -100,7 +100,7 @@ def generate_reference_outputs():
         print(f"❌ SCF 计算失败: {scf_result.error}")
         return False
     
-    # 复制输出文件到 reference_out
+    # 复制输出文件到 reference/
     scf_output = scf_result.output_file
     if scf_output.exists():
         reference_scf = reference_out_dir / "si.1_scf.out"
@@ -167,7 +167,7 @@ def generate_reference_outputs():
         print(f"❌ NSCF 计算失败: {nscf_result.error}")
         return False
     
-    # 复制输出文件到 reference_out
+    # 复制输出文件到 reference/
     nscf_output = nscf_result.output_file
     if nscf_output.exists():
         reference_nscf = reference_out_dir / "si.2_nscf.out"

@@ -26,19 +26,20 @@
 
 ```
 .
-├── tests/                    # Quick tests (CI)
-│   ├── unit/                # Unit tests
-│   ├── integration/         # Integration tests
-│   ├── core/                # Test framework
-│   └── conftest.py          # Pytest config
+├── tests/                    # Quick tests (run in CI)
+│   ├── unit/                # Pure Python/unit tests
+│   ├── integration/         # QE integration via engine helpers
+│   ├── cli/                 # QE integration triggered through the CLI
+│   ├── core/                # Shared helpers
+│   └── conftest.py          # Pytest config & auto-markers
 │
-├── extended-tests/          # Extended tests (developer)
-│   ├── suites/             # Test suites
-│   │   └── qe_testsuite/   # QE official test-suite
-│   ├── utils/              # Utilities
-│   ├── conftest.py         # Pytest config
-│   ├── run_all.py          # Run all extended tests
-│   └── analyze_results.py  # Analyze results
+├── extended-tests/          # Extended QE test-suite mirroring upstream
+│   ├── suites/
+│   │   └── qe_testsuite/
+│   ├── utils/
+│   ├── conftest.py
+│   ├── run_all.py
+│   └── analyze_results.py
 │
 └── pytest.ini              # Pytest configuration
 ```
@@ -50,9 +51,10 @@
 # Run all quick tests
 pytest tests/ -m quick
 
-# Run specific category
-pytest tests/unit/
-pytest tests/integration/
+# Run by slice
+pytest -m unit
+pytest -m qe_core
+pytest -m qe_cli
 ```
 
 ### Extended Tests (Developer)
@@ -88,12 +90,13 @@ See `.github/workflows/tests.yml` for details.
 
 ## Test Markers
 
-- `@pytest.mark.quick` - Quick tests (tests/)
-- `@pytest.mark.extended` - Extended tests (extended-tests/)
-- `@pytest.mark.unit` - Unit tests
-- `@pytest.mark.integration` - Integration tests
-- `@pytest.mark.requires_qe` - Requires QE installation
-- `@pytest.mark.requires_test_suite` - Requires QE test-suite
+- `@pytest.mark.quick` - Everything under `tests/`
+- `@pytest.mark.extended` - Everything under `extended-tests/`
+- `@pytest.mark.unit` - Pure Python/unit tests (no QE)
+- `@pytest.mark.qe_core` - QE integration via engine helpers
+- `@pytest.mark.qe_cli` - QE integration via the Typer CLI
+- `@pytest.mark.requires_qe` - Legacy QE dependency marker
+- `@pytest.mark.requires_test_suite` - Requires the official QE test-suite
 
 ## Migration Notes
 

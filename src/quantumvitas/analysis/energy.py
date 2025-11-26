@@ -12,6 +12,28 @@ from quantumvitas.workflow.results import WorkflowResult
 from quantumvitas.workflow.workflow import Workflow
 
 
+def extract_energy_metrics_from_text(text: str) -> Dict[str, float | None]:
+    total_energy = None
+    fermi_energy = None
+    for line in text.splitlines():
+        stripped = line.strip()
+        if "!" in stripped and "total energy" in stripped:
+            try:
+                total_energy = float(stripped.split("=")[-1].split()[0])
+            except Exception:
+                continue
+        lowered = stripped.lower()
+        if "fermi energy" in lowered:
+            try:
+                fermi_energy = float(stripped.split("=")[-1].split()[0])
+            except Exception:
+                continue
+    return {
+        "total_energy_ry": total_energy,
+        "fermi_energy_ry": fermi_energy,
+    }
+
+
 def analyze_energies(output_file: Path | str) -> dict:
     """
     Parse a QE output file and extract total/Fermi energies.
@@ -20,25 +42,9 @@ def analyze_energies(output_file: Path | str) -> dict:
     if not output_path.exists():
         raise FileNotFoundError(output_path)
 
-    total_energy = None
-    fermi_energy = None
-    for line in output_path.read_text().splitlines():
-        if "!" in line and "total energy" in line:
-            try:
-                total_energy = float(line.split("=")[-1].split()[0])
-            except Exception:
-                continue
-        lower = line.lower()
-        if "fermi energy" in lower:
-            try:
-                fermi_energy = float(line.split("=")[-1].split()[0])
-            except Exception:
-                continue
-    return {
-        "file": str(output_path),
-        "total_energy_ry": total_energy,
-        "fermi_energy_ry": fermi_energy,
-    }
+    metrics = extract_energy_metrics_from_text(output_path.read_text())
+    metrics["file"] = str(output_path)
+    return metrics
 
 
 def summarize_workflow_energies(
@@ -53,8 +59,8 @@ def summarize_workflow_energies(
             "step_id": step.step_id,
             "step_type": step.step_type.value,
             "status": step.status.value,
-            "total_energy": step.metrics.get("total_energy"),
-            "fermi_energy": step.metrics.get("fermi_energy"),
+            "total_energy_ry": step.metrics.get("total_energy_ry"),
+            "fermi_energy_ry": step.metrics.get("fermi_energy_ry"),
         }
         energies.append(entry)
 

@@ -4,7 +4,7 @@ Workflow runner orchestrates step execution and verification.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List
 
@@ -13,6 +13,15 @@ from .results import WorkflowResult, StepResultSummary
 from .types import StepMode, StepStatus, StepType
 from .verification import evaluate_step_result
 from quantumvitas.engine.registry import EngineRegistry
+
+
+def _coerce_step_type(value) -> StepType:
+    if isinstance(value, StepType):
+        return value
+    try:
+        return StepType(value)
+    except Exception:
+        return StepType.CUSTOM
 
 
 class WorkflowRunner:
@@ -25,7 +34,7 @@ class WorkflowRunner:
 
     def run(self, workflow: Workflow) -> WorkflowResult:
         workflow.io.ensure()
-        started = datetime.utcnow()
+        started = datetime.now(timezone.utc)
         step_summaries: List[StepResultSummary] = []
         status = StepStatus.SUCCESS
 
@@ -44,22 +53,27 @@ class WorkflowRunner:
                 output_text = result.output_file.read_text()
             step_mode = StepMode.STRICT if workflow.mode == StepMode.STRICT else step.mode
 
-            step_status, message = evaluate_step_result(
+            step_type = _coerce_step_type(result.step_type)
+            step_status, message, metrics = evaluate_step_result(
                 mode=step_mode,
-                step_type=result.step_type,
+                step_type=step_type,
                 output_text=output_text,
                 reference_file=step.reference_output,
             )
+            combined_metrics = dict(getattr(result, "parsed_output", {}) or {})
+            for key, value in (metrics or {}).items():
+                if value is not None:
+                    combined_metrics[key] = value
             summary = StepResultSummary(
                 step_id=step.id,
-                step_type=result.step_type,
+                step_type=step_type,
                 status=step_status,
                 working_dir=raw_dir,
                 input_file=result.input_file,
                 output_file=result.output_file,
                 reference_file=step.reference_output,
                 message=message,
-                metrics=getattr(result, "parsed_output", {}) or {},
+                metrics=combined_metrics,
             )
             step_summaries.append(summary)
 
@@ -68,7 +82,7 @@ class WorkflowRunner:
                 if workflow.mode == StepMode.STRICT:
                     break
 
-        finished = datetime.utcnow()
+        finished = datetime.now(timezone.utc)
         return WorkflowResult(
             workflow_id=workflow.id,
             mode=workflow.mode,

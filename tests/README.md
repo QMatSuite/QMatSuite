@@ -6,10 +6,11 @@ Quick tests for QuantumVITAS. These tests are **automatically run in CI** and sh
 
 ```
 tests/
-├── unit/              # Unit tests (fast, isolated, no external dependencies)
-├── integration/       # Integration tests (may require QE installation)
-├── core/              # Test framework core (shared with extended-tests)
-└── conftest.py        # Pytest configuration
+├── unit/          # Pure Python tests (no QE binaries)
+├── integration/   # QE integration driven via shared engine helpers
+├── cli/           # QE integration executed through the Typer CLI
+├── core/          # Shared fixtures/utilities (jobconfig parsing, runners, etc.)
+└── conftest.py    # Pytest configuration and automatic markers
 ```
 
 ## Important
@@ -32,8 +33,9 @@ pytest tests/ -m quick
 
 ### Run specific test type
 ```bash
-pytest tests/unit/          # Unit tests only
-pytest tests/integration/   # Integration tests only
+pytest -m unit              # Parser / IO / project-loading tests
+pytest -m qe_core           # QE integration via the engine helpers
+pytest -m qe_cli            # QE integration executed through the CLI
 ```
 
 ### Run with coverage
@@ -43,30 +45,26 @@ pytest tests/ --cov=src/quantumvitas --cov-report=html
 
 ## Test Categories
 
-### Unit Tests (`tests/unit/`)
-- Fast, isolated tests
-- Test individual components
-- No external dependencies
-- Examples:
-  - `test_qe_input.py` - QE input parsing
-  - `test_qe_modules.py` - Module detection
-  - `test_qe_executable_detection.py` - Executable detection
+### Unit Tests (`tests/unit/`, `-m unit`)
+- Fast, isolated, no QE binaries.
+- Examples: parser round-trips, jobconfig ordering, CLI scaffolding.
 
-### Integration Tests (`tests/integration/`)
-- Test component interactions
-- May require QE installation (marked with `@pytest.mark.requires_qe`)
-- Should NOT require QE test-suite
-- Examples:
-  - `test_qe_engine.py` - Engine integration
-  - `test_qe_executable_integration.py` - Executable integration
+### QE Core Integration (`tests/integration/`, `-m qe_core`)
+- Run real QE binaries via the shared `run_and_verify_step` helpers or the new `WorkflowRunner`.
+- Reference outputs live under `workflows/<id>/reference/` and strict mode compares against them automatically.
+
+### QE CLI Integration (`tests/cli/`, `-m qe_cli`)
+- Exercise the Typer CLI end-to-end (`qv run-workflow …`).
+- Use the same workflow layout (raw + reference) so debugging artifacts land in `temp/test_outputs/`.
 
 ## Markers
 
 Tests are automatically marked based on location:
-- `@pytest.mark.quick` - Quick tests (tests/)
-- `@pytest.mark.unit` - Unit tests
-- `@pytest.mark.integration` - Integration tests
-- `@pytest.mark.requires_qe` - Requires QE installation (but not test-suite)
+- `@pytest.mark.quick` - All tests under `tests/`
+- `@pytest.mark.unit` - Files in `tests/unit/`
+- `@pytest.mark.qe_core` - Files in `tests/integration/`
+- `@pytest.mark.qe_cli` - Files in `tests/cli/`
+- `@pytest.mark.requires_qe` - Legacy marker for tests that need QE (still present in extended-tests)
 
 ## CI Integration
 

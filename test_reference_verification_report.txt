@@ -67,7 +67,7 @@ Reference 文件位置
 ================================================================================
 
 Reference 文件位于:
-  tests/integration/ci_test_data/4_Si_DOS/reference_out/
+  tests/integration/ci_test_data/4_Si_DOS/reference/
     - si.1_scf.out (SCF 计算参考输出)
     - si.2_nscf.out (NSCF 计算参考输出)
     - si.3_dos.out (DOS 计算参考输出)

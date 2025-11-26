@@ -72,7 +72,36 @@ qv analyze energy workflows/si_dos/raw/si.1_scf.out
 
 `qv run-workflow` automatically locates `project.qv.yml` (walking up from the
 current directory). Each workflow owns a `raw/` folder where all QE input/output
-data lives, so restart files persist between steps.
+data lives, so restart files persist between steps. Reference outputs belong in
+`workflows/<id>/reference/`, and strict workflows compare against the files
+named in `workflow.yaml`:
+
+```yaml
+id: si_dos
+mode: strict
+workflow:
+  working_dir: raw
+steps:
+  - id: scf
+    input: si.1_scf.in
+    reference: reference/si.1_scf.out
+  - id: nscf
+    input: si.2_nscf.in
+    reference: reference/si.2_nscf.out
+  - id: dos
+    input: si.3_dos.in
+    reference: reference/si.3_dos.out
+```
+
+### Test slices
+
+The quick suite is split into three markers:
+
+```bash
+pytest -m unit    # parser/project tests (no QE binaries)
+pytest -m qe_core # QE integration via run_and_verify_step/workflow runner
+pytest -m qe_cli  # QE integration driven through the Typer CLI
+```
 
 ### QE Input Roundtrip Helper
 
