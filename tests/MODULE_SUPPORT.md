@@ -40,7 +40,7 @@ QuantumVITAS now supports multiple Quantum ESPRESSO modules, each with their own
 The parser automatically detects the module type by examining namelist names:
 
 ```python
-from quantumvitas.core.engines.qe_input import QEInputParser, QEModule
+from quantumvitas.io import QEInputParser, QEModule
 
 qe_input = QEInputParser.parse_file("input.in")
 print(qe_input.module)  # QEModule.PH, QEModule.GIPAW, etc.
@@ -60,7 +60,7 @@ print(qe_input.module)  # QEModule.PH, QEModule.GIPAW, etc.
 ### Parse ph.x Input
 
 ```python
-from quantumvitas.core.engines.qe_input import QEInputParser
+from quantumvitas.io import QEInputParser
 
 qe_input = QEInputParser.parse_file("si.2_ph.in")
 assert qe_input.module == QEModule.PH

@@ -18,7 +18,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
 sys.path.insert(0, str(project_root))
 
-from quantumvitas.core.engines.qe_input import QEInputParser, QEModule
+from quantumvitas.io import QEInputParser, QEModule
 
 
 def test_parse_file(filepath: Path) -> tuple[bool, str, Exception]:

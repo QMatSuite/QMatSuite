@@ -25,14 +25,13 @@ sys.path.insert(0, str(project_root))
 
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.base import EngineConfig
-from quantumvitas.core.engines.qe_input import QEInputParser, QEInputGenerator
+from quantumvitas.io import QEInputParser, QEInputGenerator
 
 # Import from new locations
 from quantumvitas.core.engines import ensure_pseudopotentials
 from tests.core.qe_step_runner import set_outdir_to_temp, set_pseudo_dir_to_temp
 from tests.core import run_command_with_timeout, TimeoutError
 from tests.core.qe_test_utils import compare_with_benchmark
-from quantumvitas.core.engines.qe_input import QEInputParser, QEInputGenerator
 
 
 def parse_jobconfig(jobconfig_path: Path) -> Dict[str, List[Tuple[str, str]]]:

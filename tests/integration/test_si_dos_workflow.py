@@ -12,7 +12,7 @@ from pathlib import Path
 import time
 
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.qe_input import QEInputParser, QEInputGenerator
+from quantumvitas.io import QEInputParser, QEInputGenerator
 from quantumvitas.core.engines.base import EngineConfig
 from tests.core.qe_step_runner import (
     run_and_verify_step_with_assert,
