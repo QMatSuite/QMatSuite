@@ -85,11 +85,12 @@ success, message = verify_step_result(
 ```python
 def test_scf(self, qe_engine, tmp_path):
     # Parse, modify, generate, run, verify - all manual
-    result = run_input_roundtrip_execution(...)
-    assert result["run_success"]
+    qe_input = QEInputParser.parse_file("si.1_scf.in")
+    QEInputGenerator.write_file(qe_input, tmp_path / "si.1_scf.in")
+    subprocess.run(["pw.x"], cwd=tmp_path, check=True)
     
     # Manual energy extraction and comparison
-    output_content = Path(result["output_file"]).read_text()
+    output_content = Path(tmp_path / "si.1_scf.out").read_text()
     energy_pattern = r"!\s+total energy\s+=\s+([-\d.]+)\s+Ry"
     output_match = re.search(energy_pattern, output_content)
     # ... many more lines of manual verification
@@ -119,6 +120,23 @@ def test_scf(self, qe_engine, tmp_path):
 3. **Remove** manual `set_outdir_to_temp()` and `set_pseudo_dir_to_temp()` calls (handled automatically)
 4. **Keep** retry mechanisms if needed for intermittent errors
 5. **Update** imports to use `from tests.core import run_and_verify_step_with_assert`
+
+## QE Input Roundtrip (for inspection/debug)
+
+For quick roundtrip parsing outside of the step runner, use the helper in `quantumvitas.io`:
+
+```python
+from pathlib import Path
+from quantumvitas.io import QEInputParser
+
+qe_input = QEInputParser.roundtrip_file(
+    Path("tests/integration/ci_test_data/4_Si_DOS/si.1_scf.in"),
+    output_file=Path("temp/roundtrip/si.1_scf.in"),
+)
+```
+
+This replaces the old `run_input_roundtrip_execution` helper and keeps the logic close
+to the actual parser/generator implementation.
 
 ## Benefits
 

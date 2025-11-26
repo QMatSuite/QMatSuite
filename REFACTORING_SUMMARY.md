@@ -16,9 +16,9 @@
 - **理由**: 这是测试工具函数，应该放在测试核心模块中
 - **状态**: ✅ 已完成并导出到 `tests/core/__init__.py`
 
-### 3. ✅ 已存在的功能（无需移动）
-- `set_outdir_to_temp()` - 已在 `tests/core/qe_step_runner.py`
-- `set_pseudo_dir_to_temp()` - 已在 `tests/core/qe_step_runner.py`
+### 3. ✅ 已迁移的输入准备功能
+- `set_outdir_to_temp()` / `set_pseudo_dir_to_temp()` → `quantumvitas.workflow.input_runner`
+- `prepare_input_step()` / `run_prepared_step()` 供 CLI 与测试共享
 - `verify_qe_output()` - 已被 `tests/core/qe_step_verification.py::verify_step_result()` 替代
 
 ### 4. ✅ Parse 和 Generate 功能
@@ -53,22 +53,12 @@ from tests.core import (
 )
 ```
 
-## 待处理事项
+## 最新整理
 
-### 1. 更新 `extended-tests/utils/test_qe_roundtrip_execution.py`
-- [ ] 更新导入，使用新的位置
-- [ ] 移除重复的 `set_outdir_to_temp()` 和 `set_pseudo_dir_to_temp()` 实现
-- [ ] 更新 `ensure_pseudopotentials()` 调用，使用 `src/` 中的版本
-- [ ] 更新 `run_with_timeout()` 调用，使用 `tests/core/` 中的版本
-
-### 2. 更新所有调用者
-- [ ] `extended-tests/utils/qe_module_base.py`
-- [ ] `extended-tests/scripts/run_pw_tests_official_style.py`
-- [ ] `extended-tests/scripts/run_multiple_pw_tests.py`
-- [ ] `generate_si_dos_reference.py` (如果存在)
-
-### 3. 标记废弃的函数
-- [ ] `run_input_roundtrip_execution()` - 标记为 deprecated，建议使用 `run_and_verify_step_with_assert()`
+### Roundtrip 入口
+- ✅ `QEInputParser.roundtrip_file()` 提供解析 + 重写的正式入口
+- ✅ 文档 (`README.md`, `tests/core/README_STEP_VERIFICATION.md`) 已更新推荐新入口
+- ✅ `extended-tests/utils/test_qe_roundtrip_execution.py` 仅保留向后兼容 re-export
 
 ## 文件结构
 
@@ -83,11 +73,11 @@ src/quantumvitas/core/engines/
 
 tests/core/
 ├── qe_test_utils.py        # ✅ 更新：添加 run_command_with_timeout
-├── qe_step_runner.py        # ✅ 已有：step 执行和验证
-└── qe_step_verification.py  # ✅ 已有：验证逻辑
+├── qe_step_runner.py       # ✅ 已有：step 执行和验证
+└── qe_step_verification.py # ✅ 已有：验证逻辑
 
 extended-tests/utils/
-└── test_qe_roundtrip_execution.py  # ⏳ 待更新：使用新的导入
+└── test_qe_roundtrip_execution.py  # ✅ 仅保留向后兼容 re-export
 ```
 
 ## 使用建议
@@ -99,5 +89,6 @@ extended-tests/utils/
 
 ### 对于旧代码
 - 逐步迁移到新的导入方式
-- `run_input_roundtrip_execution()` 仍然可用，但建议迁移到 `run_and_verify_step_with_assert()`
+- 使用 `run_and_verify_step_with_assert()` 运行 workflow；使用
+  `QEInputParser.roundtrip_file()` 进行快速 roundtrip 检查
 

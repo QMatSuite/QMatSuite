@@ -50,14 +50,6 @@ step_result = run_and_verify_step_with_assert(
 - **ph**: 自动对比频率（tolerance: 0.015 THz）
 - **其他**: 检查 JOB DONE
 
-## 待迁移文件（可选）
-
-以下文件仍使用旧的 `run_input_roundtrip_execution()`，但它们是 extended-tests 的一部分，可以保持现状或后续迁移：
-
-- `extended-tests/utils/test_qe_roundtrip_execution.py` - 这是底层实现，保留作为向后兼容
-- `extended-tests/utils/qe_module_base.py` - 可能可以迁移，但需要更多测试
-- `extended-tests/scripts/run_pw_tests_official_style.py` - 脚本文件，可以保持现状
-
 ## 使用建议
 
 1. **新测试**: 直接使用 `run_and_verify_step_with_assert()`

@@ -49,6 +49,25 @@ python -m pytest tests/ -v --tb=short
 Extended tests still live under `extended-tests/`; they continue to work when
 invoked from the repository root and benefit from the same editable install.
 
+### QE Input Roundtrip Helper
+
+Need to parse a QE input, optionally tweak it, and regenerate the file?
+
+```python
+from pathlib import Path
+from quantumvitas.io import QEInputParser
+
+qe_input = QEInputParser.roundtrip_file(
+    input_file=Path("tests/integration/ci_test_data/4_Si_DOS/si.1_scf.in"),
+    output_file=Path("temp/roundtrip/si.1_scf.in"),
+)
+
+# qe_input.namelists / qe_input.cards are now available for inspection
+```
+
+`roundtrip_file` parses the original file and writes it back (default: in-place),
+so you can inspect or modify the structured representation before regenerating.
+
 ## Highlighted features
 
 Please refer to the [release page](https://github.com/quantumVITAS/quantumVITAS/releases/) for a detailed feature list. We would like to highlight the following features below:
