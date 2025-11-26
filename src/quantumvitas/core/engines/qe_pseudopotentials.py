@@ -9,8 +9,9 @@ import urllib.request
 import urllib.error
 import socket
 import time
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Set, Dict
 
 from .qe_input import QEInputParser, QECardType
 
@@ -67,41 +68,112 @@ def download_pseudopotential(
     return False
 
 
+@dataclass
+class PseudoManager:
+    """
+    Central manager for QE pseudopotentials.
+
+    This class encapsulates the logic for:
+    - Detecting required pseudopotentials from a QE input
+    - Locating them in a base pseudo directory or optional test-suite dirs
+    - Downloading missing files when allowed
+    - Copying them into the working directory
+
+    Public API remains the function-level `ensure_pseudopotentials`; tests and
+    engine code can continue to use it unchanged. This manager is primarily
+    an internal structuring and caching helper.
+    """
+
+    base_pseudo_dir: Path
+    test_suite_dir: Optional[Path] = None
+    network_url: str = "https://pseudopotentials.quantum-espresso.org/upf_files/"
+    _resolved_cache: Dict[str, Path] = field(default_factory=dict)
+
+    def ensure_for_input(self, input_file: Path, working_dir: Path) -> bool:
+        """Ensure all pseudopotentials for a given input file are available."""
+        qe_input = QEInputParser.parse_file(input_file)
+        atomic_species = qe_input.get_card(QECardType.ATOMIC_SPECIES)
+
+        if not atomic_species or not atomic_species.data:
+            return True  # No pseudopotentials needed
+
+        required_pps: List[str] = []
+        for line in atomic_species.data:
+            if len(line) >= 3:
+                required_pps.append(line[2])
+
+        self.base_pseudo_dir.mkdir(parents=True, exist_ok=True)
+        working_dir.mkdir(parents=True, exist_ok=True)
+
+        all_available = True
+        for pp_name in required_pps:
+            if not self._ensure_single(pp_name, working_dir):
+                all_available = False
+
+        return all_available
+
+    def _ensure_single(self, pp_name: str, working_dir: Path) -> bool:
+        """
+        Ensure a single pseudopotential is available and copied into working_dir.
+
+        Uses a small in-memory cache to avoid repeating filesystem checks and
+        downloads within the lifetime of this manager instance.
+        """
+        # Already resolved in this manager instance
+        if pp_name in self._resolved_cache:
+            src = self._resolved_cache[pp_name]
+            (working_dir / pp_name).write_bytes(src.read_bytes())
+            return True
+
+        pseudo_dir = self.base_pseudo_dir
+        pp_path = pseudo_dir / pp_name
+
+        # 1) Check in base pseudo_dir
+        if pp_path.exists():
+            (working_dir / pp_name).write_bytes(pp_path.read_bytes())
+            self._resolved_cache[pp_name] = pp_path
+            return True
+
+        # 2) Check in test-suite related pseudo directories (if provided)
+        if self.test_suite_dir:
+            search_dirs = [
+                self.test_suite_dir.parent / "pseudo",
+                self.test_suite_dir / "pseudo",
+                self.test_suite_dir.parent.parent / "pseudo",
+            ]
+            for search_dir in search_dirs:
+                candidate = search_dir / pp_name
+                if candidate.exists():
+                    pseudo_dir.mkdir(parents=True, exist_ok=True)
+                    pp_path.write_bytes(candidate.read_bytes())
+                    (working_dir / pp_name).write_bytes(candidate.read_bytes())
+                    self._resolved_cache[pp_name] = pp_path
+                    return True
+
+        # 3) Download into base pseudo_dir if still missing
+        if download_pseudopotential(pp_name, pseudo_dir, self.network_url):
+            (working_dir / pp_name).write_bytes(pp_path.read_bytes())
+            self._resolved_cache[pp_name] = pp_path
+            return True
+
+        print(f"  Error: Pseudopotential {pp_name} not found and download failed")
+        return False
+
+
 def ensure_pseudopotentials(
     input_file: Path,
     working_dir: Path,
     pseudo_dir: Optional[Path] = None,
-    test_suite_dir: Optional[Path] = None
+    test_suite_dir: Optional[Path] = None,
 ) -> bool:
     """
     Ensure all required pseudopotentials are available.
-    
-    This function:
-    1. Parses the input file to find required pseudopotentials
-    2. Checks if they exist in the specified pseudo_dir (usually project_root/pseudo)
-    3. If not found, searches in test_suite_dir (if provided) as fallback
-    4. If still not found, attempts to download from network
-    5. Copies found/downloaded pseudopotentials to working_dir
-    
-    Args:
-        input_file: QE input file path
-        working_dir: Working directory for calculation (where pseudopotentials will be copied)
-        pseudo_dir: Directory to search/store pseudopotentials (default: project_root/pseudo)
-        test_suite_dir: Optional test suite directory (for finding pseudo directory as fallback)
-        
-    Returns:
-        True if all pseudopotentials are available
+
+    This is the public API used by tests and engine code. It preserves the
+    original behavior while delegating the internal logic to `PseudoManager`.
     """
-    # Parse input to find required pseudopotentials
-    qe_input = QEInputParser.parse_file(input_file)
-    atomic_species = qe_input.get_card(QECardType.ATOMIC_SPECIES)
-    
-    if not atomic_species or not atomic_species.data:
-        return True  # No pseudopotentials needed
-    
     # Use provided pseudo_dir or try to find project_root/pseudo
     if pseudo_dir is None:
-        # Try to find project root
         current = Path(input_file).parent
         project_root = None
         while current != current.parent:
@@ -113,56 +185,7 @@ def ensure_pseudopotentials(
             pseudo_dir = project_root / "pseudo"
         else:
             pseudo_dir = working_dir / "pseudo"
-    pseudo_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Network URL for downloading
-    network_url = "https://pseudopotentials.quantum-espresso.org/upf_files/"
-    
-    # Collect all required pseudopotentials
-    required_pps: List[str] = []
-    for line in atomic_species.data:
-        if len(line) >= 3:
-            required_pps.append(line[2])  # Pseudopotential filename
-    
-    # Check and download each pseudopotential
-    all_available = True
-    for pp_name in required_pps:
-        found = False
-        
-        # First check in specified pseudo_dir
-        pp_path = pseudo_dir / pp_name
-        if pp_path.exists():
-            # Copy to working directory
-            (working_dir / pp_name).write_bytes(pp_path.read_bytes())
-            found = True
-        else:
-            # Check in test suite directory structure (if available)
-            if test_suite_dir:
-                search_dirs = [
-                    test_suite_dir.parent / "pseudo",
-                    test_suite_dir / "pseudo",
-                    test_suite_dir.parent.parent / "pseudo",
-                ]
-                
-                for search_dir in search_dirs:
-                    pp_file = search_dir / pp_name
-                    if pp_file.exists():
-                        # Copy to pseudo_dir first, then to working directory
-                        pp_path.write_bytes(pp_file.read_bytes())
-                        (working_dir / pp_name).write_bytes(pp_file.read_bytes())
-                        found = True
-                        break
-            
-            # If not found, try downloading to pseudo_dir
-            if not found:
-                if download_pseudopotential(pp_name, pseudo_dir, network_url):
-                    # Copy to working directory
-                    (working_dir / pp_name).write_bytes(pp_path.read_bytes())
-                    found = True
-        
-        if not found:
-            print(f"  Error: Pseudopotential {pp_name} not found and download failed")
-            all_available = False
-    
-    return all_available
+
+    manager = PseudoManager(base_pseudo_dir=pseudo_dir, test_suite_dir=test_suite_dir)
+    return manager.ensure_for_input(input_file, working_dir)
 
