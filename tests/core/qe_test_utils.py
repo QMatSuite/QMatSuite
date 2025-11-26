@@ -324,7 +324,9 @@ def run_test_category_workflow(
         test_files: List of (input_file, args) tuples from jobconfig
         test_suite_dir: Test suite root directory
         qe_engine: Configured QuantumEspressoEngine
-        executable_map: Maps step args (like "1", "2") to executable names
+        executable_map: (Deprecated, currently unused) mapping from step args
+                        (like "1", "2") to executable names. Step type and
+                        executable are now auto-detected from the QE input.
         timeout: Timeout per test
         max_tests: Maximum number of tests to run
         project_root: Project root directory (auto-detected if not provided)
@@ -371,9 +373,6 @@ def run_test_category_workflow(
             # For non-workflow tests, create a new working directory for each test
             if not is_workflow:
                 working_dir = Path(tempfile.mkdtemp(prefix=f"qe_test_{category}_{i}_"))
-            
-            # Determine executable from args
-            executable_name = executable_map.get(args, executable_map.get("default", "pw.x"))
             
             # Check for reference output file
             reference_file = None
