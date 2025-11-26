@@ -11,7 +11,7 @@ from pathlib import Path
 
 def test_imports() -> None:
     """Test that core imports work."""
-    from quantumvitas.core.engines.qe_input import QEInputParser, QEInputGenerator
+    from quantumvitas.io import QEInputParser, QEInputGenerator
 
     _ = QEInputParser, QEInputGenerator  # silence linters
     print("✅ Core imports work")
@@ -19,7 +19,7 @@ def test_imports() -> None:
 
 def test_basic_parsing() -> None:
     """Test basic parsing (CI-friendly)."""
-    from quantumvitas.core.engines.qe_input import QEInputParser
+    from quantumvitas.io import QEInputParser
 
     content = """&control
     calculation = 'scf'

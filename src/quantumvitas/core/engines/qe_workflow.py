@@ -14,7 +14,7 @@ import subprocess
 import os
 import time
 
-from .qe_input import QEInput, QEInputParser, QEModule
+from quantumvitas.io import QEInput, QEInputParser, QEModule
 
 if TYPE_CHECKING:
     from .qe import QuantumEspressoEngine

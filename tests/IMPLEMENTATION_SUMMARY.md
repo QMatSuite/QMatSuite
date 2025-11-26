@@ -73,7 +73,7 @@ Comprehensive test coverage:
 ### Parse a QE Input File
 
 ```python
-from quantumvitas.core.engines.qe_input import QEInputParser
+from quantumvitas.io import QEInputParser
 
 # Parse from file
 qe_input = QEInputParser.parse_file("si.scf.in")
@@ -92,7 +92,7 @@ for line in atomic_species.data:
 ### Generate a QE Input File
 
 ```python
-from quantumvitas.core.engines.qe_input import (
+from quantumvitas.io import (
     QEInput, QENamelist, QECard, QECardType, QEInputGenerator
 )
 

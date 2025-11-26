@@ -29,7 +29,7 @@ from typing import Dict, Any, List, Tuple
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
-from quantumvitas.core.engines.qe_input import QEInputParser, QEInputGenerator, QEModule
+from quantumvitas.io import QEInputParser, QEInputGenerator, QEModule
 
 
 def compare_dicts(d1: Dict[str, Any], d2: Dict[str, Any], path: str = "") -> List[str]:

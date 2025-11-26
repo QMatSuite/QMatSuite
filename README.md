@@ -27,6 +27,28 @@ The project is actively evolving, and we have offered [the first three early acc
 *   Java Runtime Environment (JRE) 1.8: https://java.com/en/download/
 *   Windows/Linux/Mac OS
 
+## Developer Setup (Python v2)
+
+The Python rewrite lives under `src/quantumvitas`.  Install it in editable mode so
+interactive sessions, scripts, and tests can import `quantumvitas` without manual
+`sys.path` hacks:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate        # or .venv\Scripts\activate on Windows
+pip install --upgrade pip
+pip install -e .                 # add -e .[dev] to include pytest/pytest-cov
+```
+
+After the editable install you can run the quick tests directly:
+
+```bash
+python -m pytest tests/ -v --tb=short
+```
+
+Extended tests still live under `extended-tests/`; they continue to work when
+invoked from the repository root and benefit from the same editable install.
+
 ## Highlighted features
 
 Please refer to the [release page](https://github.com/quantumVITAS/quantumVITAS/releases/) for a detailed feature list. We would like to highlight the following features below:

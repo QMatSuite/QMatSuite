@@ -13,7 +13,7 @@ import os
 
 from .base import Engine, EngineConfig
 from .qe_installation import QEInstallation
-from .qe_input import (
+from quantumvitas.io import (
     QEInputParser, QEInputGenerator, QEInput, QENamelist, QECard, QECardType, QEModule
 )
 from .qe_workflow import QEWorkflowRunner, StepResult, WorkflowResult

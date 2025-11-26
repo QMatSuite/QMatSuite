@@ -2,7 +2,7 @@
 
 from .base import Engine, EngineConfig
 from .qe import QuantumEspressoEngine
-from .qe_input import (
+from quantumvitas.io import (
     QEInputParser,
     QEInputGenerator,
     QEInput,

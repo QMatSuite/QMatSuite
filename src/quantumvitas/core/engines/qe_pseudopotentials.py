@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional, List, Set, Dict
 
-from .qe_input import QEInputParser, QECardType
+from quantumvitas.io import QEInputParser, QECardType
 
 
 def download_pseudopotential(
