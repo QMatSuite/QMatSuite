@@ -13,9 +13,8 @@ project_root = Path(__file__).parent
 
 from quantumvitas.core.engines.qe import QuantumEspressoEngine, EngineConfig
 from quantumvitas.io import QEInputParser, QEInputGenerator
-# Import from new locations
 from quantumvitas.core.engines import ensure_pseudopotentials
-from tests.core.qe_step_runner import set_outdir_to_temp, set_pseudo_dir_to_temp
+from quantumvitas.workflow.input_runner import set_outdir_to_temp, set_pseudo_dir_to_temp
 from tests.core import run_and_verify_step_with_assert
 
 def generate_reference_outputs():

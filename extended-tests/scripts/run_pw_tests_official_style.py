@@ -29,7 +29,7 @@ from quantumvitas.io import QEInputParser, QEInputGenerator
 
 # Import from new locations
 from quantumvitas.core.engines import ensure_pseudopotentials
-from tests.core.qe_step_runner import set_outdir_to_temp, set_pseudo_dir_to_temp
+from quantumvitas.workflow.input_runner import set_outdir_to_temp, set_pseudo_dir_to_temp
 from tests.core import run_command_with_timeout, TimeoutError
 from tests.core.qe_test_utils import compare_with_benchmark
 
