@@ -24,7 +24,7 @@ step_result = run_and_verify_step_with_assert(
     input_file=Path("si.1_scf.in"),
     qe_engine=qe_engine,
     working_dir=tmp_path,
-    reference_file=Path("reference_out/si.1_scf.out"),  # Optional
+    reference_file=Path("reference/si.1_scf.out"),  # Optional
     category="4_Si_DOS",  # Optional, for threshold selection
     timeout=300,  # Optional
     project_root=project_root  # Optional, auto-detected
@@ -50,7 +50,7 @@ from tests.core import verify_step_result
 
 success, message = verify_step_result(
     step_result=step_result,
-    reference_file=Path("reference_out/si.1_scf.out"),
+    reference_file=Path("reference/si.1_scf.out"),
     category="4_Si_DOS"
 )
 ```
@@ -107,7 +107,7 @@ def test_scf(self, qe_engine, tmp_path):
         input_file=Path("si.1_scf.in"),
         qe_engine=qe_engine,
         working_dir=tmp_path,
-        reference_file=Path("reference_out/si.1_scf.out"),
+        reference_file=Path("reference/si.1_scf.out"),
         category="4_Si_DOS"
     )
     # Verification is automatic - no manual energy extraction needed!

@@ -7,19 +7,15 @@ This test validates the complete workflow:
 3. DOS calculation (reads from NSCF .save)
 """
 
-import time
 from pathlib import Path
 
 import pytest
 
-from quantumvitas.core.engines.base import EngineConfig
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.io import QEInputGenerator, QEInputParser
-from quantumvitas.workflow.input_runner import set_outdir_to_temp
-from tests.core.qe_step_runner import (
-    get_default_working_dir,
-    run_and_verify_step_with_assert,
-)
+from quantumvitas.engine.registry import create_default_registry
+from quantumvitas.project.model import Project
+from quantumvitas.workflow.runner import WorkflowRunner
+from quantumvitas.workflow.types import StepStatus
+from tests.utils.workflow_projects import create_workflow_project
 
 pytestmark = pytest.mark.qe_core
 
@@ -31,86 +27,33 @@ def si_dos_dir(ci_test_data_dir):
 
 
 @pytest.fixture
-def qe_engine():
-    """Fixture for QuantumEspressoEngine."""
-    config = EngineConfig(name="qe")
-    engine = QuantumEspressoEngine(config)
-    if not engine.find_executable("pw.x"):
-        raise RuntimeError("QE installation not found. pw.x executable is required.")
-    return engine
+def si_dos_project(project_root_path: Path, si_dos_dir: Path) -> Path:
+    steps = [
+        {"id": "scf", "input": "si.1_scf.in", "reference": "si.1_scf.out"},
+        {"id": "nscf", "input": "si.2_nscf.in", "reference": "si.2_nscf.out"},
+        {"id": "dos", "input": "si.3_dos.in", "reference": "si.3_dos.out"},
+    ]
+    destination = project_root_path / "temp" / "test_outputs" / "workflow_si_dos"
+    return create_workflow_project(
+        project_root=destination,
+        workflow_id="si_dos",
+        steps=steps,
+        source_dir=si_dos_dir,
+        pseudo_src=project_root_path / "pseudo",
+    )
 
 
 class TestSiDOSWorkflow:
     """Test suite for SCF -> NSCF -> DOS workflow."""
 
-    def test_run_full_workflow(self, si_dos_dir, qe_engine):
-        """Test running the complete SCF -> NSCF -> DOS workflow."""
-        project_root = Path(__file__).parent.parent.parent
-        working_dir = get_default_working_dir(project_root, "4_Si_DOS")
-        
-        # Step 1: SCF
-        scf_file = si_dos_dir / "si.1_scf.in"
-        scf_reference = si_dos_dir / "reference_out" / "si.1_scf.out"
-        scf_result = run_and_verify_step_with_assert(
-            input_file=scf_file,
-            qe_engine=qe_engine,
-            working_dir=working_dir,
-            reference_file=scf_reference,
-            category="4_Si_DOS",
-            timeout=300,
-        )
-        assert scf_result.success
-        
-        time.sleep(0.5)
-        
-        # Step 2: NSCF
-        nscf_file = si_dos_dir / "si.2_nscf.in"
-        nscf_reference = si_dos_dir / "reference_out" / "si.2_nscf.out"
-        nscf_result = run_and_verify_step_with_assert(
-            input_file=nscf_file,
-            qe_engine=qe_engine,
-            working_dir=working_dir,
-            reference_file=nscf_reference,
-            category="4_Si_DOS",
-            timeout=300,
-        )
-        assert nscf_result.success
-        
-        time.sleep(0.5)
-        
-        # Step 3: DOS
-        dos_file = si_dos_dir / "si.3_dos.in"
-        dos_input = QEInputParser.parse_file(dos_file)
-        set_outdir_to_temp(dos_input, project_root)
-        
-        # Write input to working_dir
-        dos_input_file = working_dir / "si.3_dos.in"
-        QEInputGenerator.write_file(dos_input, dos_input_file)
-        
-        # Run dos.x
-        dos_executable = qe_engine.get_executable_path("dos.x")
-        if not dos_executable:
-            pytest.skip("dos.x not found")
-        
-        import subprocess
-        import os
-        env = os.environ.copy()
-        env['OMP_NUM_THREADS'] = '1'
-        
-        with open(dos_input_file, 'r') as stdin_file:
-            result = subprocess.run(
-                [dos_executable],
-                cwd=str(working_dir),
-                stdin=stdin_file,
-                capture_output=True,
-                text=True,
-                timeout=300,
-                env=env
-            )
-        
-        # Write output to working_dir
-        output_file = working_dir / "si.3_dos.out"
-        output_file.write_text(result.stdout)
-        
-        assert result.returncode == 0, f"dos.x failed: {result.stderr}"
-        assert "JOB DONE" in result.stdout
+    def test_run_full_workflow(self, si_dos_project: Path):
+        project = Project.open(si_dos_project)
+        workflow = project.get_workflow("si_dos")
+
+        registry = create_default_registry()
+        runner = WorkflowRunner(registry)
+        result = runner.run(workflow)
+
+        assert result.status == StepStatus.SUCCESS
+        for summary in result.steps:
+            assert summary.status == StepStatus.SUCCESS, summary.message
