@@ -16,9 +16,9 @@ from quantumvitas.io import QEInputParser, QEInputGenerator
 from quantumvitas.core.engines.base import EngineConfig
 from tests.core.qe_step_runner import (
     run_and_verify_step_with_assert,
-    set_outdir_to_temp,
     get_default_working_dir,
 )
+from quantumvitas.workflow.input_runner import set_outdir_to_temp
 from tests.core.qe_test_utils import parse_jobconfig
 
 

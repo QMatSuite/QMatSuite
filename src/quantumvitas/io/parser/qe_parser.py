@@ -15,6 +15,7 @@ from quantumvitas.io.model import (
     QEModule,
     QENamelist,
 )
+from quantumvitas.io.generator.qe_generator import QEInputGenerator
 
 __all__ = ["QEInputParser"]
 
@@ -396,5 +397,27 @@ class QEInputParser:
             qe_input.module = qe_input.detect_module()
         else:
             qe_input.module = QEModule.UNKNOWN
+        return qe_input
+
+    @classmethod
+    def roundtrip_file(
+        cls,
+        input_file: Path,
+        output_file: Optional[Path] = None,
+    ) -> QEInput:
+        """
+        Parse a QE input file and immediately regenerate it.
+
+        Args:
+            input_file: Source QE input file.
+            output_file: Destination file. If omitted, overwrites the source.
+
+        Returns:
+            QEInput: Parsed representation of the input.
+        """
+        input_path = Path(input_file)
+        qe_input = cls.parse_file(input_path)
+        target = Path(output_file) if output_file else input_path
+        QEInputGenerator.write_file(qe_input, target)
         return qe_input
 

@@ -12,15 +12,8 @@ This file is kept for backward compatibility but most functions have been moved:
 All new code should import from the new locations.
 """
 
-import sys
-from pathlib import Path
-
-# Re-export from new locations for backward compatibility
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
 from quantumvitas.core.engines import ensure_pseudopotentials, download_pseudopotential
-from tests.core.qe_step_runner import set_outdir_to_temp, set_pseudo_dir_to_temp
+from quantumvitas.workflow.input_runner import set_outdir_to_temp, set_pseudo_dir_to_temp
 from tests.core import run_command_with_timeout, TimeoutError
 
 # Re-export for backward compatibility

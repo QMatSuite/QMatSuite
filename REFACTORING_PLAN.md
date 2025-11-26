@@ -55,17 +55,12 @@
 
 ### 4. 应该移到 `src/quantumvitas/core/engines/` 的新功能
 
-#### Roundtrip 功能 → `src/quantumvitas/core/engines/qe_input.py`
+#### Roundtrip 功能 → `quantumvitas.io`
 - **功能**: 解析 -> 生成的基本 roundtrip
 - **实现**: 
   ```python
-  # 在 QEInputParser 中添加
-  @classmethod
-  def roundtrip_file(cls, input_file: Path, output_file: Path) -> QEInput:
-      """Parse and regenerate a QE input file."""
-      qe_input = cls.parse_file(input_file)
-      QEInputGenerator.write_file(qe_input, output_file)
-      return qe_input
+  from quantumvitas.io import QEInputParser
+  qe_input = QEInputParser.roundtrip_file(input_file, output_file)
   ```
 - **理由**: 这是核心功能，用户可能需要
 
@@ -89,8 +84,9 @@
 - 移除对 `test_qe_roundtrip_execution.py` 的依赖
 
 ### 步骤 5: 清理
-- 移除 `extended-tests/utils/test_qe_roundtrip_execution.py` 中的重复函数
-- 保留 `run_input_roundtrip_execution()` 作为向后兼容（标记为 deprecated）
+- `extended-tests/utils/test_qe_roundtrip_execution.py` 仅做向后兼容 re-export
+- 引导所有调用者迁移到 `QEInputParser.roundtrip_file()` 或
+  `run_and_verify_step_with_assert()`
 
 ## 文件结构
 
