@@ -7,48 +7,80 @@ stay aligned over the life of the refactor.
 
 ```
 src/quantumvitas/
-├─ io/                  # Parsing + serialization (QE inputs/outputs, pseudo helpers)
-├─ core/
-│  └─ engines/          # Engine abstractions + QE implementation
-├─ workflow/
-│  ├─ input_runner.py   # Input-driven helpers (prepare/run a QE step from .in file)
-│  ├─ runner.py         # WorkflowRunner orchestrating structured Step objects
-│  └─ verification.py   # Workflow-level verification hooks
-├─ engine/              # Runtime registry + QE installation helpers
-├─ project/             # Project/workflow metadata (structures, storage)
-├─ analysis/            # Post-processing stubs (DOS/bands/energy, future CLI)
-└─ cli/                 # Command-line entry points (to be expanded)
+├─ io/            # QE I/O models + parser/generator + pseudo helpers
+├─ engine/        # Public engine interfaces + QE installation + registry
+├─ workflow/      # Step definitions, runners, verification, input helpers
+├─ project/       # Project metadata + storage layout helpers
+├─ analysis/      # Post-processing skeletons (DOS/Bands/Energy)
+├─ cli/           # Typer CLI (future)
+└─ core/engines/  # Legacy QE engine implementation (still reused internally)
 ```
 
 ### Key Concepts
 
-- **IO Layer (`quantumvitas.io`)**  
-  Owns all QE parsing/generation logic (`QEInputParser`, `QEInputGenerator`),
-  including the `QEInputParser.roundtrip_file()` helper for debugging/workflows.
+- **Project layer (`quantumvitas.project`)**  
+  Knows where the project root lives, which structures/workflows are registered,
+  and how to open them (currently via `project.qv.yml`, future CLI will call this).
 
-- **Engine Layer (`quantumvitas.core.engines`, `quantumvitas.engine`)**  
-  Encapsulates how we locate executables, run commands, and ensure resources
-  (e.g. `QEWorkflowRunner`, `QEInputParser`, `ensure_pseudopotentials`).
+- **Workflow layer (`quantumvitas.workflow`)**  
+  Defines `Workflow`, `Step`, `StepType`, `WorkflowRunner`, `input_runner`. Every
+  workflow owns exactly one runtime directory (`raw/`) under its folder; all QE
+  I/O (inputs, modified copies, outputs, shared `outdir/`) happens inside that
+  folder so steps can pass restart data without juggling paths.
 
-- **Workflow Layer (`quantumvitas.workflow`)**  
-  Provides structured steps (`Step`, `StepType`), the general `WorkflowRunner`,
-  and **input-driven helpers** (`prepare_input_step`, `run_prepared_step`,
-  `set_outdir_to_temp`, `set_pseudo_dir_to_temp`).  
-  Tests and CLI should call these helpers; business logic should not reinvent
-  outdir/pseudo_dir or input-copy handling.
+- **Step execution**  
+  Steps point to QE `.in` files located in the workflow’s `raw/` directory. Step
+  type is auto-detected from the input file (SCF/NSCF/PH/DOS/etc.). When a step
+  runs we:
+  1. Copy the original input to `raw/<name>_original.in`.
+  2. Apply `outdir='./outdir'` and `pseudo_dir=project_root/pseudo` to produce
+     `<name>_modified.in`.
+  3. Invoke QE via `workflow.input_runner.run_input_step`, capturing `.out` plus
+     leaving QE’s own files in `raw/` (single shared `outdir/`).
 
-- **Tests (`tests/core`)**  
-  - `qe_step_runner.py` is now a light wrapper around `workflow.input_runner` that
-    adds test-specific convenience (auto temp dirs, assertions).  
-  - Verification logic lives in `qe_step_verification.py` + `thresholds.py`.  
-  - Utilities (`qe_test_utils.py`) expose `run_command_with_timeout`,
-    jobconfig parsing, PH frequency extraction, etc.  
-  - Tests should not modify `sys.path`; rely on `pip install -e .[dev]`.
+- **Engine layer (`quantumvitas.engine`)**  
+  Provides the public `Engine` interface, QE installation helpers, and a
+  registry. Internally it still reuses the legacy implementations under
+  `quantumvitas.core.engines`.
 
-- **Extended Tests (`extended-tests/`)**  
-  Legacy tooling now imports runtime helpers (`set_outdir_to_temp`, etc.) from
-  `quantumvitas.workflow.input_runner`. Compatibility shims such as
-  `extended-tests/utils/test_qe_roundtrip_execution.py` only re-export.
+- **IO layer (`quantumvitas.io`)**  
+  Owns `QEInputParser`, `QEInputGenerator`, card/namelist models, and pseudo
+  management helpers.
+
+- **Tests**  
+  `tests/core/qe_step_runner.py` and friends call the same workflow helpers
+  above, ensuring unit/integration tests and CLI share identical QE wiring.
+
+## Example Project Layout
+
+```
+project_root/
+  project.qv.yml          # lists structures + workflows + default settings
+  pseudo/                 # shared pseudopotentials (checked before downloading)
+  workflows/
+    si_dos/
+      workflow.yml        # structure ref (optional), working_dir=raw, step order
+      steps/
+        scf.yml           # metadata: which input file in raw/, extra options
+        nscf.yml
+        dos.yml
+      raw/                # single QE workspace for this workflow
+        scf.in
+        nscf.in
+        dos.in
+        scf_original.in
+        scf_modified.in
+        scf.out
+        nscf.out
+        dos.out
+        outdir/           # QE scratch shared by all steps
+      reference/          # optional golden outputs for strict mode
+      results/            # post-processing artifacts (JSON, plots, etc.)
+```
+
+All QE commands run inside `workflows/<id>/raw/` and use relative paths
+(`outdir='./outdir'`). This keeps restart directories alive for subsequent steps
+and makes cleanup trivial (`rm -rf raw/`).
 
 ## Ground Rules
 

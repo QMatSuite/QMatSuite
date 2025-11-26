@@ -15,7 +15,8 @@ dependencies = [
     "scipy",
     "ase",
     "matplotlib",
-    "PyYAML"
+    "PyYAML",
+    "typer>=0.12",
 ]
 
 [project.optional-dependencies]
