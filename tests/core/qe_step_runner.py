@@ -12,7 +12,7 @@ import shutil
 
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.qe_workflow import StepResult
-from quantumvitas.core.engines.qe_input import QEInputParser, QEInput, QEInputGenerator, QENamelist, QEModule
+from quantumvitas.io import QEInputParser, QEInput, QEInputGenerator, QENamelist, QEModule
 from quantumvitas.core.engines import ensure_pseudopotentials
 from .qe_step_verification import verify_step_result, verify_step_with_reference
 

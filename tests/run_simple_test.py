@@ -7,7 +7,7 @@ This script is intended to be run directly *after* installing quantumvitas
 from pathlib import Path
 import sys
 
-from quantumvitas.core.engines.qe_input import QEInputParser, QEInputGenerator
+from quantumvitas.io import QEInputParser, QEInputGenerator
 
 
 def test_simple_parse_generate() -> None:

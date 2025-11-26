@@ -8,7 +8,7 @@ import tempfile
 
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.base import EngineConfig
-from quantumvitas.core.engines.qe_input import (
+from quantumvitas.io import (
     QEInputParser, QEInputGenerator, QEInput, QENamelist, QECard, QECardType
 )
 

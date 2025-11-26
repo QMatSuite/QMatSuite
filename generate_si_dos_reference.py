@@ -9,14 +9,10 @@ from pathlib import Path
 import subprocess
 import shutil
 
-# Add src to path
 project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root / "src"))
-sys.path.insert(0, str(project_root))
-sys.path.insert(0, str(project_root / "extended-tests" / "utils"))
 
 from quantumvitas.core.engines.qe import QuantumEspressoEngine, EngineConfig
-from quantumvitas.core.engines.qe_input import QEInputParser, QEInputGenerator
+from quantumvitas.io import QEInputParser, QEInputGenerator
 # Import from new locations
 from quantumvitas.core.engines import ensure_pseudopotentials
 from tests.core.qe_step_runner import set_outdir_to_temp, set_pseudo_dir_to_temp

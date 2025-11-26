@@ -13,7 +13,7 @@ import pytest
 
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.base import EngineConfig
-from quantumvitas.core.engines.qe_input import QEInputParser, QEInputGenerator
+from quantumvitas.io import QEInputParser, QEInputGenerator
 from tests.core.qe_test_utils import parse_jobconfig
 from tests.core.qe_step_runner import run_and_verify_step_with_assert, get_default_working_dir
 

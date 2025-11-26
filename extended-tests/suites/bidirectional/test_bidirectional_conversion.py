@@ -20,7 +20,7 @@ import shutil
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from quantumvitas.core.engines.qe_input import QEInputParser, QEInputGenerator, QEModule, QECardType
+from quantumvitas.io import QEInputParser, QEInputGenerator, QEModule, QECardType
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.base import EngineConfig
 

@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=67", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quantumvitas"
+version = "1.0.1"
+description = "Python rewrite of QuantumVITAS - a workflow engine and GUI layer for Quantum ESPRESSO and related codes."
+readme = "README.md"
+license = { text = "GPL-3.0-or-later" }
+authors = [{ name = "QuantumVITAS Developers" }]
+requires-python = ">=3.9"
+dependencies = [
+    "numpy",
+    "scipy",
+    "ase",
+    "matplotlib"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0"
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+
