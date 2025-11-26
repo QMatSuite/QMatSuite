@@ -14,7 +14,11 @@ import time
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.qe_input import QEInputParser, QEInputGenerator
 from quantumvitas.core.engines.base import EngineConfig
-from tests.core.qe_step_runner import run_and_verify_step_with_assert, set_outdir_to_temp
+from tests.core.qe_step_runner import (
+    run_and_verify_step_with_assert,
+    set_outdir_to_temp,
+    get_default_working_dir,
+)
 from tests.core.qe_test_utils import parse_jobconfig
 
 
@@ -105,11 +109,10 @@ class TestSiDOSWorkflow:
         assert nscf_input.get_namelist('control').get('calculation') == 'nscf'
         assert dos_input.get_namelist('dos') is not None
     
-    def test_run_full_workflow(self, si_dos_dir, qe_engine, tmp_path):
+    def test_run_full_workflow(self, si_dos_dir, qe_engine):
         """Test running the complete SCF -> NSCF -> DOS workflow."""
         project_root = Path(__file__).parent.parent.parent
-        working_dir = project_root / "temp" / "test_outputs" / "4_Si_DOS"
-        working_dir.mkdir(parents=True, exist_ok=True)
+        working_dir = get_default_working_dir(project_root, "4_Si_DOS")
         
         # Step 1: SCF
         scf_file = si_dos_dir / "si.1_scf.in"

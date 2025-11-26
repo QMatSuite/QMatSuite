@@ -8,12 +8,46 @@ All tests should use these functions instead of implementing their own execution
 from pathlib import Path
 from typing import Optional, Tuple
 import time
+import shutil
 
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.qe_workflow import StepResult
 from quantumvitas.core.engines.qe_input import QEInputParser, QEInput, QEInputGenerator, QENamelist, QEModule
 from quantumvitas.core.engines import ensure_pseudopotentials
 from .qe_step_verification import verify_step_result, verify_step_with_reference
+
+
+def _safe_copy(src: Path, dst: Path) -> None:
+    """Best-effort file copy that never raises and skips self-copies."""
+    if src == dst:
+        return
+    try:
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+    except Exception:
+        pass
+
+
+def get_default_working_dir(
+    project_root: Path,
+    category: Optional[str] = None,
+    test_name: Optional[str] = None,
+) -> Path:
+    """
+    Return a default working directory for QE steps.
+
+    Layout: {project_root}/temp/test_outputs/{category}/{test_name}/
+    """
+    base = project_root / "temp" / "test_outputs"
+    if category:
+        base = base / category
+    if test_name:
+        safe_name = (
+            test_name.replace("/", "_").replace("\\", "_").replace(" ", "_")
+        )
+        base = base / safe_name
+    base.mkdir(parents=True, exist_ok=True)
+    return base
 
 
 def set_outdir_to_temp(qe_input: QEInput, project_root: Path) -> None:
@@ -77,20 +111,13 @@ def set_outdir_to_temp(qe_input: QEInput, project_root: Path) -> None:
 
 def set_pseudo_dir_to_temp(qe_input: QEInput, project_root: Path) -> None:
     """
-    Set pseudo_dir parameter in QE input to ../../pseudo (relative path).
+    Force pseudo_dir to the unified project_root/pseudo directory.
     
     Some modules (ph.x, q2r.x, matdyn.x, dynmat.x) don't use &control namelist
-    and typically don't need pseudo_dir (they read from pw.x output).
-    For these modules, we don't add pseudo_dir unless it's already present.
-    
-    Args:
-        qe_input: Parsed QE input object
-        project_root: Project root directory
+    and typically don't need pseudo_dir. For these modules we only rewrite the
+    parameter when it already exists in the input.
     """
-    # Use relative path: ../../../pseudo (relative to temp/test_outputs/{category}/)
-    # From temp/test_outputs/{category}/, go up 3 levels to reach project root, then pseudo/
-    # This ensures QE uses relative paths when running in test_outputs directory
-    pseudo_dir_rel = "../../../pseudo"
+    pseudo_dir_path = str((project_root / "pseudo").resolve())
     
     # Detect module type
     module = qe_input.module or qe_input.detect_module()
@@ -102,7 +129,7 @@ def set_pseudo_dir_to_temp(qe_input: QEInput, project_root: Path) -> None:
     found_pseudo_dir = False
     for namelist in qe_input.namelists:
         if "pseudo_dir" in namelist.parameters:
-            namelist.parameters["pseudo_dir"] = pseudo_dir_rel
+            namelist.parameters["pseudo_dir"] = pseudo_dir_path
             found_pseudo_dir = True
     
     # If pseudo_dir not found, add it to appropriate namelist
@@ -121,9 +148,9 @@ def set_pseudo_dir_to_temp(qe_input: QEInput, project_root: Path) -> None:
                     break
             
             if control_namelist:
-                control_namelist.parameters["pseudo_dir"] = pseudo_dir_rel
+                control_namelist.parameters["pseudo_dir"] = pseudo_dir_path
             else:
-                control_namelist = QENamelist("control", {"pseudo_dir": pseudo_dir_rel})
+                control_namelist = QENamelist("control", {"pseudo_dir": pseudo_dir_path})
                 qe_input.namelists.insert(0, control_namelist)
 
 
@@ -136,7 +163,8 @@ def run_and_verify_step(
     timeout: Optional[float] = None,
     step_type: Optional[str] = None,
     tolerance: Optional[float] = None,
-    project_root: Optional[Path] = None
+    project_root: Optional[Path] = None,
+    step_index: int = 1,
 ) -> Tuple[StepResult, bool, str]:
     """
     Run a QE step and verify the result.
@@ -185,18 +213,12 @@ def run_and_verify_step(
             error="Failed to obtain required pseudopotentials"
         ), False, "Failed to obtain required pseudopotentials"
     
-    # Use working_dir as the execution directory
-    # For tests, working_dir should be temp/test_outputs/{category}/
-    # If working_dir is not provided or is a tmp_path, use temp/test_outputs/{category}/
-    if working_dir is None or "pytest" in str(working_dir) or "tmp" in str(working_dir):
-        # Use temp/test_outputs/{category}/ as working directory
-        temp_output_dir = project_root / "temp" / "test_outputs"
-        if category:
-            temp_output_dir = temp_output_dir / category
-        temp_output_dir.mkdir(parents=True, exist_ok=True)
-        working_dir = temp_output_dir
+    # Determine working directory:
+    # - If working_dir is provided, always respect it.
+    # - If not provided, fall back to a default temp/test_outputs/{category}/ directory.
+    if working_dir is None:
+        working_dir = get_default_working_dir(project_root, category)
     else:
-        # Use provided working_dir, but ensure it exists
         working_dir = Path(working_dir)
         working_dir.mkdir(parents=True, exist_ok=True)
     
@@ -216,27 +238,22 @@ def run_and_verify_step(
         # The generator now correctly handles extra_data_lines (e.g., ph.x q-points)
         working_dir_input = working_dir / input_file.name
         QEInputGenerator.write_file(qe_input, working_dir_input)
-    except Exception as e:
+    except Exception:
         # If parsing fails, fall back to original file
-        import shutil
         working_dir_input = working_dir / input_file.name
         if working_dir_input != input_file:
             shutil.copy2(input_file, working_dir_input)
         else:
             working_dir_input = input_file
     
-    # Save original input file to temp/test_outputs for debugging
-    try:
-        import shutil
-        input_filename = input_file.stem
-        original_input_copy = working_dir / f"{input_filename}_original.in"
-        if original_input_copy != input_file:
-            shutil.copy2(input_file, original_input_copy)
-    except Exception as e:
-        # Don't fail the test if saving input files fails
-        pass
-    
     input_filename = input_file.stem
+
+    # Save original and modified input files alongside outputs for debugging
+    original_input_copy = working_dir / f"{input_filename}_original.in"
+    _safe_copy(input_file, original_input_copy)
+
+    modified_input_copy = working_dir / f"{input_filename}_modified.in"
+    _safe_copy(working_dir_input, modified_input_copy)
     
     # Auto-detect step type if not provided
     if step_type is None:
@@ -279,7 +296,8 @@ def run_and_verify_step_with_assert(
     timeout: Optional[float] = None,
     step_type: Optional[str] = None,
     tolerance: Optional[float] = None,
-    project_root: Optional[Path] = None
+    project_root: Optional[Path] = None,
+    step_index: int = 1,
 ) -> StepResult:
     """
     Run a QE step, verify the result, and raise AssertionError if verification fails.
@@ -312,15 +330,25 @@ def run_and_verify_step_with_assert(
         timeout=timeout,
         step_type=step_type,
         tolerance=tolerance,
-        project_root=project_root
+        project_root=project_root,
+        step_index=step_index,
     )
     
     if not success:
-        raise AssertionError(
-            f"Step {step_result.step_type} failed: {message}\n"
-            f"Input file: {input_file}\n"
-            f"Output file: {step_result.output_file}\n"
-            f"Error: {step_result.error}"
-        )
+        # Enhanced error reporting for easier debugging of CI/workflow failures
+        details = [
+            f"Step index: {step_index}",
+            f"Step type (inferred): {step_result.step_type}",
+            f"Category: {category or 'N/A'}",
+            f"Working dir: {Path(working_dir).absolute()}",
+            f"Input file: {Path(input_file).absolute()}",
+            f"Output file: {Path(step_result.output_file).absolute() if step_result.output_file else 'None'}",
+            f"Reference file: {Path(reference_file).absolute() if reference_file else 'None'}",
+            f"Verification message: {message}",
+            f"Engine error: {step_result.error or 'None'}",
+            # Placeholder for future structured diff support
+            f"Diff summary: {message}",
+        ]
+        raise AssertionError("Step execution/verification failed:\n" + "\n".join(details))
     
     return step_result
