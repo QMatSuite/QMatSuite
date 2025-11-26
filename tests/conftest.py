@@ -10,10 +10,19 @@ from pathlib import Path
 import pytest
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def project_root_path() -> Path:
     """Return project root path."""
     return Path(__file__).parent.parent
+
+
+@pytest.fixture(scope="session")
+def ci_test_data_dir(project_root_path: Path) -> Path:
+    """Return path to bundled CI test data."""
+    ci_dir = project_root_path / "tests" / "integration" / "ci_test_data"
+    if not ci_dir.exists():
+        pytest.skip(f"CI test data not found: {ci_dir}")
+    return ci_dir
 
 
 @pytest.fixture
@@ -51,16 +60,26 @@ def sample_input_file(project_root_path: Path):
 def pytest_configure(config: pytest.Config) -> None:
     """Configure pytest markers."""
     config.addinivalue_line("markers", "quick: Quick tests that run in CI")
+    config.addinivalue_line("markers", "extended: Extended tests")
+    config.addinivalue_line("markers", "unit: Tests that do not run QE")
+    config.addinivalue_line("markers", "qe_core: Tests that run QE via the engine helpers")
+    config.addinivalue_line("markers", "qe_cli: Tests that run QE via the CLI")
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list) -> None:
     """Automatically mark tests based on their location."""
     for item in items:
-        path_str = str(item.fspath)
-        if "tests/" in path_str and "extended-tests" not in path_str:
+        path = Path(item.fspath).as_posix()
+        if "tests/" in path and "extended-tests" not in path:
             item.add_marker(pytest.mark.quick)
-        if "extended-tests" in path_str:
+        if "extended-tests" in path:
             item.add_marker(pytest.mark.extended)
+        if "/tests/unit/" in path or path.endswith("/tests/unit"):
+            item.add_marker(pytest.mark.unit)
+        elif "/tests/cli/" in path:
+            item.add_marker(pytest.mark.qe_cli)
+        elif "/tests/integration/" in path:
+            item.add_marker(pytest.mark.qe_core)
 
 
 @pytest.fixture(autouse=True)

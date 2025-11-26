@@ -1,18 +1,49 @@
 """
-Energy summary utilities.
+Energy summary utilities and lightweight parsing helpers.
 """
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import List, Dict
+from typing import Dict, List
 
 from quantumvitas.workflow.results import WorkflowResult
 from quantumvitas.workflow.workflow import Workflow
 
 
-def analyze_energies(workflow: Workflow, result: WorkflowResult, results_dir: Path) -> None:
+def analyze_energies(output_file: Path | str) -> dict:
+    """
+    Parse a QE output file and extract total/Fermi energies.
+    """
+    output_path = Path(output_file)
+    if not output_path.exists():
+        raise FileNotFoundError(output_path)
+
+    total_energy = None
+    fermi_energy = None
+    for line in output_path.read_text().splitlines():
+        if "!" in line and "total energy" in line:
+            try:
+                total_energy = float(line.split("=")[-1].split()[0])
+            except Exception:
+                continue
+        lower = line.lower()
+        if "fermi energy" in lower:
+            try:
+                fermi_energy = float(line.split("=")[-1].split()[0])
+            except Exception:
+                continue
+    return {
+        "file": str(output_path),
+        "total_energy_ry": total_energy,
+        "fermi_energy_ry": fermi_energy,
+    }
+
+
+def summarize_workflow_energies(
+    workflow: Workflow, result: WorkflowResult, results_dir: Path
+) -> None:
     """
     Extract total energy / Fermi energy metrics from each step result.
     """

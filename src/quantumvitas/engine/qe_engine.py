@@ -17,11 +17,6 @@ from .base import Engine, StepResult
 class QeEngine(Engine):
     """
     Thin adapter over the legacy QuantumEspressoEngine.
-
-    For now we expect ``step.parameters`` to contain an ``input_file`` entry
-    (absolute or relative to the workflow raw directory). Future iterations
-    can add high-level builders that translate Step parameters into QEInput
-    objects.
     """
 
     name = "qe"
@@ -30,23 +25,43 @@ class QeEngine(Engine):
         super().__init__(config or EngineConfig(name="qe"))
         self._engine = _LegacyQeEngine(self.config)
 
+    @property
+    def backend(self) -> _LegacyQeEngine:
+        return self._engine
+
     def run_step(self, step, working_dir: Path) -> StepResult:
         working_dir.mkdir(parents=True, exist_ok=True)
-        input_file = step.parameters.get("input_file")
-        if not input_file:
-            raise ValueError(f"Step '{step.id}' is missing 'input_file' parameter")
+        timeout = None
+        step_type_value = None
 
-        input_path = Path(input_file)
-        if not input_path.is_absolute():
-            input_path = working_dir / input_path
+        if hasattr(step, "resolve_input_path"):
+            input_path = step.resolve_input_path(working_dir)
+            step_type = getattr(step, "step_type", None)
+            if step_type:
+                step_type_value = step_type.value
+            elif hasattr(step, "type"):
+                step_type_value = getattr(step, "type")
+            options = getattr(step, "options", {})
+            timeout = options.get("timeout")
+        else:
+            params = getattr(step, "parameters", {})
+            input_file = params.get("input_file")
+            if not input_file:
+                raise ValueError(f"Step '{step.id}' is missing 'input_file' parameter")
+            input_path = Path(input_file)
+            if not input_path.is_absolute():
+                input_path = working_dir / input_path
+            timeout = params.get("timeout")
+            if hasattr(step, "type"):
+                step_type_value = step.type.value
+
         if not input_path.exists():
             raise FileNotFoundError(f"Input file not found: {input_path}")
 
-        timeout = step.parameters.get("timeout")
         return self._engine.run_step(
             input_file=input_path,
             working_dir=working_dir,
-            step_type=step.type.value,
+            step_type=step_type_value,
             timeout=timeout,
         )
 

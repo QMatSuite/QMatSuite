@@ -15,6 +15,9 @@ class WorkflowIO:
     """
 
     root: Path
+    raw_subdir: str = "raw"
+    reference_subdir: str = "reference"
+    results_subdir: str = "results"
 
     def ensure(self) -> None:
         for path in [self.raw_dir, self.reference_dir, self.results_dir]:
@@ -25,19 +28,19 @@ class WorkflowIO:
         """
         Directory where the engine writes raw QE inputs/outputs.
         """
-        return self.root / "raw"
+        return self.root / self.raw_subdir
 
     @property
     def reference_dir(self) -> Path:
         """
         Directory storing reference outputs (strict/test workflows).
         """
-        return self.root / "reference"
+        return self.root / self.reference_subdir
 
     @property
     def results_dir(self) -> Path:
         """
         Directory where analysis results are written.
         """
-        return self.root / "results"
+        return self.root / self.results_subdir
 

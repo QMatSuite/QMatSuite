@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, Optional
 
+import yaml
+
 
 @dataclass(slots=True)
 class ProjectSettings:
@@ -57,6 +59,52 @@ class Project:
 
     root: Path
     settings: ProjectSettings = field(default_factory=ProjectSettings)
+    structures: Dict[str, StructureRef] = field(default_factory=dict)
+    workflows: Dict[str, WorkflowRef] = field(default_factory=dict)
+
+    @classmethod
+    def open(cls, project_root: Path | str) -> "Project":
+        """
+        Load project metadata from ``project.qv.yml``.
+        """
+        root = Path(project_root).resolve()
+        config_file = root / "project.qv.yml"
+        if not config_file.exists():
+            raise FileNotFoundError(f"project.qv.yml not found under {root}")
+
+        data = yaml.safe_load(config_file.read_text()) or {}
+        settings = ProjectSettings(data.get("settings", {}))
+
+        project = cls(root=root, settings=settings)
+        project.structures = cls._load_structures(root, data.get("structures", []))
+        project.workflows = cls._load_workflows(root, data.get("workflows", []))
+        return project
+
+    @staticmethod
+    def _load_structures(root: Path, entries: list[dict]) -> Dict[str, StructureRef]:
+        structures: Dict[str, StructureRef] = {}
+        for entry in entries:
+            struct_id = entry["id"]
+            struct_path = entry.get("file")
+            if not struct_path:
+                raise ValueError(f"Structure '{struct_id}' is missing 'file'")
+            path = (root / struct_path).resolve()
+            structures[struct_id] = StructureRef(
+                name=struct_id,
+                path=path,
+                format=entry.get("format", "auto"),
+            )
+        return structures
+
+    @staticmethod
+    def _load_workflows(root: Path, entries: list[dict]) -> Dict[str, WorkflowRef]:
+        workflows: Dict[str, WorkflowRef] = {}
+        for entry in entries:
+            workflow_id = entry["id"]
+            workflow_path = entry.get("path") or f"workflows/{workflow_id}"
+            path = (root / workflow_path).resolve()
+            workflows[workflow_id] = WorkflowRef(name=workflow_id, path=path)
+        return workflows
 
     @property
     def structures_dir(self) -> Path:
@@ -74,12 +122,32 @@ class Project:
     def settings_file(self) -> Path:
         return self.root / "settings.yaml"
 
-    def workflow_ref(self, name: str) -> WorkflowRef:
+    def list_structures(self) -> list[str]:
+        return list(self.structures.keys())
+
+    def get_structure(self, structure_id: str) -> StructureRef:
+        try:
+            return self.structures[structure_id]
+        except KeyError as exc:
+            raise KeyError(f"Unknown structure '{structure_id}'") from exc
+
+    def list_workflows(self) -> list[str]:
+        return list(self.workflows.keys())
+
+    def get_workflow_ref(self, workflow_id: str) -> WorkflowRef:
+        try:
+            return self.workflows[workflow_id]
+        except KeyError as exc:
+            raise KeyError(f"Unknown workflow '{workflow_id}'") from exc
+
+    def get_workflow(self, workflow_id: str):
         """
-        Return a workflow reference by name without reading workflow.yaml.
+        Load and return a workflow instance.
         """
-        workflow_path = self.workflows_dir / name
-        return WorkflowRef(name=name, path=workflow_path)
+        from quantumvitas.workflow.workflow import Workflow
+
+        ref = self.get_workflow_ref(workflow_id)
+        return Workflow.from_yaml(ref.path, self)
 
     def structure_ref(self, name: str) -> StructureRef:
         """
