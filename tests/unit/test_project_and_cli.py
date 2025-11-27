@@ -8,6 +8,8 @@ from typer.testing import CliRunner
 
 from quantumvitas.project.model import Project
 from quantumvitas.cli.main import app, _parse_override_args
+from quantumvitas.workflow.input_runner import PreparedInputStep
+from quantumvitas.core.engines.qe_workflow import StepResult
 from quantumvitas.io import read_structure
 
 
@@ -114,5 +116,93 @@ def test_cli_import_structure_registers_json(tmp_path: Path):
 
     data = yaml.safe_load((dest / "project.qv.yml").read_text())
     assert any(entry["id"] == "si_struct" for entry in data["structures"])
+
+
+def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
+    runner = CliRunner()
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    # Create minimal project file
+    (project_root / "project.qv.yml").write_text(
+        yaml.safe_dump({"project": {"name": "proj"}, "structures": [], "workflows": []})
+    )
+    (project_root / "structures").mkdir()
+
+    # Create and import structure
+    structure = Structure(Lattice.cubic(5.43), ["Si"], [[0, 0, 0]])
+    source = tmp_path / "si.cif"
+    structure.to(fmt="cif", filename=str(source))
+    result = runner.invoke(
+        app,
+        [
+            "import-structure",
+            str(source),
+            "--project",
+            str(project_root),
+            "--id",
+            "si",
+        ],
+    )
+    assert result.exit_code == 0
+
+    # Step file referencing structure
+    step_file = tmp_path / "step.yaml"
+    yaml.safe_dump(
+        {
+            "structure": "si",
+            "step_type": "scf",
+            "input_name": "si_step.pw.in",
+            "parameters": {
+                "SYSTEM": {"ecutwfc": 60},
+                "ELECTRONS": {"conv_thr": 1e-8},
+            },
+        },
+        step_file.open("w"),
+    )
+
+    captured = {}
+
+    def fake_run_input_step(
+        *,
+        engine,
+        input_file,
+        working_dir,
+        project_root,
+        step_type=None,
+        parameter_overrides=None,
+    ):
+        captured["input_file"] = input_file
+        captured["working_dir"] = working_dir
+        return (
+            StepResult(
+                step_type="scf",
+                input_file=input_file,
+                output_file=working_dir / "si_step.pw.out",
+                success=True,
+                return_code=0,
+            ),
+            PreparedInputStep(
+                working_dir=working_dir,
+                original_input=input_file,
+                modified_input=input_file,
+                project_root=project_root,
+            ),
+        )
+
+    monkeypatch.setattr("quantumvitas.cli.main.run_input_step", fake_run_input_step)
+
+    result = runner.invoke(
+        app,
+        [
+            "run-stepfile",
+            str(step_file),
+            "--project",
+            str(project_root),
+        ],
+    )
+
+    assert result.exit_code == 0, result.stdout
+    assert "Step file run finished" in result.stdout
+    assert captured["input_file"].exists()
 
 

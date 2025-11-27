@@ -141,21 +141,21 @@ K_POINTS automatic
 
 ---
 
-### `_structure_from_qe_input(qe_input)`
+### `structure_from_qe_input(qe_input)`
 
-Extracts a pymatgen Structure from a parsed QE input (internal use).
+Extracts a pymatgen Structure from a parsed QE input.
 
 **Example:**
 
 ```python
 from quantumvitas.io import QEInputParser
-from quantumvitas.io.structure_io import _structure_from_qe_input
+from quantumvitas.io.structure_io import structure_from_qe_input
 
 # Parse QE input
 qe_input = QEInputParser.parse_file(Path("si.scf.in"))
 
 # Extract structure
-structure = _structure_from_qe_input(qe_input)
+structure = structure_from_qe_input(qe_input)
 ```
 
 ---
@@ -242,6 +242,45 @@ qv run-structure si \
 
 ---
 
+### `qv run-stepfile`
+
+Runs a QE step described by a YAML file (structure id/path, calculation type,
+parameter dictionaries). This is useful for sharing single-step recipes or
+keeping complex parameter sets in version control.
+
+**Step YAML Format:**
+
+```yaml
+structure: si
+step_type: scf
+input_name: si_scf.pw.in
+parameters:
+  CONTROL:
+    prefix: si
+  SYSTEM:
+    ecutwfc: 60
+    ecutrho: 240
+  ELECTRONS:
+    conv_thr: 1.0e-8
+```
+
+**Usage:**
+
+```bash
+qv run-stepfile workflows/si_scf_step.yaml
+
+# CLI overrides take precedence over YAML values
+qv run-stepfile workflows/si_scf_step.yaml --SYSTEM.ecutwfc=70
+```
+
+**What it does:**
+1. Loads the structure (from project or explicit path)
+2. Generates a QE input via `qe_input_from_structure`
+3. Applies parameters from YAML (and any CLI overrides)
+4. Executes the QE step via `run_input_step`
+
+---
+
 ### `qv run-step`
 
 Runs a QE input file with optional parameter overrides.
@@ -291,6 +330,23 @@ qv run-step si.scf.in \
   --SYSTEM.nspin=2 \
   --CONTROL.restart_mode='from_scratch'
 ```
+
+---
+
+## Step & Workflow Import Helpers
+
+To migrate existing QE inputs into the structured workflow layout, leverage
+`quantumvitas.workflow.importers`:
+
+- `build_step_spec_from_qe_input(input_file, destination_dir, ...)`  
+  Parses a QE input, stores the extracted structure as JSON, captures
+  namelists/cards, and emits a `*.step.yaml` ready for `qv run-stepfile`.
+- `build_workflow_from_qe_inputs(files, workflow_dir, ...)`  
+  Processes multiple QE inputs in order, copies the originals under
+  `raw/original_inputs/`, writes per-step YAML files, and generates
+  `workflow.yaml` that references those specs. Structures can be referenced by
+  absolute/relative path (self-contained workflows) or by structure id for
+  project-integrated setups.
 
 ---
 

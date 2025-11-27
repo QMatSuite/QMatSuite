@@ -14,15 +14,18 @@ CI 测试数据文件已从 QE test-suite 复制到 `tests/integration/ci_test_d
 tests/integration/ci_test_data/
 ├── manifest.json              # 元数据（测试列表）
 ├── README.md                  # 说明文档
-├── pw_atom/
+├── pw_single_tests/          # 所有 PW 单步测试文件
 │   ├── atom.in               # 输入文件
-│   └── benchmark.out.git.inp=atom.in  # 参考输出
-├── pw_metal/
 │   ├── metal.in
 │   ├── metal-gaussian.in
 │   ├── metal-fermi_dirac.in
-│   └── benchmark files...
-└── ...
+│   ├── scf-mixing_localTF.in
+│   ├── scf-cg.in
+│   ├── plugin-pw2casino_2.in
+│   ├── uspp-cg-gamma.in
+│   └── benchmark files...   # 参考输出文件
+├── ph_1d/                    # PH 测试
+└── ph_2d/                    # PH 测试
 ```
 
 ## 包含的文件

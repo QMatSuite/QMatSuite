@@ -15,6 +15,20 @@ from .input_runner import (
     set_pseudo_dir_to_temp,
     detect_project_root,
 )
+from .importers import (
+    build_step_spec_from_qe_input,
+    build_workflow_from_qe_inputs,
+    StepImportResult,
+    WorkflowImportResult,
+)
+from .structure_steps import materialize_step_spec
+from .geometry import (
+    QEAtomicPosition,
+    QEGeometrySnapshot,
+    read_geometry_from_input,
+    read_geometry_from_output,
+    compare_geometries,
+)
 
 __all__ = [
     "StepMode",
@@ -31,5 +45,15 @@ __all__ = [
     "set_outdir_to_temp",
     "set_pseudo_dir_to_temp",
     "detect_project_root",
+    "build_step_spec_from_qe_input",
+    "build_workflow_from_qe_inputs",
+    "StepImportResult",
+    "WorkflowImportResult",
+    "materialize_step_spec",
+    "QEAtomicPosition",
+    "QEGeometrySnapshot",
+    "read_geometry_from_input",
+    "read_geometry_from_output",
+    "compare_geometries",
 ]
 

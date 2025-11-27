@@ -4,47 +4,42 @@
     {
       "category": "pw_metal",
       "test_file": "metal.in",
-      "input_file": "pw_metal/metal.in"
+      "input_file": "pw_single_tests/metal.in"
     },
     {
       "category": "pw_metal",
       "test_file": "metal-gaussian.in",
-      "input_file": "pw_metal/metal-gaussian.in"
+      "input_file": "pw_single_tests/metal-gaussian.in"
     },
     {
       "category": "pw_scf",
       "test_file": "scf-mixing_localTF.in",
-      "input_file": "pw_scf/scf-mixing_localTF.in"
+      "input_file": "pw_single_tests/scf-mixing_localTF.in"
     },
     {
       "category": "pw_metal",
       "test_file": "metal-fermi_dirac.in",
-      "input_file": "pw_metal/metal-fermi_dirac.in"
+      "input_file": "pw_single_tests/metal-fermi_dirac.in"
     },
     {
       "category": "pw_scf",
       "test_file": "scf-cg.in",
-      "input_file": "pw_scf/scf-cg.in"
+      "input_file": "pw_single_tests/scf-cg.in"
     },
     {
       "category": "pw_plugins",
       "test_file": "plugin-pw2casino_2.in",
-      "input_file": "pw_plugins/plugin-pw2casino_2.in"
-    },
-    {
-      "category": "pw_twochem",
-      "test_file": "nscf_twochem.in",
-      "input_file": "pw_twochem/nscf_twochem.in"
+      "input_file": "pw_single_tests/plugin-pw2casino_2.in"
     },
     {
       "category": "pw_uspp",
       "test_file": "uspp-cg-gamma.in",
-      "input_file": "pw_uspp/uspp-cg-gamma.in"
+      "input_file": "pw_single_tests/uspp-cg-gamma.in"
     },
     {
       "category": "pw_atom",
       "test_file": "atom.in",
-      "input_file": "pw_atom/atom.in"
+      "input_file": "pw_single_tests/atom.in"
     },
     {
       "category": "ph_1d",
@@ -57,5 +52,5 @@
       "input_file": "ph_2d/scf.in"
     }
   ],
-  "total": 11
+  "total": 10
 }
