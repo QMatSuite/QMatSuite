@@ -18,6 +18,7 @@ from typing import Dict, Iterable, List, Optional, Set, Tuple
 from quantumvitas.data import load_qe_parameter_map
 from quantumvitas.io import QEInputParser
 from quantumvitas.io.model import QEModule
+from quantumvitas.core.engines.qe_installation import QEInstallation
 
 
 def iter_input_files(base_paths: Iterable[Path]) -> Iterable[Path]:
@@ -53,13 +54,19 @@ def extract_sections_from_input(input_path: Path) -> Tuple[Optional[str], Dict[s
 
 def summarize(results: Dict[str, Dict[str, float]]) -> None:
     print("\nCoverage summary per module:")
-    print("module     files  sections  params")
+    print("module     files  sections (matches/total)  params (matches/total)")
     for module, stats in sorted(results.items()):
+        section_pct = (stats['section_matches'] / stats['section_total'] * 100) if stats['section_total'] > 0 else 0.0
+        param_pct = (stats['param_matches'] / stats['param_total'] * 100) if stats['param_total'] > 0 else 0.0
+        section_match = int(stats['section_matches'])
+        section_total = int(stats['section_total'])
+        param_match = int(stats['param_matches'])
+        param_total = int(stats['param_total'])
         print(
             f"{module:10s} "
             f"{int(stats['files']):5d} "
-            f"{stats['section_match']:.1%} "
-            f"{stats['param_match']:.1%}"
+            f"{section_match:4d}/{section_total:4d} ({section_pct:6.1f}%)  "
+            f"{param_match:5d}/{param_total:5d} ({param_pct:6.1f}%)"
         )
 
 
@@ -68,11 +75,17 @@ def main() -> int:
         description="Validate QE module parameter metadata using QE test-suite inputs."
     )
     parser.add_argument(
+        "--qe-home",
+        type=Path,
+        default=None,
+        help="Path to QE home directory (contains bin/ and test-suite/). If not provided, will auto-detect using which pw.x.",
+    )
+    parser.add_argument(
         "--testsuite",
         nargs="+",
-        default=[Path("extended-tests") / "suites" / "qe_testsuite"],
+        default=None,
         type=Path,
-        help="Path(s) to QE test-suite directories or specific input files.",
+        help="Path(s) to QE test-suite directories or specific input files. If not provided, will auto-detect from QE installation.",
     )
     parser.add_argument(
         "--limit",
@@ -82,8 +95,36 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    # Auto-detect QE installation (from --qe-home or auto-detect using which pw.x)
+    if args.qe_home:
+        try:
+            qe_installation = QEInstallation(qe_home=args.qe_home)
+        except ValueError as e:
+            print(f"ERROR: {e}")
+            return 1
+    else:
+        # Auto-detect QE installation using which pw.x and other strategies
+        qe_installation = QEInstallation()
+    
+    if not qe_installation.is_valid():
+        print("ERROR: QE installation not found.")
+        print("   Please specify --qe-home or ensure QE is installed and accessible (pw.x in PATH).")
+        return 1
+    
+    # Use auto-detected test-suite if --testsuite was not explicitly provided
+    if args.testsuite is None:
+        test_suite_dir = qe_installation.test_suite_dir
+        if not test_suite_dir or not test_suite_dir.exists():
+            print(f"ERROR: Test-suite directory not found: {qe_installation.qe_home / 'test-suite' if qe_installation.qe_home else 'unknown'}")
+            print(f"   QE home: {qe_installation.qe_home}")
+            print(f"   Please specify --testsuite or ensure QE is installed with test-suite.")
+            return 1
+        args.testsuite = [test_suite_dir]
+        print(f"Auto-detected QE home: {qe_installation.qe_home}")
+        print(f"Auto-detected test-suite: {test_suite_dir}")
+
     parameter_map = load_qe_parameter_map().get("modules", {})
-    stats: Dict[str, Dict[str, float]] = defaultdict(lambda: defaultdict(float))
+    stats: Dict[str, Dict[str, float]] = defaultdict(lambda: {"files": 0, "section_matches": 0, "section_total": 0, "param_matches": 0, "param_total": 0})
     missing_sections: Dict[str, Set[str]] = defaultdict(set)
     missing_params: Dict[str, Set[str]] = defaultdict(set)
     files_processed = 0
@@ -120,10 +161,10 @@ def main() -> int:
                 else:
                     missing_params[module].add(f"{section_name}.{param}")
 
-        if sec_total:
-            stats[module]["section_match"] += sec_matches / sec_total
-        if param_total:
-            stats[module]["param_match"] += param_matches / param_total
+        stats[module]["section_matches"] += sec_matches
+        stats[module]["section_total"] += sec_total
+        stats[module]["param_matches"] += param_matches
+        stats[module]["param_total"] += param_total
 
     if files_processed == 0:
         print("No input files processed. Check --testsuite path.")
