@@ -53,6 +53,8 @@ invoked from the repository root and benefit from the same editable install.
 
 The new runtime exposes a Typer-powered CLI named `qv`. Key commands:
 
+> **📖 For detailed documentation with examples, see [docs/STRUCTURE_AND_CLI_USAGE.md](docs/STRUCTURE_AND_CLI_USAGE.md)**
+
 ```bash
 # Create a scaffolded project with a sample workflow
 qv init my_project
@@ -62,6 +64,15 @@ qv detect-qe
 
 # Run a single QE input file in isolation (uses temp/raw directories)
 qv run-step path/to/si.scf.in --workdir temp/run_scf
+
+# Override QE parameters directly from the CLI (auto-detected sections)
+qv run-step workflows/si_dos/raw/si.1_scf.in --ecutwfc=60 --system.degauss=0.01
+
+# Import a structure (stored as structures/<id>.json) and register it
+qv import-structure path/to/si.cif --id si_bulk
+
+# Generate & run a QE input directly from a stored structure with overrides
+qv run-structure si_bulk --ecutwfc=60 --system.degauss=0.01
 
 # Execute a workflow defined under workflows/<id>/workflow.yaml
 qv run-workflow si_dos --project /path/to/my_project
@@ -113,6 +124,24 @@ QE docs via:
 ```bash
 python tools/extract_qe_parameters.py --pretty
 ```
+
+`qv run-step` accepts arbitrary `--parameter=value` overrides. Parameters are
+mapped to the correct namelist using the metadata above; for ambiguous cases
+provide a prefix such as `--SYSTEM.ecutrho=200`. Lists can be expressed with
+Python/JSON syntax (e.g., `--k_points="[4,4,4]"`), booleans with `--flag` or
+`--flag=false`.
+
+**Structure Management:**
+- `qv import-structure <file> --id <name>`: Import structures from CIF/POSCAR/QE inputs
+- `qv run-structure <id-or-path>`: Generate QE input from structure and run with parameter overrides
+
+See [docs/STRUCTURE_AND_CLI_USAGE.md](docs/STRUCTURE_AND_CLI_USAGE.md) for comprehensive examples.
+
+`qv import-structure` ingests CIF/POSCAR/QE inputs (and more) via pymatgen,
+normalises them into `structures/<id>.json`, and registers them in
+`project.qv.yml`. `qv run-structure` loads those JSON structures (or an arbitrary
+structure file), converts them into a QE input via
+`qe_input_from_structure`, applies CLI overrides, and executes the step.
 
 ### QE Input Roundtrip Helper
 
