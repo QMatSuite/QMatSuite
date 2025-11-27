@@ -4,10 +4,11 @@ Typer-based CLI for QuantumVITAS.
 
 from __future__ import annotations
 
+import ast
 import json
 import shutil
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 import yaml
 
@@ -21,7 +22,13 @@ from quantumvitas.engine.registry import create_default_registry
 from quantumvitas.project.model import Project
 from quantumvitas.workflow.runner import WorkflowRunner
 from quantumvitas.workflow.workflow import Workflow
-from quantumvitas.workflow.input_runner import run_input_step, detect_project_root
+from quantumvitas.workflow.input_runner import (
+    ParameterOverride,
+    detect_project_root,
+    run_input_step,
+)
+from quantumvitas.io import QEInputGenerator, read_structure, write_structure
+from quantumvitas.io.structure_io import qe_input_from_structure
 
 app = typer.Typer(help="QuantumVITAS CLI")
 
@@ -40,6 +47,87 @@ def _ensure_empty_dir(path: Path) -> None:
     if path.exists():
         shutil.rmtree(path)
     path.mkdir(parents=True, exist_ok=True)
+
+
+def _coerce_override_value(raw: str):
+    value = raw.strip()
+    lower = value.lower()
+    if lower in {".true.", "true", "t"}:
+        return True
+    if lower in {".false.", "false", "f"}:
+        return False
+    try:
+        return ast.literal_eval(value)
+    except (ValueError, SyntaxError):
+        pass
+    if "," in value and not value.startswith(("(", "[")):
+        parts = [part.strip() for part in value.split(",")]
+        if len(parts) > 1:
+            return [_coerce_override_value(part) for part in parts]
+    return value
+
+
+def _parse_override_args(extra_args: List[str]) -> List[ParameterOverride]:
+    """
+    Convert unknown CLI arguments (e.g., --ecutwfc=40) into overrides.
+    """
+
+    overrides: dict[str, ParameterOverride] = {}
+    i = 0
+    while i < len(extra_args):
+        token = extra_args[i]
+        if not token.startswith("--"):
+            i += 1
+            continue
+        key = token[2:]
+        value: Optional[str] = None
+        if "=" in key:
+            key, value = key.split("=", 1)
+        else:
+            if i + 1 < len(extra_args) and not extra_args[i + 1].startswith("--"):
+                value = extra_args[i + 1]
+                i += 1
+            else:
+                value = "true"
+
+        key = key.strip()
+        if not key:
+            i += 1
+            continue
+
+        section_hint: Optional[str] = None
+        param_name = key
+        if "." in key:
+            section_hint, param_name = key.split(".", 1)
+
+        normalized_param = param_name.replace("-", "_")
+        normalized_section = section_hint.replace("-", "_") if section_hint else None
+        overrides[normalized_param.lower()] = ParameterOverride(
+            name=normalized_param,
+            value=_coerce_override_value(value),
+            section=normalized_section,
+        )
+        i += 1
+
+    return list(overrides.values())
+
+
+def _resolve_structure_input(
+    project_root: Path, identifier: str
+) -> tuple[object, str]:
+    """
+    Load a structure either from a file path or from project metadata.
+    """
+
+    candidate = Path(identifier)
+    if candidate.exists():
+        structure = read_structure(candidate)
+        return structure, candidate.stem
+
+    project = Project.open(project_root)
+    ref = project.get_structure(identifier)
+    structure = read_structure(ref.path)
+    return structure, identifier
 
 
 @app.command("init")
@@ -91,6 +179,56 @@ def init_project(
     typer.secho(f"Project created at {destination}", fg=typer.colors.GREEN)
 
 
+@app.command("import-structure")
+def import_structure_command(
+    structure_file: Path = typer.Argument(
+        ..., help="Input structure file (.cif, POSCAR, QE .in, etc.)"
+    ),
+    structure_id: str = typer.Option(
+        ..., "--id", "-i", help="Structure identifier to register in the project"
+    ),
+    project: Optional[Path] = typer.Option(
+        None, "--project", help="Project root (defaults to auto-detect)"
+    ),
+    output_format: str = typer.Option(
+        "json",
+        "--output-format",
+        help="Canonical storage format (json, cif, poscar, etc.)",
+    ),
+) -> None:
+    """
+    Import a structure file via pymatgen and register it in project.qv.yml.
+    """
+    project_root = project or _resolve_project_root()
+    project_root = project_root.resolve()
+
+    struct = read_structure(structure_file)
+
+    structures_dir = project_root / "structures"
+    structures_dir.mkdir(parents=True, exist_ok=True)
+    ext = output_format.lower()
+    out_path = structures_dir / f"{structure_id}.{ext}"
+    write_rel = out_path.relative_to(project_root)
+
+    write_structure(struct, out_path, format=output_format)
+
+    config_file = project_root / "project.qv.yml"
+    data = yaml.safe_load(config_file.read_text()) or {}
+    structures = data.get("structures", [])
+    if any(s.get("id") == structure_id for s in structures):
+        raise typer.BadParameter(f"Structure id '{structure_id}' already exists.")
+
+    structures.append(
+        {"id": structure_id, "file": str(write_rel), "format": output_format.lower()}
+    )
+    data["structures"] = structures
+    config_file.write_text(yaml.safe_dump(data, sort_keys=False))
+
+    typer.secho(
+        f"Imported structure '{structure_id}' -> {write_rel}", fg=typer.colors.GREEN
+    )
+
+
 @app.command("detect-qe")
 def detect_qe(
     project: Optional[Path] = typer.Option(
@@ -110,8 +248,12 @@ def detect_qe(
         typer.echo(f"{exe}: {path or 'not found'}")
 
 
-@app.command("run-step")
+@app.command(
+    "run-step",
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+)
 def run_step_command(
+    ctx: typer.Context,
     input_file: Path = typer.Argument(..., help="QE input file to execute"),
     working_dir: Optional[Path] = typer.Option(
         None, "--workdir", help="Temporary working directory"
@@ -138,15 +280,91 @@ def run_step_command(
         except typer.BadParameter:
             project_root = detect_project_root(input_file.parent)
 
+    overrides = _parse_override_args(ctx.args)
+    if overrides:
+        rendered = ", ".join(
+            f"{(o.section + '.' if o.section else '')}{o.name}={o.value}"
+            for o in overrides
+        )
+        typer.echo(f"Applying overrides: {rendered}")
+
     result, prepared = run_input_step(
         engine=engine.backend,
         input_file=input_file.resolve(),
         working_dir=workdir,
         project_root=project_root,
         step_type=None,
+        parameter_overrides=overrides or None,
     )
 
     typer.echo(f"Step finished: {result.step_type} -> {result.output_file}")
+    typer.echo(f"Working dir: {prepared.working_dir}")
+
+
+@app.command(
+    "run-structure",
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+)
+def run_structure_command(
+    ctx: typer.Context,
+    structure: str = typer.Argument(
+        ..., help="Structure id (from project) or direct file path"
+    ),
+    working_dir: Optional[Path] = typer.Option(
+        None, "--workdir", help="Working directory for generated inputs"
+    ),
+    project: Optional[Path] = typer.Option(
+        None, "--project", help="Project root (defaults to auto-detect)"
+    ),
+    input_name: Optional[str] = typer.Option(
+        None,
+        "--input-name",
+        help="Filename for the generated QE input (defaults to <structure>.pw.in)",
+    ),
+) -> None:
+    """
+    Generate a QE input from a stored structure + CLI parameters, then run it.
+    """
+    registry = create_default_registry()
+    engine = registry.get("qe")
+
+    if project:
+        project_root = project.resolve()
+    else:
+        project_root = _resolve_project_root()
+
+    struct, struct_name = _resolve_structure_input(project_root, structure)
+
+    workdir = working_dir or (Path("temp") / "cli_outputs" / struct_name)
+    workdir = workdir.resolve()
+    workdir.mkdir(parents=True, exist_ok=True)
+
+    qe_input = qe_input_from_structure(struct)
+    generated_name = input_name or f"{struct_name}.pw.in"
+    generated_input = workdir / generated_name
+    QEInputGenerator.write_file(qe_input, generated_input)
+
+    overrides = _parse_override_args(ctx.args)
+    if overrides:
+        rendered = ", ".join(
+            f"{(o.section + '.' if o.section else '')}{o.name}={o.value}"
+            for o in overrides
+        )
+        typer.echo(f"Applying overrides: {rendered}")
+
+    result, prepared = run_input_step(
+        engine=engine.backend,
+        input_file=generated_input,
+        working_dir=workdir,
+        project_root=project_root,
+        step_type=None,
+        parameter_overrides=overrides or None,
+    )
+
+    typer.echo(
+        f"Structure run finished: {result.step_type} -> {result.output_file} "
+        f"(input {generated_input})"
+    )
     typer.echo(f"Working dir: {prepared.working_dir}")
 
 
