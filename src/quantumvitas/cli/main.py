@@ -16,6 +16,7 @@ import typer
 from quantumvitas.analysis import bands as bands_analysis
 from quantumvitas.analysis import dos as dos_analysis
 from quantumvitas.analysis import energy as energy_analysis
+from quantumvitas.data import load_qe_parameter_map
 from quantumvitas.engine.registry import create_default_registry
 from quantumvitas.project.model import Project
 from quantumvitas.workflow.runner import WorkflowRunner
@@ -196,6 +197,47 @@ def analyze_command(
     else:
         raise typer.BadParameter("kind must be one of: energy, band, dos")
     typer.echo(json.dumps(data, indent=2))
+
+
+@app.command("params")
+def params_command(
+    module: str = typer.Argument(..., help="QE module name, e.g. pw, ph, dos"),
+    section: Optional[str] = typer.Option(
+        None, "--section", help="Optional section/namelist to filter (e.g., CONTROL)."
+    ),
+) -> None:
+    """
+    Inspect module parameter metadata sourced from the QE documentation.
+    """
+    module_key = module.lower()
+    param_map = load_qe_parameter_map()
+    modules = param_map.get("modules", {})
+    if module_key not in modules:
+        raise typer.BadParameter(
+            f"Unknown module '{module}'. Available: {', '.join(sorted(modules))}"
+        )
+
+    module_entry = modules[module_key]
+    sections = module_entry.get("sections", {})
+
+    def match_section(name: str) -> bool:
+        if not section:
+            return True
+        normalized = section.strip().lower().lstrip("&")
+        return name.lower().lstrip("&") == normalized
+
+    filtered = {k: v for k, v in sections.items() if match_section(k)}
+    if not filtered:
+        raise typer.BadParameter(
+            f"Section '{section}' not found for module '{module}'. "
+            f"Available: {', '.join(sections)}"
+        )
+
+    typer.echo(f"Documentation: {module_entry.get('doc_url')}")
+    for sec_name, params in filtered.items():
+        typer.echo(f"\n{sec_name}:")
+        for param in params:
+            typer.echo(f"  - {param}")
 
 
 def main() -> None:

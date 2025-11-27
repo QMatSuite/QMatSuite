@@ -68,6 +68,9 @@ qv run-workflow si_dos --project /path/to/my_project
 
 # Lightweight analysis (energy / band / dos summaries)
 qv analyze energy workflows/si_dos/raw/si.1_scf.out
+
+# Inspect QE module parameters pulled from official docs
+qv params pw --section CONTROL
 ```
 
 `qv run-workflow` automatically locates `project.qv.yml` (walking up from the
@@ -101,6 +104,14 @@ The quick suite is split into three markers:
 pytest -m unit    # parser/project tests (no QE binaries)
 pytest -m qe_core # QE integration via run_and_verify_step/workflow runner
 pytest -m qe_cli  # QE integration driven through the Typer CLI
+```
+
+The QE parameter helper (`qv params`) is backed by the generated metadata in
+`src/quantumvitas/data/qe_module_parameters.json`. Regenerate it when upgrading
+QE docs via:
+
+```bash
+python tools/extract_qe_parameters.py --pretty
 ```
 
 ### QE Input Roundtrip Helper
