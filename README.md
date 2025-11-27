@@ -199,7 +199,7 @@ Please refer to the [release page](https://github.com/quantumVITAS/quantumVITAS/
 
 ## License
 
- Copyright (c) 2020 Haonan Huang.
+ Copyright (c) 2025 QuantumNerd.
  
  QuantumVITAS (Quantum Visualization Interactive Toolkit for Ab-initio 
  Simulations) is free software; you can redistribute it and/or modify
