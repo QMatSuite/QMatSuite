@@ -18,16 +18,18 @@ CI 测试数据存储在 `tests/integration/ci_test_data/` 目录中，包含：
 ```
 tests/integration/ci_test_data/
 ├── manifest.json              # 元数据
-├── pw_atom/
-│   └── atom.in
-├── pw_metal/
+├── pw_single_tests/          # 所有 PW 单步测试文件
+│   ├── atom.in
 │   ├── metal.in
 │   ├── metal-gaussian.in
-│   └── metal-fermi_dirac.in
-├── pw_scf/
+│   ├── metal-fermi_dirac.in
 │   ├── scf-mixing_localTF.in
-│   └── scf-cg.in
-└── ...
+│   ├── scf-cg.in
+│   ├── plugin-pw2casino_2.in
+│   ├── uspp-cg-gamma.in
+│   └── benchmark files...
+├── ph_1d/                    # PH 测试
+└── ph_2d/                    # PH 测试
 ```
 
 ## 更新流程

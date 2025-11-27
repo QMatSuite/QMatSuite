@@ -54,6 +54,10 @@ def copy_test_files(test_suite_dir: Path, output_dir: Path) -> bool:
     copied_files: list[tuple[str, str]] = []
     missing_files: list[tuple[str, str]] = []
 
+    # Separate pw_* tests from others
+    pw_single_dir = output_dir / "pw_single_tests"
+    pw_single_dir.mkdir(parents=True, exist_ok=True)
+
     for test in selected:
         category = test["category"]
         test_file = test["test_file"]
@@ -61,9 +65,16 @@ def copy_test_files(test_suite_dir: Path, output_dir: Path) -> bool:
         category_dir = test_suite_dir / category
         input_file = category_dir / test_file
 
-        dest_category_dir = output_dir / category
-        dest_category_dir.mkdir(parents=True, exist_ok=True)
-        dest_input = dest_category_dir / test_file
+        # For pw_* categories, use pw_single_tests directory
+        if category.startswith("pw_"):
+            dest_dir = pw_single_dir
+            dest_input = dest_dir / test_file
+            input_file_path = f"pw_single_tests/{test_file}"
+        else:
+            dest_dir = output_dir / category
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            dest_input = dest_dir / test_file
+            input_file_path = f"{category}/{test_file}"
 
         if not input_file.exists():
             print(f"  ✗ Missing: {category}/{test_file}")
@@ -72,7 +83,7 @@ def copy_test_files(test_suite_dir: Path, output_dir: Path) -> bool:
 
         shutil.copy2(input_file, dest_input)
         copied_files.append((category, test_file))
-        print(f"  ✓ Copied: {category}/{test_file}")
+        print(f"  ✓ Copied: {category}/{test_file} -> {input_file_path}")
 
         # Copy benchmark/reference files if available
         benchmark_pattern = (
@@ -80,14 +91,14 @@ def copy_test_files(test_suite_dir: Path, output_dir: Path) -> bool:
         )
         for benchmark in category_dir.glob("benchmark.out.git.inp=*"):
             if benchmark_pattern in benchmark.name:
-                dest_benchmark = dest_category_dir / benchmark.name
+                dest_benchmark = dest_dir / benchmark.name
                 shutil.copy2(benchmark, dest_benchmark)
                 print(f"      ✓ Benchmark: {benchmark.name}")
 
         # Copy related files (e.g. .save directories)
         for related_file in category_dir.glob(f"{test_file}*"):
             if related_file.is_file() and related_file.name != test_file:
-                dest_related = dest_category_dir / related_file.name
+                dest_related = dest_dir / related_file.name
                 if not dest_related.exists():
                     shutil.copy2(related_file, dest_related)
                     print(f"      ✓ Related: {related_file.name}")
@@ -107,7 +118,7 @@ def copy_test_files(test_suite_dir: Path, output_dir: Path) -> bool:
             {
                 "category": cat,
                 "test_file": tf,
-                "input_file": f"{cat}/{tf}",
+                "input_file": f"pw_single_tests/{tf}" if cat.startswith("pw_") else f"{cat}/{tf}",
             }
             for cat, tf in copied_files
         ],

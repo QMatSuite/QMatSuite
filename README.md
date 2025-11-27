@@ -74,6 +74,9 @@ qv import-structure path/to/si.cif --id si_bulk
 # Generate & run a QE input directly from a stored structure with overrides
 qv run-structure si_bulk --ecutwfc=60 --system.degauss=0.01
 
+# Run a QE step described by a step YAML file
+qv run-stepfile workflows/si_scf_step.yaml
+
 # Execute a workflow defined under workflows/<id>/workflow.yaml
 qv run-workflow si_dos --project /path/to/my_project
 
@@ -142,6 +145,10 @@ normalises them into `structures/<id>.json`, and registers them in
 `project.qv.yml`. `qv run-structure` loads those JSON structures (or an arbitrary
 structure file), converts them into a QE input via
 `qe_input_from_structure`, applies CLI overrides, and executes the step.
+
+`qv run-stepfile` loads a declarative step YAML (structure id/path, calculation
+type, parameters) and generates the QE input via the same helper functions. This
+is useful for scripting repeatable QE steps outside full workflows.
 
 ### QE Input Roundtrip Helper
 

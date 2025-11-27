@@ -35,11 +35,13 @@ Files are copied to `tests/integration/ci_test_data/` with structure:
 ```
 ci_test_data/
 ├── manifest.json
-├── pw_atom/
-│   └── atom.in
-├── pw_metal/
+├── pw_single_tests/          # 所有 PW 单步测试文件
+│   ├── atom.in
 │   ├── metal.in
-│   └── metal-gaussian.in
-└── ...
+│   ├── metal-gaussian.in
+│   ├── scf-cg.in
+│   └── benchmark files...
+├── ph_1d/                    # PH 测试
+└── ph_2d/                    # PH 测试
 ```
 

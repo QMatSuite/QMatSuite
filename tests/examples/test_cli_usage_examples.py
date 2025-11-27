@@ -157,7 +157,8 @@ class TestImportStructureCommand:
             ],
         )
         assert result2.exit_code != 0
-        assert "already exists" in result2.stdout
+        # Typer errors may go to stderr, check both stdout and stderr
+        assert "already exists" in (result2.stdout + result2.stderr)
 
 
 class TestRunStructureCommand:

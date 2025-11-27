@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Dict, Mapping, Optional, Sequence
 import shutil
 
 from quantumvitas.io import (
@@ -336,5 +336,55 @@ def _apply_parameter_overrides(
             qe_input.namelists.append(target_namelist)
 
         target_namelist.parameters[param_name] = override.value
+
+
+def apply_parameter_overrides(
+    qe_input: QEInput, overrides: Sequence[ParameterOverride]
+) -> None:
+    """
+    Public helper to apply parameter overrides to a QE input file.
+    """
+
+    _apply_parameter_overrides(qe_input, overrides)
+
+
+def parameter_dict_to_overrides(
+    parameter_dict: Mapping[str, Mapping[str, Any]] | None,
+) -> list[ParameterOverride]:
+    """
+    Convert nested parameter dictionaries into ParameterOverride objects.
+
+    Expected format:
+    {
+        "CONTROL": {"calculation": "scf", "prefix": "si"},
+        "SYSTEM": {"ecutwfc": 60, "ecutrho": 240},
+    }
+    """
+
+    overrides: list[ParameterOverride] = []
+    if not parameter_dict:
+        return overrides
+
+    for section, params in parameter_dict.items():
+        if not isinstance(params, Mapping):
+            overrides.append(
+                ParameterOverride(
+                    name=str(section),
+                    value=params,
+                    section=None,
+                )
+            )
+            continue
+
+        for name, value in params.items():
+            overrides.append(
+                ParameterOverride(
+                    name=str(name),
+                    value=value,
+                    section=section,
+                )
+            )
+
+    return overrides
 
 
