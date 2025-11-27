@@ -14,6 +14,7 @@ from quantumvitas.project.model import Project, StructureRef
 from .types import StepMode, StepType
 from .step import Step
 from .io import WorkflowIO
+from .structure_steps import StructureStepSpec, materialize_step_spec
 
 
 @dataclass(slots=True)
@@ -60,7 +61,7 @@ class Workflow:
 
         steps: List[Step] = []
         for step_data in data.get("steps", []):
-            step = _build_step(step_data, workflow_dir, working_dir)
+            step = _build_step(step_data, workflow_dir, working_dir, project)
             steps.append(step)
 
         return cls(
@@ -75,28 +76,47 @@ class Workflow:
         )
 
 
-def _build_step(step_data: dict, workflow_dir: Path, working_dir: Path) -> Step:
+def _build_step(
+    step_data: dict,
+    workflow_dir: Path,
+    working_dir: Path,
+    project: Project,
+) -> Step:
     step_id = step_data["id"]
     engine_name = step_data.get("engine", "qe")
 
+    step_file_value = step_data.get("step_file")
     input_path_value = step_data.get("input") or step_data.get("file")
-    if not input_path_value:
-        raise ValueError(f"Step '{step_id}' requires an 'input' path")
-    input_path = Path(input_path_value)
-    if not input_path.is_absolute():
-        parts = input_path.parts
-        if parts and parts[0] == working_dir.name:
-            if len(parts) == 1:
-                raise ValueError(f"Step '{step_id}' input path must point to a file inside '{working_dir.name}'")
-            input_path = Path(*parts[1:])
+    if not step_file_value and not input_path_value:
+        raise ValueError(f"Step '{step_id}' requires an 'input' path or 'step_file'")
+    input_path: Optional[Path] = None
+    if input_path_value:
+        input_path = Path(input_path_value)
+        if not input_path.is_absolute():
+            parts = input_path.parts
+            if parts and parts[0] == working_dir.name:
+                if len(parts) == 1:
+                    raise ValueError(
+                        f"Step '{step_id}' input path must point to a file inside '{working_dir.name}'"
+                    )
+                input_path = Path(*parts[1:])
+
+    options = step_data.get("options", step_data.get("params", {})) or {}
+    reference_path = _resolve_reference_path(step_data.get("reference"), workflow_dir)
+
+    if step_file_value:
+        return _build_step_from_spec(
+            step_id=step_id,
+            engine_name=engine_name,
+            step_file=step_file_value,
+            workflow_dir=workflow_dir,
+            working_dir=working_dir,
+            project=project,
+            options=options,
+            reference=reference_path,
+        )
 
     step_type = StepType(step_data["type"]) if "type" in step_data else None
-    options = step_data.get("options", step_data.get("params", {})) or {}
-    reference = step_data.get("reference")
-    if reference:
-        reference_path = (workflow_dir / reference).resolve() if not Path(reference).is_absolute() else Path(reference)
-    else:
-        reference_path = None
 
     return Step(
         id=step_id,
@@ -106,4 +126,63 @@ def _build_step(step_data: dict, workflow_dir: Path, working_dir: Path) -> Step:
         options=options,
         reference_output=reference_path,
     )
+
+
+def _build_step_from_spec(
+    *,
+    step_id: str,
+    engine_name: str,
+    step_file: str,
+    workflow_dir: Path,
+    working_dir: Path,
+    project: Project,
+    options: dict,
+    reference: Optional[Path],
+) -> Step:
+    spec_path = Path(step_file)
+    if not spec_path.is_absolute():
+        spec_path = (workflow_dir / spec_path).resolve()
+    if not spec_path.exists():
+        raise FileNotFoundError(f"Step spec not found: {spec_path}")
+
+    spec_preview = StructureStepSpec.from_yaml(spec_path)
+    input_override = spec_preview.input_name or f"{step_id}.pw.in"
+    generated_input, spec = materialize_step_spec(
+        spec_preview,
+        output_dir=working_dir,
+        workflow_dir=workflow_dir,
+        project=project,
+        spec_path=spec_path,
+        input_name=input_override,
+        project_root=project.root if project else None,
+    )
+
+    step_type = _coerce_step_type(spec.step_type)
+
+    return Step(
+        id=step_id,
+        input_file=generated_input,
+        engine=engine_name,
+        step_type=step_type,
+        options=options,
+        reference_output=reference,
+    )
+
+
+def _coerce_step_type(raw: Optional[str]) -> Optional[StepType]:
+    if not raw:
+        return None
+    try:
+        return StepType(raw)
+    except ValueError:
+        return StepType.CUSTOM
+
+
+def _resolve_reference_path(reference: Optional[str], workflow_dir: Path) -> Optional[Path]:
+    if not reference:
+        return None
+    reference_path = Path(reference)
+    if not reference_path.is_absolute():
+        reference_path = (workflow_dir / reference_path).resolve()
+    return reference_path
 

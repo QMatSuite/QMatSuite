@@ -13,6 +13,7 @@ from typing import List, Optional
 import yaml
 
 import typer
+from pymatgen.core import Structure as PMGStructure
 
 from quantumvitas.analysis import bands as bands_analysis
 from quantumvitas.analysis import dos as dos_analysis
@@ -27,8 +28,12 @@ from quantumvitas.workflow.input_runner import (
     detect_project_root,
     run_input_step,
 )
+from quantumvitas.workflow.structure_steps import (
+    StructureStepSpec,
+    generate_qe_input_from_spec,
+    generate_qe_input_from_structure,
+)
 from quantumvitas.io import QEInputGenerator, read_structure, write_structure
-from quantumvitas.io.structure_io import qe_input_from_structure
 
 app = typer.Typer(help="QuantumVITAS CLI")
 
@@ -51,13 +56,23 @@ def _ensure_empty_dir(path: Path) -> None:
 
 def _coerce_override_value(raw: str):
     value = raw.strip()
+    # Strip surrounding quotes if present
+    if (value.startswith('"') and value.endswith('"')) or (
+        value.startswith("'") and value.endswith("'")
+    ):
+        value = value[1:-1]
+    
     lower = value.lower()
     if lower in {".true.", "true", "t"}:
         return True
     if lower in {".false.", "false", "f"}:
         return False
     try:
-        return ast.literal_eval(value)
+        result = ast.literal_eval(value)
+        # Convert tuples to lists for consistency
+        if isinstance(result, tuple):
+            return list(result)
+        return result
     except (ValueError, SyntaxError):
         pass
     if "," in value and not value.startswith(("(", "[")):
@@ -114,7 +129,7 @@ def _parse_override_args(extra_args: List[str]) -> List[ParameterOverride]:
 
 def _resolve_structure_input(
     project_root: Path, identifier: str
-) -> tuple[object, str]:
+) -> tuple[PMGStructure, str]:
     """
     Load a structure either from a file path or from project metadata.
     """
@@ -321,6 +336,11 @@ def run_structure_command(
         "--input-name",
         help="Filename for the generated QE input (defaults to <structure>.pw.in)",
     ),
+    step_type: str = typer.Option(
+        "scf",
+        "--step-type",
+        help="QE calculation type (scf, nscf, relax, etc.).",
+    ),
 ) -> None:
     """
     Generate a QE input from a stored structure + CLI parameters, then run it.
@@ -339,11 +359,6 @@ def run_structure_command(
     workdir = workdir.resolve()
     workdir.mkdir(parents=True, exist_ok=True)
 
-    qe_input = qe_input_from_structure(struct)
-    generated_name = input_name or f"{struct_name}.pw.in"
-    generated_input = workdir / generated_name
-    QEInputGenerator.write_file(qe_input, generated_input)
-
     overrides = _parse_override_args(ctx.args)
     if overrides:
         rendered = ", ".join(
@@ -351,6 +366,16 @@ def run_structure_command(
             for o in overrides
         )
         typer.echo(f"Applying overrides: {rendered}")
+
+    qe_input = generate_qe_input_from_structure(
+        structure=struct,
+        step_type=step_type,
+        parameter_overrides=overrides,
+    )
+
+    generated_name = input_name or f"{struct_name}_{step_type}.pw.in"
+    generated_input = workdir / generated_name
+    QEInputGenerator.write_file(qe_input, generated_input)
 
     result, prepared = run_input_step(
         engine=engine.backend,
@@ -363,6 +388,72 @@ def run_structure_command(
 
     typer.echo(
         f"Structure run finished: {result.step_type} -> {result.output_file} "
+        f"(input {generated_input})"
+    )
+    typer.echo(f"Working dir: {prepared.working_dir}")
+
+
+@app.command(
+    "run-stepfile",
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+)
+def run_stepfile_command(
+    ctx: typer.Context,
+    step_file: Path = typer.Argument(
+        ..., help="YAML file describing structure, parameters, and step type"
+    ),
+    project: Optional[Path] = typer.Option(
+        None, "--project", help="Project root (defaults to auto-detect)"
+    ),
+    working_dir: Optional[Path] = typer.Option(
+        None, "--workdir", help="Working directory for generated inputs"
+    ),
+) -> None:
+    """
+    Generate and run a QE input based on a step YAML file.
+    """
+
+    project_root = project or _resolve_project_root()
+    project_root = project_root.resolve()
+
+    spec = StructureStepSpec.from_yaml(step_file)
+    struct, struct_name = _resolve_structure_input(project_root, spec.structure)
+
+    extra_overrides = _parse_override_args(ctx.args)
+    if extra_overrides:
+        rendered = ", ".join(
+            f"{(o.section + '.' if o.section else '')}{o.name}={o.value}"
+            for o in extra_overrides
+        )
+        typer.echo(f"Applying overrides: {rendered}")
+
+    qe_input, combined_overrides = generate_qe_input_from_spec(
+        structure=struct,
+        spec=spec,
+        extra_overrides=extra_overrides,
+    )
+
+    workdir = working_dir or (Path("temp") / "cli_outputs" / struct_name)
+    workdir = workdir.resolve()
+    workdir.mkdir(parents=True, exist_ok=True)
+
+    input_name = spec.input_name or f"{struct_name}_{spec.step_type}.pw.in"
+    generated_input = workdir / input_name
+    QEInputGenerator.write_file(qe_input, generated_input)
+
+    registry = create_default_registry()
+    engine = registry.get("qe")
+    result, prepared = run_input_step(
+        engine=engine.backend,
+        input_file=generated_input,
+        working_dir=workdir,
+        project_root=project_root,
+        step_type=None,
+        parameter_overrides=combined_overrides or None,
+    )
+
+    typer.echo(
+        f"Step file run finished: {result.step_type} -> {result.output_file} "
         f"(input {generated_input})"
     )
     typer.echo(f"Working dir: {prepared.working_dir}")

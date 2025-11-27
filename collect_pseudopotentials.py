@@ -25,7 +25,7 @@ required_pps = {
     "N-PBE.upf": None,
     # 4_Si_DOS, 7_Si_bandStructure
     "Si.pbe-n-rrkjus_psl.1.0.0.UPF": None,
-    # pw_scf, pw_plugins, pw_twochem
+    # pw_scf, pw_plugins
     "Si.pz-vbc.UPF": None,
     # pw_metal
     "Al.pz-vbc.UPF": None,
