@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, Optional, Sequence
 import shutil
 
 from quantumvitas.io import (
@@ -23,6 +23,7 @@ from quantumvitas.io import (
 from quantumvitas.core.engines import ensure_pseudopotentials
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.qe_workflow import StepResult
+from quantumvitas.data import load_qe_parameter_map
 
 
 @dataclass(slots=True)
@@ -35,6 +36,17 @@ class PreparedInputStep:
     original_input: Path
     modified_input: Path
     project_root: Path
+
+
+@dataclass(slots=True)
+class ParameterOverride:
+    """
+    Declarative override for a QE namelist parameter.
+    """
+
+    name: str
+    value: Any
+    section: Optional[str] = None
 
 
 def _safe_copy(src: Path, dst: Path) -> None:
@@ -133,6 +145,7 @@ def prepare_input_step(
     input_file: Path,
     working_dir: Path,
     project_root: Optional[Path] = None,
+    parameter_overrides: Optional[Sequence[ParameterOverride]] = None,
 ) -> PreparedInputStep:
     """
     Prepare a QE input file for execution inside a working directory.
@@ -153,6 +166,8 @@ def prepare_input_step(
         working_dir_input = working_dir / f"{input_path.stem}_work.in"
     try:
         qe_input = QEInputParser.parse_file(input_file)
+        if parameter_overrides:
+            _apply_parameter_overrides(qe_input, parameter_overrides)
         set_outdir_to_temp(qe_input)
         set_pseudo_dir_to_temp(qe_input, project_root)
         QEInputGenerator.write_file(qe_input, working_dir_input)
@@ -210,6 +225,7 @@ def run_input_step(
     project_root: Optional[Path] = None,
     step_type: Optional[str] = None,
     timeout: Optional[float] = None,
+    parameter_overrides: Optional[Sequence[ParameterOverride]] = None,
 ) -> tuple[StepResult, PreparedInputStep]:
     """
     Convenience function combining preparation + execution.
@@ -218,6 +234,7 @@ def run_input_step(
         input_file=input_file,
         working_dir=working_dir,
         project_root=project_root,
+        parameter_overrides=parameter_overrides,
     )
     result = run_prepared_step(
         engine=engine,
@@ -226,5 +243,98 @@ def run_input_step(
         timeout=timeout,
     )
     return result, prepared
+
+
+_PARAMETER_MAP_CACHE: Optional[Dict[str, Any]] = None
+
+
+def _get_parameter_map() -> Dict[str, Any]:
+    global _PARAMETER_MAP_CACHE
+    if _PARAMETER_MAP_CACHE is None:
+        _PARAMETER_MAP_CACHE = load_qe_parameter_map()
+    return _PARAMETER_MAP_CACHE
+
+
+def _normalize_section_name(section: str) -> str:
+    normalized = section.strip()
+    if not normalized:
+        return ""
+    normalized = normalized.upper()
+    if not normalized.startswith("&"):
+        normalized = f"&{normalized}"
+    return normalized
+
+
+def _apply_parameter_overrides(
+    qe_input: QEInput, overrides: Sequence[ParameterOverride]
+) -> None:
+    """
+    Apply CLI-specified overrides to the parsed QE input.
+    """
+
+    if not overrides:
+        return
+
+    module = qe_input.module or qe_input.detect_module()
+    module_key = module.value
+    parameter_map = _get_parameter_map().get("modules", {})
+    module_entry = parameter_map.get(module_key)
+    if not module_entry:
+        raise ValueError(
+            f"No parameter metadata available for module '{module_key}'. Unable to apply overrides."
+        )
+
+    sections: Dict[str, list[str]] = module_entry.get("sections", {})
+    section_lookup = {name.upper(): params for name, params in sections.items()}
+
+    param_to_sections: Dict[str, list[str]] = {}
+    for section_name, params in sections.items():
+        canonical_section = section_name.upper()
+        for param in params:
+            param_to_sections.setdefault(param.lower(), []).append(canonical_section)
+
+    for override in overrides:
+        param_name = override.name.strip()
+        if not param_name:
+            continue
+        canonical_param = param_name.lower()
+        available_sections = param_to_sections.get(canonical_param, [])
+
+        target_section: Optional[str] = None
+        if override.section:
+            candidate = _normalize_section_name(override.section)
+            if not candidate or candidate not in section_lookup:
+                raise ValueError(
+                    f"Section '{override.section}' is not valid for module '{module_key}'."
+                )
+            if available_sections and candidate not in available_sections:
+                raise ValueError(
+                    f"Parameter '{param_name}' does not belong to section '{override.section}' "
+                    f"for module '{module_key}'."
+                )
+            target_section = candidate
+        else:
+            if not available_sections:
+                raise ValueError(
+                    f"Parameter '{param_name}' is not defined for module '{module_key}'. "
+                    "Provide the section explicitly via --SECTION.parameter=value."
+                )
+            if len(available_sections) > 1:
+                raise ValueError(
+                    f"Parameter '{param_name}' exists in multiple sections {available_sections}. "
+                    "Specify the section explicitly via --SECTION.parameter=value."
+                )
+            target_section = available_sections[0]
+
+        if not target_section:
+            continue
+
+        namelist_name = target_section.lstrip("&")
+        target_namelist = qe_input.get_namelist(namelist_name)
+        if target_namelist is None:
+            target_namelist = QENamelist(name=namelist_name)
+            qe_input.namelists.append(target_namelist)
+
+        target_namelist.parameters[param_name] = override.value
 
 
