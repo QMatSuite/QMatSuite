@@ -103,11 +103,13 @@ class TestPHQuickTests:
 
             # Optional reference output
             reference_file = None
-            ref_dir = category_dir / "reference_out"
-            if ref_dir.exists():
-                ref_path = ref_dir / f"{input_path.stem}.out"
-                if ref_path.exists():
-                    reference_file = ref_path
+            for candidate in ("reference", "reference_out"):
+                ref_dir = category_dir / candidate
+                if ref_dir.exists():
+                    ref_path = ref_dir / f"{input_path.stem}.out"
+                    if ref_path.exists():
+                        reference_file = ref_path
+                        break
 
             try:
                 run_and_verify_step_with_assert(

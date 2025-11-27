@@ -17,6 +17,7 @@ dependencies = [
     "matplotlib",
     "PyYAML",
     "typer>=0.12",
+    "beautifulsoup4>=4.12",
 ]
 
 [project.optional-dependencies]
@@ -30,5 +31,8 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"quantumvitas" = ["data/*.json"]
 
 
