@@ -58,12 +58,23 @@ def test_project_open(sample_project: Path):
 def test_cli_init(tmp_path: Path):
     runner = CliRunner()
     dest = tmp_path / "new_project"
-    result = runner.invoke(app, ["init", str(dest), "--workflow-id", "demo"])
-    assert result.exit_code == 0
+    result = runner.invoke(app, ["init", "project", "--path", str(dest)])
+    assert result.exit_code == 0, result.stdout
     project_file = dest / "project.qv.yml"
     assert project_file.exists()
-    workflow_file = dest / "workflows" / "demo" / "workflow.yaml"
-    assert workflow_file.exists()
+    workflows_dir = dest / "workflows"
+    assert workflows_dir.exists()
+    assert not any(workflows_dir.iterdir())
+
+
+def test_cli_init_auto_creates_project_dir():
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        result = runner.invoke(app, ["init", "project"])
+        assert result.exit_code == 0, result.stdout
+        project_dir = Path("project1")
+        assert project_dir.is_dir()
+        assert (project_dir / "project.qv.yml").exists()
 
 
 def test_parse_override_args_basic():
@@ -106,7 +117,7 @@ def test_parse_card_and_species_overrides():
 def test_cli_import_structure_registers_json(tmp_path: Path):
     runner = CliRunner()
     dest = tmp_path / "proj"
-    result = runner.invoke(app, ["init", str(dest)])
+    result = runner.invoke(app, ["init", "project", "--path", str(dest)])
     assert result.exit_code == 0
 
     structure = Structure(Lattice.cubic(5.43), ["Si"], [[0, 0, 0]])
@@ -151,7 +162,8 @@ def test_cli_rename_structure(sample_project: Path):
     result = runner.invoke(
         app,
         [
-            "rename-structure",
+            "rename",
+            "structure",
             "si",
             "--project",
             str(sample_project),
@@ -177,7 +189,8 @@ def test_cli_rename_workflow(sample_project: Path):
     result = runner.invoke(
         app,
         [
-            "rename-workflow",
+            "rename",
+            "workflow",
             "wf",
             "--project",
             str(sample_project),
@@ -200,7 +213,7 @@ def test_cli_rename_workflow(sample_project: Path):
 def test_cli_delete_structure(tmp_path: Path):
     runner = CliRunner()
     project_root = tmp_path / "proj"
-    runner.invoke(app, ["init", str(project_root)])
+    runner.invoke(app, ["init", "project", "--path", str(project_root)])
 
     structure = Structure(Lattice.cubic(5.43), ["Si"], [[0, 0, 0]])
     source = tmp_path / "si.cif"
@@ -222,7 +235,8 @@ def test_cli_delete_structure(tmp_path: Path):
     result = runner.invoke(
         app,
         [
-            "delete-structure",
+            "delete",
+            "structure",
             "si",
             "--project",
             str(project_root),
@@ -237,7 +251,7 @@ def test_cli_delete_structure(tmp_path: Path):
 def test_cli_delete_workflow(tmp_path: Path):
     runner = CliRunner()
     project_root = tmp_path / "proj"
-    runner.invoke(app, ["init", str(project_root), "--workflow-id", "wf0"])
+    runner.invoke(app, ["init", "project", "--path", str(project_root)])
 
     structure = Structure(Lattice.cubic(5.43), ["Si"], [[0, 0, 0]])
     source = tmp_path / "si.cif"
@@ -256,7 +270,8 @@ def test_cli_delete_workflow(tmp_path: Path):
     runner.invoke(
         app,
         [
-            "init-workflow",
+            "init",
+            "workflow",
             "wf1",
             "--project",
             str(project_root),
@@ -270,7 +285,8 @@ def test_cli_delete_workflow(tmp_path: Path):
     result = runner.invoke(
         app,
         [
-            "delete-workflow",
+            "delete",
+            "workflow",
             "wf1",
             "--project",
             str(project_root),
@@ -313,7 +329,8 @@ def test_cli_run_workflow_strict_option(sample_project: Path, monkeypatch):
     result = runner.invoke(
         app,
         [
-            "run-workflow",
+            "run",
+            "workflow",
             "wf",
             "--project",
             str(sample_project),
@@ -401,7 +418,8 @@ def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
     result = runner.invoke(
         app,
         [
-            "run-stepfile",
+            "run",
+            "step",
             str(step_file),
             "--project",
             str(project_root),
@@ -409,7 +427,7 @@ def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
     )
 
     assert result.exit_code == 0, result.stdout
-    assert "Step file run finished" in result.stdout
+    assert "Step finished" in result.stdout
     assert captured["input_file"].exists()
 
 
@@ -477,7 +495,8 @@ def test_cli_run_step_accepts_step_yaml(tmp_path: Path, monkeypatch):
     result = runner.invoke(
         app,
         [
-            "run-step",
+            "run",
+            "step",
             str(step_file),
             "--project",
             str(project_root),
@@ -495,7 +514,8 @@ def test_cli_step_create_and_insert(sample_project: Path):
     result = runner.invoke(
         app,
         [
-            "step-create",
+            "init",
+            "step",
             "si",
             "--project",
             str(sample_project),
@@ -549,7 +569,8 @@ def test_cli_step_set_param(tmp_path: Path):
     result = runner.invoke(
         app,
         [
-            "step-set-param",
+            "configure",
+            "step",
             str(step_file),
             "--SYSTEM.ecutwfc=80",
             "--CONTROL.tstress=true",
@@ -567,7 +588,8 @@ def test_cli_step_set_param(tmp_path: Path):
     result = runner.invoke(
         app,
         [
-            "step-set-param",
+            "configure",
+            "step",
             str(step_file),
             "--remove",
             "--SYSTEM.ecutwfc=0",
@@ -592,8 +614,8 @@ def test_cli_show_command(tmp_path: Path):
     runner = CliRunner()
     result = runner.invoke(app, ["show-command", str(input_file)])
     assert result.exit_code == 0
-    assert "qv step-create <structure-id>" in result.stdout
-    assert "step-set-param" in result.stdout
+    assert "qv init step <structure-id>" in result.stdout
+    assert "configure step" in result.stdout
 
 
 def test_cli_get_command_alias(tmp_path: Path):
@@ -602,13 +624,13 @@ def test_cli_get_command_alias(tmp_path: Path):
     runner = CliRunner()
     result = runner.invoke(app, ["get-command", str(input_file)])
     assert result.exit_code == 0
-    assert "qv step-create <structure-id>" in result.stdout
+    assert "qv init step <structure-id>" in result.stdout
 
 
 def test_cli_delete_structure(tmp_path: Path):
     runner = CliRunner()
     project_root = tmp_path / "proj"
-    runner.invoke(app, ["init", str(project_root)])
+    runner.invoke(app, ["init", "project", "--path", str(project_root)])
     structure = Structure(Lattice.cubic(5.43), ["Si"], [[0, 0, 0]])
     source = tmp_path / "si.cif"
     structure.to(fmt="cif", filename=str(source))
@@ -628,7 +650,7 @@ def test_cli_delete_structure(tmp_path: Path):
 
     result = runner.invoke(
         app,
-        ["delete-structure", "si", "--project", str(project_root)],
+        ["delete", "structure", "si", "--project", str(project_root)],
     )
     assert result.exit_code == 0, result.stdout
     assert not structure_file.exists()
@@ -639,7 +661,7 @@ def test_cli_delete_structure(tmp_path: Path):
 def test_cli_delete_workflow(tmp_path: Path):
     runner = CliRunner()
     project_root = tmp_path / "proj"
-    runner.invoke(app, ["init", str(project_root), "--workflow-id", "wf0"])
+    runner.invoke(app, ["init", "project", "--path", str(project_root)])
     structure = Structure(Lattice.cubic(5.43), ["Si"], [[0, 0, 0]])
     source = tmp_path / "si.cif"
     structure.to(fmt="cif", filename=str(source))
@@ -657,7 +679,8 @@ def test_cli_delete_workflow(tmp_path: Path):
     result = runner.invoke(
         app,
         [
-            "init-workflow",
+            "init",
+            "workflow",
             "wf1",
             "--project",
             str(project_root),
@@ -671,7 +694,7 @@ def test_cli_delete_workflow(tmp_path: Path):
 
     result = runner.invoke(
         app,
-        ["delete-workflow", "wf1", "--project", str(project_root)],
+        ["delete", "workflow", "wf1", "--project", str(project_root)],
     )
     assert result.exit_code == 0, result.stdout
     assert not wf_dir.exists()

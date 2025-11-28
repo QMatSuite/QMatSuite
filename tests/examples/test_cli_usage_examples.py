@@ -165,7 +165,7 @@ class TestImportStructureCommand:
 
 
 class TestRunStructureCommand:
-    """Examples of using `qv run-structure` command."""
+    """Examples of using `qv run structure` command."""
 
     def test_run_structure_basic(self, sample_project, monkeypatch):
         """
@@ -240,7 +240,8 @@ class TestRunStructureCommand:
         # Note: Actual execution would require QE binaries
         # This example shows the command syntax
         command = [
-            "run-structure",
+            "run",
+            "structure",
             "si",
             "--project",
             str(project_root),
@@ -254,7 +255,7 @@ class TestRunStructureCommand:
 
 
 class TestRunStepCommand:
-    """Examples of using `qv run-step` command with parameter overrides."""
+    """Examples of using `qv run step` command with parameter overrides."""
 
     def test_run_step_with_overrides(self, tmp_path, sample_project):
         """
@@ -294,7 +295,8 @@ K_POINTS automatic
         # Note: Actual execution would require QE binaries
         # This example shows the command syntax
         command = [
-            "run-step",
+            "run",
+            "step",
             str(qe_input_file),
             "--project",
             str(project_root),
@@ -436,7 +438,8 @@ class TestCompleteWorkflowExample:
         # Step 2: Run calculation (would require QE binaries in real scenario)
         # This shows the command that would be run:
         command = [
-            "run-structure",
+            "run",
+            "structure",
             "si",
             "--project",
             str(project_root),
