@@ -89,8 +89,11 @@ class TestImportStructureCommand:
         config = yaml.safe_load((project_root / "project.qv.yml").read_text())
         structures = config.get("structures", [])
         assert len(structures) == 1
-        assert structures[0]["id"] == "si"
-        assert structures[0]["file"] == "structures/si.json"
+        entry = structures[0]
+        assert entry["name"] == "si"
+        assert entry["file"] == "structures/si.json"
+        assert entry["meta"]["kind"] == "structure"
+        assert entry["meta"]["slug"] == "si"
 
     def test_import_structure_with_custom_format(self, sample_project):
         """
@@ -158,7 +161,7 @@ class TestImportStructureCommand:
         )
         assert result2.exit_code != 0
         # Typer errors may go to stderr, check both stdout and stderr
-        assert "already exists" in (result2.stdout + result2.stderr)
+        assert "conflicts with an existing entry" in (result2.stdout + result2.stderr)
 
 
 class TestRunStructureCommand:
@@ -318,25 +321,29 @@ class TestParameterOverrideParsing:
         from quantumvitas.cli.main import _parse_override_args
 
         # Simple integer
-        overrides = _parse_override_args(["--ecutwfc=60"])
+        bundle = _parse_override_args(["--ecutwfc=60"])
+        overrides = bundle.parameters
         assert len(overrides) == 1
         assert overrides[0].name == "ecutwfc"
         assert overrides[0].value == 60
 
         # Simple float
-        overrides = _parse_override_args(["--degauss=0.01"])
+        bundle = _parse_override_args(["--degauss=0.01"])
+        overrides = bundle.parameters
         assert len(overrides) == 1
         assert overrides[0].name == "degauss"
         assert overrides[0].value == 0.01
 
         # Boolean (true)
-        overrides = _parse_override_args(["--tprnfor"])
+        bundle = _parse_override_args(["--tprnfor"])
+        overrides = bundle.parameters
         assert len(overrides) == 1
         assert overrides[0].name == "tprnfor"
         assert overrides[0].value is True
 
         # Boolean (false)
-        overrides = _parse_override_args(["--tprnfor=false"])
+        bundle = _parse_override_args(["--tprnfor=false"])
+        overrides = bundle.parameters
         assert len(overrides) == 1
         assert overrides[0].name == "tprnfor"
         assert overrides[0].value is False
@@ -350,20 +357,22 @@ class TestParameterOverrideParsing:
         from quantumvitas.cli.main import _parse_override_args
 
         # Section-prefixed
-        overrides = _parse_override_args(["--SYSTEM.ecutwfc=60"])
+        bundle = _parse_override_args(["--SYSTEM.ecutwfc=60"])
+        overrides = bundle.parameters
         assert len(overrides) == 1
         assert overrides[0].name == "ecutwfc"
         assert overrides[0].section == "SYSTEM"
         assert overrides[0].value == 60
 
         # Multiple overrides
-        overrides = _parse_override_args(
+        bundle = _parse_override_args(
             [
                 "--ecutwfc=60",
                 "--ecutrho=240",
                 "--SYSTEM.degauss=0.01",
             ]
         )
+        overrides = bundle.parameters
         assert len(overrides) == 3
         assert overrides[0].name == "ecutwfc"
         assert overrides[1].name == "ecutrho"
@@ -378,16 +387,18 @@ class TestParameterOverrideParsing:
         """
         from quantumvitas.cli.main import _parse_override_args
 
-        # Python list syntax
-        overrides = _parse_override_args(['--k_points="[6,6,6,0,0,0]"'])
-        assert len(overrides) == 1
-        assert overrides[0].name == "k_points"
-        assert overrides[0].value == [6, 6, 6, 0, 0, 0]
+        # Card override via explicit CARD. prefix
+        bundle = _parse_override_args(['--CARD.K_POINTS.data=[[6,6,6,0,0,0]]'])
+        assert bundle.card_overrides["K_POINTS"]["data"][0] == [6, 6, 6, 0, 0, 0]
 
-        # Comma-separated (converted to list)
-        overrides = _parse_override_args(["--k_points=6,6,6,0,0,0"])
-        assert len(overrides) == 1
-        assert isinstance(overrides[0].value, list)
+        # Card override fallback without explicit section
+        bundle = _parse_override_args(["--k_points=automatic:8,8,8,0,0,0"])
+        assert bundle.card_overrides["K_POINTS"]["option"] == "automatic"
+        assert bundle.card_overrides["K_POINTS"]["data"][0] == [8, 8, 8, 0, 0, 0]
+
+        # Species override
+        bundle = _parse_override_args(["--species.Si.mass=28.0855"])
+        assert bundle.species_overrides["Si"]["mass"] == 28.0855
 
 
 class TestCompleteWorkflowExample:
@@ -432,7 +443,7 @@ class TestCompleteWorkflowExample:
             "--ecutwfc=60",
             "--ecutrho=240",
             "--degauss=0.01",
-            "--k_points=[6,6,6,0,0,0]",
+            "--CARD.K_POINTS.data=[[6,6,6,0,0,0]]",
         ]
 
         # In a real scenario, this would:

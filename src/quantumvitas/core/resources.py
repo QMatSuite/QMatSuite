@@ -1,0 +1,153 @@
+"""
+Shared resource metadata helpers used by projects, workflows, steps, and structures.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+import re
+from pathlib import Path
+from typing import Literal, Optional, Sequence
+
+import ulid
+
+ResourceKind = Literal["project", "workflow", "step", "structure"]
+
+_SLUG_INVALID_RE = re.compile(r"[^a-z0-9_]+")
+_DEFAULT_NAMES: dict[ResourceKind, str] = {
+    "project": "Project",
+    "workflow": "Workflow",
+    "step": "Step",
+    "structure": "Structure",
+}
+
+
+def generate_resource_id() -> str:
+    """Create a new ULID string."""
+    return str(ulid.new())
+
+
+def slugify(value: str, fallback: str = "resource") -> str:
+    """
+    Convert a human-readable name into a filesystem-friendly slug.
+    """
+    normalized = value.strip().lower()
+    normalized = _SLUG_INVALID_RE.sub("-", normalized)
+    normalized = normalized.strip("-")
+    return normalized or fallback
+
+
+def ensure_relative_path(path: Path | str, *, base: Optional[Path] = None) -> str:
+    """
+    Return a POSIX-style path that is relative to ``base`` (defaults to project root).
+    """
+    path_obj = Path(path)
+    if path_obj.is_absolute():
+        if base is None:
+            raise ValueError("Absolute paths require a base to relativize against.")
+        path_obj = path_obj.relative_to(base)
+    return path_obj.as_posix()
+
+
+@dataclass(slots=True)
+class ResourceMeta:
+    """
+    Metadata shared across all top-level QuantumVITAS resources.
+
+    ``path`` is stored relative to the project root (POSIX form) to keep configs
+    portable.
+    """
+
+    id: str
+    name: str
+    slug: str
+    path: str
+    kind: ResourceKind
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "slug": self.slug,
+            "path": self.path,
+            "kind": self.kind,
+        }
+
+    @classmethod
+    def from_dict(
+        cls,
+        data: Optional[dict],
+        *,
+        kind: ResourceKind,
+        default_name: str,
+        default_path: str,
+    ) -> "ResourceMeta":
+        data = data or {}
+        resource_id = data.get("id") or generate_resource_id()
+        name = data.get("name") or default_name
+        slug = data.get("slug") or slugify(name)
+        path = data.get("path") or default_path
+        stored_kind = data.get("kind") or kind
+        return cls(
+            id=str(resource_id),
+            name=name,
+            slug=slug,
+            path=path,
+            kind=stored_kind,
+        )
+
+    def resolved_path(self, project_root: Path) -> Path:
+        return (project_root / self.path).resolve()
+
+    def with_updates(
+        self,
+        *,
+        name: Optional[str] = None,
+        slug: Optional[str] = None,
+        path: Optional[str] = None,
+    ) -> "ResourceMeta":
+        new_name = name or self.name
+        return ResourceMeta(
+            id=self.id,
+            name=new_name,
+            slug=slug or (slugify(new_name) if name else self.slug),
+            path=path or self.path,
+            kind=self.kind,
+        )
+
+
+def meta_from_name(kind: ResourceKind, *, name: str, path: str) -> ResourceMeta:
+    """
+    Helper for creating metadata when scaffolding new resources.
+    """
+    return ResourceMeta(
+        id=generate_resource_id(),
+        name=name,
+        slug=slugify(name),
+        path=path,
+        kind=kind,
+    )
+
+
+def generate_unique_name_and_slug(
+    *,
+    kind: ResourceKind,
+    preferred_name: Optional[str],
+    existing_slugs: Sequence[str],
+) -> tuple[str, str]:
+    """
+    Produce a unique (name, slug) pair for the given resource kind.
+    """
+
+    base_name = preferred_name.strip() if preferred_name else _DEFAULT_NAMES[kind]
+    attempt = base_name
+    suffix = 2
+    existing_set = {slug.lower() for slug in existing_slugs if slug}
+
+    while True:
+        slug_candidate = slugify(attempt)
+        if slug_candidate.lower() not in existing_set:
+            return attempt, slug_candidate
+        attempt = f"{base_name} {suffix}"
+        suffix += 1
+
