@@ -11,10 +11,12 @@ from pymatgen.core import Structure as PMGStructure
 
 from quantumvitas.io import QEInputGenerator, read_structure
 from quantumvitas.io.structure_io import qe_input_from_structure
-from quantumvitas.io.model import QECard, QECardType, QEInput
+from quantumvitas.io.model import QECardType, QEInput
 from quantumvitas.workflow.input_runner import (
     ParameterOverride,
+    apply_card_overrides_to_qe_input,
     apply_parameter_overrides,
+    apply_species_overrides_to_qe_input,
     parameter_dict_to_overrides,
     set_outdir_to_temp,
     set_pseudo_dir_to_temp,
@@ -35,6 +37,7 @@ class StructureStepSpec:
     parameters: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     input_name: Optional[str] = None
     cards: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    species_overrides: Dict[str, Dict[str, Any]] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "StructureStepSpec":
@@ -51,12 +54,17 @@ class StructureStepSpec:
         if not isinstance(cards, dict):
             raise ValueError("Step spec 'cards' must be a mapping when provided")
 
+        species_overrides = data.get("species_overrides") or {}
+        if not isinstance(species_overrides, dict):
+            raise ValueError("Step spec 'species_overrides' must be a mapping when provided")
+
         return cls(
             structure=structure,
             step_type=str(step_type),
             parameters=parameters,
             input_name=input_name,
             cards=cards,
+            species_overrides=species_overrides,
         )
 
     @classmethod
@@ -143,7 +151,8 @@ def generate_qe_input_from_spec(
                 if lower.startswith("celldm") or lower in lattice_keys:
                     system_namelist.parameters.pop(key, None)
     
-    _apply_card_overrides(qe_input, spec.cards)
+    apply_card_overrides_to_qe_input(qe_input, spec.cards)
+    apply_species_overrides_to_qe_input(qe_input, spec.species_overrides)
     return qe_input, combined_overrides
 
 
@@ -153,57 +162,6 @@ def overrides_from_step_spec(spec: StructureStepSpec) -> list[ParameterOverride]
     """
 
     return parameter_dict_to_overrides(spec.parameters)
-
-
-def _apply_card_overrides(qe_input: QEInput, cards: Dict[str, Dict[str, Any]]) -> None:
-    """
-    Inject or replace card data (e.g., K_POINTS) based on a step specification.
-    Maintains correct QE card order: ATOMIC_SPECIES -> ATOMIC_POSITIONS -> CELL_PARAMETERS -> K_POINTS -> others.
-    """
-
-    if not cards:
-        return
-
-    # Define card order priority (lower = earlier in file)
-    CARD_ORDER = {
-        QECardType.ATOMIC_SPECIES: 0,
-        QECardType.ATOMIC_POSITIONS: 1,
-        QECardType.CELL_PARAMETERS: 2,
-        QECardType.K_POINTS: 3,
-    }
-
-    def get_card_priority(card_type: QECardType) -> int:
-        return CARD_ORDER.get(card_type, 999)
-
-    # Remove existing cards that will be overridden
-    override_types = set()
-    for card_name in cards.keys():
-        try:
-            card_type = QECardType[card_name]
-            override_types.add(card_type)
-        except KeyError as exc:
-            raise ValueError(f"Unknown card type '{card_name}' in step spec") from exc
-
-    # Keep cards that aren't being overridden
-    remaining_cards = [card for card in qe_input.cards if card.card_type not in override_types]
-
-    # Create new cards from overrides
-    new_cards = []
-    for card_name, payload in cards.items():
-        card_type = QECardType[card_name]
-        option = payload.get("option")
-        data = payload.get("data", [])
-        new_cards.append(
-            QECard(
-                card_type=card_type,
-                option=option,
-                data=data,
-            )
-        )
-
-    # Combine and sort by priority
-    all_cards = remaining_cards + new_cards
-    qe_input.cards = sorted(all_cards, key=lambda c: get_card_priority(c.card_type))
 
 
 SpecLike = Union[StructureStepSpec, str, Path]
@@ -297,9 +255,12 @@ def _resolve_structure_for_spec(
         if candidate_path.exists():
             return read_structure(candidate_path)
 
-    if project and structure_value in project.structures:
-        struct_ref = project.get_structure(structure_value)
-        return read_structure(struct_ref.path)
+    if project:
+        try:
+            struct_ref = project.get_structure(structure_value)
+            return read_structure(struct_ref.path)
+        except KeyError:
+            pass
 
     raise FileNotFoundError(
         f"Unable to resolve structure '{structure_value}' referenced in {spec_path}"

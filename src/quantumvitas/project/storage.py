@@ -10,6 +10,7 @@ from typing import Iterable
 
 import yaml
 
+from quantumvitas.core.resources import ensure_relative_path, meta_from_name
 from .model import Project, ProjectSettings, WorkflowRef
 
 
@@ -35,11 +36,17 @@ class ProjectStorage:
         workflows_dir = self.project.workflows_dir
         if not workflows_dir.exists():
             return []
-        return [
-            WorkflowRef(name=path.name, path=path)
-            for path in workflows_dir.iterdir()
-            if path.is_dir()
-        ]
+        refs: list[WorkflowRef] = []
+        for path in workflows_dir.iterdir():
+            if not path.is_dir():
+                continue
+            meta = meta_from_name(
+                "workflow",
+                name=path.name,
+                path=ensure_relative_path(path, base=self.project.root),
+            )
+            refs.append(WorkflowRef(meta=meta, absolute_path=path.resolve()))
+        return refs
 
     def ensure_directories(self) -> None:
         """

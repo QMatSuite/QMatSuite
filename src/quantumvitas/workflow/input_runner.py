@@ -14,6 +14,8 @@ from typing import Any, Dict, Mapping, Optional, Sequence
 import shutil
 
 from quantumvitas.io import (
+    QECard,
+    QECardType,
     QEInput,
     QEInputGenerator,
     QEInputParser,
@@ -146,6 +148,8 @@ def prepare_input_step(
     working_dir: Path,
     project_root: Optional[Path] = None,
     parameter_overrides: Optional[Sequence[ParameterOverride]] = None,
+    card_overrides: Optional[Mapping[str, Mapping[str, Any]]] = None,
+    species_overrides: Optional[Mapping[str, Mapping[str, Any]]] = None,
 ) -> PreparedInputStep:
     """
     Prepare a QE input file for execution inside a working directory.
@@ -155,11 +159,6 @@ def prepare_input_step(
     working_dir.mkdir(parents=True, exist_ok=True)
     (working_dir / "outdir").mkdir(parents=True, exist_ok=True)
 
-    unified_pseudo_dir = project_root / "pseudo"
-    unified_pseudo_dir.mkdir(parents=True, exist_ok=True)
-    if not ensure_pseudopotentials(input_file, working_dir, unified_pseudo_dir, None):
-        raise RuntimeError("Failed to obtain required pseudopotentials")
-
     input_path = Path(input_file)
     working_dir_input = working_dir / input_path.name
     if input_path.resolve().parent == working_dir.resolve():
@@ -168,6 +167,8 @@ def prepare_input_step(
         qe_input = QEInputParser.parse_file(input_file)
         if parameter_overrides:
             _apply_parameter_overrides(qe_input, parameter_overrides)
+        apply_card_overrides_to_qe_input(qe_input, card_overrides)
+        apply_species_overrides_to_qe_input(qe_input, species_overrides)
         set_outdir_to_temp(qe_input)
         set_pseudo_dir_to_temp(qe_input, project_root)
         QEInputGenerator.write_file(qe_input, working_dir_input)
@@ -176,6 +177,11 @@ def prepare_input_step(
             shutil.copy2(input_file, working_dir_input)
         else:
             working_dir_input = input_file
+
+    unified_pseudo_dir = project_root / "pseudo"
+    unified_pseudo_dir.mkdir(parents=True, exist_ok=True)
+    if not ensure_pseudopotentials(working_dir_input, working_dir, unified_pseudo_dir, None):
+        raise RuntimeError("Failed to obtain required pseudopotentials")
 
     input_stem = input_path.stem
     original_copy = working_dir / f"{input_stem}_original.in"
@@ -226,6 +232,8 @@ def run_input_step(
     step_type: Optional[str] = None,
     timeout: Optional[float] = None,
     parameter_overrides: Optional[Sequence[ParameterOverride]] = None,
+    card_overrides: Optional[Mapping[str, Mapping[str, Any]]] = None,
+    species_overrides: Optional[Mapping[str, Mapping[str, Any]]] = None,
 ) -> tuple[StepResult, PreparedInputStep]:
     """
     Convenience function combining preparation + execution.
@@ -235,6 +243,8 @@ def run_input_step(
         working_dir=working_dir,
         project_root=project_root,
         parameter_overrides=parameter_overrides,
+        card_overrides=card_overrides,
+        species_overrides=species_overrides,
     )
     result = run_prepared_step(
         engine=engine,
@@ -338,6 +348,123 @@ def _apply_parameter_overrides(
         target_namelist.parameters[param_name] = override.value
 
 
+def apply_species_overrides_to_qe_input(
+    qe_input: QEInput, overrides: Optional[Mapping[str, Mapping[str, Any]]]
+) -> None:
+    """
+    Apply element-specific mass/pseudopotential overrides to ATOMIC_SPECIES card.
+    """
+
+    if not overrides:
+        return
+    species_card = qe_input.get_card(QECardType.ATOMIC_SPECIES)
+    if not species_card or not species_card.data:
+        return
+
+    def normalize_symbol(symbol: str) -> str:
+        return str(symbol).strip().lower()
+
+    lookup: Dict[str, list] = {}
+    for row in species_card.data:
+        if not row:
+            continue
+        symbol_key = normalize_symbol(row[0])
+        lookup[symbol_key] = row
+
+    for symbol, values in overrides.items():
+        row = lookup.get(normalize_symbol(symbol))
+        if not row:
+            continue
+        if "mass" in values:
+            while len(row) < 2:
+                row.append(None)
+            try:
+                row[1] = float(values["mass"])
+            except (TypeError, ValueError):
+                row[1] = values["mass"]
+        if "pseudopot" in values:
+            while len(row) < 3:
+                row.append("")
+            row[2] = str(values["pseudopot"])
+
+
+def apply_card_overrides_to_qe_input(
+    qe_input: QEInput, overrides: Optional[Mapping[str, Mapping[str, Any]]]
+) -> None:
+    if not overrides:
+        return
+
+    card_lookup: Dict[str, QECard] = {
+        card.card_type.name: card for card in qe_input.cards
+    }
+    for card_name, payload in overrides.items():
+        try:
+            card_type = QECardType[card_name]
+        except KeyError as exc:
+            raise ValueError(f"Unknown card type '{card_name}' in overrides.") from exc
+        card = card_lookup.get(card_type.name)
+        if card is None:
+            card = QECard(card_type=card_type)
+            qe_input.cards.append(card)
+            card_lookup[card_type.name] = card
+        if "option" in payload:
+            card.option = payload.get("option")
+        if "data" in payload:
+            card.data = _normalize_card_data(payload["data"])
+        rows = payload.get("rows")
+        if rows:
+            card.data = _apply_row_updates(card.data, rows)
+
+    _sort_cards(qe_input)
+
+
+_CARD_PRIORITY = {
+    QECardType.ATOMIC_SPECIES: 0,
+    QECardType.ATOMIC_POSITIONS: 1,
+    QECardType.CELL_PARAMETERS: 2,
+    QECardType.K_POINTS: 3,
+}
+
+
+def _sort_cards(qe_input: QEInput) -> None:
+    qe_input.cards = sorted(
+        qe_input.cards, key=lambda c: _CARD_PRIORITY.get(c.card_type, 999)
+    )
+
+
+def _normalize_card_data(data: Any) -> List[List[Any]]:
+    if data is None:
+        return []
+    if not isinstance(data, list):
+        return [[data]]
+    normalized: List[List[Any]] = []
+    for row in data:
+        if isinstance(row, list):
+            normalized.append(row)
+        else:
+            normalized.append([row])
+    return normalized
+
+
+def _apply_row_updates(
+    existing: List[Any], updates: Mapping[str, List[Any]]
+) -> List[List[Any]]:
+    data = _normalize_card_data(existing)
+    for key, row in updates.items():
+        idx = _row_index_from_key(key)
+        while len(data) <= idx:
+            data.append([])
+        data[idx] = row
+    return data
+
+
+def _row_index_from_key(key: str) -> int:
+    digits = "".join(ch for ch in key if ch.isdigit())
+    if digits:
+        return max(int(digits) - 1, 0)
+    raise ValueError(
+        f"Row override '{key}' must include a numeric index, e.g. row1, row2, ..."
+    )
 def apply_parameter_overrides(
     qe_input: QEInput, overrides: Sequence[ParameterOverride]
 ) -> None:

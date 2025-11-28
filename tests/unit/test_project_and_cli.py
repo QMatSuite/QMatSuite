@@ -11,6 +11,7 @@ from quantumvitas.cli.main import app, _parse_override_args
 from quantumvitas.workflow.input_runner import PreparedInputStep
 from quantumvitas.core.engines.qe_workflow import StepResult
 from quantumvitas.io import read_structure
+from quantumvitas.workflow.types import StepMode
 
 
 def _write_yaml(path: Path, data: dict) -> None:
@@ -66,7 +67,8 @@ def test_cli_init(tmp_path: Path):
 
 
 def test_parse_override_args_basic():
-    overrides = _parse_override_args(["--ecutwfc=50"])
+    bundle = _parse_override_args(["--ecutwfc=50"])
+    overrides = bundle.parameters
     assert len(overrides) == 1
     assert overrides[0].name == "ecutwfc"
     assert overrides[0].value == 50
@@ -74,7 +76,8 @@ def test_parse_override_args_basic():
 
 
 def test_parse_override_args_with_section_and_flag():
-    overrides = _parse_override_args(["--system.degauss", "0.01", "--lda_plus_u"])
+    bundle = _parse_override_args(["--system.degauss", "0.01", "--lda_plus_u"])
+    overrides = bundle.parameters
     assert len(overrides) == 2
     first = overrides[0]
     assert first.name == "degauss"
@@ -83,6 +86,21 @@ def test_parse_override_args_with_section_and_flag():
     second = overrides[1]
     assert second.name == "lda_plus_u"
     assert second.value is True
+
+
+def test_parse_card_and_species_overrides():
+    bundle = _parse_override_args(
+        [
+            "--CARD.K_POINTS.data=[[4,4,4,0,0,0]]",
+            "--species.Si.mass=28.0855",
+            "--species.Si.pseudopot=Si.pbe-n.UPF",
+        ]
+    )
+    card = bundle.card_overrides["K_POINTS"]
+    assert card["data"][0] == [4, 4, 4, 0, 0, 0]
+    species = bundle.species_overrides["Si"]
+    assert species["mass"] == 28.0855
+    assert species["pseudopot"] == "Si.pbe-n.UPF"
 
 
 def test_cli_import_structure_registers_json(tmp_path: Path):
@@ -115,9 +133,198 @@ def test_cli_import_structure_registers_json(tmp_path: Path):
     assert loaded.composition.reduced_formula == "Si"
 
     data = yaml.safe_load((dest / "project.qv.yml").read_text())
-    assert any(entry["id"] == "si_struct" for entry in data["structures"])
+    assert any(entry["meta"]["name"] == "si_struct" for entry in data["structures"])
 
 
+def test_cli_list(sample_project: Path):
+    runner = CliRunner()
+    result = runner.invoke(app, ["list", "--project", str(sample_project)])
+    assert result.exit_code == 0
+    assert "Project: sample" in result.stdout
+    assert "Structures:" in result.stdout
+    assert "Workflows:" in result.stdout
+
+
+def test_cli_rename_structure(sample_project: Path):
+    runner = CliRunner()
+    dest_path = "structures/si_renamed.cif"
+    result = runner.invoke(
+        app,
+        [
+            "rename-structure",
+            "si",
+            "--project",
+            str(sample_project),
+            "--name",
+            "Si renamed",
+            "--path",
+            dest_path,
+        ],
+    )
+    assert result.exit_code == 0, result.stdout
+
+    config = yaml.safe_load((sample_project / "project.qv.yml").read_text())
+    entry = config["structures"][0]
+    assert entry["name"] == "Si renamed"
+    assert entry["file"] == dest_path
+    assert entry["meta"]["slug"].startswith("si-renamed")
+    assert (sample_project / dest_path).exists()
+
+
+def test_cli_rename_workflow(sample_project: Path):
+    runner = CliRunner()
+    new_path = "workflows/wf_new"
+    result = runner.invoke(
+        app,
+        [
+            "rename-workflow",
+            "wf",
+            "--project",
+            str(sample_project),
+            "--name",
+            "Workflow new",
+            "--path",
+            new_path,
+        ],
+    )
+    assert result.exit_code == 0, result.stdout
+
+    config = yaml.safe_load((sample_project / "project.qv.yml").read_text())
+    entry = config["workflows"][0]
+    assert entry["name"] == "Workflow new"
+    assert entry["path"] == new_path
+    assert entry["meta"]["slug"].startswith("workflow-new")
+    assert (sample_project / new_path).exists()
+
+
+def test_cli_delete_structure(tmp_path: Path):
+    runner = CliRunner()
+    project_root = tmp_path / "proj"
+    runner.invoke(app, ["init", str(project_root)])
+
+    structure = Structure(Lattice.cubic(5.43), ["Si"], [[0, 0, 0]])
+    source = tmp_path / "si.cif"
+    structure.to(fmt="cif", filename=str(source))
+    runner.invoke(
+        app,
+        [
+            "import-structure",
+            str(source),
+            "--project",
+            str(project_root),
+            "--id",
+            "si",
+        ],
+    )
+    structure_file = project_root / "structures" / "si.json"
+    assert structure_file.exists()
+
+    result = runner.invoke(
+        app,
+        [
+            "delete-structure",
+            "si",
+            "--project",
+            str(project_root),
+        ],
+    )
+    assert result.exit_code == 0, result.stdout
+    assert not structure_file.exists()
+    data = yaml.safe_load((project_root / "project.qv.yml").read_text())
+    assert all(entry["name"] != "si" for entry in data["structures"])
+
+
+def test_cli_delete_workflow(tmp_path: Path):
+    runner = CliRunner()
+    project_root = tmp_path / "proj"
+    runner.invoke(app, ["init", str(project_root), "--workflow-id", "wf0"])
+
+    structure = Structure(Lattice.cubic(5.43), ["Si"], [[0, 0, 0]])
+    source = tmp_path / "si.cif"
+    structure.to(fmt="cif", filename=str(source))
+    runner.invoke(
+        app,
+        [
+            "import-structure",
+            str(source),
+            "--project",
+            str(project_root),
+            "--id",
+            "si",
+        ],
+    )
+    runner.invoke(
+        app,
+        [
+            "init-workflow",
+            "wf1",
+            "--project",
+            str(project_root),
+            "--structure",
+            "si",
+        ],
+    )
+    wf_dir = project_root / "workflows" / "wf1"
+    assert wf_dir.exists()
+
+    result = runner.invoke(
+        app,
+        [
+            "delete-workflow",
+            "wf1",
+            "--project",
+            str(project_root),
+        ],
+    )
+    assert result.exit_code == 0, result.stdout
+    assert not wf_dir.exists()
+    data = yaml.safe_load((project_root / "project.qv.yml").read_text())
+    assert all(entry["name"] != "wf1" for entry in data["workflows"])
+
+
+def test_cli_run_workflow_strict_option(sample_project: Path, monkeypatch):
+    runner = CliRunner()
+    captured = {}
+
+    class DummyStatus:
+        def __init__(self, value: str):
+            self.value = value
+            self.name = value.upper()
+
+    class DummyStep:
+        def __init__(self):
+            self.step_id = "scf"
+            self.status = DummyStatus("success")
+            self.reference_file = None
+            self.message = None
+            self.metrics = {}
+
+    class DummyResult:
+        def __init__(self):
+            self.status = DummyStatus("success")
+            self.steps = [DummyStep()]
+
+    def fake_run(self, workflow):
+        captured["mode"] = workflow.mode
+        return DummyResult()
+
+    monkeypatch.setattr("quantumvitas.workflow.runner.WorkflowRunner.run", fake_run)
+
+    result = runner.invoke(
+        app,
+        [
+            "run-workflow",
+            "wf",
+            "--project",
+            str(sample_project),
+            "--strict",
+            "--verbose",
+        ],
+    )
+
+    assert result.exit_code == 0, result.stdout
+    assert captured["mode"] == StepMode.STRICT
+    assert "Workflow wf status" in result.stdout
 def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
     runner = CliRunner()
     project_root = tmp_path / "proj"
@@ -204,5 +411,271 @@ def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
     assert result.exit_code == 0, result.stdout
     assert "Step file run finished" in result.stdout
     assert captured["input_file"].exists()
+
+
+def test_cli_run_step_accepts_step_yaml(tmp_path: Path, monkeypatch):
+    runner = CliRunner()
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    (project_root / "project.qv.yml").write_text(
+        yaml.safe_dump({"project": {"name": "proj"}, "structures": [], "workflows": []})
+    )
+    (project_root / "structures").mkdir()
+
+    structure = Structure(Lattice.cubic(5.43), ["Si"], [[0, 0, 0]])
+    source = tmp_path / "si.cif"
+    structure.to(fmt="cif", filename=str(source))
+    runner.invoke(
+        app,
+        [
+            "import-structure",
+            str(source),
+            "--project",
+            str(project_root),
+            "--id",
+            "si",
+        ],
+    )
+
+    step_file = tmp_path / "step.yaml"
+    yaml.safe_dump(
+        {"structure": "si", "step_type": "scf", "input_name": "si_step.pw.in"},
+        step_file.open("w"),
+    )
+
+    captured = {}
+
+    def fake_run_input_step(
+        *,
+        engine,
+        input_file,
+        working_dir,
+        project_root,
+        step_type=None,
+        parameter_overrides=None,
+    ):
+        captured["input_file"] = input_file
+        captured["working_dir"] = working_dir
+        return (
+            StepResult(
+                step_type="scf",
+                input_file=input_file,
+                output_file=working_dir / "si_step.pw.out",
+                success=True,
+                return_code=0,
+            ),
+            PreparedInputStep(
+                working_dir=working_dir,
+                original_input=input_file,
+                modified_input=input_file,
+                project_root=project_root,
+            ),
+        )
+
+    monkeypatch.setattr("quantumvitas.cli.main.run_input_step", fake_run_input_step)
+
+    result = runner.invoke(
+        app,
+        [
+            "run-step",
+            str(step_file),
+            "--project",
+            str(project_root),
+        ],
+    )
+
+    assert result.exit_code == 0, result.stdout
+    assert "Step finished" in result.stdout
+    assert captured["input_file"].exists()
+
+
+def test_cli_step_create_and_insert(sample_project: Path):
+    runner = CliRunner()
+    steps_dir = sample_project / "workflows" / "wf" / "steps"
+    result = runner.invoke(
+        app,
+        [
+            "step-create",
+            "si",
+            "--project",
+            str(sample_project),
+            "--workflow",
+            "wf",
+            "--name",
+            "nscf",
+            "--step-type",
+            "nscf",
+            "--input-name",
+            "nscf.pw.in",
+            "--SYSTEM.ecutwfc=60",
+            "--SYSTEM.ecutrho=240",
+            "--CARD.K_POINTS.option=automatic",
+            '--CARD.K_POINTS.data=[[4,4,4,0,0,0]]',
+            "--species.Si.mass=28.0855",
+            "--species.Si.pseudopot=Si.pbe-n-rrkjus_psl.1.0.0.UPF",
+        ],
+    )
+    assert result.exit_code == 0, result.stdout
+    spec_path = steps_dir / "nscf.step.yaml"
+    assert spec_path.exists()
+    spec_data = yaml.safe_load(spec_path.read_text())
+    assert spec_data["structure"] == "si"
+    assert spec_data["parameters"]["SYSTEM"]["ecutwfc"] == 60
+    assert spec_data["cards"]["K_POINTS"]["option"] == "automatic"
+    assert spec_data["cards"]["K_POINTS"]["data"][0] == [4, 4, 4, 0, 0, 0]
+    assert spec_data["species_overrides"]["Si"]["mass"] == 28.0855
+    assert (
+        spec_data["species_overrides"]["Si"]["pseudopot"]
+        == "Si.pbe-n-rrkjus_psl.1.0.0.UPF"
+    )
+
+    workflow_yaml = sample_project / "workflows" / "wf" / "workflow.yaml"
+    workflow_data = yaml.safe_load(workflow_yaml.read_text())
+    assert any(step["id"] == "nscf" for step in workflow_data["steps"])
+
+
+def test_cli_step_set_param(tmp_path: Path):
+    step_file = tmp_path / "custom.step.yaml"
+    yaml.safe_dump(
+        {
+            "structure": "si",
+            "step_type": "scf",
+            "parameters": {"SYSTEM": {"ecutwfc": 40}},
+        },
+        step_file.open("w"),
+    )
+
+    runner = CliRunner()
+    result = runner.invoke(
+        app,
+        [
+            "step-set-param",
+            str(step_file),
+            "--SYSTEM.ecutwfc=80",
+            "--CONTROL.tstress=true",
+            "--CARD.K_POINTS.data=[[8,8,8,0,0,0]]",
+            "--species.Si.mass=26.5",
+        ],
+    )
+    assert result.exit_code == 0, result.stdout
+    data = yaml.safe_load(step_file.read_text())
+    assert data["parameters"]["SYSTEM"]["ecutwfc"] == 80
+    assert data["parameters"]["CONTROL"]["tstress"] is True
+    assert data["cards"]["K_POINTS"]["data"][0] == [8, 8, 8, 0, 0, 0]
+    assert data["species_overrides"]["Si"]["mass"] == 26.5
+
+    result = runner.invoke(
+        app,
+        [
+            "step-set-param",
+            str(step_file),
+            "--remove",
+            "--SYSTEM.ecutwfc=0",
+            "--CARD.K_POINTS.rows.row1=0,0,1",
+            "--species.Si.mass=0",
+        ],
+    )
+    assert result.exit_code == 0, result.stdout
+    data = yaml.safe_load(step_file.read_text())
+    assert "SYSTEM" not in data["parameters"]
+    cards = data.get("cards", {})
+    assert cards["K_POINTS"]["rows"]["row1"] == [0, 0, 1]
+    si_payload = data.get("species_overrides", {}).get("Si", {})
+    assert "mass" not in si_payload
+
+
+def test_cli_show_command(tmp_path: Path):
+    input_file = tmp_path / "si_scf.in"
+    input_file.write_text(
+        "&CONTROL\n  calculation = 'scf'\n/\n&SYSTEM\n  ecutwfc = 30\n  ecutrho = 240\n/\n"
+    )
+    runner = CliRunner()
+    result = runner.invoke(app, ["show-command", str(input_file)])
+    assert result.exit_code == 0
+    assert "qv step-create <structure-id>" in result.stdout
+    assert "step-set-param" in result.stdout
+
+
+def test_cli_get_command_alias(tmp_path: Path):
+    input_file = tmp_path / "si_scf.in"
+    input_file.write_text("&CONTROL\n  calculation = 'scf'\n/\n")
+    runner = CliRunner()
+    result = runner.invoke(app, ["get-command", str(input_file)])
+    assert result.exit_code == 0
+    assert "qv step-create <structure-id>" in result.stdout
+
+
+def test_cli_delete_structure(tmp_path: Path):
+    runner = CliRunner()
+    project_root = tmp_path / "proj"
+    runner.invoke(app, ["init", str(project_root)])
+    structure = Structure(Lattice.cubic(5.43), ["Si"], [[0, 0, 0]])
+    source = tmp_path / "si.cif"
+    structure.to(fmt="cif", filename=str(source))
+    runner.invoke(
+        app,
+        [
+            "import-structure",
+            str(source),
+            "--project",
+            str(project_root),
+            "--id",
+            "si",
+        ],
+    )
+    structure_file = project_root / "structures" / "si.json"
+    assert structure_file.exists()
+
+    result = runner.invoke(
+        app,
+        ["delete-structure", "si", "--project", str(project_root)],
+    )
+    assert result.exit_code == 0, result.stdout
+    assert not structure_file.exists()
+    data = yaml.safe_load((project_root / "project.qv.yml").read_text())
+    assert not any(entry["name"] == "si" for entry in data["structures"])
+
+
+def test_cli_delete_workflow(tmp_path: Path):
+    runner = CliRunner()
+    project_root = tmp_path / "proj"
+    runner.invoke(app, ["init", str(project_root), "--workflow-id", "wf0"])
+    structure = Structure(Lattice.cubic(5.43), ["Si"], [[0, 0, 0]])
+    source = tmp_path / "si.cif"
+    structure.to(fmt="cif", filename=str(source))
+    runner.invoke(
+        app,
+        [
+            "import-structure",
+            str(source),
+            "--project",
+            str(project_root),
+            "--id",
+            "si",
+        ],
+    )
+    result = runner.invoke(
+        app,
+        [
+            "init-workflow",
+            "wf1",
+            "--project",
+            str(project_root),
+            "--structure",
+            "si",
+        ],
+    )
+    assert result.exit_code == 0, result.stdout
+    wf_dir = project_root / "workflows" / "wf1"
+    assert wf_dir.exists()
+
+    result = runner.invoke(
+        app,
+        ["delete-workflow", "wf1", "--project", str(project_root)],
+    )
+    assert result.exit_code == 0, result.stdout
+    assert not wf_dir.exists()
+    data = yaml.safe_load((project_root / "project.qv.yml").read_text())
+    assert not any(entry["name"] == "wf1" for entry in data["workflows"])
 
 

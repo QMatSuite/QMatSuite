@@ -16,7 +16,11 @@ from quantumvitas.io import (
     read_structure,
     write_structure,
 )
-from quantumvitas.io.structure_io import qe_input_from_structure
+from quantumvitas.io.structure_io import (
+    STRUCTURE_DATA_KEY,
+    STRUCTURE_META_KEY,
+    qe_input_from_structure,
+)
 
 
 @pytest.fixture
@@ -44,12 +48,21 @@ class TestReadWriteStructure:
         json_file = tmp_path / "si.json"
 
         # Write structure to JSON
-        write_structure(sample_si_structure, json_file, format="json")
+        metadata = {
+            "id": "demo-structure",
+            "name": "Si demo",
+            "slug": "si-demo",
+            "path": "structures/si.json",
+            "kind": "structure",
+        }
+        write_structure(sample_si_structure, json_file, format="json", metadata=metadata)
 
         # Verify JSON content
         data = json.loads(json_file.read_text())
-        assert data["@module"] == "pymatgen.core.structure"
-        assert len(data["sites"]) == 2
+        assert STRUCTURE_META_KEY in data
+        payload = data[STRUCTURE_DATA_KEY]
+        assert payload["@module"] == "pymatgen.core.structure"
+        assert len(payload["sites"]) == 2
 
         # Read structure back
         loaded = read_structure(json_file, format="json")
