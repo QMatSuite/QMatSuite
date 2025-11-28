@@ -56,31 +56,34 @@ The new runtime exposes a Typer-powered CLI named `qv`. Key commands:
 > **📖 For detailed documentation with examples, see [docs/STRUCTURE_AND_CLI_USAGE.md](docs/STRUCTURE_AND_CLI_USAGE.md)**
 
 ```bash
-# Create a scaffolded project with a sample workflow
+# Create a scaffolded project (defaults to ./project1 if no path is provided)
+qv init
+
+# Or specify the target directory explicitly
 qv init my_project
 
 # Detect QE binaries/test-suite without needing a project checkout
 qv detect-qe
 
 # Run a QE input *or* step YAML in isolation (auto working dir + overrides)
-qv run-step workflows/si_dos/raw/si.1_scf.in --ecutwfc=60 --SYSTEM.degauss=0.01
-qv run-step workflows/si_dos/steps/nscf_1.step.yaml --workdir temp/nscf
+qv run step workflows/si_dos/raw/si.1_scf.in --ecutwfc=60 --SYSTEM.degauss=0.01
+qv run step workflows/si_dos/steps/nscf_1.step.yaml --workdir temp/nscf
 
 # Import, rename, or delete structures/workflows registered in project.qv.yml
 qv import-structure path/to/si.cif --id si_bulk
-qv rename-structure si_bulk --name "Si DOS" --path structures/si_dos.json
-qv delete-structure si_bulk
-qv delete-workflow si_dos --keep-files
+qv rename structure si_bulk --name "Si DOS" --path structures/si_dos.json
+qv delete structure si_bulk
+qv delete workflow si_dos --cascade
 
 # Generate & run QE input directly from stored structures + overrides
-qv run-structure si_bulk --ecutwfc=60 --SYSTEM.degauss=0.01
+qv run structure si_bulk --ecutwfc=60 --SYSTEM.degauss=0.01
 
 # Author and edit step specs (YAML) with CLI helpers
-qv step-create si_bulk --workflow si_dos --step-type nscf --SYSTEM.ecutwfc=60
-qv step-set-param workflows/si_dos/steps/nscf_1.step.yaml --remove --SYSTEM.tprnfor
+qv init step si_bulk --workflow si_dos --step-type nscf --SYSTEM.ecutwfc=60
+qv configure step workflows/si_dos/steps/nscf_1.step.yaml --remove --SYSTEM.tprnfor
 
 # Execute workflows (id, slug, or explicit path); --strict enforces references
-qv run-workflow si_dos --strict -v
+qv run workflow si_dos --strict -v
 
 # Inspect overrides suggested by an existing QE input
 qv get-command workflows/si_dos/raw/si.1_scf.in
@@ -94,10 +97,12 @@ Overrides now cover namelists, cards, and species rows:
 
 - `--SYSTEM.ecutwfc=60` adds/updates namelist parameters.
 - `--k_points=automatic:6,6,6,0,0,0` (or `--CARD.K_POINTS.data=[[...]]`) rewrites cards.
-- `--CARD.K_POINTS.rows.row1=0,0,1` edits individual mesh rows; combine with `--remove` via `qv step-set-param`.
+- `--CARD.K_POINTS.rows.row1=0,0,1` edits individual mesh rows; combine with `--remove` via `qv configure step`.
 - `--SPECIES.Si.mass=28.0855` / `--SPECIES.Si.pseudopot=Si.pbe-n-rrkjus_psl.1.0.0.UPF` keep pseudopotentials consistent.
 
-`qv run-workflow` automatically locates `project.qv.yml` (walking up from the
+Need a pre-populated layout? `qv init` exposes a `--template` flag (reserved for future bundles). By default it always creates a clean skeleton so you can wire structures and workflows manually.
+
+`qv run workflow` automatically locates `project.qv.yml` (walking up from the
 current directory). Each workflow owns a `raw/` folder where all QE input/output
 data lives, so restart files persist between steps. Reference outputs belong in
 `workflows/<id>/reference/`, and strict workflows compare against the files
@@ -156,7 +161,7 @@ normalises them into `structures/<id>.json`, and registers them in
 structure file), converts them into a QE input via
 `qe_input_from_structure`, applies CLI overrides, and executes the step.
 
-`qv run-stepfile` loads a declarative step YAML (structure id/path, calculation
+`qv run step` loads a declarative step YAML (structure id/path, calculation
 type, parameters) and generates the QE input via the same helper functions. This
 is useful for scripting repeatable QE steps outside full workflows.
 

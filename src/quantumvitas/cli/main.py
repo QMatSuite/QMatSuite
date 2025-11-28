@@ -9,6 +9,7 @@ import copy
 import json
 import shutil
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 import os
 from typing import Any, Dict, List, Optional, Sequence, TYPE_CHECKING
@@ -64,6 +65,22 @@ class ParsedOverrides:
 
 
 app = typer.Typer(help="QuantumVITAS CLI")
+init_app = typer.Typer(help="Initialize QuantumVITAS resources.", no_args_is_help=True)
+rename_app = typer.Typer(help="Rename existing resources.", no_args_is_help=True)
+delete_app = typer.Typer(help="Move resources to trash or purge trash.", no_args_is_help=True)
+configure_app = typer.Typer(help="Configure resources.", no_args_is_help=True)
+run_app = typer.Typer(
+    help="Run QE targets.",
+    invoke_without_command=True,
+    no_args_is_help=False,
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+)
+
+app.add_typer(init_app, name="init")
+app.add_typer(rename_app, name="rename")
+app.add_typer(delete_app, name="delete")
+app.add_typer(configure_app, name="configure")
+app.add_typer(run_app, name="run")
 
 
 def _resolve_project_root(start: Optional[Path] = None) -> Path:
@@ -76,10 +93,66 @@ def _resolve_project_root(start: Optional[Path] = None) -> Path:
     raise typer.BadParameter("Unable to locate project.qv.yml. Use --project or run inside a project root.")
 
 
+def _maybe_project_root(path: Optional[Path]) -> Optional[Path]:
+    if path:
+        return Path(path).expanduser().resolve()
+    try:
+        return _resolve_project_root()
+    except typer.BadParameter:
+        return None
+
+
 def _ensure_empty_dir(path: Path) -> None:
     if path.exists():
         shutil.rmtree(path)
     path.mkdir(parents=True, exist_ok=True)
+
+
+def _next_project_directory(base_dir: Path, prefix: str = "project") -> Path:
+    index = 1
+    while True:
+        candidate = base_dir / f"{prefix}{index}"
+        if not candidate.exists():
+            return candidate
+        index += 1
+
+
+def _determine_project_directory(
+    *,
+    base_dir: Path,
+    path_option: Optional[Path],
+    name_option: Optional[str],
+) -> Path:
+    if path_option:
+        resolved_path = Path(path_option).expanduser().resolve()
+    else:
+        resolved_path = None
+
+    slug = slugify(name_option) if name_option else None
+    if path_option and name_option:
+        if not slug:
+            raise typer.BadParameter("Name must contain at least one alphanumeric character.")
+        return resolved_path / slug
+    if path_option:
+        return resolved_path
+    if name_option:
+        if not slug:
+            raise typer.BadParameter("Name must contain at least one alphanumeric character.")
+        return (base_dir / slug).resolve()
+    return _next_project_directory(base_dir)
+
+
+def _move_to_trash(target: Path, trash_dir: Path) -> Path:
+    trash_dir = trash_dir.resolve()
+    trash_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    destination = trash_dir / f"{target.name}_{timestamp}"
+    idx = 1
+    while destination.exists():
+        destination = trash_dir / f"{target.name}_{timestamp}_{idx}"
+        idx += 1
+    shutil.move(str(target), str(destination))
+    return destination
 
 
 def _coerce_override_value(raw: str):
@@ -397,37 +470,42 @@ def _resolve_structure_input(
     return structure, identifier
 
 
-@app.command("init")
-def init_project(
-    destination: Path = typer.Argument(
-        Path("."),
-        help="Directory to create the project in (defaults to current directory)",
-    ),
-    workflow_id: Optional[str] = typer.Option(
-        None, help="Initial workflow name/slug (defaults to 'Workflow')"
-    ),
+
+@init_app.command("project")
+def init_project_command(
     name: Optional[str] = typer.Option(None, "--name", help="Project display name"),
+    path: Optional[Path] = typer.Option(
+        None,
+        "--path",
+        help="Directory where the project should be created (defaults to ./projectN).",
+    ),
+    template: Optional[str] = typer.Option(
+        None, "--template", help="Project template (reserved for future use)."
+    ),
 ) -> None:
     """
-    Scaffold a new QuantumVITAS project with a sample workflow.
+    Scaffold a new QuantumVITAS project skeleton (no workflows by default).
     """
-    destination = destination.resolve()
-    destination.mkdir(parents=True, exist_ok=True)
 
-    project_name, project_slug = generate_unique_name_and_slug(
-        kind="project",
-        preferred_name=name or destination.name,
-        existing_slugs=[],
+    if template:
+        typer.secho(
+            "--template is not implemented yet; creating an empty project skeleton.",
+            fg=typer.colors.YELLOW,
+        )
+
+    base_dir = Path.cwd()
+    project_dir = _determine_project_directory(
+        base_dir=base_dir, path_option=path, name_option=name
     )
+    project_dir = project_dir.resolve()
+    if project_dir.exists() and any(project_dir.iterdir()):
+        raise typer.BadParameter(
+            f"Destination '{project_dir}' already exists and is not empty."
+        )
+    project_dir.mkdir(parents=True, exist_ok=True)
+
+    project_name = name or project_dir.name
     project_meta = meta_from_name("project", name=project_name, path=".")
-
-    wf_base = workflow_id or "Workflow"
-    workflow_name, workflow_slug = generate_unique_name_and_slug(
-        kind="workflow", preferred_name=wf_base, existing_slugs=[]
-    )
-    workflow_meta = meta_from_name(
-        "workflow", name=workflow_name, path=f"workflows/{workflow_slug}"
-    )
 
     project_config = {
         "project": {
@@ -436,49 +514,21 @@ def init_project(
             "structures_dir": "structures",
             "workflows_dir": "workflows",
         },
-        "workflows": [
-            {
-                "name": workflow_meta.name,
-                "path": workflow_meta.path,
-                "meta": workflow_meta.to_dict(),
-            }
-        ],
+        "workflows": [],
         "structures": [],
         "settings": {},
     }
-    (destination / "project.qv.yml").write_text(
+
+    (project_dir / "structures").mkdir(parents=True, exist_ok=True)
+    (project_dir / "workflows").mkdir(parents=True, exist_ok=True)
+    (project_dir / "project.qv.yml").write_text(
         yaml.safe_dump(project_config, sort_keys=False)
     )
 
-    workflow_dir = destination / "workflows" / workflow_slug
-    raw_dir = workflow_dir / "raw"
-    steps_dir = workflow_dir / "steps"
-    _ensure_empty_dir(raw_dir)
-    steps_dir.mkdir(parents=True, exist_ok=True)
-
-    sample_inputs = {
-        "scf.in": "&control\n  calculation = 'scf'\n/\n",
-        "nscf.in": "&control\n  calculation = 'nscf'\n/\n",
-    }
-    for name, content in sample_inputs.items():
-        (raw_dir / name).write_text(content)
-
-    workflow_dict = {
-        "id": workflow_slug,
-        "mode": "normal",
-        "workflow": {"working_dir": "raw"},
-        "steps": [
-            {"id": "scf", "input": "scf.in"},
-            {"id": "nscf", "input": "nscf.in"},
-        ],
-    }
-    (workflow_dir / "workflow.yaml").write_text(
-        yaml.safe_dump(workflow_dict, sort_keys=False)
-    )
-    typer.secho(f"Project created at {destination}", fg=typer.colors.GREEN)
+    typer.secho(f"Project created at {project_dir}", fg=typer.colors.GREEN)
 
 
-@app.command("init-workflow")
+@init_app.command("workflow")
 def init_workflow_command(
     workflow_id: str = typer.Argument(..., help="Workflow identifier to create"),
     structure: str = typer.Option(
@@ -489,6 +539,11 @@ def init_workflow_command(
         "--step",
         help="Step types to initialize (can be passed multiple times)",
     ),
+    parent: List[str] = typer.Option(
+        [],
+        "--parent",
+        help="Workflow ids/slugs that must finish before this workflow (metadata only).",
+    ),
     project: Optional[Path] = typer.Option(
         None, "--project", help="Project root (defaults to auto-detect)"
     ),
@@ -497,7 +552,7 @@ def init_workflow_command(
     Scaffold a workflow folder with workflow.yaml and stub step specs.
     """
 
-    project_root = project or _resolve_project_root()
+    project_root = (project or _resolve_project_root()).resolve()
     config = _load_project_config(project_root)
     workflows_section = config.setdefault("workflows", [])
 
@@ -507,7 +562,6 @@ def init_workflow_command(
         existing_slugs=_collect_slugs(workflows_section),
     )
 
-    # Ensure structure exists
     _find_structure_entry(config, structure)
 
     workflow_dir = (project_root / "workflows" / workflow_slug).resolve()
@@ -533,23 +587,26 @@ def init_workflow_command(
             }
         )
 
-    workflow_yaml = {
+    workflow_yaml = workflow_dir / "workflow.yaml"
+    workflow_payload = {
         "id": workflow_slug,
         "mode": "normal",
         "workflow": {"working_dir": "raw", "structure": structure},
         "steps": workflow_steps,
     }
-    (workflow_dir / "workflow.yaml").write_text(
-        yaml.safe_dump(workflow_yaml, sort_keys=False)
-    )
+    workflow_yaml.write_text(yaml.safe_dump(workflow_payload, sort_keys=False))
+
+    workflow_meta = meta_from_name(
+        "workflow", name=workflow_name, path=f"workflows/{workflow_slug}"
+    ).to_dict()
+    if parent:
+        workflow_meta["parents"] = parent
 
     workflows_section.append(
         {
             "name": workflow_name,
             "path": f"workflows/{workflow_slug}",
-            "meta": meta_from_name(
-                "workflow", name=workflow_name, path=f"workflows/{workflow_slug}"
-            ).to_dict(),
+            "meta": workflow_meta,
         }
     )
     _save_project_config(project_root, config)
@@ -652,8 +709,8 @@ def detect_qe() -> None:
         typer.echo(f"  {exe_name:<8} -> {exe_path or 'not found'}")
 
 
-@app.command(
-    "run-step",
+@run_app.command(
+    "step",
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
 )
 def run_step_command(
@@ -723,8 +780,8 @@ def run_step_command(
     typer.echo(f"Working dir: {prepared.working_dir}")
 
 
-@app.command(
-    "run-structure",
+@run_app.command(
+    "structure",
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
 )
 def run_structure_command(
@@ -800,50 +857,6 @@ def run_structure_command(
     typer.echo(f"Working dir: {prepared.working_dir}")
 
 
-@app.command(
-    "run-stepfile",
-    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
-)
-def run_stepfile_command(
-    ctx: typer.Context,
-    step_file: Path = typer.Argument(
-        ..., help="YAML file describing structure, parameters, and step type"
-    ),
-    project: Optional[Path] = typer.Option(
-        None, "--project", help="Project root (defaults to auto-detect)"
-    ),
-    working_dir: Optional[Path] = typer.Option(
-        None, "--workdir", help="Working directory for generated inputs"
-    ),
-) -> None:
-    """
-    Generate and run a QE input based on a step YAML file.
-    """
-
-    project_root = project or _resolve_project_root()
-    project_root = project_root.resolve()
-
-    bundle = _parse_override_args(ctx.args)
-    if bundle.has_any():
-        typer.echo(f"Applying overrides: {_render_override_summary(bundle)}")
-    registry = create_default_registry()
-    engine = registry.get("qe")
-
-    result, prepared, generated_input = _execute_step_spec_path(
-        spec_path=step_file,
-        bundle=bundle,
-        project_root=project_root,
-        working_dir=working_dir,
-        engine_backend=engine.backend,
-    )
-
-    typer.echo(
-        f"Step file run finished: {result.step_type} -> {result.output_file} "
-        f"(input {generated_input})"
-    )
-    typer.echo(f"Working dir: {prepared.working_dir}")
-
-
 @app.command("list")
 def list_resources(
     project: Optional[Path] = typer.Option(
@@ -882,7 +895,7 @@ def list_resources(
         typer.echo(line)
 
 
-@app.command("rename-structure")
+@rename_app.command("structure")
 def rename_structure_command(
     identifier: str = typer.Argument(..., help="Structure name/slug/id/path"),
     project: Optional[Path] = typer.Option(
@@ -915,7 +928,7 @@ def rename_structure_command(
     typer.secho("Structure updated successfully.", fg=typer.colors.GREEN)
 
 
-@app.command("rename-workflow")
+@rename_app.command("workflow")
 def rename_workflow_command(
     identifier: str = typer.Argument(..., help="Workflow name/slug/id/path"),
     project: Optional[Path] = typer.Option(
@@ -948,78 +961,323 @@ def rename_workflow_command(
     typer.secho("Workflow updated successfully.", fg=typer.colors.GREEN)
 
 
-@app.command("delete-structure")
+@rename_app.command("project")
+def rename_project_command(
+    project: Optional[Path] = typer.Option(
+        None, "--project", help="Project root (defaults to auto-detect)"
+    ),
+    name: Optional[str] = typer.Option(None, "--name", help="New project display name"),
+    slug: Optional[str] = typer.Option(None, "--slug", help="Custom slug"),
+    path: Optional[Path] = typer.Option(
+        None, "--path", help="Move the entire project directory to this new location"
+    ),
+) -> None:
+    """
+    Rename or relocate the current project.
+    """
+
+    project_root = (project or _resolve_project_root()).resolve()
+    config = _load_project_config(project_root)
+
+    updated = False
+    project_section = config.setdefault("project", {})
+    meta = project_section.setdefault("meta", {})
+
+    if name or slug:
+        current_name = project_section.get("name") or meta.get("name") or "project"
+        next_name = name or current_name
+        slug_source = slug or next_name
+        next_slug = slugify(slug_source)
+        if not next_slug:
+            raise typer.BadParameter("Slug cannot be empty.")
+        project_section["name"] = next_name
+        meta["name"] = next_name
+        meta["slug"] = next_slug
+        updated = True
+
+    destination_root = project_root
+    if path is not None:
+        destination_root = Path(path).expanduser().resolve()
+        if destination_root.exists():
+            raise typer.BadParameter(f"Destination '{destination_root}' already exists.")
+        destination_root.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(project_root), str(destination_root))
+        project_root = destination_root
+        updated = True
+
+    if updated:
+        meta.setdefault("path", ".")
+        _save_project_config(project_root, config)
+        typer.secho("Project metadata updated.", fg=typer.colors.GREEN)
+        if path is not None:
+            typer.secho(f"Project moved to {project_root}", fg=typer.colors.GREEN)
+    else:
+        typer.secho("Nothing to update.", fg=typer.colors.YELLOW)
+
+
+@rename_app.command("step")
+def rename_step_command(
+    workflow: str = typer.Argument(..., help="Workflow id/slug/path containing the step"),
+    step_id: str = typer.Argument(..., help="Existing step id within the workflow"),
+    project: Optional[Path] = typer.Option(
+        None, "--project", help="Project root (defaults to auto-detect)"
+    ),
+    new_id: Optional[str] = typer.Option(
+        None, "--id", help="New step id (must be unique within the workflow)"
+    ),
+    path: Optional[Path] = typer.Option(
+        None,
+        "--path",
+        help="Rename or relocate the step spec file (relative to the workflow directory unless absolute).",
+    ),
+) -> None:
+    """
+    Rename a workflow step or move its spec file.
+    """
+
+    project_root = (project or _resolve_project_root()).resolve()
+    config = _load_project_config(project_root)
+    workflow_entry = _find_workflow_entry(config, workflow)
+    workflow_path = workflow_entry.get("path") or (workflow_entry.get("meta") or {}).get("path")
+    if not workflow_path:
+        raise typer.BadParameter("Workflow entry is missing a path.")
+
+    workflow_dir = (project_root / workflow_path).resolve()
+    workflow_yaml = workflow_dir / "workflow.yaml"
+    if not workflow_yaml.exists():
+        raise typer.BadParameter(f"workflow.yaml not found at {workflow_yaml}")
+
+    data = yaml.safe_load(workflow_yaml.read_text()) or {}
+    steps: list[dict] = data.get("steps") or []
+    target_step = next((step for step in steps if step.get("id") == step_id), None)
+    if not target_step:
+        raise typer.BadParameter(
+            f"Step '{step_id}' not found in workflow '{workflow_entry.get('name')}'."
+        )
+
+    if new_id:
+        if any(step.get("id") == new_id for step in steps if step is not target_step):
+            raise typer.BadParameter(
+                f"Step id '{new_id}' already exists in workflow '{workflow_entry.get('name')}'."
+            )
+        target_step["id"] = new_id
+
+    if path is not None:
+        source_rel = target_step.get("step_file")
+        if not source_rel:
+            raise typer.BadParameter("Step entry is missing its step_file.")
+        source_path = (workflow_dir / source_rel).resolve()
+        if not source_path.exists():
+            raise typer.BadParameter(f"Step file '{source_rel}' does not exist.")
+        destination_path = Path(path)
+        if not destination_path.is_absolute():
+            destination_path = (workflow_dir / destination_path).resolve()
+        destination_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(source_path), str(destination_path))
+        target_step["step_file"] = ensure_relative_path(destination_path, base=workflow_dir)
+
+    workflow_yaml.write_text(yaml.safe_dump(data, sort_keys=False))
+    typer.secho("Step updated successfully.", fg=typer.colors.GREEN)
+
+
+@delete_app.command("structure")
 def delete_structure_command(
     identifier: str = typer.Argument(..., help="Structure name/slug/id/path to delete"),
     project: Optional[Path] = typer.Option(
         None, "--project", help="Project root (defaults to auto-detect)"
     ),
-    keep_files: bool = typer.Option(
-        False, "--keep-files", help="Do not remove the structure file from disk"
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Delete even if workflows reference the structure (leaves broken references).",
+    ),
+    cascade: bool = typer.Option(
+        False,
+        "--cascade",
+        help="Delete workflows referencing this structure before deleting the structure itself.",
     ),
 ) -> None:
     """
-    Remove a structure entry (and optionally its file) from the project.
+    Remove a structure entry and move its file (and optionally dependent workflows) to trash.
     """
 
-    project_root = project or _resolve_project_root()
+    project_root = (project or _resolve_project_root()).resolve()
     config = _load_project_config(project_root)
-    structures = config.setdefault("structures", [])
-    if not structures:
-        raise typer.BadParameter("Project has no structures registered.")
-
     entry = _find_structure_entry(config, identifier)
+    trash_dir = (project_root / "trash").resolve()
+
+    referencing = _workflows_using_structure(project_root, config, entry)
+    if referencing:
+        if cascade:
+            for wf_entry in list(referencing):
+                _delete_workflow_entry(
+                    project_root=project_root,
+                    config=config,
+                    entry=wf_entry,
+                    trash_dir=trash_dir,
+                    force=True,
+                    cascade=True,
+                )
+        elif not force:
+            names = ", ".join(_entry_display_name(wf) for wf in referencing)
+            raise typer.BadParameter(
+                f"Structure '{_entry_display_name(entry)}' is used by workflows: {names}. "
+                "Use --force to remove anyway or --cascade to delete the workflows first."
+            )
+
     file_rel = entry.get("file") or (entry.get("meta") or {}).get("path")
-    if not keep_files and file_rel:
+    if file_rel:
         file_path = (project_root / file_rel).resolve()
         if file_path.exists():
-            try:
-                file_path.unlink()
-            except IsADirectoryError:
-                shutil.rmtree(file_path)
+            _move_to_trash(file_path, trash_dir)
 
-    structures.remove(entry)
+    structures = config.setdefault("structures", [])
+    if entry in structures:
+        structures.remove(entry)
     _save_project_config(project_root, config)
-    typer.secho(f"Structure '{_entry_display_name(entry)}' removed.", fg=typer.colors.GREEN)
+    typer.secho(f"Structure '{_entry_display_name(entry)}' moved to trash.", fg=typer.colors.GREEN)
 
 
-@app.command("delete-workflow")
+@delete_app.command("workflow")
 def delete_workflow_command(
     identifier: str = typer.Argument(..., help="Workflow name/slug/id/path to delete"),
     project: Optional[Path] = typer.Option(
         None, "--project", help="Project root (defaults to auto-detect)"
     ),
-    keep_files: bool = typer.Option(
-        False, "--keep-files", help="Do not remove the workflow directory"
+    force: bool = typer.Option(
+        False, "--force", help="Delete even if other workflows depend on this workflow."
+    ),
+    cascade: bool = typer.Option(
+        False,
+        "--cascade",
+        help="Delete dependent workflows that reference this workflow as a parent.",
     ),
 ) -> None:
     """
-    Remove a workflow entry (and optionally its directory) from the project.
+    Remove a workflow entry and move its directory to trash.
     """
 
-    project_root = project or _resolve_project_root()
+    project_root = (project or _resolve_project_root()).resolve()
     config = _load_project_config(project_root)
-    workflows = config.setdefault("workflows", [])
-    if not workflows:
-        raise typer.BadParameter("Project has no workflows registered.")
-
     entry = _find_workflow_entry(config, identifier)
-    wf_rel = entry.get("path") or (entry.get("meta") or {}).get("path")
-    if not keep_files and wf_rel:
-        wf_dir = (project_root / wf_rel).resolve()
-        if wf_dir.exists():
-            shutil.rmtree(wf_dir)
+    trash_dir = (project_root / "trash").resolve()
 
-    workflows.remove(entry)
+    _delete_workflow_entry(
+        project_root=project_root,
+        config=config,
+        entry=entry,
+        trash_dir=trash_dir,
+        force=force,
+        cascade=cascade,
+    )
     _save_project_config(project_root, config)
-    typer.secho(f"Workflow '{_entry_display_name(entry)}' removed.", fg=typer.colors.GREEN)
+    typer.secho(f"Workflow '{_entry_display_name(entry)}' moved to trash.", fg=typer.colors.GREEN)
 
 
-@app.command(
-    "step-create",
+@delete_app.command("step")
+def delete_step_command(
+    workflow: str = typer.Argument(..., help="Workflow id/slug/path containing the step"),
+    step_id: str = typer.Argument(..., help="Step id to remove"),
+    project: Optional[Path] = typer.Option(
+        None, "--project", help="Project root (defaults to auto-detect)"
+    ),
+) -> None:
+    """
+    Remove a workflow step and move its step spec file to trash.
+    """
+
+    project_root = (project or _resolve_project_root()).resolve()
+    config = _load_project_config(project_root)
+    workflow_entry = _find_workflow_entry(config, workflow)
+    workflow_dir = _workflow_directory(project_root, workflow_entry)
+    workflow_yaml = workflow_dir / "workflow.yaml"
+    if not workflow_yaml.exists():
+        raise typer.BadParameter(f"workflow.yaml not found at {workflow_yaml}")
+
+    data = yaml.safe_load(workflow_yaml.read_text()) or {}
+    steps: list[dict] = data.get("steps") or []
+    target_step = next((step for step in steps if step.get("id") == step_id), None)
+    if not target_step:
+        raise typer.BadParameter(f"Step '{step_id}' not found in workflow '{workflow}'.")
+
+    trash_dir = (project_root / "trash").resolve()
+    rel_file = target_step.get("step_file")
+    if rel_file:
+        spec_path = (workflow_dir / rel_file).resolve()
+        if spec_path.exists():
+            _move_to_trash(spec_path, trash_dir)
+
+    steps.remove(target_step)
+    workflow_yaml.write_text(yaml.safe_dump(data, sort_keys=False))
+    typer.secho(
+        f"Step '{step_id}' removed from workflow '{_entry_display_name(workflow_entry)}'.",
+        fg=typer.colors.GREEN,
+    )
+
+
+@delete_app.command("project")
+def delete_project_command(
+    project: Optional[Path] = typer.Option(
+        None, "--project", help="Project root to delete (defaults to auto-detect)"
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Required flag to confirm deletion of the entire project directory.",
+    ),
+) -> None:
+    """
+    Move an entire project directory into the parent trash folder.
+    """
+
+    if not force:
+        raise typer.BadParameter("Use --force to confirm project deletion.")
+
+    project_root = (project or _resolve_project_root()).resolve()
+    trash_dir = (project_root.parent / "trash").resolve()
+    destination = _move_to_trash(project_root, trash_dir)
+    typer.secho(f"Project moved to {destination}", fg=typer.colors.GREEN)
+
+
+@delete_app.command("trash")
+def delete_trash_command(
+    project: Optional[Path] = typer.Option(
+        None,
+        "--project",
+        help="Project root whose trash directory should be removed (defaults to auto-detect).",
+    ),
+    path: Optional[Path] = typer.Option(
+        None, "--path", help="Explicit trash directory to remove."
+    ),
+    parent: bool = typer.Option(
+        False,
+        "--parent",
+        help="Clean the parent-level trash directory (used for deleted projects).",
+    ),
+) -> None:
+    """
+    Remove a trash directory.
+    """
+
+    if path is not None:
+        trash_target = Path(path).expanduser().resolve()
+    else:
+        base = (project or _resolve_project_root()).resolve()
+        trash_target = (base.parent / "trash").resolve() if parent else (base / "trash").resolve()
+
+    if not trash_target.exists():
+        typer.secho(f"No trash directory at {trash_target}", fg=typer.colors.YELLOW)
+        return
+
+    shutil.rmtree(trash_target)
+    typer.secho(f"Removed trash at {trash_target}", fg=typer.colors.GREEN)
+
+
+@init_app.command(
+    "step",
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
 )
-def step_create_command(
+def init_step_command(
     ctx: typer.Context,
     structure: str = typer.Argument(..., help="Structure id registered in the project"),
     project: Optional[Path] = typer.Option(
@@ -1123,61 +1381,11 @@ def step_create_command(
         )
 
 
-@app.command(
-    "init-step",
+@configure_app.command(
+    "step",
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
 )
-def init_step_command(
-    ctx: typer.Context,
-    structure: str = typer.Argument(..., help="Structure id registered in the project"),
-    project: Optional[Path] = typer.Option(
-        None, "--project", help="Project root (defaults to auto-detect)"
-    ),
-    workflow: Optional[str] = typer.Option(
-        None, "--workflow", help="Workflow id/slug to attach this step to"
-    ),
-    step_type: str = typer.Option("scf", "--step-type", help="QE calculation type"),
-    name: Optional[str] = typer.Option(
-        None,
-        "--name",
-        help="Step display name/slug (defaults to step type or next available value)",
-    ),
-    input_name: Optional[str] = typer.Option(
-        None, "--input-name", help="QE input filename to write during execution"
-    ),
-    output: Optional[Path] = typer.Option(
-        None,
-        "--output",
-        help="Destination step YAML. Defaults to workflows/<wf>/steps/<slug>.step.yaml when --workflow is provided.",
-    ),
-    index: Optional[int] = typer.Option(
-        None,
-        "--index",
-        help="Insert position when attaching to a workflow (0-indexed, defaults to append).",
-    ),
-) -> None:
-    """
-    Alias for step-create (legacy naming).
-    """
-
-    step_create_command(
-        ctx=ctx,
-        structure=structure,
-        project=project,
-        workflow=workflow,
-        step_type=step_type,
-        name=name,
-        input_name=input_name,
-        output=output,
-        index=index,
-    )
-
-
-@app.command(
-    "step-set-param",
-    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
-)
-def step_set_param_command(
+def configure_step_command(
     ctx: typer.Context,
     step_file: Path = typer.Argument(..., help="Step YAML file to modify"),
     remove: bool = typer.Option(
@@ -1213,6 +1421,30 @@ def step_set_param_command(
     typer.secho(f"{action} parameters in {step_file}", fg=typer.colors.GREEN)
 
 
+@configure_app.command("project")
+def configure_project_placeholder() -> None:
+    typer.secho(
+        "Project-level configure commands are not implemented yet.",
+        fg=typer.colors.YELLOW,
+    )
+
+
+@configure_app.command("workflow")
+def configure_workflow_placeholder() -> None:
+    typer.secho(
+        "Workflow-level configure commands are not implemented yet.",
+        fg=typer.colors.YELLOW,
+    )
+
+
+@configure_app.command("structure")
+def configure_structure_placeholder() -> None:
+    typer.secho(
+        "Structure-level configure commands are not implemented yet.",
+        fg=typer.colors.YELLOW,
+    )
+
+
 @app.command("show-command")
 def show_command(input_file: Path = typer.Argument(..., help="QE input file to inspect")) -> None:
     """
@@ -1237,7 +1469,8 @@ def show_command(input_file: Path = typer.Argument(..., help="QE input file to i
     step_file = f"{input_file.stem}.step.yaml"
     base_cmd = [
         "qv",
-        "step-create",
+        "init",
+        "step",
         "<structure-id>",
         "--step-type",
         str(calculation),
@@ -1250,7 +1483,8 @@ def show_command(input_file: Path = typer.Argument(..., help="QE input file to i
 
     modify_cmd = [
         "qv",
-        "step-set-param",
+        "configure",
+        "step",
         step_file,
     ]
     if cli_args:
@@ -1272,7 +1506,7 @@ def get_command(input_file: Path = typer.Argument(..., help="QE input file to in
     show_command(input_file)
 
 
-@app.command("run-workflow")
+@run_app.command("workflow")
 def run_workflow_command(
     workflow: str = typer.Argument(..., help="Workflow id or path"),
     project: Optional[Path] = typer.Option(
@@ -1325,6 +1559,91 @@ def run_workflow_command(
             if step.metrics:
                 for key, value in step.metrics.items():
                     typer.echo(f"    {key}: {value}")
+
+
+@run_app.callback()
+def run_auto_dispatch(
+    ctx: typer.Context,
+    project: Optional[Path] = typer.Option(
+        None, "--project", help="Project root (defaults to auto-detect when needed)"
+    ),
+    workdir: Optional[Path] = typer.Option(
+        None, "--workdir", help="Working directory override for step/structure runs"
+    ),
+    mode: Optional[str] = typer.Option(
+        None, "--mode", help="Workflow mode override (normal/strict)"
+    ),
+    strict: bool = typer.Option(
+        False, "--strict", help="Force strict verification when running workflows"
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose workflow output"),
+) -> None:
+    if ctx.invoked_subcommand:
+        return
+    if not ctx.args:
+        raise typer.BadParameter("Provide a target or choose 'qv run <subcommand>'.")
+
+    original_args = list(ctx.args)
+    target = original_args.pop(0)
+    ctx.args = list(original_args)
+    target_path = Path(target)
+    if target_path.exists():
+        if target_path.is_dir() and (target_path / "workflow.yaml").exists():
+            ctx.args = list(original_args)
+            ctx.invoke(
+                run_workflow_command,
+                workflow=str(target_path),
+                project=project,
+                mode=mode,
+                strict=strict,
+                verbose=verbose,
+            )
+            return
+        if target_path.is_file() and target_path.suffix.lower() in {".yaml", ".yml", ".in"}:
+            ctx.args = list(original_args)
+            ctx.invoke(
+                run_step_command,
+                target=target_path,
+                working_dir=workdir,
+                project=project,
+            )
+            return
+
+    project_root = _maybe_project_root(project)
+
+    if project_root:
+        config = _load_project_config(project_root)
+        try:
+            _find_workflow_entry(config, target)
+            ctx.args = list(original_args)
+            ctx.invoke(
+                run_workflow_command,
+                workflow=target,
+                project=project,
+                mode=mode,
+                strict=strict,
+                verbose=verbose,
+            )
+            return
+        except typer.BadParameter:
+            pass
+        try:
+            _find_structure_entry(config, target)
+            ctx.args = list(original_args)
+            ctx.invoke(
+                run_structure_command,
+                structure=target,
+                working_dir=workdir,
+                project=project,
+            )
+            return
+        except typer.BadParameter:
+            pass
+
+    raise typer.BadParameter(
+        f"Unable to determine how to run '{target}'. "
+        "Use 'qv run step|workflow|structure' for explicit control."
+    )
 
 
 @app.command("analyze")
@@ -1574,6 +1893,151 @@ def _apply_workflow_rename(
 def _entry_display_name(entry: dict, fallback: str = "resource") -> str:
     meta = entry.get("meta") or {}
     return entry.get("name") or meta.get("name") or entry.get("id") or fallback
+
+
+def _structure_reference_tokens(entry: dict, project_root: Path) -> tuple[set[str], Optional[Path]]:
+    meta = entry.get("meta") or {}
+    aliases: set[str] = set()
+    for candidate in (
+        entry.get("name"),
+        meta.get("name"),
+        meta.get("slug"),
+        meta.get("id"),
+    ):
+        if candidate:
+            aliases.add(str(candidate).strip().lower())
+    rel_path = entry.get("file") or meta.get("path")
+    resolved = None
+    if rel_path:
+        resolved = (project_root / rel_path).resolve()
+    return aliases, resolved
+
+
+def _spec_uses_structure(
+    spec: StructureStepSpec,
+    spec_path: Path,
+    aliases: set[str],
+    resolved_path: Optional[Path],
+) -> bool:
+    identifier = (spec.structure or "").strip()
+    if not identifier:
+        return False
+    if identifier.lower() in aliases:
+        return True
+    candidate = Path(identifier)
+    if not candidate.is_absolute():
+        candidate = (spec_path.parent / candidate).resolve()
+    else:
+        candidate = candidate.resolve()
+    if resolved_path and candidate == resolved_path:
+        return True
+    return False
+
+
+def _workflows_using_structure(
+    project_root: Path, config: dict, entry: dict
+) -> list[dict]:
+    aliases, resolved_path = _structure_reference_tokens(entry, project_root)
+    matches: list[dict] = []
+    for workflow_entry in list(config.get("workflows", [])):
+        workflow_path = workflow_entry.get("path") or (workflow_entry.get("meta") or {}).get("path")
+        if not workflow_path:
+            continue
+        workflow_dir = (project_root / workflow_path).resolve()
+        steps_dir = workflow_dir / "steps"
+        if not steps_dir.exists():
+            continue
+        for spec_path in steps_dir.rglob("*.step.yaml"):
+            try:
+                spec = StructureStepSpec.from_yaml(spec_path)
+            except Exception:
+                continue
+            if _spec_uses_structure(spec, spec_path, aliases, resolved_path):
+                matches.append(workflow_entry)
+                break
+    return matches
+
+
+def _workflow_identifiers(entry: dict) -> set[str]:
+    meta = entry.get("meta") or {}
+    identifiers = {
+        entry.get("name"),
+        meta.get("name"),
+        meta.get("slug"),
+        meta.get("id"),
+    }
+    return {str(value) for value in identifiers if value}
+
+
+def _workflows_depending_on(config: dict, target_entry: dict) -> list[dict]:
+    identifiers = _workflow_identifiers(target_entry)
+    matches: list[dict] = []
+    for workflow_entry in config.get("workflows", []):
+        if workflow_entry is target_entry:
+            continue
+        meta = workflow_entry.get("meta") or {}
+        parents = meta.get("parents") or []
+        for parent in parents:
+            if str(parent) in identifiers:
+                matches.append(workflow_entry)
+                break
+    return matches
+
+
+def _workflow_directory(project_root: Path, entry: dict) -> Path:
+    rel_path = entry.get("path") or (entry.get("meta") or {}).get("path")
+    if not rel_path:
+        raise typer.BadParameter("Workflow entry is missing a path.")
+    return (project_root / rel_path).resolve()
+
+
+def _delete_workflow_entry(
+    *,
+    project_root: Path,
+    config: dict,
+    entry: dict,
+    trash_dir: Path,
+    force: bool,
+    cascade: bool,
+    visited: Optional[set[str]] = None,
+) -> None:
+    identifiers = _workflow_identifiers(entry)
+    if visited is None:
+        visited = set()
+    if identifiers & visited:
+        return
+    visited.update(identifiers)
+
+    dependents = _workflows_depending_on(config, entry)
+    if dependents:
+        if cascade:
+            for dependent in list(dependents):
+                _delete_workflow_entry(
+                    project_root=project_root,
+                    config=config,
+                    entry=dependent,
+                    trash_dir=trash_dir,
+                    force=force,
+                    cascade=True,
+                    visited=visited,
+                )
+        elif not force:
+            names = ", ".join(_entry_display_name(dep) for dep in dependents)
+            raise typer.BadParameter(
+                f"Workflow '{_entry_display_name(entry)}' is required by: {names}. "
+                "Use --force to remove it anyway or --cascade to delete dependents."
+            )
+
+    workflow_dir = None
+    rel_path = entry.get("path") or (entry.get("meta") or {}).get("path")
+    if rel_path:
+        workflow_dir = (project_root / rel_path).resolve()
+        if workflow_dir.exists():
+            _move_to_trash(workflow_dir, trash_dir)
+
+    workflows = config.setdefault("workflows", [])
+    if entry in workflows:
+        workflows.remove(entry)
 
 
 def _write_step_spec(path: Path, spec: StructureStepSpec) -> None:
