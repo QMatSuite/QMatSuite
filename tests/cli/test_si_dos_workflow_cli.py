@@ -35,7 +35,7 @@ def test_cli_run_workflow(cli_si_dos_project: Path):
     runner = CliRunner()
     result = runner.invoke(
         cli_app,
-        ["run-workflow", "si_dos", "--project", str(cli_si_dos_project)],
+        ["run-workflow", "si_dos", "--project", str(cli_si_dos_project), "--verbose"],
     )
     assert result.exit_code == 0, result.output
     assert "Workflow si_dos status: StepStatus.SUCCESS" in result.output

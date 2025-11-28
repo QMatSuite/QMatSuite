@@ -96,6 +96,22 @@ See `.github/workflows/tests.yml` for details.
 └── pytest.ini             # Pytest configuration
 ```
 
+## Workflow Reference Outputs
+
+Core/CLI integration tests exercise real QE workflows. Reference `.out` files for
+strict verification live alongside each workflow under
+`workflows/<workflow_id>/reference/`. The runner automatically compares QE
+results against those references when you invoke:
+
+- `pytest -m qe_core` (engine-level workflows)
+- `pytest -m qe_cli` (Typer CLI workflows)
+- `qv run-workflow <wf> --strict`
+
+When regenerating reference data, run the workflow once locally, copy the
+resulting `.out` files into `reference/`, and commit them alongside the workflow
+YAML. Quick tests never auto-generate references—they simply read whatever is in
+`workflows/<id>/reference/`.
+
 ## Adding New Tests
 
 ### Quick Test

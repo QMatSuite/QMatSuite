@@ -8,6 +8,11 @@ scipy
 ase
 matplotlib
 pyyaml
-pytest>=7.0.0
-pytest-cov>=4.0.0
+typer>=0.12
+beautifulsoup4>=4.12
+pymatgen>=2024.0.0
+ulid-py>=1.1
+# pytest>=7.0.0
+# pytest-cov>=4.0.0
+
 

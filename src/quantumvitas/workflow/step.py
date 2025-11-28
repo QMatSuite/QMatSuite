@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, Optional
 
+from quantumvitas.core.resources import ResourceMeta
 from quantumvitas.engine.base import Engine, StepResult
 from quantumvitas.project.model import StructureRef
 
@@ -21,7 +22,7 @@ class Step:
     One unit of execution inside a workflow.
     """
 
-    id: str
+    meta: ResourceMeta
     input_file: Path
     engine: str = "qe"
     step_type: Optional[StepType] = None
@@ -29,6 +30,13 @@ class Step:
     mode: StepMode = StepMode.NORMAL
     reference_output: Optional[Path] = None
     structure: Optional[StructureRef] = None
+
+    @property
+    def id(self) -> str:
+        """
+        Legacy identifier accessor (maps to the slug inside ``meta``).
+        """
+        return self.meta.slug
 
     def resolve_input_path(self, workflow_raw_dir: Path) -> Path:
         path = Path(self.input_file)

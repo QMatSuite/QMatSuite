@@ -10,6 +10,7 @@ from typing import List, Optional
 
 import yaml
 
+from quantumvitas.core.resources import ResourceMeta, ensure_relative_path
 from quantumvitas.project.model import Project, StructureRef
 from .types import StepMode, StepType
 from .step import Step
@@ -104,6 +105,12 @@ def _build_step(
     options = step_data.get("options", step_data.get("params", {})) or {}
     reference_path = _resolve_reference_path(step_data.get("reference"), workflow_dir)
 
+    step_meta = _build_step_meta(
+        step_data=step_data,
+        workflow_dir=workflow_dir,
+        project=project,
+    )
+
     if step_file_value:
         return _build_step_from_spec(
             step_id=step_id,
@@ -114,12 +121,13 @@ def _build_step(
             project=project,
             options=options,
             reference=reference_path,
+            step_meta=step_meta,
         )
 
     step_type = StepType(step_data["type"]) if "type" in step_data else None
 
     return Step(
-        id=step_id,
+        meta=step_meta,
         input_file=input_path,
         engine=engine_name,
         step_type=step_type,
@@ -138,6 +146,7 @@ def _build_step_from_spec(
     project: Project,
     options: dict,
     reference: Optional[Path],
+    step_meta: ResourceMeta,
 ) -> Step:
     spec_path = Path(step_file)
     if not spec_path.is_absolute():
@@ -160,7 +169,7 @@ def _build_step_from_spec(
     step_type = _coerce_step_type(spec.step_type)
 
     return Step(
-        id=step_id,
+        meta=step_meta,
         input_file=generated_input,
         engine=engine_name,
         step_type=step_type,
@@ -185,4 +194,35 @@ def _resolve_reference_path(reference: Optional[str], workflow_dir: Path) -> Opt
     if not reference_path.is_absolute():
         reference_path = (workflow_dir / reference_path).resolve()
     return reference_path
+
+
+def _build_step_meta(
+    *,
+    step_data: dict,
+    workflow_dir: Path,
+    project: Project,
+) -> ResourceMeta:
+    name = step_data.get("name") or step_data.get("id") or "step"
+    default_path = step_data.get("path") or _default_step_path(
+        workflow_dir=workflow_dir, project=project, step_name=name
+    )
+    return ResourceMeta.from_dict(
+        step_data.get("meta"),
+        kind="step",
+        default_name=name,
+        default_path=default_path,
+    )
+
+
+def _default_step_path(*, workflow_dir: Path, project: Project, step_name: str) -> str:
+    """
+    Steps live under ``workflows/<id>/steps`` by default. This helper makes sure
+    we keep the path relative to the project root.
+    """
+    base = workflow_dir
+    try:
+        workflow_rel = ensure_relative_path(base, base=project.root)
+    except ValueError:
+        workflow_rel = base.name
+    return f"{workflow_rel.rstrip('/')}/steps/{step_name}"
 

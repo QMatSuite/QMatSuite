@@ -59,33 +59,43 @@ The new runtime exposes a Typer-powered CLI named `qv`. Key commands:
 # Create a scaffolded project with a sample workflow
 qv init my_project
 
-# Detect QE binaries (pw.x, ph.x, etc.)
+# Detect QE binaries/test-suite without needing a project checkout
 qv detect-qe
 
-# Run a single QE input file in isolation (uses temp/raw directories)
-qv run-step path/to/si.scf.in --workdir temp/run_scf
+# Run a QE input *or* step YAML in isolation (auto working dir + overrides)
+qv run-step workflows/si_dos/raw/si.1_scf.in --ecutwfc=60 --SYSTEM.degauss=0.01
+qv run-step workflows/si_dos/steps/nscf_1.step.yaml --workdir temp/nscf
 
-# Override QE parameters directly from the CLI (auto-detected sections)
-qv run-step workflows/si_dos/raw/si.1_scf.in --ecutwfc=60 --system.degauss=0.01
-
-# Import a structure (stored as structures/<id>.json) and register it
+# Import, rename, or delete structures/workflows registered in project.qv.yml
 qv import-structure path/to/si.cif --id si_bulk
+qv rename-structure si_bulk --name "Si DOS" --path structures/si_dos.json
+qv delete-structure si_bulk
+qv delete-workflow si_dos --keep-files
 
-# Generate & run a QE input directly from a stored structure with overrides
-qv run-structure si_bulk --ecutwfc=60 --system.degauss=0.01
+# Generate & run QE input directly from stored structures + overrides
+qv run-structure si_bulk --ecutwfc=60 --SYSTEM.degauss=0.01
 
-# Run a QE step described by a step YAML file
-qv run-stepfile workflows/si_scf_step.yaml
+# Author and edit step specs (YAML) with CLI helpers
+qv step-create si_bulk --workflow si_dos --step-type nscf --SYSTEM.ecutwfc=60
+qv step-set-param workflows/si_dos/steps/nscf_1.step.yaml --remove --SYSTEM.tprnfor
 
-# Execute a workflow defined under workflows/<id>/workflow.yaml
-qv run-workflow si_dos --project /path/to/my_project
+# Execute workflows (id, slug, or explicit path); --strict enforces references
+qv run-workflow si_dos --strict -v
 
-# Lightweight analysis (energy / band / dos summaries)
+# Inspect overrides suggested by an existing QE input
+qv get-command workflows/si_dos/raw/si.1_scf.in
+
+# Lightweight analysis (energy / band / dos summaries) and metadata
 qv analyze energy workflows/si_dos/raw/si.1_scf.out
-
-# Inspect QE module parameters pulled from official docs
 qv params pw --section CONTROL
 ```
+
+Overrides now cover namelists, cards, and species rows:
+
+- `--SYSTEM.ecutwfc=60` adds/updates namelist parameters.
+- `--k_points=automatic:6,6,6,0,0,0` (or `--CARD.K_POINTS.data=[[...]]`) rewrites cards.
+- `--CARD.K_POINTS.rows.row1=0,0,1` edits individual mesh rows; combine with `--remove` via `qv step-set-param`.
+- `--SPECIES.Si.mass=28.0855` / `--SPECIES.Si.pseudopot=Si.pbe-n-rrkjus_psl.1.0.0.UPF` keep pseudopotentials consistent.
 
 `qv run-workflow` automatically locates `project.qv.yml` (walking up from the
 current directory). Each workflow owns a `raw/` folder where all QE input/output

@@ -22,7 +22,7 @@ def qe_engine() -> QuantumEspressoEngine:
     config = EngineConfig(name="qe")
     engine = QuantumEspressoEngine(config)
     if not engine.detect_executable("pw.x"):
-        raise RuntimeError("pw.x not found. QE installation required for integration tests.")
+        raise RuntimeError("pw.x not found. QE installation required for PW spec integration tests.")
     return engine
 
 

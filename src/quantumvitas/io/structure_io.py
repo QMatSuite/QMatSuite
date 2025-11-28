@@ -14,10 +14,15 @@ from pymatgen.core import Element
 from pymatgen.core import Lattice
 from pymatgen.core import Structure as PMGStructure
 
+from quantumvitas.core.resources import ResourceMeta
 from quantumvitas.io.model import QECard, QECardType, QEInput, QENamelist
 from quantumvitas.io.parser.qe_parser import QEInputParser
 
 logger = logging.getLogger(__name__)
+
+
+STRUCTURE_META_KEY = "__qv_meta__"
+STRUCTURE_DATA_KEY = "structure"
 
 
 def read_structure(filepath: Path, format: Optional[str] = None) -> PMGStructure:
@@ -42,14 +47,25 @@ def read_structure(filepath: Path, format: Optional[str] = None) -> PMGStructure
         return structure_from_qe_input(qe_input)
     if format == "json":
         data = json.loads(Path(filepath).read_text())
-        return PMGStructure.from_dict(data)
+        metadata = None
+        structure_payload = data
+        if STRUCTURE_META_KEY in data and STRUCTURE_DATA_KEY in data:
+            metadata = data.get(STRUCTURE_META_KEY)
+            structure_payload = data.get(STRUCTURE_DATA_KEY)
+        structure = PMGStructure.from_dict(structure_payload)
+        if metadata is not None:
+            setattr(structure, STRUCTURE_META_KEY, metadata)
+        return structure
 
     # Fallback: let pymatgen auto-detect (supports cif, poscar, etc.)
     return PMGStructure.from_file(str(filepath))
 
 
 def write_structure(
-    structure: PMGStructure, filepath: Path, format: Optional[str] = None
+    structure: PMGStructure,
+    filepath: Path,
+    format: Optional[str] = None,
+    metadata: Optional[Dict[str, Any] | ResourceMeta] = None,
 ) -> None:
     """
     Write atomic structure to file using pymatgen.
@@ -68,7 +84,18 @@ def write_structure(
         fmt = format.lower()
 
     if fmt == "json":
-        filepath.write_text(json.dumps(structure.as_dict(), indent=2))
+        if metadata is None:
+            metadata = getattr(structure, STRUCTURE_META_KEY, None)
+        payload = structure.as_dict()
+        if metadata is not None:
+            meta_dict = metadata.to_dict() if isinstance(metadata, ResourceMeta) else metadata
+            serializable = {
+                STRUCTURE_META_KEY: meta_dict,
+                STRUCTURE_DATA_KEY: payload,
+            }
+        else:
+            serializable = payload
+        filepath.write_text(json.dumps(serializable, indent=2))
         return
 
     # pymatgen's Structure.to supports common formats via fmt argument

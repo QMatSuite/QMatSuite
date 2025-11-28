@@ -54,7 +54,7 @@ structure = read_structure(Path("structures/si.json"))
 
 ---
 
-### `write_structure(structure, filepath, format=None)`
+### `write_structure(structure, filepath, format=None, metadata=None)`
 
 Writes atomic structures to various file formats.
 
@@ -69,7 +69,8 @@ lattice = Lattice.cubic(5.43)
 structure = Structure(lattice, ["Si", "Si"], [[0, 0, 0], [0.25, 0.25, 0.25]])
 
 # Write to JSON (recommended for project storage)
-write_structure(structure, Path("structures/si.json"), format="json")
+# Metadata (ResourceMeta or dict) is embedded automatically when provided.
+write_structure(structure, Path("structures/si.json"), format="json", metadata={"kind": "structure"})
 ```
 
 **Example 2: Writing to CIF**
@@ -413,6 +414,49 @@ The CLI automatically converts string values to appropriate types:
 --calculation="scf"
 ```
 
+### Card Overrides (K_POINTS, CELL_PARAMETERS, etc.)
+
+Card overrides can be supplied either with the explicit `CARD.` prefix or via
+shorthands:
+
+```bash
+# Replace the entire K_POINTS card
+qv run-step si.scf.in --CARD.K_POINTS.data="[[6,6,6,0,0,0]]"
+
+# Shorthand: option:data syntax (auto-splits on the first colon)
+qv run-step si.scf.in --k_points="automatic:6,6,6,0,0,0"
+
+# Update only a single row (e.g., Monkhorst-Pack offsets)
+qv step-set-param steps/nscf.step.yaml --CARD.K_POINTS.rows.row1=0,0,1
+```
+
+Cell and atomic-position cards follow the same pattern:
+
+```bash
+qv run-step si.relax.in --CARD.CELL_PARAMETERS.data="[[5.3,0,0],[0,5.3,0],[0,0,5.3]]"
+qv run-step si.relax.in --CARD.ATOMIC_POSITIONS.option=angstrom --CARD.ATOMIC_POSITIONS.rows.Si1="0.0 0.0 0.0"
+```
+
+Use `--remove` with `qv step-set-param` to drop card rows/entries.
+
+### Species Overrides (masses/pseudopotentials)
+
+Pseudopotentials and atomic masses live in the `ATOMIC_SPECIES` card. Override
+them declaratively:
+
+```bash
+# Update mass and pseudopotential filename
+qv run-structure si_bulk \
+  --SPECIES.Si.mass=28.0855 \
+  --SPECIES.Si.pseudopot=Si.pbe-n-rrkjus_psl.1.0.0.UPF
+
+# Remove a mass override from a step spec
+qv step-set-param steps/scf.step.yaml --remove --SPECIES.Si.mass=0
+```
+
+Species overrides pair naturally with the unified pseudo directory (`temp/pseudo`
+in tests) so QE never downloads to scattered locations.
+
 ---
 
 ## Complete Workflow Examples
@@ -526,7 +570,7 @@ Reads a structure from a file.
 
 ---
 
-### `write_structure(structure: PMGStructure, filepath: Path, format: Optional[str] = None) -> None`
+### `write_structure(structure: PMGStructure, filepath: Path, format: Optional[str] = None, metadata: Optional[dict] = None) -> None`
 
 Writes a structure to a file.
 
@@ -534,6 +578,7 @@ Writes a structure to a file.
 - `structure`: pymatgen Structure object
 - `filepath`: Path to output file
 - `format`: Optional format hint (auto-detected from extension if None)
+- `metadata`: Optional resource metadata (`dict` or `ResourceMeta`) embedded when writing JSON
 
 **Raises:**
 - `ValueError`: If format is unsupported
