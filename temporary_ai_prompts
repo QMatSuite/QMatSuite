@@ -313,4 +313,18 @@ After implementing the above, update the documentation to reflect the new comman
 qv get_command <input_file>: parse the input file and generate a example qv command with all parameters to write yaml file.
 
 
-2025.11.28:
+2025.11.28-1:
+For CLI, implement the following (remember separation of concerns: cli should only call core functions, and cli is just a thin wrapper):
+1. qv init --name project6 does not set name to project6 (starts still with project1). Let's fix this: path should be passed as --path; if both path and name are provided, then mkdir path/slugified_name; if only path, then mkdir path; if only name, then pwd/slugified_name. Is this logic good?
+   [--workflow-id NAME] for qv init project is not necessary: id is generated automatically, and don't add workflow when initialize project.
+2. make "qv init" work for workflow and step as well (previous qv init -> qv init project). Previous qv step-creat -> qv init step.
+3. make all rename functions also as "qv rename": qv rename project, qv rename workflow, qv rename step, qv rename structure.
+4. qv delete: one command to delete project, workflow, step, structure (same logic as init, rename, make it unified). One unified command to delete all resources in the project. But: this calls core api functions for each resource type. Also: when the user delets a resource, move it to ./trash (for project, mkdir ./trash at the parent folder of project. for others, mkdir ./trash in the project folder). Then qv delete the trash folder will clean them up.
+   Delete structure has to be careful: go through all workflows and refuse to delete if the structure is used. Offer --force to delete anyway and leave broken references and --cascade to delete all related workflows.
+   This also applies to delete workflow: in meta of workflow, allow it to have parent workflow ids (last workflows that need to be executed before current workflow e.g. A->B->C->now, then write down C; A->B, A->C, BC->now, then write down BC).
+5. change qv step-set-params to qv configure step. Add qv configure other source commands as well, but for the moment just pass them.
+6. Also unify all qv run. Offer two possibilities: qv run step, qv run workflow, qv run structure, or qv run and automatically determine according to the input (either file or id).
+7. For all qv commands related to project, workflow, step, structure, offer --project PATH to specify the project path (but by default it is the project that is related to pwd, not necessarily the same as pwd, but could be parent folder which contains the project yml)
+
+2025.11.28-2:
+1. 

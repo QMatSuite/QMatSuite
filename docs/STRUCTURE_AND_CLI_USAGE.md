@@ -243,7 +243,7 @@ qv run-structure si \
 
 ---
 
-### `qv run-stepfile`
+### `qv run step`
 
 Runs a QE step described by a YAML file (structure id/path, calculation type,
 parameter dictionaries). This is useful for sharing single-step recipes or
@@ -268,10 +268,10 @@ parameters:
 **Usage:**
 
 ```bash
-qv run-stepfile workflows/si_scf_step.yaml
+qv run step workflows/si_scf_step.yaml
 
 # CLI overrides take precedence over YAML values
-qv run-stepfile workflows/si_scf_step.yaml --SYSTEM.ecutwfc=70
+qv run step workflows/si_scf_step.yaml --SYSTEM.ecutwfc=70
 ```
 
 **What it does:**
@@ -290,41 +290,41 @@ Runs a QE input file with optional parameter overrides.
 
 ```bash
 # Run without overrides
-qv run-step si.scf.in
+qv run step si.scf.in
 
 # Run with parameter overrides
-qv run-step si.scf.in --ecutwfc=60 --degauss=0.01
+qv run step si.scf.in --ecutwfc=60 --degauss=0.01
 
 # Run with section-prefixed parameters
-qv run-step si.scf.in --SYSTEM.ecutwfc=60 --SYSTEM.ecutrho=240
+qv run step si.scf.in --SYSTEM.ecutwfc=60 --SYSTEM.ecutrho=240
 
 # Run with working directory
-qv run-step si.scf.in --workdir temp/run_scf
+qv run step si.scf.in --workdir temp/run_scf
 ```
 
 **Example with various parameter types:**
 
 ```bash
 # Integer
-qv run-step si.scf.in --ecutwfc=60
+qv run step si.scf.in --ecutwfc=60
 
 # Float
-qv run-step si.scf.in --degauss=0.01
+qv run step si.scf.in --degauss=0.01
 
 # Boolean (true)
-qv run-step si.scf.in --tprnfor
+qv run step si.scf.in --tprnfor
 
 # Boolean (false)
-qv run-step si.scf.in --tprnfor=false
+qv run step si.scf.in --tprnfor=false
 
 # String
-qv run-step si.scf.in --prefix='si'
+qv run step si.scf.in --prefix='si'
 
 # List (Python/JSON syntax)
-qv run-step si.scf.in --k_points="[6,6,6,0,0,0]"
+qv run step si.scf.in --k_points="[6,6,6,0,0,0]"
 
 # Multiple parameters
-qv run-step si.scf.in \
+qv run step si.scf.in \
   --ecutwfc=60 \
   --ecutrho=240 \
   --degauss=0.01 \
@@ -341,7 +341,7 @@ To migrate existing QE inputs into the structured workflow layout, leverage
 
 - `build_step_spec_from_qe_input(input_file, destination_dir, ...)`  
   Parses a QE input, stores the extracted structure as JSON, captures
-  namelists/cards, and emits a `*.step.yaml` ready for `qv run-stepfile`.
+  namelists/cards, and emits a `*.step.yaml` ready for `qv run step`.
 - `build_workflow_from_qe_inputs(files, workflow_dir, ...)`  
   Processes multiple QE inputs in order, copies the originals under
   `raw/original_inputs/`, writes per-step YAML files, and generates
@@ -363,10 +363,10 @@ If a parameter exists in multiple sections, you must specify the section:
 
 ```bash
 # This will fail if 'prefix' exists in both CONTROL and SYSTEM
-qv run-step input.in --prefix='si'
+qv run step input.in --prefix='si'
 
 # This works (explicit section)
-qv run-step input.in --CONTROL.prefix='si'
+qv run step input.in --CONTROL.prefix='si'
 ```
 
 **Example: Unknown Parameters**
@@ -375,10 +375,10 @@ If a parameter is not in the metadata, you must provide the section:
 
 ```bash
 # This will fail
-qv run-step input.in --custom_param=value
+qv run step input.in --custom_param=value
 
 # This works
-qv run-step input.in --CONTROL.custom_param=value
+qv run step input.in --CONTROL.custom_param=value
 ```
 
 ### Parameter Value Coercion
@@ -421,23 +421,23 @@ shorthands:
 
 ```bash
 # Replace the entire K_POINTS card
-qv run-step si.scf.in --CARD.K_POINTS.data="[[6,6,6,0,0,0]]"
+qv run step si.scf.in --CARD.K_POINTS.data="[[6,6,6,0,0,0]]"
 
 # Shorthand: option:data syntax (auto-splits on the first colon)
-qv run-step si.scf.in --k_points="automatic:6,6,6,0,0,0"
+qv run step si.scf.in --k_points="automatic:6,6,6,0,0,0"
 
 # Update only a single row (e.g., Monkhorst-Pack offsets)
-qv step-set-param steps/nscf.step.yaml --CARD.K_POINTS.rows.row1=0,0,1
+qv configure step steps/nscf.step.yaml --CARD.K_POINTS.rows.row1=0,0,1
 ```
 
 Cell and atomic-position cards follow the same pattern:
 
 ```bash
-qv run-step si.relax.in --CARD.CELL_PARAMETERS.data="[[5.3,0,0],[0,5.3,0],[0,0,5.3]]"
-qv run-step si.relax.in --CARD.ATOMIC_POSITIONS.option=angstrom --CARD.ATOMIC_POSITIONS.rows.Si1="0.0 0.0 0.0"
+qv run step si.relax.in --CARD.CELL_PARAMETERS.data="[[5.3,0,0],[0,5.3,0],[0,0,5.3]]"
+qv run step si.relax.in --CARD.ATOMIC_POSITIONS.option=angstrom --CARD.ATOMIC_POSITIONS.rows.Si1="0.0 0.0 0.0"
 ```
 
-Use `--remove` with `qv step-set-param` to drop card rows/entries.
+Use `--remove` with `qv configure step` to drop card rows/entries.
 
 ### Species Overrides (masses/pseudopotentials)
 
@@ -451,7 +451,7 @@ qv run-structure si_bulk \
   --SPECIES.Si.pseudopot=Si.pbe-n-rrkjus_psl.1.0.0.UPF
 
 # Remove a mass override from a step spec
-qv step-set-param steps/scf.step.yaml --remove --SPECIES.Si.mass=0
+qv configure step steps/scf.step.yaml --remove --SPECIES.Si.mass=0
 ```
 
 Species overrides pair naturally with the unified pseudo directory (`temp/pseudo`
@@ -480,7 +480,7 @@ qv run-structure si \
 
 ```bash
 # Run existing input with modified parameters
-qv run-step si.scf.in \
+qv run step si.scf.in \
   --ecutwfc=80 \
   --ecutrho=320 \
   --workdir temp/si_scf_high_cutoff
