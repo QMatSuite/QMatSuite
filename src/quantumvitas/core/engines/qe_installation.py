@@ -37,13 +37,20 @@ class QEInstallation:
         
         if qe_home:
             # User provided path - validate it
-            qe_home = Path(qe_home).expanduser().resolve()
-            if self._validate_qe_home(qe_home):
-                self._qe_home = qe_home
+            explicit_home = Path(qe_home).expanduser()
+            try:
+                resolved = explicit_home.resolve()
+            except OSError:
+                resolved = explicit_home
+            if self._validate_qe_home(resolved):
+                self._qe_home = resolved
             else:
                 raise ValueError(f"Invalid QE home directory: {qe_home}. Must contain bin/pw.x")
         else:
             self._qe_home = self._detect_qe_home()
+
+        if self._qe_home:
+            self._set_env_qe_home(self._qe_home)
     
     @staticmethod
     def _validate_qe_home(qe_home: Path) -> bool:
@@ -63,42 +70,81 @@ class QEInstallation:
         return pw_x.exists() and pw_x.is_file()
     
     @staticmethod
+    def qe_home_from_binary(executable_path: Path) -> Optional[Path]:
+        """
+        Infer QE home directory from an executable path.
+
+        Args:
+            executable_path: Path pointing to pw.x/ph.x/etc inside bin/
+
+        Returns:
+            Path to QE home if the executable lives under <qe_home>/bin.
+        """
+        path = Path(executable_path).expanduser()
+        if not path.exists():
+            return None
+
+        try:
+            path = path.resolve()
+        except OSError:
+            pass
+
+        bin_dir = path.parent
+        if bin_dir.name != "bin":
+            return None
+
+        qe_home = bin_dir.parent
+        if QEInstallation._validate_qe_home(qe_home):
+            return qe_home
+        return None
+
+    @staticmethod
+    def _set_env_qe_home(qe_home: Path) -> None:
+        """
+        Ensure QE_HOME environment variable reflects the resolved installation.
+        """
+        try:
+            resolved = qe_home.resolve()
+        except OSError:
+            resolved = qe_home
+
+        current = os.environ.get("QE_HOME")
+        if current:
+            try:
+                current_path = Path(current).expanduser().resolve()
+            except OSError:
+                current_path = Path(current).expanduser()
+            if current_path == resolved:
+                return
+        os.environ["QE_HOME"] = str(resolved)
+
+    @staticmethod
     def _detect_qe_home() -> Optional[Path]:
         """
         Automatically detect QE home directory.
         
         Search order:
-        1. QE_HOME environment variable
-        2. System PATH (using which pw.x)
-        3. Shell config files (~/.bashrc, ~/.zshrc) - extract PATH
-        4. Default location: $HOME/src/q-e-qe-7.5
+        1. Shell configuration files (e.g., ~/.zshrc, ~/.bashrc) for explicit pw.x paths
+        2. QE_HOME environment variable
+        3. Home directory scan (q-e-qe*, quantum-espresso, etc.)
+        4. System PATH (using which pw.x/ph.x and inferring ../ as QE_HOME)
         
         Returns:
             Path to QE home directory if found, None otherwise
         """
-        # Strategy 1: QE_HOME environment variable
+        # Strategy 1: shell configuration files (prefer zsh on macOS)
+        shell_qe_home = QEInstallation._extract_from_shell_config()
+        if shell_qe_home:
+            return shell_qe_home
+
+        # Strategy 2: QE_HOME environment variable
         qe_home_env = os.environ.get("QE_HOME")
         if qe_home_env:
             qe_home = Path(qe_home_env).expanduser().resolve()
             if QEInstallation._validate_qe_home(qe_home):
                 return qe_home
         
-        # Strategy 2: System PATH (using which pw.x)
-        pw_x_path = shutil.which("pw.x")
-        if pw_x_path:
-            pw_x = Path(pw_x_path).resolve()
-            # pw.x is in bin/, so QE home is parent of bin
-            if pw_x.name == "pw.x" and pw_x.parent.name == "bin":
-                qe_home = pw_x.parent.parent
-                if QEInstallation._validate_qe_home(qe_home):
-                    return qe_home
-        
-        # Strategy 3: Shell config files - extract PATH info
-        qe_home = QEInstallation._extract_from_shell_config()
-        if qe_home and QEInstallation._validate_qe_home(qe_home):
-            return qe_home
-        
-        # Strategy 4: Search in home directory (max 3 levels deep)
+        # Strategy 3: Search in home directory (max 3 levels deep)
         home_dir = Path.home()
         candidates = []
         
@@ -222,6 +268,23 @@ class QEInstallation:
                 # This is a valid QE source directory but not compiled, continue searching
                 continue
         
+        if candidates:
+            for candidate in candidates:
+                pw_x_path = candidate / "bin" / "pw.x"
+                if pw_x_path.exists():
+                    qe_home = QEInstallation.qe_home_from_binary(pw_x_path)
+                    if qe_home:
+                        return qe_home
+        
+        # Strategy 4: System PATH (using which pw.x as first indicator)
+        for exe_name in ("pw.x", "ph.x"):
+            exe_path = shutil.which(exe_name)
+            if not exe_path:
+                continue
+            qe_home = QEInstallation.qe_home_from_binary(Path(exe_path))
+            if qe_home:
+                return qe_home
+        
         # If no compiled version found, return None
         return None
     
@@ -236,41 +299,99 @@ class QEInstallation:
         Returns:
             Path to QE home if found, None otherwise
         """
-        shell_configs = [
-            Path.home() / ".zshrc",
-            Path.home() / ".bashrc",
-            Path.home() / ".bash_profile",
-            Path.home() / ".profile",
-        ]
-        
+        rc_names = [".zshrc", ".bashrc", ".bash_profile", ".profile"]
+        shell_configs: list[Path] = []
+        seen: set[Path] = set()
+
+        def _add(path: Path):
+            if path in seen:
+                return
+            seen.add(path)
+            shell_configs.append(path)
+
+        home_dir = Path.home()
+        for name in rc_names:
+            _add(home_dir / name)
+
+        users_root = Path("/Users")
+        if users_root.exists():
+            try:
+                for entry in users_root.iterdir():
+                    if not entry.is_dir() or entry == home_dir:
+                        continue
+                    for name in rc_names:
+                        _add(entry / name)
+            except PermissionError:
+                pass
+
+        def _expand_candidate(value: str) -> Path:
+            expanded = value.replace("$HOME", str(Path.home()))
+            expanded = os.path.expandvars(expanded)
+            expanded = os.path.expanduser(expanded)
+            return Path(expanded)
+
         for config_file in shell_configs:
             if not config_file.exists():
                 continue
             
             try:
                 content = config_file.read_text()
-                # Look for PATH exports containing q-e-qe or quantum-espresso
-                # Pattern: export PATH="/path/to/q-e-qe-7.5/bin:$PATH" or similar
+            except Exception:
+                continue
+
+            # Step 1: look for explicit QE_HOME exports
+            env_patterns = [
+                r"export\s+QE_HOME\s*=\s*['\"]?([^'\"]+)['\"]?",
+                r"QE_HOME\s*=\s*['\"]?([^'\"]+)['\"]?",
+            ]
+            for pattern in env_patterns:
+                matches = re.findall(pattern, content)
+                for match in matches:
+                    try:
+                        candidate = _expand_candidate(match).resolve()
+                    except Exception:
+                        continue
+                    if QEInstallation._validate_qe_home(candidate):
+                        return candidate
+
+            # Step 2: look for explicit references to pw.x/ph.x
+            tokens = re.split(r'[\s"\'=]+', content)
+            for token in tokens:
+                if not token or "pw.x" not in token and "ph.x" not in token:
+                    continue
+                if "/" not in token:
+                    continue
+                expanded = token.replace("$HOME", str(Path.home()))
+                expanded = os.path.expandvars(os.path.expanduser(expanded))
+                exe_path = Path(expanded)
+                qe_home = QEInstallation.qe_home_from_binary(exe_path)
+                if qe_home:
+                    return qe_home
+
+            # Step 3: fallback to original PATH-based heuristics
+            try:
                 patterns = [
                     r'export\s+PATH=["\']([^"\']*q-e-qe[^"\']*)/bin',
                     r'export\s+PATH=["\']([^"\']*quantum-espresso[^"\']*)/bin',
                     r'PATH=["\']([^"\']*q-e-qe[^"\']*)/bin',
                     r'PATH=["\']([^"\']*quantum-espresso[^"\']*)/bin',
                 ]
-                
+
                 for pattern in patterns:
                     matches = re.findall(pattern, content, re.IGNORECASE)
                     for match in matches:
-                        # match might be a path or contain $HOME, expand it
                         path_str = match.replace("$HOME", str(Path.home()))
-                        path_str = os.path.expanduser(path_str)
-                        qe_home = Path(path_str).parent.resolve()  # Remove /bin
-                        if QEInstallation._validate_qe_home(qe_home):
-                            return qe_home
+                        path_str = os.path.expandvars(os.path.expanduser(path_str))
+                        candidate = Path(path_str).expanduser()
+                        try:
+                            candidate = candidate.resolve()
+                        except OSError:
+                            pass
+                        if QEInstallation._validate_qe_home(candidate):
+                            return candidate
             except Exception:
-                # If file can't be read, skip it
                 continue
-        
+
         return None
     
     
