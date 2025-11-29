@@ -2,6 +2,12 @@
 
 from .base import Engine, EngineConfig
 from .qe import QuantumEspressoEngine
+from .qe_installation import (
+    QEInstallation,
+    get_qe_home,
+    set_qe_home,
+    reset_qe_home,
+)
 from quantumvitas.io import (
     QEInputParser,
     QEInputGenerator,
@@ -17,6 +23,10 @@ __all__ = [
     "Engine",
     "EngineConfig",
     "QuantumEspressoEngine",
+    "QEInstallation",
+    "get_qe_home",
+    "set_qe_home",
+    "reset_qe_home",
     "QEInputParser",
     "QEInputGenerator",
     "QEInput",

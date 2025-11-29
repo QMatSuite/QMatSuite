@@ -3,6 +3,10 @@ Quantum ESPRESSO installation detection and path management.
 
 This module provides utilities to automatically detect QE installation
 by storing the QE home directory (which contains bin/ and test-suite/).
+
+The detected QE home is stored in an internal registry (not os.environ)
+to avoid pollution from external processes. Use get_qe_home()/set_qe_home()
+to access or modify the configured path.
 """
 
 from pathlib import Path
@@ -10,6 +14,103 @@ from typing import Optional
 import os
 import shutil
 import re
+
+
+# ============================================================================
+# Module-level QE Home Registry
+# ============================================================================
+# Internal storage for QE home path - NOT stored in os.environ to prevent
+# pollution from external processes or test isolation issues.
+
+_qe_home_registry: Optional[Path] = None
+_qe_home_initialized: bool = False
+
+
+def get_qe_home() -> Optional[Path]:
+    """
+    Get the currently configured QE home directory.
+    
+    Returns the internal registry value (not os.environ["QE_HOME"]).
+    If not yet initialized, triggers auto-detection.
+    
+    Returns:
+        Path to QE home directory, or None if not found/configured.
+    """
+    global _qe_home_registry, _qe_home_initialized
+    
+    if not _qe_home_initialized:
+        # First access - initialize from environment or auto-detect
+        _initialize_qe_home()
+    
+    return _qe_home_registry
+
+
+def set_qe_home(path: Optional[Path]) -> None:
+    """
+    Explicitly set the QE home directory.
+    
+    Use this to override auto-detection or configure QE programmatically.
+    Does NOT modify os.environ["QE_HOME"].
+    
+    Args:
+        path: Path to QE home directory (must contain bin/pw.x), or None to clear.
+        
+    Raises:
+        ValueError: If path is provided but invalid (no bin/pw.x).
+    """
+    global _qe_home_registry, _qe_home_initialized
+    
+    if path is not None:
+        path = Path(path).expanduser()
+        try:
+            path = path.resolve()
+        except OSError:
+            pass
+        if not QEInstallation._validate_qe_home(path):
+            raise ValueError(f"Invalid QE home directory: {path}. Must contain bin/pw.x")
+    
+    _qe_home_registry = path
+    _qe_home_initialized = True
+
+
+def reset_qe_home() -> None:
+    """
+    Reset the QE home registry to uninitialized state.
+    
+    Next call to get_qe_home() will re-run auto-detection.
+    Useful for testing or when QE installation changes.
+    """
+    global _qe_home_registry, _qe_home_initialized
+    _qe_home_registry = None
+    _qe_home_initialized = False
+
+
+def _initialize_qe_home() -> None:
+    """
+    Initialize QE home from environment variable or auto-detection.
+    
+    Called automatically on first access to get_qe_home().
+    Reads QE_HOME from os.environ once, then stores internally.
+    """
+    global _qe_home_registry, _qe_home_initialized
+    
+    _qe_home_initialized = True
+    
+    # Read from environment variable (one-time read)
+    qe_home_env = os.environ.get("QE_HOME")
+    if qe_home_env:
+        try:
+            path = Path(qe_home_env).expanduser().resolve()
+            if QEInstallation._validate_qe_home(path):
+                _qe_home_registry = path
+                return
+        except OSError:
+            pass
+    
+    # Auto-detect using QEInstallation strategies
+    detected = QEInstallation._detect_qe_home()
+    if detected:
+        _qe_home_registry = detected
 
 
 class QEInstallation:
@@ -31,12 +132,12 @@ class QEInstallation:
         
         Args:
             qe_home: Optional explicit path to QE home directory.
-                    If None, will auto-detect using multiple strategies.
+                    If None, will use the module registry (auto-detected or set via set_qe_home()).
         """
         self._qe_home: Optional[Path] = None
         
         if qe_home:
-            # User provided path - validate it
+            # User provided explicit path - validate and use it
             explicit_home = Path(qe_home).expanduser()
             try:
                 resolved = explicit_home.resolve()
@@ -44,13 +145,13 @@ class QEInstallation:
                 resolved = explicit_home
             if self._validate_qe_home(resolved):
                 self._qe_home = resolved
+                # Also update the module registry so other code sees this
+                set_qe_home(resolved)
             else:
                 raise ValueError(f"Invalid QE home directory: {qe_home}. Must contain bin/pw.x")
         else:
-            self._qe_home = self._detect_qe_home()
-
-        if self._qe_home:
-            self._set_env_qe_home(self._qe_home)
+            # Use the module-level registry (triggers auto-detection if needed)
+            self._qe_home = get_qe_home()
     
     @staticmethod
     def _validate_qe_home(qe_home: Path) -> bool:
@@ -99,47 +200,23 @@ class QEInstallation:
         return None
 
     @staticmethod
-    def _set_env_qe_home(qe_home: Path) -> None:
-        """
-        Ensure QE_HOME environment variable reflects the resolved installation.
-        """
-        try:
-            resolved = qe_home.resolve()
-        except OSError:
-            resolved = qe_home
-
-        current = os.environ.get("QE_HOME")
-        if current:
-            try:
-                current_path = Path(current).expanduser().resolve()
-            except OSError:
-                current_path = Path(current).expanduser()
-            if current_path == resolved:
-                return
-        os.environ["QE_HOME"] = str(resolved)
-
-    @staticmethod
     def _detect_qe_home() -> Optional[Path]:
         """
-        Automatically detect QE home directory.
+        Automatically detect QE home directory using heuristics.
+        
+        Note: This does NOT check os.environ["QE_HOME"] - that's handled
+        separately by _initialize_qe_home() to ensure the env var is only
+        read once at startup.
         
         Search order:
-        1. QE_HOME environment variable (most explicit, preferred in CI)
-        2. System PATH (using which pw.x/ph.x and inferring QE_HOME)
-        3. Shell configuration files (e.g., ~/.zshrc, ~/.bashrc) for local dev
-        4. Home directory scan (q-e-qe*, quantum-espresso, etc.)
+        1. System PATH (using which pw.x/ph.x and inferring QE_HOME)
+        2. Shell configuration files (e.g., ~/.zshrc, ~/.bashrc) for local dev
+        3. Home directory scan (q-e-qe*, quantum-espresso, etc.)
         
         Returns:
             Path to QE home directory if found, None otherwise
         """
-        # Strategy 1: QE_HOME environment variable (most explicit)
-        qe_home_env = os.environ.get("QE_HOME")
-        if qe_home_env:
-            qe_home = Path(qe_home_env).expanduser().resolve()
-            if QEInstallation._validate_qe_home(qe_home):
-                return qe_home
-        
-        # Strategy 2: System PATH (using which pw.x)
+        # Strategy 1: System PATH (using which pw.x)
         for exe_name in ("pw.x", "ph.x"):
             exe_path = shutil.which(exe_name)
             if exe_path:
@@ -147,12 +224,12 @@ class QEInstallation:
                 if qe_home:
                     return qe_home
         
-        # Strategy 3: Shell configuration files (for local development)
+        # Strategy 2: Shell configuration files (for local development)
         shell_qe_home = QEInstallation._extract_from_shell_config()
         if shell_qe_home:
             return shell_qe_home
         
-        # Strategy 4: Search in home directory (max 3 levels deep)
+        # Strategy 3: Search in home directory (max 3 levels deep)
         home_dir = Path.home()
         candidates = []
         
