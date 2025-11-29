@@ -124,27 +124,35 @@ class QEInstallation:
         Automatically detect QE home directory.
         
         Search order:
-        1. Shell configuration files (e.g., ~/.zshrc, ~/.bashrc) for explicit pw.x paths
-        2. QE_HOME environment variable
-        3. Home directory scan (q-e-qe*, quantum-espresso, etc.)
-        4. System PATH (using which pw.x/ph.x and inferring ../ as QE_HOME)
+        1. QE_HOME environment variable (most explicit, preferred in CI)
+        2. System PATH (using which pw.x/ph.x and inferring QE_HOME)
+        3. Shell configuration files (e.g., ~/.zshrc, ~/.bashrc) for local dev
+        4. Home directory scan (q-e-qe*, quantum-espresso, etc.)
         
         Returns:
             Path to QE home directory if found, None otherwise
         """
-        # Strategy 1: shell configuration files (prefer zsh on macOS)
-        shell_qe_home = QEInstallation._extract_from_shell_config()
-        if shell_qe_home:
-            return shell_qe_home
-
-        # Strategy 2: QE_HOME environment variable
+        # Strategy 1: QE_HOME environment variable (most explicit)
         qe_home_env = os.environ.get("QE_HOME")
         if qe_home_env:
             qe_home = Path(qe_home_env).expanduser().resolve()
             if QEInstallation._validate_qe_home(qe_home):
                 return qe_home
         
-        # Strategy 3: Search in home directory (max 3 levels deep)
+        # Strategy 2: System PATH (using which pw.x)
+        for exe_name in ("pw.x", "ph.x"):
+            exe_path = shutil.which(exe_name)
+            if exe_path:
+                qe_home = QEInstallation.qe_home_from_binary(Path(exe_path))
+                if qe_home:
+                    return qe_home
+        
+        # Strategy 3: Shell configuration files (for local development)
+        shell_qe_home = QEInstallation._extract_from_shell_config()
+        if shell_qe_home:
+            return shell_qe_home
+        
+        # Strategy 4: Search in home directory (max 3 levels deep)
         home_dir = Path.home()
         candidates = []
         
@@ -275,15 +283,6 @@ class QEInstallation:
                     qe_home = QEInstallation.qe_home_from_binary(pw_x_path)
                     if qe_home:
                         return qe_home
-        
-        # Strategy 4: System PATH (using which pw.x as first indicator)
-        for exe_name in ("pw.x", "ph.x"):
-            exe_path = shutil.which(exe_name)
-            if not exe_path:
-                continue
-            qe_home = QEInstallation.qe_home_from_binary(Path(exe_path))
-            if qe_home:
-                return qe_home
         
         # If no compiled version found, return None
         return None

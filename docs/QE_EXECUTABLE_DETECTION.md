@@ -13,6 +13,22 @@ The QE engine automatically detects and locates Quantum ESPRESSO executables acr
   - Falls back to system PATH
 - **Helpful error messages**: Clear error messages when executables are not found
 
+## QE Home Detection Order
+
+When no explicit path is provided, the `QEInstallation` class auto-detects QE using this priority order:
+
+| Priority | Source | Description |
+|----------|--------|-------------|
+| 1 | `QE_HOME` environment variable | Most explicit; recommended for CI/CD |
+| 2 | System PATH | Uses `which pw.x` and infers `QE_HOME` from `../bin/pw.x` |
+| 3 | Shell config files | Parses `~/.zshrc`, `~/.bashrc`, etc. for `QE_HOME` exports or PATH entries |
+| 4 | Home directory scan | Searches `$HOME` (up to 3 levels) for `q-e-qe*` or `quantum-espresso` folders |
+
+This order ensures that:
+- **CI/CD environments** (GitHub Actions, etc.) work reliably when `QE_HOME` is set
+- **Local development** benefits from shell config parsing for convenience
+- **Fallback heuristics** find common installation patterns
+
 ## Usage
 
 ### Basic Usage
@@ -22,22 +38,23 @@ from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.base import EngineConfig
 from pathlib import Path
 
-# Option 1: Specify bin directory directly
+# Option 1: Let auto-detection find QE (recommended)
+# Uses QE_HOME env var, PATH, shell configs, or home directory scan
+config = EngineConfig(name="qe")
+engine = QuantumEspressoEngine(config)
+
+# Option 2: Specify QE home directory explicitly
+config = EngineConfig(
+    name="qe",
+    qe_home=Path.home() / "src" / "q-e-qe-7.5"
+)
+engine = QuantumEspressoEngine(config)
+
+# Option 3: Specify bin directory (backward compatibility)
 config = EngineConfig(
     name="qe",
     executable_path=Path.home() / "src" / "q-e-qe-7.5" / "bin"
 )
-engine = QuantumEspressoEngine(config)
-
-# Option 2: Specify QE root directory (automatically checks bin subdirectory)
-config = EngineConfig(
-    name="qe",
-    executable_path=Path.home() / "src" / "q-e-qe-7.5"
-)
-engine = QuantumEspressoEngine(config)
-
-# Option 3: Use system PATH (no path specified)
-config = EngineConfig(name="qe")
 engine = QuantumEspressoEngine(config)
 ```
 
@@ -89,11 +106,22 @@ print(f"Command: {' '.join(command)}")
 
 ## Search Order
 
-The engine searches for executables in the following order:
+When looking for a specific executable (e.g., `pw.x`), the engine searches in this order:
 
-1. **Specified bin directory** (`executable_path` if it's a bin directory)
-2. **QE root bin subdirectory** (`executable_path/bin` if `executable_path` is QE root)
+1. **QE_HOME/bin** (from auto-detected or explicitly provided `qe_home`)
+2. **Specified bin directory** (`executable_path` if configured)
 3. **System PATH** (using `which`/`shutil.which`)
+
+### Environment Variable
+
+Set `QE_HOME` to ensure reliable detection in scripts and CI:
+
+```bash
+export QE_HOME=$HOME/src/q-e-qe-7.5
+export PATH="$QE_HOME/bin:$PATH"
+```
+
+The `QEInstallation` class automatically sets `QE_HOME` in the current process once a valid installation is found.
 
 ## Platform-Specific Behavior
 

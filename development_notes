@@ -52,6 +52,8 @@ cd test-suite
 make run-tests NPROCS=4
 
 To run tests, use the following command:
+pip install --upgrade pip
+
   --- setup venv ---
   python3 -m venv .venv
   source .venv/bin/activate

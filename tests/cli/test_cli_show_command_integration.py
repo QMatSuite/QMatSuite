@@ -7,6 +7,7 @@ import yaml
 from typer.testing import CliRunner
 
 from quantumvitas.cli.main import app
+from quantumvitas.core.resources import slugify
 from quantumvitas.core.engines.base import EngineConfig
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.qe_workflow import StepResult
@@ -132,7 +133,8 @@ def test_cli_show_command_executes_against_references(
         init_result = runner.invoke(app, init_args, catch_exceptions=False)
         assert init_result.exit_code == 0, init_result.stdout
 
-        workflow_dir = project_root / "workflows" / workflow_name
+        workflow_slug = slugify(workflow_name)
+        workflow_dir = project_root / "workflows" / workflow_slug
         workflow_yaml = yaml.safe_load((workflow_dir / "workflow.yaml").read_text())
         last_step = workflow_yaml["steps"][-1]
         step_spec_path = workflow_dir / last_step["step_file"]

@@ -46,16 +46,26 @@ specified with `--tprnfor` / `--tprnfor=false`.
 
 ### Detecting QE installations
 
-`qv detect-qe` no longer depends on a project checkout. It aggregates three data
-sources:
+`qv detect-qe` no longer depends on a project checkout. It auto-detects QE using
+this priority order:
 
-- `QE_HOME` environment variable (highest priority)
-- The QE home reported by the engine installation
-- `which pw.x` (walks up two parents to guess `<qe_home>/bin/pw.x`)
+| Priority | Source | Description |
+|----------|--------|-------------|
+| 1 | `QE_HOME` env var | Most explicit; recommended for CI/CD |
+| 2 | System PATH | Uses `which pw.x` and infers `QE_HOME` |
+| 3 | Shell config files | Parses `~/.zshrc`, `~/.bashrc` for exports |
+| 4 | Home directory scan | Searches `$HOME` for `q-e-qe*` folders |
 
 The command prints the resolved `qe_home`, `bin` directory, located executables,
-and whether `test-suite/` was found (assumed to live under `<qe_home>/test-suite`
-when available). Use this output to verify CI images or local developer setups.
+and whether `test-suite/` was found. Use this output to verify CI images or local
+developer setups.
+
+**For CI/CD (GitHub Actions, etc.)**, always set the `QE_HOME` environment variable:
+
+```yaml
+env:
+  QE_HOME: $HOME/src/q-e-qe-7.5
+```
 
 ## Python API surface
 

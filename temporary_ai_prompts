@@ -343,3 +343,4 @@ For CLI, implement the following (remember separation of concerns: cli should on
 11. write a unit test for show-command using scf inputs in tests/integration/ci_test_data/. Run the shown cli command and see whether it generates correct input (first init structure using the same input file, then init workflow, then init step using the generated structure and proposed command from show-command) (parse original input and generated input and compare. Does the calculation type matches? Parameters match?)?
 
 2025.11.28-3:
+Opus 4.5
