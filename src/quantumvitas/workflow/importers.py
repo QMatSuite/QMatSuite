@@ -243,30 +243,116 @@ def _extract_parameters(qe_input: QEInput) -> Dict[str, Dict[str, object]]:
         section = namelist.name.upper()
         parameters.setdefault(section, {})
         parameters[section].update(namelist.parameters)
-    _remove_structure_parameters(parameters)
+    _remove_structure_parameters(parameters, qe_input)
     return parameters
 
 
 STRUCTURAL_SYSTEM_KEYS = {"ibrav", "nat", "ntyp"}
+LATTICE_PARAM_KEYS = {"a", "b", "c", "cosab", "cosac", "cosbc"}
 
 
-def _remove_structure_parameters(parameters: Dict[str, Dict[str, object]]) -> None:
+def _needs_alat_preservation(qe_input: QEInput) -> bool:
+    """
+    Determine if we need to preserve alat (celldm(1) or A) for k-point compatibility.
+    
+    Returns True if:
+    - K_POINTS are in tpiba format (or variants like tpiba_b, tpiba_c)
+    - AND the input has an alat defined (via celldm(1), A, or ibrav != 0)
+    """
+    kpoints = qe_input.get_card(QECardType.K_POINTS)
+    if not kpoints:
+        return False
+    
+    option = (kpoints.option or "").lower()
+    # These formats don't depend on alat
+    if option in ("gamma", "automatic", "crystal", "crystal_b", "crystal_c"):
+        return False
+    
+    # tpiba (default), tpiba_b, tpiba_c depend on alat
+    # Check if there's an alat defined
+    system = qe_input.get_namelist("SYSTEM") or qe_input.get_namelist("system")
+    if not system:
+        return False
+    
+    # Check for explicit alat (celldm(1) or A)
+    has_celldm1 = any(str(k).lower() == "celldm(1)" for k in system.parameters.keys())
+    has_a = any(str(k).lower() == "a" for k in system.parameters.keys())
+    
+    if has_celldm1 or has_a:
+        return True
+    
+    # If ibrav != 0, alat is derived from celldm(1) which must exist
+    ibrav = system.parameters.get("ibrav", 0)
+    try:
+        ibrav = int(ibrav)
+    except (TypeError, ValueError):
+        ibrav = 0
+    
+    return ibrav != 0
+
+
+def _extract_alat_bohr(qe_input: QEInput) -> Optional[float]:
+    """
+    Extract alat in Bohr from the input.
+    
+    Returns alat in Bohr, or None if not determinable.
+    """
+    from quantumvitas.io.structure_io import BOHR_TO_ANGSTROM
+    
+    system = qe_input.get_namelist("SYSTEM") or qe_input.get_namelist("system")
+    if not system:
+        return None
+    
+    # Check celldm(1) first (in Bohr)
+    for key, value in system.parameters.items():
+        if str(key).lower() == "celldm(1)":
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                pass
+    
+    # Check A (in Angstrom, convert to Bohr)
+    for key, value in system.parameters.items():
+        if str(key).lower() == "a":
+            try:
+                return float(value) / BOHR_TO_ANGSTROM
+            except (TypeError, ValueError):
+                pass
+    
+    return None
+
+
+def _remove_structure_parameters(parameters: Dict[str, Dict[str, object]], qe_input: QEInput) -> None:
     """
     Remove structure-related SYSTEM parameters so they live exclusively in the structure payload.
+    
+    Exception: When k-points are in tpiba format, we preserve alat (as celldm(1))
+    so that k-points remain correct when we regenerate with ibrav=0 and CELL_PARAMETERS (alat).
     """
     system_params = parameters.get("SYSTEM")
     if not system_params:
         return
 
+    preserve_alat = _needs_alat_preservation(qe_input)
+    alat_bohr = _extract_alat_bohr(qe_input) if preserve_alat else None
+
     keys_to_remove: list[str] = []
     for key in list(system_params.keys()):
         key_str = str(key)
         lower_key = key_str.lower()
-        if lower_key in STRUCTURAL_SYSTEM_KEYS or lower_key.startswith("celldm"):
+        if lower_key in STRUCTURAL_SYSTEM_KEYS:
+            keys_to_remove.append(key)
+        elif lower_key.startswith("celldm"):
+            keys_to_remove.append(key)
+        elif lower_key in LATTICE_PARAM_KEYS:
             keys_to_remove.append(key)
 
     for key in keys_to_remove:
         system_params.pop(key, None)
+
+    # Add back celldm(1) if we need to preserve alat
+    if alat_bohr is not None:
+        system_params["celldm(1)"] = alat_bohr
 
     if not system_params:
         parameters.pop("SYSTEM", None)
@@ -277,11 +363,37 @@ def _extract_cards(qe_input: QEInput) -> Dict[str, Dict[str, object]]:
     for card in qe_input.cards:
         if card.card_type in STRUCTURE_CARDS:
             continue
-        cards[card.card_type.value] = {
-            "option": card.option,
-            "data": card.data,
-        }
+        # Convert K_POINTS from tpiba to crystal if ibrav != 0
+        # This is needed because when we convert to ibrav=0, the alat changes
+        if card.card_type == QECardType.K_POINTS:
+            converted = _convert_kpoints_if_needed(qe_input, card)
+            cards[card.card_type.value] = {
+                "option": converted["option"],
+                "data": converted["data"],
+            }
+        else:
+            cards[card.card_type.value] = {
+                "option": card.option,
+                "data": card.data,
+            }
     return cards
+
+
+def _convert_kpoints_if_needed(qe_input: QEInput, kpoints_card) -> Dict[str, object]:
+    """
+    Handle K_POINTS when importing a QE input.
+    
+    K_POINTS are kept as-is because:
+    - crystal/crystal_b/crystal_c: Independent of alat, work with any cell representation
+    - gamma/automatic: Independent of alat
+    - tpiba/tpiba_b/tpiba_c (or no option): alat is preserved via celldm(1) in the
+      step spec, and CELL_PARAMETERS (alat) is used when regenerating
+    
+    If the original input has no alat (ibrav=0 with absolute CELL_PARAMETERS units),
+    tpiba k-points would be interpreted using the derived alat from the cell vectors,
+    which is the same behavior as the original.
+    """
+    return {"option": kpoints_card.option, "data": kpoints_card.data}
 
 
 def _infer_step_type(qe_input: QEInput) -> str:

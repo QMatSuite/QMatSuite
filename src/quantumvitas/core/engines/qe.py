@@ -177,7 +177,14 @@ class QuantumEspressoEngine(Engine):
             # Linux/Mac: use .x extension
             executable_name = executable_name.replace(".exe", ".x")
         
-        # Build search paths
+        # Always prefer QE_HOME/bin if available
+        installation_path = None
+        if self._installation and self._installation.qe_home:
+            installation_path = self._installation.qe_home / "bin" / executable_name
+            if installation_path.exists() and os.access(installation_path, os.X_OK):
+                return installation_path
+
+        # Build search paths (legacy/back-compat)
         if search_paths is None:
             search_paths = []
             
@@ -199,17 +206,24 @@ class QuantumEspressoEngine(Engine):
                     # qe_bin_dir is already a bin directory
                     search_paths.append(self.qe_bin_dir)
         
-        # Search in specified paths (QE_HOME/bin first)
+        # Search in specified paths
         for search_path in search_paths:
             exe_path = search_path / executable_name
             if exe_path.exists() and exe_path.is_file() and os.access(exe_path, os.X_OK):
                 return exe_path
         
-        # Fallback: Search in system PATH (only if not found in QE_HOME)
+        # Fallback: Search in system PATH and update QE_HOME if possible
         exe_in_path = shutil.which(executable_name)
         if exe_in_path:
             exe_path = Path(exe_in_path)
             if exe_path.exists() and exe_path.is_file():
+                inferred_home = QEInstallation.qe_home_from_binary(exe_path)
+                if inferred_home:
+                    # Refresh installation so future lookups hit QE_HOME/bin
+                    self._installation = QEInstallation(qe_home=inferred_home)
+                    refreshed = self._installation.qe_home / "bin" / executable_name
+                    if refreshed.exists() and os.access(refreshed, os.X_OK):
+                        return refreshed
                 return exe_path
         
         return None
