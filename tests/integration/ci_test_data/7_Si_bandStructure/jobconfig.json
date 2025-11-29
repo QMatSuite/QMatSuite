@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "tests": [
+    {
+      "input": "si.0_scf.in",
+      "reference": "reference/si.0_scf.out",
+      "args": "1",
+      "sequence": 1
+    },
+    {
+      "input": "si.1_nscf.in",
+      "reference": "reference/si.1_nscf.out",
+      "args": "1",
+      "sequence": 2
+    },
+    {
+      "input": "si.2_bands.in",
+      "reference": "reference/si.2_bands.out",
+      "args": "1",
+      "sequence": 3
+    },
+    {
+      "input": "si.3_bands.pp.in",
+      "reference": "reference/si.3_bands.pp.out",
+      "args": "11",
+      "sequence": 4
+    },
+    {
+      "input": "si.4_plotband.in",
+      "reference": "reference/si.4_plotband.out",
+      "args": null,
+      "sequence": 5
+    }
+  ]
+}

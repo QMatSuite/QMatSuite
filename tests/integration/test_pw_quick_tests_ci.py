@@ -6,7 +6,6 @@ or `PYTHONPATH=src`).
 """
 
 from pathlib import Path
-import json
 
 import pytest
 
@@ -15,6 +14,7 @@ from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.base import EngineConfig
 from tests.core import run_and_verify_step_with_assert
 from tests.core.qe_step_runner import get_default_working_dir
+from tests.core.test_data import load_test_cases
 
 
 pytestmark = pytest.mark.quick
@@ -109,40 +109,17 @@ class TestPWQuickExecution:
         return ci_test_data
 
     @pytest.fixture(scope="module")
-    def pw_tests_from_manifest(self, ci_test_data_dir: Path):
-        """Load PW tests from manifest.json."""
-        manifest_file = ci_test_data_dir / "manifest.json"
-        if not manifest_file.exists():
-            pytest.skip(f"manifest.json not found: {manifest_file}")
-
-        with open(manifest_file) as f:
-            manifest = json.load(f)
-
-        pw_tests = []
-        for test in manifest.get("tests", []):
-            category = test.get("category", "")
-            if category.startswith("pw_"):
-                rel_input = test.get("input_file", "")
-                input_file = ci_test_data_dir / rel_input
-                if input_file.exists():
-                    pw_tests.append(
-                        {
-                            "category": category,
-                            "test_file": test.get("test_file"),
-                            "input_file": input_file,
-                        }
-                    )
-
-        if not pw_tests:
-            pytest.skip("No PW tests found in manifest.json")
-
-        return pw_tests
+    def pw_test_cases(self, ci_test_data_dir: Path):
+        folder = ci_test_data_dir / "pw_single_tests"
+        if not folder.exists():
+            pytest.skip(f"PW test folder not found: {folder}")
+        return load_test_cases(folder, ci_root=ci_test_data_dir)
 
     def test_pw_quick_execution(
         self,
         qe_engine: QuantumEspressoEngine,
         ci_test_data_dir: Path,
-        pw_tests_from_manifest,
+        pw_test_cases,
     ):
         """
         Run quick PW tests from CI test data using standardized step execution.
@@ -153,10 +130,11 @@ class TestPWQuickExecution:
         results = []
         project_root = Path(__file__).parent.parent.parent
 
-        for test_info in pw_tests_from_manifest:
-            input_file = test_info["input_file"]
-            category = test_info["category"]
-            test_name = test_info["test_file"]
+        pw_folder = ci_test_data_dir / "pw_single_tests"
+        for case in pw_test_cases:
+            input_file = case.input_path
+            category = pw_folder.name
+            test_name = input_file.name
 
             test_name_slug = test_name.replace(".in", "").replace("/", "_")
             test_working_dir = get_default_working_dir(

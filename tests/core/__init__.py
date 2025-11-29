@@ -30,6 +30,7 @@ from .qe_step_runner import (
     run_and_verify_step,
     run_and_verify_step_with_assert,
 )
+from .test_data import load_test_cases, InputTestCase
 
 __all__ = [
     "TestSuite",
@@ -52,5 +53,7 @@ __all__ = [
     "verify_step_with_reference",
     "run_and_verify_step",
     "run_and_verify_step_with_assert",
+    "load_test_cases",
+    "InputTestCase",
 ]
 

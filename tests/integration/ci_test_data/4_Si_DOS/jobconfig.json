@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "tests": [
+    {
+      "input": "si.1_scf.in",
+      "reference": "reference/si.1_scf.out",
+      "args": "1",
+      "sequence": 1
+    },
+    {
+      "input": "si.2_nscf.in",
+      "reference": "reference/si.2_nscf.out",
+      "args": "1",
+      "sequence": 2
+    },
+    {
+      "input": "si.3_dos.in",
+      "reference": "reference/si.3_dos.out",
+      "args": "10",
+      "sequence": 3
+    }
+  ]
+}

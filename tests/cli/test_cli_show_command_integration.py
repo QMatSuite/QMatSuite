@@ -1,0 +1,180 @@
+import shlex
+import shutil
+from pathlib import Path
+
+import pytest
+import yaml
+from typer.testing import CliRunner
+
+from quantumvitas.cli.main import app
+from quantumvitas.core.engines.base import EngineConfig
+from quantumvitas.core.engines.qe import QuantumEspressoEngine
+from quantumvitas.core.engines.qe_workflow import StepResult
+from tests.core.qe_step_verification import verify_step_result
+from tests.core.test_data import load_test_cases
+
+pytestmark = pytest.mark.qe_cli
+
+
+@pytest.fixture(scope="module")
+def qe_engine() -> QuantumEspressoEngine:
+    config = EngineConfig(name="qe")
+    engine = QuantumEspressoEngine(config)
+    if not engine.detect_executable("pw.x"):
+        pytest.skip("pw.x not found. CLI step integration requires QE.")
+    return engine
+
+
+def _extract_paths(stdout: str) -> tuple[Path, Path]:
+    for line in stdout.splitlines():
+        line = line.strip()
+        if not line.startswith("Step finished:"):
+            continue
+        if "->" not in line:
+            break
+        _, rest = line.split("->", 1)
+        rest = rest.strip()
+        input_path = None
+        if "(input" in rest:
+            output_part, input_part = rest.split("(input", 1)
+            output_part = output_part.strip()
+            input_path = Path(input_part.strip().rstrip(")"))
+        else:
+            output_part = rest
+        return Path(output_part.strip()), input_path
+    raise AssertionError("CLI output missing 'Step finished' line.")
+
+
+def _ensure_clean_directory(path: Path) -> None:
+    if path.exists():
+        shutil.rmtree(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+
+def test_cli_show_command_executes_against_references(
+    ci_test_data_dir: Path,
+    project_root_path: Path,
+    qe_engine: QuantumEspressoEngine,
+):
+    runner = CliRunner()
+    base_dir = project_root_path / "temp" / "test_outputs" / "cli_show_command_exec"
+    _ensure_clean_directory(base_dir)
+
+    project_root = base_dir / "project"
+    result = runner.invoke(
+        app,
+        ["init", "project", "--path", str(project_root)],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0, result.stdout
+
+    pseudo_src = project_root_path / "pseudo"
+    if pseudo_src.exists():
+        shutil.copytree(pseudo_src, project_root / "pseudo", dirs_exist_ok=True)
+
+    pw_dir = ci_test_data_dir / "pw_single_tests"
+    cases = load_test_cases(pw_dir, ci_root=ci_test_data_dir)
+    assert cases, "No pw_single_tests cases discovered."
+
+    runs_root = base_dir / "runs"
+    runs_root.mkdir(parents=True, exist_ok=True)
+
+    for case in cases:
+        input_path = case.input_path
+        structure_name = f"struct_{input_path.stem}"
+        workflow_name = f"wf_{input_path.stem}"
+
+        result = runner.invoke(
+            app,
+            [
+                "import-structure",
+                str(input_path),
+                "--project",
+                str(project_root),
+                "--name",
+                structure_name,
+            ],
+            catch_exceptions=False,
+        )
+        assert (
+            result.exit_code == 0
+        ), f"import-structure failed for {input_path.name}: {result.stdout}"
+
+        result = runner.invoke(
+            app,
+            [
+                "init",
+                "workflow",
+                workflow_name,
+                "--structure",
+                structure_name,
+                "--project",
+                str(project_root),
+            ],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, f"init workflow failed: {result.stdout}"
+
+        show_output = runner.invoke(
+            app, ["show-command", str(input_path)], catch_exceptions=False
+        )
+        assert show_output.exit_code == 0, show_output.stdout
+
+        init_line = next(
+            line.strip()
+            for line in show_output.stdout.splitlines()
+            if line.strip().startswith("qv init step")
+        )
+        init_args = shlex.split(init_line)[1:]
+        placeholder_index = init_args.index("<structure-id>")
+        init_args[placeholder_index] = structure_name
+        init_args.extend(["--workflow", workflow_name, "--project", str(project_root)])
+        init_result = runner.invoke(app, init_args, catch_exceptions=False)
+        assert init_result.exit_code == 0, init_result.stdout
+
+        workflow_dir = project_root / "workflows" / workflow_name
+        workflow_yaml = yaml.safe_load((workflow_dir / "workflow.yaml").read_text())
+        last_step = workflow_yaml["steps"][-1]
+        step_spec_path = workflow_dir / last_step["step_file"]
+
+        workdir = runs_root / input_path.stem
+        _ensure_clean_directory(workdir)
+
+        run_result = runner.invoke(
+            app,
+            [
+                "run",
+                "step",
+                str(step_spec_path),
+                "--project",
+                str(project_root),
+                "--workdir",
+                str(workdir),
+            ],
+            catch_exceptions=False,
+        )
+        assert run_result.exit_code == 0, run_result.stdout
+
+        output_file, generated_input = _extract_paths(run_result.stdout)
+        assert output_file.exists(), f"Output file missing: {output_file}"
+        if generated_input is None:
+            generated_input = step_spec_path
+
+        if not case.reference_path:
+            continue
+
+        step_type = qe_engine.detect_step_type(input_path)
+        step_result = StepResult(
+            step_type=step_type,
+            input_file=generated_input,
+            output_file=output_file,
+            success=True,
+            return_code=0,
+        )
+        success, message = verify_step_result(
+            step_result,
+            reference_file=case.reference_path,
+            category=pw_dir.name,
+        )
+        assert success, f"{input_path.name}: {message}"
+

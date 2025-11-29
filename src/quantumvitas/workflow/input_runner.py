@@ -409,6 +409,9 @@ def apply_card_overrides_to_qe_input(
             card_lookup[card_type.name] = card
         if "option" in payload:
             card.option = payload.get("option")
+        elif "data" in payload and card.card_type == QECardType.K_POINTS:
+            # Clear default 'automatic' option when explicit k-point list is provided
+            card.option = None
         if "data" in payload:
             card.data = _normalize_card_data(payload["data"])
         rows = payload.get("rows")

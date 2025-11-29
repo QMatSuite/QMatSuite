@@ -36,6 +36,7 @@ from quantumvitas.io.structure_io import (
     qe_input_from_structure,
     structure_from_qe_input,
 )
+from quantumvitas.core.resources import meta_from_name
 from quantumvitas.workflow.structure_steps import (
     generate_qe_input_from_structure,
     generate_qe_input_from_spec,
@@ -429,6 +430,7 @@ class TestStepSpecRoundtrip:
 
         # Create step spec
         spec = StructureStepSpec(
+            meta=meta_from_name("step", name="nscf", path="nscf.step.yaml"),
             structure="si",
             step_type="nscf",
             parameters={
@@ -470,15 +472,16 @@ class TestStepSpecRoundtrip:
         original = si_diamond_structure
 
         # Create step spec YAML
-        spec_data = {
-            "structure": "si",
-            "step_type": "scf",
-            "parameters": {
+        spec = StructureStepSpec(
+            meta=meta_from_name("step", name="scf", path="step.yaml"),
+            structure="si",
+            step_type="scf",
+            parameters={
                 "SYSTEM": {"ecutwfc": 60},
             },
-        }
+        )
         spec_file = tmp_path / "step.yaml"
-        spec_file.write_text(yaml.safe_dump(spec_data))
+        spec_file.write_text(yaml.safe_dump(spec.to_dict()))
 
         # Load spec from YAML
         spec = StructureStepSpec.from_yaml(spec_file)

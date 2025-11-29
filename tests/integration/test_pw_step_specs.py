@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 
 import pytest
@@ -12,6 +11,7 @@ from quantumvitas.workflow import (
 )
 from tests.core.qe_step_verification import verify_step_result
 from tests.core.qe_step_runner import get_default_working_dir
+from tests.core.test_data import load_test_cases
 
 
 pytestmark = pytest.mark.quick
@@ -36,41 +36,18 @@ def ci_test_data_dir() -> Path:
 
 
 @pytest.fixture(scope="module")
-def pw_tests_from_manifest(ci_test_data_dir: Path):
-    manifest_file = ci_test_data_dir / "manifest.json"
-    if not manifest_file.exists():
-        pytest.skip(f"manifest.json not found: {manifest_file}")
-
-    with open(manifest_file) as f:
-        manifest = json.load(f)
-
-    pw_tests = []
-    for test in manifest.get("tests", []):
-        category = test.get("category", "")
-        if not category.startswith("pw_"):
-            continue
-        rel_input = test.get("input_file", "")
-        input_file = ci_test_data_dir / rel_input
-        if input_file.exists():
-            pw_tests.append(
-                {
-                    "category": category,
-                    "test_file": test.get("test_file"),
-                    "input_file": input_file,
-                }
-            )
-
-    if not pw_tests:
-        pytest.skip("No PW tests found in manifest.json")
-
-    return pw_tests
+def pw_test_cases(ci_test_data_dir: Path):
+    folder = ci_test_data_dir / "pw_single_tests"
+    if not folder.exists():
+        pytest.skip(f"PW test folder not found: {folder}")
+    return load_test_cases(folder, ci_root=ci_test_data_dir)
 
 
 class TestPWStepSpecsExecution:
     def test_pw_specs_generate_and_run(
         self,
         qe_engine: QuantumEspressoEngine,
-        pw_tests_from_manifest,
+        pw_test_cases,
         ci_test_data_dir: Path,
     ):
         """
@@ -81,11 +58,12 @@ class TestPWStepSpecsExecution:
         project_root = Path(__file__).parent.parent.parent
         results = []
 
-        for test_info in pw_tests_from_manifest:
-            input_file = test_info["input_file"]
-            category = test_info["category"]
-            test_name = test_info["test_file"]
-            slug = test_name.replace("/", "_").replace(".in", "")
+        pw_folder = ci_test_data_dir / "pw_single_tests"
+        for case in pw_test_cases:
+            input_file = case.input_path
+            category = pw_folder.name
+            test_name = input_file.name
+            slug = input_file.stem
 
             working_dir = get_default_working_dir(
                 project_root,
@@ -140,8 +118,7 @@ class TestPWStepSpecsExecution:
 
             # Find benchmark reference file if available
             # Pattern: pw_single_tests/benchmark.out.git.inp={test_file}
-            benchmark_file = ci_test_data_dir / "pw_single_tests" / f"benchmark.out.git.inp={test_name}"
-            reference_file = benchmark_file if benchmark_file.exists() else None
+            reference_file = case.reference_path
 
             # Verify the result
             success, message = verify_step_result(
