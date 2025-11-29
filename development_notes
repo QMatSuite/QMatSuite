@@ -68,3 +68,12 @@ To run tests, use the following command:
 
   cd /Users/SB1/Code/quantumVITAS
   QE_HOME=<HOME>/src/q-e-qe-7.5 PYTHONPATH=src python3 -m pytest
+
+  git config --global user.name "QuantumNerd"
+  git config --global user.email "28456871+quantumNerd@users.noreply.github.com"
+
+  cp -R /Users/Shared/.ssh /Users/SB1
+  chmod 700 ~/.ssh
+  chmod 600 ~/.ssh/id_ed25519
+  chmod 644 ~/.ssh/id_ed25519.pub
+  in "~/.ssh/config", add: IdentityFile ~/.ssh/id_ed25519
