@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "tests": [
+    {
+      "input": "atom.in",
+      "reference": "benchmark.out.git.inp=atom.in",
+      "args": null,
+      "sequence": 1
+    },
+    {
+      "input": "metal-fermi_dirac.in",
+      "reference": "benchmark.out.git.inp=metal-fermi_dirac.in",
+      "args": null,
+      "sequence": 2
+    },
+    {
+      "input": "metal-gaussian.in",
+      "reference": "benchmark.out.git.inp=metal-gaussian.in",
+      "args": null,
+      "sequence": 3
+    },
+    {
+      "input": "metal.in",
+      "reference": "benchmark.out.git.inp=metal.in",
+      "args": null,
+      "sequence": 4
+    },
+    {
+      "input": "plugin-pw2casino_2.in",
+      "reference": null,
+      "args": null,
+      "sequence": 5
+    },
+    {
+      "input": "scf-cg.in",
+      "reference": "benchmark.out.git.inp=scf-cg.in",
+      "args": null,
+      "sequence": 6
+    },
+    {
+      "input": "scf-mixing_localTF.in",
+      "reference": "benchmark.out.git.inp=scf-mixing_localTF.in",
+      "args": null,
+      "sequence": 7
+    },
+    {
+      "input": "uspp-cg-gamma.in",
+      "reference": "benchmark.out.git.inp=uspp-cg-gamma.in",
+      "args": null,
+      "sequence": 8
+    }
+  ]
+}

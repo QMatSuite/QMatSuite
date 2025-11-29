@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 import shutil
 from pathlib import Path
 from typing import Dict, Iterable, Optional, Sequence
 
 import yaml
 
+from quantumvitas.core.resources import meta_from_name
 from quantumvitas.io import QEInputGenerator, QEInputParser, read_structure, write_structure
 from quantumvitas.io.model import QECardType, QEModule, QEInput
 from quantumvitas.io.structure_io import structure_from_qe_input
@@ -102,16 +103,16 @@ def build_step_spec_from_qe_input(
     else:
         structure_ref_value = _relative_path_for_spec(structure_path, destination)
 
+    step_file = destination / f"{step_id}.step.yaml"
     spec = StructureStepSpec(
+        meta=meta_from_name("step", name=step_id, path=step_file.name),
         structure=str(structure_ref_value),
         step_type=step_type,
         parameters=parameters,
         input_name=input_path.name,
         cards=cards,
     )
-
-    step_file = destination / f"{step_id}.step.yaml"
-    step_file.write_text(yaml.safe_dump(asdict(spec), sort_keys=False))
+    step_file.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
 
     return StepImportResult(
         step_id=step_id,

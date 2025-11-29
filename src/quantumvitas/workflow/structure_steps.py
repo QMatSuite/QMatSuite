@@ -9,6 +9,11 @@ from typing import TYPE_CHECKING
 import yaml
 from pymatgen.core import Structure as PMGStructure
 
+from quantumvitas.core.resources import (
+    ResourceMeta,
+    ensure_relative_path,
+    meta_from_name,
+)
 from quantumvitas.io import QEInputGenerator, read_structure
 from quantumvitas.io.structure_io import qe_input_from_structure
 from quantumvitas.io.model import QECardType, QEInput
@@ -32,6 +37,7 @@ class StructureStepSpec:
     Declarative specification for generating a QE input from a stored structure.
     """
 
+    meta: ResourceMeta
     structure: str
     step_type: str = "scf"
     parameters: Dict[str, Dict[str, Any]] = field(default_factory=dict)
@@ -40,7 +46,7 @@ class StructureStepSpec:
     species_overrides: Dict[str, Dict[str, Any]] = field(default_factory=dict)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "StructureStepSpec":
+    def from_dict(cls, data: Dict[str, Any], source_path: Optional[Path] = None) -> "StructureStepSpec":
         structure = data.get("structure")
         if not structure:
             raise ValueError("Step spec is missing required field 'structure'")
@@ -58,7 +64,22 @@ class StructureStepSpec:
         if not isinstance(species_overrides, dict):
             raise ValueError("Step spec 'species_overrides' must be a mapping when provided")
 
+        meta_dict = data.get("meta")
+        default_name = data.get("name") or str(step_type)
+        default_path = (
+            ensure_relative_path(source_path.name, base=source_path.parent)
+            if source_path
+            else (meta_dict or {}).get("path") or f"{default_name}.step.yaml"
+        )
+        meta = ResourceMeta.from_dict(
+            meta_dict,
+            kind="step",
+            default_name=default_name,
+            default_path=default_path,
+        )
+
         return cls(
+            meta=meta,
             structure=structure,
             step_type=str(step_type),
             parameters=parameters,
@@ -69,10 +90,27 @@ class StructureStepSpec:
 
     @classmethod
     def from_yaml(cls, path: Path | str) -> "StructureStepSpec":
-        content = yaml.safe_load(Path(path).read_text()) or {}
+        spec_path = Path(path)
+        content = yaml.safe_load(spec_path.read_text()) or {}
         if not isinstance(content, dict):
             raise ValueError(f"Step file {path} must contain a mapping at the root")
-        return cls.from_dict(content)
+        return cls.from_dict(content, source_path=spec_path)
+
+    def to_dict(self) -> Dict[str, Any]:
+        data: Dict[str, Any] = {
+            "meta": self.meta.to_dict(),
+            "structure": self.structure,
+            "step_type": self.step_type,
+        }
+        if self.parameters:
+            data["parameters"] = self.parameters
+        if self.input_name:
+            data["input_name"] = self.input_name
+        if self.cards:
+            data["cards"] = self.cards
+        if self.species_overrides:
+            data["species_overrides"] = self.species_overrides
+        return data
 
 
 def generate_qe_input_from_structure(

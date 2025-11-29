@@ -1,4 +1,5 @@
 import json
+import shlex
 from pathlib import Path
 
 import pytest
@@ -9,9 +10,11 @@ from typer.testing import CliRunner
 from quantumvitas.project.model import Project
 from quantumvitas.cli.main import app, _parse_override_args
 from quantumvitas.workflow.input_runner import PreparedInputStep
+from quantumvitas.workflow.geometry import read_geometry_from_input, compare_geometries
 from quantumvitas.core.engines.qe_workflow import StepResult
-from quantumvitas.io import read_structure
+from quantumvitas.io import QEInputParser, read_structure
 from quantumvitas.workflow.types import StepMode
+from tests.core.test_data import load_test_cases
 
 
 def _write_yaml(path: Path, data: dict) -> None:
@@ -386,6 +389,8 @@ def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
 
     captured = {}
 
+    captured_runs: dict[str, Path] = {}
+
     def fake_run_input_step(
         *,
         engine,
@@ -523,7 +528,7 @@ def test_cli_step_create_and_insert(sample_project: Path):
             "wf",
             "--name",
             "nscf",
-            "--step-type",
+            "--type",
             "nscf",
             "--input-name",
             "nscf.pw.in",
@@ -614,8 +619,152 @@ def test_cli_show_command(tmp_path: Path):
     runner = CliRunner()
     result = runner.invoke(app, ["show-command", str(input_file)])
     assert result.exit_code == 0
-    assert "qv init step <structure-id>" in result.stdout
+    assert "qv init step '<structure-id>'" in result.stdout
     assert "configure step" in result.stdout
+
+
+def test_cli_show_command_generates_matching_input(
+    ci_test_data_dir: Path, tmp_path: Path, monkeypatch
+):
+    runner = CliRunner()
+    project_root = tmp_path / "proj"
+    assert (
+        runner.invoke(app, ["init", "project", "--path", str(project_root)]).exit_code == 0
+    ), "project init failed"
+
+    pw_dir = ci_test_data_dir / "pw_single_tests"
+    cases = load_test_cases(pw_dir, ci_root=ci_test_data_dir)
+    assert cases, "No pw_single_tests inputs found."
+
+    captured_runs: dict[str, Path] = {}
+
+    def fake_run_input_step(
+        *,
+        engine,
+        input_file,
+        working_dir,
+        project_root,
+        step_type=None,
+        parameter_overrides=None,
+    ):
+        captured_runs["input_file"] = input_file
+        return (
+            StepResult(
+                step_type=step_type or "scf",
+                input_file=input_file,
+                output_file=working_dir / f"{input_file.stem}.out",
+                success=True,
+                return_code=0,
+            ),
+            PreparedInputStep(
+                working_dir=working_dir,
+                original_input=input_file,
+                modified_input=input_file,
+                project_root=project_root,
+            ),
+        )
+
+    monkeypatch.setattr("quantumvitas.cli.main.run_input_step", fake_run_input_step)
+
+    geometry_skipped = []
+    for case in cases:
+        input_path = case.input_path
+        structure_name = f"struct_{input_path.stem}"
+        workflow_name = f"wf_{input_path.stem}"
+
+        result = runner.invoke(
+            app,
+            [
+                "import-structure",
+                str(input_path),
+                "--project",
+                str(project_root),
+                "--name",
+                structure_name,
+            ],
+        )
+        assert (
+            result.exit_code == 0
+        ), f"import-structure failed for {input_path}: {result.stdout}"
+
+        result = runner.invoke(
+            app,
+            [
+                "init",
+                "workflow",
+                workflow_name,
+                "--structure",
+                structure_name,
+                "--project",
+                str(project_root),
+            ],
+        )
+        assert (
+            result.exit_code == 0
+        ), f"init workflow failed for {workflow_name}: {result.stdout}"
+
+        show_output = runner.invoke(app, ["show-command", str(input_path)])
+        assert show_output.exit_code == 0, show_output.stdout
+        init_line = next(
+            line.strip()
+            for line in show_output.stdout.splitlines()
+            if line.strip().startswith("qv init step")
+        )
+        init_args = shlex.split(init_line)[1:]
+        placeholder_index = init_args.index("<structure-id>")
+        init_args[placeholder_index] = structure_name
+        init_args.extend(["--workflow", workflow_name, "--project", str(project_root)])
+        init_result = runner.invoke(app, init_args)
+        assert init_result.exit_code == 0, init_result.stdout
+
+        workflow_dir = project_root / "workflows" / workflow_name
+        workflow_yaml = yaml.safe_load((workflow_dir / "workflow.yaml").read_text())
+        last_step = workflow_yaml["steps"][-1]
+        step_spec_path = workflow_dir / last_step["step_file"]
+
+        captured_runs.clear()
+        workdir = tmp_path / f"workdir_{input_path.stem}"
+        run_result = runner.invoke(
+            app,
+            [
+                "run",
+                "step",
+                str(step_spec_path),
+                "--project",
+                str(project_root),
+                "--workdir",
+                str(workdir),
+            ],
+        )
+        assert run_result.exit_code == 0, run_result.stdout
+        generated_input = captured_runs.get("input_file")
+        assert generated_input and generated_input.exists()
+
+        original_qe = QEInputParser.parse_file(input_path)
+        generated_qe = QEInputParser.parse_file(generated_input)
+
+        def _param_map(qe_input):
+            return {nl.name.upper(): nl.parameters for nl in qe_input.namelists}
+
+        assert _param_map(original_qe) == _param_map(generated_qe)
+
+        try:
+            original_geom = read_geometry_from_input(input_path)
+            generated_geom = read_geometry_from_input(generated_input)
+        except ValueError:
+            geometry_skipped.append(input_path.name)
+        else:
+            success, message = compare_geometries(
+                generated_geom, original_geom, cell_atol=1e-5, position_atol=1e-4
+            )
+            assert success, f"{input_path.name}: {message}"
+
+    if geometry_skipped:
+        print(
+            f"Geometry comparison skipped for {len(geometry_skipped)}/{len(cases)} inputs: {geometry_skipped}"
+        )
+    else:
+        print("Geometry comparison executed for all inputs.")
 
 
 def test_cli_get_command_alias(tmp_path: Path):
@@ -624,7 +773,7 @@ def test_cli_get_command_alias(tmp_path: Path):
     runner = CliRunner()
     result = runner.invoke(app, ["get-command", str(input_file)])
     assert result.exit_code == 0
-    assert "qv init step <structure-id>" in result.stdout
+    assert "qv init step '<structure-id>'" in result.stdout
 
 
 def test_cli_delete_structure(tmp_path: Path):

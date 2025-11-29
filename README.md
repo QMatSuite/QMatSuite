@@ -79,7 +79,7 @@ qv delete workflow si_dos --cascade
 qv run structure si_bulk --ecutwfc=60 --SYSTEM.degauss=0.01
 
 # Author and edit step specs (YAML) with CLI helpers
-qv init step si_bulk --workflow si_dos --step-type nscf --SYSTEM.ecutwfc=60
+qv init step si_bulk --workflow si_dos --type nscf --SYSTEM.ecutwfc=60
 qv configure step workflows/si_dos/steps/nscf_1.step.yaml --remove --SYSTEM.tprnfor
 
 # Execute workflows (id, slug, or explicit path); --strict enforces references
