@@ -9,6 +9,7 @@ from typer.testing import CliRunner
 
 from quantumvitas.project.model import Project
 from quantumvitas.cli.main import app, _parse_override_args
+from quantumvitas.core.resources import slugify
 from quantumvitas.workflow.input_runner import PreparedInputStep
 from quantumvitas.workflow.geometry import read_geometry_from_input, compare_geometries
 from quantumvitas.core.engines.qe_workflow import StepResult
@@ -717,7 +718,8 @@ def test_cli_show_command_generates_matching_input(
         init_result = runner.invoke(app, init_args)
         assert init_result.exit_code == 0, init_result.stdout
 
-        workflow_dir = project_root / "workflows" / workflow_name
+        workflow_slug = slugify(workflow_name)
+        workflow_dir = project_root / "workflows" / workflow_slug
         workflow_yaml = yaml.safe_load((workflow_dir / "workflow.yaml").read_text())
         last_step = workflow_yaml["steps"][-1]
         step_spec_path = workflow_dir / last_step["step_file"]
