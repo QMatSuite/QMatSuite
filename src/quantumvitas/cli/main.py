@@ -34,6 +34,7 @@ from quantumvitas.core.resources import (
 from quantumvitas.core.project_utils import (
     ProjectConfigError,
     ResourceNotFoundError,
+    ResourceContext,
     load_project_config,
     save_project_config,
     collect_slugs,
@@ -53,6 +54,11 @@ from quantumvitas.core.project_utils import (
     apply_structure_rename,
     apply_workflow_rename,
     delete_workflow_entry,
+    find_project_root,
+    find_enclosing_workflow,
+    find_step_in_workflow,
+    find_resource_auto,
+    resolve_resource,
 )
 from quantumvitas.data import load_qe_parameter_map
 from quantumvitas.core.engines.base import EngineConfig
@@ -1048,12 +1054,32 @@ def list_resources(
     typer.echo(f"Project: {proj.meta.name} [{proj.meta.slug}] ({proj.root})")
     if verbose:
         typer.echo(f"  id: {proj.meta.id}")
+    # Load config to check structure-workflow relationships
+    config = load_project_config(project_root)
+    
     typer.echo("\nStructures:")
     structures = sorted(proj.structures.values(), key=lambda r: r.name)
     if not structures:
         typer.echo("  (none)")
     for ref in structures:
+        # Find workflows using this structure
+        struct_entry = None
+        for entry in config.get("structures", []):
+            if entry_matches(entry, ref.meta.slug) or entry_matches(entry, ref.name):
+                struct_entry = entry
+                break
+        
+        using_workflows = []
+        if struct_entry:
+            using_wfs = workflows_using_structure(project_root, config, struct_entry)
+            using_workflows = [
+                (wf.get("meta") or {}).get("slug") or wf.get("name") 
+                for wf in using_wfs
+            ]
+        
         line = f"  - {ref.name} [{ref.meta.slug}] -> {ref.meta.path}"
+        if using_workflows:
+            line += f"  (used by: {', '.join(using_workflows)})"
         if verbose:
             line += f" (id: {ref.meta.id})"
         typer.echo(line)
@@ -1063,7 +1089,11 @@ def list_resources(
     if not workflows:
         typer.echo("  (none)")
     for wf in workflows:
-        line = f"  - {wf.name} [{wf.meta.slug}] -> {wf.meta.path}"
+        # Find structures used by this workflow
+        wf_structures = _find_workflow_structures(wf.path, proj)
+        struct_info = f"  (structure: {', '.join(wf_structures)})" if wf_structures else ""
+        
+        line = f"  - {wf.name} [{wf.meta.slug}] -> {wf.meta.path}{struct_info}"
         if verbose:
             line += f" (id: {wf.meta.id})"
         typer.echo(line)
@@ -1079,6 +1109,22 @@ def list_resources(
             elif rel_path is None:
                 step_line += " (missing step_file)"
             typer.echo(step_line)
+
+
+def _find_workflow_structures(workflow_dir: Path, proj: Project) -> list[str]:
+    """Find all structures referenced by a workflow's steps."""
+    structures: set[str] = set()
+    steps_dir = workflow_dir / "steps"
+    if steps_dir.exists():
+        for spec_path in steps_dir.glob("*.step.yaml"):
+            try:
+                spec = StructureStepSpec.from_yaml(spec_path)
+                if spec.structure:
+                    # Could be a name, slug, or path
+                    structures.add(spec.structure)
+            except Exception:
+                continue
+    return sorted(structures)
 
 
 def _workflow_step_summaries(workflow_dir: Path) -> list[tuple[str, Optional[str], Optional[ResourceMeta]]]:
@@ -1387,7 +1433,9 @@ def delete_structure_command(
 
 @delete_app.command("workflow")
 def delete_workflow_command(
-    identifier: str = typer.Argument(..., help="Workflow name/slug/path to delete"),
+    identifier: Optional[str] = typer.Argument(
+        None, help="Workflow id/name/slug/path (auto-detects from pwd if omitted)"
+    ),
     project: Optional[Path] = typer.Option(
         None, "--project", help="Project root (defaults to auto-detect)"
     ),
@@ -1402,11 +1450,17 @@ def delete_workflow_command(
 ) -> None:
     """
     Remove a workflow entry and move its directory to trash.
+    
+    If no identifier is given, auto-detects the enclosing workflow from pwd.
     """
-
-    project_root = (project or _resolve_project_root()).resolve()
-    config = load_project_config(project_root)
-    entry = find_workflow_entry(config, identifier, project_root)
+    try:
+        ctx = resolve_resource("workflow", identifier, project_path=project)
+    except ResourceNotFoundError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    
+    project_root = ctx.project_root
+    config = ctx.config
+    entry = ctx.entry
     trash_dir = (project_root / "trash").resolve()
 
     delete_workflow_entry(
@@ -1423,19 +1477,32 @@ def delete_workflow_command(
 
 @delete_app.command("step")
 def delete_step_command(
-    workflow: str = typer.Argument(..., help="Workflow name/slug/path containing the step"),
     step_id: str = typer.Argument(..., help="Step id to remove"),
+    workflow: Optional[str] = typer.Option(
+        None, "--workflow", help="Workflow id/name/slug/path (auto-detects from pwd if omitted)"
+    ),
     project: Optional[Path] = typer.Option(
         None, "--project", help="Project root (defaults to auto-detect)"
     ),
 ) -> None:
     """
     Remove a workflow step and move its step spec file to trash.
+    
+    The workflow is auto-detected from pwd if not specified with --workflow.
     """
-
-    project_root = (project or _resolve_project_root()).resolve()
-    config = load_project_config(project_root)
-    workflow_entry = find_workflow_entry(config, workflow, project_root)
+    try:
+        ctx = resolve_resource(
+            "step", 
+            identifier=step_id,
+            parent_identifier=workflow,
+            project_path=project
+        )
+    except ResourceNotFoundError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    
+    project_root = ctx.project_root
+    config = ctx.config
+    workflow_entry = ctx.parent_entry
     workflow_dir = workflow_directory(project_root, workflow_entry)
     workflow_yaml = workflow_dir / "workflow.yaml"
     if not workflow_yaml.exists():
@@ -1445,7 +1512,8 @@ def delete_step_command(
     steps: list[dict] = data.get("steps") or []
     target_step = next((step for step in steps if step.get("id") == step_id), None)
     if not target_step:
-        raise typer.BadParameter(f"Step '{step_id}' not found in workflow '{workflow}'.")
+        wf_name = entry_display_name(workflow_entry)
+        raise typer.BadParameter(f"Step '{step_id}' not found in workflow '{wf_name}'.")
 
     trash_dir = (project_root / "trash").resolve()
     rel_file = target_step.get("step_file")
@@ -1464,28 +1532,58 @@ def delete_step_command(
 
 @delete_app.command("project")
 def delete_project_command(
+    identifier: Optional[str] = typer.Argument(
+        None, help="Project name/slug/path (auto-detects from pwd if omitted)"
+    ),
     project: Optional[Path] = typer.Option(
-        None, "--project", help="Project root to delete (defaults to auto-detect)"
+        None, "--project", help="Project root to delete (alias for positional arg)"
     ),
 ) -> None:
     """
     Move an entire project directory into the parent trash folder.
+    
+    Can specify project by name, slug, or path. If omitted, uses current directory.
     """
-
-    project_root = (project or _resolve_project_root()).resolve()
+    # Resolve project path from identifier or --project option
+    if identifier:
+        # Could be a path or name/slug
+        candidate = Path(identifier).expanduser()
+        if candidate.exists() and (candidate / "project.qv.yml").exists():
+            project_root = candidate.resolve()
+        elif project:
+            # Search in explicit project path
+            project_root = Path(project).expanduser().resolve()
+        else:
+            # Identifier might be a name/slug - search in current parent
+            project_root = Path(identifier).expanduser().resolve()
+            if not (project_root / "project.qv.yml").exists():
+                raise typer.BadParameter(
+                    f"Project '{identifier}' not found. Provide a valid path or run inside a project."
+                )
+    elif project:
+        project_root = Path(project).expanduser().resolve()
+    else:
+        try:
+            project_root = find_project_root()
+        except ResourceNotFoundError as exc:
+            raise typer.BadParameter(str(exc)) from exc
+    
+    if not (project_root / "project.qv.yml").exists():
+        raise typer.BadParameter(f"No project.qv.yml found in {project_root}")
+    
     original_cwd = Path.cwd().resolve()
     inside_project = original_cwd == project_root or project_root in original_cwd.parents
 
-    if inside_project:
-        parent_dir = project_root.parent
-        os.chdir(parent_dir)
+    # Note: We don't actually change the working directory since that can cause issues
+    # The shell's cwd is managed by the shell, not Python
 
     trash_dir = (project_root.parent / "trash").resolve()
     destination = move_to_trash(project_root, trash_dir)
     typer.secho(f"Project moved to {destination}", fg=typer.colors.GREEN)
     if inside_project:
         typer.secho(
-            f"Working directory switched to {project_root.parent}", fg=typer.colors.YELLOW
+            f"Note: Current directory is now inside trash. Use 'cd ..' to navigate out.",
+            fg=typer.colors.YELLOW
         )
 
 
@@ -1529,18 +1627,45 @@ def delete_trash_command(
 )
 def configure_step_command(
     ctx: typer.Context,
-    step_file: Path = typer.Argument(..., help="Step YAML file to modify"),
+    step_identifier: str = typer.Argument(
+        ..., help="Step id, name, or path to .step.yaml"
+    ),
+    workflow: Optional[str] = typer.Option(
+        None, "--workflow", help="Workflow id/name/slug/path (auto-detects from pwd)"
+    ),
+    project: Optional[Path] = typer.Option(
+        None, "--project", help="Project root (auto-detects from pwd)"
+    ),
     remove: bool = typer.Option(
         False, "--remove", help="Remove the specified parameters instead of setting them"
     ),
 ) -> None:
     """
     Modify parameters stored in a StructureStepSpec YAML file.
+    
+    Step can be specified by id, name, or path. If using id/name, the workflow
+    is auto-detected from pwd if not specified with --workflow.
     """
-
     bundle = _parse_override_args(ctx.args)
     if not bundle.has_any():
         raise typer.BadParameter("Provide at least one override.")
+
+    # Check if it's a direct path first
+    step_file = Path(step_identifier)
+    if step_file.exists() and step_file.suffix in (".yaml", ".yml"):
+        pass  # Use directly
+    else:
+        # Resolve using project_utils
+        try:
+            ctx_res = resolve_resource(
+                "step",
+                identifier=step_identifier,
+                parent_identifier=workflow,
+                project_path=project,
+            )
+            step_file = ctx_res.resource_path
+        except ResourceNotFoundError as exc:
+            raise typer.BadParameter(str(exc)) from exc
 
     try:
         spec = StructureStepSpec.from_yaml(step_file)
@@ -1648,7 +1773,9 @@ def get_command(input_file: Path = typer.Argument(..., help="QE input file to in
 
 @run_app.command("workflow")
 def run_workflow_command(
-    workflow: str = typer.Argument(..., help="Workflow name/slug/path"),
+    workflow: Optional[str] = typer.Argument(
+        None, help="Workflow name/slug/path (auto-detects from pwd if omitted)"
+    ),
     project: Optional[Path] = typer.Option(
         None, "--project", help="Project root (defaults to auto-detect)"
     ),
@@ -1664,16 +1791,40 @@ def run_workflow_command(
 ) -> None:
     """
     Execute a workflow defined in project.qv.yml.
+    
+    If no workflow is specified, auto-detects from current directory
+    (must be inside a workflow folder).
     """
-    project_root = project or _resolve_project_root()
-    proj = Project.open(project_root)
-
-    # Accept either workflow id or direct path
-    workflow_path = Path(workflow)
-    if workflow_path.exists():
-        wf = Workflow.from_yaml(workflow_path, proj)
+    # Find project root
+    if project:
+        project_root = Path(project).expanduser().resolve()
     else:
-        wf = proj.get_workflow(workflow)
+        try:
+            project_root = find_project_root()
+        except Exception as exc:
+            raise typer.BadParameter(str(exc)) from exc
+    
+    proj = Project.open(project_root)
+    config = load_project_config(project_root)
+    
+    # Resolve workflow
+    if workflow:
+        # Accept either workflow id or direct path
+        workflow_path = Path(workflow)
+        if workflow_path.exists():
+            wf = Workflow.from_yaml(workflow_path, proj)
+        else:
+            wf = proj.get_workflow(workflow)
+    else:
+        # Auto-detect enclosing workflow from pwd
+        wf_entry = find_enclosing_workflow(project_root, config)
+        if not wf_entry:
+            raise typer.BadParameter(
+                "No workflow specified and not inside a workflow directory. "
+                "Specify workflow name/slug/path or cd into a workflow folder."
+            )
+        wf_id = (wf_entry.get("meta") or {}).get("slug") or wf_entry.get("name")
+        wf = proj.get_workflow(wf_id)
 
     if strict:
         wf.mode = StepMode.STRICT
