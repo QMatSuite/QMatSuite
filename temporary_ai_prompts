@@ -327,4 +327,19 @@ For CLI, implement the following (remember separation of concerns: cli should on
 7. For all qv commands related to project, workflow, step, structure, offer --project PATH to specify the project path (but by default it is the project that is related to pwd, not necessarily the same as pwd, but could be parent folder which contains the project yml)
 
 2025.11.28-2:
-1. 
+1. Do not need --force to delete project.
+2. When pwd is in the project, after deleting, go to the parent folder of the project (otherwise we will be in the trash)
+
+1. unify meta model for project, workflow, step, structure: fields id/name/slug/path or path-to-file. ID is always ULID! Also for workflow and step!!! And those should also be present in .yaml for the step. Step is special: the name is automatically from step type with possible number if not only one of same type exists. But even for step, keep everything inherited from meta model (just name,slug,filename the same: step type, but id should be ULID!).
+2. delete structure by path-to-file.
+3. when renaming project/workflow, also change the name of the project folder. When renaming structure/step, also change filename.
+4. in doc CLI_API_REFERENCE.md, be careful about inputs of commands: we never input ID (ID is ULID, never change, never input), but only name/path. I hope in the implementation it is the same.
+5. when init step, set input_file to be none, do not guess scf.pw.in. When init workflow, make it clean, do not add step.
+6. when calling qv list, show all the way to steps.
+7. when init step, if no workflow is provided: if pwd is below a workflow, then use the workflow id of the parent workflow. Otherwise just put step.yaml in pwd as you have implemented.
+8. when init step, --step-type is the same as --type? just keep one. When init resources encounters existing resource, show error, and advice user to use qv configure to modify existing resource.
+9. when init step, remove "--output si.1_scf.step.yaml". determine filenameautomatically based on step type, as said before.
+10. Update accordingly show-command and get-command.
+11. write a unit test for show-command using scf inputs in tests/integration/ci_test_data/. Run the shown cli command and see whether it generates correct input (first init structure using the same input file, then init workflow, then init step using the generated structure and proposed command from show-command) (parse original input and generated input and compare. Does the calculation type matches? Parameters match?)?
+
+2025.11.28-3:

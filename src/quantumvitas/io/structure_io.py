@@ -370,7 +370,11 @@ def _ibrav_vectors(ibrav: int, params: Dict[str, float]) -> List[List[float]]:
         return [vec(a, 0, 0), vec(0, a, 0), vec(0, 0, a)]
     if ibrav == 2:
         half = 0.5 * a
-        return [vec(-half, 0, half), vec(0, half, half), vec(-half, half, 0)]
+        return [
+            vec(-half, half, half),
+            vec(half, -half, half),
+            vec(half, half, -half),
+        ]
     if ibrav in (3, -3):
         half = 0.5 * a
         if ibrav == 3:

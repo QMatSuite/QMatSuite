@@ -6,6 +6,7 @@ from typing import Iterable, List, Sequence, Tuple
 import math
 
 from quantumvitas.io import QEInputParser, QECardType
+from quantumvitas.io.structure_io import structure_from_qe_input
 BOHR_TO_ANGSTROM = 0.52917721092
 
 
@@ -53,35 +54,58 @@ def read_geometry_from_input(input_file: Path) -> QEGeometrySnapshot:
     alat_angstrom = _extract_alat_from_system(system.parameters)
 
     cell_card = qe_input.get_card(QECardType.CELL_PARAMETERS)
-    if not cell_card or not cell_card.data:
-        raise ValueError(f"CELL_PARAMETERS not found in {input_file}")
+    if cell_card and cell_card.data:
+        cell_matrix_ang = _parse_cell_parameters(card=cell_card, alat_angstrom=alat_angstrom)
 
-    cell_matrix_ang = _parse_cell_parameters(card=cell_card, alat_angstrom=alat_angstrom)
+        # When alat is not explicitly defined, use 1.0 angstrom so scaling is a no-op
+        if alat_angstrom is None:
+            alat_angstrom = 1.0
+        cell_matrix = [[value / alat_angstrom for value in row] for row in cell_matrix_ang]
 
-    # When alat is not explicitly defined, use 1.0 angstrom so scaling is a no-op
-    if alat_angstrom is None:
-        alat_angstrom = 1.0
-    cell_matrix = [[value / alat_angstrom for value in row] for row in cell_matrix_ang]
+        positions_card = qe_input.get_card(QECardType.ATOMIC_POSITIONS)
+        if not positions_card or not positions_card.data:
+            raise ValueError(f"ATOMIC_POSITIONS not found in {input_file}")
 
-    positions_card = qe_input.get_card(QECardType.ATOMIC_POSITIONS)
-    if not positions_card or not positions_card.data:
-        raise ValueError(f"ATOMIC_POSITIONS not found in {input_file}")
+        atomic_positions_ang = _parse_atomic_positions(
+            positions_card,
+            cell_matrix_ang,
+            alat_angstrom,
+        )
+        atomic_positions = [
+            QEAtomicPosition(
+                label=label,
+                vector=(
+                    coords[0] / alat_angstrom,
+                    coords[1] / alat_angstrom,
+                    coords[2] / alat_angstrom,
+                ),
+            )
+            for label, coords in atomic_positions_ang
+        ]
 
-    atomic_positions_ang = _parse_atomic_positions(
-        positions_card,
-        cell_matrix_ang,
-        alat_angstrom,
-    )
+        return QEGeometrySnapshot(
+            alat_angstrom=alat_angstrom,
+            cell_matrix=cell_matrix,
+            atomic_positions=atomic_positions,
+        )
+
+    # Fallback: derive geometry from ibrav parameters via pymatgen structure builder
+    structure = structure_from_qe_input(qe_input)
+    alat_angstrom = _resolve_alat_or_default(alat_angstrom, structure.lattice.matrix)
+    cell_matrix = [
+        [component / alat_angstrom for component in vector]
+        for vector in structure.lattice.matrix
+    ]
     atomic_positions = [
         QEAtomicPosition(
-            label=label,
+            label=site.species_string,
             vector=(
-                coords[0] / alat_angstrom,
-                coords[1] / alat_angstrom,
-                coords[2] / alat_angstrom,
+                site.coords[0] / alat_angstrom,
+                site.coords[1] / alat_angstrom,
+                site.coords[2] / alat_angstrom,
             ),
         )
-        for label, coords in atomic_positions_ang
+        for site in structure.sites
     ]
 
     return QEGeometrySnapshot(
@@ -211,6 +235,20 @@ def _parse_atomic_positions(
         else:
             raise ValueError(f"Unsupported ATOMIC_POSITIONS option: {card.option}")
     return positions
+
+
+def _resolve_alat_or_default(
+    alat_angstrom: float | None,
+    lattice_matrix: Sequence[Sequence[float]],
+) -> float:
+    if alat_angstrom is not None:
+        return alat_angstrom
+    if lattice_matrix:
+        vec = lattice_matrix[0]
+        length = math.sqrt(vec[0] ** 2 + vec[1] ** 2 + vec[2] ** 2)
+        if length > 0:
+            return length
+    return 1.0
 
 
 def _fractional_to_cart(fractional: Sequence[float], cell_matrix_ang: List[List[float]]) -> Tuple[float, float, float]:

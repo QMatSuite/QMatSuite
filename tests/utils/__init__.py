@@ -13,11 +13,14 @@ All functionality has been moved to tests.core:
 # Re-export from tests.core for backward compatibility
 from tests.core.qe_test_utils import (
     parse_jobconfig,
-    compare_with_benchmark
+    compare_with_benchmark,
 )
+from tests.core.test_data import load_test_cases, InputTestCase
 
 __all__ = [
     "parse_jobconfig",
-    "compare_with_benchmark"
+    "compare_with_benchmark",
+    "load_test_cases",
+    "InputTestCase",
 ]
 
