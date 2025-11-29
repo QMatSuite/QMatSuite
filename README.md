@@ -63,6 +63,7 @@ qv init
 qv init my_project
 
 # Detect QE binaries/test-suite without needing a project checkout
+# Detection order: QE_HOME env var → PATH → shell configs → home directory scan
 qv detect-qe
 
 # Run a QE input *or* step YAML in isolation (auto working dir + overrides)
@@ -123,6 +124,24 @@ steps:
   - id: dos
     input: si.3_dos.in
     reference: reference/si.3_dos.out
+```
+
+### QE Detection in CI/CD
+
+For reliable QE detection in CI environments (GitHub Actions, etc.), always set the
+`QE_HOME` environment variable. Detection priorities are:
+
+1. `QE_HOME` environment variable (recommended for CI)
+2. System PATH (`which pw.x`)
+3. Shell configuration files (`~/.zshrc`, `~/.bashrc`)
+4. Home directory scan (`$HOME/**/q-e-qe*`)
+
+```yaml
+# GitHub Actions example
+- name: Run tests
+  run: pytest tests/ -v
+  env:
+    QE_HOME: $HOME/src/q-e-qe-7.5
 ```
 
 ### Test slices
