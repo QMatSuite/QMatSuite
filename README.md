@@ -8,7 +8,7 @@
 
 <img src="docs/images/dark_logo.png" width="450">
 
-QuantumVITAS (Quantum Visualization Interacting Toolkit for Ab-initio Simulations) is a graphical user interface designed for ab-initio simulation software Quantum ESPRESSO, aiming at making ab-initio simulations easily accessible and intuitively controllable in various operating systems. It integrates input file generation, calculation job control, result analysis and data managment into a user interface. In the future we might integrate other engines besides Quantum ESPRESSO. For more information, feel free check out my [introduction video](https://www.youtube.com/watch?v=S2e1TWx6DHs).
+QuantumVITAS (Quantum Visualization Interactive Toolkit for Ab-initio Simulations) is a graphical user interface designed for the Quantum ESPRESSO ab-initio suite. It aims to make ab-initio simulations easily accessible and intuitively controllable across major operating systems. QuantumVITAS integrates input file generation, calculation job control, result analysis, and data management into a single interface. Additional engines beyond Quantum ESPRESSO may be integrated in the future. For more information, feel free to check out my [introduction video](https://www.youtube.com/watch?v=S2e1TWx6DHs).
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 ![GitHub All Releases](https://img.shields.io/github/downloads-pre/quantumVITAS/quantumVITAS/total)
@@ -20,7 +20,7 @@ QuantumVITAS (Quantum Visualization Interacting Toolkit for Ab-initio Simulation
 
 ## Download releases 
 
-The project is actively evolving, and we have offered [the first three early access releases](https://github.com/quantumVITAS/quantumVITAS/releases/) with detailed feature lists. We appreciate any bug report or suggestion for feature implementation for the next step. A guide of [download](https://www.quantumvitas.org/download/) and [quick start](https://www.quantumvitas.org/quick-start/) can be found in the official website.
+The project is actively evolving, and we have released [three early-access builds](https://github.com/quantumVITAS/quantumVITAS/releases/) with detailed feature lists. We appreciate any bug report or feature suggestion for the next milestones. Download and quick-start guides are available on the [official website](https://www.quantumvitas.org).
 
 ## Requirements
 

@@ -743,8 +743,22 @@ def test_cli_show_command_generates_matching_input(
         original_qe = QEInputParser.parse_file(input_path)
         generated_qe = QEInputParser.parse_file(generated_input)
 
+        # Structural parameters are intentionally transformed (ibrav -> ibrav=0 + CELL_PARAMETERS)
+        # so we only compare non-structural parameters
+        STRUCTURAL_KEYS = {"ibrav", "nat", "ntyp", "a", "b", "c", "cosab", "cosac", "cosbc"}
+
         def _param_map(qe_input):
-            return {nl.name.upper(): nl.parameters for nl in qe_input.namelists}
+            result = {}
+            for nl in qe_input.namelists:
+                params = dict(nl.parameters)
+                # Remove structural parameters from comparison
+                for key in list(params.keys()):
+                    lower_key = str(key).lower()
+                    if lower_key in STRUCTURAL_KEYS or lower_key.startswith("celldm"):
+                        del params[key]
+                if params:
+                    result[nl.name.upper()] = params
+            return result
 
         assert _param_map(original_qe) == _param_map(generated_qe)
 

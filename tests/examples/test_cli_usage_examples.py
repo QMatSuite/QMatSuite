@@ -59,7 +59,7 @@ class TestImportStructureCommand:
         This demonstrates the basic usage of `qv import-structure`.
         """
         project_root, cif_file = sample_project
-        runner = CliRunner()
+        runner = CliRunner(mix_stderr=False)
 
         # Run import-structure command
         result = runner.invoke(
@@ -102,7 +102,7 @@ class TestImportStructureCommand:
         You can specify the output format (default is json).
         """
         project_root, cif_file = sample_project
-        runner = CliRunner()
+        runner = CliRunner(mix_stderr=False)
 
         result = runner.invoke(
             app,
@@ -131,7 +131,7 @@ class TestImportStructureCommand:
         This prevents accidentally overwriting existing structures.
         """
         project_root, cif_file = sample_project
-        runner = CliRunner()
+        runner = CliRunner(mix_stderr=False)
 
         # First import
         result1 = runner.invoke(

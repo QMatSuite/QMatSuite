@@ -174,24 +174,98 @@ def generate_qe_input_from_spec(
                 if card.card_type != QECardType.CELL_PARAMETERS
             ]
         else:
-            # Remove redundant lattice parameters when using ibrav == 0
-            lattice_keys = {
-                "a",
-                "alat",
-                "b",
-                "c",
-                "cosab",
-                "cosac",
-                "cosbc",
-            }
-            for key in list(system_namelist.parameters.keys()):
-                lower = key.lower()
-                if lower.startswith("celldm") or lower in lattice_keys:
-                    system_namelist.parameters.pop(key, None)
+            # Check if celldm(1) is preserved in the spec (for k-point compatibility)
+            # If so, convert CELL_PARAMETERS to alat units
+            celldm1 = system_namelist.parameters.get("celldm(1)")
+            a_param = system_namelist.parameters.get("A") or system_namelist.parameters.get("a")
+            
+            if celldm1 is not None or a_param is not None:
+                # Convert CELL_PARAMETERS to alat units
+                _convert_cell_params_to_alat(qe_input, structure, celldm1, a_param)
+                # Remove other lattice parameters but keep celldm(1) or A
+                lattice_keys = {"alat", "b", "c", "cosab", "cosac", "cosbc"}
+                for key in list(system_namelist.parameters.keys()):
+                    lower = key.lower()
+                    if lower in lattice_keys:
+                        system_namelist.parameters.pop(key, None)
+                    # Remove celldm(2) through celldm(6) but keep celldm(1)
+                    if lower.startswith("celldm") and lower != "celldm(1)":
+                        system_namelist.parameters.pop(key, None)
+            else:
+                # Remove all lattice parameters when using ibrav == 0 without celldm(1)
+                lattice_keys = {
+                    "a",
+                    "alat",
+                    "b",
+                    "c",
+                    "cosab",
+                    "cosac",
+                    "cosbc",
+                }
+                for key in list(system_namelist.parameters.keys()):
+                    lower = key.lower()
+                    if lower.startswith("celldm") or lower in lattice_keys:
+                        system_namelist.parameters.pop(key, None)
     
     apply_card_overrides_to_qe_input(qe_input, spec.cards)
     apply_species_overrides_to_qe_input(qe_input, spec.species_overrides)
     return qe_input, combined_overrides
+
+
+def _convert_cell_params_to_alat(
+    qe_input: QEInput,
+    structure: PMGStructure,
+    celldm1: Optional[float],
+    a_param: Optional[float],
+) -> None:
+    """
+    Convert CELL_PARAMETERS from angstrom to alat units.
+    
+    This is needed when celldm(1) or A is preserved to maintain k-point compatibility.
+    """
+    from quantumvitas.io.structure_io import BOHR_TO_ANGSTROM
+    
+    # Determine alat in Angstrom
+    if celldm1 is not None:
+        alat_ang = float(celldm1) * BOHR_TO_ANGSTROM
+    elif a_param is not None:
+        alat_ang = float(a_param)
+    else:
+        return
+    
+    # Find and convert CELL_PARAMETERS
+    for card in qe_input.cards:
+        if card.card_type == QECardType.CELL_PARAMETERS:
+            # Current data is in Angstrom (from qe_input_from_structure)
+            # Convert to alat units by dividing by alat
+            new_data = []
+            for row in card.data:
+                if isinstance(row, (list, tuple)) and len(row) == 3:
+                    new_row = [float(v) / alat_ang for v in row]
+                    new_data.append(new_row)
+                else:
+                    new_data.append(row)
+            card.data = new_data
+            card.option = "alat"
+            break
+    
+    # Also convert ATOMIC_POSITIONS if they're in angstrom
+    for card in qe_input.cards:
+        if card.card_type == QECardType.ATOMIC_POSITIONS:
+            if card.option and card.option.lower() == "angstrom":
+                new_data = []
+                for row in card.data:
+                    if isinstance(row, (list, tuple)) and len(row) >= 4:
+                        # [symbol, x, y, z, ...]
+                        new_row = [row[0]] + [float(v) / alat_ang for v in row[1:4]]
+                        if len(row) > 4:
+                            new_row.extend(row[4:])
+                        new_data.append(new_row)
+                    else:
+                        new_data.append(row)
+                card.data = new_data
+                card.option = "alat"
+            break
 
 
 def overrides_from_step_spec(spec: StructureStepSpec) -> list[ParameterOverride]:

@@ -31,6 +31,7 @@ from quantumvitas.core.resources import (
     slugify,
 )
 from quantumvitas.data import load_qe_parameter_map
+from quantumvitas.core.engines.base import EngineConfig
 from quantumvitas.engine.registry import create_default_registry
 from quantumvitas.project.model import Project
 from quantumvitas.workflow.runner import WorkflowRunner
@@ -845,11 +846,24 @@ def import_structure_command(
 
 
 @app.command("detect-qe")
-def detect_qe() -> None:
+def detect_qe(
+    path: Optional[Path] = typer.Option(
+        None,
+        "--path",
+        "-p",
+        help="Explicit QE home directory (overrides auto-detection).",
+    )
+) -> None:
     """
     Report QE installation details (qe_home, bin directory, test-suite, executables).
     """
-    registry = create_default_registry()
+    config = None
+    if path:
+        try:
+            config = EngineConfig(name="qe", qe_home=path)
+        except ValueError as exc:
+            raise typer.BadParameter(str(exc)) from exc
+    registry = create_default_registry(config)
     engine = registry.get("qe")
     info = _collect_qe_detection_info(engine.backend)
 
@@ -2424,22 +2438,37 @@ def _qe_input_to_parameter_dict(qe_input: QEInput) -> dict[str, dict[str, Any]]:
             params[str(key)] = value
         if params:
             param_dict[namelist.name.upper()] = params
-    _strip_structural_system_params(param_dict)
+    _strip_structural_system_params(param_dict, qe_input)
     return param_dict
 
 
-def _strip_structural_system_params(parameter_dict: dict[str, dict[str, Any]]) -> None:
+def _strip_structural_system_params(
+    parameter_dict: dict[str, dict[str, Any]],
+    qe_input: Optional[QEInput] = None,
+) -> None:
+    from quantumvitas.workflow.importers import _needs_alat_preservation, _extract_alat_bohr
+    
     system = parameter_dict.get("SYSTEM")
     if not system:
         return
+    
+    # Check if we need to preserve alat for k-point compatibility
+    preserve_alat = _needs_alat_preservation(qe_input) if qe_input else False
+    alat_bohr = _extract_alat_bohr(qe_input) if preserve_alat and qe_input else None
+    
     for key in list(system.keys()):
         lower = str(key).lower()
-        if (
-            lower in STRUCTURAL_SYSTEM_KEYS
-            or lower.startswith("celldm")
-            or lower in STRUCTURAL_LATTICE_KEYS
-        ):
+        if lower in STRUCTURAL_SYSTEM_KEYS:
             system.pop(key, None)
+        elif lower.startswith("celldm"):
+            system.pop(key, None)
+        elif lower in STRUCTURAL_LATTICE_KEYS:
+            system.pop(key, None)
+    
+    # Add back celldm(1) if we need to preserve alat
+    if alat_bohr is not None:
+        system["celldm(1)"] = alat_bohr
+    
     if not system:
         parameter_dict.pop("SYSTEM", None)
 
@@ -2476,11 +2505,13 @@ def _card_cli_args_from_input(qe_input: QEInput) -> list[str]:
             continue
         if card.card_type in {QECardType.ATOMIC_POSITIONS, QECardType.CELL_PARAMETERS}:
             continue
+        
         payload: dict[str, Any] = {}
         if card.option:
             payload["option"] = card.option
         if card.data:
             payload["data"] = card.data
+        
         if payload:
             args.append(
                 f"--CARD.{card.card_type.name}="
