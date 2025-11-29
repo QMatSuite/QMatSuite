@@ -40,7 +40,7 @@ htmlcov/
 coverage.xml
 *.cover
 .hypothesis/
-manual_tests/
+
 
 # Test outputs (but tests/ and extended-tests/ code IS tracked)
 tests/__pycache__/

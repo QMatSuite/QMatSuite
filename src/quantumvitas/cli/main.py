@@ -56,6 +56,7 @@ from quantumvitas.core.project_utils import (
 )
 from quantumvitas.data import load_qe_parameter_map
 from quantumvitas.core.engines.base import EngineConfig
+from quantumvitas.core.engines.qe_installation import get_qe_home
 from quantumvitas.engine.registry import create_default_registry
 from quantumvitas.project.model import Project
 from quantumvitas.workflow.runner import WorkflowRunner
@@ -2120,7 +2121,10 @@ def _is_empty_card_value(value: Any) -> bool:
 
 
 def _collect_qe_detection_info(backend) -> dict[str, Any]:
+    # Show env var for debugging (what user set), but use internal registry for resolution
     env_home = _safe_path(os.getenv("QE_HOME"))
+    registry_home = _safe_path(get_qe_home())  # Internal registry (preferred)
+    
     installation = getattr(backend, "installation", None) or getattr(
         backend, "_installation", None
     )
@@ -2132,7 +2136,8 @@ def _collect_qe_detection_info(backend) -> dict[str, Any]:
         pw_path = Path(which_path).resolve() if which_path else None
 
     which_home = pw_path.parent.parent if pw_path else None
-    resolved_home = engine_home or env_home or which_home
+    # Use internal registry as primary source, fall back to others
+    resolved_home = registry_home or engine_home or which_home
     bin_dir = None
     if resolved_home and (resolved_home / "bin").exists():
         bin_dir = resolved_home / "bin"

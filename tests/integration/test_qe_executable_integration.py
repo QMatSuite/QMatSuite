@@ -11,6 +11,20 @@ import stat
 
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.base import EngineConfig
+from quantumvitas.core.engines.qe_installation import get_qe_home, set_qe_home, reset_qe_home
+
+
+@pytest.fixture(autouse=True)
+def preserve_qe_home():
+    """Preserve and restore QE home registry around each test."""
+    # Save original state from internal registry
+    original_qe_home = get_qe_home()
+    yield
+    # Restore original QE home after test (using internal API, not os.environ)
+    if original_qe_home is not None:
+        set_qe_home(original_qe_home)
+    else:
+        reset_qe_home()
 
 
 class TestRealWorldScenarios:
