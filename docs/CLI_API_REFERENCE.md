@@ -9,8 +9,8 @@ description short and includes a minimal example you can run or adapt.
 | Command | What it does | Quick example |
 | --- | --- | --- |
 | `qv init project [--path PATH] [--name NAME] [--template TEMPLATE]` | Create an empty project skeleton (defaults to `./projectN` in the current directory). Passing `--path` selects the destination; `--name` controls metadata/slug; `--template` is reserved for future bundles. | `qv init project --path ~/projects --name Si Demo` |
-| `qv init workflow <id> --structure STRUCT [--project PATH] [--step scf --parent wfA --parent wfB]` | Scaffold a workflow folder (`workflows/<slug>/`) with `workflow.yaml`, `steps/`, and metadata. Optional `--parent` flags record upstream workflow dependencies. | `qv init workflow si_dos --structure si --project ~/projects/si_demo --step scf --step nscf --parent si_scf` |
-| `qv init step <structure-id> [--workflow ID] [--name NAME] [--type scf] [overrides…]` | Generate a step `.yaml`, optionally appending it to a workflow (defaults to end). | `qv init step si --workflow si_dos --project ~/projects/si_demo --name nscf --type nscf --SYSTEM.ecutwfc=60` |
+| `qv init workflow <name> --structure STRUCT [--project PATH] [--parent wfA]` | Scaffold a workflow folder (`workflows/<slug>/`) with `workflow.yaml`, `steps/`, and metadata. Optional `--parent` flags record upstream workflow dependencies. | `qv init workflow "Si DOS" --structure si --project ~/projects/si_demo --parent si_scf` |
+| `qv init step <type> [--workflow ID] [--project PATH] [overrides…]` | Generate a step `.yaml` in the enclosing workflow (auto-detected from pwd or via `--workflow`). Step name is auto-generated from type. | `qv init step nscf --workflow si_dos --project ~/projects/si_demo --SYSTEM.ecutwfc=60` |
 | `qv import-structure <file> [--name NAME] [--project PATH] [--output-format json]` | Parse a structure with pymatgen, auto-generate name/slug if omitted, and register it. | `qv import-structure si.cif --project ~/projects/si_demo --name "Si prim cell"` |
 | `qv list [--project PATH] [--verbose]` | Print the project tree down to each workflow step (IDs shown only with `--verbose`). | `qv list --project ~/projects/si_demo -v` |
 | `qv rename structure <selector> [--name NAME] [--slug SLUG] [--path PATH]` | Update a structure’s metadata and/or move its file (selector = name/slug/path). | `qv rename structure si --project ~/projects/si_demo --name "Si DOS" --path structures/si_dos.json` |
@@ -18,24 +18,31 @@ description short and includes a minimal example you can run or adapt.
 | `qv rename step <workflow> <step-id> [--project PATH] [--id NEW_ID] [--path NEW_PATH]` | Change a step id and/or relocate the `.step.yaml` file. | `qv rename step si_dos nscf --project ~/projects/si_demo --id nscf_relax` |
 | `qv rename project [--project PATH] [--name NAME] [--slug SLUG] [--path PATH]` | Update project metadata or move the entire project directory. | `qv rename project --project ~/projects/si_demo --name "Si tutorial"` |
 | `qv detect-qe` | Print the QE installation detected via the engine registry. | `qv detect-qe` |
-| `qv configure step <step.yaml> [--remove] [overrides…]` | Edit (or remove via `--remove`) parameters inside an existing step spec. Placeholders for `project/workflow/structure` currently print “not yet implemented”. | `qv configure step workflows/si_dos/steps/nscf.step.yaml --SYSTEM.ecutwfc=70` |
-| `qv delete structure <selector> [--project PATH] [--force] [--cascade]` | Move a structure (and optionally referencing workflows) into the project’s `trash/` folder (selector = name/slug/path). | `qv delete structure si --project ~/projects/si_demo` |
-| `qv delete workflow <selector> [--project PATH] [--force] [--cascade]` | Move a workflow directory into `trash/`, optionally cascading dependent workflows (selector = name/slug/path). | `qv delete workflow si_dos --project ~/projects/si_demo --cascade` |
-| `qv delete step <workflow> <step-id> [--project PATH]` | Remove a step entry from a workflow and move its `.step.yaml` to trash. | `qv delete step si_dos nscf --project ~/projects/si_demo` |
-| `qv delete project [--project PATH]` | Move an entire project directory into the parent `trash/` folder (auto-confirms if you’re inside it). | `qv delete project --project ~/projects/si_demo` |
+| `qv configure step <step-id|path> [--workflow ID] [--remove] [overrides…]` | Edit (or remove via `--remove`) parameters inside an existing step spec. Step can be specified by id or path; workflow is auto-detected from pwd if inside one. | `qv configure step nscf --SYSTEM.ecutwfc=70` |
+| `qv configure workflow [<workflow-id|path>] [--reorder STEP1,STEP2,...]` | Modify workflow settings or reorder steps. Workflow auto-detected from pwd if not specified. | `qv configure workflow --reorder scf,nscf,dos` |
+| `qv delete structure <selector> [--project PATH] [--force] [--cascade]` | Move a structure (and optionally referencing workflows) into the project's `trash/` folder. Selector = id/name/slug/path. | `qv delete structure si` |
+| `qv delete workflow [<selector>] [--project PATH] [--force] [--cascade]` | Move a workflow directory into `trash/`, optionally cascading dependent workflows. Auto-detects from pwd if not specified. | `qv delete workflow --cascade` |
+| `qv delete step <step-id> [--workflow ID] [--project PATH]` | Remove a step entry from a workflow and move its `.step.yaml` to trash. Workflow auto-detected from pwd if inside one. | `qv delete step nscf` |
+| `qv delete project [<selector>] [--project PATH]` | Move a project directory into the parent `trash/` folder. Selector = name/slug/path. | `qv delete project si_demo` |
 | `qv delete trash [--project PATH] [--path PATH] [--parent]` | Clean a trash directory (project-level by default, or explicit path). | `qv delete trash --project ~/projects/si_demo` |
 | `qv run step <input.in|step.yaml> [--project PATH] [--workdir PATH] [overrides…]` | Run a standalone QE input file **or** a `.step.yaml`, applying overrides to parameters/cards/species. | `qv run step workflows/si_dos/steps/scf.step.yaml --project . --CARD.K_POINTS.data=[[6,6,6,0,0,0]]` |
 | `qv run structure <structure-id|file> [--project PATH] [--type scf] [overrides…]` | Load a stored structure, materialize a QE input, apply overrides, and run it. | `qv run structure si --project ~/projects/si_demo --type scf --k_points=4,4,4,0,0,0` |
-| `qv run workflow <workflow-id|path> [--project PATH] [--strict] [--verbose]` | Execute an entire workflow defined in `project.qv.yml` or an explicit YAML file (optionally forcing strict mode). | `qv run workflow si_dos --project ~/projects/si_demo --strict` |
-| `qv run [target] [--project PATH] [--workdir PATH] [--strict]` | Auto-detect the target type (QE input, step YAML, workflow id, structure id) and dispatch to the appropriate subcommand. | `qv run workflows/si_dos/steps/scf.step.yaml --workdir temp/scf_run` |
+| `qv run workflow [<workflow-id|path>] [--project PATH] [--strict] [--verbose]` | Execute a workflow. Auto-detects enclosing workflow from pwd if not specified. | `qv run workflow --strict` |
+| `qv run [target] [--project PATH] [--workdir PATH] [--strict]` | Auto-detect the target type (QE input, step YAML, workflow id, structure id) and dispatch to the appropriate subcommand. If no target, runs enclosing workflow. | `qv run --strict` |
 | `qv analyze <energy|band|dos> <output-file>` | Invoke the lightweight analysis hooks on a QE output. | `qv analyze energy temp/test_outputs/si_scf.out` |
 | `qv params <module> [--section SECTION]` | Inspect parameters scraped from the QE docs (`qe_module_parameters.json`). | `qv params pw --section SYSTEM` |
 | `qv show-command <input.in>` | Parse a QE input and print example `qv init step` / `qv configure step` commands. | `qv show-command ci_test_data/pw_single_tests/scf.in` |
 | `qv get-command <input.in>` | Alias for `qv show-command`. | `qv get-command inputs/si_scf.in` |
 
-> **Selectors:** Whenever a command asks for a structure/workflow/step, pass its
-> human-readable name, slug, or filesystem path. The internal ULID identifiers
-> never appear in the CLI.
+> **Selectors:** Resources can be identified by:
+> - **id** (ULID): Exact match, case-sensitive (e.g., `01JXYZ...`)
+> - **name/slug**: Case-insensitive match (e.g., `si_dos`, `"Si DOS"`)
+> - **path**: Relative or absolute filesystem path (e.g., `workflows/si-dos`)
+>
+> **Auto-detection:** Many commands auto-detect resources from the current directory:
+> - **Project**: Walks up from pwd to find `project.qv.yml`
+> - **Workflow**: Detects if pwd is inside a workflow directory
+> - **Step**: If inside a workflow, step id can be used directly
 
 **Overrides syntax:** Any extra `--name=value` flag is treated as a QE override.
 Parameters map into namelists (`--SYSTEM.ecutwfc=60`). Cards can be updated via

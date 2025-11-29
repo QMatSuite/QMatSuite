@@ -1,0 +1,13 @@
+project:
+  name: project4
+  meta:
+    id: 01KB8EP7YQJ8AXR4ZDTRYJSKC1
+    name: project4
+    slug: project4
+    path: .
+    kind: project
+  structures_dir: structures
+  workflows_dir: workflows
+workflows: []
+structures: []
+settings: {}

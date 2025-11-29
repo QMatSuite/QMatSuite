@@ -8,6 +8,7 @@ They are used by both CLI and programmatic APIs.
 from __future__ import annotations
 
 import shutil
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional, Sequence, TYPE_CHECKING
@@ -73,9 +74,22 @@ def collect_slugs(entries: list[dict], *, exclude: Optional[dict] = None) -> lis
 
 
 def entry_matches(entry: dict, identifier: str) -> bool:
-    """Check if an entry matches the given identifier (name, slug, path, or file)."""
-    ident = identifier.lower()
+    """
+    Check if an entry matches the given identifier.
+    
+    Matches against (in order): id (ULID), name, slug, file path.
+    Comparison is case-insensitive for names/slugs.
+    """
+    ident = identifier.strip()
+    ident_lower = ident.lower()
     meta = entry.get("meta") or {}
+    
+    # Check id first (case-sensitive, exact match for ULID)
+    entry_id = meta.get("id") or entry.get("id")
+    if entry_id and entry_id == ident:
+        return True
+    
+    # Check other candidates (case-insensitive)
     candidates = filter(
         None,
         [
@@ -87,7 +101,7 @@ def entry_matches(entry: dict, identifier: str) -> bool:
         ],
     )
     for candidate in candidates:
-        if str(candidate).lower() == ident:
+        if str(candidate).lower() == ident_lower:
             return True
     return False
 
@@ -219,6 +233,335 @@ def workflow_directory(project_root: Path, entry: dict) -> Path:
     if not rel_path:
         raise ProjectConfigError("Workflow entry is missing a path.")
     return (project_root / rel_path).resolve()
+
+
+# ---------------------------------------------------------------------------
+# Auto-find resources from current directory
+# ---------------------------------------------------------------------------
+
+
+def find_project_root(start: Optional[Path] = None) -> Path:
+    """
+    Find project root by walking up from start directory.
+    
+    Args:
+        start: Starting directory (defaults to cwd)
+        
+    Returns:
+        Path to project root (directory containing project.qv.yml)
+        
+    Raises:
+        ResourceNotFoundError: If no project.qv.yml found
+    """
+    current = Path(start or Path.cwd()).resolve()
+    while current != current.parent:
+        if (current / "project.qv.yml").exists():
+            return current
+        current = current.parent
+    raise ResourceNotFoundError(
+        "No project.qv.yml found. Run inside a project or specify --project."
+    )
+
+
+def find_enclosing_workflow(
+    project_root: Path, 
+    config: dict, 
+    start: Optional[Path] = None
+) -> Optional[dict]:
+    """
+    Find workflow entry that encloses the current directory.
+    
+    Args:
+        project_root: Project root path
+        config: Project configuration dict
+        start: Starting directory (defaults to cwd)
+        
+    Returns:
+        Workflow entry dict if found, None otherwise
+    """
+    current = Path(start or Path.cwd()).resolve()
+    
+    # Must be inside project
+    try:
+        current.relative_to(project_root)
+    except ValueError:
+        return None
+    
+    workflows = config.get("workflows", [])
+    for entry in workflows:
+        ensure_workflow_entry_defaults(entry)
+        rel_path = entry.get("path") or (entry.get("meta") or {}).get("path")
+        if not rel_path:
+            continue
+        workflow_dir = (project_root / rel_path).resolve()
+        # Check if current dir is workflow dir or inside it
+        if current == workflow_dir:
+            return entry
+        try:
+            current.relative_to(workflow_dir)
+            return entry
+        except ValueError:
+            continue
+    return None
+
+
+def find_step_in_workflow(
+    workflow_dir: Path, 
+    step_identifier: str
+) -> Optional[Path]:
+    """
+    Find a step YAML file in a workflow by id, name, or path.
+    
+    Args:
+        workflow_dir: Path to workflow directory
+        step_identifier: Step id, name, or path to .step.yaml
+        
+    Returns:
+        Path to step YAML if found, None otherwise
+    """
+    steps_dir = workflow_dir / "steps"
+    
+    # Check if it's a direct path
+    if step_identifier.endswith(".yaml") or step_identifier.endswith(".yml"):
+        candidates = [
+            Path(step_identifier),
+            workflow_dir / step_identifier,
+            steps_dir / step_identifier,
+        ]
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate.resolve()
+    
+    # Search by step id in workflow.yaml and step files
+    workflow_yaml = workflow_dir / "workflow.yaml"
+    if workflow_yaml.exists():
+        try:
+            wf_data = yaml.safe_load(workflow_yaml.read_text()) or {}
+            for step in wf_data.get("steps", []):
+                step_id = step.get("id", "")
+                if step_id.lower() == step_identifier.lower():
+                    # Found step id, look for corresponding YAML
+                    step_yaml = steps_dir / f"{step_id}.step.yaml"
+                    if step_yaml.exists():
+                        return step_yaml
+                    # Try input file path
+                    input_file = step.get("input")
+                    if input_file:
+                        base = Path(input_file).stem
+                        step_yaml = steps_dir / f"{base}.step.yaml"
+                        if step_yaml.exists():
+                            return step_yaml
+        except Exception:
+            pass
+    
+    # Fallback: search all .step.yaml files
+    if steps_dir.exists():
+        ident_lower = step_identifier.lower()
+        for step_path in steps_dir.glob("*.step.yaml"):
+            # Match by filename stem
+            if step_path.stem.replace(".step", "").lower() == ident_lower:
+                return step_path
+            # Or parse and check step_type/id inside
+            try:
+                step_data = yaml.safe_load(step_path.read_text()) or {}
+                if step_data.get("id", "").lower() == ident_lower:
+                    return step_path
+                if step_data.get("step_type", "").lower() == ident_lower:
+                    return step_path
+            except Exception:
+                continue
+    
+    return None
+
+
+@dataclass
+class ResourceContext:
+    """Result of resource resolution."""
+    project_root: Path
+    config: dict
+    entry: Optional[dict] = None  # The found resource entry
+    parent_entry: Optional[dict] = None  # Parent resource (workflow for step)
+    resource_path: Optional[Path] = None  # Resolved absolute path
+
+
+def _is_ulid_like(s: str) -> bool:
+    """Check if string looks like a ULID (26 chars, alphanumeric)."""
+    if len(s) != 26:
+        return False
+    return s.isalnum() and s.isupper()
+
+
+def _is_path_like(s: str) -> bool:
+    """Check if string looks like a path."""
+    return "/" in s or "\\" in s or s.endswith(".yaml") or s.endswith(".yml")
+
+
+def resolve_resource(
+    resource_type: str,
+    identifier: Optional[str] = None,
+    parent_identifier: Optional[str] = None,
+    project_path: Optional[Path] = None,
+    cwd: Optional[Path] = None,
+) -> ResourceContext:
+    """
+    Universal resource resolver with auto-detection from current directory.
+    
+    Resolution strategy:
+    1. Find project root (from project_path or walking up from cwd)
+    2. For resources needing a parent (step needs workflow):
+       - If parent_identifier given, find parent first
+       - Else auto-detect parent from cwd
+    3. Find the resource:
+       - By path: direct lookup
+       - By id (ULID): search all entries
+       - By name/slug: search within parent scope
+    
+    Args:
+        resource_type: "project", "structure", "workflow", or "step"
+        identifier: Resource id/name/slug/path (optional for workflow/step if inside one)
+        parent_identifier: Parent resource id/name/slug/path (for step: the workflow)
+        project_path: Explicit project path
+        cwd: Starting directory for auto-detection (defaults to Path.cwd())
+        
+    Returns:
+        ResourceContext with project_root, config, entry, parent_entry, resource_path
+        
+    Raises:
+        ResourceNotFoundError: If resource cannot be found
+    """
+    start = Path(cwd or Path.cwd()).resolve()
+    
+    # Step 1: Find project root
+    if project_path:
+        project_root = Path(project_path).expanduser().resolve()
+        if not (project_root / "project.qv.yml").exists():
+            raise ResourceNotFoundError(f"No project.qv.yml in {project_root}")
+    else:
+        project_root = find_project_root(start)
+    
+    config = load_project_config(project_root)
+    
+    # Step 2: Handle project type (simplest case)
+    if resource_type == "project":
+        return ResourceContext(
+            project_root=project_root,
+            config=config,
+            entry=config.get("project", {}),
+            resource_path=project_root,
+        )
+    
+    # Step 3: Handle structure (parent is always project)
+    if resource_type == "structure":
+        if not identifier:
+            raise ResourceNotFoundError("Structure identifier required.")
+        entry = find_structure_entry(config, identifier, project_root)
+        file_path = entry.get("file") or (entry.get("meta") or {}).get("path")
+        return ResourceContext(
+            project_root=project_root,
+            config=config,
+            entry=entry,
+            resource_path=(project_root / file_path) if file_path else None,
+        )
+    
+    # Step 4: Handle workflow (parent is always project)
+    if resource_type == "workflow":
+        if identifier:
+            # Check if it's a direct path first
+            if _is_path_like(identifier):
+                candidate = Path(identifier)
+                if not candidate.is_absolute():
+                    candidate = project_root / identifier
+                if candidate.exists():
+                    # Find matching entry in config
+                    for entry in config.get("workflows", []):
+                        ensure_workflow_entry_defaults(entry)
+                        wf_dir = workflow_directory(project_root, entry)
+                        if wf_dir == candidate.resolve():
+                            return ResourceContext(
+                                project_root=project_root,
+                                config=config,
+                                entry=entry,
+                                resource_path=wf_dir,
+                            )
+            # Search by id/name/slug
+            entry = find_workflow_entry(config, identifier, project_root)
+            return ResourceContext(
+                project_root=project_root,
+                config=config,
+                entry=entry,
+                resource_path=workflow_directory(project_root, entry),
+            )
+        else:
+            # Auto-find enclosing workflow from cwd
+            entry = find_enclosing_workflow(project_root, config, start)
+            if entry:
+                return ResourceContext(
+                    project_root=project_root,
+                    config=config,
+                    entry=entry,
+                    resource_path=workflow_directory(project_root, entry),
+                )
+            raise ResourceNotFoundError(
+                "No workflow specified and not inside a workflow directory."
+            )
+    
+    # Step 5: Handle step (parent is workflow)
+    if resource_type == "step":
+        # First, find the parent workflow
+        workflow_entry = None
+        workflow_dir = None
+        
+        if parent_identifier:
+            # User specified workflow explicitly
+            workflow_entry = find_workflow_entry(config, parent_identifier, project_root)
+            workflow_dir = workflow_directory(project_root, workflow_entry)
+        else:
+            # Try to auto-detect enclosing workflow from cwd
+            workflow_entry = find_enclosing_workflow(project_root, config, start)
+            if workflow_entry:
+                workflow_dir = workflow_directory(project_root, workflow_entry)
+        
+        if not workflow_entry:
+            raise ResourceNotFoundError(
+                "Could not determine workflow. Specify --workflow or run inside a workflow directory."
+            )
+        
+        if not identifier:
+            raise ResourceNotFoundError("Step identifier required.")
+        
+        # Find the step within the workflow
+        step_path = find_step_in_workflow(workflow_dir, identifier)
+        if step_path:
+            return ResourceContext(
+                project_root=project_root,
+                config=config,
+                entry={"id": identifier, "path": str(step_path)},
+                parent_entry=workflow_entry,
+                resource_path=step_path,
+            )
+        
+        raise ResourceNotFoundError(
+            f"Step '{identifier}' not found in workflow '{entry_display_name(workflow_entry)}'."
+        )
+    
+    raise ValueError(f"Unknown resource type: {resource_type}")
+
+
+# Keep backward compatibility alias
+def find_resource_auto(
+    resource_type: str,
+    identifier: Optional[str] = None,
+    project_path: Optional[Path] = None,
+    start: Optional[Path] = None,
+) -> tuple[Path, dict, Optional[dict]]:
+    """Backward-compatible wrapper for resolve_resource."""
+    ctx = resolve_resource(
+        resource_type=resource_type,
+        identifier=identifier,
+        project_path=project_path,
+        cwd=start,
+    )
+    return ctx.project_root, ctx.config, ctx.entry
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,10 @@
+id: si-dos
+mode: normal
+workflow:
+  working_dir: raw
+  structure: si
+steps:
+- id: scf
+  step_file: steps/scf.step.yaml
+- id: nscf
+  step_file: steps/nscf.step.yaml
