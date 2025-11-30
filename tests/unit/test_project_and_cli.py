@@ -524,6 +524,8 @@ def test_cli_step_create_and_insert(sample_project: Path):
         [
             "init",
             "step",
+            "nscf",  # step type is now first positional arg
+            "--structure",
             "si",
             "--project",
             str(sample_project),
@@ -531,10 +533,6 @@ def test_cli_step_create_and_insert(sample_project: Path):
             "wf",
             "--name",
             "nscf",
-            "--type",
-            "nscf",
-            "--input-name",
-            "nscf.pw.in",
             "--SYSTEM.ecutwfc=60",
             "--SYSTEM.ecutrho=240",
             "--CARD.K_POINTS.option=automatic",
@@ -622,8 +620,10 @@ def test_cli_show_command(tmp_path: Path):
     runner = CliRunner()
     result = runner.invoke(app, ["show-command", str(input_file)])
     assert result.exit_code == 0
-    assert "qv init step '<structure-id>'" in result.stdout
+    assert "qv init step" in result.stdout
     assert "configure step" in result.stdout
+    # Check for helpful explanation instead of --structure placeholder
+    assert "inside a workflow directory" in result.stdout or "--structure" in result.stdout
 
 
 def test_cli_show_command_generates_matching_input(
@@ -715,9 +715,13 @@ def test_cli_show_command_generates_matching_input(
             if line.strip().startswith("qv init step")
         )
         init_args = shlex.split(init_line)[1:]
-        placeholder_index = init_args.index("<structure-id>")
-        init_args[placeholder_index] = structure_name
-        init_args.extend(["--workflow", workflow_name, "--project", str(project_root)])
+        # Now show-command doesn't include --structure, so we add it explicitly
+        # along with --workflow and --project
+        init_args.extend([
+            "--structure", structure_name,
+            "--workflow", workflow_name,
+            "--project", str(project_root)
+        ])
         init_result = runner.invoke(app, init_args)
         assert init_result.exit_code == 0, init_result.stdout
 
@@ -792,7 +796,9 @@ def test_cli_get_command_alias(tmp_path: Path):
     runner = CliRunner()
     result = runner.invoke(app, ["get-command", str(input_file)])
     assert result.exit_code == 0
-    assert "qv init step '<structure-id>'" in result.stdout
+    assert "qv init step" in result.stdout
+    # Check for helpful explanation instead of --structure placeholder
+    assert "inside a workflow directory" in result.stdout or "--structure" in result.stdout
 
 
 def test_cli_delete_structure(tmp_path: Path):

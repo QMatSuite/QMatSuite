@@ -365,3 +365,21 @@ Update doc accordingly.
 
 
 Review AI_understanding.md to catch up with the ideas of the project. Optionally, review the doc and .md files to understand. Then, review "@temporary_ai_prompts (282-343) " which are most recently implemented prompts. Now that you understands, review the ongoing refactoring "@temporary_ai_prompts (344-365) " and determine the progress and make plan.
+
+
+Above: Done.
+
+2025.11.29-1:
+1. Implement --template for all qv init (project, workflow, step). Also qv import-structure can take .json file! See templates in templates folder (basically resources categorized into different categories). Need to make sure how to copy them to current folder (same ulidcorrect tree structure and references). Eg, if copy workflow or step, then also copy related structure if exists in template/structure.
+1. for show-command, qv init step <step-type> rather than scf, remove --structure <structure-id> (add simple explanation)
+2. for init step, not only if pwd is in a workflow, but also if parent workflow is specified, then use workflow structure.
+3. when qv run workflow, you need to find suitable executable from qe depending on the step type. For example in manual_tests/project1/workflows/Si-dos, the third step should be dos.x. Right now it gives error: ValueError: Section 'DOS' is not valid for module 'pw'.
+
+Run tests to make sure everything works. Update doc and AI_understanding.md accordingly.
+
+Done. Now need to check qv init with template. Especially how ULID and related structures are handled.
+Again, QE_HOME should be detected automatically. You already put that internally in api, never rely on os.env when running because it is prone to error.
+
+
+Done. Still need to test qvv init with template.
+

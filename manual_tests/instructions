@@ -1,16 +1,24 @@
-
+export PYTHONSRC="/Users/pu1/src/quantumVITAS"
 qv init project --name project1
 cd project1
-qv import-structure ../../tests/integration/ci_test_data/4_Si_DOS/si.1_scf.in
+qv import-structure $PYTHONSRC/tests/integration/ci_test_data/4_Si_DOS/si.1_scf.in
 qv init workflow "Si dos" --structure si
-qv init step si --type scf
+cd workflows/Si-dos
+qv init step scf
+qv show-command $PYTHONSRC/tests/integration/ci_test_data/4_Si_DOS/si.1_scf.in
 
-qv show-command ../../../../tests/integration/ci_test_data/4_Si_DOS/si.1_scf.in
 qv configure step steps/scf.step.yaml --CONTROL.calculation=scf --CONTROL.outdir=./outdir --CONTROL.prefix=si --CONTROL.pseudo_dir=/home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos --CONTROL.restart_mode=from_scratch --ELECTRONS.conv_thr=1e-08 --SYSTEM.ecutwfc=50 '--CARD.K_POINTS={"option":"automatic","data":[["8","8","8","0","0","0"]]}' --SPECIES.Si.mass=28.0855 --SPECIES.Si.pseudopot=Si.pbe-n-rrkjus_psl.1.0.0.UPF
-qv init step si --type nscf
-qv init step si --type dos
-qv delete step si-dos nscf
+
+qv init step nscf
+qv init step dos
+qv delete step nscf
 qv delete step si-dos dos
 
-qv show-command ../../../../tests/integration/ci_test_data/4_Si_DOS/si.2_nscf.in
-qv init step si --type nscf --CONTROL.calculation=nscf --CONTROL.outdir=./outdir --CONTROL.prefix=si --CONTROL.pseudo_dir=/home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos --CONTROL.restart_mode=from_scratch --ELECTRONS.conv_thr=1e-08 --SYSTEM.ecutwfc=50 --SYSTEM.occupations=tetrahedra '--CARD.K_POINTS={"option":"automatic","data":[["12","12","12","0","0","0"]]}' --SPECIES.Si.mass=28.0855 --SPECIES.Si.pseudopot=Si.pbe-n-rrkjus_psl.1.0.0.UPF
+qv show-command $PYTHONSRC/tests/integration/ci_test_data/4_Si_DOS/si.2_nscf.in
+qv init step nscf --CONTROL.calculation=nscf --CONTROL.outdir=./outdir --CONTROL.prefix=si --CONTROL.pseudo_dir=/home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos --CONTROL.restart_mode=from_scratch --ELECTRONS.conv_thr=1e-08 --SYSTEM.ecutwfc=50 --SYSTEM.occupations=tetrahedra '--CARD.K_POINTS={"option":"automatic","data":[["12","12","12","0","0","0"]]}' --SPECIES.Si.mass=28.0855 --SPECIES.Si.pseudopot=Si.pbe-n-rrkjus_psl.1.0.0.UPF
+
+qv show-command $PYTHONSRC/tests/integration/ci_test_data/4_Si_DOS/si.3_dos.in
+qv init step dos --DOS.emax=16.0 --DOS.emin=-9.0 --DOS.fildos=si.dos.dat --DOS.outdir=./outdir/ --DOS.prefix=si
+
+qv run workflow
+

@@ -2,7 +2,7 @@
     calculation = 'scf'
     outdir = './outdir'
     prefix = 'si'
-    pseudo_dir = '/Users/SB2/quantumVITAS/pseudo'
+    pseudo_dir = '/Users/pu1/src/quantumVITAS/pseudo'
     restart_mode = 'from_scratch'
 /
 

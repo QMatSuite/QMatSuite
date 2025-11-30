@@ -1,8 +1,8 @@
 &CONTROL
-    calculation = 'nscf'
+    calculation = 'scf'
     outdir = './outdir'
     prefix = 'si'
-    pseudo_dir = '/Users/SB2/quantumVITAS/pseudo'
+    pseudo_dir = '/Users/pu1/src/quantumVITAS/manual_tests/project1/pseudo'
     restart_mode = 'from_scratch'
 /
 
@@ -11,7 +11,6 @@
     nat = 2
     ntyp = 1
     ecutwfc = 50
-    occupations = 'tetrahedra'
 /
 
 &ELECTRONS
@@ -31,4 +30,4 @@ CELL_PARAMETERS (angstrom)
   -2.7546079563238743 2.7546079563238743 0.0
 
 K_POINTS {automatic}
-  12 12 12 0 0 0
+  8 8 8 0 0 0
