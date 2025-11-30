@@ -673,7 +673,9 @@ def init_workflow_command(
 )
 def init_step_command(
     ctx: typer.Context,
-    structure: str = typer.Argument(..., help="Structure id registered in the project"),
+    structure: Optional[str] = typer.Argument(
+        None, help="Structure id (optional if inside a workflow that has a structure)"
+    ),
     project: Optional[Path] = typer.Option(
         None, "--project", help="Project root (defaults to auto-detect)"
     ),
@@ -692,7 +694,11 @@ def init_step_command(
         help="Insert position when attaching to a workflow (0-indexed, defaults to append).",
     ),
 ) -> None:
-    """Create a StructureStepSpec YAML file and optionally attach it to a workflow."""
+    """Create a StructureStepSpec YAML file and optionally attach it to a workflow.
+    
+    If inside a workflow directory (or --workflow specified), the structure
+    is optional and will be inherited from the parent workflow.
+    """
 
     project_root = _maybe_project_root(project)
     bundle = _parse_override_args(ctx.args)
@@ -710,6 +716,8 @@ def init_step_command(
     workflow_steps: list[dict] | None = None
     workflow_data = None
     existing_step_ids: list[str] = []
+    parent_workflow_id: Optional[str] = None
+    workflow_structure: Optional[str] = None
 
     if workflow:
         if not project_root:
@@ -730,6 +738,28 @@ def init_step_command(
         workflow_data = yaml.safe_load(workflow_yaml.read_text()) or {}
         workflow_steps = workflow_data.setdefault("steps", [])
         existing_step_ids = [step.get("id") for step in workflow_steps if step.get("id")]
+        
+        # Get parent workflow id and structure
+        parent_workflow_id = (
+            (workflow_entry.get("meta") or {}).get("id") or
+            workflow_entry.get("id") or
+            workflow_data.get("id")
+        )
+        workflow_section = workflow_data.get("workflow", {})
+        workflow_structure = workflow_section.get("structure")
+
+    # Resolve structure: use provided, or inherit from parent workflow
+    if structure:
+        structure_value = _resolve_structure_reference(
+            structure, project_root, config if project_root else None
+        )
+    elif workflow_structure:
+        structure_value = workflow_structure
+        typer.echo(f"Using structure '{structure_value}' from parent workflow")
+    else:
+        raise typer.BadParameter(
+            "Structure required. Provide structure id as argument, or run inside a workflow that has a structure."
+        )
 
     step_display_name, step_slug = _derive_step_identity(name or step_type, existing_step_ids)
 
@@ -744,9 +774,6 @@ def init_step_command(
         )
 
     spec_path.parent.mkdir(parents=True, exist_ok=True)
-    structure_value = _resolve_structure_reference(
-        structure, project_root, config if project_root else None
-    )
     spec = StructureStepSpec(
         meta=meta_from_name("step", name=step_display_name, path=""),
         structure=structure_value,
@@ -754,6 +781,7 @@ def init_step_command(
         parameters=_overrides_to_parameter_dict(bundle.parameters),
         cards=bundle.card_overrides or {},
         species_overrides=bundle.species_overrides or {},
+        parent_workflow_id=parent_workflow_id,
     )
     _write_step_spec(spec_path, spec, project_root=project_root)
 
@@ -1697,19 +1725,205 @@ def configure_project_placeholder() -> None:
 
 
 @configure_app.command("workflow")
-def configure_workflow_placeholder() -> None:
-    typer.secho(
-        "Workflow-level configure commands are not implemented yet.",
-        fg=typer.colors.YELLOW,
-    )
+def configure_workflow_command(
+    workflow_identifier: Optional[str] = typer.Argument(
+        None, help="Workflow id/name/slug/path (auto-detects from pwd if omitted)"
+    ),
+    project: Optional[Path] = typer.Option(
+        None, "--project", help="Project root (auto-detects from pwd)"
+    ),
+    structure: Optional[str] = typer.Option(
+        None, "--structure", help="Change the structure used by this workflow (updates all steps)"
+    ),
+    reorder: Optional[str] = typer.Option(
+        None, "--reorder", help="Reorder steps as comma-separated list of step ids (e.g., scf,nscf,dos)"
+    ),
+) -> None:
+    """
+    Modify workflow settings: change structure or reorder steps.
+    
+    Workflow can be specified by id/name/slug/path, or auto-detected from current directory.
+    """
+    # Find project root
+    if project:
+        project_root = Path(project).expanduser().resolve()
+    else:
+        try:
+            project_root = find_project_root()
+        except Exception as exc:
+            raise typer.BadParameter(str(exc)) from exc
+    
+    config = load_project_config(project_root)
+    
+    # Resolve workflow
+    if workflow_identifier:
+        workflow_entry = find_workflow_entry(config, workflow_identifier, project_root)
+    else:
+        workflow_entry = find_enclosing_workflow(project_root, config)
+        if not workflow_entry:
+            raise typer.BadParameter(
+                "No workflow specified and not inside a workflow directory. "
+                "Specify workflow id/name/slug/path or cd into a workflow folder."
+            )
+    
+    workflow_dir = workflow_directory(project_root, workflow_entry)
+    workflow_yaml = workflow_dir / "workflow.yaml"
+    
+    if not workflow_yaml.exists():
+        raise typer.BadParameter(f"workflow.yaml not found at {workflow_yaml}")
+    
+    workflow_data = yaml.safe_load(workflow_yaml.read_text()) or {}
+    modified = False
+    
+    # Handle structure change
+    if structure:
+        # Validate structure exists
+        find_structure_entry(config, structure, project_root)
+        
+        # Update workflow.yaml
+        workflow_section = workflow_data.setdefault("workflow", {})
+        old_structure = workflow_section.get("structure")
+        workflow_section["structure"] = structure
+        modified = True
+        
+        # Update all step yaml files
+        steps_updated = 0
+        for step_entry in workflow_data.get("steps", []):
+            step_file = step_entry.get("step_file")
+            if not step_file:
+                continue
+            step_path = (workflow_dir / step_file).resolve()
+            if not step_path.exists():
+                continue
+            try:
+                spec = StructureStepSpec.from_yaml(step_path)
+                spec.structure = structure
+                step_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
+                steps_updated += 1
+            except Exception as e:
+                typer.secho(f"  Warning: Could not update {step_file}: {e}", fg=typer.colors.YELLOW)
+        
+        typer.secho(
+            f"Structure changed from '{old_structure}' to '{structure}' ({steps_updated} steps updated)",
+            fg=typer.colors.GREEN
+        )
+    
+    # Handle reorder
+    if reorder:
+        step_ids = [s.strip() for s in reorder.split(",") if s.strip()]
+        if not step_ids:
+            raise typer.BadParameter("--reorder requires a comma-separated list of step ids")
+        
+        current_steps = workflow_data.get("steps", [])
+        current_step_map = {step.get("id"): step for step in current_steps if step.get("id")}
+        
+        # Validate all provided ids exist
+        for step_id in step_ids:
+            if step_id not in current_step_map:
+                raise typer.BadParameter(
+                    f"Step '{step_id}' not found in workflow. "
+                    f"Available: {', '.join(current_step_map.keys())}"
+                )
+        
+        # Check if all current steps are accounted for
+        if set(step_ids) != set(current_step_map.keys()):
+            missing = set(current_step_map.keys()) - set(step_ids)
+            raise typer.BadParameter(
+                f"All steps must be included in reorder. Missing: {', '.join(missing)}"
+            )
+        
+        # Reorder
+        new_steps = [current_step_map[step_id] for step_id in step_ids]
+        workflow_data["steps"] = new_steps
+        modified = True
+        
+        typer.secho(f"Steps reordered: {' -> '.join(step_ids)}", fg=typer.colors.GREEN)
+    
+    if modified:
+        workflow_yaml.write_text(yaml.safe_dump(workflow_data, sort_keys=False))
+        typer.secho(f"Workflow updated: {workflow_yaml}", fg=typer.colors.GREEN)
+    else:
+        typer.secho("No changes specified. Use --structure or --reorder.", fg=typer.colors.YELLOW)
 
 
 @configure_app.command("structure")
-def configure_structure_placeholder() -> None:
-    typer.secho(
-        "Structure-level configure commands are not implemented yet.",
-        fg=typer.colors.YELLOW,
-    )
+def configure_structure_command(
+    identifier: str = typer.Argument(..., help="Structure name/slug/path"),
+    project: Optional[Path] = typer.Option(
+        None, "--project", help="Project root (auto-detects from pwd)"
+    ),
+    name: Optional[str] = typer.Option(
+        None, "--name", help="New name for the structure"
+    ),
+) -> None:
+    """
+    Modify structure settings (currently supports renaming).
+    
+    For more complex structure modifications, use pymatgen directly or re-import.
+    """
+    if project:
+        project_root = Path(project).expanduser().resolve()
+    else:
+        try:
+            project_root = find_project_root()
+        except Exception as exc:
+            raise typer.BadParameter(str(exc)) from exc
+    
+    config = load_project_config(project_root)
+    
+    # Find structure entry
+    try:
+        entry = find_structure_entry(config, identifier, project_root)
+    except ResourceNotFoundError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    
+    if not name:
+        typer.secho("No changes specified. Use --name to rename the structure.", fg=typer.colors.YELLOW)
+        return
+    
+    # Use rename logic
+    meta = entry.get("meta") or {}
+    old_name = meta.get("name") or entry.get("name") or identifier
+    
+    # Update metadata
+    new_slug = slugify(name)
+    meta["name"] = name
+    meta["slug"] = new_slug
+    entry["meta"] = meta
+    entry["name"] = name
+    
+    # Rename file if needed
+    old_file = entry.get("file") or meta.get("path")
+    if old_file:
+        old_path = project_root / old_file
+        new_filename = f"{new_slug}.json"
+        new_path = old_path.parent / new_filename
+        
+        if old_path.exists() and old_path != new_path:
+            if new_path.exists():
+                raise typer.BadParameter(f"Cannot rename: {new_path} already exists")
+            
+            # Update structure metadata inside the JSON file
+            try:
+                struct = read_structure(old_path)
+                # Update the meta stored in the structure
+                struct_dict = struct.as_dict()
+                if "_meta" in struct_dict:
+                    struct_dict["_meta"]["name"] = name
+                    struct_dict["_meta"]["slug"] = new_slug
+                    struct_dict["_meta"]["path"] = f"structures/{new_filename}"
+                old_path.rename(new_path)
+                new_path.write_text(json.dumps(struct_dict, indent=2))
+            except Exception:
+                # Fallback: just rename without updating internal metadata
+                old_path.rename(new_path)
+            
+            new_rel = ensure_relative_path(new_path, base=project_root)
+            entry["file"] = new_rel
+            meta["path"] = new_rel
+    
+    save_project_config(project_root, config)
+    typer.secho(f"Structure renamed from '{old_name}' to '{name}'", fg=typer.colors.GREEN)
 
 
 @app.command("show-command")
@@ -2337,6 +2551,11 @@ def _execute_step_spec_path(
     engine_backend,
 ):
     spec = StructureStepSpec.from_yaml(spec_path)
+    
+    # Validate structure consistency with parent workflow if present
+    if spec.parent_workflow_id and project_root:
+        _validate_step_structure_consistency(spec, spec_path, project_root)
+    
     return _execute_step_spec(
         spec=spec,
         spec_path=spec_path,
@@ -2345,6 +2564,56 @@ def _execute_step_spec_path(
         working_dir=working_dir,
         engine_backend=engine_backend,
     )
+
+
+def _validate_step_structure_consistency(
+    spec: StructureStepSpec,
+    spec_path: Path,
+    project_root: Path,
+) -> None:
+    """
+    Validate that the step's structure matches its parent workflow's structure.
+    
+    Raises typer.BadParameter if there's a mismatch.
+    """
+    try:
+        config = load_project_config(project_root)
+    except Exception:
+        return  # Can't validate without project config
+    
+    # Find parent workflow by looking at the spec path (should be inside workflow dir)
+    # or by using the parent_workflow_id
+    parent_workflow_id = spec.parent_workflow_id
+    if not parent_workflow_id:
+        return
+    
+    # Try to find the workflow entry
+    try:
+        workflow_entry = find_workflow_entry(config, parent_workflow_id, project_root)
+    except ResourceNotFoundError:
+        # Parent workflow not found in project, might be standalone
+        return
+    
+    workflow_dir = workflow_directory(project_root, workflow_entry)
+    workflow_yaml = workflow_dir / "workflow.yaml"
+    
+    if not workflow_yaml.exists():
+        return
+    
+    workflow_data = yaml.safe_load(workflow_yaml.read_text()) or {}
+    workflow_section = workflow_data.get("workflow", {})
+    workflow_structure = workflow_section.get("structure")
+    
+    if not workflow_structure:
+        return
+    
+    # Compare structures (by slug/name/id)
+    if spec.structure != workflow_structure:
+        typer.secho(
+            f"Warning: Step structure '{spec.structure}' differs from parent workflow structure "
+            f"'{workflow_structure}'. Using step's structure.",
+            fg=typer.colors.YELLOW
+        )
 
 
 def _execute_step_spec(
@@ -2386,6 +2655,7 @@ def _execute_step_spec(
         working_dir=workdir,
         project_root=project_root,
         step_type=None,
+        keep_original=False,  # Step spec serves as the source of truth
     )
     return result, prepared, generated_input
 

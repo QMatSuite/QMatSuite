@@ -150,9 +150,22 @@ def prepare_input_step(
     parameter_overrides: Optional[Sequence[ParameterOverride]] = None,
     card_overrides: Optional[Mapping[str, Mapping[str, Any]]] = None,
     species_overrides: Optional[Mapping[str, Mapping[str, Any]]] = None,
+    keep_original: bool = True,
 ) -> PreparedInputStep:
     """
     Prepare a QE input file for execution inside a working directory.
+    
+    Args:
+        input_file: Path to the original QE input file
+        working_dir: Directory where execution will take place
+        project_root: Project root for pseudo_dir resolution
+        parameter_overrides: Optional parameter overrides
+        card_overrides: Optional card overrides
+        species_overrides: Optional species overrides
+        keep_original: If True and input is modified, save original as <name>_original.in
+    
+    Returns:
+        PreparedInputStep with paths to working directory and input files
     """
     project_root = detect_project_root(project_root)
     working_dir = Path(working_dir)
@@ -160,9 +173,15 @@ def prepare_input_step(
     (working_dir / "outdir").mkdir(parents=True, exist_ok=True)
 
     input_path = Path(input_file)
+    # Use a clean input file name in the working directory
     working_dir_input = working_dir / input_path.name
+    
+    # If input is already in working dir, use a different name for the processed version
     if input_path.resolve().parent == working_dir.resolve():
-        working_dir_input = working_dir / f"{input_path.stem}_work.in"
+        working_dir_input = working_dir / f"{input_path.stem}_run.in"
+    
+    original_copy = input_path  # Default: original is the source file
+    
     try:
         qe_input = QEInputParser.parse_file(input_file)
         if parameter_overrides:
@@ -172,6 +191,11 @@ def prepare_input_step(
         set_outdir_to_temp(qe_input)
         set_pseudo_dir_to_temp(qe_input, project_root)
         QEInputGenerator.write_file(qe_input, working_dir_input)
+        
+        # Only keep a copy of original if requested and input was modified
+        if keep_original and input_path.resolve() != working_dir_input.resolve():
+            original_copy = working_dir / f"{input_path.stem}_original.in"
+            _safe_copy(input_file, original_copy)
     except Exception:
         if working_dir_input != input_file:
             shutil.copy2(input_file, working_dir_input)
@@ -182,12 +206,6 @@ def prepare_input_step(
     unified_pseudo_dir.mkdir(parents=True, exist_ok=True)
     if not ensure_pseudopotentials(working_dir_input, working_dir, unified_pseudo_dir, None):
         raise RuntimeError("Failed to obtain required pseudopotentials")
-
-    input_stem = input_path.stem
-    original_copy = working_dir / f"{input_stem}_original.in"
-    modified_copy = working_dir / f"{input_stem}_modified.in"
-    _safe_copy(input_file, original_copy)
-    _safe_copy(working_dir_input, modified_copy)
 
     return PreparedInputStep(
         working_dir=working_dir,
@@ -234,9 +252,25 @@ def run_input_step(
     parameter_overrides: Optional[Sequence[ParameterOverride]] = None,
     card_overrides: Optional[Mapping[str, Mapping[str, Any]]] = None,
     species_overrides: Optional[Mapping[str, Mapping[str, Any]]] = None,
+    keep_original: bool = True,
 ) -> tuple[StepResult, PreparedInputStep]:
     """
     Convenience function combining preparation + execution.
+    
+    Args:
+        engine: QE engine to execute the step
+        input_file: Path to the QE input file
+        working_dir: Working directory for execution
+        project_root: Project root for pseudo_dir resolution
+        step_type: Optional step type override
+        timeout: Optional execution timeout
+        parameter_overrides: Optional parameter overrides
+        card_overrides: Optional card overrides
+        species_overrides: Optional species overrides
+        keep_original: If True, save original input as <name>_original.in for debugging
+    
+    Returns:
+        Tuple of (StepResult, PreparedInputStep)
     """
     prepared = prepare_input_step(
         input_file=input_file,
@@ -245,6 +279,7 @@ def run_input_step(
         parameter_overrides=parameter_overrides,
         card_overrides=card_overrides,
         species_overrides=species_overrides,
+        keep_original=keep_original,
     )
     result = run_prepared_step(
         engine=engine,

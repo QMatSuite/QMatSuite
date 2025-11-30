@@ -400,6 +400,7 @@ def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
         project_root,
         step_type=None,
         parameter_overrides=None,
+        keep_original=True,
     ):
         captured["input_file"] = input_file
         captured["working_dir"] = working_dir
@@ -477,6 +478,7 @@ def test_cli_run_step_accepts_step_yaml(tmp_path: Path, monkeypatch):
         project_root,
         step_type=None,
         parameter_overrides=None,
+        keep_original=True,
     ):
         captured["input_file"] = input_file
         captured["working_dir"] = working_dir
@@ -647,6 +649,7 @@ def test_cli_show_command_generates_matching_input(
         project_root,
         step_type=None,
         parameter_overrides=None,
+        keep_original=True,
     ):
         captured_runs["input_file"] = input_file
         return (
