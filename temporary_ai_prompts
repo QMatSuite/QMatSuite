@@ -347,7 +347,7 @@ For CLI, implement the following (remember separation of concerns: cli should on
 2. delete project within the project folder: "Working directory switched to /Users/SB2/quantumVITAS/manual_tests" is wrong. Cannot change pwd. Change output to something like we are in trash.
 3. init workflow <id> in doc is wrong: never id, always name. In doc --step, but reality: No such option: --step
 4. qv list: show which structure applies to which workflow.
-5. for init step: add reference to parent workflow id in step .yaml. No need to specify <structure-id> (nor store it in step .yaml) because that belongs to whole workflow.  Remove [--name NAME] because step name is automatically from step type with possible number if not only one of same type exists. Make --type required so it is just next paramater after qv init step.
+5. for init step: add reference to parent workflow id in step .yaml. Also, make structure id optional: If there is parent workflow, then <structure-id> is simply copied from parent workflow. if no parent workflow, then error if not input structure id.  Remove [--name NAME] because step name is automatically from step type with possible number if not only one of same type exists. Make --type required so it is just next paramater after qv init step.
 6. qv configure step: can use not only path-to-yaml, but also step id. Robust way to find yaml given step id is to go through all steps in the project.
 7. why qv run step outputs 4 input files:pw_modified.in, pw_original.in, pw_work.in, pw.in? You only need one input file that is the last one for the calculation (if it is regenerated using yaml). If it is generated using .in, then put that .in in the folder as original.in for debugging purposes.
 8. Generally: qv delete something, do not need to specify parent (step->workflow, workflow->project). Just by default search from currennt folder up to find the parent (if none and not specified, then error). Of course one can optionally specify parent.
@@ -359,4 +359,9 @@ Update doc accordingly.
 
 
 
-12. Also keep in mind that workflow reference to structures (one workflow refer to one structure). This has been dealt with when deleting structures already. I want to modify my prompt: steps usually have nothing to do with structures, structures are only referenced in the scope of workflow. But! To be compatible with run step .yaml, we keep structure information in step .yaml still. Then we need to add method to qv configure which structure the workflow use (in which it automatically updates all steps.yaml). But when run workflow, you always use the structure in workflow.yaml. Update my prompt and plan again, continue doing the updated to-dos.
+12. Also keep in mind that workflow reference to structures (one workflow refer to one structure). This has been dealt with when deleting structures already.
+13. we keep structure information in step .yaml still. Then we need to add method to qv configure which structure the workflow use (in which it automatically updates all steps.yaml), and also qv configure step to change the structure refenreced by the step .yaml (check whether consistent with parent workflow, if exists, and refuse to modify if not consistent, unless --force). 
+14. When run workflow, you always use the structure in workflow.yaml. When run step, use the structure in step.yaml, but give error if the step has parent workflow but structure is different. This is to be compatible with the case where we simply run step without project-workflow structure.
+
+
+Review AI_understanding.md to catch up with the ideas of the project. Optionally, review the doc and .md files to understand. Then, review "@temporary_ai_prompts (282-343) " which are most recently implemented prompts. Now that you understands, review the ongoing refactoring "@temporary_ai_prompts (344-365) " and determine the progress and make plan.

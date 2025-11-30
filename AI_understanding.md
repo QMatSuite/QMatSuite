@@ -20,7 +20,7 @@ Python implementation featuring:
 
 ```
 src/quantumvitas/
-├── cli/                 # Typer CLI implementation (main.py is ~2200 lines)
+├── cli/                 # Typer CLI implementation (main.py is ~2600 lines)
 ├── core/
 │   ├── engines/         # QE engine, installation detection, pseudopotentials
 │   ├── resources.py     # ResourceMeta model (ULID, slug, name, path)
@@ -51,11 +51,15 @@ class ResourceMeta:
     id: str       # ULID (Universally Unique Lexicographically Sortable Identifier)
     name: str     # Human-readable name
     slug: str     # URL-safe identifier (auto-generated from name)
-    path: Path    # Filesystem path
+    path: Path    # Filesystem path (relative to project root)
     kind: str     # "project" | "workflow" | "structure" | "step"
 ```
 
-**Key function**: `slugify(name)` converts names to slugs (`"Si DOS workflow"` → `"si-dos-workflow"`).
+**Key principles**:
+- `id` is a ULID, never changes, never input by user
+- `name` is human-readable, can be renamed
+- `slug` is auto-generated from `name` via `slugify()`
+- CLI commands accept `name`, `slug`, or `path` - never raw `id`
 
 ### 2.2 Project Structure
 
@@ -67,14 +71,57 @@ project/
 ├── structures/          # Structure JSON files (pymatgen format)
 ├── workflows/
 │   └── <workflow-slug>/
-│       ├── workflow.yaml
-│       ├── steps/       # Step YAML specifications
-│       ├── raw/         # Working directory for QE execution
-│       └── reference/   # Reference outputs for verification
-└── .trash/              # Soft-deleted resources
+│       ├── workflow.yaml    # Workflow definition with structure reference
+│       ├── steps/           # Step YAML specifications
+│       ├── raw/             # Working directory for QE execution
+│       └── reference/       # Reference outputs for verification
+├── pseudo/              # Pseudopotential files
+└── trash/               # Soft-deleted resources
 ```
 
-### 2.3 QE Input Model
+### 2.3 Workflow and Step YAML Structure
+
+**workflow.yaml**:
+```yaml
+id: si-dos
+mode: normal
+workflow:
+  working_dir: raw
+  structure: si           # Structure reference (slug/name)
+steps:
+- id: scf
+  step_file: steps/scf.step.yaml
+- id: nscf
+  step_file: steps/nscf.step.yaml
+```
+
+**step.yaml** (StructureStepSpec):
+```yaml
+meta:
+  id: 01KB8FEQWVYJAB16NMRVZ7JYEG  # ULID
+  name: scf
+  slug: scf
+  path: scf.step.yaml
+  kind: step
+parent_workflow_id: 01KB8ABCD...   # Links to parent workflow (optional)
+structure: si                       # Structure reference
+step_type: scf
+parameters:
+  CONTROL:
+    calculation: scf
+  SYSTEM:
+    ecutwfc: 50
+cards:
+  K_POINTS:
+    option: automatic
+    data: [[8, 8, 8, 0, 0, 0]]
+species_overrides:
+  Si:
+    mass: 28.0855
+    pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+```
+
+### 2.4 QE Input Model
 
 QE inputs are represented as structured objects:
 
@@ -87,7 +134,7 @@ QEInput
 
 **Roundtrip parsing**: `QEInputParser.parse_file()` → modify → `QEInputGenerator.write_file()`
 
-### 2.4 Workflow Execution
+### 2.5 Workflow Execution
 
 ```
 WorkflowRunner.run(workflow)
@@ -149,26 +196,59 @@ def preserve_qe_home():
 
 ## 4. CLI Architecture
 
-### 4.1 Command Structure
+### 4.1 Command Structure (Current State)
 
-The CLI uses Typer with sub-apps:
+The CLI uses Typer with sub-apps. All commands support `--project PATH` for explicit project specification:
 
 ```
 qv
-├── init project|workflow|step
-├── import-structure
-├── list
-├── rename structure|workflow|step|project
-├── delete structure|workflow|step|project|trash
-├── configure step
-├── run step|structure|workflow
-├── detect-qe
-├── show-command / get-command
-├── analyze energy|band|dos
-└── params <module>
+├── init
+│   ├── project [--path PATH] [--name NAME]
+│   ├── workflow <name> --structure STRUCT [--parent WF]
+│   └── step [structure] --type TYPE [--workflow WF] [overrides...]
+├── import-structure <file> [--name NAME]
+├── list [--verbose]
+├── rename
+│   ├── project [--name NAME] [--slug SLUG] [--path PATH]
+│   ├── workflow <selector> [--name NAME]
+│   ├── step <workflow> <step-id> [--id NEW_ID]
+│   └── structure <selector> [--name NAME]
+├── delete
+│   ├── project [<selector>]
+│   ├── workflow [<selector>] [--force] [--cascade]
+│   ├── step <step-id> [--workflow WF]
+│   ├── structure <selector> [--force] [--cascade]
+│   └── trash [--parent]
+├── configure
+│   ├── step <step-id|path> [--remove] [overrides...]
+│   ├── workflow [<selector>] [--structure STRUCT] [--reorder s1,s2,...]
+│   └── structure <selector> [--name NAME]
+├── run
+│   ├── step <input.in|step.yaml> [--workdir PATH] [overrides...]
+│   ├── workflow [<selector>] [--strict] [--verbose]
+│   ├── structure <selector> [--type TYPE] [overrides...]
+│   └── (auto-dispatch if target given without subcommand)
+├── detect-qe [--path PATH]
+├── show-command <input.in>
+├── get-command <input.in>  # alias for show-command
+├── analyze <energy|band|dos> <output-file>
+└── params <module> [--section SECTION]
 ```
 
-### 4.2 Parameter Overrides
+### 4.2 Resource Resolution
+
+Resources can be identified by:
+- **name/slug**: Case-insensitive match (e.g., `si_dos`, `"Si DOS"`)
+- **path**: Relative or absolute filesystem path
+
+**Auto-detection from current directory**:
+- `find_project_root()`: Walks up to find `project.qv.yml`
+- `find_enclosing_workflow()`: Detects if pwd is inside a workflow
+- Used by `qv run workflow`, `qv init step`, `qv delete workflow`, etc.
+
+Key utility: `resolve_resource()` in `core/project_utils.py`
+
+### 4.3 Parameter Overrides
 
 CLI supports QE parameter overrides with special syntax:
 
@@ -182,20 +262,118 @@ CLI supports QE parameter overrides with special syntax:
 | `--tprnfor` | Boolean true |
 | `--tprnfor=false` | Boolean false |
 
-### 4.3 Separation of Concerns
+### 4.4 Separation of Concerns
 
 The CLI (`main.py`) was refactored to extract core logic:
 
-- **`core/project_utils.py`**: Project/config helpers that raise `ValueError`
+- **`core/project_utils.py`**: Project/config helpers that raise `ValueError`, `ResourceNotFoundError`
 - **`cli/main.py`**: Thin wrapper that converts to `typer.BadParameter`
 
 This allows core functions to be used outside the CLI (notebooks, scripts).
 
 ---
 
-## 5. Testing
+## 5. Recent Implementations (2025-11-30)
 
-### 5.1 Test Categories
+### 5.1 Configure Workflow Command
+
+`qv configure workflow` now supports:
+
+```bash
+# Change structure for workflow and all its steps
+qv configure workflow --structure new_structure
+
+# Reorder steps in workflow
+qv configure workflow --reorder scf,nscf,dos
+
+# Both at once
+qv configure workflow si_dos --structure si --reorder scf,nscf
+```
+
+When `--structure` is used, the command:
+1. Validates the new structure exists
+2. Updates `workflow.yaml` 
+3. Iterates through all step YAML files and updates their `structure` field
+
+### 5.2 Parent Workflow ID in Steps
+
+Steps now have an optional `parent_workflow_id` field linking them to their parent workflow:
+
+```python
+@dataclass
+class StructureStepSpec:
+    meta: ResourceMeta
+    structure: str
+    step_type: str = "scf"
+    parameters: Dict[str, Dict[str, Any]]
+    cards: Dict[str, Dict[str, Any]]
+    species_overrides: Dict[str, Dict[str, Any]]
+    parent_workflow_id: Optional[str] = None  # NEW
+```
+
+This enables:
+- Tracking step provenance
+- Structure consistency validation when running steps
+
+### 5.3 Structure Inheritance in Init Step
+
+When running `qv init step` inside a workflow directory:
+
+```bash
+# Structure is optional - inherits from workflow
+cd project/workflows/si-dos
+qv init step --type nscf
+
+# Output: "Using structure 'si' from parent workflow"
+```
+
+If not inside a workflow and no structure provided, an error is raised.
+
+### 5.4 Structure Validation on Step Run
+
+When running a step that has `parent_workflow_id`:
+
+```python
+def _validate_step_structure_consistency(spec, spec_path, project_root):
+    # Loads parent workflow, checks structure field
+    # Shows warning if step.structure != workflow.structure
+```
+
+This is a warning only (doesn't block execution) to maintain compatibility with standalone steps.
+
+### 5.5 Reduced Input File Output
+
+Previously, `run_input_step()` created multiple debug copies:
+- `pw.in`, `pw_original.in`, `pw_modified.in`, `pw_work.in`
+
+Now:
+- When running from step spec: Only the final input file is created
+- When running from `.in` file: Original is preserved as `<name>_original.in` only if modified
+
+Control via `keep_original` parameter:
+```python
+run_input_step(..., keep_original=False)  # For step specs
+run_input_step(..., keep_original=True)   # Default for raw .in files
+```
+
+### 5.6 Configure Structure Command
+
+Basic implementation for renaming structures:
+
+```bash
+qv configure structure si --name "Silicon bulk"
+```
+
+Updates:
+- Entry in `project.qv.yml`
+- Renames the structure file
+- Updates metadata inside the JSON file
+
+---
+
+## 6. Testing
+
+### 6.1 Test Categories
 
 | Marker | Description | Requires QE |
 |--------|-------------|-------------|
@@ -203,66 +381,97 @@ This allows core functions to be used outside the CLI (notebooks, scripts).
 | `qe_core` | Engine integration tests | Yes |
 | `qe_cli` | CLI integration tests | Yes |
 
-### 5.2 CI Test Data
+### 6.2 Test Status (as of 2025-11-30)
+
+```
+tests/unit/          78 tests PASS
+tests/cli/            2 tests PASS (requires QE)
+─────────────────────────────────
+Total:               80 tests PASS
+```
+
+### 6.3 CI Test Data
 
 Small bundled test cases in `tests/integration/ci_test_data/`:
+- `pw_single_tests/` - Single-point SCF tests
 - `pw_scf/` - Basic SCF tests
 - `4_Si_DOS/` - Si DOS workflow
 - `7_Si_bandStructure/` - Si bands workflow
 
-### 5.3 Common Test Issues
+### 6.4 Running Tests
 
-1. **Slugification mismatch**: CLI creates dirs with `slugify(name)`, tests must match:
+```bash
+# Activate virtual environment
+source .venv/bin/activate
+
+# Run unit tests only (no QE needed)
+python -m pytest tests/unit/ -v
+
+# Run all tests (requires QE)
+python -m pytest tests/ -v
+
+# Run specific categories
+python -m pytest -m unit          # No QE needed
+python -m pytest -m qe_core       # Needs QE
+python -m pytest tests/cli/       # CLI tests (needs QE)
+```
+
+### 6.5 Common Test Issues
+
+1. **Mock function signatures**: When mocking `run_input_step`, include all parameters:
    ```python
-   workflow_dir = project_root / "workflows" / slugify(workflow_name)
+   def fake_run_input_step(
+       *, engine, input_file, working_dir, project_root,
+       step_type=None, parameter_overrides=None,
+       keep_original=True,  # Don't forget new parameters!
+   ):
    ```
 
-2. **CliRunner `mix_stderr`**: Removed in newer Click versions:
-   ```python
-   # Bad: runner = CliRunner(mix_stderr=False)
-   # Good: runner = CliRunner()
-   ```
+2. **Slugification mismatch**: CLI creates dirs with `slugify(name)`, tests must match
 
-3. **QE_HOME pollution**: Use `reset_qe_home()` fixture (see Section 3.3)
+3. **QE_HOME pollution**: Use `reset_qe_home()` fixture
 
 ---
 
-## 6. Key Files Reference
+## 7. Key Files Reference
 
 | File | Purpose | Lines |
 |------|---------|-------|
-| `cli/main.py` | All CLI commands | ~2200 |
+| `cli/main.py` | All CLI commands | ~2600 |
+| `core/project_utils.py` | Resource resolution, config helpers | ~920 |
 | `core/engines/qe_installation.py` | QE detection logic | ~470 |
 | `core/engines/qe.py` | QE engine implementation | ~550 |
 | `core/engines/qe_workflow.py` | Step/workflow execution | ~320 |
+| `workflow/structure_steps.py` | StructureStepSpec model | ~380 |
+| `workflow/input_runner.py` | Input preparation and execution | ~540 |
 | `io/parser/qe_parser.py` | QE input parsing | ~420 |
 | `io/model.py` | QE data structures | ~230 |
 | `workflow/runner.py` | Workflow orchestration | ~95 |
-| `workflow/verification.py` | Result verification | ~110 |
 | `project/model.py` | Project/Workflow models | ~260 |
 
 ---
 
-## 7. Conventions
+## 8. Conventions
 
-### 7.1 Error Handling
+### 8.1 Error Handling
 
 - **CLI layer**: Use `typer.BadParameter`, `typer.Exit(1)`
-- **Core layer**: Raise `ValueError`, `FileNotFoundError`, custom exceptions
+- **Core layer**: Raise `ValueError`, `FileNotFoundError`, `ResourceNotFoundError`
 
-### 7.2 Path Handling
+### 8.2 Path Handling
 
 - Always use `Path` objects, not strings
 - Use `.expanduser()` for `~` expansion
 - Use `.resolve()` for symlink resolution (wrap in try/except for broken links)
+- Store paths relative to project root in YAML files
 
-### 7.3 YAML Files
+### 8.3 YAML Files
 
 - `project.qv.yml` - Project metadata
-- `workflow.yaml` - Workflow definition
-- `*.step.yaml` - Step specifications
+- `workflow.yaml` - Workflow definition (includes `structure` reference)
+- `*.step.yaml` - Step specifications (includes `parent_workflow_id`)
 
-### 7.4 Structure Storage
+### 8.4 Structure Storage
 
 Structures are stored as pymatgen JSON with embedded metadata:
 
@@ -283,40 +492,31 @@ Structures are stored as pymatgen JSON with embedded metadata:
 
 ---
 
-## 8. Lessons Learned / Caveats
+## 9. Lessons Learned / Caveats
 
-### 8.1 Environment Variables
+### 9.1 Environment Variables
 
 ❌ **Don't** store state in `os.environ` - it's mutable by external processes.
 ✅ **Do** use internal registries with explicit APIs.
 
-### 8.2 Test Isolation
+### 9.2 CLI ID vs Name
 
-Tests that modify global state (QE_HOME, project configs) must restore it:
+❌ **Don't** expose ULID to users in CLI commands
+✅ **Do** use name/slug/path for user-facing identifiers
 
-```python
-@pytest.fixture(autouse=True)
-def cleanup():
-    original_state = save_state()
-    yield
-    restore_state(original_state)
-```
+### 9.3 Structure Consistency
 
-### 8.3 CLI Refactoring
+Workflows reference a single structure in `workflow.yaml`. Steps also have a `structure` field.
+When changing a workflow's structure, use `qv configure workflow --structure` which updates all steps.
 
-Large CLI files become unmaintainable. Extract logic to core modules:
-- Keep CLI as thin wrapper
-- Core functions raise standard exceptions
-- CLI converts to Typer-friendly errors
-
-### 8.4 QE Input Quirks
+### 9.4 QE Input Quirks
 
 - QE uses Fortran-style booleans: `.true.`, `.false.`, `t`, `f`
 - Card options are case-sensitive: `ATOMIC_POSITIONS angstrom`
 - Some namelists are optional (e.g., `&IONS` only for relaxation)
 - K_POINTS can be `automatic`, `gamma`, `crystal`, `tpiba`, etc.
 
-### 8.5 Workflow Verification
+### 9.5 Workflow Verification
 
 The verification logic checks:
 1. "JOB DONE" in output (basic success)
@@ -329,44 +529,47 @@ Tolerances:
 
 ---
 
-## 9. Quick Start for AI Assistants
+## 10. Quick Start for AI Assistants
 
 ### Reading Order
 
-1. `project/model.py` - Understand Project/Workflow/Structure models
-2. `core/resources.py` - ResourceMeta pattern
-3. `io/model.py` - QE input structure
-4. `core/engines/qe_installation.py` - QE detection (especially module-level registry)
-5. `cli/main.py` - CLI commands (large file, use semantic search)
+1. `core/resources.py` - ResourceMeta pattern
+2. `project/model.py` - Understand Project/Workflow/Structure models
+3. `workflow/structure_steps.py` - StructureStepSpec (step YAML model)
+4. `core/project_utils.py` - Resource resolution helpers
+5. `io/model.py` - QE input structure
+6. `cli/main.py` - CLI commands (large file, use semantic search)
 
 ### Common Tasks
 
 | Task | Key Files |
 |------|-----------|
 | Add CLI command | `cli/main.py` |
+| Add configure option | `cli/main.py` (look for `@configure_app.command`) |
+| Modify resource resolution | `core/project_utils.py` |
 | Modify QE detection | `core/engines/qe_installation.py` |
 | Add QE module support | `io/parser/qe_parser.py`, `core/engines/qe.py` |
+| Change step spec format | `workflow/structure_steps.py` |
 | Change workflow execution | `workflow/runner.py`, `core/engines/qe_workflow.py` |
 | Modify verification | `workflow/verification.py` |
 
-### Running Tests
+### Development Environment
 
 ```bash
-# Install in editable mode
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate
+
+# Install in editable mode with dev dependencies
 pip install -e '.[dev]'
 
-# Run all tests
-python -m pytest tests/ -v --tb=short
-
-# Run specific categories
-python -m pytest -m unit          # No QE needed
-python -m pytest -m qe_core       # Needs QE
-python -m pytest tests/cli/       # CLI tests only
+# Run tests
+python -m pytest tests/unit/ -v
 ```
 
 ---
 
-## 10. Future Considerations
+## 11. Future Considerations
 
 1. **GUI**: PySide6 GUI is planned but not implemented
 2. **Other engines**: LAMMPS, Wannier90 support is planned
@@ -375,6 +578,25 @@ python -m pytest tests/cli/       # CLI tests only
 
 ---
 
-*Last updated: 2025-11-29*
-*Based on commit history through v2-python branch*
+## 12. Refactoring History
 
+### 2025-11-30 Session
+
+Implemented from `temporary_ai_prompts` (lines 344-365):
+
+| Item | Implementation |
+|------|---------------|
+| `qv configure workflow --reorder` | Reorders steps in workflow.yaml |
+| `qv configure workflow --structure` | Changes structure, updates all step YAMLs |
+| `parent_workflow_id` in step.yaml | Links step to parent workflow |
+| Structure optional in `qv init step` | Inherits from parent workflow if inside one |
+| Structure validation on run step | Warning if step structure differs from workflow |
+| Reduced input file output | Only one file when running from step spec |
+| `qv configure structure` | Basic renaming support |
+
+All tests passing (80/80).
+
+---
+
+*Last updated: 2025-11-30*
+*Based on commit history through v2-python branch*
