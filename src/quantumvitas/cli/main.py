@@ -548,18 +548,16 @@ def init_project_command(
         help="Directory where the project should be created (defaults to ./projectN).",
     ),
     template: Optional[str] = typer.Option(
-        None, "--template", help="Project template (reserved for future use)."
+        None, "--template", help="Project template to use (e.g., 'project1')"
     ),
 ) -> None:
     """
     Scaffold a new QuantumVITAS project skeleton (no workflows by default).
+    
+    Use --template to copy from a predefined project template with example
+    structures and workflows.
     """
-
-    if template:
-        typer.secho(
-            "--template is not implemented yet; creating an empty project skeleton.",
-            fg=typer.colors.YELLOW,
-        )
+    from quantumvitas.core.templates import copy_project_template, list_templates
 
     base_dir = Path.cwd()
     project_dir = _determine_project_directory(
@@ -570,8 +568,19 @@ def init_project_command(
         raise typer.BadParameter(
             f"Destination '{project_dir}' already exists and is not empty."
         )
-    project_dir.mkdir(parents=True, exist_ok=True)
 
+    if template:
+        available = list_templates("project")
+        if template not in available:
+            raise typer.BadParameter(
+                f"Template '{template}' not found. Available: {', '.join(available) or 'none'}"
+            )
+        project_dir.mkdir(parents=True, exist_ok=True)
+        copy_project_template(template, project_dir, new_name=name)
+        typer.secho(f"Project created from template '{template}' at {project_dir}", fg=typer.colors.GREEN)
+        return
+
+    project_dir.mkdir(parents=True, exist_ok=True)
     project_name = name or project_dir.name
     project_meta = meta_from_name("project", name=project_name, path=".")
 
@@ -599,8 +608,8 @@ def init_project_command(
 @init_app.command("workflow")
 def init_workflow_command(
     workflow_id: str = typer.Argument(..., help="Workflow identifier to create"),
-    structure: str = typer.Option(
-        ..., "--structure", help="Structure id registered in the project"
+    structure: Optional[str] = typer.Option(
+        None, "--structure", help="Structure id registered in the project"
     ),
     parent: List[str] = typer.Option(
         [],
@@ -610,10 +619,19 @@ def init_workflow_command(
     project: Optional[Path] = typer.Option(
         None, "--project", help="Project root (defaults to auto-detect)"
     ),
+    template: Optional[str] = typer.Option(
+        None, "--template", help="Workflow template to use (e.g., 'si-dos')"
+    ),
 ) -> None:
     """
     Scaffold a workflow folder with workflow.yaml and no pre-populated steps.
+    
+    Use --template to copy from a predefined workflow template with example steps.
+    If using a template, --structure is optional (template's structure is used).
     """
+    from quantumvitas.core.templates import (
+        copy_workflow_template, copy_structure_template, list_templates
+    )
 
     project_root = (project or _resolve_project_root()).resolve()
     config = load_project_config(project_root)
@@ -629,13 +647,82 @@ def init_workflow_command(
             f"Workflow '{workflow_id}' already exists. Use qv configure workflow to modify it."
         )
 
-    find_structure_entry(config, structure, project_root)
-
     workflow_dir = (project_root / "workflows" / workflow_slug).resolve()
     if workflow_dir.exists():
         raise typer.BadParameter(
             f"Workflow directory '{workflow_dir}' already exists. Remove it or choose another name."
         )
+
+    if template:
+        available = list_templates("workflow")
+        if template not in available:
+            raise typer.BadParameter(
+                f"Template '{template}' not found. Available: {', '.join(available) or 'none'}"
+            )
+        
+        workflow_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Generate workflow meta first so we have the ULID
+        rel_path = ensure_relative_path(workflow_dir, base=project_root)
+        workflow_meta = meta_from_name("workflow", name=workflow_id, path=rel_path)
+        
+        # Pass the ULID to template copier so steps get the correct parent_workflow_id
+        _, structures_needed, _ = copy_workflow_template(
+            template_name=template,
+            dest_dir=workflow_dir,
+            project_root=project_root,
+            new_name=workflow_id,
+            structure=structure,
+            workflow_ulid=workflow_meta.id,
+        )
+        
+        # Copy missing structures from templates
+        structures_dir = project_root / "structures"
+        structures_section = config.setdefault("structures", [])
+        existing_struct_slugs = {
+            (entry.get("meta") or {}).get("slug") or slugify(entry.get("name") or "")
+            for entry in structures_section
+        }
+        
+        for struct_name in structures_needed:
+            if struct_name not in existing_struct_slugs:
+                try:
+                    struct_path = copy_structure_template(struct_name, structures_dir)
+                    struct_rel_path = ensure_relative_path(struct_path, base=project_root)
+                    struct_meta = meta_from_name("structure", name=struct_name, path=struct_rel_path)
+                    structures_section.append({
+                        "name": struct_name,
+                        "path": struct_rel_path,
+                        "meta": struct_meta.to_dict(),
+                    })
+                    typer.echo(f"Copied structure '{struct_name}' from template")
+                except ValueError:
+                    typer.secho(
+                        f"Warning: Structure '{struct_name}' needed but not found in templates",
+                        fg=typer.colors.YELLOW
+                    )
+        
+        workflow_meta_dict = workflow_meta.to_dict()
+        if parent:
+            workflow_meta_dict["parents"] = parent
+
+        workflows_section.append({
+            "name": workflow_id,
+            "path": rel_path,
+            "meta": workflow_meta_dict,
+        })
+        save_project_config(project_root, config)
+        typer.secho(f"Workflow '{workflow_id}' created from template '{template}' at {workflow_dir}", fg=typer.colors.GREEN)
+        return
+
+    # Non-template workflow creation requires --structure
+    if not structure:
+        raise typer.BadParameter(
+            "--structure is required when not using --template"
+        )
+
+    find_structure_entry(config, structure, project_root)
+
     raw_dir = workflow_dir / "raw"
     steps_dir = workflow_dir / "steps"
     raw_dir.mkdir(parents=True, exist_ok=True)
@@ -667,14 +754,25 @@ def init_workflow_command(
 
 
 
+# Known QE step types for validation
+KNOWN_STEP_TYPES = {
+    "scf", "nscf", "relax", "vc-relax", "md", "vc-md",  # pw.x calculation types
+    "dos", "bands", "bands_pw",  # post-processing
+    "ph", "q2r", "matdyn", "dynmat",  # phonon
+    "pp", "projwfc",  # other post-processing
+    "custom",  # escape hatch for unsupported types
+}
+
+
 @init_app.command(
     "step",
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
 )
 def init_step_command(
     ctx: typer.Context,
-    structure: Optional[str] = typer.Argument(
-        None, help="Structure id (optional if inside a workflow that has a structure)"
+    step_type: str = typer.Argument(..., help="QE calculation type (scf, nscf, relax, dos, etc.)"),
+    structure: Optional[str] = typer.Option(
+        None, "--structure", "-s", help="Structure id (optional if inside a workflow)"
     ),
     project: Optional[Path] = typer.Option(
         None, "--project", help="Project root (defaults to auto-detect)"
@@ -682,7 +780,6 @@ def init_step_command(
     workflow: Optional[str] = typer.Option(
         None, "--workflow", help="Workflow id/slug to attach this step to"
     ),
-    step_type: str = typer.Option("scf", "--type", help="QE calculation type"),
     name: Optional[str] = typer.Option(
         None,
         "--name",
@@ -693,12 +790,28 @@ def init_step_command(
         "--index",
         help="Insert position when attaching to a workflow (0-indexed, defaults to append).",
     ),
+    template: Optional[str] = typer.Option(
+        None, "--template", help="Step template to copy (e.g., 'scf', 'nscf', 'dos')"
+    ),
 ) -> None:
     """Create a StructureStepSpec YAML file and optionally attach it to a workflow.
     
-    If inside a workflow directory (or --workflow specified), the structure
-    is optional and will be inherited from the parent workflow.
+    Step type is required and must be a known QE calculation type.
+    Structure is optional if inside a workflow directory (inherits from workflow).
+    Use --template to copy from a predefined step template.
+    
+    Examples:
+        qv init step scf --structure si
+        qv init step nscf                    # inside workflow, inherits structure
+        qv init step relax --structure si --workflow my_workflow
+        qv init step scf --template scf      # copy from template
     """
+    # Validate step type
+    if step_type.lower() not in KNOWN_STEP_TYPES:
+        raise typer.BadParameter(
+            f"Unknown step type '{step_type}'. "
+            f"Known types: {', '.join(sorted(KNOWN_STEP_TYPES))}"
+        )
 
     project_root = _maybe_project_root(project)
     bundle = _parse_override_args(ctx.args)
@@ -755,10 +868,13 @@ def init_step_command(
         )
     elif workflow_structure:
         structure_value = workflow_structure
-        typer.echo(f"Using structure '{structure_value}' from parent workflow")
+        typer.echo(f"Using structure '{structure_value}' from workflow")
     else:
         raise typer.BadParameter(
-            "Structure required. Provide structure id as argument, or run inside a workflow that has a structure."
+            "Structure required. Either:\n"
+            "  - Provide --structure <name>\n"
+            "  - Run inside a workflow directory\n"
+            "  - Use --workflow to specify a workflow that has a structure"
         )
 
     step_display_name, step_slug = _derive_step_identity(name or step_type, existing_step_ids)
@@ -774,16 +890,64 @@ def init_step_command(
         )
 
     spec_path.parent.mkdir(parents=True, exist_ok=True)
-    spec = StructureStepSpec(
-        meta=meta_from_name("step", name=step_display_name, path=""),
-        structure=structure_value,
-        step_type=step_type,
-        parameters=_overrides_to_parameter_dict(bundle.parameters),
-        cards=bundle.card_overrides or {},
-        species_overrides=bundle.species_overrides or {},
-        parent_workflow_id=parent_workflow_id,
-    )
-    _write_step_spec(spec_path, spec, project_root=project_root)
+    
+    # If using a template, copy and modify it
+    if template:
+        from quantumvitas.core.templates import copy_step_template, list_templates
+        
+        available = list_templates("step")
+        if template not in available:
+            raise typer.BadParameter(
+                f"Template '{template}' not found. Available: {', '.join(available) or 'none'}"
+            )
+        
+        copy_step_template(
+            template_name=template,
+            dest_dir=spec_path.parent,
+            new_name=step_display_name,
+            parent_workflow_id=parent_workflow_id,
+            structure=structure_value,
+        )
+        # Rename to expected path if different
+        expected_name = f"{step_slug}.step.yaml"
+        copied_path = spec_path.parent / f"{slugify(step_display_name)}.step.yaml"
+        if copied_path.name != expected_name and copied_path.exists():
+            spec_path = copied_path
+        else:
+            spec_path = spec_path.parent / expected_name
+        
+        # Apply any additional overrides
+        if bundle.has_any():
+            spec = StructureStepSpec.from_yaml(spec_path)
+            # Merge overrides
+            params = dict(spec.parameters) if spec.parameters else {}
+            for section, section_params in _overrides_to_parameter_dict(bundle.parameters).items():
+                if section not in params:
+                    params[section] = {}
+                params[section].update(section_params)
+            spec.parameters = params
+            if bundle.card_overrides:
+                cards = dict(spec.cards) if spec.cards else {}
+                cards.update(bundle.card_overrides)
+                spec.cards = cards
+            if bundle.species_overrides:
+                species = dict(spec.species_overrides) if spec.species_overrides else {}
+                species.update(bundle.species_overrides)
+                spec.species_overrides = species
+            _write_step_spec(spec_path, spec, project_root=project_root)
+        
+        typer.echo(f"Step spec created from template '{template}' at {spec_path}")
+    else:
+        spec = StructureStepSpec(
+            meta=meta_from_name("step", name=step_display_name, path=""),
+            structure=structure_value,
+            step_type=step_type,
+            parameters=_overrides_to_parameter_dict(bundle.parameters),
+            cards=bundle.card_overrides or {},
+            species_overrides=bundle.species_overrides or {},
+            parent_workflow_id=parent_workflow_id,
+        )
+        _write_step_spec(spec_path, spec, project_root=project_root)
 
     if workflow_entry and workflow_steps is not None and workflow_data is not None:
         assert workflow_dir is not None
@@ -812,7 +976,7 @@ def init_step_command(
 @app.command("import-structure")
 def import_structure_command(
     structure_file: Path = typer.Argument(
-        ..., help="Input structure file (.cif, POSCAR, QE .in, etc.)"
+        ..., help="Input structure file (.cif, POSCAR, QE .in, .json, etc.)"
     ),
     name: Optional[str] = typer.Option(
         None,
@@ -1952,13 +2116,12 @@ def show_command(input_file: Path = typer.Argument(..., help="QE input file to i
         "qv",
         "init",
         "step",
-        "<structure-id>",
-        "--type",
         str(calculation),
     ] + cli_args
 
     typer.echo("Example 1: create a step spec with all detected parameters")
     typer.echo("  " + shlex.join(base_cmd))
+    typer.echo("  (Run inside a workflow directory, or add --structure <name> --workflow <name>)")
 
     modify_cmd = [
         "qv",
@@ -1973,7 +2136,6 @@ def show_command(input_file: Path = typer.Argument(..., help="QE input file to i
 
     typer.echo("\nExample 2: tweak a parameter inside the generated YAML")
     typer.echo("  " + shlex.join(modify_cmd))
-    typer.echo("\nReplace <structure-id> and workflow options as needed.")
 
 
 @app.command("get-command")
