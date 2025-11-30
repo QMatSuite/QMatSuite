@@ -1,8 +1,0 @@
-meta:
-  id: 01KB8GG7ASVC5RN1G0J82JATPF
-  name: dos
-  slug: dos
-  path: workflows/si-dos/steps/dos.step.yaml
-  kind: step
-structure: si
-step_type: dos

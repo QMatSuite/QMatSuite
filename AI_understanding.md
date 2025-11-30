@@ -203,9 +203,9 @@ The CLI uses Typer with sub-apps. All commands support `--project PATH` for expl
 ```
 qv
 ├── init
-│   ├── project [--path PATH] [--name NAME]
-│   ├── workflow <name> --structure STRUCT [--parent WF]
-│   └── step [structure] --type TYPE [--workflow WF] [overrides...]
+│   ├── project [--path PATH] [--name NAME] [--template TEMPLATE]
+│   ├── workflow <name> [--structure STRUCT] [--parent WF] [--template TEMPLATE]
+│   └── step <type> [--structure STRUCT] [--workflow WF] [--template TEMPLATE] [overrides...]
 ├── import-structure <file> [--name NAME]
 ├── list [--verbose]
 ├── rename
@@ -315,21 +315,28 @@ This enables:
 - Tracking step provenance
 - Structure consistency validation when running steps
 
-### 5.3 Structure Inheritance in Init Step
+### 5.3 Init Step: Type Required, Structure Optional
 
-When running `qv init step` inside a workflow directory:
+`qv init step` syntax changed to make step type required (validated against known types):
 
 ```bash
-# Structure is optional - inherits from workflow
-cd project/workflows/si-dos
-qv init step --type nscf
+# Known step types:
+# scf, nscf, relax, vc-relax, md, vc-md, dos, bands, bands_pw,
+# ph, q2r, matdyn, dynmat, pp, projwfc, custom
 
+# With explicit structure
+qv init step scf --structure si
+
+# Inside workflow directory (structure inherited)
+cd project/workflows/si-dos
+qv init step nscf
 # Output: "Using structure 'si' from parent workflow"
+
+# Outside workflow without structure = ERROR
+qv init step scf  # Error: Structure required
 ```
 
-If not inside a workflow and no structure provided, an error is raised.
-
-### 5.4 Structure Validation on Step Run
+### 5.5 Structure Validation on Step Run
 
 When running a step that has `parent_workflow_id`:
 
@@ -341,7 +348,31 @@ def _validate_step_structure_consistency(spec, spec_path, project_root):
 
 This is a warning only (doesn't block execution) to maintain compatibility with standalone steps.
 
-### 5.5 Reduced Input File Output
+### 5.6 Post-Processing Step Types (DOS, Bands, etc.)
+
+Post-processing steps (dos.x, bands.x, projwfc.x, etc.) now generate correct input format:
+
+```python
+# Post-processing step types that don't need structure-based input
+POST_PROCESSING_STEP_TYPES = {
+    "dos", "bands", "projwfc", "pp", "q2r", "matdyn", "dynmat",
+    "sumpdos", "band_interpolation", "ppacf", "pprism",
+}
+```
+
+When generating input from a step spec with these types:
+- Only the appropriate namelist is created (e.g., `&DOS ... /`)
+- No structure cards (ATOMIC_SPECIES, ATOMIC_POSITIONS, etc.)
+- Parameters are mapped to the correct namelist (DOS → &DOS)
+
+Example DOS input generation:
+```python
+spec = StructureStepSpec(step_type="dos", parameters={"DOS": {"prefix": "si"}})
+qe_input, _ = generate_qe_input_from_spec(struct, spec)
+# Generates: &DOS prefix = 'si' /
+```
+
+### 5.7 Reduced Input File Output
 
 Previously, `run_input_step()` created multiple debug copies:
 - `pw.in`, `pw_original.in`, `pw_modified.in`, `pw_work.in`
@@ -356,7 +387,7 @@ run_input_step(..., keep_original=False)  # For step specs
 run_input_step(..., keep_original=True)   # Default for raw .in files
 ```
 
-### 5.6 Configure Structure Command
+### 5.7 Configure Structure Command
 
 Basic implementation for renaming structures:
 
@@ -385,10 +416,16 @@ Updates:
 
 ```
 tests/unit/          78 tests PASS
-tests/cli/            2 tests PASS (requires QE)
+tests/cli/            7 tests PASS (requires QE installed)
 ─────────────────────────────────
-Total:               80 tests PASS
+Total:               85 tests PASS
 ```
+
+**Note**: CLI tests require QE to be installed. QE is auto-detected via:
+1. `QE_HOME` env var (if set)
+2. System PATH (`which pw.x`)
+3. Shell config files (`~/.zshrc`, `~/.bashrc` for PATH exports)
+4. Home directory scan (`~/src/q-e-qe*`, etc.)
 
 ### 6.3 CI Test Data
 
@@ -442,7 +479,8 @@ python -m pytest tests/cli/       # CLI tests (needs QE)
 | `core/engines/qe_installation.py` | QE detection logic | ~470 |
 | `core/engines/qe.py` | QE engine implementation | ~550 |
 | `core/engines/qe_workflow.py` | Step/workflow execution | ~320 |
-| `workflow/structure_steps.py` | StructureStepSpec model | ~380 |
+| `workflow/structure_steps.py` | StructureStepSpec model, post-processing input generation | ~450 |
+| `core/templates.py` | Template copying utilities | ~350 |
 | `workflow/input_runner.py` | Input preparation and execution | ~540 |
 | `io/parser/qe_parser.py` | QE input parsing | ~420 |
 | `io/model.py` | QE data structures | ~230 |
@@ -580,7 +618,44 @@ python -m pytest tests/unit/ -v
 
 ## 12. Refactoring History
 
-### 2025-11-30 Session
+### 2025-11-30 Session 2
+
+Implemented from `temporary_ai_prompts` (lines 372-379):
+
+| Item | Implementation |
+|------|---------------|
+| **Post-processing step support** | DOS/bands/projwfc steps now generate correct input format (just &DOS, &BANDS, etc. namelists) instead of pw.x format |
+| **`--template` for `qv init project`** | Copy from predefined template (e.g., `qv init project --template project1`) |
+| **`--template` for `qv init workflow`** | Copy workflow template with steps, auto-copies related structures (e.g., `qv init workflow my-dos --template si-dos`) |
+| **`--template` for `qv init step`** | Copy step template (e.g., `qv init step scf --template scf`) |
+| **`qv import-structure` accepts .json** | Can now import QV-format JSON files with embedded metadata |
+| **`qv show-command` simplified** | No longer includes `--structure <structure-id>` placeholder; shows helpful explanation instead |
+| **Structure inheritance in `qv init step`** | When using `--workflow`, inherits structure from that workflow (not just from enclosing directory) |
+| **ULID consistency in templates** | When copying templates, workflow ULIDs in project.qv.yml match step parent_workflow_id |
+| **QE registry isolation** | Added autouse fixture to reset QE home registry between tests |
+
+**New file**: `src/quantumvitas/core/templates.py` - Template management utilities
+
+**New test file**: `tests/cli/test_template_workflow.py` - Tests for template copying and ULID consistency
+
+**Templates directory**: `/templates/` at project root contains:
+```
+templates/
+├── project/
+│   └── project1/       # Complete project with workflow and structures
+├── workflow/
+│   └── si-dos/         # Si DOS workflow with scf, nscf, dos steps
+├── step/
+│   └── steps/          # Individual step templates (scf, nscf, dos)
+└── structure/
+    └── si.json         # Si bulk structure
+```
+
+**Key implementation details**:
+- When creating workflow from template, CLI generates the workflow ULID first and passes it to `copy_workflow_template` so steps get the correct `parent_workflow_id`
+- When copying project template, old workflow ULIDs from project.qv.yml are mapped to new ULIDs for consistency
+
+### 2025-11-30 Session 1
 
 Implemented from `temporary_ai_prompts` (lines 344-365):
 

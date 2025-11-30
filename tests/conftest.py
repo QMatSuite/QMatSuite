@@ -103,13 +103,16 @@ def cleanup_temp_outdir(project_root_path: Path):
         except Exception:
             pass
 
-{
-  "cells": [],
-  "metadata": {
-    "language_info": {
-      "name": "python"
-    }
-  },
-  "nbformat": 4,
-  "nbformat_minor": 2
-}
+
+@pytest.fixture(autouse=True)
+def reset_qe_registry():
+    """Reset QE home registry before and after each test.
+    
+    This prevents test pollution where a unit test's fake QE installation
+    persists into CLI tests that need the real QE.
+    """
+    from quantumvitas.core.engines import reset_qe_home
+    
+    reset_qe_home()
+    yield
+    reset_qe_home()

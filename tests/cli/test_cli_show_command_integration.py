@@ -127,9 +127,13 @@ def test_cli_show_command_executes_against_references(
             if line.strip().startswith("qv init step")
         )
         init_args = shlex.split(init_line)[1:]
-        placeholder_index = init_args.index("<structure-id>")
-        init_args[placeholder_index] = structure_name
-        init_args.extend(["--workflow", workflow_name, "--project", str(project_root)])
+        # Now show-command doesn't include --structure, so we add it explicitly
+        # along with --workflow and --project
+        init_args.extend([
+            "--structure", structure_name,
+            "--workflow", workflow_name,
+            "--project", str(project_root)
+        ])
         init_result = runner.invoke(app, init_args, catch_exceptions=False)
         assert init_result.exit_code == 0, init_result.stdout
 

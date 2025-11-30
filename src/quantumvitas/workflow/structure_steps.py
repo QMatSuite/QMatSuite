@@ -16,7 +16,7 @@ from quantumvitas.core.resources import (
 )
 from quantumvitas.io import QEInputGenerator, read_structure
 from quantumvitas.io.structure_io import qe_input_from_structure
-from quantumvitas.io.model import QECardType, QEInput
+from quantumvitas.io.model import QECardType, QEInput, QENamelist, QEModule
 from quantumvitas.workflow.input_runner import (
     ParameterOverride,
     apply_card_overrides_to_qe_input,
@@ -147,6 +147,79 @@ def generate_qe_input_from_structure(
     return qe_input
 
 
+# Post-processing step types that don't need structure-based input
+POST_PROCESSING_STEP_TYPES = {
+    "dos", "bands", "projwfc", "pp", "q2r", "matdyn", "dynmat",
+    "sumpdos", "band_interpolation", "ppacf", "pprism",
+}
+
+# Mapping of step type to primary namelist name
+STEP_TYPE_NAMELIST_MAP = {
+    "dos": "DOS",
+    "bands": "BANDS",
+    "projwfc": "PROJWFC",
+    "pp": "INPUTPP",
+    "q2r": "INPUT",
+    "matdyn": "INPUT",
+    "dynmat": "INPUT",
+}
+
+# Mapping of step type to QE module
+STEP_TYPE_MODULE_MAP = {
+    "dos": QEModule.DOS,
+    "bands": QEModule.BANDS,
+    "projwfc": QEModule.PROJWFC,
+    "pp": QEModule.PP,
+    "q2r": QEModule.Q2R,
+    "matdyn": QEModule.MATDYN,
+    "dynmat": QEModule.DYNMAT,
+}
+
+
+def _generate_postprocessing_input(
+    spec: "StructureStepSpec",
+    extra_overrides: Sequence[ParameterOverride] | None = None,
+) -> tuple[QEInput, list[ParameterOverride]]:
+    """
+    Generate QE input for post-processing steps (dos.x, bands.x, projwfc.x, etc.).
+    
+    These don't need structure-based input, just the appropriate namelist.
+    """
+    step_type_lower = spec.step_type.lower() if spec.step_type else "dos"
+    
+    # Get the primary namelist name for this step type
+    namelist_name = STEP_TYPE_NAMELIST_MAP.get(step_type_lower, step_type_lower.upper())
+    module = STEP_TYPE_MODULE_MAP.get(step_type_lower, QEModule.DOS)
+    
+    # Build parameters for the namelist
+    params: Dict[str, Any] = {}
+    
+    # Get parameters from spec - they should be under the namelist section
+    for section_name, section_params in (spec.parameters or {}).items():
+        # Match the namelist name (case-insensitive)
+        if section_name.upper() == namelist_name.upper():
+            if isinstance(section_params, dict):
+                params.update(section_params)
+    
+    # Apply any extra overrides
+    all_overrides: list[ParameterOverride] = []
+    if extra_overrides:
+        for override in extra_overrides:
+            if override.section and override.section.upper() == namelist_name.upper():
+                params[override.name] = override.value
+            all_overrides.append(override)
+    
+    # Create the QEInput with just this namelist
+    namelist = QENamelist(name=namelist_name.lower(), parameters=params)
+    qe_input = QEInput(
+        namelists=[namelist],
+        cards=[],
+        module=module,
+    )
+    
+    return qe_input, all_overrides
+
+
 def generate_qe_input_from_spec(
     structure: PMGStructure,
     spec: StructureStepSpec,
@@ -154,7 +227,15 @@ def generate_qe_input_from_spec(
 ) -> tuple[QEInput, list[ParameterOverride]]:
     """
     Build a QE input from a structure step specification.
+    
+    For post-processing steps (dos, bands, projwfc, etc.), creates a simple
+    input with just the appropriate namelist instead of structure-based input.
     """
+    step_type_lower = spec.step_type.lower() if spec.step_type else "scf"
+    
+    # Handle post-processing step types differently
+    if step_type_lower in POST_PROCESSING_STEP_TYPES:
+        return _generate_postprocessing_input(spec, extra_overrides)
 
     spec_overrides = parameter_dict_to_overrides(spec.parameters)
     combined_overrides: list[ParameterOverride] = list(spec_overrides)
