@@ -44,6 +44,7 @@ class StructureStepSpec:
     input_name: Optional[str] = None
     cards: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     species_overrides: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    parent_workflow_id: Optional[str] = None  # Links step to its parent workflow
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any], source_path: Optional[Path] = None) -> "StructureStepSpec":
@@ -63,6 +64,8 @@ class StructureStepSpec:
         species_overrides = data.get("species_overrides") or {}
         if not isinstance(species_overrides, dict):
             raise ValueError("Step spec 'species_overrides' must be a mapping when provided")
+
+        parent_workflow_id = data.get("parent_workflow_id")
 
         meta_dict = data.get("meta")
         default_name = data.get("name") or str(step_type)
@@ -86,6 +89,7 @@ class StructureStepSpec:
             input_name=input_name,
             cards=cards,
             species_overrides=species_overrides,
+            parent_workflow_id=parent_workflow_id,
         )
 
     @classmethod
@@ -102,6 +106,8 @@ class StructureStepSpec:
             "structure": self.structure,
             "step_type": self.step_type,
         }
+        if self.parent_workflow_id:
+            data["parent_workflow_id"] = self.parent_workflow_id
         if self.parameters:
             data["parameters"] = self.parameters
         if self.input_name:
