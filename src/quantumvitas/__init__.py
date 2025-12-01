@@ -44,6 +44,7 @@ _make_dataclass_compat()
 from .project.model import Project, ProjectSettings, StructureRef, WorkflowRef
 from .workflow.workflow import Workflow
 from .workflow.runner import WorkflowRunner
+from .api import QVService, service
 
 __all__ = [
     "Project",
@@ -52,5 +53,7 @@ __all__ = [
     "WorkflowRef",
     "Workflow",
     "WorkflowRunner",
+    "QVService",
+    "service",
 ]
 
