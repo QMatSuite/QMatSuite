@@ -25,8 +25,9 @@ src/quantumvitas/
 ├── core/
 │   ├── engines/         # QE engine, installation detection, pseudopotentials
 │   ├── resources.py     # ResourceMeta model (ULID, slug, name, path)
+│   ├── models.py        # Dataclass models with load/save (WorkflowModel, etc.)
 │   ├── resolution.py    # Centralized selector→resource resolution
-│   ├── context.py       # PWD context helper for CLI
+│   ├── context.py       # PWD context helper for CLI (max_depth=20)
 │   ├── project_utils.py # Extracted helpers for project/config manipulation
 │   └── templates.py     # Template copying utilities
 ├── io/                  # QE input/output parsing and generation
@@ -576,10 +577,10 @@ Tolerances:
 ### Reading Order
 
 1. `core/resources.py` - ResourceMeta pattern
-2. `core/resolution.py` - Centralized selector→resource resolution
-3. `core/context.py` - PWD context helper for CLI
-4. `api.py` - QVService stable interface
-5. `project/model.py` - Understand Project/Workflow/Structure models
+2. `core/models.py` - Dataclass models with load/save (WorkflowModel, ProjectModel)
+3. `core/resolution.py` - Centralized selector→resource resolution
+4. `core/context.py` - PWD context helper for CLI
+5. `api.py` - QVService stable interface
 6. `workflow/structure_steps.py` - StructureStepSpec (step YAML model)
 7. `io/model.py` - QE input structure
 8. `cli/main.py` - CLI commands (large file, use semantic search)
@@ -590,9 +591,10 @@ Tolerances:
 |------|-----------|
 | Add CLI command | `cli/main.py` |
 | Add configure option | `cli/main.py` (look for `@configure_app.command`) |
-| Modify resource resolution | `core/resolution.py` (new), `core/project_utils.py` |
+| Modify resource resolution | `core/resolution.py` |
 | Add service layer method | `api.py` (`QVService` class) |
 | Modify PWD context detection | `core/context.py` |
+| Add/modify resource models | `core/models.py` |
 | Modify QE detection | `core/engines/qe_installation.py` |
 | Add QE module support | `io/parser/qe_parser.py`, `core/engines/qe.py` |
 | Change step spec format | `workflow/structure_steps.py` |
@@ -707,11 +709,17 @@ Implemented the unified resource resolution architecture from `temporary_ai_prom
    - **Only place that uses `Path.cwd()`** for resource discovery
    - Used by CLI for auto-detection
 
-3. **API Layer** (`api.py`):
+3. **Models Layer** (`core/models.py`):
+   - Dataclass models for all resources: `WorkflowModel`, `ProjectModel`, `StructureModel`
+   - `load_*` / `save_*` functions for YAML/JSON I/O
+   - All models have complete meta: `id`, `name`, `slug`, `path`, `kind`
+   - Business logic works with objects, not raw dicts
+
+4. **API Layer** (`api.py`):
    - `QVService` class with methods for all CRUD operations
    - Always receives `project_root` explicitly
    - Never looks at cwd
-   - Internally calls resolution functions
+   - Uses models layer for YAML I/O
    - Shared by CLI and future GUI
 
 **Selector resolution rules**:
@@ -746,14 +754,38 @@ class PathContext:
     workflow_selector: Optional[str]
     workflow_directory: Optional[Path]
     is_inside_workflow() -> bool
+
+@dataclass
+class WorkflowModel:
+    meta: ResourceMeta      # Complete metadata
+    structure: Optional[str]  # Structure selector
+    steps: List[WorkflowStepEntry]
+    mode: str = "normal"
+    working_dir: str = "raw"
+```
+
+**Model I/O functions**:
+```python
+# Workflow
+model = load_workflow(path, project_root)
+save_workflow(model, path)
+
+# Project  
+model = load_project(path)
+save_project(model, path)
+
+# Structure
+model = load_structure_model(path, project_root)
+save_structure_model(model, path)
 ```
 
 **Test coverage**:
 - `tests/unit/test_resolution.py` - 20 tests for resolution
 - `tests/unit/test_context.py` - 11 tests for PWD context
 - `tests/unit/test_api_service.py` - 19 tests for QVService
+- `tests/unit/test_models.py` - 20 tests for models
 
-All 135 tests passing.
+All 155 tests passing.
 
 **Design principle**: Resource = dataclass, YAML = persistence, Selector = user-facing handle, Resolution = centralized lookup, CLI = thin wrapper, API = stable interface.
 

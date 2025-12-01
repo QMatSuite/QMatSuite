@@ -488,6 +488,40 @@ API = the stable interface shared by CLI & GUI
 
 Done.
 
-Question: what is maximum depth of finding parent resource? Do you need to limit that?
-Run all tests (including integration tests)
 
+1. set a limit for upward search of resource to 20. 
+2. make sure all .yaml file (also in structure.json) contains all four selectors ULID, name, slug, relative path to project_root. Seems that right now workflow.yaml does not have it. How do you get ULID of workflow then? 
+3. Conceptual requirement:
+In QuantumVITAS, a “resource” (project / workflow / step / structure) should be modeled as a Python dataclass/object in memory. The .yaml / .yml files are just the persistence format for these objects, not the primary representation.
+There should be clear load_* and save_* functions that convert between YAML files and the corresponding dataclasses (e.g. ProjectModel, WorkflowModel, StructureStepSpec).
+Core logic (init/configure/run) should work with these objects, not with raw YAML dicts.
+CLI and the new QVService API should call the loaders/savers instead of manually doing yaml.safe_load / yaml.safe_dump everywhere.
+It’s OK to refactor this gradually. The key goal is:
+Centralize YAML I/O in a few well-defined modules.
+Keep business logic object-centric, not file-centric.
+
+
+Status now:
+Summary
+1. Upward Search Limit (Set to 20)
+Updated core/context.py: find_path_context_from_pwd(max_depth=20)
+2. Complete Meta in All YAML Files
+Created core/models.py with models that ensure all four selectors:
+WorkflowModel - meta with id, name, slug, path, kind
+ProjectModel - meta with id, name, slug, path, kind
+StructureModel - meta with id, name, slug, path, kind
+3. Object-Centric Architecture
+New file core/models.py (~520 lines):
+# Models
+@dataclass
+class WorkflowModel:
+    meta: ResourceMeta
+    structure: Optional[str]
+    steps: List[WorkflowStepEntry]
+    mode: str = "normal"
+    working_dir: str = "raw"
+
+# Load/Save functions
+model = loa
+
+Question: implementation complete?
