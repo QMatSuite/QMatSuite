@@ -20,11 +20,15 @@ Python implementation featuring:
 
 ```
 src/quantumvitas/
+├── api.py               # QVService - stable interface for CLI and GUI
 ├── cli/                 # Typer CLI implementation (main.py is ~2600 lines)
 ├── core/
 │   ├── engines/         # QE engine, installation detection, pseudopotentials
 │   ├── resources.py     # ResourceMeta model (ULID, slug, name, path)
-│   └── project_utils.py # Extracted helpers for project/config manipulation
+│   ├── resolution.py    # Centralized selector→resource resolution
+│   ├── context.py       # PWD context helper for CLI
+│   ├── project_utils.py # Extracted helpers for project/config manipulation
+│   └── templates.py     # Template copying utilities
 ├── io/                  # QE input/output parsing and generation
 │   ├── parser/          # QEInputParser
 │   ├── generator/       # QEInputGenerator
@@ -572,11 +576,13 @@ Tolerances:
 ### Reading Order
 
 1. `core/resources.py` - ResourceMeta pattern
-2. `project/model.py` - Understand Project/Workflow/Structure models
-3. `workflow/structure_steps.py` - StructureStepSpec (step YAML model)
-4. `core/project_utils.py` - Resource resolution helpers
-5. `io/model.py` - QE input structure
-6. `cli/main.py` - CLI commands (large file, use semantic search)
+2. `core/resolution.py` - Centralized selector→resource resolution
+3. `core/context.py` - PWD context helper for CLI
+4. `api.py` - QVService stable interface
+5. `project/model.py` - Understand Project/Workflow/Structure models
+6. `workflow/structure_steps.py` - StructureStepSpec (step YAML model)
+7. `io/model.py` - QE input structure
+8. `cli/main.py` - CLI commands (large file, use semantic search)
 
 ### Common Tasks
 
@@ -584,12 +590,15 @@ Tolerances:
 |------|-----------|
 | Add CLI command | `cli/main.py` |
 | Add configure option | `cli/main.py` (look for `@configure_app.command`) |
-| Modify resource resolution | `core/project_utils.py` |
+| Modify resource resolution | `core/resolution.py` (new), `core/project_utils.py` |
+| Add service layer method | `api.py` (`QVService` class) |
+| Modify PWD context detection | `core/context.py` |
 | Modify QE detection | `core/engines/qe_installation.py` |
 | Add QE module support | `io/parser/qe_parser.py`, `core/engines/qe.py` |
 | Change step spec format | `workflow/structure_steps.py` |
 | Change workflow execution | `workflow/runner.py`, `core/engines/qe_workflow.py` |
 | Modify verification | `workflow/verification.py` |
+| Add template support | `core/templates.py` |
 
 ### Development Environment
 
@@ -671,7 +680,84 @@ Implemented from `temporary_ai_prompts` (lines 344-365):
 
 All tests passing (80/80).
 
+### 2025-12-01 Resource Resolution Refactoring
+
+Implemented the unified resource resolution architecture from `temporary_ai_prompts`:
+
+**New modules created**:
+
+| Module | Purpose |
+|--------|---------|
+| `core/resolution.py` | Centralized selector→resource resolution |
+| `core/context.py` | PWD context helper for CLI |
+| `api.py` | `QVService` - stable service layer |
+
+**Architecture summary**:
+
+1. **Resolution Layer** (`core/resolution.py`):
+   - `resolve_structure(project_root, selector)` - Resolve structure by ULID/slug/name/path
+   - `resolve_workflow(project_root, selector)` - Resolve workflow by ULID/slug/name/path
+   - `resolve_step(project_root, workflow_selector, step_selector)` - Resolve step within workflow
+   - Resolution order: path → ULID → slug → name (case-insensitive)
+   - Never uses `Path.cwd()`
+
+2. **Context Layer** (`core/context.py`):
+   - `find_path_context_from_pwd()` - Scans upward to find project/workflow context
+   - Returns `PathContext` with `project_root` and `nodes` (project→workflow→step chain)
+   - **Only place that uses `Path.cwd()`** for resource discovery
+   - Used by CLI for auto-detection
+
+3. **API Layer** (`api.py`):
+   - `QVService` class with methods for all CRUD operations
+   - Always receives `project_root` explicitly
+   - Never looks at cwd
+   - Internally calls resolution functions
+   - Shared by CLI and future GUI
+
+**Selector resolution rules**:
+```
+A selector is any of:
+- ULID: exact match on resource id (26 chars, uppercase)
+- slug: exact match (e.g., "si-dos")
+- name: exact match (case-insensitive, NOT normalized to slug)
+- path-like string: contains "/" or ends with .yaml/.yml/.json
+
+Resolution order:
+1. Path → normalize → load YAML → return resource
+2. ULID → search all entries for matching id
+3. slug → exact slug match within parent scope
+4. name → case-insensitive exact name match
+```
+
+**Key classes**:
+```python
+@dataclass
+class ResolvedResource:
+    meta: ResourceMeta      # ULID, name, slug, path, kind
+    entry: dict             # Raw entry from project.qv.yml
+    absolute_path: Path     # Resolved absolute filesystem path
+
+@dataclass
+class PathContext:
+    project_root: Path
+    nodes: List[ContextNode]  # [project, workflow?, step?]
+    
+    # Convenience properties:
+    workflow_selector: Optional[str]
+    workflow_directory: Optional[Path]
+    is_inside_workflow() -> bool
+```
+
+**Test coverage**:
+- `tests/unit/test_resolution.py` - 20 tests for resolution
+- `tests/unit/test_context.py` - 11 tests for PWD context
+- `tests/unit/test_api_service.py` - 19 tests for QVService
+
+All 135 tests passing.
+
+**Design principle**: Resource = dataclass, YAML = persistence, Selector = user-facing handle, Resolution = centralized lookup, CLI = thin wrapper, API = stable interface.
+
 ---
 
-*Last updated: 2025-11-30*
+*Last updated: 2025-12-01*
 *Based on commit history through v2-python branch*
