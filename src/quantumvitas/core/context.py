@@ -92,7 +92,7 @@ class ContextNotFoundError(ValueError):
 
 def find_path_context_from_pwd(
     start: Optional[Path] = None,
-    max_depth: int = 10,
+    max_depth: int = 20,
 ) -> PathContext:
     """
     Scan upward from the current directory to find project context.
@@ -334,7 +334,7 @@ def _find_structure_context(project_root: Path, start_path: Path) -> Optional[Co
 # ---------------------------------------------------------------------------
 
 
-def get_project_root_from_pwd(start: Optional[Path] = None, max_depth: int = 10) -> Path:
+def get_project_root_from_pwd(start: Optional[Path] = None, max_depth: int = 20) -> Path:
     """
     Get just the project root from pwd, without full context.
     
