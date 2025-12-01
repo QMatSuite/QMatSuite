@@ -381,5 +381,113 @@ Done. Now need to check qv init with template. Especially how ULID and related s
 Again, QE_HOME should be detected automatically. You already put that internally in api, never rely on os.env when running because it is prone to error.
 
 
-Done. Still need to test qvv init with template.
+Done. Still need to test qv init with template.
+
+Refactor according to suggestion of ChatGPT:
+QuantumVITAS Resource Resolution Summary (for refactoring)
+1. Resource Identity Model
+Each resource (project / workflow / step / structure) has:
+ULID — internal unique ID (never shown to users)
+name — human-readable, always unique within its namespace
+(workflow names unique per project, step names unique per workflow)
+slug — generated from name (slugify(name)), also unique in the same namespace
+path — relative path to its YAML/JSON file inside the project directory
+YAML files are only the persistence format.
+Resources are dataclasses in memory (with meta: ResourceMeta).
+2. Selector System
+A selector is any of the following (all treated as strings):
+ULID — exact match
+slug — exact match (e.g., "si-dos")
+name — exact match (case-insensitive, but do not normalize to slug)
+path-like string
+absolute or relative path to YAML/JSON file
+contains / or ends with .yaml, .yml, .json
+Important:
+Name and slug are different concepts;
+names stay names, do not slugify the input to match slugs.
+Slugs are unique after init, so matching is unambiguous.
+3. Resolution Layer (core/resolution.py)
+All selector → resource lookup logic lives in one module, with:
+resolve_project(selector)              # rarely needed
+resolve_workflow(project_root, selector)
+resolve_structure(project_root, selector)
+resolve_step(project_root, workflow_selector, selector)
+Resolution rules (in order):
+Path
+If the selector looks like a path → normalize → load YAML → return resource
+ULID
+If matches any resource ULID → return resource
+slug
+Exact slug match within the parent scope
+name
+Case-insensitive exact name match
+If multiple matches → raise AmbiguousSelectorError
+This module does not use Path.cwd().
+4. PWD Context Helper (core/context.py)
+A single helper scans upward from the current directory until it finds the project root:
+find_path_context_from_pwd(max_depth=10) -> PathContext
+PathContext contains:
+project_root
+an ordered list of nodes from project → workflow → step (as applicable)
+each node includes:
+kind ("project" | "workflow" | "step" | "structure" | "other")
+directory path
+YAML file path (if any)
+selector (slug or inferred name)
+CLI uses this helper for “auto-detect parent”,
+API never uses PWD.
+5. API Layer (quantumvitas/api.py)
+A clean service layer between CLI and core:
+class QVService:
+    init_project(...)
+    configure_project(...)
+    delete_project(...)
+
+    init_workflow(project_root, workflow_name, structure_selector, template)
+    configure_workflow(project_root, workflow_selector, new_structure, new_step_order)
+    delete_workflow(...)
+
+    init_step(project_root, workflow_selector, step_type, name, structure_selector, template)
+    configure_step(...)
+    delete_step(...)
+
+    import_structure(...)
+    configure_structure(...)
+    delete_structure(...)
+
+    run_workflow(project_root, workflow_selector, strict=False, verbose=False)
+    run_step(project_root, workflow_selector, step_selector)
+API functions:
+always receive project_root explicitly
+receive other resources via selector strings
+never look at cwd
+internally call resolution.* to turn selectors into resource models
+operate on dataclasses → save back to YAML
+6. CLI Responsibilities
+CLI is now thin:
+Use find_path_context_from_pwd() to infer project/workflow/step when the user does not specify them.
+Parse user parameters.
+Pass project_root + selector strings into QVService.
+Print human-readable messages.
+CLI no longer performs:
+YAML parsing
+direct resource lookup
+path guessing
+mutation logic
+(these all move to core + api layers)
+7. Performance Notes
+Resolution loops are bounded by small N (dozens of steps/workflows), so O(N) lookups are fine.
+PWD scanning is depth-limited (max 10 directories upward), negligible cost.
+8. Guiding Principle
+Resource = dataclass object
+YAML = persistence
+Selector = user-facing handle
+Resolution = centralized lookup code
+CLI = only a UI wrapper
+API = the stable interface shared by CLI & GUI
+
+Done.
+
+Question: what is maximum depth of finding parent resource? Do you need to limit that?
+Run all tests (including integration tests)
 
