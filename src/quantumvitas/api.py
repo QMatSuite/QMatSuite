@@ -341,24 +341,26 @@ class QVService:
             )
             workflow_id = new_ulid
         else:
+            from quantumvitas.core.models import WorkflowModel, save_workflow
+            
             workflow_dir.mkdir(parents=True, exist_ok=True)
             (workflow_dir / "steps").mkdir(exist_ok=True)
             (workflow_dir / "raw").mkdir(exist_ok=True)
             (workflow_dir / "reference").mkdir(exist_ok=True)
             
-            # Create workflow.yaml
-            workflow_yaml = {
-                "meta": {
-                    "id": workflow_id,
-                    "name": final_name,
-                    "slug": final_slug,
-                    "path": workflow_path,
-                    "kind": "workflow",
-                },
-                "structure": structure_selector,
-                "steps": [],
-            }
-            (workflow_dir / "workflow.yaml").write_text(yaml.safe_dump(workflow_yaml, sort_keys=False))
+            # Create workflow using model
+            workflow_meta = ResourceMeta(
+                id=workflow_id,
+                name=final_name,
+                slug=final_slug,
+                path=workflow_path,
+                kind="workflow",
+            )
+            workflow_model = WorkflowModel(
+                meta=workflow_meta,
+                structure=structure_selector,
+            )
+            save_workflow(workflow_model, workflow_dir)
         
         # Add to project config
         entry = {
@@ -413,21 +415,22 @@ class QVService:
         workflow_yaml_path = workflow_dir / "workflow.yaml"
         
         if workflow_yaml_path.exists() and (new_structure or new_step_order):
-            workflow_data = yaml.safe_load(workflow_yaml_path.read_text()) or {}
+            from quantumvitas.core.models import load_workflow, save_workflow, WorkflowStepEntry
+            
+            model = load_workflow(workflow_dir, project_root)
             
             if new_structure:
-                workflow_data["structure"] = new_structure
+                model.structure = new_structure
             
             if new_step_order:
-                existing_steps = workflow_data.get("steps", [])
-                step_map = {s.get("id"): s for s in existing_steps if s.get("id")}
+                step_map = {s.id: s for s in model.steps}
                 new_steps = []
                 for step_id in new_step_order:
                     if step_id in step_map:
                         new_steps.append(step_map[step_id])
-                workflow_data["steps"] = new_steps
+                model.steps = new_steps
             
-            workflow_yaml_path.write_text(yaml.safe_dump(workflow_data, sort_keys=False))
+            save_workflow(model, workflow_dir)
         
         save_project_config(project_root, config)
     
@@ -492,6 +495,7 @@ class QVService:
             ResolvedResource for the new step
         """
         from quantumvitas.workflow.structure_steps import StructureStepSpec
+        from quantumvitas.core.models import WorkflowModel
         
         workflow = resolve_workflow(project_root, workflow_selector)
         workflow_dir = workflow.absolute_path
@@ -511,13 +515,20 @@ class QVService:
         
         step_yaml_path = steps_dir / f"{base_name}.step.yaml"
         
-        # Determine structure
-        if structure_selector is None:
-            # Try to inherit from workflow
-            workflow_yaml_path = workflow_dir / "workflow.yaml"
-            if workflow_yaml_path.exists():
-                wf_data = yaml.safe_load(workflow_yaml_path.read_text()) or {}
-                structure_selector = wf_data.get("structure")
+        # Determine structure from workflow if not specified
+        from quantumvitas.core.models import load_workflow, save_workflow, WorkflowStepEntry
+        
+        workflow_yaml_path = workflow_dir / "workflow.yaml"
+        if workflow_yaml_path.exists():
+            wf_model = load_workflow(workflow_dir, project_root)
+            if structure_selector is None:
+                structure_selector = wf_model.structure
+        else:
+            # Create workflow model if it doesn't exist
+            wf_model = WorkflowModel(
+                meta=workflow.meta,
+                structure=structure_selector,
+            )
         
         if template:
             from quantumvitas.core.templates import copy_step_template
@@ -544,19 +555,13 @@ class QVService:
             )
             step_yaml_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
         
-        # Add to workflow.yaml
-        workflow_yaml_path = workflow_dir / "workflow.yaml"
-        if workflow_yaml_path.exists():
-            wf_data = yaml.safe_load(workflow_yaml_path.read_text()) or {}
-        else:
-            wf_data = {"steps": []}
-        
-        steps_list = wf_data.setdefault("steps", [])
-        steps_list.append({
-            "id": step_name,
-            "type": step_type,
-        })
-        workflow_yaml_path.write_text(yaml.safe_dump(wf_data, sort_keys=False))
+        # Add step to workflow model
+        wf_model.steps.append(WorkflowStepEntry(
+            id=step_name,
+            type=step_type,
+            step_file=f"steps/{base_name}.step.yaml",
+        ))
+        save_workflow(wf_model, workflow_dir)
         
         return resolve_step(project_root, workflow_selector, step_slug)
     
