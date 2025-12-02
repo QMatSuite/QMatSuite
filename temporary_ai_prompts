@@ -795,3 +795,15 @@ is not used.
 crystal_c :
 As tpiba_c, but k-points are in crystal coordinates.
 
+
+
+
+Bug 1:
+The `to_qe_kpoints_crystal_b` method sets the last k-point segment's weight to 0, which tells QE to generate zero intermediate points along that final line segment. This produces incomplete band structure data. All segments should have positive weights according to QE's `crystal_b` format specification. The last point should use `n_points` instead of 0.
+
+ @src/quantumvitas/analysis/kpath.py:71-72 
+
+Bug 2:
+Verify this issue exists and fix it:
+
+The `extract_energy_metrics_from_text` function returns `result.fermi_energy` with a key named `"fermi_energy_ry"`, but `result.fermi_energy` is in eV according to the SCFResult docstring. This unit mismatch causes incorrect comparisons in verification.py where the value is treated as Ry when it's actually eV, leading to wrong tolerance checks and error messages.
