@@ -2,7 +2,7 @@
 
 ## 概述
 
-CI 测试数据文件已从 QE test-suite 复制到 `tests/integration/ci_test_data/`，确保：
+CI 测试数据文件已从 QE test-suite 复制到 `tests/data/`，确保：
 
 1. **独立性**: 测试可以在没有 QE test-suite 的环境中运行
 2. **一致性**: 所有用户使用相同的测试文件
@@ -11,7 +11,7 @@ CI 测试数据文件已从 QE test-suite 复制到 `tests/integration/ci_test_d
 ## 文件位置
 
 ```
-tests/integration/ci_test_data/
+tests/data/
 ├── manifest.json              # 元数据（测试列表）
 ├── README.md                  # 说明文档
 ├── pw_single_tests/          # 所有 PW 单步测试文件
@@ -61,7 +61,7 @@ python3 tests/integration/test_ci_validation.py
 ## 测试使用
 
 测试代码会自动：
-1. 首先查找 `tests/integration/ci_test_data/`（本地副本）
+1. 首先查找 `tests/data/`（本地副本）
 2. 如果不存在，回退到 QE test-suite 目录
 
 这确保了：

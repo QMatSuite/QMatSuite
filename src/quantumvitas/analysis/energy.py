@@ -6,45 +6,68 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from quantumvitas.workflow.results import WorkflowResult
 from quantumvitas.workflow.workflow import Workflow
+from .parsers import parse_scf_output, SCFResult
 
 
 def extract_energy_metrics_from_text(text: str) -> Dict[str, float | None]:
-    total_energy = None
-    fermi_energy = None
-    for line in text.splitlines():
-        stripped = line.strip()
-        if "!" in stripped and "total energy" in stripped:
-            try:
-                total_energy = float(stripped.split("=")[-1].split()[0])
-            except Exception:
-                continue
-        lowered = stripped.lower()
-        if "fermi energy" in lowered:
-            try:
-                fermi_energy = float(stripped.split("=")[-1].split()[0])
-            except Exception:
-                continue
+    """
+    Extract energy metrics from QE output text.
+    
+    Legacy function - prefer using parse_scf_output() for full parsing.
+    """
+    result = parse_scf_output(text)
     return {
-        "total_energy_ry": total_energy,
-        "fermi_energy_ry": fermi_energy,
+        "total_energy_ry": result.total_energy,
+        "fermi_energy_ry": result.fermi_energy,
     }
 
 
 def analyze_energies(output_file: Path | str) -> dict:
     """
     Parse a QE output file and extract total/Fermi energies.
+    
+    Args:
+        output_file: Path to QE output file
+        
+    Returns:
+        Dictionary with energy metrics and file path
     """
     output_path = Path(output_file)
     if not output_path.exists():
         raise FileNotFoundError(output_path)
 
-    metrics = extract_energy_metrics_from_text(output_path.read_text())
-    metrics["file"] = str(output_path)
-    return metrics
+    result = parse_scf_output(output_path)
+    return {
+        "file": str(output_path),
+        "total_energy_ry": result.total_energy,
+        "fermi_energy_ev": result.fermi_energy,
+        "converged": result.converged,
+        "n_iterations": len(result.iterations),
+        "homo_ev": result.homo,
+        "lumo_ev": result.lumo,
+        "band_gap_ev": result.band_gap,
+    }
+
+
+def analyze_scf_detailed(output_file: Path | str) -> SCFResult:
+    """
+    Parse QE output file and return full SCF result.
+    
+    Args:
+        output_file: Path to QE output file
+        
+    Returns:
+        SCFResult with all parsed data
+    """
+    output_path = Path(output_file)
+    if not output_path.exists():
+        raise FileNotFoundError(output_path)
+    
+    return parse_scf_output(output_path)
 
 
 def summarize_workflow_energies(
@@ -65,4 +88,3 @@ def summarize_workflow_energies(
         energies.append(entry)
 
     (results_dir / "energies.json").write_text(json.dumps(energies, indent=2))
-

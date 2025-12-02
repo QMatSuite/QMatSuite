@@ -524,4 +524,274 @@ class WorkflowModel:
 # Load/Save functions
 model = loa
 
-Question: implementation complete?
+Question: implementation complete? (to be checked later)
+
+
+You’re working in a Python codebase called QuantumVITAS (QV) — a workflow/CLI framework around Quantum ESPRESSO.
+Before doing anything else, follow this order:
+0. Read the “AI_understanding.md” first
+There is a file:
+AI_understanding.md
+This file is a living document that captures the architectural understanding and conventions agreed with previous AIs.
+Step 1: Carefully read AI_understanding.md.
+Use it as your baseline for:
+How resources (project / workflow / step / structure) are modeled
+How the CLI is structured (Typer commands, selectors, etc.)
+How ResourceMeta, workflows, steps, and templates are supposed to work
+How the current architecture separates “core logic” vs “CLI layer”
+Do not reinvent the overall architecture.
+Instead, align your design with what AI_understanding.md describes, and extend it.
+1. Look at temp_files_ai: example workflows + legacy band plotting
+There is a special folder:
+temp_files_ai/
+It contains:
+Example workflow inputs and outputs for:
+SCF steps (first step)
+DOS steps
+Bands steps
+An old Python script that plots band structures from QE output
+It reads bands.dat.gnu and an output file from bands.x
+It handles high-symmetry k-points, fermi shifting, labels, etc.
+Possibly other small helper files that show how QE outputs look in practice
+Step 2: Explore temp_files_ai/
+Use the files there to understand:
+Typical SCF .out content and how total energy / SCF accuracy appear
+Typical DOS .dat file format (energy, DOS, IDOS)
+Typical band structure outputs (bands.dat.gnu + symmetry output)
+What my old band-plot script does well (and what is messy / too coupled)
+The point of this folder is: you don’t have to guess QE formats, you have concrete examples.
+2. Your high-level goal
+Once you’ve read AI_understanding.md and inspected temp_files_ai/:
+You should design and implement:
+A coherent “analysis” layer that:
+Parses SCF / DOS / Bands outputs from QE into structured Python objects
+Treats them conceptually as “1D curves + metadata” (x vs y1, y2, …)
+Is easy to plug into:
+The existing CLI (for matplotlib plots and textual summaries)
+A future Electron GUI (by converting the data to JSON)
+An explicit --auto-kpath option for qv init step bands that:
+Uses the step’s structure (pymatgen Structure)
+Automatically generates a reasonable high-symmetry k-path using a standard API (e.g. pymatgen.symmetry.bandstructure.HighSymmKpath)
+Fills in the step spec with a QE-ready K_POINTS configuration
+Optionally records k-path metadata (tick positions + labels) so the band analysis code can use that later to label Γ, X, L, etc.
+The key: keep the design consistent with the architecture and conventions already described in AI_understanding.md.
+3. How to think about the analysis layer (conceptual, not prescriptive)
+Please don’t just dump ad-hoc scripts. Think in terms of layers:
+a) Analysis / core (parsing & data model)
+Responsible for reading QE outputs:
+SCF .out → iterations, energies, SCF accuracy
+DOS .dat → energy, DOS, IDOS
+Bands outputs (bands.dat.gnu + whatever is needed for symmetry)
+Produces simple, structured objects representing:
+Energy convergence
+DOS
+Band structure
+These objects should be:
+Easy to plot (x + multiple y curves)
+Easy to serialize to JSON
+Keep this layer independent of Typer/CLI/UI.
+Use my old band script in temp_files_ai as a reference, but refactor the logic so parsing and plotting are clearly separated.
+b) CLI layer
+Should call into the analysis layer to:
+Print textual summaries (e.g. final energy, converged or not)
+Optionally produce PNG/SVG plots using matplotlib
+The CLI should not do raw regex/file parsing itself if avoidable.
+For plotting, it’s fine to use matplotlib with a non-GUI backend (so it works in headless environments).
+c) Future GUI
+Not your job to implement now, but:
+The analysis outputs should be easy to turn into JSON and consumed by a JS frontend.
+Try not to bake CLI/TTY concerns into the analysis data structures.
+4. Auto k-path (--auto-kpath) for band steps
+There is already a qv init step command, and one valid step_type is bands.
+I want:
+qv init step bands --structure si --auto-kpath
+to mean:
+We have a structure for this step (explicit --structure, or inherited from workflow).
+We use a standard Python API (e.g. pymatgen.HighSymmKpath) to:
+Generate a high-symmetry k-path in reciprocal space.
+Break it into segments with a reasonable number of points per segment.
+We store:
+A K_POINTS configuration in the step spec (so QE can run bands.x).
+Any k-path metadata we need for plotting (tick positions and labels).
+Constraints:
+--auto-kpath is explicit; no magic default behavior.
+If --auto-kpath is used but no structure is known, the CLI should produce a clear error instead of guessing.
+If the user manually specifies K_POINTS (or uses a template that already has them), that should take precedence over auto-kpath.
+I’m intentionally not dictating exact function names or YAML keys — you should look at the existing step model and conventions in AI_understanding.md, then decide the cleanest way to integrate this.
+5. 3D structure visualization (for later, but keep in mind)
+Eventually, I want a simple path from structure → “vis data”:
+Lattice vectors
+Atomic species
+Fractional/Cartesian coordinates
+So that:
+The CLI can do basic 3D plots (matplotlib).
+The GUI can use it with three.js or similar.
+You don’t have to build a full 3D viewer now, but if you touch structure-related analysis, consider shaping the data so it’s natural to reuse for visualization.
+6. What I expect from you
+Read first, then design.
+Read AI_understanding.md.
+Inspect relevant QV code (core models, CLI, step/workflow handling).
+Look at example files under temp_files_ai/ (SCF, DOS, bands outputs + old band plot script).
+Then propose (implicitly through code) a clean design that:
+Fits the existing architecture.
+Provides a small, coherent analysis layer.
+Makes it easy to extend to more analysis types later.
+Integrates an explicit --auto-kpath option for qv init step bands.
+You are allowed to refactor:
+The old band plotting script into separate “parse” and “plot” pieces.
+Any small parts of QV as needed, as long as:
+You don’t break the documented behavior in AI_understanding.md.
+You keep the CLI UX stable (or meaningfully improved).
+If, after inspecting the repo, you see a simpler or more robust pattern than what I described, use your judgement — as long as everything stays consistent with the spirit of the existing design.
+That’s the brief.
+Start by reading AI_understanding.md, then temp_files_ai, then explore the code, and only then start refactoring/adding modules.
+
+
+You already wrote all the analysis code and CLI integrations. Now perform the final polish pass with these specific tasks:
+1. Review and refine the analysis subsystem
+You already understand your own code. Now:
+Sanity-check unit conventions (SCF/DOS/Bands).
+If mixing eV/Ry happens, explicitly record units in result dataclasses.
+Make SCF parsing robust to missing / repeated SCF blocks.
+Ensure BandStructureData parsing works cleanly:
+With and without symmetry data
+With real QE files in temp_files_ai
+Do minimal but high-impact cleanups — don’t over-engineer.
+2. Auto-kpath metadata sanity
+Verify auto-kpath integration:
+Decide the single source of truth for k-path metadata:
+Prefer storing in step YAML meta, not sidecar files.
+Ensure precedence rules:
+If user manually provides K_POINTS → never auto-generate.
+--auto-kpath requires structure; otherwise error.
+Ensure qv analyze band uses this metadata cleanly.
+Keep it consistent and intuitive.
+3. Write real-data tests using temp_files_ai (but keep tests independent)
+Using the QE output examples in temp_files_ai:
+Copy minimal required test files into:
+tests/data/analysis_scf/
+tests/data/analysis_dos/
+tests/data/analysis_bands/
+Tests must not depend on temp_files_ai.
+Add tests that:
+SCF: check iteration count, energies array shape, presence/absence of accuracy data.
+DOS: check correct lengths of energy/DOS/IDOS arrays.
+Bands: check number of bands, k-point length, symmetry tick handling.
+Add plotting tests:
+Generate PNGs into a temp folder like:
+temp/matplotlib_tests/
+Assert:
+File created
+Size > 0
+(Optionally) number of curves matches expected band count
+Keep tests lightweight and deterministic.
+4. Move tests/integration/ci_test_data to to tests/data such that all test data are centralized. Remember to update codes using the folder.
+5. Update AI_understanding.md
+Expand the document with a clear, structured explanation of:
+The new analysis layer:
+What dataclasses exist (SCFResult, DOSData, BandStructureData…)
+The pattern: “parse → structured data → plot”
+How auto-kpath works:
+When triggered
+Where metadata is stored
+How analysis uses it
+Any constraints/assumptions:
+Units
+Parsing limits
+Test data locations
+This is for future AI runs — be explicit and precise.
+6 Update user-facing docs (if any)
+Minimal but important:
+Clarify qv analyze usage
+Document --auto-kpath with a short example
+Nothing more unless obviously missing
+Summary of what you should now do
+Refine (not rewrite) analysis + auto-kpath logic.
+Add proper tests using copied real QE outputs.
+Generate plot tests.
+Improve documentation (AI_understanding.md + CLI help).
+Stay focused, minimal, correct, maintainable.
+This is the entire prompt.
+
+=> to be tested manually. It seems that the pngs are fine.
+
+1. qv analyze should generate outputs in the results folder of the workflow bu default. 2. Make a test based on temp_files_ai/workflow_bands (copy relevant data into tests/data): qv init project (in temp/test_project_bands), .in->structure (qv import-structure), qv init workflow, .in->scf step (qv init step with qv show-command), .in->nscf step (qv init step with qv show-command), .in->bands step (qv init step with qv show-command), .in->bandspp step (qv init step with qv show-command), qv run workflow, qv analyze band, generate png files. Two separate workflows ran in the same temporary project: one using kpath as defined in original data, second using auto-kpath as you implemented.
+
+Card: K_POINTS { tpiba | automatic | crystal | gamma | tpiba_b | crystal_b | tpiba_c | crystal_c }
+
+IF tpiba OR crystal OR tpiba_b OR crystal_b OR tpiba_c OR crystal_c :
+Syntax:
+
+K_POINTS tpiba | crystal | tpiba_b | crystal_b | tpiba_c | crystal_c
+nks  
+ xk_x(1) 	 xk_y(1) 	 xk_z(1) 	 wk(1) 
+ xk_x(2) 	 xk_y(2) 	 xk_z(2) 	 wk(2) 
+ . . .
+ xk_x(nks) 	 xk_y(nks) 	 xk_z(nks) 	 wk(nks) 
+ELSEIF automatic :
+Syntax:
+
+K_POINTS automatic
+nk1  nk2  nk3  sk1  sk2  sk3  
+ELSEIF gamma :
+Syntax:
+
+K_POINTS gamma
+Description of items:
+
+Card's options:	tpiba | automatic | crystal | gamma | tpiba_b | crystal_b | tpiba_c | crystal_c
+Default:	tbipa
+K_POINTS options are:
+            
+tpiba :
+read k-points in cartesian coordinates,
+in units of 2 pi/a (default)
+            
+automatic :
+automatically generated uniform grid of k-points, i.e,
+generates ( nk1, nk2, nk3 ) grid with ( sk1, sk2, sk3 ) offset.
+nk1, nk2, nk3 as in Monkhorst-Pack grids
+k1, k2, k3 must be 0 ( no offset ) or 1 ( grid displaced
+by half a grid step in the corresponding direction )
+BEWARE: only grids having the full symmetry of the crystal
+        work with tetrahedra. Some grids with offset may not work.
+            
+crystal :
+read k-points in crystal coordinates, i.e. in relative
+coordinates of the reciprocal lattice vectors
+            
+gamma :
+use k = 0 (no need to list k-point specifications after card)
+In this case wavefunctions can be chosen as real,
+and specialized subroutines optimized for calculations
+at the gamma point are used (memory and cpu requirements
+are reduced by approximately one half).
+            
+tpiba_b :
+Used for band-structure plots.
+See Doc/brillouin_zones.pdf for usage of BZ labels;
+otherwise, k-points are in units of  2 pi/a.
+nks points specify nks-1 lines in reciprocal space.
+Every couple of points identifies the initial and
+final point of a line. pw.x generates N intermediate
+points of the line where N is the weight of the first point.
+            
+crystal_b :
+As tpiba_b, but k-points are in crystal coordinates.
+See Doc/brillouin_zones.pdf for usage of BZ labels.
+            
+tpiba_c :
+Used for band-structure contour plots.
+k-points are in units of  2 pi/a. nks must be 3.
+3 k-points k_0, k_1, and k_2 specify a rectangle
+in reciprocal space of vertices k_0, k_1, k_2,
+k_1 + k_2 - k_0: k_0 + \alpha (k_1-k_0)+
+\beta (k_2-k_0) with 0 <\alpha,\beta < 1.
+The code produces a uniform mesh n1 x n2
+k points in this rectangle. n1 and n2 are
+the weights of k_1 and k_2. The weight of k_0
+is not used.
+            
+crystal_c :
+As tpiba_c, but k-points are in crystal coordinates.
+

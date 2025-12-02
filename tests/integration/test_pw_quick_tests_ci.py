@@ -103,7 +103,7 @@ class TestPWQuickExecution:
     @pytest.fixture(scope="module")
     def ci_test_data_dir(self) -> Path:
         project_root = Path(__file__).parent.parent.parent
-        ci_test_data = project_root / "tests" / "integration" / "ci_test_data"
+        ci_test_data = project_root / "tests" / "data"
         if not ci_test_data.exists():
             pytest.skip(f"CI test data not found: {ci_test_data}")
         return ci_test_data

@@ -74,7 +74,7 @@ Either install QE with test-suite or ensure ci_test_data/ contains test files.
 
 **解决方案**: 
 - 安装带有 test-suite 的 QE
-- 或确保 `tests/integration/ci_test_data/` 包含 `ph_1d` 和 `ph_2d` 目录
+- 或确保 `tests/data/` 包含 `ph_1d` 和 `ph_2d` 目录
 
 ---
 
@@ -189,7 +189,7 @@ A: ph_1d 测试使用 NPROCS=1 运行（CI 环境），而基准文件可能使�
 A: 
 1. 确保 QE 已安装并配置正确
 2. 设置 `QE_BIN_DIR` 环境变量
-3. 确保 `tests/integration/ci_test_data/` 包含必要的测试文件
+3. 确保 `tests/data/` 包含必要的测试文件
 4. 或安装完整的 QE test-suite
 
 ### Q: 测试跳过会影响 CI 吗？

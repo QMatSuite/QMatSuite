@@ -141,7 +141,7 @@ def main() -> int:
     parser.add_argument(
         "--output",
         type=Path,
-        default=project_root / "tests" / "integration" / "ci_test_data",
+        default=project_root / "tests" / "data",
         help="Output directory for CI test data",
     )
     args = parser.parse_args()

@@ -80,7 +80,8 @@ qv delete workflow si_dos --cascade
 qv run structure si_bulk --ecutwfc=60 --SYSTEM.degauss=0.01
 
 # Author and edit step specs (YAML) with CLI helpers
-qv init step si_bulk --workflow si_dos --type nscf --SYSTEM.ecutwfc=60
+qv init step scf --structure si --SYSTEM.ecutwfc=60
+qv init step bands --structure si --auto-kpath  # Auto-generate k-path
 qv configure step workflows/si_dos/steps/nscf_1.step.yaml --remove --SYSTEM.tprnfor
 
 # Execute workflows (id, slug, or explicit path); --strict enforces references
@@ -90,7 +91,11 @@ qv run workflow si_dos --strict -v
 qv get-command workflows/si_dos/raw/si.1_scf.in
 
 # Lightweight analysis (energy / band / dos summaries) and metadata
-qv analyze energy workflows/si_dos/raw/si.1_scf.out
+qv analyze scf workflows/si_dos/raw/si.1_scf.out
+qv analyze dos si.dos.dat --plot --energy-range -5,5
+qv analyze band si.bands.dat.gnu --symmetry si.bands.pp.out --plot
+
+# Query QE parameter documentation
 qv params pw --section CONTROL
 ```
 
