@@ -2,7 +2,7 @@
 
 ## copy_ci_test_files.py
 
-Copies selected CI quick test files from QE test-suite to `tests/integration/ci_test_data/`.
+Copies selected CI quick test files from QE test-suite to `tests/data/`.
 
 ### Usage
 
@@ -13,7 +13,7 @@ python3 tests/integration/scripts/copy_ci_test_files.py
 ### Options
 
 - `--test-suite-dir PATH`: Path to QE test-suite (auto-detected if not provided)
-- `--output-dir PATH`: Output directory (default: `tests/integration/ci_test_data/`)
+- `--output-dir PATH`: Output directory (default: `tests/data/`)
 
 ### What it does
 
@@ -31,7 +31,7 @@ python3 tests/integration/scripts/copy_ci_test_files.py
 
 ### Output
 
-Files are copied to `tests/integration/ci_test_data/` with structure:
+Files are copied to `tests/data/` with structure:
 ```
 ci_test_data/
 ├── manifest.json

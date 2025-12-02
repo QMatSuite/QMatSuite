@@ -793,6 +793,14 @@ def init_step_command(
     template: Optional[str] = typer.Option(
         None, "--template", help="Step template to copy (e.g., 'scf', 'nscf', 'dos')"
     ),
+    auto_kpath: bool = typer.Option(
+        False, "--auto-kpath", 
+        help="Auto-generate high-symmetry k-path for band structure calculations (requires structure)"
+    ),
+    kpath_points: int = typer.Option(
+        20, "--kpath-points",
+        help="Number of k-points per segment when using --auto-kpath"
+    ),
 ) -> None:
     """Create a StructureStepSpec YAML file and optionally attach it to a workflow.
     
@@ -800,11 +808,15 @@ def init_step_command(
     Structure is optional if inside a workflow directory (inherits from workflow).
     Use --template to copy from a predefined step template.
     
+    For band structure steps, use --auto-kpath to automatically generate a 
+    high-symmetry k-path using the structure's symmetry.
+    
     Examples:
         qv init step scf --structure si
         qv init step nscf                    # inside workflow, inherits structure
         qv init step relax --structure si --workflow my_workflow
         qv init step scf --template scf      # copy from template
+        qv init step bands --structure si --auto-kpath
     """
     # Validate step type
     if step_type.lower() not in KNOWN_STEP_TYPES:
@@ -892,6 +904,40 @@ def init_step_command(
     spec_path.parent.mkdir(parents=True, exist_ok=True)
     
     # If using a template, copy and modify it
+    # Handle auto-kpath for band structure steps
+    kpath_result = None
+    kpath_card_overrides = {}
+    if auto_kpath:
+        if step_type.lower() not in ("bands", "bands_pw"):
+            typer.secho(
+                f"Warning: --auto-kpath is intended for band structure steps, not '{step_type}'",
+                fg=typer.colors.YELLOW
+            )
+        
+        # Load the structure to generate k-path
+        try:
+            pmg_struct, _ = _resolve_structure_input(project_root, structure_value)
+        except Exception as exc:
+            raise typer.BadParameter(
+                f"--auto-kpath requires a valid structure. Error loading '{structure_value}': {exc}"
+            ) from exc
+        
+        from quantumvitas.analysis.kpath import generate_kpath
+        
+        try:
+            kpath_result = generate_kpath(pmg_struct, points_per_segment=kpath_points)
+            kpath_card = kpath_result.to_qe_kpoints_crystal_b()
+            kpath_card_overrides["K_POINTS"] = kpath_card
+            
+            typer.echo(f"Generated k-path: {kpath_result.path_string()}")
+            typer.echo(f"  Lattice type: {kpath_result.lattice_type}")
+            typer.echo(f"  Spacegroup: {kpath_result.spacegroup_symbol} (#{kpath_result.spacegroup_number})")
+            typer.echo(f"  {len(kpath_result.segments)} segments, {kpath_points} points each")
+        except Exception as exc:
+            raise typer.BadParameter(
+                f"Failed to generate k-path for structure: {exc}"
+            ) from exc
+
     if template:
         from quantumvitas.core.templates import copy_step_template, list_templates
         
@@ -916,10 +962,11 @@ def init_step_command(
         else:
             spec_path = spec_path.parent / expected_name
         
-        # Apply any additional overrides
+        # Apply any additional overrides (including auto-kpath)
+        spec = StructureStepSpec.from_yaml(spec_path)
+        
+        # Merge parameter overrides
         if bundle.has_any():
-            spec = StructureStepSpec.from_yaml(spec_path)
-            # Merge overrides
             params = dict(spec.parameters) if spec.parameters else {}
             for section, section_params in _overrides_to_parameter_dict(bundle.parameters).items():
                 if section not in params:
@@ -934,18 +981,37 @@ def init_step_command(
                 species = dict(spec.species_overrides) if spec.species_overrides else {}
                 species.update(bundle.species_overrides)
                 spec.species_overrides = species
-            _write_step_spec(spec_path, spec, project_root=project_root)
         
+        # Apply auto-kpath card overrides (only if not manually specified)
+        if kpath_card_overrides:
+            cards = dict(spec.cards) if spec.cards else {}
+            for card_name, card_data in kpath_card_overrides.items():
+                if card_name not in cards:  # Don't override manual K_POINTS
+                    cards[card_name] = card_data
+            spec.cards = cards
+        
+        # Store k-path metadata in step spec (not sidecar file)
+        if kpath_result:
+            spec.kpath_metadata = kpath_result.to_dict()
+        
+        _write_step_spec(spec_path, spec, project_root=project_root)
         typer.echo(f"Step spec created from template '{template}' at {spec_path}")
     else:
+        # Merge card overrides with auto-kpath (manual takes precedence)
+        cards = dict(bundle.card_overrides) if bundle.card_overrides else {}
+        for card_name, card_data in kpath_card_overrides.items():
+            if card_name not in cards:  # Don't override manual K_POINTS
+                cards[card_name] = card_data
+        
         spec = StructureStepSpec(
             meta=meta_from_name("step", name=step_display_name, path=""),
             structure=structure_value,
             step_type=step_type,
             parameters=_overrides_to_parameter_dict(bundle.parameters),
-            cards=bundle.card_overrides or {},
+            cards=cards,
             species_overrides=bundle.species_overrides or {},
             parent_workflow_id=parent_workflow_id,
+            kpath_metadata=kpath_result.to_dict() if kpath_result else None,
         )
         _write_step_spec(spec_path, spec, project_root=project_root)
 
@@ -2348,22 +2414,187 @@ def run_auto_dispatch(
 
 @app.command("analyze")
 def analyze_command(
-    kind: str = typer.Argument(..., help="energy, band, or dos"),
-    input_file: Path = typer.Argument(..., help="Output file to analyze"),
+    kind: str = typer.Argument(..., help="energy, band, dos, or scf"),
+    input_file: Path = typer.Argument(..., help="Output/data file to analyze"),
+    symmetry_file: Optional[Path] = typer.Option(
+        None, "--symmetry", "-s", 
+        help="bands.x output file containing high-symmetry points (for band analysis)"
+    ),
+    fermi: Optional[float] = typer.Option(
+        None, "--fermi", "-f", help="Fermi energy in eV (overrides extraction)"
+    ),
+    scf_file: Optional[Path] = typer.Option(
+        None, "--scf", help="SCF/NSCF output file to extract Fermi energy from"
+    ),
+    plot: bool = typer.Option(False, "--plot", "-p", help="Generate a plot"),
+    output: Optional[Path] = typer.Option(
+        None, "--output", "-o", help="Output directory for plots and data"
+    ),
+    plot_format: str = typer.Option("png", "--format", help="Plot format (png, svg, pdf)"),
+    energy_range: Optional[str] = typer.Option(
+        None, "--energy-range", help="Energy range for plots, e.g., '-5,5'"
+    ),
+    no_shift: bool = typer.Option(
+        False, "--no-shift", help="Don't shift energies to Fermi level"
+    ),
 ) -> None:
     """
-    Run lightweight analysis on QE outputs (placeholder hooks).
+    Analyze QE outputs and optionally generate plots.
+    
+    Supported analysis types:
+    - energy/scf: Parse SCF output for energies and convergence info
+    - band: Parse band structure data (requires .dat.gnu file)  
+    - dos: Parse DOS data (requires .dat file)
+    
+    Examples:
+        qv analyze energy si.scf.out
+        qv analyze band si.bands.dat.gnu --symmetry si.bands.out --plot
+        qv analyze dos si.dos.dat --plot --energy-range -5,5
     """
+    from quantumvitas.analysis.parsers import (
+        parse_scf_output, parse_dos_data, parse_bands_gnu
+    )
+    from quantumvitas.analysis.plotting import (
+        plot_dos as plot_dos_fn, plot_bands as plot_bands_fn,
+        plot_scf_convergence, save_figure
+    )
+    
     normalized = kind.lower()
-    if normalized == "energy":
-        data = energy_analysis.analyze_energies(input_file)
+    e_range = None
+    if energy_range:
+        try:
+            parts = energy_range.split(",")
+            e_range = (float(parts[0]), float(parts[1]))
+        except (ValueError, IndexError):
+            raise typer.BadParameter("--energy-range must be like '-5,5'")
+    
+    # Determine Fermi energy
+    fermi_energy = fermi
+    if fermi_energy is None and scf_file:
+        scf_result = parse_scf_output(scf_file)
+        fermi_energy = scf_result.fermi_energy
+    
+    # Determine output directory: explicit > workflow results > None
+    output_dir = Path(output) if output else None
+    if output_dir is None:
+        # Try to detect workflow from input file location
+        input_path = Path(input_file).resolve()
+        try:
+            project_root = find_project_root(start=input_path.parent)
+            config = load_project_config(project_root)
+            # Check if input is inside a workflow directory
+            for wf_entry in config.get("workflows", []):
+                wf_path = wf_entry.get("path") or (wf_entry.get("meta") or {}).get("path")
+                if wf_path:
+                    wf_dir = (project_root / wf_path).resolve()
+                    if input_path.is_relative_to(wf_dir):
+                        # Found enclosing workflow - use its results folder
+                        output_dir = wf_dir / "results"
+                        output_dir.mkdir(parents=True, exist_ok=True)
+                        typer.echo(f"Output directory: {output_dir}")
+                        break
+        except (ResourceNotFoundError, FileNotFoundError, ValueError):
+            pass  # Not in a project/workflow context, output_dir stays None
+    
+    if output_dir:
+        output_dir.mkdir(parents=True, exist_ok=True)
+    
+    if normalized in ("energy", "scf"):
+        # Full SCF analysis
+        result = parse_scf_output(input_file)
+        data = result.to_dict()
+        
+        if plot and result.iterations:
+            fig, ax = plot_scf_convergence(result)
+            if output_dir:
+                save_figure(fig, output_dir / f"scf_convergence.{plot_format}")
+                typer.echo(f"Plot saved to {output_dir / f'scf_convergence.{plot_format}'}")
+            else:
+                import matplotlib.pyplot as plt
+                plt.show()
+        
+        typer.echo(json.dumps(data, indent=2, default=str))
+        
     elif normalized == "band":
-        data = bands_analysis.analyze_bands(input_file)
+        # Band structure analysis
+        band_data = parse_bands_gnu(
+            input_file,
+            symmetry_file=symmetry_file,
+            fermi_energy=fermi_energy,
+        )
+        data = band_data.to_dict()
+        
+        if plot:
+            fig, ax = plot_bands_fn(
+                band_data,
+                shift_fermi=not no_shift,
+                energy_range=e_range,
+            )
+            if output_dir:
+                plot_path = output_dir / f"bands.{plot_format}"
+                save_figure(fig, plot_path)
+                typer.echo(f"Plot saved to {plot_path}")
+            else:
+                import matplotlib.pyplot as plt
+                plt.show()
+        
+        # Print summary (not full data which can be huge)
+        summary = {
+            "n_bands": band_data.n_bands,
+            "n_kpoints": band_data.n_kpoints,
+            "fermi_energy_ev": band_data.fermi_energy,
+            "high_symmetry_points": [pt.label for pt in band_data.high_symmetry_points],
+        }
+        typer.echo(json.dumps(summary, indent=2))
+        
+        if output_dir:
+            (output_dir / "bands_data.json").write_text(json.dumps(data, indent=2))
+            typer.echo(f"Full data saved to {output_dir / 'bands_data.json'}")
+        
     elif normalized == "dos":
-        data = dos_analysis.analyze_dos(input_file)
+        # DOS analysis
+        dos_data = parse_dos_data(input_file)
+        
+        # Override Fermi if provided
+        if fermi_energy is not None:
+            from quantumvitas.analysis.parsers import DOSData
+            dos_data = DOSData(
+                energies=dos_data.energies,
+                dos=dos_data.dos,
+                idos=dos_data.idos,
+                fermi_energy=fermi_energy,
+            )
+        
+        data = dos_data.to_dict()
+        
+        if plot:
+            fig, ax = plot_dos_fn(
+                dos_data,
+                shift_fermi=not no_shift,
+                energy_range=e_range,
+            )
+            if output_dir:
+                plot_path = output_dir / f"dos.{plot_format}"
+                save_figure(fig, plot_path)
+                typer.echo(f"Plot saved to {plot_path}")
+            else:
+                import matplotlib.pyplot as plt
+                plt.show()
+        
+        # Print summary
+        summary = {
+            "n_points": len(dos_data.energies),
+            "energy_range": data["energy_range"],
+            "fermi_energy_ev": dos_data.fermi_energy,
+        }
+        typer.echo(json.dumps(summary, indent=2))
+        
+        if output_dir:
+            (output_dir / "dos_data.json").write_text(json.dumps(data, indent=2))
+            typer.echo(f"Full data saved to {output_dir / 'dos_data.json'}")
+        
     else:
-        raise typer.BadParameter("kind must be one of: energy, band, dos")
-    typer.echo(json.dumps(data, indent=2))
+        raise typer.BadParameter("kind must be one of: energy, scf, band, dos")
 
 
 @app.command("params")
@@ -2409,10 +2640,6 @@ def params_command(
 
 def main() -> None:
     app()
-
-
-if __name__ == "__main__":
-    main()
 
 
 # ---------------------------------------------------------------------------
@@ -2820,4 +3047,12 @@ def _execute_step_spec(
         keep_original=False,  # Step spec serves as the source of truth
     )
     return result, prepared, generated_input
+
+
+# ---------------------------------------------------------------------------
+# Entry point (must be at end of file to ensure all helpers are defined)
+# ---------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    main()
 

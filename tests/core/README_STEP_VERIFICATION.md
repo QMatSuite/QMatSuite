@@ -130,7 +130,7 @@ from pathlib import Path
 from quantumvitas.io import QEInputParser
 
 qe_input = QEInputParser.roundtrip_file(
-    Path("tests/integration/ci_test_data/4_Si_DOS/si.1_scf.in"),
+    Path("tests/data/4_Si_DOS/si.1_scf.in"),
     output_file=Path("temp/roundtrip/si.1_scf.in"),
 )
 ```

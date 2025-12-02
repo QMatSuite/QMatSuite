@@ -71,9 +71,8 @@ def test_real_example() -> None:
     example_file = (
         project_root
         / "tests"
-        / "integration"
-        / "ci_test_data"
-        / "pw_scf"
+        / "data"
+        / "pw_single_tests"
         / "scf-cg.in"
     )
 

@@ -18,11 +18,11 @@ def project_root_path() -> Path:
 
 @pytest.fixture(scope="session")
 def ci_test_data_dir(project_root_path: Path) -> Path:
-    """Return path to bundled CI test data."""
-    ci_dir = project_root_path / "tests" / "integration" / "ci_test_data"
-    if not ci_dir.exists():
-        pytest.skip(f"CI test data not found: {ci_dir}")
-    return ci_dir
+    """Return path to bundled test data directory."""
+    data_dir = project_root_path / "tests" / "data"
+    if not data_dir.exists():
+        pytest.skip(f"Test data not found: {data_dir}")
+    return data_dir
 
 
 @pytest.fixture
@@ -38,9 +38,8 @@ def sample_input_file(project_root_path: Path):
     local_test_file = (
         project_root
         / "tests"
-        / "integration"
-        / "ci_test_data"
-        / "pw_scf"
+        / "data"
+        / "pw_single_tests"
         / "scf-cg.in"
     )
     if local_test_file.exists():

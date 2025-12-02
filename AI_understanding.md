@@ -434,11 +434,16 @@ Total:               85 tests PASS
 
 ### 6.3 CI Test Data
 
-Small bundled test cases in `tests/integration/ci_test_data/`:
+Small bundled test cases in `tests/data/`:
 - `pw_single_tests/` - Single-point SCF tests
 - `pw_scf/` - Basic SCF tests
 - `4_Si_DOS/` - Si DOS workflow
 - `7_Si_bandStructure/` - Si bands workflow
+
+**Analysis test data** in `tests/data/analysis_*/`:
+- `analysis_scf/` - SCF output files
+- `analysis_dos/` - DOS data files  
+- `analysis_bands/` - Band structure files with symmetry
 
 ### 6.4 Running Tests
 
@@ -791,5 +796,186 @@ All 155 tests passing.
 
 ---
 
-*Last updated: 2025-12-01*
+## 13. Analysis Layer
+
+The analysis layer provides parsers and plotting functions for QE outputs, designed for:
+- CLI integration (`qv analyze`)
+- Future GUI integration (JSON-serializable data)
+
+### 13.1 Dataclasses
+
+| Class | File | Purpose |
+|-------|------|---------|
+| `SCFResult` | `analysis/parsers.py` | SCF/NSCF calculation result with iterations |
+| `SCFIteration` | `analysis/parsers.py` | Single SCF iteration (energy, accuracy) |
+| `DOSData` | `analysis/parsers.py` | DOS data (energies, dos, idos) |
+| `BandStructureData` | `analysis/parsers.py` | Band structure with high-symmetry points |
+| `HighSymmetryPoint` | `analysis/parsers.py` | K-path label and position |
+| `KPathResult` | `analysis/kpath.py` | Auto-generated k-path metadata |
+| `KPathSegment` | `analysis/kpath.py` | Single k-path segment |
+
+### 13.2 Units Convention
+
+**IMPORTANT**: Different QE outputs use different units. The analysis layer preserves native units:
+
+| Quantity | Unit | Source |
+|----------|------|--------|
+| Total energy, SCF accuracy | Rydberg (Ry) | pw.x output |
+| Fermi energy, HOMO, LUMO, band gap | eV | pw.x output |
+| Band energies | eV | bands.x output |
+| DOS energies | eV | dos.x output |
+| DOS values | states/eV | dos.x output |
+| k-distances | 2π/a | bands.dat.gnu |
+| ecutwfc, ecutrho | Ry | pw.x input |
+
+**All `to_dict()` methods include a `"units"` key** for explicit documentation:
+
+```python
+result = parse_scf_output(path)
+data = result.to_dict()
+# data["units"] = {"energy": "Ry", "fermi": "eV", "time": "s"}
+```
+
+### 13.3 Pattern: Parse → Structured Data → Plot
+
+```python
+from quantumvitas.analysis import (
+    parse_scf_output, parse_dos_data, parse_bands_gnu,
+    plot_dos, plot_bands, save_figure,
+)
+
+# Parse
+scf = parse_scf_output("si.scf.out")      # -> SCFResult
+dos = parse_dos_data("si.dos.dat")        # -> DOSData
+bands = parse_bands_gnu("si.bands.dat.gnu", 
+    symmetry_file="si.bands.pp.out",      # Optional: high-sym labels
+    fermi_energy=5.76)                    # Optional: from SCF
+
+# Use
+print(f"Total energy: {scf.total_energy} Ry")
+print(f"Converged: {scf.converged}, iterations: {len(scf.iterations)}")
+
+# Plot
+fig, ax = plot_bands(bands, shift_fermi=True, energy_range=(-5, 10))
+save_figure(fig, "bands.png")
+
+# Serialize
+import json
+json.dumps(dos.to_dict())  # Ready for GUI
+```
+
+### 13.4 Auto K-Path Generation
+
+When running `qv init step bands --auto-kpath`, the CLI:
+
+1. Loads the step's structure (pymatgen `Structure`)
+2. Calls `generate_kpath(structure, points_per_segment=N)`
+3. Uses `pymatgen.symmetry.bandstructure.HighSymmKpath` internally
+4. Stores result in **step YAML** (not sidecar file):
+
+```yaml
+# bands.step.yaml
+meta:
+  id: 01KB8...
+  name: bands
+  ...
+step_type: bands
+structure: si
+cards:
+  K_POINTS:
+    option: crystal_b
+    data:
+      - [0.0, 0.0, 0.0, 20]  # Gamma, 20 pts
+      - [0.5, 0.5, 0.5, 20]  # L, 20 pts
+      - ...
+kpath_metadata:  # Stored here, not in .kpath.json
+  segments:
+    - start_label: Γ
+      end_label: L
+      start_coords: [0.0, 0.0, 0.0]
+      end_coords: [0.5, 0.5, 0.5]
+      n_points: 20
+  labels: [Γ, L, W, X, ...]
+  lattice_type: cubic
+  spacegroup_symbol: Fd-3m
+  spacegroup_number: 227
+```
+
+**Precedence rules**:
+- If `--auto-kpath` used but no structure: error
+- If manual `K_POINTS` also provided: manual takes precedence
+- The `kpath_metadata` is optional; `qv analyze band` can work without it
+
+### 13.5 CLI Integration
+
+```bash
+# Basic analysis
+qv analyze scf si.scf.out
+qv analyze dos si.dos.dat
+qv analyze band si.bands.dat.gnu
+
+# With options
+qv analyze band si.bands.dat.gnu \
+  --symmetry si.bands.pp.out \    # High-sym labels
+  --scf si.scf.out \              # Extract Fermi from SCF
+  --plot \                        # Generate plot
+  --output results/ \             # Output directory
+  --format svg                    # Plot format
+
+# Energy range
+qv analyze dos si.dos.dat --plot --energy-range -5,5
+```
+
+### 13.6 Parsing Robustness
+
+**SCF Parser** handles:
+- Standard SCF calculations
+- NSCF calculations (may have no iterations)
+- Relax/VC-relax (extracts final SCF block only)
+- Interrupted calculations (partial data)
+- Missing Fermi energy (uses HOMO if available)
+
+**Bands Parser** handles:
+- With and without symmetry file
+- Auto-identification of high-symmetry points (Γ, X, L, K, etc.)
+- Custom Fermi energy override
+
+### 13.7 Test Data Location
+
+Test data for analysis is in `tests/data/`:
+
+```
+tests/data/
+├── analysis_scf/
+│   └── si.0_scf.out       # SCF output
+├── analysis_dos/
+│   └── si.dos.dat         # DOS data
+├── analysis_bands/
+│   ├── si.bands.dat.gnu   # Band energies
+│   └── si.3_bands.pp.out  # High-symmetry points
+└── ci_test_data/          # Moved from tests/integration/
+    ├── 4_Si_DOS/
+    ├── 7_Si_bandStructure/
+    └── ...
+```
+
+**Tests**: `tests/unit/test_analysis_parsers.py`, `tests/unit/test_analysis_plotting.py`
+
+### 13.8 Plotting Tests
+
+Generated plots go to `temp/matplotlib_tests/`:
+
+```bash
+pytest tests/unit/test_analysis_plotting.py -v
+# Creates: temp/matplotlib_tests/*.png, *.svg, *.pdf
+```
+
+Tests verify:
+- File created
+- File size > 0
+- Expected number of curves (for bands)
+
+---
+
+*Last updated: 2025-12-02*
 *Based on commit history through v2-python branch*
