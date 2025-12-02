@@ -50,13 +50,13 @@ def qe_engine() -> QuantumEspressoEngine:
 @pytest.fixture(scope="module")
 def test_data_dir() -> Path:
     """Return local CI test data directory (no dependency on QE test-suite)."""
-    root = Path(__file__).parent
-    ci_data = root / "ci_test_data"
-    if not ci_data.exists():
-        raise RuntimeError(f"CI test data not found: {ci_data}")
-    if not (ci_data / "ph_1d").exists():
-        raise RuntimeError(f"PH data not found: {ci_data / 'ph_1d'}")
-    return ci_data
+    root = Path(__file__).parent.parent  # tests/integration -> tests/
+    data_dir = root / "data"
+    if not data_dir.exists():
+        raise RuntimeError(f"Test data not found: {data_dir}")
+    if not (data_dir / "ph_1d").exists():
+        raise RuntimeError(f"PH data not found: {data_dir / 'ph_1d'}")
+    return data_dir
 
 
 class TestPHQuickTests:

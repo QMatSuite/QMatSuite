@@ -45,6 +45,7 @@ class StructureStepSpec:
     cards: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     species_overrides: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     parent_workflow_id: Optional[str] = None  # Links step to its parent workflow
+    kpath_metadata: Optional[Dict[str, Any]] = None  # K-path info for band plots
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any], source_path: Optional[Path] = None) -> "StructureStepSpec":
@@ -66,6 +67,7 @@ class StructureStepSpec:
             raise ValueError("Step spec 'species_overrides' must be a mapping when provided")
 
         parent_workflow_id = data.get("parent_workflow_id")
+        kpath_metadata = data.get("kpath_metadata")
 
         meta_dict = data.get("meta")
         default_name = data.get("name") or str(step_type)
@@ -90,6 +92,7 @@ class StructureStepSpec:
             cards=cards,
             species_overrides=species_overrides,
             parent_workflow_id=parent_workflow_id,
+            kpath_metadata=kpath_metadata,
         )
 
     @classmethod
@@ -116,7 +119,16 @@ class StructureStepSpec:
             data["cards"] = self.cards
         if self.species_overrides:
             data["species_overrides"] = self.species_overrides
+        if self.kpath_metadata:
+            data["kpath_metadata"] = self.kpath_metadata
         return data
+
+
+# Mapping from step type to QE calculation parameter
+# Most step types map directly, but some like 'bands_pw' need translation
+STEP_TYPE_TO_CALCULATION = {
+    "bands_pw": "bands",  # bands_pw is our internal name for pw.x bands calculation
+}
 
 
 def generate_qe_input_from_structure(
@@ -132,10 +144,12 @@ def generate_qe_input_from_structure(
 
     overrides: list[ParameterOverride] = []
     if step_type:
+        # Convert step_type to QE calculation value (e.g., bands_pw -> bands)
+        calculation_value = STEP_TYPE_TO_CALCULATION.get(step_type.lower(), step_type)
         overrides.append(
             ParameterOverride(
                 name="calculation",
-                value=step_type,
+                value=calculation_value,
                 section="CONTROL",
             )
         )

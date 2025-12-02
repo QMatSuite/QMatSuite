@@ -2,7 +2,7 @@
 
 ## 概述
 
-CI 测试数据存储在 `tests/integration/ci_test_data/` 目录中，包含：
+CI 测试数据存储在 `tests/data/` 目录中，包含：
 - QE 输入文件（`.in`）
 - 参考输出文件（benchmark files，如果有）
 - 元数据文件（`manifest.json`）
@@ -16,7 +16,7 @@ CI 测试数据存储在 `tests/integration/ci_test_data/` 目录中，包含：
 ## 文件结构
 
 ```
-tests/integration/ci_test_data/
+tests/data/
 ├── manifest.json              # 元数据
 ├── pw_single_tests/          # 所有 PW 单步测试文件
 │   ├── atom.in
@@ -54,7 +54,7 @@ tests/integration/ci_test_data/
 ## 测试使用
 
 测试代码会自动：
-1. 首先查找 `tests/integration/ci_test_data/`（本地副本）
+1. 首先查找 `tests/data/`（本地副本）
 2. 如果不存在，回退到 QE test-suite 目录
 
 这确保了：

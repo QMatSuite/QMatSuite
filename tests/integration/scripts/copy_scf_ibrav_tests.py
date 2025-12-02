@@ -3,7 +3,7 @@
 
 This script uses the general copy_test_files utility to copy SCF tests
 that contain "ibrav" in the filename but not "auto" to
-tests/integration/ci_test_data/pw_scf_ibrav/.
+tests/data/ci_test_data/pw_scf_ibrav/.
 """
 
 import sys
@@ -31,8 +31,8 @@ def main() -> int:
     parser.add_argument(
         "--output",
         type=Path,
-        default=project_root / "tests" / "integration" / "ci_test_data" / "pw_scf_ibrav",
-        help="Output directory (default: tests/integration/ci_test_data/pw_scf_ibrav)",
+        default=project_root / "tests" / "data" / "pw_scf_ibrav",
+        help="Output directory (default: tests/data/ci_test_data/pw_scf_ibrav)",
     )
     parser.add_argument(
         "--quiet",
