@@ -16,7 +16,7 @@ description short and includes a minimal example you can run or adapt.
 | `qv detect-qe` | Print the QE installation detected via the engine registry. | `qv detect-qe` |
 | `qv show-command <input.in>` | Parse a QE input and print example `qv init step` / `qv configure step` commands. Auto-detects module type (pw.x, bands.x, dos.x, etc.). | `qv show-command ci_test_data/pw_single_tests/scf.in` |
 | `qv get-command <input.in>` | Alias for `qv show-command`. | `qv get-command inputs/si_scf.in` |
-| `qv analyze <energy|band|dos> <output-file>` | Invoke the lightweight analysis hooks on a QE output. | `qv analyze energy temp/test_outputs/si_scf.out` |
+| `qv analyze <energy|band|dos> [output-file]` | Invoke analysis hooks. For `band`, can auto-detect files from workflow. | `qv analyze band --workflow si-bands --plot` |
 | `qv params <module> [--section SECTION]` | Inspect parameters scraped from the QE docs (`qe_module_parameters.json`). | `qv params pw --section SYSTEM` |
 
 ### Configure Commands (Recommended)
@@ -158,6 +158,30 @@ When running `.in` files via `qv run`:
 In the metrics dictionary returned by analysis functions:
 - `total_energy_ry`: Total energy in Rydberg
 - `fermi_energy_ev`: Fermi energy in electronvolts
+
+## Analyze Command Auto-Detection
+
+For `qv analyze band`, files can be auto-detected from workflow context:
+
+```bash
+# Explicit workflow selector
+qv analyze band --workflow si-bands --plot
+
+# Auto-detect from current directory (if inside a workflow)
+cd project/workflows/si-bands/raw
+qv analyze band --plot
+
+# Auto-detect from pwd (searches for files in current directory)
+qv analyze band --plot
+
+# Explicit files (still supported)
+qv analyze band si.bands.dat.gnu --symmetry si.bands.out --scf si.nscf.out --plot
+```
+
+Auto-detection searches for:
+- `*.dat.gnu` or `*bands.dat.gnu` - Band energies
+- `*.bands.out` or `*bandspp*.out` - bands.x output (high-symmetry points)
+- `*nscf*.out` or `*scf*.out` - pw.x output (Fermi energy, reciprocal lattice)
 
 ## Python API surface
 

@@ -16,6 +16,7 @@ from .types import StepMode, StepType
 from .step import Step
 from .io import WorkflowIO
 from .structure_steps import StructureStepSpec, materialize_step_spec
+from .naming import WorkflowFileNaming
 
 
 @dataclass(slots=True)
@@ -136,27 +137,6 @@ def _build_step(
     )
 
 
-def _input_file_extension(step_type: str) -> str:
-    """
-    Get appropriate file extension based on step type.
-    
-    Returns .in for all QE modules (simpler naming), but with a prefix
-    that indicates the module:
-    - pw.x steps: scf, nscf, relax, vc-relax, md, bands_pw -> .in
-    - bands.x: bands -> .bands.in
-    - dos.x: dos -> .dos.in
-    - Other post-processing: pp, projwfc -> .<type>.in
-    """
-    # Post-processing modules get their own suffix
-    POST_PROC_TYPES = {"dos", "bands", "pp", "projwfc", "ph", "q2r", "matdyn", "dynmat"}
-    
-    if step_type.lower() in POST_PROC_TYPES:
-        return f".{step_type.lower()}.in"
-    
-    # Default for pw.x calculations
-    return ".in"
-
-
 def _build_step_from_spec(
     *,
     step_id: str,
@@ -176,9 +156,8 @@ def _build_step_from_spec(
         raise FileNotFoundError(f"Step spec not found: {spec_path}")
 
     spec_preview = StructureStepSpec.from_yaml(spec_path)
-    # Determine appropriate file extension based on step type
-    ext = _input_file_extension(spec_preview.step_type)
-    input_override = spec_preview.input_name or f"{step_id}{ext}"
+    # Use centralized naming convention for input files
+    input_override = spec_preview.input_name or WorkflowFileNaming.input_filename(step_id, spec_preview.step_type)
     generated_input, spec = materialize_step_spec(
         spec_preview,
         output_dir=working_dir,

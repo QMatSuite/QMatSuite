@@ -77,11 +77,15 @@ def project_with_structure(test_project_dir: Path, project_root_path: Path) -> P
     project_dir = test_project_dir / "si_bands_test"
     assert project_dir.exists(), f"Project not created at {project_dir}"
     
-    # Copy pseudopotentials
+    # Copy only the Si pseudopotential (not all pseudopotentials)
     pseudo_src = project_root_path / "pseudo"
     pseudo_dst = project_dir / "pseudo"
-    if pseudo_src.exists():
-        shutil.copytree(pseudo_src, pseudo_dst, dirs_exist_ok=True)
+    pseudo_dst.mkdir(parents=True, exist_ok=True)
+    
+    # Only copy Si pseudopotential(s)
+    si_pseudos = list(pseudo_src.glob("Si*.UPF")) + list(pseudo_src.glob("si*.UPF"))
+    for pp_file in si_pseudos:
+        shutil.copy2(pp_file, pseudo_dst / pp_file.name)
     
     # Import structure from SCF input
     run_qv(["import-structure", str(scf_in), "--name", "si"], cwd=project_dir)

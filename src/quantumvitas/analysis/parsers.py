@@ -571,6 +571,8 @@ def parse_bands_gnu(
     bands_file: Path | str,
     symmetry_file: Optional[Path | str] = None,
     fermi_energy: Optional[float] = None,
+    pw_output_file: Optional[Path | str] = None,
+    structure_file: Optional[Path | str] = None,
 ) -> BandStructureData:
     """
     Parse QE bands.dat.gnu file and optionally bands.x output for symmetry points.
@@ -584,6 +586,9 @@ def parse_bands_gnu(
         bands_file: Path to bands.dat.gnu file
         symmetry_file: Optional path to bands.x output (for high-symmetry points)
         fermi_energy: Optional Fermi energy in eV
+        pw_output_file: Optional path to pw.x output (scf/nscf/bands) for reciprocal lattice vectors.
+                        Used to convert k-points from Cartesian to crystal coordinates.
+        structure_file: Optional path to structure file for pymatgen k-point labeling.
         
     Returns:
         BandStructureData with parsed values
@@ -639,12 +644,24 @@ def parse_bands_gnu(
     k_distances = np.array([pt[0] for pt in bands_data[0]])
     energies = np.array([[pt[1] for pt in band] for band in bands_data])
     
+    # Parse reciprocal lattice vectors from pw.x output if provided
+    reciprocal_lattice = None
+    if pw_output_file:
+        pw_path = Path(pw_output_file)
+        if pw_path.exists():
+            reciprocal_lattice = _parse_reciprocal_lattice_vectors(pw_path)
+    
     # Parse high-symmetry points if symmetry file provided
     high_sym_points: List[HighSymmetryPoint] = []
     if symmetry_file:
         sym_path = Path(symmetry_file)
         if sym_path.exists():
-            high_sym_points = _parse_bands_symmetry_output(sym_path)
+            struct_path = Path(structure_file) if structure_file else None
+            high_sym_points = _parse_bands_symmetry_output(
+                sym_path,
+                reciprocal_lattice=reciprocal_lattice,
+                structure_file=struct_path,
+            )
     
     return BandStructureData(
         k_distances=k_distances,
@@ -654,12 +671,166 @@ def parse_bands_gnu(
     )
 
 
-def _parse_bands_symmetry_output(path: Path) -> List[HighSymmetryPoint]:
+def _parse_reciprocal_lattice_vectors(output_file: Path) -> Optional[np.ndarray]:
+    """
+    Parse reciprocal lattice vectors from pw.x output file.
+    
+    Looks for:
+        reciprocal axes: (cart. coord. in units 2 pi/alat)
+                   b(1) = ( -0.707107 -0.707107  0.707107 )
+                   b(2) = (  0.707107  0.707107  0.707107 )
+                   b(3) = ( -0.707107  0.707107 -0.707107 )
+    
+    Returns:
+        3x3 numpy array where rows are b1, b2, b3 vectors, or None if not found
+    """
+    text = output_file.read_text()
+    
+    # Look for reciprocal axes section
+    pattern = re.compile(
+        r'reciprocal axes:.*?'
+        r'b\(1\)\s*=\s*\(\s*([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s*\).*?'
+        r'b\(2\)\s*=\s*\(\s*([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s*\).*?'
+        r'b\(3\)\s*=\s*\(\s*([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s*\)',
+        re.DOTALL
+    )
+    
+    match = pattern.search(text)
+    if not match:
+        return None
+    
+    b1 = [float(match.group(1)), float(match.group(2)), float(match.group(3))]
+    b2 = [float(match.group(4)), float(match.group(5)), float(match.group(6))]
+    b3 = [float(match.group(7)), float(match.group(8)), float(match.group(9))]
+    
+    return np.array([b1, b2, b3])
+
+
+def _cartesian_to_crystal(k_cart: Tuple[float, float, float], B: np.ndarray) -> Tuple[float, float, float]:
+    """
+    Convert k-point from Cartesian (2π/a) to crystal (fractional) coordinates.
+    
+    k_cart = k_cryst[0]*b1 + k_cryst[1]*b2 + k_cryst[2]*b3
+    So: k_cryst = B^(-1) @ k_cart where B has b1,b2,b3 as rows
+    
+    Args:
+        k_cart: k-point in Cartesian coordinates (units 2π/a)
+        B: 3x3 matrix with reciprocal lattice vectors as rows
+        
+    Returns:
+        k-point in crystal (fractional) coordinates
+    """
+    k_cart_vec = np.array(k_cart)
+    # B^T has b1,b2,b3 as columns; invert to convert cart -> crystal
+    B_inv = np.linalg.inv(B.T)
+    k_cryst = B_inv @ k_cart_vec
+    return tuple(k_cryst)
+
+
+def _identify_high_symmetry_label_pymatgen(
+    k_cryst: Tuple[float, float, float],
+    structure_file: Optional[Path] = None,
+) -> str:
+    """
+    Try to identify high-symmetry point label using pymatgen's HighSymmKpath.
+    
+    Falls back to _identify_high_symmetry_point if pymatgen is not available
+    or structure is not provided.
+    """
+    try:
+        from pymatgen.core import Structure
+        from pymatgen.symmetry.bandstructure import HighSymmKpath
+        
+        if structure_file and structure_file.exists():
+            # Load structure and get high-symmetry points
+            struct = Structure.from_file(str(structure_file))
+            kpath = HighSymmKpath(struct)
+            
+            # Check against known high-symmetry points
+            kx, ky, kz = k_cryst
+            tol = 0.02
+            
+            for label, coords in kpath.kpath['kpoints'].items():
+                if (abs(kx - coords[0]) < tol and 
+                    abs(ky - coords[1]) < tol and 
+                    abs(kz - coords[2]) < tol):
+                    # Use proper Greek letters
+                    if label == "\\Gamma" or label == "GAMMA":
+                        return "Γ"
+                    return label
+    except ImportError:
+        pass
+    except Exception:
+        pass
+    
+    # Fall back to simple identification based on crystal coordinates
+    return _identify_high_symmetry_point_crystal(k_cryst)
+
+
+def _identify_high_symmetry_point_crystal(k_cryst: Tuple[float, float, float]) -> str:
+    """
+    Identify high-symmetry point label from crystal coordinates.
+    
+    This handles common FCC/BCC/simple cubic high-symmetry points
+    in crystal (fractional) coordinates.
+    """
+    kx, ky, kz = k_cryst
+    tol = 0.02
+    
+    # Gamma (0, 0, 0)
+    if abs(kx) < tol and abs(ky) < tol and abs(kz) < tol:
+        return "Γ"
+    
+    # For FCC: high-symmetry points in crystal coordinates
+    # L = (0.5, 0.5, 0.5)
+    if abs(abs(kx) - 0.5) < tol and abs(abs(ky) - 0.5) < tol and abs(abs(kz) - 0.5) < tol:
+        return "L"
+    
+    # X = (0.5, 0, 0.5) or permutations
+    coords_sorted = sorted([abs(kx), abs(ky), abs(kz)])
+    if abs(coords_sorted[0]) < tol and abs(coords_sorted[1] - 0.5) < tol and abs(coords_sorted[2] - 0.5) < tol:
+        return "X"
+    
+    # W = (0.5, 0.25, 0.75) or permutations
+    if (abs(coords_sorted[0] - 0.25) < tol and 
+        abs(coords_sorted[1] - 0.5) < tol and 
+        abs(coords_sorted[2] - 0.75) < tol):
+        return "W"
+    
+    # K = (0.375, 0.375, 0.75) or similar
+    if (abs(coords_sorted[0] - 0.375) < tol and 
+        abs(coords_sorted[1] - 0.375) < tol and 
+        abs(coords_sorted[2] - 0.75) < tol):
+        return "K"
+    
+    # U = (0.625, 0.25, 0.625) or similar  
+    if (abs(coords_sorted[0] - 0.25) < tol and
+        abs(coords_sorted[1] - 0.625) < tol and 
+        abs(coords_sorted[2] - 0.625) < tol):
+        return "U"
+    
+    # Default: show crystal coordinates
+    return f"({kx:.2f},{ky:.2f},{kz:.2f})"
+
+
+def _parse_bands_symmetry_output(
+    path: Path,
+    reciprocal_lattice: Optional[np.ndarray] = None,
+    structure_file: Optional[Path] = None,
+) -> List[HighSymmetryPoint]:
     """
     Parse bands.x output file to extract high-symmetry point positions.
     
     Looks for lines like:
         high-symmetry point:  0.5000 0.5000 0.5000   x coordinate   0.0000
+        
+    Note: The k-point coordinates in bands.x output are in Cartesian (2π/a) units.
+    If reciprocal_lattice is provided, converts to crystal coordinates for proper labeling.
+    
+    Args:
+        path: Path to bands.x output file
+        reciprocal_lattice: Optional 3x3 array of reciprocal lattice vectors (rows are b1,b2,b3)
+        structure_file: Optional path to structure file for pymatgen labeling
     """
     text = path.read_text()
     points: List[HighSymmetryPoint] = []
@@ -671,25 +842,35 @@ def _parse_bands_symmetry_output(path: Path) -> List[HighSymmetryPoint]:
     for match in pattern.finditer(text):
         kx, ky, kz = float(match.group(1)), float(match.group(2)), float(match.group(3))
         x_coord = float(match.group(4))
+        k_cart = (kx, ky, kz)
         
-        # Try to identify label from coordinates (common high-symmetry points)
-        label = _identify_high_symmetry_point(kx, ky, kz)
+        # Convert to crystal coordinates if reciprocal lattice is available
+        if reciprocal_lattice is not None:
+            k_cryst = _cartesian_to_crystal(k_cart, reciprocal_lattice)
+            # Try pymatgen first, then fall back to simple identification
+            label = _identify_high_symmetry_label_pymatgen(k_cryst, structure_file)
+        else:
+            # Fall back to old behavior (Cartesian-based identification)
+            label = _identify_high_symmetry_point_cartesian(kx, ky, kz)
         
         points.append(HighSymmetryPoint(
             label=label,
             k_distance=x_coord,
-            k_coords=(kx, ky, kz),
+            k_coords=k_cart,  # Store original Cartesian coords
         ))
     
     return points
 
 
-def _identify_high_symmetry_point(kx: float, ky: float, kz: float) -> str:
+def _identify_high_symmetry_point_cartesian(kx: float, ky: float, kz: float) -> str:
     """
-    Identify high-symmetry point label from coordinates.
+    Identify high-symmetry point label from Cartesian coordinates (2π/a units).
     
     This is a simplified identification for common FCC/BCC/simple cubic points.
     Returns generic label if not recognized.
+    
+    Note: This is a fallback when reciprocal lattice vectors are not available.
+    Prefer using crystal coordinates with _identify_high_symmetry_point_crystal().
     """
     tol = 0.01
     
@@ -697,30 +878,10 @@ def _identify_high_symmetry_point(kx: float, ky: float, kz: float) -> str:
     if abs(kx) < tol and abs(ky) < tol and abs(kz) < tol:
         return "Γ"
     
-    # X (1, 0, 0) or permutations
-    if (abs(abs(kx) - 1.0) < tol and abs(ky) < tol and abs(kz) < tol or
-        abs(kx) < tol and abs(abs(ky) - 1.0) < tol and abs(kz) < tol or
-        abs(kx) < tol and abs(ky) < tol and abs(abs(kz) - 1.0) < tol):
-        return "X"
+    # For FCC in Cartesian 2π/a: X ~ (-0.707, 0, 0) etc.
+    # This is approximate and structure-dependent
     
-    # L (0.5, 0.5, 0.5)
-    if abs(abs(kx) - 0.5) < tol and abs(abs(ky) - 0.5) < tol and abs(abs(kz) - 0.5) < tol:
-        return "L"
-    
-    # K/U (0.75, 0.375, 0.375) or similar
-    coords_sum = abs(kx) + abs(ky) + abs(kz)
-    if abs(coords_sum - 1.5) < 0.1:
-        if abs(kx - 0.75) < tol or abs(ky - 0.75) < tol or abs(kz - 0.75) < tol:
-            return "U"
-        return "K"
-    
-    # W (1, 0.5, 0) or permutations
-    if ((abs(abs(kx) - 1.0) < tol and abs(abs(ky) - 0.5) < tol and abs(kz) < tol) or
-        (abs(abs(kx) - 0.5) < tol and abs(abs(ky) - 1.0) < tol and abs(kz) < tol) or
-        (abs(kx) < tol and abs(abs(ky) - 1.0) < tol and abs(abs(kz) - 0.5) < tol)):
-        return "W"
-    
-    # Default: use first letter of coordinate pattern
+    # Default: show Cartesian coordinates
     return f"({kx:.2f},{ky:.2f},{kz:.2f})"
 
 
