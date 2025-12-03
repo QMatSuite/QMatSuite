@@ -1,0 +1,9 @@
+meta:
+  id: 01KBH5N3AW4C983APN3DJKZS68
+  name: nscf
+  slug: nscf
+  path: workflows/si-bands-auto-k/steps/nscf.step.yaml
+  kind: step
+structure: si
+step_type: nscf
+parent_workflow_id: 01KBH5KYPE659SWXHXQP1BXX16
