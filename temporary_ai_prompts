@@ -809,9 +809,9 @@ The `extract_energy_metrics_from_text` function returns `result.fermi_energy` wi
 qv init step bands 
 qv show-command $PYTHONSRC/tests/data/7_Si_bandStructure/si.2_bands.in
 qv init step bands_pw
-3. pseudo_dir "pseudo_dir = '/Users/hh7465/Code/quantumVITAS/manual_tests/project2_bands/pseudo'" is in the project. But there is nothing. Where did you get pseudo? Actually, it is good to copy/download pseudo to the project/pseudo so the project folder itself is self-consistent. And then really point pseudo to that dir. You can first try to find pseudo file in quantumvitas_root/pseudo, if not, download it.
+3. Where do you put pseudo for a project? Actually, it is good to copy/download relevant pseudo to the project/pseudo (if not already there) so the project folder itself is self-consistent. And then really point pseudo to that dir for QE input files (run times). You can first try to find pseudo file in quantumvitas_root/pseudo, if not, download it to both quantumvitas_root/pseudo and project/pseudo.
 4. if user qv run via .in file, then copy the original .in file to the project/raw folder as original file reference, then write and run the new input file. If the user qv run via yaml, only save the final generated input file for QE run. Do not put a lot of input files in raw folder. Right now I see 2-3 input files for each step .in, _run.in, _original.in
-5. for bands step (for bands.x), no need tp generate &control namelist, nor do we need pseudo_dir.
+5. for bands step (for bands.x), no need to generate &control namelist, nor do we need pseudo_dir.
 6. qv run step [<selector>] [--workflow <workflow_name>]: first try to resolve project tree and see whether we are under a workflow (already implemented this function). If yes, try to run the step within the workflow (in/out in the standard raw folder) (either from <selector> or if without selector and only one step exists, run that step. Otherwise, error). If not, run the step as standalone (this is what you hae implemented: you must locate the step.yaml file)
 7.1 qv analyze band ../raw/si.bands.pp.dat.gnu --plot --format png --symmetry ../raw/bands.pw_run.out --scf ../raw/nscf.pw_run.out: first, it is not scf but nscf, if you want to extract accurate Fermi energy (although let's be compatible, if no nscf, scf is also good. No need to modify code I assume, but just change -scf to -nscf). Second, in the test "tests/integration/test_si_bands_workflow_comprehensive.py", you wrote "bandspp_out = list(raw_dir.glob("*bandspp*.out")) symmetry_file = bandspp_out[0] if bandspp_out else None", which is not correct: there is no such output in raw folder. You should use ../raw/bands.pw_run.out instead. 
 7.2 In bands.pw_run.out (output of bands.x), high symmertry k-points are given incartesian coordinates in unit of 2*pi/a. You need to convert that first to crystal_b: look ay --scf/nscf output file (see tests/data/7_Si_bandStructure/reference/si.2_bands.out), extract the 3*3 matrix of reciprocal lattice vectors "reciprocal axes:"b1, b2, b3, then convert the high symmetry k-points to crystal_b format x1*b1+x2*b2+x3*b3 (x1,x2,x3) (alat cancels out). Then ask qmatgen the conventional namke of these k-points.
@@ -819,8 +819,66 @@ qv init step bands_pw
 8.1: In workflow.yaml, need to write ULID of the workflow (id should be ULID, not slug!). Actually, for all resources.yaml or structure.json, need to write ULID,name,slug,relative path to project root.
 8.2 Revert last delete command from trash (qv delete --list: show all deleted resources in trash, qv delete --restore path_to_deleted_file: revert deletion (if trash is project folder, then simply move it out of trash. if it is workflow, then move it back to the workflow folder and add reference to parent resource. if it is step, need to find parent workflow according to ULID in the project, move it back to the last step in that workflow, and update all references.)).
 9.1 qv rename step <workflow> <step-id> [--project PATH] [--id NEW_ID] => qv rename step <step-name> <step-new_name> [--workflow <workflow-selector>] [--project PATH] workflow is optional, if not provided, then find parent workflow from current folder up. Rethink about logic and optimal command sequenceof all renaming commands, make them consistent. 
-9.2 Refactor qv rename to qv configure workflow/step/structure <selector> --name <new_name> (still keep alias qv rename for backward compatibility).
+9.2 Refactor qv rename to qv configure workflow/step/structure <selector> --name <new_name> (still keep alias qv rename for backward compatibility, but when used, shows warning that it is deprecated and give exact example how to use qv configure --name).
 10. Check that between CLI and python, there is always a layer of api.py to separate concerns.
-11. docs/CLI_API_REFERENCE.md needs to be updated thoroughly!
+11. docs/CLI_API_REFERENCE.md needs to be updated thoroughly! Consider readability and ease of use.
 12. Update AI_understanding.md (in detail) and other docs accordingly.
 
+You are working inside the QuantumVITAS (QV) Python project.
+QV already has:
+A resource model for structures, workflows, steps, and YAML-based metadata.
+A Typer CLI (qv) and a clean separation between:
+CLI (Typer)
+API / service layer (e.g. QVService-like responsibilities)
+Core logic (files, parsers, runners, YAML I/O)
+Structures are stored as pymatgen JSON with an extra _meta block.
+I want to extend the system with:
+A new QV feature: qv analyze structure
+Purpose: visualize crystal structures as 3D ball-and-stick models, with optional supercells, using matplotlib.
+User-facing behavior
+Examples:
+qv analyze structure si
+qv analyze structure si --output si.png
+qv analyze structure si --supercell 2 2 2
+qv analyze structure si --supercell 2 2 2 --show
+This should:
+Resolve <structure-selector> using QV’s existing resource resolution rules.
+Load the structure JSON using pymatgen.
+Apply an optional supercell expansion (default: 1×1×1).
+Render a 3D ball-and-stick plot:
+Atoms as spheres/balls (reasonable default sizes/colors).
+Bonds as line segments (e.g. using neighbor finding or covalent radii heuristics).
+Draw the unit cell / supercell edges.
+Use equal aspect ratio to avoid distortion.
+Save to PNG (headless-safe).
+If --show is given, attempt to display the interactive window (optional, only if supported).
+Important design constraints
+Follow QV’s existing architecture:
+CLI → service/API → core functions (parsing/plotting).
+Avoid mixing Typer with core logic.
+The 3D plotter should be a dedicated module, reusable later by GUI (Electron).
+Use matplotlib headless mode (Agg) by default.
+For ball-and-stick:
+You decide reasonable radii, colors, bond cutoff rules.
+Keep implementation clean and extensible.
+For supercell:
+Use pymatgen’s Structure.make_supercell() or an equivalent transformation.
+Your Tasks
+Design a minimal but clean architecture for:
+qv analyze structure
+auto-kpath injection in qv init step bands
+Implement:
+The CLI command
+The service/API function
+The plotting/visualization module
+Ensure the new features integrate naturally with the existing QV codebase (naming, directory structure, error handling, resource resolution).
+Keep the implementation readable and documented.
+Goal
+A user should be able to:
+Automatically generate a correct QE band structure path,
+Run the band workflow,
+Analyze and visualize SCF/DOS/Bands,
+And now also visualize 3D crystal structures (balls, bonds, supercells)
+directly via:
+qv analyze structure si --supercell 2 2 2 --output si.png
+while keeping QV’s architecture clean and future-GUI-friendly
