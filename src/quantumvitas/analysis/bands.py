@@ -133,12 +133,20 @@ def analyze_bands(workflow: Workflow, result: WorkflowResult, results_dir: Path)
     raw_dir = workflow.raw_dir if hasattr(workflow, 'raw_dir') else results_dir
     
     # Find Fermi energy from SCF/NSCF steps
+    # Priority: nscf > scf (nscf uses denser k-grid for more accurate Fermi energy)
     fermi_energy = None
+    scf_fermi = None
+    nscf_fermi = None
     for step in result.steps:
-        step_fermi = step.metrics.get("fermi_energy_ry") or step.metrics.get("fermi_energy_ev")
+        step_fermi = step.metrics.get("fermi_energy_ev")
         if step_fermi is not None:
-            fermi_energy = step_fermi
-            break
+            step_type = step.step_type.value.lower() if hasattr(step.step_type, 'value') else str(step.step_type).lower()
+            if "nscf" in step_type:
+                nscf_fermi = step_fermi
+            elif "scf" in step_type:
+                scf_fermi = step_fermi
+    # Prefer NSCF Fermi energy over SCF
+    fermi_energy = nscf_fermi if nscf_fermi is not None else scf_fermi
     
     bands_results = []
     

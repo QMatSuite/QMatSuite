@@ -1,8 +1,12 @@
-id: si-dos
+meta:
+  id: 01KB9JA6JSMH7XFZ1AK917TV6J
+  name: si-dos
+  slug: si-dos
+  path: workflows/si-dos
+  kind: workflow
+structure: si
 mode: normal
-workflow:
-  working_dir: raw
-  structure: si
+working_dir: raw
 steps:
 - id: scf
   step_file: steps/scf.step.yaml

@@ -796,7 +796,23 @@ crystal_c :
 As tpiba_c, but k-points are in crystal coordinates.
 
 
-Keep in mind, always usecore/resolution.py and core/context.py to locate resources.
+You’re working in a Python codebase called QuantumVITAS (QV) — a workflow/CLI framework around Quantum ESPRESSO.
+Before doing anything else, follow this order:
+0. Read the “AI_understanding.md” first
+There is a file:
+AI_understanding.md
+This file is a living document that captures the architectural understanding and conventions agreed with previous AIs.
+Step 1: Carefully read AI_understanding.md.
+Use it as your baseline for:
+How resources (project / workflow / step / structure) are modeled
+How the CLI is structured (Typer commands, selectors, etc.)
+How ResourceMeta, workflows, steps, and templates are supposed to work
+How the current architecture separates “core logic” vs “CLI layer”
+Do not reinvent the overall architecture.
+Instead, align your design with what AI_understanding.md describes, and extend it.
+Read docs/CLI_API_REFERENCE.md and other docs accordingly.
+
+Keep in mind, always use core/resolution.py and core/context.py to locate resources. Now, perform the following tasks:
 
 1. Some auto-generated bug report, might not be correct, decide for yourself:
 Bug 1:
@@ -824,61 +840,8 @@ qv init step bands_pw
 11. docs/CLI_API_REFERENCE.md needs to be updated thoroughly! Consider readability and ease of use.
 12. Update AI_understanding.md (in detail) and other docs accordingly.
 
-You are working inside the QuantumVITAS (QV) Python project.
-QV already has:
-A resource model for structures, workflows, steps, and YAML-based metadata.
-A Typer CLI (qv) and a clean separation between:
-CLI (Typer)
-API / service layer (e.g. QVService-like responsibilities)
-Core logic (files, parsers, runners, YAML I/O)
-Structures are stored as pymatgen JSON with an extra _meta block.
-I want to extend the system with:
-A new QV feature: qv analyze structure
-Purpose: visualize crystal structures as 3D ball-and-stick models, with optional supercells, using matplotlib.
-User-facing behavior
-Examples:
-qv analyze structure si
-qv analyze structure si --output si.png
-qv analyze structure si --supercell 2 2 2
-qv analyze structure si --supercell 2 2 2 --show
-This should:
-Resolve <structure-selector> using QV’s existing resource resolution rules.
-Load the structure JSON using pymatgen.
-Apply an optional supercell expansion (default: 1×1×1).
-Render a 3D ball-and-stick plot:
-Atoms as spheres/balls (reasonable default sizes/colors).
-Bonds as line segments (e.g. using neighbor finding or covalent radii heuristics).
-Draw the unit cell / supercell edges.
-Use equal aspect ratio to avoid distortion.
-Save to PNG (headless-safe).
-If --show is given, attempt to display the interactive window (optional, only if supported).
-Important design constraints
-Follow QV’s existing architecture:
-CLI → service/API → core functions (parsing/plotting).
-Avoid mixing Typer with core logic.
-The 3D plotter should be a dedicated module, reusable later by GUI (Electron).
-Use matplotlib headless mode (Agg) by default.
-For ball-and-stick:
-You decide reasonable radii, colors, bond cutoff rules.
-Keep implementation clean and extensible.
-For supercell:
-Use pymatgen’s Structure.make_supercell() or an equivalent transformation.
-Your Tasks
-Design a minimal but clean architecture for:
-qv analyze structure
-auto-kpath injection in qv init step bands
-Implement:
-The CLI command
-The service/API function
-The plotting/visualization module
-Ensure the new features integrate naturally with the existing QV codebase (naming, directory structure, error handling, resource resolution).
-Keep the implementation readable and documented.
-Goal
-A user should be able to:
-Automatically generate a correct QE band structure path,
-Run the band workflow,
-Analyze and visualize SCF/DOS/Bands,
-And now also visualize 3D crystal structures (balls, bonds, supercells)
-directly via:
-qv analyze structure si --supercell 2 2 2 --output si.png
-while keeping QV’s architecture clean and future-GUI-friendly
+
+
+Done.
+1. Why do you have all pseudo files of irrelevant elements in project/pseudo when running workflow tests?
+2. Task 10: Documented that CLI bypasses QVService API layer (technical debt for future refactoring)

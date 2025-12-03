@@ -755,6 +755,12 @@ def find_bands_files(
         
     Returns:
         Dict with keys: 'bands_gnu', 'bands_out', 'scf_out', 'nscf_out'
+        
+    File naming conventions supported:
+        - bands.dat.gnu: GNU plot format bands data
+        - *.bands.out or *bandspp*.out: bands.x post-processing output (contains high-sym points)
+        - *scf*.out: pw.x SCF output (for Fermi energy)
+        - *nscf*.out: pw.x NSCF output (preferred for Fermi energy)
     """
     directory = Path(directory)
     result: Dict[str, Optional[Path]] = {
@@ -765,19 +771,26 @@ def find_bands_files(
     }
     
     for file in directory.iterdir():
+        if not file.is_file():
+            continue
         name = file.name.lower()
         if prefix and not name.startswith(prefix.lower()):
             continue
         
         if 'bands.dat.gnu' in name or name.endswith('.dat.gnu'):
             result['bands_gnu'] = file
-        elif 'bands' in name and name.endswith('.out'):
-            if 'pp' in name:
+        # Look for bands.x output - multiple naming conventions
+        elif name.endswith('.out'):
+            # bands.x output patterns: *.bands.out, *bandspp*.out, *_bands.out
+            if '.bands.out' in name or 'bandspp' in name:
                 result['bands_out'] = file
-        elif 'scf' in name and name.endswith('.out'):
-            if 'nscf' in name:
+            # Also check for bands_pp or bands.pp patterns
+            elif 'bands' in name and ('pp' in name or '_pp' in name):
+                result['bands_out'] = file
+            # SCF/NSCF output
+            elif 'nscf' in name:
                 result['nscf_out'] = file
-            else:
+            elif 'scf' in name:
                 result['scf_out'] = file
     
     return result
