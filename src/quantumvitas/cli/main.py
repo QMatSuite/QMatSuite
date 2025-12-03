@@ -2553,7 +2553,13 @@ def run_auto_dispatch(
 @app.command("analyze")
 def analyze_command(
     kind: str = typer.Argument(..., help="energy, band, dos, or scf"),
-    input_file: Path = typer.Argument(..., help="Output/data file to analyze"),
+    input_file: Optional[Path] = typer.Argument(
+        None, help="Output/data file to analyze (optional for 'band' if --workflow or inside workflow)"
+    ),
+    workflow: Optional[str] = typer.Option(
+        None, "--workflow", "-w",
+        help="Workflow selector to auto-locate files from its raw/ directory"
+    ),
     symmetry_file: Optional[Path] = typer.Option(
         None, "--symmetry", "-s", 
         help="bands.x output file containing high-symmetry points (for band analysis)"
@@ -2563,6 +2569,9 @@ def analyze_command(
     ),
     scf_file: Optional[Path] = typer.Option(
         None, "--scf", help="SCF/NSCF output file to extract Fermi energy from"
+    ),
+    project: Optional[Path] = typer.Option(
+        None, "--project", help="Project root (defaults to auto-detect)"
     ),
     plot: bool = typer.Option(False, "--plot", "-p", help="Generate a plot"),
     output: Optional[Path] = typer.Option(
@@ -2584,9 +2593,16 @@ def analyze_command(
     - band: Parse band structure data (requires .dat.gnu file)  
     - dos: Parse DOS data (requires .dat file)
     
+    For 'band' analysis, files can be auto-detected from workflow:
+    - Use --workflow <selector> to specify a workflow
+    - If no workflow specified, tries to detect from current directory
+    - Falls back to searching current directory for files
+    
     Examples:
         qv analyze energy si.scf.out
-        qv analyze band si.bands.dat.gnu --symmetry si.bands.out --plot
+        qv analyze band --workflow si-bands --plot
+        qv analyze band si.bands.dat.gnu --symmetry si.bands.out --scf si.nscf.out --plot
+        qv analyze band --plot  # auto-detect files from pwd or enclosing workflow
         qv analyze dos si.dos.dat --plot --energy-range -5,5
     """
     from quantumvitas.analysis.parsers import (
@@ -2596,6 +2612,8 @@ def analyze_command(
         plot_dos as plot_dos_fn, plot_bands as plot_bands_fn,
         plot_scf_convergence, save_figure
     )
+    from quantumvitas.core.context import find_path_context_from_pwd, ContextNotFoundError
+    from quantumvitas.workflow.naming import find_band_analysis_files, find_workflow_raw_dir, find_workflow_results_dir
     
     normalized = kind.lower()
     e_range = None
@@ -2606,6 +2624,73 @@ def analyze_command(
         except (ValueError, IndexError):
             raise typer.BadParameter("--energy-range must be like '-5,5'")
     
+    # Auto-detection context for band analysis
+    workflow_dir: Optional[Path] = None
+    project_root: Optional[Path] = None
+    
+    # Resolve workflow context
+    if workflow:
+        # Explicit --workflow option
+        try:
+            project_root = Path(project).resolve() if project else find_project_root()
+            config = load_project_config(project_root)
+            wf_entry = find_workflow_entry(config, workflow, project_root)
+            workflow_dir = workflow_directory(project_root, wf_entry)
+            typer.echo(f"Using workflow: {wf_entry.get('name', workflow)}")
+        except (ResourceNotFoundError, FileNotFoundError) as e:
+            raise typer.BadParameter(f"Workflow not found: {workflow}")
+    elif input_file is None and normalized == "band":
+        # Try to auto-detect workflow from pwd
+        try:
+            ctx = find_path_context_from_pwd()
+            project_root = ctx.project_root
+            if ctx.is_inside_workflow():
+                workflow_dir = ctx.workflow_directory
+                typer.echo(f"Detected workflow: {ctx.workflow_selector}")
+        except ContextNotFoundError:
+            pass  # Not inside a project/workflow, will search pwd
+    
+    # For band analysis, auto-locate files if not all provided
+    if normalized == "band":
+        search_dir: Optional[Path] = None
+        
+        if workflow_dir:
+            search_dir = find_workflow_raw_dir(workflow_dir)
+        elif input_file:
+            # Use input file's directory as search dir
+            search_dir = Path(input_file).resolve().parent
+        else:
+            # Search current directory
+            search_dir = Path.cwd()
+        
+        if search_dir and search_dir.exists():
+            found_files = find_band_analysis_files(search_dir)
+            
+            # Use found files if not explicitly provided
+            if input_file is None:
+                if found_files.bands_gnu:
+                    input_file = found_files.bands_gnu
+                    typer.echo(f"Found bands data: {input_file.name}")
+                else:
+                    raise typer.BadParameter(
+                        "No bands.dat.gnu file found. "
+                        "Provide input_file argument or use --workflow to specify a workflow."
+                    )
+            
+            if symmetry_file is None and found_files.bands_pp_out:
+                symmetry_file = found_files.bands_pp_out
+                typer.echo(f"Found symmetry file: {symmetry_file.name}")
+            
+            if scf_file is None and found_files.pw_output:
+                scf_file = found_files.pw_output
+                typer.echo(f"Found pw.x output: {scf_file.name}")
+    
+    # Validate input_file is provided for non-band analysis
+    if input_file is None:
+        raise typer.BadParameter(
+            f"input_file is required for '{kind}' analysis"
+        )
+    
     # Determine Fermi energy
     fermi_energy = fermi
     if fermi_energy is None and scf_file:
@@ -2614,17 +2699,21 @@ def analyze_command(
     
     # Determine output directory: explicit > workflow results > None
     output_dir = Path(output) if output else None
-    if output_dir is None:
+    if output_dir is None and workflow_dir:
+        output_dir = find_workflow_results_dir(workflow_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        typer.echo(f"Output directory: {output_dir}")
+    elif output_dir is None:
         # Try to detect workflow from input file location
         input_path = Path(input_file).resolve()
         try:
-            project_root = find_project_root(start=input_path.parent)
-            config = load_project_config(project_root)
+            proj_root = find_project_root(start=input_path.parent)
+            config = load_project_config(proj_root)
             # Check if input is inside a workflow directory
             for wf_entry in config.get("workflows", []):
                 wf_path = wf_entry.get("path") or (wf_entry.get("meta") or {}).get("path")
                 if wf_path:
-                    wf_dir = (project_root / wf_path).resolve()
+                    wf_dir = (proj_root / wf_path).resolve()
                     if input_path.is_relative_to(wf_dir):
                         # Found enclosing workflow - use its results folder
                         output_dir = wf_dir / "results"
@@ -2655,10 +2744,13 @@ def analyze_command(
         
     elif normalized == "band":
         # Band structure analysis
+        # Use scf_file for both Fermi energy AND reciprocal lattice vectors
+        # (needed for proper k-point coordinate conversion from Cartesian to crystal)
         band_data = parse_bands_gnu(
             input_file,
             symmetry_file=symmetry_file,
             fermi_energy=fermi_energy,
+            pw_output_file=scf_file,  # Provides reciprocal lattice vectors
         )
         data = band_data.to_dict()
         
