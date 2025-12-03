@@ -18,11 +18,18 @@ def extract_energy_metrics_from_text(text: str) -> Dict[str, float | None]:
     Extract energy metrics from QE output text.
     
     Legacy function - prefer using parse_scf_output() for full parsing.
+    
+    Returns:
+        Dict with keys:
+        - "total_energy_ry": Total energy in Rydberg
+        - "fermi_energy_ev": Fermi energy in electronvolt (eV)
+        
+    Note: QE outputs Fermi energy in eV, not Ry.
     """
     result = parse_scf_output(text)
     return {
         "total_energy_ry": result.total_energy,
-        "fermi_energy_ry": result.fermi_energy,
+        "fermi_energy_ev": result.fermi_energy,  # eV, not Ry!
     }
 
 
@@ -83,7 +90,7 @@ def summarize_workflow_energies(
             "step_type": step.step_type.value,
             "status": step.status.value,
             "total_energy_ry": step.metrics.get("total_energy_ry"),
-            "fermi_energy_ry": step.metrics.get("fermi_energy_ry"),
+            "fermi_energy_ev": step.metrics.get("fermi_energy_ev"),
         }
         energies.append(entry)
 

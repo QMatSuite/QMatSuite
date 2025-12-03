@@ -86,17 +86,23 @@ project/
 
 ### 2.3 Workflow and Step YAML Structure
 
-**workflow.yaml**:
+**workflow.yaml** (new format with meta section):
 ```yaml
-id: si-dos
+meta:
+  id: 01JXYZ123ABC456DEF789GHI  # ULID
+  name: si-dos
+  slug: si-dos
+  path: workflows/si-dos
+  kind: workflow
 mode: normal
-workflow:
-  working_dir: raw
-  structure: si           # Structure reference (slug/name)
+structure: si               # Structure reference (slug/name)
+working_dir: raw
 steps:
 - id: scf
+  type: scf
   step_file: steps/scf.step.yaml
 - id: nscf
+  type: nscf
   step_file: steps/nscf.step.yaml
 ```
 
@@ -213,7 +219,11 @@ qv
 │   └── step <type> [--structure STRUCT] [--workflow WF] [--template TEMPLATE] [overrides...]
 ├── import-structure <file> [--name NAME]
 ├── list [--verbose]
-├── rename
+├── configure (PREFERRED for renaming)
+│   ├── step <step-id|path> [--name NAME] [--workflow WF] [--remove] [overrides...]
+│   ├── workflow [<selector>] [--name NAME] [--structure STRUCT] [--reorder s1,s2,...]
+│   └── structure <selector> [--name NAME]
+├── rename (DEPRECATED - use configure --name instead)
 │   ├── project [--name NAME] [--slug SLUG] [--path PATH]
 │   ├── workflow <selector> [--name NAME]
 │   ├── step <workflow> <step-id> [--id NEW_ID]
@@ -224,18 +234,14 @@ qv
 │   ├── step <step-id> [--workflow WF]
 │   ├── structure <selector> [--force] [--cascade]
 │   └── trash [--parent]
-├── configure
-│   ├── step <step-id|path> [--remove] [overrides...]
-│   ├── workflow [<selector>] [--structure STRUCT] [--reorder s1,s2,...]
-│   └── structure <selector> [--name NAME]
 ├── run
 │   ├── step <input.in|step.yaml> [--workdir PATH] [overrides...]
 │   ├── workflow [<selector>] [--strict] [--verbose]
 │   ├── structure <selector> [--type TYPE] [overrides...]
 │   └── (auto-dispatch if target given without subcommand)
 ├── detect-qe [--path PATH]
-├── show-command <input.in>
-├── get-command <input.in>  # alias for show-command
+├── show-command <input.in>  # Auto-detects module type (pw.x, bands.x, etc.)
+├── get-command <input.in>   # alias for show-command
 ├── analyze <energy|band|dos> <output-file>
 └── params <module> [--section SECTION]
 ```
@@ -828,6 +834,14 @@ The analysis layer provides parsers and plotting functions for QE outputs, desig
 | k-distances | 2π/a | bands.dat.gnu |
 | ecutwfc, ecutrho | Ry | pw.x input |
 
+**Metrics dictionary keys** (from `extract_energy_metrics_from_text()`):
+```python
+{
+    "total_energy_ry": 123.456,    # Rydberg
+    "fermi_energy_ev": 5.76,       # eV (NOT fermi_energy_ry!)
+}
+```
+
 **All `to_dict()` methods include a `"units"` key** for explicit documentation:
 
 ```python
@@ -977,5 +991,181 @@ Tests verify:
 
 ---
 
-*Last updated: 2025-12-02*
+## 14. Refactoring History - 2025-12-03
+
+### 14.1 Bug Fixes
+
+#### Fermi Energy Unit Mismatch (Critical Fix)
+
+**Problem**: `extract_energy_metrics_from_text()` returned `result.fermi_energy` (in eV) with key `"fermi_energy_ry"`, causing unit mismatches in verification and analysis.
+
+**Fix**: Changed key from `"fermi_energy_ry"` to `"fermi_energy_ev"` and updated all consumers:
+
+| File | Change |
+|------|--------|
+| `analysis/energy.py` | Key `"fermi_energy_ry"` → `"fermi_energy_ev"` |
+| `workflow/verification.py` | Uses `metrics.get("fermi_energy_ev")` |
+| `analysis/dos.py` | Uses `step.metrics.get("fermi_energy_ev")` |
+| `analysis/bands.py` | Uses `step.metrics.get("fermi_energy_ev")` |
+
+**Important**: `SCFResult.fermi_energy` is always in eV (documented in `analysis/parsers.py`).
+
+#### K-Points Crystal_B Format
+
+**Clarification**: The `to_qe_kpoints_crystal_b()` method in `analysis/kpath.py` correctly sets the last k-point weight to 0 for `crystal_b` format. This is per QE documentation - weight 0 means "end of path segment, don't generate interpolation points after this."
+
+### 14.2 CLI Improvements
+
+#### `qv show-command` Module Detection
+
+**Problem**: `show-command` always assumed `pw.x` module, giving wrong suggestions for `bands.x`, `dos.x`, etc.
+
+**Fix**: Now detects module type from input file content:
+
+```python
+module = qe_input.module or qe_input.detect_module()
+calculation = module.value if module != QEModule.UNKNOWN else "scf"
+```
+
+Example output for `si.bands.pp.in`:
+```
+Step type: bands
+Suggested: qv init step bands --workflow <workflow>
+```
+
+#### `qv configure --name` (Preferred) and `qv rename` (Deprecated)
+
+**New approach**: Renaming resources via `qv configure <type> <selector> --name <new_name>`:
+
+```bash
+# Preferred syntax
+qv configure structure si --name "Silicon bulk"
+qv configure workflow si-dos --name "Si DOS v2"
+qv configure step scf --workflow si-dos --name "SCF high-precision"
+
+# Deprecated (shows warning, still works)
+qv rename structure si --name "Silicon bulk"
+```
+
+**Implementation**:
+- Added `--name` option to `configure_structure_command`, `configure_workflow_command`, `configure_step_command`
+- `qv rename *` commands now emit deprecation warning via `typer.secho(..., fg=typer.colors.YELLOW)`
+
+### 14.3 Resource Metadata Updates
+
+#### Workflow YAML Structure
+
+**workflow.yaml** now includes full `meta` section:
+
+```yaml
+# New format (preferred)
+meta:
+  id: 01JXYZ123ABC456DEF789GHI
+  name: si-dos
+  slug: si-dos
+  path: workflows/si-dos
+  kind: workflow
+mode: normal
+structure: si
+working_dir: raw
+steps:
+  - id: scf
+    type: scf
+    step_file: steps/scf.step.yaml
+```
+
+Previously was:
+```yaml
+# Old format (still supported for reading)
+id: si-dos
+mode: normal
+workflow:
+  working_dir: raw
+  structure: si
+steps: ...
+```
+
+#### Templates Updated
+
+Templates in `/templates/workflow/` updated to use new format with `meta` section.
+
+### 14.4 Pseudopotential Handling
+
+**New logic in `ensure_pseudopotentials()`**:
+
+1. Check `project_root/pseudo/` first
+2. If not found, check `quantumvitas_root/pseudo/`
+3. If not found, download to `quantumvitas_root/pseudo/`
+4. **Always copy** found/downloaded pseudopotentials to `project_root/pseudo/`
+
+This makes projects self-contained for portability.
+
+```python
+# Priority order:
+# 1. project_root/pseudo/Si.pbe-n-rrkjus_psl.1.0.0.UPF
+# 2. quantumvitas_root/pseudo/Si.pbe-n-rrkjus_psl.1.0.0.UPF (then copy to project)
+# 3. Download to quantumvitas_root/pseudo/ and copy to project
+```
+
+### 14.5 Input File Handling
+
+**Simplified naming**:
+- Input files written to `working_dir/<stem>.in` (no more `_run.in` suffix)
+- Original preserved as `<stem>_original.in` only if:
+  - `keep_original=True` AND
+  - Input was actually modified
+
+### 14.6 Architecture Notes
+
+#### API Layer Separation (Technical Debt)
+
+**Finding**: The CLI (`main.py`) bypasses `QVService` and directly imports from `core/project_utils.py`.
+
+**Current state**:
+```
+CLI (main.py) → core/project_utils.py (DIRECT)
+             ↘ core/resources.py (DIRECT)
+```
+
+**Intended architecture**:
+```
+CLI (main.py) → api.py (QVService) → core/* modules
+```
+
+**Impact**: Logic is duplicated between CLI and `QVService`. Future refactoring should make CLI a thin wrapper around `QVService`.
+
+#### Post-Processing Step Inputs (Verified)
+
+`bands.x` and other post-processing steps correctly omit `&control` namelist. Implementation in `workflow/structure_steps.py:_generate_postprocessing_input()`:
+
+```python
+# POST_PROCESSING_STEP_TYPES = {"dos", "bands", "projwfc", ...}
+# These only get their specific namelist (&DOS, &BANDS, etc.)
+# No CONTROL, no ATOMIC_SPECIES, no CELL_PARAMETERS
+```
+
+### 14.7 Documentation Updates
+
+| File | Updates |
+|------|---------|
+| `docs/CLI_API_REFERENCE.md` | Reorganized commands, added deprecation notes, updated unit conventions |
+| `AI_understanding.md` | This section |
+
+### 14.8 Files Modified in This Session
+
+| File | Purpose |
+|------|---------|
+| `src/quantumvitas/analysis/energy.py` | Fix `fermi_energy_ev` key |
+| `src/quantumvitas/analysis/dos.py` | Use `fermi_energy_ev` key |
+| `src/quantumvitas/analysis/bands.py` | Use `fermi_energy_ev` key |
+| `src/quantumvitas/workflow/verification.py` | Use `fermi_energy_ev` key |
+| `src/quantumvitas/core/engines/qe_pseudopotentials.py` | Pseudopotential priority and copying |
+| `src/quantumvitas/workflow/input_runner.py` | Simplified input file naming |
+| `src/quantumvitas/cli/main.py` | Module detection, configure --name, rename deprecation, workflow meta |
+| `templates/workflow/si-dos/workflow.yaml` | Updated to new meta format |
+| `docs/CLI_API_REFERENCE.md` | Comprehensive update |
+
+---
+
+*Last updated: 2025-12-03*
 *Based on commit history through v2-python branch*

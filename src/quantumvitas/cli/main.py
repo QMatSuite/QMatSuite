@@ -728,24 +728,31 @@ def init_workflow_command(
     raw_dir.mkdir(parents=True, exist_ok=True)
     steps_dir.mkdir(parents=True, exist_ok=True)
 
+    # Generate workflow meta with ULID
+    rel_path = ensure_relative_path(workflow_dir, base=project_root)
+    workflow_meta = meta_from_name("workflow", name=workflow_id, path=str(rel_path))
+    if parent:
+        workflow_meta_dict = workflow_meta.to_dict()
+        workflow_meta_dict["parents"] = parent
+    else:
+        workflow_meta_dict = workflow_meta.to_dict()
+
+    # Write workflow.yaml with proper meta section (contains ULID)
     workflow_payload = {
-        "id": workflow_slug,
+        "meta": workflow_meta_dict,
+        "structure": structure,
         "mode": "normal",
-        "workflow": {"working_dir": "raw", "structure": structure},
+        "working_dir": "raw",
         "steps": [],
     }
     (workflow_dir / "workflow.yaml").write_text(yaml.safe_dump(workflow_payload, sort_keys=False))
 
-    rel_path = ensure_relative_path(workflow_dir, base=project_root)
-    workflow_meta = meta_from_name("workflow", name=workflow_id, path=rel_path).to_dict()
-    if parent:
-        workflow_meta["parents"] = parent
-
+    # Add to project.qv.yml
     workflows_section.append(
         {
             "name": workflow_id,
-            "path": rel_path,
-            "meta": workflow_meta,
+            "path": str(rel_path),
+            "meta": workflow_meta_dict,
         }
     )
     save_project_config(project_root, config)
@@ -1423,8 +1430,16 @@ def rename_structure_command(
     ),
 ) -> None:
     """
-    Rename a structure resource (updates name/slug/path).
+    [DEPRECATED] Rename a structure resource (updates name/slug/path).
+    
+    Use 'qv configure structure' instead:
+        qv configure structure <identifier> --name "New Name"
     """
+    typer.secho(
+        "DEPRECATED: 'qv rename structure' is deprecated. Use:\n"
+        f"  qv configure structure {identifier} --name \"<new_name>\"\n",
+        fg=typer.colors.YELLOW,
+    )
 
     project_root = project or _resolve_project_root()
     config = load_project_config(project_root)
@@ -1456,8 +1471,16 @@ def rename_workflow_command(
     ),
 ) -> None:
     """
-    Rename a workflow resource (updates name/slug/path).
+    [DEPRECATED] Rename a workflow resource (updates name/slug/path).
+    
+    Use 'qv configure workflow' instead:
+        qv configure workflow <identifier> --name "New Name"
     """
+    typer.secho(
+        "DEPRECATED: 'qv rename workflow' is deprecated. Use:\n"
+        f"  qv configure workflow {identifier} --name \"<new_name>\"\n",
+        fg=typer.colors.YELLOW,
+    )
 
     project_root = project or _resolve_project_root()
     config = load_project_config(project_root)
@@ -1894,22 +1917,32 @@ def configure_step_command(
     project: Optional[Path] = typer.Option(
         None, "--project", help="Project root (auto-detects from pwd)"
     ),
+    name: Optional[str] = typer.Option(
+        None, "--name", help="Rename the step to a new name/id"
+    ),
     remove: bool = typer.Option(
         False, "--remove", help="Remove the specified parameters instead of setting them"
     ),
 ) -> None:
     """
-    Modify parameters stored in a StructureStepSpec YAML file.
+    Modify step settings: rename or change parameters.
     
     Step can be specified by id, name, or path. If using id/name, the workflow
     is auto-detected from pwd if not specified with --workflow.
+    
+    Examples:
+        qv configure step scf --name "new_scf"
+        qv configure step scf --SYSTEM.ecutwfc=70
     """
     bundle = _parse_override_args(ctx.args)
-    if not bundle.has_any():
-        raise typer.BadParameter("Provide at least one override.")
+    if not bundle.has_any() and not name:
+        raise typer.BadParameter("Provide --name or at least one parameter override.")
 
     # Check if it's a direct path first
     step_file = Path(step_identifier)
+    workflow_yaml = None
+    workflow_dir = None
+    
     if step_file.exists() and step_file.suffix in (".yaml", ".yml"):
         pass  # Use directly
     else:
@@ -1922,6 +1955,11 @@ def configure_step_command(
                 project_path=project,
             )
             step_file = ctx_res.resource_path
+            # Also get workflow directory for step renaming
+            if ctx_res.parent_entry:
+                project_root = ctx_res.project_root
+                workflow_dir = workflow_directory(project_root, ctx_res.parent_entry)
+                workflow_yaml = workflow_dir / "workflow.yaml"
         except ResourceNotFoundError as exc:
             raise typer.BadParameter(str(exc)) from exc
 
@@ -1930,20 +1968,50 @@ def configure_step_command(
     except FileNotFoundError as exc:
         raise typer.BadParameter(f"Step file not found: {step_file}") from exc
 
-    parameters = spec.parameters or {}
-    updates = _overrides_to_parameter_dict(bundle.parameters)
-    _merge_parameter_updates(parameters, updates, remove=remove)
-    spec.parameters = {k: v for k, v in parameters.items() if v}
+    modified = False
+    
+    # Handle name change (rename step)
+    if name:
+        old_name = spec.meta.name
+        new_slug = slugify(name)
+        spec.meta = ResourceMeta(
+            id=spec.meta.id,
+            name=name,
+            slug=new_slug,
+            path=spec.meta.path,
+            kind="step",
+        )
+        
+        # Update workflow.yaml if we have it
+        if workflow_yaml and workflow_yaml.exists():
+            wf_data = yaml.safe_load(workflow_yaml.read_text()) or {}
+            for step_entry in wf_data.get("steps", []):
+                if step_entry.get("id") == step_identifier or step_entry.get("id") == old_name:
+                    step_entry["id"] = new_slug
+                    break
+            workflow_yaml.write_text(yaml.safe_dump(wf_data, sort_keys=False))
+        
+        typer.secho(f"Step renamed from '{old_name}' to '{name}'", fg=typer.colors.GREEN)
+        modified = True
 
-    spec.cards = _merge_card_updates(spec.cards or {}, bundle.card_overrides, remove=remove)
-    spec.species_overrides = _merge_species_updates(
-        spec.species_overrides or {}, bundle.species_overrides, remove=remove
-    )
+    # Handle parameter overrides
+    if bundle.has_any():
+        parameters = spec.parameters or {}
+        updates = _overrides_to_parameter_dict(bundle.parameters)
+        _merge_parameter_updates(parameters, updates, remove=remove)
+        spec.parameters = {k: v for k, v in parameters.items() if v}
 
-    _write_step_spec(step_file, spec)
+        spec.cards = _merge_card_updates(spec.cards or {}, bundle.card_overrides, remove=remove)
+        spec.species_overrides = _merge_species_updates(
+            spec.species_overrides or {}, bundle.species_overrides, remove=remove
+        )
+        
+        action = "Removed" if remove else "Updated"
+        typer.secho(f"{action} parameters in {step_file}", fg=typer.colors.GREEN)
+        modified = True
 
-    action = "Removed" if remove else "Updated"
-    typer.secho(f"{action} parameters in {step_file}", fg=typer.colors.GREEN)
+    if modified:
+        _write_step_spec(step_file, spec)
 
 
 @configure_app.command("project")
@@ -1962,6 +2030,9 @@ def configure_workflow_command(
     project: Optional[Path] = typer.Option(
         None, "--project", help="Project root (auto-detects from pwd)"
     ),
+    name: Optional[str] = typer.Option(
+        None, "--name", help="Rename the workflow to a new name"
+    ),
     structure: Optional[str] = typer.Option(
         None, "--structure", help="Change the structure used by this workflow (updates all steps)"
     ),
@@ -1970,9 +2041,14 @@ def configure_workflow_command(
     ),
 ) -> None:
     """
-    Modify workflow settings: change structure or reorder steps.
+    Modify workflow settings: rename, change structure, or reorder steps.
     
     Workflow can be specified by id/name/slug/path, or auto-detected from current directory.
+    
+    Examples:
+        qv configure workflow --name "New Name"
+        qv configure workflow --structure si
+        qv configure workflow --reorder scf,nscf,dos
     """
     # Find project root
     if project:
@@ -2004,6 +2080,26 @@ def configure_workflow_command(
     
     workflow_data = yaml.safe_load(workflow_yaml.read_text()) or {}
     modified = False
+    
+    # Handle name change (rename)
+    if name:
+        apply_workflow_rename(
+            project_root=project_root,
+            config=config,
+            entry=workflow_entry,
+            new_name=name,
+            new_slug=None,
+            new_path=None,
+        )
+        save_project_config(project_root, config)
+        
+        # Also update meta in workflow.yaml if it exists
+        if "meta" in workflow_data:
+            workflow_data["meta"]["name"] = name
+            workflow_data["meta"]["slug"] = slugify(name)
+        
+        modified = True
+        typer.secho(f"Workflow renamed to '{name}'", fg=typer.colors.GREEN)
     
     # Handle structure change
     if structure:
@@ -2160,7 +2256,11 @@ def configure_structure_command(
 def show_command(input_file: Path = typer.Argument(..., help="QE input file to inspect")) -> None:
     """
     Print example CLI commands for creating a step spec and tweaking parameters based on an input file.
+    
+    Automatically detects the QE module type (pw.x, bands.x, dos.x, etc.) and suggests
+    the appropriate step type.
     """
+    from quantumvitas.io.model import QEModule
 
     if not input_file.exists():
         raise typer.BadParameter(f"{input_file} does not exist.")
@@ -2171,23 +2271,55 @@ def show_command(input_file: Path = typer.Argument(..., help="QE input file to i
     card_args = _card_cli_args_from_input(qe_input)
     species_args = _species_cli_args_from_input(qe_input)
     cli_args = param_args + card_args + species_args
-    calculation = (
-        parameter_dict.get("CONTROL", {}).get("calculation")
-        or parameter_dict.get("CONTROL", {}).get("CALCULATION")
-        or "scf"
-    )
+    
+    # Detect the module type to determine step type
+    detected_module = qe_input.detect_module()
+    
+    # Map module to step type
+    MODULE_TO_STEP_TYPE = {
+        QEModule.BANDS: "bands",      # bands.x post-processing
+        QEModule.DOS: "dos",          # dos.x post-processing
+        QEModule.PROJWFC: "projwfc",  # projwfc.x
+        QEModule.PP: "pp",            # pp.x
+        QEModule.Q2R: "q2r",          # q2r.x
+        QEModule.MATDYN: "matdyn",    # matdyn.x
+        QEModule.DYNMAT: "dynmat",    # dynmat.x
+        QEModule.PH: "ph",            # ph.x
+    }
+    
+    step_type: str
+    if detected_module in MODULE_TO_STEP_TYPE:
+        # Post-processing or phonon module
+        step_type = MODULE_TO_STEP_TYPE[detected_module]
+    else:
+        # pw.x or cp.x - use calculation type
+        calculation = (
+            parameter_dict.get("CONTROL", {}).get("calculation")
+            or parameter_dict.get("CONTROL", {}).get("CALCULATION")
+            or "scf"
+        )
+        # For pw.x bands calculation, use bands_pw to distinguish from bands.x
+        if calculation == "bands":
+            step_type = "bands_pw"
+        else:
+            step_type = str(calculation)
 
     step_file = f"{input_file.stem}.step.yaml"
     base_cmd = [
         "qv",
         "init",
         "step",
-        str(calculation),
+        step_type,
     ] + cli_args
 
     typer.echo("Example 1: create a step spec with all detected parameters")
     typer.echo("  " + shlex.join(base_cmd))
-    typer.echo("  (Run inside a workflow directory, or add --structure <name> --workflow <name>)")
+    
+    # Different hint based on whether this is a post-processing step
+    if detected_module in MODULE_TO_STEP_TYPE:
+        typer.echo("  (Post-processing step: no --structure needed)")
+    else:
+        typer.echo("  (Run inside a workflow directory, or add --structure <name> --workflow <name>)")
 
     modify_cmd = [
         "qv",
@@ -2198,7 +2330,13 @@ def show_command(input_file: Path = typer.Argument(..., help="QE input file to i
     if cli_args:
         modify_cmd.append(cli_args[0])
     else:
-        modify_cmd.append("--CONTROL.calculation=scf")
+        # Suggest appropriate parameter based on step type
+        if detected_module == QEModule.BANDS:
+            modify_cmd.append("--BANDS.filband=mybands.dat")
+        elif detected_module == QEModule.DOS:
+            modify_cmd.append("--DOS.fildos=mydos.dat")
+        else:
+            modify_cmd.append("--CONTROL.calculation=scf")
 
     typer.echo("\nExample 2: tweak a parameter inside the generated YAML")
     typer.echo("  " + shlex.join(modify_cmd))
