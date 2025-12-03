@@ -847,3 +847,151 @@ Done.
 2 Again: In temp/test_si_bands_workflow/si_bands_test/workflows/bands_auto/raw/bandspp.bands.out (output of bands.x), high symmertry k-points (line37-48) are given in cartesian coordinates in unit of 2*pi/a. You need to convert that first to crystal_b (look at the doc in this file, line 720-796): look at any pw.x output file before that (e.g. temp/test_si_bands_workflow/si_bands_test/workflows/bands_auto/raw/bands.out line 65-68), extract the 3 reciprocal lattice vectors "reciprocal axes:"b1, b2, b3 (same unit, 2pi/a), then convert the high symmetry k-points to crystal_b format x1*b1+x2*b2+x3*b3 (x1,x2,x3) (alat cancels out). Then ask qmatgen the conventional name of these k-points and plot as xticklabels. Right now you just pass the k-points as is to pymatgen and as xticklabel, which is wrong.
 3. Refactor and resolve the technical debt: CLI bypasses QVService API layer. Add clear instructions in AI_understanding.md and other docs to align future implementations inside this framwork.
 4. For "qv analyze band", keep the previous explicit behavior of passing --symmetry etc, but make it more convenient to use: either --workflow <selector>, or if nothing provided (just "qv analyze band"), then try to go up and find workflow (like many other cli commands) (use current implementation!), if not in workflow, then try finding files in pwd. if found workflow, you can actually locate all relevant output files in raw folder. Goals is to automatically locate all relevant output files in raw folder without having to specify all files manually. Maybe it is good to have a centralized naming convention class, so everything is consistent (naming files during runtime and analysis trying to find them afterwards).
+
+Done.
+Task: Implement qv analyze structure for 3D crystal visualization (ball-and-stick, supercell, boundary options)
+You’re working inside the QuantumVITAS (QV) Python project.
+QV already has:
+A resource model for structures, workflows, steps, etc., with metadata and YAML.
+Structures stored primarily as pymatgen-compatible files (JSON with _meta, but in principle other formats too).
+A Typer CLI (qv) and a separation between:
+CLI layer (Typer commands)
+API / service layer (e.g. “QVService”-like logic)
+Core utilities (I/O, models, parsing, etc.)
+I want you to implement a new command:
+qv analyze structure <structure-selector> [options]
+that 3D-plots the crystal structure as a ball-and-stick model, using matplotlib, with support for:
+Loading structures from QV’s project (any pymatgen-supported format, not only JSON).
+Supercell visualization.
+Ball-and-stick (atoms + bonds using covalent radii).
+A toggle to show/hide periodic images of atoms on the cell boundaries (standard crystallographic visualization behavior).
+Please integrate with the existing QV architecture and style rather than bolting on a random script.
+1. User-facing behavior
+From the user’s perspective, I’d like something like:
+# Basic: plot a single unit cell of structure "si" in the current QV project
+qv analyze structure si
+
+# Explicit output file
+qv analyze structure si --output si.png
+
+# Supercell (e.g. 2×2×2)
+qv analyze structure si --supercell 2 2 2
+
+# Control boundary repetition of atoms (see below)
+qv analyze structure si --supercell 2 2 2 --repeat-boundary
+qv analyze structure si --no-repeat-boundary
+
+# Optionally show interactive window (if supported)
+qv analyze structure si --show
+You can adjust the exact option names if needed, but the semantics should be:
+<structure-selector>: resolved via QV’s existing resource/selector logic.
+--output: PNG path, default to something reasonable (e.g. structure.png in CWD or a project subdir).
+--supercell a b c: integers (default 1 1 1).
+--repeat-boundary / --no-repeat-boundary: boolean flag controlling whether to display periodic images on the boundaries.
+--show: optionally call plt.show() in addition to saving the PNG.
+2. Structure loading
+Please:
+Reuse QV’s existing logic to locate a structure resource from a selector and project root.
+Once you have the file path, load it with pymatgen:
+Prefer Structure.from_file(path), so it can handle .json, .cif, .poscar, etc., not only QV’s JSON.
+QV’s JSON has extra _meta fields; pymatgen should ignore them, but handle gracefully.
+The CLI must work from inside a QV project (using whatever “find project root from cwd” logic already exists).
+3. Supercell support
+Add a --supercell a b c option (integers, default 1 1 1):
+Before plotting, expand the structure to an a×b×c supercell.
+You can use Structure.make_supercell() or a similar pymatgen helper.
+Be careful about performance and visual clutter for larger supercells; 1×1×1 and 2×2×2 are typical.
+All further plotting and bond detection should use the expanded structure.
+4. Ball-and-stick representation
+The 3D visualization should be a ball-and-stick model:
+Atoms (balls)
+Use matplotlib 3D (e.g. Axes3D) to:
+Plot atoms as spheres or at least large markers at Cartesian coordinates.
+Optionally color them by element (you can choose a simple fixed color map or reuse a standard CPK-like mapping if you like; keep it readable, not overly complex).
+Sizes/radii:
+You don’t have to exactly scale marker size by radius, but it’s nice if heavier atoms look somewhat larger.
+You may use Element(symbol).covalent_radius from pymatgen for semantics.
+Bonds (sticks)
+Construct bonds based on interatomic distances and covalent radii:
+Use pymatgen’s element data:
+from pymatgen.core.periodic_table import Element
+Element("Si").covalent_radius
+A typical rule:
+d
+<
+R
+A
++
+R
+B
++
+Δ
+d<R 
+A
+​	
+ +R 
+B
+​	
+ +Δ
+where d is the distance between atoms, R_A and R_B are covalent radii, and Δ is a small tolerance (e.g. 0.2 Å).
+Use pymatgen’s neighbor finding to handle periodicity cleanly:
+structure.get_neighbors(site, cutoff)
+Draw each bond as a line segment between the two atomic coordinates (ball-and-stick).
+Avoid double counting bonds (i–j vs j–i) and avoid crazy long bonds across the supercell if your cutoff is too big.
+You are free to design a small detect_bonds(structure, tolerance=...) helper that returns a list of (i, j, distance) pairs.
+5. Boundary repetition option
+I want an option controlling whether to show periodic images of atoms on the cell boundaries.
+Conceptually:
+Suppose a structure with one atom at (0,0,0) in a cubic cell of a = 1.
+If repeat-boundary = false (default for many visualizations):
+→ show a single ball at (0,0,0) within the primary cell.
+If repeat-boundary = true:
+→ show the 8 corner atoms (0,0,0), (1,0,0), (0,1,0), ..., (1,1,1) like in standard crystallographic 3D visualization (crystal viewer showing “sharing” of atoms at corners/edges/faces).
+For a more general structure and supercell:
+With --repeat-boundary, display periodic images of atoms on boundaries so that:
+The visual looks like a tiling of the unit cell(s), without “missing corners”.
+Bonds are drawn correctly across the boundaries.
+With --no-repeat-boundary, only show atoms inside the primary visual cell (or supercell) in one canonical representation (no additional periodic images at boundaries).
+The exact implementation is up to you, but please:
+Document what you do in code comments.
+Make sure the behavior is consistent and doesn’t produce “half bonds” or missing obvious neighbors.
+6. Plot styling and backend
+Use matplotlib with a headless-safe backend, e.g.:
+import matplotlib
+matplotlib.use("Agg")
+in the plotting module, so CLI usage works on servers without a display.
+Use a 3D axis (projection="3d").
+Set axis labels like x (Å), y (Å), z (Å).
+Implement some kind of equal aspect ratio so that the lattice doesn’t look squashed along one axis.
+If --show is passed:
+After saving the PNG, you can call plt.show() if the environment supports it.
+In headless mode, it’s fine if --show effectively does nothing or logs a warning; just don’t crash.
+7. Program structure guidelines (important)
+Please respect and extend the existing architecture instead of bypassing it:
+Core plotting/analysis code:
+Lives in a dedicated module (e.g. something under quantumvitas/analysis/ or a similar place that makes sense in the current repo layout).
+Functions like “load structure”, “expand supercell”, “detect bonds”, “create 3D plot” should be reusable from elsewhere (future GUI, notebooks).
+Service/API layer:
+A function (or methods on an existing service class) that:
+Resolves the structure from a selector and project root.
+Calls the core plotting function with the right parameters (supercell, repeat-boundary, output path, show flag).
+Handles errors from resource resolution appropriately.
+CLI (qv analyze structure):
+A Typer command that:
+Parses arguments and options.
+Uses existing project/root discovery helpers (whatever QV already uses).
+Calls the service/API layer.
+Prints a short success message (e.g. “Saved 3D structure plot to …”).
+Try to keep CLI code thin and keep the heavy logic in the reusable modules.
+You are free to choose exact function names and module paths as long as they feel idiomatic for the existing QV codebase and are reasonably documented.
+8. Flexibility & expectations
+I’ve described what I want conceptually and what the UX should look like, but:
+You’re encouraged to read the existing QV code (CLI, project model, structure handling) and adapt to its patterns.
+If you see a cleaner or more natural way to structure the code (e.g. how to organize an analysis or visualization package), please do so, as long as:
+The CLI behavior matches the overall description.
+The implementation is clean, documented, and consistent with the rest of the project.
+The plotting code remains reusable (not tightly bound to Typer).
+Please implement the full qv analyze structure pipeline as described, then summarize what you did (modules changed, new functions, how to use the command) in comments or a short note.
+
+
+Done.
