@@ -796,14 +796,31 @@ crystal_c :
 As tpiba_c, but k-points are in crystal coordinates.
 
 
+Keep in mind, always usecore/resolution.py and core/context.py to locate resources.
 
-
+1. Some auto-generated bug report, might not be correct, decide for yourself:
 Bug 1:
 The `to_qe_kpoints_crystal_b` method sets the last k-point segment's weight to 0, which tells QE to generate zero intermediate points along that final line segment. This produces incomplete band structure data. All segments should have positive weights according to QE's `crystal_b` format specification. The last point should use `n_points` instead of 0.
-
  @src/quantumvitas/analysis/kpath.py:71-72 
-
-Bug 2:
+Bug 2
 Verify this issue exists and fix it:
-
 The `extract_energy_metrics_from_text` function returns `result.fermi_energy` with a key named `"fermi_energy_ry"`, but `result.fermi_energy` is in eV according to the SCFResult docstring. This unit mismatch causes incorrect comparisons in verification.py where the value is treated as Ry when it's actually eV, leading to wrong tolerance checks and error messages.
+2. qv show-command $PYTHONSRC/tests/data/7_Si_bandStructure/si.3_bands.pp.in
+qv init step bands 
+qv show-command $PYTHONSRC/tests/data/7_Si_bandStructure/si.2_bands.in
+qv init step bands_pw
+3. pseudo_dir "pseudo_dir = '<HOME>/Code/quantumVITAS/manual_tests/project2_bands/pseudo'" is in the project. But there is nothing. Where did you get pseudo? Actually, it is good to copy/download pseudo to the project/pseudo so the project folder itself is self-consistent. And then really point pseudo to that dir. You can first try to find pseudo file in quantumvitas_root/pseudo, if not, download it.
+4. if user qv run via .in file, then copy the original .in file to the project/raw folder as original file reference, then write and run the new input file. If the user qv run via yaml, only save the final generated input file for QE run. Do not put a lot of input files in raw folder. Right now I see 2-3 input files for each step .in, _run.in, _original.in
+5. for bands step (for bands.x), no need tp generate &control namelist, nor do we need pseudo_dir.
+6. qv run step [<selector>] [--workflow <workflow_name>]: first try to resolve project tree and see whether we are under a workflow (already implemented this function). If yes, try to run the step within the workflow (in/out in the standard raw folder) (either from <selector> or if without selector and only one step exists, run that step. Otherwise, error). If not, run the step as standalone (this is what you hae implemented: you must locate the step.yaml file)
+7.1 qv analyze band ../raw/si.bands.pp.dat.gnu --plot --format png --symmetry ../raw/bands.pw_run.out --scf ../raw/nscf.pw_run.out: first, it is not scf but nscf, if you want to extract accurate Fermi energy (although let's be compatible, if no nscf, scf is also good. No need to modify code I assume, but just change -scf to -nscf). Second, in the test "tests/integration/test_si_bands_workflow_comprehensive.py", you wrote "bandspp_out = list(raw_dir.glob("*bandspp*.out")) symmetry_file = bandspp_out[0] if bandspp_out else None", which is not correct: there is no such output in raw folder. You should use ../raw/bands.pw_run.out instead. 
+7.2 In bands.pw_run.out (output of bands.x), high symmertry k-points are given incartesian coordinates in unit of 2*pi/a. You need to convert that first to crystal_b: look ay --scf/nscf output file (see tests/data/7_Si_bandStructure/reference/si.2_bands.out), extract the 3*3 matrix of reciprocal lattice vectors "reciprocal axes:"b1, b2, b3, then convert the high symmetry k-points to crystal_b format x1*b1+x2*b2+x3*b3 (x1,x2,x3) (alat cancels out). Then ask qmatgen the conventional namke of these k-points.
+7.3 What does pw in bands.pw_run mean? It never calls pw.x. Unify the naming convention of input/output files in raw folder.
+8.1: In workflow.yaml, need to write ULID of the workflow (id should be ULID, not slug!). Actually, for all resources.yaml or structure.json, need to write ULID,name,slug,relative path to project root.
+8.2 Revert last delete command from trash (qv delete --list: show all deleted resources in trash, qv delete --restore path_to_deleted_file: revert deletion (if trash is project folder, then simply move it out of trash. if it is workflow, then move it back to the workflow folder and add reference to parent resource. if it is step, need to find parent workflow according to ULID in the project, move it back to the last step in that workflow, and update all references.)).
+9.1 qv rename step <workflow> <step-id> [--project PATH] [--id NEW_ID] => qv rename step <step-name> <step-new_name> [--workflow <workflow-selector>] [--project PATH] workflow is optional, if not provided, then find parent workflow from current folder up. Rethink about logic and optimal command sequenceof all renaming commands, make them consistent. 
+9.2 Refactor qv rename to qv configure workflow/step/structure <selector> --name <new_name> (still keep alias qv rename for backward compatibility).
+10. Check that between CLI and python, there is always a layer of api.py to separate concerns.
+11. docs/CLI_API_REFERENCE.md needs to be updated thoroughly!
+12. Update AI_understanding.md (in detail) and other docs accordingly.
+

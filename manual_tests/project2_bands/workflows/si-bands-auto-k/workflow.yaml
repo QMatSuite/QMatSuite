@@ -1,0 +1,14 @@
+id: si-bands-auto-k
+mode: normal
+workflow:
+  working_dir: raw
+  structure: si
+steps:
+- id: scf
+  step_file: steps/scf.step.yaml
+- id: nscf
+  step_file: steps/nscf.step.yaml
+- id: bands_pw
+  step_file: steps/bands_pw.step.yaml
+- id: bands
+  step_file: steps/bands.step.yaml
