@@ -273,14 +273,39 @@ CLI supports QE parameter overrides with special syntax:
 | `--tprnfor` | Boolean true |
 | `--tprnfor=false` | Boolean false |
 
-### 4.4 Separation of Concerns
+### 4.4 API Architecture (Technical Debt)
 
-The CLI (`main.py`) was refactored to extract core logic:
+**Current state**: The CLI bypasses the `QVService` API layer.
 
-- **`core/project_utils.py`**: Project/config helpers that raise `ValueError`, `ResourceNotFoundError`
-- **`cli/main.py`**: Thin wrapper that converts to `typer.BadParameter`
+```
+CURRENT (Technical Debt):
+    CLI (main.py) → core/project_utils.py (DIRECT)
+                  → core/resources.py (DIRECT)
+                  → workflow/* (DIRECT)
 
-This allows core functions to be used outside the CLI (notebooks, scripts).
+INTENDED:
+    CLI (main.py) → api.py (QVService) → core/* modules
+                                       → workflow/*
+```
+
+**`api.py` (`QVService`)** provides a clean service layer:
+- All methods receive `project_root` explicitly (never use `os.getcwd()`)
+- Uses selectors (name/slug/path) for resources
+- Raises `QVServiceError` for all errors
+- Provides consistent interface for CLI, GUI, and scripts
+
+**`cli/main.py`** should be a thin wrapper:
+- Parse CLI arguments with Typer
+- Call `QVService` methods
+- Convert `QVServiceError` to `typer.BadParameter`
+- Format output for terminal
+
+**For new implementations**: Always add functionality to `QVService` first, then call from CLI.
+
+**Files**:
+- **`core/project_utils.py`**: Low-level config helpers that raise `ValueError`, `ResourceNotFoundError`
+- **`api.py`**: Service layer (`QVService`) that should be the single entry point
+- **`cli/main.py`**: Thin CLI wrapper (currently too thick)
 
 ---
 
@@ -579,7 +604,42 @@ The verification logic checks:
 
 Tolerances:
 - Total energy: 1e-5 Ry
-- Fermi energy: 1e-2 Ry
+- Fermi energy: 1e-2 eV (note: units are eV for Fermi energy)
+
+### 9.6 New Feature Implementation Pattern
+
+When adding new functionality, follow this pattern:
+
+1. **Add to `QVService` first** (`api.py`):
+   ```python
+   @staticmethod
+   def new_feature(project_root: Path, selector: str, **kwargs) -> Result:
+       """Implement the core logic here."""
+       # 1. Resolve resources
+       resource = resolve_workflow(project_root, selector)
+       # 2. Load models
+       model = load_workflow(resource.absolute_path, project_root)
+       # 3. Perform operation
+       # 4. Save models
+       save_workflow(model, resource.absolute_path)
+       return result
+   ```
+
+2. **Add CLI wrapper** (`cli/main.py`):
+   ```python
+   @app.command("new-feature")
+   def new_feature_command(...):
+       try:
+           result = QVService.new_feature(project_root, selector, **kwargs)
+           typer.echo(f"Success: {result}")
+       except QVServiceError as e:
+           raise typer.BadParameter(str(e))
+   ```
+
+3. **Never**:
+   - Import `core/project_utils.py` directly in CLI
+   - Use `Path.cwd()` in `QVService` methods
+   - Duplicate logic between CLI and `QVService`
 
 ---
 
@@ -1151,16 +1211,87 @@ CLI (main.py) → api.py (QVService) → core/* modules
 | `docs/CLI_API_REFERENCE.md` | Reorganized commands, added deprecation notes, updated unit conventions |
 | `AI_understanding.md` | This section |
 
-### 14.8 Files Modified in This Session
+### 14.8 Band Structure K-Point Labeling
+
+**Problem**: High-symmetry k-points from `bands.x` output are in Cartesian coordinates (2π/a), which don't directly correspond to standard labels like Γ, X, L, K, etc.
+
+**Solution**: Convert Cartesian k-points to crystal (fractional) coordinates using reciprocal lattice vectors from `pw.x` output:
+
+```python
+# Parse reciprocal lattice from pw.x output (scf/nscf/bands)
+#     reciprocal axes: (cart. coord. in units 2 pi/alat)
+#               b(1) = ( -0.707107 -0.707107  0.707107 )
+#               ...
+
+# Convert k_cart → k_cryst
+# k_cart = k_cryst[0]*b1 + k_cryst[1]*b2 + k_cryst[2]*b3
+# k_cryst = B^(-T) @ k_cart
+
+# Then identify label from crystal coordinates (structure-independent)
+```
+
+**New functions in `analysis/parsers.py`**:
+- `_parse_reciprocal_lattice_vectors(output_file)` - Extract b1, b2, b3 from pw.x output
+- `_cartesian_to_crystal(k_cart, B)` - Convert Cartesian to crystal coords
+- `_identify_high_symmetry_point_crystal(k_cryst)` - Label from crystal coords
+
+**CLI usage**:
+```bash
+# Pass SCF/NSCF output to provide reciprocal lattice vectors
+qv analyze band si.bands.dat.gnu --symmetry si.bands.out --scf si.nscf.out --plot
+```
+
+### 14.9 Files Modified in Session 2
+
+| File | Purpose |
+|------|---------|
+| `src/quantumvitas/analysis/parsers.py` | K-point coordinate conversion and crystal labeling |
+| `src/quantumvitas/analysis/bands.py` | Pass pw_output_file for k-point conversion |
+| `src/quantumvitas/cli/main.py` | Pass scf_file to parse_bands_gnu for k-point conversion |
+| `tests/integration/test_si_bands_workflow_comprehensive.py` | Copy only Si pseudopotentials, fix file patterns |
+| `AI_understanding.md` | API architecture guidelines, new feature pattern |
+
+### 14.10 Auto-Detection in `qv analyze band`
+
+**New feature**: The `qv analyze band` command can now auto-locate files from workflow context.
+
+**Usage patterns**:
+```bash
+# Explicit workflow selector
+qv analyze band --workflow si-bands --plot
+
+# Auto-detect from pwd (if inside workflow)
+cd project/workflows/si-bands/raw
+qv analyze band --plot
+
+# Auto-detect from pwd (searches current directory)
+qv analyze band --plot
+
+# Explicit files (still supported)
+qv analyze band si.bands.dat.gnu --symmetry si.bands.out --scf si.nscf.out --plot
+```
+
+**New module**: `workflow/naming.py` provides centralized file naming conventions:
+- `WorkflowFileNaming` class - input/output extensions for step types
+- `BandAnalysisFiles` dataclass - container for band analysis files
+- `find_band_analysis_files()` - auto-locate files in a directory
+
+**Implementation uses**:
+- `core/context.py:find_path_context_from_pwd()` - detect enclosing workflow
+- `core/project_utils.py:find_workflow_entry()` - resolve workflow selector
+- `workflow/naming.py` - centralized file patterns
+
+### 14.11 Files Modified in Session 1
 
 | File | Purpose |
 |------|---------|
 | `src/quantumvitas/analysis/energy.py` | Fix `fermi_energy_ev` key |
 | `src/quantumvitas/analysis/dos.py` | Use `fermi_energy_ev` key |
-| `src/quantumvitas/analysis/bands.py` | Use `fermi_energy_ev` key |
+| `src/quantumvitas/analysis/bands.py` | Use `fermi_energy_ev` key, prefer NSCF for Fermi |
 | `src/quantumvitas/workflow/verification.py` | Use `fermi_energy_ev` key |
 | `src/quantumvitas/core/engines/qe_pseudopotentials.py` | Pseudopotential priority and copying |
 | `src/quantumvitas/workflow/input_runner.py` | Simplified input file naming |
+| `src/quantumvitas/workflow/workflow.py` | Better input file extensions (.bands.in, .dos.in) |
 | `src/quantumvitas/cli/main.py` | Module detection, configure --name, rename deprecation, workflow meta |
 | `templates/workflow/si-dos/workflow.yaml` | Updated to new meta format |
 | `docs/CLI_API_REFERENCE.md` | Comprehensive update |

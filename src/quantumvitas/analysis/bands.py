@@ -30,6 +30,7 @@ def analyze_bands_file(
     save_plot: bool = False,
     plot_format: str = "png",
     symmetry_labels: Optional[List[str]] = None,
+    structure_file: Optional[Path | str] = None,
 ) -> dict:
     """
     Analyze a band structure data file.
@@ -37,13 +38,14 @@ def analyze_bands_file(
     Args:
         bands_file: Path to bands.dat.gnu file
         symmetry_file: Optional path to bands.x output (for high-symmetry points)
-        scf_file: Optional path to SCF output file (for Fermi energy)
+        scf_file: Optional path to SCF/NSCF output file (for Fermi energy AND reciprocal lattice)
         fermi_energy: Fermi energy in eV (overrides extraction from files)
         shift_fermi: Shift energies to set Fermi at 0
         output_dir: Directory to save outputs
         save_plot: Whether to save a plot
         plot_format: Plot format (png, svg, pdf)
         symmetry_labels: Override labels for high-symmetry points
+        structure_file: Optional path to structure file for pymatgen k-point labeling
         
     Returns:
         Dictionary with band analysis results
@@ -58,10 +60,13 @@ def analyze_bands_file(
         fermi_energy = scf_result.fermi_energy
     
     # Parse band data
+    # Use scf_file (or any pw.x output) for reciprocal lattice vectors
     band_data = parse_bands_gnu(
         bands_path,
         symmetry_file=symmetry_file,
         fermi_energy=fermi_energy,
+        pw_output_file=scf_file,  # Provides reciprocal lattice vectors for k-point conversion
+        structure_file=structure_file,
     )
     
     # Calculate summary statistics
@@ -123,6 +128,9 @@ def analyze_bands(workflow: Workflow, result: WorkflowResult, results_dir: Path)
     Locate band structure outputs and generate plots.
     
     Looks for bands.dat.gnu and bands.x output files in the workflow directory.
+    Uses SCF/NSCF output for:
+    1. Fermi energy (NSCF preferred for accuracy)
+    2. Reciprocal lattice vectors (for proper k-point labeling)
     """
     band_steps = [
         step for step in result.steps if step.step_type.value.startswith("bands")
@@ -132,19 +140,29 @@ def analyze_bands(workflow: Workflow, result: WorkflowResult, results_dir: Path)
     
     raw_dir = workflow.raw_dir if hasattr(workflow, 'raw_dir') else results_dir
     
-    # Find Fermi energy from SCF/NSCF steps
+    # Find Fermi energy and output file from SCF/NSCF steps
     # Priority: nscf > scf (nscf uses denser k-grid for more accurate Fermi energy)
     fermi_energy = None
     scf_fermi = None
     nscf_fermi = None
+    pw_output_file = None  # For reciprocal lattice vectors
+    
     for step in result.steps:
         step_fermi = step.metrics.get("fermi_energy_ev")
+        step_type = step.step_type.value.lower() if hasattr(step.step_type, 'value') else str(step.step_type).lower()
+        
         if step_fermi is not None:
-            step_type = step.step_type.value.lower() if hasattr(step.step_type, 'value') else str(step.step_type).lower()
             if "nscf" in step_type:
                 nscf_fermi = step_fermi
+                # Use NSCF output for reciprocal lattice (preferred)
+                if step.output_file and step.output_file.exists():
+                    pw_output_file = step.output_file
             elif "scf" in step_type:
                 scf_fermi = step_fermi
+                # Use SCF output if no NSCF output found yet
+                if pw_output_file is None and step.output_file and step.output_file.exists():
+                    pw_output_file = step.output_file
+    
     # Prefer NSCF Fermi energy over SCF
     fermi_energy = nscf_fermi if nscf_fermi is not None else scf_fermi
     
@@ -169,6 +187,7 @@ def analyze_bands(workflow: Workflow, result: WorkflowResult, results_dir: Path)
                     bands_file,
                     symmetry_file=symmetry_file,
                     fermi_energy=fermi_energy,
+                    pw_output_file=pw_output_file,  # For reciprocal lattice vectors
                 )
                 
                 # Save plot
