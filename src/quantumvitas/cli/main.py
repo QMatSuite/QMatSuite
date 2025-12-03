@@ -109,12 +109,18 @@ run_app = typer.Typer(
     no_args_is_help=False,
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
 )
+analyze_app = typer.Typer(
+    help="Analyze QE outputs and structures.",
+    no_args_is_help=True,
+    invoke_without_command=True,
+)
 
 app.add_typer(init_app, name="init")
 app.add_typer(rename_app, name="rename")
 app.add_typer(delete_app, name="delete")
 app.add_typer(configure_app, name="configure")
 app.add_typer(run_app, name="run")
+app.add_typer(analyze_app, name="analyze")
 
 
 def _resolve_project_root(start: Optional[Path] = None) -> Path:
@@ -2550,8 +2556,8 @@ def run_auto_dispatch(
     )
 
 
-@app.command("analyze")
-def analyze_command(
+@analyze_app.command("output")
+def analyze_output_command(
     kind: str = typer.Argument(..., help="energy, band, dos, or scf"),
     input_file: Optional[Path] = typer.Argument(
         None, help="Output/data file to analyze (optional for 'band' if --workflow or inside workflow)"
@@ -2599,11 +2605,11 @@ def analyze_command(
     - Falls back to searching current directory for files
     
     Examples:
-        qv analyze energy si.scf.out
-        qv analyze band --workflow si-bands --plot
-        qv analyze band si.bands.dat.gnu --symmetry si.bands.out --scf si.nscf.out --plot
-        qv analyze band --plot  # auto-detect files from pwd or enclosing workflow
-        qv analyze dos si.dos.dat --plot --energy-range -5,5
+        qv analyze output energy si.scf.out
+        qv analyze output band --workflow si-bands --plot
+        qv analyze output band si.bands.dat.gnu --symmetry si.bands.out --scf si.nscf.out --plot
+        qv analyze output band --plot  # auto-detect files from pwd or enclosing workflow
+        qv analyze output dos si.dos.dat --plot --energy-range -5,5
     """
     from quantumvitas.analysis.parsers import (
         parse_scf_output, parse_dos_data, parse_bands_gnu
@@ -2825,6 +2831,122 @@ def analyze_command(
         
     else:
         raise typer.BadParameter("kind must be one of: energy, scf, band, dos")
+
+
+@analyze_app.command("structure")
+def analyze_structure_command(
+    structure_selector: str = typer.Argument(..., help="Structure selector (name/slug/path)"),
+    supercell: Optional[str] = typer.Option(
+        None, "--supercell", "-s",
+        help="Supercell dimensions as 'a b c', e.g., '2 2 2'"
+    ),
+    repeat_boundary: bool = typer.Option(
+        False, "--repeat-boundary", "-r",
+        help="Show periodic images of atoms at cell boundaries"
+    ),
+    no_repeat_boundary: bool = typer.Option(
+        False, "--no-repeat-boundary",
+        help="Don't show periodic images at boundaries (default)"
+    ),
+    output: Optional[Path] = typer.Option(
+        None, "--output", "-o",
+        help="Output file path (default: structure.png in current directory)"
+    ),
+    project: Optional[Path] = typer.Option(
+        None, "--project", "-p",
+        help="Project root (defaults to auto-detect)"
+    ),
+    plot_format: str = typer.Option(
+        "png", "--format", "-f",
+        help="Output format (png, svg, pdf)"
+    ),
+    show: bool = typer.Option(
+        False, "--show",
+        help="Attempt to display plot interactively (may not work headless)"
+    ),
+) -> None:
+    """
+    Visualize a crystal structure as a 3D ball-and-stick plot.
+    
+    Creates a 3D visualization of the crystal structure with:
+    - Atoms shown as spheres (colored by element)
+    - Bonds shown as lines (based on covalent radii)
+    - Unit cell wireframe
+    
+    Supports supercell expansion and boundary repetition for
+    standard crystallographic visualization.
+    
+    Examples:
+        qv analyze structure si
+        qv analyze structure si --output si_structure.png
+        qv analyze structure si --supercell "2 2 2"
+        qv analyze structure si --supercell "2 2 2" --repeat-boundary
+        qv analyze structure si --show
+    """
+    from quantumvitas.io import read_structure
+    from quantumvitas.analysis.structure_viz import visualize_structure
+    
+    # Resolve project root
+    try:
+        project_root = Path(project).resolve() if project else _resolve_project_root()
+    except typer.BadParameter:
+        # Not in a project - try to load structure directly as file
+        structure_path = Path(structure_selector)
+        if structure_path.exists():
+            structure = read_structure(structure_path)
+            struct_name = structure_path.stem
+            project_root = None
+        else:
+            raise typer.BadParameter(
+                f"Not in a project and '{structure_selector}' is not a valid file path. "
+                "Use --project to specify a project root, or provide a direct file path."
+            )
+    else:
+        # Inside a project - resolve structure
+        struct, struct_name = _resolve_structure_input(project_root, structure_selector)
+        structure = struct
+    
+    # Parse supercell
+    if supercell:
+        try:
+            parts = supercell.strip().split()
+            if len(parts) != 3:
+                raise ValueError()
+            supercell_tuple = (int(parts[0]), int(parts[1]), int(parts[2]))
+        except (ValueError, IndexError):
+            raise typer.BadParameter(
+                "--supercell must be three integers like '2 2 2'"
+            )
+    else:
+        supercell_tuple = (1, 1, 1)
+    
+    # Handle repeat_boundary flags
+    boundary = repeat_boundary and not no_repeat_boundary
+    
+    # Determine output path
+    if output:
+        output_path = Path(output).resolve()
+    else:
+        output_path = Path.cwd() / f"{struct_name}_structure.{plot_format}"
+    
+    # Visualize
+    result = visualize_structure(
+        structure=structure,
+        output_path=output_path,
+        supercell=supercell_tuple,
+        repeat_boundary=boundary,
+        show=show,
+        plot_format=plot_format,
+    )
+    
+    # Print summary
+    typer.secho(f"✓ Structure visualization saved to: {result.output_path}", fg=typer.colors.GREEN)
+    typer.echo(f"  Atoms: {result.n_atoms}")
+    typer.echo(f"  Bonds: {result.n_bonds}")
+    if supercell_tuple != (1, 1, 1):
+        typer.echo(f"  Supercell: {supercell_tuple[0]}×{supercell_tuple[1]}×{supercell_tuple[2]}")
+    if boundary:
+        typer.echo("  Boundary repetition: enabled")
 
 
 @app.command("params")
