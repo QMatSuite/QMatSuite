@@ -10,8 +10,8 @@ from typing import Dict, Tuple
 from quantumvitas.analysis.energy import extract_energy_metrics_from_text
 from .types import StepMode, StepStatus, StepType
 
-ENERGY_TOLERANCE = 1e-5
-FERMI_TOLERANCE = 1e-2
+ENERGY_TOLERANCE = 1e-5  # Rydberg
+FERMI_TOLERANCE = 1e-2  # eV (QE reports Fermi in eV)
 
 ENERGY_STEP_TYPES = {
     StepType.SCF,
@@ -63,15 +63,15 @@ def strict_verify(
 
     if (
         step_type in FERMI_STEP_TYPES
-        and metrics.get("fermi_energy_ry") is not None
-        and reference_metrics.get("fermi_energy_ry") is not None
+        and metrics.get("fermi_energy_ev") is not None
+        and reference_metrics.get("fermi_energy_ev") is not None
     ):
         tol = overrides.get("fermi_energy", FERMI_TOLERANCE)
-        diff = abs(metrics["fermi_energy_ry"] - reference_metrics["fermi_energy_ry"])
+        diff = abs(metrics["fermi_energy_ev"] - reference_metrics["fermi_energy_ev"])
         if diff > tol:
             return (
                 False,
-                f"Fermi energy mismatch: Δ={diff:.3e} Ry (tol={tol})",
+                f"Fermi energy mismatch: Δ={diff:.3e} eV (tol={tol})",
             )
 
     # Fall back to raw comparison if no metrics are available.

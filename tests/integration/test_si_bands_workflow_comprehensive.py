@@ -204,20 +204,32 @@ class TestSiBandsWorkflowManualKpath:
         if not bands_gnu.exists():
             pytest.skip("Bands output not found - workflow may have failed")
         
-        # Find the bandspp output for symmetry points
-        bandspp_out = list(raw_dir.glob("*bandspp*.out"))
-        symmetry_file = bandspp_out[0] if bandspp_out else None
+        # Find the bands.x output for symmetry points
+        # Multiple naming conventions: *.bands.out, *bandspp*.out
+        symmetry_file = None
+        for pattern in ["*.bands.out", "*bandspp*.out"]:
+            matches = list(raw_dir.glob(pattern))
+            if matches:
+                symmetry_file = matches[0]
+                break
         
-        # Find SCF output for Fermi energy
-        scf_out = list(raw_dir.glob("*scf*.out"))
-        scf_file = scf_out[0] if scf_out else None
+        # Find NSCF output for Fermi energy (preferred over SCF for accuracy)
+        fermi_file = None
+        nscf_out = list(raw_dir.glob("*nscf*.out"))
+        if nscf_out:
+            fermi_file = nscf_out[0]
+        else:
+            # Fall back to SCF output
+            scf_out = list(raw_dir.glob("*scf*.out"))
+            if scf_out:
+                fermi_file = scf_out[0]
         
         # Run qv analyze band
         args = ["analyze", "band", str(bands_gnu), "--plot", "--format", "png"]
         if symmetry_file:
             args.extend(["--symmetry", str(symmetry_file)])
-        if scf_file:
-            args.extend(["--scf", str(scf_file)])
+        if fermi_file:
+            args.extend(["--scf", str(fermi_file)])
         
         result = run_qv(args, cwd=project_dir)
         
@@ -339,17 +351,31 @@ class TestSiBandsWorkflowAutoKpath:
         if not bands_gnu.exists():
             pytest.skip("Bands output not found - workflow may have failed")
         
-        bandspp_out = list(raw_dir.glob("*bandspp*.out"))
-        symmetry_file = bandspp_out[0] if bandspp_out else None
+        # Find the bands.x output for symmetry points
+        # Multiple naming conventions: *.bands.out, *bandspp*.out
+        symmetry_file = None
+        for pattern in ["*.bands.out", "*bandspp*.out"]:
+            matches = list(raw_dir.glob(pattern))
+            if matches:
+                symmetry_file = matches[0]
+                break
         
-        scf_out = list(raw_dir.glob("*scf*.out"))
-        scf_file = scf_out[0] if scf_out else None
+        # Find NSCF output for Fermi energy (preferred over SCF for accuracy)
+        fermi_file = None
+        nscf_out = list(raw_dir.glob("*nscf*.out"))
+        if nscf_out:
+            fermi_file = nscf_out[0]
+        else:
+            # Fall back to SCF output
+            scf_out = list(raw_dir.glob("*scf*.out"))
+            if scf_out:
+                fermi_file = scf_out[0]
         
         args = ["analyze", "band", str(bands_gnu), "--plot", "--format", "png"]
         if symmetry_file:
             args.extend(["--symmetry", str(symmetry_file)])
-        if scf_file:
-            args.extend(["--scf", str(scf_file)])
+        if fermi_file:
+            args.extend(["--scf", str(fermi_file)])
         
         result = run_qv(args, cwd=project_dir)
         

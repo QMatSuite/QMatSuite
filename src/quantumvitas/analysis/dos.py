@@ -102,9 +102,9 @@ def analyze_dos(workflow: Workflow, result: WorkflowResult, results_dir: Path) -
     # Find Fermi energy from SCF/NSCF steps if available
     fermi_energy = None
     for step in result.steps:
-        if step.metrics.get("fermi_energy_ry"):
-            # Note: QE reports Fermi energy in eV in output, but metrics might store in Ry
-            fermi_energy = step.metrics.get("fermi_energy_ry")
+        if step.metrics.get("fermi_energy_ev"):
+            # QE reports Fermi energy in eV
+            fermi_energy = step.metrics.get("fermi_energy_ev")
             break
     
     dos_results = []
