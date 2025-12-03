@@ -1281,7 +1281,51 @@ qv analyze band si.bands.dat.gnu --symmetry si.bands.out --scf si.nscf.out --plo
 - `core/project_utils.py:find_workflow_entry()` - resolve workflow selector
 - `workflow/naming.py` - centralized file patterns
 
-### 14.11 Files Modified in Session 1
+### 14.11 3D Structure Visualization (`qv analyze structure`)
+
+**New command**: `qv analyze structure <selector> [options]`
+
+Creates 3D ball-and-stick visualization of crystal structures using matplotlib.
+
+**Features**:
+- Atoms as colored spheres (CPK-like element colors)
+- Bonds as lines (detected via covalent radii)
+- Supercell expansion (`--supercell "2 2 2"`)
+- Boundary repetition (`--repeat-boundary`)
+- Unit cell wireframe overlay
+- Multiple output formats (png, svg, pdf)
+
+**Architecture**:
+- **Core module**: `analysis/structure_viz.py`
+  - `visualize_structure()` - Main entry point
+  - `plot_structure_3d()` - Creates matplotlib 3D plot
+  - `detect_bonds()` - Bond detection via covalent radii
+    - Uses coordinate-based deduplication to handle periodic images correctly
+    - `include_periodic_images=False` by default to show only internal bonds
+    - With `include_periodic_images=True` (for boundary repetition), shows bonds to periodic images
+  - `generate_boundary_atoms()` - Periodic image generation
+  - `StructurePlotOptions` - Configuration dataclass
+  - `COVALENT_RADII` - Built-in covalent radii table (Cordero et al., Dalton Trans. 2008)
+  - `get_element_radius()` - Uses built-in table, falls back to pymatgen's `atomic_radius`
+  
+- **Service layer**: `api.py:QVService.visualize_structure()`
+  - Resolves structure from selector
+  - Calls core visualization function
+  - Returns metadata dict
+
+- **CLI**: `cli/main.py:analyze_structure_command()`
+  - Parses arguments
+  - Supports both project structures and direct file paths
+  - Prints success message with stats
+
+**Usage examples**:
+```bash
+qv analyze structure si
+qv analyze structure si --supercell "2 2 2" --repeat-boundary
+qv analyze structure /path/to/structure.cif --output vis.png
+```
+
+### 14.12 Files Modified in Session 1
 
 | File | Purpose |
 |------|---------|
@@ -1295,6 +1339,18 @@ qv analyze band si.bands.dat.gnu --symmetry si.bands.out --scf si.nscf.out --plo
 | `src/quantumvitas/cli/main.py` | Module detection, configure --name, rename deprecation, workflow meta |
 | `templates/workflow/si-dos/workflow.yaml` | Updated to new meta format |
 | `docs/CLI_API_REFERENCE.md` | Comprehensive update |
+
+### 14.13 Files Modified in Session 2 (Bond Detection Fix)
+
+| File | Purpose |
+|------|---------|
+| `src/quantumvitas/analysis/structure_viz.py` | Fixed bond detection for supercells |
+| | - Added `COVALENT_RADII` table (Cordero et al.) |
+| | - Fixed `get_element_radius()` to use built-in table + fallback |
+| | - Added `_is_coord_in_cell()` helper |
+| | - Modified `detect_bonds()` to use coordinate-based deduplication |
+| | - Added `include_periodic_images` parameter |
+| `tests/unit/test_structure_viz.py` | New comprehensive unit tests for structure viz |
 
 ---
 

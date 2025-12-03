@@ -16,7 +16,8 @@ description short and includes a minimal example you can run or adapt.
 | `qv detect-qe` | Print the QE installation detected via the engine registry. | `qv detect-qe` |
 | `qv show-command <input.in>` | Parse a QE input and print example `qv init step` / `qv configure step` commands. Auto-detects module type (pw.x, bands.x, dos.x, etc.). | `qv show-command ci_test_data/pw_single_tests/scf.in` |
 | `qv get-command <input.in>` | Alias for `qv show-command`. | `qv get-command inputs/si_scf.in` |
-| `qv analyze <energy|band|dos> [output-file]` | Invoke analysis hooks. For `band`, can auto-detect files from workflow. | `qv analyze band --workflow si-bands --plot` |
+| `qv analyze output <energy|band|dos> [file]` | Analyze QE outputs. For `band`, can auto-detect files. | `qv analyze output band --workflow si-bands --plot` |
+| `qv analyze structure <selector> [options]` | 3D ball-and-stick visualization of crystal structure. | `qv analyze structure si --supercell "2 2 2" --output si.png` |
 | `qv params <module> [--section SECTION]` | Inspect parameters scraped from the QE docs (`qe_module_parameters.json`). | `qv params pw --section SYSTEM` |
 
 ### Configure Commands (Recommended)
@@ -159,29 +160,73 @@ In the metrics dictionary returned by analysis functions:
 - `total_energy_ry`: Total energy in Rydberg
 - `fermi_energy_ev`: Fermi energy in electronvolts
 
-## Analyze Command Auto-Detection
+## Analyze Commands
 
-For `qv analyze band`, files can be auto-detected from workflow context:
+### `qv analyze output` - QE Output Analysis
+
+For `qv analyze output band`, files can be auto-detected from workflow context:
 
 ```bash
 # Explicit workflow selector
-qv analyze band --workflow si-bands --plot
+qv analyze output band --workflow si-bands --plot
 
 # Auto-detect from current directory (if inside a workflow)
 cd project/workflows/si-bands/raw
-qv analyze band --plot
+qv analyze output band --plot
 
 # Auto-detect from pwd (searches for files in current directory)
-qv analyze band --plot
+qv analyze output band --plot
 
 # Explicit files (still supported)
-qv analyze band si.bands.dat.gnu --symmetry si.bands.out --scf si.nscf.out --plot
+qv analyze output band si.bands.dat.gnu --symmetry si.bands.out --scf si.nscf.out --plot
 ```
 
 Auto-detection searches for:
 - `*.dat.gnu` or `*bands.dat.gnu` - Band energies
 - `*.bands.out` or `*bandspp*.out` - bands.x output (high-symmetry points)
 - `*nscf*.out` or `*scf*.out` - pw.x output (Fermi energy, reciprocal lattice)
+
+### `qv analyze structure` - 3D Crystal Visualization
+
+Visualize crystal structures as 3D ball-and-stick plots:
+
+```bash
+# Basic visualization (saves to current directory)
+qv analyze structure si
+
+# Custom output path
+qv analyze structure si --output si_structure.png
+
+# Supercell expansion (2×2×2)
+qv analyze structure si --supercell "2 2 2"
+
+# Show periodic images at cell boundaries
+qv analyze structure si --supercell "2 2 2" --repeat-boundary
+
+# Interactive display (if not headless)
+qv analyze structure si --show
+
+# Different output formats
+qv analyze structure si --format svg
+```
+
+Options:
+- `--supercell "a b c"` - Create a×b×c supercell (default: 1 1 1)
+- `--repeat-boundary` / `--no-repeat-boundary` - Show/hide periodic images at boundaries
+- `--output PATH` - Output file path (default: `<name>_structure.png`)
+- `--format FMT` - Output format: png, svg, pdf
+- `--show` - Display interactively (may not work in headless mode)
+- `--project PATH` - Project root for structure resolution
+
+Bond Detection:
+- Bonds detected using covalent radii (Cordero et al., Dalton Trans. 2008)
+- By default, only internal bonds within the cell are shown
+- With `--repeat-boundary`, bonds to periodic images are included
+- Supercell expansion shows all internal bonds (e.g., 2×2×2 Si has 32 bonds)
+
+Works with:
+- Project structures by selector (name/slug)
+- Direct file paths (.cif, .json, POSCAR, etc.)
 
 ## Python API surface
 

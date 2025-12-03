@@ -15,7 +15,7 @@ import shutil
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, Sequence, Tuple, TYPE_CHECKING
 
 import yaml
 
@@ -719,6 +719,73 @@ class QVService:
         return {
             "step": step_selector,
             "result": result,
+        }
+    
+    # -------------------------------------------------------------------------
+    # Analysis operations
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def visualize_structure(
+        project_root: Path,
+        structure_selector: str,
+        output_path: Optional[Path] = None,
+        supercell: Tuple[int, int, int] = (1, 1, 1),
+        repeat_boundary: bool = False,
+        show: bool = False,
+        plot_format: str = "png",
+    ) -> Dict[str, Any]:
+        """
+        Visualize a structure as a 3D ball-and-stick plot.
+        
+        Args:
+            project_root: Project root path
+            structure_selector: Structure selector (name/slug/path)
+            output_path: Path to save the plot (None for default)
+            supercell: Tuple of (a, b, c) supercell scaling factors
+            repeat_boundary: If True, show periodic images at cell boundaries
+            show: If True, attempt to display interactively
+            plot_format: Output format (png, svg, pdf)
+            
+        Returns:
+            Dict with visualization result metadata
+        """
+        from quantumvitas.io import read_structure
+        from quantumvitas.analysis.structure_viz import visualize_structure as viz_structure
+        
+        # Resolve structure
+        resolved = resolve_structure(project_root, structure_selector)
+        structure_path = resolved.absolute_path
+        
+        if not structure_path.exists():
+            raise QVServiceError(f"Structure file not found: {structure_path}")
+        
+        # Load structure
+        structure = read_structure(structure_path)
+        
+        # Determine output path
+        if output_path is None:
+            output_path = project_root / "results" / f"{resolved.meta.slug}_structure.{plot_format}"
+        
+        output_path = Path(output_path)
+        
+        # Visualize
+        result = viz_structure(
+            structure=structure,
+            output_path=output_path,
+            supercell=supercell,
+            repeat_boundary=repeat_boundary,
+            show=show,
+            plot_format=plot_format,
+        )
+        
+        return {
+            "structure": structure_selector,
+            "output_path": str(result.output_path) if result.output_path else None,
+            "n_atoms": result.n_atoms,
+            "n_bonds": result.n_bonds,
+            "supercell": list(supercell),
+            "repeat_boundary": repeat_boundary,
         }
 
 

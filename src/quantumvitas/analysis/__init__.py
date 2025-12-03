@@ -1,11 +1,12 @@
 """
-Workflow analysis utilities (DOS, bands, energy summaries).
+Workflow analysis utilities (DOS, bands, energy summaries, structure visualization).
 
 This module provides:
 - Parsers for QE output files (SCF, DOS, Bands)
 - Matplotlib-based plotting functions
 - Data structures for analysis results
 - K-path generation for band structure calculations
+- 3D crystal structure visualization
 """
 
 from .workflow_analysis import analyze_workflow
@@ -40,6 +41,17 @@ from .kpath import (
     generate_kpath,
     kpath_to_qe_input_data,
 )
+from .structure_viz import (
+    visualize_structure,
+    plot_structure_3d,
+    detect_bonds,
+    generate_boundary_atoms,
+    make_supercell,
+    StructurePlotOptions,
+    StructureVisualizationResult,
+    Bond,
+    BoundaryAtom,
+)
 
 __all__ = [
     # Workflow analysis
@@ -71,4 +83,14 @@ __all__ = [
     "KPathResult",
     "generate_kpath",
     "kpath_to_qe_input_data",
+    # Structure visualization
+    "visualize_structure",
+    "plot_structure_3d",
+    "detect_bonds",
+    "generate_boundary_atoms",
+    "make_supercell",
+    "StructurePlotOptions",
+    "StructureVisualizationResult",
+    "Bond",
+    "BoundaryAtom",
 ]
