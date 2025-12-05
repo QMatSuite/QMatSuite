@@ -1,0 +1,143 @@
+/* ResultPanel Styles */
+
+.result-panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.result-panel--empty {
+  justify-content: center;
+  align-items: center;
+}
+
+.result-panel__placeholder {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 40px;
+}
+
+.result-panel__placeholder h2 {
+  margin: 16px 0 8px 0;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.result-panel__placeholder p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.result-panel__icon {
+  font-size: 3rem;
+  opacity: 0.5;
+}
+
+/* Header */
+.result-panel__header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.result-panel__status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.result-panel__badge {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge--success {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.badge--error {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+.result-panel__id {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+/* Content */
+.result-panel__content {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
+.result-panel__error {
+  color: var(--color-error);
+}
+
+.result-panel__error h3 {
+  margin: 0 0 8px 0;
+  font-size: 1rem;
+}
+
+.result-panel__error p {
+  margin: 0;
+  opacity: 0.9;
+}
+
+/* JSON Viewer */
+.json-indent {
+  padding-left: 20px;
+}
+
+.json-key {
+  color: var(--json-key);
+}
+
+.json-string {
+  color: var(--json-string);
+}
+
+.json-number {
+  color: var(--json-number);
+}
+
+.json-boolean {
+  color: var(--json-boolean);
+}
+
+.json-null,
+.json-undefined {
+  color: var(--json-null);
+  font-style: italic;
+}
+
+.json-bracket {
+  color: var(--text-muted);
+}
+
+.json-colon,
+.json-comma {
+  color: var(--text-muted);
+}
+
+.json-property {
+  word-break: break-all;
+}
+
+.json-array--inline {
+  word-break: break-all;
+}
+

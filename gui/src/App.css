@@ -1,0 +1,36 @@
+/* App-specific styles */
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.app-header__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.app-header__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.app-header__toggle {
+  padding: 6px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-button);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.app-header__toggle:hover {
+  background: var(--bg-button-hover);
+  border-color: var(--border-color-hover);
+}
