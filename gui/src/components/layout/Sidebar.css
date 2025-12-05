@@ -49,6 +49,16 @@
   background: var(--color-success);
 }
 
+.sidebar__status-error {
+  margin-top: 6px;
+  font-size: 0.7rem;
+  color: var(--color-error);
+  padding: 4px 8px;
+  background: var(--color-error-bg);
+  border-radius: 4px;
+  display: inline-block;
+}
+
 /* Sections */
 .sidebar__section {
   display: flex;
@@ -148,6 +158,61 @@
   border-color: var(--color-primary-dark);
 }
 
+.sidebar__button--small {
+  padding: 6px 10px;
+  font-size: 0.8rem;
+}
+
+/* Ping Result */
+.sidebar__ping-result {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.sidebar__ping-result.success {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.sidebar__ping-result.error {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+/* Tabs */
+.sidebar__tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar__tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+}
+
+.sidebar__tab:hover {
+  background: var(--bg-button);
+  color: var(--text-primary);
+}
+
+.sidebar__tab.active {
+  background: var(--color-primary-alpha);
+  color: var(--color-primary-light);
+}
+
 /* Error */
 .sidebar__error {
   padding: 12px;
@@ -172,4 +237,3 @@
   font-size: 0.7rem;
   color: var(--text-muted);
 }
-

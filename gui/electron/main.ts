@@ -11,12 +11,10 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { spawn, ChildProcess } from 'node:child_process';
 import { createInterface, Interface } from 'node:readline';
-// import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
 
-// const require = createRequire(import.meta.url); // Unused for now
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Build directory structure
@@ -56,6 +54,13 @@ interface QVResponse {
   };
 }
 
+interface DaemonStatus {
+  connected: boolean;
+  startupError: string | null;
+  pythonPath: string | null;
+  projectRoot: string | null;
+}
+
 // =============================================================================
 // Global State
 // =============================================================================
@@ -63,7 +68,14 @@ interface QVResponse {
 let win: BrowserWindow | null = null;
 let daemonProcess: ChildProcess | null = null;
 let daemonReadline: Interface | null = null;
-let daemonConnected = false;
+
+// Daemon status tracking
+const daemonStatus: DaemonStatus = {
+  connected: false,
+  startupError: null,
+  pythonPath: null,
+  projectRoot: null,
+};
 
 // Map of pending requests: id -> {resolve, reject, timeoutId}
 const pendingRequests = new Map<string, PendingRequest>();
@@ -72,64 +84,125 @@ const pendingRequests = new Map<string, PendingRequest>();
 const REQUEST_TIMEOUT_MS = 60000; // 60 seconds for long operations
 
 // =============================================================================
-// Daemon Management
+// Daemon Management - Python Path Resolution
 // =============================================================================
-
-/**
- * Find the Python interpreter in the project's .venv
- */
-function findPythonPath(): string {
-  // Go up from gui/dist-electron to project root
-  const projectRoot = path.resolve(__dirname, '..', '..');
-  
-  // Check common venv locations
-  const candidates = [
-    path.join(projectRoot, '.venv', 'bin', 'python'),
-    path.join(projectRoot, '.venv', 'Scripts', 'python.exe'), // Windows
-    path.join(projectRoot, 'venv', 'bin', 'python'),
-    path.join(projectRoot, 'venv', 'Scripts', 'python.exe'), // Windows
-  ];
-  
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) {
-      return candidate;
-    }
-  }
-  
-  // Fallback to system python
-  console.warn('[main] No venv found, falling back to system python');
-  return 'python';
-}
 
 /**
  * Get the project root directory
  */
 function getProjectRoot(): string {
+  // Check environment variable first
+  if (process.env.QV_PROJECT_ROOT) {
+    return process.env.QV_PROJECT_ROOT;
+  }
+  // Go up from gui/dist-electron to project root
   return path.resolve(__dirname, '..', '..');
 }
 
 /**
- * Spawn the Python daemon process
+ * Find the Python interpreter
+ * 
+ * Search order:
+ * 1. QV_DAEMON_PYTHON environment variable (if set)
+ * 2. .venv/bin/python (Unix/macOS) or .venv/Scripts/python.exe (Windows)
+ * 3. venv/bin/python or venv/Scripts/python.exe
+ * 4. Fallback to 'python' on PATH
+ * 
+ * @returns Object with path and whether it was found
  */
-function spawnDaemon(): void {
-  const pythonPath = findPythonPath();
+function findPythonPath(): { path: string; found: boolean; source: string } {
   const projectRoot = getProjectRoot();
   
-  console.log(`[main] Starting daemon with Python: ${pythonPath}`);
-  console.log(`[main] Project root: ${projectRoot}`);
+  // 1. Check environment variable first
+  if (process.env.QV_DAEMON_PYTHON) {
+    const envPath = process.env.QV_DAEMON_PYTHON;
+    if (fs.existsSync(envPath)) {
+      return { path: envPath, found: true, source: 'QV_DAEMON_PYTHON env var' };
+    }
+    console.warn(`[main] QV_DAEMON_PYTHON set to ${envPath} but file not found`);
+  }
   
-  daemonProcess = spawn(pythonPath, ['-m', 'quantumvitas.daemon.server'], {
-    cwd: projectRoot,
-    env: {
-      ...process.env,
-      PYTHONUNBUFFERED: '1', // Ensure unbuffered output
-    },
-    stdio: ['pipe', 'pipe', 'pipe'],
-  });
+  // 2. Check .venv in project root
+  const isWindows = process.platform === 'win32';
+  const venvCandidates = [
+    // .venv (common convention)
+    isWindows 
+      ? path.join(projectRoot, '.venv', 'Scripts', 'python.exe')
+      : path.join(projectRoot, '.venv', 'bin', 'python'),
+    // venv (alternative)
+    isWindows
+      ? path.join(projectRoot, 'venv', 'Scripts', 'python.exe')
+      : path.join(projectRoot, 'venv', 'bin', 'python'),
+  ];
+  
+  for (const candidate of venvCandidates) {
+    if (fs.existsSync(candidate)) {
+      return { path: candidate, found: true, source: `venv at ${path.dirname(path.dirname(candidate))}` };
+    }
+  }
+  
+  // 3. Fallback to system python
+  console.warn('[main] No venv found, falling back to system python');
+  return { path: 'python', found: false, source: 'system PATH (fallback)' };
+}
+
+/**
+ * Get the daemon module path
+ * 
+ * @returns Module path to run
+ */
+function getDaemonModule(): string {
+  // Allow override via environment variable
+  if (process.env.QV_DAEMON_MODULE) {
+    return process.env.QV_DAEMON_MODULE;
+  }
+  return 'quantumvitas.daemon.server';
+}
+
+// =============================================================================
+// Daemon Management - Spawning and Communication
+// =============================================================================
+
+/**
+ * Spawn the Python daemon process
+ * 
+ * @returns true if spawn was successful, false otherwise
+ */
+function spawnDaemon(): boolean {
+  const pythonInfo = findPythonPath();
+  const projectRoot = getProjectRoot();
+  const daemonModule = getDaemonModule();
+  
+  // Store for status reporting
+  daemonStatus.pythonPath = pythonInfo.path;
+  daemonStatus.projectRoot = projectRoot;
+  daemonStatus.startupError = null;
+  
+  console.log(`[main] Starting daemon:`);
+  console.log(`[main]   Python: ${pythonInfo.path} (${pythonInfo.source})`);
+  console.log(`[main]   Module: ${daemonModule}`);
+  console.log(`[main]   CWD: ${projectRoot}`);
+  
+  try {
+    daemonProcess = spawn(pythonInfo.path, ['-m', daemonModule], {
+      cwd: projectRoot,
+      env: {
+        ...process.env,
+        PYTHONUNBUFFERED: '1', // Ensure unbuffered output
+      },
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+  } catch (err) {
+    const error = err as Error;
+    daemonStatus.startupError = `Failed to spawn daemon: ${error.message}`;
+    console.error(`[main] ${daemonStatus.startupError}`);
+    return false;
+  }
   
   if (!daemonProcess.stdout || !daemonProcess.stdin) {
-    console.error('[main] Failed to create daemon stdio pipes');
-    return;
+    daemonStatus.startupError = 'Failed to create daemon stdio pipes';
+    console.error(`[main] ${daemonStatus.startupError}`);
+    return false;
   }
   
   // Read daemon stdout line-by-line
@@ -152,12 +225,20 @@ function spawnDaemon(): void {
   
   daemonProcess.on('error', (err: Error) => {
     console.error('[main] Daemon process error:', err);
-    daemonConnected = false;
+    daemonStatus.connected = false;
+    daemonStatus.startupError = `Daemon error: ${err.message}`;
+    // Notify renderer of daemon error
+    win?.webContents.send('daemon-status', { ...daemonStatus });
   });
   
   daemonProcess.on('exit', (code: number | null, signal: string | null) => {
     console.log(`[main] Daemon exited with code ${code}, signal ${signal}`);
-    daemonConnected = false;
+    daemonStatus.connected = false;
+    
+    if (code !== 0 && code !== null) {
+      daemonStatus.startupError = `Daemon exited with code ${code}`;
+    }
+    
     daemonProcess = null;
     daemonReadline = null;
     
@@ -167,9 +248,13 @@ function spawnDaemon(): void {
       pending.reject(new Error('Daemon process exited'));
     }
     pendingRequests.clear();
+    
+    // Notify renderer
+    win?.webContents.send('daemon-status', { ...daemonStatus });
   });
   
-  daemonConnected = true;
+  daemonStatus.connected = true;
+  return true;
 }
 
 /**
@@ -200,13 +285,13 @@ function handleDaemonLine(line: string): void {
  * Send a request to the daemon
  */
 async function sendDaemonRequest(request: QVRequest): Promise<QVResponse> {
-  if (!daemonProcess || !daemonProcess.stdin || !daemonConnected) {
+  if (!daemonProcess || !daemonProcess.stdin || !daemonStatus.connected) {
     return {
       id: request.id,
       ok: false,
       error: {
         code: 'daemon_not_connected',
-        message: 'Daemon process is not running',
+        message: daemonStatus.startupError || 'Daemon process is not running',
       },
     };
   }
@@ -234,10 +319,21 @@ async function sendDaemonRequest(request: QVRequest): Promise<QVResponse> {
 }
 
 /**
+ * Wait for a specified duration
+ */
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
  * Shutdown the daemon gracefully
+ * 
+ * Sends shutdown command and waits, then force kills if necessary.
  */
 async function shutdownDaemon(): Promise<void> {
-  if (!daemonProcess || !daemonConnected) return;
+  if (!daemonProcess || !daemonStatus.connected) return;
+  
+  const processToKill = daemonProcess;
   
   try {
     // Send shutdown command
@@ -248,14 +344,17 @@ async function shutdownDaemon(): Promise<void> {
     });
   } catch (e) {
     // Ignore errors during shutdown
+    console.log('[main] Shutdown command failed (may already be stopped)');
   }
   
-  // Force kill if still running after 2 seconds
-  setTimeout(() => {
-    if (daemonProcess) {
-      daemonProcess.kill('SIGTERM');
-    }
-  }, 2000);
+  // Wait for graceful shutdown
+  await delay(2000);
+  
+  // Force kill if still running
+  if (processToKill && !processToKill.killed) {
+    console.log('[main] Force killing daemon');
+    processToKill.kill('SIGTERM');
+  }
 }
 
 // =============================================================================
@@ -290,7 +389,14 @@ ipcMain.handle('qv-request', async (_event, request: QVRequest): Promise<QVRespo
  * Check if daemon is connected
  */
 ipcMain.handle('qv-is-connected', async (): Promise<boolean> => {
-  return daemonConnected && daemonProcess !== null;
+  return daemonStatus.connected && daemonProcess !== null;
+});
+
+/**
+ * Get daemon status including any startup errors
+ */
+ipcMain.handle('qv-daemon-status', async (): Promise<DaemonStatus> => {
+  return { ...daemonStatus };
 });
 
 // =============================================================================
@@ -309,9 +415,6 @@ function createWindow(): void {
       contextIsolation: true,
       nodeIntegration: false,
     },
-    // Modern frameless window with custom titlebar (optional)
-    // titleBarStyle: 'hiddenInset',
-    // frame: false,
   });
 
   // Signal when window is ready
@@ -319,8 +422,9 @@ function createWindow(): void {
     win?.webContents.send('main-process-message', {
       type: 'ready',
       timestamp: new Date().toISOString(),
-      daemonConnected,
     });
+    // Also send daemon status
+    win?.webContents.send('daemon-status', { ...daemonStatus });
   });
 
   if (VITE_DEV_SERVER_URL) {
@@ -336,6 +440,8 @@ function createWindow(): void {
 // App Lifecycle
 // =============================================================================
 
+let isQuitting = false;
+
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
@@ -349,17 +455,24 @@ app.on('activate', () => {
 });
 
 app.on('before-quit', async (event) => {
-  // Only handle once
+  // Only handle once - prevent infinite loop
+  if (isQuitting) return;
   if (!daemonProcess) return;
   
+  isQuitting = true;
   event.preventDefault();
+  
   await shutdownDaemon();
   app.quit();
 });
 
 app.whenReady().then(() => {
   // Spawn daemon first
-  spawnDaemon();
+  const daemonStarted = spawnDaemon();
+  
+  if (!daemonStarted) {
+    console.error('[main] Failed to start daemon - continuing with UI');
+  }
   
   // Then create window
   createWindow();

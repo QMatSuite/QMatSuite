@@ -55,6 +55,29 @@ const qvApi = {
     return electron.ipcRenderer.invoke("qv-is-connected");
   },
   /**
+   * Get detailed daemon status including any startup errors
+   * 
+   * @returns Promise<DaemonStatus>
+   */
+  getDaemonStatus: async () => {
+    return electron.ipcRenderer.invoke("qv-daemon-status");
+  },
+  /**
+   * Subscribe to daemon status changes
+   * 
+   * @param callback - Function to call with status updates
+   * @returns Unsubscribe function
+   */
+  onDaemonStatus: (callback) => {
+    const handler = (_event, status) => {
+      callback(status);
+    };
+    electron.ipcRenderer.on("daemon-status", handler);
+    return () => {
+      electron.ipcRenderer.removeListener("daemon-status", handler);
+    };
+  },
+  /**
    * Listen for main process messages (e.g., 'ready')
    */
   onMainMessage: (callback) => {

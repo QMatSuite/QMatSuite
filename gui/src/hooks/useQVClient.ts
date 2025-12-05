@@ -1,30 +1,22 @@
 /**
- * React hook for communicating with the QuantumVITAS daemon
+ * React hooks for communicating with the QuantumVITAS daemon
  * 
- * Provides a typed interface for making RPC calls and tracking state.
+ * Provides a fully typed interface for making RPC calls.
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type {
+  QVCommandMap,
   QVCommandType,
+  QVPayload,
+  QVResult,
   QVResponse,
-  PingData,
-  ProjectSummaryData,
-  ListStructuresData,
-  ListWorkflowsData,
-  StructureVisData,
-  ScfConvergenceData,
-  DosData,
-  BandStructureData,
-  JobSubmitData,
+  DaemonStatus,
+  ProjectSummary,
+  StructureInfo,
+  WorkflowInfo,
   JobInfo,
-  ListJobsData,
-  CancelJobData,
-  StructureVisPayload,
-  WorkflowStepPayload,
-  RunWorkflowPayload,
-  RunStepPayload,
-  ListJobsPayload,
+  JobStatus,
 } from '../types/qv';
 
 // =============================================================================
@@ -35,40 +27,34 @@ export interface QVClientState {
   isConnected: boolean;
   isLoading: boolean;
   lastError: string | null;
+  daemonStatus: DaemonStatus | null;
 }
 
 export interface QVClient {
   state: QVClientState;
   
-  // System commands
-  ping: () => Promise<QVResponse<PingData>>;
+  /**
+   * Type-safe RPC call
+   * 
+   * @example
+   * const result = await qv.call('ping', {});
+   * // result is typed as { pong: boolean; version: string }
+   */
+  call: <K extends QVCommandType>(
+    type: K,
+    payload: QVPayload<K>
+  ) => Promise<QVResponse<QVResult<K>>>;
   
-  // Project commands
-  getProjectSummary: (projectRoot: string) => Promise<QVResponse<ProjectSummaryData>>;
-  listStructures: (projectRoot: string) => Promise<QVResponse<ListStructuresData>>;
-  listWorkflows: (projectRoot: string) => Promise<QVResponse<ListWorkflowsData>>;
-  
-  // Visualization data
-  getStructureVis: (payload: StructureVisPayload) => Promise<QVResponse<StructureVisData>>;
-  getScfConvergence: (payload: WorkflowStepPayload) => Promise<QVResponse<ScfConvergenceData>>;
-  getDosData: (payload: WorkflowStepPayload) => Promise<QVResponse<DosData>>;
-  getBandStructureData: (payload: WorkflowStepPayload) => Promise<QVResponse<BandStructureData>>;
-  
-  // Job management
-  runWorkflow: (payload: RunWorkflowPayload) => Promise<QVResponse<JobSubmitData>>;
-  runStep: (payload: RunStepPayload) => Promise<QVResponse<JobSubmitData>>;
-  getJobStatus: (jobId: string) => Promise<QVResponse<JobInfo>>;
-  listJobs: (payload?: ListJobsPayload) => Promise<QVResponse<ListJobsData>>;
-  cancelJob: (jobId: string) => Promise<QVResponse<CancelJobData>>;
-  
-  // Raw request (for advanced usage)
-  request: <T = Record<string, unknown>>(
-    type: QVCommandType,
-    payload?: Record<string, unknown>
-  ) => Promise<QVResponse<T>>;
+  // Convenience methods (typed wrappers around call)
+  ping: () => Promise<QVResponse<{ pong: boolean; version: string }>>;
+  getProjectSummary: (projectRoot: string) => Promise<QVResponse<ProjectSummary>>;
+  listStructures: (projectRoot: string) => Promise<QVResponse<{ structures: StructureInfo[]; count: number }>>;
+  listWorkflows: (projectRoot: string) => Promise<QVResponse<{ workflows: WorkflowInfo[]; count: number }>>;
+  listJobs: (filter?: { status?: JobStatus; job_type?: string }) => Promise<QVResponse<{ jobs: JobInfo[]; count: number }>>;
   
   // Connection management
   checkConnection: () => Promise<boolean>;
+  refreshDaemonStatus: () => Promise<DaemonStatus | null>;
 }
 
 // =============================================================================
@@ -89,6 +75,14 @@ export interface QVClient {
  *     }
  *   };
  *   
+ *   // Or use the generic call method for full type safety
+ *   const handleSummary = async () => {
+ *     const response = await qv.call('get_project_summary', { project_root: '/path' });
+ *     if (response.ok) {
+ *       console.log('Project:', response.data.name);
+ *     }
+ *   };
+ *   
  *   return <button onClick={handlePing}>Ping</button>;
  * }
  */
@@ -97,6 +91,7 @@ export function useQVClient(): QVClient {
     isConnected: false,
     isLoading: false,
     lastError: null,
+    daemonStatus: null,
   });
   
   // Track mounted state to avoid state updates after unmount
@@ -109,13 +104,30 @@ export function useQVClient(): QVClient {
     };
   }, []);
   
+  // Subscribe to daemon status changes
+  useEffect(() => {
+    if (!window.qv) return;
+    
+    const unsubscribe = window.qv.onDaemonStatus((status) => {
+      if (mountedRef.current) {
+        setState(prev => ({
+          ...prev,
+          isConnected: status.connected,
+          daemonStatus: status,
+        }));
+      }
+    });
+    
+    return unsubscribe;
+  }, []);
+  
   /**
-   * Make a request to the daemon with state management
+   * Type-safe RPC call
    */
-  const request = useCallback(async <T = Record<string, unknown>>(
-    type: QVCommandType,
-    payload: Record<string, unknown> = {}
-  ): Promise<QVResponse<T>> => {
+  const call = useCallback(async <K extends QVCommandType>(
+    type: K,
+    payload: QVPayload<K>
+  ): Promise<QVResponse<QVResult<K>>> => {
     if (!window.qv) {
       return {
         id: 'no-bridge',
@@ -132,7 +144,10 @@ export function useQVClient(): QVClient {
     }
     
     try {
-      const response = await window.qv.request<T>(type, payload);
+      const response = await window.qv.request<QVResult<K>>(
+        type,
+        payload as Record<string, unknown>
+      );
       
       if (mountedRef.current) {
         setState(prev => ({
@@ -190,113 +205,79 @@ export function useQVClient(): QVClient {
     }
   }, []);
   
+  /**
+   * Refresh daemon status
+   */
+  const refreshDaemonStatus = useCallback(async (): Promise<DaemonStatus | null> => {
+    if (!window.qv) return null;
+    
+    try {
+      const status = await window.qv.getDaemonStatus();
+      if (mountedRef.current) {
+        setState(prev => ({
+          ...prev,
+          isConnected: status.connected,
+          daemonStatus: status,
+        }));
+      }
+      return status;
+    } catch {
+      return null;
+    }
+  }, []);
+  
   // Check connection on mount
   useEffect(() => {
     checkConnection();
+    refreshDaemonStatus();
     
     // Periodically check connection
-    const interval = setInterval(checkConnection, 5000);
+    const interval = setInterval(() => {
+      checkConnection();
+    }, 5000);
+    
     return () => clearInterval(interval);
-  }, [checkConnection]);
+  }, [checkConnection, refreshDaemonStatus]);
   
   // =============================================================================
-  // Command Wrappers
+  // Convenience Methods
   // =============================================================================
   
   const ping = useCallback(
-    () => request<PingData>('ping', {}),
-    [request]
+    () => call('ping', {} as QVPayload<'ping'>),
+    [call]
   );
   
   const getProjectSummary = useCallback(
-    (projectRoot: string) => 
-      request<ProjectSummaryData>('get_project_summary', { project_root: projectRoot }),
-    [request]
+    (projectRoot: string) => call('get_project_summary', { project_root: projectRoot }),
+    [call]
   );
   
   const listStructures = useCallback(
-    (projectRoot: string) => 
-      request<ListStructuresData>('list_structures', { project_root: projectRoot }),
-    [request]
+    (projectRoot: string) => call('list_structures', { project_root: projectRoot }),
+    [call]
   );
   
   const listWorkflows = useCallback(
-    (projectRoot: string) => 
-      request<ListWorkflowsData>('list_workflows', { project_root: projectRoot }),
-    [request]
-  );
-  
-  const getStructureVis = useCallback(
-    (payload: StructureVisPayload) => 
-      request<StructureVisData>('get_structure_vis', payload as unknown as Record<string, unknown>),
-    [request]
-  );
-  
-  const getScfConvergence = useCallback(
-    (payload: WorkflowStepPayload) => 
-      request<ScfConvergenceData>('get_scf_convergence', payload as unknown as Record<string, unknown>),
-    [request]
-  );
-  
-  const getDosData = useCallback(
-    (payload: WorkflowStepPayload) => 
-      request<DosData>('get_dos_data', payload as unknown as Record<string, unknown>),
-    [request]
-  );
-  
-  const getBandStructureData = useCallback(
-    (payload: WorkflowStepPayload) => 
-      request<BandStructureData>('get_band_structure_data', payload as unknown as Record<string, unknown>),
-    [request]
-  );
-  
-  const runWorkflow = useCallback(
-    (payload: RunWorkflowPayload) => 
-      request<JobSubmitData>('run_workflow', payload as unknown as Record<string, unknown>),
-    [request]
-  );
-  
-  const runStep = useCallback(
-    (payload: RunStepPayload) => 
-      request<JobSubmitData>('run_step', payload as unknown as Record<string, unknown>),
-    [request]
-  );
-  
-  const getJobStatus = useCallback(
-    (jobId: string) => 
-      request<JobInfo>('get_job_status', { job_id: jobId }),
-    [request]
+    (projectRoot: string) => call('list_workflows', { project_root: projectRoot }),
+    [call]
   );
   
   const listJobs = useCallback(
-    (payload: ListJobsPayload = {}) => 
-      request<ListJobsData>('list_jobs', payload as unknown as Record<string, unknown>),
-    [request]
-  );
-  
-  const cancelJob = useCallback(
-    (jobId: string) => 
-      request<CancelJobData>('cancel_job', { job_id: jobId }),
-    [request]
+    (filter: { status?: JobStatus; job_type?: string } = {}) => call('list_jobs', filter),
+    [call]
   );
   
   return {
     state,
+    call,
     ping,
     getProjectSummary,
     listStructures,
     listWorkflows,
-    getStructureVis,
-    getScfConvergence,
-    getDosData,
-    getBandStructureData,
-    runWorkflow,
-    runStep,
-    getJobStatus,
     listJobs,
-    cancelJob,
-    request,
     checkConnection,
+    refreshDaemonStatus,
   };
 }
 
@@ -333,3 +314,27 @@ export function useQVLogs(maxLines: number = 100): string[] {
   return logs;
 }
 
+// =============================================================================
+// Daemon Status Hook
+// =============================================================================
+
+/**
+ * Hook to subscribe to daemon status
+ */
+export function useDaemonStatus(): DaemonStatus | null {
+  const [status, setStatus] = useState<DaemonStatus | null>(null);
+  
+  useEffect(() => {
+    if (!window.qv) return;
+    
+    // Get initial status
+    window.qv.getDaemonStatus().then(setStatus).catch(() => {});
+    
+    // Subscribe to updates
+    const unsubscribe = window.qv.onDaemonStatus(setStatus);
+    
+    return unsubscribe;
+  }, []);
+  
+  return status;
+}
