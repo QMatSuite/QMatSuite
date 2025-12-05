@@ -185,7 +185,7 @@ reset_qe_home()
 
 1. **`QE_HOME` environment variable** - Read ONCE at startup
 2. **System PATH** - `which pw.x` → infer `../..` as QE home
-3. **Shell config files** - Parse `~/.zshrc`, `~/.bashrc` for exports
+3. **Shell config files** - Parse `~/.zshrc`, `~/.zprofile`, `~/.zshenv`, `~/.bashrc`, `~/.bash_profile`, `~/.profile`
 4. **Home directory scan** - Search `$HOME/**/q-e-qe*`
 
 ### 3.3 Caveat: Test Isolation
@@ -467,7 +467,7 @@ Total:               85 tests PASS
 **Note**: CLI tests require QE to be installed. QE is auto-detected via:
 1. `QE_HOME` env var (if set)
 2. System PATH (`which pw.x`)
-3. Shell config files (`~/.zshrc`, `~/.bashrc` for PATH exports)
+3. Shell config files (`~/.zshrc`, `~/.zprofile`, `~/.zshenv`, `~/.bashrc`, `~/.bash_profile`, `~/.profile`)
 4. Home directory scan (`~/src/q-e-qe*`, etc.)
 
 ### 6.3 CI Test Data
@@ -1474,6 +1474,403 @@ def feature_command(
 All 263 tests pass, including the previously failing:
 - `test_si_bands_workflow_comprehensive.py::TestSiBandsWorkflowManualKpath::test_analyze_bands`
 - `test_si_bands_workflow_comprehensive.py::TestSiBandsWorkflowAutoKpath::test_analyze_bands`
+
+---
+
+## 16. GUI-Ready Backend Architecture (2025-12-05)
+
+### 16.1 Overview
+
+QuantumVITAS now includes a stdio JSON-RPC daemon for GUI integration. The architecture follows the established pattern of using `QVService` as the single API surface.
+
+**Key components**:
+```
+Electron GUI (future)
+       ↓ JSON-RPC (stdin/stdout)
+   QVDaemon
+       ↓ method calls
+   QVService (api.py)
+       ↓ 
+   core/*, workflow/*, analysis/*
+```
+
+**Location**: `src/quantumvitas/daemon/`
+- `server.py` - `QVDaemon` class implementing JSON-RPC protocol
+- `jobs.py` - `JobManager` for background QE execution
+
+### 16.2 JSON-RPC Protocol
+
+**Request format** (one JSON object per line):
+```json
+{"id": "req1", "type": "command_name", "payload": {...}}
+```
+
+**Response format** (one JSON object per line):
+```json
+{"id": "req1", "ok": true, "data": {...}}
+{"id": "req1", "ok": false, "error": {"code": "...", "message": "..."}}
+```
+
+**Error codes**:
+- `parse_error` - Invalid JSON
+- `invalid_request` - Missing required fields
+- `unknown_command` - Unknown command type
+- `service_error` - `QVServiceError` from API layer
+- `not_found` - `FileNotFoundError`
+- `invalid_argument` - `ValueError`
+- `handler_error` - Unexpected exception
+
+### 16.3 Available Commands
+
+**System**:
+- `ping` → `{pong: true, version: "..."}`
+- `shutdown` → Gracefully stops daemon
+
+**Resource listing**:
+- `get_project_summary` → Project name, ID, resource counts
+- `list_structures` → List of structure metadata
+- `list_workflows` → List of workflow metadata with steps
+
+**Pure data (no matplotlib)**:
+- `get_structure_vis` → Atoms, bonds, lattice for 3D rendering
+- `get_scf_convergence` → Iteration data for SCF plots
+- `get_dos_data` → Energy and DOS arrays
+- `get_band_structure_data` → Band energies and k-distances
+
+**Job management**:
+- `run_workflow` → Submit workflow execution, returns `{job_id}`
+- `run_step` → Submit single step, returns `{job_id}`
+- `get_job_status` → Check job status, result, or error
+- `list_jobs` → List all jobs (filterable by status/type)
+- `cancel_job` → Cancel a pending job
+
+### 16.4 GUI-Ready QVService Methods
+
+New methods in `QVService` return pure JSON-serializable data (no matplotlib objects):
+
+```python
+# Project/resource summary
+QVService.get_project_summary(project_root) -> dict
+QVService.list_structures_data(project_root) -> list[dict]
+QVService.list_workflows_data(project_root) -> list[dict]
+
+# Pure visualization data
+QVService.get_structure_vis_data(project_root, selector, supercell, repeat_boundary) -> dict
+# Returns: atoms (coords, element, color, radius), bonds, lattice matrix
+
+QVService.get_scf_convergence_data(project_root, workflow, step) -> dict
+# Returns: iterations, energies, converged status
+
+QVService.get_dos_data(project_root, workflow, step) -> dict
+# Returns: energies[], dos[], fermi_energy
+
+QVService.get_band_structure_data(project_root, workflow, step) -> dict
+# Returns: k_distances[], energies[bands][kpoints], high_symmetry_points
+```
+
+### 16.5 JobManager and Background Execution
+
+**Design principles**:
+- All QE-invoking operations go through `JobManager`
+- `ThreadPoolExecutor(max_workers=1)` ensures sequential QE execution
+- Daemon main loop remains responsive and non-blocking
+- Job results/status live in memory; project/workflow data lives on disk
+
+```python
+from quantumvitas.daemon.jobs import JobManager, JobStatus
+
+manager = JobManager(max_workers=1)
+
+# Submit job
+job_id = manager.submit(
+    job_type="run_workflow",
+    func=QVService.run_workflow,
+    params={"workflow": "si-dos"},
+    project_root=project_root,
+    workflow_selector="si-dos",
+)
+
+# Check status
+status = manager.get_job_status(job_id)
+# {"id": "...", "status": "completed", "result": {...}}
+
+# List jobs
+manager.list_jobs(status=JobStatus.RUNNING)
+```
+
+**Job lifecycle**:
+```
+PENDING → RUNNING → COMPLETED
+                  → FAILED (with error message)
+                  → CANCELLED (if cancelled while pending)
+```
+
+### 16.6 Example Daemon Session
+
+```python
+# Start daemon (typically from Electron via spawn)
+# In Python:
+from quantumvitas.daemon import QVDaemon
+daemon = QVDaemon()
+daemon.run()
+
+# Or from command line:
+# python -m quantumvitas.daemon.server
+```
+
+**Example JSON conversation**:
+```
+→ {"id": "1", "type": "ping", "payload": {}}
+← {"id": "1", "ok": true, "data": {"pong": true, "version": "2.0.0"}}
+
+→ {"id": "2", "type": "get_project_summary", "payload": {"project_root": "/path/to/project"}}
+← {"id": "2", "ok": true, "data": {"name": "my-project", "n_workflows": 3, ...}}
+
+→ {"id": "3", "type": "run_workflow", "payload": {"project_root": "/path", "workflow": "si-dos"}}
+← {"id": "3", "ok": true, "data": {"job_id": "abc-123", "status": "pending"}}
+
+→ {"id": "4", "type": "get_job_status", "payload": {"job_id": "abc-123"}}
+← {"id": "4", "ok": true, "data": {"status": "running", ...}}
+```
+
+### 16.7 Architectural Invariants
+
+The daemon implementation follows these rules:
+
+1. **CLI convenience ≠ service logic**: CLI uses `core/context.py` (cwd-based), daemon/service never look at cwd
+2. **All resolution via `core/resolution.py`**: Selector rules (path → ULID → slug → name) apply
+3. **Analysis is read-only**: Uses existing `analysis/*` dataclasses with `.to_dict()`
+4. **Pure JSON-RPC over stdio**: One request/response per line
+5. **Daemon never crashes**: All exceptions become `{ok: false, error: {...}}`
+6. **Long QE runs = background jobs**: Sequential (max_workers=1)
+7. **No CLI invocation from daemon**: Only call `QVService` methods
+
+### 16.8 Files Added
+
+| File | Purpose |
+|------|---------|
+| `src/quantumvitas/daemon/__init__.py` | Package exports |
+| `src/quantumvitas/daemon/server.py` | `QVDaemon` class with JSON-RPC handlers |
+| `src/quantumvitas/daemon/jobs.py` | `JobManager`, `Job`, `JobStatus` |
+| `tests/unit/test_daemon.py` | Unit tests for daemon and job manager |
+| `tests/unit/test_qvservice_gui.py` | Unit tests for GUI-ready QVService methods |
+| `tests/daemon/test_si_bands_workflow_daemon.py` | Integration tests using daemon/JobManager |
+| `docs/DAEMON_API_REFERENCE.md` | Complete daemon API documentation |
+
+### 16.9 Self-Audit Results (2025-12-05)
+
+A thorough audit was performed on the daemon implementation:
+
+#### 1. No CLI/Subprocess Calls ✅
+
+- No `subprocess` imports in daemon code
+- No `typer` imports in daemon code
+- No imports from `quantumvitas.cli`
+- No dependency on `core/context.py`
+- All operations go through `QVService`
+
+#### 2. JSON-RPC Streaming Correctness ✅
+
+- `stdout.write(response.to_json() + "\n")` ensures one JSON per line
+- `stdout.flush()` called after every response
+- All logging goes to `stderr` via `self.log()` method
+- No accidental `print()` statements that would pollute stdout
+
+#### 3. Resolution Correctness ✅
+
+- Daemon passes explicit `project_root` from payload
+- No duplicate resolution logic - all goes through `QVService`
+- `QVService` methods call `core/resolution.resolve_*()` internally
+- No cwd-based lookups in daemon or service layer
+
+#### 4. JobManager Correctness ✅
+
+**Cancellation semantics documented**:
+- Only `PENDING` jobs can be cancelled
+- `RUNNING` jobs cannot be interrupted (Python limitation)
+- Documentation clarified in `cancel_job()` docstring
+
+**Status transitions verified**:
+- `PENDING` → `RUNNING` → `COMPLETED` / `FAILED`
+- `PENDING` → `CANCELLED` (only via `cancel_job()`)
+- Failed jobs capture error message and traceback
+
+**Memory usage**:
+- Job results are stored as dicts, not raw QE output logs
+- `cleanup_completed()` method available to prune old jobs
+
+#### 5. JSON Schema Validation ✅
+
+All GUI methods return pure JSON-serializable types:
+
+| Issue Found | Fix Applied |
+|-------------|-------------|
+| `pt.k_coords` in band data might be numpy array | Changed to `[float(x) for x in pt.k_coords]` |
+| `pt.k_distance` might be numpy scalar | Added explicit `float()` conversion |
+
+Verified conversions throughout:
+- `numpy.ndarray` → `.tolist()`
+- `pathlib.Path` → `str()`
+- `dataclasses` → `.to_dict()`
+- All floats explicitly cast via `float()`
+
+#### 6. No cwd-Dependence ✅
+
+Searched for `Path.cwd()`, `os.getcwd()`, `core.context` in:
+- `api.py` - No cwd usage in GUI methods ✅
+- `daemon/server.py` - No cwd usage ✅
+- `daemon/jobs.py` - No cwd usage ✅
+
+Only `cli/main.py` uses cwd (via `core/context.py`), which is correct.
+
+### 16.10 Test Organization
+
+Tests are organized by component and purpose:
+
+```
+tests/
+├── unit/                    # Pure Python tests, NO QE required
+├── daemon/                  # Daemon/JobManager integration (requires QE)
+├── cli/                     # CLI integration tests (requires QE)
+├── integration/             # QE engine integration tests (requires QE)
+├── examples/                # Documentation example tests
+├── core/                    # Test infrastructure (base classes, runners)
+├── data/                    # Test input files and reference data
+└── utils/                   # Test helper utilities
+```
+
+### 16.11 Test Categories and What They Test
+
+#### **Unit Tests (`tests/unit/`)** — No QE Required
+
+Run with: `pytest tests/unit/ -v`
+
+| File | Purpose |
+|------|---------|
+| `test_daemon.py` | Daemon JSON-RPC protocol, JobManager thread safety |
+| `test_qvservice_gui.py` | QVService GUI methods, JSON-serializable outputs |
+| `test_analysis_parsers.py` | SCF convergence, DOS, band structure parsing |
+| `test_analysis_plotting.py` | Band structure/DOS plot generation |
+| `test_api_service.py` | QVService core methods (create, list, run) |
+| `test_context.py` | cwd-based auto-detection in CLI context |
+| `test_models.py` | Core models (Workflow, Step, Structure) |
+| `test_parameter_overrides.py` | Parameter merging and override logic |
+| `test_project_and_cli.py` | Project model and CLI arg parsing |
+| `test_qe_executable_detection.py` | QE installation detection (PATH, env vars, shell configs) |
+| `test_qe_geometry_roundtrip.py` | Geometry: QV → QE input → parse back → verify |
+| `test_qe_input.py` | QE input file generation |
+| `test_qe_modules.py` | Module parameter mappings (pw.x, dos.x, etc.) |
+| `test_resolution.py` | Selector resolution (path → ULID → slug → name) |
+| `test_structure_io.py` | Structure file I/O (CIF, XSF, XYZ) |
+| `test_structure_roundtrip.py` | Structure serialization roundtrip |
+| `test_structure_steps.py` | Structure step generation |
+| `test_structure_viz.py` | Structure visualization data extraction |
+| `test_workflow_importers.py` | Workflow import from QE input files |
+| `test_workflow_inputs.py` | Workflow input generation |
+
+#### **Daemon Tests (`tests/daemon/`)** — Requires QE
+
+Run with: `pytest tests/daemon/ -v -s`
+
+| File | Purpose |
+|------|---------|
+| `test_si_bands_workflow_daemon.py` | Full Si band structure via daemon + JobManager |
+
+**What it tests:**
+- Project/workflow/step creation via `QVService` (not CLI)
+- Job submission via `JobManager.submit()`
+- Polling job status until completion
+- Band structure data retrieval via `QVService.get_band_structure_data()`
+- Band analysis and PNG plot generation via `QVService.analyze_band()`
+
+#### **CLI Tests (`tests/cli/`)** — Requires QE
+
+Run with: `pytest tests/cli/ -v -s`
+
+| File | Purpose |
+|------|---------|
+| `test_si_bands_workflow_comprehensive.py` | Full Si band structure via CLI commands |
+| `test_si_dos_workflow_cli.py` | Full Si DOS calculation via CLI |
+| `test_cli_show_command_integration.py` | `qv show` command variants |
+| `test_template_workflow.py` | Template copying and ULID consistency |
+
+**What `test_si_bands_workflow_comprehensive.py` tests:**
+- `qv project create`, `qv structure import`, `qv workflow create`
+- `qv step init`, `qv step configure`, `qv run`
+- Both manual k-path and auto k-path modes
+- `qv analyze band` with PNG output
+
+#### **Integration Tests (`tests/integration/`)** — Requires QE
+
+Run with: `pytest tests/integration/ -v`
+
+| File | Purpose |
+|------|---------|
+| `test_si_bands_workflow.py` | Simple Si bands workflow (programmatic) |
+| `test_si_dos_workflow.py` | Simple Si DOS workflow (programmatic) |
+| `test_qe_engine.py` | QuantumEspressoEngine direct invocation |
+| `test_qe_executable_integration.py` | QE executable discovery integration |
+| `test_pw_step_specs.py` | pw.x step parameter verification |
+| `test_pw_scf_ibrav_step_specs.py` | pw.x ibrav lattice type tests |
+| `test_pw_quick_tests_ci.py` | Quick pw.x tests for CI |
+| `test_ph_quick_tests.py` | Quick ph.x phonon tests |
+| `test_ci_validation.py` | CI environment validation |
+
+#### **Example Tests (`tests/examples/`)** — Documentation Verification
+
+| File | Purpose |
+|------|---------|
+| `test_cli_usage_examples.py` | Verifies CLI examples from docs work |
+| `test_structure_io_examples.py` | Structure I/O documentation examples |
+
+### 16.12 Test Infrastructure (`tests/core/`)
+
+Shared test infrastructure:
+
+| File | Purpose |
+|------|---------|
+| `base.py` | Base test classes with common fixtures |
+| `runner.py` | Generic test runner infrastructure |
+| `qe_step_runner.py` | QE-specific step execution for tests |
+| `qe_step_verification.py` | Output verification utilities |
+| `qe_test_utils.py` | QE test helper functions |
+| `test_data.py` | Test data loading utilities |
+| `thresholds.py` | Numerical comparison thresholds |
+
+### 16.13 Test Data (`tests/data/`)
+
+Reference data for tests:
+
+| Directory | Contents |
+|-----------|----------|
+| `4_Si_DOS/` | Silicon DOS workflow inputs and reference outputs |
+| `7_Si_bandStructure/` | Silicon band structure workflow reference |
+| `analysis_bands/` | Band structure parsing test data |
+| `analysis_dos/` | DOS parsing test data |
+| `analysis_scf/` | SCF convergence parsing test data |
+| `workflow_bands/` | Band workflow test inputs |
+| `pw_scf_ibrav/` | SCF inputs for all ibrav values |
+| `pw_single_tests/` | Single pw.x test cases |
+| `ph_1d/`, `ph_2d/` | Phonon calculation test cases |
+
+### 16.14 Running Tests
+
+```bash
+# All unit tests (fast, no QE needed)
+pytest tests/unit/ -v
+
+# Daemon tests (needs QE)
+pytest tests/daemon/ -v -s
+
+# CLI tests (needs QE)
+pytest tests/cli/ -v -s
+
+# Quick smoke test
+pytest tests/unit/test_ci_smoke.py -v
+
+# Full test suite (needs QE)
+pytest tests/ -v
+```
 
 ---
 

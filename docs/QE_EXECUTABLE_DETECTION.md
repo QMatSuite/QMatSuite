@@ -21,7 +21,7 @@ When no explicit path is provided, the `QEInstallation` class auto-detects QE us
 |----------|--------|-------------|
 | 1 | `QE_HOME` environment variable | Read once at startup; recommended for CI/CD |
 | 2 | System PATH | Uses `which pw.x` and infers `QE_HOME` from `../bin/pw.x` |
-| 3 | Shell config files | Parses `~/.zshrc`, `~/.bashrc`, etc. for `QE_HOME` exports or PATH entries |
+| 3 | Shell config files | Parses `~/.zshrc`, `~/.zprofile`, `~/.zshenv`, `~/.bashrc`, `~/.bash_profile`, `~/.profile` for `QE_HOME` exports or PATH entries |
 | 4 | Home directory scan | Searches `$HOME` (up to 3 levels) for `q-e-qe*` or `quantum-espresso` folders |
 
 This order ensures that:

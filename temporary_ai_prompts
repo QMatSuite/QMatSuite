@@ -995,3 +995,222 @@ Please implement the full qv analyze structure pipeline as described, then summa
 
 
 Done.
+
+
+You will be working on the QuantumVITAS v2 codebase (Python).
+Before doing anything, remember that AI_understanding.md contains the architecture, conventions, models, resolution rules, analysis layer, and how CLI/Core/API are separated.
+Assume this document is always correct and authoritative. (you have read this, but feel free to refer to this.)
+High-Level Goal
+Extend QuantumVITAS from a CLI-only tool into a GUI-ready backend, by:
+Strengthening QVService so it becomes the single high-level API surface for both CLI and GUI.
+Implementing a stdio JSON-RPC daemon that calls QVService rather than CLI.
+Adding a JobManager + ThreadPoolExecutor(max_workers=1) inside the daemon so that long QE runs execute as background jobs.
+The daemon will later be driven by an Electron front-end, but that is outside this prompt.
+Key Architectural Rules (must follow)
+You must follow these invariants:
+CLI convenience ≠ service logic
+CLI uses core/context.py (cwd-based auto-detection).
+QVService must never use cwd and must require explicit project_root.
+Resolution & models
+All resource lookup must go through core/resolution.py + core/models.py.
+Selector rules (path → ULID → slug → name) must stay consistent.
+Analysis is read-only
+Use existing analysis/* dataclasses.
+Always return JSON-serializable dicts via .to_dict().
+Daemon is pure JSON-RPC over stdin/stdout
+One request per line, one response per line.
+Daemon never crashes; all errors are converted into { ok: false, error: {...} }.
+Long QE runs → background jobs
+Sequential (max_workers=1).
+Job results/status live in memory; project/workflow data always lives on disk.
+No CLI invocation from daemon; only call QVService.
+Phase 1 — Strengthen QVService for GUI
+Implement or refine these high-level methods (names adjustable):
+get_project_summary(project_root) -> dict
+list_structures(project_root) -> list[dict]
+list_workflows(project_root) -> list[dict]
+get_structure_vis_data(project_root, selector) -> dict
+(lattice, atoms, fractional/cart coords, inferred bonds — pure data)
+get_scf_convergence(project_root, workflow, step) -> dict
+get_dos_data(project_root, workflow, step) -> dict
+get_band_structure_data(project_root, workflow, step) -> dict
+Requirements:
+Pure data, no matplotlib objects.
+Internally use core/resolution, core/models, analysis/*.
+Add small unit tests for schema stability.
+Phase 2 — Minimal stdio JSON-RPC daemon
+Create qv_daemon.py (or similar):
+Read JSON requests from stdin:
+{"id": "req1", "type": "list_structures", "payload": {...}}
+Write JSON responses to stdout:
+{"id": "req1", "ok": true, "data": {...}}
+Supported commands (initially):
+"ping"
+"get_project_summary"
+"list_structures"
+"list_workflows"
+"get_structure_vis"
+Optional: DOS/Bands/SCF if trivial to include
+Requirements:
+Centralized dispatcher (map type → handler).
+All exceptions caught and returned as { ok: false, error: {...} }.
+Daemon itself never touches cwd; relies entirely on payload paths.
+Structure code for easy extension in Phase 3.
+Phase 3 — Add JobManager & background execution
+Inside the daemon:
+Add a JobManager with:
+submit_run_workflow(project_root, workflow_selector) -> job_id
+get_job_status(job_id) -> dict
+Background job function:
+Calls QVService.run_workflow(...)
+Catches exceptions, updates job state
+New RPC commands:
+"run_workflow" → return { job_id }
+"get_job_status"
+Rules:
+All QE-invoking operations must go through job manager.
+ThreadPoolExecutor must be max_workers = 1.
+Daemon main loop remains responsive and non-blocking.
+Deliverables
+Produce:
+Updated api.py with GUI-ready methods.
+qv_daemon.py implementing Phases 2 & 3.
+Any supporting modules (if clean).
+Unit tests for new logic.
+Reasonable internal documentation.
+You may improve naming or architecture where appropriate, as long as the project stays consistent with AI_understanding.md.
+Think before coding. Optimize for clarity, correctness, and long-term maintainability.
+
+Done. AI summary:
+ll tasks are complete. Let me provide a summary of what was implemented:
+Summary
+I've implemented the GUI-ready backend for QuantumVITAS following all the architectural rules you specified:
+Phase 1 - QVService GUI-Ready Methods
+Added to src/quantumvitas/api.py:
+Method	Purpose
+get_project_summary(project_root)	High-level project info (name, ID, resource counts)
+list_structures_data(project_root)	Structure metadata with formula, atoms, lattice params
+list_workflows_data(project_root)	Workflow metadata with steps info
+get_structure_vis_data(project_root, selector, supercell, repeat_boundary)	Pure data for 3D rendering (atoms, bonds, lattice)
+get_scf_convergence_data(project_root, workflow, step)	SCF iteration data for plots
+get_dos_data(project_root, workflow, step)	DOS energies and densities
+get_band_structure_data(project_root, workflow, step)	Band energies, k-distances, high-symmetry points
+All methods return pure JSON-serializable dicts (no matplotlib objects).
+Phase 2 - JSON-RPC Daemon
+Created src/quantumvitas/daemon/server.py:
+Protocol: One JSON request/response per line over stdin/stdout
+Dispatcher: Centralized command→handler mapping
+Error handling: All exceptions become {ok: false, error: {...}}
+Never uses cwd: All paths come from request payloads
+Supported commands: ping, shutdown, get_project_summary, list_structures, list_workflows, get_structure_vis, get_scf_convergence, get_dos_data, get_band_structure_data, run_workflow, run_step, get_job_status, list_jobs, cancel_job
+Phase 3 - JobManager for Background Execution
+Created src/quantumvitas/daemon/jobs.py:
+ThreadPoolExecutor(max_workers=1) ensures sequential QE execution
+Job states: PENDING → RUNNING → COMPLETED/FAILED/CANCELLED
+Non-blocking: Daemon main loop stays responsive
+Job tracking: Results and errors stored in memory per job
+Tests Added
+tests/unit/test_qvservice_gui.py - Tests for GUI-ready QVService methods
+tests/unit/test_daemon.py - Tests for daemon protocol and job manager
+Documentation Updated
+Updated AI_understanding.md with new Section 16: "GUI-Ready Backend Architecture"
+Architectural Invariants Followed
+✅ CLI ≠ service logic: CLI uses core/context.py (cwd-based), QVService requires explicit project_root
+✅ Resolution via core/resolution.py: All selectors follow path → ULID → slug → name order
+✅ Analysis is read-only: Uses existing analysis/* dataclasses with .to_dict()
+✅ Pure JSON-RPC over stdio: One request/response per line
+✅ Daemon never crashes: All exceptions converted to error responses
+✅ Long QE runs = background jobs: ThreadPoolExecutor(max_workers=1)
+✅ No CLI invocation from daemon: Only calls QVService methods
+Test Results
+239 unit tests: All passing
+28 integration tests: All passing
+
+
+ChatGPT audit:
+Cursor Prompt — “Self-Audit of Critical Backend Components”
+You previously implemented Phase 1–3 of the GUI-ready backend (QVService GUI API, JSON-RPC daemon, JobManager).
+Now I want you to perform a deep self-audit focusing only on a small set of critical risks.
+Ignore bonding logic — it is fine.
+Instead, thoroughly inspect the following areas of the current implementation:
+1. Ensure daemon never calls CLI or Typer code
+The daemon must only call QVService and lower-level Python modules.
+It must not:
+spawn qv subprocesses
+import CLI modules
+call Typer functions
+depend on core/context.py
+Tasks:
+Search for "subprocess" calls inside daemon/server + job code.
+If any subprocess invokes CLI commands, replace them with direct QVService calls.
+Check all imports in the daemon.
+No CLI modules should appear.
+Verify run_step and run_workflow handlers call QVService, not CLI utilities.
+If you find violations, refactor.
+2. Validate JSON-RPC streaming behavior
+Daemon must send one JSON object per line, and must flush stdout immediately.
+Tasks:
+Inspect the writer function that sends responses.
+Verify stdout.write(... + "\n") or equivalent is present.
+Verify stdout.flush() is called after each response.
+Confirm no accidental prints or logging pollute stdout (all logs must go to stderr).
+If missing or incorrect, fix the implementation.
+3. Check run_step consistency and resolution correctness
+Ensure:
+run_step uses the same selector-resolution logic as CLI.
+Daemon does not implement its own lookup.
+Daemon passes explicit project_root, not relying on cwd.
+QVService is the single entry point for executing steps and workflows.
+If daemon has any duplicate resolution code → eliminate it and use the central resolution layer.
+4. Inspect JobManager for correctness and realistic behavior
+Potential issues:
+a. Cancellation semantics
+Python futures cannot truly kill a running thread.
+If cancel_job pretends to kill a QE run, that is misleading.
+Tasks:
+Inspect JobManager.cancel_job().
+If it incorrectly claims to cancel running work, clarify behavior:
+Cancellable only before RUNNING
+Running jobs cannot be killed (document this)
+b. Job status correctness
+Check transitions:
+PENDING → RUNNING → COMPLETED / FAILED
+Ensure FAILED captures exception message.
+Ensure COMPLETED updates properly.
+c. Job result retention
+Ensure we are not storing huge raw logs or QE outputs in memory.
+5. Validate JSON schemas returned by QVService GUI methods
+Not checking content (bonding is fine); checking schema stability:
+All methods must return pure JSON-serializable structures:
+dict
+list
+float
+str
+bool
+None
+No numpy arrays
+No pathlib objects
+No dataclasses leaking through without .to_dict()
+No matplotlib objects
+No custom classes
+Tasks:
+Inspect each GUI method and ensure final return values satisfy this.
+Add/adjust small unit tests if needed.
+6. Verify no cwd-dependence exists in service or daemon
+Search for:
+Path.cwd()
+os.getcwd()
+direct reference to core.context
+implicit resolution based on runtime directory
+Only CLI should use cwd.
+Daemon and QVService must be deterministic based solely on arguments.
+Your output should include:
+A detailed list of issues found
+The reasoning why each is a problem
+The fixed or improved code
+Any new tests added
+Any clarifications added to documentation or internal comments
+You are allowed to refactor code when appropriate, as long as the public interfaces remain consistent with the architecture defined in AI_understanding.md.
+Perform this audit thoroughly and proactively—even if something looks correct, challenge it.
+
+1. find QE in ~/.zprofile

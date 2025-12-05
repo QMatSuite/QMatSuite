@@ -652,22 +652,32 @@ class QVService:
         """
         from quantumvitas.project.model import Project
         from quantumvitas.workflow.runner import WorkflowRunner
-        from quantumvitas.core.engines.base import EngineConfig
-        from quantumvitas.core.engines.qe import QuantumEspressoEngine
+        from quantumvitas.engine.registry import create_default_registry
         
         project = Project.open(project_root)
         workflow = project.get_workflow(workflow_selector)
         
-        config = EngineConfig(name="qe")
-        engine = QuantumEspressoEngine(config)
-        runner = WorkflowRunner(engine)
+        # WorkflowRunner expects an EngineRegistry with engines registered
+        registry = create_default_registry()
+        runner = WorkflowRunner(registry)
         
         results = runner.run(workflow)
         
+        # Convert WorkflowResult to dict for JSON serialization
         return {
             "workflow": workflow_selector,
-            "steps": len(results),
-            "results": results,
+            "status": results.status.value,
+            "n_steps": len(results.steps),
+            "steps": [
+                {
+                    "step_id": s.step_id,
+                    "step_type": s.step_type.value if hasattr(s.step_type, 'value') else str(s.step_type),
+                    "status": s.status.value,
+                    "message": s.message,
+                    "metrics": s.metrics,
+                }
+                for s in results.steps
+            ],
         }
     
     @staticmethod
@@ -1091,6 +1101,490 @@ class QVService:
         except Exception:
             pass
         return None
+
+
+    # -------------------------------------------------------------------------
+    # GUI-Ready Data Methods (Phase 1)
+    # 
+    # These methods return pure JSON-serializable data with no matplotlib objects.
+    # Designed for use by both CLI and GUI (via JSON-RPC daemon).
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def get_project_summary(project_root: Path) -> Dict[str, Any]:
+        """
+        Get a high-level summary of a project.
+        
+        Args:
+            project_root: Project root path
+            
+        Returns:
+            Dict with project name, id, structure count, workflow count, etc.
+        """
+        project_root = Path(project_root).resolve()
+        config = load_project_config(project_root)
+        
+        project_info = config.get("project", {})
+        meta = project_info.get("meta", {})
+        structures = config.get("structures", [])
+        workflows = config.get("workflows", [])
+        
+        return {
+            "id": meta.get("id"),
+            "name": project_info.get("name") or meta.get("name") or project_root.name,
+            "slug": meta.get("slug"),
+            "path": str(project_root),
+            "n_structures": len(structures),
+            "n_workflows": len(workflows),
+            "structure_names": [s.get("name", "?") for s in structures],
+            "workflow_names": [w.get("name", "?") for w in workflows],
+        }
+    
+    @staticmethod
+    def list_structures_data(project_root: Path) -> List[Dict[str, Any]]:
+        """
+        List all structures as JSON-serializable dicts.
+        
+        Args:
+            project_root: Project root path
+            
+        Returns:
+            List of dicts, each with id, name, slug, path, and structure metadata
+        """
+        project_root = Path(project_root).resolve()
+        resolved_list = list_structures(project_root)
+        
+        result = []
+        for res in resolved_list:
+            entry = {
+                "id": res.meta.id,
+                "name": res.meta.name,
+                "slug": res.meta.slug,
+                "path": res.meta.path,
+                "absolute_path": str(res.absolute_path),
+            }
+            
+            # Try to add structure metadata (formula, n_atoms, etc.)
+            try:
+                from quantumvitas.io import read_structure
+                if res.absolute_path.exists():
+                    struct = read_structure(res.absolute_path)
+                    entry["formula"] = struct.composition.reduced_formula
+                    entry["n_atoms"] = len(struct)
+                    entry["n_species"] = len(struct.composition.elements)
+                    entry["lattice_type"] = struct.lattice.pbc.__class__.__name__ if hasattr(struct.lattice, 'pbc') else "3D"
+                    # Lattice parameters
+                    latt = struct.lattice
+                    entry["lattice_params"] = {
+                        "a": float(latt.a),
+                        "b": float(latt.b),
+                        "c": float(latt.c),
+                        "alpha": float(latt.alpha),
+                        "beta": float(latt.beta),
+                        "gamma": float(latt.gamma),
+                        "volume": float(latt.volume),
+                    }
+            except Exception:
+                pass  # Structure metadata is optional
+            
+            result.append(entry)
+        
+        return result
+    
+    @staticmethod
+    def list_workflows_data(project_root: Path) -> List[Dict[str, Any]]:
+        """
+        List all workflows as JSON-serializable dicts.
+        
+        Args:
+            project_root: Project root path
+            
+        Returns:
+            List of dicts, each with workflow metadata and step info
+        """
+        project_root = Path(project_root).resolve()
+        resolved_list = list_workflows(project_root)
+        
+        result = []
+        for res in resolved_list:
+            entry = {
+                "id": res.meta.id,
+                "name": res.meta.name,
+                "slug": res.meta.slug,
+                "path": res.meta.path,
+                "absolute_path": str(res.absolute_path),
+            }
+            
+            # Try to add workflow details
+            try:
+                from quantumvitas.core.models import load_workflow
+                if res.absolute_path.exists():
+                    wf_model = load_workflow(res.absolute_path, project_root)
+                    entry["structure"] = wf_model.structure
+                    entry["mode"] = wf_model.mode
+                    entry["n_steps"] = len(wf_model.steps)
+                    entry["steps"] = [
+                        {
+                            "id": s.id,
+                            "type": s.type,
+                            "step_file": s.step_file,
+                        }
+                        for s in wf_model.steps
+                    ]
+            except Exception:
+                pass  # Workflow details are optional
+            
+            result.append(entry)
+        
+        return result
+    
+    @staticmethod
+    def get_structure_vis_data(
+        project_root: Path,
+        selector: str,
+        supercell: Tuple[int, int, int] = (1, 1, 1),
+        repeat_boundary: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Get pure visualization data for a structure (no matplotlib).
+        
+        Returns all data needed for 3D rendering in a GUI:
+        - Lattice vectors and parameters
+        - Atom positions (Cartesian and fractional)
+        - Element information and colors
+        - Detected bonds
+        
+        Args:
+            project_root: Project root path
+            selector: Structure selector (name/slug/path)
+            supercell: Tuple of (a, b, c) supercell scaling factors
+            repeat_boundary: If True, include periodic images at boundaries
+            
+        Returns:
+            Dict with all visualization data (JSON-serializable)
+        """
+        from quantumvitas.io import read_structure
+        from quantumvitas.analysis.structure_viz import (
+            detect_bonds,
+            generate_boundary_atoms,
+            get_element_color,
+            get_element_radius,
+            ELEMENT_COLORS,
+        )
+        
+        project_root = Path(project_root).resolve()
+        
+        # Resolve structure
+        resolved = resolve_structure(project_root, selector)
+        if not resolved.absolute_path.exists():
+            raise QVServiceError(f"Structure file not found: {resolved.absolute_path}")
+        
+        # Load structure
+        structure = read_structure(resolved.absolute_path)
+        
+        # Apply supercell if needed
+        if supercell != (1, 1, 1):
+            structure = structure.copy()
+            structure.make_supercell(supercell)
+        
+        # Get lattice info
+        lattice = structure.lattice
+        lattice_matrix = lattice.matrix.tolist()
+        
+        # Collect atoms
+        atoms = []
+        for i, site in enumerate(structure):
+            symbol = site.specie.symbol
+            atoms.append({
+                "index": i,
+                "element": symbol,
+                "cart_coords": [float(c) for c in site.coords],
+                "frac_coords": [float(f) for f in site.frac_coords],
+                "color": get_element_color(symbol),
+                "radius": get_element_radius(symbol),
+            })
+        
+        # Generate boundary atoms if requested
+        boundary_atoms = []
+        if repeat_boundary:
+            try:
+                boundary_coords, boundary_elements = generate_boundary_atoms(structure)
+                for coords, element in zip(boundary_coords, boundary_elements):
+                    frac = lattice.get_fractional_coords(coords)
+                    boundary_atoms.append({
+                        "element": element,
+                        "cart_coords": [float(c) for c in coords],
+                        "frac_coords": [float(f) for f in frac],
+                        "color": get_element_color(element),
+                        "radius": get_element_radius(element),
+                        "is_boundary": True,
+                    })
+            except Exception:
+                pass  # Boundary atoms are optional
+        
+        # Detect bonds
+        bonds = []
+        try:
+            detected_bonds = detect_bonds(
+                structure,
+                tolerance=0.3,
+                include_periodic_images=repeat_boundary,
+            )
+            for bond in detected_bonds:
+                bonds.append({
+                    "idx1": int(bond.idx1),
+                    "idx2": int(bond.idx2),
+                    "coord1": [float(c) for c in bond.coord1],
+                    "coord2": [float(c) for c in bond.coord2],
+                    "distance": float(bond.distance),
+                })
+        except Exception:
+            pass  # Bonds are optional
+        
+        return {
+            "structure_id": resolved.meta.id,
+            "structure_name": resolved.meta.name,
+            "formula": structure.composition.reduced_formula,
+            "n_atoms": len(structure),
+            "n_boundary_atoms": len(boundary_atoms),
+            "n_bonds": len(bonds),
+            "supercell": list(supercell),
+            "lattice": {
+                "matrix": lattice_matrix,
+                "a": float(lattice.a),
+                "b": float(lattice.b),
+                "c": float(lattice.c),
+                "alpha": float(lattice.alpha),
+                "beta": float(lattice.beta),
+                "gamma": float(lattice.gamma),
+                "volume": float(lattice.volume),
+            },
+            "atoms": atoms,
+            "boundary_atoms": boundary_atoms,
+            "bonds": bonds,
+            "element_colors": ELEMENT_COLORS,
+        }
+    
+    @staticmethod
+    def get_scf_convergence_data(
+        project_root: Path,
+        workflow_selector: str,
+        step_selector: str,
+    ) -> Dict[str, Any]:
+        """
+        Get SCF convergence data for a specific step in a workflow.
+        
+        Args:
+            project_root: Project root path
+            workflow_selector: Workflow selector
+            step_selector: Step selector
+            
+        Returns:
+            Dict with SCF convergence data (iterations, energies, etc.)
+        """
+        from quantumvitas.analysis.parsers import parse_scf_output
+        from quantumvitas.workflow.naming import find_workflow_raw_dir
+        
+        project_root = Path(project_root).resolve()
+        workflow = resolve_workflow(project_root, workflow_selector)
+        
+        # Find output file in raw directory
+        raw_dir = find_workflow_raw_dir(workflow.absolute_path)
+        
+        # Look for output files matching step selector
+        scf_output = None
+        for pattern in [f"*{step_selector}*.out", f"{step_selector}.out", "*scf*.out"]:
+            matches = list(raw_dir.glob(pattern))
+            if matches:
+                scf_output = matches[0]
+                break
+        
+        if scf_output is None or not scf_output.exists():
+            raise QVServiceError(
+                f"SCF output not found for step '{step_selector}' in workflow '{workflow_selector}'"
+            )
+        
+        # Parse SCF output
+        result = parse_scf_output(scf_output)
+        
+        # Build convergence series data
+        iterations_data = []
+        for it in result.iterations:
+            iterations_data.append({
+                "iteration": it.iteration,
+                "total_energy_ry": it.total_energy,
+                "scf_accuracy_ry": it.scf_accuracy,
+            })
+        
+        return {
+            "workflow": workflow_selector,
+            "step": step_selector,
+            "output_file": str(scf_output),
+            "converged": result.converged,
+            "n_iterations": len(result.iterations),
+            "total_energy_ry": result.total_energy,
+            "fermi_energy_ev": result.fermi_energy,
+            "iterations": iterations_data,
+            "calculation_type": result.calculation_type,
+            "n_electrons": result.n_electrons,
+            "n_kpoints": result.n_kpoints,
+            "ecutwfc_ry": result.ecutwfc,
+            "units": {
+                "energy": "Ry",
+                "fermi": "eV",
+            },
+        }
+    
+    @staticmethod
+    def get_dos_data(
+        project_root: Path,
+        workflow_selector: str,
+        step_selector: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Get DOS data for plotting in GUI.
+        
+        Args:
+            project_root: Project root path
+            workflow_selector: Workflow selector
+            step_selector: Optional step selector (if None, searches for dos files)
+            
+        Returns:
+            Dict with DOS data arrays and Fermi energy
+        """
+        from quantumvitas.analysis.parsers import parse_dos_data, parse_scf_output
+        from quantumvitas.workflow.naming import find_workflow_raw_dir
+        
+        project_root = Path(project_root).resolve()
+        workflow = resolve_workflow(project_root, workflow_selector)
+        raw_dir = find_workflow_raw_dir(workflow.absolute_path)
+        
+        # Find DOS data file
+        dos_file = None
+        patterns = ["*.dos.dat", "*dos*.dat", "*.dos"]
+        if step_selector:
+            patterns = [f"*{step_selector}*.dat", f"{step_selector}.dat"] + patterns
+        
+        for pattern in patterns:
+            matches = list(raw_dir.glob(pattern))
+            if matches:
+                dos_file = matches[0]
+                break
+        
+        if dos_file is None or not dos_file.exists():
+            raise QVServiceError(
+                f"DOS data file not found in workflow '{workflow_selector}'"
+            )
+        
+        # Parse DOS data
+        dos_data = parse_dos_data(dos_file)
+        
+        # Try to get Fermi energy from NSCF/SCF output
+        fermi_energy = dos_data.fermi_energy
+        if fermi_energy is None:
+            for pattern in ["*nscf*.out", "*scf*.out"]:
+                matches = list(raw_dir.glob(pattern))
+                if matches:
+                    try:
+                        scf_result = parse_scf_output(matches[0])
+                        fermi_energy = scf_result.fermi_energy
+                        break
+                    except Exception:
+                        pass
+        
+        return {
+            "workflow": workflow_selector,
+            "step": step_selector,
+            "data_file": str(dos_file),
+            "n_points": len(dos_data.energies),
+            "fermi_energy_ev": fermi_energy,
+            "energy_range_ev": [float(dos_data.energies.min()), float(dos_data.energies.max())],
+            "energies_ev": dos_data.energies.tolist(),
+            "dos_states_per_ev": dos_data.dos.tolist(),
+            "idos": dos_data.idos.tolist() if dos_data.idos is not None else None,
+            "units": {
+                "energy": "eV",
+                "dos": "states/eV",
+            },
+        }
+    
+    @staticmethod
+    def get_band_structure_data(
+        project_root: Path,
+        workflow_selector: str,
+        step_selector: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Get band structure data for plotting in GUI.
+        
+        Args:
+            project_root: Project root path
+            workflow_selector: Workflow selector
+            step_selector: Optional step selector
+            
+        Returns:
+            Dict with band energies, k-distances, high-symmetry points, and Fermi energy
+        """
+        from quantumvitas.analysis.parsers import parse_bands_gnu, parse_scf_output
+        from quantumvitas.workflow.naming import find_band_analysis_files, find_workflow_raw_dir
+        
+        project_root = Path(project_root).resolve()
+        workflow = resolve_workflow(project_root, workflow_selector)
+        raw_dir = find_workflow_raw_dir(workflow.absolute_path)
+        
+        # Find band analysis files
+        found_files = find_band_analysis_files(raw_dir)
+        
+        if found_files.bands_gnu is None:
+            raise QVServiceError(
+                f"Band structure data not found in workflow '{workflow_selector}'"
+            )
+        
+        # Get Fermi energy from pw.x output if available
+        fermi_energy = None
+        if found_files.pw_output:
+            try:
+                scf_result = parse_scf_output(found_files.pw_output)
+                fermi_energy = scf_result.fermi_energy
+            except Exception:
+                pass
+        
+        # Parse band data
+        band_data = parse_bands_gnu(
+            found_files.bands_gnu,
+            symmetry_file=found_files.bands_pp_out,
+            fermi_energy=fermi_energy,
+            pw_output_file=found_files.pw_output,
+        )
+        
+        # Format high-symmetry points (ensure JSON-serializable)
+        high_sym_points = []
+        for pt in band_data.high_symmetry_points:
+            # Convert k_coords to list of floats (may be numpy array)
+            k_coords = None
+            if pt.k_coords is not None:
+                k_coords = [float(x) for x in pt.k_coords]
+            high_sym_points.append({
+                "label": pt.label,
+                "k_distance": float(pt.k_distance) if pt.k_distance is not None else None,
+                "k_coords": k_coords,
+            })
+        
+        return {
+            "workflow": workflow_selector,
+            "step": step_selector,
+            "data_file": str(found_files.bands_gnu),
+            "n_bands": band_data.n_bands,
+            "n_kpoints": band_data.n_kpoints,
+            "fermi_energy_ev": band_data.fermi_energy,
+            "k_distances": band_data.k_distances.tolist(),
+            "energies_ev": band_data.energies.tolist(),  # Shape: [n_bands, n_kpoints]
+            "high_symmetry_points": high_sym_points,
+            "units": {
+                "energy": "eV",
+                "k_distance": "2π/a",
+            },
+        }
 
 
 # Export the service as a singleton-like module-level instance
