@@ -1,0 +1,42 @@
+/* AppShell Layout Styles */
+
+.app-shell {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.app-shell__sidebar {
+  width: 320px;
+  min-width: 280px;
+  max-width: 400px;
+  height: 100%;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-shell__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0; /* Allow shrinking */
+}
+
+.app-shell__content {
+  flex: 1;
+  overflow: auto;
+  padding: 20px;
+}
+
+.app-shell__footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+

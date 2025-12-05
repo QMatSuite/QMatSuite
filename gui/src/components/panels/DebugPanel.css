@@ -1,0 +1,52 @@
+/* DebugPanel Styles */
+
+.debug-panel {
+  height: 180px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-terminal);
+  color: var(--text-terminal);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.debug-panel__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--bg-terminal-header);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.debug-panel__title {
+  font-weight: 600;
+}
+
+.debug-panel__count {
+  opacity: 0.6;
+  font-size: 0.7rem;
+}
+
+.debug-panel__content {
+  flex: 1;
+  overflow: auto;
+  padding: 8px 12px;
+}
+
+.debug-panel__empty {
+  opacity: 0.5;
+  font-style: italic;
+}
+
+.debug-panel__line {
+  white-space: pre-wrap;
+  word-break: break-all;
+  padding: 2px 0;
+  opacity: 0.9;
+}
+
+.debug-panel__line:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+

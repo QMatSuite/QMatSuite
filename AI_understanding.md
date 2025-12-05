@@ -1872,6 +1872,150 @@ pytest tests/unit/test_ci_smoke.py -v
 pytest tests/ -v
 ```
 
+## 17. GUI Layer Architecture (Electron + React)
+
+### 17.1 Overview
+
+The GUI layer provides a desktop application interface using:
+- **Electron** - Desktop application framework
+- **React + TypeScript** - UI framework
+- **electron-vite** - Build tooling
+
+Architecture diagram:
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Electron Main Process                    │
+│                                                              │
+│  ┌──────────────────┐    ┌───────────────────────────────┐ │
+│  │   BrowserWindow  │    │      Python Daemon            │ │
+│  │                  │    │                               │ │
+│  │  ┌────────────┐  │    │  stdin ← JSON requests       │ │
+│  │  │   React    │  │    │  stdout → JSON responses     │ │
+│  │  │   App      │  │    │  stderr → logs               │ │
+│  │  └────────────┘  │    │                               │ │
+│  └────────┬─────────┘    └───────────────┬───────────────┘ │
+│           │                              │                  │
+│           │ IPC                          │ spawn/stdio      │
+│           ▼                              ▼                  │
+│  ┌────────────────────────────────────────────────────────┐│
+│  │                   ipcMain.handle                       ││
+│  │                   Request Map (id → resolve/reject)    ││
+│  └────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 17.2 Directory Structure
+
+```
+gui/
+├── electron/
+│   ├── main.ts           # Electron main process
+│   └── preload.ts        # Context bridge API
+├── src/
+│   ├── main.tsx          # React entry point
+│   ├── App.tsx           # Root component
+│   ├── index.css         # Global styles (design tokens)
+│   ├── components/
+│   │   ├── layout/
+│   │   │   ├── AppShell.tsx    # Main layout wrapper
+│   │   │   └── Sidebar.tsx     # Navigation + actions
+│   │   └── panels/
+│   │       ├── ResultPanel.tsx # JSON result display
+│   │       └── DebugPanel.tsx  # Daemon log viewer
+│   ├── hooks/
+│   │   └── useQVClient.ts      # Daemon communication hook
+│   └── types/
+│       └── qv.ts               # RPC type definitions
+├── index.html
+├── package.json
+├── tsconfig.json
+└── vite.config.ts
+```
+
+### 17.3 Communication Flow
+
+1. **React Component** calls `qv.request(type, payload)` via hook
+2. **Preload Script** generates unique ID, sends via IPC
+3. **Electron Main** writes JSON to daemon's stdin
+4. **Python Daemon** processes request, writes response to stdout
+5. **Electron Main** parses JSON, resolves pending promise
+6. **React Component** receives typed response
+
+### 17.4 Key Files
+
+| File | Purpose |
+|------|---------|
+| `electron/main.ts` | Spawns daemon, handles IPC, manages request map |
+| `electron/preload.ts` | Exposes `window.qv` API via contextBridge |
+| `src/types/qv.ts` | TypeScript types mirroring daemon protocol |
+| `src/hooks/useQVClient.ts` | React hook wrapping daemon calls |
+
+### 17.5 IPC Protocol
+
+**Preload exposes:**
+```typescript
+window.qv = {
+  request: <T>(type: string, payload: object) => Promise<QVResponse<T>>,
+  onLog: (callback: (msg: string) => void) => () => void,
+  isConnected: () => Promise<boolean>,
+  onMainMessage: (callback: (data: unknown) => void) => () => void,
+}
+```
+
+**Request format:** (same as daemon protocol)
+```json
+{"id": "req-1733370000-1", "type": "ping", "payload": {}}
+```
+
+### 17.6 Design System
+
+CSS custom properties in `src/index.css`:
+- `--color-primary`, `--color-success`, `--color-error`
+- `--bg-primary`, `--bg-sidebar`, `--bg-card`
+- `--text-primary`, `--text-secondary`, `--text-muted`
+- `--font-sans` (IBM Plex Sans), `--font-mono` (IBM Plex Mono)
+- JSON syntax highlighting: `--json-key`, `--json-string`, etc.
+
+Theme: Midnight blue dark theme for professional scientific software appearance.
+
+### 17.7 Running the GUI
+
+```bash
+cd gui
+npm install       # First time only
+npm run dev       # Development mode (hot reload)
+npm run build     # Production build
+```
+
+Development mode opens DevTools automatically.
+
+### 17.8 Daemon Lifecycle
+
+1. **Startup**: Main process spawns daemon using project's `.venv/bin/python`
+2. **Communication**: Line-delimited JSON over stdio
+3. **Logging**: Daemon stderr forwarded to DevTools and DebugPanel
+4. **Shutdown**: Send `shutdown` command, then SIGTERM if needed
+
+### 17.9 Extending the GUI
+
+**Adding a new command:**
+1. Add type to `QVCommandType` in `src/types/qv.ts`
+2. Add payload/response types
+3. Add method to `useQVClient.ts` hook
+4. Call from component
+
+**Adding a new panel:**
+1. Create component in `src/components/panels/`
+2. Export from `index.ts`
+3. Import and use in `App.tsx`
+
+### 17.10 Known Limitations
+
+- No SSL/TLS (daemon is local only via stdio)
+- Single daemon instance per Electron app
+- Request timeout: 60 seconds (configurable in main.ts)
+- Daemon must be restarted if Python code changes
+
 ---
 
 *Last updated: 2025-12-05*

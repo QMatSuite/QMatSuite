@@ -1,0 +1,180 @@
+/**
+ * QuantumVITAS GUI - Global Styles
+ * 
+ * Design system with CSS custom properties for theming.
+ * Using a modern, professional dark theme inspired by scientific software.
+ */
+
+/* =============================================================================
+   CSS Custom Properties (Design Tokens)
+   ============================================================================= */
+
+:root {
+  /* Typography */
+  --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-display: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  
+  /* Color Palette - Midnight Blue Theme */
+  --color-primary: #6366f1;
+  --color-primary-dark: #4f46e5;
+  --color-primary-light: #818cf8;
+  --color-primary-alpha: rgba(99, 102, 241, 0.15);
+  
+  --color-success: #10b981;
+  --color-success-bg: rgba(16, 185, 129, 0.15);
+  
+  --color-error: #ef4444;
+  --color-error-bg: rgba(239, 68, 68, 0.15);
+  
+  --color-warning: #f59e0b;
+  --color-warning-bg: rgba(245, 158, 11, 0.15);
+  
+  /* Background Colors */
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-sidebar: #0f172a;
+  --bg-card: #1e293b;
+  --bg-input: #0f172a;
+  --bg-button: #334155;
+  --bg-button-hover: #475569;
+  --bg-terminal: #020617;
+  --bg-terminal-header: #0f172a;
+  
+  /* Text Colors */
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #64748b;
+  --text-terminal: #94a3b8;
+  
+  /* Border Colors */
+  --border-color: #334155;
+  --border-color-hover: #475569;
+  
+  /* JSON Syntax Highlighting */
+  --json-key: #93c5fd;
+  --json-string: #86efac;
+  --json-number: #fcd34d;
+  --json-boolean: #c4b5fd;
+  --json-null: #94a3b8;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+  
+  /* Transitions */
+  --transition-fast: 0.1s ease;
+  --transition-normal: 0.2s ease;
+}
+
+/* =============================================================================
+   Reset & Base Styles
+   ============================================================================= */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+  overflow: hidden;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* =============================================================================
+   Typography
+   ============================================================================= */
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+code, pre, kbd, samp {
+  font-family: var(--font-mono);
+}
+
+/* =============================================================================
+   Form Elements
+   ============================================================================= */
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input, textarea, select {
+  font-family: inherit;
+}
+
+/* Focus styles */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* =============================================================================
+   Scrollbars
+   ============================================================================= */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-color-hover);
+}
+
+/* =============================================================================
+   Selection
+   ============================================================================= */
+
+::selection {
+  background: var(--color-primary-alpha);
+  color: var(--text-primary);
+}
+
+/* =============================================================================
+   Utility Classes
+   ============================================================================= */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
