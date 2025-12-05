@@ -787,6 +787,310 @@ class QVService:
             "supercell": list(supercell),
             "repeat_boundary": repeat_boundary,
         }
+    
+    @staticmethod
+    def analyze_scf(
+        project_root: Optional[Path],
+        scf_file: Path,
+        plot: bool = False,
+        output_dir: Optional[Path] = None,
+        plot_format: str = "png",
+    ) -> Dict[str, Any]:
+        """
+        Analyze SCF output file for energies and convergence.
+        
+        Args:
+            project_root: Project root path (can be None for standalone analysis)
+            scf_file: Path to SCF output file (.out)
+            plot: If True, generate convergence plot
+            output_dir: Directory for output files (None for auto-detect)
+            plot_format: Plot format (png, svg, pdf)
+            
+        Returns:
+            Dict with SCF analysis results
+        """
+        from quantumvitas.analysis.parsers import parse_scf_output
+        from quantumvitas.analysis.plotting import plot_scf_convergence, save_figure
+        
+        scf_file = Path(scf_file).resolve()
+        if not scf_file.exists():
+            raise QVServiceError(f"SCF output file not found: {scf_file}")
+        
+        # Parse SCF output
+        result = parse_scf_output(scf_file)
+        data = result.to_dict()
+        
+        # Determine output directory
+        if output_dir is None and project_root:
+            # Try to detect workflow context from file location
+            output_dir = QVService._detect_workflow_results_dir(project_root, scf_file)
+        
+        # Generate plot if requested
+        plot_path = None
+        if plot and result.iterations:
+            fig, ax = plot_scf_convergence(result)
+            if output_dir:
+                output_dir = Path(output_dir)
+                output_dir.mkdir(parents=True, exist_ok=True)
+                plot_path = output_dir / f"scf_convergence.{plot_format}"
+                save_figure(fig, plot_path)
+        
+        return {
+            "data": data,
+            "plot_path": str(plot_path) if plot_path else None,
+            "converged": result.converged,
+            "total_energy_ry": result.total_energy,
+            "fermi_energy_ev": result.fermi_energy,
+            "n_iterations": len(result.iterations),
+        }
+    
+    @staticmethod
+    def analyze_dos(
+        project_root: Optional[Path],
+        dos_file: Path,
+        fermi_energy: Optional[float] = None,
+        scf_file: Optional[Path] = None,
+        plot: bool = False,
+        output_dir: Optional[Path] = None,
+        plot_format: str = "png",
+        energy_range: Optional[Tuple[float, float]] = None,
+        shift_fermi: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Analyze DOS data file.
+        
+        Args:
+            project_root: Project root path (can be None for standalone analysis)
+            dos_file: Path to DOS data file (.dat)
+            fermi_energy: Override Fermi energy in eV
+            scf_file: Path to SCF/NSCF output to extract Fermi energy
+            plot: If True, generate DOS plot
+            output_dir: Directory for output files (None for auto-detect)
+            plot_format: Plot format (png, svg, pdf)
+            energy_range: Energy range for plot (min, max) in eV
+            shift_fermi: If True, shift energies to Fermi level
+            
+        Returns:
+            Dict with DOS analysis results
+        """
+        from quantumvitas.analysis.parsers import parse_dos_data, parse_scf_output, DOSData
+        from quantumvitas.analysis.plotting import plot_dos, save_figure
+        
+        dos_file = Path(dos_file).resolve()
+        if not dos_file.exists():
+            raise QVServiceError(f"DOS file not found: {dos_file}")
+        
+        # Parse DOS data
+        dos_data = parse_dos_data(dos_file)
+        
+        # Get Fermi energy from SCF if not provided
+        if fermi_energy is None and scf_file:
+            scf_path = Path(scf_file)
+            if scf_path.exists():
+                scf_result = parse_scf_output(scf_path)
+                fermi_energy = scf_result.fermi_energy
+        
+        # Override Fermi energy if provided
+        if fermi_energy is not None:
+            dos_data = DOSData(
+                energies=dos_data.energies,
+                dos=dos_data.dos,
+                idos=dos_data.idos,
+                fermi_energy=fermi_energy,
+            )
+        
+        data = dos_data.to_dict()
+        
+        # Determine output directory
+        if output_dir is None and project_root:
+            output_dir = QVService._detect_workflow_results_dir(project_root, dos_file)
+        
+        # Generate plot if requested
+        plot_path = None
+        if plot:
+            fig, ax = plot_dos(
+                dos_data,
+                shift_fermi=shift_fermi,
+                energy_range=energy_range,
+            )
+            if output_dir:
+                output_dir = Path(output_dir)
+                output_dir.mkdir(parents=True, exist_ok=True)
+                plot_path = output_dir / f"dos.{plot_format}"
+                save_figure(fig, plot_path)
+        
+        # Save data file if output_dir specified
+        if output_dir:
+            import json
+            output_dir = Path(output_dir)
+            output_dir.mkdir(parents=True, exist_ok=True)
+            (output_dir / "dos_data.json").write_text(json.dumps(data, indent=2))
+        
+        return {
+            "data": data,
+            "plot_path": str(plot_path) if plot_path else None,
+            "n_points": len(dos_data.energies),
+            "fermi_energy_ev": dos_data.fermi_energy,
+            "energy_range_ev": data.get("energy_range_ev"),
+        }
+    
+    @staticmethod
+    def analyze_band(
+        project_root: Optional[Path],
+        bands_file: Optional[Path] = None,
+        workflow_selector: Optional[str] = None,
+        symmetry_file: Optional[Path] = None,
+        scf_file: Optional[Path] = None,
+        fermi_energy: Optional[float] = None,
+        plot: bool = False,
+        output_dir: Optional[Path] = None,
+        plot_format: str = "png",
+        energy_range: Optional[Tuple[float, float]] = None,
+        shift_fermi: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Analyze band structure data.
+        
+        Args:
+            project_root: Project root path (can be None for standalone analysis)
+            bands_file: Path to bands.dat.gnu file (auto-detected if workflow provided)
+            workflow_selector: Workflow selector to auto-locate files
+            symmetry_file: Path to bands.x output with high-symmetry points
+            scf_file: Path to pw.x output (NSCF/SCF) for Fermi energy and reciprocal lattice
+            fermi_energy: Override Fermi energy in eV
+            plot: If True, generate band structure plot
+            output_dir: Directory for output files (None for auto-detect)
+            plot_format: Plot format (png, svg, pdf)
+            energy_range: Energy range for plot (min, max) in eV
+            shift_fermi: If True, shift energies to Fermi level
+            
+        Returns:
+            Dict with band analysis results
+        """
+        from quantumvitas.analysis.parsers import parse_bands_gnu, parse_scf_output
+        from quantumvitas.analysis.plotting import plot_bands, save_figure
+        from quantumvitas.workflow.naming import find_band_analysis_files, find_workflow_raw_dir, find_workflow_results_dir
+        
+        workflow_dir: Optional[Path] = None
+        
+        # Resolve workflow if selector provided
+        if workflow_selector and project_root:
+            try:
+                workflow = resolve_workflow(project_root, workflow_selector)
+                workflow_dir = workflow.absolute_path
+            except (SelectorNotFoundError, AmbiguousSelectorError) as e:
+                raise QVServiceError(f"Workflow not found: {workflow_selector}") from e
+        
+        # Auto-locate files from workflow if available
+        search_dir: Optional[Path] = None
+        if workflow_dir:
+            search_dir = find_workflow_raw_dir(workflow_dir)
+            if output_dir is None:
+                output_dir = find_workflow_results_dir(workflow_dir)
+        elif bands_file:
+            search_dir = Path(bands_file).resolve().parent
+        
+        # Find analysis files
+        if search_dir and search_dir.exists():
+            found_files = find_band_analysis_files(search_dir)
+            
+            if bands_file is None and found_files.bands_gnu:
+                bands_file = found_files.bands_gnu
+            
+            if symmetry_file is None and found_files.bands_pp_out:
+                symmetry_file = found_files.bands_pp_out
+            
+            if scf_file is None and found_files.pw_output:
+                scf_file = found_files.pw_output
+        
+        # Validate bands file
+        if bands_file is None:
+            raise QVServiceError(
+                "No bands.dat.gnu file found. Provide bands_file argument or use workflow_selector."
+            )
+        
+        bands_file = Path(bands_file).resolve()
+        if not bands_file.exists():
+            raise QVServiceError(f"Bands file not found: {bands_file}")
+        
+        # Get Fermi energy from SCF if not provided
+        if fermi_energy is None and scf_file:
+            scf_path = Path(scf_file)
+            if scf_path.exists():
+                scf_result = parse_scf_output(scf_path)
+                fermi_energy = scf_result.fermi_energy
+        
+        # Parse bands data
+        band_data = parse_bands_gnu(
+            bands_file,
+            symmetry_file=symmetry_file,
+            fermi_energy=fermi_energy,
+            pw_output_file=scf_file,  # Provides reciprocal lattice vectors for k-point conversion
+        )
+        
+        data = band_data.to_dict()
+        
+        # Determine output directory if still None
+        if output_dir is None and project_root:
+            output_dir = QVService._detect_workflow_results_dir(project_root, bands_file)
+        
+        # Generate plot if requested
+        plot_path = None
+        if plot:
+            fig, ax = plot_bands(
+                band_data,
+                shift_fermi=shift_fermi,
+                energy_range=energy_range,
+            )
+            if output_dir:
+                output_dir = Path(output_dir)
+                output_dir.mkdir(parents=True, exist_ok=True)
+                plot_path = output_dir / f"bands.{plot_format}"
+                save_figure(fig, plot_path)
+        
+        # Save data file if output_dir specified
+        if output_dir:
+            import json
+            output_dir = Path(output_dir)
+            output_dir.mkdir(parents=True, exist_ok=True)
+            (output_dir / "bands_data.json").write_text(json.dumps(data, indent=2))
+        
+        return {
+            "data": data,
+            "plot_path": str(plot_path) if plot_path else None,
+            "n_bands": band_data.n_bands,
+            "n_kpoints": band_data.n_kpoints,
+            "fermi_energy_ev": band_data.fermi_energy,
+            "high_symmetry_points": [pt.label for pt in band_data.high_symmetry_points],
+        }
+    
+    @staticmethod
+    def _detect_workflow_results_dir(project_root: Path, file_path: Path) -> Optional[Path]:
+        """
+        Detect the workflow results directory from a file's location.
+        
+        Args:
+            project_root: Project root path
+            file_path: Path to a file within the workflow
+            
+        Returns:
+            Path to results directory, or None if not in a workflow
+        """
+        try:
+            file_path = file_path.resolve()
+            config = load_project_config(project_root)
+            
+            for wf_entry in config.get("workflows", []):
+                wf_path = wf_entry.get("path") or (wf_entry.get("meta") or {}).get("path")
+                if wf_path:
+                    wf_dir = (project_root / wf_path).resolve()
+                    if file_path.is_relative_to(wf_dir):
+                        results_dir = wf_dir / "results"
+                        results_dir.mkdir(parents=True, exist_ok=True)
+                        return results_dir
+        except Exception:
+            pass
+        return None
 
 
 # Export the service as a singleton-like module-level instance
