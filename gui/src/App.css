@@ -1,10 +1,23 @@
 /* App-specific styles */
 
+.main-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.main-content__body {
+  flex: 1;
+  overflow: auto;
+}
+
+/* App Header */
 .app-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
+  flex-shrink: 0;
 }
 
 .app-header__title {
@@ -33,4 +46,31 @@
 .app-header__toggle:hover {
   background: var(--bg-button-hover);
   border-color: var(--border-color-hover);
+}
+
+/* Structures View - Split Layout */
+.structures-view {
+  display: flex;
+  gap: 16px;
+  height: 100%;
+  min-height: 400px;
+}
+
+.structures-view__list {
+  flex: 1;
+  min-width: 300px;
+  max-width: 450px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.structures-view__list > * {
+  flex: 1;
+  overflow: hidden;
+}
+
+.structures-view__detail {
+  flex: 1;
+  min-width: 300px;
 }

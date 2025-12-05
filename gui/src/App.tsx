@@ -3,14 +3,24 @@
  * 
  * Provides the main application layout with:
  * - Sidebar for navigation and actions
- * - Main panel for displaying results
+ * - Main panel with structured views (Project Summary, Structures, Debug)
  * - Debug panel for daemon logs
  */
 
 import { useState, useCallback } from 'react';
-import { AppShell, Sidebar, ResultPanel, DebugPanel } from './components';
-import { useQVClient } from './hooks';
-import type { QVResponse } from './types';
+import { 
+  AppShell, 
+  Sidebar, 
+  ProjectSummaryPanel, 
+  StructureListPanel,
+  StructureDetailPanel,
+  DebugPanel,
+  ResultPanel,
+  DaemonErrorBanner,
+} from './components';
+import type { ViewType } from './components/layout/Sidebar';
+import { useQVClient, useDaemonStatus } from './hooks';
+import type { ProjectSummary, StructureInfo, QVResponse } from './types';
 import './App.css';
 
 function App() {
@@ -19,14 +29,25 @@ function App() {
     return localStorage.getItem('qv-project-root') || '';
   });
   
-  // Result state
-  const [result, setResult] = useState<QVResponse | null>(null);
+  // View state
+  const [currentView, setCurrentView] = useState<ViewType>('summary');
   
-  // Debug panel visibility
-  const [showDebug, setShowDebug] = useState(true);
+  // Data state
+  const [projectSummary, setProjectSummary] = useState<ProjectSummary | null>(null);
+  const [structures, setStructures] = useState<StructureInfo[] | null>(null);
+  const [selectedStructure, setSelectedStructure] = useState<StructureInfo | null>(null);
   
-  // QV client hook
+  // Debug state
+  const [debugResult, setDebugResult] = useState<QVResponse | null>(null);
+  const [showDebugFooter, setShowDebugFooter] = useState(true);
+  
+  // Loading states
+  const [isLoadingProject, setIsLoadingProject] = useState(false);
+  const [isLoadingStructures, setIsLoadingStructures] = useState(false);
+  
+  // Hooks
   const qv = useQVClient();
+  const daemonStatus = useDaemonStatus();
   
   // Handle project root change
   const handleProjectRootChange = useCallback((path: string) => {
@@ -34,10 +55,83 @@ function App() {
     localStorage.setItem('qv-project-root', path);
   }, []);
   
-  // Handle result from daemon
-  const handleResult = useCallback((response: unknown) => {
-    setResult(response as QVResponse);
+  // Load project summary
+  const handleLoadProject = useCallback(async () => {
+    setIsLoadingProject(true);
+    const response = await qv.getProjectSummary(projectRoot);
+    setIsLoadingProject(false);
+    
+    if (response.ok && response.data) {
+      setProjectSummary(response.data);
+      setCurrentView('summary');
+    }
+    setDebugResult(response as QVResponse);
+  }, [qv, projectRoot]);
+  
+  // List structures
+  const handleListStructures = useCallback(async () => {
+    setIsLoadingStructures(true);
+    const response = await qv.listStructures(projectRoot);
+    setIsLoadingStructures(false);
+    
+    if (response.ok && response.data) {
+      setStructures(response.data.structures);
+      setCurrentView('structures');
+    }
+    setDebugResult(response as QVResponse);
+  }, [qv, projectRoot]);
+  
+  // List workflows (for future use)
+  const handleListWorkflows = useCallback(async () => {
+    const response = await qv.listWorkflows(projectRoot);
+    setDebugResult(response as QVResponse);
+  }, [qv, projectRoot]);
+  
+  // Handle structure selection
+  const handleSelectStructure = useCallback((structure: StructureInfo) => {
+    setSelectedStructure(structure);
   }, []);
+  
+  // Render main content based on current view
+  const renderMainContent = () => {
+    switch (currentView) {
+      case 'summary':
+        return (
+          <ProjectSummaryPanel 
+            summary={projectSummary} 
+            isLoading={isLoadingProject}
+          />
+        );
+        
+      case 'structures':
+        return (
+          <div className="structures-view">
+            <div className="structures-view__list">
+              <StructureListPanel
+                structures={structures}
+                isLoading={isLoadingStructures}
+                selectedId={selectedStructure?.id}
+                onSelect={handleSelectStructure}
+              />
+            </div>
+            {selectedStructure && (
+              <div className="structures-view__detail">
+                <StructureDetailPanel
+                  structure={selectedStructure}
+                  onClose={() => setSelectedStructure(null)}
+                />
+              </div>
+            )}
+          </div>
+        );
+        
+      case 'debug':
+        return <ResultPanel result={debugResult} />;
+        
+      default:
+        return null;
+    }
+  };
   
   return (
     <AppShell
@@ -46,23 +140,43 @@ function App() {
           qv={qv}
           projectRoot={projectRoot}
           onProjectRootChange={handleProjectRootChange}
-          onResult={handleResult}
+          onLoadProject={handleLoadProject}
+          onListStructures={handleListStructures}
+          onListWorkflows={handleListWorkflows}
+          currentView={currentView}
+          onViewChange={setCurrentView}
+          daemonStatus={daemonStatus}
         />
       }
-      footer={<DebugPanel isVisible={showDebug} />}
+      footer={showDebugFooter ? <DebugPanel /> : null}
     >
-      <div className="app-header">
-        <h2 className="app-header__title">Results</h2>
-        <div className="app-header__actions">
-          <button
-            className="app-header__toggle"
-            onClick={() => setShowDebug(!showDebug)}
-          >
-            {showDebug ? '🔽 Hide Logs' : '🔼 Show Logs'}
-          </button>
+      <div className="main-content">
+        {/* Daemon Error Banner */}
+        <DaemonErrorBanner status={daemonStatus} />
+        
+        {/* Header */}
+        <div className="app-header">
+          <h2 className="app-header__title">
+            {currentView === 'summary' && 'Project Summary'}
+            {currentView === 'structures' && 'Structures'}
+            {currentView === 'workflows' && 'Workflows'}
+            {currentView === 'debug' && 'Debug Output'}
+          </h2>
+          <div className="app-header__actions">
+            <button
+              className="app-header__toggle"
+              onClick={() => setShowDebugFooter(!showDebugFooter)}
+            >
+              {showDebugFooter ? '🔽 Hide Logs' : '🔼 Show Logs'}
+            </button>
+          </div>
+        </div>
+        
+        {/* Main Content */}
+        <div className="main-content__body">
+          {renderMainContent()}
         </div>
       </div>
-      <ResultPanel result={result} />
     </AppShell>
   );
 }

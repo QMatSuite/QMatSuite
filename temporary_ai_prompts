@@ -1317,3 +1317,121 @@ You may refactor any placeholder code created earlier if needed.
 👉 Goal: Establish the full end-to-end pipeline:
 React → preload → IPC → Electron main → Python daemon → QVService → return JSON → display in UI.
 
+Done. Summary:
+Summary: GUI Layer Implementation Complete ✅
+I've implemented the full end-to-end pipeline:
+React → preload → IPC → Electron main → Python daemon → QVService → return JSON → display in UI
+Files Created/Updated
+Electron (Main Process)
+File	Purpose
+gui/electron/main.ts	Spawns daemon, handles IPC, manages request map
+gui/electron/preload.ts	Exposes window.qv API via contextBridge
+React (Renderer)
+File	Purpose
+gui/src/types/qv.ts	TypeScript types matching daemon protocol
+gui/src/hooks/useQVClient.ts	React hook for daemon communication
+gui/src/components/layout/AppShell.tsx	Main layout container
+gui/src/components/layout/Sidebar.tsx	Navigation, actions, status
+gui/src/components/panels/ResultPanel.tsx	JSON result viewer with syntax highlighting
+gui/src/components/panels/DebugPanel.tsx	Daemon log viewer
+gui/src/App.tsx	Root component
+gui/src/index.css	Design system (CSS variables)
+gui/index.html	IBM Plex fonts
+Documentation
+File	Purpose
+AI_understanding.md	Added Section 17: GUI Layer Architecture
+docs/GUI_ARCHITECTURE.md	Complete GUI documentation
+Architecture
+gui/├── electron/│   ├── main.ts           # Daemon spawning + IPC│   └── preload.ts        # Safe window.qv API├── src/│   ├── components/│   │   ├── layout/       # AppShell, Sidebar│   │   └── panels/       # ResultPanel, DebugPanel│   ├── hooks/│   │   └── useQVClient.ts│   └── types/│       └── qv.ts
+Key Features
+Daemon Communication
+Spawns Python daemon from .venv/bin/python
+Line-delimited JSON over stdio
+Request tracking with timeout (60s)
+Graceful shutdown
+React Integration
+useQVClient hook with typed methods
+useQVLogs for daemon log subscription
+State management for loading/error
+UI
+Midnight blue dark theme
+IBM Plex Sans/Mono fonts
+JSON syntax highlighting
+Connection status indicator
+Debug panel for daemon logs
+
+
+Some potential issues from agent review (might not be correct, think before coding)
+Daemon process not properly awaited before app exit
+The shutdownDaemon() function schedules a timeout to kill the daemon via setTimeout() but doesn't await it, causing the function to return immediately. When app.quit() is called on the next line, the timeout callback may not have fired yet, creating a race condition where the daemon process might not receive SIGTERM before the application exits. The timeout should be wrapped in a Promise that resolves after the delay completes.
+
+Then (remember to independently think and decide before implementing suggestions below. Goal is still best coding practice) 
+Cursor Prompt: refine GUI API, UI, and daemon spawning
+You’ve already implemented the full GUI pipeline:
+React → preload → IPC → Electron main → Python daemon → QVService → JSON → UI.
+I’d like you to refine and strengthen this implementation in three areas:
+1. Typed RPC API (types/qv.ts + useQVClient)
+Right now the RPC layer is basically "type": string + payload: any.
+Please:
+In src/types/qv.ts, define a central command map:
+export type QVCommandMap = {
+  ping: {
+    payload: {};
+    result: { pong: boolean };
+  };
+  get_project_summary: {
+    payload: { project_root: string };
+    result: ProjectSummary;   // define interface
+  };
+  list_structures: {
+    payload: { project_root: string };
+    result: StructureInfo[];  // define interface
+  };
+  // extend with other existing commands as needed
+};
+Add appropriate ProjectSummary, StructureInfo, etc. interfaces based on the daemon’s current JSON output.
+Refactor useQVClient:
+Make it generic over QVCommandMap:
+async function call<K extends keyof QVCommandMap>(
+  type: K,
+  payload: QVCommandMap[K]['payload']
+): Promise<QVCommandMap[K]['result']> { ... }
+Ensure all existing call sites are updated to use this typed API.
+This should give us end-to-end type safety for RPC calls.
+2. Improve UI: real panels instead of raw JSON-only
+Currently ResultPanel primarily shows raw JSON. Keep that for debugging, but:
+Introduce more structured panels in src/components/panels/:
+ProjectSummaryPanel.tsx
+StructureListPanel.tsx
+Behavior:
+The Sidebar should allow:
+Entering a project_root (keep text input for now).
+Buttons to:
+Ping daemon
+Load project summary
+Load structures
+When project summary is loaded:
+ProjectSummaryPanel should display it in a structured way (e.g., name, number of workflows/structures), not just raw JSON.
+When structures are loaded:
+StructureListPanel should render a clickable list / table of structures (name, slug, path, maybe kind).
+When a structure is clicked, show its details in the main area (for now still textual; later we’ll add 3D).
+Keep DebugPanel and ResultPanel available as a “debug tab” or section, but the default experience should be these structured panels.
+3. Daemon spawning robustness (Electron main)
+In electron/main.ts:
+Extract daemon spawning logic into a small helper (same file or separate module), which:
+Tries to locate the Python interpreter in this order:
+An environment variable (e.g. QV_DAEMON_PYTHON) if set.
+.venv/bin/python (Unix/macOS)
+.venv/Scripts/python.exe (Windows)
+Fallback to python on PATH.
+Uses a configurable daemon script path (e.g. env var QV_DAEMON_PATH or a sensible default like qv_daemon.py in the repo root).
+If daemon spawning fails:
+Catch the error.
+Store a “daemonStartupError” string somewhere accessible (e.g., in the main process or send a special error on the first IPC call).
+On the renderer side, surface this as a visible error message (e.g. in the Sidebar or a global banner), so the user immediately knows the daemon couldn’t start.
+Preserve the existing line-delimited JSON protocol and request/response map; don’t change the on-the-wire protocol, only the spawning and error reporting.
+General notes
+Keep the current dark theme and layout, just add more structure.
+Don’t overcomplicate state management; existing React hooks and local state are fine.
+Focus on making the app feel like a “real tool” rather than just a JSON debugger.
+Afterwards, update the AI_understanding.md and other relevant doc.

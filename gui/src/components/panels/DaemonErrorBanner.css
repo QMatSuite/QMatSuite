@@ -1,0 +1,63 @@
+/* DaemonErrorBanner Styles */
+
+.daemon-error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 20px;
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error);
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.banner-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.banner-content {
+  flex: 1;
+}
+
+.banner-content h4 {
+  margin: 0 0 4px 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-error);
+}
+
+.banner-content p {
+  margin: 0 0 8px 0;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.banner-detail {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.banner-detail code {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+}
+
+.banner-dismiss {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  color: var(--color-error);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.banner-dismiss:hover {
+  opacity: 1;
+}
+

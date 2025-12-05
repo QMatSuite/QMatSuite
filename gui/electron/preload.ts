@@ -38,6 +38,13 @@ interface QVResponse<T = Record<string, unknown>> {
   };
 }
 
+interface DaemonStatus {
+  connected: boolean;
+  startupError: string | null;
+  pythonPath: string | null;
+  projectRoot: string | null;
+}
+
 /**
  * Exposed API for communicating with the daemon
  */
@@ -98,6 +105,33 @@ const qvApi = {
    */
   isConnected: async (): Promise<boolean> => {
     return ipcRenderer.invoke('qv-is-connected');
+  },
+  
+  /**
+   * Get detailed daemon status including any startup errors
+   * 
+   * @returns Promise<DaemonStatus>
+   */
+  getDaemonStatus: async (): Promise<DaemonStatus> => {
+    return ipcRenderer.invoke('qv-daemon-status');
+  },
+  
+  /**
+   * Subscribe to daemon status changes
+   * 
+   * @param callback - Function to call with status updates
+   * @returns Unsubscribe function
+   */
+  onDaemonStatus: (callback: (status: DaemonStatus) => void): (() => void) => {
+    const handler = (_event: IpcRendererEvent, status: DaemonStatus) => {
+      callback(status);
+    };
+    
+    ipcRenderer.on('daemon-status', handler);
+    
+    return () => {
+      ipcRenderer.removeListener('daemon-status', handler);
+    };
   },
   
   /**
