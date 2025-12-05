@@ -85,3 +85,10 @@ node -v # Should print "v24.11.1".
 # Verify npm version:
 npm -v # Should print "11.6.2".
 
+# react and TypeScipt
+cd /path/to/your/project
+npm create electron-vite@latest gui
+cd gui
+npm install
+npm run dev
+

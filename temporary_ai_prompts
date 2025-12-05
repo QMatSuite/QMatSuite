@@ -1214,3 +1214,106 @@ You are allowed to refactor code when appropriate, as long as the public interfa
 Perform this audit thoroughly and proactively—even if something looks correct, challenge it.
 
 1. find QE in ~/.zprofile
+
+
+Done.
+
+======================================= warnings summary =======================================
+tests/cli/test_si_bands_workflow_comprehensive.py::TestBandsWorkflowDataModels::test_generate_kpath_for_si
+  /Users/up/src/quantumVITAS/.venv/lib/python3.9/site-packages/pymatgen/symmetry/kpath.py:160: UserWarning: The input structure does not match the expected standard primitive! The path may be incorrect. Use at your own risk.
+    warn(
+
+tests/examples/test_cli_usage_examples.py: 7 warnings
+tests/examples/test_structure_io_examples.py: 2 warnings
+tests/unit/test_project_and_cli.py: 5 warnings
+tests/unit/test_structure_roundtrip.py: 1 warning
+  /Users/up/src/quantumVITAS/.venv/lib/python3.9/site-packages/pymatgen/io/cif.py:1721: FutureWarning: We strongly discourage using implicit binary/text `mode`, and this would not be allowed after 2025-06-01. I.e. you should pass t/b in `mode`.
+    with zopen(filename, mode=mode) as file:
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+
+
+Done.
+
+GUI:
+You are now working on the GUI layer for QuantumVITAS v2, located inside the gui/ directory.
+The environment uses Electron + React + TypeScript via electron-vite, and npm run dev already opens a working window.
+Your task:
+1. Understand the backend
+Before coding, read and internalize:
+docs/AI_understanding.md
+The Python daemon (qv_daemon.py or api.py + daemon wrapper)
+Core facts you must follow:
+GUI should call Python only via the daemon’s JSON-RPC protocol using stdin/stdout.
+JSON-RPC message schema:
+{ "id": "...", "type": "command_name", "payload": {...} }
+Response:
+{ "id": "...", "ok": true, "data": {...} }
+The daemon ultimately uses the QVService API (in api.py) — this is the stable backend interface.
+2. Plan a clean GUI architecture
+Inside gui/src/, design a small but scalable structure, for example:
+src/
+  main.tsx
+  App.tsx
+  components/
+    layout/
+      AppShell.tsx
+      Sidebar.tsx
+    panels/
+      ProjectPanel.tsx
+      StructurePanel.tsx
+      DebugPanel.tsx
+  hooks/
+    useQVClient.ts        // wraps IPC calls
+  types/
+    qv.ts                 // shared RPC/response types
+You may adjust this design if you have a better idea — but keep it modular and future-proof (we will later add plots, 3D viewer, workflow runner, etc.).
+3. Connect Electron ↔ Python daemon
+Implement:
+Electron main process
+Spawn the Python daemon using the .venv Python.
+Read daemon stdout line-by-line as JSON.
+Maintain a request map (id → resolve/reject).
+Expose a single IPC endpoint:
+ipcMain.handle("qv-request", async (_event, rpc) => { ... });
+preload.ts
+Expose a safe API:
+contextBridge.exposeInMainWorld("qv", {
+  request: (payload) => ipcRenderer.invoke("qv-request", payload),
+});
+And add TypeScript global definitions for window.qv.
+4. React: build the first working UI slice
+Implement:
+useQVClient hook
+A wrapper around window.qv.request that:
+Automatically generates unique IDs.
+Sends {id, type, payload}.
+Returns a normalized Promise.
+Basic GUI layout
+A simple <AppShell> with:
+Sidebar
+text input for project_root
+buttons:
+“Ping”
+“List Structures”
+“Project Summary”
+Main panel
+Displays JSON results
+Has a DebugPanel for raw logs
+This is enough to verify the daemon, IPC, and backend integration.
+5. Deliverables
+Produce:
+Updated Electron main, preload, and TS type declarations.
+Proposed directory structure.
+React components + hooks.
+Minimal UI that can:
+Ping the daemon
+List structures
+Get project summary
+Keep everything clean, typed, and easy to extend.
+6. Autonomy
+If something is ambiguous, make the most reasonable design choice and continue.
+You may refactor any placeholder code created earlier if needed.
+👉 Goal: Establish the full end-to-end pipeline:
+React → preload → IPC → Electron main → Python daemon → QVService → return JSON → display in UI.
+
