@@ -122,7 +122,7 @@ class QEInstallation:
     1. User-provided path (validated: must have bin/pw.x)
     2. QE_HOME environment variable
     3. System PATH (using which pw.x, then finding QE home)
-    4. Shell config files (~/.bashrc, ~/.zshrc) - extract PATH info
+    4. Shell config files (~/.zshrc, ~/.zprofile, ~/.zshenv, ~/.bashrc, ~/.bash_profile, ~/.profile)
     5. Default location: $HOME/src/q-e-qe-7.5
     """
     
@@ -369,13 +369,28 @@ class QEInstallation:
         """
         Extract QE home from shell configuration files.
         
-        Looks for PATH exports in ~/.bashrc, ~/.zshrc, ~/.bash_profile, ~/.profile
-        that contain q-e-qe or quantum-espresso paths.
+        Looks for PATH exports in common shell config files that may contain
+        q-e-qe or quantum-espresso paths.
+        
+        Supported files (checked in order):
+        - ~/.zshrc, ~/.zprofile, ~/.zshenv (zsh - macOS default)
+        - ~/.bashrc, ~/.bash_profile (bash)
+        - ~/.profile (generic POSIX)
         
         Returns:
             Path to QE home if found, None otherwise
         """
-        rc_names = [".zshrc", ".bashrc", ".bash_profile", ".profile"]
+        # Common shell configuration files across different OS
+        # macOS: zsh is default since Catalina
+        # Linux: bash is common default, but zsh also used
+        rc_names = [
+            ".zshrc",        # zsh interactive
+            ".zprofile",     # zsh login (macOS commonly uses this)
+            ".zshenv",       # zsh always sourced
+            ".bashrc",       # bash interactive
+            ".bash_profile", # bash login
+            ".profile",      # generic POSIX login
+        ]
         shell_configs: list[Path] = []
         seen: set[Path] = set()
 
