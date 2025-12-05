@@ -2556,7 +2556,7 @@ def run_auto_dispatch(
     )
 
 
-@analyze_app.command("output")
+@analyze_app.command("output", deprecated=True)
 def analyze_output_command(
     kind: str = typer.Argument(..., help="energy, band, dos, or scf"),
     input_file: Optional[Path] = typer.Argument(
@@ -2592,25 +2592,22 @@ def analyze_output_command(
     ),
 ) -> None:
     """
-    Analyze QE outputs and optionally generate plots.
+    [DEPRECATED] Analyze QE outputs. Use 'qv analyze band/dos/energy' instead.
     
-    Supported analysis types:
-    - energy/scf: Parse SCF output for energies and convergence info
-    - band: Parse band structure data (requires .dat.gnu file)  
-    - dos: Parse DOS data (requires .dat file)
+    This command is deprecated. Please use the direct commands:
+    - qv analyze band <file> --plot
+    - qv analyze dos <file> --plot  
+    - qv analyze energy <file> --plot
+    - qv analyze scf <file> --plot
     
-    For 'band' analysis, files can be auto-detected from workflow:
-    - Use --workflow <selector> to specify a workflow
-    - If no workflow specified, tries to detect from current directory
-    - Falls back to searching current directory for files
-    
-    Examples:
-        qv analyze output energy si.scf.out
-        qv analyze output band --workflow si-bands --plot
-        qv analyze output band si.bands.dat.gnu --symmetry si.bands.out --scf si.nscf.out --plot
-        qv analyze output band --plot  # auto-detect files from pwd or enclosing workflow
-        qv analyze output dos si.dos.dat --plot --energy-range -5,5
+    The new commands use QVService API layer for better architecture.
     """
+    # Show deprecation warning
+    typer.secho(
+        "Warning: 'qv analyze output' is deprecated. Use 'qv analyze band/dos/energy/scf' instead.",
+        fg=typer.colors.YELLOW,
+        err=True,
+    )
     from quantumvitas.analysis.parsers import (
         parse_scf_output, parse_dos_data, parse_bands_gnu
     )
@@ -2831,6 +2828,294 @@ def analyze_output_command(
         
     else:
         raise typer.BadParameter("kind must be one of: energy, scf, band, dos")
+
+
+# =============================================================================
+# Analyze commands - Using QVService API layer
+# =============================================================================
+
+@analyze_app.command("band")
+def analyze_band_command(
+    input_file: Optional[Path] = typer.Argument(
+        None, help="Band data file (.dat.gnu) - optional if --workflow specified or inside workflow"
+    ),
+    workflow: Optional[str] = typer.Option(
+        None, "--workflow", "-w",
+        help="Workflow selector to auto-locate files from its raw/ directory"
+    ),
+    symmetry_file: Optional[Path] = typer.Option(
+        None, "--symmetry", "-s", 
+        help="bands.x output file containing high-symmetry points"
+    ),
+    fermi: Optional[float] = typer.Option(
+        None, "--fermi", "-f", help="Fermi energy in eV (overrides extraction)"
+    ),
+    scf_file: Optional[Path] = typer.Option(
+        None, "--scf", help="SCF/NSCF output file to extract Fermi energy from"
+    ),
+    project: Optional[Path] = typer.Option(
+        None, "--project", help="Project root (defaults to auto-detect)"
+    ),
+    plot: bool = typer.Option(False, "--plot", "-p", help="Generate a plot"),
+    output: Optional[Path] = typer.Option(
+        None, "--output", "-o", help="Output directory for plots and data"
+    ),
+    plot_format: str = typer.Option("png", "--format", help="Plot format (png, svg, pdf)"),
+    energy_range: Optional[str] = typer.Option(
+        None, "--energy-range", help="Energy range for plots, e.g., '-5,5'"
+    ),
+    no_shift: bool = typer.Option(
+        False, "--no-shift", help="Don't shift energies to Fermi level"
+    ),
+) -> None:
+    """
+    Analyze band structure data and generate plots.
+    
+    Parses QE bands.dat.gnu file and optionally creates a band structure plot.
+    Files can be auto-detected from workflow context.
+    
+    Examples:
+        qv analyze band si.bands.dat.gnu --plot
+        qv analyze band --workflow si-bands --plot
+        qv analyze band si.bands.dat.gnu --symmetry si.bands.out --scf si.nscf.out --plot
+        qv analyze band --plot  # auto-detect files from pwd or enclosing workflow
+    """
+    from quantumvitas.api import QVService, QVServiceError
+    from quantumvitas.core.context import find_path_context_from_pwd, ContextNotFoundError
+    
+    # Parse energy range
+    e_range = None
+    if energy_range:
+        try:
+            parts = energy_range.split(",")
+            e_range = (float(parts[0]), float(parts[1]))
+        except (ValueError, IndexError):
+            raise typer.BadParameter("--energy-range must be like '-5,5'")
+    
+    # Determine project root and workflow context
+    project_root: Optional[Path] = None
+    workflow_selector: Optional[str] = workflow
+    
+    if project:
+        project_root = Path(project).resolve()
+    else:
+        # Always try to detect project root from pwd
+        try:
+            ctx = find_path_context_from_pwd()
+            project_root = ctx.project_root
+            # Only auto-detect workflow if no input file provided
+            if input_file is None and ctx.is_inside_workflow():
+                workflow_selector = ctx.workflow_selector
+                typer.echo(f"Detected workflow: {workflow_selector}")
+        except ContextNotFoundError:
+            pass  # Not inside a project
+    
+    # If workflow specified but no project found, error
+    if workflow and project_root is None:
+        raise typer.BadParameter(
+            "Cannot resolve --workflow without being in a project. Use --project to specify project root."
+        )
+    
+    # Call QVService
+    try:
+        result = QVService.analyze_band(
+            project_root=project_root,
+            bands_file=input_file,
+            workflow_selector=workflow_selector,
+            symmetry_file=symmetry_file,
+            scf_file=scf_file,
+            fermi_energy=fermi,
+            plot=plot,
+            output_dir=output,
+            plot_format=plot_format,
+            energy_range=e_range,
+            shift_fermi=not no_shift,
+        )
+        
+        # Print summary
+        summary = {
+            "n_bands": result["n_bands"],
+            "n_kpoints": result["n_kpoints"],
+            "fermi_energy_ev": result["fermi_energy_ev"],
+            "high_symmetry_points": result["high_symmetry_points"],
+        }
+        typer.echo(json.dumps(summary, indent=2))
+        
+        if result["plot_path"]:
+            typer.echo(f"Plot saved to {result['plot_path']}")
+            
+    except QVServiceError as e:
+        raise typer.BadParameter(str(e))
+
+
+@analyze_app.command("dos")
+def analyze_dos_command(
+    input_file: Path = typer.Argument(..., help="DOS data file (.dat)"),
+    fermi: Optional[float] = typer.Option(
+        None, "--fermi", "-f", help="Fermi energy in eV (overrides extraction)"
+    ),
+    scf_file: Optional[Path] = typer.Option(
+        None, "--scf", help="SCF/NSCF output file to extract Fermi energy from"
+    ),
+    project: Optional[Path] = typer.Option(
+        None, "--project", help="Project root (defaults to auto-detect)"
+    ),
+    plot: bool = typer.Option(False, "--plot", "-p", help="Generate a plot"),
+    output: Optional[Path] = typer.Option(
+        None, "--output", "-o", help="Output directory for plots and data"
+    ),
+    plot_format: str = typer.Option("png", "--format", help="Plot format (png, svg, pdf)"),
+    energy_range: Optional[str] = typer.Option(
+        None, "--energy-range", help="Energy range for plots, e.g., '-5,5'"
+    ),
+    no_shift: bool = typer.Option(
+        False, "--no-shift", help="Don't shift energies to Fermi level"
+    ),
+) -> None:
+    """
+    Analyze DOS (density of states) data and generate plots.
+    
+    Parses QE DOS output file (.dat format) and optionally creates a DOS plot.
+    
+    Examples:
+        qv analyze dos si.dos.dat --plot
+        qv analyze dos si.dos.dat --scf si.nscf.out --plot --energy-range -5,5
+    """
+    from quantumvitas.api import QVService, QVServiceError
+    from quantumvitas.core.context import find_path_context_from_pwd, ContextNotFoundError
+    
+    # Parse energy range
+    e_range = None
+    if energy_range:
+        try:
+            parts = energy_range.split(",")
+            e_range = (float(parts[0]), float(parts[1]))
+        except (ValueError, IndexError):
+            raise typer.BadParameter("--energy-range must be like '-5,5'")
+    
+    # Determine project root (optional for DOS analysis, but helps with output dir)
+    project_root: Optional[Path] = None
+    if project:
+        project_root = Path(project).resolve()
+    else:
+        try:
+            ctx = find_path_context_from_pwd()
+            project_root = ctx.project_root
+        except ContextNotFoundError:
+            pass
+    
+    # Call QVService
+    try:
+        result = QVService.analyze_dos(
+            project_root=project_root,
+            dos_file=input_file,
+            fermi_energy=fermi,
+            scf_file=scf_file,
+            plot=plot,
+            output_dir=output,
+            plot_format=plot_format,
+            energy_range=e_range,
+            shift_fermi=not no_shift,
+        )
+        
+        # Print summary
+        summary = {
+            "n_points": result["n_points"],
+            "energy_range_ev": result["energy_range_ev"],
+            "fermi_energy_ev": result["fermi_energy_ev"],
+        }
+        typer.echo(json.dumps(summary, indent=2))
+        
+        if result["plot_path"]:
+            typer.echo(f"Plot saved to {result['plot_path']}")
+            
+    except QVServiceError as e:
+        raise typer.BadParameter(str(e))
+
+
+@analyze_app.command("energy")
+def analyze_energy_command(
+    input_file: Path = typer.Argument(..., help="SCF output file (.out)"),
+    project: Optional[Path] = typer.Option(
+        None, "--project", help="Project root (defaults to auto-detect)"
+    ),
+    plot: bool = typer.Option(False, "--plot", "-p", help="Generate convergence plot"),
+    output: Optional[Path] = typer.Option(
+        None, "--output", "-o", help="Output directory for plots and data"
+    ),
+    plot_format: str = typer.Option("png", "--format", help="Plot format (png, svg, pdf)"),
+) -> None:
+    """
+    Analyze SCF output file for energies and convergence.
+    
+    Parses QE pw.x output file for total energy, Fermi energy,
+    convergence info, and optionally plots SCF convergence.
+    
+    Examples:
+        qv analyze energy si.scf.out
+        qv analyze energy si.scf.out --plot
+    """
+    from quantumvitas.api import QVService, QVServiceError
+    from quantumvitas.core.context import find_path_context_from_pwd, ContextNotFoundError
+    
+    # Determine project root (optional for SCF analysis, but helps with output dir)
+    project_root: Optional[Path] = None
+    if project:
+        project_root = Path(project).resolve()
+    else:
+        try:
+            ctx = find_path_context_from_pwd()
+            project_root = ctx.project_root
+        except ContextNotFoundError:
+            pass
+    
+    # Call QVService
+    try:
+        result = QVService.analyze_scf(
+            project_root=project_root,
+            scf_file=input_file,
+            plot=plot,
+            output_dir=output,
+            plot_format=plot_format,
+        )
+        
+        # Print full SCF data
+        typer.echo(json.dumps(result["data"], indent=2, default=str))
+        
+        if result["plot_path"]:
+            typer.echo(f"Plot saved to {result['plot_path']}")
+            
+    except QVServiceError as e:
+        raise typer.BadParameter(str(e))
+
+
+@analyze_app.command("scf")
+def analyze_scf_command(
+    input_file: Path = typer.Argument(..., help="SCF output file (.out)"),
+    project: Optional[Path] = typer.Option(
+        None, "--project", help="Project root (defaults to auto-detect)"
+    ),
+    plot: bool = typer.Option(False, "--plot", "-p", help="Generate convergence plot"),
+    output: Optional[Path] = typer.Option(
+        None, "--output", "-o", help="Output directory for plots and data"
+    ),
+    plot_format: str = typer.Option("png", "--format", help="Plot format (png, svg, pdf)"),
+) -> None:
+    """
+    Analyze SCF output file for energies and convergence (alias for 'analyze energy').
+    
+    Examples:
+        qv analyze scf si.scf.out
+        qv analyze scf si.scf.out --plot
+    """
+    # Delegate to analyze_energy_command
+    analyze_energy_command(
+        input_file=input_file,
+        project=project,
+        plot=plot,
+        output=output,
+        plot_format=plot_format,
+    )
 
 
 @analyze_app.command("structure")

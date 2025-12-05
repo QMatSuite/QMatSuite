@@ -242,7 +242,13 @@ qv
 ├── detect-qe [--path PATH]
 ├── show-command <input.in>  # Auto-detects module type (pw.x, bands.x, etc.)
 ├── get-command <input.in>   # alias for show-command
-├── analyze <energy|band|dos> <output-file>
+├── analyze
+│   ├── band [<file>] [--workflow WF] [--symmetry FILE] [--scf FILE] [--plot]
+│   ├── dos <file> [--scf FILE] [--plot] [--energy-range MIN,MAX]
+│   ├── energy <file> [--plot]  # SCF convergence analysis
+│   ├── scf <file> [--plot]     # alias for energy
+│   ├── structure <selector> [--supercell "a b c"] [--repeat-boundary]
+│   └── output [DEPRECATED] <kind> <file>  # Use band/dos/energy instead
 └── params <module> [--section SECTION]
 ```
 
@@ -273,19 +279,20 @@ CLI supports QE parameter overrides with special syntax:
 | `--tprnfor` | Boolean true |
 | `--tprnfor=false` | Boolean false |
 
-### 4.4 API Architecture (Technical Debt)
+### 4.4 API Architecture
 
-**Current state**: The CLI bypasses the `QVService` API layer.
+**Architecture Goal**: CLI should be thin wrappers around `QVService` methods.
 
 ```
-CURRENT (Technical Debt):
-    CLI (main.py) → core/project_utils.py (DIRECT)
-                  → core/resources.py (DIRECT)
-                  → workflow/* (DIRECT)
-
-INTENDED:
+INTENDED ARCHITECTURE:
     CLI (main.py) → api.py (QVService) → core/* modules
                                        → workflow/*
+                                       → analysis/*
+
+CURRENT STATE (Partial):
+    - analyze commands: ✅ Uses QVService (fixed 2025-12-05)
+    - init/configure/delete: ⚠️ Mixed (some use QVService, some bypass)
+    - run commands: ⚠️ Bypasses QVService
 ```
 
 **`api.py` (`QVService`)** provides a clean service layer:
@@ -1354,5 +1361,121 @@ qv analyze structure /path/to/structure.cif --output vis.png
 
 ---
 
-*Last updated: 2025-12-03*
+## 15. Refactoring History - 2025-12-05
+
+### 15.1 CLI Analyze Commands - API Layer Refactoring
+
+**Problem**: The `analyze_output_command` implemented analysis logic directly in the CLI layer (~200 lines), bypassing the `QVService` API layer. This was the technical debt mentioned in the documentation.
+
+**Root Cause of Test Failure**: The documented API showed `qv analyze band <file>` but the implementation only had `qv analyze output band <file>`. Tests were calling the documented API.
+
+**Solution**: Full refactoring to follow the intended architecture:
+
+1. **Added QVService methods** (`api.py`):
+   - `QVService.analyze_band()` - Band structure analysis
+   - `QVService.analyze_dos()` - DOS analysis
+   - `QVService.analyze_scf()` - SCF convergence analysis
+   - `QVService._detect_workflow_results_dir()` - Helper for auto-detecting output directory
+
+2. **Updated CLI commands** (`cli/main.py`):
+   - `qv analyze band` - Thin wrapper calling `QVService.analyze_band()`
+   - `qv analyze dos` - Thin wrapper calling `QVService.analyze_dos()`
+   - `qv analyze energy` - Thin wrapper calling `QVService.analyze_scf()`
+   - `qv analyze scf` - Alias for `analyze energy`
+
+3. **Deprecated `qv analyze output`**:
+   - Marked with `deprecated=True` in Typer
+   - Shows warning when used
+   - Kept for backward compatibility but will be removed later
+
+### 15.2 Architecture Pattern for New Commands
+
+When implementing new CLI commands, follow this pattern:
+
+```python
+# 1. Add service method in api.py
+class QVService:
+    @staticmethod
+    def new_feature(
+        project_root: Optional[Path],  # Always explicit, never use cwd
+        **kwargs,
+    ) -> Dict[str, Any]:
+        """
+        Service method with all business logic.
+        
+        - Resolves resources using resolution.resolve_*()
+        - Calls core modules for actual work
+        - Returns structured result dict
+        - Raises QVServiceError on failures
+        """
+        from quantumvitas.analysis.some_module import do_work
+        
+        # Resolve resources
+        if project_root:
+            resource = resolve_workflow(project_root, selector)
+        
+        # Do actual work
+        result = do_work(...)
+        
+        # Return structured result
+        return {
+            "data": result.to_dict(),
+            "output_path": str(output_path),
+            ...
+        }
+
+# 2. Add thin CLI wrapper in cli/main.py
+@some_app.command("feature")
+def feature_command(
+    arg: str = typer.Argument(..., help="..."),
+    project: Optional[Path] = typer.Option(None, "--project"),
+    ...
+) -> None:
+    """CLI docstring."""
+    from quantumvitas.api import QVService, QVServiceError
+    from quantumvitas.core.context import find_path_context_from_pwd, ContextNotFoundError
+    
+    # Auto-detect project root if not provided
+    project_root: Optional[Path] = None
+    if project:
+        project_root = Path(project).resolve()
+    else:
+        try:
+            ctx = find_path_context_from_pwd()
+            project_root = ctx.project_root
+        except ContextNotFoundError:
+            pass
+    
+    # Call service
+    try:
+        result = QVService.new_feature(project_root=project_root, ...)
+        typer.echo(json.dumps(result, indent=2))
+    except QVServiceError as e:
+        raise typer.BadParameter(str(e))
+```
+
+### 15.3 Key Principles
+
+1. **CLI is thin**: Only argument parsing, context detection, and calling QVService
+2. **QVService receives explicit project_root**: Never looks at cwd internally
+3. **Context detection in CLI**: Use `find_path_context_from_pwd()` for auto-detection
+4. **Errors**: QVService raises `QVServiceError`, CLI converts to `typer.BadParameter`
+5. **Results**: QVService returns dict, CLI formats for terminal output
+
+### 15.4 Files Modified
+
+| File | Changes |
+|------|---------|
+| `src/quantumvitas/api.py` | Added `analyze_scf()`, `analyze_dos()`, `analyze_band()`, `_detect_workflow_results_dir()` |
+| `src/quantumvitas/cli/main.py` | Refactored analyze commands to use QVService, deprecated `analyze output` |
+
+### 15.5 Test Results
+
+All 263 tests pass, including the previously failing:
+- `test_si_bands_workflow_comprehensive.py::TestSiBandsWorkflowManualKpath::test_analyze_bands`
+- `test_si_bands_workflow_comprehensive.py::TestSiBandsWorkflowAutoKpath::test_analyze_bands`
+
+---
+
+*Last updated: 2025-12-05*
 *Based on commit history through v2-python branch*

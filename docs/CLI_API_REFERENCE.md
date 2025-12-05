@@ -16,8 +16,12 @@ description short and includes a minimal example you can run or adapt.
 | `qv detect-qe` | Print the QE installation detected via the engine registry. | `qv detect-qe` |
 | `qv show-command <input.in>` | Parse a QE input and print example `qv init step` / `qv configure step` commands. Auto-detects module type (pw.x, bands.x, dos.x, etc.). | `qv show-command ci_test_data/pw_single_tests/scf.in` |
 | `qv get-command <input.in>` | Alias for `qv show-command`. | `qv get-command inputs/si_scf.in` |
-| `qv analyze output <energy|band|dos> [file]` | Analyze QE outputs. For `band`, can auto-detect files. | `qv analyze output band --workflow si-bands --plot` |
+| `qv analyze band [file] [--workflow WF] [--plot]` | Analyze band structure. Auto-detects files from workflow context. | `qv analyze band --workflow si-bands --plot` |
+| `qv analyze dos <file> [--scf FILE] [--plot]` | Analyze DOS data with optional Fermi energy extraction. | `qv analyze dos si.dos.dat --scf nscf.out --plot` |
+| `qv analyze energy <file> [--plot]` | Analyze SCF output for energies and convergence. | `qv analyze energy si.scf.out --plot` |
+| `qv analyze scf <file> [--plot]` | Alias for `analyze energy`. | `qv analyze scf si.scf.out --plot` |
 | `qv analyze structure <selector> [options]` | 3D ball-and-stick visualization of crystal structure. | `qv analyze structure si --supercell "2 2 2" --output si.png` |
+| `qv analyze output [DEPRECATED]` | **Deprecated.** Use `qv analyze band/dos/energy` instead. | — |
 | `qv params <module> [--section SECTION]` | Inspect parameters scraped from the QE docs (`qe_module_parameters.json`). | `qv params pw --section SYSTEM` |
 
 ### Configure Commands (Recommended)
