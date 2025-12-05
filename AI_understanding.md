@@ -1909,65 +1909,112 @@ Architecture diagram:
 ```
 gui/
 ├── electron/
-│   ├── main.ts           # Electron main process
+│   ├── main.ts           # Daemon spawning, IPC, error handling
 │   └── preload.ts        # Context bridge API
 ├── src/
 │   ├── main.tsx          # React entry point
-│   ├── App.tsx           # Root component
+│   ├── App.tsx           # Root component with view routing
 │   ├── index.css         # Global styles (design tokens)
 │   ├── components/
 │   │   ├── layout/
-│   │   │   ├── AppShell.tsx    # Main layout wrapper
-│   │   │   └── Sidebar.tsx     # Navigation + actions
+│   │   │   ├── AppShell.tsx         # Main layout wrapper
+│   │   │   └── Sidebar.tsx          # Navigation, actions, view tabs
 │   │   └── panels/
-│   │       ├── ResultPanel.tsx # JSON result display
-│   │       └── DebugPanel.tsx  # Daemon log viewer
+│   │       ├── ResultPanel.tsx      # JSON result display (debug)
+│   │       ├── DebugPanel.tsx       # Daemon log viewer
+│   │       ├── ProjectSummaryPanel.tsx  # Structured project view
+│   │       ├── StructureListPanel.tsx   # Structure list + detail
+│   │       └── DaemonErrorBanner.tsx    # Startup error display
 │   ├── hooks/
-│   │   └── useQVClient.ts      # Daemon communication hook
+│   │   └── useQVClient.ts   # Type-safe daemon communication
 │   └── types/
-│       └── qv.ts               # RPC type definitions
+│       └── qv.ts            # QVCommandMap + all RPC types
 ├── index.html
 ├── package.json
 ├── tsconfig.json
 └── vite.config.ts
 ```
 
-### 17.3 Communication Flow
+### 17.3 Type-Safe RPC API
 
-1. **React Component** calls `qv.request(type, payload)` via hook
-2. **Preload Script** generates unique ID, sends via IPC
-3. **Electron Main** writes JSON to daemon's stdin
-4. **Python Daemon** processes request, writes response to stdout
-5. **Electron Main** parses JSON, resolves pending promise
-6. **React Component** receives typed response
+The GUI uses a centralized `QVCommandMap` for end-to-end type safety:
 
-### 17.4 Key Files
+```typescript
+// In src/types/qv.ts
+export interface QVCommandMap {
+  ping: {
+    payload: Record<string, never>;
+    result: { pong: boolean; version: string };
+  };
+  get_project_summary: {
+    payload: { project_root: string };
+    result: ProjectSummary;
+  };
+  list_structures: {
+    payload: { project_root: string };
+    result: { structures: StructureInfo[]; count: number };
+  };
+  // ... all commands defined with payload + result types
+}
 
-| File | Purpose |
-|------|---------|
-| `electron/main.ts` | Spawns daemon, handles IPC, manages request map |
-| `electron/preload.ts` | Exposes `window.qv` API via contextBridge |
-| `src/types/qv.ts` | TypeScript types mirroring daemon protocol |
-| `src/hooks/useQVClient.ts` | React hook wrapping daemon calls |
+// In hooks/useQVClient.ts
+const qv = useQVClient();
+const response = await qv.call('get_project_summary', { project_root: '/path' });
+// response.data is typed as ProjectSummary
+```
 
-### 17.5 IPC Protocol
+### 17.4 Daemon Spawning (Robust)
 
-**Preload exposes:**
+Python interpreter detection order:
+1. `QV_DAEMON_PYTHON` env var (if set)
+2. `.venv/bin/python` or `.venv/Scripts/python.exe` (Windows)
+3. `venv/bin/python` or `venv/Scripts/python.exe`
+4. Fallback to `python` on PATH
+
+Daemon module override: `QV_DAEMON_MODULE` env var (default: `quantumvitas.daemon.server`)
+
+Error handling:
+- Startup errors stored in `DaemonStatus`
+- Rendered as `DaemonErrorBanner` in UI
+- Status pushed to renderer via IPC
+
+Shutdown:
+- Sends `shutdown` command
+- Waits 2 seconds for graceful exit
+- Force kills with SIGTERM if needed
+- No race condition (properly awaited)
+
+### 17.5 UI Components
+
+**Structured Panels:**
+
+| Panel | Purpose |
+|-------|---------|
+| `ProjectSummaryPanel` | Shows project name, structure/workflow counts, tags |
+| `StructureListPanel` | Clickable list of structures with lattice info |
+| `StructureDetailPanel` | Full structure details (lattice params, path) |
+| `DaemonErrorBanner` | Displays daemon startup errors |
+| `ResultPanel` | Raw JSON viewer (for debug view) |
+| `DebugPanel` | Daemon stderr log viewer |
+
+**View Routing:**
+
+The `Sidebar` has view tabs: Summary, Structures, Debug. `App.tsx` renders the appropriate panel based on `currentView` state.
+
+### 17.6 Preload API
+
 ```typescript
 window.qv = {
-  request: <T>(type: string, payload: object) => Promise<QVResponse<T>>,
-  onLog: (callback: (msg: string) => void) => () => void,
+  request: <T>(type, payload) => Promise<QVResponse<T>>,
+  onLog: (callback) => unsubscribe,
   isConnected: () => Promise<boolean>,
-  onMainMessage: (callback: (data: unknown) => void) => () => void,
+  getDaemonStatus: () => Promise<DaemonStatus>,
+  onDaemonStatus: (callback) => unsubscribe,
+  onMainMessage: (callback) => unsubscribe,
 }
 ```
 
-**Request format:** (same as daemon protocol)
-```json
-{"id": "req-1733370000-1", "type": "ping", "payload": {}}
-```
-
-### 17.6 Design System
+### 17.7 Design System
 
 CSS custom properties in `src/index.css`:
 - `--color-primary`, `--color-success`, `--color-error`
@@ -1978,7 +2025,7 @@ CSS custom properties in `src/index.css`:
 
 Theme: Midnight blue dark theme for professional scientific software appearance.
 
-### 17.7 Running the GUI
+### 17.8 Running the GUI
 
 ```bash
 cd gui
@@ -1989,25 +2036,18 @@ npm run build     # Production build
 
 Development mode opens DevTools automatically.
 
-### 17.8 Daemon Lifecycle
-
-1. **Startup**: Main process spawns daemon using project's `.venv/bin/python`
-2. **Communication**: Line-delimited JSON over stdio
-3. **Logging**: Daemon stderr forwarded to DevTools and DebugPanel
-4. **Shutdown**: Send `shutdown` command, then SIGTERM if needed
-
 ### 17.9 Extending the GUI
 
 **Adding a new command:**
-1. Add type to `QVCommandType` in `src/types/qv.ts`
-2. Add payload/response types
-3. Add method to `useQVClient.ts` hook
-4. Call from component
+1. Add entry to `QVCommandMap` in `src/types/qv.ts` with payload + result types
+2. Optionally add convenience method to `useQVClient.ts`
+3. Call via `qv.call('new_command', payload)` - fully typed!
 
 **Adding a new panel:**
 1. Create component in `src/components/panels/`
-2. Export from `index.ts`
-3. Import and use in `App.tsx`
+2. Add CSS file with same name
+3. Export from `panels/index.ts`
+4. Add to view routing in `App.tsx`
 
 ### 17.10 Known Limitations
 
@@ -2015,6 +2055,7 @@ Development mode opens DevTools automatically.
 - Single daemon instance per Electron app
 - Request timeout: 60 seconds (configurable in main.ts)
 - Daemon must be restarted if Python code changes
+- Running jobs cannot be cancelled (ThreadPoolExecutor limitation)
 
 ---
 

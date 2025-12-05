@@ -13,47 +13,81 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 
 let win = null;
 let daemonProcess = null;
 let daemonReadline = null;
-let daemonConnected = false;
+const daemonStatus = {
+  connected: false,
+  startupError: null,
+  pythonPath: null,
+  projectRoot: null
+};
 const pendingRequests = /* @__PURE__ */ new Map();
 const REQUEST_TIMEOUT_MS = 6e4;
+function getProjectRoot() {
+  if (process.env.QV_PROJECT_ROOT) {
+    return process.env.QV_PROJECT_ROOT;
+  }
+  return path.resolve(__dirname$1, "..", "..");
+}
 function findPythonPath() {
-  const projectRoot = path.resolve(__dirname$1, "..", "..");
-  const candidates = [
-    path.join(projectRoot, ".venv", "bin", "python"),
-    path.join(projectRoot, ".venv", "Scripts", "python.exe"),
-    // Windows
-    path.join(projectRoot, "venv", "bin", "python"),
-    path.join(projectRoot, "venv", "Scripts", "python.exe")
-    // Windows
+  const projectRoot = getProjectRoot();
+  if (process.env.QV_DAEMON_PYTHON) {
+    const envPath = process.env.QV_DAEMON_PYTHON;
+    if (fs.existsSync(envPath)) {
+      return { path: envPath, found: true, source: "QV_DAEMON_PYTHON env var" };
+    }
+    console.warn(`[main] QV_DAEMON_PYTHON set to ${envPath} but file not found`);
+  }
+  const isWindows = process.platform === "win32";
+  const venvCandidates = [
+    // .venv (common convention)
+    isWindows ? path.join(projectRoot, ".venv", "Scripts", "python.exe") : path.join(projectRoot, ".venv", "bin", "python"),
+    // venv (alternative)
+    isWindows ? path.join(projectRoot, "venv", "Scripts", "python.exe") : path.join(projectRoot, "venv", "bin", "python")
   ];
-  for (const candidate of candidates) {
+  for (const candidate of venvCandidates) {
     if (fs.existsSync(candidate)) {
-      return candidate;
+      return { path: candidate, found: true, source: `venv at ${path.dirname(path.dirname(candidate))}` };
     }
   }
   console.warn("[main] No venv found, falling back to system python");
-  return "python";
+  return { path: "python", found: false, source: "system PATH (fallback)" };
 }
-function getProjectRoot() {
-  return path.resolve(__dirname$1, "..", "..");
+function getDaemonModule() {
+  if (process.env.QV_DAEMON_MODULE) {
+    return process.env.QV_DAEMON_MODULE;
+  }
+  return "quantumvitas.daemon.server";
 }
 function spawnDaemon() {
-  const pythonPath = findPythonPath();
+  const pythonInfo = findPythonPath();
   const projectRoot = getProjectRoot();
-  console.log(`[main] Starting daemon with Python: ${pythonPath}`);
-  console.log(`[main] Project root: ${projectRoot}`);
-  daemonProcess = spawn(pythonPath, ["-m", "quantumvitas.daemon.server"], {
-    cwd: projectRoot,
-    env: {
-      ...process.env,
-      PYTHONUNBUFFERED: "1"
-      // Ensure unbuffered output
-    },
-    stdio: ["pipe", "pipe", "pipe"]
-  });
+  const daemonModule = getDaemonModule();
+  daemonStatus.pythonPath = pythonInfo.path;
+  daemonStatus.projectRoot = projectRoot;
+  daemonStatus.startupError = null;
+  console.log(`[main] Starting daemon:`);
+  console.log(`[main]   Python: ${pythonInfo.path} (${pythonInfo.source})`);
+  console.log(`[main]   Module: ${daemonModule}`);
+  console.log(`[main]   CWD: ${projectRoot}`);
+  try {
+    daemonProcess = spawn(pythonInfo.path, ["-m", daemonModule], {
+      cwd: projectRoot,
+      env: {
+        ...process.env,
+        PYTHONUNBUFFERED: "1"
+        // Ensure unbuffered output
+      },
+      stdio: ["pipe", "pipe", "pipe"]
+    });
+  } catch (err) {
+    const error = err;
+    daemonStatus.startupError = `Failed to spawn daemon: ${error.message}`;
+    console.error(`[main] ${daemonStatus.startupError}`);
+    return false;
+  }
   if (!daemonProcess.stdout || !daemonProcess.stdin) {
-    console.error("[main] Failed to create daemon stdio pipes");
-    return;
+    daemonStatus.startupError = "Failed to create daemon stdio pipes";
+    console.error(`[main] ${daemonStatus.startupError}`);
+    return false;
   }
   daemonReadline = createInterface({
     input: daemonProcess.stdout,
@@ -69,11 +103,16 @@ function spawnDaemon() {
   });
   daemonProcess.on("error", (err) => {
     console.error("[main] Daemon process error:", err);
-    daemonConnected = false;
+    daemonStatus.connected = false;
+    daemonStatus.startupError = `Daemon error: ${err.message}`;
+    win?.webContents.send("daemon-status", { ...daemonStatus });
   });
   daemonProcess.on("exit", (code, signal) => {
     console.log(`[main] Daemon exited with code ${code}, signal ${signal}`);
-    daemonConnected = false;
+    daemonStatus.connected = false;
+    if (code !== 0 && code !== null) {
+      daemonStatus.startupError = `Daemon exited with code ${code}`;
+    }
     daemonProcess = null;
     daemonReadline = null;
     for (const [_id, pending] of pendingRequests) {
@@ -81,8 +120,10 @@ function spawnDaemon() {
       pending.reject(new Error("Daemon process exited"));
     }
     pendingRequests.clear();
+    win?.webContents.send("daemon-status", { ...daemonStatus });
   });
-  daemonConnected = true;
+  daemonStatus.connected = true;
+  return true;
 }
 function handleDaemonLine(line) {
   if (!line.trim()) return;
@@ -102,13 +143,13 @@ function handleDaemonLine(line) {
   }
 }
 async function sendDaemonRequest(request) {
-  if (!daemonProcess || !daemonProcess.stdin || !daemonConnected) {
+  if (!daemonProcess || !daemonProcess.stdin || !daemonStatus.connected) {
     return {
       id: request.id,
       ok: false,
       error: {
         code: "daemon_not_connected",
-        message: "Daemon process is not running"
+        message: daemonStatus.startupError || "Daemon process is not running"
       }
     };
   }
@@ -128,8 +169,12 @@ async function sendDaemonRequest(request) {
     });
   });
 }
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 async function shutdownDaemon() {
-  if (!daemonProcess || !daemonConnected) return;
+  if (!daemonProcess || !daemonStatus.connected) return;
+  const processToKill = daemonProcess;
   try {
     await sendDaemonRequest({
       id: `shutdown-${Date.now()}`,
@@ -137,12 +182,13 @@ async function shutdownDaemon() {
       payload: {}
     });
   } catch (e) {
+    console.log("[main] Shutdown command failed (may already be stopped)");
   }
-  setTimeout(() => {
-    if (daemonProcess) {
-      daemonProcess.kill("SIGTERM");
-    }
-  }, 2e3);
+  await delay(2e3);
+  if (processToKill && !processToKill.killed) {
+    console.log("[main] Force killing daemon");
+    processToKill.kill("SIGTERM");
+  }
 }
 ipcMain.handle("qv-request", async (_event, request) => {
   console.log(`[main] IPC request: ${request.type} (${request.id})`);
@@ -164,7 +210,10 @@ ipcMain.handle("qv-request", async (_event, request) => {
   }
 });
 ipcMain.handle("qv-is-connected", async () => {
-  return daemonConnected && daemonProcess !== null;
+  return daemonStatus.connected && daemonProcess !== null;
+});
+ipcMain.handle("qv-daemon-status", async () => {
+  return { ...daemonStatus };
 });
 function createWindow() {
   win = new BrowserWindow({
@@ -178,16 +227,13 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false
     }
-    // Modern frameless window with custom titlebar (optional)
-    // titleBarStyle: 'hiddenInset',
-    // frame: false,
   });
   win.webContents.on("did-finish-load", () => {
     win?.webContents.send("main-process-message", {
       type: "ready",
-      timestamp: (/* @__PURE__ */ new Date()).toISOString(),
-      daemonConnected
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
     });
+    win?.webContents.send("daemon-status", { ...daemonStatus });
   });
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL);
@@ -196,6 +242,7 @@ function createWindow() {
     win.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
 }
+let isQuitting = false;
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
@@ -207,13 +254,18 @@ app.on("activate", () => {
   }
 });
 app.on("before-quit", async (event) => {
+  if (isQuitting) return;
   if (!daemonProcess) return;
+  isQuitting = true;
   event.preventDefault();
   await shutdownDaemon();
   app.quit();
 });
 app.whenReady().then(() => {
-  spawnDaemon();
+  const daemonStarted = spawnDaemon();
+  if (!daemonStarted) {
+    console.error("[main] Failed to start daemon - continuing with UI");
+  }
   createWindow();
 });
 export {

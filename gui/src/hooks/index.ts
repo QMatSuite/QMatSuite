@@ -1,3 +1,2 @@
-export { useQVClient, useQVLogs } from './useQVClient';
+export { useQVClient, useQVLogs, useDaemonStatus } from './useQVClient';
 export type { QVClient, QVClientState } from './useQVClient';
-

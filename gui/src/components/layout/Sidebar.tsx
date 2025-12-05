@@ -3,38 +3,54 @@
  * 
  * Contains:
  * - Project path input
- * - Action buttons (Ping, List Structures, etc.)
+ * - Action buttons (Ping, Load Project, List Structures, etc.)
  * - Connection status
  */
 
 import { useState, useCallback } from 'react';
 import type { QVClient } from '../../hooks/useQVClient';
+import type { DaemonStatus } from '../../types/qv';
 import './Sidebar.css';
+
+export type ViewType = 'summary' | 'structures' | 'workflows' | 'debug';
 
 interface SidebarProps {
   qv: QVClient;
   projectRoot: string;
   onProjectRootChange: (path: string) => void;
-  onResult: (result: unknown) => void;
+  onLoadProject: () => void;
+  onListStructures: () => void;
+  onListWorkflows: () => void;
+  currentView: ViewType;
+  onViewChange: (view: ViewType) => void;
+  daemonStatus: DaemonStatus | null;
 }
 
-export function Sidebar({ qv, projectRoot, onProjectRootChange, onResult }: SidebarProps) {
-  const [activeAction, setActiveAction] = useState<string | null>(null);
+export function Sidebar({ 
+  qv, 
+  projectRoot, 
+  onProjectRootChange,
+  onLoadProject,
+  onListStructures,
+  onListWorkflows,
+  currentView,
+  onViewChange,
+  daemonStatus,
+}: SidebarProps) {
+  const [pingResult, setPingResult] = useState<string | null>(null);
   
-  const handleAction = useCallback(async (
-    actionName: string,
-    action: () => Promise<unknown>
-  ) => {
-    setActiveAction(actionName);
-    try {
-      const result = await action();
-      onResult(result);
-    } finally {
-      setActiveAction(null);
+  const handlePing = useCallback(async () => {
+    const response = await qv.ping();
+    if (response.ok && response.data) {
+      setPingResult(`✓ Daemon v${response.data.version}`);
+      setTimeout(() => setPingResult(null), 3000);
+    } else {
+      setPingResult(`✗ ${response.error?.message || 'Failed'}`);
     }
-  }, [onResult]);
+  }, [qv]);
   
-  const isLoading = qv.state.isLoading || activeAction !== null;
+  const isLoading = qv.state.isLoading;
+  const isConnected = qv.state.isConnected;
   
   return (
     <div className="sidebar">
@@ -44,10 +60,15 @@ export function Sidebar({ qv, projectRoot, onProjectRootChange, onResult }: Side
           <span className="sidebar__logo">⚛</span>
           QuantumVITAS
         </h1>
-        <div className={`sidebar__status ${qv.state.isConnected ? 'connected' : 'disconnected'}`}>
+        <div className={`sidebar__status ${isConnected ? 'connected' : 'disconnected'}`}>
           <span className="sidebar__status-dot" />
-          {qv.state.isConnected ? 'Connected' : 'Disconnected'}
+          {isConnected ? 'Connected' : 'Disconnected'}
         </div>
+        {daemonStatus?.startupError && (
+          <div className="sidebar__status-error">
+            Daemon Error
+          </div>
+        )}
       </div>
       
       {/* Project Path Input */}
@@ -65,58 +86,76 @@ export function Sidebar({ qv, projectRoot, onProjectRootChange, onResult }: Side
         </label>
       </div>
       
-      {/* Actions */}
+      {/* System Actions */}
       <div className="sidebar__section">
         <h2 className="sidebar__section-title">System</h2>
         <div className="sidebar__actions">
           <button
-            className="sidebar__button sidebar__button--primary"
-            onClick={() => handleAction('ping', qv.ping)}
+            className="sidebar__button sidebar__button--small"
+            onClick={handlePing}
             disabled={isLoading}
           >
-            {activeAction === 'ping' ? '⏳' : '🏓'} Ping Daemon
+            🏓 Ping
           </button>
+          {pingResult && (
+            <span className={`sidebar__ping-result ${pingResult.startsWith('✓') ? 'success' : 'error'}`}>
+              {pingResult}
+            </span>
+          )}
         </div>
       </div>
       
+      {/* Project Actions */}
       <div className="sidebar__section">
         <h2 className="sidebar__section-title">Project</h2>
         <div className="sidebar__actions">
           <button
-            className="sidebar__button"
-            onClick={() => handleAction('summary', () => qv.getProjectSummary(projectRoot))}
+            className="sidebar__button sidebar__button--primary"
+            onClick={onLoadProject}
             disabled={isLoading || !projectRoot}
           >
-            {activeAction === 'summary' ? '⏳' : '📋'} Project Summary
+            📁 Load Project
           </button>
           
           <button
             className="sidebar__button"
-            onClick={() => handleAction('structures', () => qv.listStructures(projectRoot))}
+            onClick={onListStructures}
             disabled={isLoading || !projectRoot}
           >
-            {activeAction === 'structures' ? '⏳' : '🔬'} List Structures
+            🔬 List Structures
           </button>
           
           <button
             className="sidebar__button"
-            onClick={() => handleAction('workflows', () => qv.listWorkflows(projectRoot))}
+            onClick={onListWorkflows}
             disabled={isLoading || !projectRoot}
           >
-            {activeAction === 'workflows' ? '⏳' : '📊'} List Workflows
+            📊 List Workflows
           </button>
         </div>
       </div>
       
+      {/* View Tabs */}
       <div className="sidebar__section">
-        <h2 className="sidebar__section-title">Jobs</h2>
-        <div className="sidebar__actions">
+        <h2 className="sidebar__section-title">View</h2>
+        <div className="sidebar__tabs">
           <button
-            className="sidebar__button"
-            onClick={() => handleAction('jobs', () => qv.listJobs({}))}
-            disabled={isLoading}
+            className={`sidebar__tab ${currentView === 'summary' ? 'active' : ''}`}
+            onClick={() => onViewChange('summary')}
           >
-            {activeAction === 'jobs' ? '⏳' : '📝'} List Jobs
+            📋 Summary
+          </button>
+          <button
+            className={`sidebar__tab ${currentView === 'structures' ? 'active' : ''}`}
+            onClick={() => onViewChange('structures')}
+          >
+            🔬 Structures
+          </button>
+          <button
+            className={`sidebar__tab ${currentView === 'debug' ? 'active' : ''}`}
+            onClick={() => onViewChange('debug')}
+          >
+            🔧 Debug
           </button>
         </div>
       </div>
@@ -138,4 +177,3 @@ export function Sidebar({ qv, projectRoot, onProjectRootChange, onResult }: Side
     </div>
   );
 }
-
