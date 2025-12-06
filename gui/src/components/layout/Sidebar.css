@@ -110,6 +110,57 @@
   cursor: not-allowed;
 }
 
+.sidebar__input--error {
+  border-color: var(--color-error);
+}
+
+.sidebar__input--error:focus {
+  border-color: var(--color-error);
+  box-shadow: 0 0 0 3px var(--color-error-bg);
+}
+
+.sidebar__input-error {
+  font-size: 0.7rem;
+  color: var(--color-error);
+  margin-top: 4px;
+}
+
+/* Input Group with Browse Button */
+.sidebar__input-group {
+  display: flex;
+  gap: 4px;
+}
+
+.sidebar__input--with-button {
+  flex: 1;
+  min-width: 0;
+  border-radius: 6px 0 0 6px;
+}
+
+.sidebar__browse-button {
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+  background: var(--bg-button);
+  color: var(--text-primary);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar__browse-button:hover:not(:disabled) {
+  background: var(--bg-button-hover);
+}
+
+.sidebar__browse-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Actions */
 .sidebar__actions {
   display: flex;
@@ -211,6 +262,16 @@
 .sidebar__tab.active {
   background: var(--color-primary-alpha);
   color: var(--color-primary-light);
+}
+
+.sidebar__tab:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.sidebar__tab:disabled:hover {
+  background: transparent;
+  color: var(--text-secondary);
 }
 
 /* Error */

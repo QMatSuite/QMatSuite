@@ -1,0 +1,369 @@
+/* AnalysisPanel Styles */
+
+.analysis-panel {
+  display: flex;
+  height: 100%;
+  gap: 16px;
+}
+
+/* Sidebar */
+.analysis-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  background: var(--bg-card);
+  border-radius: 8px;
+}
+
+.sidebar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar-title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* Analysis Type Tabs */
+.analysis-type-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.type-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+}
+
+.type-tab:hover {
+  background: var(--bg-button-hover);
+  color: var(--text-primary);
+}
+
+.type-tab--active {
+  background: var(--color-primary-alpha);
+  border-color: var(--color-primary);
+  color: var(--color-primary-light);
+}
+
+/* Workflow Selection */
+.workflow-select {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.workflow-option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+}
+
+.workflow-option:hover {
+  background: var(--bg-button);
+}
+
+.workflow-option--selected {
+  background: var(--color-primary-alpha);
+  border-color: var(--color-primary);
+}
+
+.workflow-name {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.workflow-steps {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.no-workflows {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  padding: 8px;
+  background: var(--bg-primary);
+  border-radius: 6px;
+  text-align: center;
+}
+
+/* Step Select */
+.step-select {
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.step-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+/* Load Button */
+.load-button {
+  padding: 12px 16px;
+  border: none;
+  border-radius: 6px;
+  background: var(--color-primary);
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-top: auto;
+}
+
+.load-button:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+.load-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Main Content */
+.analysis-content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* =============================================================================
+   Chart Container
+   ============================================================================= */
+
+.chart-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-card);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.chart-container--loading,
+.chart-container--empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.chart-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.chart-icon {
+  font-size: 3rem;
+}
+
+.chart-placeholder h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.chart-placeholder p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* Chart Header */
+.chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.chart-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.chart-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.info-item {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  padding: 3px 8px;
+  background: var(--bg-primary);
+  border-radius: 4px;
+}
+
+/* Status Badge */
+.status-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+
+.status-badge--success {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.status-badge--error {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+/* Chart Controls */
+.chart-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 20px;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.chart-controls .control-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.chart-controls .control-item input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.control-item--range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.range-input {
+  width: 60px;
+  padding: 4px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+}
+
+.range-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+/* Chart Wrapper */
+.chart-wrapper {
+  flex: 1;
+  padding: 16px;
+  min-height: 300px;
+}
+
+/* Chart Stats */
+.chart-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.stat-value {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
+.kpath-value {
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+}
+
+/* Recharts Customization */
+.recharts-text {
+  font-family: var(--font-sans);
+}
+
+.recharts-tooltip-wrapper {
+  z-index: 100;
+}
+
+.recharts-default-legend {
+  font-size: 0.75rem !important;
+}
+
+.recharts-legend-item-text {
+  color: var(--text-secondary) !important;
+}
+

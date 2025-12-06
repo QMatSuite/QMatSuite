@@ -50,3 +50,223 @@
   background: rgba(255, 255, 255, 0.05);
 }
 
+/* =============================================================================
+   Debug View (Full Panel)
+   ============================================================================= */
+
+.debug-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+}
+
+.debug-view__tools {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.debug-tools__section {
+  flex: 1;
+  min-width: 280px;
+  padding: 16px;
+  background: var(--bg-card);
+  border-radius: 8px;
+}
+
+.debug-tools__title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin: 0 0 12px 0;
+}
+
+.debug-tools__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.debug-tools__button {
+  padding: 10px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-button);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.debug-tools__button:hover:not(:disabled) {
+  background: var(--bg-button-hover);
+}
+
+.debug-tools__button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.debug-tools__result {
+  font-size: 0.85rem;
+  padding: 6px 12px;
+  border-radius: 4px;
+}
+
+.debug-tools__result.success {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.debug-tools__result.error {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+.debug-tools__info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.debug-tools__info-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.debug-tools__info-item .info-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.debug-tools__info-item .info-value {
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.debug-tools__info-item .info-value.success {
+  color: var(--color-success);
+}
+
+.debug-tools__info-item .info-value.error {
+  color: var(--color-error);
+}
+
+.debug-tools__info-item code {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  background: var(--bg-primary);
+  border-radius: 3px;
+}
+
+/* Last Result */
+.debug-view__result {
+  padding: 16px;
+  background: var(--bg-card);
+  border-radius: 8px;
+  max-height: 200px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.debug-view__section-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin: 0 0 12px 0;
+}
+
+.debug-view__json {
+  flex: 1;
+  overflow: auto;
+  padding: 12px;
+  background: var(--bg-primary);
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
+
+.debug-view__json.success {
+  border-color: var(--color-success);
+}
+
+.debug-view__json.error {
+  border-color: var(--color-error);
+}
+
+.debug-view__json pre {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* Full Logs */
+.debug-view__logs {
+  flex: 1;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  background: var(--bg-terminal);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.debug-view__logs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.debug-view__logs-count {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.debug-view__logs-content {
+  flex: 1;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-terminal);
+}
+
+.debug-view__logs-empty {
+  opacity: 0.5;
+  font-style: italic;
+}
+
+.debug-view__log-line {
+  display: flex;
+  gap: 12px;
+  padding: 3px 0;
+}
+
+.debug-view__log-line:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.debug-view__log-line .log-number {
+  flex-shrink: 0;
+  width: 40px;
+  text-align: right;
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.debug-view__log-line .log-text {
+  white-space: pre-wrap;
+  word-break: break-all;
+}

@@ -8,7 +8,7 @@
  * - Maintain request/response mapping for async JSON-RPC
  */
 
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import { spawn, ChildProcess } from 'node:child_process';
 import { createInterface, Interface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
@@ -397,6 +397,55 @@ ipcMain.handle('qv-is-connected', async (): Promise<boolean> => {
  */
 ipcMain.handle('qv-daemon-status', async (): Promise<DaemonStatus> => {
   return { ...daemonStatus };
+});
+
+/**
+ * Open a directory picker dialog
+ * 
+ * @returns Selected directory path or null if cancelled
+ */
+ipcMain.handle('qv-open-directory', async (): Promise<string | null> => {
+  if (!win) return null;
+  
+  const result = await dialog.showOpenDialog(win, {
+    properties: ['openDirectory', 'createDirectory'],
+    title: 'Select Project Root',
+    buttonLabel: 'Select',
+  });
+  
+  if (result.canceled || result.filePaths.length === 0) {
+    return null;
+  }
+  
+  return result.filePaths[0];
+});
+
+/**
+ * Open a file picker dialog for importing structures
+ * 
+ * @returns Selected file path or null if cancelled
+ */
+ipcMain.handle('qv-open-file', async (_event, options?: {
+  title?: string;
+  filters?: { name: string; extensions: string[] }[];
+}): Promise<string | null> => {
+  if (!win) return null;
+  
+  const result = await dialog.showOpenDialog(win, {
+    properties: ['openFile'],
+    title: options?.title || 'Select File',
+    buttonLabel: 'Select',
+    filters: options?.filters || [
+      { name: 'Structure Files', extensions: ['cif', 'json', 'in', 'xsf', 'xyz', 'poscar', 'vasp'] },
+      { name: 'All Files', extensions: ['*'] },
+    ],
+  });
+  
+  if (result.canceled || result.filePaths.length === 0) {
+    return null;
+  }
+  
+  return result.filePaths[0];
 });
 
 // =============================================================================

@@ -8,9 +8,18 @@ import './ProjectSummaryPanel.css';
 interface ProjectSummaryPanelProps {
   summary: ProjectSummary | null;
   isLoading?: boolean;
+  error?: string | null;
+  onBrowseAndLoad?: () => void;
+  onCreateProject?: () => void;
 }
 
-export function ProjectSummaryPanel({ summary, isLoading }: ProjectSummaryPanelProps) {
+export function ProjectSummaryPanel({ 
+  summary, 
+  isLoading,
+  error,
+  onBrowseAndLoad,
+  onCreateProject,
+}: ProjectSummaryPanelProps) {
   if (isLoading) {
     return (
       <div className="project-summary-panel project-summary-panel--loading">
@@ -20,13 +29,65 @@ export function ProjectSummaryPanel({ summary, isLoading }: ProjectSummaryPanelP
     );
   }
   
+  if (error) {
+    return (
+      <div className="project-summary-panel project-summary-panel--error">
+        <div className="error-card">
+          <span className="error-icon">⚠️</span>
+          <h3>Failed to Load Project</h3>
+          <p className="error-message">{error}</p>
+          <div className="error-actions">
+            {onBrowseAndLoad && (
+              <button className="action-button" onClick={onBrowseAndLoad}>
+                📂 Browse & Load
+              </button>
+            )}
+            {onCreateProject && (
+              <button className="action-button action-button--secondary" onClick={onCreateProject}>
+                ✨ Create New Project
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
   if (!summary) {
     return (
       <div className="project-summary-panel project-summary-panel--empty">
-        <div className="panel-placeholder">
-          <span className="panel-icon">📁</span>
-          <h3>No Project Loaded</h3>
-          <p>Enter a project path and click "Load Project" to get started.</p>
+        <div className="welcome-card">
+          <div className="welcome-icon">⚛️</div>
+          <h2 className="welcome-title">Welcome to QuantumVITAS</h2>
+          <p className="welcome-subtitle">
+            Manage Quantum ESPRESSO workflows with ease
+          </p>
+          
+          <div className="welcome-actions">
+            {onBrowseAndLoad && (
+              <button className="welcome-button welcome-button--primary" onClick={onBrowseAndLoad}>
+                <span className="welcome-button__icon">📂</span>
+                <span className="welcome-button__content">
+                  <span className="welcome-button__title">Open Project</span>
+                  <span className="welcome-button__desc">Browse and load an existing project</span>
+                </span>
+              </button>
+            )}
+            {onCreateProject && (
+              <button className="welcome-button" onClick={onCreateProject}>
+                <span className="welcome-button__icon">✨</span>
+                <span className="welcome-button__content">
+                  <span className="welcome-button__title">Create New Project</span>
+                  <span className="welcome-button__desc">Start a new QE calculation project</span>
+                </span>
+              </button>
+            )}
+          </div>
+          
+          <div className="welcome-hint">
+            <span className="hint-icon">💡</span>
+            <span>Or enter a project path in the sidebar and click "Load Project"</span>
+          </div>
         </div>
       </div>
     );
@@ -48,13 +109,19 @@ export function ProjectSummaryPanel({ summary, isLoading }: ProjectSummaryPanelP
             <div className="summary-card__value">{summary.n_structures}</div>
             <div className="summary-card__label">Structures</div>
             <div className="summary-card__list">
-              {summary.structure_names.slice(0, 5).map(name => (
-                <span key={name} className="summary-tag">{name}</span>
-              ))}
-              {summary.structure_names.length > 5 && (
-                <span className="summary-tag summary-tag--more">
-                  +{summary.structure_names.length - 5} more
-                </span>
+              {summary.structure_names.length === 0 ? (
+                <span className="summary-empty">No structures yet</span>
+              ) : (
+                <>
+                  {summary.structure_names.slice(0, 5).map(name => (
+                    <span key={name} className="summary-tag">{name}</span>
+                  ))}
+                  {summary.structure_names.length > 5 && (
+                    <span className="summary-tag summary-tag--more">
+                      +{summary.structure_names.length - 5} more
+                    </span>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -63,13 +130,19 @@ export function ProjectSummaryPanel({ summary, isLoading }: ProjectSummaryPanelP
             <div className="summary-card__value">{summary.n_workflows}</div>
             <div className="summary-card__label">Workflows</div>
             <div className="summary-card__list">
-              {summary.workflow_names.slice(0, 5).map(name => (
-                <span key={name} className="summary-tag">{name}</span>
-              ))}
-              {summary.workflow_names.length > 5 && (
-                <span className="summary-tag summary-tag--more">
-                  +{summary.workflow_names.length - 5} more
-                </span>
+              {summary.workflow_names.length === 0 ? (
+                <span className="summary-empty">No workflows yet</span>
+              ) : (
+                <>
+                  {summary.workflow_names.slice(0, 5).map(name => (
+                    <span key={name} className="summary-tag">{name}</span>
+                  ))}
+                  {summary.workflow_names.length > 5 && (
+                    <span className="summary-tag summary-tag--more">
+                      +{summary.workflow_names.length - 5} more
+                    </span>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -89,4 +162,3 @@ export function ProjectSummaryPanel({ summary, isLoading }: ProjectSummaryPanelP
     </div>
   );
 }
-

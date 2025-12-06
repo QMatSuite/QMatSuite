@@ -1,15 +1,19 @@
 /**
- * DebugPanel - Shows daemon log output for debugging
+ * DebugPanel - Shows daemon log output and debug tools
  */
 
-import { useEffect, useRef } from 'react';
-import { useQVLogs } from '../../hooks/useQVClient';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { useQVLogs, useQVClient } from '../../hooks/useQVClient';
+import type { QVResponse } from '../../types/qv';
 import './DebugPanel.css';
 
 interface DebugPanelProps {
   isVisible?: boolean;
 }
 
+/**
+ * Compact log footer panel
+ */
 export function DebugPanel({ isVisible = true }: DebugPanelProps) {
   const logs = useQVLogs(200);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -46,3 +50,119 @@ export function DebugPanel({ isVisible = true }: DebugPanelProps) {
   );
 }
 
+/**
+ * Full debug view for the main content area
+ */
+interface DebugViewProps {
+  lastResult: QVResponse | null;
+}
+
+export function DebugView({ lastResult }: DebugViewProps) {
+  const qv = useQVClient();
+  const logs = useQVLogs(500);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [pingResult, setPingResult] = useState<string | null>(null);
+  const [isPinging, setIsPinging] = useState(false);
+  
+  // Auto-scroll logs
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [logs]);
+  
+  const handlePing = useCallback(async () => {
+    setIsPinging(true);
+    setPingResult(null);
+    
+    const response = await qv.ping();
+    
+    if (response.ok && response.data) {
+      setPingResult(`✓ Daemon v${response.data.version} (connected)`);
+    } else {
+      setPingResult(`✗ ${response.error?.message || 'Connection failed'}`);
+    }
+    setIsPinging(false);
+  }, [qv]);
+  
+  return (
+    <div className="debug-view">
+      {/* Debug Tools */}
+      <div className="debug-view__tools">
+        <div className="debug-tools__section">
+          <h3 className="debug-tools__title">Connection Test</h3>
+          <div className="debug-tools__row">
+            <button
+              className="debug-tools__button"
+              onClick={handlePing}
+              disabled={isPinging}
+            >
+              {isPinging ? '⏳ Pinging...' : '🏓 Ping Daemon'}
+            </button>
+            {pingResult && (
+              <span className={`debug-tools__result ${pingResult.startsWith('✓') ? 'success' : 'error'}`}>
+                {pingResult}
+              </span>
+            )}
+          </div>
+        </div>
+        
+        <div className="debug-tools__section">
+          <h3 className="debug-tools__title">Daemon Status</h3>
+          <div className="debug-tools__info">
+            <div className="debug-tools__info-item">
+              <span className="info-label">Connected:</span>
+              <span className={`info-value ${qv.state.isConnected ? 'success' : 'error'}`}>
+                {qv.state.isConnected ? 'Yes' : 'No'}
+              </span>
+            </div>
+            {qv.state.daemonStatus?.pythonPath && (
+              <div className="debug-tools__info-item">
+                <span className="info-label">Python:</span>
+                <code className="info-value">{qv.state.daemonStatus.pythonPath}</code>
+              </div>
+            )}
+            {qv.state.daemonStatus?.projectRoot && (
+              <div className="debug-tools__info-item">
+                <span className="info-label">CWD:</span>
+                <code className="info-value">{qv.state.daemonStatus.projectRoot}</code>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      
+      {/* Last Result */}
+      {lastResult && (
+        <div className="debug-view__result">
+          <h3 className="debug-view__section-title">Last RPC Result</h3>
+          <div className={`debug-view__json ${lastResult.ok ? 'success' : 'error'}`}>
+            <pre>{JSON.stringify(lastResult, null, 2)}</pre>
+          </div>
+        </div>
+      )}
+      
+      {/* Full Logs */}
+      <div className="debug-view__logs">
+        <div className="debug-view__logs-header">
+          <h3 className="debug-view__section-title">Daemon Logs</h3>
+          <span className="debug-view__logs-count">{logs.length} lines</span>
+        </div>
+        <div className="debug-view__logs-content" ref={scrollRef}>
+          {logs.length === 0 ? (
+            <div className="debug-view__logs-empty">
+              No daemon output yet...
+            </div>
+          ) : (
+            logs.map((log, i) => (
+              <div key={i} className="debug-view__log-line">
+                <span className="log-number">{i + 1}</span>
+                <span className="log-text">{log}</span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
