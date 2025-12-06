@@ -9,16 +9,24 @@ interface ProjectSummaryPanelProps {
   summary: ProjectSummary | null;
   isLoading?: boolean;
   error?: string | null;
+  recentProjects?: string[];
   onBrowseAndLoad?: () => void;
   onCreateProject?: () => void;
+  onCreateDemoProject?: () => void;
+  onOpenRecentProject?: (path: string) => void;
+  onRemoveRecentProject?: (path: string) => void;
 }
 
 export function ProjectSummaryPanel({ 
   summary, 
   isLoading,
   error,
+  recentProjects,
   onBrowseAndLoad,
   onCreateProject,
+  onCreateDemoProject,
+  onOpenRecentProject,
+  onRemoveRecentProject,
 }: ProjectSummaryPanelProps) {
   if (isLoading) {
     return (
@@ -82,7 +90,47 @@ export function ProjectSummaryPanel({
                 </span>
               </button>
             )}
+            {onCreateDemoProject && (
+              <button className="welcome-button welcome-button--demo" onClick={onCreateDemoProject}>
+                <span className="welcome-button__icon">🚀</span>
+                <span className="welcome-button__content">
+                  <span className="welcome-button__title">Create Demo Project</span>
+                  <span className="welcome-button__desc">Start with a ready-to-run Si workflow</span>
+                </span>
+              </button>
+            )}
           </div>
+          
+          {/* Recent Projects */}
+          {recentProjects && recentProjects.length > 0 && (
+            <div className="recent-projects">
+              <h3 className="recent-projects__title">Recent Projects</h3>
+              <div className="recent-projects__list">
+                {recentProjects.map((path) => (
+                  <div key={path} className="recent-project-item">
+                    <button 
+                      className="recent-project-item__path"
+                      onClick={() => onOpenRecentProject?.(path)}
+                      title={path}
+                    >
+                      <span className="recent-project-item__icon">📁</span>
+                      <span className="recent-project-item__name">{getProjectName(path)}</span>
+                      <span className="recent-project-item__dir">{getParentDir(path)}</span>
+                    </button>
+                    {onRemoveRecentProject && (
+                      <button 
+                        className="recent-project-item__remove"
+                        onClick={() => onRemoveRecentProject(path)}
+                        title="Remove from recent"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           
           <div className="welcome-hint">
             <span className="hint-icon">💡</span>
@@ -161,4 +209,17 @@ export function ProjectSummaryPanel({
       </div>
     </div>
   );
+}
+
+// Helper to extract project name from path
+function getProjectName(path: string): string {
+  const parts = path.split(/[/\\]/);
+  return parts[parts.length - 1] || path;
+}
+
+// Helper to get parent directory
+function getParentDir(path: string): string {
+  const parts = path.split(/[/\\]/);
+  parts.pop();
+  return parts.slice(-2).join('/') || '/';
 }

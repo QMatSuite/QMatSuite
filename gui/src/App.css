@@ -108,6 +108,20 @@
 .workflows-view__detail {
   flex: 1;
   min-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* When showing both workflow and step detail, limit workflow detail height */
+.workflows-view__detail .workflow-detail-panel {
+  max-height: 50%;
+  overflow-y: auto;
+}
+
+.workflows-view__detail .step-detail-panel {
+  flex: 1;
+  min-height: 0;
 }
 
 /* Loading Spinner */
