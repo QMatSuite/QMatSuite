@@ -92,3 +92,7 @@ cd gui
 npm install
 npm run dev
 
+# install environment for gui if gui folder is present
+cd gui
+npm install
+npm run dev

@@ -74,6 +74,56 @@ def get_template_path(category: str, name: str) -> Optional[Path]:
         return path if path.exists() and path.is_dir() else None
 
 
+def list_workflow_templates() -> List[Dict[str, Any]]:
+    """
+    List available workflow templates with metadata.
+    
+    Returns:
+        List of dicts, each containing:
+        - name: Template name
+        - path: Template path
+        - description: Optional description
+        - n_steps: Number of steps
+        - step_types: List of step types
+    """
+    template_dir = TEMPLATES_DIR / "workflow"
+    if not template_dir.exists():
+        return []
+    
+    templates = []
+    for tpl_dir in template_dir.iterdir():
+        if not tpl_dir.is_dir():
+            continue
+        
+        workflow_yaml = tpl_dir / "workflow.yaml"
+        if not workflow_yaml.exists():
+            continue
+        
+        try:
+            with open(workflow_yaml, "r") as f:
+                data = yaml.safe_load(f) or {}
+            
+            steps = data.get("steps", [])
+            step_types = [s.get("type", "unknown") for s in steps]
+            
+            # Try to get description from meta or workflow data
+            meta = data.get("meta", {})
+            description = meta.get("description") or data.get("description")
+            
+            templates.append({
+                "name": tpl_dir.name,
+                "path": str(tpl_dir),
+                "description": description,
+                "n_steps": len(steps),
+                "step_types": step_types,
+            })
+        except Exception:
+            # Skip templates with parse errors
+            continue
+    
+    return templates
+
+
 def _regenerate_ulids_in_meta(data: Dict[str, Any], ulid_map: Dict[str, str]) -> None:
     """
     Regenerate ULIDs in meta sections and track the mapping.

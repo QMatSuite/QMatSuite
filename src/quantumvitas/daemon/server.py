@@ -102,6 +102,14 @@ class QVDaemon:
             "list_structures": self._handle_list_structures,
             "list_workflows": self._handle_list_workflows,
             
+            # Project creation and management
+            "create_project": self._handle_create_project,
+            "import_structure": self._handle_import_structure,
+            
+            # Workflow creation
+            "list_workflow_templates": self._handle_list_workflow_templates,
+            "create_workflow": self._handle_create_workflow,
+            
             # Visualization data (pure data, no matplotlib)
             "get_structure_vis": self._handle_get_structure_vis,
             "get_scf_convergence": self._handle_get_scf_convergence,
@@ -311,6 +319,134 @@ class QVDaemon:
         project_root = self._require_path(payload, "project_root")
         workflows = QVService.list_workflows_data(project_root)
         return {"workflows": workflows, "count": len(workflows)}
+    
+    # -------------------------------------------------------------------------
+    # Project creation handlers
+    # -------------------------------------------------------------------------
+    
+    def _handle_create_project(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Create a new project.
+        
+        Payload:
+            target_dir: str - Directory to create project in
+            name: str - Optional project name (defaults to dir name)
+            template: str - Optional template name
+        """
+        target_dir = Path(payload.get("target_dir", "")).resolve()
+        name = payload.get("name")
+        template = payload.get("template")
+        
+        if not target_dir:
+            raise ValueError("Missing required field: target_dir")
+        
+        project_root = QVService.init_project(
+            target_dir=target_dir,
+            name=name,
+            template=template,
+        )
+        
+        # Get summary of newly created project
+        summary = QVService.get_project_summary(project_root)
+        
+        return {
+            "project_root": str(project_root),
+            "name": summary.get("name", name or target_dir.name),
+            "id": summary.get("id"),
+        }
+    
+    def _handle_import_structure(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Import a structure file into a project.
+        
+        Payload:
+            project_root: str - Path to project root
+            source_file: str - Path to structure file
+            name: str - Optional structure name
+        """
+        project_root = self._require_path(payload, "project_root")
+        source_file = Path(payload.get("source_file", "")).resolve()
+        name = payload.get("name")
+        
+        if not source_file or not source_file.exists():
+            raise FileNotFoundError(f"Structure file not found: {source_file}")
+        
+        result = QVService.import_structure(
+            project_root=project_root,
+            source=source_file,
+            name=name,
+        )
+        
+        # Get structure metadata
+        structures = QVService.list_structures_data(project_root)
+        new_struct = next((s for s in structures if s.get("id") == result.meta.id), None)
+        
+        return {
+            "structure_id": result.meta.id,
+            "name": result.meta.name,
+            "slug": result.meta.slug,
+            "formula": new_struct.get("formula", "?") if new_struct else "?",
+            "n_atoms": new_struct.get("n_atoms", 0) if new_struct else 0,
+        }
+    
+    # -------------------------------------------------------------------------
+    # Workflow creation handlers
+    # -------------------------------------------------------------------------
+    
+    def _handle_list_workflow_templates(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        List available workflow templates.
+        """
+        from quantumvitas.core.templates import list_workflow_templates
+        
+        templates = list_workflow_templates()
+        
+        return {
+            "templates": [
+                {
+                    "name": t.get("name"),
+                    "path": t.get("path"),
+                    "description": t.get("description"),
+                    "n_steps": t.get("n_steps", 0),
+                    "step_types": t.get("step_types", []),
+                }
+                for t in templates
+            ],
+            "count": len(templates),
+        }
+    
+    def _handle_create_workflow(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Create a new workflow.
+        
+        Payload:
+            project_root: str - Path to project root
+            name: str - Workflow name
+            structure: str - Optional structure selector
+            template: str - Optional template name
+        """
+        project_root = self._require_path(payload, "project_root")
+        name = self._require_str(payload, "name")
+        structure = payload.get("structure")
+        template = payload.get("template")
+        
+        result = QVService.init_workflow(
+            project_root=project_root,
+            name=name,
+            structure_selector=structure,
+            template=template,
+        )
+        
+        # Get workflow details
+        workflows = QVService.list_workflows_data(project_root)
+        new_wf = next((w for w in workflows if w.get("id") == result.meta.id), None)
+        
+        return {
+            "workflow_id": result.meta.id,
+            "name": result.meta.name,
+            "slug": result.meta.slug,
+            "n_steps": new_wf.get("n_steps", 0) if new_wf else 0,
+        }
     
     # -------------------------------------------------------------------------
     # Visualization data handlers
