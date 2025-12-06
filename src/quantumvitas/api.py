@@ -1587,6 +1587,746 @@ class QVService:
         }
 
 
+    # -------------------------------------------------------------------------
+    # Environment and Settings (Phase 2 - GUI Parity)
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def detect_qe() -> Dict[str, Any]:
+        """
+        Detect Quantum ESPRESSO installation.
+        
+        Returns:
+            Dict with QE detection status, path, version, and available executables
+        """
+        from quantumvitas.core.engines.qe_installation import (
+            get_qe_home,
+            reset_qe_home,
+            QEInstallation,
+        )
+        
+        # Force re-detection
+        reset_qe_home()
+        qe_home = get_qe_home()
+        
+        result: Dict[str, Any] = {
+            "found": qe_home is not None,
+            "qe_home": str(qe_home) if qe_home else None,
+            "version": None,
+            "executables": [],
+            "detection_source": None,
+        }
+        
+        if qe_home:
+            # Find available executables
+            bin_dir = qe_home / "bin"
+            if bin_dir.exists():
+                executables = []
+                for exe in ["pw.x", "ph.x", "dos.x", "bands.x", "projwfc.x", "pp.x"]:
+                    if (bin_dir / exe).exists():
+                        executables.append(exe)
+                result["executables"] = executables
+            
+            # Try to get version
+            try:
+                installation = QEInstallation(qe_home)
+                version = installation.version
+                if version:
+                    result["version"] = version
+            except Exception:
+                pass
+        
+        return result
+    
+    @staticmethod
+    def get_environment_info() -> Dict[str, Any]:
+        """
+        Get environment information for the GUI.
+        
+        Returns:
+            Dict with Python version, QV version, QE status, daemon info
+        """
+        import sys
+        from quantumvitas.core.engines.qe_installation import get_qe_home
+        
+        # Get QE home (may trigger auto-detection)
+        qe_home = get_qe_home()
+        
+        return {
+            "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+            "python_executable": sys.executable,
+            "qv_version": "2.0.0",  # Could read from package metadata
+            "qe_home": str(qe_home) if qe_home else None,
+            "qe_found": qe_home is not None,
+        }
+    
+    # -------------------------------------------------------------------------
+    # Structure CRUD Operations (Phase 3 - GUI Parity)
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def rename_structure(
+        project_root: Path,
+        selector: str,
+        new_name: str,
+    ) -> Dict[str, Any]:
+        """
+        Rename a structure.
+        
+        Args:
+            project_root: Project root path
+            selector: Structure selector (name/slug/path)
+            new_name: New name for the structure
+            
+        Returns:
+            Dict with old_name, new_name, new_slug
+        """
+        resolved = resolve_structure(project_root, selector)
+        old_name = resolved.meta.name
+        
+        QVService.configure_structure(
+            project_root=project_root,
+            selector=selector,
+            new_name=new_name,
+        )
+        
+        return {
+            "success": True,
+            "old_name": old_name,
+            "new_name": new_name,
+            "new_slug": slugify(new_name),
+        }
+    
+    @staticmethod
+    def can_delete_structure(
+        project_root: Path,
+        selector: str,
+    ) -> Dict[str, Any]:
+        """
+        Check if a structure can be safely deleted.
+        
+        Returns:
+            Dict with can_delete and list of workflows using this structure
+        """
+        config = load_project_config(project_root)
+        entry = find_structure_entry(config, selector, project_root)
+        
+        using_workflows = workflows_using_structure(project_root, config, entry)
+        workflow_names = [w.get("name", "?") for w in using_workflows]
+        
+        return {
+            "can_delete": len(using_workflows) == 0,
+            "using_workflows": workflow_names,
+            "structure_name": entry.get("name") or (entry.get("meta") or {}).get("name"),
+        }
+    
+    # -------------------------------------------------------------------------
+    # Workflow CRUD Operations (Phase 3 - GUI Parity)
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def rename_workflow(
+        project_root: Path,
+        selector: str,
+        new_name: str,
+    ) -> Dict[str, Any]:
+        """
+        Rename a workflow.
+        
+        Args:
+            project_root: Project root path
+            selector: Workflow selector
+            new_name: New name for the workflow
+            
+        Returns:
+            Dict with old_name, new_name, new_slug
+        """
+        resolved = resolve_workflow(project_root, selector)
+        old_name = resolved.meta.name
+        
+        QVService.configure_workflow(
+            project_root=project_root,
+            selector=selector,
+            new_name=new_name,
+        )
+        
+        return {
+            "success": True,
+            "old_name": old_name,
+            "new_name": new_name,
+            "new_slug": slugify(new_name),
+        }
+    
+    @staticmethod
+    def can_delete_workflow(
+        project_root: Path,
+        selector: str,
+    ) -> Dict[str, Any]:
+        """
+        Check if a workflow can be safely deleted.
+        
+        Returns:
+            Dict with workflow name and dependent workflows (if any)
+        """
+        config = load_project_config(project_root)
+        entry = find_workflow_entry(config, selector, project_root)
+        
+        dependent_workflows = workflows_depending_on(project_root, config, entry)
+        dep_names = [w.get("name", "?") for w in dependent_workflows]
+        
+        return {
+            "workflow_name": entry.get("name") or (entry.get("meta") or {}).get("name"),
+            "dependent_workflows": dep_names,
+            "has_dependencies": len(dep_names) > 0,
+        }
+    
+    # -------------------------------------------------------------------------
+    # Step Operations (Phase 4 - GUI Parity)
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def get_step_detail(
+        project_root: Path,
+        workflow_selector: str,
+        step_selector: str,
+    ) -> Dict[str, Any]:
+        """
+        Get detailed information about a step.
+        
+        Args:
+            project_root: Project root path
+            workflow_selector: Workflow selector
+            step_selector: Step selector
+            
+        Returns:
+            Dict with step metadata, parameters, cards, etc.
+        """
+        from quantumvitas.workflow.structure_steps import StructureStepSpec
+        
+        step = resolve_step(project_root, workflow_selector, step_selector)
+        
+        # Load the full step spec
+        spec = StructureStepSpec.from_yaml(step.absolute_path)
+        
+        return {
+            "id": step.meta.id,
+            "name": step.meta.name,
+            "slug": step.meta.slug,
+            "path": step.meta.path,
+            "step_type": spec.step_type,
+            "structure": spec.structure,
+            "parent_workflow_id": spec.parent_workflow_id,
+            "parameters": spec.parameters,
+            "cards": spec.cards,
+            "species_overrides": spec.species_overrides,
+        }
+    
+    @staticmethod
+    def update_step_params(
+        project_root: Path,
+        workflow_selector: str,
+        step_selector: str,
+        parameters: Dict[str, Dict[str, Any]],
+        cards: Optional[Dict[str, Dict[str, Any]]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Update step parameters safely.
+        
+        Only updates the specified parameters; does not clobber unknown options.
+        Validates types for known parameters.
+        
+        Args:
+            project_root: Project root path
+            workflow_selector: Workflow selector
+            step_selector: Step selector
+            parameters: Dict of namelist -> {param: value} to update
+            cards: Optional dict of card updates (e.g., K_POINTS)
+            
+        Returns:
+            Updated step detail dict
+        """
+        from quantumvitas.workflow.structure_steps import StructureStepSpec
+        
+        step = resolve_step(project_root, workflow_selector, step_selector)
+        spec = StructureStepSpec.from_yaml(step.absolute_path)
+        
+        # Validate and merge parameters
+        for namelist, params in parameters.items():
+            namelist_upper = namelist.upper()
+            
+            # Create namelist if it doesn't exist
+            if namelist_upper not in spec.parameters:
+                spec.parameters[namelist_upper] = {}
+            
+            for key, value in params.items():
+                # Basic type validation for known parameters
+                if key in ('ecutwfc', 'ecutrho', 'degauss', 'conv_thr'):
+                    if value is not None:
+                        try:
+                            value = float(value)
+                        except (TypeError, ValueError):
+                            raise QVServiceError(f"Parameter '{key}' must be numeric, got: {value}")
+                
+                # Set or remove the parameter
+                if value is None:
+                    spec.parameters[namelist_upper].pop(key, None)
+                else:
+                    spec.parameters[namelist_upper][key] = value
+            
+            # Clean up empty namelists
+            if not spec.parameters[namelist_upper]:
+                del spec.parameters[namelist_upper]
+        
+        # Update cards if provided
+        if cards:
+            for card_name, card_data in cards.items():
+                card_upper = card_name.upper()
+                if card_data is None:
+                    spec.cards.pop(card_upper, None)
+                else:
+                    spec.cards[card_upper] = card_data
+        
+        # Save the updated spec
+        step.absolute_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
+        
+        # Return the updated step detail
+        return {
+            "id": step.meta.id,
+            "name": step.meta.name,
+            "slug": step.meta.slug,
+            "path": step.meta.path,
+            "step_type": spec.step_type,
+            "structure": spec.structure,
+            "parent_workflow_id": spec.parent_workflow_id,
+            "parameters": spec.parameters,
+            "cards": spec.cards,
+            "species_overrides": spec.species_overrides,
+        }
+    
+    @staticmethod
+    def reset_step_params(
+        project_root: Path,
+        workflow_selector: str,
+        step_selector: str,
+        template_name: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Reset step parameters to template defaults or empty.
+        
+        Args:
+            project_root: Project root path
+            workflow_selector: Workflow selector
+            step_selector: Step selector
+            template_name: Optional template name to reset from
+            
+        Returns:
+            Updated step detail dict
+        """
+        from quantumvitas.workflow.structure_steps import StructureStepSpec
+        
+        step = resolve_step(project_root, workflow_selector, step_selector)
+        spec = StructureStepSpec.from_yaml(step.absolute_path)
+        
+        if template_name:
+            # Load template parameters
+            from quantumvitas.core.templates import load_workflow_template
+            template = load_workflow_template(template_name)
+            
+            # Find matching step type in template
+            template_step = None
+            for ts in template.get("steps", []):
+                if ts.get("step_type") == spec.step_type:
+                    template_step = ts
+                    break
+            
+            if template_step:
+                spec.parameters = template_step.get("parameters", {})
+                spec.cards = template_step.get("cards", {})
+        else:
+            # Reset to minimal defaults based on step type
+            spec.parameters = {}
+            spec.cards = {}
+        
+        # Save the updated spec
+        step.absolute_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
+        
+        return QVService.get_step_detail(project_root, workflow_selector, step_selector)
+    
+    # -------------------------------------------------------------------------
+    # Workflow Configuration (Phase 4 - Reorder, Change Structure)
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def reorder_workflow_steps(
+        project_root: Path,
+        workflow_selector: str,
+        new_order: List[str],
+    ) -> Dict[str, Any]:
+        """
+        Reorder workflow steps.
+        
+        Args:
+            project_root: Project root path
+            workflow_selector: Workflow selector
+            new_order: List of step IDs/slugs in the new order
+            
+        Returns:
+            Updated workflow info
+        """
+        from quantumvitas.core.models import WorkflowModel
+        
+        workflow = resolve_workflow(project_root, workflow_selector)
+        wf_path = workflow.absolute_path / "workflow.yaml"
+        wf_model = WorkflowModel.from_yaml(wf_path)
+        
+        # Validate all step IDs exist
+        existing_ids = {s.id for s in wf_model.steps}
+        existing_slugs = {}
+        for s in wf_model.steps:
+            # Create a mapping from possible identifiers to step entries
+            existing_slugs[s.id] = s
+            if s.slug:
+                existing_slugs[s.slug] = s
+        
+        # Resolve the new order
+        reordered = []
+        seen = set()
+        for selector in new_order:
+            if selector in existing_slugs:
+                step = existing_slugs[selector]
+                if step.id not in seen:
+                    reordered.append(step)
+                    seen.add(step.id)
+            else:
+                raise QVServiceError(f"Step '{selector}' not found in workflow")
+        
+        # Ensure all steps are accounted for
+        if len(reordered) != len(wf_model.steps):
+            missing = existing_ids - seen
+            raise QVServiceError(f"New order missing steps: {missing}")
+        
+        # Update the model
+        wf_model.steps = reordered
+        wf_model.save(wf_path)
+        
+        # Return updated workflow info
+        return QVService.get_workflow_detail(project_root, workflow_selector)
+    
+    @staticmethod
+    def change_workflow_structure(
+        project_root: Path,
+        workflow_selector: str,
+        new_structure: str,
+        update_steps: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Change the structure associated with a workflow.
+        
+        Args:
+            project_root: Project root path
+            workflow_selector: Workflow selector
+            new_structure: New structure selector
+            update_steps: Whether to also update all steps' structure field
+            
+        Returns:
+            Updated workflow info with any warnings
+        """
+        from quantumvitas.core.models import WorkflowModel
+        from quantumvitas.workflow.structure_steps import StructureStepSpec
+        
+        # Validate structure exists
+        structure = resolve_structure(project_root, new_structure)
+        
+        workflow = resolve_workflow(project_root, workflow_selector)
+        wf_path = workflow.absolute_path / "workflow.yaml"
+        wf_model = WorkflowModel.from_yaml(wf_path)
+        
+        old_structure = wf_model.structure
+        wf_model.structure = structure.meta.slug
+        wf_model.save(wf_path)
+        
+        warnings = []
+        updated_steps = []
+        
+        if update_steps:
+            # Update all step files
+            steps_dir = workflow.absolute_path / "steps"
+            if steps_dir.exists():
+                for step_file in steps_dir.glob("*.step.yaml"):
+                    try:
+                        spec = StructureStepSpec.from_yaml(step_file)
+                        if spec.structure != structure.meta.slug:
+                            old_step_struct = spec.structure
+                            spec.structure = structure.meta.slug
+                            step_file.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
+                            updated_steps.append({
+                                "step_id": spec.meta.id,
+                                "old_structure": old_step_struct,
+                                "new_structure": structure.meta.slug,
+                            })
+                    except Exception as e:
+                        warnings.append(f"Failed to update step {step_file.name}: {e}")
+        
+        result = QVService.get_workflow_detail(project_root, workflow_selector)
+        result["old_structure"] = old_structure
+        result["updated_steps"] = updated_steps
+        result["warnings"] = warnings
+        
+        return result
+    
+    @staticmethod
+    def get_workflow_detail(
+        project_root: Path,
+        workflow_selector: str,
+    ) -> Dict[str, Any]:
+        """
+        Get detailed workflow information for GUI display.
+        
+        Args:
+            project_root: Project root path
+            workflow_selector: Workflow selector
+            
+        Returns:
+            Dict with workflow details including steps
+        """
+        from quantumvitas.core.models import WorkflowModel
+        
+        workflow = resolve_workflow(project_root, workflow_selector)
+        wf_path = workflow.absolute_path / "workflow.yaml"
+        wf_model = WorkflowModel.from_yaml(wf_path)
+        
+        steps = []
+        for step_entry in wf_model.steps:
+            steps.append({
+                "id": step_entry.id,
+                "slug": step_entry.slug,
+                "type": step_entry.step_type,
+                "step_file": step_entry.step_file,
+            })
+        
+        return {
+            "id": workflow.meta.id,
+            "name": workflow.meta.name,
+            "slug": workflow.meta.slug,
+            "path": workflow.meta.path,
+            "absolute_path": str(workflow.absolute_path),
+            "structure": wf_model.structure,
+            "mode": wf_model.mode,
+            "n_steps": len(steps),
+            "steps": steps,
+        }
+    
+    # -------------------------------------------------------------------------
+    # Pre-flight Checks (Phase 4 - Validate before run)
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def preflight_check(
+        project_root: Path,
+        workflow_selector: Optional[str] = None,
+        step_selector: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Perform pre-flight checks before running a workflow or step.
+        
+        Args:
+            project_root: Project root path
+            workflow_selector: Optional workflow selector
+            step_selector: Optional step selector (requires workflow_selector)
+            
+        Returns:
+            Dict with check results: {
+                "ok": bool,
+                "checks": [{"name": str, "ok": bool, "message": str}],
+                "errors": [str],
+                "warnings": [str],
+            }
+        """
+        from quantumvitas.core.engines.qe_installation import get_qe_home, QEInstallation
+        
+        checks = []
+        errors = []
+        warnings = []
+        
+        # Check 1: QE installation
+        qe_home = get_qe_home()
+        if qe_home:
+            try:
+                qe = QEInstallation(qe_home)
+                pw_x = qe.get_executable("pw.x")
+                if pw_x and pw_x.exists():
+                    checks.append({"name": "QE Installation", "ok": True, "message": f"pw.x found at {pw_x}"})
+                else:
+                    checks.append({"name": "QE Installation", "ok": False, "message": "pw.x not found"})
+                    errors.append("Quantum ESPRESSO pw.x executable not found")
+            except Exception as e:
+                checks.append({"name": "QE Installation", "ok": False, "message": str(e)})
+                errors.append(f"QE installation error: {e}")
+        else:
+            checks.append({"name": "QE Installation", "ok": False, "message": "QE not detected"})
+            errors.append("Quantum ESPRESSO not detected. Use Settings to detect or configure QE.")
+        
+        # Check 2: Project path
+        project_path = Path(project_root)
+        if project_path.exists():
+            if project_path.is_dir():
+                checks.append({"name": "Project Path", "ok": True, "message": f"Project exists: {project_path}"})
+            else:
+                checks.append({"name": "Project Path", "ok": False, "message": "Project path is not a directory"})
+                errors.append("Project path is not a directory")
+        else:
+            checks.append({"name": "Project Path", "ok": False, "message": "Project path does not exist"})
+            errors.append(f"Project path does not exist: {project_path}")
+        
+        # Check 3: Workflow exists
+        if workflow_selector:
+            try:
+                workflow = resolve_workflow(project_root, workflow_selector)
+                checks.append({"name": "Workflow", "ok": True, "message": f"Workflow found: {workflow.meta.name}"})
+                
+                # Check 4: Structure exists
+                from quantumvitas.core.models import WorkflowModel
+                wf_path = workflow.absolute_path / "workflow.yaml"
+                wf_model = WorkflowModel.from_yaml(wf_path)
+                
+                if wf_model.structure:
+                    try:
+                        structure = resolve_structure(project_root, wf_model.structure)
+                        checks.append({"name": "Structure", "ok": True, "message": f"Structure found: {structure.meta.name}"})
+                    except Exception:
+                        checks.append({"name": "Structure", "ok": False, "message": f"Structure '{wf_model.structure}' not found"})
+                        errors.append(f"Workflow references missing structure: {wf_model.structure}")
+                else:
+                    checks.append({"name": "Structure", "ok": False, "message": "No structure assigned"})
+                    errors.append("Workflow has no structure assigned")
+                
+                # Check 5: Pseudo directory
+                pseudo_dir = project_path / "pseudo"
+                if pseudo_dir.exists() and any(pseudo_dir.iterdir()):
+                    checks.append({"name": "Pseudopotentials", "ok": True, "message": "Pseudo directory has files"})
+                else:
+                    checks.append({"name": "Pseudopotentials", "ok": False, "message": "No pseudopotentials found"})
+                    warnings.append("No pseudopotential files in pseudo/ directory - QE may fail")
+                
+                # Check 6: Working directory writable
+                raw_dir = workflow.absolute_path / "raw"
+                if not raw_dir.exists():
+                    try:
+                        raw_dir.mkdir(parents=True)
+                        checks.append({"name": "Working Directory", "ok": True, "message": "Working directory created"})
+                    except Exception as e:
+                        checks.append({"name": "Working Directory", "ok": False, "message": f"Cannot create: {e}"})
+                        errors.append(f"Cannot create working directory: {e}")
+                else:
+                    checks.append({"name": "Working Directory", "ok": True, "message": "Working directory exists"})
+                
+            except Exception as e:
+                checks.append({"name": "Workflow", "ok": False, "message": str(e)})
+                errors.append(f"Workflow not found: {workflow_selector}")
+        
+        return {
+            "ok": len(errors) == 0,
+            "checks": checks,
+            "errors": errors,
+            "warnings": warnings,
+        }
+    
+    # -------------------------------------------------------------------------
+    # Demo Project (Phase 5 - Onboarding)
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def create_demo_project(
+        target_dir: Path,
+        name: str = "demo-si-project",
+    ) -> Dict[str, Any]:
+        """
+        Create a demo Si project with a ready-to-run workflow.
+        
+        Args:
+            target_dir: Directory to create the project in
+            name: Project name
+            
+        Returns:
+            Dict with project info
+        """
+        from quantumvitas.core.templates import (
+            get_workflow_templates,
+            copy_workflow_template,
+            copy_structure_template,
+        )
+        
+        project_root = Path(target_dir) / name
+        
+        # Create the project
+        project_info = QVService.create_project(project_root)
+        
+        # Import the Si structure
+        structure_info = QVService.import_structure_from_template(
+            project_root,
+            template_name="si",
+            name="silicon",
+        )
+        
+        # Create workflow from template (prefer si-dos-bands if available, else si-dos)
+        templates = get_workflow_templates()
+        template_names = [t["name"] for t in templates]
+        
+        if "si-dos-bands" in template_names:
+            template = "si-dos-bands"
+        elif "si-dos" in template_names:
+            template = "si-dos"
+        else:
+            template = templates[0]["name"] if templates else None
+        
+        workflow_info = None
+        if template:
+            workflow_info = QVService.create_workflow_from_template(
+                project_root=project_root,
+                template_name=template,
+                workflow_name="demo-workflow",
+                structure_selector="silicon",
+            )
+        
+        return {
+            "project_root": str(project_root),
+            "project_id": project_info["project_id"],
+            "project_name": project_info["project_name"],
+            "structure": structure_info,
+            "workflow": workflow_info,
+            "ready_to_run": workflow_info is not None,
+        }
+    
+    @staticmethod
+    def import_structure_from_template(
+        project_root: Path,
+        template_name: str,
+        name: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Import a structure from built-in templates.
+        
+        Args:
+            project_root: Project root path
+            template_name: Template name (e.g., "si", "graphene")
+            name: Optional custom name for the structure
+            
+        Returns:
+            Structure import result
+        """
+        from quantumvitas.core.templates import get_template_path
+        
+        template_path = get_template_path("structures", template_name)
+        if not template_path or not template_path.exists():
+            raise QVServiceError(f"Structure template '{template_name}' not found")
+        
+        return QVService.import_structure(
+            project_root=project_root,
+            source_file=template_path,
+            name=name or template_name,
+        )
+
+
 # Export the service as a singleton-like module-level instance
 service = QVService()
 

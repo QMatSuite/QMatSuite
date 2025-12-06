@@ -13,7 +13,7 @@ import type { QVClient } from '../../hooks/useQVClient';
 import type { DaemonStatus, JobCounts } from '../../types/qv';
 import './Sidebar.css';
 
-export type ViewType = 'summary' | 'structures' | 'workflows' | 'jobs' | 'analysis' | 'debug';
+export type ViewType = 'summary' | 'structures' | 'workflows' | 'jobs' | 'analysis' | 'settings' | 'debug';
 
 interface SidebarProps {
   qv: QVClient;
@@ -165,6 +165,12 @@ export function Sidebar({
             disabled={!projectLoaded}
           >
             📈 Analysis
+          </button>
+          <button
+            className={`sidebar__tab ${currentView === 'settings' ? 'active' : ''}`}
+            onClick={() => onViewChange('settings')}
+          >
+            ⚙️ Settings
           </button>
           <button
             className={`sidebar__tab ${currentView === 'debug' ? 'active' : ''}`}

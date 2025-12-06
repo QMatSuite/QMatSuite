@@ -97,6 +97,10 @@ class QVDaemon:
             "ping": self._handle_ping,
             "shutdown": self._handle_shutdown,
             
+            # Environment and settings
+            "detect_qe": self._handle_detect_qe,
+            "get_env_info": self._handle_get_env_info,
+            
             # Project/resource listing
             "get_project_summary": self._handle_get_project_summary,
             "list_structures": self._handle_list_structures,
@@ -106,9 +110,33 @@ class QVDaemon:
             "create_project": self._handle_create_project,
             "import_structure": self._handle_import_structure,
             
-            # Workflow creation
+            # Structure management
+            "rename_structure": self._handle_rename_structure,
+            "delete_structure": self._handle_delete_structure,
+            "can_delete_structure": self._handle_can_delete_structure,
+            
+            # Workflow creation and management
             "list_workflow_templates": self._handle_list_workflow_templates,
             "create_workflow": self._handle_create_workflow,
+            "rename_workflow": self._handle_rename_workflow,
+            "delete_workflow": self._handle_delete_workflow,
+            "can_delete_workflow": self._handle_can_delete_workflow,
+            
+            # Step operations
+            "get_step_detail": self._handle_get_step_detail,
+            "update_step_params": self._handle_update_step_params,
+            "reset_step_params": self._handle_reset_step_params,
+            
+            # Workflow configuration
+            "get_workflow_detail": self._handle_get_workflow_detail,
+            "reorder_workflow_steps": self._handle_reorder_workflow_steps,
+            "change_workflow_structure": self._handle_change_workflow_structure,
+            
+            # Pre-flight checks
+            "preflight_check": self._handle_preflight_check,
+            
+            # Demo project
+            "create_demo_project": self._handle_create_demo_project,
             
             # Visualization data (pure data, no matplotlib)
             "get_structure_vis": self._handle_get_structure_vis,
@@ -287,6 +315,30 @@ class QVDaemon:
         return {"shutdown": True}
     
     # -------------------------------------------------------------------------
+    # Environment and settings handlers
+    # -------------------------------------------------------------------------
+    
+    def _handle_detect_qe(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Detect QE installation.
+        
+        Payload: (none required)
+        
+        Returns detection status, qe_home, version, executables
+        """
+        return QVService.detect_qe()
+    
+    def _handle_get_env_info(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get environment info.
+        
+        Payload: (none required)
+        
+        Returns python_version, qv_version, qe_home, etc.
+        """
+        return QVService.get_environment_info()
+    
+    # -------------------------------------------------------------------------
     # Project/resource handlers
     # -------------------------------------------------------------------------
     
@@ -392,6 +444,73 @@ class QVDaemon:
         }
     
     # -------------------------------------------------------------------------
+    # Structure management handlers
+    # -------------------------------------------------------------------------
+    
+    def _handle_rename_structure(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Rename a structure.
+        
+        Payload:
+            project_root: str - Path to project root
+            selector: str - Structure selector
+            new_name: str - New name
+        """
+        project_root = self._require_path(payload, "project_root")
+        selector = self._require_str(payload, "selector")
+        new_name = self._require_str(payload, "new_name")
+        
+        return QVService.rename_structure(
+            project_root=project_root,
+            selector=selector,
+            new_name=new_name,
+        )
+    
+    def _handle_can_delete_structure(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Check if structure can be deleted.
+        
+        Payload:
+            project_root: str - Path to project root
+            selector: str - Structure selector
+        """
+        project_root = self._require_path(payload, "project_root")
+        selector = self._require_str(payload, "selector")
+        
+        return QVService.can_delete_structure(
+            project_root=project_root,
+            selector=selector,
+        )
+    
+    def _handle_delete_structure(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Delete a structure.
+        
+        Payload:
+            project_root: str - Path to project root
+            selector: str - Structure selector
+            force: bool - Force delete even if used by workflows
+        """
+        project_root = self._require_path(payload, "project_root")
+        selector = self._require_str(payload, "selector")
+        force = payload.get("force", False)
+        
+        # Get structure name before deletion for response
+        check = QVService.can_delete_structure(project_root, selector)
+        structure_name = check.get("structure_name", selector)
+        
+        QVService.delete_structure(
+            project_root=project_root,
+            selector=selector,
+            force=force,
+        )
+        
+        return {
+            "success": True,
+            "name": structure_name,
+        }
+    
+    # -------------------------------------------------------------------------
     # Workflow creation handlers
     # -------------------------------------------------------------------------
     
@@ -449,6 +568,250 @@ class QVDaemon:
             "slug": result.meta.slug,
             "n_steps": new_wf.get("n_steps", 0) if new_wf else 0,
         }
+    
+    # -------------------------------------------------------------------------
+    # Workflow management handlers
+    # -------------------------------------------------------------------------
+    
+    def _handle_rename_workflow(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Rename a workflow.
+        
+        Payload:
+            project_root: str - Path to project root
+            selector: str - Workflow selector
+            new_name: str - New name
+        """
+        project_root = self._require_path(payload, "project_root")
+        selector = self._require_str(payload, "selector")
+        new_name = self._require_str(payload, "new_name")
+        
+        return QVService.rename_workflow(
+            project_root=project_root,
+            selector=selector,
+            new_name=new_name,
+        )
+    
+    def _handle_can_delete_workflow(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Check if workflow can be deleted.
+        
+        Payload:
+            project_root: str - Path to project root
+            selector: str - Workflow selector
+        """
+        project_root = self._require_path(payload, "project_root")
+        selector = self._require_str(payload, "selector")
+        
+        return QVService.can_delete_workflow(
+            project_root=project_root,
+            selector=selector,
+        )
+    
+    def _handle_delete_workflow(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Delete a workflow.
+        
+        Payload:
+            project_root: str - Path to project root
+            selector: str - Workflow selector
+            force: bool - Force delete
+        """
+        project_root = self._require_path(payload, "project_root")
+        selector = self._require_str(payload, "selector")
+        force = payload.get("force", False)
+        
+        # Get workflow name before deletion for response
+        check = QVService.can_delete_workflow(project_root, selector)
+        workflow_name = check.get("workflow_name", selector)
+        
+        QVService.delete_workflow(
+            project_root=project_root,
+            selector=selector,
+            force=force,
+        )
+        
+        return {
+            "success": True,
+            "name": workflow_name,
+        }
+    
+    # -------------------------------------------------------------------------
+    # Step handlers
+    # -------------------------------------------------------------------------
+    
+    def _handle_get_step_detail(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get step detail.
+        
+        Payload:
+            project_root: str - Path to project root
+            workflow: str - Workflow selector
+            step: str - Step selector
+        """
+        project_root = self._require_path(payload, "project_root")
+        workflow = self._require_str(payload, "workflow")
+        step = self._require_str(payload, "step")
+        
+        return QVService.get_step_detail(
+            project_root=project_root,
+            workflow_selector=workflow,
+            step_selector=step,
+        )
+    
+    def _handle_update_step_params(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Update step parameters.
+        
+        Payload:
+            project_root: str - Path to project root
+            workflow: str - Workflow selector
+            step: str - Step selector
+            parameters: Dict[str, Dict[str, Any]] - Namelist parameters to update
+            cards: Optional[Dict] - Card data to update
+        """
+        project_root = self._require_path(payload, "project_root")
+        workflow = self._require_str(payload, "workflow")
+        step = self._require_str(payload, "step")
+        parameters = payload.get("parameters", {})
+        cards = payload.get("cards")
+        
+        return QVService.update_step_params(
+            project_root=project_root,
+            workflow_selector=workflow,
+            step_selector=step,
+            parameters=parameters,
+            cards=cards,
+        )
+    
+    def _handle_reset_step_params(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Reset step parameters to defaults.
+        
+        Payload:
+            project_root: str - Path to project root
+            workflow: str - Workflow selector
+            step: str - Step selector
+            template_name: Optional[str] - Template to reset from
+        """
+        project_root = self._require_path(payload, "project_root")
+        workflow = self._require_str(payload, "workflow")
+        step = self._require_str(payload, "step")
+        template_name = payload.get("template_name")
+        
+        return QVService.reset_step_params(
+            project_root=project_root,
+            workflow_selector=workflow,
+            step_selector=step,
+            template_name=template_name,
+        )
+    
+    # -------------------------------------------------------------------------
+    # Workflow configuration handlers
+    # -------------------------------------------------------------------------
+    
+    def _handle_get_workflow_detail(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get detailed workflow information.
+        
+        Payload:
+            project_root: str - Path to project root
+            workflow: str - Workflow selector
+        """
+        project_root = self._require_path(payload, "project_root")
+        workflow = self._require_str(payload, "workflow")
+        
+        return QVService.get_workflow_detail(
+            project_root=project_root,
+            workflow_selector=workflow,
+        )
+    
+    def _handle_reorder_workflow_steps(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Reorder workflow steps.
+        
+        Payload:
+            project_root: str - Path to project root
+            workflow: str - Workflow selector
+            new_order: List[str] - Step IDs/slugs in new order
+        """
+        project_root = self._require_path(payload, "project_root")
+        workflow = self._require_str(payload, "workflow")
+        new_order = payload.get("new_order", [])
+        
+        if not isinstance(new_order, list):
+            raise ValueError("new_order must be a list of step selectors")
+        
+        return QVService.reorder_workflow_steps(
+            project_root=project_root,
+            workflow_selector=workflow,
+            new_order=new_order,
+        )
+    
+    def _handle_change_workflow_structure(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Change workflow structure.
+        
+        Payload:
+            project_root: str - Path to project root
+            workflow: str - Workflow selector
+            new_structure: str - New structure selector
+            update_steps: bool - Whether to update step structure fields (default True)
+        """
+        project_root = self._require_path(payload, "project_root")
+        workflow = self._require_str(payload, "workflow")
+        new_structure = self._require_str(payload, "new_structure")
+        update_steps = payload.get("update_steps", True)
+        
+        return QVService.change_workflow_structure(
+            project_root=project_root,
+            workflow_selector=workflow,
+            new_structure=new_structure,
+            update_steps=update_steps,
+        )
+    
+    # -------------------------------------------------------------------------
+    # Pre-flight check handlers
+    # -------------------------------------------------------------------------
+    
+    def _handle_preflight_check(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Perform pre-flight checks before running.
+        
+        Payload:
+            project_root: str - Path to project root
+            workflow: Optional[str] - Workflow selector
+            step: Optional[str] - Step selector
+        """
+        project_root = self._require_path(payload, "project_root")
+        workflow = payload.get("workflow")
+        step = payload.get("step")
+        
+        return QVService.preflight_check(
+            project_root=project_root,
+            workflow_selector=workflow,
+            step_selector=step,
+        )
+    
+    # -------------------------------------------------------------------------
+    # Demo project handlers
+    # -------------------------------------------------------------------------
+    
+    def _handle_create_demo_project(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Create a demo Si project.
+        
+        Payload:
+            target_dir: str - Directory to create project in
+            name: Optional[str] - Project name (default 'demo-si-project')
+        """
+        target_dir = self._require_path(payload, "target_dir")
+        name = payload.get("name", "demo-si-project")
+        
+        return QVService.create_demo_project(
+            target_dir=target_dir,
+            name=name,
+        )
     
     # -------------------------------------------------------------------------
     # Visualization data handlers
