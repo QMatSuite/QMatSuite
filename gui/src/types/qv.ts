@@ -223,11 +223,43 @@ export interface JobInfo {
   result: Record<string, unknown> | null;
   error: string | null;
   params: Record<string, unknown>;
+  target_name: string | null;
+  project_root: string | null;
+  output_file: string | null;
+  last_log_line: string | null;
+}
+
+export interface JobSummary {
+  id: string;
+  job_type: string;
+  status: JobStatus;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  target_name: string | null;
+  project_root: string | null;
+  error: string | null;
+  last_log_line: string | null;
 }
 
 export interface JobSubmitResult {
   job_id: string;
   status: JobStatus;
+  target_name: string;
+}
+
+export interface JobLogs {
+  job_id: string;
+  logs: string[];
+  total_lines: number;
+  has_more: boolean;
+  output_file: string | null;
+}
+
+export interface JobCounts {
+  counts: Record<string, number>;
+  running: number;
+  pending: number;
 }
 
 // =============================================================================
@@ -324,12 +356,26 @@ export interface QVCommandMap {
     payload: { job_id: string };
     result: JobInfo;
   };
+  get_job_logs: {
+    payload: {
+      job_id: string;
+      tail_lines?: number;
+      offset?: number;
+    };
+    result: JobLogs;
+  };
   list_jobs: {
     payload: {
       status?: JobStatus;
       job_type?: string;
+      project_root?: string;
+      limit?: number;
     };
-    result: { jobs: JobInfo[]; count: number };
+    result: { jobs: JobSummary[]; count: number };
+  };
+  job_counts: {
+    payload: Record<string, never>;
+    result: JobCounts;
   };
   cancel_job: {
     payload: { job_id: string };

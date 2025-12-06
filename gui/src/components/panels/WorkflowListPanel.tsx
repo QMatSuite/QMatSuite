@@ -115,6 +115,7 @@ interface WorkflowDetailPanelProps {
   onClose?: () => void;
   onRunWorkflow?: (workflow: WorkflowInfo) => void;
   onSelectStep?: (stepId: string) => void;
+  onGoToJobs?: () => void;
 }
 
 export function WorkflowDetailPanel({ 
@@ -122,6 +123,7 @@ export function WorkflowDetailPanel({
   onClose,
   onRunWorkflow,
   onSelectStep,
+  onGoToJobs,
 }: WorkflowDetailPanelProps) {
   if (!workflow) {
     return null;
@@ -189,16 +191,24 @@ export function WorkflowDetailPanel({
           <code className="detail-path">{workflow.absolute_path}</code>
         </div>
         
-        {onRunWorkflow && (
-          <div className="detail-actions">
+        <div className="detail-actions">
+          {onRunWorkflow && (
             <button 
               className="action-button action-button--primary"
               onClick={() => onRunWorkflow(workflow)}
             >
               ▶️ Run Workflow
             </button>
-          </div>
-        )}
+          )}
+          {onGoToJobs && (
+            <button 
+              className="action-button action-button--secondary"
+              onClick={onGoToJobs}
+            >
+              📋 View Jobs
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

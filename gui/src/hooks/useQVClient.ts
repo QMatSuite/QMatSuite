@@ -14,7 +14,7 @@ import type {
   ProjectSummary,
   StructureInfo,
   WorkflowInfo,
-  JobInfo,
+  JobSummary,
   JobStatus,
 } from '../types/qv';
 
@@ -49,7 +49,7 @@ export interface QVClient {
   getProjectSummary: (projectRoot: string) => Promise<QVResponse<ProjectSummary>>;
   listStructures: (projectRoot: string) => Promise<QVResponse<{ structures: StructureInfo[]; count: number }>>;
   listWorkflows: (projectRoot: string) => Promise<QVResponse<{ workflows: WorkflowInfo[]; count: number }>>;
-  listJobs: (filter?: { status?: JobStatus; job_type?: string }) => Promise<QVResponse<{ jobs: JobInfo[]; count: number }>>;
+  listJobs: (filter?: { status?: JobStatus; job_type?: string }) => Promise<QVResponse<{ jobs: JobSummary[]; count: number }>>;
   
   // Connection management
   checkConnection: () => Promise<boolean>;

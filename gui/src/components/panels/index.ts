@@ -6,3 +6,4 @@ export { WorkflowListPanel, WorkflowDetailPanel } from './WorkflowListPanel';
 export { StructureViewer3D } from './StructureViewer3D';
 export { AnalysisPanel, ScfConvergenceChart, DosChart, BandsChart } from './AnalysisPanel';
 export { DaemonErrorBanner } from './DaemonErrorBanner';
+export { JobsPanel } from './JobsPanel';

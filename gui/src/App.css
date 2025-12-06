@@ -264,3 +264,71 @@
   flex: 1;
   min-height: 0;
 }
+
+/* =============================================================================
+   Job Notification Toast
+   ============================================================================= */
+
+.job-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  animation: slideInRight 0.3s ease;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.job-notification--success {
+  border-color: var(--color-success);
+  background: var(--color-success-bg);
+}
+
+.job-notification--error {
+  border-color: var(--color-error);
+  background: var(--color-error-bg);
+}
+
+.job-notification__message {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.job-notification--success .job-notification__message {
+  color: var(--color-success);
+}
+
+.job-notification--error .job-notification__message {
+  color: var(--color-error);
+}
+
+.job-notification__close {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.job-notification__close:hover {
+  color: var(--text-primary);
+}
