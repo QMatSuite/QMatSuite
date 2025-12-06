@@ -607,11 +607,68 @@ import { LineChart, Line, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 4. **Job Logs Polling**: Logs are polled every 2s (not streamed) - may have slight delay
 5. **Running Jobs**: Cannot be cancelled (ThreadPoolExecutor limitation in Python)
 
+## Design System
+
+### CSS Custom Properties
+
+All styling uses CSS variables defined in `gui/src/index.css`:
+
+| Category | Examples |
+|----------|----------|
+| Typography | `--font-sans`, `--font-mono`, `--text-xs` to `--text-3xl` |
+| Colors | `--color-primary`, `--color-success`, `--color-error`, `--color-warning` |
+| Backgrounds | `--bg-app`, `--bg-primary`, `--bg-secondary`, `--bg-card` |
+| Text | `--text-primary`, `--text-secondary`, `--text-tertiary`, `--text-muted` |
+| Spacing | `--space-1` to `--space-16` (4px to 64px scale) |
+| Radius | `--radius-sm`, `--radius-md`, `--radius-lg`, `--radius-xl` |
+| Shadows | `--shadow-sm`, `--shadow-md`, `--shadow-lg`, `--shadow-xl` |
+| Transitions | `--transition-fast`, `--transition-normal`, `--transition-slow` |
+
+### Layout Components
+
+| Component | Purpose |
+|-----------|---------|
+| `AppShell` | Main layout with sidebar, content area, and status bar |
+| `StatusBar` | Bottom bar showing project, QE status, running jobs |
+| `ErrorBoundary` | Catches render errors with friendly fallback UI |
+
+### Standard Panel Structure
+
+All panels follow a consistent structure:
+
+```
+<div className="*-panel">
+  <div className="panel-header">      <!-- bg-secondary, title + actions -->
+  <div className="panel-content">     <!-- scrollable body -->
+</div>
+```
+
+### Button Classes
+
+Global CSS classes for buttons:
+
+- `.btn` - Base button styles
+- `.btn-primary` - Primary action (indigo)
+- `.btn-secondary` - Secondary action (gray)
+- `.btn-ghost` - Minimal styling
+- `.btn-danger` - Destructive action (red)
+- Size: `.btn-sm`, `.btn-lg`, `.btn-icon`
+
+### Tooltips
+
+CSS-only tooltips using `data-tooltip` attribute:
+
+```html
+<button data-tooltip="Description here">Click me</button>
+<button data-tooltip="Below" data-tooltip-position="bottom">Hover</button>
+```
+
 ## Feature Status
 
 ### Implemented ✓
 
-- [x] Project browser (open, create, load)
+- [x] Project browser (open, create, load, recent projects)
+- [x] Demo project creation (one-click Si workflow)
 - [x] 3D structure viewer (react-three-fiber + Three.js)
   - Ball-and-stick rendering
   - Orbit controls
@@ -621,10 +678,14 @@ import { LineChart, Line, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 - [x] Structure import (CIF, XSF, QE input, etc.)
 - [x] Workflow management (list, detail, run)
 - [x] Workflow creation from templates
+- [x] Workflow editing (reorder steps, change structure)
+- [x] Step parameter editing (ecutwfc, smearing, etc.)
+- [x] Pre-flight checks before job submission
 - [x] Analysis plots (Recharts)
   - SCF convergence (energy + accuracy)
   - DOS plot
   - Band structure with k-path labels
+- [x] Jobs → Analysis integration (View Analysis button)
 - [x] Auto-fetch on view change
 - [x] Empty states with helpful CTAs
 - [x] Native file dialogs
@@ -635,13 +696,17 @@ import { LineChart, Line, XAxis, YAxis, ResponsiveContainer } from 'recharts';
   - Cancel pending jobs
   - Running jobs indicator in sidebar
   - Job notifications on submission
+- [x] Settings panel (QE detection, default paths)
+- [x] Status bar (project, QE, jobs)
+- [x] Error boundary with recovery
+- [x] Comprehensive design system
 
 ### Planned
 
 - [ ] Real-time log streaming (websocket or SSE)
-- [ ] Step editor (modify parameters)
 - [ ] Workflow builder UI (drag-and-drop)
 - [ ] Multiple project tabs
 - [ ] Theme switching (light/dark)
 - [ ] Supercell control in 3D viewer
+- [ ] Keyboard shortcuts
 

@@ -1,4 +1,4 @@
-/* App-specific styles */
+/* App-specific styles - Using Design Tokens */
 
 .main-content {
   display: flex;
@@ -11,55 +11,92 @@
   overflow: auto;
 }
 
-/* App Header */
+/* App Header - Page Title Bar */
 .app-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
   flex-shrink: 0;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .app-header__title {
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
   color: var(--text-primary);
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.app-header__breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}
+
+.app-header__breadcrumb-separator {
+  color: var(--text-muted);
+}
+
+.app-header__breadcrumb-item {
+  color: var(--text-tertiary);
+  transition: color var(--transition-fast);
+}
+
+.app-header__breadcrumb-item:hover {
+  color: var(--text-primary);
+}
+
+.app-header__breadcrumb-current {
+  color: var(--text-secondary);
+  font-weight: var(--font-medium);
 }
 
 .app-header__actions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .app-header__toggle {
-  padding: 6px 12px;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border-color);
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   background: var(--bg-button);
   color: var(--text-secondary);
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .app-header__toggle:hover {
   background: var(--bg-button-hover);
-  border-color: var(--border-color-hover);
+  border-color: var(--border-hover);
+  color: var(--text-primary);
 }
+
+/* =============================================================================
+   Split View Layouts
+   ============================================================================= */
 
 /* Structures View - Split Layout */
 .structures-view {
   display: flex;
-  gap: 16px;
+  gap: var(--space-4);
   height: 100%;
   min-height: 500px;
 }
 
 .structures-view__list {
-  flex: 0 0 350px;
-  min-width: 280px;
-  max-width: 400px;
+  flex: 0 0 380px;
+  min-width: 300px;
+  max-width: 450px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -72,29 +109,31 @@
 
 .structures-view__detail {
   flex: 1;
-  min-width: 400px;
+  min-width: var(--panel-min-width);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .structures-view__3d {
   flex: 1;
-  min-height: 350px;
+  min-height: 400px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 
 /* Workflows View - Split Layout */
 .workflows-view {
   display: flex;
-  gap: 16px;
+  gap: var(--space-4);
   height: 100%;
   min-height: 500px;
 }
 
 .workflows-view__list {
-  flex: 0 0 400px;
-  min-width: 320px;
-  max-width: 500px;
+  flex: 0 0 420px;
+  min-width: 340px;
+  max-width: 520px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -107,164 +146,23 @@
 
 .workflows-view__detail {
   flex: 1;
-  min-width: 400px;
+  min-width: var(--panel-min-width);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
+  overflow-y: auto;
 }
 
-/* When showing both workflow and step detail, limit workflow detail height */
+/* When showing both workflow and step detail */
 .workflows-view__detail .workflow-detail-panel {
-  max-height: 50%;
+  max-height: 55%;
   overflow-y: auto;
+  flex-shrink: 0;
 }
 
 .workflows-view__detail .step-detail-panel {
   flex: 1;
-  min-height: 0;
-}
-
-/* Loading Spinner */
-.loading-spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--border-color);
-  border-top-color: var(--color-primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* Panel Placeholder Styling */
-.panel-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  text-align: center;
-}
-
-.panel-placeholder .panel-icon {
-  font-size: 3rem;
-}
-
-.panel-placeholder h3 {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  margin: 0;
-}
-
-.panel-placeholder p {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  margin: 0;
-  max-width: 300px;
-}
-
-/* =============================================================================
-   No Project Message
-   ============================================================================= */
-
-.no-project-message {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 400px;
-  padding: 40px;
-}
-
-.no-project-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  max-width: 360px;
-  padding: 40px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-}
-
-.no-project-icon {
-  font-size: 3rem;
-  margin-bottom: 12px;
-  opacity: 0.8;
-}
-
-.no-project-content h3 {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0 0 8px 0;
-}
-
-.no-project-content p {
-  font-size: 0.9rem;
-  color: var(--text-muted);
-  margin: 0 0 20px 0;
-}
-
-.no-project-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.action-btn {
-  padding: 10px 18px;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s;
-  background: var(--color-primary);
-  border: 1px solid var(--color-primary);
-  color: white;
-}
-
-.action-btn:hover {
-  background: var(--color-primary-dark);
-  border-color: var(--color-primary-dark);
-}
-
-.action-btn--secondary {
-  background: var(--bg-button);
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
-}
-
-.action-btn--secondary:hover {
-  background: var(--bg-button-hover);
-}
-
-/* =============================================================================
-   View Action Buttons
-   ============================================================================= */
-
-.view-action-btn {
-  margin-top: 12px;
-  padding: 10px 18px;
-  width: 100%;
-  border: 1px dashed var(--border-color);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s;
-  flex-shrink: 0;
-}
-
-.view-action-btn:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  background: var(--color-primary-alpha);
+  min-height: 300px;
 }
 
 /* Fix list container heights */
@@ -280,69 +178,229 @@
 }
 
 /* =============================================================================
-   Job Notification Toast
+   Loading States
+   ============================================================================= */
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Panel Placeholder Styling */
+.panel-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  text-align: center;
+  padding: var(--space-8);
+}
+
+.panel-placeholder .panel-icon {
+  font-size: 3rem;
+  opacity: 0.6;
+}
+
+.panel-placeholder h3 {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.panel-placeholder p {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin: 0;
+  max-width: 280px;
+}
+
+/* =============================================================================
+   No Project Message
+   ============================================================================= */
+
+.no-project-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: var(--space-10);
+}
+
+.no-project-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 400px;
+  padding: var(--space-8);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+}
+
+.no-project-icon {
+  font-size: 3.5rem;
+  margin-bottom: var(--space-3);
+  opacity: 0.7;
+}
+
+.no-project-content h3 {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0 0 var(--space-2) 0;
+}
+
+.no-project-content p {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin: 0 0 var(--space-5) 0;
+}
+
+.no-project-actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+/* =============================================================================
+   Action Buttons
+   ============================================================================= */
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  background: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  color: white;
+}
+
+.action-btn:hover {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+  transform: translateY(-1px);
+}
+
+.action-btn--secondary {
+  background: var(--bg-button);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.action-btn--secondary:hover {
+  background: var(--bg-button-hover);
+  border-color: var(--border-hover);
+}
+
+/* View Action Buttons (Add/Create buttons below lists) */
+.view-action-btn {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  width: 100%;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.view-action-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-alpha);
+  border-style: solid;
+}
+
+/* =============================================================================
+   Toast Notifications
    ============================================================================= */
 
 .job-notification {
   position: fixed;
-  top: 20px;
-  right: 20px;
+  top: var(--space-5);
+  right: var(--space-5);
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 18px;
-  border-radius: 8px;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
   background: var(--bg-card);
   border: 1px solid var(--border-color);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  z-index: 1000;
-  animation: slideInRight 0.3s ease;
+  box-shadow: var(--shadow-xl);
+  z-index: var(--z-toast);
+  animation: toast-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 400px;
 }
 
-@keyframes slideInRight {
+@keyframes toast-slide-in {
   from {
     opacity: 0;
-    transform: translateX(100px);
+    transform: translateX(100px) scale(0.95);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateX(0) scale(1);
   }
 }
 
 .job-notification--success {
   border-color: var(--color-success);
-  background: var(--color-success-bg);
+  background: linear-gradient(135deg, var(--color-success-bg) 0%, var(--bg-card) 100%);
 }
 
 .job-notification--error {
   border-color: var(--color-error);
-  background: var(--color-error-bg);
+  background: linear-gradient(135deg, var(--color-error-bg) 0%, var(--bg-card) 100%);
+}
+
+.job-notification__icon {
+  font-size: var(--text-xl);
+  flex-shrink: 0;
 }
 
 .job-notification__message {
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   color: var(--text-primary);
+  line-height: var(--leading-normal);
 }
 
 .job-notification--success .job-notification__message {
-  color: var(--color-success);
+  color: var(--color-success-light);
 }
 
 .job-notification--error .job-notification__message {
-  color: var(--color-error);
+  color: var(--color-error-light);
 }
 
 .job-notification__close {
   background: none;
   border: none;
-  font-size: 1.2rem;
+  font-size: var(--text-lg);
   color: var(--text-muted);
   cursor: pointer;
-  padding: 0;
+  padding: var(--space-1);
   line-height: 1;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+  margin-left: var(--space-2);
 }
 
 .job-notification__close:hover {
   color: var(--text-primary);
+  background: var(--bg-hover);
 }
