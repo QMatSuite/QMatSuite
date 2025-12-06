@@ -1,0 +1,150 @@
+/* StatusBar Styles */
+
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--status-bar-height);
+  padding: 0 var(--space-3);
+  background: var(--bg-sidebar);
+  border-top: 1px solid var(--border-subtle);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.status-bar__left,
+.status-bar__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.status-bar__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+}
+
+.status-bar__item--clickable {
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.status-bar__item--clickable:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.status-bar__item--project {
+  max-width: 280px;
+}
+
+.status-bar__indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.status-bar__icon {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.status-bar__text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-bar__path {
+  color: var(--text-muted);
+  opacity: 0.7;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  margin-left: var(--space-1);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-bar__divider {
+  width: 1px;
+  height: 14px;
+  background: var(--border-color);
+  margin: 0 var(--space-2);
+}
+
+.status-bar__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 10px;
+  font-weight: var(--font-semibold);
+  background: var(--color-warning);
+  color: var(--text-inverse);
+  border-radius: var(--radius-full);
+}
+
+.status-bar__pulse {
+  position: relative;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-success);
+  flex-shrink: 0;
+}
+
+.status-bar__pulse::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: var(--color-success);
+  animation: status-pulse 1.5s ease-out infinite;
+}
+
+@keyframes status-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* Status colors */
+.status--success {
+  color: var(--color-success);
+}
+
+.status--warning {
+  color: var(--color-warning);
+}
+
+.status--error {
+  color: var(--color-error);
+}
+
+.status--muted {
+  color: var(--text-muted);
+}
+
+.status--active {
+  color: var(--color-success);
+}
+

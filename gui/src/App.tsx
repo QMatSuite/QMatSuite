@@ -12,7 +12,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { 
   AppShell, 
-  Sidebar, 
+  Sidebar,
+  StatusBar,
   ProjectSummaryPanel, 
   StructureListPanel,
   StructureDetailPanel,
@@ -31,6 +32,7 @@ import {
   DeleteConfirmDialog,
   JobsPanel,
   SettingsPanel,
+  ErrorBoundary,
 } from './components';
 import type { ViewType } from './components/layout/Sidebar';
 import { useQVClient, useDaemonStatus } from './hooks';
@@ -826,6 +828,15 @@ function App() {
           />
         }
         footer={showDebugFooter ? <DebugPanel /> : null}
+        statusBar={
+          <StatusBar
+            projectRoot={projectLoaded ? projectRoot : null}
+            projectName={projectSummary?.name || null}
+            daemonConnected={daemonStatus?.connected ?? false}
+            onOpenSettings={() => setCurrentView('settings')}
+            onOpenJobs={() => setCurrentView('jobs')}
+          />
+        }
       >
         <div className="main-content">
           {/* Daemon Error Banner */}
@@ -867,7 +878,12 @@ function App() {
           
           {/* Main Content */}
           <div className="main-content__body">
-            {renderMainContent()}
+            <ErrorBoundary 
+              fallbackTitle="View Error" 
+              onReset={() => setCurrentView('summary')}
+            >
+              {renderMainContent()}
+            </ErrorBoundary>
           </div>
         </div>
       </AppShell>
