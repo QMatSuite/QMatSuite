@@ -1699,3 +1699,182 @@ If you need to adjust daemon/QVService APIs, do it in a way that will also be co
 Start by outlining the concrete changes (files and functions) you will touch for steps 1–3, then implement them with minimal but clear refactoring.
 
 
+Implementation Summary:
+All changes have been implemented and type-checked. Here's a summary of what was done:
+Phase 1: Sidebar & View Behavior Cleanup
+Files Modified:
+gui/src/components/layout/Sidebar.tsx - Simplified to keep only project root input, Browse button, Load/Create Project buttons, and view tabs. Removed explicit List Structures/List Workflows/Ping buttons. Added projectLoaded and projectError props for better state handling.
+gui/src/components/layout/Sidebar.css - Added error styling for input and disabled state for tabs.
+gui/src/components/panels/DebugPanel.tsx - Added DebugView component with Ping button for the main debug view.
+gui/src/components/panels/DebugPanel.css - Extended with styles for full debug view.
+gui/src/components/panels/ProjectSummaryPanel.tsx - Added welcome card with CTAs (Browse & Load, Create Project) and error state display.
+gui/src/components/panels/ProjectSummaryPanel.css - Added welcome-card and error-card styles.
+gui/src/App.tsx - Completely refactored with auto-fetch on view change, proper error handling, and dialog integration.
+gui/src/App.css - Added no-project-message and view-action-btn styles.
+Phase 2: Project Creation & Structure Import
+New Daemon RPCs:
+create_project - Creates a new QV project in a target directory
+import_structure - Imports a structure file (CIF, XSF, QE input, etc.)
+Files Modified:
+gui/electron/main.ts - Added qv-open-file IPC handler for file picker
+gui/electron/preload.ts - Exposed openFile method
+gui/src/types/qv.ts - Added types for create_project, import_structure, WorkflowTemplateInfo
+src/quantumvitas/daemon/server.py - Added _handle_create_project, _handle_import_structure handlers
+New Components:
+gui/src/components/dialogs/Modal.tsx - Base modal component
+gui/src/components/dialogs/Modal.css - Modal and form styling
+gui/src/components/dialogs/CreateProjectDialog.tsx - Dialog for creating new projects
+gui/src/components/dialogs/ImportStructureDialog.tsx - Dialog for importing structures
+Phase 3: Workflow from Template
+New Daemon RPCs:
+list_workflow_templates - Lists available workflow templates with metadata
+create_workflow - Creates a new workflow with optional structure and template
+Files Modified:
+src/quantumvitas/core/templates.py - Added list_workflow_templates() function
+New Components:
+gui/src/components/dialogs/CreateWorkflowDialog.tsx - Dialog for creating workflows from templates
+Key UX Improvements:
+Auto-fetch - Structures/workflows are automatically fetched when switching to their views
+Empty states - Friendly messages with action buttons when no project is loaded
+Error states - Clear error messages with recovery options
+Disabled tabs - Structures/Workflows/Analysis tabs disabled until project is loaded
+View action buttons - "+Import Structure" and "+New Workflow" buttons in their respective views
+Ping moved to Debug - Connection testing is now in the Debug view, not primary sidebar
+
+
+You are the same AI that just implemented: sidebar cleanup, project creation/import dialogs, workflow-from-template, auto-fetch on view change, and the improved empty/error states. Now we push QuantumVITAS GUI from a viewer into a real “job manager” for QE runs.
+You already understand the architecture and codebase. Work incrementally, keep types tight, avoid breaking existing flows.
+1. Introduce a simple Job system in the daemon
+Goal: running a workflow/step/structure should be asynchronous and observable.
+Design something lightweight but solid (single-worker queue is fine for now):
+Add a Job model on the Python side, e.g.:
+id, kind (run_workflow, run_step, run_structure, maybe analyze_* later)
+target (workflow id/selector, step id, structure id)
+status (queued, running, success, failed, cancelled)
+created_at, started_at, finished_at
+message / error summary, maybe last_log_line
+Maintain an in-memory job registry + a worker thread (or a very small thread pool) that:
+Dequeues jobs and calls existing QVService methods (run_workflow, run_step, etc.).
+Updates job status as it runs.
+Captures basic info from QE output (e.g. “JOB DONE”, exit code, short error).
+Add daemon RPCs, all wired into QVCommandMap and typed on the TS side:
+job.submit_run_workflow (or similar): enqueue a workflow run and return a job_id.
+job.submit_run_step, job.submit_run_structure (if needed now; you can start with workflow only).
+job.list (optionally filtered by project / status).
+job.get (details for a single job).
+job.cancel (best-effort cancel, if still queued/running).
+(Optional but useful) job.tail_logs or job.get_logs for a given job id (even if initially it just returns the last N lines from the QE output file).
+Make sure the daemon’s main request loop remains responsive while jobs run in the background.
+2. Expose Jobs in the GUI (new “Jobs” / “Runs” view)
+Add a new view in the sidebar, e.g. Jobs or Runs.
+In React:
+Extend ViewType with jobs and add a tab/button.
+Create a JobsPanel that:
+Fetches job.list periodically (simple polling is fine for now, e.g. 2–5s).
+Shows a table/list with:
+job id (shortened),
+kind (workflow/step/structure),
+target name,
+status (with colored badge),
+created/started/finished times.
+Clicking a job opens a detail panel:
+Status, timestamps, error message (if any),
+Link back to the associated workflow/step/structure,
+A log preview area (see part 3).
+Provide Cancel action when status is queued or running.
+Use useQVClient and new typed commands for all of this.
+3. Wire Workflow “Run” buttons to the Job system + logs
+Update the existing Workflows panel:
+When clicking Run:
+Instead of directly blocking on a synchronous run, call job.submit_run_workflow.
+Show immediate feedback:
+Toast/banner: “Run started (Job #…)".
+A small indicator on the workflow detail that a job is running (if relevant).
+Optionally, deep-link to the Jobs view (e.g. a “View in Jobs” button).
+Log handling:
+Implement a first version of job logs:
+On the daemon side, for each job, read the QE output file and expose a job.get_logs(job_id, offset) or simpler job.get_logs(job_id) RPC.
+In the Jobs detail panel, poll this endpoint every few seconds while job is running.
+Render logs in a scrollable “terminal-like” area (reusing styles from DebugPanel if possible).
+For now, correctness > sophistication (a basic tail is fine); you can optimize later.
+4. Small UX improvements around jobs
+Show a subtle “running jobs” indicator in the sidebar (e.g. a dot or count near the Jobs tab).
+In the Analysis view:
+If there are recent successful jobs for a workflow, consider offering a quick selector: “Use last run from Job #…”.
+But this can be minimal for now; don’t overcomplicate.
+5. Constraints / quality bar
+Keep all new RPCs declared and typed in qv.ts, and only call via useQVClient.
+Aim for a minimal but coherent Job system; don’t prematurely over-design.
+Keep code organized: job-related React logic in a useJobs hook and JobsPanel components; job-related daemon logic in a clear module / section.
+Don’t regress existing features (project creation/import, workflows, 3D viewer, analysis, debug).
+Start by sketching the job model and daemon API, then add the TS types and basic Jobs view, and finally rewire the workflow Run button to use the new system.
+
+
+Implmentation summary:
+Excellent! Let me provide a summary of what was implemented:
+Summary
+I've implemented a complete Job system for QuantumVITAS that transforms the GUI from a viewer into a real "job manager" for QE runs. Here's what was built:
+1. Python Daemon Job Model (Enhanced)
+src/quantumvitas/daemon/jobs.py:
+Added new fields to Job dataclass: target_name, project_root, output_file, last_log_line
+Added to_summary_dict() for lighter list views
+Added get_job_logs() method to read and tail output files
+Added count_by_status() method for sidebar badge
+Updated submit() to accept target_name and project_root_display parameters
+src/quantumvitas/daemon/server.py:
+Added new RPC handlers:
+get_job_logs - Returns logs from QE output file with optional tail/offset
+job_counts - Returns counts by status for sidebar badge
+Enhanced run_workflow and run_step to return target_name in response
+Updated list_jobs to support project_root filtering and limit parameter
+2. TypeScript Types
+gui/src/types/qv.ts:
+Added JobSummary interface (lighter than JobInfo for list views)
+Added JobLogs interface for log responses
+Added JobCounts interface for sidebar badge
+Updated JobInfo with new fields: target_name, project_root, output_file, last_log_line
+Updated JobSubmitResult to include target_name
+Updated QVCommandMap with new commands: get_job_logs, job_counts
+3. React Hooks
+gui/src/hooks/useJobs.ts (New):
+useJobs() - Polls job list with configurable interval, supports filtering
+useJobDetail() - Fetches single job with logs, auto-polls while job is active, provides cancelJob() action
+4. JobsPanel Component
+gui/src/components/panels/JobsPanel.tsx (New):
+StatusBadge - Colored badge showing job status
+JobListItem - Compact list item with status, type, target, time
+JobDetailPanel - Full job detail view with:
+Info grid (type, target, timestamps, duration)
+Error display (if failed)
+Result display (if completed)
+Live log viewer with auto-scroll toggle
+Cancel button for pending/running jobs
+JobsPanel - Main view with:
+Header with running/pending counts
+Refresh and auto-poll toggle buttons
+Scrollable job list (left sidebar)
+Detail panel (right side when job selected)
+5. Sidebar Updates
+gui/src/components/layout/Sidebar.tsx:
+Added ViewType with 'jobs'
+Added jobCounts prop
+Added "Jobs" tab with animated badge showing running/pending count
+6. App Integration
+gui/src/App.tsx:
+Added job counts polling (every 5 seconds)
+Added job notification toast system
+Updated handleRunWorkflow to:
+Show success toast with job ID
+Refresh job counts
+Added handleGoToJobs() callback passed to WorkflowDetailPanel
+Added Jobs view case in renderMainContent()
+7. UI Polish
+Job notification toast with slide-in animation
+Running jobs badge with pulse animation
+Status badges with distinct colors for each state
+Terminal-like log viewer with truncation indicator
+Auto-scroll toggle for logs
+The system is now ready for asynchronous workflow execution with observable progress. Jobs run in a background thread pool while the daemon remains responsive, and the UI provides real-time feedback through polling.
+
+
+

@@ -6,9 +6,10 @@
  * - Main panel with structured views
  * - Auto-fetching data on view change
  * - Dialogs for project/structure/workflow creation
+ * - Jobs panel for managing QE runs
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { 
   AppShell, 
   Sidebar, 
@@ -25,6 +26,7 @@ import {
   CreateProjectDialog,
   ImportStructureDialog,
   CreateWorkflowDialog,
+  JobsPanel,
 } from './components';
 import type { ViewType } from './components/layout/Sidebar';
 import { useQVClient, useDaemonStatus } from './hooks';
@@ -37,6 +39,8 @@ import type {
   DosData,
   BandStructureData,
   QVResponse,
+  JobCounts,
+  JobSubmitResult,
 } from './types';
 import './App.css';
 
@@ -76,9 +80,67 @@ function App() {
   const [showImportStructure, setShowImportStructure] = useState(false);
   const [showCreateWorkflow, setShowCreateWorkflow] = useState(false);
   
+  // Job counts for sidebar badge
+  const [jobCounts, setJobCounts] = useState<JobCounts | null>(null);
+  
+  // Toast/notification state for job submissions
+  const [jobNotification, setJobNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const notificationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   // Hooks
   const qv = useQVClient();
   const daemonStatus = useDaemonStatus();
+  
+  // ==========================================================================
+  // Job Counts Polling
+  // ==========================================================================
+  
+  const fetchJobCounts = useCallback(async () => {
+    if (!window.qv) return;
+    
+    try {
+      const response = await window.qv.request<JobCounts>('job_counts', {});
+      if (response.ok && response.data) {
+        setJobCounts(response.data);
+      }
+    } catch {
+      // Ignore errors
+    }
+  }, []);
+  
+  // Poll job counts
+  useEffect(() => {
+    fetchJobCounts();
+    const interval = setInterval(fetchJobCounts, 5000);
+    return () => clearInterval(interval);
+  }, [fetchJobCounts]);
+  
+  // ==========================================================================
+  // Notification Helper
+  // ==========================================================================
+  
+  const showNotification = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+    // Clear any existing timeout
+    if (notificationTimeoutRef.current) {
+      clearTimeout(notificationTimeoutRef.current);
+    }
+    
+    setJobNotification({ message, type });
+    
+    // Auto-hide after 5 seconds
+    notificationTimeoutRef.current = setTimeout(() => {
+      setJobNotification(null);
+    }, 5000);
+  }, []);
+  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (notificationTimeoutRef.current) {
+        clearTimeout(notificationTimeoutRef.current);
+      }
+    };
+  }, []);
   
   // ==========================================================================
   // Project Management
@@ -256,8 +318,24 @@ function App() {
       project_root: projectRoot,
       workflow: workflow.slug,
     });
+    
+    if (response.ok && response.data) {
+      const result = response.data as JobSubmitResult;
+      const shortId = result.job_id.slice(0, 8);
+      showNotification(`Job #${shortId} started: ${result.target_name}`, 'success');
+      
+      // Refresh job counts
+      fetchJobCounts();
+    } else {
+      showNotification(`Failed to start job: ${response.error?.message || 'Unknown error'}`, 'error');
+    }
+    
     setDebugResult(response as QVResponse);
-  }, [qv, projectRoot]);
+  }, [qv, projectRoot, showNotification, fetchJobCounts]);
+  
+  const handleGoToJobs = useCallback(() => {
+    setCurrentView('jobs');
+  }, []);
   
   // ==========================================================================
   // Analysis Data Loading
@@ -387,10 +465,16 @@ function App() {
                   workflow={selectedWorkflow}
                   onClose={() => setSelectedWorkflow(null)}
                   onRunWorkflow={handleRunWorkflow}
+                  onGoToJobs={handleGoToJobs}
                 />
               </div>
             )}
           </div>
+        );
+        
+      case 'jobs':
+        return (
+          <JobsPanel projectRoot={projectLoaded ? projectRoot : undefined} />
         );
         
       case 'analysis':
@@ -429,6 +513,7 @@ function App() {
             currentView={currentView}
             onViewChange={setCurrentView}
             daemonStatus={daemonStatus}
+            jobCounts={jobCounts}
           />
         }
         footer={showDebugFooter ? <DebugPanel /> : null}
@@ -437,12 +522,26 @@ function App() {
           {/* Daemon Error Banner */}
           <DaemonErrorBanner status={daemonStatus} />
           
+          {/* Job Notification Toast */}
+          {jobNotification && (
+            <div className={`job-notification job-notification--${jobNotification.type}`}>
+              <span className="job-notification__message">{jobNotification.message}</span>
+              <button 
+                className="job-notification__close"
+                onClick={() => setJobNotification(null)}
+              >
+                ×
+              </button>
+            </div>
+          )}
+          
           {/* Header */}
           <div className="app-header">
             <h2 className="app-header__title">
               {currentView === 'summary' && 'Project Summary'}
               {currentView === 'structures' && 'Structures'}
               {currentView === 'workflows' && 'Workflows'}
+              {currentView === 'jobs' && 'Jobs'}
               {currentView === 'analysis' && 'Analysis'}
               {currentView === 'debug' && 'Debug'}
             </h2>
