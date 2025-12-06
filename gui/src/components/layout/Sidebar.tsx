@@ -126,33 +126,41 @@ export function Sidebar({
       
       {/* View Tabs */}
       <div className="sidebar__section">
-        <h2 className="sidebar__section-title">View</h2>
+        <h2 className="sidebar__section-title">Navigation</h2>
         <div className="sidebar__tabs">
           <button
             className={`sidebar__tab ${currentView === 'summary' ? 'active' : ''}`}
             onClick={() => onViewChange('summary')}
+            title="Project overview and quick actions"
           >
-            📋 Summary
+            <span className="sidebar__tab-icon">📋</span>
+            Summary
           </button>
           <button
             className={`sidebar__tab ${currentView === 'structures' ? 'active' : ''}`}
             onClick={() => onViewChange('structures')}
             disabled={!projectLoaded}
+            title={projectLoaded ? 'View and manage crystal structures' : 'Load a project first'}
           >
-            🔬 Structures
+            <span className="sidebar__tab-icon">🔬</span>
+            Structures
           </button>
           <button
             className={`sidebar__tab ${currentView === 'workflows' ? 'active' : ''}`}
             onClick={() => onViewChange('workflows')}
             disabled={!projectLoaded}
+            title={projectLoaded ? 'Configure and run QE workflows' : 'Load a project first'}
           >
-            📊 Workflows
+            <span className="sidebar__tab-icon">📊</span>
+            Workflows
           </button>
           <button
             className={`sidebar__tab ${currentView === 'jobs' ? 'active' : ''}`}
             onClick={() => onViewChange('jobs')}
+            title={activeJobsCount > 0 ? `${runningCount} running, ${pendingCount} pending` : 'View job queue and logs'}
           >
-            ⚡ Jobs
+            <span className="sidebar__tab-icon">⚡</span>
+            Jobs
             {activeJobsCount > 0 && (
               <span className={`sidebar__tab-badge ${runningCount > 0 ? 'sidebar__tab-badge--running' : ''}`}>
                 {activeJobsCount}
@@ -163,20 +171,26 @@ export function Sidebar({
             className={`sidebar__tab ${currentView === 'analysis' ? 'active' : ''}`}
             onClick={() => onViewChange('analysis')}
             disabled={!projectLoaded}
+            title={projectLoaded ? 'Analyze SCF convergence, DOS, and band structures' : 'Load a project first'}
           >
-            📈 Analysis
+            <span className="sidebar__tab-icon">📈</span>
+            Analysis
           </button>
           <button
             className={`sidebar__tab ${currentView === 'settings' ? 'active' : ''}`}
             onClick={() => onViewChange('settings')}
+            title="Configure QE paths and app settings"
           >
-            ⚙️ Settings
+            <span className="sidebar__tab-icon">⚙️</span>
+            Settings
           </button>
           <button
             className={`sidebar__tab ${currentView === 'debug' ? 'active' : ''}`}
             onClick={() => onViewChange('debug')}
+            title="View daemon logs and debug info"
           >
-            🔧 Debug
+            <span className="sidebar__tab-icon">🔧</span>
+            Debug
           </button>
         </div>
       </div>

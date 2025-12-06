@@ -2584,3 +2584,145 @@ Make sure the app still runs via npm run dev and that the core end-to-end path (
 
 Be bold but careful: aim for something you’d be comfortable handing to a colleague for real QE workflow testing.
 
+
+Implementation summary:
+All tasks completed. Here's a comprehensive summary of what was implemented in this iteration:
+Summary of Implemented Features
+1. Step Parameter Editing (MVP)
+Backend (QVService):
+update_step_params() - Safely updates specific parameters in a step
+reset_step_params() - Resets parameters to template defaults
+Type validation for numeric parameters (ecutwfc, ecutrho, conv_thr, degauss)
+UI (StepDetailPanel):
+Editable form for common QE parameters organized by step type
+Parameters: ecutwfc, ecutrho, conv_thr, occupations, smearing, degauss, forc_conv_thr
+Edit/Cancel/Apply/Reset workflow
+Parameter descriptions and units displayed
+2. Workflow Editing
+Reorder Steps:
+↑/↓ buttons in WorkflowDetailPanel
+RPC: reorder_workflow_steps
+Updates workflow.yaml step ordering
+Change Structure:
+Structure dropdown selector in workflow detail
+RPC: change_workflow_structure
+Updates workflow and all step files
+3. Jobs → Analysis Integration
+"View Analysis" button in JobDetailPanel for completed workflow jobs
+One-click navigation to Analysis view with workflow pre-selected
+Handler: handleViewAnalysisFromJob(workflowSlug)
+4. Pre-flight Checks
+RPC: preflight_check validates before job submission
+Checks: QE installation, project path, structure, pseudopotentials, working directory
+User-friendly error messages via toast notification
+Jobs are NOT submitted if checks fail
+5. Demo Project & Recent Projects
+Demo Project:
+"Create Demo Project" button on welcome screen
+Creates Si project with ready-to-run workflow
+RPC: create_demo_project
+Recent Projects:
+Stored in localStorage (max 5)
+Click to open, × to remove
+Shows project name and parent directory
+Files Created/Modified
+Python Backend:
+src/quantumvitas/api.py - Added 7 new QVService methods
+src/quantumvitas/daemon/server.py - Added 8 new daemon handlers
+TypeScript Types:
+gui/src/types/qv.ts - Added new interfaces and QVCommandMap entries
+React Components:
+StepDetailPanel.tsx - Full rewrite with parameter editing
+WorkflowListPanel.tsx - Added reorder controls and structure selector
+ProjectSummaryPanel.tsx - Added demo project and recent projects
+JobsPanel.tsx - Added View Analysis button
+App.tsx - Added state, handlers, and props for new features
+CSS Styling:
+StepDetailPanel.css - Parameter form styling
+WorkflowListPanel.css - Reorder controls and structure selector
+ProjectSummaryPanel.css - Recent projects styling
+JobsPanel.css - Primary action button
+Documentation:
+AI_understanding.md - Documented all new features (sections 17.14-17.20)
+New RPCs Added
+Command	Purpose
+update_step_params	Update step parameters
+reset_step_params	Reset step to defaults
+get_workflow_detail	Get detailed workflow info
+reorder_workflow_steps	Change step order
+change_workflow_structure	Change workflow structure
+preflight_check	Validate before running
+create_demo_project	Create demo Si project
+End-to-End User Flow
+The GUI now supports the complete workflow without CLI:
+Start → Welcome screen
+Create Demo → One-click Si project
+Import Structure → File picker dialog
+Create Workflow → Template-based
+Configure → Change structure, reorder steps
+Edit Parameters → Adjust common QE settings
+Pre-flight Check → Automatic validation
+Run Workflow → Submit job
+Monitor Jobs → Live status/logs
+View Analysis → One-click to charts
+
+
+Implementation summary:
+All tasks completed successfully. Here's a summary of the professional polish pass:
+Summary of Changes
+1. Design System (gui/src/index.css)
+Created a comprehensive CSS custom properties system with:
+Typography: Font families (Inter, JetBrains Mono), font sizes on a Major Second scale, font weights
+Colors: Primary (indigo), accent (cyan), semantic colors (success/error/warning), text colors, backgrounds
+Spacing: 0-16 scale (4px-64px) using --space-* variables
+Border radius: --radius-sm through --radius-2xl
+Shadows: xs/sm/md/lg/xl plus glow effects
+Transitions: fast/normal/slow/slower timing
+Z-index scale: layered from dropdown to toast
+Standard button classes: .btn, .btn-primary, .btn-secondary, .btn-ghost, .btn-danger
+Badge classes: .badge-* variants
+Loading spinners: .loading-spinner with size variants
+2. Status Bar (StatusBar.tsx)
+New bottom status bar showing:
+Daemon connection status with pulse indicator
+Active project name and shortened path
+Running/pending job counts with animated pulse
+QE detection status (clickable to open Settings)
+Real-time updates via polling
+3. Error Boundary (ErrorBoundary.tsx)
+React error boundary wrapping main content
+Friendly "Something went wrong" fallback UI
+"Try Again" button to reset view
+"Reload App" fallback option
+Expandable error details for debugging
+4. Polished Components
+Updated all panels to use design tokens consistently:
+ProjectSummaryPanel.css: Hero welcome screen with animated icon, gradient backgrounds, professional card styling
+Sidebar.css: Refined navigation with active indicators, gradient background
+WorkflowListPanel.css: Consistent item styling, hover states, action buttons
+StepDetailPanel.css: Parameter form styling, collapsible sections
+JobsPanel.css: Professional job list/detail layout, status badges
+StructureListPanel.css: Consistent list items with actions
+Modal.css: Refined dialog styling with backdrop blur
+5. Sidebar Improvements
+Added tooltips to all navigation buttons with contextual descriptions
+Tab icons wrapped in spans for consistent alignment
+Section renamed to "Navigation"
+6. Documentation Updates
+Updated AI_understanding.md with new section 17.21 covering:
+Design tokens table
+Status bar component
+Error boundary
+Standard button classes
+Tooltips system
+Layout conventions
+Updated GUI_ARCHITECTURE.md with:
+New "Design System" section
+Updated feature status (many more ✓ completed items)
+Design Principles Applied
+Consistency: All components use the same spacing, colors, and typography
+Hierarchy: Clear visual distinction between headers, content, and actions
+Feedback: Hover states, focus outlines, and loading states
+Professionalism: Dark theme inspired by VS Code/DataGrip with subtle gradients and shadows
+Accessibility: Visible focus states, sufficient color contrast, semantic HTML
+The app now has a cohesive, professional appearance ready for external users to try.

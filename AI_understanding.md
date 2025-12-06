@@ -2437,6 +2437,73 @@ The GUI now supports the complete user workflow without CLI:
 10. **Monitor Jobs** → Live status and log streaming
 11. **View Analysis** → One-click from completed job to SCF/DOS/Bands charts
 
+### 17.21 Design System & Polish (2025-12-06)
+
+**Design Tokens** (`gui/src/index.css`):
+
+A comprehensive design system was established with CSS custom properties:
+
+| Category | Variables |
+|----------|-----------|
+| Typography | `--font-sans`, `--font-mono`, `--text-xs` → `--text-3xl` |
+| Colors | `--color-primary`, `--color-success`, `--color-error`, `--color-warning` |
+| Backgrounds | `--bg-app`, `--bg-primary`, `--bg-secondary`, `--bg-card`, `--bg-hover` |
+| Text | `--text-primary`, `--text-secondary`, `--text-tertiary`, `--text-muted` |
+| Borders | `--border-subtle`, `--border-color`, `--border-hover`, `--border-focus` |
+| Spacing | `--space-1` → `--space-16` (4px → 64px) |
+| Radius | `--radius-sm` → `--radius-2xl`, `--radius-full` |
+| Shadows | `--shadow-xs` → `--shadow-xl`, `--shadow-glow` |
+| Transitions | `--transition-fast`, `--transition-normal`, `--transition-slow` |
+| Z-Index | `--z-dropdown` → `--z-toast` |
+
+**Status Bar** (`StatusBar.tsx`):
+
+Bottom status bar showing:
+- Daemon connection status (green/red indicator)
+- Active project name and path
+- Running/pending job counts with pulse animation
+- QE detection status (clickable to open Settings)
+
+**Error Boundary** (`ErrorBoundary.tsx`):
+
+React error boundary wrapping main content:
+- Catches render errors and displays friendly fallback
+- "Try Again" button to reset state
+- "Reload App" fallback option
+- Expandable error details for debugging
+
+**Standard Button Classes**:
+
+Global CSS classes for consistent button styling:
+- `.btn`, `.btn-primary`, `.btn-secondary`, `.btn-ghost`, `.btn-danger`
+- Size variants: `.btn-sm`, `.btn-lg`, `.btn-icon`
+
+**Tooltips**:
+
+CSS-only tooltips using `data-tooltip` attributes:
+- Position variants: `data-tooltip-position="bottom|left|right"`
+- Native title attributes on all navigation buttons
+
+**Accessibility Improvements**:
+
+- Visible focus outlines (`:focus-visible`)
+- Proper color contrast in dark theme
+- ARIA-compatible button structures
+- Semantic HTML throughout
+
+**Layout Conventions**:
+
+Standard panel structure:
+```
+.panel-header  (title + actions, bg-secondary)
+.panel-content (scrollable body, bg-card)
+```
+
+Split view layouts:
+- Structures: list (380px) + 3D viewer (flex)
+- Workflows: list (420px) + detail (flex) + step detail
+- Jobs: list (340px) + detail (flex)
+
 ---
 
 *Last updated: 2025-12-06*
