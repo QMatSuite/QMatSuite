@@ -6,13 +6,14 @@
  * - Load Project / Create Project actions
  * - View tabs for navigation
  * - Connection status
+ * - Running jobs indicator
  */
 
 import type { QVClient } from '../../hooks/useQVClient';
-import type { DaemonStatus } from '../../types/qv';
+import type { DaemonStatus, JobCounts } from '../../types/qv';
 import './Sidebar.css';
 
-export type ViewType = 'summary' | 'structures' | 'workflows' | 'analysis' | 'debug';
+export type ViewType = 'summary' | 'structures' | 'workflows' | 'jobs' | 'analysis' | 'debug';
 
 interface SidebarProps {
   qv: QVClient;
@@ -25,6 +26,7 @@ interface SidebarProps {
   currentView: ViewType;
   onViewChange: (view: ViewType) => void;
   daemonStatus: DaemonStatus | null;
+  jobCounts: JobCounts | null;
 }
 
 export function Sidebar({ 
@@ -38,9 +40,14 @@ export function Sidebar({
   currentView,
   onViewChange,
   daemonStatus,
+  jobCounts,
 }: SidebarProps) {
   const isLoading = qv.state.isLoading;
   const isConnected = qv.state.isConnected;
+  
+  const runningCount = jobCounts?.running || 0;
+  const pendingCount = jobCounts?.pending || 0;
+  const activeJobsCount = runningCount + pendingCount;
   
   return (
     <div className="sidebar">
@@ -140,6 +147,17 @@ export function Sidebar({
             disabled={!projectLoaded}
           >
             📊 Workflows
+          </button>
+          <button
+            className={`sidebar__tab ${currentView === 'jobs' ? 'active' : ''}`}
+            onClick={() => onViewChange('jobs')}
+          >
+            ⚡ Jobs
+            {activeJobsCount > 0 && (
+              <span className={`sidebar__tab-badge ${runningCount > 0 ? 'sidebar__tab-badge--running' : ''}`}>
+                {activeJobsCount}
+              </span>
+            )}
           </button>
           <button
             className={`sidebar__tab ${currentView === 'analysis' ? 'active' : ''}`}

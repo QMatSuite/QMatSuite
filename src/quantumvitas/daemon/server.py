@@ -120,7 +120,9 @@ class QVDaemon:
             "run_workflow": self._handle_run_workflow,
             "run_step": self._handle_run_step,
             "get_job_status": self._handle_get_job_status,
+            "get_job_logs": self._handle_get_job_logs,
             "list_jobs": self._handle_list_jobs,
+            "job_counts": self._handle_job_counts,
             "cancel_job": self._handle_cancel_job,
         }
     
@@ -547,13 +549,15 @@ class QVDaemon:
             
         Returns:
             job_id: str - ID of submitted job
+            status: str - Initial status ("pending")
+            target_name: str - Workflow name for display
         """
         project_root = self._require_path(payload, "project_root")
         workflow = self._require_str(payload, "workflow")
         strict = payload.get("strict", False)
         verbose = payload.get("verbose", False)
         
-        # Submit job
+        # Submit job with target info for display
         job_id = self.job_manager.submit(
             job_type="run_workflow",
             func=QVService.run_workflow,
@@ -562,13 +566,16 @@ class QVDaemon:
                 "workflow": workflow,
                 "strict": strict,
             },
+            target_name=workflow,
+            project_root_display=str(project_root),
+            # kwargs for QVService.run_workflow
             project_root=project_root,
             workflow_selector=workflow,
             strict=strict,
             verbose=verbose,
         )
         
-        return {"job_id": job_id, "status": "pending"}
+        return {"job_id": job_id, "status": "pending", "target_name": workflow}
     
     def _handle_run_step(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -582,13 +589,17 @@ class QVDaemon:
             
         Returns:
             job_id: str - ID of submitted job
+            status: str - Initial status ("pending")
+            target_name: str - Step name for display
         """
         project_root = self._require_path(payload, "project_root")
         workflow = self._require_str(payload, "workflow")
         step = self._require_str(payload, "step")
         verbose = payload.get("verbose", False)
         
-        # Submit job
+        target_name = f"{workflow}/{step}"
+        
+        # Submit job with target info for display
         job_id = self.job_manager.submit(
             job_type="run_step",
             func=QVService.run_step,
@@ -597,13 +608,16 @@ class QVDaemon:
                 "workflow": workflow,
                 "step": step,
             },
+            target_name=target_name,
+            project_root_display=str(project_root),
+            # kwargs for QVService.run_step
             project_root=project_root,
             workflow_selector=workflow,
             step_selector=step,
             verbose=verbose,
         )
         
-        return {"job_id": job_id, "status": "pending"}
+        return {"job_id": job_id, "status": "pending", "target_name": target_name}
     
     def _handle_get_job_status(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -620,6 +634,25 @@ class QVDaemon:
         
         return status
     
+    def _handle_get_job_logs(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get logs for a job.
+        
+        Payload:
+            job_id: str - Job ID
+            tail_lines: int - Number of lines to return (default 100)
+            offset: int - Line offset (default 0, meaning tail from end)
+        """
+        job_id = self._require_str(payload, "job_id")
+        tail_lines = payload.get("tail_lines", 100)
+        offset = payload.get("offset", 0)
+        
+        result = self.job_manager.get_job_logs(job_id, tail_lines=tail_lines, offset=offset)
+        if result is None:
+            raise ValueError(f"Job not found: {job_id}")
+        
+        return result
+    
     def _handle_list_jobs(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         List jobs.
@@ -627,13 +660,40 @@ class QVDaemon:
         Payload:
             status: str - Optional status filter
             job_type: str - Optional job type filter
+            project_root: str - Optional project filter
+            limit: int - Maximum jobs to return (default 50)
         """
         status_str = payload.get("status")
         status = JobStatus(status_str) if status_str else None
         job_type = payload.get("job_type")
+        project_root = payload.get("project_root")
+        limit = payload.get("limit", 50)
         
-        jobs = self.job_manager.list_jobs(status=status, job_type=job_type)
+        jobs = self.job_manager.list_jobs(
+            status=status,
+            job_type=job_type,
+            project_root=project_root,
+            limit=limit,
+        )
         return {"jobs": jobs, "count": len(jobs)}
+    
+    def _handle_job_counts(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get job counts by status.
+        
+        Payload: (none required)
+        
+        Returns:
+            counts: dict - {status: count} for each status
+            running: int - Number of running jobs
+            pending: int - Number of pending jobs
+        """
+        counts = self.job_manager.count_by_status()
+        return {
+            "counts": counts,
+            "running": counts.get("running", 0),
+            "pending": counts.get("pending", 0),
+        }
     
     def _handle_cancel_job(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """

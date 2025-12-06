@@ -1880,6 +1880,8 @@ The GUI layer provides a desktop application interface using:
 - **Electron** - Desktop application framework
 - **React + TypeScript** - UI framework
 - **electron-vite** - Build tooling
+- **react-three-fiber** - 3D structure visualization
+- **recharts** - 2D analysis charts
 
 Architecture diagram:
 ```
@@ -1909,7 +1911,7 @@ Architecture diagram:
 ```
 gui/
 ├── electron/
-│   ├── main.ts           # Daemon spawning, IPC, error handling
+│   ├── main.ts           # Daemon spawning, IPC, file dialogs
 │   └── preload.ts        # Context bridge API
 ├── src/
 │   ├── main.tsx          # React entry point
@@ -1918,13 +1920,21 @@ gui/
 │   ├── components/
 │   │   ├── layout/
 │   │   │   ├── AppShell.tsx         # Main layout wrapper
-│   │   │   └── Sidebar.tsx          # Navigation, actions, view tabs
-│   │   └── panels/
-│   │       ├── ResultPanel.tsx      # JSON result display (debug)
-│   │       ├── DebugPanel.tsx       # Daemon log viewer
-│   │       ├── ProjectSummaryPanel.tsx  # Structured project view
-│   │       ├── StructureListPanel.tsx   # Structure list + detail
-│   │       └── DaemonErrorBanner.tsx    # Startup error display
+│   │   │   └── Sidebar.tsx          # Navigation, view tabs
+│   │   ├── panels/
+│   │   │   ├── ResultPanel.tsx      # JSON result display
+│   │   │   ├── DebugPanel.tsx       # Daemon logs + ping tool
+│   │   │   ├── ProjectSummaryPanel.tsx  # Welcome + project view
+│   │   │   ├── StructureListPanel.tsx   # Structure list + detail
+│   │   │   ├── WorkflowListPanel.tsx    # Workflow list + detail
+│   │   │   ├── StructureViewer3D.tsx    # 3D ball-and-stick viewer
+│   │   │   ├── AnalysisPanel.tsx        # SCF/DOS/Bands charts
+│   │   │   └── DaemonErrorBanner.tsx    # Startup error display
+│   │   └── dialogs/
+│   │       ├── Modal.tsx            # Base modal component
+│   │       ├── CreateProjectDialog.tsx
+│   │       ├── ImportStructureDialog.tsx
+│   │       └── CreateWorkflowDialog.tsx
 │   ├── hooks/
 │   │   └── useQVClient.ts   # Type-safe daemon communication
 │   └── types/
@@ -1942,19 +1952,35 @@ The GUI uses a centralized `QVCommandMap` for end-to-end type safety:
 ```typescript
 // In src/types/qv.ts
 export interface QVCommandMap {
-  ping: {
-    payload: Record<string, never>;
-    result: { pong: boolean; version: string };
-  };
-  get_project_summary: {
-    payload: { project_root: string };
-    result: ProjectSummary;
-  };
-  list_structures: {
-    payload: { project_root: string };
-    result: { structures: StructureInfo[]; count: number };
-  };
-  // ... all commands defined with payload + result types
+  // System
+  ping: { payload: {}; result: { pong: boolean; version: string } };
+  shutdown: { payload: {}; result: { shutdown: boolean } };
+  
+  // Project/Resource listing
+  get_project_summary: { payload: { project_root: string }; result: ProjectSummary };
+  list_structures: { payload: { project_root: string }; result: { structures: StructureInfo[]; count: number } };
+  list_workflows: { payload: { project_root: string }; result: { workflows: WorkflowInfo[]; count: number } };
+  
+  // Project creation
+  create_project: { payload: { target_dir: string; name?: string; template?: string }; result: { project_root: string; name: string; id: string } };
+  import_structure: { payload: { project_root: string; source_file: string; name?: string }; result: { structure_id: string; name: string; slug: string; formula: string; n_atoms: number } };
+  
+  // Workflow creation
+  list_workflow_templates: { payload: {}; result: { templates: WorkflowTemplateInfo[]; count: number } };
+  create_workflow: { payload: { project_root: string; name: string; structure?: string; template?: string }; result: { workflow_id: string; name: string; slug: string; n_steps: number } };
+  
+  // Visualization data
+  get_structure_vis: { payload: { project_root: string; selector: string; supercell?: [number, number, number]; repeat_boundary?: boolean }; result: StructureVisData };
+  get_scf_convergence: { payload: { project_root: string; workflow: string; step: string }; result: ScfConvergenceData };
+  get_dos_data: { payload: { project_root: string; workflow: string; step?: string }; result: DosData };
+  get_band_structure_data: { payload: { project_root: string; workflow: string; step?: string }; result: BandStructureData };
+  
+  // Job management
+  run_workflow: { payload: { project_root: string; workflow: string; strict?: boolean; verbose?: boolean }; result: JobSubmitResult };
+  run_step: { payload: { project_root: string; workflow: string; step: string; verbose?: boolean }; result: JobSubmitResult };
+  get_job_status: { payload: { job_id: string }; result: JobInfo };
+  list_jobs: { payload: { status?: JobStatus; job_type?: string }; result: { jobs: JobInfo[]; count: number } };
+  cancel_job: { payload: { job_id: string }; result: { job_id: string; cancelled: boolean } };
 }
 
 // In hooks/useQVClient.ts
@@ -1990,28 +2016,71 @@ Shutdown:
 
 | Panel | Purpose |
 |-------|---------|
-| `ProjectSummaryPanel` | Shows project name, structure/workflow counts, tags |
+| `ProjectSummaryPanel` | Welcome card with CTAs, project overview |
 | `StructureListPanel` | Clickable list of structures with lattice info |
 | `StructureDetailPanel` | Full structure details (lattice params, path) |
+| `StructureViewer3D` | 3D ball-and-stick viewer (react-three-fiber) |
+| `WorkflowListPanel` | Workflow list with steps, structure, mode |
+| `WorkflowDetailPanel` | Workflow details with step list, run button |
+| `AnalysisPanel` | Container with SCF/DOS/Bands chart selection |
+| `ScfConvergenceChart` | Energy vs iteration, accuracy vs iteration |
+| `DosChart` | DOS and iDOS vs energy |
+| `BandsChart` | Band structure along k-path |
 | `DaemonErrorBanner` | Displays daemon startup errors |
+| `DebugView` | Ping button, status info, logs |
+| `DebugPanel` | Compact daemon log footer |
 | `ResultPanel` | Raw JSON viewer (for debug view) |
-| `DebugPanel` | Daemon stderr log viewer |
+
+**Dialogs:**
+
+| Dialog | Purpose |
+|--------|---------|
+| `Modal` | Base modal/dialog component |
+| `CreateProjectDialog` | Create new QV project (target dir, name) |
+| `ImportStructureDialog` | Import CIF/XSF/etc. structure file |
+| `CreateWorkflowDialog` | Create workflow from template |
 
 **View Routing:**
 
-The `Sidebar` has view tabs: Summary, Structures, Debug. `App.tsx` renders the appropriate panel based on `currentView` state.
+The `Sidebar` has view tabs: Summary, Structures, Workflows, Analysis, Debug.
+
+**Auto-fetch behavior:**
+- Switching to Structures view auto-fetches structures list
+- Switching to Workflows view auto-fetches workflows list
+- Switching to Analysis view auto-fetches workflows for selection
+
+**Empty states:**
+- No project loaded → Welcome card with "Browse & Load" and "Create Project" CTAs
+- Project load failed → Error card with message and recovery actions
+- Views disabled until project is loaded (except Summary and Debug)
 
 ### 17.6 Preload API
 
 ```typescript
 window.qv = {
+  // Daemon communication
   request: <T>(type, payload) => Promise<QVResponse<T>>,
   onLog: (callback) => unsubscribe,
   isConnected: () => Promise<boolean>,
   getDaemonStatus: () => Promise<DaemonStatus>,
   onDaemonStatus: (callback) => unsubscribe,
   onMainMessage: (callback) => unsubscribe,
+  
+  // Native dialogs
+  openDirectory: () => Promise<string | null>,   // Folder picker
+  openFile: (options?) => Promise<string | null>, // File picker with filters
 }
+```
+
+**File dialog filters example:**
+```typescript
+const path = await window.qv.openFile({
+  title: 'Select Structure File',
+  filters: [
+    { name: 'Structure Files', extensions: ['cif', 'json', 'in', 'xsf'] },
+    { name: 'All Files', extensions: ['*'] },
+  ],
+});
 ```
 
 ### 17.7 Design System
@@ -2038,10 +2107,11 @@ Development mode opens DevTools automatically.
 
 ### 17.9 Extending the GUI
 
-**Adding a new command:**
-1. Add entry to `QVCommandMap` in `src/types/qv.ts` with payload + result types
-2. Optionally add convenience method to `useQVClient.ts`
-3. Call via `qv.call('new_command', payload)` - fully typed!
+**Adding a new daemon command:**
+1. Add Python handler in `daemon/server.py` (calls `QVService`)
+2. Add entry to `QVCommandMap` in `src/types/qv.ts` with payload + result types
+3. Optionally add convenience method to `useQVClient.ts`
+4. Call via `qv.call('new_command', payload)` - fully typed!
 
 **Adding a new panel:**
 1. Create component in `src/components/panels/`
@@ -2049,15 +2119,150 @@ Development mode opens DevTools automatically.
 3. Export from `panels/index.ts`
 4. Add to view routing in `App.tsx`
 
-### 17.10 Known Limitations
+**Adding a dialog:**
+1. Create component in `src/components/dialogs/` using `Modal` as base
+2. Add form state, validation, and submit handler
+3. Export from `dialogs/index.ts`
+4. Add dialog state in `App.tsx` (`showMyDialog`, `setShowMyDialog`)
+5. Render outside `AppShell` for proper z-index
+
+**Adding 3D visualization:**
+- Use `react-three-fiber` for WebGL rendering
+- Get pure data from daemon (no matplotlib)
+- See `StructureViewer3D.tsx` for atom/bond rendering pattern
+
+**Adding 2D charts:**
+- Use `recharts` for plotting
+- Get data arrays from daemon
+- See `AnalysisPanel.tsx` for LineChart/AreaChart examples
+
+### 17.10 Key Dependencies
+
+```json
+{
+  "react": "^18.2.0",
+  "react-dom": "^18.2.0",
+  "@react-three/fiber": "^8.16.3",
+  "@react-three/drei": "^9.105.4",
+  "three": "^0.164.1",
+  "recharts": "^2.12.6"
+}
+```
+
+### 17.11 Enhanced Job System (2025-12-06)
+
+The daemon job system was enhanced to support full GUI job management with live log streaming.
+
+**Job Model Enhancements** (`daemon/jobs.py`):
+
+New fields added to `Job` dataclass:
+- `target_name: str | None` - Human-readable name (e.g., "si-dos")
+- `project_root: str | None` - Project path for display/filtering
+- `output_file: str | None` - QE output file path for log reading
+- `last_log_line: str | None` - Last line from output (quick status)
+
+New methods:
+- `to_summary_dict()` - Lighter dict for list views
+- `get_job_logs(job_id, tail_lines, offset)` - Read QE output with tail/offset
+- `count_by_status()` - Get counts for sidebar badge
+
+**New Daemon RPCs**:
+
+| Command | Purpose | Response |
+|---------|---------|----------|
+| `get_job_logs` | Read QE output file | `{logs: string[], total_lines, has_more, output_file}` |
+| `job_counts` | Job counts by status | `{counts: {status: count}, running: n, pending: n}` |
+
+**Updated RPCs**:
+
+| Command | Change |
+|---------|--------|
+| `list_jobs` | Now returns `JobSummary[]` (lighter), supports `project_root` filter |
+| `run_workflow` | Returns `target_name` in response |
+| `run_step` | Returns `target_name` in response |
+
+**GUI Components Added**:
+
+| Component | Purpose |
+|-----------|---------|
+| `JobsPanel` | Main jobs view with list + detail |
+| `JobListItem` | Compact job row with status badge |
+| `JobDetailPanel` | Full job info, logs, cancel button |
+| `StatusBadge` | Colored status indicator |
+
+**React Hooks Added** (`hooks/useJobs.ts`):
+
+```typescript
+// Job list with polling
+const { jobs, counts, isLoading, refresh, isPolling } = useJobs({
+  pollInterval: 3000,    // Poll every 3s
+  projectRoot?: string,  // Filter by project
+  status?: JobStatus,    // Filter by status
+});
+
+// Single job detail with logs
+const { job, logs, cancelJob, refresh } = useJobDetail({
+  jobId: 'abc-123',
+  pollInterval: 2000,    // Poll while running
+});
+```
+
+**Sidebar Updates**:
+
+- New "Jobs" tab in view navigation
+- Running jobs badge with count + pulse animation
+- `jobCounts` prop for live status
+
+**Workflow Run Button Integration**:
+
+When clicking "Run Workflow":
+1. Calls `job.submit_run_workflow` RPC
+2. Shows toast notification with job ID
+3. Updates job counts immediately
+4. "View Jobs" button links to Jobs view
+
+**TypeScript Types Added** (`types/qv.ts`):
+
+```typescript
+interface JobSummary {
+  id: string;
+  job_type: string;
+  status: JobStatus;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  target_name: string | null;
+  project_root: string | null;
+  error: string | null;
+  last_log_line: string | null;
+}
+
+interface JobLogs {
+  job_id: string;
+  logs: string[];
+  total_lines: number;
+  has_more: boolean;
+  output_file: string | null;
+}
+
+interface JobCounts {
+  counts: Record<string, number>;
+  running: number;
+  pending: number;
+}
+```
+
+### 17.12 Known Limitations
 
 - No SSL/TLS (daemon is local only via stdio)
 - Single daemon instance per Electron app
 - Request timeout: 60 seconds (configurable in main.ts)
 - Daemon must be restarted if Python code changes
 - Running jobs cannot be cancelled (ThreadPoolExecutor limitation)
+- 3D viewer performance depends on structure size (works well up to ~1000 atoms)
+- Job logs are polled, not streamed (2s interval while job is active)
 
 ---
 
-*Last updated: 2025-12-05*
+*Last updated: 2025-12-06*
 *Based on commit history through v2-python branch*
