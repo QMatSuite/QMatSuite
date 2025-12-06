@@ -1878,3 +1878,151 @@ The system is now ready for asynchronous workflow execution with observable prog
 
 
 
+Implementation summary:
+I've implemented a complete Job system for QuantumVITAS that transforms the GUI from a viewer into a real "job manager" for QE runs. Here's what was built:
+1. Python Daemon Job Model (Enhanced)
+src/quantumvitas/daemon/jobs.py:
+Added new fields to Job dataclass: target_name, project_root, output_file, last_log_line
+Added to_summary_dict() for lighter list views
+Added get_job_logs() method to read and tail output files
+Added count_by_status() method for sidebar badge
+Updated submit() to accept target_name and project_root_display parameters
+src/quantumvitas/daemon/server.py:
+Added new RPC handlers:
+get_job_logs - Returns logs from QE output file with optional tail/offset
+job_counts - Returns counts by status for sidebar badge
+Enhanced run_workflow and run_step to return target_name in response
+Updated list_jobs to support project_root filtering and limit parameter
+2. TypeScript Types
+gui/src/types/qv.ts:
+Added JobSummary interface (lighter than JobInfo for list views)
+Added JobLogs interface for log responses
+Added JobCounts interface for sidebar badge
+Updated JobInfo with new fields: target_name, project_root, output_file, last_log_line
+Updated JobSubmitResult to include target_name
+Updated QVCommandMap with new commands: get_job_logs, job_counts
+3. React Hooks
+gui/src/hooks/useJobs.ts (New):
+useJobs() - Polls job list with configurable interval, supports filtering
+useJobDetail() - Fetches single job with logs, auto-polls while job is active, provides cancelJob() action
+4. JobsPanel Component
+gui/src/components/panels/JobsPanel.tsx (New):
+StatusBadge - Colored badge showing job status
+JobListItem - Compact list item with status, type, target, time
+JobDetailPanel - Full job detail view with:
+Info grid (type, target, timestamps, duration)
+Error display (if failed)
+Result display (if completed)
+Live log viewer with auto-scroll toggle
+Cancel button for pending/running jobs
+JobsPanel - Main view with:
+Header with running/pending counts
+Refresh and auto-poll toggle buttons
+Scrollable job list (left sidebar)
+Detail panel (right side when job selected)
+5. Sidebar Updates
+gui/src/components/layout/Sidebar.tsx:
+Added ViewType with 'jobs'
+Added jobCounts prop
+Added "Jobs" tab with animated badge showing running/pending count
+6. App Integration
+gui/src/App.tsx:
+Added job counts polling (every 5 seconds)
+Added job notification toast system
+Updated handleRunWorkflow to:
+Show success toast with job ID
+Refresh job counts
+Added handleGoToJobs() callback passed to WorkflowDetailPanel
+Added Jobs view case in renderMainContent()
+7. UI Polish
+Job notification toast with slide-in animation
+Running jobs badge with pulse animation
+Status badges with distinct colors for each state
+Terminal-like log viewer with truncation indicator
+Auto-scroll toggle for logs
+The system is now ready for asynchronous workflow execution with observable progress. Jobs run in a background thread pool while the daemon remains responsive, and the UI provides real-time feedback through polling.
+
+
+
+You are the same AI that just built the full Job system (async runs, JobsPanel, job hooks, badges, toasts) and previously implemented project creation/import and workflow templates. Now the goal is: bring the QuantumVITAS GUI to a “complete, first user-testing” state.
+You already understand the architecture and code; don’t re-summarize it. Focus on filling functional gaps, polishing UX, and hardening edge cases.
+1. Settings / Environment panel (QE + daemon config)
+Create a dedicated Settings view (or modal) that lets the user see and tweak the environment:
+Add a Settings entry in the sidebar ViewType, or a gear icon that opens a Settings panel.
+In Python daemon:
+Expose RPCs to:
+Get current environment info:
+QE installation status (path, pw.x version if available).
+Python / daemon info (version, venv path).
+Job worker settings (max concurrency).
+Optionally trigger QE detection (wrap existing detection logic).
+Update simple settings (e.g. default project root, job concurrency).
+Persist user settings in a small config file in the app’s userData directory (JSON is fine).
+In GUI:
+Show:
+QE status with a “Re-detect QE” button and clear messages if QE is missing.
+Current default project root (if any) with a browse button.
+Job concurrency (for now, even if you only support 1 worker, you can show it but maybe keep non-editable).
+Use form validation + clear error messages.
+Make sure this panel is safe if QE is not installed (no crashes).
+Goal: a user can open Settings first, understand whether QE is available, and fix basic path issues without touching the CLI.
+2. Resource management: rename / delete / configure in GUI
+Map the core CLI CRUD/configure commands into the GUI so users can manage projects without terminal.
+Focus on structures and workflows:
+Rename
+Add “Rename…” to the structure and workflow detail panels (kebab menu or button).
+Show a small dialog to edit the name.
+Call daemon RPCs that wrap the existing configure / rename logic.
+Refresh lists and keep selection after rename.
+Delete
+Add “Delete…” with a confirmation dialog (show what will be removed; for workflows mention steps and runs may be affected).
+Wrap qv delete workflow/structure via daemon RPCs.
+Update lists and clear detail panel if the deleted item was selected.
+Basic configure
+For workflows:
+Allow changing associated structure (dropdown) and step order (simple up/down controls or drag-reorder if easy).
+Map to existing configure workflow --structure and --reorder logic.
+For structures:
+At minimum, allow editing display name and maybe a short description field stored in metadata.
+Keep the UI simple but robust; avoid exposing raw YAML for now.
+3. Step-level inspection & run
+Right now workflows are top-level runnable. Make steps first-class in the GUI:
+In the Workflow detail panel:
+Each step should be clickable to show a Step detail view:
+Step id, type (scf, nscf, dos, bands, etc.).
+Structure reference.
+Basic parameters: at least calculation type, cutoff(s), k-points summary.
+Add a “Run Step” button that:
+Submits a job.submit_run_step job (you already have plumbing; extend as needed).
+Shows a toast and links to Jobs.
+If it’s low-effort:
+For SCF-like steps, also show last run status (from recent jobs filtered by step id).
+For DOS/Bands steps, provide a shortcut to open the Analysis view pre-filtered to that step’s outputs (if you can determine them easily).
+Goal: a power user can debug a problematic step directly from the GUI.
+4. Error handling & robustness for user testing
+Before letting real users touch it, harden the obvious sharp edges:
+Daemon / connection issues
+If the daemon fails to start or dies:
+Show a clear top-level error banner (“Backend not available”) instead of silent failures.
+Offer a “Retry / Restart backend” action that attempts to re-spawn the daemon.
+Project path & permissions
+When load/create/import fails due to invalid path or permissions, show concrete messages:
+“Directory is not writable.”
+“project.qv.yml not found under this path.”
+Jobs
+Make sure the UI behaves well if:
+Job list is empty.
+There are many jobs (use reasonable list limits / paging / truncation).
+Logs are very large (your existing tail/truncation logic should be enforced).
+Global fallback
+Consider adding a simple React error boundary around the main content area to prevent one broken panel from killing the whole app view, and show a “Something went wrong” message with an option to reload that view.
+5. Final UX polish for first user test
+Remember the last opened project and last active view across app restarts (using settings/local config).
+Tighten visual hierarchy:
+Make primary actions (Run workflow, Import structure, New workflow) more visually prominent than debug/dev tools.
+Make sure keyboard focus works in main forms (Enter to submit, Esc to cancel where appropriate).
+Constraints
+Keep all new RPCs and models typed in qv.ts, and use useQVClient / useJobs instead of ad-hoc fetches.
+Prefer incremental changes over sweeping refactors, unless a refactor clearly simplifies things.
+Don’t regress existing features: project creation/import, templates, 3D viewer, analysis, Jobs panel.
+Work in small steps: Settings → resource management → step-level run → robustness/polish. After that, the app should be in a state where a real user can install dependencies, point at a QE project, and do meaningful work without touching the CLI.
