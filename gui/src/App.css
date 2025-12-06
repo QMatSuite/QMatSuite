@@ -53,13 +53,13 @@
   display: flex;
   gap: 16px;
   height: 100%;
-  min-height: 400px;
+  min-height: 500px;
 }
 
 .structures-view__list {
-  flex: 1;
-  min-width: 300px;
-  max-width: 450px;
+  flex: 0 0 350px;
+  min-width: 280px;
+  max-width: 400px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -72,5 +72,195 @@
 
 .structures-view__detail {
   flex: 1;
-  min-width: 300px;
+  min-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.structures-view__3d {
+  flex: 1;
+  min-height: 350px;
+}
+
+/* Workflows View - Split Layout */
+.workflows-view {
+  display: flex;
+  gap: 16px;
+  height: 100%;
+  min-height: 500px;
+}
+
+.workflows-view__list {
+  flex: 0 0 400px;
+  min-width: 320px;
+  max-width: 500px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.workflows-view__list > * {
+  flex: 1;
+  overflow: hidden;
+}
+
+.workflows-view__detail {
+  flex: 1;
+  min-width: 400px;
+}
+
+/* Loading Spinner */
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Panel Placeholder Styling */
+.panel-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.panel-placeholder .panel-icon {
+  font-size: 3rem;
+}
+
+.panel-placeholder h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.panel-placeholder p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0;
+  max-width: 300px;
+}
+
+/* =============================================================================
+   No Project Message
+   ============================================================================= */
+
+.no-project-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: 40px;
+}
+
+.no-project-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 360px;
+  padding: 40px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+}
+
+.no-project-icon {
+  font-size: 3rem;
+  margin-bottom: 12px;
+  opacity: 0.8;
+}
+
+.no-project-content h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+}
+
+.no-project-content p {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin: 0 0 20px 0;
+}
+
+.no-project-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.action-btn {
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  color: white;
+}
+
+.action-btn:hover {
+  background: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+}
+
+.action-btn--secondary {
+  background: var(--bg-button);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.action-btn--secondary:hover {
+  background: var(--bg-button-hover);
+}
+
+/* =============================================================================
+   View Action Buttons
+   ============================================================================= */
+
+.view-action-btn {
+  margin-top: 12px;
+  padding: 10px 18px;
+  width: 100%;
+  border: 1px dashed var(--border-color);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.view-action-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-alpha);
+}
+
+/* Fix list container heights */
+.structures-view__list,
+.workflows-view__list {
+  min-height: 0;
+}
+
+.structures-view__list > *:first-child,
+.workflows-view__list > *:first-child {
+  flex: 1;
+  min-height: 0;
 }

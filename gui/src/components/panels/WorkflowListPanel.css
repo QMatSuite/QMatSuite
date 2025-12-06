@@ -1,0 +1,383 @@
+/* WorkflowListPanel Styles */
+
+.workflow-list-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-card);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.workflow-list-panel--loading,
+.workflow-list-panel--empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* Panel Header */
+.workflow-list-panel .panel-header,
+.workflow-detail-panel .panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.workflow-list-panel .panel-title,
+.workflow-detail-panel .panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.panel-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  background: var(--bg-primary);
+  border-radius: 4px;
+}
+
+/* Workflow List */
+.workflow-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.workflow-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-primary);
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+  width: 100%;
+}
+
+.workflow-item:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-alpha);
+}
+
+.workflow-item--selected {
+  border-color: var(--color-primary);
+  background: var(--color-primary-alpha);
+}
+
+.workflow-item__main {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.workflow-item__name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.workflow-item__structure {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.workflow-item__structure code {
+  color: var(--color-primary-light);
+  font-family: var(--font-mono);
+}
+
+.workflow-item__details {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.workflow-item__stat {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.workflow-item__stat .stat-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-primary-light);
+}
+
+.workflow-item__stat .stat-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* Mode Badge */
+.mode-badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--bg-button);
+  color: var(--text-secondary);
+}
+
+.mode-badge--normal {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.mode-badge--strict {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+/* Steps Preview */
+.workflow-item__steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.step-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.step-arrow {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.step-type {
+  font-size: 0.7rem;
+  font-family: var(--font-mono);
+  padding: 2px 6px;
+  background: var(--bg-button);
+  border-radius: 3px;
+  color: var(--json-key);
+}
+
+.workflow-item__path {
+  margin-top: 4px;
+}
+
+.workflow-item__path code {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+/* =============================================================================
+   Workflow Detail Panel
+   ============================================================================= */
+
+.workflow-detail-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-card);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.workflow-detail-panel .panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.workflow-detail-panel .panel-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+
+.workflow-detail-panel .panel-close:hover {
+  color: var(--text-primary);
+  background: var(--bg-button);
+}
+
+/* Detail Sections */
+.detail-section h3 {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin: 0 0 12px 0;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.detail-value {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.detail-value--id {
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+
+/* Steps List in Detail */
+.steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.step-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+  width: 100%;
+}
+
+.step-item:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-alpha);
+}
+
+.step-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.step-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.step-id {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.step-type-badge {
+  font-size: 0.65rem;
+  font-family: var(--font-mono);
+  color: var(--json-key);
+}
+
+.step-file {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+/* Detail Path */
+.detail-path {
+  display: block;
+  padding: 10px 12px;
+  background: var(--bg-primary);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+
+/* Detail Actions */
+.detail-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.action-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-button);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.action-button:hover {
+  background: var(--bg-button-hover);
+}
+
+.action-button--primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
+.action-button--primary:hover {
+  background: var(--color-primary-dark);
+}
+

@@ -108,6 +108,28 @@ const qvApi = {
   },
   
   /**
+   * Open a native directory picker dialog
+   * 
+   * @returns Promise<string | null> - Selected path or null if cancelled
+   */
+  openDirectory: async (): Promise<string | null> => {
+    return ipcRenderer.invoke('qv-open-directory');
+  },
+  
+  /**
+   * Open a native file picker dialog
+   * 
+   * @param options - Dialog options (title, filters)
+   * @returns Promise<string | null> - Selected path or null if cancelled
+   */
+  openFile: async (options?: {
+    title?: string;
+    filters?: { name: string; extensions: string[] }[];
+  }): Promise<string | null> => {
+    return ipcRenderer.invoke('qv-open-file', options);
+  },
+  
+  /**
    * Get detailed daemon status including any startup errors
    * 
    * @returns Promise<DaemonStatus>

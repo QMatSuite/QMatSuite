@@ -55,6 +55,14 @@ const qvApi = {
     return electron.ipcRenderer.invoke("qv-is-connected");
   },
   /**
+   * Open a native directory picker dialog
+   * 
+   * @returns Promise<string | null> - Selected path or null if cancelled
+   */
+  openDirectory: async () => {
+    return electron.ipcRenderer.invoke("qv-open-directory");
+  },
+  /**
    * Get detailed daemon status including any startup errors
    * 
    * @returns Promise<DaemonStatus>

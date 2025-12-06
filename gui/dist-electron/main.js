@@ -1,4 +1,4 @@
-import { ipcMain, app, BrowserWindow } from "electron";
+import { ipcMain, app, BrowserWindow, dialog } from "electron";
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
@@ -214,6 +214,18 @@ ipcMain.handle("qv-is-connected", async () => {
 });
 ipcMain.handle("qv-daemon-status", async () => {
   return { ...daemonStatus };
+});
+ipcMain.handle("qv-open-directory", async () => {
+  if (!win) return null;
+  const result = await dialog.showOpenDialog(win, {
+    properties: ["openDirectory", "createDirectory"],
+    title: "Select Project Root",
+    buttonLabel: "Select"
+  });
+  if (result.canceled || result.filePaths.length === 0) {
+    return null;
+  }
+  return result.filePaths[0];
 });
 function createWindow() {
   win = new BrowserWindow({

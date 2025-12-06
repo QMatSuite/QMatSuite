@@ -126,6 +126,14 @@ export interface WorkflowInfo {
   steps: StepInfo[];
 }
 
+export interface WorkflowTemplateInfo {
+  name: string;
+  path: string;
+  description?: string;
+  n_steps: number;
+  step_types: string[];
+}
+
 // =============================================================================
 // Data Types - Project
 // =============================================================================
@@ -327,6 +335,60 @@ export interface QVCommandMap {
     payload: { job_id: string };
     result: { job_id: string; cancelled: boolean };
   };
+  
+  // Project creation
+  create_project: {
+    payload: {
+      target_dir: string;
+      name?: string;
+      template?: string;
+    };
+    result: {
+      project_root: string;
+      name: string;
+      id: string;
+    };
+  };
+  
+  // Structure import
+  import_structure: {
+    payload: {
+      project_root: string;
+      source_file: string;
+      name?: string;
+    };
+    result: {
+      structure_id: string;
+      name: string;
+      slug: string;
+      formula: string;
+      n_atoms: number;
+    };
+  };
+  
+  // Workflow templates
+  list_workflow_templates: {
+    payload: Record<string, never>;
+    result: {
+      templates: WorkflowTemplateInfo[];
+      count: number;
+    };
+  };
+  
+  create_workflow: {
+    payload: {
+      project_root: string;
+      name: string;
+      structure?: string;
+      template?: string;
+    };
+    result: {
+      workflow_id: string;
+      name: string;
+      slug: string;
+      n_steps: number;
+    };
+  };
 }
 
 /** All available command types */
@@ -375,6 +437,19 @@ export interface QVApi {
    * Subscribe to main process messages
    */
   onMainMessage: (callback: (data: unknown) => void) => () => void;
+  
+  /**
+   * Open a native directory picker dialog
+   */
+  openDirectory: () => Promise<string | null>;
+  
+  /**
+   * Open a native file picker dialog
+   */
+  openFile: (options?: {
+    title?: string;
+    filters?: { name: string; extensions: string[] }[];
+  }) => Promise<string | null>;
 }
 
 // Extend Window interface

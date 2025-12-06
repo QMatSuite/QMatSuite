@@ -1,26 +1,27 @@
 /**
  * Sidebar - Navigation and controls for QuantumVITAS
  * 
- * Contains:
- * - Project path input
- * - Action buttons (Ping, Load Project, List Structures, etc.)
+ * Simplified design:
+ * - Project path input with Browse button
+ * - Load Project / Create Project actions
+ * - View tabs for navigation
  * - Connection status
  */
 
-import { useState, useCallback } from 'react';
 import type { QVClient } from '../../hooks/useQVClient';
 import type { DaemonStatus } from '../../types/qv';
 import './Sidebar.css';
 
-export type ViewType = 'summary' | 'structures' | 'workflows' | 'debug';
+export type ViewType = 'summary' | 'structures' | 'workflows' | 'analysis' | 'debug';
 
 interface SidebarProps {
   qv: QVClient;
   projectRoot: string;
+  projectLoaded: boolean;
+  projectError: string | null;
   onProjectRootChange: (path: string) => void;
   onLoadProject: () => void;
-  onListStructures: () => void;
-  onListWorkflows: () => void;
+  onCreateProject: () => void;
   currentView: ViewType;
   onViewChange: (view: ViewType) => void;
   daemonStatus: DaemonStatus | null;
@@ -28,27 +29,16 @@ interface SidebarProps {
 
 export function Sidebar({ 
   qv, 
-  projectRoot, 
+  projectRoot,
+  projectLoaded,
+  projectError,
   onProjectRootChange,
   onLoadProject,
-  onListStructures,
-  onListWorkflows,
+  onCreateProject,
   currentView,
   onViewChange,
   daemonStatus,
 }: SidebarProps) {
-  const [pingResult, setPingResult] = useState<string | null>(null);
-  
-  const handlePing = useCallback(async () => {
-    const response = await qv.ping();
-    if (response.ok && response.data) {
-      setPingResult(`✓ Daemon v${response.data.version}`);
-      setTimeout(() => setPingResult(null), 3000);
-    } else {
-      setPingResult(`✗ ${response.error?.message || 'Failed'}`);
-    }
-  }, [qv]);
-  
   const isLoading = qv.state.isLoading;
   const isConnected = qv.state.isConnected;
   
@@ -75,39 +65,39 @@ export function Sidebar({
       <div className="sidebar__section">
         <label className="sidebar__label">
           Project Root
-          <input
-            type="text"
-            className="sidebar__input"
-            value={projectRoot}
-            onChange={(e) => onProjectRootChange(e.target.value)}
-            placeholder="/path/to/project"
-            disabled={isLoading}
-          />
-        </label>
-      </div>
-      
-      {/* System Actions */}
-      <div className="sidebar__section">
-        <h2 className="sidebar__section-title">System</h2>
-        <div className="sidebar__actions">
-          <button
-            className="sidebar__button sidebar__button--small"
-            onClick={handlePing}
-            disabled={isLoading}
-          >
-            🏓 Ping
-          </button>
-          {pingResult && (
-            <span className={`sidebar__ping-result ${pingResult.startsWith('✓') ? 'success' : 'error'}`}>
-              {pingResult}
-            </span>
+          <div className="sidebar__input-group">
+            <input
+              type="text"
+              className={`sidebar__input sidebar__input--with-button ${projectError ? 'sidebar__input--error' : ''}`}
+              value={projectRoot}
+              onChange={(e) => onProjectRootChange(e.target.value)}
+              placeholder="/path/to/project"
+              disabled={isLoading}
+            />
+            <button
+              className="sidebar__browse-button"
+              onClick={async () => {
+                if (window.qv?.openDirectory) {
+                  const path = await window.qv.openDirectory();
+                  if (path) {
+                    onProjectRootChange(path);
+                  }
+                }
+              }}
+              disabled={isLoading}
+              title="Browse for project directory"
+            >
+              📂
+            </button>
+          </div>
+          {projectError && (
+            <span className="sidebar__input-error">{projectError}</span>
           )}
-        </div>
+        </label>
       </div>
       
       {/* Project Actions */}
       <div className="sidebar__section">
-        <h2 className="sidebar__section-title">Project</h2>
         <div className="sidebar__actions">
           <button
             className="sidebar__button sidebar__button--primary"
@@ -119,18 +109,10 @@ export function Sidebar({
           
           <button
             className="sidebar__button"
-            onClick={onListStructures}
-            disabled={isLoading || !projectRoot}
+            onClick={onCreateProject}
+            disabled={isLoading}
           >
-            🔬 List Structures
-          </button>
-          
-          <button
-            className="sidebar__button"
-            onClick={onListWorkflows}
-            disabled={isLoading || !projectRoot}
-          >
-            📊 List Workflows
+            ✨ Create Project
           </button>
         </div>
       </div>
@@ -148,8 +130,23 @@ export function Sidebar({
           <button
             className={`sidebar__tab ${currentView === 'structures' ? 'active' : ''}`}
             onClick={() => onViewChange('structures')}
+            disabled={!projectLoaded}
           >
             🔬 Structures
+          </button>
+          <button
+            className={`sidebar__tab ${currentView === 'workflows' ? 'active' : ''}`}
+            onClick={() => onViewChange('workflows')}
+            disabled={!projectLoaded}
+          >
+            📊 Workflows
+          </button>
+          <button
+            className={`sidebar__tab ${currentView === 'analysis' ? 'active' : ''}`}
+            onClick={() => onViewChange('analysis')}
+            disabled={!projectLoaded}
+          >
+            📈 Analysis
           </button>
           <button
             className={`sidebar__tab ${currentView === 'debug' ? 'active' : ''}`}
@@ -159,13 +156,6 @@ export function Sidebar({
           </button>
         </div>
       </div>
-      
-      {/* Error Display */}
-      {qv.state.lastError && (
-        <div className="sidebar__error">
-          <strong>Error:</strong> {qv.state.lastError}
-        </div>
-      )}
       
       {/* Footer spacer */}
       <div className="sidebar__spacer" />
