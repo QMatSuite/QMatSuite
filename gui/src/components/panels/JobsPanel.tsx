@@ -82,9 +82,10 @@ function JobListItem({ job, isSelected, onSelect }: JobListItemProps) {
 interface JobDetailPanelProps {
   jobId: string;
   onClose: () => void;
+  onViewAnalysis?: (workflowSlug: string) => void;
 }
 
-function JobDetailPanel({ jobId, onClose }: JobDetailPanelProps) {
+function JobDetailPanel({ jobId, onClose, onViewAnalysis }: JobDetailPanelProps) {
   const { job, logs, isLoading, error, cancelJob, refresh, refreshLogs } = useJobDetail({
     jobId,
     pollInterval: 2000,
@@ -264,6 +265,18 @@ function JobDetailPanel({ jobId, onClose }: JobDetailPanelProps) {
               Cancel Job
             </button>
           )}
+          {/* View Analysis button for completed workflow jobs */}
+          {job.status === 'completed' && 
+           job.job_type === 'run_workflow' && 
+           job.target_name && 
+           onViewAnalysis && (
+            <button
+              className="job-action-btn job-action-btn--primary"
+              onClick={() => onViewAnalysis(job.target_name!)}
+            >
+              📊 View Analysis
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -276,9 +289,10 @@ function JobDetailPanel({ jobId, onClose }: JobDetailPanelProps) {
 
 interface JobsPanelProps {
   projectRoot?: string;
+  onViewAnalysis?: (workflowSlug: string) => void;
 }
 
-export function JobsPanel({ projectRoot }: JobsPanelProps) {
+export function JobsPanel({ projectRoot, onViewAnalysis }: JobsPanelProps) {
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const { jobs, counts, isLoading, error, refresh, isPolling, startPolling, stopPolling } = useJobs({
     projectRoot,
@@ -373,6 +387,7 @@ export function JobsPanel({ projectRoot }: JobsPanelProps) {
             <JobDetailPanel
               jobId={selectedJobId}
               onClose={handleCloseDetail}
+              onViewAnalysis={onViewAnalysis}
             />
           </div>
         )}

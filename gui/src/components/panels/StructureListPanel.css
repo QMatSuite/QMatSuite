@@ -68,17 +68,12 @@
 }
 
 .structure-item {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 100%;
-  padding: 16px;
   margin-bottom: 8px;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: 6px;
-  cursor: pointer;
-  text-align: left;
   transition: all 0.15s;
 }
 
@@ -90,6 +85,57 @@
 .structure-item--selected {
   border-color: var(--color-primary);
   background: var(--color-primary-alpha);
+}
+
+.structure-item__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 16px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+/* Action buttons container */
+.structure-item__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.structure-item:hover .structure-item__actions {
+  opacity: 1;
+}
+
+.item-action-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.15s;
+}
+
+.item-action-btn:hover {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.item-action-btn--danger:hover {
+  background: var(--color-error);
+  border-color: var(--color-error);
 }
 
 .structure-item__main {

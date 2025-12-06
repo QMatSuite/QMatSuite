@@ -1,0 +1,112 @@
+/* RenameDialog Styles */
+
+.rename-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.rename-dialog__info {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.rename-dialog__info strong {
+  color: var(--text-primary);
+}
+
+.rename-dialog__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.rename-dialog__label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.rename-dialog__input {
+  padding: 0.75rem 1rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.rename-dialog__input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.rename-dialog__input::placeholder {
+  color: var(--text-muted);
+}
+
+.rename-dialog__error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 8px;
+  color: var(--color-error);
+  font-size: 0.875rem;
+}
+
+.rename-dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+/* Dialog Buttons - Shared styles */
+.dialog-btn {
+  padding: 0.625rem 1.25rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dialog-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dialog-btn--primary {
+  background: var(--color-primary);
+  color: white;
+}
+
+.dialog-btn--primary:hover:not(:disabled) {
+  background: #5558dd;
+}
+
+.dialog-btn--secondary {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+}
+
+.dialog-btn--secondary:hover:not(:disabled) {
+  background: var(--bg-card);
+}
+
+.dialog-btn--danger {
+  background: var(--color-error);
+  color: white;
+}
+
+.dialog-btn--danger:hover:not(:disabled) {
+  background: #dc2626;
+}
+

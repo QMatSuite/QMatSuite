@@ -266,6 +266,47 @@ export interface JobCounts {
 // Command Map - Central Type-Safe API Definition
 // =============================================================================
 
+// =============================================================================
+// Data Types - Environment
+// =============================================================================
+
+export interface QEDetectionResult {
+  found: boolean;
+  qe_home: string | null;
+  version: string | null;
+  executables: string[];
+  detection_source: string | null;
+}
+
+export interface EnvironmentInfo {
+  python_version: string;
+  python_executable: string;
+  qv_version: string;
+  qe_home: string | null;
+  qe_found: boolean;
+}
+
+// =============================================================================
+// Data Types - Step Detail
+// =============================================================================
+
+export interface StepDetail {
+  id: string;
+  name: string;
+  slug: string;
+  path: string;
+  step_type: string;
+  structure: string | null;
+  parent_workflow_id: string | null;
+  parameters: Record<string, Record<string, unknown>>;
+  cards: Record<string, Record<string, unknown>>;
+  species_overrides: Record<string, Record<string, unknown>>;
+}
+
+// =============================================================================
+// Command Map - Central Type-Safe API Definition
+// =============================================================================
+
 /**
  * Central command map defining all RPC commands with their payloads and results.
  * 
@@ -282,6 +323,16 @@ export interface QVCommandMap {
   shutdown: {
     payload: Record<string, never>;
     result: { shutdown: boolean };
+  };
+  
+  // Environment and settings
+  detect_qe: {
+    payload: Record<string, never>;
+    result: QEDetectionResult;
+  };
+  get_env_info: {
+    payload: Record<string, never>;
+    result: EnvironmentInfo;
   };
   
   // Project/resource listing
@@ -412,6 +463,43 @@ export interface QVCommandMap {
     };
   };
   
+  // Structure management
+  rename_structure: {
+    payload: {
+      project_root: string;
+      selector: string;
+      new_name: string;
+    };
+    result: {
+      success: boolean;
+      old_name: string;
+      new_name: string;
+      new_slug: string;
+    };
+  };
+  can_delete_structure: {
+    payload: {
+      project_root: string;
+      selector: string;
+    };
+    result: {
+      can_delete: boolean;
+      using_workflows: string[];
+      structure_name: string;
+    };
+  };
+  delete_structure: {
+    payload: {
+      project_root: string;
+      selector: string;
+      force?: boolean;
+    };
+    result: {
+      success: boolean;
+      name: string;
+    };
+  };
+  
   // Workflow templates
   list_workflow_templates: {
     payload: Record<string, never>;
@@ -435,6 +523,181 @@ export interface QVCommandMap {
       n_steps: number;
     };
   };
+  
+  // Workflow management
+  rename_workflow: {
+    payload: {
+      project_root: string;
+      selector: string;
+      new_name: string;
+    };
+    result: {
+      success: boolean;
+      old_name: string;
+      new_name: string;
+      new_slug: string;
+    };
+  };
+  can_delete_workflow: {
+    payload: {
+      project_root: string;
+      selector: string;
+    };
+    result: {
+      workflow_name: string;
+      dependent_workflows: string[];
+      has_dependencies: boolean;
+    };
+  };
+  delete_workflow: {
+    payload: {
+      project_root: string;
+      selector: string;
+      force?: boolean;
+    };
+    result: {
+      success: boolean;
+      name: string;
+    };
+  };
+  
+  // Step operations
+  get_step_detail: {
+    payload: {
+      project_root: string;
+      workflow: string;
+      step: string;
+    };
+    result: StepDetail;
+  };
+  update_step_params: {
+    payload: {
+      project_root: string;
+      workflow: string;
+      step: string;
+      parameters: Record<string, Record<string, unknown>>;
+      cards?: Record<string, Record<string, unknown>>;
+    };
+    result: StepDetail;
+  };
+  reset_step_params: {
+    payload: {
+      project_root: string;
+      workflow: string;
+      step: string;
+      template_name?: string;
+    };
+    result: StepDetail;
+  };
+  
+  // Workflow configuration
+  get_workflow_detail: {
+    payload: {
+      project_root: string;
+      workflow: string;
+    };
+    result: WorkflowDetailResult;
+  };
+  reorder_workflow_steps: {
+    payload: {
+      project_root: string;
+      workflow: string;
+      new_order: string[];
+    };
+    result: WorkflowDetailResult;
+  };
+  change_workflow_structure: {
+    payload: {
+      project_root: string;
+      workflow: string;
+      new_structure: string;
+      update_steps?: boolean;
+    };
+    result: WorkflowStructureChangeResult;
+  };
+  
+  // Pre-flight checks
+  preflight_check: {
+    payload: {
+      project_root: string;
+      workflow?: string;
+      step?: string;
+    };
+    result: PreflightCheckResult;
+  };
+  
+  // Demo project
+  create_demo_project: {
+    payload: {
+      target_dir: string;
+      name?: string;
+    };
+    result: DemoProjectResult;
+  };
+}
+
+// =============================================================================
+// Extended Result Types
+// =============================================================================
+
+export interface WorkflowDetailResult {
+  id: string;
+  name: string;
+  slug: string;
+  path: string;
+  absolute_path: string;
+  structure: string | null;
+  mode: string;
+  n_steps: number;
+  steps: Array<{
+    id: string;
+    slug: string;
+    type: string;
+    step_file: string;
+  }>;
+}
+
+export interface WorkflowStructureChangeResult extends WorkflowDetailResult {
+  old_structure: string | null;
+  updated_steps: Array<{
+    step_id: string;
+    old_structure: string;
+    new_structure: string;
+  }>;
+  warnings: string[];
+}
+
+export interface PreflightCheck {
+  name: string;
+  ok: boolean;
+  message: string;
+}
+
+export interface PreflightCheckResult {
+  ok: boolean;
+  checks: PreflightCheck[];
+  errors: string[];
+  warnings: string[];
+}
+
+export interface DemoProjectResult {
+  project_root: string;
+  project_id: string;
+  project_name: string;
+  structure: {
+    structure_id: string;
+    name: string;
+    slug: string;
+    formula: string;
+    n_atoms: number;
+  } | null;
+  workflow: {
+    workflow_id: string;
+    name: string;
+    slug: string;
+    n_steps: number;
+  } | null;
+  ready_to_run: boolean;
 }
 
 /** All available command types */

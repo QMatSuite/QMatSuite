@@ -18,6 +18,7 @@ import {
   StructureDetailPanel,
   WorkflowListPanel,
   WorkflowDetailPanel,
+  StepDetailPanel,
   StructureViewer3D,
   AnalysisPanel,
   DebugPanel,
@@ -26,7 +27,10 @@ import {
   CreateProjectDialog,
   ImportStructureDialog,
   CreateWorkflowDialog,
+  RenameDialog,
+  DeleteConfirmDialog,
   JobsPanel,
+  SettingsPanel,
 } from './components';
 import type { ViewType } from './components/layout/Sidebar';
 import { useQVClient, useDaemonStatus } from './hooks';
@@ -41,6 +45,8 @@ import type {
   QVResponse,
   JobCounts,
   JobSubmitResult,
+  PreflightCheckResult,
+  DemoProjectResult,
 } from './types';
 import './App.css';
 
@@ -48,6 +54,15 @@ function App() {
   // Project root path state (persisted in localStorage)
   const [projectRoot, setProjectRoot] = useState<string>(() => {
     return localStorage.getItem('qv-project-root') || '';
+  });
+  
+  // Recent projects (persisted in localStorage)
+  const [recentProjects, setRecentProjects] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('qv-recent-projects') || '[]');
+    } catch {
+      return [];
+    }
   });
   
   // View state
@@ -63,6 +78,7 @@ function App() {
   const [workflows, setWorkflows] = useState<WorkflowInfo[] | null>(null);
   const [selectedStructure, setSelectedStructure] = useState<StructureInfo | null>(null);
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowInfo | null>(null);
+  const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   const [structureVisData, setStructureVisData] = useState<StructureVisData | null>(null);
   
   // Debug state
@@ -79,6 +95,14 @@ function App() {
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [showImportStructure, setShowImportStructure] = useState(false);
   const [showCreateWorkflow, setShowCreateWorkflow] = useState(false);
+  
+  // Rename/delete dialog states
+  const [renameStructure, setRenameStructure] = useState<StructureInfo | null>(null);
+  const [deleteStructure, setDeleteStructure] = useState<StructureInfo | null>(null);
+  const [renameWorkflow, setRenameWorkflow] = useState<WorkflowInfo | null>(null);
+  const [deleteWorkflow, setDeleteWorkflow] = useState<WorkflowInfo | null>(null);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Job counts for sidebar badge
   const [jobCounts, setJobCounts] = useState<JobCounts | null>(null);
@@ -152,6 +176,52 @@ function App() {
     localStorage.setItem('qv-project-root', path);
   }, []);
   
+  // Add to recent projects
+  const addToRecentProjects = useCallback((path: string) => {
+    setRecentProjects(prev => {
+      // Remove if already exists, then add to front
+      const filtered = prev.filter(p => p !== path);
+      const updated = [path, ...filtered].slice(0, 5); // Keep max 5
+      localStorage.setItem('qv-recent-projects', JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+  
+  // Remove from recent projects
+  const removeFromRecentProjects = useCallback((path: string) => {
+    setRecentProjects(prev => {
+      const filtered = prev.filter(p => p !== path);
+      localStorage.setItem('qv-recent-projects', JSON.stringify(filtered));
+      return filtered;
+    });
+  }, []);
+  
+  // Open a recent project
+  const handleOpenRecentProject = useCallback(async (path: string) => {
+    setProjectRoot(path);
+    localStorage.setItem('qv-project-root', path);
+    
+    setIsLoadingProject(true);
+    setProjectError(null);
+    
+    const response = await qv.getProjectSummary(path);
+    
+    setIsLoadingProject(false);
+    
+    if (response.ok && response.data) {
+      setProjectSummary(response.data);
+      setProjectLoaded(true);
+      setProjectError(null);
+      setStructures(null);
+      setWorkflows(null);
+      addToRecentProjects(path);
+    } else {
+      setProjectSummary(null);
+      setProjectLoaded(false);
+      setProjectError(response.error?.message || 'Failed to load project');
+    }
+  }, [qv, addToRecentProjects]);
+  
   const handleLoadProject = useCallback(async () => {
     if (!projectRoot) return;
     
@@ -173,13 +243,16 @@ function App() {
       setWorkflows(null);
       setSelectedStructure(null);
       setSelectedWorkflow(null);
+      
+      // Add to recent projects
+      addToRecentProjects(projectRoot);
     } else {
       setProjectSummary(null);
       setProjectLoaded(false);
       setProjectError(response.error?.message || 'Failed to load project');
       setDebugResult(response as QVResponse);
     }
-  }, [qv, projectRoot]);
+  }, [qv, projectRoot, addToRecentProjects]);
   
   const handleBrowseAndLoad = useCallback(async () => {
     if (window.qv?.openDirectory) {
@@ -215,6 +288,52 @@ function App() {
     // Load the newly created project
     setTimeout(() => handleLoadProject(), 100);
   }, [handleLoadProject]);
+  
+  // Create demo Si project
+  const handleCreateDemoProject = useCallback(async () => {
+    if (!window.qv?.openDirectory) {
+      showNotification('Cannot open directory picker', 'error');
+      return;
+    }
+    
+    // Let user pick where to create the demo
+    const targetDir = await window.qv.openDirectory();
+    if (!targetDir) return;
+    
+    setIsLoadingProject(true);
+    
+    const response = await qv.call('create_demo_project', {
+      target_dir: targetDir,
+      name: 'demo-si-project',
+    });
+    
+    if (response.ok && response.data) {
+      const result = response.data as DemoProjectResult;
+      setProjectRoot(result.project_root);
+      localStorage.setItem('qv-project-root', result.project_root);
+      addToRecentProjects(result.project_root);
+      
+      showNotification(
+        result.ready_to_run 
+          ? `Demo project created with workflow "${result.workflow?.name}" - ready to run!`
+          : 'Demo project created!',
+        'success'
+      );
+      
+      // Load the project
+      const loadResponse = await qv.getProjectSummary(result.project_root);
+      if (loadResponse.ok && loadResponse.data) {
+        setProjectSummary(loadResponse.data);
+        setProjectLoaded(true);
+        setStructures(null);
+        setWorkflows(null);
+      }
+    } else {
+      showNotification(`Failed to create demo: ${response.error?.message || 'Unknown error'}`, 'error');
+    }
+    
+    setIsLoadingProject(false);
+  }, [qv, addToRecentProjects, showNotification]);
   
   // ==========================================================================
   // Data Fetching
@@ -314,6 +433,29 @@ function App() {
   }, [fetchWorkflows, workflows, handleSelectWorkflow]);
   
   const handleRunWorkflow = useCallback(async (workflow: WorkflowInfo) => {
+    // Perform preflight checks first
+    const preflightResponse = await qv.call('preflight_check', {
+      project_root: projectRoot,
+      workflow: workflow.slug,
+    });
+    
+    if (preflightResponse.ok && preflightResponse.data) {
+      const preflight = preflightResponse.data as PreflightCheckResult;
+      
+      if (!preflight.ok) {
+        // Show preflight errors
+        const errorMsg = preflight.errors.join('; ') || 'Pre-flight check failed';
+        showNotification(`Cannot run workflow: ${errorMsg}`, 'error');
+        return;
+      }
+      
+      // Show warnings if any
+      if (preflight.warnings.length > 0) {
+        console.warn('Preflight warnings:', preflight.warnings);
+      }
+    }
+    
+    // Submit the workflow run
     const response = await qv.call('run_workflow', {
       project_root: projectRoot,
       workflow: workflow.slug,
@@ -336,6 +478,143 @@ function App() {
   const handleGoToJobs = useCallback(() => {
     setCurrentView('jobs');
   }, []);
+  
+  // Handle "View Analysis" from Jobs panel
+  const handleViewAnalysisFromJob = useCallback(async (workflowSlug: string) => {
+    // Switch to analysis view
+    setCurrentView('analysis');
+    
+    // If workflows aren't loaded, fetch them first
+    if (!workflows) {
+      await fetchWorkflows();
+    }
+    
+    // Try to find and select the workflow
+    const wf = workflows?.find(w => w.slug === workflowSlug || w.name === workflowSlug);
+    if (wf) {
+      setSelectedWorkflow(wf);
+    }
+  }, [workflows, fetchWorkflows]);
+  
+  const handleSelectStep = useCallback((stepId: string) => {
+    setSelectedStepId(stepId);
+  }, []);
+  
+  const handleRunStepSuccess = useCallback((result: JobSubmitResult) => {
+    const shortId = result.job_id.slice(0, 8);
+    showNotification(`Step job #${shortId} started: ${result.target_name}`, 'success');
+    fetchJobCounts();
+  }, [showNotification, fetchJobCounts]);
+  
+  // ==========================================================================
+  // Structure Rename/Delete
+  // ==========================================================================
+  
+  const handleRenameStructure = useCallback(async (newName: string): Promise<boolean> => {
+    if (!renameStructure) return false;
+    
+    setIsRenaming(true);
+    const response = await qv.call('rename_structure', {
+      project_root: projectRoot,
+      selector: renameStructure.slug,
+      new_name: newName,
+    });
+    setIsRenaming(false);
+    
+    if (response.ok) {
+      showNotification(`Renamed structure to "${newName}"`, 'success');
+      await fetchStructures();
+      // Update selected structure if it was the one being renamed
+      if (selectedStructure?.id === renameStructure.id) {
+        setSelectedStructure(null);
+        setStructureVisData(null);
+      }
+      return true;
+    } else {
+      showNotification(`Failed to rename: ${response.error?.message || 'Unknown error'}`, 'error');
+      return false;
+    }
+  }, [qv, projectRoot, renameStructure, fetchStructures, selectedStructure, showNotification]);
+  
+  const handleDeleteStructure = useCallback(async (force: boolean): Promise<boolean> => {
+    if (!deleteStructure) return false;
+    
+    setIsDeleting(true);
+    const response = await qv.call('delete_structure', {
+      project_root: projectRoot,
+      selector: deleteStructure.slug,
+      force: force,
+    });
+    setIsDeleting(false);
+    
+    if (response.ok) {
+      showNotification(`Deleted structure "${deleteStructure.name}"`, 'success');
+      await fetchStructures();
+      // Clear selection if the deleted structure was selected
+      if (selectedStructure?.id === deleteStructure.id) {
+        setSelectedStructure(null);
+        setStructureVisData(null);
+      }
+      return true;
+    } else {
+      showNotification(`Failed to delete: ${response.error?.message || 'Unknown error'}`, 'error');
+      return false;
+    }
+  }, [qv, projectRoot, deleteStructure, fetchStructures, selectedStructure, showNotification]);
+  
+  // ==========================================================================
+  // Workflow Rename/Delete
+  // ==========================================================================
+  
+  const handleRenameWorkflow = useCallback(async (newName: string): Promise<boolean> => {
+    if (!renameWorkflow) return false;
+    
+    setIsRenaming(true);
+    const response = await qv.call('rename_workflow', {
+      project_root: projectRoot,
+      selector: renameWorkflow.slug,
+      new_name: newName,
+    });
+    setIsRenaming(false);
+    
+    if (response.ok) {
+      showNotification(`Renamed workflow to "${newName}"`, 'success');
+      await fetchWorkflows();
+      // Update selected workflow if it was the one being renamed
+      if (selectedWorkflow?.id === renameWorkflow.id) {
+        setSelectedWorkflow(null);
+      }
+      return true;
+    } else {
+      showNotification(`Failed to rename: ${response.error?.message || 'Unknown error'}`, 'error');
+      return false;
+    }
+  }, [qv, projectRoot, renameWorkflow, fetchWorkflows, selectedWorkflow, showNotification]);
+  
+  const handleDeleteWorkflow = useCallback(async (force: boolean): Promise<boolean> => {
+    if (!deleteWorkflow) return false;
+    
+    setIsDeleting(true);
+    const response = await qv.call('delete_workflow', {
+      project_root: projectRoot,
+      selector: deleteWorkflow.slug,
+      force: force,
+    });
+    setIsDeleting(false);
+    
+    if (response.ok) {
+      showNotification(`Deleted workflow "${deleteWorkflow.name}"`, 'success');
+      await fetchWorkflows();
+      // Clear selection if the deleted workflow was selected
+      if (selectedWorkflow?.id === deleteWorkflow.id) {
+        setSelectedWorkflow(null);
+      }
+      return true;
+    } else {
+      showNotification(`Failed to delete: ${response.error?.message || 'Unknown error'}`, 'error');
+      return false;
+    }
+  }, [qv, projectRoot, deleteWorkflow, fetchWorkflows, selectedWorkflow, showNotification]);
   
   // ==========================================================================
   // Analysis Data Loading
@@ -396,8 +675,12 @@ function App() {
             summary={projectSummary} 
             isLoading={isLoadingProject}
             error={projectError}
+            recentProjects={recentProjects}
             onBrowseAndLoad={handleBrowseAndLoad}
             onCreateProject={() => setShowCreateProject(true)}
+            onCreateDemoProject={handleCreateDemoProject}
+            onOpenRecentProject={handleOpenRecentProject}
+            onRemoveRecentProject={removeFromRecentProjects}
           />
         );
         
@@ -411,6 +694,8 @@ function App() {
                 isLoading={isLoadingStructures}
                 selectedId={selectedStructure?.id}
                 onSelect={handleSelectStructure}
+                onRename={setRenameStructure}
+                onDelete={setDeleteStructure}
               />
               <button 
                 className="view-action-btn"
@@ -451,6 +736,8 @@ function App() {
                 isLoading={isLoadingWorkflows}
                 selectedId={selectedWorkflow?.id}
                 onSelect={handleSelectWorkflow}
+                onRename={setRenameWorkflow}
+                onDelete={setDeleteWorkflow}
               />
               <button 
                 className="view-action-btn"
@@ -463,10 +750,26 @@ function App() {
               <div className="workflows-view__detail">
                 <WorkflowDetailPanel
                   workflow={selectedWorkflow}
-                  onClose={() => setSelectedWorkflow(null)}
+                  projectRoot={projectRoot}
+                  structures={structures || undefined}
+                  onClose={() => {
+                    setSelectedWorkflow(null);
+                    setSelectedStepId(null);
+                  }}
                   onRunWorkflow={handleRunWorkflow}
+                  onSelectStep={handleSelectStep}
                   onGoToJobs={handleGoToJobs}
+                  onWorkflowUpdated={fetchWorkflows}
                 />
+                {selectedStepId && (
+                  <StepDetailPanel
+                    projectRoot={projectRoot}
+                    workflowSelector={selectedWorkflow.slug}
+                    stepSelector={selectedStepId}
+                    onClose={() => setSelectedStepId(null)}
+                    onRunStep={handleRunStepSuccess}
+                  />
+                )}
               </div>
             )}
           </div>
@@ -474,7 +777,10 @@ function App() {
         
       case 'jobs':
         return (
-          <JobsPanel projectRoot={projectLoaded ? projectRoot : undefined} />
+          <JobsPanel 
+            projectRoot={projectLoaded ? projectRoot : undefined}
+            onViewAnalysis={handleViewAnalysisFromJob}
+          />
         );
         
       case 'analysis':
@@ -489,6 +795,9 @@ function App() {
             onLoadBands={handleLoadBands}
           />
         );
+        
+      case 'settings':
+        return <SettingsPanel />;
         
       case 'debug':
         return <DebugView lastResult={debugResult} />;
@@ -543,6 +852,7 @@ function App() {
               {currentView === 'workflows' && 'Workflows'}
               {currentView === 'jobs' && 'Jobs'}
               {currentView === 'analysis' && 'Analysis'}
+              {currentView === 'settings' && 'Settings'}
               {currentView === 'debug' && 'Debug'}
             </h2>
             <div className="app-header__actions">
@@ -582,6 +892,48 @@ function App() {
         structures={structures || []}
         onClose={() => setShowCreateWorkflow(false)}
         onSuccess={handleCreateWorkflowSuccess}
+      />
+      
+      {/* Rename Dialogs */}
+      <RenameDialog
+        isOpen={!!renameStructure}
+        onClose={() => setRenameStructure(null)}
+        currentName={renameStructure?.name || ''}
+        title="Rename Structure"
+        onRename={handleRenameStructure}
+        isLoading={isRenaming}
+      />
+      
+      <RenameDialog
+        isOpen={!!renameWorkflow}
+        onClose={() => setRenameWorkflow(null)}
+        currentName={renameWorkflow?.name || ''}
+        title="Rename Workflow"
+        onRename={handleRenameWorkflow}
+        isLoading={isRenaming}
+      />
+      
+      {/* Delete Dialogs */}
+      <DeleteConfirmDialog
+        isOpen={!!deleteStructure}
+        onClose={() => setDeleteStructure(null)}
+        resourceName={deleteStructure?.name || ''}
+        resourceType="Structure"
+        warningMessage="This structure may be used by one or more workflows."
+        onConfirm={handleDeleteStructure}
+        isLoading={isDeleting}
+        forceDeleteOption={true}
+      />
+      
+      <DeleteConfirmDialog
+        isOpen={!!deleteWorkflow}
+        onClose={() => setDeleteWorkflow(null)}
+        resourceName={deleteWorkflow?.name || ''}
+        resourceType="Workflow"
+        warningMessage="This will permanently delete the workflow and all its step files."
+        onConfirm={handleDeleteWorkflow}
+        isLoading={isDeleting}
+        forceDeleteOption={false}
       />
     </>
   );

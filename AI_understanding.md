@@ -2262,6 +2262,181 @@ interface JobCounts {
 - 3D viewer performance depends on structure size (works well up to ~1000 atoms)
 - Job logs are polled, not streamed (2s interval while job is active)
 
+### 17.13 GUI-CLI Parity Roadmap (2025-12-06)
+
+The goal is to enable non-expert users to perform all core QV operations entirely from the GUI.
+
+**Completed Features:**
+
+| CLI Command | GUI Feature | Component |
+|-------------|------------|-----------|
+| `qv init project` | Create Project dialog | `CreateProjectDialog` |
+| `qv import-structure` | Import Structure dialog | `ImportStructureDialog` |
+| `qv init workflow` | Create Workflow dialog | `CreateWorkflowDialog` |
+| `qv list structures` | Structures view | `StructureListPanel` |
+| `qv list workflows` | Workflows view | `WorkflowListPanel` |
+| `qv run workflow` | Run Workflow button | `WorkflowDetailPanel` |
+| `qv analyze scf` | SCF Convergence chart | `AnalysisPanel` |
+| `qv analyze dos` | DOS chart | `AnalysisPanel` |
+| `qv analyze bands` | Band Structure chart | `AnalysisPanel` |
+| `qv detect-qe` | Settings panel | `SettingsPanel` |
+| `qv rename structure` | Rename dialog | `RenameDialog` |
+| `qv rename workflow` | Rename dialog | `RenameDialog` |
+| `qv delete structure` | Delete confirmation | `DeleteConfirmDialog` |
+| `qv delete workflow` | Delete confirmation | `DeleteConfirmDialog` |
+| `qv run step` | Run Step button | `StepDetailPanel` |
+| `qv show-command step` | Step detail view | `StepDetailPanel` |
+
+**Settings & Environment Panel** (`SettingsPanel`):
+
+Shows QE detection status, Python/daemon version, and provides:
+- Re-detect QE button (triggers auto-detection)
+- Default project root setting (persisted in localStorage)
+
+**New RPCs for Environment**:
+
+| Command | Purpose |
+|---------|---------|
+| `get_environment_info` | Returns QE home, version, Python version, platform |
+| `detect_qe_installation` | Re-triggers QE detection, returns updated info |
+| `get_default_project_root` | Returns stored default project path |
+| `set_default_project_root` | Updates default project path |
+
+**New RPCs for Resource Management**:
+
+| Command | Purpose |
+|---------|---------|
+| `rename_structure` | Rename a structure |
+| `rename_workflow` | Rename a workflow |
+| `can_delete_structure` | Check if structure can be deleted (dependency check) |
+| `can_delete_workflow` | Check if workflow can be deleted |
+| `delete_structure` | Delete structure (with force option) |
+| `delete_workflow` | Delete workflow |
+
+**New Dialog Components**:
+
+| Dialog | Purpose |
+|--------|---------|
+| `RenameDialog` | Generic rename dialog with validation |
+| `DeleteConfirmDialog` | Confirm delete with dependency warnings |
+
+**Sidebar Updates**:
+- New "Settings" view tab (⚙️)
+
+**Step Detail Panel** (`StepDetailPanel`):
+
+Shows detailed step information with:
+- Step metadata (type, ID, structure, path)
+- QE parameters organized by namelist (expandable sections)
+- QE cards (expandable JSON view)
+- Species overrides display
+- "Run Step" button for individual step execution
+- **Parameter Editing (NEW)**: Editable form for common QE parameters:
+  - `ecutwfc`, `ecutrho`, `conv_thr`, `occupations`, `smearing`, `degauss`
+  - Type-specific parameter sets (scf, nscf, relax, bands, dos)
+  - Apply and Reset buttons with validation
+
+### 17.14 Parameter Editing System (2025-12-06)
+
+**New RPCs for Step Parameter Editing**:
+
+| Command | Purpose |
+|---------|---------|
+| `update_step_params` | Update specific parameters in a step |
+| `reset_step_params` | Reset step to template defaults |
+
+**Backend Implementation** (`QVService`):
+- `update_step_params()`: Merges new parameters into existing spec
+- Type validation for numeric parameters
+- Only touches specified fields, doesn't clobber unknown options
+- Returns updated step detail for immediate UI refresh
+
+**UI Implementation** (`StepDetailPanel`):
+- "Common Parameters" section with editable form fields
+- Edit/Cancel/Apply/Reset workflow
+- Parameter descriptions and units displayed
+- Disabled state when not editing
+
+### 17.15 Workflow Configuration (2025-12-06)
+
+**Reorder Steps**:
+- In `WorkflowDetailPanel`: ↑/↓ buttons for each step
+- RPC: `reorder_workflow_steps` - takes new step order array
+- Updates `workflow.yaml` step list
+
+**Change Structure**:
+- Structure dropdown in workflow detail view
+- RPC: `change_workflow_structure` - updates workflow and all steps
+- Returns list of updated steps and any warnings
+
+### 17.16 Jobs ↔ Analysis Integration (2025-12-06)
+
+**View Analysis Button**:
+- Appears in `JobDetailPanel` for completed workflow jobs
+- Clicking switches to Analysis view with workflow pre-selected
+- Handler: `handleViewAnalysisFromJob(workflowSlug)`
+
+### 17.17 Pre-flight Checks (2025-12-06)
+
+**Before Running Workflows/Steps**:
+- RPC: `preflight_check` validates environment before job submission
+- Checks performed:
+  - QE installation present and executable
+  - Project path exists and is writable
+  - Structure file exists
+  - Pseudopotential directory has files
+  - Working directory accessible
+
+**Error Handling**:
+- If checks fail, job is NOT submitted
+- User-friendly error messages via toast notification
+- Warnings logged to console
+
+### 17.18 Demo Project & Recent Projects (2025-12-06)
+
+**Demo Project Creation**:
+- "Create Demo Project" button in welcome screen
+- Creates Si project with ready-to-run workflow
+- RPC: `create_demo_project` - creates project, imports Si structure, adds workflow
+
+**Recent Projects**:
+- Stored in localStorage (`qv-recent-projects`)
+- Max 5 recent projects tracked
+- Click to open, × to remove
+- Displays project name and parent directory
+
+**ProjectSummaryPanel Updates**:
+- `recentProjects` prop with list of paths
+- `onCreateDemoProject` handler
+- `onOpenRecentProject(path)` handler
+- `onRemoveRecentProject(path)` handler
+
+### 17.19 Known Limitations
+
+- No SSL/TLS (daemon is local only via stdio)
+- Single daemon instance per Electron app
+- Request timeout: 60 seconds (configurable in main.ts)
+- Daemon must be restarted if Python code changes
+- Running jobs cannot be cancelled (ThreadPoolExecutor limitation)
+- 3D viewer performance depends on structure size (works well up to ~1000 atoms)
+- Job logs are polled, not streamed (2s interval while job is active)
+
+### 17.20 End-to-End User Flow (2025-12-06)
+
+The GUI now supports the complete user workflow without CLI:
+
+1. **Start App** → Welcome screen with options
+2. **Create Demo Project** → One-click Si project with workflow
+3. **Or Create/Open Project** → Manual project setup
+4. **Import Structure** → CIF/XSF file import dialog
+5. **Create Workflow** → Template-based workflow creation
+6. **Configure Workflow** → Change structure, reorder steps
+7. **Edit Parameters** → Adjust ecutwfc, smearing, etc.
+8. **Pre-flight Check** → Automatic validation before run
+9. **Run Workflow** → Submit job to daemon
+10. **Monitor Jobs** → Live status and log streaming
+11. **View Analysis** → One-click from completed job to SCF/DOS/Bands charts
+
 ---
 
 *Last updated: 2025-12-06*

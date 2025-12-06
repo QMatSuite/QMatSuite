@@ -275,6 +275,113 @@
   opacity: 0.8;
 }
 
+.welcome-button--demo {
+  border-color: var(--color-success);
+}
+
+.welcome-button--demo:hover {
+  background: var(--color-success-bg);
+  border-color: var(--color-success);
+}
+
+/* Recent Projects */
+.recent-projects {
+  width: 100%;
+  margin-top: 8px;
+  padding: 16px;
+  background: var(--bg-primary);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.recent-projects__title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin: 0 0 12px 0;
+}
+
+.recent-projects__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.recent-project-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.recent-project-item__path {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+  overflow: hidden;
+}
+
+.recent-project-item__path:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-alpha);
+}
+
+.recent-project-item__icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.recent-project-item__name {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+
+.recent-project-item__dir {
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-project-item__remove {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: all 0.15s;
+}
+
+.recent-project-item:hover .recent-project-item__remove {
+  opacity: 1;
+}
+
+.recent-project-item__remove:hover {
+  background: var(--color-error);
+  border-color: var(--color-error);
+  color: white;
+}
+
 .welcome-hint {
   display: flex;
   align-items: center;

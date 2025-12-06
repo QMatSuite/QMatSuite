@@ -61,17 +61,13 @@
 }
 
 .workflow-item {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 14px 16px;
+  margin-bottom: 8px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background: var(--bg-primary);
-  cursor: pointer;
   transition: all 0.15s;
-  text-align: left;
-  width: 100%;
 }
 
 .workflow-item:hover {
@@ -82,6 +78,57 @@
 .workflow-item--selected {
   border-color: var(--color-primary);
   background: var(--color-primary-alpha);
+}
+
+.workflow-item__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 16px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+/* Action buttons container */
+.workflow-item__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.workflow-item:hover .workflow-item__actions {
+  opacity: 1;
+}
+
+.item-action-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.15s;
+}
+
+.item-action-btn:hover {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.item-action-btn--danger:hover {
+  background: var(--color-error);
+  border-color: var(--color-error);
 }
 
 .workflow-item__main {
@@ -268,6 +315,111 @@
   color: var(--text-secondary);
 }
 
+/* Error banner */
+.workflow-detail-panel .error-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error);
+  border-radius: 6px;
+  color: var(--color-error);
+  font-size: 0.875rem;
+  margin-bottom: 16px;
+}
+
+.workflow-detail-panel .error-dismiss {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--color-error);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+/* Section header with actions */
+.section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.section-header-row h3 {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.section-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.section-action-btn {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-button);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.section-action-btn:hover:not(:disabled) {
+  background: var(--bg-button-hover);
+  color: var(--text-primary);
+}
+
+.section-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.section-action-btn--primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
+.section-action-btn--primary:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+.section-action-btn--secondary {
+  background: transparent;
+}
+
+/* Structure selector */
+.structure-selector {
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  font-family: var(--font-mono);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  cursor: pointer;
+  min-width: 150px;
+}
+
+.structure-selector:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.structure-selector:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Steps List in Detail */
 .steps-list {
   display: flex;
@@ -275,7 +427,46 @@
   gap: 8px;
 }
 
+.step-item-container {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.step-reorder-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reorder-btn {
+  width: 28px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  transition: all 0.15s;
+}
+
+.reorder-btn:hover:not(:disabled) {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
+.reorder-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
 .step-item {
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -286,12 +477,15 @@
   cursor: pointer;
   transition: all 0.15s;
   text-align: left;
-  width: 100%;
 }
 
-.step-item:hover {
+.step-item:hover:not(:disabled) {
   border-color: var(--color-primary);
   background: var(--color-primary-alpha);
+}
+
+.step-item:disabled {
+  cursor: default;
 }
 
 .step-number {

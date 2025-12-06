@@ -1,0 +1,100 @@
+/* DeleteConfirmDialog Styles */
+
+.delete-dialog {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.delete-dialog__warning-icon {
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.delete-dialog__message {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.delete-dialog__message strong {
+  color: var(--color-error);
+}
+
+.delete-dialog__info {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.delete-dialog__dependencies {
+  width: 100%;
+  padding: 1rem;
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 8px;
+  text-align: left;
+}
+
+.dependencies-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  color: var(--color-error);
+  margin-bottom: 0.5rem;
+}
+
+.dependencies-icon {
+  font-size: 1rem;
+}
+
+.dependencies-list {
+  margin: 0.5rem 0 1rem;
+  padding-left: 1.5rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.dependencies-list li {
+  margin-bottom: 0.25rem;
+}
+
+.force-delete-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.force-delete-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-error);
+}
+
+.delete-dialog__error {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 8px;
+  color: var(--color-error);
+  font-size: 0.875rem;
+}
+
+.delete-dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+

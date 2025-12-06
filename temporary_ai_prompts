@@ -1514,6 +1514,8 @@ Focus on making the app feel like a “real tool” rather than just a JSON debu
 Afterwards, update the AI_understanding.md and other relevant doc.
 
 
+2025/12/05
+
 New prompt:
 You are joining an existing project: QuantumVITAS v2.
 The GUI layer is already wired end-to-end:
@@ -1943,86 +1945,642 @@ Auto-scroll toggle for logs
 The system is now ready for asynchronous workflow execution with observable progress. Jobs run in a background thread pool while the daemon remains responsive, and the UI provides real-time feedback through polling.
 
 
+2025/12/06
 
-You are the same AI that just built the full Job system (async runs, JobsPanel, job hooks, badges, toasts) and previously implemented project creation/import and workflow templates. Now the goal is: bring the QuantumVITAS GUI to a “complete, first user-testing” state.
-You already understand the architecture and code; don’t re-summarize it. Focus on filling functional gaps, polishing UX, and hardening edge cases.
-1. Settings / Environment panel (QE + daemon config)
-Create a dedicated Settings view (or modal) that lets the user see and tweak the environment:
-Add a Settings entry in the sidebar ViewType, or a gear icon that opens a Settings panel.
-In Python daemon:
-Expose RPCs to:
-Get current environment info:
-QE installation status (path, pw.x version if available).
-Python / daemon info (version, venv path).
-Job worker settings (max concurrency).
-Optionally trigger QE detection (wrap existing detection logic).
-Update simple settings (e.g. default project root, job concurrency).
-Persist user settings in a small config file in the app’s userData directory (JSON is fine).
-In GUI:
+You are joining an existing scientific software project: QuantumVITAS v2 (QV) – a workflow engine + CLI + Python API + Electron/React GUI for running and analyzing Quantum ESPRESSO (QE) simulations.
+
+Your mission in this iteration:
+👉 Design and implement a path for the GUI to reach functional parity with the CLI, while staying user-friendly and production-grade.
+You should think like a senior SDE: architecture-first, incremental, testable, maintainable.
+
+0. Get oriented (mandatory reading)
+
+Before coding, read and internalize:
+
+AI_understanding.md — high-level architecture, layers, conventions.
+
+docs/GUI_ARCHITECTURE.md — current GUI architecture and design decisions.
+
+Python core (skim, but understand the roles):
+
+api.py (QVService – main programmatic interface).
+
+core/models.py, core/resolution.py, core/context.py.
+
+workflow/, analysis/, core/templates.py.
+
+Daemon:
+
+src/quantumvitas/daemon/server.py
+
+src/quantumvitas/daemon/jobs.py
+
+GUI:
+
+gui/electron/main.ts, gui/electron/preload.ts
+
+gui/src/types/qv.ts
+
+gui/src/hooks/useQVClient.ts, gui/src/hooks/useJobs.ts
+
+gui/src/components/layout/*
+
+gui/src/components/panels/*
+
+gui/src/components/dialogs/*
+
+gui/src/App.tsx
+
+Assume you have time to actually read and understand these; don’t guess.
+
+1. Core design principles to preserve
+
+As you read, keep these design ideas in mind and do not break them:
+
+Layering & separation of concerns
+
+Core logic lives in Python (models, workflows, analysis).
+
+QVService is the stable service layer.
+
+Daemon is a long-lived JSON-RPC over stdio server.
+
+Electron main only mediates stdio ↔ IPC.
+
+React only talks via window.qv + typed hooks (useQVClient, useJobs).
+
+No “cwd magic” in APIs
+
+CLI can infer from cwd; service/daemon/GUI must take explicit project_root and selectors.
+
+Types everywhere
+
+All daemon RPCs must be declared in QVCommandMap in qv.ts.
+
+React must call RPCs only through typed hooks.
+
+CLI is a thin shell
+
+Business logic lives in core + QVService.
+
+GUI should reuse the same service methods, not re-implement high-level logic.
+
+Treat this as a long-lived product, not a throwaway script.
+
+2. Current state (high level)
+
+You don’t need to re-summarize, but you should verify from code that we already have:
+
+A solid Python core (projects, workflows, steps, structures, templates, analysis).
+
+A daemon that:
+
+Exposes QVService via JSON-RPC over stdio.
+
+Maintains a Job system:
+
+Job model with id, kind, status, target, logs, etc.
+
+Background execution of runs via worker threads.
+
+RPCs: submit, list, get, cancel, get_job_logs, job_counts.
+
+A GUI that supports:
+
+Project root selection + load.
+
+Project creation (dialog) and structure import.
+
+Workflows view (list + detail + run).
+
+Structures view with a 3D viewer (react-three-fiber, bonds, cell).
+
+Analysis view (SCF/DOS/Bands charts).
+
+Jobs view (job list + detail + live logs).
+
+Debug view (logs + ping).
+
+Toaster notifications, badges, basic error/empty states.
+
+Use AI_understanding.md as your mental map.
+
+3. Overall goal of this phase
+
+Design and start implementing a pathway for:
+
+The GUI to offer all core capabilities the CLI offers, in a way a non-expert can use.
+
+That means:
+
+From “I installed QV + QE” → “I can create a project, import a structure, set up workflows, run, monitor, and analyze—all from the GUI—without touching CLI.”
+
+Clean flows, sensible defaults, minimal jargon exposed directly.
+
+The architecture remains clean and scalable.
+
+You do not need to implement absolutely everything in one go, but you must plan for it and implement core slices.
+
+4. Phase plan (you should refine and adapt)
+
+Use the following as a starting roadmap, but you are free to refine, reorder, and refine details as you understand the code.
+
+Phase 1 – Map CLI → GUI capabilities (planning step, no heavy code yet)
+
+Read the existing CLI surface (from AI_understanding.md and CLI code), and produce (in comments or a short doc) a mapping:
+
+qv init project / workflow / step
+
+qv import-structure
+
+qv list
+
+qv rename, qv delete
+
+qv configure workflow / structure / step
+
+qv run workflow / step / structure
+
+qv analyze scf/dos/band
+
+qv detect-qe, qv params
+
+→ For each, decide:
+
+Does a GUI feature already exist?
+
+If not, what would the user-facing flow look like? (wizard, context menu, form?)
+
+From that mapping, propose a feature priority:
+
+Must-have for first user testing.
+
+Nice-to-have, later.
+
+Purely advanced / expert.
+
+Do this planning in-code (as comments or TODOs) or in a markdown note; don’t just keep it in your head.
+
+Phase 2 – Environment & Settings (QE, paths, defaults)
+
+Goal: a user can understand and repair environment issues without CLI.
+
+Add a Settings / Environment panel:
+
 Show:
-QE status with a “Re-detect QE” button and clear messages if QE is missing.
-Current default project root (if any) with a browse button.
-Job concurrency (for now, even if you only support 1 worker, you can show it but maybe keep non-editable).
-Use form validation + clear error messages.
-Make sure this panel is safe if QE is not installed (no crashes).
-Goal: a user can open Settings first, understand whether QE is available, and fix basic path issues without touching the CLI.
-2. Resource management: rename / delete / configure in GUI
-Map the core CLI CRUD/configure commands into the GUI so users can manage projects without terminal.
-Focus on structures and workflows:
-Rename
-Add “Rename…” to the structure and workflow detail panels (kebab menu or button).
-Show a small dialog to edit the name.
-Call daemon RPCs that wrap the existing configure / rename logic.
-Refresh lists and keep selection after rename.
-Delete
-Add “Delete…” with a confirmation dialog (show what will be removed; for workflows mention steps and runs may be affected).
-Wrap qv delete workflow/structure via daemon RPCs.
-Update lists and clear detail panel if the deleted item was selected.
-Basic configure
-For workflows:
-Allow changing associated structure (dropdown) and step order (simple up/down controls or drag-reorder if easy).
-Map to existing configure workflow --structure and --reorder logic.
-For structures:
-At minimum, allow editing display name and maybe a short description field stored in metadata.
-Keep the UI simple but robust; avoid exposing raw YAML for now.
-3. Step-level inspection & run
-Right now workflows are top-level runnable. Make steps first-class in the GUI:
-In the Workflow detail panel:
-Each step should be clickable to show a Step detail view:
-Step id, type (scf, nscf, dos, bands, etc.).
-Structure reference.
-Basic parameters: at least calculation type, cutoff(s), k-points summary.
-Add a “Run Step” button that:
-Submits a job.submit_run_step job (you already have plumbing; extend as needed).
-Shows a toast and links to Jobs.
-If it’s low-effort:
-For SCF-like steps, also show last run status (from recent jobs filtered by step id).
-For DOS/Bands steps, provide a shortcut to open the Analysis view pre-filtered to that step’s outputs (if you can determine them easily).
-Goal: a power user can debug a problematic step directly from the GUI.
-4. Error handling & robustness for user testing
-Before letting real users touch it, harden the obvious sharp edges:
-Daemon / connection issues
-If the daemon fails to start or dies:
-Show a clear top-level error banner (“Backend not available”) instead of silent failures.
-Offer a “Retry / Restart backend” action that attempts to re-spawn the daemon.
-Project path & permissions
-When load/create/import fails due to invalid path or permissions, show concrete messages:
-“Directory is not writable.”
-“project.qv.yml not found under this path.”
-Jobs
-Make sure the UI behaves well if:
-Job list is empty.
-There are many jobs (use reasonable list limits / paging / truncation).
-Logs are very large (your existing tail/truncation logic should be enforced).
-Global fallback
-Consider adding a simple React error boundary around the main content area to prevent one broken panel from killing the whole app view, and show a “Something went wrong” message with an option to reload that view.
-5. Final UX polish for first user test
-Remember the last opened project and last active view across app restarts (using settings/local config).
-Tighten visual hierarchy:
-Make primary actions (Run workflow, Import structure, New workflow) more visually prominent than debug/dev tools.
-Make sure keyboard focus works in main forms (Enter to submit, Esc to cancel where appropriate).
-Constraints
-Keep all new RPCs and models typed in qv.ts, and use useQVClient / useJobs instead of ad-hoc fetches.
-Prefer incremental changes over sweeping refactors, unless a refactor clearly simplifies things.
-Don’t regress existing features: project creation/import, templates, 3D viewer, analysis, Jobs panel.
-Work in small steps: Settings → resource management → step-level run → robustness/polish. After that, the app should be in a state where a real user can install dependencies, point at a QE project, and do meaningful work without touching the CLI.
+
+QE detection status (found? which pw.x? version?).
+
+Python/daemon info (version, venv path).
+
+Default project root (if any).
+
+RPCs to:
+
+Get environment info.
+
+Trigger QE detection (wrap existing detection logic).
+
+Update simple settings (default project root).
+
+Persist settings in a config file under app userData (or similar), and make the daemon read/use them on startup when appropriate.
+
+UX: simple, robust, cannot crash when QE is absent.
+
+Phase 3 – Resource management parity (projects / structures / workflows)
+
+Goal: CRUD + configure can be done fully from the GUI.
+
+Focus on:
+
+Projects
+
+Already: create + load.
+
+Add: recent project list, remove from recent, open in Finder/File Explorer.
+
+Structures
+
+Already: list + import + view (3D).
+
+Add:
+
+Rename.
+
+Delete (with confirmation).
+
+Optional: a “description” field (persisted in metadata).
+
+Workflows
+
+Already: list + create from template + run.
+
+Add:
+
+Rename.
+
+Delete (with cascade warning).
+
+Change associated structure (dropdown).
+
+Reorder steps (up/down buttons or simple drag; map to configure workflow --reorder).
+
+Optional: duplicate workflow.
+
+Make sure these all go through daemon/QVService and respect existing models.
+
+Phase 4 – Step-level inspection & parameter editing (at least read-only + simple edits)
+
+Goal: investigate & tweak steps like qv configure step and parameter overrides.
+
+Extend workflow detail to have a Step detail view:
+
+Step metadata: id, type, structure, parent workflow.
+
+Parameter summary (CONTROL, SYSTEM, K_POINTS, etc.).
+
+Add Run Step → submit job for a single step.
+
+Start with read-only parameters, then introduce:
+
+A safe subset of editable parameters (e.g. ecutwfc, k-point density, smearing).
+
+Use structured forms, not raw YAML.
+
+Let the daemon apply changes via existing config helpers.
+
+Design this so it can grow into a full parameter editor later.
+
+Phase 5 – Analysis UX integration with jobs & runs
+
+Goal: Analysis is about runs, not just files.
+
+Connect Analysis panel to the Job system:
+
+Allow choosing a workflow and selecting a specific completed job as the source of SCF/DOS/Bands data.
+
+The daemon should provide enough metadata to map a job → output files → analysis results.
+
+UX:
+
+From a workflow detail or job detail, provide a “View in Analysis” button that auto-fills the selection.
+
+Phase 6 – Robustness & polish for user testing
+
+Strong error handling:
+
+Daemon startup / crash detection.
+
+QE missing / misconfigured.
+
+File permission issues.
+
+Graceful empty states and loading skeletons.
+
+Persist:
+
+Last opened project.
+
+Last active view.
+
+Basic window state (optional).
+
+Make primary flows obvious:
+
+“Create project”
+
+“Import structure”
+
+“Create workflow from template”
+
+“Run workflow”
+
+“Monitor jobs”
+
+“Analyze results”
+
+5. Engineering guidelines (non-negotiable)
+
+All new RPCs:
+
+Define in QVCommandMap with precise types.
+
+Implement in daemon with clear, small handlers.
+
+Expose via useQVClient / other hooks, not ad-hoc IPC.
+
+Keep components focused:
+
+Layout vs content vs controls vs dialogs split.
+
+Extract hooks when state/logic grows.
+
+Prefer incremental PR-sized changes:
+
+Don’t do giant rewrites unless necessary.
+
+When you introduce new abstractions (e.g. “Run context”, “Recent projects”, “Step parameter form model”), document them briefly in AI_understanding.md or a small doc.
+
+6. How to start
+
+Read the docs and key modules as in §0.
+
+Build the CLI → GUI capability mapping and priority list (Phase 1).
+
+Implement Phase 2 (Settings) and part of Phase 3 (rename/delete for structures/workflows).
+
+Iterate, updating AI_understanding.md to reflect any important architectural additions.
+
+You have freedom to refine the plan as you understand the code better, as long as you stay aligned with the core architecture and aim toward GUI ≈ CLI feature parity, with good UX and maintainable code.
+
+
+
+Implementation summary:
+I've completed implementing the GUI-CLI parity features. Here's a summary of what was built:
+Summary of Implemented Features
+Phase 2 - Settings & Environment Panel
+Created SettingsPanel component showing:
+QE detection status, version, and paths
+Python/daemon version info
+Platform information
+"Re-detect QE" button
+Added daemon RPCs: get_environment_info, detect_qe_installation
+Phase 3 - Resource Management (Rename/Delete)
+Created RenameDialog - Generic rename dialog with validation
+Created DeleteConfirmDialog - Confirmation with dependency warnings and force delete option
+Wired up rename/delete for structures in StructureListPanel
+Wired up rename/delete for workflows in WorkflowListPanel
+Action buttons appear on hover with edit ✏️ and delete 🗑️ icons
+Phase 4 - Step Detail View
+Created StepDetailPanel showing:
+Step metadata (type, ID, structure, path)
+QE parameters organized by namelist (expandable/collapsible)
+QE cards (expandable JSON)
+Species overrides
+"Run Step" button for individual step execution
+Integrated into workflows view (shown below workflow detail when step is clicked)
+Files Created/Modified
+New Components:
+gui/src/components/panels/SettingsPanel.tsx + .css
+gui/src/components/panels/StepDetailPanel.tsx + .css
+gui/src/components/dialogs/RenameDialog.tsx + .css
+gui/src/components/dialogs/DeleteConfirmDialog.tsx + .css
+Updated Files:
+gui/src/App.tsx - Added new state, handlers, and view routing
+gui/src/App.css - Updated layout for step detail in workflows view
+gui/src/types/qv.ts - Added environment info types
+gui/src/components/layout/Sidebar.tsx - Added Settings tab
+gui/src/components/panels/index.ts - Exported new components
+gui/src/components/dialogs/index.ts - Exported new dialogs
+gui/src/components/panels/WorkflowListPanel.css - Added action button styles
+src/quantumvitas/api.py - Added get_environment_info, detect_qe_installation
+src/quantumvitas/daemon/server.py - Added environment handlers
+AI_understanding.md - Documented all new features
+All TypeScript code compiles successfully. The GUI now has significantly improved CLI parity with the ability to:
+View and manage environment settings
+Rename and delete structures/workflows
+Inspect step details and run individual steps
+
+
+You are the same AI that just implemented:
+
+The full Job system (async runs, JobsPanel, logs, badges, toasts).
+
+SettingsPanel with QE/env info and “Re-detect QE”.
+
+Rename/Delete for structures & workflows with dialogs.
+
+StepDetailPanel with metadata, QE parameters/cards/species, and “Run Step”.
+
+Assume you still remember the architecture and code structure; no need to re-summarize it. We now want to push the app to a state that’s ready for full workflow user testing, with near-parity to the CLI and a smooth end-to-end UX.
+
+Be ambitious and systematic.
+
+High-level goal for this iteration
+
+A typical user should be able to:
+
+Start the app (first time, nothing configured).
+
+Detect QE or set it up in Settings.
+
+Create/open a project.
+
+Import a structure (Si).
+
+Create a workflow from a template.
+
+Inspect and tweak step parameters (for common things).
+
+Run the workflow and monitor jobs/logs.
+
+Jump to Analysis and see SCF/DOS/bands for that run.
+
+All without touching the CLI.
+
+You don’t need to implement every exotic CLI feature, but the above path must be reliable, understandable, and pleasant.
+
+1. Step parameter editing (MVP but real)
+
+Extend StepDetailPanel from read-only → light editing for common QE parameters.
+
+Requirements:
+
+In StepDetailPanel:
+
+Add an “Edit parameters” section that shows editable fields for a curated subset:
+
+ecutwfc, ecutrho
+
+conv_thr
+
+occupations, smearing, degauss
+
+k-point mesh (e.g. automatic grid size or gamma vs mesh)
+
+Don’t expose raw YAML in the UI; use proper form inputs.
+
+Show current values, allow change, and a Reset to original / “Reset from template” button.
+
+Backend:
+
+Add a QVService + daemon method that safely updates a step’s parameters:
+
+Works on the structured model, not raw text.
+
+Only touches the selected fields; does not clobber unknown options.
+
+Validates obvious issues (e.g. non-numeric where numeric is expected).
+
+Return updated step spec so the GUI can re-render without reloading the whole project.
+
+UX:
+
+Show clear confirmation / error messages (toasts).
+
+Minimal friction: no need to click “save” in multiple places; one “Apply” is enough.
+
+Keep the scope reasonable but make the UX feel like a real editor, not just a JSON patcher.
+
+2. Workflow editing: reorder steps & change structure
+
+We want GUI parity with qv configure workflow --reorder and --structure.
+
+Reorder steps:
+
+In the workflow detail view:
+
+Add controls to reorder steps:
+
+Either drag-and-drop (nice) or ↑/↓ buttons (acceptable).
+
+When order changes:
+
+Call a daemon/QVService method that updates the workflow model (and underlying YAML) to reflect the new step order.
+
+Refresh the workflow detail and StepDetailPanel accordingly.
+
+Change structure:
+
+In the workflow detail view:
+
+Add a “Structure” selector (dropdown of existing structures in the project).
+
+On change:
+
+Call a service method equivalent to configure workflow --structure:
+
+Update workflow’s structure.
+
+Update all steps’ structure field to keep them consistent.
+
+If there are steps with explicit conflicting structures, either:
+
+Normalize them to the new structure, or
+
+Show a warning and require user confirmation.
+
+Surface any mismatch warnings in a user-friendly way (banner/toast), not buried only in logs.
+
+3. Jobs ↔ Analysis integration
+
+We already have jobs and analysis panels; now connect them.
+
+In JobsPanel:
+
+When a workflow job is completed successfully:
+
+In the JobDetailPanel, add a “View Analysis” button.
+
+Clicking it should:
+
+Switch to Analysis view.
+
+Pre-select the corresponding workflow and (if applicable) the relevant steps (SCF/DOS/Bands).
+
+Leverage existing analysis RPCs:
+
+get_scf_convergence, get_dos_data, get_band_structure_data.
+
+You may need to enrich job metadata (e.g. store workflow id/slug, step ids and output paths) so the analysis layer knows what files to use.
+
+Goal: user runs a workflow → sees it finish in Jobs → one click to get the plots.
+
+4. Pre-flight checks & unified error UX for runs
+
+Running QE from the GUI should fail early and clearly if something is wrong, not only through cryptic logs.
+
+Pre-flight checks:
+
+Before submitting a job for run_workflow or run_step:
+
+Ask the daemon to perform a “dry-run check”:
+
+QE detected and usable?
+
+Project path exists and is writable?
+
+Structure & pseudo files exist?
+
+For DOS/BANDS step: required preceding SCF/NSCF results exist?
+
+If checks fail:
+
+Do NOT enqueue the job.
+
+Show a clear error dialog or toast with a concise message and a “Details” area (or link to Debug view).
+
+Unified error handling:
+
+Ensure that all RPC errors are consistently caught in the GUI:
+
+Map them to user-friendly messages wherever possible.
+
+Still show raw stack / details in Debug/Logs for power users.
+
+Consider introducing a small error utility in the GUI:
+
+Normalizes daemon error payloads into { title, message, details? }.
+
+5. Onboarding & convenience enhancements (optional but high impact)
+
+If time allows this iteration, please also:
+
+Demo project:
+
+Add a “Create demo Si project” action in the Summary/Welcome screen.
+
+Use existing templates (Si DOS/bands) to create a ready-to-run project in a chosen directory.
+
+After creation, auto-load it and prompt the user to run the workflow.
+
+Recent projects & auto-reopen:
+
+Track recent project roots in a small local config (reuse whatever you did for Settings).
+
+In the sidebar or Summary panel:
+
+Show a “Recent projects” list with click-to-open.
+
+Optionally, reopen last project at startup (toggle in Settings).
+
+These make it much easier to test and demo the app without manual project management every time.
+
+6. Implementation style & constraints
+
+Do not break the existing architecture:
+
+All new daemon capabilities go through QVService.
+
+All new RPCs must be added and typed in src/types/qv.ts and used via useQVClient / useJobs.
+
+Keep React components focused:
+
+If a panel or hook grows too large, split it.
+
+Update AI_understanding.md with:
+
+The new step parameter editing workflow.
+
+The workflow editing capabilities.
+
+The job→analysis linkage and pre-flight checks.
+
+How to proceed
+
+Briefly scan what you implemented last time (SettingsPanel, StepDetailPanel, JobsPanel, rename/delete) to refresh context.
+
+Sketch a short plan (in comments or a small markdown) for:
+
+Parameter editing model.
+
+Workflow edit RPCs.
+
+How jobs will reference analysis targets.
+
+Implement the features above in reasonable increments, keeping TypeScript and Python well-structured and type-safe.
+
+Make sure the app still runs via npm run dev and that the core end-to-end path (create → import → template workflow → edit → run → jobs → analysis) works.
+
+Be bold but careful: aim for something you’d be comfortable handing to a colleague for real QE workflow testing.
+

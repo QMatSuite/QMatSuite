@@ -10,13 +10,17 @@ interface StructureListPanelProps {
   isLoading?: boolean;
   selectedId?: string | null;
   onSelect?: (structure: StructureInfo) => void;
+  onRename?: (structure: StructureInfo) => void;
+  onDelete?: (structure: StructureInfo) => void;
 }
 
 export function StructureListPanel({ 
   structures, 
   isLoading, 
   selectedId,
-  onSelect 
+  onSelect,
+  onRename,
+  onDelete,
 }: StructureListPanelProps) {
   if (isLoading) {
     return (
@@ -63,37 +67,70 @@ export function StructureListPanel({
       
       <div className="structure-list">
         {structures.map((structure) => (
-          <button
+          <div
             key={structure.id}
             className={`structure-item ${selectedId === structure.id ? 'structure-item--selected' : ''}`}
-            onClick={() => onSelect?.(structure)}
           >
-            <div className="structure-item__main">
-              <div className="structure-item__name">{structure.name}</div>
-              <div className="structure-item__formula">{structure.formula}</div>
-            </div>
-            
-            <div className="structure-item__details">
-              <div className="structure-item__stat">
-                <span className="stat-value">{structure.n_atoms}</span>
-                <span className="stat-label">atoms</span>
+            <button
+              className="structure-item__content"
+              onClick={() => onSelect?.(structure)}
+            >
+              <div className="structure-item__main">
+                <div className="structure-item__name">{structure.name}</div>
+                <div className="structure-item__formula">{structure.formula}</div>
               </div>
-              <div className="structure-item__stat">
-                <span className="stat-value">{structure.n_species}</span>
-                <span className="stat-label">species</span>
+              
+              <div className="structure-item__details">
+                <div className="structure-item__stat">
+                  <span className="stat-value">{structure.n_atoms}</span>
+                  <span className="stat-label">atoms</span>
+                </div>
+                <div className="structure-item__stat">
+                  <span className="stat-value">{structure.n_species}</span>
+                  <span className="stat-label">species</span>
+                </div>
               </div>
-            </div>
+              
+              <div className="structure-item__lattice">
+                <span className="lattice-param">a={structure.lattice_params.a.toFixed(2)}</span>
+                <span className="lattice-param">b={structure.lattice_params.b.toFixed(2)}</span>
+                <span className="lattice-param">c={structure.lattice_params.c.toFixed(2)}</span>
+              </div>
+              
+              <div className="structure-item__path">
+                <code>{structure.path}</code>
+              </div>
+            </button>
             
-            <div className="structure-item__lattice">
-              <span className="lattice-param">a={structure.lattice_params.a.toFixed(2)}</span>
-              <span className="lattice-param">b={structure.lattice_params.b.toFixed(2)}</span>
-              <span className="lattice-param">c={structure.lattice_params.c.toFixed(2)}</span>
-            </div>
-            
-            <div className="structure-item__path">
-              <code>{structure.path}</code>
-            </div>
-          </button>
+            {(onRename || onDelete) && (
+              <div className="structure-item__actions">
+                {onRename && (
+                  <button
+                    className="item-action-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRename(structure);
+                    }}
+                    title="Rename structure"
+                  >
+                    ✏️
+                  </button>
+                )}
+                {onDelete && (
+                  <button
+                    className="item-action-btn item-action-btn--danger"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(structure);
+                    }}
+                    title="Delete structure"
+                  >
+                    🗑️
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         ))}
       </div>
     </div>
