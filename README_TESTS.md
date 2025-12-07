@@ -10,7 +10,14 @@ QuantumVITAS uses a two-tier testing structure:
 - **Duration**: < 5 minutes
 - **Location**: `tests/`
 
-### 2. Extended Tests (`extended-tests/`)
+### 2. GUI E2E Tests (`gui/tests/e2e/`)
+- **Purpose**: End-to-end testing of the Electron GUI application
+- **CI**: Run automatically on every push/PR (after QE compilation)
+- **Duration**: ~44 seconds (all tests)
+- **Location**: `gui/tests/e2e/`
+- **Requires**: QE installation (for workflow run tests)
+
+### 3. Extended Tests (`extended-tests/`)
 - **Purpose**: Comprehensive tests based on full QE official test-suite
 - **CI**: NOT run automatically (manual trigger or schedule only)
 - **Duration**: Hours for full suite
@@ -33,6 +40,29 @@ pytest -m qe_core
 pytest -m qe_cli
 ```
 
+### GUI E2E Tests
+
+```bash
+cd gui
+# Build Electron app first
+npm run build:e2e
+
+# Run all E2E tests
+npm run test:e2e
+
+# Run specific test file
+npx playwright test tests/e2e/welcome.spec.ts --project=electron
+
+# Run in headed mode (see browser)
+npx playwright test --headed --project=electron
+```
+
+**Note**: E2E tests use a unified fixture that automatically chooses the launch strategy:
+- **Linux/Windows**: Uses Playwright's native `_electron.launch()`
+- **macOS**: Uses CDP (Chrome DevTools Protocol) workaround
+
+See `AI_understanding.md` section 22 for detailed E2E testing documentation.
+
 ### Extended Tests (Developer)
 
 ```bash
@@ -53,12 +83,18 @@ python3 extended-tests/analyze_results.py results.json
 
 ### GitHub Actions
 
-Quick tests run automatically:
-- ✅ On push to main/develop
-- ✅ On pull requests
+**Quick tests** run automatically:
+- ✅ On push to `v2-python` branch
+- ✅ On pull requests targeting `v2-python`
 - ✅ Daily schedule
 
-Extended tests:
+**GUI E2E tests** run automatically:
+- ✅ On push to `v2-python` branch (always, no conditional skipping)
+- ✅ On pull requests targeting `v2-python`
+- ✅ After QE compilation completes (QE required for workflow tests)
+- ✅ On both Linux and macOS
+
+**Extended tests**:
 - ⏸️ Manual workflow dispatch only
 - ⏸️ Optional schedule
 - ❌ NOT on every push/PR
@@ -85,6 +121,13 @@ See `.github/workflows/tests.yml` for details.
 │   ├── cli/                # CLI-driven QE workflows
 │   ├── core/               # Test framework
 │   └── conftest.py         # Pytest config
+│
+├── gui/tests/e2e/          # GUI E2E tests (CI)
+│   ├── fixtures/           # Unified Electron fixture
+│   ├── helpers/            # Launch helpers (electron.ts, electron_cdp.ts)
+│   ├── welcome.spec.ts     # Welcome screen tests
+│   ├── demo_workflow.spec.ts # Demo project tests
+│   └── demo_workflow_run.spec.ts # Full workflow execution test
 │
 ├── extended-tests/         # Extended tests (developer)
 │   ├── suites/            # Test suites

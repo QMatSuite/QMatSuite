@@ -2856,5 +2856,285 @@ This fixes the bug where clicking "bands" step returned "bands-pp" because "band
 
 ---
 
-*Last updated: 2025-12-07*
+## 22. GUI E2E Testing (Playwright + Electron)
+
+### 22.1 Overview
+
+The GUI uses **Playwright** for end-to-end (E2E) testing of the Electron application. All tests use a **unified Electron fixture** that automatically chooses the appropriate launch strategy based on platform:
+
+- **Linux**: Uses Playwright's native `_electron.launch()` API (works out of the box)
+- **macOS**: Uses CDP (Chrome DevTools Protocol) workaround (required due to Playwright bug)
+- **Windows**: Uses Linux path (can be extended if needed)
+
+**Key benefit**: The same test specs run on all platforms - the fixture handles platform differences transparently.
+
+### 22.2 The macOS Compatibility Issue
+
+Playwright's `_electron.launch()` automatically injects `--remote-debugging-port=0` for Chromium debugging. On macOS, Electron rejects this flag with "bad option: --remote-debugging-port=0", causing tests to fail.
+
+**Root cause**: Playwright's automatic flag injection doesn't work with Electron on macOS, even with the latest Playwright version.
+
+**Solution**: Manual Electron spawn + CDP connection workaround, hidden behind the unified fixture.
+
+### 22.3 Unified Test Fixture
+
+**Location**: `gui/tests/e2e/fixtures/electronTest.ts`
+
+The unified fixture automatically detects the platform and chooses the appropriate launch method:
+
+```typescript
+import { electronTest as test, expect } from './fixtures/electronTest';
+
+test('my test', async ({ appPage }) => {
+  await expect(appPage.getByTestId('qv-welcome-title')).toBeVisible();
+});
+```
+
+**How it works**:
+- On Linux/Windows: Uses `launchApp()` from `helpers/electron.ts` (Playwright's `_electron.launch()`)
+- On macOS: Uses `launchElectronViaCDP()` from `helpers/electron_cdp.ts` (CDP workaround)
+
+The fixture provides a single `appPage: Page` fixture that works identically on all platforms.
+
+### 22.4 Test Architecture
+
+#### Linux/Windows Launch (Native Playwright)
+
+**Location**: `gui/tests/e2e/helpers/electron.ts`
+
+Uses Playwright's built-in `_electron.launch()` API:
+
+```typescript
+import { _electron as electron, ElectronApplication, Page } from '@playwright/test';
+
+const app = await electron.launch({
+  executablePath: electronExecutablePath,  // Platform-specific binary path
+  args: [mainPath],                         // dist-electron/main.js
+  cwd: guiDir,
+});
+```
+
+#### macOS Launch (CDP Workaround)
+
+**Location**: `gui/tests/e2e/helpers/electron_cdp.ts`
+
+Manually spawns Electron with remote debugging enabled, then connects via CDP:
+
+```typescript
+// 1. Spawn Electron with environment variable
+const electronProcess = spawn(electronExecutablePath, [mainPath], {
+  env: {
+    ELECTRON_REMOTE_DEBUG_PORT: '9222',  // Enables remote debugging
+    // ... other env vars
+  },
+});
+
+// 2. Extract WebSocket URL from Electron's stderr output
+// Electron prints: "DevTools listening on ws://127.0.0.1:9222/devtools/browser/..."
+const wsUrl = extractFromStderr(electronProcess);
+
+// 3. Connect via CDP
+const browser = await chromium.connectOverCDP(wsUrl);
+```
+
+**Test files** (all use the unified fixture):
+- `tests/e2e/welcome.spec.ts` - Welcome screen tests
+- `tests/e2e/demo_workflow.spec.ts` - Demo project creation and workflow step verification
+- `tests/e2e/demo_workflow_run.spec.ts` - Full workflow execution with status tracking and analysis verification (combined test)
+
+### 22.4 Remote Debugging Setup
+
+The Electron main process (`gui/electron/main.ts`) enables remote debugging when `ELECTRON_REMOTE_DEBUG_PORT` is set:
+
+```typescript
+// Enable remote debugging for E2E tests if requested via environment variable
+if (process.env.ELECTRON_REMOTE_DEBUG_PORT) {
+  const port = parseInt(process.env.ELECTRON_REMOTE_DEBUG_PORT, 10);
+  if (!isNaN(port)) {
+    // This must be called before app.whenReady()
+    app.commandLine.appendSwitch('remote-debugging-port', port.toString());
+  }
+}
+```
+
+This allows the CDP helper to connect to Electron's debugging endpoint.
+
+### 22.5 Platform-Specific Binary Paths
+
+Both helpers compute Electron binary paths explicitly:
+
+```typescript
+function getElectronExecutablePath(): string {
+  const electronDistDir = path.join(repoRoot, 'gui', 'node_modules', 'electron', 'dist');
+  
+  if (os.platform() === 'darwin') {
+    // macOS: Electron.app/Contents/MacOS/Electron
+    return path.join(electronDistDir, 'Electron.app', 'Contents', 'MacOS', 'Electron');
+  } else if (os.platform() === 'win32') {
+    // Windows: electron.exe
+    return path.join(electronDistDir, 'electron.exe');
+  } else {
+    // Linux: electron
+    return path.join(electronDistDir, 'electron');
+  }
+}
+```
+
+**Key point**: Always use the direct binary path, never a wrapper script or `require('electron')`.
+
+### 22.6 Running E2E Tests
+
+**Same command on all platforms** - the fixture handles platform differences:
+
+```bash
+cd gui
+npm run build:e2e  # Build Electron app first
+npm run test:e2e   # Runs all E2E tests (unified fixture)
+```
+
+Or run specific tests:
+```bash
+npx playwright test tests/e2e/welcome.spec.ts --project=electron
+```
+
+The fixture automatically:
+- Uses `_electron.launch()` on Linux/Windows
+- Uses CDP workaround on macOS
+
+### 22.7 CI Configuration
+
+The GitHub Actions workflow (`.github/workflows/tests.yml`) runs E2E tests **on every push** to the `v2-python` branch, **after QE compilation** is complete. The tests run on both Linux and macOS:
+
+```yaml
+# E2E tests run as part of the tests-with-qe job, after:
+# 1. QE source download and compilation
+# 2. QE installation verification
+# 3. Python dependencies installation
+# 4. Python pytest tests
+
+- name: Run GUI E2E tests
+  run: |
+    export QE_HOME=$HOME/src/q-e-qe-7.5
+    export PATH="$QE_HOME/bin:$PATH"
+    # Unified E2E tests - fixture automatically chooses launch strategy:
+    # Linux: uses Playwright's _electron.launch()
+    # macOS: uses CDP workaround
+    if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+      xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" \
+        npx playwright test \
+          tests/e2e/welcome.spec.ts \
+          tests/e2e/demo_workflow.spec.ts \
+          tests/e2e/demo_workflow_run.spec.ts \
+          --project=electron
+    else
+      npx playwright test \
+        tests/e2e/welcome.spec.ts \
+        tests/e2e/demo_workflow.spec.ts \
+        tests/e2e/demo_workflow_run.spec.ts \
+        --project=electron
+    fi
+```
+
+**Key points**:
+- E2E tests **always run on push** (no conditional skipping)
+- Tests run **after QE compilation** (QE must be available for `demo_workflow_run.spec.ts`)
+- Both Linux and macOS run the exact same test files
+- Linux uses `xvfb-run` for headless display; macOS runs directly
+- Tests have access to QE binaries via `QE_HOME` and `PATH` environment variables
+
+### 22.8 Test Data Attributes
+
+All UI components use `data-testid` attributes for reliable test selection:
+
+| Component | Test IDs |
+|-----------|----------|
+| Welcome screen | `qv-welcome-title`, `qv-btn-open-project`, `qv-btn-create-new-project`, `qv-btn-create-demo-project` |
+| Navigation | `qv-nav-{home,structures,workflows,jobs,analysis,settings,debug}` |
+| Project summary | `qv-home-project`, `qv-project-path`, `qv-btn-project-reveal` |
+| Workflows | `qv-workflows-view`, `qv-workflow-row`, `qv-workflow-detail`, `qv-btn-run-workflow` |
+| Steps | `qv-steps-list`, `qv-step-row`, `qv-step-detail`, `qv-step-id`, `qv-step-file-path` |
+| Jobs | `qv-jobs-view`, `qv-job-row`, `qv-job-status`, `qv-job-detail` |
+| Analysis | `qv-analysis-view`, `qv-analysis-bands-chart`, `qv-analysis-fermi`, `qv-analysis-kpath` |
+| Dialogs | `qv-create-project-dialog`, `qv-input-parent-dir`, `qv-input-project-name`, `qv-btn-confirm-create` |
+
+### 22.9 Helper Functions
+
+**`gui/tests/e2e/fixtures/electronTest.ts`** (Unified fixture):
+- `electronTest` - Playwright test fixture that provides `appPage: Page`
+- Automatically chooses launch strategy based on platform
+- Re-exports `expect`, `navigateToView`, `waitForDaemonConnection`
+
+**`gui/tests/e2e/helpers/electron.ts`** (Linux/Windows):
+- `launchApp(options?)` - Launches Electron via `_electron.launch()`
+- `closeApp(app)` - Closes Electron app
+- `navigateToView(page, view)` - Navigates to a view tab
+- `waitForDaemonConnection(page, timeout?)` - Waits for daemon connection
+
+**`gui/tests/e2e/helpers/electron_cdp.ts`** (macOS):
+- `launchElectronViaCDP(options?)` - Spawns Electron and connects via CDP
+- Returns `{ browser, page, electronProcess, close }`
+- Automatically extracts WebSocket URL from Electron output
+- Handles process cleanup
+
+**`gui/tests/e2e/helpers/paths.ts`**:
+- `getRepoRoot()` - Finds repository root
+- `getGuiDir()` - Gets GUI directory
+- `ensureE2EProjectsRoot()` - Ensures `temp/e2e_projects/` exists
+- `createUniqueProjectDir(prefix)` - Creates unique test project directory in `temp/e2e_projects/`
+- `cleanupProjectDir(dirPath)` - Cleans up test projects
+
+### 22.10 Test Performance
+
+- **Welcome test**: ~3.1 seconds
+- **Demo workflow tests**: ~5.2 seconds each (2 tests)
+- **Full workflow run test**: ~30 seconds (includes QE execution, status tracking, and analysis verification)
+
+**Total E2E test suite**: ~44 seconds (all 4 tests)
+
+All tests properly clean up Electron processes after completion. Tests run serially (one Electron instance at a time) to ensure proper isolation.
+
+### 22.11 Known Limitations
+
+1. **macOS requires CDP workaround**: Native `_electron.launch()` doesn't work on macOS due to Playwright bug
+2. **QE required for workflow tests**: `demo_workflow_run.spec.ts` requires QE to be installed (tests fail if QE is not available)
+3. **Test isolation**: Each test creates a unique project directory in `temp/e2e_projects/`
+4. **Serial execution**: Tests run serially (not in parallel) to ensure only one Electron instance exists at a time
+5. **Test project cleanup**: `temp/e2e_projects/` is cleared before each test but left after tests for inspection
+
+### 22.12 Files Structure
+
+```
+gui/tests/e2e/
+├── fixtures/
+│   └── electronTest.ts       # Unified Electron fixture (auto-detects platform)
+├── helpers/
+│   ├── electron.ts           # Linux/Windows: Native Playwright API
+│   ├── electron_cdp.ts       # macOS: CDP workaround
+│   ├── paths.ts              # Path utilities (creates projects in temp/e2e_projects/)
+│   └── index.ts              # Exports
+├── welcome.spec.ts           # Welcome screen tests (unified - works on all platforms)
+├── demo_workflow.spec.ts     # Demo workflow tests (unified - works on all platforms)
+└── demo_workflow_run.spec.ts # Full workflow run test (unified - combines status tracking and analysis verification)
+```
+
+**Note**: All test files use the unified `electronTest` fixture. There are no platform-specific test files anymore.
+
+### 22.13 Test Project Location
+
+All E2E-generated projects are created in `temp/e2e_projects/` (relative to repo root). The `paths.ts` helper ensures this directory exists and creates unique subdirectories for each test run.
+
+**Test lifecycle**:
+- Before each test: `temp/e2e_projects/` is cleared (via `clearE2EProjectsRoot()`)
+- During test: Unique project directories are created (e.g., `temp/e2e_projects/e2e-run-<timestamp>/`)
+- After test: Projects are left in place for inspection (no cleanup)
+
+### 22.14 Future Improvements
+
+- **Test coverage**: Add more E2E tests for edge cases and error handling
+- **Windows support**: Verify and extend Windows support if needed
+- **Playwright fix**: When Playwright fixes macOS compatibility, the fixture can be simplified to always use `_electron.launch()`
+
+---
+
+*Last updated: 2025-01-XX*
 *Based on commit history through v2-python branch*
