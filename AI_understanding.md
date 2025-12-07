@@ -2786,5 +2786,75 @@ def _handle_find_project_root(self, payload: Dict[str, Any]) -> Dict[str, Any]:
 
 ---
 
+## 21. Refactoring History - 2025-12-07 Session 3
+
+### Project Creation/Opening UX Improvements
+
+| Feature | Implementation |
+|---------|---------------|
+| Unified CreateProjectDialog | Parent directory + project name approach, creates `<parent>/<slug>` |
+| Default projects directory | Setting in SettingsPanel, persisted in localStorage |
+| Collapsible sidebar | Toggle button at bottom-right, shows only icons when collapsed |
+| Settings panel scrollability | Added `overflow-y: auto` and `height: 100%` to panel CSS |
+
+### Bug Fixes
+
+| Fix | Details |
+|-----|---------|
+| Demo workflow step display | Fixed step resolution order in `core/resolution.py` - now checks `meta.name`/`meta.slug` before `step_type` |
+| CreateProjectDialog CSS missing | Created `gui/src/components/dialogs/CreateProjectDialog.css` |
+| Sidebar syntax error | Fixed missing `>` on opening `<div>` tag in `Sidebar.tsx` |
+
+### Reveal in Finder Feature
+
+Added "Reveal in Finder" buttons to all resource panels:
+
+| Panel | Implementation |
+|-------|---------------|
+| `StepDetailPanel` | File Location section with path and Reveal button |
+| `WorkflowDetailPanel` | Updated existing File Location section |
+| `StructureDetailPanel` | Updated existing File Location section |
+| `ProjectSummaryPanel` | Project path with Reveal button |
+
+### Step Resolution Order (Important!)
+
+The step resolution in `core/resolution.py` now follows this order:
+
+1. **Path** - if selector looks like a path
+2. **ULID** - if selector is a 26-char uppercase alphanumeric string
+3. **meta.name/meta.slug** - exact match in step YAML's `meta` section
+4. **id field** - top-level `id` field in step YAML (legacy)
+5. **step_type** - match on `step_type` field (backwards compatibility)
+6. **filename stem** - match on step file name without `.step.yaml`
+
+This fixes the bug where clicking "bands" step returned "bands-pp" because "bands" matched `step_type` of `bands-pp.step.yaml` before checking `meta.name`.
+
+### Modified Files
+
+**Backend**:
+- `src/quantumvitas/core/resolution.py` - Fixed step resolution order
+- `src/quantumvitas/api.py` - Added `absolute_path` to step detail responses
+
+**Frontend**:
+- `gui/src/components/dialogs/CreateProjectDialog.tsx` - Parent dir + name approach
+- `gui/src/components/dialogs/CreateProjectDialog.css` - New file
+- `gui/src/components/panels/SettingsPanel.tsx` - Default projects directory setting
+- `gui/src/components/panels/SettingsPanel.css` - Path input styles
+- `gui/src/components/layout/Sidebar.tsx` - Collapsible sidebar, syntax fix
+- `gui/src/components/layout/Sidebar.css` - Collapsed state styles
+- `gui/src/components/layout/StatusBar.tsx` - Full project path display
+- `gui/src/components/layout/StatusBar.css` - Path display styles
+- `gui/src/components/panels/StepDetailPanel.tsx` - File location with Reveal button
+- `gui/src/components/panels/StepDetailPanel.css` - File location styles
+- `gui/src/components/panels/WorkflowListPanel.tsx` - Reveal in Finder for workflow
+- `gui/src/components/panels/WorkflowListPanel.css` - File location styles
+- `gui/src/components/panels/StructureListPanel.tsx` - Reveal in Finder for structure
+- `gui/src/components/panels/StructureListPanel.css` - File location styles
+- `gui/src/components/panels/ProjectSummaryPanel.tsx` - Reveal in Finder for project
+- `gui/src/components/panels/ProjectSummaryPanel.css` - Reveal button styles
+- `gui/src/types/qv.ts` - Added `absolute_path` to `StepDetail` interface
+
+---
+
 *Last updated: 2025-12-07*
 *Based on commit history through v2-python branch*
