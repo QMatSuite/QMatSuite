@@ -48,8 +48,8 @@
   flex-shrink: 0;
   border-top: 1px solid var(--border-color);
   background: var(--bg-secondary);
-  max-height: 200px;
-  overflow: hidden;
+  overflow: visible;
+  position: relative;
 }
 
 .app-shell__status-bar {

@@ -2726,3 +2726,36 @@ Feedback: Hover states, focus outlines, and loading states
 Professionalism: Dark theme inspired by VS Code/DataGrip with subtle gradients and shadows
 Accessibility: Visible focus states, sufficient color contrast, semantic HTML
 The app now has a cohesive, professional appearance ready for external users to try.
+
+
+User testing summary:
+Previous AI agent has implemented the GUI and the backend. Now you are to fix the issues and make the GUI usable. First read AI_understanding.md and GUI_ARCHITECTURE.md (and optionally other docs) to understand the architecture and the implementation. Then, try to address the issues one by one. You are a senior developer and I want you to do things in the best SDE practice. Never quick fix.
+The GUI nearly cannot be used at all. The following are perceived issues right now, but do think and check about the whole implementation and try to fix problems. 
+1. Error "Matplotlib is building the font cache; this may take a moment.
+/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py:127: RuntimeWarning: 'quantumvitas.daemon.server' found in sys.modules after import of package 'quantumvitas.daemon', but prior to execution of 'quantumvitas.daemon.server'; this may result in unpredictable behaviour
+  warn(RuntimeWarning(msg))
+[qv-daemon] Daemon started, waiting for requests...
+[qv-daemon] Handler error for create_demo_project: cannot import name 'get_workflow_templates' from 'quantumvitas.core.templates' (/Users/up/quantumVITAS/src/quantumvitas/core/templates.py)
+Traceback (most recent call last):
+  File "/Users/up/quantumVITAS/src/quantumvitas/daemon/server.py", line 275, in handle_request
+    result = handler(request.payload)
+  File "/Users/up/quantumVITAS/src/quantumvitas/daemon/server.py", line 811, in _handle_create_demo_project
+    return QVService.create_demo_project(
+  File "/Users/up/quantumVITAS/src/quantumvitas/api.py", line 2253, in create_demo_project
+    from quantumvitas.core.templates import (
+ImportError: cannot import name 'get_workflow_templates' from 'quantumvitas.core.templates' (/Users/up/quantumVITAS/src/quantumvitas/core/templates.py" when loading demo project
+2. Make test "tests/cli/test_si_bands_workflow_comprehensive.py" (scf->nscf->bands->analyze) the demo project
+3. Structure overview: if not full screen, might be partially visible, but cannot scroll to see.
+4.1 Structure 3D view: do not need to show legend of irrelevant elements.
+4.2 Structure 3D view: add functionality to do supercell visualization and boundary repetition as in the CLI. Reuse the logic from CLI (especially for the bond construction for supercells)
+5. Implement "add step" functionality in a workflow.
+6. Cannot delete workflow "Failed to delete: workflows_depending_on() takes 2 positional arguments but 3 were given"
+7. Daemon logs: make its upper boundary draggable to resize, like in VS Code.
+8. Cannot run workflow "Cannot run workflow: QE installation error: 'QEInstallation' object has no attribute 'get_executable'; Workflow not found: si-bands-3"
+9. Summary not updating: always shows 0 structures, workflows.
+10. Reorder steps: cannot visually see the text. Actually, black font generally does not look good on dark background across GUI. Also, make reorder drag-and-dropppable.
+11. Run step error: "Error 'PosixPath' object has no attribute 'step_type'"
+12. The separation line between workflow list and new workflow should be movable so that if there are more workflows, the user can expand.
+Update the GUI_ARCHITECTURE.md to reflect the changes.
+Update the AI_understanding.md to reflect the changes.
+

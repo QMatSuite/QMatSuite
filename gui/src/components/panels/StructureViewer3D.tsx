@@ -280,6 +280,11 @@ function Scene({ data, showBonds, showUnitCell, showLabels, atomScale, bondScale
 // Main Component
 // =============================================================================
 
+interface StructureViewer3DPropsExtended extends StructureViewer3DProps {
+  onSupercellChange?: (supercell: [number, number, number]) => void;
+  onRepeatBoundaryChange?: (repeatBoundary: boolean) => void;
+}
+
 export function StructureViewer3D({
   data,
   isLoading = false,
@@ -288,11 +293,45 @@ export function StructureViewer3D({
   showLabels = false,
   atomScale = 0.4,
   bondScale = 1.0,
-}: StructureViewer3DProps) {
+  onSupercellChange,
+  onRepeatBoundaryChange,
+}: StructureViewer3DPropsExtended) {
   const [localShowBonds, setLocalShowBonds] = useState(showBonds);
   const [localShowUnitCell, setLocalShowUnitCell] = useState(showUnitCell);
   const [localShowLabels, setLocalShowLabels] = useState(showLabels);
   const [localAtomScale, setLocalAtomScale] = useState(atomScale);
+  const [supercellX, setSupercellX] = useState(1);
+  const [supercellY, setSupercellY] = useState(1);
+  const [supercellZ, setSupercellZ] = useState(1);
+  const [repeatBoundary, setRepeatBoundary] = useState(false);
+  
+  // Get unique elements present in the structure
+  const presentElements = useMemo(() => {
+    if (!data) return [];
+    const elements = new Set<string>();
+    data.atoms.forEach(atom => elements.add(atom.element));
+    if (data.boundary_atoms) {
+      data.boundary_atoms.forEach(atom => elements.add(atom.element));
+    }
+    return Array.from(elements);
+  }, [data]);
+  
+  const handleSupercellChange = (axis: 'x' | 'y' | 'z', value: number) => {
+    const newX = axis === 'x' ? value : supercellX;
+    const newY = axis === 'y' ? value : supercellY;
+    const newZ = axis === 'z' ? value : supercellZ;
+    
+    if (axis === 'x') setSupercellX(value);
+    if (axis === 'y') setSupercellY(value);
+    if (axis === 'z') setSupercellZ(value);
+    
+    onSupercellChange?.([newX, newY, newZ]);
+  };
+  
+  const handleRepeatBoundaryChange = (checked: boolean) => {
+    setRepeatBoundary(checked);
+    onRepeatBoundaryChange?.(checked);
+  };
   
   if (isLoading) {
     return (
@@ -329,7 +368,7 @@ export function StructureViewer3D({
         )}
       </div>
       
-      {/* Controls */}
+      {/* Controls Row 1: Display options */}
       <div className="viewer-controls">
         <label className="control-item">
           <input
@@ -368,6 +407,57 @@ export function StructureViewer3D({
         </label>
       </div>
       
+      {/* Controls Row 2: Supercell and boundary */}
+      {(onSupercellChange || onRepeatBoundaryChange) && (
+        <div className="viewer-controls viewer-controls--supercell">
+          {onSupercellChange && (
+            <div className="control-group">
+              <span className="control-group-label">Supercell:</span>
+              <label className="control-item control-item--number">
+                a
+                <input
+                  type="number"
+                  min="1"
+                  max="5"
+                  value={supercellX}
+                  onChange={(e) => handleSupercellChange('x', parseInt(e.target.value) || 1)}
+                />
+              </label>
+              <label className="control-item control-item--number">
+                b
+                <input
+                  type="number"
+                  min="1"
+                  max="5"
+                  value={supercellY}
+                  onChange={(e) => handleSupercellChange('y', parseInt(e.target.value) || 1)}
+                />
+              </label>
+              <label className="control-item control-item--number">
+                c
+                <input
+                  type="number"
+                  min="1"
+                  max="5"
+                  value={supercellZ}
+                  onChange={(e) => handleSupercellChange('z', parseInt(e.target.value) || 1)}
+                />
+              </label>
+            </div>
+          )}
+          {onRepeatBoundaryChange && (
+            <label className="control-item">
+              <input
+                type="checkbox"
+                checked={repeatBoundary}
+                onChange={(e) => handleRepeatBoundaryChange(e.target.checked)}
+              />
+              Boundary Repeat
+            </label>
+          )}
+        </div>
+      )}
+      
       {/* Canvas */}
       <div className="viewer-canvas">
         <Canvas
@@ -385,17 +475,20 @@ export function StructureViewer3D({
         </Canvas>
       </div>
       
-      {/* Legend */}
+      {/* Legend - only show elements present in the structure */}
       <div className="viewer-legend">
-        {Object.entries(data.element_colors || {}).slice(0, 10).map(([element, color]) => (
-          <div key={element} className="legend-item">
-            <span 
-              className="legend-color" 
-              style={{ background: color }}
-            />
-            <span className="legend-label">{element}</span>
-          </div>
-        ))}
+        {presentElements.map((element) => {
+          const color = data.element_colors?.[element] || '#888888';
+          return (
+            <div key={element} className="legend-item">
+              <span 
+                className="legend-color" 
+                style={{ background: color }}
+              />
+              <span className="legend-label">{element}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

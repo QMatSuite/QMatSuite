@@ -89,7 +89,9 @@ gui/
 │   │   ├── index.ts         # Re-exports all components
 │   │   ├── layout/
 │   │   │   ├── AppShell.tsx     # Main layout container
-│   │   │   └── Sidebar.tsx      # Navigation, view tabs
+│   │   │   ├── Sidebar.tsx      # Navigation, view tabs
+│   │   │   ├── StatusBar.tsx    # Bottom status bar
+│   │   │   └── ResizablePane.tsx # Draggable resize container
 │   │   ├── panels/
 │   │   │   ├── ResultPanel.tsx  # JSON result viewer
 │   │   │   ├── DebugPanel.tsx   # Daemon logs + DebugView
@@ -675,11 +677,15 @@ CSS-only tooltips using `data-tooltip` attribute:
   - Unit cell display
   - Bond detection
   - Element colors
+  - Supercell visualization controls
+  - Boundary atom repetition
+  - Context-aware element legend (only shows present elements)
 - [x] Structure import (CIF, XSF, QE input, etc.)
 - [x] Workflow management (list, detail, run)
 - [x] Workflow creation from templates
 - [x] Workflow editing (reorder steps, change structure)
 - [x] Step parameter editing (ecutwfc, smearing, etc.)
+- [x] Add step to workflow (with type selection)
 - [x] Pre-flight checks before job submission
 - [x] Analysis plots (Recharts)
   - SCF convergence (energy + accuracy)
@@ -700,13 +706,18 @@ CSS-only tooltips using `data-tooltip` attribute:
 - [x] Status bar (project, QE, jobs)
 - [x] Error boundary with recovery
 - [x] Comprehensive design system
+- [x] Resizable panels
+  - Daemon logs panel (draggable height)
+  - Structures/Workflows list panels (draggable width)
+  - ResizablePane reusable component
+- [x] Drag-and-drop step reordering
+- [x] Summary panel auto-refresh on structure/workflow changes
 
 ### Planned
 
 - [ ] Real-time log streaming (websocket or SSE)
-- [ ] Workflow builder UI (drag-and-drop)
+- [ ] Workflow builder UI (visual graph)
 - [ ] Multiple project tabs
 - [ ] Theme switching (light/dark)
-- [ ] Supercell control in 3D viewer
 - [ ] Keyboard shortcuts
 

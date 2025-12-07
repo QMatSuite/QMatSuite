@@ -94,6 +94,59 @@
   cursor: pointer;
 }
 
+.control-item--number {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.control-item--number input[type="number"] {
+  width: 40px;
+  padding: 2px 4px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.control-item--number input[type="number"]:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+/* Remove spinner buttons */
+.control-item--number input[type="number"]::-webkit-inner-spin-button,
+.control-item--number input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.control-item--number input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Control groups */
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.control-group-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+/* Supercell controls row */
+.viewer-controls--supercell {
+  padding: 6px 16px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
 /* Canvas Container */
 .viewer-canvas {
   flex: 1;
