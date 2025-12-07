@@ -85,14 +85,6 @@ export function StatusBar({
   const pendingJobs = jobCounts?.pending || 0;
   const activeJobs = runningJobs + pendingJobs;
   
-  // Shorten path for display
-  const shortenPath = (path: string | null) => {
-    if (!path) return null;
-    const parts = path.split(/[/\\]/);
-    if (parts.length <= 3) return path;
-    return `.../${parts.slice(-2).join('/')}`;
-  };
-  
   return (
     <div className="status-bar">
       <div className="status-bar__left">

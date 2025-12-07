@@ -146,20 +146,21 @@ export function CreateProjectDialog({
       size="medium"
       footer={
         <>
-          <button className="btn btn--secondary" onClick={handleClose}>
+          <button className="btn btn--secondary" onClick={handleClose} data-testid="qv-btn-cancel-create">
             Cancel
           </button>
           <button 
             className={`btn btn--primary ${isCreating ? 'btn--loading' : ''}`}
             onClick={handleCreate}
             disabled={isCreating || !parentDir || !projectName.trim()}
+            data-testid="qv-btn-confirm-create"
           >
             {isDemoProject ? 'Create Demo' : 'Create Project'}
           </button>
         </>
       }
     >
-      <div className="modal-form">
+      <div className="modal-form" data-testid="qv-create-project-dialog">
         <p className="form-description">{description}</p>
         
         <div className="form-group">
@@ -173,6 +174,7 @@ export function CreateProjectDialog({
               value={parentDir}
               onChange={(e) => setParentDir(e.target.value)}
               placeholder="/path/to/projects"
+              data-testid="qv-input-parent-dir"
             />
             <button className="form-button" onClick={handleBrowseParent}>
               📂
@@ -193,6 +195,7 @@ export function CreateProjectDialog({
             value={projectName}
             onChange={(e) => setProjectName(e.target.value)}
             placeholder="my-project"
+            data-testid="qv-input-project-name"
           />
           <span className="form-hint">
             A folder with this name will be created in the parent directory
@@ -201,14 +204,14 @@ export function CreateProjectDialog({
         
         {/* Preview Path */}
         {previewPath && (
-          <div className="form-preview">
+          <div className="form-preview" data-testid="qv-project-preview-path">
             <span className="form-preview__label">Project will be created at:</span>
             <code className="form-preview__path">{previewPath}</code>
           </div>
         )}
         
         {error && (
-          <div className="form-error">
+          <div className="form-error" data-testid="qv-create-project-error">
             ⚠️ {error}
           </div>
         )}

@@ -781,6 +781,11 @@ export interface QVApi {
    * Read logs from a project's log file
    */
   readLogs: (projectPath: string, tailLines?: number) => Promise<string[]>;
+  
+  /**
+   * Reveal a file or folder in the native file manager (Finder/Explorer)
+   */
+  revealPath: (targetPath: string) => Promise<boolean>;
 }
 
 // Extend Window interface
