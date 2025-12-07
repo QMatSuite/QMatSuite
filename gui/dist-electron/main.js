@@ -21,6 +21,35 @@ const daemonStatus = {
 };
 const pendingRequests = /* @__PURE__ */ new Map();
 const REQUEST_TIMEOUT_MS = 6e4;
+let currentProjectPath = null;
+const LOG_FILE_NAME = ".qv-daemon.log";
+function appendToLogFile(message) {
+  if (!currentProjectPath) return;
+  const logPath = path.join(currentProjectPath, LOG_FILE_NAME);
+  const timestamp = (/* @__PURE__ */ new Date()).toISOString();
+  const logLine = `[${timestamp}] ${message}
+`;
+  try {
+    fs.appendFileSync(logPath, logLine);
+  } catch (err) {
+  }
+}
+function readLogFile(projectPath, tailLines = 500) {
+  const logPath = path.join(projectPath, LOG_FILE_NAME);
+  try {
+    if (!fs.existsSync(logPath)) {
+      return [];
+    }
+    const content = fs.readFileSync(logPath, "utf-8");
+    const lines = content.split("\n").filter((line) => line.trim());
+    return lines.slice(-tailLines);
+  } catch (err) {
+    return [];
+  }
+}
+function setCurrentProject(projectPath) {
+  currentProjectPath = projectPath;
+}
 function getProjectRoot() {
   if (process.env.QV_PROJECT_ROOT) {
     return process.env.QV_PROJECT_ROOT;
@@ -100,6 +129,7 @@ function spawnDaemon() {
     const message = data.toString().trim();
     console.log(`[daemon] ${message}`);
     win?.webContents.send("daemon-log", message);
+    appendToLogFile(message);
   });
   daemonProcess.on("error", (err) => {
     console.error("[main] Daemon process error:", err);
@@ -242,6 +272,12 @@ ipcMain.handle("qv-open-file", async (_event, options) => {
     return null;
   }
   return result.filePaths[0];
+});
+ipcMain.handle("qv-set-project", async (_event, projectPath) => {
+  setCurrentProject(projectPath);
+});
+ipcMain.handle("qv-read-logs", async (_event, projectPath, tailLines) => {
+  return readLogFile(projectPath, tailLines || 500);
 });
 function createWindow() {
   win = new BrowserWindow({

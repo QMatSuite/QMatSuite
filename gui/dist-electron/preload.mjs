@@ -105,6 +105,25 @@ const qvApi = {
     return () => {
       electron.ipcRenderer.removeListener("main-process-message", handler);
     };
+  },
+  /**
+   * Set the current project path for log file storage
+   * Logs will be saved to .qv-daemon.log in the project directory
+   * 
+   * @param projectPath - Project root path or null to disable
+   */
+  setProject: async (projectPath) => {
+    return electron.ipcRenderer.invoke("qv-set-project", projectPath);
+  },
+  /**
+   * Read logs from a project's log file
+   * 
+   * @param projectPath - Project root path
+   * @param tailLines - Number of lines to read from end (default 500)
+   * @returns Array of log lines
+   */
+  readLogs: async (projectPath, tailLines) => {
+    return electron.ipcRenderer.invoke("qv-read-logs", projectPath, tailLines);
   }
 };
 electron.contextBridge.exposeInMainWorld("qv", qvApi);
