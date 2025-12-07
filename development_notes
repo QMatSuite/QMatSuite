@@ -102,3 +102,23 @@ npm run dev
 cd gui
 npm install -D @playwright/test playwright
 npx playwright install
+
+# E2E tests for GUI (Electron + Playwright)
+# Note: Different approaches for Linux vs macOS due to Playwright compatibility
+
+# On Linux (uses native _electron.launch()):
+cd gui
+npm run build:e2e
+npm run test:e2e
+# Or run specific tests:
+npx playwright test tests/e2e/welcome.spec.ts --project=electron
+
+# On macOS (uses CDP workaround):
+cd gui
+npm run build:e2e
+npx playwright test tests/e2e/welcome_cdp.spec.ts
+# Or run all CDP tests:
+npx playwright test tests/e2e/*_cdp.spec.ts
+
+# Debug E2E tests (see Electron output):
+DEBUG_ELECTRON=1 npm run test:e2e:fast -- tests/e2e/welcome_cdp.spec.ts

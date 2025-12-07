@@ -180,10 +180,11 @@ jobs:
         name: codecov-umbrella
         fail_ci_if_error: false
     
-    # GUI E2E Tests (Electron + Playwright) - Linux only
-    # Note: macOS has compatibility issues with Playwright's Electron debugging
+    # GUI E2E Tests (Electron + Playwright) - Cross-platform
+    # IMPORTANT: E2E tests always run on push (no conditional skipping)
+    # E2E tests run AFTER QE compilation to ensure QE binaries are available
+    # The demo_workflow_run.spec.ts test requires QE to be installed and on PATH
     - name: Setup Node.js
-      if: matrix.os == 'ubuntu-latest'
       uses: actions/setup-node@v4
       with:
         node-version: '20'
@@ -191,30 +192,48 @@ jobs:
         cache-dependency-path: gui/package-lock.json
     
     - name: Install GUI dependencies
-      if: matrix.os == 'ubuntu-latest'
       working-directory: gui
       run: npm ci
     
     - name: Install Playwright browsers
-      if: matrix.os == 'ubuntu-latest'
       working-directory: gui
       run: npx playwright install --with-deps chromium
     
-    - name: Run GUI E2E tests (Linux)
-      if: matrix.os == 'ubuntu-latest'
+    - name: Build Electron app for E2E tests
+      working-directory: gui
+      run: npm run build:e2e
+    
+    - name: Run GUI E2E tests
       working-directory: gui
       run: |
         export QE_HOME=$HOME/src/q-e-qe-7.5
         export PATH="$QE_HOME/bin:$PATH"
-        # Use xvfb for headless display on Linux
-        xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" npm run test:e2e
+        # Unified E2E tests - fixture automatically chooses launch strategy:
+        # Linux: uses Playwright's _electron.launch()
+        # macOS: uses CDP workaround
+        # All tests run on both platforms (no conditional skipping)
+        if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+          # Use xvfb for headless display on Linux
+          xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" npx playwright test \
+            tests/e2e/welcome.spec.ts \
+            tests/e2e/demo_workflow.spec.ts \
+            tests/e2e/demo_workflow_run.spec.ts \
+            --project=electron
+        else
+          # macOS runs directly (no xvfb needed)
+          npx playwright test \
+            tests/e2e/welcome.spec.ts \
+            tests/e2e/demo_workflow.spec.ts \
+            tests/e2e/demo_workflow_run.spec.ts \
+            --project=electron
+        fi
       env:
         QE_HOME: ${{ env.QE_HOME }}
         CI: true
     
     - name: Upload Playwright report
       uses: actions/upload-artifact@v4
-      if: always() && matrix.os == 'ubuntu-latest'
+      if: always()
       with:
         name: playwright-report-${{ matrix.os }}
         path: gui/test-results/
