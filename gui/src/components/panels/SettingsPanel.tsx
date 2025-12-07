@@ -1,5 +1,12 @@
 /**
  * SettingsPanel - Displays environment info, QE detection status, and app settings
+ * 
+ * Includes:
+ * - QE detection and configuration
+ * - Python/daemon environment info
+ * - Appearance settings (theme)
+ * - Analysis settings
+ * - Default projects directory
  */
 
 import { useState, useCallback, useEffect } from 'react';
@@ -9,6 +16,7 @@ import './SettingsPanel.css';
 export interface AppSettings {
   theme: 'dark' | 'light';
   autoAnalysis: boolean;
+  defaultProjectsDir: string;
 }
 
 interface SettingsPanelProps {
@@ -267,6 +275,61 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
                 />
                 <span className="toggle-slider" />
               </label>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Default Projects Directory Section */}
+      <div className="settings-section">
+        <div className="settings-section__header">
+          <h3 className="settings-section__title">
+            <span className="settings-icon">📁</span>
+            Default Projects Directory
+          </h3>
+        </div>
+        
+        <div className="settings-section__content">
+          <div className="settings-option settings-option--vertical">
+            <div className="settings-option__info">
+              <span className="settings-option__label">Projects Directory</span>
+              <span className="settings-option__description">
+                Default location for creating new projects. Used as the initial directory in project creation dialogs.
+              </span>
+            </div>
+            <div className="settings-option__control settings-option__control--full">
+              <div className="settings-path-input">
+                <input
+                  type="text"
+                  className="settings-path-input__field"
+                  value={settings.defaultProjectsDir || ''}
+                  onChange={(e) => onSettingsChange({ ...settings, defaultProjectsDir: e.target.value })}
+                  placeholder="~/Documents/QuantumVITAS-projects"
+                />
+                <button
+                  className="settings-path-input__browse"
+                  onClick={async () => {
+                    if (window.qv?.openDirectory) {
+                      const path = await window.qv.openDirectory();
+                      if (path) {
+                        onSettingsChange({ ...settings, defaultProjectsDir: path });
+                      }
+                    }
+                  }}
+                  title="Browse for directory"
+                >
+                  📂
+                </button>
+                {settings.defaultProjectsDir && (
+                  <button
+                    className="settings-path-input__clear"
+                    onClick={() => onSettingsChange({ ...settings, defaultProjectsDir: '' })}
+                    title="Clear"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -224,7 +224,18 @@ export function StructureDetailPanel({ structure, onClose }: StructureDetailPane
         
         <div className="detail-section">
           <h3>File Location</h3>
-          <code className="detail-path">{structure.absolute_path}</code>
+          <div className="file-location">
+            <code className="file-location__path" title={structure.absolute_path}>
+              {structure.absolute_path}
+            </code>
+            <button 
+              className="file-location__reveal-btn"
+              onClick={() => window.qv?.revealPath?.(structure.absolute_path)}
+              title="Reveal in Finder"
+            >
+              📂 Reveal
+            </button>
+          </div>
         </div>
       </div>
     </div>

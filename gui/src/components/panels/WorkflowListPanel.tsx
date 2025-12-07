@@ -379,9 +379,21 @@ export function WorkflowDetailPanel({
           <span className="panel-icon">📊</span>
           {workflow.name}
         </h2>
-        {onClose && (
-          <button className="panel-close" onClick={onClose}>×</button>
-        )}
+        <div className="panel-header-actions">
+          {onRunWorkflow && (
+            <button 
+              className="panel-header-btn panel-header-btn--primary"
+              onClick={() => onRunWorkflow(workflow)}
+              disabled={isReordering || isSaving}
+              title="Run all steps in this workflow"
+            >
+              ▶️ Run Workflow
+            </button>
+          )}
+          {onClose && (
+            <button className="panel-close" onClick={onClose}>×</button>
+          )}
+        </div>
       </div>
       
       <div className="panel-content">
@@ -593,19 +605,21 @@ export function WorkflowDetailPanel({
         
         <div className="detail-section">
           <h3>File Location</h3>
-          <code className="detail-path">{workflow.absolute_path}</code>
+          <div className="file-location">
+            <code className="file-location__path" title={workflow.absolute_path}>
+              {workflow.absolute_path}
+            </code>
+            <button 
+              className="file-location__reveal-btn"
+              onClick={() => window.qv?.revealPath?.(workflow.absolute_path)}
+              title="Reveal in Finder"
+            >
+              📂 Reveal
+            </button>
+          </div>
         </div>
         
         <div className="detail-actions">
-          {onRunWorkflow && (
-            <button 
-              className="action-button action-button--primary"
-              onClick={() => onRunWorkflow(workflow)}
-              disabled={isReordering || isSaving}
-            >
-              ▶️ Run Workflow
-            </button>
-          )}
           {onGoToJobs && (
             <button 
               className="action-button action-button--secondary"

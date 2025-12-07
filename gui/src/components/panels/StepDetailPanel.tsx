@@ -468,6 +468,23 @@ export function StepDetailPanel({
           </div>
         )}
         
+        {/* File Location Section */}
+        <div className="detail-section">
+          <h3>File Location</h3>
+          <div className="file-location">
+            <code className="file-location__path" title={stepDetail.absolute_path}>
+              {stepDetail.absolute_path}
+            </code>
+            <button 
+              className="file-location__reveal-btn"
+              onClick={() => window.qv?.revealPath?.(stepDetail.absolute_path)}
+              title="Reveal in Finder"
+            >
+              📂 Reveal
+            </button>
+          </div>
+        </div>
+        
         {/* Actions */}
         <div className="detail-actions">
           <button
