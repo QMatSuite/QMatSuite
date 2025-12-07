@@ -2838,3 +2838,21 @@ gui/src/types/qv.ts - Added setProject and readLogs types
 gui/electron/main.ts - Added log persistence logic and IPC handlers
 gui/electron/preload.ts - Added setProject and readLogs methods
 
+Documentation updated. Here's a summary of the changes:
+GUI_ARCHITECTURE.md
+Updated directory structure to include VerticalResizablePane.tsx
+Updated Feature Status with:
+Workflow/Step detail separator (draggable)
+3D viewer camera state preservation
+Log file persistence (.qv-daemon.log)
+Added "Load previous logs on project open" to Planned features
+AI_understanding.md
+Updated Section 11.4 GUI Components with new layout components
+Added Section 11.5 "Log File Persistence" documenting the new logging system
+Added Section 18 "Refactoring History - 2025-12-07" with:
+Backend fixes (run_step, workflow resolution, si-dos display, boundary atoms)
+GUI improvements (summary refresh, camera state, resizable separator, log persistence)
+New components list
+Modified files summary
+Updated timestamp to 2025-12-07
+
