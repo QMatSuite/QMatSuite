@@ -774,19 +774,36 @@ Key methods exposed via JSON-RPC:
 ```
 gui/src/components/
 ├── layout/
-│   ├── AppShell.tsx      # Main layout with sidebar + content + footer
-│   ├── Sidebar.tsx       # Navigation tabs, project path input
-│   ├── StatusBar.tsx     # Bottom bar with project/QE/job status
-│   └── ResizablePane.tsx # Draggable resize container (NEW)
+│   ├── AppShell.tsx              # Main layout with sidebar + content + footer
+│   ├── Sidebar.tsx               # Navigation tabs, project path input
+│   ├── StatusBar.tsx             # Bottom bar with project/QE/job status
+│   ├── ResizablePane.tsx         # Horizontal draggable resize (width)
+│   └── VerticalResizablePane.tsx # Vertical draggable resize (height)
 ├── panels/
-│   ├── DebugPanel.tsx    # Resizable daemon logs (UPDATED)
-│   ├── StructureViewer3D.tsx  # 3D view with supercell controls (UPDATED)
-│   ├── WorkflowListPanel.tsx  # With drag-and-drop reorder + add step (UPDATED)
-│   ├── AnalysisPanel.tsx      # Recharts-based SCF/DOS/bands plots
-│   └── JobsPanel.tsx          # Job list with logs viewer
+│   ├── DebugPanel.tsx           # Resizable daemon logs
+│   ├── StructureViewer3D.tsx    # 3D view with supercell controls, camera state preservation
+│   ├── WorkflowListPanel.tsx    # With drag-and-drop reorder + add step
+│   ├── AnalysisPanel.tsx        # Recharts-based SCF/DOS/bands plots
+│   └── JobsPanel.tsx            # Job list with logs viewer
 └── dialogs/
     └── ...
 ```
+
+### 11.5 Log File Persistence
+
+Logs are persisted to `.qv-daemon.log` in the project directory:
+
+```typescript
+// Electron main process
+appendToLogFile(message)  // Appends timestamped log
+readLogFile(projectPath)  // Reads tail of log file
+
+// Preload API
+window.qv.setProject(path)  // Set current project for logging
+window.qv.readLogs(path)    // Read logs from project
+```
+
+When a project is loaded, `setProject` is called automatically to enable log persistence.
 
 ## 12. Future Considerations
 
@@ -2598,5 +2615,49 @@ Split view layouts:
 
 ---
 
-*Last updated: 2025-12-06*
+## 18. Refactoring History - 2025-12-07
+
+### Backend Fixes
+
+| Fix | Details |
+|-----|---------|
+| `run_step` engine error | Changed `engine.backend` to pass `QuantumEspressoEngine` directly to `run_input_step` |
+| Workflow resolution | Updated `Project.get_workflow_ref` to search by `slug` in addition to `id` and `name` |
+| si-dos workflow display | Added missing `type` field to all steps in `templates/workflow/si-dos/workflow.yaml` |
+| Boundary atoms | Fixed `generate_boundary_atoms` usage to correctly iterate over `BoundaryAtom` objects |
+
+### GUI Improvements
+
+| Feature | Implementation |
+|---------|---------------|
+| Summary panel refresh | Fixed `handleCreateProjectSuccess` to load project directly instead of via setTimeout (avoiding stale closures) |
+| 3D viewer camera state | Added `structureId` tracking to `CameraController` - camera only resets on structure change, not supercell/boundary changes |
+| Workflow/step separator | Created `VerticalResizablePane` component for draggable height separation |
+| Log persistence | Logs saved to `.qv-daemon.log` in project directory with `setProject`/`readLogs` IPC methods |
+
+### New Components
+
+```
+gui/src/components/layout/
+├── VerticalResizablePane.tsx  # Draggable height resize
+└── VerticalResizablePane.css
+```
+
+### Modified Files
+
+**Backend**:
+- `src/quantumvitas/api.py` - Fixed `run_step`, boundary atoms
+- `src/quantumvitas/project/model.py` - Added slug search to `get_workflow_ref`
+- `templates/workflow/si-dos/workflow.yaml` - Added step types
+
+**Frontend**:
+- `gui/src/App.tsx` - Project loading, resizable panes, camera state
+- `gui/src/components/panels/StructureViewer3D.tsx` - `structureId` prop
+- `gui/electron/main.ts` - Log persistence IPC handlers
+- `gui/electron/preload.ts` - `setProject`/`readLogs` methods
+- `gui/src/types/qv.ts` - New method types
+
+---
+
+*Last updated: 2025-12-07*
 *Based on commit history through v2-python branch*
