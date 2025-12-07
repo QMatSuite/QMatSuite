@@ -3433,3 +3433,9 @@ All tasks from the user's request have been completed:
 ✅ Update Home/CurrentProject card with full path and Close Project action
 
 
+
+
+
+
+Run step should be also on top of the step detail panel (like run workflo in workflow panel)
+Energy range in analysis panel still not working.
