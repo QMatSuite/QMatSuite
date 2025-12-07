@@ -179,6 +179,46 @@ jobs:
         flags: tests-qe
         name: codecov-umbrella
         fail_ci_if_error: false
+    
+    # GUI E2E Tests (Electron + Playwright) - Linux only
+    # Note: macOS has compatibility issues with Playwright's Electron debugging
+    - name: Setup Node.js
+      if: matrix.os == 'ubuntu-latest'
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: gui/package-lock.json
+    
+    - name: Install GUI dependencies
+      if: matrix.os == 'ubuntu-latest'
+      working-directory: gui
+      run: npm ci
+    
+    - name: Install Playwright browsers
+      if: matrix.os == 'ubuntu-latest'
+      working-directory: gui
+      run: npx playwright install --with-deps chromium
+    
+    - name: Run GUI E2E tests (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      working-directory: gui
+      run: |
+        export QE_HOME=$HOME/src/q-e-qe-7.5
+        export PATH="$QE_HOME/bin:$PATH"
+        # Use xvfb for headless display on Linux
+        xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" npm run test:e2e
+      env:
+        QE_HOME: ${{ env.QE_HOME }}
+        CI: true
+    
+    - name: Upload Playwright report
+      uses: actions/upload-artifact@v4
+      if: always() && matrix.os == 'ubuntu-latest'
+      with:
+        name: playwright-report-${{ matrix.os }}
+        path: gui/test-results/
+        retention-days: 30
 
   extended-tests:
     name: Extended Tests (Manual)

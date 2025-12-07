@@ -3433,7 +3433,280 @@ All tasks from the user's request have been completed:
 ✅ Update Home/CurrentProject card with full path and Close Project action
 
 
+2025-12-07_prompt_2:
+You are continuing work on QuantumVITAS v2.
+Playwright + Electron deps are already installed.
 
+Before coding:
+
+Inspect:
+
+gui/electron/main.ts, gui/electron/preload.ts
+
+gui/src/App.tsx, layout + panels
+
+.github/workflows/tests.yml (QE build + pytest)
+
+existing temp/ usage (e.g. temp/matplotlib_tests/)
+
+We want robust E2E tests using Playwright + Electron, and selectors should primarily use data-testid attributes, not brittle text.
+
+0. Test projects directory
+
+Create helpers under gui/tests/e2e/helpers/, e.g. paths.ts:
+
+getRepoRoot() → resolve repo root from __dirname (starting in gui/tests/e2e/...).
+
+ensureE2EProjectsRoot() → <repo_root>/temp/e2e_projects (mkdir -p).
+
+createUniqueProjectDir(prefix) → new folder in temp/e2e_projects/<prefix>-<timestamp>.
+
+All E2E-generated projects must live under temp/e2e_projects/.
+
+1. Add data-testid to key GUI elements
+
+Go through the relevant React components and add stable data-testid attributes so tests can target them:
+
+Welcome / Home (no project loaded):
+
+Welcome title: data-testid="qv-welcome-title"
+
+Buttons:
+
+Open Project: data-testid="qv-btn-open-project"
+
+Create New Project: data-testid="qv-btn-create-new-project"
+
+Create Demo Project: data-testid="qv-btn-create-demo-project"
+
+Project-loaded Home / current project:
+
+Container: data-testid="qv-home-project"
+
+Project path text: data-testid="qv-project-path"
+
+“Reveal in Finder” button: data-testid="qv-btn-project-reveal"
+
+Workflows:
+
+Workflows view root: data-testid="qv-workflows-view"
+
+Workflow list container: data-testid="qv-workflows-list"
+
+Each workflow row: data-testid="qv-workflow-row" with data-workflow-slug="<slug>" or similar.
+
+Workflow detail panel: data-testid="qv-workflow-detail"
+
+Run workflow button: data-testid="qv-btn-run-workflow"
+
+Steps:
+
+Steps list: data-testid="qv-steps-list"
+
+Each step row: data-testid="qv-step-row" with data-step-id="<id>"
+
+Step detail panel: data-testid="qv-step-detail"
+
+Step id text: data-testid="qv-step-id"
+
+Step file path text: data-testid="qv-step-file-path"
+
+Jobs:
+
+Jobs view: data-testid="qv-jobs-view"
+
+Jobs list: data-testid="qv-jobs-list"
+
+Job row: data-testid="qv-job-row" with data-job-id="<id>"
+
+Job status badge: data-testid="qv-job-status"
+
+Job detail: data-testid="qv-job-detail"
+
+Analysis (Bands):
+
+Analysis view: data-testid="qv-analysis-view"
+
+Bands chart container: data-testid="qv-analysis-bands-chart"
+
+Fermi energy field: data-testid="qv-analysis-fermi"
+
+K-path labels container: data-testid="qv-analysis-kpath"
+
+Use these test IDs consistently; don’t rely on user-facing text for core flows.
+
+2. E2E Test 1: Welcome screen
+
+File: gui/tests/e2e/welcome.spec.ts
+
+Launch Electron app via _electron.launch({ args: ['.'] }) from gui/.
+
+const page = await app.firstWindow();
+
+Assert:
+
+await expect(page.getByTestId('qv-welcome-title')).toBeVisible();
+await expect(page.getByTestId('qv-btn-open-project')).toBeVisible();
+await expect(page.getByTestId('qv-btn-create-new-project')).toBeVisible();
+await expect(page.getByTestId('qv-btn-create-demo-project')).toBeVisible();
+
+
+Close the app.
+
+3. E2E Test 2: Create Demo Project → Workflow & Steps
+
+File: gui/tests/e2e/demo_workflow.spec.ts
+
+Flow:
+
+Use createUniqueProjectDir('demo') to get a parent directory under temp/e2e_projects/.
+
+From Welcome screen:
+
+Click qv-btn-create-demo-project.
+
+In the demo project dialog:
+
+Fill project name (e.g. e2e-demo).
+
+Fill parent directory input with the path from step 1.
+
+Confirm.
+
+If the dialog currently uses native folder pickers, adjust the UI so there is also a text input for parent directory that tests can fill. Prefer input-based selection for E2E instead of automating OS dialogs.
+
+Assert the app is in “project loaded” state:
+
+await expect(page.getByTestId('qv-home-project')).toBeVisible();
+
+await expect(page.getByTestId('qv-project-path')).toContainText('e2e-demo');
+
+Go to Workflows view:
+
+Click the Workflows tab (via test id if available, otherwise role/text).
+
+await expect(page.getByTestId('qv-workflows-view')).toBeVisible();
+
+Assert there is exactly one workflow row in qv-workflows-list.
+
+Click that row (e.g. page.getByTestId('qv-workflow-row').first().click()).
+
+Assert qv-workflow-detail visible and qv-btn-run-workflow visible.
+
+For each step in the workflow:
+
+Iterate over step rows: page.getByTestId('qv-step-row').
+
+For each:
+
+Click it.
+
+In qv-step-detail, read:
+
+Step id text: qv-step-id.
+
+Step file path: qv-step-file-path.
+
+Compute absolute path to step YAML from the file path and project root:
+
+You can either use:
+
+A field already exposed from daemon (e.g. absolutePath if available, accessed via DOM dataset / text), or
+
+In the test, derive it as path.join(projectRoot, relativePath).
+
+Use Node fs.readFileSync in the test to read the YAML, and assert:
+
+expect(fileContent).toContain(stepIdFromUI);
+
+
+This ensures the step detail panel is consistent with the underlying YAML files.
+
+4. E2E Test 3: Run workflow → Jobs → Analysis
+
+File: e.g. gui/tests/e2e/demo_workflow_run.spec.ts
+You may reuse demo creation helper logic or factor it into a test utility.
+
+Flow:
+
+Create a temp parent dir in temp/e2e_projects/, create a demo project as above.
+
+Go to Workflows, select the only workflow, ensure qv-btn-run-workflow is visible and click it.
+
+Go to Jobs view:
+
+Click the Jobs tab.
+
+await expect(page.getByTestId('qv-jobs-view')).toBeVisible();
+
+Locate the new job row in qv-jobs-list (you can use the latest job, or filter by workflow name if available in DOM).
+
+Assert initial status is “Running” (via qv-job-status text).
+
+Wait until job status becomes “Completed”:
+
+Poll using Playwright expect with a timeout up to 5 minutes:
+
+await expect(page.getByTestId('qv-job-status')).toHaveText(/Completed/i, { timeout: 300000 });
+
+
+If the status becomes “Failed” instead, assert with a helpful error message (include any error text from the job detail).
+
+Go to Analysis view:
+
+Click Analysis tab.
+
+await expect(page.getByTestId('qv-analysis-view')).toBeVisible();
+
+Ensure the workflow corresponding to the demo project is selected (if auto-selection exists, just verify; otherwise explicitly select it).
+
+Assert Bands analysis is non-empty:
+
+await expect(page.getByTestId('qv-analysis-bands-chart')).toBeVisible();
+
+Optionally, check that the chart container has some child elements (e.g. band paths).
+
+Assert Fermi energy & k-path:
+
+await expect(page.getByTestId('qv-analysis-fermi')).not.toHaveText(/^\s*$/);
+
+await expect(page.getByTestId('qv-analysis-kpath')).not.toHaveText(/^\s*$/);
+
+You can be stricter if your DOM exposes specific labels (e.g. contains Γ/X/L).
+
+Assume QE is installed in CI as in existing workflow. Do not skip this test on missing QE; failure means real problem.
+
+5. CI integration (Linux + macOS)
+
+Open .github/workflows/tests.yml and:
+
+After the QE build + pytest steps (while QE is still available on PATH), add steps to run E2E tests for each relevant job (Linux + macOS):
+
+- name: Install GUI dependencies
+  working-directory: gui
+  run: |
+    npm ci
+
+- name: Install Playwright browsers / deps
+  working-directory: gui
+  run: |
+    npx playwright install --with-deps
+
+- name: Run GUI E2E tests
+  working-directory: gui
+  run: |
+    npm run test:e2e
+
+
+If needed, follow Playwright’s CI docs to configure xvfb or headless mode on Linux.
+
+At the end, summarize:
+
+Files added / modified (helpers, tests, React components with data-testid, GH Actions YAML).
+
+How to run E2E locally: cd gui && npm run test:e2e.
+
+Any known flakiness or TODOs (e.g. selectors that might still depend on copy).
 
 
 
