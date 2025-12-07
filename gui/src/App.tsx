@@ -14,6 +14,7 @@ import {
   AppShell, 
   Sidebar,
   StatusBar,
+  ResizablePane,
   ProjectSummaryPanel, 
   StructureListPanel,
   StructureDetailPanel,
@@ -341,6 +342,16 @@ function App() {
   // Data Fetching
   // ==========================================================================
   
+  // Refresh project summary (after adding/deleting structures/workflows)
+  const refreshSummary = useCallback(async () => {
+    if (!projectRoot || !projectLoaded) return;
+    
+    const response = await qv.getProjectSummary(projectRoot);
+    if (response.ok && response.data) {
+      setProjectSummary(response.data);
+    }
+  }, [qv, projectRoot, projectLoaded]);
+  
   const fetchStructures = useCallback(async () => {
     if (!projectRoot || !projectLoaded) return;
     
@@ -380,16 +391,21 @@ function App() {
   // Structure Handling
   // ==========================================================================
   
-  const handleSelectStructure = useCallback(async (structure: StructureInfo) => {
-    setSelectedStructure(structure);
-    
-    // Load 3D visualization data
+  // Current supercell and repeat_boundary settings
+  const [currentSupercell, setCurrentSupercell] = useState<[number, number, number]>([1, 1, 1]);
+  const [currentRepeatBoundary, setCurrentRepeatBoundary] = useState(false);
+  
+  const loadStructureVis = useCallback(async (
+    structure: StructureInfo, 
+    supercell: [number, number, number] = [1, 1, 1],
+    repeatBoundary: boolean = false
+  ) => {
     setIsLoading3D(true);
     const response = await qv.call('get_structure_vis', {
       project_root: projectRoot,
       selector: structure.slug,
-      supercell: [1, 1, 1],
-      repeat_boundary: false,
+      supercell: supercell,
+      repeat_boundary: repeatBoundary,
     });
     setIsLoading3D(false);
     
@@ -400,9 +416,29 @@ function App() {
     }
   }, [qv, projectRoot]);
   
+  const handleSelectStructure = useCallback(async (structure: StructureInfo) => {
+    setSelectedStructure(structure);
+    setCurrentSupercell([1, 1, 1]);
+    setCurrentRepeatBoundary(false);
+    await loadStructureVis(structure, [1, 1, 1], false);
+  }, [loadStructureVis]);
+  
+  const handleSupercellChange = useCallback(async (supercell: [number, number, number]) => {
+    if (!selectedStructure) return;
+    setCurrentSupercell(supercell);
+    await loadStructureVis(selectedStructure, supercell, currentRepeatBoundary);
+  }, [selectedStructure, currentRepeatBoundary, loadStructureVis]);
+  
+  const handleRepeatBoundaryChange = useCallback(async (repeatBoundary: boolean) => {
+    if (!selectedStructure) return;
+    setCurrentRepeatBoundary(repeatBoundary);
+    await loadStructureVis(selectedStructure, currentSupercell, repeatBoundary);
+  }, [selectedStructure, currentSupercell, loadStructureVis]);
+  
   const handleImportStructureSuccess = useCallback(async (structureId: string) => {
-    // Refresh structures list
+    // Refresh structures list and summary
     await fetchStructures();
+    await refreshSummary();
     
     // Select the newly imported structure
     if (structures) {
@@ -411,7 +447,7 @@ function App() {
         handleSelectStructure(newStruct);
       }
     }
-  }, [fetchStructures, structures, handleSelectStructure]);
+  }, [fetchStructures, refreshSummary, structures, handleSelectStructure]);
   
   // ==========================================================================
   // Workflow Handling
@@ -422,8 +458,9 @@ function App() {
   }, []);
   
   const handleCreateWorkflowSuccess = useCallback(async (workflowId: string) => {
-    // Refresh workflows list
+    // Refresh workflows list and summary
     await fetchWorkflows();
+    await refreshSummary();
     
     // Select the newly created workflow
     if (workflows) {
@@ -432,7 +469,7 @@ function App() {
         handleSelectWorkflow(newWf);
       }
     }
-  }, [fetchWorkflows, workflows, handleSelectWorkflow]);
+  }, [fetchWorkflows, refreshSummary, workflows, handleSelectWorkflow]);
   
   const handleRunWorkflow = useCallback(async (workflow: WorkflowInfo) => {
     // Perform preflight checks first
@@ -552,6 +589,7 @@ function App() {
     if (response.ok) {
       showNotification(`Deleted structure "${deleteStructure.name}"`, 'success');
       await fetchStructures();
+      await refreshSummary();
       // Clear selection if the deleted structure was selected
       if (selectedStructure?.id === deleteStructure.id) {
         setSelectedStructure(null);
@@ -562,7 +600,7 @@ function App() {
       showNotification(`Failed to delete: ${response.error?.message || 'Unknown error'}`, 'error');
       return false;
     }
-  }, [qv, projectRoot, deleteStructure, fetchStructures, selectedStructure, showNotification]);
+  }, [qv, projectRoot, deleteStructure, fetchStructures, refreshSummary, selectedStructure, showNotification]);
   
   // ==========================================================================
   // Workflow Rename/Delete
@@ -607,6 +645,7 @@ function App() {
     if (response.ok) {
       showNotification(`Deleted workflow "${deleteWorkflow.name}"`, 'success');
       await fetchWorkflows();
+      await refreshSummary();
       // Clear selection if the deleted workflow was selected
       if (selectedWorkflow?.id === deleteWorkflow.id) {
         setSelectedWorkflow(null);
@@ -616,7 +655,7 @@ function App() {
       showNotification(`Failed to delete: ${response.error?.message || 'Unknown error'}`, 'error');
       return false;
     }
-  }, [qv, projectRoot, deleteWorkflow, fetchWorkflows, selectedWorkflow, showNotification]);
+  }, [qv, projectRoot, deleteWorkflow, fetchWorkflows, refreshSummary, selectedWorkflow, showNotification]);
   
   // ==========================================================================
   // Analysis Data Loading
@@ -690,7 +729,13 @@ function App() {
         if (!projectLoaded) return renderNoProjectMessage();
         return (
           <div className="structures-view">
-            <div className="structures-view__list">
+            <ResizablePane
+              defaultWidth={400}
+              minWidth={300}
+              maxWidth={550}
+              storageKey="qv-structures-list-width"
+              className="structures-view__list"
+            >
               <StructureListPanel
                 structures={structures}
                 isLoading={isLoadingStructures}
@@ -705,7 +750,7 @@ function App() {
               >
                 ➕ Import Structure
               </button>
-            </div>
+            </ResizablePane>
             {selectedStructure && (
               <div className="structures-view__detail">
                 <StructureDetailPanel
@@ -721,6 +766,8 @@ function App() {
                     isLoading={isLoading3D}
                     showBonds={true}
                     showUnitCell={true}
+                    onSupercellChange={handleSupercellChange}
+                    onRepeatBoundaryChange={handleRepeatBoundaryChange}
                   />
                 </div>
               </div>
@@ -732,7 +779,13 @@ function App() {
         if (!projectLoaded) return renderNoProjectMessage();
         return (
           <div className="workflows-view">
-            <div className="workflows-view__list">
+            <ResizablePane
+              defaultWidth={420}
+              minWidth={320}
+              maxWidth={600}
+              storageKey="qv-workflows-list-width"
+              className="workflows-view__list"
+            >
               <WorkflowListPanel
                 workflows={workflows}
                 isLoading={isLoadingWorkflows}
@@ -747,7 +800,7 @@ function App() {
               >
                 ➕ New Workflow
               </button>
-            </div>
+            </ResizablePane>
             {selectedWorkflow && (
               <div className="workflows-view__detail">
                 <WorkflowDetailPanel

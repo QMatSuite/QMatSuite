@@ -4,6 +4,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0; /* Critical for flex scrolling */
   background: var(--bg-card);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-color);
@@ -53,7 +54,9 @@
 /* Workflow List */
 .workflow-list {
   flex: 1;
+  min-height: 0; /* Critical for flex scrolling */
   overflow-y: auto;
+  overflow-x: hidden;
   padding: var(--space-3);
   display: flex;
   flex-direction: column;
@@ -498,4 +501,375 @@
   font-size: var(--text-sm);
   color: var(--text-muted);
   margin: 0;
+}
+
+/* Section Header Row with Actions */
+.section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.section-header-row h3 {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.section-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.section-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.section-action-btn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.section-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.section-action-btn--add {
+  border-color: var(--color-success);
+  color: var(--color-success);
+  background: var(--color-success-bg);
+}
+
+.section-action-btn--add:hover:not(:disabled) {
+  background: var(--color-success);
+  color: white;
+}
+
+.section-action-btn--primary {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: white;
+}
+
+.section-action-btn--primary:hover:not(:disabled) {
+  background: var(--color-primary-light);
+}
+
+.section-action-btn--secondary {
+  border-color: var(--border-color);
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.section-action-btn--secondary:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* Step Reorder Controls */
+.step-item-container {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Step Item Container - Reorder Mode */
+.step-item-container--reordering {
+  cursor: grab;
+  border-radius: var(--radius-md);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.step-item-container--reordering:active {
+  cursor: grabbing;
+}
+
+.step-item-container--dragging {
+  opacity: 0.5;
+  transform: scale(0.98);
+}
+
+.step-item-container--drag-over {
+  position: relative;
+}
+
+.step-item-container--drag-over::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--color-primary);
+  border-radius: 2px;
+  z-index: 1;
+}
+
+.step-reorder-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Drag Handle */
+.drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 20px;
+  color: var(--text-muted);
+  font-size: 12px;
+  letter-spacing: -2px;
+  cursor: grab;
+  user-select: none;
+  transition: color var(--transition-fast);
+}
+
+.drag-handle:hover {
+  color: var(--text-primary);
+}
+
+.step-item-container--reordering:active .drag-handle {
+  cursor: grabbing;
+}
+
+.reorder-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 20px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.reorder-btn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  background: var(--color-primary-alpha);
+  color: var(--color-primary);
+}
+
+.reorder-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Step Item */
+.step-item-container .step-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  width: 100%;
+  color: var(--text-primary);  /* Ensure text is visible on dark backgrounds */
+  text-align: left;
+}
+
+.step-item-container .step-item:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  background: var(--color-primary-alpha);
+}
+
+.step-item-container .step-item:disabled {
+  cursor: default;
+}
+
+.step-number {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background: var(--bg-tertiary);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+
+.step-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.step-id {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.step-type-badge {
+  font-size: var(--text-xs);
+  color: var(--color-accent);
+  font-weight: var(--font-medium);
+}
+
+.step-file {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+/* Add Step Form */
+.add-step-form {
+  margin-top: var(--space-3);
+  padding: var(--space-4);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.add-step-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.add-step-header h4 {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.add-step-close {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.add-step-close:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.add-step-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.add-step-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.add-step-form .form-group label {
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--text-muted);
+}
+
+.add-step-form .form-group select,
+.add-step-form .form-group input {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  transition: all var(--transition-fast);
+}
+
+.add-step-form .form-group select:focus,
+.add-step-form .form-group input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-alpha);
+}
+
+.add-step-form .form-group input::placeholder {
+  color: var(--text-muted);
+}
+
+.add-step-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.add-step-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.add-step-btn--cancel {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+}
+
+.add-step-btn--cancel:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.add-step-btn--confirm {
+  background: var(--color-success);
+  color: white;
+}
+
+.add-step-btn--confirm:hover:not(:disabled) {
+  background: var(--color-success-light);
+}
+
+.add-step-btn--confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

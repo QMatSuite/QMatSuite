@@ -1,0 +1,61 @@
+meta:
+  id: 01KBSIBANDSBANDSTEP00001
+  name: bands
+  slug: bands
+  path: workflows/si-bands/steps/bands.step.yaml
+  kind: step
+structure: si
+step_type: bands_pw
+parent_workflow_id: 01KBSIBANDSWORKFLOW00001
+parameters:
+  CONTROL:
+    calculation: bands
+    outdir: ./outdir
+    prefix: si
+    restart_mode: from_scratch
+  ELECTRONS:
+    conv_thr: 1.0e-08
+  SYSTEM:
+    ecutwfc: 40
+    ecutrho: 320
+    nbnd: 8
+cards:
+  K_POINTS:
+    option: crystal_b
+    data:
+    - [0.0, 0.5, 0.0, 20]
+    - [0.0, 0.0, 0.0, 30]
+    - [-0.5, 0.0, -0.5, 10]
+    - [-0.375, 0.25, -0.375, 30]
+    - [0.0, 0.0, 0.0, 0]
+kpath_metadata:
+  segments:
+  - start_label: L
+    end_label: Γ
+    start_coords: [0.0, 0.5, 0.0]
+    end_coords: [0.0, 0.0, 0.0]
+    n_points: 20
+  - start_label: Γ
+    end_label: X
+    start_coords: [0.0, 0.0, 0.0]
+    end_coords: [-0.5, 0.0, -0.5]
+    n_points: 30
+  - start_label: X
+    end_label: U
+    start_coords: [-0.5, 0.0, -0.5]
+    end_coords: [-0.375, 0.25, -0.375]
+    n_points: 10
+  - start_label: U
+    end_label: Γ
+    start_coords: [-0.375, 0.25, -0.375]
+    end_coords: [0.0, 0.0, 0.0]
+    n_points: 30
+  labels: [L, Γ, X, U, Γ]
+  lattice_type: fcc
+  spacegroup_symbol: Fd-3m
+  spacegroup_number: 227
+species_overrides:
+  Si:
+    mass: 28.0855
+    pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+

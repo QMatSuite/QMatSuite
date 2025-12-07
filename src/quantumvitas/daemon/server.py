@@ -130,6 +130,7 @@ class QVDaemon:
             # Workflow configuration
             "get_workflow_detail": self._handle_get_workflow_detail,
             "reorder_workflow_steps": self._handle_reorder_workflow_steps,
+            "add_step_to_workflow": self._handle_add_step_to_workflow,
             "change_workflow_structure": self._handle_change_workflow_structure,
             
             # Pre-flight checks
@@ -746,6 +747,28 @@ class QVDaemon:
             project_root=project_root,
             workflow_selector=workflow,
             new_order=new_order,
+        )
+    
+    def _handle_add_step_to_workflow(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Add a new step to a workflow.
+        
+        Payload:
+            project_root: str - Path to project root
+            workflow: str - Workflow selector (name, slug, or id)
+            step_type: str - Type of step (scf, nscf, relax, bands, dos, etc.)
+            step_name: str - Name for the new step (optional, defaults to step_type)
+        """
+        project_root = self._require_path(payload, "project_root")
+        workflow = self._require_str(payload, "workflow")
+        step_type = self._require_str(payload, "step_type")
+        step_name = payload.get("step_name", step_type)
+        
+        return QVService.add_step_to_workflow(
+            project_root=project_root,
+            workflow_selector=workflow,
+            step_type=step_type,
+            step_name=step_name,
         )
     
     def _handle_change_workflow_structure(self, payload: Dict[str, Any]) -> Dict[str, Any]:
