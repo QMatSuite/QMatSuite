@@ -234,7 +234,16 @@ export function ProjectSummaryPanel({
           </div>
           <div className="detail-row">
             <span className="detail-label">Path</span>
-            <code className="detail-value detail-value--path">{summary.path}</code>
+            <div className="detail-path-container">
+              <code className="detail-value detail-value--path" title={summary.path}>{summary.path}</code>
+              <button 
+                className="reveal-btn"
+                onClick={() => window.qv?.revealPath?.(summary.path)}
+                title="Reveal in Finder"
+              >
+                📂 Reveal
+              </button>
+            </div>
           </div>
         </div>
         

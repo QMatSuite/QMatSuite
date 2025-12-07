@@ -97,6 +97,7 @@ function App() {
   
   // Dialog states
   const [showCreateProject, setShowCreateProject] = useState(false);
+  const [showCreateDemoProject, setShowCreateDemoProject] = useState(false);
   const [showImportStructure, setShowImportStructure] = useState(false);
   const [showCreateWorkflow, setShowCreateWorkflow] = useState(false);
   
@@ -116,16 +117,25 @@ function App() {
   const notificationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // App settings (persisted in localStorage)
-  const [appSettings, setAppSettings] = useState<{ theme: 'dark' | 'light'; autoAnalysis: boolean }>(() => {
+  const [appSettings, setAppSettings] = useState<{ 
+    theme: 'dark' | 'light'; 
+    autoAnalysis: boolean;
+    defaultProjectsDir: string;
+  }>(() => {
     try {
       const saved = localStorage.getItem('qv-app-settings');
       if (saved) {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        return {
+          theme: parsed.theme || 'dark',
+          autoAnalysis: parsed.autoAnalysis ?? true,
+          defaultProjectsDir: parsed.defaultProjectsDir || '',
+        };
       }
     } catch {
       // ignore
     }
-    return { theme: 'dark', autoAnalysis: true };
+    return { theme: 'dark', autoAnalysis: true, defaultProjectsDir: '' };
   });
   
   // Apply theme to document
@@ -461,54 +471,10 @@ function App() {
     }
   }, [qv, addToRecentProjects]);
   
-  // Create demo Si project
-  const handleCreateDemoProject = useCallback(async () => {
-    if (!window.qv?.openDirectory) {
-      showNotification('Cannot open directory picker', 'error');
-      return;
-    }
-    
-    // Let user pick where to create the demo
-    const targetDir = await window.qv.openDirectory();
-    if (!targetDir) return;
-    
-    setIsLoadingProject(true);
-    
-    const response = await qv.call('create_demo_project', {
-      target_dir: targetDir,
-      name: 'demo-si-project',
-    });
-    
-    if (response.ok && response.data) {
-      const result = response.data as DemoProjectResult;
-      setProjectRoot(result.project_root);
-      localStorage.setItem('qv-project-root', result.project_root);
-      addToRecentProjects(result.project_root);
-      
-      showNotification(
-        result.ready_to_run 
-          ? `Demo project created with workflow "${result.workflow?.name}" - ready to run!`
-          : 'Demo project created!',
-        'success'
-      );
-      
-      // Load the project
-      const loadResponse = await qv.getProjectSummary(result.project_root);
-      if (loadResponse.ok && loadResponse.data) {
-        setProjectSummary(loadResponse.data);
-        setProjectLoaded(true);
-        setStructures(null);
-        setWorkflows(null);
-        
-        // Set project path for log file storage
-        window.qv?.setProject?.(result.project_root);
-      }
-    } else {
-      showNotification(`Failed to create demo: ${response.error?.message || 'Unknown error'}`, 'error');
-    }
-    
-    setIsLoadingProject(false);
-  }, [qv, addToRecentProjects, showNotification]);
+  // Create demo Si project - now uses dialog
+  const handleCreateDemoProject = useCallback(() => {
+    setShowCreateDemoProject(true);
+  }, []);
   
   // ==========================================================================
   // Data Fetching
@@ -1225,6 +1191,15 @@ function App() {
         isOpen={showCreateProject}
         onClose={() => setShowCreateProject(false)}
         onSuccess={handleCreateProjectSuccess}
+        defaultParentDir={appSettings.defaultProjectsDir}
+      />
+      
+      <CreateProjectDialog
+        isOpen={showCreateDemoProject}
+        onClose={() => setShowCreateDemoProject(false)}
+        onSuccess={handleCreateProjectSuccess}
+        isDemoProject={true}
+        defaultParentDir={appSettings.defaultProjectsDir}
       />
       
       <ImportStructureDialog

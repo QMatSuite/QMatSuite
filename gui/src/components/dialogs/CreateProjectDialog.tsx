@@ -1,79 +1,148 @@
 /**
  * CreateProjectDialog - Dialog for creating a new QV project
+ * 
+ * Uses parent directory + project name approach:
+ * - User picks a parent directory (default: from settings)
+ * - User enters project name
+ * - Final project will be created as <parent>/<project-slug>
+ * 
+ * Also handles "Create Demo Project" flow when isDemoProject is true.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Modal } from './Modal';
 import { useQVClient } from '../../hooks/useQVClient';
+import type { DemoProjectResult } from '../../types/qv';
+import './CreateProjectDialog.css';
 
 interface CreateProjectDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (projectRoot: string) => void;
+  /** If true, creates a demo Si project instead of empty project */
+  isDemoProject?: boolean;
+  /** Default parent directory from app settings */
+  defaultParentDir?: string;
+}
+
+// Simple slug generator
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 export function CreateProjectDialog({ 
   isOpen, 
   onClose, 
   onSuccess,
+  isDemoProject = false,
+  defaultParentDir = '',
 }: CreateProjectDialogProps) {
   const qv = useQVClient();
   
-  const [targetDir, setTargetDir] = useState('');
-  const [projectName, setProjectName] = useState('');
+  const [parentDir, setParentDir] = useState(defaultParentDir);
+  const [projectName, setProjectName] = useState(isDemoProject ? 'demo-si-project' : 'my-project');
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  const handleBrowse = useCallback(async () => {
+  // Reset form when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      setParentDir(defaultParentDir);
+      setProjectName(isDemoProject ? 'demo-si-project' : 'my-project');
+      setError(null);
+    }
+  }, [isOpen, isDemoProject, defaultParentDir]);
+  
+  // Compute the final project path preview
+  const projectSlug = useMemo(() => slugify(projectName), [projectName]);
+  const previewPath = useMemo(() => {
+    if (!parentDir || !projectSlug) return '';
+    // Handle both Unix and Windows path separators
+    const separator = parentDir.includes('\\') ? '\\' : '/';
+    return `${parentDir}${separator}${projectSlug}`;
+  }, [parentDir, projectSlug]);
+  
+  const handleBrowseParent = useCallback(async () => {
     if (window.qv?.openDirectory) {
       const path = await window.qv.openDirectory();
       if (path) {
-        setTargetDir(path);
-        // Auto-fill project name from directory name if empty
-        if (!projectName) {
-          const dirName = path.split('/').pop() || path.split('\\').pop() || '';
-          setProjectName(dirName);
-        }
+        setParentDir(path);
       }
     }
-  }, [projectName]);
+  }, []);
   
   const handleCreate = useCallback(async () => {
-    if (!targetDir) {
-      setError('Please select a target directory');
+    if (!parentDir) {
+      setError('Please select a parent directory');
+      return;
+    }
+    if (!projectName.trim()) {
+      setError('Please enter a project name');
       return;
     }
     
     setIsCreating(true);
     setError(null);
     
-    const response = await qv.call('create_project', {
-      target_dir: targetDir,
-      name: projectName || undefined,
-    });
+    // The final target directory is parent/slug
+    const finalTargetDir = previewPath;
     
-    setIsCreating(false);
-    
-    if (response.ok && response.data) {
-      onSuccess(response.data.project_root);
-      handleClose();
+    if (isDemoProject) {
+      // Create demo project
+      const response = await qv.call('create_demo_project', {
+        target_dir: parentDir,
+        name: projectSlug,
+      });
+      
+      setIsCreating(false);
+      
+      if (response.ok && response.data) {
+        const result = response.data as DemoProjectResult;
+        onSuccess(result.project_root);
+        handleClose();
+      } else {
+        setError(response.error?.message || 'Failed to create demo project');
+      }
     } else {
-      setError(response.error?.message || 'Failed to create project');
+      // Create empty project
+      const response = await qv.call('create_project', {
+        target_dir: finalTargetDir,
+        name: projectName.trim(),
+      });
+      
+      setIsCreating(false);
+      
+      if (response.ok && response.data) {
+        onSuccess(response.data.project_root);
+        handleClose();
+      } else {
+        setError(response.error?.message || 'Failed to create project');
+      }
     }
-  }, [qv, targetDir, projectName, onSuccess]);
+  }, [qv, parentDir, projectName, projectSlug, previewPath, isDemoProject, onSuccess]);
   
   const handleClose = useCallback(() => {
-    setTargetDir('');
+    setParentDir('');
     setProjectName('');
     setError(null);
     onClose();
   }, [onClose]);
   
+  const title = isDemoProject ? 'Create Demo Project' : 'Create New Project';
+  const description = isDemoProject 
+    ? 'Create a demo Silicon project with a ready-to-run SCF/DOS workflow.'
+    : 'Create a new QuantumVITAS project in the specified location.';
+  
   return (
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Create New Project"
+      title={title}
       size="medium"
       footer={
         <>
@@ -83,37 +152,39 @@ export function CreateProjectDialog({
           <button 
             className={`btn btn--primary ${isCreating ? 'btn--loading' : ''}`}
             onClick={handleCreate}
-            disabled={isCreating || !targetDir}
+            disabled={isCreating || !parentDir || !projectName.trim()}
           >
-            Create Project
+            {isDemoProject ? 'Create Demo' : 'Create Project'}
           </button>
         </>
       }
     >
       <div className="modal-form">
+        <p className="form-description">{description}</p>
+        
         <div className="form-group">
           <label className="form-label form-label--required">
-            Project Directory
+            Parent Directory
           </label>
           <div className="form-input-group">
             <input
               type="text"
               className="form-input form-input--mono"
-              value={targetDir}
-              onChange={(e) => setTargetDir(e.target.value)}
-              placeholder="/path/to/new-project"
+              value={parentDir}
+              onChange={(e) => setParentDir(e.target.value)}
+              placeholder="/path/to/projects"
             />
-            <button className="form-button" onClick={handleBrowse}>
+            <button className="form-button" onClick={handleBrowseParent}>
               📂
             </button>
           </div>
           <span className="form-hint">
-            Choose an empty directory or a new directory name
+            Select the folder where your project will be created
           </span>
         </div>
         
         <div className="form-group">
-          <label className="form-label">
+          <label className="form-label form-label--required">
             Project Name
           </label>
           <input
@@ -121,12 +192,20 @@ export function CreateProjectDialog({
             className="form-input"
             value={projectName}
             onChange={(e) => setProjectName(e.target.value)}
-            placeholder="My QE Project"
+            placeholder="my-project"
           />
           <span className="form-hint">
-            Optional. Defaults to the directory name.
+            A folder with this name will be created in the parent directory
           </span>
         </div>
+        
+        {/* Preview Path */}
+        {previewPath && (
+          <div className="form-preview">
+            <span className="form-preview__label">Project will be created at:</span>
+            <code className="form-preview__path">{previewPath}</code>
+          </div>
+        )}
         
         {error && (
           <div className="form-error">
@@ -137,4 +216,3 @@ export function CreateProjectDialog({
     </Modal>
   );
 }
-

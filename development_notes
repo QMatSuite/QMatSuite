@@ -57,9 +57,10 @@ pip install --upgrade pip
   --- setup venv ---
   python3 -m venv .venv
   source .venv/bin/activate
+  pip install --upgrade pip
   --- install dependencies ---
-  (pip install -r requirements.txt)
-  (pip install pytest-cov)
+  pip install -r requirements.txt
+  pip install pytest-cov
   (pip install pytest)
   pip install -e '.[dev]'
   --- run tests --- 
@@ -96,3 +97,8 @@ npm run dev
 cd gui
 npm install
 npm run dev
+
+# test environment for gui
+cd gui
+npm install -D @playwright/test playwright
+npx playwright install
