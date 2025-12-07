@@ -191,6 +191,16 @@ const qvApi = {
   readLogs: async (projectPath: string, tailLines?: number): Promise<string[]> => {
     return ipcRenderer.invoke('qv-read-logs', projectPath, tailLines);
   },
+  
+  /**
+   * Reveal a file or folder in the native file manager (Finder/Explorer)
+   * 
+   * @param targetPath - Path to reveal
+   * @returns true if successful
+   */
+  revealPath: async (targetPath: string): Promise<boolean> => {
+    return ipcRenderer.invoke('qv-reveal-path', targetPath);
+  },
 };
 
 // Expose to renderer via contextBridge

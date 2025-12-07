@@ -293,7 +293,7 @@
 }
 
 .range-input {
-  width: 60px;
+  width: 90px;
   padding: 4px 8px;
   border: 1px solid var(--border-color);
   border-radius: 4px;
@@ -301,11 +301,29 @@
   color: var(--text-primary);
   font-size: 0.75rem;
   font-family: var(--font-mono);
+  text-align: right;
 }
 
 .range-input:focus {
   outline: none;
   border-color: var(--color-primary);
+}
+
+.range-reset-btn {
+  padding: 4px 8px;
+  font-size: 0.7rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.range-reset-btn:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-hover);
+  color: var(--text-primary);
 }
 
 /* Chart Wrapper */

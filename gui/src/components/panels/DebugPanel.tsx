@@ -63,13 +63,12 @@ export function DebugPanel({ isVisible = true }: DebugPanelProps) {
     document.addEventListener('mouseup', handleMouseUp);
   }, [height]);
   
-  if (!isVisible) return null;
-  
+  // Use CSS to hide instead of unmounting to preserve log state
   return (
     <div 
-      className={`debug-panel ${isResizing ? 'debug-panel--resizing' : ''}`}
+      className={`debug-panel ${isResizing ? 'debug-panel--resizing' : ''} ${!isVisible ? 'debug-panel--hidden' : ''}`}
       ref={panelRef}
-      style={{ height: `${height}px` }}
+      style={{ height: isVisible ? `${height}px` : '0px' }}
     >
       {/* Resize Handle */}
       <div 

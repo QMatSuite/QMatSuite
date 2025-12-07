@@ -53,7 +53,26 @@ class QEInputGenerator:
                 header += f" ({card.option})"
         lines.append(header)
 
-        for line_data in card.data:
+        data = card.data
+        
+        # For K_POINTS with crystal_b, crystal_c, tpiba_b, tpiba_c formats,
+        # ensure the count line is present (first line should be a single integer)
+        if card.card_type == QECardType.K_POINTS and card.option:
+            opt_lower = card.option.lower()
+            needs_count = any(fmt in opt_lower for fmt in ["crystal_b", "crystal_c", "tpiba_b", "tpiba_c"])
+            if needs_count and data:
+                # Check if first row is already a count (single integer)
+                first_row = data[0]
+                is_count_line = (
+                    isinstance(first_row, list) and len(first_row) == 1 and isinstance(first_row[0], (int, float))
+                ) or isinstance(first_row, (int, float))
+                
+                if not is_count_line:
+                    # Need to add count line - count the k-points (rows with 4 elements)
+                    n_kpoints = sum(1 for row in data if isinstance(row, list) and len(row) >= 3)
+                    data = [[n_kpoints]] + list(data)
+
+        for line_data in data:
             if isinstance(line_data, list):
                 lines.append("  " + " ".join(str(x) for x in line_data))
             else:

@@ -634,6 +634,17 @@ export interface QVCommandMap {
     };
     result: DemoProjectResult;
   };
+  
+  // Find project root (search up)
+  find_project_root: {
+    payload: {
+      start_dir: string;
+    };
+    result: {
+      found: boolean;
+      project_root: string | null;
+    };
+  };
 }
 
 // =============================================================================

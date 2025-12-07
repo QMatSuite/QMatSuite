@@ -2030,11 +2030,11 @@ class QVService:
         Returns:
             Updated workflow info
         """
-        from quantumvitas.core.models import WorkflowModel
+        from quantumvitas.core.models import load_workflow
         
         workflow = resolve_workflow(project_root, workflow_selector)
         wf_path = workflow.absolute_path / "workflow.yaml"
-        wf_model = WorkflowModel.from_yaml(wf_path)
+        wf_model = load_workflow(wf_path)
         
         # Validate all step IDs exist
         existing_ids = {s.id for s in wf_model.steps}
@@ -2091,11 +2091,12 @@ class QVService:
         from quantumvitas.core.models import WorkflowModel, WorkflowStepEntry
         from quantumvitas.workflow.structure_steps import StructureStepSpec
         import ulid as ulid_module
+        from quantumvitas.core.models import load_workflow
         
         # Resolve workflow
         workflow = resolve_workflow(project_root, workflow_selector)
         wf_path = workflow.absolute_path / "workflow.yaml"
-        wf_model = WorkflowModel.from_yaml(wf_path)
+        wf_model = load_workflow(wf_path)
         
         # Determine step name
         if not step_name:
@@ -2217,9 +2218,10 @@ class QVService:
         # Validate structure exists
         structure = resolve_structure(project_root, new_structure)
         
+        from quantumvitas.core.models import load_workflow
         workflow = resolve_workflow(project_root, workflow_selector)
         wf_path = workflow.absolute_path / "workflow.yaml"
-        wf_model = WorkflowModel.from_yaml(wf_path)
+        wf_model = load_workflow(wf_path)
         
         old_structure = wf_model.structure
         wf_model.structure = structure.meta.slug
@@ -2269,11 +2271,11 @@ class QVService:
         Returns:
             Dict with workflow details including steps
         """
-        from quantumvitas.core.models import WorkflowModel
+        from quantumvitas.core.models import load_workflow
         
         workflow = resolve_workflow(project_root, workflow_selector)
         wf_path = workflow.absolute_path / "workflow.yaml"
-        wf_model = WorkflowModel.from_yaml(wf_path)
+        wf_model = load_workflow(wf_path)
         
         steps = []
         for step_entry in wf_model.steps:
@@ -2359,15 +2361,22 @@ class QVService:
             errors.append(f"Project path does not exist: {project_path}")
         
         # Check 3: Workflow exists
+        workflow = None
         if workflow_selector:
             try:
                 workflow = resolve_workflow(project_root, workflow_selector)
                 checks.append({"name": "Workflow", "ok": True, "message": f"Workflow found: {workflow.meta.name}"})
-                
-                # Check 4: Structure exists
-                from quantumvitas.core.models import WorkflowModel
+            except Exception as e:
+                checks.append({"name": "Workflow", "ok": False, "message": str(e)})
+                errors.append(f"Workflow not found: {workflow_selector}")
+        
+        # Only continue with workflow-dependent checks if workflow was found
+        if workflow:
+            # Check 4: Structure exists
+            try:
+                from quantumvitas.core.models import load_workflow
                 wf_path = workflow.absolute_path / "workflow.yaml"
-                wf_model = WorkflowModel.from_yaml(wf_path)
+                wf_model = load_workflow(wf_path)
                 
                 if wf_model.structure:
                     try:
@@ -2379,30 +2388,29 @@ class QVService:
                 else:
                     checks.append({"name": "Structure", "ok": False, "message": "No structure assigned"})
                     errors.append("Workflow has no structure assigned")
-                
-                # Check 5: Pseudo directory
-                pseudo_dir = project_path / "pseudo"
-                if pseudo_dir.exists() and any(pseudo_dir.iterdir()):
-                    checks.append({"name": "Pseudopotentials", "ok": True, "message": "Pseudo directory has files"})
-                else:
-                    checks.append({"name": "Pseudopotentials", "ok": False, "message": "No pseudopotentials found"})
-                    warnings.append("No pseudopotential files in pseudo/ directory - QE may fail")
-                
-                # Check 6: Working directory writable
-                raw_dir = workflow.absolute_path / "raw"
-                if not raw_dir.exists():
-                    try:
-                        raw_dir.mkdir(parents=True)
-                        checks.append({"name": "Working Directory", "ok": True, "message": "Working directory created"})
-                    except Exception as e:
-                        checks.append({"name": "Working Directory", "ok": False, "message": f"Cannot create: {e}"})
-                        errors.append(f"Cannot create working directory: {e}")
-                else:
-                    checks.append({"name": "Working Directory", "ok": True, "message": "Working directory exists"})
-                
             except Exception as e:
-                checks.append({"name": "Workflow", "ok": False, "message": str(e)})
-                errors.append(f"Workflow not found: {workflow_selector}")
+                checks.append({"name": "Workflow Config", "ok": False, "message": f"Failed to parse workflow.yaml: {e}"})
+                errors.append(f"Workflow configuration error: {e}")
+            
+            # Check 5: Pseudo directory
+            pseudo_dir = project_path / "pseudo"
+            if pseudo_dir.exists() and any(pseudo_dir.iterdir()):
+                checks.append({"name": "Pseudopotentials", "ok": True, "message": "Pseudo directory has files"})
+            else:
+                checks.append({"name": "Pseudopotentials", "ok": False, "message": "No pseudopotentials found"})
+                warnings.append("No pseudopotential files in pseudo/ directory - QE may fail")
+            
+            # Check 6: Working directory writable
+            raw_dir = workflow.absolute_path / "raw"
+            if not raw_dir.exists():
+                try:
+                    raw_dir.mkdir(parents=True)
+                    checks.append({"name": "Working Directory", "ok": True, "message": "Working directory created"})
+                except Exception as e:
+                    checks.append({"name": "Working Directory", "ok": False, "message": f"Cannot create: {e}"})
+                    errors.append(f"Cannot create working directory: {e}")
+            else:
+                checks.append({"name": "Working Directory", "ok": True, "message": "Working directory exists"})
         
         return {
             "ok": len(errors) == 0,

@@ -22,6 +22,7 @@ interface SidebarProps {
   projectError: string | null;
   onProjectRootChange: (path: string) => void;
   onLoadProject: () => void;
+  onBrowseAndLoad: () => void;
   onCreateProject: () => void;
   currentView: ViewType;
   onViewChange: (view: ViewType) => void;
@@ -36,6 +37,7 @@ export function Sidebar({
   projectError,
   onProjectRootChange,
   onLoadProject,
+  onBrowseAndLoad,
   onCreateProject,
   currentView,
   onViewChange,
@@ -78,21 +80,19 @@ export function Sidebar({
               className={`sidebar__input sidebar__input--with-button ${projectError ? 'sidebar__input--error' : ''}`}
               value={projectRoot}
               onChange={(e) => onProjectRootChange(e.target.value)}
-              placeholder="/path/to/project"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && projectRoot.trim()) {
+                  onLoadProject();
+                }
+              }}
+              placeholder="/path/to/project (press Enter to load)"
               disabled={isLoading}
             />
             <button
               className="sidebar__browse-button"
-              onClick={async () => {
-                if (window.qv?.openDirectory) {
-                  const path = await window.qv.openDirectory();
-                  if (path) {
-                    onProjectRootChange(path);
-                  }
-                }
-              }}
+              onClick={onBrowseAndLoad}
               disabled={isLoading}
-              title="Browse for project directory"
+              title="Browse and load project"
             >
               📂
             </button>
@@ -106,14 +106,6 @@ export function Sidebar({
       {/* Project Actions */}
       <div className="sidebar__section">
         <div className="sidebar__actions">
-          <button
-            className="sidebar__button sidebar__button--primary"
-            onClick={onLoadProject}
-            disabled={isLoading || !projectRoot}
-          >
-            📁 Load Project
-          </button>
-          
           <button
             className="sidebar__button"
             onClick={onCreateProject}

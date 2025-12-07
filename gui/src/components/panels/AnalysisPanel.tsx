@@ -4,7 +4,7 @@
  * Uses Recharts for plotting scientific data.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   LineChart,
   Line,
@@ -39,6 +39,7 @@ interface AnalysisPanelProps {
   onLoadScf: (workflow: WorkflowInfo, step: string) => Promise<ScfConvergenceData | null>;
   onLoadDos: (workflow: WorkflowInfo) => Promise<DosData | null>;
   onLoadBands: (workflow: WorkflowInfo) => Promise<BandStructureData | null>;
+  autoAnalysis?: boolean;
 }
 
 // =============================================================================
@@ -359,7 +360,109 @@ interface BandsChartProps {
 
 export function BandsChart({ data, isLoading }: BandsChartProps) {
   const [shiftFermi, setShiftFermi] = useState(true);
-  const [energyRange, setEnergyRange] = useState<[number, number]>([-10, 10]);
+  const [energyRange, setEnergyRange] = useState<[number, number] | null>(null);
+  
+  // Local input state (strings) for editing - only commits on blur/enter
+  const [minInput, setMinInput] = useState<string>('');
+  const [maxInput, setMaxInput] = useState<string>('');
+  
+  // Calculate actual data range when data changes
+  const dataRange = useMemo(() => {
+    if (!data?.energies_ev) return null;
+    
+    const fermiShift = shiftFermi && data.fermi_energy_ev ? data.fermi_energy_ev : 0;
+    
+    // Find min and max across all bands
+    let min = Infinity;
+    let max = -Infinity;
+    
+    data.energies_ev.forEach((bandEnergies) => {
+      bandEnergies.forEach((energy) => {
+        const shifted = energy - fermiShift;
+        min = Math.min(min, shifted);
+        max = Math.max(max, shifted);
+      });
+    });
+    
+    // Add some padding
+    const padding = (max - min) * 0.1;
+    return [min - padding, max + padding] as [number, number];
+  }, [data, shiftFermi]);
+  
+  // Initialize range from data when data first loads
+  useEffect(() => {
+    if (dataRange && energyRange === null) {
+      setEnergyRange(dataRange);
+      setMinInput(dataRange[0].toFixed(2));
+      setMaxInput(dataRange[1].toFixed(2));
+    }
+  }, [dataRange, energyRange]);
+  
+  // Update range and inputs when shiftFermi changes
+  useEffect(() => {
+    if (dataRange) {
+      setEnergyRange(dataRange);
+      setMinInput(dataRange[0].toFixed(2));
+      setMaxInput(dataRange[1].toFixed(2));
+    }
+  }, [shiftFermi, dataRange]);
+  
+  // Sync input display when range changes externally
+  useEffect(() => {
+    if (energyRange) {
+      setMinInput(energyRange[0].toFixed(2));
+      setMaxInput(energyRange[1].toFixed(2));
+    }
+  }, [energyRange]);
+  
+  // Validate and commit min value
+  const handleMinBlur = () => {
+    const val = parseFloat(minInput);
+    if (!isNaN(val) && energyRange) {
+      if (val < energyRange[1]) {
+        setEnergyRange([val, energyRange[1]]);
+      } else {
+        // Invalid - rollback
+        setMinInput(energyRange[0].toFixed(2));
+      }
+    } else {
+      // Invalid - rollback
+      if (energyRange) {
+        setMinInput(energyRange[0].toFixed(2));
+      }
+    }
+  };
+  
+  // Validate and commit max value
+  const handleMaxBlur = () => {
+    const val = parseFloat(maxInput);
+    if (!isNaN(val) && energyRange) {
+      if (val > energyRange[0]) {
+        setEnergyRange([energyRange[0], val]);
+      } else {
+        // Invalid - rollback
+        setMaxInput(energyRange[1].toFixed(2));
+      }
+    } else {
+      // Invalid - rollback
+      if (energyRange) {
+        setMaxInput(energyRange[1].toFixed(2));
+      }
+    }
+  };
+  
+  // Handle Enter key
+  const handleMinKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.currentTarget.blur();
+    }
+  };
+  
+  const handleMaxKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.currentTarget.blur();
+    }
+  };
   
   const chartData = useMemo(() => {
     if (!data?.k_distances || !data?.energies_ev) return [];
@@ -444,19 +547,39 @@ export function BandsChart({ data, isLoading }: BandsChartProps) {
         <label className="control-item control-item--range">
           Energy Range
           <input
-            type="number"
-            value={energyRange[0]}
-            onChange={(e) => setEnergyRange([parseFloat(e.target.value), energyRange[1]])}
+            type="text"
+            value={minInput}
+            onChange={(e) => setMinInput(e.target.value)}
+            onBlur={handleMinBlur}
+            onKeyDown={handleMinKeyDown}
             className="range-input"
+            placeholder="min"
           />
           <span>to</span>
           <input
-            type="number"
-            value={energyRange[1]}
-            onChange={(e) => setEnergyRange([energyRange[0], parseFloat(e.target.value)])}
+            type="text"
+            value={maxInput}
+            onChange={(e) => setMaxInput(e.target.value)}
+            onBlur={handleMaxBlur}
+            onKeyDown={handleMaxKeyDown}
             className="range-input"
+            placeholder="max"
           />
           <span>eV</span>
+          {dataRange && (
+            <button
+              type="button"
+              onClick={() => {
+                setEnergyRange(dataRange);
+                setMinInput(dataRange[0].toFixed(2));
+                setMaxInput(dataRange[1].toFixed(2));
+              }}
+              className="range-reset-btn"
+              title="Reset to auto range"
+            >
+              Reset
+            </button>
+          )}
         </label>
       </div>
       
@@ -472,7 +595,10 @@ export function BandsChart({ data, isLoading }: BandsChartProps) {
             />
             <YAxis 
               stroke="#6366f1"
-              domain={energyRange}
+              domain={energyRange ? [energyRange[0], energyRange[1]] : (dataRange ? [dataRange[0], dataRange[1]] : ['auto', 'auto'])}
+              allowDataOverflow={false}
+              allowDecimals={true}
+              type="number"
               label={{ 
                 value: shiftFermi ? 'E - E_F (eV)' : 'Energy (eV)', 
                 angle: -90, 
@@ -562,6 +688,7 @@ export function AnalysisPanel({
   onLoadScf,
   onLoadDos,
   onLoadBands,
+  autoAnalysis = false,
 }: AnalysisPanelProps) {
   const [analysisType, setAnalysisType] = useState<AnalysisType>('scf');
   const [scfData, setScfData] = useState<ScfConvergenceData | null>(null);
@@ -570,25 +697,89 @@ export function AnalysisPanel({
   const [isLoading, setIsLoading] = useState(false);
   const [selectedStep, setSelectedStep] = useState<string>('scf');
   
-  const handleLoadAnalysis = async () => {
+  // Track last auto-loaded workflow to prevent infinite loops
+  const lastAutoLoadedRef = useRef<string | null>(null);
+  
+  // Auto-detect best analysis type based on workflow's last step
+  const detectAnalysisType = useCallback((workflow: WorkflowInfo): AnalysisType => {
+    if (!workflow.steps || workflow.steps.length === 0) return 'scf';
+    
+    // Check last step type
+    const lastStep = workflow.steps[workflow.steps.length - 1];
+    const stepType = lastStep.type?.toLowerCase() || '';
+    
+    if (stepType === 'dos' || stepType.includes('dos')) {
+      return 'dos';
+    } else if (stepType === 'bands' || stepType === 'bands_pw' || stepType.includes('bands')) {
+      return 'bands';
+    }
+    
+    // Also check if workflow has dos or bands steps at all
+    const hasDoStep = workflow.steps.some(s => s.type?.toLowerCase() === 'dos');
+    const hasBandsStep = workflow.steps.some(s => 
+      s.type?.toLowerCase() === 'bands' || s.type?.toLowerCase() === 'bands_pw'
+    );
+    
+    if (hasDoStep) return 'dos';
+    if (hasBandsStep) return 'bands';
+    
+    return 'scf';
+  }, []);
+  
+  const handleLoadAnalysis = useCallback(async (type?: AnalysisType) => {
     if (!selectedWorkflow) return;
     
+    const typeToLoad = type || analysisType;
     setIsLoading(true);
     try {
-      if (analysisType === 'scf') {
+      if (typeToLoad === 'scf') {
         const data = await onLoadScf(selectedWorkflow, selectedStep);
         setScfData(data);
-      } else if (analysisType === 'dos') {
+      } else if (typeToLoad === 'dos') {
         const data = await onLoadDos(selectedWorkflow);
         setDosData(data);
-      } else if (analysisType === 'bands') {
+      } else if (typeToLoad === 'bands') {
         const data = await onLoadBands(selectedWorkflow);
         setBandsData(data);
       }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedWorkflow, analysisType, selectedStep, onLoadScf, onLoadDos, onLoadBands]);
+  
+  // Auto-select analysis type and load when workflow changes
+  useEffect(() => {
+    if (selectedWorkflow && autoAnalysis) {
+      // Only auto-load if we haven't already loaded for this workflow
+      if (lastAutoLoadedRef.current !== selectedWorkflow.id) {
+        const detectedType = detectAnalysisType(selectedWorkflow);
+        setAnalysisType(detectedType);
+        lastAutoLoadedRef.current = selectedWorkflow.id;
+        
+        // Load the detected analysis type
+        setIsLoading(true);
+        (async () => {
+          try {
+            if (detectedType === 'scf') {
+              const data = await onLoadScf(selectedWorkflow, selectedStep);
+              setScfData(data);
+            } else if (detectedType === 'dos') {
+              const data = await onLoadDos(selectedWorkflow);
+              setDosData(data);
+            } else if (detectedType === 'bands') {
+              const data = await onLoadBands(selectedWorkflow);
+              setBandsData(data);
+            }
+          } finally {
+            setIsLoading(false);
+          }
+        })();
+      }
+    } else if (!selectedWorkflow) {
+      // Reset when no workflow is selected
+      lastAutoLoadedRef.current = null;
+    }
+  }, [selectedWorkflow, autoAnalysis, detectAnalysisType, selectedStep, onLoadScf, onLoadDos, onLoadBands]);
   
   return (
     <div className="analysis-panel">
@@ -657,7 +848,7 @@ export function AnalysisPanel({
         
         <button
           className="load-button"
-          onClick={handleLoadAnalysis}
+          onClick={() => handleLoadAnalysis()}
           disabled={!selectedWorkflow || isLoading}
         >
           {isLoading ? 'Loading...' : `Load ${analysisType.toUpperCase()}`}

@@ -100,9 +100,13 @@ gui/
 │   │   │   ├── StructureListPanel.tsx    # Structure list + detail
 │   │   │   ├── WorkflowListPanel.tsx     # Workflow list + detail
 │   │   │   ├── StructureViewer3D.tsx     # 3D ball-and-stick viewer
-│   │   │   ├── AnalysisPanel.tsx         # SCF/DOS/Bands charts
+│   │   │   ├── AnalysisPanel.tsx         # SCF/DOS/Bands charts with auto-selection
+│   │   │                              # - Auto-detects analysis type from workflow
+│   │   │                              # - Energy range controls for band plots
+│   │   │                              # - Automatic loading when enabled
 │   │   │   ├── JobsPanel.tsx             # Job list + detail + logs
-│   │   │   └── DaemonErrorBanner.tsx     # Startup error display
+│   │   ├── SettingsPanel.tsx        # QE detection + theme + auto-analysis settings
+│   │   └── DaemonErrorBanner.tsx     # Startup error display
 │   │   └── dialogs/
 │   │       ├── Modal.tsx                 # Base modal component
 │   │       ├── CreateProjectDialog.tsx   # New project creation
@@ -194,6 +198,7 @@ qv.state.daemonStatus  // DaemonStatus | null
 // System
 qv.ping()              // Test daemon connection
 qv.openDirectoryDialog() // Native folder picker
+window.qv.revealPath(path) // Reveal file/folder in Finder/Explorer
 
 // Project operations
 qv.getProjectSummary(projectRoot)
@@ -316,6 +321,9 @@ interface QVApi {
     title?: string;
     filters?: { name: string; extensions: string[] }[];
   }) => Promise<string | null>;
+  
+  // Reveal in file manager
+  revealPath: (targetPath: string) => Promise<boolean>;
 }
 ```
 
@@ -398,36 +406,57 @@ const pendingRequests = new Map<string, {
 
 ## Design System
 
-### CSS Variables
+### CSS Variables and Theming
 
+The GUI supports both dark (default) and light themes using CSS custom properties. Theme is controlled via `data-theme` attribute on the document root.
+
+**Dark Theme** (default):
 ```css
 :root {
   /* Typography */
-  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', 'Consolas', monospace;
+  --font-sans: 'Inter', 'SF Pro Display', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
   
-  /* Colors - Midnight Blue Theme */
+  /* Colors - Indigo/Slate Theme */
   --color-primary: #6366f1;
   --color-success: #10b981;
   --color-error: #ef4444;
   
   /* Backgrounds */
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-sidebar: #0f172a;
-  --bg-card: #1e293b;
+  --bg-app: #0c0f1a;
+  --bg-primary: #111827;
+  --bg-secondary: #1f2937;
+  --bg-sidebar: #0f1525;
+  --bg-card: #1f2937;
   
   /* Text */
-  --text-primary: #f1f5f9;
-  --text-secondary: #cbd5e1;
-  --text-muted: #64748b;
-  
-  /* JSON Syntax */
-  --json-key: #93c5fd;
-  --json-string: #86efac;
-  --json-number: #fcd34d;
+  --text-primary: #f9fafb;
+  --text-secondary: #d1d5db;
+  --text-muted: #6b7280;
 }
 ```
+
+**Light Theme** (VS Code-inspired):
+```css
+[data-theme="light"] {
+  /* Backgrounds */
+  --bg-app: #f3f3f3;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --bg-sidebar: #f8f8f8;
+  --bg-card: #ffffff;
+  
+  /* Text */
+  --text-primary: #1f1f1f;
+  --text-secondary: #424242;
+  --text-muted: #9e9e9e;
+  
+  /* Primary color adjusted for light theme */
+  --color-primary: #0066b8;
+}
+```
+
+Theme switching is available in Settings → Appearance section.
 
 ### Typography
 
@@ -719,13 +748,33 @@ CSS-only tooltips using `data-tooltip` attribute:
   - Logs saved to `.qv-daemon.log` in project directory
   - Persisted across sessions
   - setProject/readLogs IPC methods
+- [x] Theme switching (light/dark)
+  - VS Code-inspired light theme
+  - Dark theme (default)
+  - Theme toggle in Settings panel
+  - Persisted in localStorage
+- [x] Reveal in Finder/Explorer
+  - OS-native file manager integration
+  - `window.qv.revealPath(path)` API
+  - Works on macOS (Finder), Windows (Explorer), Linux
+- [x] Automatic analysis selection
+  - Auto-detects analysis type based on workflow's last step
+  - DOS step → DOS analysis
+  - Bands step → Bands analysis
+  - Otherwise → SCF analysis
+- [x] Automatic analysis loading
+  - Setting in Settings → Analysis section
+  - When enabled, automatically loads analysis when selecting workflow
+  - Default: enabled
+- [x] Band structure plot controls
+  - Energy range inputs update ylim dynamically
+  - Real-time chart updates
 
 ### Planned
 
 - [ ] Real-time log streaming (websocket or SSE)
 - [ ] Workflow builder UI (visual graph)
 - [ ] Multiple project tabs
-- [ ] Theme switching (light/dark)
 - [ ] Keyboard shortcuts
 - [ ] Load previous logs on project open
 

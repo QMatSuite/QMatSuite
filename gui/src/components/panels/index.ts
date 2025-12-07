@@ -9,3 +9,4 @@ export { AnalysisPanel, ScfConvergenceChart, DosChart, BandsChart } from './Anal
 export { DaemonErrorBanner } from './DaemonErrorBanner';
 export { JobsPanel } from './JobsPanel';
 export { SettingsPanel } from './SettingsPanel';
+export type { AppSettings } from './SettingsPanel';
