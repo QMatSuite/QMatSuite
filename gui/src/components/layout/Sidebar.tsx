@@ -72,7 +72,7 @@ export function Sidebar({
   }, []);
   
   return (
-    <div className={`sidebar ${isCollapsed ? 'sidebar--collapsed' : ''}`}
+    <div className={`sidebar ${isCollapsed ? 'sidebar--collapsed' : ''}`}>
       {/* Header */}
       <div className="sidebar__header">
         <h1 className="sidebar__title">

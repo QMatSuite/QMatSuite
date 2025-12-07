@@ -1,0 +1,18 @@
+/* CreateProjectDialog Styles
+ * 
+ * Most styles are inherited from Modal.css via shared class names.
+ * This file contains any dialog-specific overrides.
+ */
+
+/* Form error styling with icon */
+.modal-form .form-error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--color-error-bg);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+}
+
