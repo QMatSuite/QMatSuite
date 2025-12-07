@@ -2907,12 +2907,20 @@ Uses Playwright's built-in `_electron.launch()` API:
 ```typescript
 import { _electron as electron, ElectronApplication, Page } from '@playwright/test';
 
+const launchArgs = [mainPath];  // dist-electron/main.js
+// On Linux CI, disable sandbox (no root access for SUID sandbox setup)
+if (os.platform() === 'linux') {
+  launchArgs.unshift('--no-sandbox');
+}
+
 const app = await electron.launch({
   executablePath: electronExecutablePath,  // Platform-specific binary path
-  args: [mainPath],                         // dist-electron/main.js
+  args: launchArgs,
   cwd: guiDir,
 });
 ```
+
+**Linux CI Note**: The `--no-sandbox` flag is required on Linux CI environments (like GitHub Actions) because we don't have root access to configure the SUID sandbox helper (`chrome-sandbox`). This is safe in CI environments where the test process is already isolated.
 
 #### macOS Launch (CDP Workaround)
 
