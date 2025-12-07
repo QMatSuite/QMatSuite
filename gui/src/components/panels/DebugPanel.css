@@ -17,6 +17,13 @@
   transition: none !important;
 }
 
+.debug-panel--hidden {
+  height: 0 !important;
+  min-height: 0 !important;
+  overflow: hidden;
+  border-top: none;
+}
+
 /* Resize Handle - positioned at the top of the panel */
 .debug-panel__resize-handle {
   position: absolute;

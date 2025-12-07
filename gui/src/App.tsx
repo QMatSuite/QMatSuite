@@ -115,6 +115,25 @@ function App() {
   const [jobNotification, setJobNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const notificationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
+  // App settings (persisted in localStorage)
+  const [appSettings, setAppSettings] = useState<{ theme: 'dark' | 'light'; autoAnalysis: boolean }>(() => {
+    try {
+      const saved = localStorage.getItem('qv-app-settings');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch {
+      // ignore
+    }
+    return { theme: 'dark', autoAnalysis: true };
+  });
+  
+  // Apply theme to document
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', appSettings.theme);
+    localStorage.setItem('qv-app-settings', JSON.stringify(appSettings));
+  }, [appSettings]);
+  
   // Hooks
   const qv = useQVClient();
   const daemonStatus = useDaemonStatus();
@@ -235,6 +254,7 @@ function App() {
     setIsLoadingProject(true);
     setProjectError(null);
     
+    // First try loading directly from the path
     const response = await qv.getProjectSummary(projectRoot);
     
     if (response.ok && response.data) {
@@ -243,144 +263,170 @@ function App() {
       setProjectLoaded(true);
       setProjectError(null);
       setDebugResult(response as QVResponse);
-      
-      // Clear cached data to force refetch
       setStructures(null);
       setWorkflows(null);
       setSelectedStructure(null);
       setSelectedWorkflow(null);
-      
-      // Add to recent projects
       addToRecentProjects(projectRoot);
-      
-      // Set project path for log file storage
       window.qv?.setProject?.(projectRoot);
-    } else {
-      // Check if this is "not a project" error - offer to create one
-      const errorMsg = response.error?.message || '';
-      if (errorMsg.includes('project.qv.yml') || errorMsg.includes('not a project') || errorMsg.includes('not found')) {
+      return;
+    }
+    
+    // Not a project directly - search up for project root
+    const findResponse = await qv.call('find_project_root', { start_dir: projectRoot });
+    
+    if (findResponse.ok && findResponse.data?.found && findResponse.data?.project_root) {
+      // Found a project in parent directory
+      const foundRoot = findResponse.data.project_root;
+      setProjectRoot(foundRoot);
+      localStorage.setItem('qv-project-root', foundRoot);
+      
+      const parentResponse = await qv.getProjectSummary(foundRoot);
+      
+      if (parentResponse.ok && parentResponse.data) {
+        setIsLoadingProject(false);
+        setProjectSummary(parentResponse.data);
+        setProjectLoaded(true);
+        setProjectError(null);
+        setStructures(null);
+        setWorkflows(null);
+        setSelectedStructure(null);
+        setSelectedWorkflow(null);
+        addToRecentProjects(foundRoot);
+        window.qv?.setProject?.(foundRoot);
+        showNotification(`Loaded project from: ${foundRoot}`, 'success');
+        return;
+      }
+    }
+    
+    setIsLoadingProject(false);
+    
+    // No project found - offer to create one
+    const shouldCreate = window.confirm(
+      `This folder is not a QuantumVITAS project.\n\nWould you like to create a new project here?\n\n${projectRoot}`
+    );
+    
+    if (shouldCreate) {
+      setIsLoadingProject(true);
+      const createResponse = await qv.call('create_project', {
+        target_dir: projectRoot,
+      });
+      
+      if (createResponse.ok && createResponse.data) {
+        const loadResponse = await qv.getProjectSummary(projectRoot);
         setIsLoadingProject(false);
         
-        // Ask user if they want to create a project here
-        const shouldCreate = window.confirm(
-          `This folder is not a QuantumVITAS project.\n\nWould you like to create a new project here?\n\n${projectRoot}`
-        );
-        
-        if (shouldCreate) {
-          // Create the project
-          setIsLoadingProject(true);
-          const createResponse = await qv.call('create_project', {
-            target_dir: projectRoot,
-          });
-          
-          if (createResponse.ok && createResponse.data) {
-            // Load the newly created project
-            const loadResponse = await qv.getProjectSummary(projectRoot);
-            setIsLoadingProject(false);
-            
-            if (loadResponse.ok && loadResponse.data) {
-              setProjectSummary(loadResponse.data);
-              setProjectLoaded(true);
-              setProjectError(null);
-              setStructures(null);
-              setWorkflows(null);
-              addToRecentProjects(projectRoot);
-              showNotification('Project created successfully!', 'success');
-              window.qv?.setProject?.(projectRoot);
-            } else {
-              setProjectError(loadResponse.error?.message || 'Failed to load created project');
-            }
-          } else {
-            setIsLoadingProject(false);
-            setProjectError(createResponse.error?.message || 'Failed to create project');
-          }
-        } else {
-          // User declined
+        if (loadResponse.ok && loadResponse.data) {
+          setProjectSummary(loadResponse.data);
+          setProjectLoaded(true);
           setProjectError(null);
+          setStructures(null);
+          setWorkflows(null);
+          addToRecentProjects(projectRoot);
+          showNotification('Project created successfully!', 'success');
+          window.qv?.setProject?.(projectRoot);
+        } else {
+          setProjectError(loadResponse.error?.message || 'Failed to load created project');
         }
       } else {
         setIsLoadingProject(false);
-        setProjectSummary(null);
-        setProjectLoaded(false);
-        setProjectError(errorMsg || 'Failed to load project');
-        setDebugResult(response as QVResponse);
+        setProjectError(createResponse.error?.message || 'Failed to create project');
       }
+    } else {
+      setProjectError(null);
     }
   }, [qv, projectRoot, addToRecentProjects, showNotification]);
   
   const handleBrowseAndLoad = useCallback(async () => {
     if (!window.qv?.openDirectory) return;
     
-    const path = await window.qv.openDirectory();
-    if (!path) return;
+    const selectedPath = await window.qv.openDirectory();
+    if (!selectedPath) return;
     
-    setProjectRoot(path);
-    localStorage.setItem('qv-project-root', path);
-    
-    // Try to load the project
     setIsLoadingProject(true);
     setProjectError(null);
     
-    const response = await qv.getProjectSummary(path);
+    // First, check if selected directory is a project
+    let projectPath = selectedPath;
+    const directResponse = await qv.getProjectSummary(selectedPath);
+    
+    if (directResponse.ok && directResponse.data) {
+      // Selected directory is a valid project
+      setProjectRoot(selectedPath);
+      localStorage.setItem('qv-project-root', selectedPath);
+      setProjectSummary(directResponse.data);
+      setProjectLoaded(true);
+      setStructures(null);
+      setWorkflows(null);
+      addToRecentProjects(selectedPath);
+      window.qv?.setProject?.(selectedPath);
+      setIsLoadingProject(false);
+      return;
+    }
+    
+    // Not a project - search up for project root
+    const findResponse = await qv.call('find_project_root', { start_dir: selectedPath });
+    
+    if (findResponse.ok && findResponse.data?.found && findResponse.data?.project_root) {
+      // Found a project in parent directory
+      projectPath = findResponse.data.project_root;
+      
+      setProjectRoot(projectPath);
+      localStorage.setItem('qv-project-root', projectPath);
+      
+      const parentResponse = await qv.getProjectSummary(projectPath);
+      
+      if (parentResponse.ok && parentResponse.data) {
+        setProjectSummary(parentResponse.data);
+        setProjectLoaded(true);
+        setStructures(null);
+        setWorkflows(null);
+        addToRecentProjects(projectPath);
+        window.qv?.setProject?.(projectPath);
+        setIsLoadingProject(false);
+        showNotification(`Loaded project from: ${projectPath}`, 'success');
+        return;
+      }
+    }
     
     setIsLoadingProject(false);
     
-    if (response.ok && response.data) {
-      setProjectSummary(response.data);
-      setProjectLoaded(true);
-      setProjectError(null);
-      setStructures(null);
-      setWorkflows(null);
-      addToRecentProjects(path);
+    // No project found - ask user if they want to create one
+    const shouldCreate = window.confirm(
+      `This folder is not a QuantumVITAS project.\n\nWould you like to create a new project here?\n\n${selectedPath}`
+    );
+    
+    if (shouldCreate) {
+      setIsLoadingProject(true);
+      const createResponse = await qv.call('create_project', {
+        target_dir: selectedPath,
+      });
       
-      // Set project path for log file storage
-      window.qv?.setProject?.(path);
-    } else {
-      // Check if this is "not a project" error - offer to create one
-      const errorMsg = response.error?.message || '';
-      if (errorMsg.includes('project.qv.yml') || errorMsg.includes('not a project')) {
-        // Ask user if they want to create a project here
-        const shouldCreate = window.confirm(
-          `This folder is not a QuantumVITAS project.\n\nWould you like to create a new project here?\n\n${path}`
-        );
+      if (createResponse.ok && createResponse.data) {
+        const loadResponse = await qv.getProjectSummary(selectedPath);
+        setIsLoadingProject(false);
         
-        if (shouldCreate) {
-          // Create the project
-          setIsLoadingProject(true);
-          const createResponse = await qv.call('create_project', {
-            target_dir: path,
-          });
-          
-          if (createResponse.ok && createResponse.data) {
-            // Load the newly created project
-            const loadResponse = await qv.getProjectSummary(path);
-            setIsLoadingProject(false);
-            
-            if (loadResponse.ok && loadResponse.data) {
-              setProjectSummary(loadResponse.data);
-              setProjectLoaded(true);
-              setProjectError(null);
-              setStructures(null);
-              setWorkflows(null);
-              addToRecentProjects(path);
-              showNotification('Project created successfully!', 'success');
-              window.qv?.setProject?.(path);
-            } else {
-              setProjectError(loadResponse.error?.message || 'Failed to load created project');
-            }
-          } else {
-            setIsLoadingProject(false);
-            setProjectError(createResponse.error?.message || 'Failed to create project');
-          }
+        if (loadResponse.ok && loadResponse.data) {
+          setProjectRoot(selectedPath);
+          localStorage.setItem('qv-project-root', selectedPath);
+          setProjectSummary(loadResponse.data);
+          setProjectLoaded(true);
+          setStructures(null);
+          setWorkflows(null);
+          addToRecentProjects(selectedPath);
+          showNotification('Project created successfully!', 'success');
+          window.qv?.setProject?.(selectedPath);
         } else {
-          // User declined, don't show error
-          setProjectError(null);
-          setProjectRoot('');
-          localStorage.removeItem('qv-project-root');
+          setProjectError(loadResponse.error?.message || 'Failed to load created project');
         }
       } else {
-        setProjectError(errorMsg || 'Failed to load project');
+        setIsLoadingProject(false);
+        setProjectError(createResponse.error?.message || 'Failed to create project');
       }
+    } else {
+      setProjectError(null);
+      setProjectRoot('');
+      localStorage.removeItem('qv-project-root');
     }
   }, [qv, addToRecentProjects, showNotification]);
   
@@ -1073,11 +1119,17 @@ function App() {
             onLoadScf={handleLoadScf}
             onLoadDos={handleLoadDos}
             onLoadBands={handleLoadBands}
+            autoAnalysis={appSettings.autoAnalysis}
           />
         );
         
       case 'settings':
-        return <SettingsPanel />;
+        return (
+          <SettingsPanel 
+            settings={appSettings}
+            onSettingsChange={setAppSettings}
+          />
+        );
         
       case 'debug':
         return <DebugView lastResult={debugResult} />;
@@ -1098,6 +1150,7 @@ function App() {
             projectError={projectError}
             onProjectRootChange={handleProjectRootChange}
             onLoadProject={handleLoadProject}
+            onBrowseAndLoad={handleBrowseAndLoad}
             onCreateProject={() => setShowCreateProject(true)}
             currentView={currentView}
             onViewChange={setCurrentView}

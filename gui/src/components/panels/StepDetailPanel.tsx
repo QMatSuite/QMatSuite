@@ -56,9 +56,15 @@ const EDITABLE_PARAMS: Record<string, Array<{
     { namelist: 'CONTROL', key: 'forc_conv_thr', label: 'Force Convergence', type: 'number', unit: 'Ry/au', description: 'Convergence threshold on forces' },
     { namelist: 'ELECTRONS', key: 'conv_thr', label: 'SCF Convergence', type: 'number' },
   ],
+  bands_pw: [
+    { namelist: 'SYSTEM', key: 'ecutwfc', label: 'Wavefunction Cutoff', type: 'number', unit: 'Ry', description: 'Kinetic energy cutoff for wavefunctions' },
+    { namelist: 'SYSTEM', key: 'ecutrho', label: 'Charge Density Cutoff', type: 'number', unit: 'Ry', description: 'Kinetic energy cutoff for charge density (default: 4×ecutwfc)' },
+    { namelist: 'SYSTEM', key: 'nbnd', label: 'Number of Bands', type: 'number', description: 'Number of bands to compute' },
+    { namelist: 'ELECTRONS', key: 'conv_thr', label: 'Convergence Threshold', type: 'number', description: 'Convergence threshold for self-consistency' },
+  ],
   bands: [
-    { namelist: 'SYSTEM', key: 'ecutwfc', label: 'Wavefunction Cutoff', type: 'number', unit: 'Ry' },
-    { namelist: 'SYSTEM', key: 'ecutrho', label: 'Charge Density Cutoff', type: 'number', unit: 'Ry' },
+    { namelist: 'BANDS', key: 'filband', label: 'Output File', type: 'text', description: 'Name of output file for band data' },
+    { namelist: 'BANDS', key: 'lsym', label: 'Use Symmetry', type: 'select', options: ['.true.', '.false.'], description: 'Use symmetry to reduce k-points' },
   ],
   dos: [
     { namelist: 'SYSTEM', key: 'ecutwfc', label: 'Wavefunction Cutoff', type: 'number', unit: 'Ry' },

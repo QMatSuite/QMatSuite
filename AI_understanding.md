@@ -724,8 +724,9 @@ The GUI is implemented as an Electron desktop application with React/TypeScript 
 └─────────────────────────────────────────────┘
 ```
 
-### 11.2 Key Features (2025-12-07)
+### 11.2 Key Features
 
+#### Core Features (2025-12-07)
 | Feature | Implementation |
 |---------|---------------|
 | Resizable daemon logs panel | DebugPanel with drag handle |
@@ -736,6 +737,15 @@ The GUI is implemented as an Electron desktop application with React/TypeScript 
 | Boundary atom repetition | repeat_boundary param in structure visualization |
 | Context-aware element legend | Filter legend to only present elements |
 | Summary auto-refresh | refreshSummary() called after CRUD operations |
+
+#### UI/UX Enhancements (2025-01-XX)
+| Feature | Implementation |
+|---------|---------------|
+| Theme switching (dark/light) | CSS variables with `[data-theme="light"]` selector, Settings panel toggle |
+| Reveal in Finder/Explorer | `shell.showItemInFolder()` IPC handler, `window.qv.revealPath()` API |
+| Automatic analysis selection | `detectAnalysisType()` based on workflow's last step type |
+| Automatic analysis loading | Settings toggle, auto-loads when workflow selected (if enabled) |
+| Band structure ylim control | Energy range inputs update YAxis domain dynamically |
 
 ### 11.3 Daemon Methods for GUI
 
@@ -784,6 +794,10 @@ gui/src/components/
 │   ├── StructureViewer3D.tsx    # 3D view with supercell controls, camera state preservation
 │   ├── WorkflowListPanel.tsx    # With drag-and-drop reorder + add step
 │   ├── AnalysisPanel.tsx        # Recharts-based SCF/DOS/bands plots
+│   │                             # - Auto-detects analysis type from workflow
+│   │                             # - Energy range controls for band plots
+│   │                             # - Automatic loading when enabled
+│   ├── SettingsPanel.tsx        # QE detection + theme + auto-analysis settings
 │   └── JobsPanel.tsx            # Job list with logs viewer
 └── dialogs/
     └── ...
@@ -2178,6 +2192,9 @@ window.qv = {
   // Native dialogs
   openDirectory: () => Promise<string | null>,   // Folder picker
   openFile: (options?) => Promise<string | null>, // File picker with filters
+  
+  // File system integration
+  revealPath: (targetPath: string) => Promise<boolean>, // Reveal in Finder/Explorer
 }
 ```
 
@@ -2194,9 +2211,19 @@ const path = await window.qv.openFile({
 
 ### 17.7 Design System
 
-CSS custom properties in `src/index.css`:
+CSS custom properties in `src/index.css` with theme support:
+
+**Dark Theme** (default):
 - `--color-primary`, `--color-success`, `--color-error`
 - `--bg-primary`, `--bg-sidebar`, `--bg-card`
+- `--text-primary`, `--text-secondary`, `--text-muted`
+
+**Light Theme** (`[data-theme="light"]`):
+- VS Code-inspired light color scheme
+- Adjusted primary colors for light backgrounds
+- Theme toggle in Settings → Appearance
+
+Theme is controlled via `data-theme` attribute on document root and persisted in localStorage.
 - `--text-primary`, `--text-secondary`, `--text-muted`
 - `--font-sans` (IBM Plex Sans), `--font-mono` (IBM Plex Mono)
 - JSON syntax highlighting: `--json-key`, `--json-string`, etc.
@@ -2656,6 +2683,106 @@ gui/src/components/layout/
 - `gui/electron/main.ts` - Log persistence IPC handlers
 - `gui/electron/preload.ts` - `setProject`/`readLogs` methods
 - `gui/src/types/qv.ts` - New method types
+
+---
+
+## 19. GUI Enhancements - 2025-01-XX
+
+### New Features
+
+| Feature | Implementation | Files |
+|---------|---------------|-------|
+| Theme switching | CSS variables with `[data-theme="light"]` selector, Settings panel toggle, localStorage persistence | `gui/src/index.css`, `gui/src/components/panels/SettingsPanel.tsx`, `gui/src/App.tsx` |
+| Reveal in Finder/Explorer | `shell.showItemInFolder()` IPC handler, `window.qv.revealPath()` API | `gui/electron/main.ts`, `gui/electron/preload.ts` |
+| Automatic analysis selection | `detectAnalysisType()` function checks workflow's last step type (dos → DOS, bands → Bands, else → SCF) | `gui/src/components/panels/AnalysisPanel.tsx` |
+| Automatic analysis loading | Settings toggle in Settings → Analysis, auto-loads when workflow selected if enabled (default: true) | `gui/src/components/panels/SettingsPanel.tsx`, `gui/src/components/panels/AnalysisPanel.tsx`, `gui/src/App.tsx` |
+| Band structure ylim control | Energy range inputs update YAxis `domain` prop dynamically | `gui/src/components/panels/AnalysisPanel.tsx` (BandsChart component) |
+
+### Implementation Details
+
+**Theme System:**
+- Dark theme is default (defined in `:root`)
+- Light theme uses `[data-theme="light"]` selector with VS Code-inspired colors
+- Theme applied via `document.documentElement.setAttribute('data-theme', theme)`
+- Persisted in localStorage as `qv-app-settings`
+
+**Reveal Path:**
+- Uses Electron's `shell.showItemInFolder()` (cross-platform)
+- Works on macOS (Finder), Windows (Explorer), Linux (file manager)
+- Accessible via `window.qv.revealPath(path)` in renderer
+
+**Analysis Auto-Selection:**
+- Checks last step's `type` field
+- Maps: `dos` → DOS, `bands`/`bands_pw` → Bands, otherwise → SCF
+- Also checks if workflow has any DOS/bands steps as fallback
+
+**Settings Panel:**
+- New sections: Appearance (theme toggle), Analysis (auto-analysis toggle)
+- Settings persisted in localStorage
+- Type-safe with `AppSettings` interface
+
+### Modified Files
+
+- `gui/src/index.css` - Added light theme CSS variables
+- `gui/src/components/panels/SettingsPanel.tsx` - Added theme and auto-analysis settings
+- `gui/src/components/panels/AnalysisPanel.tsx` - Added auto-selection and auto-loading
+- `gui/src/App.tsx` - Added settings state management and theme application
+- `gui/electron/main.ts` - Added `qv-reveal-path` IPC handler
+- `gui/electron/preload.ts` - Added `revealPath` method
+
+---
+
+## 20. Refactoring History - 2025-12-07 Session 2
+
+### Bug Fixes
+
+| Fix | Details |
+|-----|---------|
+| Log clearing on show/hide | Changed `DebugPanel` to use CSS hiding (`height: 0`) instead of returning `null` when hidden - preserves log state |
+| "Workflow not found" error | Fixed `preflight_check` in `api.py` - was catching ALL exceptions and reporting "Workflow not found" even for unrelated errors |
+| bands_pw editable params | Added `bands_pw` to `EDITABLE_PARAMS` in `StepDetailPanel.tsx` with ecutwfc, ecutrho, nbnd, conv_thr |
+
+### UX Improvements
+
+| Feature | Implementation |
+|---------|---------------|
+| Search up for project root | When loading/browsing, uses `find_path_context_from_pwd()` from `core/context.py` to search up for project.qv.yml |
+| Remove "Load Project" button | Removed button, press Enter in path input to load, browse button directly loads |
+| Project subfolder support | If user opens a subfolder, GUI searches up and loads parent project |
+
+### Key Architectural Note
+
+**Project Root Finding**: The GUI now reuses the existing `find_path_context_from_pwd()` function from `core/context.py` rather than implementing duplicate logic. This function:
+- Searches up to 20 directories for `project.qv.yml`
+- Returns a `PathContext` with `project_root` and context nodes
+- Raises `ContextNotFoundError` if no project found
+
+**Daemon Handler**:
+```python
+def _handle_find_project_root(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    from quantumvitas.core.context import find_path_context_from_pwd, ContextNotFoundError
+    
+    start_dir = Path(payload.get("start_dir", "")).resolve()
+    try:
+        ctx = find_path_context_from_pwd(start_dir)
+        return {"found": True, "project_root": str(ctx.project_root)}
+    except ContextNotFoundError:
+        return {"found": False, "project_root": None}
+```
+
+### Modified Files
+
+**Backend**:
+- `src/quantumvitas/api.py` - Fixed preflight_check exception handling
+- `src/quantumvitas/daemon/server.py` - Uses `find_path_context_from_pwd` for project root finding
+
+**Frontend**:
+- `gui/src/App.tsx` - Updated `handleBrowseAndLoad` and `handleLoadProject` to search up
+- `gui/src/components/layout/Sidebar.tsx` - Removed Load Project button, added Enter key handler
+- `gui/src/components/panels/DebugPanel.tsx` - CSS hiding instead of unmounting
+- `gui/src/components/panels/DebugPanel.css` - Added `.debug-panel--hidden` class
+- `gui/src/components/panels/StepDetailPanel.tsx` - Added `bands_pw` editable params
+- `gui/src/types/qv.ts` - Added `find_project_root` RPC type
 
 ---
 

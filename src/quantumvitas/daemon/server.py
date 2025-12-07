@@ -105,6 +105,7 @@ class QVDaemon:
             "get_project_summary": self._handle_get_project_summary,
             "list_structures": self._handle_list_structures,
             "list_workflows": self._handle_list_workflows,
+            "find_project_root": self._handle_find_project_root,
             
             # Project creation and management
             "create_project": self._handle_create_project,
@@ -374,6 +375,31 @@ class QVDaemon:
         project_root = self._require_path(payload, "project_root")
         workflows = QVService.list_workflows_data(project_root)
         return {"workflows": workflows, "count": len(workflows)}
+    
+    def _handle_find_project_root(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Search up from a directory to find a project root.
+        
+        Uses the existing context detection from quantumvitas.core.context.
+        
+        Payload:
+            start_dir: str - Directory to start searching from
+            
+        Returns:
+            found: bool - Whether a project was found
+            project_root: str | null - Path to project root if found
+        """
+        from quantumvitas.core.context import find_path_context_from_pwd, ContextNotFoundError
+        
+        start_dir = Path(payload.get("start_dir", "")).resolve()
+        if not start_dir.exists():
+            return {"found": False, "project_root": None}
+        
+        try:
+            ctx = find_path_context_from_pwd(start_dir)
+            return {"found": True, "project_root": str(ctx.project_root)}
+        except ContextNotFoundError:
+            return {"found": False, "project_root": None}
     
     # -------------------------------------------------------------------------
     # Project creation handlers

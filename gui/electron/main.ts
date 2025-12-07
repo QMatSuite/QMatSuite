@@ -8,7 +8,7 @@
  * - Maintain request/response mapping for async JSON-RPC
  */
 
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
 import { spawn, ChildProcess } from 'node:child_process';
 import { createInterface, Interface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
@@ -523,6 +523,20 @@ ipcMain.handle('qv-set-project', async (_event, projectPath: string | null): Pro
  */
 ipcMain.handle('qv-read-logs', async (_event, projectPath: string, tailLines?: number): Promise<string[]> => {
   return readLogFile(projectPath, tailLines || 500);
+});
+
+/**
+ * Reveal a file or folder in the native file manager (Finder/Explorer)
+ */
+ipcMain.handle('qv-reveal-path', async (_event, targetPath: string): Promise<boolean> => {
+  try {
+    // showItemInFolder works on all platforms (macOS, Windows, Linux)
+    shell.showItemInFolder(targetPath);
+    return true;
+  } catch (e) {
+    console.error('[main] Failed to reveal path:', e);
+    return false;
+  }
 });
 
 // =============================================================================
