@@ -83,6 +83,57 @@ const pendingRequests = new Map<string, PendingRequest>();
 // Request timeout in milliseconds
 const REQUEST_TIMEOUT_MS = 60000; // 60 seconds for long operations
 
+// Current project path for log file storage
+let currentProjectPath: string | null = null;
+
+// Log file name
+const LOG_FILE_NAME = '.qv-daemon.log';
+
+/**
+ * Append a log message to the project's log file
+ */
+function appendToLogFile(message: string): void {
+  if (!currentProjectPath) return;
+  
+  const logPath = path.join(currentProjectPath, LOG_FILE_NAME);
+  const timestamp = new Date().toISOString();
+  const logLine = `[${timestamp}] ${message}\n`;
+  
+  try {
+    fs.appendFileSync(logPath, logLine);
+  } catch (err) {
+    // Silently ignore log file errors
+  }
+}
+
+/**
+ * Read logs from the project's log file
+ */
+function readLogFile(projectPath: string, tailLines: number = 500): string[] {
+  const logPath = path.join(projectPath, LOG_FILE_NAME);
+  
+  try {
+    if (!fs.existsSync(logPath)) {
+      return [];
+    }
+    
+    const content = fs.readFileSync(logPath, 'utf-8');
+    const lines = content.split('\n').filter(line => line.trim());
+    
+    // Return last N lines
+    return lines.slice(-tailLines);
+  } catch (err) {
+    return [];
+  }
+}
+
+/**
+ * Set the current project path for log storage
+ */
+function setCurrentProject(projectPath: string | null): void {
+  currentProjectPath = projectPath;
+}
+
 // =============================================================================
 // Daemon Management - Python Path Resolution
 // =============================================================================
@@ -215,12 +266,14 @@ function spawnDaemon(): boolean {
     handleDaemonLine(line);
   });
   
-  // Forward daemon stderr to console and renderer
+  // Forward daemon stderr to console, renderer, and log file
   daemonProcess.stderr?.on('data', (data: Buffer) => {
     const message = data.toString().trim();
     console.log(`[daemon] ${message}`);
     // Forward to renderer for debug panel
     win?.webContents.send('daemon-log', message);
+    // Append to log file
+    appendToLogFile(message);
   });
   
   daemonProcess.on('error', (err: Error) => {
@@ -446,6 +499,20 @@ ipcMain.handle('qv-open-file', async (_event, options?: {
   }
   
   return result.filePaths[0];
+});
+
+/**
+ * Set current project path for log file storage
+ */
+ipcMain.handle('qv-set-project', async (_event, projectPath: string | null): Promise<void> => {
+  setCurrentProject(projectPath);
+});
+
+/**
+ * Read logs from the project's log file
+ */
+ipcMain.handle('qv-read-logs', async (_event, projectPath: string, tailLines?: number): Promise<string[]> => {
+  return readLogFile(projectPath, tailLines || 500);
 });
 
 // =============================================================================

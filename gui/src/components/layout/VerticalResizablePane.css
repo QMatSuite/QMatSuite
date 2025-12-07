@@ -1,0 +1,69 @@
+/* VerticalResizablePane Styles */
+
+.vertical-resizable-pane {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.vertical-resizable-pane--resizing {
+  transition: none !important;
+}
+
+.vertical-resizable-pane--resizing::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  cursor: row-resize;
+}
+
+.vertical-resizable-pane__content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Resize Handle - positioned at the bottom of the pane */
+.vertical-resizable-pane__handle {
+  position: absolute;
+  bottom: -3px;
+  left: 0;
+  right: 0;
+  height: 6px;
+  cursor: row-resize;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vertical-resizable-pane__handle:hover,
+.vertical-resizable-pane--resizing .vertical-resizable-pane__handle {
+  background: var(--color-primary);
+  opacity: 0.5;
+}
+
+.vertical-resizable-pane__handle::before {
+  content: '';
+  width: 40px;
+  height: 3px;
+  background: var(--border-color);
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.vertical-resizable-pane__handle:hover::before,
+.vertical-resizable-pane--resizing .vertical-resizable-pane__handle::before {
+  opacity: 1;
+  background: var(--color-primary);
+}
+

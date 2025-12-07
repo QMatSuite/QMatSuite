@@ -2759,3 +2759,82 @@ ImportError: cannot import name 'get_workflow_templates' from 'quantumvitas.core
 Update the GUI_ARCHITECTURE.md to reflect the changes.
 Update the AI_understanding.md to reflect the changes.
 
+Implementation summary:
+Now let me mark the todos as complete:
+All tasks are complete! Let me provide a summary of all the changes made:
+Summary of Completed Tasks
+Backend Fixes (Python)
+Fixed ImportError for get_workflow_templates - Changed import to use list_workflow_templates in api.py
+Fixed workflows_depending_on() signature mismatch - Removed extra project_root argument in the function call
+Fixed QEInstallation.get_executable error - Changed to use find_executable method
+Fixed run_step error (PosixPath has no step_type) - Completely rewrote QVService.run_step() to properly:
+Resolve structure from the step spec
+Generate QE input file
+Write to working directory
+Call run_input_step with correct parameters
+Created Si-bands workflow template - Added new template files in templates/workflow/si-bands/ for the demo project
+Added add_step_to_workflow functionality - New method in QVService and daemon handler to add steps to workflows
+GUI Fixes (React/TypeScript)
+Fixed structure overview scrolling - Updated CSS for StructureListPanel and WorkflowListPanel with proper flex and overflow settings
+Fixed 3D viewer legend - Now only shows elements present in the current structure, not all possible elements
+Added supercell/boundary controls - Added UI controls in StructureViewer3D for supercell dimensions and boundary repetition
+Fixed summary panel not updating - Added refreshSummary() function called after structure/workflow CRUD operations
+Fixed step reorder visibility - Added explicit color: var(--text-primary) to step items for dark theme compatibility
+Added drag-and-drop step reordering - Implemented native HTML5 DnD with visual feedback (drag handle, drop indicator)
+Made daemon logs panel resizable - Added DebugPanel with draggable height (80-500px range)
+Made list panels resizable - Created ResizablePane component with:
+Draggable width separator
+localStorage persistence
+Applied to both Structures and Workflows views
+Implemented "Add Step" functionality - Added form in WorkflowDetailPanel with step type selection
+Documentation Updates
+Updated GUI_ARCHITECTURE.md - Added new features to the implemented list, updated directory structure
+Updated AI_understanding.md - Added new Section 11 documenting GUI implementation with:
+Architecture diagram
+Key features table
+Daemon methods reference
+Component structure
+
+
+1. For demo project: "Cannot run workflow: Workflow not found: demo-workflow"
+2. When creating new project or load new project, the summary panel does not update
+3. 3D viewer: remember zoom and rotation when making operations (like supercell and boundary). Also, boundary repetition means atoms on the boundary be shown, not just bonds.
+4. new workflow, si-dos: shows unknown-unknown-unknown in the drop down
+5. cannot run workflow for si-bands demo: "Cannot run workflow: Workflow not found: si-bands"
+6. run step scf error "'QuantumEspressoEngine' object has no attribute 'backend'". Think, and really make run step and run workflow work!
+7. Make the horizontal separation line between workflow and step draggable.
+8. Hide logs should not clear the logs. Actually, you should save the logs in the project root as file. When opening the project, also recall the log. Always append.
+
+Implementation summary:
+All tasks are complete! Here's a summary of the changes made:
+Summary of Completed Fixes
+Backend Fixes (Python)
+Fixed run_step engine error - Changed from engine.backend to pass the QuantumEspressoEngine directly to run_input_step
+Fixed workflow not found errors - Updated Project.get_workflow_ref to also search by slug in addition to id and name
+Fixed si-dos workflow showing unknown types - Added missing type field to all steps in templates/workflow/si-dos/workflow.yaml
+Fixed boundary atoms generation - Fixed generate_boundary_atoms usage to correctly iterate over BoundaryAtom objects instead of expecting tuple
+GUI Fixes (React/TypeScript)
+Fixed summary panel not updating on project load - Modified handleCreateProjectSuccess to load the project directly with the new path instead of using setTimeout (which caused stale closures)
+Fixed 3D viewer camera reset on supercell/boundary change - Added structureId tracking to CameraController so camera only resets when a different structure is selected, not when visualization settings change
+Made workflow/step separator draggable - Created new VerticalResizablePane component and applied it to the workflow detail panel when step detail is visible
+Implemented log persistence - Added:
+Log file storage in project directory (.qv-daemon.log)
+setProject and readLogs IPC handlers in Electron main process
+setProject and readLogs methods exposed via preload
+Automatic call to setProject when any project is loaded
+New Components Created
+gui/src/components/layout/VerticalResizablePane.tsx - Vertical resizable container with drag handle
+gui/src/components/layout/VerticalResizablePane.css - Styles for vertical resizable pane
+Files Modified
+Backend:
+src/quantumvitas/api.py - Fixed run_step, add_step_to_workflow, get_workflow_detail, boundary atoms generation
+src/quantumvitas/project/model.py - Added slug search to get_workflow_ref
+templates/workflow/si-dos/workflow.yaml - Added step types
+Frontend:
+gui/src/App.tsx - Added setProject calls, VerticalResizablePane usage, structureId prop
+gui/src/components/panels/StructureViewer3D.tsx - Added structureId prop to prevent camera reset
+gui/src/components/layout/index.ts - Added exports
+gui/src/types/qv.ts - Added setProject and readLogs types
+gui/electron/main.ts - Added log persistence logic and IPC handlers
+gui/electron/preload.ts - Added setProject and readLogs methods
+

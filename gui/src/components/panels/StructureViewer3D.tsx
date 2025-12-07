@@ -4,7 +4,7 @@
  * Uses react-three-fiber for WebGL rendering with Three.js
  */
 
-import { useRef, useMemo, useState } from 'react';
+import { useRef, useMemo, useState, useEffect } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Line, Text } from '@react-three/drei';
 import * as THREE from 'three';
@@ -177,14 +177,24 @@ function UnitCell({ matrix }: UnitCellProps) {
 }
 
 // =============================================================================
-// Camera Controller - Auto-fit to structure
+// Camera Controller - Auto-fit to structure (only on structure change)
 // =============================================================================
 
-function CameraController({ atoms }: { atoms: AtomVisData[] }) {
+interface CameraControllerProps {
+  atoms: AtomVisData[];
+  structureId: string | null;  // Only reset camera when this changes
+}
+
+function CameraController({ atoms, structureId }: CameraControllerProps) {
   const { camera } = useThree();
+  const lastStructureId = useRef<string | null>(null);
   
   useMemo(() => {
+    // Only reset camera when structure ID changes (not on supercell/boundary changes)
     if (atoms.length === 0) return;
+    if (structureId === lastStructureId.current) return;
+    
+    lastStructureId.current = structureId;
     
     // Calculate bounding box
     let minX = Infinity, minY = Infinity, minZ = Infinity;
@@ -207,7 +217,7 @@ function CameraController({ atoms }: { atoms: AtomVisData[] }) {
     const distance = size * 2;
     camera.position.set(centerX + distance, centerY + distance * 0.5, centerZ + distance);
     camera.lookAt(centerX, centerY, centerZ);
-  }, [atoms, camera]);
+  }, [atoms, camera, structureId]);
   
   return null;
 }
@@ -223,9 +233,10 @@ interface SceneProps {
   showLabels: boolean;
   atomScale: number;
   bondScale: number;
+  structureId: string | null;
 }
 
-function Scene({ data, showBonds, showUnitCell, showLabels, atomScale, bondScale }: SceneProps) {
+function Scene({ data, showBonds, showUnitCell, showLabels, atomScale, bondScale, structureId }: SceneProps) {
   const allAtoms = useMemo(() => {
     const atoms = [...data.atoms];
     if (data.boundary_atoms) {
@@ -261,8 +272,8 @@ function Scene({ data, showBonds, showUnitCell, showLabels, atomScale, bondScale
         <UnitCell matrix={data.lattice.matrix} />
       )}
       
-      {/* Camera Controller */}
-      <CameraController atoms={allAtoms} />
+      {/* Camera Controller - only reset on structure change */}
+      <CameraController atoms={allAtoms} structureId={structureId} />
       
       {/* Controls */}
       <OrbitControls 
@@ -281,6 +292,7 @@ function Scene({ data, showBonds, showUnitCell, showLabels, atomScale, bondScale
 // =============================================================================
 
 interface StructureViewer3DPropsExtended extends StructureViewer3DProps {
+  structureId?: string | null;
   onSupercellChange?: (supercell: [number, number, number]) => void;
   onRepeatBoundaryChange?: (repeatBoundary: boolean) => void;
 }
@@ -293,6 +305,7 @@ export function StructureViewer3D({
   showLabels = false,
   atomScale = 0.4,
   bondScale = 1.0,
+  structureId = null,
   onSupercellChange,
   onRepeatBoundaryChange,
 }: StructureViewer3DPropsExtended) {
@@ -471,6 +484,7 @@ export function StructureViewer3D({
             showLabels={localShowLabels}
             atomScale={localAtomScale}
             bondScale={bondScale}
+            structureId={structureId}
           />
         </Canvas>
       </div>
