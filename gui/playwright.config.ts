@@ -5,12 +5,12 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './tests/e2e',
-  fullyParallel: false, // Electron tests should run sequentially
+  fullyParallel: false, // Electron tests MUST run sequentially (one instance at a time)
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  workers: 1, // Single worker for Electron
+  workers: 1, // Single worker ensures only one Electron instance runs at a time
   reporter: process.env.CI ? 'github' : 'list',
-  timeout: 120000, // 2 minutes per test (QE runs can be slow)
+  timeout: 30 * 1000, // 30 seconds default timeout (tests with QE jobs override to 3 minutes)
   expect: {
     timeout: 10000,
   },

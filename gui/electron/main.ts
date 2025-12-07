@@ -540,6 +540,20 @@ ipcMain.handle('qv-reveal-path', async (_event, targetPath: string): Promise<boo
 });
 
 // =============================================================================
+// Remote Debugging for E2E Tests
+// =============================================================================
+
+// Enable remote debugging for E2E tests if requested via environment variable
+if (process.env.ELECTRON_REMOTE_DEBUG_PORT) {
+  const port = parseInt(process.env.ELECTRON_REMOTE_DEBUG_PORT, 10);
+  if (!isNaN(port)) {
+    // Enable remote debugging on the specified port
+    // This must be called before app.whenReady()
+    app.commandLine.appendSwitch('remote-debugging-port', port.toString());
+  }
+}
+
+// =============================================================================
 // Window Management
 // =============================================================================
 

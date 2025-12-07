@@ -3710,5 +3710,320 @@ Any known flakiness or TODOs (e.g. selectors that might still depend on copy).
 
 
 
+Implemenation summary:
+Summary
+Files Changed
+gui/electron/main.ts - Added remote debugging support:
+Added app.commandLine.appendSwitch('remote-debugging-port', port) when ELECTRON_REMOTE_DEBUG_PORT is set
+Enables CDP connection for E2E tests
+gui/tests/e2e/helpers/electron_cdp.ts (NEW) - CDP-based Electron launcher:
+Computes platform-specific Electron binary paths
+Spawns Electron with remote debugging enabled via environment variable
+Extracts WebSocket URL from Electron's stderr output ("DevTools listening on ws://...")
+Falls back to HTTP endpoint polling if needed
+Connects via chromium.connectOverCDP()
+Includes process monitoring and cleanup
+gui/tests/e2e/welcome_cdp.spec.ts (NEW) - CDP-based welcome screen tests
+gui/tests/e2e/demo_workflow_cdp.spec.ts (NEW) - CDP-based demo workflow tests
+gui/tests/e2e/demo_workflow_run_cdp.spec.ts (NEW) - CDP-based workflow run tests
+gui/tests/e2e/helpers/index.ts - Exported CDP helper
+gui/tests/e2e/helpers/electron.ts - Restored for Linux compatibility (uses latest Playwright)
+.github/workflows/tests.yml - Updated CI:
+Linux: runs original _electron.launch() tests
+macOS: runs CDP-based tests
+New Electron CDP Launch Helper API
+launchElectronViaCDP(options?: {  timeout?: number;  debugPort?: number;}): Promise<ElectronCDPResult>interface ElectronCDPResult {  browser: Browser;  page: Page;  electronProcess: ChildProcess;  close: () => Promise<void>;}
+Features:
+Spawns Electron with ELECTRON_REMOTE_DEBUG_PORT environment variable
+Extracts WebSocket URL from Electron's stderr output
+Connects via chromium.connectOverCDP(wsUrl)
+Handles process cleanup
+Fast startup (~2-3 seconds)
+How to Run CDP Tests Locally on macOS
+cd guinpm run build:e2e  # Build Electron app firstnpx playwright test tests/e2e/welcome_cdp.spec.ts
+Or run all CDP tests:
+cd guinpm run build:e2enpx playwright test tests/e2e/*_cdp.spec.ts
+Test Results
+Welcome CDP tests: ~2.6s each
+Demo workflow CDP test: ~5.3s
+All tests passing on macOS
+Processes properly closed after tests
+CI Configuration
+Linux: Uses original _electron.launch() tests (works on Linux)
+macOS: Uses CDP-based tests (workaround for macOS compatibility)
+The CDP approach works on macOS and completes in seconds. The helper extracts the WebSocket URL from Electron's output, avoiding long HTTP polling timeouts.
+
+
+2025-12-07_prompt_3:
+You’re working in the QuantumVITAS v2 repo, focusing on Playwright E2E tests for the Electron GUI.
+
+Current state (important)
+
+There are two different Electron launch paths:
+
+Playwright _electron.launch helper
+
+gui/tests/e2e/helpers/electron.ts
+
+Used by:
+
+welcome.spec.ts
+
+demo_workflow.spec.ts
+
+demo_workflow_run.spec.ts
+
+Works on Linux.
+
+CDP-based helper
+
+gui/tests/e2e/helpers/electron_cdp.ts
+
+New API:
+
+launchElectronViaCDP(options?: { timeout?: number; debugPort?: number }): Promise<ElectronCDPResult>
+
+interface ElectronCDPResult {
+  browser: Browser;
+  page: Page;
+  electronProcess: ChildProcess;
+  close: () => Promise<void>;
+}
+
+
+Used by:
+
+welcome_cdp.spec.ts
+
+demo_workflow_cdp.spec.ts
+
+demo_workflow_run_cdp.spec.ts
+
+Works on macOS (Playwright’s built-in _electron is broken there because of the --remote-debugging-port=0 issue).
+
+CI (.github/workflows/tests.yml) currently runs:
+
+Linux: _electron specs
+
+macOS: *_cdp.spec.ts specs
+
+This creates test drift between Linux and macOS.
+
+Goal
+
+Implement Option 2 from my design:
+
+One unified E2E test suite (same spec files), with a single Electron fixture that chooses the launch strategy at runtime:
+
+On Linux: use Playwright’s _electron.launch via the existing helper.
+
+On macOS: use the CDP helper launchElectronViaCDP.
+
+(Windows can follow Linux path if present.)
+
+After this, all OSes run the same specs, and the launcher difference is hidden behind a fixture.
+
+Tasks
+
+Create a shared Electron test fixture
+
+Add a new file: gui/tests/e2e/fixtures/electronTest.ts with something like:
+
+import { test as base, expect, _electron as electron, chromium } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { launchElectronViaCDP } from '../helpers/electron_cdp';
+import { launchElectronApp } from '../helpers/electron'; // or similar existing helper
+
+type ElectronFixtures = {
+  appPage: Page;
+  closeApp: () => Promise<void>;
+};
+
+export const electronTest = base.extend<ElectronFixtures>({
+  appPage: async ({}, use) => {
+    let page: Page;
+    let close: () => Promise<void>;
+
+    if (process.platform === 'linux') {
+      // Use existing _electron-based launcher helper
+      const { app, window } = await launchElectronApp(); // adapt to existing API
+      page = window;
+      close = async () => { await app.close(); };
+    } else {
+      // Use CDP-based launcher for macOS (and optionally others)
+      const { browser, page: p, close: c } = await launchElectronViaCDP();
+      page = p;
+      close = async () => { await c(); await browser.close(); };
+    }
+
+    await use(page);
+    await close();
+  },
+
+  closeApp: async ({ appPage }, use) => {
+    // you can expose closeApp if useful; otherwise omit
+    await use(async () => appPage.close());
+  },
+});
+
+
+Adjust names/types to match the actual helpers you already have (electron.ts and electron_cdp.ts).
+
+Refactor specs to use the unified fixture
+
+For existing main specs:
+
+gui/tests/e2e/welcome.spec.ts
+
+gui/tests/e2e/demo_workflow.spec.ts
+
+gui/tests/e2e/demo_workflow_run.spec.ts
+
+Change them to import and use electronTest and the appPage fixture:
+
+import { electronTest as test, expect } from './fixtures/electronTest';
+
+test('welcome screen shows main CTA', async ({ appPage }) => {
+  await expect(appPage.getByTestId('qv-welcome-title')).toBeVisible();
+  // etc…
+});
+
+
+Make sure all interactions currently in the *_cdp.spec.ts variants are merged into these main specs so we don’t lose coverage.
+
+Delete / retire the duplicate CDP spec files
+
+Remove or deprecate:
+
+welcome_cdp.spec.ts
+
+demo_workflow_cdp.spec.ts
+
+demo_workflow_run_cdp.spec.ts
+
+After the refactor, there should be only one set of specs that works on both Linux and macOS via the fixture.
+
+Keep both helpers but hide them behind the fixture
+
+gui/tests/e2e/helpers/electron.ts:
+
+Keep as the _electron.launch helper for Linux.
+
+Make sure its API fits naturally into the fixture (launchElectronApp() returning { app, window } or similar).
+
+gui/tests/e2e/helpers/electron_cdp.ts:
+
+Keep as-is and ensure it’s exported from helpers/index.ts.
+
+Tests outside the fixture should not directly import these helpers anymore; they should only use electronTest.
+
+Update Playwright config / CI if needed
+
+In playwright.config.* (if present), ensure there is one Electron project that uses these E2E specs.
+
+In .github/workflows/tests.yml:
+
+Simplify so both Linux and macOS run the same E2E command, e.g.:
+
+- name: Run GUI E2E tests
+  run: |
+    cd gui
+    npm run build:e2e
+    npm run test:e2e
+
+
+You no longer need OS-specific glob patterns (*_cdp.spec.ts vs others).
+
+Clean up & document
+
+Ensure no remaining test.skip(process.platform === 'darwin', ...) related to Electron E2E.
+
+Add a short note in AI_understanding.md / testing section summarizing:
+
+E2E tests use a single Electron fixture.
+
+Linux uses Playwright _electron under the hood.
+
+macOS uses CDP-based attach under the hood.
+
+Specs are identical across OS.
+
+Constraints / style
+
+Don’t change any app business logic; changes should be confined to gui/tests/e2e/** and CI config.
+
+Keep the fixture clean and well-typed; prefer a single appPage: Page fixture as the main abstraction.
+
+After changes, E2E should pass on both Linux and macOS (you can mention in the summary if any minor configuration was needed).
+
+At the end, please summarize:
+
+Files changed.
+
+Final shape of the electronTest fixture API.
+
+How to run E2E locally on macOS and Linux.
+
+
+Implementation summary:
+Summary
+Files Changed
+Created: gui/tests/e2e/fixtures/electronTest.ts
+Unified Electron test fixture that auto-detects platform
+Provides appPage: Page fixture that works on all platforms
+Re-exports expect, navigateToView, waitForDaemonConnection
+Refactored: gui/tests/e2e/welcome.spec.ts
+Now uses electronTest fixture instead of direct launchApp()
+Removed manual cleanup (handled by fixture)
+Refactored: gui/tests/e2e/demo_workflow.spec.ts
+Now uses electronTest fixture
+Removed manual cleanup
+Refactored: gui/tests/e2e/demo_workflow_run.spec.ts
+Now uses electronTest fixture
+Removed manual cleanup
+Deleted: gui/tests/e2e/welcome_cdp.spec.ts
+No longer needed - unified tests cover all platforms
+Deleted: gui/tests/e2e/demo_workflow_cdp.spec.ts
+No longer needed - unified tests cover all platforms
+Deleted: gui/tests/e2e/demo_workflow_run_cdp.spec.ts
+No longer needed - unified tests cover all platforms
+Updated: .github/workflows/tests.yml
+Simplified to run the same test files on both Linux and macOS
+Linux uses xvfb-run for headless display
+macOS runs directly
+Both platforms run: welcome.spec.ts, demo_workflow.spec.ts, demo_workflow_run.spec.ts
+Updated: AI_understanding.md
+Updated Section 22 to document the unified fixture approach
+Removed references to platform-specific test files
+Updated running instructions and CI configuration
+Final Shape of the electronTest Fixture API
+import { electronTest as test, expect, navigateToView } from './fixtures/electronTest';test('my test', async ({ appPage }) => {  // appPage is a Playwright Page object that works identically on all platforms  await expect(appPage.getByTestId('qv-welcome-title')).toBeVisible();  await navigateToView(appPage, 'workflows');});
+Fixture behavior:
+Linux/Windows: Uses launchApp() → Playwright's _electron.launch()
+macOS: Uses launchElectronViaCDP() → CDP workaround
+All platforms: Provides the same appPage: Page interface
+Automatic cleanup: Electron process is closed after each test
+How to Run E2E Locally
+On macOS:
+cd guinpm run build:e2e  # Build Electron app firstnpm run test:e2e   # Runs all E2E tests (fixture uses CDP on macOS)
+On Linux:
+cd guinpm run build:e2e  # Build Electron app firstnpm run test:e2e   # Runs all E2E tests (fixture uses _electron.launch on Linux)
+Run specific test:
+npx playwright test tests/e2e/welcome.spec.ts --project=electron
+Key points:
+Same command on all platforms
+Same test files on all platforms
+The fixture handles platform differences automatically
+Test projects are created in temp/e2e_projects/ (as required)
+Benefits
+No test drift: Same specs run on all platforms
+Simpler maintenance: One set of test files instead of duplicates
+Cleaner API: Tests use appPage fixture, not platform-specific helpers
+Automatic cleanup: Fixture handles process cleanup
+CI simplification: Same test command on all platforms
+All tests should now pass on both Linux and macOS using the unified fixture.
+
+
+
 Run step should be also on top of the step detail panel (like run workflo in workflow panel)
 Energy range in analysis panel still not working.

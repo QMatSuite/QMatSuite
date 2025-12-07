@@ -1,17 +1,17 @@
 /**
  * Electron app launch helpers for E2E tests
  * 
- * Note: Due to compatibility issues between Playwright and newer Electron versions
- * on macOS, we use a workaround that enables remote debugging via environment variables.
+ * Launches Electron directly using the binary from node_modules, not a wrapper script.
+ * This ensures Playwright's debugging flags work correctly on all platforms.
+ * 
+ * Note: Using Playwright 1.43.1 (pinned due to Electron compatibility issues in newer versions).
+ * Even with 1.43.1, there may be issues with --remote-debugging-port flag on macOS.
  */
 
-import { _electron as electron, ElectronApplication, Page } from 'playwright';
+import { _electron as electron, ElectronApplication, Page } from '@playwright/test';
 import * as path from 'path';
-import { createRequire } from 'module';
-import { getGuiDir } from './paths';
-
-// Create require function for ES modules
-const require = createRequire(import.meta.url);
+import * as os from 'os';
+import { getGuiDir, getRepoRoot } from './paths';
 
 export interface LaunchResult {
   app: ElectronApplication;
@@ -19,15 +19,50 @@ export interface LaunchResult {
 }
 
 /**
- * Get the path to the Electron executable
+ * Get the path to the Electron executable binary
+ * Computes platform-specific path to the Electron binary in node_modules
  */
-function getElectronPath(): string {
-  // Use the electron module to get the correct binary path
-  return require('electron') as string;
+function getElectronExecutablePath(): string {
+  const repoRoot = getRepoRoot();
+  const electronDistDir = path.join(repoRoot, 'gui', 'node_modules', 'electron', 'dist');
+  
+  if (os.platform() === 'darwin') {
+    // macOS: Electron.app/Contents/MacOS/Electron
+    return path.join(
+      electronDistDir,
+      'Electron.app',
+      'Contents',
+      'MacOS',
+      'Electron'
+    );
+  } else if (os.platform() === 'win32') {
+    // Windows: electron.exe
+    return path.join(electronDistDir, 'electron.exe');
+  } else {
+    // Linux: electron
+    return path.join(electronDistDir, 'electron');
+  }
 }
 
 /**
  * Launch the Electron app for testing
+ * 
+ * Uses Playwright's _electron.launch() with explicit executablePath pointing
+ * directly to the Electron binary (not a wrapper script).
+ * 
+ * The key insight: By providing the explicit executablePath to the actual Electron
+ * binary, Playwright's internal connection mechanism should work. Playwright uses
+ * CDP (Chrome DevTools Protocol) which Electron supports natively through its
+ * Chromium content. The direct binary path ensures Playwright can establish the
+ * connection properly on all platforms, including macOS.
+ * 
+ * Note: Currently using Playwright 1.43.1 due to compatibility issues.
+ * There may still be issues with --remote-debugging-port flag on macOS.
+ * 
+ * To test on macOS:
+ *   cd gui
+ *   npm run build:e2e
+ *   npx playwright test tests/e2e/welcome.spec.ts --project=electron
  * 
  * @param options - Optional launch options
  * @returns The Electron app and main window page
@@ -38,17 +73,20 @@ export async function launchApp(options?: {
   const guiDir = getGuiDir();
   const timeout = options?.timeout ?? 30000;
   
-  // Path to the main.js file in dist-electron
+  // Path to the compiled main entry point
   const mainPath = path.join(guiDir, 'dist-electron', 'main.js');
   
-  // Path to the electron executable
-  const electronPath = getElectronPath();
+  // Explicit path to Electron binary (platform-specific)
+  // This is the critical fix: use the actual binary, not a wrapper
+  const electronExecutablePath = getElectronExecutablePath();
   
-  // Launch Electron app using Playwright's electron API
-  // The executablePath tells Playwright where the Electron binary is
-  // Playwright will handle the remote debugging setup
+  // Launch Electron app using Playwright's _electron.launch()
+  // By providing executablePath explicitly, Playwright knows it's dealing with
+  // Electron and will use the appropriate connection method. The direct binary
+  // path (especially on macOS: Electron.app/Contents/MacOS/Electron) ensures
+  // Playwright's internal debugging setup works correctly.
   const app = await electron.launch({
-    executablePath: electronPath,
+    executablePath: electronExecutablePath,
     args: [mainPath],
     cwd: guiDir,
     timeout,
@@ -58,8 +96,6 @@ export async function launchApp(options?: {
       QE_HOME: process.env.QE_HOME || '',
       // Disable security warnings
       ELECTRON_DISABLE_SECURITY_WARNINGS: 'true',
-      // Enable remote debugging via environment variable (alternative to command line flag)
-      ELECTRON_ENABLE_STACK_DUMPING: 'true',
     },
   });
   

@@ -76,3 +76,16 @@ export function cleanupProjectDir(dirPath: string): void {
   }
 }
 
+/**
+ * Clear all E2E test projects directory
+ * Removes all contents of temp/e2e_projects/
+ */
+export function clearE2EProjectsRoot(): void {
+  const e2eRoot = path.join(getRepoRoot(), 'temp', 'e2e_projects');
+  if (fs.existsSync(e2eRoot)) {
+    fs.rmSync(e2eRoot, { recursive: true, force: true });
+  }
+  // Recreate the directory
+  fs.mkdirSync(e2eRoot, { recursive: true });
+}
+
