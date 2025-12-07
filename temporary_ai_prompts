@@ -4027,3 +4027,5 @@ All tests should now pass on both Linux and macOS using the unified fixture.
 
 Run step should be also on top of the step detail panel (like run workflo in workflow panel)
 Energy range in analysis panel still not working.
+
+
