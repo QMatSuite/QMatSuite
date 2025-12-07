@@ -734,13 +734,13 @@ class QVService:
         input_path = workdir / input_name
         QEInputGenerator.write_file(qe_input, input_path)
         
-        # Create engine
+        # Create engine - use the core engine directly (not the wrapper)
         config = EngineConfig(name="qe")
         engine = QuantumEspressoEngine(config)
         
         # Run the step
         result, prepared = run_input_step(
-            engine=engine.backend,
+            engine=engine,
             input_file=input_path,
             working_dir=workdir,
             project_root=project_root,
@@ -1335,15 +1335,15 @@ class QVService:
         boundary_atoms = []
         if repeat_boundary:
             try:
-                boundary_coords, boundary_elements = generate_boundary_atoms(structure)
-                for coords, element in zip(boundary_coords, boundary_elements):
-                    frac = lattice.get_fractional_coords(coords)
+                boundary_atom_list = generate_boundary_atoms(structure)
+                for boundary_atom in boundary_atom_list:
+                    frac = lattice.get_fractional_coords(boundary_atom.coords)
                     boundary_atoms.append({
-                        "element": element,
-                        "cart_coords": [float(c) for c in coords],
+                        "element": boundary_atom.symbol,
+                        "cart_coords": [float(c) for c in boundary_atom.coords],
                         "frac_coords": [float(f) for f in frac],
-                        "color": get_element_color(element),
-                        "radius": get_element_radius(element),
+                        "color": get_element_color(boundary_atom.symbol),
+                        "radius": get_element_radius(boundary_atom.symbol),
                         "is_boundary": True,
                     })
             except Exception:
@@ -2058,7 +2058,7 @@ class QVService:
         Returns:
             Updated workflow info with the new step
         """
-        from quantumvitas.core.models import WorkflowModel, StepEntry
+        from quantumvitas.core.models import WorkflowModel, WorkflowStepEntry
         from quantumvitas.workflow.structure_steps import StructureStepSpec
         import ulid as ulid_module
         
@@ -2076,24 +2076,23 @@ class QVService:
         base_slug = slugify(step_name)
         
         # Check for duplicates and add suffix if needed
-        existing_slugs = {s.slug for s in wf_model.steps if s.slug}
+        existing_ids = {s.id for s in wf_model.steps}
         slug = base_slug
         counter = 1
-        while slug in existing_slugs:
+        while slug in existing_ids:
             counter += 1
             slug = f"{base_slug}-{counter}"
         
-        # Generate new step ID
-        step_id = str(ulid_module.new())
+        # Generate new step ID (use slug as the id in workflow.yaml)
+        step_id = slug
         
         # Determine step file name
-        step_file = f"{slug}.step.yaml"
+        step_file = f"steps/{slug}.step.yaml"
         
-        # Create step entry
-        new_step = StepEntry(
+        # Create step entry for workflow.yaml
+        new_step = WorkflowStepEntry(
             id=step_id,
-            slug=slug,
-            step_type=step_type,
+            type=step_type,
             step_file=step_file,
         )
         
@@ -2129,26 +2128,31 @@ class QVService:
         
         # Create step spec with defaults
         from quantumvitas.core.models import ResourceMeta
-        step_meta = ResourceMeta(
-            id=step_id,
-            name=step_name,
-            slug=slug,
-            parent_workflow_id=wf_model.meta.id,
-        )
+        from quantumvitas.core.utils import ensure_relative_path
         
         # Create step spec based on type
         step_spec = StructureStepSpec(
-            meta=step_meta,
+            meta=ResourceMeta(
+                id=str(ulid_module.new()),  # Actual ULID for the step spec
+                name=step_name,
+                slug=slug,
+                path=f"workflows/{wf_model.meta.slug}/{step_file}",
+                kind="step",
+            ),
             step_type=step_type,
             executable=executable,
             structure=wf_model.structure,  # Inherit from workflow
-            params={},
+            parent_workflow_id=wf_model.meta.id,
+            parameters={},
+            cards={},
+            species_overrides={},
         )
         
         # Write step file
         steps_dir = workflow.absolute_path / "steps"
         steps_dir.mkdir(exist_ok=True)
-        step_file_path = steps_dir / step_file
+        step_yaml_filename = f"{slug}.step.yaml"
+        step_file_path = steps_dir / step_yaml_filename
         step_file_path.write_text(yaml.safe_dump(step_spec.to_dict(), sort_keys=False))
         
         # Add step to workflow
@@ -2245,8 +2249,8 @@ class QVService:
         for step_entry in wf_model.steps:
             steps.append({
                 "id": step_entry.id,
-                "slug": step_entry.slug,
-                "type": step_entry.step_type,
+                "slug": step_entry.id,  # WorkflowStepEntry uses id as slug
+                "type": step_entry.type or "unknown",
                 "step_file": step_entry.step_file,
             })
         
