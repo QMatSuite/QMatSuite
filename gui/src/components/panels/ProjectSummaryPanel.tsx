@@ -69,17 +69,21 @@ export function ProjectSummaryPanel({
   
   if (!summary) {
     return (
-      <div className="project-summary-panel project-summary-panel--empty">
+      <div className="project-summary-panel project-summary-panel--empty" data-testid="qv-welcome">
         <div className="welcome-card">
           <div className="welcome-icon">⚛️</div>
-          <h2 className="welcome-title">Welcome to QuantumVITAS</h2>
+          <h2 className="welcome-title" data-testid="qv-welcome-title">Welcome to QuantumVITAS</h2>
           <p className="welcome-subtitle">
             Manage Quantum ESPRESSO workflows with ease
           </p>
           
           <div className="welcome-actions">
             {onBrowseAndLoad && (
-              <button className="welcome-button welcome-button--primary" onClick={onBrowseAndLoad}>
+              <button 
+                className="welcome-button welcome-button--primary" 
+                onClick={onBrowseAndLoad}
+                data-testid="qv-btn-open-project"
+              >
                 <span className="welcome-button__icon">📂</span>
                 <span className="welcome-button__content">
                   <span className="welcome-button__title">Open Project</span>
@@ -88,7 +92,11 @@ export function ProjectSummaryPanel({
               </button>
             )}
             {onCreateProject && (
-              <button className="welcome-button" onClick={onCreateProject}>
+              <button 
+                className="welcome-button" 
+                onClick={onCreateProject}
+                data-testid="qv-btn-create-new-project"
+              >
                 <span className="welcome-button__icon">✨</span>
                 <span className="welcome-button__content">
                   <span className="welcome-button__title">Create New Project</span>
@@ -97,7 +105,11 @@ export function ProjectSummaryPanel({
               </button>
             )}
             {onCreateDemoProject && (
-              <button className="welcome-button welcome-button--demo" onClick={onCreateDemoProject}>
+              <button 
+                className="welcome-button welcome-button--demo" 
+                onClick={onCreateDemoProject}
+                data-testid="qv-btn-create-demo-project"
+              >
                 <span className="welcome-button__icon">🚀</span>
                 <span className="welcome-button__content">
                   <span className="welcome-button__title">Create Demo Project</span>
@@ -148,9 +160,9 @@ export function ProjectSummaryPanel({
   }
   
   return (
-    <div className="project-summary-panel">
+    <div className="project-summary-panel" data-testid="qv-home-project">
       <div className="panel-header">
-        <h2 className="panel-title">
+        <h2 className="panel-title" data-testid="qv-project-name">
           <span className="panel-icon">📁</span>
           {summary.name}
         </h2>
@@ -161,6 +173,7 @@ export function ProjectSummaryPanel({
               className="close-project-btn"
               onClick={onCloseProject}
               title="Close this project"
+              data-testid="qv-btn-close-project"
             >
               ✕ Close
             </button>
@@ -235,11 +248,12 @@ export function ProjectSummaryPanel({
           <div className="detail-row">
             <span className="detail-label">Path</span>
             <div className="detail-path-container">
-              <code className="detail-value detail-value--path" title={summary.path}>{summary.path}</code>
+              <code className="detail-value detail-value--path" title={summary.path} data-testid="qv-project-path">{summary.path}</code>
               <button 
                 className="reveal-btn"
                 onClick={() => window.qv?.revealPath?.(summary.path)}
                 title="Reveal in Finder"
+                data-testid="qv-btn-project-reveal"
               >
                 📂 Reveal
               </button>

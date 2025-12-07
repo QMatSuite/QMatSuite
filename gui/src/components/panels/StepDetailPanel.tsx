@@ -286,7 +286,7 @@ export function StepDetailPanel({
   const cards = Object.keys(stepDetail.cards);
   
   return (
-    <div className="step-detail-panel">
+    <div className="step-detail-panel" data-testid="qv-step-detail">
       <div className="panel-header">
         <h2 className="panel-title">
           <span className="panel-icon">📋</span>
@@ -317,7 +317,7 @@ export function StepDetailPanel({
             </div>
             <div className="detail-item">
               <span className="detail-label">ID</span>
-              <code className="detail-value detail-value--id">{stepDetail.id}</code>
+              <code className="detail-value detail-value--id" data-testid="qv-step-id">{stepDetail.id}</code>
             </div>
             {stepDetail.structure && (
               <div className="detail-item">
@@ -472,7 +472,7 @@ export function StepDetailPanel({
         <div className="detail-section">
           <h3>File Location</h3>
           <div className="file-location">
-            <code className="file-location__path" title={stepDetail.absolute_path}>
+            <code className="file-location__path" title={stepDetail.absolute_path} data-testid="qv-step-file-path">
               {stepDetail.absolute_path}
             </code>
             <button 

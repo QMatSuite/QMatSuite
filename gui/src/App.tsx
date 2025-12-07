@@ -50,7 +50,6 @@ import type {
   JobCounts,
   JobSubmitResult,
   PreflightCheckResult,
-  DemoProjectResult,
 } from './types';
 import './App.css';
 

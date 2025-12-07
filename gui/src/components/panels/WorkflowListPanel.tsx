@@ -56,7 +56,7 @@ export function WorkflowListPanel({
   }
   
   return (
-    <div className="workflow-list-panel">
+    <div className="workflow-list-panel" data-testid="qv-workflows-view">
       <div className="panel-header">
         <h2 className="panel-title">
           <span className="panel-icon">📊</span>
@@ -65,11 +65,13 @@ export function WorkflowListPanel({
         <span className="panel-count">{workflows.length} total</span>
       </div>
       
-      <div className="workflow-list">
+      <div className="workflow-list" data-testid="qv-workflows-list">
         {workflows.map((workflow) => (
           <div
             key={workflow.id}
             className={`workflow-item ${selectedId === workflow.id ? 'workflow-item--selected' : ''}`}
+            data-testid="qv-workflow-row"
+            data-workflow-slug={workflow.slug}
           >
             <button
               className="workflow-item__content"
@@ -373,7 +375,7 @@ export function WorkflowDetailPanel({
     : workflow.steps;
   
   return (
-    <div className="workflow-detail-panel">
+    <div className="workflow-detail-panel" data-testid="qv-workflow-detail">
       <div className="panel-header">
         <h2 className="panel-title">
           <span className="panel-icon">📊</span>
@@ -386,6 +388,7 @@ export function WorkflowDetailPanel({
               onClick={() => onRunWorkflow(workflow)}
               disabled={isReordering || isSaving}
               title="Run all steps in this workflow"
+              data-testid="qv-btn-run-workflow"
             >
               ▶️ Run Workflow
             </button>
@@ -487,7 +490,7 @@ export function WorkflowDetailPanel({
             </div>
           </div>
           
-          <div className="steps-list">
+          <div className="steps-list" data-testid="qv-steps-list">
             {displaySteps.map((step, idx) => (
               <div 
                 key={step.id} 
@@ -504,6 +507,8 @@ export function WorkflowDetailPanel({
                 onDragOver={isReordering ? (e) => handleDragOver(e, idx) : undefined}
                 onDragLeave={isReordering ? handleDragLeave : undefined}
                 onDrop={isReordering ? (e) => handleDrop(e, idx) : undefined}
+                data-testid="qv-step-row"
+                data-step-id={step.id}
               >
                 {isReordering && (
                   <div className="step-reorder-controls">

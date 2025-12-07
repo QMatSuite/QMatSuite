@@ -26,7 +26,10 @@ function StatusBadge({ status, size = 'medium' }: StatusBadgeProps) {
   }[status];
   
   return (
-    <span className={`status-badge status-badge--${status} status-badge--${size}`}>
+    <span 
+      className={`status-badge status-badge--${status} status-badge--${size}`}
+      data-testid="qv-job-status"
+    >
       <span className="status-badge__icon">{icon}</span>
       <span className="status-badge__label">{status}</span>
     </span>
@@ -52,6 +55,8 @@ function JobListItem({ job, isSelected, onSelect }: JobListItemProps) {
     <button
       className={`job-list-item ${isSelected ? 'job-list-item--selected' : ''}`}
       onClick={() => onSelect(job)}
+      data-testid="qv-job-row"
+      data-job-id={job.id}
     >
       <div className="job-list-item__header">
         <code className="job-list-item__id">#{shortId}</code>
@@ -141,7 +146,7 @@ function JobDetailPanel({ jobId, onClose, onViewAnalysis }: JobDetailPanelProps)
   };
   
   return (
-    <div className="job-detail-panel">
+    <div className="job-detail-panel" data-testid="qv-job-detail">
       <div className="job-detail-panel__header">
         <div className="job-detail-panel__title">
           <code>#{shortId}</code>
@@ -310,7 +315,7 @@ export function JobsPanel({ projectRoot, onViewAnalysis }: JobsPanelProps) {
   };
   
   return (
-    <div className="jobs-panel">
+    <div className="jobs-panel" data-testid="qv-jobs-view">
       {/* Header */}
       <div className="jobs-panel__header">
         <div className="jobs-panel__title">
@@ -357,7 +362,7 @@ export function JobsPanel({ projectRoot, onViewAnalysis }: JobsPanelProps) {
       {/* Content */}
       <div className="jobs-panel__content">
         {/* Job List */}
-        <div className="jobs-panel__list">
+        <div className="jobs-panel__list" data-testid="qv-jobs-list">
           {isLoading && jobs.length === 0 ? (
             <div className="jobs-panel__loading">
               <div className="loading-spinner" />

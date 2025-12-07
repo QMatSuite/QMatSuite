@@ -169,6 +169,7 @@ export function Sidebar({
             className={`sidebar__tab ${currentView === 'home' ? 'active' : ''}`}
             onClick={() => onViewChange('home')}
             title="Home - project overview and quick actions"
+            data-testid="qv-nav-home"
           >
             <span className="sidebar__tab-icon">🏠</span>
             {!isCollapsed && 'Home'}
@@ -178,6 +179,7 @@ export function Sidebar({
             onClick={() => onViewChange('structures')}
             disabled={!projectLoaded}
             title={projectLoaded ? 'View and manage crystal structures' : 'Load a project first'}
+            data-testid="qv-nav-structures"
           >
             <span className="sidebar__tab-icon">🔬</span>
             {!isCollapsed && 'Structures'}
@@ -187,6 +189,7 @@ export function Sidebar({
             onClick={() => onViewChange('workflows')}
             disabled={!projectLoaded}
             title={projectLoaded ? 'Configure and run QE workflows' : 'Load a project first'}
+            data-testid="qv-nav-workflows"
           >
             <span className="sidebar__tab-icon">📊</span>
             {!isCollapsed && 'Workflows'}
@@ -195,6 +198,7 @@ export function Sidebar({
             className={`sidebar__tab ${currentView === 'jobs' ? 'active' : ''}`}
             onClick={() => onViewChange('jobs')}
             title={activeJobsCount > 0 ? `${runningCount} running, ${pendingCount} pending` : 'View job queue and logs'}
+            data-testid="qv-nav-jobs"
           >
             <span className="sidebar__tab-icon">⚡</span>
             {!isCollapsed && 'Jobs'}
@@ -209,6 +213,7 @@ export function Sidebar({
             onClick={() => onViewChange('analysis')}
             disabled={!projectLoaded}
             title={projectLoaded ? 'Analyze SCF convergence, DOS, and band structures' : 'Load a project first'}
+            data-testid="qv-nav-analysis"
           >
             <span className="sidebar__tab-icon">📈</span>
             {!isCollapsed && 'Analysis'}
@@ -217,6 +222,7 @@ export function Sidebar({
             className={`sidebar__tab ${currentView === 'settings' ? 'active' : ''}`}
             onClick={() => onViewChange('settings')}
             title="Configure QE paths and app settings"
+            data-testid="qv-nav-settings"
           >
             <span className="sidebar__tab-icon">⚙️</span>
             {!isCollapsed && 'Settings'}
@@ -225,6 +231,7 @@ export function Sidebar({
             className={`sidebar__tab ${currentView === 'debug' ? 'active' : ''}`}
             onClick={() => onViewChange('debug')}
             title="View daemon logs and debug info"
+            data-testid="qv-nav-debug"
           >
             <span className="sidebar__tab-icon">🔧</span>
             {!isCollapsed && 'Debug'}

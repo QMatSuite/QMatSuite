@@ -525,7 +525,7 @@ export function BandsChart({ data, isLoading }: BandsChartProps) {
   }
   
   return (
-    <div className="chart-container">
+    <div className="chart-container" data-testid="qv-analysis-bands-chart">
       <div className="chart-header">
         <h3 className="chart-title">Band Structure</h3>
         <div className="chart-info">
@@ -661,12 +661,12 @@ export function BandsChart({ data, isLoading }: BandsChartProps) {
       
       <div className="chart-stats">
         {data.fermi_energy_ev && (
-          <div className="stat-item">
+          <div className="stat-item" data-testid="qv-analysis-fermi">
             <span className="stat-label">Fermi Energy</span>
             <span className="stat-value">{data.fermi_energy_ev.toFixed(4)} eV</span>
           </div>
         )}
-        <div className="stat-item">
+        <div className="stat-item" data-testid="qv-analysis-kpath">
           <span className="stat-label">K-path</span>
           <span className="stat-value kpath-value">
             {data.high_symmetry_points.map(pt => pt.label).join(' → ')}
@@ -782,7 +782,7 @@ export function AnalysisPanel({
   }, [selectedWorkflow, autoAnalysis, detectAnalysisType, selectedStep, onLoadScf, onLoadDos, onLoadBands]);
   
   return (
-    <div className="analysis-panel">
+    <div className="analysis-panel" data-testid="qv-analysis-view">
       {/* Sidebar */}
       <div className="analysis-sidebar">
         <div className="sidebar-section">
