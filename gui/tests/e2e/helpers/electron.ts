@@ -85,9 +85,17 @@ export async function launchApp(options?: {
   // Electron and will use the appropriate connection method. The direct binary
   // path (especially on macOS: Electron.app/Contents/MacOS/Electron) ensures
   // Playwright's internal debugging setup works correctly.
+  
+  // On Linux CI environments, we need to disable the sandbox because we don't have
+  // root access to configure the SUID sandbox helper (chrome-sandbox)
+  const launchArgs = [mainPath];
+  if (os.platform() === 'linux') {
+    launchArgs.unshift('--no-sandbox');
+  }
+  
   const app = await electron.launch({
     executablePath: electronExecutablePath,
-    args: [mainPath],
+    args: launchArgs,
     cwd: guiDir,
     timeout,
     env: {
