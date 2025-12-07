@@ -94,17 +94,20 @@
 }
 
 .structures-view__list {
-  flex: 0 0 380px;
-  min-width: 300px;
-  max-width: 450px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 0; /* Critical for flex child scrolling */
 }
 
-.structures-view__list > * {
+.structures-view__list > *:first-child {
   flex: 1;
   overflow: hidden;
+  min-height: 0;
+}
+
+.structures-view__list > .view-action-btn {
+  flex: 0 0 auto;
 }
 
 .structures-view__detail {
@@ -131,9 +134,6 @@
 }
 
 .workflows-view__list {
-  flex: 0 0 420px;
-  min-width: 340px;
-  max-width: 520px;
   overflow: hidden;
   display: flex;
   flex-direction: column;

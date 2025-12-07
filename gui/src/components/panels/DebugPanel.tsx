@@ -1,5 +1,6 @@
 /**
  * DebugPanel - Shows daemon log output and debug tools
+ * Features a resizable panel similar to VS Code's terminal panel.
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -11,12 +12,20 @@ interface DebugPanelProps {
   isVisible?: boolean;
 }
 
+// Min/max heights for the resizable panel
+const MIN_HEIGHT = 80;
+const MAX_HEIGHT = 500;
+const DEFAULT_HEIGHT = 180;
+
 /**
- * Compact log footer panel
+ * Compact log footer panel with resizable height
  */
 export function DebugPanel({ isVisible = true }: DebugPanelProps) {
   const logs = useQVLogs(200);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState(DEFAULT_HEIGHT);
+  const [isResizing, setIsResizing] = useState(false);
   
   // Auto-scroll to bottom on new logs
   useEffect(() => {
@@ -25,10 +34,52 @@ export function DebugPanel({ isVisible = true }: DebugPanelProps) {
     }
   }, [logs]);
   
+  // Handle resize drag
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    
+    const startY = e.clientY;
+    const startHeight = height;
+    
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      // Dragging up (negative deltaY) should increase height
+      const deltaY = startY - moveEvent.clientY;
+      const newHeight = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, startHeight + deltaY));
+      setHeight(newHeight);
+    };
+    
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    
+    document.body.style.cursor = 'row-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [height]);
+  
   if (!isVisible) return null;
   
   return (
-    <div className="debug-panel">
+    <div 
+      className={`debug-panel ${isResizing ? 'debug-panel--resizing' : ''}`}
+      ref={panelRef}
+      style={{ height: `${height}px` }}
+    >
+      {/* Resize Handle */}
+      <div 
+        className="debug-panel__resize-handle"
+        onMouseDown={handleMouseDown}
+        title="Drag to resize"
+      >
+        <div className="debug-panel__resize-grip" />
+      </div>
+      
       <div className="debug-panel__header">
         <span className="debug-panel__title">🔧 Daemon Logs</span>
         <span className="debug-panel__count">{logs.length} lines</span>

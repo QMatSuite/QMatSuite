@@ -7,6 +7,8 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 0; /* Critical for flex scrolling */
+  height: 100%;
 }
 
 .structure-list-panel--loading,
@@ -67,7 +69,9 @@
 .structure-list {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: var(--space-3);
+  min-height: 0; /* Critical for flex scrolling */
 }
 
 .structure-item {
@@ -211,10 +215,16 @@
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-color);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 35vh; /* Limit height so 3D viewer gets space */
 }
 
 .structure-detail-panel .panel-content {
   padding: var(--space-5);
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .detail-section {

@@ -176,6 +176,56 @@ export function WorkflowDetailPanel({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  // Add step state
+  const [showAddStep, setShowAddStep] = useState(false);
+  const [newStepType, setNewStepType] = useState('');
+  const [newStepName, setNewStepName] = useState('');
+  const [isAddingStep, setIsAddingStep] = useState(false);
+  
+  // Handle showing add step form
+  const handleShowAddStep = useCallback(() => {
+    setShowAddStep(true);
+    setNewStepType('');
+    setNewStepName('');
+    setError(null);
+  }, []);
+  
+  // Handle adding a new step
+  const handleAddStep = useCallback(async () => {
+    if (!window.qv || !workflow || !newStepType) return;
+    
+    setIsAddingStep(true);
+    setError(null);
+    
+    try {
+      const stepName = newStepName.trim() || newStepType;
+      
+      const response = await window.qv.request<WorkflowDetailResult>('add_step_to_workflow', {
+        project_root: projectRoot,
+        workflow: workflow.slug,
+        step_type: newStepType,
+        step_name: stepName,
+      });
+      
+      if (response.ok) {
+        setShowAddStep(false);
+        setNewStepType('');
+        setNewStepName('');
+        onWorkflowUpdated?.();
+      } else {
+        setError(response.error?.message || 'Failed to add step');
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unknown error');
+    } finally {
+      setIsAddingStep(false);
+    }
+  }, [workflow, projectRoot, newStepType, newStepName, onWorkflowUpdated]);
+  
+  // Drag-and-drop state
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  
   // Handle step reorder - move step up
   const handleMoveUp = useCallback((index: number) => {
     if (index === 0) return;
@@ -195,6 +245,54 @@ export function WorkflowDetailPanel({
       return newOrder;
     });
   }, []);
+  
+  // Drag-and-drop handlers
+  const handleDragStart = useCallback((e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+    // Make the dragged element semi-transparent
+    const target = e.target as HTMLElement;
+    target.style.opacity = '0.5';
+  }, []);
+  
+  const handleDragEnd = useCallback((e: React.DragEvent) => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+    const target = e.target as HTMLElement;
+    target.style.opacity = '1';
+  }, []);
+  
+  const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverIndex(index);
+  }, []);
+  
+  const handleDragLeave = useCallback(() => {
+    setDragOverIndex(null);
+  }, []);
+  
+  const handleDrop = useCallback((e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    const dragIndex = draggedIndex;
+    
+    if (dragIndex === null || dragIndex === dropIndex) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+    
+    setStepOrder(prev => {
+      const newOrder = [...prev];
+      const [removed] = newOrder.splice(dragIndex, 1);
+      newOrder.splice(dropIndex, 0, removed);
+      return newOrder;
+    });
+    
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  }, [draggedIndex]);
   
   // Start reorder mode
   const handleStartReorder = useCallback(() => {
@@ -337,39 +435,67 @@ export function WorkflowDetailPanel({
         <div className="detail-section">
           <div className="section-header-row">
             <h3>Calculation Steps</h3>
-            {!isReordering ? (
-              <button 
-                className="section-action-btn"
-                onClick={handleStartReorder}
-                disabled={workflow.n_steps < 2}
-              >
-                ↕️ Reorder
-              </button>
-            ) : (
-              <div className="section-actions">
-                <button 
-                  className="section-action-btn section-action-btn--secondary"
-                  onClick={handleCancelReorder}
-                  disabled={isSaving}
-                >
-                  Cancel
-                </button>
-                <button 
-                  className="section-action-btn section-action-btn--primary"
-                  onClick={handleSaveReorder}
-                  disabled={isSaving}
-                >
-                  {isSaving ? 'Saving...' : 'Save Order'}
-                </button>
-              </div>
-            )}
+            <div className="section-actions">
+              {!isReordering ? (
+                <>
+                  <button 
+                    className="section-action-btn section-action-btn--add"
+                    onClick={handleShowAddStep}
+                    title="Add a new step to this workflow"
+                  >
+                    ➕ Add Step
+                  </button>
+                  <button 
+                    className="section-action-btn"
+                    onClick={handleStartReorder}
+                    disabled={workflow.n_steps < 2}
+                    title="Reorder steps"
+                  >
+                    ↕️ Reorder
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button 
+                    className="section-action-btn section-action-btn--secondary"
+                    onClick={handleCancelReorder}
+                    disabled={isSaving}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    className="section-action-btn section-action-btn--primary"
+                    onClick={handleSaveReorder}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? 'Saving...' : 'Save Order'}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
           
           <div className="steps-list">
             {displaySteps.map((step, idx) => (
-              <div key={step.id} className="step-item-container">
+              <div 
+                key={step.id} 
+                className={`step-item-container ${
+                  isReordering ? 'step-item-container--reordering' : ''
+                } ${
+                  draggedIndex === idx ? 'step-item-container--dragging' : ''
+                } ${
+                  dragOverIndex === idx ? 'step-item-container--drag-over' : ''
+                }`}
+                draggable={isReordering && !isSaving}
+                onDragStart={isReordering ? (e) => handleDragStart(e, idx) : undefined}
+                onDragEnd={isReordering ? handleDragEnd : undefined}
+                onDragOver={isReordering ? (e) => handleDragOver(e, idx) : undefined}
+                onDragLeave={isReordering ? handleDragLeave : undefined}
+                onDrop={isReordering ? (e) => handleDrop(e, idx) : undefined}
+              >
                 {isReordering && (
                   <div className="step-reorder-controls">
+                    <span className="drag-handle" title="Drag to reorder">⋮⋮</span>
                     <button
                       className="reorder-btn"
                       onClick={() => handleMoveUp(idx)}
@@ -403,6 +529,66 @@ export function WorkflowDetailPanel({
               </div>
             ))}
           </div>
+          
+          {/* Add Step Form */}
+          {showAddStep && (
+            <div className="add-step-form">
+              <div className="add-step-header">
+                <h4>Add New Step</h4>
+                <button 
+                  className="add-step-close"
+                  onClick={() => setShowAddStep(false)}
+                >×</button>
+              </div>
+              <div className="add-step-content">
+                <div className="form-group">
+                  <label htmlFor="step-type">Step Type</label>
+                  <select
+                    id="step-type"
+                    value={newStepType}
+                    onChange={(e) => setNewStepType(e.target.value)}
+                  >
+                    <option value="">-- Select Type --</option>
+                    <option value="scf">SCF (pw.x)</option>
+                    <option value="nscf">NSCF (pw.x)</option>
+                    <option value="relax">Relax (pw.x)</option>
+                    <option value="vc-relax">VC-Relax (pw.x)</option>
+                    <option value="bands_pw">Bands PW (pw.x)</option>
+                    <option value="bands">Bands PP (bands.x)</option>
+                    <option value="dos">DOS (dos.x)</option>
+                    <option value="projwfc">PDOS (projwfc.x)</option>
+                    <option value="ph">Phonon (ph.x)</option>
+                    <option value="pp">Post-Process (pp.x)</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="step-name">Step Name (optional)</label>
+                  <input
+                    id="step-name"
+                    type="text"
+                    placeholder={newStepType || 'step name'}
+                    value={newStepName}
+                    onChange={(e) => setNewStepName(e.target.value)}
+                  />
+                </div>
+                <div className="add-step-actions">
+                  <button
+                    className="add-step-btn add-step-btn--cancel"
+                    onClick={() => setShowAddStep(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="add-step-btn add-step-btn--confirm"
+                    onClick={handleAddStep}
+                    disabled={!newStepType || isAddingStep}
+                  >
+                    {isAddingStep ? 'Adding...' : 'Add Step'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         
         <div className="detail-section">

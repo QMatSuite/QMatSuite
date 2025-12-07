@@ -1,13 +1,54 @@
 /* DebugPanel Styles */
 
 .debug-panel {
-  height: 180px;
   display: flex;
   flex-direction: column;
   background: var(--bg-terminal);
   color: var(--text-terminal);
   font-family: var(--font-mono);
   font-size: 0.75rem;
+  min-height: 80px;
+  max-height: 500px;
+  position: relative;
+  transition: none;
+}
+
+.debug-panel--resizing {
+  transition: none !important;
+}
+
+/* Resize Handle - positioned at the top of the panel */
+.debug-panel__resize-handle {
+  position: absolute;
+  top: -3px;
+  left: 0;
+  right: 0;
+  height: 6px;
+  cursor: row-resize;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.debug-panel__resize-handle:hover,
+.debug-panel--resizing .debug-panel__resize-handle {
+  background: rgba(var(--color-primary-rgb), 0.15);
+}
+
+.debug-panel__resize-grip {
+  width: 40px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border-color);
+  opacity: 0.5;
+  transition: opacity var(--transition-fast);
+}
+
+.debug-panel__resize-handle:hover .debug-panel__resize-grip,
+.debug-panel--resizing .debug-panel__resize-grip {
+  opacity: 1;
+  background: var(--color-primary);
 }
 
 .debug-panel__header {
@@ -17,6 +58,7 @@
   padding: 8px 12px;
   background: var(--bg-terminal-header);
   border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
 }
 
 .debug-panel__title {

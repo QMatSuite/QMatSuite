@@ -696,16 +696,108 @@ python -m pytest tests/unit/ -v
 
 ---
 
-## 11. Future Considerations
+## 11. GUI Implementation (Electron + React)
 
-1. **GUI**: PySide6 GUI is planned but not implemented
-2. **Other engines**: LAMMPS, Wannier90 support is planned
-3. **Online databases**: Integration with Materials Project, AFLOW
-4. **Parallel execution**: MPI support exists but is basic
+The GUI is implemented as an Electron desktop application with React/TypeScript frontend:
+
+### 11.1 Architecture
+
+```
+┌─────────────────────────────────────────────┐
+│              React Frontend                  │
+│  ┌─────────────┐ ┌──────────────────────┐  │
+│  │   Sidebar   │ │    Main Panel        │  │
+│  │  + Actions  │ │  (view-based)        │  │
+│  └─────────────┘ └──────────────────────┘  │
+│               │                             │
+│        window.qv.request()                  │
+└───────────────┼─────────────────────────────┘
+                │ IPC (contextBridge)
+┌───────────────┼─────────────────────────────┐
+│          Electron Main Process              │
+│         spawn() JSON-RPC daemon             │
+└───────────────┼─────────────────────────────┘
+                │ stdio (JSON lines)
+┌───────────────┼─────────────────────────────┐
+│           Python Daemon                     │
+│    QVDaemon → QVService → core modules      │
+└─────────────────────────────────────────────┘
+```
+
+### 11.2 Key Features (2025-12-07)
+
+| Feature | Implementation |
+|---------|---------------|
+| Resizable daemon logs panel | DebugPanel with drag handle |
+| Resizable list panels | ResizablePane component |
+| Drag-and-drop step reordering | Native HTML5 DnD in WorkflowDetailPanel |
+| Add step to workflow | add_step_to_workflow in QVService + daemon handler |
+| Supercell visualization | Controls in StructureViewer3D, params to get_structure_vis |
+| Boundary atom repetition | repeat_boundary param in structure visualization |
+| Context-aware element legend | Filter legend to only present elements |
+| Summary auto-refresh | refreshSummary() called after CRUD operations |
+
+### 11.3 Daemon Methods for GUI
+
+Key methods exposed via JSON-RPC:
+
+```python
+# Project operations
+"get_project_summary" → QVService.get_project_summary
+"list_structures" → QVService.list_structures_data
+"list_workflows" → QVService.list_workflows_data
+
+# CRUD operations
+"create_project" → QVService.init_project
+"import_structure" → QVService.import_structure
+"create_workflow" → QVService.init_workflow
+"add_step_to_workflow" → QVService.add_step_to_workflow (NEW)
+"reorder_workflow_steps" → QVService.reorder_workflow_steps
+"delete_structure" → QVService.delete_structure
+"delete_workflow" → QVService.delete_workflow
+
+# Visualization data (pure data, no matplotlib)
+"get_structure_vis" → QVService.get_structure_visualization_data
+"get_scf_convergence" → QVService.get_scf_convergence_data
+"get_dos_data" → QVService.get_dos_data
+"get_band_structure_data" → QVService.get_band_structure_data
+
+# Job management
+"run_workflow" → JobManager.submit(QVService.run_workflow)
+"run_step" → JobManager.submit(QVService.run_step)
+"list_jobs" → JobManager.list_jobs
+"cancel_job" → JobManager.cancel_job
+```
+
+### 11.4 GUI Components
+
+```
+gui/src/components/
+├── layout/
+│   ├── AppShell.tsx      # Main layout with sidebar + content + footer
+│   ├── Sidebar.tsx       # Navigation tabs, project path input
+│   ├── StatusBar.tsx     # Bottom bar with project/QE/job status
+│   └── ResizablePane.tsx # Draggable resize container (NEW)
+├── panels/
+│   ├── DebugPanel.tsx    # Resizable daemon logs (UPDATED)
+│   ├── StructureViewer3D.tsx  # 3D view with supercell controls (UPDATED)
+│   ├── WorkflowListPanel.tsx  # With drag-and-drop reorder + add step (UPDATED)
+│   ├── AnalysisPanel.tsx      # Recharts-based SCF/DOS/bands plots
+│   └── JobsPanel.tsx          # Job list with logs viewer
+└── dialogs/
+    └── ...
+```
+
+## 12. Future Considerations
+
+1. **Other engines**: LAMMPS, Wannier90 support is planned
+2. **Online databases**: Integration with Materials Project, AFLOW
+3. **Parallel execution**: MPI support exists but is basic
+4. **Real-time log streaming**: WebSocket or SSE for job logs
 
 ---
 
-## 12. Refactoring History
+## 13. Refactoring History
 
 ### 2025-11-30 Session 2
 
