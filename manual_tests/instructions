@@ -22,8 +22,21 @@ qv init step dos --DOS.emax=16.0 --DOS.emin=-9.0 --DOS.fildos=si.dos.dat --DOS.o
 
 qv run workflow
 
+qv analyze dos raw/si.dos.dat --scf si.nscf.out --plot
 
 
+# ------------------ dos full -----------------
+
+qv init project --name project1
+cd project1
+qv import-structure $PYTHONSRC/tests/integration/ci_test_data/4_Si_DOS/si.1_scf.in
+qv init workflow "Si dos" --structure si
+cd workflows/Si-dos
+qv init step scf --CONTROL.calculation=scf --CONTROL.outdir=./outdir --CONTROL.prefix=si --CONTROL.pseudo_dir=/home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos --CONTROL.restart_mode=from_scratch --ELECTRONS.conv_thr=1e-08 --SYSTEM.ecutwfc=50 '--CARD.K_POINTS={"option":"automatic","data":[["8","8","8","0","0","0"]]}' --SPECIES.Si.mass=28.0855 --SPECIES.Si.pseudopot=Si.pbe-n-rrkjus_psl.1.0.0.UPF
+qv init step nscf --CONTROL.calculation=nscf --CONTROL.outdir=./outdir --CONTROL.prefix=si --CONTROL.pseudo_dir=/home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos --CONTROL.restart_mode=from_scratch --ELECTRONS.conv_thr=1e-08 --SYSTEM.ecutwfc=50 --SYSTEM.occupations=tetrahedra '--CARD.K_POINTS={"option":"automatic","data":[["12","12","12","0","0","0"]]}' --SPECIES.Si.mass=28.0855 --SPECIES.Si.pseudopot=Si.pbe-n-rrkjus_psl.1.0.0.UPF
+qv init step dos --DOS.emax=16.0 --DOS.emin=-9.0 --DOS.fildos=si.dos.dat --DOS.outdir=./outdir/ --DOS.prefix=si
+qv run workflow
+qv analyze dos raw/si.dos.dat --scf si.nscf.out --plot
 
 # ------------------------ band structure workflow ------------------------
 
