@@ -2856,3 +2856,18 @@ New components list
 Modified files summary
 Updated timestamp to 2025-12-07
 
+
+More GUI issues:
+1. By start-up, warning "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py:127: RuntimeWarning: 'quantumvitas.daemon.server' found in sys.modules after import of package 'quantumvitas.daemon', but prior to execution of 'quantumvitas.daemon.server'; this may result in unpredictable behaviour
+  warn(RuntimeWarning(msg))"
+2. From project summary panel, can click into structure and workflow panels. If clicking relevant detailed structure or step, also show the specific structure or step (similar to clicking left list pane)
+3. When closing, error "Uncaught Exception:
+TypeError: Object has been destroyed
+at ChildProcess.<anonymous> (file:///Users/up/quantumVITAS/gui/dist-electron/main.js:153:8)
+at ChildProcess.emit (node:events:519:28)
+at ChildProcess._handle.onexit (node:internal/child_process:293:12)"
+4. Still "Cannot run workflow: Workflow not found: demo-workflow" when running demo workflow (running steps separately works now).
+5. Camera (zoom, pan and rotation) should not reset when making operations (like supercell and boundary).
+6. demo project: step bands_pw does actually bands calculation, not bands_pw. Check carefully "tests/cli/test_si_bands_workflow_comprehensive.py".
+7. Analysis: did not plot scf convergence: empty plot.
+GPT suggestions:
