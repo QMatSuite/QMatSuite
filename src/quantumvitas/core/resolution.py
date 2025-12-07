@@ -403,14 +403,27 @@ def resolve_step(
             if meta.get("id") == step_selector:
                 return _step_path_to_resolved(step_file, project_root)
     
-    # Strategy 3: step id/type (exact match)
+    # Strategy 3: step meta.name or meta.slug (exact match)
     for step_file, data in step_entries:
-        step_id = data.get("id", "")
-        step_type = data.get("step_type", "")
-        if step_id.lower() == step_selector.lower() or step_type.lower() == step_selector.lower():
+        meta = data.get("meta") or {}
+        step_name = meta.get("name", "")
+        step_slug = meta.get("slug", "")
+        if step_name.lower() == step_selector.lower() or step_slug.lower() == step_selector.lower():
             return _step_path_to_resolved(step_file, project_root)
     
-    # Strategy 4: filename stem match
+    # Strategy 4: step id field from workflow reference (exact match)
+    for step_file, data in step_entries:
+        step_id = data.get("id", "")
+        if step_id.lower() == step_selector.lower():
+            return _step_path_to_resolved(step_file, project_root)
+    
+    # Strategy 5: step_type (exact match) - for backwards compatibility
+    for step_file, data in step_entries:
+        step_type = data.get("step_type", "")
+        if step_type.lower() == step_selector.lower():
+            return _step_path_to_resolved(step_file, project_root)
+    
+    # Strategy 6: filename stem match
     for step_file, _ in step_entries:
         stem = step_file.stem.replace(".step", "")
         if stem.lower() == step_selector.lower():

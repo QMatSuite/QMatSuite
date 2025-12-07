@@ -7,8 +7,10 @@
  * - View tabs for navigation
  * - Connection status
  * - Running jobs indicator
+ * - Collapsible to show only icons
  */
 
+import { useState, useCallback, useEffect } from 'react';
 import type { QVClient } from '../../hooks/useQVClient';
 import type { DaemonStatus, JobCounts } from '../../types/qv';
 import './Sidebar.css';
@@ -51,74 +53,117 @@ export function Sidebar({
   const pendingCount = jobCounts?.pending || 0;
   const activeJobsCount = runningCount + pendingCount;
   
+  // Collapsed state (persisted in localStorage)
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('qv-sidebar-collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  
+  // Persist collapsed state
+  useEffect(() => {
+    localStorage.setItem('qv-sidebar-collapsed', String(isCollapsed));
+  }, [isCollapsed]);
+  
+  const handleToggleCollapse = useCallback(() => {
+    setIsCollapsed(prev => !prev);
+  }, []);
+  
   return (
-    <div className="sidebar">
+    <div className={`sidebar ${isCollapsed ? 'sidebar--collapsed' : ''}`}
       {/* Header */}
       <div className="sidebar__header">
         <h1 className="sidebar__title">
           <span className="sidebar__logo">⚛</span>
-          QuantumVITAS
+          {!isCollapsed && <span className="sidebar__title-text">QuantumVITAS</span>}
         </h1>
-        <div className={`sidebar__status ${isConnected ? 'connected' : 'disconnected'}`}>
-          <span className="sidebar__status-dot" />
-          {isConnected ? 'Connected' : 'Disconnected'}
-        </div>
-        {daemonStatus?.startupError && (
+        {!isCollapsed && (
+          <div className={`sidebar__status ${isConnected ? 'connected' : 'disconnected'}`}>
+            <span className="sidebar__status-dot" />
+            {isConnected ? 'Connected' : 'Disconnected'}
+          </div>
+        )}
+        {!isCollapsed && daemonStatus?.startupError && (
           <div className="sidebar__status-error">
             Daemon Error
           </div>
         )}
       </div>
       
-      {/* Project Path Input */}
-      <div className="sidebar__section">
-        <label className="sidebar__label">
-          Project Root
-          <div className="sidebar__input-group">
-            <input
-              type="text"
-              className={`sidebar__input sidebar__input--with-button ${projectError ? 'sidebar__input--error' : ''}`}
-              value={projectRoot}
-              onChange={(e) => onProjectRootChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && projectRoot.trim()) {
-                  onLoadProject();
-                }
-              }}
-              placeholder="/path/to/project (press Enter to load)"
-              disabled={isLoading}
-            />
-            <button
-              className="sidebar__browse-button"
-              onClick={onBrowseAndLoad}
-              disabled={isLoading}
-              title="Browse and load project"
-            >
-              📂
-            </button>
-          </div>
-          {projectError && (
-            <span className="sidebar__input-error">{projectError}</span>
-          )}
-        </label>
-      </div>
+      {/* Project Path Input - hidden when collapsed */}
+      {!isCollapsed && (
+        <div className="sidebar__section">
+          <label className="sidebar__label">
+            Project Root
+            <div className="sidebar__input-group">
+              <input
+                type="text"
+                className={`sidebar__input sidebar__input--with-button ${projectError ? 'sidebar__input--error' : ''}`}
+                value={projectRoot}
+                onChange={(e) => onProjectRootChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && projectRoot.trim()) {
+                    onLoadProject();
+                  }
+                }}
+                placeholder="/path/to/project (press Enter to load)"
+                disabled={isLoading}
+              />
+              <button
+                className="sidebar__browse-button"
+                onClick={onBrowseAndLoad}
+                disabled={isLoading}
+                title="Browse and load project"
+              >
+                📂
+              </button>
+            </div>
+            {projectError && (
+              <span className="sidebar__input-error">{projectError}</span>
+            )}
+          </label>
+        </div>
+      )}
       
-      {/* Project Actions */}
+      {/* Project Actions - icon-only when collapsed */}
       <div className="sidebar__section">
         <div className="sidebar__actions">
-          <button
-            className="sidebar__button"
-            onClick={onCreateProject}
-            disabled={isLoading}
-          >
-            ✨ Create Project
-          </button>
+          {isCollapsed ? (
+            <>
+              <button
+                className="sidebar__icon-button"
+                onClick={onBrowseAndLoad}
+                disabled={isLoading}
+                title="Open Project"
+              >
+                📂
+              </button>
+              <button
+                className="sidebar__icon-button"
+                onClick={onCreateProject}
+                disabled={isLoading}
+                title="Create Project"
+              >
+                ✨
+              </button>
+            </>
+          ) : (
+            <button
+              className="sidebar__button"
+              onClick={onCreateProject}
+              disabled={isLoading}
+            >
+              ✨ Create Project
+            </button>
+          )}
         </div>
       </div>
       
       {/* View Tabs */}
       <div className="sidebar__section">
-        <h2 className="sidebar__section-title">Navigation</h2>
+        {!isCollapsed && <h2 className="sidebar__section-title">Navigation</h2>}
         <div className="sidebar__tabs">
           <button
             className={`sidebar__tab ${currentView === 'home' ? 'active' : ''}`}
@@ -126,7 +171,7 @@ export function Sidebar({
             title="Home - project overview and quick actions"
           >
             <span className="sidebar__tab-icon">🏠</span>
-            Home
+            {!isCollapsed && 'Home'}
           </button>
           <button
             className={`sidebar__tab ${currentView === 'structures' ? 'active' : ''}`}
@@ -135,7 +180,7 @@ export function Sidebar({
             title={projectLoaded ? 'View and manage crystal structures' : 'Load a project first'}
           >
             <span className="sidebar__tab-icon">🔬</span>
-            Structures
+            {!isCollapsed && 'Structures'}
           </button>
           <button
             className={`sidebar__tab ${currentView === 'workflows' ? 'active' : ''}`}
@@ -144,7 +189,7 @@ export function Sidebar({
             title={projectLoaded ? 'Configure and run QE workflows' : 'Load a project first'}
           >
             <span className="sidebar__tab-icon">📊</span>
-            Workflows
+            {!isCollapsed && 'Workflows'}
           </button>
           <button
             className={`sidebar__tab ${currentView === 'jobs' ? 'active' : ''}`}
@@ -152,7 +197,7 @@ export function Sidebar({
             title={activeJobsCount > 0 ? `${runningCount} running, ${pendingCount} pending` : 'View job queue and logs'}
           >
             <span className="sidebar__tab-icon">⚡</span>
-            Jobs
+            {!isCollapsed && 'Jobs'}
             {activeJobsCount > 0 && (
               <span className={`sidebar__tab-badge ${runningCount > 0 ? 'sidebar__tab-badge--running' : ''}`}>
                 {activeJobsCount}
@@ -166,7 +211,7 @@ export function Sidebar({
             title={projectLoaded ? 'Analyze SCF convergence, DOS, and band structures' : 'Load a project first'}
           >
             <span className="sidebar__tab-icon">📈</span>
-            Analysis
+            {!isCollapsed && 'Analysis'}
           </button>
           <button
             className={`sidebar__tab ${currentView === 'settings' ? 'active' : ''}`}
@@ -174,7 +219,7 @@ export function Sidebar({
             title="Configure QE paths and app settings"
           >
             <span className="sidebar__tab-icon">⚙️</span>
-            Settings
+            {!isCollapsed && 'Settings'}
           </button>
           <button
             className={`sidebar__tab ${currentView === 'debug' ? 'active' : ''}`}
@@ -182,7 +227,7 @@ export function Sidebar({
             title="View daemon logs and debug info"
           >
             <span className="sidebar__tab-icon">🔧</span>
-            Debug
+            {!isCollapsed && 'Debug'}
           </button>
         </div>
       </div>
@@ -190,9 +235,16 @@ export function Sidebar({
       {/* Footer spacer */}
       <div className="sidebar__spacer" />
       
-      {/* Version info */}
+      {/* Footer with collapse toggle */}
       <div className="sidebar__footer">
-        <span className="sidebar__version">QuantumVITAS v2.0.0</span>
+        {!isCollapsed && <span className="sidebar__version">QuantumVITAS v2.0.0</span>}
+        <button
+          className="sidebar__collapse-btn"
+          onClick={handleToggleCollapse}
+          title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {isCollapsed ? '»' : '«'}
+        </button>
       </div>
     </div>
   );

@@ -400,3 +400,83 @@
   }
 }
 
+/* Vertical Settings Option */
+.settings-option--vertical {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+}
+
+.settings-option__control--full {
+  width: 100%;
+}
+
+/* Path Input */
+.settings-path-input {
+  display: flex;
+  gap: 0;
+  width: 100%;
+}
+
+.settings-path-input__field {
+  flex: 1;
+  min-width: 0;
+  padding: 0.625rem 0.875rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-right: none;
+  border-radius: 6px 0 0 6px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  transition: all 0.2s;
+}
+
+.settings-path-input__field:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-alpha);
+}
+
+.settings-path-input__field::placeholder {
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+}
+
+.settings-path-input__browse,
+.settings-path-input__clear {
+  padding: 0.625rem 0.75rem;
+  background: var(--bg-button);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-path-input__browse {
+  border-right: none;
+}
+
+.settings-path-input__clear {
+  border-radius: 0 6px 6px 0;
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  padding: 0.625rem 0.625rem;
+}
+
+.settings-path-input__browse:hover,
+.settings-path-input__clear:hover {
+  background: var(--bg-button-hover);
+  color: var(--text-primary);
+}
+
+/* If there's no clear button, round the browse button */
+.settings-path-input__browse:last-child {
+  border-radius: 0 6px 6px 0;
+  border-right: 1px solid var(--border-color);
+}
+

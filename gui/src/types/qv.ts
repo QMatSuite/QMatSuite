@@ -295,6 +295,7 @@ export interface StepDetail {
   name: string;
   slug: string;
   path: string;
+  absolute_path: string;
   step_type: string;
   structure: string | null;
   parent_workflow_id: string | null;

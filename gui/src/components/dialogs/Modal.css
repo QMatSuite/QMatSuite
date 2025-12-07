@@ -308,3 +308,40 @@
 .template-preview__step .step-arrow {
   color: var(--text-muted);
 }
+
+/* Form Description */
+.form-description {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-2);
+  line-height: 1.5;
+}
+
+/* Form Preview (for project path preview) */
+.form-preview {
+  padding: var(--space-3);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.form-preview__label {
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.form-preview__path {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--syntax-string);
+  word-break: break-all;
+  background: var(--bg-secondary);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+}

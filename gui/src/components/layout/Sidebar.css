@@ -347,10 +347,124 @@
 .sidebar__footer {
   padding-top: var(--space-3);
   border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .sidebar__version {
   font-size: var(--text-xs);
   color: var(--text-muted);
   text-align: center;
+  flex: 1;
+}
+
+/* Collapse Button */
+.sidebar__collapse-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-button);
+  color: var(--text-muted);
+  font-size: var(--text-base);
+  font-weight: var(--font-bold);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.sidebar__collapse-btn:hover {
+  background: var(--bg-button-hover);
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
+/* Icon Button (for collapsed state) */
+.sidebar__icon-button {
+  width: 100%;
+  height: 36px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-button);
+  color: var(--text-secondary);
+  font-size: var(--text-base);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.sidebar__icon-button:hover:not(:disabled) {
+  background: var(--bg-button-hover);
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
+.sidebar__icon-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Collapsed Sidebar State */
+.sidebar--collapsed {
+  width: 60px;
+  min-width: 60px;
+  padding: var(--space-2);
+  gap: var(--space-2);
+}
+
+.sidebar--collapsed .sidebar__header {
+  padding-bottom: var(--space-2);
+  justify-content: center;
+}
+
+.sidebar--collapsed .sidebar__title {
+  justify-content: center;
+  margin: 0;
+}
+
+.sidebar--collapsed .sidebar__logo {
+  font-size: var(--text-lg);
+}
+
+.sidebar--collapsed .sidebar__section {
+  align-items: center;
+}
+
+.sidebar--collapsed .sidebar__tabs {
+  align-items: center;
+}
+
+.sidebar--collapsed .sidebar__tab {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  justify-content: center;
+  border-radius: var(--radius-md);
+}
+
+.sidebar--collapsed .sidebar__tab-icon {
+  margin: 0;
+}
+
+.sidebar--collapsed .sidebar__tab-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  padding: 2px 6px;
+  font-size: var(--text-2xs);
+  min-width: 18px;
+}
+
+.sidebar--collapsed .sidebar__actions {
+  width: 100%;
+  gap: var(--space-2);
+}
+
+.sidebar--collapsed .sidebar__footer {
+  justify-content: center;
 }

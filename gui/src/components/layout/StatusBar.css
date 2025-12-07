@@ -43,7 +43,9 @@
 }
 
 .status-bar__item--project {
-  max-width: 280px;
+  max-width: 50%;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .status-bar__indicator {
@@ -71,10 +73,19 @@
   font-family: var(--font-mono);
   font-size: 10px;
   margin-left: var(--space-1);
-  max-width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+.status-bar__full-path {
+  max-width: none;
+}
+
+.status-bar__project-name {
+  flex-shrink: 0;
 }
 
 .status-bar__divider {

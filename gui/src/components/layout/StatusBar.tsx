@@ -112,15 +112,15 @@ export function StatusBar({
           <button 
             className="status-bar__item status-bar__item--project status-bar__item--clickable"
             onClick={onNavigateToHome}
-            title={`${projectName} - ${projectRoot || ''}\nClick to go to Home`}
+            title={`${projectRoot || projectName}\nClick to go to Home`}
           >
             <span className="status-bar__icon">📁</span>
-            <span className="status-bar__text">
+            <span className="status-bar__text status-bar__project-name">
               {projectName}
             </span>
             {projectRoot && (
-              <span className="status-bar__path">
-                {shortenPath(projectRoot)}
+              <span className="status-bar__path status-bar__full-path" title={projectRoot}>
+                {projectRoot}
               </span>
             )}
           </button>

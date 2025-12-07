@@ -18,6 +18,7 @@
     "three": "^0.170.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@types/react": "^18.2.64",
     "@types/react-dom": "^18.2.21",
     "@types/three": "^0.170.0",
@@ -29,6 +30,7 @@
     "eslint": "^8.57.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
+    "playwright": "^1.57.0",
     "typescript": "^5.2.2",
     "vite": "^7.2.6",
     "vite-plugin-electron": "^0.28.6",
