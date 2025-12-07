@@ -88,10 +88,11 @@ gui/
 │   ├── components/
 │   │   ├── index.ts         # Re-exports all components
 │   │   ├── layout/
-│   │   │   ├── AppShell.tsx     # Main layout container
-│   │   │   ├── Sidebar.tsx      # Navigation, view tabs
-│   │   │   ├── StatusBar.tsx    # Bottom status bar
-│   │   │   └── ResizablePane.tsx # Draggable resize container
+│   │   │   ├── AppShell.tsx           # Main layout container
+│   │   │   ├── Sidebar.tsx            # Navigation, view tabs
+│   │   │   ├── StatusBar.tsx          # Bottom status bar
+│   │   │   ├── ResizablePane.tsx      # Horizontal draggable resize (width)
+│   │   │   └── VerticalResizablePane.tsx # Vertical draggable resize (height)
 │   │   ├── panels/
 │   │   │   ├── ResultPanel.tsx  # JSON result viewer
 │   │   │   ├── DebugPanel.tsx   # Daemon logs + DebugView
@@ -709,9 +710,15 @@ CSS-only tooltips using `data-tooltip` attribute:
 - [x] Resizable panels
   - Daemon logs panel (draggable height)
   - Structures/Workflows list panels (draggable width)
-  - ResizablePane reusable component
+  - Workflow/Step detail separator (draggable)
+  - ResizablePane and VerticalResizablePane components
 - [x] Drag-and-drop step reordering
 - [x] Summary panel auto-refresh on structure/workflow changes
+- [x] 3D viewer camera state preservation (zoom/rotation remembered during supercell changes)
+- [x] Log file persistence
+  - Logs saved to `.qv-daemon.log` in project directory
+  - Persisted across sessions
+  - setProject/readLogs IPC methods
 
 ### Planned
 
@@ -720,4 +727,5 @@ CSS-only tooltips using `data-tooltip` attribute:
 - [ ] Multiple project tabs
 - [ ] Theme switching (light/dark)
 - [ ] Keyboard shortcuts
+- [ ] Load previous logs on project open
 
