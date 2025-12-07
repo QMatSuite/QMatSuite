@@ -9,8 +9,11 @@ mode: normal
 working_dir: raw
 steps:
 - id: scf
+  type: scf
   step_file: steps/scf.step.yaml
 - id: nscf
+  type: nscf
   step_file: steps/nscf.step.yaml
 - id: dos
+  type: dos
   step_file: steps/dos.step.yaml

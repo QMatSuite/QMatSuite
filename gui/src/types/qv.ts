@@ -759,6 +759,16 @@ export interface QVApi {
     title?: string;
     filters?: { name: string; extensions: string[] }[];
   }) => Promise<string | null>;
+  
+  /**
+   * Set the current project path for log file storage
+   */
+  setProject: (projectPath: string | null) => Promise<void>;
+  
+  /**
+   * Read logs from a project's log file
+   */
+  readLogs: (projectPath: string, tailLines?: number) => Promise<string[]>;
 }
 
 // Extend Window interface

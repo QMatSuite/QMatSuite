@@ -15,6 +15,7 @@ import {
   Sidebar,
   StatusBar,
   ResizablePane,
+  VerticalResizablePane,
   ProjectSummaryPanel, 
   StructureListPanel,
   StructureDetailPanel,
@@ -218,6 +219,9 @@ function App() {
       setStructures(null);
       setWorkflows(null);
       addToRecentProjects(path);
+      
+      // Set project path for log file storage
+      window.qv?.setProject?.(path);
     } else {
       setProjectSummary(null);
       setProjectLoaded(false);
@@ -249,6 +253,9 @@ function App() {
       
       // Add to recent projects
       addToRecentProjects(projectRoot);
+      
+      // Set project path for log file storage
+      window.qv?.setProject?.(projectRoot);
     } else {
       setProjectSummary(null);
       setProjectLoaded(false);
@@ -278,6 +285,9 @@ function App() {
           setProjectError(null);
           setStructures(null);
           setWorkflows(null);
+          
+          // Set project path for log file storage
+          window.qv?.setProject?.(path);
         } else {
           setProjectError(response.error?.message || 'Failed to load project');
         }
@@ -285,12 +295,36 @@ function App() {
     }
   }, [qv]);
   
-  const handleCreateProjectSuccess = useCallback((newProjectRoot: string) => {
+  const handleCreateProjectSuccess = useCallback(async (newProjectRoot: string) => {
     setProjectRoot(newProjectRoot);
     localStorage.setItem('qv-project-root', newProjectRoot);
-    // Load the newly created project
-    setTimeout(() => handleLoadProject(), 100);
-  }, [handleLoadProject]);
+    
+    // Load the newly created project immediately with the new path
+    setIsLoadingProject(true);
+    setProjectError(null);
+    
+    const response = await qv.getProjectSummary(newProjectRoot);
+    
+    setIsLoadingProject(false);
+    
+    if (response.ok && response.data) {
+      setProjectSummary(response.data);
+      setProjectLoaded(true);
+      setProjectError(null);
+      setStructures(null);
+      setWorkflows(null);
+      setSelectedStructure(null);
+      setSelectedWorkflow(null);
+      addToRecentProjects(newProjectRoot);
+      
+      // Set project path for log file storage
+      window.qv?.setProject?.(newProjectRoot);
+    } else {
+      setProjectSummary(null);
+      setProjectLoaded(false);
+      setProjectError(response.error?.message || 'Failed to load project');
+    }
+  }, [qv, addToRecentProjects]);
   
   // Create demo Si project
   const handleCreateDemoProject = useCallback(async () => {
@@ -330,6 +364,9 @@ function App() {
         setProjectLoaded(true);
         setStructures(null);
         setWorkflows(null);
+        
+        // Set project path for log file storage
+        window.qv?.setProject?.(result.project_root);
       }
     } else {
       showNotification(`Failed to create demo: ${response.error?.message || 'Unknown error'}`, 'error');
@@ -766,6 +803,7 @@ function App() {
                     isLoading={isLoading3D}
                     showBonds={true}
                     showUnitCell={true}
+                    structureId={selectedStructure?.id}
                     onSupercellChange={handleSupercellChange}
                     onRepeatBoundaryChange={handleRepeatBoundaryChange}
                   />
@@ -803,26 +841,50 @@ function App() {
             </ResizablePane>
             {selectedWorkflow && (
               <div className="workflows-view__detail">
-                <WorkflowDetailPanel
-                  workflow={selectedWorkflow}
-                  projectRoot={projectRoot}
-                  structures={structures || undefined}
-                  onClose={() => {
-                    setSelectedWorkflow(null);
-                    setSelectedStepId(null);
-                  }}
-                  onRunWorkflow={handleRunWorkflow}
-                  onSelectStep={handleSelectStep}
-                  onGoToJobs={handleGoToJobs}
-                  onWorkflowUpdated={fetchWorkflows}
-                />
-                {selectedStepId && (
-                  <StepDetailPanel
+                {selectedStepId ? (
+                  <>
+                    <VerticalResizablePane
+                      defaultHeight={350}
+                      minHeight={200}
+                      maxHeight={500}
+                      storageKey="qv-workflow-detail-height"
+                      className="workflow-detail-resizable"
+                    >
+                      <WorkflowDetailPanel
+                        workflow={selectedWorkflow}
+                        projectRoot={projectRoot}
+                        structures={structures || undefined}
+                        onClose={() => {
+                          setSelectedWorkflow(null);
+                          setSelectedStepId(null);
+                        }}
+                        onRunWorkflow={handleRunWorkflow}
+                        onSelectStep={handleSelectStep}
+                        onGoToJobs={handleGoToJobs}
+                        onWorkflowUpdated={fetchWorkflows}
+                      />
+                    </VerticalResizablePane>
+                    <StepDetailPanel
+                      projectRoot={projectRoot}
+                      workflowSelector={selectedWorkflow.slug}
+                      stepSelector={selectedStepId}
+                      onClose={() => setSelectedStepId(null)}
+                      onRunStep={handleRunStepSuccess}
+                    />
+                  </>
+                ) : (
+                  <WorkflowDetailPanel
+                    workflow={selectedWorkflow}
                     projectRoot={projectRoot}
-                    workflowSelector={selectedWorkflow.slug}
-                    stepSelector={selectedStepId}
-                    onClose={() => setSelectedStepId(null)}
-                    onRunStep={handleRunStepSuccess}
+                    structures={structures || undefined}
+                    onClose={() => {
+                      setSelectedWorkflow(null);
+                      setSelectedStepId(null);
+                    }}
+                    onRunWorkflow={handleRunWorkflow}
+                    onSelectStep={handleSelectStep}
+                    onGoToJobs={handleGoToJobs}
+                    onWorkflowUpdated={fetchWorkflows}
                   />
                 )}
               </div>

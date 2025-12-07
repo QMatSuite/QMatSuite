@@ -153,16 +153,20 @@
   overflow-y: auto;
 }
 
-/* When showing both workflow and step detail */
-.workflows-view__detail .workflow-detail-panel {
-  max-height: 55%;
+/* When showing both workflow and step detail with resizable separation */
+.workflow-detail-resizable {
   overflow-y: auto;
-  flex-shrink: 0;
+}
+
+.workflow-detail-resizable .workflow-detail-panel {
+  height: 100%;
+  overflow-y: auto;
 }
 
 .workflows-view__detail .step-detail-panel {
   flex: 1;
-  min-height: 300px;
+  min-height: 200px;
+  overflow-y: auto;
 }
 
 /* Fix list container heights */

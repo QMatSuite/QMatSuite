@@ -220,7 +220,7 @@ class Project:
         if workflow_id in self.workflows:
             return self.workflows[workflow_id]
         for ref in self.workflows.values():
-            if ref.meta.id == workflow_id or ref.meta.name == workflow_id:
+            if ref.meta.id == workflow_id or ref.meta.name == workflow_id or ref.meta.slug == workflow_id:
                 return ref
         raise KeyError(f"Unknown workflow '{workflow_id}'")
 
