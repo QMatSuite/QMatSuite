@@ -295,9 +295,13 @@ def _copy_workflow_from_path(
     """
     Internal: Copy workflow from a source path to destination.
     
+    Handles both old format (with workflow: section) and new format (with meta: section).
+    
     Returns:
         Tuple of (workflow.yaml path, set of structure names needed, workflow ULID)
     """
+    from quantumvitas.core.resources import slugify
+    
     dest_dir.mkdir(parents=True, exist_ok=True)
     
     ulid_map: Dict[str, str] = {}
@@ -311,21 +315,48 @@ def _copy_workflow_from_path(
     # Use provided ULID or generate new one
     new_id = workflow_ulid or generate_ulid()
     
-    # Track old ID for mapping
-    if "id" in workflow_data:
-        old_id = workflow_data.get("id", "")
+    # Determine the new name and slug
+    if new_name:
+        final_name = new_name
+        final_slug = slugify(new_name)
+    else:
+        # Use template name
+        meta = workflow_data.get("meta", {})
+        final_name = meta.get("name") or workflow_data.get("id") or dest_dir.name
+        final_slug = meta.get("slug") or slugify(final_name)
+    
+    # Get old ID for mapping (from meta or top-level id field)
+    meta = workflow_data.get("meta", {})
+    old_id = meta.get("id") or workflow_data.get("id", "")
+    if old_id:
         ulid_map[old_id] = new_id
     
-    # Update workflow id (slug) if new_name provided, otherwise keep original
-    if new_name:
-        workflow_data["id"] = new_name
+    # Determine workflow path relative to project
+    workflow_path = f"workflows/{final_slug}"
     
-    # Update or track structure
+    # Update the meta section (new format)
+    workflow_data["meta"] = {
+        "id": new_id,
+        "name": final_name,
+        "slug": final_slug,
+        "path": workflow_path,
+        "kind": "workflow",
+    }
+    
+    # Remove old-format id field if present (replaced by meta.id)
+    if "id" in workflow_data and workflow_data["id"] != new_id:
+        del workflow_data["id"]
+    
+    # Handle structure - check both new format (top-level) and old format (workflow section)
     workflow_section = workflow_data.get("workflow", {})
-    template_structure = workflow_section.get("structure")
+    template_structure = workflow_data.get("structure") or workflow_section.get("structure")
+    
     if structure:
-        workflow_section["structure"] = structure
-        workflow_data["workflow"] = workflow_section
+        # New format: structure at top level
+        workflow_data["structure"] = structure
+        # Also update old format section if present
+        if "workflow" in workflow_data:
+            workflow_data["workflow"]["structure"] = structure
     elif template_structure:
         structures_needed.add(template_structure)
     
@@ -353,7 +384,7 @@ def _copy_workflow_from_path(
             
             # Update path in meta
             if "meta" in step_data:
-                rel_path = f"workflows/{dest_dir.name}/steps/{step_file.name}"
+                rel_path = f"workflows/{final_slug}/steps/{step_file.name}"
                 step_data["meta"]["path"] = rel_path
             
             with open(steps_dest_dir / step_file.name, "w") as f:

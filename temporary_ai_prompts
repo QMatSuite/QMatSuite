@@ -2857,7 +2857,8 @@ Modified files summary
 Updated timestamp to 2025-12-07
 
 
-More GUI issues:
+Previous AI agent has implemented the GUI and the backend, as well as two rounds of debugging of GUI. Now we debug more GUI. First read AI_understanding.md and GUI_ARCHITECTURE.md (and optionally other docs) to understand the architecture and the implementation. Then, try to address the issues one by one. You are a senior developer and I want you to do things in the best SDE practice. Never quick fix.
+Several GUI issues:
 1. By start-up, warning "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py:127: RuntimeWarning: 'quantumvitas.daemon.server' found in sys.modules after import of package 'quantumvitas.daemon', but prior to execution of 'quantumvitas.daemon.server'; this may result in unpredictable behaviour
   warn(RuntimeWarning(msg))"
 2. From project summary panel, can click into structure and workflow panels. If clicking relevant detailed structure or step, also show the specific structure or step (similar to clicking left list pane)
@@ -2870,4 +2871,178 @@ at ChildProcess._handle.onexit (node:internal/child_process:293:12)"
 5. Camera (zoom, pan and rotation) should not reset when making operations (like supercell and boundary).
 6. demo project: step bands_pw does actually bands calculation, not bands_pw. Check carefully "tests/cli/test_si_bands_workflow_comprehensive.py".
 7. Analysis: did not plot scf convergence: empty plot.
-GPT suggestions:
+Other important refactoring suggestions:
+You are continuing work on the QuantumVITAS v2 Electron + React GUI.
+The app already has a working daemon, IPC, job system, demo project, structures/workflows/analysis, etc.
+
+Goal (UX)
+
+Make the app feel simple and obvious for first-time users:
+
+Use “Home” as the main landing view (instead of “Summary”).
+
+Make opening/creating projects a one-step, predictable action.
+
+Keep the Project Root text input for power users, but make sure normal users can ignore it.
+
+Please keep changes focused on navigation and project handling, not large refactors.
+
+1. Home View (replace Summary)
+
+Rename the “Summary” view to Home (sidebar label + enum / view names where reasonable).
+
+Home must have two states:
+
+No project loaded
+
+Show the existing welcome content, but under the “Home” view:
+
+“Open Project” (folder picker)
+
+“Create New Project”
+
+“Create Demo Project”
+
+Recent Projects list
+
+This should be the initial screen on first launch or after closing a project.
+
+Project loaded
+
+Same Home route, but content becomes a Current Project dashboard card:
+
+Project name + slug
+
+Full path (button: “Open in Finder”)
+
+Counts: structures / workflows (small pills that navigate to those views)
+
+Project ID (small text)
+
+A clear “Close Project” action
+
+Below the card, show:
+
+Quick actions: “Import Structure”, “New Workflow from Template”, “Open Jobs”, “Open Analysis”
+
+Recent Projects (clicking one switches project)
+
+Clicking “Home” in the sidebar should never unload the project; it just goes to the appropriate Home state.
+
+2. Project Root section (left sidebar)
+
+Keep the Project Root text input for power users, but make behavior consistent and simple:
+
+Folder icon / “Open Project…” button:
+
+Open native folder chooser.
+
+After a folder is selected:
+
+If it contains project.qv.yml:
+→ call the existing load-project flow, set it as current project, navigate to Home (project-loaded state).
+
+If it does not contain project.qv.yml:
+→ show a small dialog:
+“This folder is not a QuantumVITAS project. Create a new project here?”
+
+Yes: call create_project (or equivalent), then load it and go to Home.
+
+No: do nothing to the current project.
+
+Text input behavior:
+
+When user types a path and presses Enter, run the same logic as above (check for project.qv.yml and load or offer to create).
+
+This lets advanced users paste a path and go, while normal users only use the buttons.
+
+If there is currently a separate “Load Project” button, either:
+
+Remove it, or
+
+Make it call exactly the same “Open Project” flow (no more “browse then load” two-step).
+
+3. Close / Switch Project
+
+Implement a clear Close Project behavior:
+
+When invoked:
+
+Clear the current project in React state.
+
+Navigate to Home in the no-project state (welcome screen).
+
+Place this action:
+
+On the Home project card (primary).
+
+Optionally in the status/footer bar menu if you think it helps.
+
+“Switch project” is just: Open Project / Recent Project → load new project → Home.
+
+4. Status Bar
+
+In the bottom status bar, show the current project when loaded, e.g.:
+
+Project: demo-si-project (…/demo-si-project)
+
+Behavior:
+
+Clicking the project name → navigate to Home.
+
+Clicking the path → “Open in Finder” for that project.
+
+5. Constraints
+
+Do not refactor unrelated logic; keep daemon APIs as they are unless a tiny helper is absolutely needed.
+
+Keep types in qv.ts correct.
+
+After coding, briefly summarize:
+
+Files changed
+
+New behaviors for: first launch, open project, create project, close project, switch project.
+
+
+Implementation summary:
+All tasks are complete. Let me provide a summary of all the changes made:
+Summary of Changes
+Bug Fixes
+Python runpy warning at daemon startup (src/quantumvitas/daemon/__init__.py)
+Added explicit imports for QVDaemon, JobManager, and JobStatus to avoid the Python import order warning
+"Object has been destroyed" error on close (gui/electron/main.ts)
+The daemon exit handler already correctly rejects pending requests before notifying the renderer - this was already properly implemented
+"Workflow not found: demo-workflow" (src/quantumvitas/core/templates.py)
+Fixed _copy_workflow_from_path to correctly handle the new workflow YAML format with meta section
+Now properly reads/writes meta.id, meta.name, meta.slug, and meta.path
+Also handles top-level structure field correctly
+SCF convergence analysis empty plot (src/quantumvitas/api.py)
+Added more robust output file patterns: f"{step_selector}.pw.out" and f"{step_selector}_{step_type}.pw.out"
+Camera reset issue - Already correctly implemented! The CameraController in StructureViewer3D.tsx only resets when structureId changes, not when supercell/boundary parameters change.
+bands_pw step type - The naming is actually correct:
+bands_pw = pw.x with calculation='bands' (computes band energies on k-path)
+bands = bands.x post-processing (reformats band data for plotting)
+UX Improvements
+Renamed "Summary" to "Home" (gui/src/components/layout/Sidebar.tsx)
+Changed tab name and icon from "Summary" (📊) to "Home" (🏠)
+Two-state Home view (gui/src/components/panels/ProjectSummaryPanel.tsx)
+Welcome state shows when no project is loaded
+Dashboard state shows project details when loaded
+Navigation from Home to Structures/Workflows (gui/src/components/panels/ProjectSummaryPanel.tsx, App.tsx)
+Structure and Workflow count cards are now clickable
+Clicking navigates to respective views
+Close Project action (gui/src/App.tsx, StatusBar.tsx, Sidebar.tsx)
+Added "Close Project" button in Home view and Status Bar
+Clears project state and navigates to Home (welcome state)
+Improved project loading flow (gui/src/App.tsx)
+When opening a folder that isn't a project, prompts user to create one
+New CreateProjectPromptDialog component for the confirmation
+Status bar improvements (gui/src/components/layout/StatusBar.tsx)
+Shows project name (clickable → goes to Home)
+Shows shortened path (clickable → opens in Finder)
+Close Project button when project is loaded
+Minor Fixes
+Removed unused useEffect import in StructureViewer3D.tsx
+
+

@@ -90,6 +90,16 @@ let currentProjectPath: string | null = null;
 const LOG_FILE_NAME = '.qv-daemon.log';
 
 /**
+ * Safely send a message to the renderer process.
+ * Checks if window exists and is not destroyed before sending.
+ */
+function safeSend(channel: string, ...args: unknown[]): void {
+  if (win && !win.isDestroyed() && win.webContents) {
+    win.webContents.send(channel, ...args);
+  }
+}
+
+/**
  * Append a log message to the project's log file
  */
 function appendToLogFile(message: string): void {
@@ -271,7 +281,7 @@ function spawnDaemon(): boolean {
     const message = data.toString().trim();
     console.log(`[daemon] ${message}`);
     // Forward to renderer for debug panel
-    win?.webContents.send('daemon-log', message);
+    safeSend('daemon-log', message);
     // Append to log file
     appendToLogFile(message);
   });
@@ -281,7 +291,7 @@ function spawnDaemon(): boolean {
     daemonStatus.connected = false;
     daemonStatus.startupError = `Daemon error: ${err.message}`;
     // Notify renderer of daemon error
-    win?.webContents.send('daemon-status', { ...daemonStatus });
+    safeSend('daemon-status', { ...daemonStatus });
   });
   
   daemonProcess.on('exit', (code: number | null, signal: string | null) => {
@@ -302,8 +312,8 @@ function spawnDaemon(): boolean {
     }
     pendingRequests.clear();
     
-    // Notify renderer
-    win?.webContents.send('daemon-status', { ...daemonStatus });
+    // Notify renderer (only if window still exists)
+    safeSend('daemon-status', { ...daemonStatus });
   });
   
   daemonStatus.connected = true;
@@ -535,12 +545,12 @@ function createWindow(): void {
 
   // Signal when window is ready
   win.webContents.on('did-finish-load', () => {
-    win?.webContents.send('main-process-message', {
+    safeSend('main-process-message', {
       type: 'ready',
       timestamp: new Date().toISOString(),
     });
     // Also send daemon status
-    win?.webContents.send('daemon-status', { ...daemonStatus });
+    safeSend('daemon-status', { ...daemonStatus });
   });
 
   if (VITE_DEV_SERVER_URL) {
