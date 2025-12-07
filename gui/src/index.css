@@ -173,6 +173,73 @@
 }
 
 /* =============================================================================
+   Light Theme - VS Code Light Inspired
+   ============================================================================= */
+
+[data-theme="light"] {
+  /* === Background Colors === */
+  --bg-app: #f3f3f3;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --bg-tertiary: #e8e8e8;
+  --bg-sidebar: #f8f8f8;
+  --bg-card: #ffffff;
+  --bg-input: #ffffff;
+  --bg-hover: rgba(0, 0, 0, 0.04);
+  --bg-active: rgba(0, 0, 0, 0.08);
+  --bg-button: #e8e8e8;
+  --bg-button-hover: #d8d8d8;
+  --bg-terminal: #ffffff;
+  --bg-overlay: rgba(0, 0, 0, 0.4);
+  
+  /* === Text Colors === */
+  --text-primary: #1f1f1f;
+  --text-secondary: #424242;
+  --text-tertiary: #616161;
+  --text-muted: #9e9e9e;
+  --text-disabled: #bdbdbd;
+  --text-inverse: #ffffff;
+  
+  /* === Border Colors === */
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-color: rgba(0, 0, 0, 0.12);
+  --border-hover: rgba(0, 0, 0, 0.18);
+  
+  /* === Syntax Highlighting (VS Code Light) === */
+  --syntax-keyword: #0000ff;
+  --syntax-string: #a31515;
+  --syntax-number: #098658;
+  --syntax-function: #795e26;
+  --syntax-variable: #001080;
+  --syntax-comment: #008000;
+  --syntax-property: #0451a5;
+  
+  /* JSON-specific */
+  --json-key: #0451a5;
+  --json-string: #a31515;
+  --json-number: #098658;
+  --json-boolean: #0000ff;
+  --json-null: #008000;
+  
+  /* === Shadows === */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.1);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.06);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.06);
+  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.2);
+  --shadow-inset: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+  
+  /* === Primary Colors (slightly adjusted for light) === */
+  --color-primary: #0066b8;
+  --color-primary-hover: #005a9e;
+  --color-primary-dark: #004e8c;
+  --color-primary-light: #3794ff;
+  --color-primary-alpha: rgba(0, 102, 184, 0.12);
+  --color-primary-alpha-hover: rgba(0, 102, 184, 0.18);
+}
+
+/* =============================================================================
    Reset & Base Styles
    ============================================================================= */
 

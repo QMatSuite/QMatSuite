@@ -99,7 +99,8 @@ def test_template_structure_copied(template_project):
     workflow_yaml = project_dir / "workflows" / "si-dos" / "workflow.yaml"
     workflow_data = yaml.safe_load(workflow_yaml.read_text())
     
-    structure_name = (workflow_data.get("workflow") or {}).get("structure")
+    # Check both new format (top-level) and old format (workflow section)
+    structure_name = workflow_data.get("structure") or (workflow_data.get("workflow") or {}).get("structure")
     assert structure_name, "Workflow should reference a structure"
     
     # Check structure file exists
@@ -180,7 +181,9 @@ def test_init_workflow_from_template_with_custom_structure(tmp_path):
     # Check workflow uses custom structure
     workflow_yaml = project_dir / "workflows" / "my-workflow" / "workflow.yaml"
     workflow_data = yaml.safe_load(workflow_yaml.read_text())
-    assert workflow_data["workflow"]["structure"] == "custom_si"
+    # Check both new format (top-level) and old format (workflow section)
+    structure_in_workflow = workflow_data.get("structure") or (workflow_data.get("workflow") or {}).get("structure")
+    assert structure_in_workflow == "custom_si", f"Workflow should use custom_si structure, got: {structure_in_workflow}"
     
     # Check step files use custom structure
     steps_dir = project_dir / "workflows" / "my-workflow" / "steps"

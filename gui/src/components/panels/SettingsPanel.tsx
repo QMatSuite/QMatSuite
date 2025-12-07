@@ -1,12 +1,22 @@
 /**
- * SettingsPanel - Displays environment info and QE detection status
+ * SettingsPanel - Displays environment info, QE detection status, and app settings
  */
 
 import { useState, useCallback, useEffect } from 'react';
 import type { QEDetectionResult, EnvironmentInfo } from '../../types/qv';
 import './SettingsPanel.css';
 
-export function SettingsPanel() {
+export interface AppSettings {
+  theme: 'dark' | 'light';
+  autoAnalysis: boolean;
+}
+
+interface SettingsPanelProps {
+  settings: AppSettings;
+  onSettingsChange: (settings: AppSettings) => void;
+}
+
+export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps) {
   const [envInfo, setEnvInfo] = useState<EnvironmentInfo | null>(null);
   const [qeInfo, setQeInfo] = useState<QEDetectionResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -195,6 +205,72 @@ export function SettingsPanel() {
           <span className="error-text">{error}</span>
         </div>
       )}
+      
+      {/* Appearance Section */}
+      <div className="settings-section">
+        <div className="settings-section__header">
+          <h3 className="settings-section__title">
+            <span className="settings-icon">🎨</span>
+            Appearance
+          </h3>
+        </div>
+        
+        <div className="settings-section__content">
+          <div className="settings-option">
+            <div className="settings-option__info">
+              <span className="settings-option__label">Theme</span>
+              <span className="settings-option__description">
+                Choose between dark and light appearance
+              </span>
+            </div>
+            <div className="settings-option__control">
+              <button
+                className={`theme-btn ${settings.theme === 'dark' ? 'theme-btn--active' : ''}`}
+                onClick={() => onSettingsChange({ ...settings, theme: 'dark' })}
+              >
+                🌙 Dark
+              </button>
+              <button
+                className={`theme-btn ${settings.theme === 'light' ? 'theme-btn--active' : ''}`}
+                onClick={() => onSettingsChange({ ...settings, theme: 'light' })}
+              >
+                ☀️ Light
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Analysis Section */}
+      <div className="settings-section">
+        <div className="settings-section__header">
+          <h3 className="settings-section__title">
+            <span className="settings-icon">📊</span>
+            Analysis
+          </h3>
+        </div>
+        
+        <div className="settings-section__content">
+          <div className="settings-option">
+            <div className="settings-option__info">
+              <span className="settings-option__label">Automatic Analysis</span>
+              <span className="settings-option__description">
+                Automatically load analysis when selecting a workflow
+              </span>
+            </div>
+            <div className="settings-option__control">
+              <label className="toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={settings.autoAnalysis}
+                  onChange={(e) => onSettingsChange({ ...settings, autoAnalysis: e.target.checked })}
+                />
+                <span className="toggle-slider" />
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
       
       {/* Info Section */}
       <div className="settings-section settings-section--info">
