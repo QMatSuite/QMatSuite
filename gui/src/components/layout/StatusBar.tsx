@@ -14,6 +14,7 @@ interface StatusBarProps {
   daemonConnected: boolean;
   onOpenSettings?: () => void;
   onOpenJobs?: () => void;
+  onNavigateToHome?: () => void;
 }
 
 export function StatusBar({
@@ -22,6 +23,7 @@ export function StatusBar({
   daemonConnected,
   onOpenSettings,
   onOpenJobs,
+  onNavigateToHome,
 }: StatusBarProps) {
   const [envInfo, setEnvInfo] = useState<EnvironmentInfo | null>(null);
   const [jobCounts, setJobCounts] = useState<JobCounts | null>(null);
@@ -107,17 +109,21 @@ export function StatusBar({
         
         {/* Project */}
         {projectName ? (
-          <div className="status-bar__item status-bar__item--project">
+          <button 
+            className="status-bar__item status-bar__item--project status-bar__item--clickable"
+            onClick={onNavigateToHome}
+            title={`${projectName} - ${projectRoot || ''}\nClick to go to Home`}
+          >
             <span className="status-bar__icon">📁</span>
-            <span className="status-bar__text" title={projectRoot || undefined}>
+            <span className="status-bar__text">
               {projectName}
             </span>
             {projectRoot && (
-              <span className="status-bar__path" title={projectRoot}>
+              <span className="status-bar__path">
                 {shortenPath(projectRoot)}
               </span>
             )}
-          </div>
+          </button>
         ) : (
           <div className="status-bar__item status--muted">
             <span className="status-bar__icon">📁</span>

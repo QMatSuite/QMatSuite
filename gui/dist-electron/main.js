@@ -1,105 +1,77 @@
-import { ipcMain, app, BrowserWindow, dialog } from "electron";
-import { spawn } from "node:child_process";
-import { createInterface } from "node:readline";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
-import fs from "node:fs";
-const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
-process.env.APP_ROOT = path.join(__dirname$1, "..");
-const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
-const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
-const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
-process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
-let win = null;
-let daemonProcess = null;
-let daemonReadline = null;
-const daemonStatus = {
-  connected: false,
+import { ipcMain as d, app as u, BrowserWindow as E, dialog as D } from "electron";
+import { spawn as I } from "node:child_process";
+import { createInterface as j } from "node:readline";
+import { fileURLToPath as M } from "node:url";
+import s from "node:path";
+import f from "node:fs";
+const y = s.dirname(M(import.meta.url));
+process.env.APP_ROOT = s.join(y, "..");
+const v = process.env.VITE_DEV_SERVER_URL, B = s.join(process.env.APP_ROOT, "dist-electron"), O = s.join(process.env.APP_ROOT, "dist");
+process.env.VITE_PUBLIC = v ? s.join(process.env.APP_ROOT, "public") : O;
+let a = null, i = null, h = null;
+const r = {
+  connected: !1,
   startupError: null,
   pythonPath: null,
   projectRoot: null
-};
-const pendingRequests = /* @__PURE__ */ new Map();
-const REQUEST_TIMEOUT_MS = 6e4;
-let currentProjectPath = null;
-const LOG_FILE_NAME = ".qv-daemon.log";
-function appendToLogFile(message) {
-  if (!currentProjectPath) return;
-  const logPath = path.join(currentProjectPath, LOG_FILE_NAME);
-  const timestamp = (/* @__PURE__ */ new Date()).toISOString();
-  const logLine = `[${timestamp}] ${message}
+}, l = /* @__PURE__ */ new Map(), _ = 6e4;
+let g = null;
+const R = ".qv-daemon.log";
+function m(e, ...n) {
+  a && !a.isDestroyed() && a.webContents && a.webContents.send(e, ...n);
+}
+function N(e) {
+  if (!g) return;
+  const n = s.join(g, R), o = `[${(/* @__PURE__ */ new Date()).toISOString()}] ${e}
 `;
   try {
-    fs.appendFileSync(logPath, logLine);
-  } catch (err) {
+    f.appendFileSync(n, o);
+  } catch {
   }
 }
-function readLogFile(projectPath, tailLines = 500) {
-  const logPath = path.join(projectPath, LOG_FILE_NAME);
+function b(e, n = 500) {
+  const t = s.join(e, R);
   try {
-    if (!fs.existsSync(logPath)) {
-      return [];
-    }
-    const content = fs.readFileSync(logPath, "utf-8");
-    const lines = content.split("\n").filter((line) => line.trim());
-    return lines.slice(-tailLines);
-  } catch (err) {
+    return f.existsSync(t) ? f.readFileSync(t, "utf-8").split(`
+`).filter((p) => p.trim()).slice(-n) : [];
+  } catch {
     return [];
   }
 }
-function setCurrentProject(projectPath) {
-  currentProjectPath = projectPath;
+function F(e) {
+  g = e;
 }
-function getProjectRoot() {
-  if (process.env.QV_PROJECT_ROOT) {
-    return process.env.QV_PROJECT_ROOT;
-  }
-  return path.resolve(__dirname$1, "..", "..");
+function T() {
+  return process.env.QV_PROJECT_ROOT ? process.env.QV_PROJECT_ROOT : s.resolve(y, "..", "..");
 }
-function findPythonPath() {
-  const projectRoot = getProjectRoot();
+function L() {
+  const e = T();
   if (process.env.QV_DAEMON_PYTHON) {
-    const envPath = process.env.QV_DAEMON_PYTHON;
-    if (fs.existsSync(envPath)) {
-      return { path: envPath, found: true, source: "QV_DAEMON_PYTHON env var" };
-    }
-    console.warn(`[main] QV_DAEMON_PYTHON set to ${envPath} but file not found`);
+    const o = process.env.QV_DAEMON_PYTHON;
+    if (f.existsSync(o))
+      return { path: o, found: !0, source: "QV_DAEMON_PYTHON env var" };
+    console.warn(`[main] QV_DAEMON_PYTHON set to ${o} but file not found`);
   }
-  const isWindows = process.platform === "win32";
-  const venvCandidates = [
+  const n = process.platform === "win32", t = [
     // .venv (common convention)
-    isWindows ? path.join(projectRoot, ".venv", "Scripts", "python.exe") : path.join(projectRoot, ".venv", "bin", "python"),
+    n ? s.join(e, ".venv", "Scripts", "python.exe") : s.join(e, ".venv", "bin", "python"),
     // venv (alternative)
-    isWindows ? path.join(projectRoot, "venv", "Scripts", "python.exe") : path.join(projectRoot, "venv", "bin", "python")
+    n ? s.join(e, "venv", "Scripts", "python.exe") : s.join(e, "venv", "bin", "python")
   ];
-  for (const candidate of venvCandidates) {
-    if (fs.existsSync(candidate)) {
-      return { path: candidate, found: true, source: `venv at ${path.dirname(path.dirname(candidate))}` };
-    }
-  }
-  console.warn("[main] No venv found, falling back to system python");
-  return { path: "python", found: false, source: "system PATH (fallback)" };
+  for (const o of t)
+    if (f.existsSync(o))
+      return { path: o, found: !0, source: `venv at ${s.dirname(s.dirname(o))}` };
+  return console.warn("[main] No venv found, falling back to system python"), { path: "python", found: !1, source: "system PATH (fallback)" };
 }
-function getDaemonModule() {
-  if (process.env.QV_DAEMON_MODULE) {
-    return process.env.QV_DAEMON_MODULE;
-  }
-  return "quantumvitas.daemon.server";
+function x() {
+  return process.env.QV_DAEMON_MODULE ? process.env.QV_DAEMON_MODULE : "quantumvitas.daemon.server";
 }
-function spawnDaemon() {
-  const pythonInfo = findPythonPath();
-  const projectRoot = getProjectRoot();
-  const daemonModule = getDaemonModule();
-  daemonStatus.pythonPath = pythonInfo.path;
-  daemonStatus.projectRoot = projectRoot;
-  daemonStatus.startupError = null;
-  console.log(`[main] Starting daemon:`);
-  console.log(`[main]   Python: ${pythonInfo.path} (${pythonInfo.source})`);
-  console.log(`[main]   Module: ${daemonModule}`);
-  console.log(`[main]   CWD: ${projectRoot}`);
+function V() {
+  const e = L(), n = T(), t = x();
+  r.pythonPath = e.path, r.projectRoot = n, r.startupError = null, console.log("[main] Starting daemon:"), console.log(`[main]   Python: ${e.path} (${e.source})`), console.log(`[main]   Module: ${t}`), console.log(`[main]   CWD: ${n}`);
   try {
-    daemonProcess = spawn(pythonInfo.path, ["-m", daemonModule], {
-      cwd: projectRoot,
+    i = I(e.path, ["-m", t], {
+      cwd: n,
       env: {
         ...process.env,
         PYTHONUNBUFFERED: "1"
@@ -107,233 +79,152 @@ function spawnDaemon() {
       },
       stdio: ["pipe", "pipe", "pipe"]
     });
-  } catch (err) {
-    const error = err;
-    daemonStatus.startupError = `Failed to spawn daemon: ${error.message}`;
-    console.error(`[main] ${daemonStatus.startupError}`);
-    return false;
+  } catch (o) {
+    const c = o;
+    return r.startupError = `Failed to spawn daemon: ${c.message}`, console.error(`[main] ${r.startupError}`), !1;
   }
-  if (!daemonProcess.stdout || !daemonProcess.stdin) {
-    daemonStatus.startupError = "Failed to create daemon stdio pipes";
-    console.error(`[main] ${daemonStatus.startupError}`);
-    return false;
-  }
-  daemonReadline = createInterface({
-    input: daemonProcess.stdout,
-    crlfDelay: Infinity
-  });
-  daemonReadline.on("line", (line) => {
-    handleDaemonLine(line);
-  });
-  daemonProcess.stderr?.on("data", (data) => {
-    const message = data.toString().trim();
-    console.log(`[daemon] ${message}`);
-    win?.webContents.send("daemon-log", message);
-    appendToLogFile(message);
-  });
-  daemonProcess.on("error", (err) => {
-    console.error("[main] Daemon process error:", err);
-    daemonStatus.connected = false;
-    daemonStatus.startupError = `Daemon error: ${err.message}`;
-    win?.webContents.send("daemon-status", { ...daemonStatus });
-  });
-  daemonProcess.on("exit", (code, signal) => {
-    console.log(`[main] Daemon exited with code ${code}, signal ${signal}`);
-    daemonStatus.connected = false;
-    if (code !== 0 && code !== null) {
-      daemonStatus.startupError = `Daemon exited with code ${code}`;
-    }
-    daemonProcess = null;
-    daemonReadline = null;
-    for (const [_id, pending] of pendingRequests) {
-      clearTimeout(pending.timeoutId);
-      pending.reject(new Error("Daemon process exited"));
-    }
-    pendingRequests.clear();
-    win?.webContents.send("daemon-status", { ...daemonStatus });
-  });
-  daemonStatus.connected = true;
-  return true;
+  return !i.stdout || !i.stdin ? (r.startupError = "Failed to create daemon stdio pipes", console.error(`[main] ${r.startupError}`), !1) : (h = j({
+    input: i.stdout,
+    crlfDelay: 1 / 0
+  }), h.on("line", (o) => {
+    A(o);
+  }), i.stderr?.on("data", (o) => {
+    const c = o.toString().trim();
+    console.log(`[daemon] ${c}`), m("daemon-log", c), N(c);
+  }), i.on("error", (o) => {
+    console.error("[main] Daemon process error:", o), r.connected = !1, r.startupError = `Daemon error: ${o.message}`, m("daemon-status", { ...r });
+  }), i.on("exit", (o, c) => {
+    console.log(`[main] Daemon exited with code ${o}, signal ${c}`), r.connected = !1, o !== 0 && o !== null && (r.startupError = `Daemon exited with code ${o}`), i = null, h = null;
+    for (const [p, w] of l)
+      clearTimeout(w.timeoutId), w.reject(new Error("Daemon process exited"));
+    l.clear(), m("daemon-status", { ...r });
+  }), r.connected = !0, !0);
 }
-function handleDaemonLine(line) {
-  if (!line.trim()) return;
-  try {
-    const response = JSON.parse(line);
-    const pending = pendingRequests.get(response.id);
-    if (pending) {
-      clearTimeout(pending.timeoutId);
-      pendingRequests.delete(response.id);
-      pending.resolve(response);
-    } else {
-      console.warn(`[main] Received response for unknown request: ${response.id}`);
+function A(e) {
+  if (e.trim())
+    try {
+      const n = JSON.parse(e), t = l.get(n.id);
+      t ? (clearTimeout(t.timeoutId), l.delete(n.id), t.resolve(n)) : console.warn(`[main] Received response for unknown request: ${n.id}`);
+    } catch (n) {
+      console.error(`[main] Failed to parse daemon response: ${e}`), console.error(n);
     }
-  } catch (e) {
-    console.error(`[main] Failed to parse daemon response: ${line}`);
-    console.error(e);
-  }
 }
-async function sendDaemonRequest(request) {
-  if (!daemonProcess || !daemonProcess.stdin || !daemonStatus.connected) {
-    return {
-      id: request.id,
-      ok: false,
-      error: {
-        code: "daemon_not_connected",
-        message: daemonStatus.startupError || "Daemon process is not running"
-      }
-    };
-  }
-  return new Promise((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      pendingRequests.delete(request.id);
-      reject(new Error(`Request ${request.id} timed out after ${REQUEST_TIMEOUT_MS}ms`));
-    }, REQUEST_TIMEOUT_MS);
-    pendingRequests.set(request.id, { resolve, reject, timeoutId });
-    const jsonLine = JSON.stringify(request) + "\n";
-    daemonProcess.stdin.write(jsonLine, (err) => {
-      if (err) {
-        clearTimeout(timeoutId);
-        pendingRequests.delete(request.id);
-        reject(err);
-      }
+async function S(e) {
+  return !i || !i.stdin || !r.connected ? {
+    id: e.id,
+    ok: !1,
+    error: {
+      code: "daemon_not_connected",
+      message: r.startupError || "Daemon process is not running"
+    }
+  } : new Promise((n, t) => {
+    const o = setTimeout(() => {
+      l.delete(e.id), t(new Error(`Request ${e.id} timed out after ${_}ms`));
+    }, _);
+    l.set(e.id, { resolve: n, reject: t, timeoutId: o });
+    const c = JSON.stringify(e) + `
+`;
+    i.stdin.write(c, (p) => {
+      p && (clearTimeout(o), l.delete(e.id), t(p));
     });
   });
 }
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function C(e) {
+  return new Promise((n) => setTimeout(n, e));
 }
-async function shutdownDaemon() {
-  if (!daemonProcess || !daemonStatus.connected) return;
-  const processToKill = daemonProcess;
+async function U() {
+  if (!i || !r.connected) return;
+  const e = i;
   try {
-    await sendDaemonRequest({
+    await S({
       id: `shutdown-${Date.now()}`,
       type: "shutdown",
       payload: {}
     });
-  } catch (e) {
+  } catch {
     console.log("[main] Shutdown command failed (may already be stopped)");
   }
-  await delay(2e3);
-  if (processToKill && !processToKill.killed) {
-    console.log("[main] Force killing daemon");
-    processToKill.kill("SIGTERM");
-  }
+  await C(2e3), e && !e.killed && (console.log("[main] Force killing daemon"), e.kill("SIGTERM"));
 }
-ipcMain.handle("qv-request", async (_event, request) => {
-  console.log(`[main] IPC request: ${request.type} (${request.id})`);
+d.handle("qv-request", async (e, n) => {
+  console.log(`[main] IPC request: ${n.type} (${n.id})`);
   try {
-    const response = await sendDaemonRequest(request);
-    console.log(`[main] IPC response: ${request.type} ok=${response.ok}`);
-    return response;
-  } catch (e) {
-    const error = e;
-    console.error(`[main] IPC error: ${request.type}`, error);
-    return {
-      id: request.id,
-      ok: false,
+    const t = await S(n);
+    return console.log(`[main] IPC response: ${n.type} ok=${t.ok}`), t;
+  } catch (t) {
+    const o = t;
+    return console.error(`[main] IPC error: ${n.type}`, o), {
+      id: n.id,
+      ok: !1,
       error: {
         code: "ipc_error",
-        message: error.message
+        message: o.message
       }
     };
   }
 });
-ipcMain.handle("qv-is-connected", async () => {
-  return daemonStatus.connected && daemonProcess !== null;
-});
-ipcMain.handle("qv-daemon-status", async () => {
-  return { ...daemonStatus };
-});
-ipcMain.handle("qv-open-directory", async () => {
-  if (!win) return null;
-  const result = await dialog.showOpenDialog(win, {
+d.handle("qv-is-connected", async () => r.connected && i !== null);
+d.handle("qv-daemon-status", async () => ({ ...r }));
+d.handle("qv-open-directory", async () => {
+  if (!a) return null;
+  const e = await D.showOpenDialog(a, {
     properties: ["openDirectory", "createDirectory"],
     title: "Select Project Root",
     buttonLabel: "Select"
   });
-  if (result.canceled || result.filePaths.length === 0) {
-    return null;
-  }
-  return result.filePaths[0];
+  return e.canceled || e.filePaths.length === 0 ? null : e.filePaths[0];
 });
-ipcMain.handle("qv-open-file", async (_event, options) => {
-  if (!win) return null;
-  const result = await dialog.showOpenDialog(win, {
+d.handle("qv-open-file", async (e, n) => {
+  if (!a) return null;
+  const t = await D.showOpenDialog(a, {
     properties: ["openFile"],
-    title: options?.title || "Select File",
+    title: n?.title || "Select File",
     buttonLabel: "Select",
-    filters: options?.filters || [
+    filters: n?.filters || [
       { name: "Structure Files", extensions: ["cif", "json", "in", "xsf", "xyz", "poscar", "vasp"] },
       { name: "All Files", extensions: ["*"] }
     ]
   });
-  if (result.canceled || result.filePaths.length === 0) {
-    return null;
-  }
-  return result.filePaths[0];
+  return t.canceled || t.filePaths.length === 0 ? null : t.filePaths[0];
 });
-ipcMain.handle("qv-set-project", async (_event, projectPath) => {
-  setCurrentProject(projectPath);
+d.handle("qv-set-project", async (e, n) => {
+  F(n);
 });
-ipcMain.handle("qv-read-logs", async (_event, projectPath, tailLines) => {
-  return readLogFile(projectPath, tailLines || 500);
-});
-function createWindow() {
-  win = new BrowserWindow({
+d.handle("qv-read-logs", async (e, n, t) => b(n, t || 500));
+function $() {
+  a = new E({
     width: 1400,
     height: 900,
     minWidth: 800,
     minHeight: 600,
-    icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
+    icon: s.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
     webPreferences: {
-      preload: path.join(__dirname$1, "preload.mjs"),
-      contextIsolation: true,
-      nodeIntegration: false
+      preload: s.join(y, "preload.mjs"),
+      contextIsolation: !0,
+      nodeIntegration: !1
     }
-  });
-  win.webContents.on("did-finish-load", () => {
-    win?.webContents.send("main-process-message", {
+  }), a.webContents.on("did-finish-load", () => {
+    m("main-process-message", {
       type: "ready",
       timestamp: (/* @__PURE__ */ new Date()).toISOString()
-    });
-    win?.webContents.send("daemon-status", { ...daemonStatus });
-  });
-  if (VITE_DEV_SERVER_URL) {
-    win.loadURL(VITE_DEV_SERVER_URL);
-    win.webContents.openDevTools();
-  } else {
-    win.loadFile(path.join(RENDERER_DIST, "index.html"));
-  }
+    }), m("daemon-status", { ...r });
+  }), v ? (a.loadURL(v), a.webContents.openDevTools()) : a.loadFile(s.join(O, "index.html"));
 }
-let isQuitting = false;
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
+let P = !1;
+u.on("window-all-closed", () => {
+  process.platform !== "darwin" && u.quit();
 });
-app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
-  }
+u.on("activate", () => {
+  E.getAllWindows().length === 0 && $();
 });
-app.on("before-quit", async (event) => {
-  if (isQuitting) return;
-  if (!daemonProcess) return;
-  isQuitting = true;
-  event.preventDefault();
-  await shutdownDaemon();
-  app.quit();
+u.on("before-quit", async (e) => {
+  P || i && (P = !0, e.preventDefault(), await U(), u.quit());
 });
-app.whenReady().then(() => {
-  const daemonStarted = spawnDaemon();
-  if (!daemonStarted) {
-    console.error("[main] Failed to start daemon - continuing with UI");
-  }
-  createWindow();
+u.whenReady().then(() => {
+  V() || console.error("[main] Failed to start daemon - continuing with UI"), $();
 });
 export {
-  MAIN_DIST,
-  RENDERER_DIST,
-  VITE_DEV_SERVER_URL
+  B as MAIN_DIST,
+  O as RENDERER_DIST,
+  v as VITE_DEV_SERVER_URL
 };

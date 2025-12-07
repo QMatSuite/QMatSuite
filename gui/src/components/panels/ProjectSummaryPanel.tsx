@@ -15,6 +15,9 @@ interface ProjectSummaryPanelProps {
   onCreateDemoProject?: () => void;
   onOpenRecentProject?: (path: string) => void;
   onRemoveRecentProject?: (path: string) => void;
+  onNavigateToStructure?: (name: string) => void;
+  onNavigateToWorkflow?: (name: string) => void;
+  onCloseProject?: () => void;
 }
 
 export function ProjectSummaryPanel({ 
@@ -27,6 +30,9 @@ export function ProjectSummaryPanel({
   onCreateDemoProject,
   onOpenRecentProject,
   onRemoveRecentProject,
+  onNavigateToStructure,
+  onNavigateToWorkflow,
+  onCloseProject,
 }: ProjectSummaryPanelProps) {
   if (isLoading) {
     return (
@@ -148,12 +154,23 @@ export function ProjectSummaryPanel({
           <span className="panel-icon">📁</span>
           {summary.name}
         </h2>
-        <span className="panel-badge">{summary.slug}</span>
+        <div className="panel-header__actions">
+          <span className="panel-badge">{summary.slug}</span>
+          {onCloseProject && (
+            <button 
+              className="close-project-btn"
+              onClick={onCloseProject}
+              title="Close this project"
+            >
+              ✕ Close
+            </button>
+          )}
+        </div>
       </div>
       
       <div className="panel-content">
         <div className="summary-grid">
-          <div className="summary-card">
+          <div className="summary-card summary-card--clickable">
             <div className="summary-card__value">{summary.n_structures}</div>
             <div className="summary-card__label">Structures</div>
             <div className="summary-card__list">
@@ -162,7 +179,14 @@ export function ProjectSummaryPanel({
               ) : (
                 <>
                   {summary.structure_names.slice(0, 5).map(name => (
-                    <span key={name} className="summary-tag">{name}</span>
+                    <button 
+                      key={name} 
+                      className="summary-tag summary-tag--clickable"
+                      onClick={() => onNavigateToStructure?.(name)}
+                      title={`Open structure: ${name}`}
+                    >
+                      {name}
+                    </button>
                   ))}
                   {summary.structure_names.length > 5 && (
                     <span className="summary-tag summary-tag--more">
@@ -174,7 +198,7 @@ export function ProjectSummaryPanel({
             </div>
           </div>
           
-          <div className="summary-card">
+          <div className="summary-card summary-card--clickable">
             <div className="summary-card__value">{summary.n_workflows}</div>
             <div className="summary-card__label">Workflows</div>
             <div className="summary-card__list">
@@ -183,7 +207,14 @@ export function ProjectSummaryPanel({
               ) : (
                 <>
                   {summary.workflow_names.slice(0, 5).map(name => (
-                    <span key={name} className="summary-tag">{name}</span>
+                    <button 
+                      key={name} 
+                      className="summary-tag summary-tag--clickable"
+                      onClick={() => onNavigateToWorkflow?.(name)}
+                      title={`Open workflow: ${name}`}
+                    >
+                      {name}
+                    </button>
                   ))}
                   {summary.workflow_names.length > 5 && (
                     <span className="summary-tag summary-tag--more">
@@ -204,6 +235,29 @@ export function ProjectSummaryPanel({
           <div className="detail-row">
             <span className="detail-label">Path</span>
             <code className="detail-value detail-value--path">{summary.path}</code>
+          </div>
+        </div>
+        
+        {/* Quick Actions */}
+        <div className="quick-actions">
+          <h3 className="quick-actions__title">Quick Actions</h3>
+          <div className="quick-actions__grid">
+            <button 
+              className="quick-action-btn"
+              onClick={() => onNavigateToStructure?.('')}
+              title="View all structures"
+            >
+              <span className="quick-action-btn__icon">🔬</span>
+              <span>View Structures</span>
+            </button>
+            <button 
+              className="quick-action-btn"
+              onClick={() => onNavigateToWorkflow?.('')}
+              title="View all workflows"
+            >
+              <span className="quick-action-btn__icon">📊</span>
+              <span>View Workflows</span>
+            </button>
           </div>
         </div>
       </div>

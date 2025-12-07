@@ -1418,18 +1418,48 @@ class QVService:
         # Find output file in raw directory
         raw_dir = find_workflow_raw_dir(workflow.absolute_path)
         
+        if not raw_dir.exists():
+            raise QVServiceError(
+                f"Workflow raw directory not found: {raw_dir}\n"
+                f"The workflow may not have been run yet."
+            )
+        
         # Look for output files matching step selector
+        # Patterns try to match the naming convention: {slug}_{step_type}.pw.out
         scf_output = None
-        for pattern in [f"*{step_selector}*.out", f"{step_selector}.out", "*scf*.out"]:
+        patterns = [
+            f"{step_selector}_*.out",     # scf_scf.pw.out, scf_*.out
+            f"*{step_selector}*.out",     # Any file containing step selector
+            f"{step_selector}.out",        # Direct match
+            f"{step_selector}.pw.out",     # With .pw extension
+            "*scf*.out",                   # Fallback for any SCF output
+        ]
+        
+        for pattern in patterns:
             matches = list(raw_dir.glob(pattern))
             if matches:
-                scf_output = matches[0]
+                # Prefer .pw.out over .out if both exist
+                pw_matches = [m for m in matches if m.suffix == '.out' and '.pw' in m.stem]
+                if pw_matches:
+                    scf_output = pw_matches[0]
+                else:
+                    scf_output = matches[0]
                 break
         
         if scf_output is None or not scf_output.exists():
-            raise QVServiceError(
-                f"SCF output not found for step '{step_selector}' in workflow '{workflow_selector}'"
-            )
+            # List available output files for a better error message
+            available_outputs = list(raw_dir.glob("*.out"))
+            if available_outputs:
+                output_names = ", ".join(f.name for f in available_outputs[:5])
+                raise QVServiceError(
+                    f"SCF output not found for step '{step_selector}' in workflow '{workflow_selector}'.\n"
+                    f"Available outputs: {output_names}"
+                )
+            else:
+                raise QVServiceError(
+                    f"No output files found in {raw_dir}.\n"
+                    f"The workflow may not have been run yet."
+                )
         
         # Parse SCF output
         result = parse_scf_output(scf_output)
