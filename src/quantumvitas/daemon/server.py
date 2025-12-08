@@ -132,6 +132,7 @@ class QVDaemon:
             "get_workflow_detail": self._handle_get_workflow_detail,
             "reorder_workflow_steps": self._handle_reorder_workflow_steps,
             "add_step_to_workflow": self._handle_add_step_to_workflow,
+            "import_step_from_qe_input": self._handle_import_step_from_qe_input,
             "change_workflow_structure": self._handle_change_workflow_structure,
             
             # Pre-flight checks
@@ -713,24 +714,21 @@ class QVDaemon:
     
     def _handle_reset_step_params(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Reset step parameters to defaults.
+        Reset step parameters to in-code defaults based on step type.
         
         Payload:
             project_root: str - Path to project root
             workflow: str - Workflow selector
             step: str - Step selector
-            template_name: Optional[str] - Template to reset from
         """
         project_root = self._require_path(payload, "project_root")
         workflow = self._require_str(payload, "workflow")
         step = self._require_str(payload, "step")
-        template_name = payload.get("template_name")
         
         return QVService.reset_step_params(
             project_root=project_root,
             workflow_selector=workflow,
             step_selector=step,
-            template_name=template_name,
         )
     
     # -------------------------------------------------------------------------
@@ -777,7 +775,7 @@ class QVDaemon:
     
     def _handle_add_step_to_workflow(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Add a new step to a workflow.
+        Add a new step to a workflow (from scratch, uses QV defaults).
         
         Payload:
             project_root: str - Path to project root
@@ -794,6 +792,28 @@ class QVDaemon:
             project_root=project_root,
             workflow_selector=workflow,
             step_type=step_type,
+            step_name=step_name,
+        )
+    
+    def _handle_import_step_from_qe_input(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Import a QE input file as a step (preserves original parameters, no defaults).
+        
+        Payload:
+            project_root: str - Path to project root
+            workflow: str - Workflow selector (name, slug, or id)
+            input_file: str - Path to QE input file (.in)
+            step_name: str - Optional name for the new step (defaults to input file stem)
+        """
+        project_root = self._require_path(payload, "project_root")
+        workflow = self._require_str(payload, "workflow")
+        input_file = self._require_path(payload, "input_file")
+        step_name = payload.get("step_name")
+        
+        return QVService.import_step_from_qe_input(
+            project_root=project_root,
+            workflow_selector=workflow,
+            input_file=input_file,
             step_name=step_name,
         )
     

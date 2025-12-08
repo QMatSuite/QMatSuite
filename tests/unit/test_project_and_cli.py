@@ -626,9 +626,16 @@ def test_cli_show_command(tmp_path: Path):
     assert "inside a workflow directory" in result.stdout or "--structure" in result.stdout
 
 
-def test_cli_show_command_generates_matching_input(
+def test_cli_show_command_import_preserves_original_parameters(
     ci_test_data_dir: Path, tmp_path: Path, monkeypatch
 ):
+    """
+    Test that importing a step from QE input preserves original parameters.
+    
+    This test verifies Scenario B: when using show-command + qv init step --no-defaults,
+    the generated QE input should match the original (round-trip), without injecting
+    QV's default parameters like outdir, restart_mode, conv_thr.
+    """
     runner = CliRunner()
     project_root = tmp_path / "proj"
     assert (
@@ -715,6 +722,8 @@ def test_cli_show_command_generates_matching_input(
             if line.strip().startswith("qv init step")
         )
         init_args = shlex.split(init_line)[1:]
+        # Verify --no-defaults is included (for import scenario)
+        assert "--no-defaults" in init_args, "show-command should include --no-defaults for import"
         # Now show-command doesn't include --structure, so we add it explicitly
         # along with --workflow and --project
         init_args.extend([

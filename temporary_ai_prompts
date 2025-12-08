@@ -4029,3 +4029,1720 @@ Run step should be also on top of the step detail panel (like run workflo in wor
 Energy range in analysis panel still not working.
 
 
+You are working in the QuantumVITAS v2 repo.
+Goal of this task: introduce a project snapshot format (single .yml file) and core Python support for:
+
+Exporting an existing QV project directory → one self-contained YAML file.
+
+Creating a new QV project directory from such a YAML file.
+
+CLI entry points:
+
+qv save project → save current project to snapshot .yml.
+
+qv init project --snapshot <file> → create project from snapshot.
+
+Unit tests that exercise bidirectional roundtrip: disk project → snapshot → new project.
+
+Please read AI_understanding.md carefully before coding (especially sections about project model, models layer, QVService, core/resolution/context, templates, analysis).
+Follow existing architecture and conventions.
+
+High-level design & constraints
+What the snapshot is
+
+We want a single YAML file that fully describes a QV project’s logical content:
+
+Project meta (id, name, slug, etc).
+
+All structures (including full pymatgen structure JSON content).
+
+All workflows (including their steps).
+
+Step specs (parameters, cards, species overrides, parent_workflow_id, structure reference, etc).
+
+Any relevant metadata that is necessary to regenerate the project directory so that:
+
+qv list, qv run workflow, qv analyze … etc will behave the same.
+
+Pseudopotential filenames are preserved, but file contents are NOT embedded.
+
+Think of this snapshot as a project recipe / template that can be moved around, version-controlled, or shipped as demo project definitions.
+
+Important: this snapshot should be independent of the original filesystem paths except for:
+
+Relative paths such as steps/scf.step.yaml etc (as logical names within the project).
+
+Pseudopotential filenames (Si.pbe-n-rrkjus_psl.1.0.0.UPF), but not their bytes.
+
+ULIDs and identities
+
+We must avoid baking in raw ULIDs into templates that will be re-used for multiple projects in a way that causes collisions. The snapshot will contain logical identities, but when we create a project from the snapshot:
+
+It is acceptable (and preferable) to generate new ULIDs for:
+
+Project id
+
+Workflow ids
+
+Structure ids
+
+Step ids
+
+The names, slugs, and logical relationships (e.g. workflow↔structure, workflow↔steps, step.parent_workflow_id) must remain consistent and be re-wired with the new ULIDs.
+
+So:
+
+Snapshot stores the original ULIDs, but when instantiating a project, we:
+
+Build an internal mapping old_id → new_id.
+
+Use this mapping to rewrite meta and references (e.g. parent_workflow_id) when writing files.
+
+This is crucial to avoid collisions and keep the snapshot format robust.
+
+Where to put things
+
+Please follow existing layering:
+
+Models layer: src/quantumvitas/core/models.py
+
+Contains dataclass models for ProjectModel, WorkflowModel, StructureModel, etc.
+
+Already has load/save helpers for YAML/JSON.
+
+Service layer: src/quantumvitas/api.py (QVService)
+
+This is the stable interface for CLI and GUI.
+
+New functionality “export project to snapshot YAML” and “create project from snapshot YAML” should be exposed as methods here.
+
+CLI layer: src/quantumvitas/cli/main.py
+
+Typer CLI, thin wrapper around QVService.
+
+Handles user-facing options & errors, delegates logic to service.
+
+Important DOs / DON’Ts:
+
+DO keep all actual logic in QVService and/or new helpers under core/ or project/, NOT inside Typer command functions.
+
+DO keep using Path objects, and avoid Path.cwd() except where the existing context layer (core/context.py) is already used.
+
+DO use existing model loaders (e.g. load_project, load_workflow, load_structure_model, etc.) and ResourceMeta.
+
+DON’T introduce environment-variable based state.
+
+DON’T embed pseudopotential file contents; only filenames.
+
+Step 1: Design snapshot schema & core Python implementation
+
+Create a new module for snapshot logic, e.g.:
+
+src/quantumvitas/project/snapshot.py
+(or core/snapshot.py if you think it fits better; be consistent with existing layout).
+
+Proposed snapshot structure (YAML)
+
+Design a clear, documented schema. For example:
+
+version: 1
+project:
+  meta:
+    id: "<original_project_ulid>"
+    name: "Si demo"
+    slug: "si-demo"
+    kind: "project"
+  path: "."        # logical root (optional)
+  # any project-level settings from project.qv.yml
+  settings:
+    # ...
+structures:
+  - meta:
+      id: "<structure_ulid>"
+      name: "Si bulk"
+      slug: "si-bulk"
+      kind: "structure"
+      path: "structures/si.json"
+    data:  # full pymatgen JSON content
+      @module: "pymatgen.core.structure"
+      @class: "Structure"
+      lattice: { ... }
+      sites: [ ... ]
+      _meta:
+        # original _meta if needed
+workflows:
+  - meta:
+      id: "<workflow_ulid>"
+      name: "Si bands+dos"
+      slug: "si-bands-dos"
+      kind: "workflow"
+      path: "workflows/si-bands-dos/workflow.yaml"
+    mode: "normal"
+    structure: "si-bulk"   # structure slug/name (as in current model)
+    working_dir: "raw"
+    steps:
+      - meta:
+          id: "<step_ulid>"
+          name: "scf"
+          slug: "scf"
+          kind: "step"
+          path: "workflows/si-bands-dos/steps/scf.step.yaml"
+        parent_workflow_id: "<workflow_ulid>"
+        structure: "si-bulk"
+        step_type: "scf"
+        parameters: { ... }
+        cards: { ... }
+        species_overrides:
+          Si:
+            mass: 28.08
+            pseudopot: "Si.pbe-n-rrkjus_psl.1.0.0.UPF"
+pseudo:
+  # we do NOT embed actual file content; just declare logical expectations
+  directory: "pseudo"
+  files:
+    - "Si.pbe-n-rrkjus_psl.1.0.0.UPF"
+    - "O.pbe-n-rrkjus_psl.1.0.0.UPF"
+extra:
+  # future extension, optional
+  notes: "Optional notes"
+
+
+You don’t have to match this exact shape, but keep the spirit:
+
+Top-level sections: version, project, structures, workflows, pseudo, extra.
+
+Everything you need to reconstruct the project directory is inside this one file.
+
+Implement two core functions
+
+In project/snapshot.py (or similar):
+
+from pathlib import Path
+from dataclasses import dataclass
+from typing import Dict, Any
+
+@dataclass
+class ProjectSnapshot:
+    version: int
+    project: Dict[str, Any]
+    structures: list[Dict[str, Any]]
+    workflows: list[Dict[str, Any]]
+    pseudo: Dict[str, Any] | None
+    extra: Dict[str, Any] | None
+
+    def to_dict(self) -> Dict[str, Any]: ...
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ProjectSnapshot": ...
+
+
+Core functions:
+
+def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
+    """
+    Read project.qv.yml, all structures, workflows, and step specs
+    under project_root and return a ProjectSnapshot object.
+    """
+    ...
+
+def materialize_project_from_snapshot(
+    snapshot: ProjectSnapshot,
+    parent_dir: Path,
+    new_project_name: str | None = None,
+) -> Path:
+    """
+    Create a new project directory under parent_dir from snapshot.
+    Returns the path to the new project root.
+
+    Behavior:
+      - Decide new folder name (e.g. slugified new_project_name or snapshot.project.meta.slug).
+      - Generate new ULIDs for project/workflows/structures/steps.
+      - Rewrite meta.id and parent_workflow_id using an old→new mapping.
+      - Write out project.qv.yml, structures JSON, workflows, step YAMLs.
+      - Create pseudo/ directory and populate only filenames (empty files or none at all).
+    """
+    ...
+
+
+Implementation hints:
+
+Use existing model loaders:
+
+load_project(...)
+
+load_workflow(...)
+
+load_structure_model(...)
+
+etc. from core/models.py.
+
+Each “model” should be converted to plain dicts and placed under snapshot.
+
+ULID mapping:
+
+When materializing, build a Dict[str, str] mapping original ULID → new ULID.
+
+Apply mapping to:
+
+meta.id of project/workflows/structures/steps.
+
+parent_workflow_id of steps.
+
+References by slug, name, path should remain unchanged.
+
+Pseudo behavior:
+
+In export_project_to_snapshot, scan the project’s pseudo/ directory:
+
+files = [p.name for p in pseudo_dir.iterdir() if p.is_file()]
+
+In materialize_project_from_snapshot, create a pseudo/ directory and:
+
+Option A (simplest): just create that directory; do NOT create pseudo files.
+
+This is acceptable as long as you document that snapshot does not embed pseudopotentials.
+
+Option B: create empty placeholder files with the given names.
+
+Up to you; pick whichever you think is safer.
+
+Be explicit in docstrings & AI_understanding about this behavior.
+
+Step 2: Integrate into QVService API
+
+In src/quantumvitas/api.py:
+
+Add methods to QVService:
+
+class QVService:
+    ...
+
+    def export_project_snapshot(
+        self,
+        project_root: Path,
+    ) -> Dict[str, Any]:
+        """
+        Export project into a snapshot dict (ready to dump as YAML).
+        """
+        ...
+
+    def save_project_snapshot(
+        self,
+        project_root: Path,
+        output_path: Path,
+        overwrite: bool = False,
+    ) -> Path:
+        """
+        Export project and write snapshot YAML to output_path.
+        Returns the final output_path.
+        """
+
+    def create_project_from_snapshot(
+        self,
+        parent_dir: Path,
+        snapshot_path: Path,
+        project_name: str | None = None,
+    ) -> Path:
+        """
+        Read snapshot YAML and create a new project directory under parent_dir.
+        """
+        ...
+
+
+Implementation notes:
+
+Use the ProjectSnapshot model and export_project_to_snapshot / materialize_project_from_snapshot.
+
+Make sure all paths are properly resolved (expanduser(), resolve()).
+
+Do NOT call Path.cwd() here; rely on explicit project_root and parent_dir.
+
+Step 3: CLI integration
+
+In src/quantumvitas/cli/main.py:
+
+Extend qv init project:
+
+Add an option like:
+
+@init_app.command("project")
+def init_project(
+    snapshot: Optional[Path] = typer.Option(
+        None,
+        "--snapshot",
+        help="Path to a project snapshot YAML to use as template",
+    ),
+    path: Optional[Path] = ...,
+    name: Optional[str] = ...,
+    ...
+):
+
+
+Behavior:
+
+If snapshot is provided:
+
+path is treated as parent directory (the folder where the new project directory will be created), similar to your current “demo project parent folder” idea.
+
+Call QVService.create_project_from_snapshot(parent_dir=path, snapshot_path=snapshot, project_name=name).
+
+Print where the project was created.
+
+Else (no snapshot):
+
+Fall back to existing logic (--template, etc.) unchanged.
+
+Be clear in help text: --snapshot uses a single YAML file as project template, not a raw folder copy.
+
+Add qv save project command:
+
+Under existing CLI layout, define e.g.:
+
+@app.command("save-project")
+def save_project(
+    output: Path = typer.Argument(..., help="Path to output YAML snapshot"),
+    project: Optional[Path] = typer.Option(
+        None,
+        "--project",
+        help="Project root; if omitted, auto-detect from CWD",
+    ),
+    overwrite: bool = typer.Option(
+        False,
+        "--overwrite",
+        help="Overwrite existing snapshot file if it exists",
+    ),
+):
+    ...
+
+
+Use your existing path context helper (core/context.py) to determine project root if --project is not provided.
+
+Then call QVService.save_project_snapshot(project_root, output, overwrite=overwrite).
+
+Error on overwrite unless --overwrite is True.
+
+Naming:
+
+Command names are up to you, but something like:
+
+qv save project SNAPSHOT.yml
+
+qv init project --snapshot SNAPSHOT.yml --path PARENT_DIR --name "My New Project"
+
+is intuitive.
+
+Step 4: Unit tests (bidirectional roundtrip)
+
+Add new tests under tests/unit/, e.g.:
+
+tests/unit/test_project_snapshot.py
+
+Test plan:
+
+Export–Import Roundtrip (single project)
+
+Arrange:
+
+Use existing CI test data or create a small temporary project directory, e.g. using:
+
+Your templates/project/project1/ (if suitable), or
+
+A helper that uses existing QVService to init a project in a temp dir.
+
+Act:
+
+snapshot = export_project_to_snapshot(project_root)
+
+Write snapshot to a temp YAML file.
+
+In another temp parent dir, call materialize_project_from_snapshot(snapshot, parent_dir, new_project_name="clone").
+
+Assert:
+
+New project root exists.
+
+project.qv.yml exists.
+
+Same number of structures / workflows / steps (compare via models).
+
+For each workflow:
+
+Steps’ step_type, structure fields match original.
+
+For structures:
+
+COMPOSITION / number of sites / lattice parameters match.
+
+ULIDs changed:
+
+original_project_id != new_project_id
+
+But names/slugs are equal.
+
+CLI save + init using snapshot
+
+Using CliRunner (or similar CLI test helper, see existing CLI tests):
+
+In temp dir, create a small test project (can use existing template workflows).
+
+Run qv save project snapshot.yml.
+
+Assert snapshot.yml exists and is non-empty.
+
+Run qv init project --snapshot snapshot.yml --path <parent> --name "copy".
+
+Assert new project directory exists, contains project.qv.yml etc.
+
+Check that no exception is raised and exit codes are 0.
+
+Edge case: snapshot without pseudo files present
+
+Export snapshot from a project with some pseudo files.
+
+Delete pseudo directory from test environment (or create new env without them).
+
+Materialize project from snapshot.
+
+Assert:
+
+pseudo/ directory is created.
+
+Snapshot still lists pseudo filenames.
+
+No crash occurs just because pseudo files are missing (we’re only snapshotting metadata, not content).
+
+Keep tests small, deterministic, and do not require QE to be actually installed or run (unit tests only).
+
+Step 5: Documentation updates
+
+Update AI_understanding.md:
+
+Add a section “Project Snapshot Format” describing:
+
+Purpose (export/import, templates, demos).
+
+Schema versioning (e.g. version: 1).
+
+Behavior on ULIDs (regenerate on materialization).
+
+Behavior on pseudo files (filenames only, no file content).
+
+Document the two CLI flows:
+
+qv save project snapshot.yml
+
+qv init project --snapshot snapshot.yml --path PARENT_DIR --name NAME
+
+Keep the description concise but precise; this doc is for future AIs and humans.
+
+Style & safety reminders
+
+Keep all business logic in core / project / api layers.
+CLI should be a thin adapter.
+
+Maintain existing error handling style:
+
+Service/API: raise ValueError, FileNotFoundError, ResourceNotFoundError as appropriate.
+
+CLI: convert to typer.BadParameter or typer.Exit(1) with clear messages.
+
+Keep using Path consistently.
+
+Don’t break existing behavior for qv init project without snapshot/template.
+
+At the end, please:
+
+List all files you created/modified.
+
+Paste the final snapshot schema (as an example from a real test, trimmed).
+
+Summarize the roundtrip test behavior and what properties are guaranteed to hold after export→import.
+
+
+You are working in the QuantumVITAS v2 repo.
+
+We are refactoring how templates and built-in resources are organized.
+
+Currently:
+
+templates/ contains raw folders:
+
+templates/
+├── project/
+│   └── project1/
+├── workflow/
+│   ├── si-bands/
+│   └── si-dos/
+├── step/
+│   └── steps/   # scf / nscf / dos step yaml
+└── structure/
+    └── si.json
+
+
+And is actively used by:
+
+src/quantumvitas/core/templates.py
+
+QVService.init_project/init_workflow/init_step
+
+QVService.create_demo_project
+
+QVService.import_structure_from_template
+
+QVService.reset_step_params
+
+CLI: qv init project/workflow/step --template
+
+Daemon: list_workflow_templates for GUI
+
+We want to refactor the design following these principles:
+
+Core design goals
+
+Separate template “types” clearly:
+
+Demo Projects ⇒ single-file project snapshots
+
+New home: resources/demo_projects/
+
+Format: one .yml per demo project (contains project + structures + workflows + steps + pseudo filenames)
+
+Used by GUI “Create Demo Project” and future demo gallery
+
+Workflow Templates ⇒ reusable workflow recipes (without binding to a specific project)
+
+New home: resources/workflow_templates/
+
+Structure Library ⇒ reusable structures (pymatgen JSON)
+
+New home: resources/structure_library/
+
+Step templates should NOT be a first-class user concept
+
+Step is an internal element of workflow; step templates easily create confusion.
+
+Workflow template already includes step definitions; that is the real reusable unit.
+
+We want to de-emphasize step templates in the public API.
+
+For now: don’t immediately delete templates/step/, but treat it as an internal implementation detail (for init_step --template and reset_step_params) and do not surface it as a “resource library”.
+
+Keep layering intact:
+
+Models + core logic in src/quantumvitas/core/* / project/* / analysis/*
+
+Service in src/quantumvitas/api.py (QVService)
+
+CLI (src/quantumvitas/cli/main.py) is a thin wrapper → only handles arguments, printing, errors
+
+Daemon (src/quantumvitas/daemon/server.py) calls QVService
+
+GUI talks only to daemon via the existing JSON RPC command map
+
+Backward compatibility:
+
+Existing CLI flags (--template) must keep working.
+
+Existing tests must be adapted, not disabled.
+
+We can add new resource mechanisms (snapshots, resource libraries) alongside templates and gradually move higher-level features (demo, gallery, GUI) to the new system.
+
+Phase 0 – Get context
+
+Before coding, please:
+
+Re-read AI_understanding.md (especially sections about:
+
+models layer (core/models.py)
+
+resource resolution (core/resolution.py)
+
+QVService (api.py)
+
+templates layer (core/templates.py)
+
+daemon RPC and GUI usage
+
+Read src/quantumvitas/core/templates.py carefully:
+
+Understand how project/workflow/step/structure templates are currently discovered + copied
+
+Identify which code paths are used by:
+
+init project --template
+
+init workflow --template
+
+init step --template
+
+create_demo_project
+
+reset_step_params
+
+import_structure_from_template
+
+Skim src/quantumvitas/daemon/server.py to see how list_workflow_templates etc. are wired.
+
+Skim GUI code that consumes list_workflow_templates or template info (documented in AI_understanding.md).
+
+Do NOT change anything yet; just build a mental map.
+
+Phase 1 – Introduce resource directories (no behavior changes yet)
+
+Create a new top-level directory structure in the repo:
+
+resources/
+├── demo_projects/          # built-in project snapshots (.yml)
+├── workflow_templates/     # built-in workflow recipes
+└── structure_library/      # built-in structures (pymatgen JSON)
+
+
+For now:
+
+You can add placeholder files (with TODO comments) where necessary so tests still pass (we’ll fill them in later).
+
+Do NOT delete templates/ or change existing template-based behavior in this phase.
+
+Also:
+
+Update AI_understanding.md with a short “Resources layout” section documenting:
+
+resources/demo_projects/      # complete project snapshots (used by demo/gallery)
+resources/workflow_templates/ # reusable workflow recipes
+resources/structure_library/  # reusable structures (pymatgen JSON)
+templates/                    # legacy/internal templates for scaffolding
+
+Phase 2 – Implement project snapshot model + export/import
+
+We now introduce project snapshots that serialize a full project to a single YAML file (demo, backup, gallery). This matches our earlier “snapshot as demo format” design.
+
+2.1 New module: project/snapshot.py
+
+Create src/quantumvitas/project/snapshot.py with:
+
+A dataclass model:
+
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+@dataclass
+class ProjectSnapshot:
+    version: int
+    project: Dict[str, Any]
+    structures: List[Dict[str, Any]]
+    workflows: List[Dict[str, Any]]
+    pseudo: Optional[Dict[str, Any]] = None
+    extra: Optional[Dict[str, Any]] = None
+
+    def to_dict(self) -> Dict[str, Any]: ...
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ProjectSnapshot": ...
+
+
+Functions:
+
+def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
+    """
+    Read project.qv.yml, all structures, workflows, and steps
+    under project_root and return a ProjectSnapshot.
+    - Use the models layer (core/models.py) to load project/workflows/structures.
+    - Include full pymatgen JSON for each structure.
+    - Include workflow meta, structure reference, steps (with parameters, cards, species_overrides, parent_workflow_id).
+    - Include pseudo filenames (not file content).
+    """
+
+def materialize_project_from_snapshot(
+    snapshot: ProjectSnapshot,
+    parent_dir: Path,
+    new_project_name: Optional[str] = None,
+) -> Path:
+    """
+    Create a new project directory from snapshot under parent_dir.
+    - Decide target directory name:
+      - If new_project_name is given, use slugified version.
+      - Else, use snapshot.project.meta.slug (or name).
+    - Generate new ULIDs for project/workflow/structure/step (avoid collisions).
+    - Build an old_id -> new_id mapping.
+    - Rewrite:
+      - meta.id for project/workflows/structures/steps.
+      - parent_workflow_id in steps.
+    - Keep slugs and names identical (unless you need to slugify).
+    - Write:
+      - project.qv.yml
+      - structures JSON
+      - workflows/<slug>/workflow.yaml
+      - workflows/<slug>/steps/*.step.yaml
+    - Create pseudo/ directory and:
+      - Option A: just create the directory; filenames are metadata only.
+      - Option B: create empty placeholder files for each pseudo filename.
+      - Pick one, document in AI_understanding.md.
+    - Return the new project root Path.
+    """
+
+
+Constraints:
+
+Use existing model loaders from core/models.py, do not re-implement parsing.
+
+Paths inside snapshot should be relative to project root (consistent with current models: paths like structures/si.json, workflows/si-dos/workflow.yaml, etc.).
+
+Snapshot YAML schema:
+
+Top-level keys: version, project, structures, workflows, pseudo, extra.
+
+Document exact schema in a comment + AI_understanding.md.
+
+You don’t need to copy the full schema into this prompt; just implement a clean, explicit structure.
+
+Phase 3 – Integrate snapshot into QVService + CLI
+3.1 Add methods to QVService (src/quantumvitas/api.py)
+
+Add new methods:
+
+class QVService:
+    ...
+
+    def export_project_snapshot(self, project_root: Path) -> Dict[str, Any]:
+        """
+        Export project into a dict suitable for YAML (snapshot.to_dict()).
+        """
+
+    def save_project_snapshot(
+        self,
+        project_root: Path,
+        output_path: Path,
+        overwrite: bool = False,
+    ) -> Path:
+        """
+        Export project and write snapshot YAML to output_path.
+        Return output_path.
+        """
+
+    def create_project_from_snapshot(
+        self,
+        parent_dir: Path,
+        snapshot_path: Path,
+        project_name: Optional[str] = None,
+    ) -> Path:
+        """
+        Read snapshot YAML and create a new project directory under parent_dir.
+        Return the new project root.
+        """
+
+
+Implementation:
+
+Use ProjectSnapshot.from_dict / to_dict.
+
+Handle path resolution via expanduser() and resolve().
+
+Do not rely on Path.cwd() here.
+
+3.2 Add CLI command: qv save project
+
+In src/quantumvitas/cli/main.py:
+
+Add a new command, e.g.:
+
+@app.command("save-project")
+def save_project(
+    output: Path = typer.Argument(..., help="Path to output snapshot YAML"),
+    project: Optional[Path] = typer.Option(
+        None,
+        "--project",
+        help="Project root; if omitted, auto-detect from CWD",
+    ),
+    overwrite: bool = typer.Option(
+        False,
+        "--overwrite",
+        help="Overwrite existing file if it exists",
+    ),
+):
+    """
+    Export a QV project to a snapshot YAML file.
+    """
+    ...
+
+
+Use the existing context helper from core/context.py to resolve project root if --project is not given.
+
+Delegate to QVService.save_project_snapshot.
+
+3.3 Extend qv init project to accept snapshot
+
+Extend existing init project subcommand to support:
+
+qv init project --snapshot <snapshot.yml> --path <parent_dir> --name "My Project"
+
+
+Behavior:
+
+If --snapshot is provided:
+
+Treat --path as a parent directory, not as the project directory itself.
+
+Call QVService.create_project_from_snapshot(parent_dir=path, snapshot_path=snapshot, project_name=name).
+
+Print the created project root.
+
+If --snapshot is not provided:
+
+Keep the existing behavior (--template, empty project, etc.) unchanged.
+
+This allows:
+
+Legacy template-based project init
+
+Snapshot-based project init (for demos, backups, etc.)
+
+Phase 4 – Migrate demo project creation to use snapshots & resources
+
+We now align create_demo_project() and the GUI demo flow with the new snapshot mechanism and resources/ layout.
+
+4.1 Create at least one built-in demo snapshot
+
+Under resources/demo_projects/, add a YAML snapshot file, e.g.:
+
+resources/demo_projects/
+    si_bands_dos.yml
+
+
+This snapshot should represent a small, self-contained Si bands+DOS project that:
+
+Has 1 structure (Si bulk)
+
+Has 1 workflow (e.g., si-bands-dos)
+
+Includes the steps that your current demo uses (SCF → NSCF → Bands → DOS)
+
+Uses pseudo filenames that are available (or at least consistent with docs/tests)
+
+You can derive this snapshot logically from the existing test data (ci_test_data) or the current demo template.
+
+Document this file in AI_understanding.md (demo section).
+
+4.2 Refactor QVService.create_demo_project
+
+In src/quantumvitas/api.py:
+
+Change create_demo_project to stop relying on templates/project/....
+
+New behavior:
+
+def create_demo_project(self, parent_dir: Path, demo_name: str = "si_bands_dos") -> Path:
+    """
+    Create a demo project under parent_dir using a snapshot from resources/demo_projects.
+    - Locate the snapshot file by demo_name (e.g., si_bands_dos.yml).
+    - Call create_project_from_snapshot(parent_dir, snapshot_path, project_name=None or "Si demo").
+    - Return the created project root.
+    """
+
+
+You can keep a simple mapping:
+
+DEMO_SNAPSHOT_MAP = {
+    "si_bands_dos": "resources/demo_projects/si_bands_dos.yml",
+}
+
+
+For now, one demo is enough; we can add more later.
+
+4.3 Update daemon + GUI demo creation
+
+Find where create_demo_project is called in the daemon & GUI (it should already exist), and confirm:
+
+It passes a parent directory (not project root itself).
+
+It displays the newly created project path in the GUI.
+
+If E2E tests refer to demo project creation, update them to not rely on templates/project/, but only check the observable behavior:
+
+After “Create Demo Project”:
+
+A project appears in structures/workflows view.
+
+It has at least 1 workflow and 1 structure.
+
+It can be run and analyzed (as your existing E2E test already does).
+
+Phase 5 – Move public “template-ish” features over to resources/* (keep templates/ internal)
+5.1 Workflow templates: public API uses resources/workflow_templates/
+
+Currently, core/templates.py and daemon list_workflow_templates read directly from templates/workflow/.
+
+Refactor:
+
+Introduce a resource discovery layer that looks under resources/workflow_templates/ for workflow templates intended for GUI/CLI listing.
+
+Options:
+
+Option A: Move existing workflow template folders into resources/workflow_templates/ (same structure as before).
+
+Option B: Keep templates/workflow/ as is, but add a thin indirection in core/templates.py that treats it as “legacy backing” for resources/workflow_templates/ (e.g., symlink, alias, or code mapping).
+
+Pragmatic approach:
+
+For now, you can:
+
+Leave templates/workflow/ on disk.
+
+Make resources/workflow_templates/ contain small YAML manifests that reference these directories.
+
+Or simply change core/templates.py so that user-facing listing functions (for GUI) scan resources/workflow_templates/, while low-level CLI scaffolding can still read from templates/workflow/.
+
+Key idea:
+
+Public library (GUI listing) = resources/workflow_templates/
+Internal scaffolding / legacy = templates/workflow/
+
+Update daemon RPC list_workflow_templates to read from resources/workflow_templates/ (or some wrapper that abstracts over it), and adjust GUI accordingly.
+
+5.2 Structure library: public API uses resources/structure_library/
+
+Similarly:
+
+import_structure_from_template and GUI structure import should move towards reading from resources/structure_library/ instead of templates/structure/.
+
+Refactor:
+
+Add a list_structure_library() helper (in core/templates.py or a new core/resources.py).
+
+Add a QVService method + daemon RPC to list available structures from resources/structure_library/.
+
+Keep templates/structure/si.json as a legacy source if necessary, but publicly expose only the new resources/structure_library/ set.
+
+5.3 Step templates: keep but de-emphasize
+
+For now:
+
+Do NOT remove templates/step/ or break qv init step --template / reset_step_params.
+
+But:
+
+Do not expose step templates through a new “resource library” interface.
+
+Keep step templates purely as an internal implementation detail of core/templates.py.
+
+Later we can refactor step default parameters to be generated from code rather than files.
+
+Phase 6 – Tests & docs
+6.1 Unit tests for snapshot
+
+Add tests/unit/test_project_snapshot.py with:
+
+export → import roundtrip:
+
+Create a small test project in a temp dir (you can reuse existing templates/project/project1/ or CI data as a starting point).
+
+Call export_project_to_snapshot.
+
+Write snapshot to YAML.
+
+Call materialize_project_from_snapshot into a new temp parent dir.
+
+Assert:
+
+New project root exists.
+
+Number of workflows/structures/steps matches.
+
+Structure composition / lattice/sit e count matches.
+
+ULIDs are different but names/slugs equal.
+
+CLI save-project + init project --snapshot:
+
+Using CliRunner, create a temp project.
+
+Run qv save project snapshot.yml.
+
+Assert file exists and is non-empty.
+
+Run qv init project --snapshot snapshot.yml --path <parent> --name "copy".
+
+Assert new project root exists, and basic models can be loaded.
+
+6.2 Adjust E2E tests if needed
+
+Your E2E tests already:
+
+“Create Demo Project”
+
+Then run workflow, check Jobs/Analysis, etc.
+
+After moving demo creation to snapshot + resources/demo_projects/:
+
+The tests should continue to pass based on behavior.
+
+If you previously asserted something about the templates directory, remove that assumption.
+
+6.3 Documentation
+
+Update AI_understanding.md with:
+
+A “Project Snapshot” section:
+
+What it is
+
+Schema outline
+
+CLI usage (qv save project, qv init project --snapshot)
+
+Behavior of ULIDs (regenerated on materialization)
+
+Pseudopotential behavior (filenames only, no content)
+
+A “Resources layout” section describing:
+
+resources/demo_projects/ (demos)
+
+resources/workflow_templates/ (workflow library)
+
+resources/structure_library/ (structure library)
+
+templates/ as legacy/internal for scaffolding (still used by qv init and some internals)
+
+General coding style & safety
+
+Do NOT break existing CLI options; new behavior should be additive or behind new flags (except create_demo_project which we explicitly move to snapshots).
+
+Keep all logic in QVService or core modules; CLI and daemon should be thin.
+
+Keep using Path, expanduser(), resolve(), no hidden reliance on cwd in core/service.
+
+Respect current error handling patterns:
+
+Core/service raise ValueError, FileNotFoundError, ResourceNotFoundError.
+
+CLI converts to typer.BadParameter / typer.Exit(1) with clear messages.
+
+At the end, please:
+
+List all files you created/modified.
+
+Show an example snapshot YAML (small, redacted) in the PR description.
+
+Summarize how demo creation, workflow templates, and structure library now work together under resources/.
+
+Focus on correctness, clear separation of concerns, and minimizing surprise for both CLI and GUI users.
+
+
+You are working in the QuantumVITAS v2 repo.
+
+Goal of this refactor:
+
+Completely remove the legacy templates/ directory from the codebase.
+
+Remove qv init step --template (and all step-template related functionality).
+
+Ensure no remaining code depends on templates/ for projects, workflows, steps, or structures.
+
+Keep all still-useful “template-like” behavior backed by:
+
+resources/demo_projects/ (project snapshots)
+
+resources/workflow_templates/ (workflow templates)
+
+resources/structure_library/ (structure templates)
+
+In-code default parameter dictionaries for steps (instead of step YAML templates).
+
+We accept that this is a breaking change for qv init step --template and any project/workflow --template flags that depended on templates/.
+
+Phase 0 – Get context
+
+Before writing code:
+
+Re-read AI_understanding.md (latest version).
+
+Search for templates/ in the repo and skim all usages:
+
+src/quantumvitas/core/templates.py
+
+Any usage in api.py, daemon/server.py, cli/main.py, analysis, tests, GUI.
+
+Note:
+
+Where qv init step --template is implemented.
+
+Where project/workflow/structure templates still read from templates/.
+
+How reset_step_params currently works (it used to depend on step templates).
+
+Confirm the current resources/ layout:
+
+resources/demo_projects/
+
+resources/workflow_templates/
+
+resources/structure_library/
+
+Do NOT change anything yet.
+
+Phase 1 – Remove qv init step --template and step-template concept
+1.1 CLI: remove --template for steps
+
+In src/quantumvitas/cli/main.py:
+
+Find the qv init step command.
+
+Remove the --template option entirely:
+
+Remove the parameter from the function signature.
+
+Remove any template handling logic.
+
+Update the help text to no longer mention templates.
+
+Ensure that qv init step still works with:
+
+Required step type (scf / nscf / dos / bands / …).
+
+Optional --structure or workflow-derived structure (existing behavior).
+
+Now, qv init step should always create a step using code defaults (we’ll refine that below), not disk templates.
+
+1.2 API & daemon: remove step template parameters
+
+In src/quantumvitas/api.py:
+
+Find any init_step(...) / create_step methods that accept a template argument.
+
+Remove the template parameter and any logic that reads step template files.
+
+Ensure init_step can create a sensible default step purely from step_type (using existing default logic or new defaults).
+
+In src/quantumvitas/daemon/server.py:
+
+Remove any RPC commands or handlers that:
+
+List step templates.
+
+Use a template argument when creating steps.
+
+Make sure GUI calls for creating a step only pass:
+
+project_root
+
+workflow selector (if applicable)
+
+step_type
+
+structure selector (if needed)
+
+Update any TypeScript types in gui/src/types/qv.ts that refer to step templates (e.g. step_template_name fields).
+
+1.3 reset_step_params – reimplement without templates
+
+Currently, reset_step_params likely uses step templates from templates/step/. We want to keep the UX (“reset step parameters to defaults”) but back it with in-code defaults, not disk files.
+
+In src/quantumvitas/api.py & relevant core modules:
+
+Redesign reset_step_params (or equivalent) to:
+
+Take (project_root, workflow_selector, step_selector) (or similar).
+
+Identify the step’s step_type (e.g. scf, nscf, bands, dos, …).
+
+Use an internal default dictionary keyed by step_type to rebuild the step’s parameters and cards:
+
+DEFAULT_STEP_PARAMS = {
+    "scf": {
+        "parameters": {...},
+        "cards": {...},
+        "species_overrides": {... or {} },
+    },
+    "nscf": {...},
+    "bands": {...},
+    "dos": {...},
+}
+
+
+Overwrite only the relevant parts of the step spec (parameters/cards/species_overrides) and keep:
+
+meta (id/slug/path)
+
+structure
+
+parent_workflow_id
+
+Persist the updated step spec via existing model save helpers.
+
+Remove any code that reads step templates from disk.
+
+Update daemon RPC and GUI usage so that:
+
+GUI “Reset” button for step parameters calls this new template-free reset_step_params.
+
+No RPC takes a template_name for step resets.
+
+Phase 2 – Remove all remaining dependencies on templates/ (project/workflow/structure)
+
+We already have resources/demo_projects/, resources/workflow_templates/, resources/structure_library/ in place. Now we must ensure no runtime path needs templates/.
+
+2.1 Structure templates
+
+In src/quantumvitas/core/templates.py (or core/resources.py):
+
+Confirm that structure import (import_structure_from_template) now uses:
+
+resources/structure_library/ via get_structure_library_path().
+
+Remove any fallbacks to templates/structure/.
+
+If any code path still uses templates/structure/, refactor to use resources/structure_library/.
+
+2.2 Workflow templates
+
+We want workflow templates to be fully served from resources, not from templates/.
+
+In core/templates.py:
+
+For workflow-related helpers (e.g. list_workflow_templates, get_template_path for workflows), ensure:
+
+They only read from resources/workflow_templates/ (file-based templates or directories, depending on current design).
+
+Remove all fallbacks to templates/workflow/.
+
+In api.py:
+
+For init_workflow(..., template=...) / create_workflow / create_workflow_from_template, ensure:
+
+They only look at resources/workflow_templates/.
+
+No more references to templates/workflow/.
+
+In daemon & GUI:
+
+list_workflow_templates RPC must rely solely on resources/workflow_templates/.
+
+GUI “Create Workflow from Template” should still work but only via resources/.
+
+If there are still raw workflow directories under resources/workflow_templates/ (e.g. si-bands/, si-dos/), it’s OK for now; we’re not changing their internal format in this refactor, just making sure they are the only source.
+
+2.3 Project templates (qv init project --template)
+
+Decide a simple, robust behavior:
+
+We already have a proper demo mechanism via resources/demo_projects/ and create_demo_project(). For simplicity and to avoid adding another “project template” system, we will:
+
+Remove --template for qv init project (like we did for steps):
+
+In cli/main.py, drop the template argument from init project.
+
+In api.py, remove project-template-related parameters and directory reads from templates/project/.
+
+qv init project will now only:
+
+Create an empty project with given --name and --path.
+
+For non-empty examples, create_demo_project is used (GUI does this already).
+
+If there are any tests or docs referring to qv init project --template, update/remove them and adjust docs to recommend:
+
+Empty project: qv init project
+
+Demo project: via create_demo_project / GUI button.
+
+This lets us completely stop reading from templates/project/ without introducing yet another template format.
+
+Phase 3 – Remove templates/ usage from code & tests
+3.1 Search and clean up all templates/ references
+
+Use a global search for templates/ string.
+
+For every hit:
+
+If it is used at runtime (core/api/daemon/GUI):
+
+Refactor to use:
+
+resources/demo_projects/ (for project-like content), or
+
+resources/workflow_templates/ (for workflow templates), or
+
+resources/structure_library/ (for structures), or
+
+In-code defaults (for step params).
+
+If it is used in tests:
+
+Rewrite tests to:
+
+Use resources-based templates (workflow, structure), or
+
+Use project snapshots from resources/demo_projects, or
+
+Use in-code defaults / simple locally created projects.
+
+If it is documentation:
+
+Update AI_understanding.md and any other docs to remove or rewrite references to templates/.
+
+Goal: after this pass, no Python / TS / test / docs code relies on the existence of templates/ at runtime.
+
+3.2 Remove any tests specifically for step templates
+
+Remove unit/CLI/daemon/GUI tests that:
+
+Assert step templates exist.
+
+Assert qv init step --template works.
+
+Replace with:
+
+Tests that check qv init step with default parameters works correctly for each step_type.
+
+Tests that check reset_step_params resets to the in-code defaults.
+
+Phase 4 – Delete the templates/ directory and finalize docs
+
+Once:
+
+All references to templates/ are removed or refactored.
+
+All tests pass.
+
+Then:
+
+Delete the entire templates/ directory from the repo.
+
+Update AI_understanding.md:
+
+In the resources section, clearly document:
+
+resources/demo_projects/      # complete project snapshots (for demo/gallery)
+resources/workflow_templates/ # workflow templates (used by init workflow)
+resources/structure_library/  # reusable structures (pymatgen JSON)
+
+
+Add a short note:
+
+Legacy templates/ directory has been removed. All template-like behavior is now backed by resources/ or in-code defaults (for step parameters).
+
+Update any CLI / GUI references to --template to reflect:
+
+qv init project: no template option; use demo if you want a pre-populated project.
+
+qv init step: no template option; uses default parameters based on step type.
+
+qv init workflow --template: uses resources/workflow_templates/ only.
+
+Phase 5 – Sanity checks
+
+Run all unit tests and CLI tests:
+
+python -m pytest tests -v
+
+
+Run E2E tests from gui:
+
+cd gui
+npm run build:e2e
+npm run test:e2e
+
+
+Manually sanity check (you can describe what you did in your summary):
+
+qv init project → creates empty project.
+
+GUI “Create Demo Project” → still works (reads from resources/demo_projects).
+
+GUI “Create Workflow from Template” → lists workflow templates from resources/workflow_templates.
+
+GUI “Add Step” → creates step with default parameters.
+
+GUI “Reset Step Parameters” → resets to in-code defaults without any file IO to templates.
+
+Style & safety
+
+Keep layering: core & QVService remain the main logic; CLI/daemon/GUI are thin.
+
+Continue using Path and resolve()/expanduser(); never rely on Path.cwd() in core/service.
+
+Preserve existing error patterns (ValueError, FileNotFoundError, ResourceNotFoundError).
+
+When you remove options (like --template), ensure help text and docs are updated consistently.
+
+At the end, please summarize:
+
+Files created/modified/deleted.
+
+New behavior of:
+
+qv init project
+
+qv init step
+
+qv init workflow --template
+
+reset_step_params
+
+Confirm that the templates/ directory is no longer present and no references remain.
+
+You’re continuing work on the QuantumVITAS v2 GUI + daemon.
+
+Please read / refresh:
+- AI_understanding.md (especially:
+  - Step model: StructureStepSpec
+  - QVService APIs for steps/workflows
+  - “step defaults vs import” semantics: apply_defaults / --no-defaults
+  - GUI ↔ Electron ↔ daemon ↔ QVService architecture)
+- gui/tests/e2e/fixtures/electronTest.ts (unified Electron fixture)
+
+There are THREE goals in this task:
+
+────────────────────────────────
+A. Fix GUI “Add Step” using stray `executable` argument
+────────────────────────────────
+
+Current bug (daemon logs):
+
+- When I click “Add Step” in the Workflows view, the daemon crashes:
+
+  TypeError: __init__() got an unexpected keyword argument 'executable'
+
+- Stack trace: daemon/server.py → _handle_add_step_to_workflow →
+  QVService.add_step_to_workflow → StructureStepSpec(..., executable=...).
+
+Intent / architecture:
+
+- StructureStepSpec **should NOT** have an `executable` field.
+- Which QE binary to run (pw.x / dos.x / bands.x …) is derived from step_type
+  / QE module by the engine layer (already used by CLI).
+- CLI path for `qv init step` and workflow execution is **green**; GUI should
+  reuse that logic, not invent its own variant.
+
+Please do:
+
+1. Inspect models
+   - Open src/quantumvitas/workflow/structure_steps.py and confirm the fields of
+     StructureStepSpec. DO NOT add `executable` there unless you can strongly
+     justify it against the existing design (binary is an engine concern, not
+     a spec concern).
+
+2. Find all `executable` uses in the add-step path
+   - Grep “executable” in:
+     - src/quantumvitas/api.py (add_step_to_workflow)
+     - src/quantumvitas/daemon/server.py (_handle_add_step_to_workflow)
+     - gui/src/types/qv.ts (step-related payloads / responses)
+     - gui/src/components/panels/WorkflowDetailPanel.tsx (Add Step UI)
+     - any tests that expect an `executable` field.
+   - Map how `executable` travels from the GUI request payload to
+     StructureStepSpec(...).
+
+3. Align GUI add-step with CLI `qv init step` (from-scratch mode)
+   - Find the helper(s) used by the CLI to build a step spec:
+     - Functions like build_step_spec_from_qe_input_data / build_default_step_spec
+       in workflow/importers.py (and any wrappers).
+     - Note how apply_defaults=True is used for “from scratch” steps.
+   - Refactor QVService.add_step_to_workflow so that it:
+     - Reuses the SAME helper(s) as CLI `init_step_command` for from-scratch steps.
+     - Does NOT accept / pass through `executable`.
+     - Sets only:
+       - meta (ULID)
+       - structure (payload or inherited from workflow)
+       - step_type
+       - parameters / cards / species_overrides (from helper)
+       - parent_workflow_id
+   - Ensure _handle_add_step_to_workflow in daemon/server.py just calls this
+     method and no longer deals with `executable`.
+
+4. Clean up GUI types & payloads
+   - In gui/src/types/qv.ts:
+     - Remove `executable?: string` from any step-related payloads.
+     - Keep the types in sync with the daemon handler / QVService API.
+   - In WorkflowDetailPanel.tsx:
+     - Update the “Add Step” dialog so the payload only includes:
+       - step_type (required)
+       - optional display name / id
+       - optional structure override
+     - No `executable` field at all.
+   - Make sure TypeScript builds cleanly.
+
+5. Tests for A
+   - Add/adjust a focused unit test (e.g. tests/unit/test_api_service_steps.py):
+     - Create a small temporary project + workflow (can reuse existing fixtures).
+     - Call QVService.add_step_to_workflow with a payload matching what the GUI
+       now sends (no executable).
+     - Assert:
+       - No TypeError is raised.
+       - A new *.step.yaml file is created under the workflow.
+       - The step YAML can be loaded into StructureStepSpec.
+       - The spec has no executable field.
+   - Run the existing step-default tests to ensure semantics didn’t change:
+     - From-scratch init uses defaults.
+     - Import via --no-defaults preserves original QE input.
+
+────────────────────────────────
+B. Enforce architecture: GUI must only call the daemon API
+────────────────────────────────
+
+Design rule:
+
+- The GUI (React + Electron main + preload) must talk ONLY to the daemon over
+  the typed RPC protocol (window.qv / QVCommandMap).
+- It must NOT import Python core modules or directly manipulate QV internals.
+- Python daemon handlers should normally go through QVService; avoid direct
+  imports from low-level core modules inside handlers.
+
+Please check:
+
+1. In gui/ (TS/TSX):
+   - Ensure there are NO imports like:
+     - import ... from '../../../src/quantumvitas/...'
+   - All interactions with the backend must go through:
+     - window.qv.* (typed in gui/src/types/qv.ts)
+     - The useQVClient hook and related hooks/useJobs.ts etc.
+   - If you find any direct imports from core Python modules, remove them and
+     replace with appropriate RPC calls.
+
+2. In src/quantumvitas/daemon/server.py:
+   - Handlers should talk to the single QVService instance instead of importing
+     and calling core functions directly (unless there is a very strong and
+     documented reason).
+   - If you see handler logic bypassing QVService, consider moving that logic
+     into QVService and calling it there, to keep the layering clean.
+
+3. Update AI_understanding.md:
+   - Add a short “Layering rules” subsection:
+     - GUI → Electron main → daemon RPC → QVService → core
+     - No GUI → core or GUI → core via direct imports.
+     - Handlers should be thin wrappers around QVService methods.
+
+────────────────────────────────
+C. Strengthen E2E tests: fail on frontend console errors
+────────────────────────────────
+
+Problem:
+
+- Sometimes the app appears “working” from a user perspective, but the Electron
+  devtools console shows runtime errors (e.g. TypeError, failed RPC, unhandled
+  promise rejections).
+- I want E2E tests to **treat unexpected console errors as test failures**, so
+  these regressions are caught early.
+
+You already have:
+- gui/tests/e2e/fixtures/electronTest.ts providing appPage: Page.
+- Unified Electron launch that works on Linux (Playwright _electron) and macOS
+  (CDP).
+
+Please extend the fixture so that:
+
+1. It monitors console + page errors
+   - In the fixture where you create appPage:
+     - Attach listeners:
+       - page.on('console', msg => ...)
+       - page.on('pageerror', err => ...)
+     - Collect:
+       - console messages with type() === 'error'
+       - maybe also 'warning' if you want to be strict (you can start with 'error').
+       - any pageerror exceptions.
+   - Store these in arrays on the fixture context (e.g. unexpectedConsoleErrors).
+
+2. Provide a helper / auto-assert
+   - EITHER:
+     - Make the fixture’s teardown (afterEach) automatically assert:
+       - unexpectedConsoleErrors.length === 0
+       - pageErrors.length === 0
+     - and throw an error listing all messages if not.
+   - OR:
+     - Export a helper (e.g. `assertNoUnexpectedConsoleErrors(appPage)` or
+       `getConsoleErrors(appPage)`) and call it from each test.
+   - Prefer the automatic approach so tests can’t “forget” to check.
+
+3. Allowlist known benign messages
+   - If there are known noisy console messages from Electron / React / Playwright
+     that we can’t avoid and don’t indicate bugs, add a small allowlist of
+     patterns or substrings.
+   - Keep this allowlist minimal and documented inside the fixture.
+   - For now, treat any console.error that does NOT match the allowlist as a failure.
+
+4. Update tests to use the fixture
+   - Ensure all E2E specs (welcome.spec.ts, demo_workflow.spec.ts,
+     demo_workflow_run.spec.ts, and any others) import from the unified
+     electronTest fixture and thus automatically get the console monitoring.
+   - You shouldn’t need to change the test bodies beyond using the fixture.
+
+5. Run tests
+   - From gui/:
+     - npm run build:e2e
+     - npm run test:e2e
+   - Confirm:
+     - Existing tests still pass on Linux and macOS.
+     - If there ARE real runtime errors in the console, tests now fail with a
+       clear message including the console lines / stack traces.
+
+6. Documentation
+   - Update AI_understanding.md:
+     - Add a note in the E2E Testing section that:
+       - All Electron E2E tests monitor frontend console and page errors.
+       - Any unexpected console.error or pageerror causes the test to fail.
+       - There is a small allowlist for known benign messages, which should be
+         kept minimal and documented.
+
+────────────────────────────────
+
+General guidelines:
+
+- Keep changes focused and consistent with the existing architecture.
+- Prefer reusing helper functions and QVService methods instead of duplicating
+  logic in daemon handlers or GUI code.
+- Do NOT reintroduce app-specific fields (like `executable`) into the step
+  spec unless there is a clear architectural rationale documented in
+  AI_understanding.md.
+- Make sure:
+  - python -m pytest tests/unit -v
+  - (from gui/) npm run build:e2e && npm run test:e2e
+  are both fully green after your changes.
+
+
+Summary
+Completed all three goals:
+A. Fixed GUI "Add Step" using stray executable argument
+Problem: QVService.add_step_to_workflow was passing executable to StructureStepSpec, which doesn't accept it.
+Solution:
+Removed executable from add_step_to_workflow — now uses get_default_step_params() like the CLI
+Updated daemon handler — already correct, no changes needed
+Added add_step_to_workflow to GUI types — added missing type definition in gui/src/types/qv.ts
+Verified GUI doesn't send executable — confirmed WorkflowListPanel.tsx only sends step_type and step_name
+Added unit tests — created tests/unit/test_api_service_steps.py with 3 tests verifying:
+Step spec creation without executable
+Default parameters are applied
+No executable field in any step files
+B. Enforced architecture: GUI must only call the daemon API
+Findings:
+GUI has no direct Python imports — all communication goes through window.qv.* RPC
+Daemon handlers are mostly correct — two handlers use core modules directly but are documented exceptions:
+find_project_root uses quantumvitas.core.context (utility function)
+list_workflow_templates uses quantumvitas.core.templates (read-only listing)
+Documentation: Added "Layering Rules" section to AI_understanding.md (section 16.5) documenting:
+Allowed paths: GUI → Electron → Daemon → QVService → core
+Forbidden paths: GUI → core, Daemon → core (bypassing QVService)
+Documented exceptions with rationale
+C. Strengthened E2E tests: fail on frontend console errors
+Implementation:
+Enhanced electronTest fixture — automatically collects:
+Console errors (excluding benign messages)
+Page errors (uncaught exceptions)
+Network request failures
+Auto-assertion — fixture automatically fails tests if any errors are detected after test completion
+Benign message allowlist — patterns for React warnings, DevTools messages, etc.
+Updated tests — removed manual error checking from step_defaults.spec.ts (now handled by fixture)
+Documentation — added section 22.6 to AI_understanding.md explaining the automatic error detection
+Test Results:
+All 6 E2E tests pass
+All unit tests pass (including new test_api_service_steps.py)
+No console errors detected during test runs
+Files Changed
+Python:
+src/quantumvitas/api.py — Fixed add_step_to_workflow to use defaults and remove executable
+src/quantumvitas/daemon/server.py — No changes needed (already correct)
+tests/unit/test_api_service_steps.py — New test file
+TypeScript:
+gui/src/types/qv.ts — Added add_step_to_workflow command type
+gui/tests/e2e/fixtures/electronTest.ts — Enhanced with automatic console error detection
+gui/tests/e2e/step_defaults.spec.ts — Removed manual error checking (now automatic)
+Documentation:
+AI_understanding.md — Added layering rules (16.5) and E2E error checking (22.6)
+All tests pass and the architecture is now properly enforced.

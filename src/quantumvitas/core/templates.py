@@ -1,8 +1,8 @@
 """
-Template management for QuantumVITAS.
+Resource management for QuantumVITAS.
 
-Provides functionality to copy project/workflow/step/structure templates
-with automatic ULID regeneration and proper path updates.
+Provides functionality to access workflow templates and structure library
+from resources/ directory. Step templates have been replaced with in-code defaults.
 """
 
 from __future__ import annotations
@@ -16,67 +16,45 @@ import yaml
 
 from quantumvitas.core.resources import generate_resource_id as generate_ulid
 
-# Find templates directory relative to this file's location
-# templates/ is at the root of the repo, not in src/
+# Find resources directory relative to this file's location
+# resources/ is at the root of the repo, not in src/
 _PACKAGE_ROOT = Path(__file__).parent.parent.parent.parent  # src/quantumvitas/core -> root
-TEMPLATES_DIR = _PACKAGE_ROOT / "templates"
-
-
-def list_templates(category: str) -> List[str]:
-    """
-    List available templates for a category.
-    
-    Args:
-        category: One of 'project', 'workflow', 'step', 'structure'
-        
-    Returns:
-        List of template names available
-    """
-    template_dir = TEMPLATES_DIR / category
-    if not template_dir.exists():
-        return []
-    
-    if category == "structure":
-        # Structure templates are .json files
-        return [f.stem for f in template_dir.glob("*.json")]
-    elif category == "step":
-        # Step templates are in steps/ subfolder
-        steps_dir = template_dir / "steps"
-        if steps_dir.exists():
-            return [f.stem.replace(".step", "") for f in steps_dir.glob("*.step.yaml")]
-        return []
-    else:
-        # project/workflow templates are directories
-        return [d.name for d in template_dir.iterdir() if d.is_dir()]
+RESOURCES_DIR = _PACKAGE_ROOT / "resources"
 
 
 def get_template_path(category: str, name: str) -> Optional[Path]:
     """
     Get path to a template.
     
+    For workflow templates, reads from resources/workflow_templates/ only.
+    For structures, uses get_structure_library_path (resources/structure_library/ only).
+    
     Args:
-        category: One of 'project', 'workflow', 'step', 'structure'
+        category: One of 'workflow', 'structure'
         name: Template name
         
     Returns:
         Path to template or None if not found
     """
-    template_dir = TEMPLATES_DIR / category
-    
-    if category == "structure":
-        path = template_dir / f"{name}.json"
-        return path if path.exists() else None
-    elif category == "step":
-        path = template_dir / "steps" / f"{name}.step.yaml"
-        return path if path.exists() else None
+    if category == "workflow":
+        # Only read from resources/ (no fallback)
+        resources_dir = RESOURCES_DIR / "workflow_templates" / name
+        if resources_dir.exists() and resources_dir.is_dir():
+            return resources_dir
+        return None
+    elif category == "structure":
+        # Use get_structure_library_path for structure (resources/ only)
+        return get_structure_library_path(name)
     else:
-        path = template_dir / name
-        return path if path.exists() and path.is_dir() else None
+        # Other categories no longer supported
+        return None
 
 
 def list_workflow_templates() -> List[Dict[str, Any]]:
     """
     List available workflow templates with metadata.
+    
+    Reads from resources/workflow_templates/ only.
     
     Returns:
         List of dicts, each containing:
@@ -86,7 +64,7 @@ def list_workflow_templates() -> List[Dict[str, Any]]:
         - n_steps: Number of steps
         - step_types: List of step types
     """
-    template_dir = TEMPLATES_DIR / "workflow"
+    template_dir = RESOURCES_DIR / "workflow_templates"
     if not template_dir.exists():
         return []
     
@@ -122,6 +100,39 @@ def list_workflow_templates() -> List[Dict[str, Any]]:
             continue
     
     return templates
+
+
+def list_structure_library() -> List[str]:
+    """
+    List available structures in the structure library.
+    
+    Reads from resources/structure_library/ only.
+    
+    Returns:
+        List of structure names (without .json extension)
+    """
+    struct_dir = RESOURCES_DIR / "structure_library"
+    if not struct_dir.exists():
+        return []
+    
+    return [f.stem for f in struct_dir.glob("*.json")]
+
+
+def get_structure_library_path(name: str) -> Optional[Path]:
+    """
+    Get path to a structure in the structure library.
+    
+    Reads from resources/structure_library/ only.
+    
+    Args:
+        name: Structure name (without .json extension)
+        
+    Returns:
+        Path to structure JSON or None if not found
+    """
+    struct_dir = RESOURCES_DIR / "structure_library"
+    path = struct_dir / f"{name}.json"
+    return path if path.exists() else None
 
 
 def _regenerate_ulids_in_meta(data: Dict[str, Any], ulid_map: Dict[str, str]) -> None:
@@ -212,74 +223,6 @@ def copy_structure_template(
     
     with open(dest_path, "w") as f:
         json.dump(data, f, indent=2)
-    
-    return dest_path
-
-
-def copy_step_template(
-    template_name: str,
-    dest_dir: Path,
-    new_name: Optional[str] = None,
-    parent_workflow_id: Optional[str] = None,
-    structure: Optional[str] = None,
-) -> Path:
-    """
-    Copy a step template to destination.
-    
-    Args:
-        template_name: Template name
-        dest_dir: Destination directory
-        new_name: Optional new name for the step
-        parent_workflow_id: Optional parent workflow ID to set
-        structure: Optional structure name to set
-        
-    Returns:
-        Path to copied step file
-    """
-    source_path = get_template_path("step", template_name)
-    if not source_path:
-        raise ValueError(f"Step template '{template_name}' not found")
-    
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    
-    with open(source_path, "r") as f:
-        data = yaml.safe_load(f)
-    
-    # Regenerate ULID
-    ulid_map: Dict[str, str] = {}
-    _regenerate_ulids_in_meta(data, ulid_map)
-    
-    # Update name if provided
-    if new_name and "meta" in data:
-        from quantumvitas.core.resources import slugify
-        data["meta"]["name"] = new_name
-        data["meta"]["slug"] = slugify(new_name)
-    
-    # Update structure if provided
-    if structure:
-        data["structure"] = structure
-    
-    # Update parent workflow ID if provided
-    if parent_workflow_id:
-        data["parent_workflow_id"] = parent_workflow_id
-    
-    # Determine destination filename
-    if new_name:
-        from quantumvitas.core.resources import slugify
-        dest_name = f"{slugify(new_name)}.step.yaml"
-    elif "meta" in data:
-        dest_name = f"{data['meta']['slug']}.step.yaml"
-    else:
-        dest_name = source_path.name
-    
-    dest_path = dest_dir / dest_name
-    
-    # Update path in meta
-    if "meta" in data:
-        data["meta"]["path"] = str(dest_path.relative_to(dest_dir.parent.parent))
-    
-    with open(dest_path, "w") as f:
-        yaml.safe_dump(data, f, default_flow_style=False, sort_keys=False)
     
     return dest_path
 
@@ -440,124 +383,4 @@ def copy_workflow_template(
     )
 
 
-def copy_project_template(
-    template_name: str,
-    dest_dir: Path,
-    new_name: Optional[str] = None,
-) -> Path:
-    """
-    Copy a project template to destination.
-    
-    Args:
-        template_name: Template name
-        dest_dir: Destination directory
-        new_name: Optional new project name
-        
-    Returns:
-        Path to project.qv.yml
-    """
-    source_path = get_template_path("project", template_name)
-    if not source_path:
-        raise ValueError(f"Project template '{template_name}' not found")
-    
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    
-    ulid_map: Dict[str, str] = {}
-    
-    # Pre-read project.qv.yml to get old workflow/structure ULIDs for mapping
-    project_yaml_src = source_path / "project.qv.yml"
-    old_workflow_ulids: Dict[str, str] = {}  # Map workflow slug/path -> old ULID
-    if project_yaml_src.exists():
-        with open(project_yaml_src, "r") as f:
-            old_project_data = yaml.safe_load(f) or {}
-        for wf_entry in old_project_data.get("workflows", []):
-            wf_meta = wf_entry.get("meta") or {}
-            old_ulid = wf_meta.get("id")
-            wf_slug = wf_meta.get("slug") or wf_entry.get("name", "").lower().replace(" ", "-")
-            if old_ulid and wf_slug:
-                old_workflow_ulids[wf_slug] = old_ulid
-    
-    # Copy structures
-    src_structures = source_path / "structures"
-    if src_structures.exists():
-        dest_structures = dest_dir / "structures"
-        dest_structures.mkdir(parents=True, exist_ok=True)
-        for struct_file in src_structures.glob("*.json"):
-            with open(struct_file, "r") as f:
-                data = json.load(f)
-            _regenerate_ulids_in_meta(data, ulid_map)
-            if "__qv_meta__" in data:
-                data["__qv_meta__"]["path"] = f"structures/{struct_file.name}"
-            with open(dest_structures / struct_file.name, "w") as f:
-                json.dump(data, f, indent=2)
-    
-    # Copy workflows (recursively handle each)
-    src_workflows = source_path / "workflows"
-    workflow_ulids: Dict[str, str] = {}  # Map workflow name -> new ULID
-    if src_workflows.exists():
-        dest_workflows = dest_dir / "workflows"
-        for workflow_src_dir in src_workflows.iterdir():
-            if workflow_src_dir.is_dir():
-                workflow_dest = dest_workflows / workflow_src_dir.name
-                _, _, wf_ulid = _copy_workflow_from_path(
-                    source_path=workflow_src_dir,
-                    dest_dir=workflow_dest,
-                    project_root=dest_dir,
-                )
-                workflow_ulids[workflow_src_dir.name] = wf_ulid
-                # Map both directory name and old ULID to new ULID
-                ulid_map[workflow_src_dir.name] = wf_ulid
-                old_ulid = old_workflow_ulids.get(workflow_src_dir.name)
-                if old_ulid:
-                    ulid_map[old_ulid] = wf_ulid
-    
-    # Copy and update project.qv.yml
-    project_yaml_src = source_path / "project.qv.yml"
-    if project_yaml_src.exists():
-        with open(project_yaml_src, "r") as f:
-            project_data = yaml.safe_load(f) or {}
-        
-        # Update project meta
-        if "meta" in project_data:
-            _regenerate_ulids_in_meta(project_data, ulid_map)
-            if new_name:
-                from quantumvitas.core.resources import slugify
-                project_data["meta"]["name"] = new_name
-                project_data["meta"]["slug"] = slugify(new_name)
-        
-        # Update structure references
-        for struct_entry in project_data.get("structures", []):
-            if "meta" in struct_entry:
-                old_id = struct_entry["meta"].get("id")
-                if old_id in ulid_map:
-                    struct_entry["meta"]["id"] = ulid_map[old_id]
-        
-        # Update workflow references
-        for wf_entry in project_data.get("workflows", []):
-            if "meta" in wf_entry:
-                old_id = wf_entry["meta"].get("id")
-                if old_id in ulid_map:
-                    wf_entry["meta"]["id"] = ulid_map[old_id]
-        
-        project_yaml_dest = dest_dir / "project.qv.yml"
-        with open(project_yaml_dest, "w") as f:
-            yaml.safe_dump(project_data, f, default_flow_style=False, sort_keys=False)
-        
-        return project_yaml_dest
-    
-    # Create minimal project.qv.yml if template didn't have one
-    project_yaml_dest = dest_dir / "project.qv.yml"
-    project_data = {
-        "meta": {
-            "id": generate_ulid(),
-            "name": new_name or dest_dir.name,
-            "kind": "project",
-        },
-        "structures": [],
-        "workflows": [],
-    }
-    with open(project_yaml_dest, "w") as f:
-        yaml.safe_dump(project_data, f, default_flow_style=False, sort_keys=False)
-    
-    return project_yaml_dest
 
