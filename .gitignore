@@ -64,6 +64,9 @@ extended-tests/*.log
 *.log
 *.err
 
+# QE output directories (Quantum ESPRESSO working directories)
+**/outdir/
+
 # Temporary directory (downloads, cache, etc.) - NOT tracked
 temp/
 .temp/
