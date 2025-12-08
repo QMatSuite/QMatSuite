@@ -175,12 +175,12 @@ export async function launchElectronViaCDP(options?: {
       ...process.env,
       // Enable remote debugging on the specified port
       ELECTRON_REMOTE_DEBUG_PORT: debugPort.toString(),
+      // Enable E2E test mode
+      E2E_TEST_MODE: 'true',
       // Ensure QE_HOME is passed through if set
       QE_HOME: process.env.QE_HOME || '',
       // Disable security warnings
       ELECTRON_DISABLE_SECURITY_WARNINGS: 'true',
-      // Signal that we're in test mode (can be used to suppress console output)
-      E2E_TEST_MODE: 'true',
     },
     stdio: ['ignore', 'ignore', 'pipe'], // Only capture stderr initially for WebSocket URL, then ignore
   });

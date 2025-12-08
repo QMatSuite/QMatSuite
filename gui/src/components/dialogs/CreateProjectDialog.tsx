@@ -122,7 +122,9 @@ export function CreateProjectDialog({
         handleClose();
       } else {
         // Show error but keep dialog open (for validation errors like "inside existing project")
-        setError(response.error?.message || 'Failed to create project');
+        const errorMsg = response.error?.message || 'Failed to create project';
+        setError(errorMsg);
+        // Don't close dialog - let user fix the folder choice
       }
     }
   }, [qv, parentDir, projectName, projectSlug, previewPath, isDemoProject, onSuccess]);

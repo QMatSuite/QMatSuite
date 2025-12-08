@@ -106,8 +106,9 @@ class QVService:
         enclosing_project = detect_enclosing_project(target_dir)
         if enclosing_project:
             raise ValueError(
-                f"The selected folder is inside an existing QuantumVITAS project at: {enclosing_project}. "
-                "Please choose a parent workspace folder, not a project folder."
+                f"Cannot create a new project inside an existing QuantumVITAS project. "
+                f"The selected folder is inside a project at: {enclosing_project}. "
+                f"Please choose a parent folder above your current project directory."
             )
         
         target_dir.mkdir(parents=True, exist_ok=True)
@@ -2713,27 +2714,40 @@ class QVService:
         """
         List available demo project snapshots.
         
+        Reads metadata from snapshot files (meta section) with fallback to defaults.
+        
         Returns:
             List of demo project info dicts (JSON-serializable)
         """
         from quantumvitas.core.resources import get_resources_dir
+        from quantumvitas.project.snapshot import ProjectSnapshot
+        import yaml
         
-        # Hardcoded metadata for demo projects
-        # This can be extended later to read from snapshot files or a metadata file
-        METADATA = {
+        # Default metadata fallback (for backward compatibility)
+        DEFAULT_METADATA = {
             "si_bands_demo": {
                 "id": "si_bands_demo",
                 "name": "Si Band Structure",
+                "title": "Silicon band structure",
+                "subtitle": "SCF → NSCF → Bands",
                 "description": "Silicon band structure calculation with SCF, NSCF, and bands steps. Demonstrates k-path generation and band structure analysis.",
                 "recommended_use": "Band structure analysis",
-                "estimated_runtime_scf": None,  # Can be added later
+                "recommended_analysis": "bands",
+                "tags": ["bands", "Si", "PW", "tutorial"],
+                "difficulty": "beginner",
+                "estimated_runtime_scf": None,
             },
             "si_dos_demo": {
                 "id": "si_dos_demo",
                 "name": "Si DOS",
+                "title": "Silicon density of states",
+                "subtitle": "SCF → NSCF → DOS",
                 "description": "Silicon density of states calculation with SCF, NSCF, and DOS steps. Demonstrates DOS analysis workflow.",
                 "recommended_use": "Density of states analysis",
-                "estimated_runtime_scf": None,  # Can be added later
+                "recommended_analysis": "dos",
+                "tags": ["dos", "Si", "PW", "tutorial"],
+                "difficulty": "beginner",
+                "estimated_runtime_scf": None,
             },
         }
         
@@ -2747,8 +2761,43 @@ class QVService:
         demos = []
         for snapshot_file in demo_projects_dir.glob("*.yml"):
             demo_id = snapshot_file.stem
-            if demo_id in METADATA:
-                demos.append(METADATA[demo_id].copy())
+            
+            # Start with defaults
+            demo_info = DEFAULT_METADATA.get(demo_id, {
+                "id": demo_id,
+                "name": demo_id.replace("_", " ").title(),
+                "title": demo_id.replace("_", " ").title(),
+                "subtitle": "",
+                "description": f"Demo project: {demo_id}",
+                "recommended_use": "General",
+                "recommended_analysis": None,
+                "tags": [],
+                "difficulty": "beginner",
+                "estimated_runtime_scf": None,
+            }).copy()
+            
+            # Try to read metadata from snapshot file
+            try:
+                snapshot_data = yaml.safe_load(snapshot_file.read_text())
+                snapshot_meta = snapshot_data.get("meta", {})
+                
+                # Merge snapshot metadata (overrides defaults)
+                if snapshot_meta:
+                    demo_info.update({
+                        "title": snapshot_meta.get("title", demo_info.get("title", demo_info["name"])),
+                        "subtitle": snapshot_meta.get("subtitle", demo_info.get("subtitle", "")),
+                        "tags": snapshot_meta.get("tags", demo_info.get("tags", [])),
+                        "recommended_analysis": snapshot_meta.get("recommended_analysis", demo_info.get("recommended_analysis")),
+                        "difficulty": snapshot_meta.get("difficulty", demo_info.get("difficulty", "beginner")),
+                    })
+                    # Keep description from defaults if not in snapshot
+                    if "description" in snapshot_meta:
+                        demo_info["description"] = snapshot_meta["description"]
+            except Exception:
+                # If reading fails, use defaults
+                pass
+            
+            demos.append(demo_info)
         
         return sorted(demos, key=lambda d: d["id"])
     

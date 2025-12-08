@@ -2657,25 +2657,53 @@ Shows detailed step information with:
 ### 17.18 Demo Project & Recent Projects (2025-12-06)
 
 **Demo Project Creation**:
-- "Demo Gallery" button in welcome screen opens a modal with available demo projects
-- "Quick Demo (Si Bands)" button for direct creation of si_bands_demo
+- **Single Entry Point**: "Browse Demo Gallery" button in welcome screen is the only entry point for demo projects
 - Demo projects are stored as snapshots in `resources/demo_projects/*.yml`
 - Default demo is `si_bands_demo` (Silicon band structure workflow)
 - Available demos: `si_bands_demo`, `si_dos_demo`
 - Demo snapshots are generated from test projects using `scripts/generate_demo_snapshots.py`
-- If test example projects change, rerun the script to regenerate snapshots
+- If test example projects change, rerun `python scripts/generate_demo_snapshots.py` to regenerate snapshots
 
-**Demo Gallery**:
-- RPC: `list_demo_projects` returns available demo projects with metadata
+**Demo Gallery (Home Sub-View)**:
+- Demo Gallery is implemented as `DemoGalleryPanel` component, rendered inline in the Home view
+- Uses `HomeMode` state in `ProjectSummaryPanel`: `'welcome' | 'demo-gallery'`
+- When `homeMode === 'demo-gallery'` and no project is loaded, `ProjectSummaryPanel` renders `DemoGalleryPanel`
+- RPC: `list_demo_projects` returns available demo projects with enriched metadata
 - RPC: `create_demo_project` accepts optional `demo_id` parameter (defaults to "si_bands_demo")
-- GUI shows demo cards with name, description, tags, and recommended use
-- User selects demo, picks workspace folder, and creates project
+- Gallery shows demo cards with:
+  - Title and subtitle (from snapshot `meta` section)
+  - Description
+  - Tags as badges (from `meta.tags`)
+  - Difficulty badge (from `meta.difficulty`)
+  - "Create Project" button
+- Each card has a "Create Project" button that opens file picker for workspace folder
+- On success: project is created, loaded, and view switches back to welcome (with project loaded)
+- On error: error shown inline on card, gallery stays open for retry
+
+**Demo Snapshot Metadata**:
+- Snapshots can include a `meta` section with:
+  - `id`: Demo identifier (e.g., "si_bands_demo")
+  - `title`: Display title (e.g., "Silicon band structure")
+  - `subtitle`: Short description (e.g., "SCF → NSCF → Bands")
+  - `tags`: List of tags (e.g., ["bands", "Si", "PW", "tutorial"])
+  - `recommended_analysis`: Default analysis type (e.g., "bands", "dos")
+  - `difficulty`: Difficulty level (e.g., "beginner", "intermediate", "advanced")
+- Backend (`QVService.list_demo_projects()`) reads metadata from snapshot files with fallback to defaults
+- If metadata is missing, sensible defaults are used for backward compatibility
+- When a demo project is created with `recommended_analysis`, the Analysis view pre-selects that analysis type
 
 **Project Creation Validation**:
 - Both `create_project` and `create_demo_project` check if target directory is inside an existing project
 - Uses `detect_enclosing_project()` helper from `core/context.py`
-- Raises `ValueError` with clear message if inside existing project
-- GUI shows error and keeps dialog open (doesn't close on validation error)
+- Raises `ValueError` with clear message: "Cannot create a new project inside an existing QuantumVITAS project. The selected folder is inside a project at: <path>. Please choose a parent folder above your current project directory."
+- GUI shows error and keeps dialog/gallery open (doesn't close on validation error)
+- User can correct the folder choice without losing context
+
+**Workspace/Project Context Display**:
+- When a project is loaded, Home view shows a subtle context line:
+  - "Workspace: /path/to/parent · Current project: project-name"
+- Workspace is derived as the parent directory of `project_root`
+- Displayed in small text below the panel header for clarity
 - Creates Si project with ready-to-run workflow
 - RPC: `create_demo_project` - creates project, imports Si structure, adds workflow
 

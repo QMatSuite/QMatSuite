@@ -720,8 +720,13 @@ export interface PreflightCheckResult {
 export interface DemoProjectInfo {
   id: string;
   name: string;
+  title?: string;
+  subtitle?: string;
   description: string;
   recommended_use: string;
+  recommended_analysis?: string | null;
+  tags?: string[];
+  difficulty?: string;
   estimated_runtime_scf?: number | null;
 }
 

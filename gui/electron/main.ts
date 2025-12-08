@@ -467,8 +467,30 @@ ipcMain.handle('qv-daemon-status', async (): Promise<DaemonStatus> => {
  * 
  * @returns Selected directory path or null if cancelled
  */
+// Store E2E test directory (set via IPC from renderer in test mode)
+let e2eTestDirectory: string | null = null;
+
+/**
+ * Set E2E test directory (for testing only)
+ */
+ipcMain.handle('qv-set-e2e-test-directory', async (_event, dir: string): Promise<void> => {
+  if (process.env.E2E_TEST_MODE === 'true') {
+    e2eTestDirectory = dir;
+  }
+});
+
 ipcMain.handle('qv-open-directory', async (): Promise<string | null> => {
   if (!win) return null;
+  
+  // In E2E test mode, check for a test directory set via IPC
+  // This allows tests to bypass the native file dialog
+  if (process.env.E2E_TEST_MODE === 'true' && e2eTestDirectory) {
+    const testDir = e2eTestDirectory;
+    e2eTestDirectory = null; // Clear after use
+    if (fs.existsSync(testDir)) {
+      return testDir;
+    }
+  }
   
   const result = await dialog.showOpenDialog(win, {
     properties: ['openDirectory', 'createDirectory'],

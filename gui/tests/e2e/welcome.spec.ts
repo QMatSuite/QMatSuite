@@ -31,11 +31,13 @@ test.describe('E2E Test 1: Welcome Screen', () => {
   test('displays welcome screen with all action buttons', async ({ appPage }) => {
     // Wait for the welcome screen to be visible
     await expect(appPage.getByTestId('qv-welcome-title')).toBeVisible({ timeout: 30000 });
+    await expect(appPage.getByTestId('qv-welcome')).toBeVisible();
     
     // Verify all action buttons are present
     await expect(appPage.getByTestId('qv-btn-open-project')).toBeVisible();
     await expect(appPage.getByTestId('qv-btn-create-new-project')).toBeVisible();
-    await expect(appPage.getByTestId('qv-btn-create-demo-project')).toBeVisible();
+    // Updated: "Create Demo Project" button is now "Browse Demo Gallery"
+    await expect(appPage.getByTestId('qv-btn-demo-gallery')).toBeVisible();
     
     // Verify the welcome title text
     const title = appPage.getByTestId('qv-welcome-title');

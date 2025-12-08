@@ -28,7 +28,6 @@ import {
   DebugView,
   DaemonErrorBanner,
   CreateProjectDialog,
-  DemoGalleryDialog,
   ImportStructureDialog,
   CreateWorkflowDialog,
   RenameDialog,
@@ -76,6 +75,7 @@ function App() {
   const [projectSummary, setProjectSummary] = useState<ProjectSummary | null>(null);
   const [projectLoaded, setProjectLoaded] = useState(false);
   const [projectError, setProjectError] = useState<string | null>(null);
+  const [recommendedAnalysis, setRecommendedAnalysis] = useState<string | null>(null); // Used in handleCreateProjectSuccess
   
   // Data state
   const [structures, setStructures] = useState<StructureInfo[] | null>(null);
@@ -98,7 +98,6 @@ function App() {
   // Dialog states
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [showCreateDemoProject, setShowCreateDemoProject] = useState(false);
-  const [showDemoGallery, setShowDemoGallery] = useState(false);
   const [showImportStructure, setShowImportStructure] = useState(false);
   const [showCreateWorkflow, setShowCreateWorkflow] = useState(false);
   
@@ -441,7 +440,8 @@ function App() {
     }
   }, [qv, addToRecentProjects, showNotification]);
   
-  const handleCreateProjectSuccess = useCallback(async (newProjectRoot: string) => {
+  const handleCreateProjectSuccess = useCallback(async (newProjectRoot: string, recommendedAnalysis?: string | null) => {
+    setRecommendedAnalysis(recommendedAnalysis || null);
     setProjectRoot(newProjectRoot);
     localStorage.setItem('qv-project-root', newProjectRoot);
     
@@ -472,14 +472,9 @@ function App() {
     }
   }, [qv, addToRecentProjects]);
   
-  // Create demo Si project - opens gallery dialog
+  // Create demo Si project - handled by ProjectSummaryPanel (opens gallery sub-view)
   const handleCreateDemoProject = useCallback(() => {
-    setShowDemoGallery(true);
-  }, []);
-  
-  // Quick demo (direct create with si_bands_demo)
-  const handleQuickDemo = useCallback(() => {
-    setShowCreateDemoProject(true);
+    // This is now handled by ProjectSummaryPanel's homeMode state
   }, []);
   
   // ==========================================================================
@@ -935,12 +930,12 @@ function App() {
             onBrowseAndLoad={handleBrowseAndLoad}
             onCreateProject={() => setShowCreateProject(true)}
             onCreateDemoProject={handleCreateDemoProject}
-            onQuickDemo={handleQuickDemo}
             onOpenRecentProject={handleOpenRecentProject}
             onRemoveRecentProject={removeFromRecentProjects}
             onNavigateToStructure={handleNavigateToStructure}
             onNavigateToWorkflow={handleNavigateToWorkflow}
             onCloseProject={handleCloseProject}
+            onProjectCreated={handleCreateProjectSuccess}
           />
         );
         
@@ -1093,6 +1088,7 @@ function App() {
             onLoadDos={handleLoadDos}
             onLoadBands={handleLoadBands}
             autoAnalysis={appSettings.autoAnalysis}
+            defaultAnalysis={recommendedAnalysis}
           />
         );
         
@@ -1206,13 +1202,6 @@ function App() {
         onClose={() => setShowCreateDemoProject(false)}
         onSuccess={handleCreateProjectSuccess}
         isDemoProject={true}
-        defaultParentDir={appSettings.defaultProjectsDir}
-      />
-      
-      <DemoGalleryDialog
-        isOpen={showDemoGallery}
-        onClose={() => setShowDemoGallery(false)}
-        onSuccess={handleCreateProjectSuccess}
         defaultParentDir={appSettings.defaultProjectsDir}
       />
       

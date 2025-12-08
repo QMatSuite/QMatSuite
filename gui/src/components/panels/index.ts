@@ -1,6 +1,7 @@
 export { ResultPanel } from './ResultPanel';
 export { DebugPanel, DebugView } from './DebugPanel';
 export { ProjectSummaryPanel } from './ProjectSummaryPanel';
+export { DemoGalleryPanel } from './DemoGalleryPanel';
 export { StructureListPanel, StructureDetailPanel } from './StructureListPanel';
 export { WorkflowListPanel, WorkflowDetailPanel } from './WorkflowListPanel';
 export { StepDetailPanel } from './StepDetailPanel';
