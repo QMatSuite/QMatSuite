@@ -26,9 +26,6 @@ from pathlib import Path
 
 import pytest
 
-# Test data directory
-TEST_DATA_DIR = Path(__file__).parent.parent / "data" / "workflow_bands"
-
 # Mark all tests as requiring QE
 pytestmark = pytest.mark.qe_core
 
@@ -64,12 +61,40 @@ def test_project_dir(project_root_path: Path) -> Path:
 @pytest.fixture(scope="module")
 def project_with_structure(test_project_dir: Path, project_root_path: Path) -> Path:
     """Initialize project and import Si structure."""
-    if not TEST_DATA_DIR.exists():
-        pytest.skip(f"Test data not found: {TEST_DATA_DIR}")
+    # Create a QE input file inline (hardcoded in the test)
+    # Based on the format from instructions: ibrav=2 (fcc), celldm(1), ATOMIC_POSITIONS (alat)
+    qe_input_content = """&control
+    calculation = 'scf'
+    restart_mode = 'from_scratch'
+    prefix = 'si'
+    outdir = './outdir'
+/
+&system
+    ibrav = 2
+    celldm(1) = 10.410909236
+    nat = 2
+    ntyp = 1
+    ecutwfc = 40
+    ecutrho = 320
+    nbnd = 8
+/
+&electrons
+    conv_thr = 1e-8
+/
+ATOMIC_SPECIES
+ Si  28.0855  Si.pbe-n-rrkjus_psl.1.0.0.UPF
+
+ATOMIC_POSITIONS (alat)
+ Si 0.00 0.00 0.00
+ Si 0.25 0.25 0.25
+
+K_POINTS (automatic)
+  8 8 8 0 0 0
+"""
     
-    scf_in = TEST_DATA_DIR / "si.0_scf.in"
-    if not scf_in.exists():
-        pytest.skip(f"SCF input not found: {scf_in}")
+    # Save the QE input file temporarily
+    scf_in = test_project_dir / "si.0_scf.in"
+    scf_in.write_text(qe_input_content)
     
     # Initialize project
     run_qv(["init", "project", "--name", "si_bands_test"], cwd=test_project_dir)
@@ -433,15 +458,23 @@ class TestBandsWorkflowDataModels:
     
     pytestmark = pytest.mark.unit
     
-    def test_parse_bands_gnu_from_test_data(self):
+    @pytest.fixture(scope="class")
+    def test_data_dir(self, project_root_path: Path):
+        """Optional test data directory - tests skip if not available."""
+        test_data_dir = project_root_path / "tests" / "data" / "workflow_bands"
+        if not test_data_dir.exists():
+            pytest.skip(f"Test data not found: {test_data_dir}")
+        return test_data_dir
+    
+    def test_parse_bands_gnu_from_test_data(self, test_data_dir: Path):
         """Test parsing bands.dat.gnu file."""
         from quantumvitas.analysis.parsers import parse_bands_gnu
         
-        bands_file = TEST_DATA_DIR / "si.bands.dat.gnu"
+        bands_file = test_data_dir / "si.bands.dat.gnu"
         if not bands_file.exists():
             pytest.skip(f"Test data not found: {bands_file}")
         
-        sym_file = TEST_DATA_DIR / "reference_out" / "si.3_bands.pp.out"
+        sym_file = test_data_dir / "reference_out" / "si.3_bands.pp.out"
         
         band_data = parse_bands_gnu(
             bands_file,
@@ -453,11 +486,11 @@ class TestBandsWorkflowDataModels:
         assert band_data.n_kpoints > 0
         assert len(band_data.high_symmetry_points) > 0
     
-    def test_parse_scf_from_test_data(self):
+    def test_parse_scf_from_test_data(self, test_data_dir: Path):
         """Test parsing SCF output file."""
         from quantumvitas.analysis.parsers import parse_scf_output
         
-        scf_file = TEST_DATA_DIR / "reference_out" / "si.0_scf.out"
+        scf_file = test_data_dir / "reference_out" / "si.0_scf.out"
         if not scf_file.exists():
             pytest.skip(f"Test data not found: {scf_file}")
         
@@ -490,13 +523,13 @@ class TestBandsWorkflowDataModels:
         assert kpoints_card["option"] == "crystal_b"
         assert len(kpoints_card["data"]) > 0
     
-    def test_plot_bands_from_test_data(self, tmp_path: Path):
+    def test_plot_bands_from_test_data(self, test_data_dir: Path, tmp_path: Path):
         """Test plotting bands from test data."""
         from quantumvitas.analysis.parsers import parse_bands_gnu
         from quantumvitas.analysis.plotting import plot_bands, save_figure
         
-        bands_file = TEST_DATA_DIR / "si.bands.dat.gnu"
-        sym_file = TEST_DATA_DIR / "reference_out" / "si.3_bands.pp.out"
+        bands_file = test_data_dir / "si.bands.dat.gnu"
+        sym_file = test_data_dir / "reference_out" / "si.3_bands.pp.out"
         
         if not bands_file.exists():
             pytest.skip(f"Test data not found: {bands_file}")
