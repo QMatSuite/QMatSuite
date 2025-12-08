@@ -14,7 +14,7 @@
 import { electronTest as test, expect, navigateToView } from './fixtures/electronTest';
 import * as fs from 'fs';
 import * as path from 'path';
-import { createUniqueProjectDir, clearE2EProjectsRoot, getRepoRoot } from './helpers';
+import { createUniqueProjectDir, clearE2EProjectsRoot, getRepoRoot, createDemoProject } from './helpers';
 
 // Skip if explicitly requested via environment variable
 const SKIP_E2E = process.env.SKIP_ELECTRON_E2E === 'true';
@@ -57,15 +57,15 @@ test.describe('E2E: Step Parameter Defaults', () => {
       }
     });
     
-    // Create demo project
-    await expect(appPage.getByTestId('qv-welcome-title')).toBeVisible({ timeout: 30000 });
-    await appPage.getByTestId('qv-btn-create-demo-project').click();
-    await expect(appPage.getByTestId('qv-create-project-dialog')).toBeVisible({ timeout: 10000 });
-    await appPage.getByTestId('qv-input-parent-dir').fill(projectDir);
-    await appPage.getByTestId('qv-input-project-name').fill('e2e-step-defaults');
-    await expect(appPage.getByTestId('qv-project-preview-path')).toBeVisible();
-    await appPage.getByTestId('qv-btn-confirm-create').click();
-    await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 60000 });
+    // Create demo project via Demo Gallery flow
+    await createDemoProject(appPage, {
+      demoId: 'si_bands_demo',
+      projectName: 'e2e-step-defaults',
+      parentDir: projectDir,
+    });
+    
+    // Verify project is loaded
+    await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 10000 });
     
     // Navigate to Workflows view
     await navigateToView(appPage, 'workflows');
@@ -203,16 +203,16 @@ test.describe('E2E: Step Parameter Defaults', () => {
   test('import QE input button exists and is wired correctly', async ({ appPage }, testInfo) => {
     testInfo.setTimeout(60 * 1000);
     
-    // Create demo project
+    // Create demo project via Demo Gallery flow
     // Note: Console errors are automatically checked by the electronTest fixture
-    await expect(appPage.getByTestId('qv-welcome-title')).toBeVisible({ timeout: 30000 });
-    await appPage.getByTestId('qv-btn-create-demo-project').click();
-    await expect(appPage.getByTestId('qv-create-project-dialog')).toBeVisible({ timeout: 10000 });
-    await appPage.getByTestId('qv-input-parent-dir').fill(projectDir);
-    await appPage.getByTestId('qv-input-project-name').fill('e2e-import-step');
-    await expect(appPage.getByTestId('qv-project-preview-path')).toBeVisible();
-    await appPage.getByTestId('qv-btn-confirm-create').click();
-    await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 60000 });
+    await createDemoProject(appPage, {
+      demoId: 'si_bands_demo',
+      projectName: 'e2e-import-step',
+      parentDir: projectDir,
+    });
+    
+    // Verify project is loaded
+    await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 10000 });
     
     // Navigate to Workflows view
     await navigateToView(appPage, 'workflows');

@@ -1,84 +1,92 @@
 /**
  * E2E tests for Demo Gallery functionality
+ * 
+ * Tests the Demo Gallery as an inline Home sub-view (not a modal).
  */
 
-import { electronTest as test, expect } from './fixtures/electronTest';
+import { electronTest as test, expect, navigateToView } from './fixtures/electronTest';
 import * as path from 'path';
 import * as os from 'os';
+import { createUniqueProjectDir } from './helpers';
 
 test.describe('E2E: Demo Gallery', () => {
   test('demo gallery opens and allows creating DOS demo project', async ({ appPage }, testInfo) => {
-    testInfo.setTimeout(60 * 1000);
+    testInfo.setTimeout(90 * 1000);
     
-    const projectDir = path.join(os.tmpdir(), 'qv_e2e_demo_gallery');
+    // Use a unique project directory for this test
+    const projectDir = createUniqueProjectDir('demo-gallery');
     
-    // Navigate to Home view
+    // Navigate to Home view - wait for welcome screen
     await expect(appPage.getByTestId('qv-welcome-title')).toBeVisible({ timeout: 30000 });
+    await expect(appPage.getByTestId('qv-welcome')).toBeVisible();
     
     // Click "Demo Gallery" button
     const demoGalleryBtn = appPage.getByTestId('qv-btn-demo-gallery');
     await expect(demoGalleryBtn).toBeVisible();
     await demoGalleryBtn.click();
     
-    // Wait for gallery dialog to open (check for modal with "Demo Gallery" title)
-    const modal = appPage.locator('.modal').filter({ hasText: 'Demo Gallery' });
-    await expect(modal).toBeVisible({ timeout: 10000 });
+    // Wait for gallery view to appear (not a modal, but inline panel)
+    await expect(appPage.getByTestId('qv-demo-gallery-view')).toBeVisible({ timeout: 10000 });
     
-    // Wait for loading to complete (either cards appear or error appears)
-    // Check that loading spinner is gone
-    await expect(appPage.locator('.demo-gallery-dialog__loading')).not.toBeVisible({ timeout: 15000 });
+    // Wait for loading to complete
+    const loadingState = appPage.getByTestId('qv-demo-gallery-loading');
+    await expect(loadingState).not.toBeVisible({ timeout: 15000 });
     
-    // Verify either demo cards are visible OR error state is visible
+    // Verify demo cards are visible (not error state)
     const cardsContainer = appPage.getByTestId('qv-demo-gallery-cards');
-    const errorState = appPage.getByTestId('qv-demo-gallery-error-state');
+    const errorState = appPage.getByTestId('qv-demo-gallery-error');
     const emptyState = appPage.getByTestId('qv-demo-gallery-empty-state');
     
-    // At least one should be visible
-    const hasCards = await cardsContainer.isVisible().catch(() => false);
+    // Check for error/empty first - if present, fail
     const hasError = await errorState.isVisible().catch(() => false);
     const hasEmpty = await emptyState.isVisible().catch(() => false);
     
-    if (!hasCards && !hasError && !hasEmpty) {
-      throw new Error('Demo gallery did not load: no cards, error, or empty state visible');
-    }
-    
-    // If error or empty, fail the test
-    if (hasError || hasEmpty) {
-      const errorText = hasError 
-        ? await errorState.textContent() 
-        : await emptyState.textContent();
+    if (hasError) {
+      const errorText = await errorState.textContent();
       throw new Error(`Demo gallery failed to load: ${errorText}`);
+    }
+    if (hasEmpty) {
+      throw new Error('Demo gallery is empty - no demo projects found');
     }
     
     // Verify demo cards are visible
     await expect(cardsContainer).toBeVisible();
     
-    // Verify at least two demo cards exist
-    const siBandsCard = appPage.getByTestId('qv-demo-card-si_bands_demo');
-    const siDosCard = appPage.getByTestId('qv-demo-card-si_dos_demo');
+    // Verify at least two demo cards exist (using stable test IDs)
+    const siBandsCard = appPage.getByTestId('qv-demo-card-si-bands-demo');
+    const siDosCard = appPage.getByTestId('qv-demo-card-si-dos-demo');
     
     await expect(siBandsCard).toBeVisible();
     await expect(siDosCard).toBeVisible();
     
-    // Click on Si DOS demo card
-    await siDosCard.click();
+    // Verify metadata is displayed (title, subtitle, tags)
+    await expect(siBandsCard.locator('.demo-card__name')).toContainText(/Silicon band structure/i);
+    await expect(siBandsCard.locator('.demo-card__subtitle')).toContainText(/SCF.*NSCF.*Bands/i);
+    await expect(siBandsCard.getByTestId('qv-demo-tag-si-bands-demo-bands')).toBeVisible();
     
-    // Verify card is selected
-    await expect(siDosCard.locator('.demo-card--selected')).toBeVisible();
+    // Click "Create Project" button on Si DOS demo card
+    // First, set up the file picker mock via IPC
+    await appPage.evaluate(async (dir) => {
+      // Use the IPC API exposed by preload to set the test directory
+      if ((window as any).qv?.setE2ETestDirectory) {
+        await (window as any).qv.setE2ETestDirectory(dir);
+      }
+    }, projectDir);
     
-    // Select workspace folder
-    const workspaceInput = appPage.getByTestId('qv-demo-gallery-workspace-input');
-    await workspaceInput.fill(projectDir);
-    
-    // Click "Create Project" button
-    const createBtn = appPage.getByTestId('qv-demo-gallery-create-btn');
-    await expect(createBtn).toBeEnabled();
-    await createBtn.click();
+    const createDosBtn = appPage.getByTestId('qv-demo-card-btn-create-si-dos-demo');
+    await expect(createDosBtn).toBeEnabled();
+    await createDosBtn.click();
     
     // Wait for project to be created and loaded
-    // The app should navigate to home or workflows view
-    // Wait for workflows to appear (indicating project was loaded)
-    await expect(appPage.getByTestId('qv-workflows-view')).toBeVisible({ timeout: 30000 });
+    // The app should switch back to welcome/home view with project loaded
+    await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 60000 });
+    
+    // Verify project path contains our project name
+    await expect(appPage.getByTestId('qv-project-path')).toBeVisible();
+    
+    // Navigate to Workflows to verify project was created successfully
+    await navigateToView(appPage, 'workflows');
+    await expect(appPage.getByTestId('qv-workflows-view')).toBeVisible({ timeout: 10000 });
     
     // Verify at least one workflow exists
     const workflowsList = appPage.getByTestId('qv-workflows-list');

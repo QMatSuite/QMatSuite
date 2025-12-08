@@ -100,6 +100,8 @@ export async function launchApp(options?: {
     timeout,
     env: {
       ...process.env,
+      // Enable E2E test mode
+      E2E_TEST_MODE: 'true',
       // Ensure QE_HOME is passed through if set
       QE_HOME: process.env.QE_HOME || '',
       // Disable security warnings

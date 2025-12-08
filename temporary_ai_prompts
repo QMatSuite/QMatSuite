@@ -6443,3 +6443,737 @@ tests/unit/test_api_service.py - Added validation tests
 tests/unit/test_project_snapshot.py - Added demo snapshot tests
 AI_understanding.md - Updated documentation
 All unit tests pass. The E2E test should now work with the loading state fix. The Demo Gallery no longer hangs because isLoading is set to false in all code paths, including error cases.
+
+
+You are working in the QuantumVITAS v2 repo (Python core + Typer CLI + Python daemon + Electron/React GUI + Playwright E2E).
+
+We’ve already implemented:
+
+Validation to disallow creating a project / demo inside an existing project via detect_enclosing_project() in core/context.py, wired through QVService.init_project() and QVService.create_demo_project(), and exposed via daemon RPC + GUI error states.
+
+Demo snapshots in resources/demo_projects/ generated from test projects:
+
+si_bands_demo.yml (from project2_bands)
+
+si_dos_demo.yml (from project1)
+
+QVService.list_demo_projects() + daemon handler list_demo_projects
+
+A Demo Gallery dialog (DemoGalleryDialog.tsx) that uses the above API, plus an E2E test demo_gallery.spec.ts.
+
+Now we want to polish and refactor this into a more coherent UX and clean architecture.
+
+0. Re-read context
+
+Before coding, skim:
+
+AI_understanding.md — especially:
+
+GUI architecture (React ↔ preload ↔ Electron main ↔ daemon ↔ QVService)
+
+Resources vs templates (demo snapshots, workflow templates, structure library)
+
+E2E testing section and electronTest fixture.
+
+Python:
+
+src/quantumvitas/api.py — init_project, create_demo_project, list_demo_projects
+
+src/quantumvitas/daemon/server.py — demo-related handlers, RPC protocol
+
+src/quantumvitas/core/context.py — detect_enclosing_project
+
+GUI:
+
+gui/src/App.tsx
+
+gui/src/components/panels/ProjectSummaryPanel.tsx
+
+gui/src/components/dialogs/DemoGalleryDialog.tsx (+ CSS)
+
+gui/src/types/qv.ts — demo types & RPCs
+
+Tests:
+
+gui/tests/e2e/demo_gallery.spec.ts
+
+tests/unit/test_api_service.py, tests/unit/test_project_snapshot.py
+
+Respect the layering: GUI → window.qv RPC → daemon → QVService → core, no direct GUI→core imports.
+
+1. Keep the backend contract, but make sure behavior is right
+
+Goal: Don’t change behavior, only polish where needed.
+
+Confirm that:
+
+create_demo_project() defaults to si_bands_demo.yml if no demo_id is provided.
+
+QVService.list_demo_projects() reads from resources/demo_projects/*.yml and returns useful metadata (title, description, tags, supported analyses, etc.).
+
+Both init_project() and create_demo_project() reject paths inside an existing project (using detect_enclosing_project) and return a user-friendly error string.
+
+If any messages are cryptic, improve them, e.g.:
+
+“Cannot create a new project inside an existing QuantumVITAS project. Please choose a parent folder above your current project directory.”
+
+Make sure errors propagate through the daemon and the GUI (toast / inline error), and dialogs stay open so the user can correct the folder.
+
+Do not change the snapshot format; keep si_bands_demo.yml and si_dos_demo.yml as they are.
+
+2. Refactor Demo Gallery UX (no modal; integrated into Home)
+2.1 Replace the dialog with a Home sub-view
+
+Right now Demo Gallery is implemented as DemoGalleryDialog (a modal). We want:
+
+No large modal windows for core flows.
+
+Instead: Demo Gallery should be a sub-view inside the Home / Project Summary main panel.
+
+Refactor:
+
+In ProjectSummaryPanel (or in App.tsx if that’s where “Summary/Home” content is controlled), introduce a simple internal mode, for example:
+
+type HomeMode = 'welcome' | 'demo-gallery';
+
+const [homeMode, setHomeMode] = useState<HomeMode>('welcome');
+
+
+When no project is loaded:
+
+homeMode === 'welcome':
+
+Show the current Welcome content:
+
+“Open Project”
+
+“Create New Project”
+
+“Create Demo Project” / “Quick Demo”
+
+Demo Gallery entry
+
+homeMode === 'demo-gallery':
+
+Render Demo Gallery inline in the main content area:
+
+A small “← Back to Home” button at the top that sets homeMode = 'welcome'.
+
+Below that, the gallery grid/list.
+
+Remove the modal:
+
+Stop using DemoGalleryDialog as a popup. Either:
+
+Convert it into a DemoGalleryPanel component rendered inside the Home view, or
+
+Inline its contents into ProjectSummaryPanel (prefer a separate, reusable component).
+
+Delete the old Modal usage for Demo Gallery and remove dead code & CSS.
+
+2.2 Gallery contents & states
+
+Inside the Demo Gallery view:
+
+Use the existing daemon RPC (list_demo_projects) via window.qv / useQVClient.
+
+Three clear states (with data-testid):
+
+Loading
+
+Show a centered spinner + “Loading demo projects…”
+
+data-testid="qv-demo-gallery-loading"
+
+Error
+
+Show a prominent error card:
+
+“Failed to load demo projects”
+
+Show the error message from daemon
+
+“Retry” button that re-calls list_demo_projects
+
+data-testid="qv-demo-gallery-error"
+
+Success
+
+Render cards for each demo project. At least:
+
+Si Bands (si_bands_demo)
+
+Si DOS (si_dos_demo)
+
+Each card should have:
+
+Title (e.g. “Silicon band structure”)
+
+Short description (what workflow, what analyses)
+
+Tags / badges (e.g. “SCF + NSCF + BANDS”, “Analysis: Bands” / “DOS”)
+
+“Create Project” button.
+
+Use stable test IDs like:
+
+data-testid="qv-demo-card-si-bands"
+
+data-testid="qv-demo-card-si-dos"
+
+data-testid="qv-demo-card-btn-create-si-bands" etc.
+
+Reuse the metadata from the snapshot (or add a small schema in DemoProjectInfo if needed: title, description, default_name, recommended_analysis).
+
+3. Create Demo Project flow from Gallery
+
+Reuse the existing create demo backend:
+
+When the user clicks “Create Project” on a demo card:
+
+Use the same parent-folder picker logic as existing “Create Demo Project” button on the Welcome screen.
+
+Pass the selected demo_id ("si_bands_demo" or "si_dos_demo") to the daemon, and the chosen parent folder.
+
+Backend behavior must remain:
+
+create_demo_project(parent_dir, demo_id):
+
+Validates that parent_dir is not inside an existing project.
+
+Materializes the snapshot into a new project folder under parent_dir.
+
+Returns project metadata (id, name, slug, path).
+
+On success, the GUI should:
+
+Set this project as the current project root.
+
+Refresh structures/workflows (using existing hooks).
+
+Switch to the normal Home / Project Summary (project loaded) view (not staying in gallery).
+
+Show a success toast like “Demo project created at /path/to/project”.
+
+On error (validation, IO, etc.):
+
+Do not close the gallery.
+
+Show error inline on the card or as a toast, and allow the user to try again with a different location.
+
+4. Keep “no project in project” rule consistent in GUI
+
+We already enforce this in backend, but polish the front-end:
+
+On Welcome / Home:
+
+When the user picks a parent folder for Create New Project or Create Demo Project / Gallery card:
+
+If the backend responds with “cannot create inside existing project”, show a clear, user-friendly message.
+
+Keep the dialog / picker open so the user can choose another folder.
+
+Do not try to replicate detect_enclosing_project() logic in JS; just rely on the error message.
+
+No GUI option to delete project for now; users can delete project folders from the OS. CLI still supports deletion + trash.
+
+5. Update E2E tests to match new UX
+
+Refactor gui/tests/e2e/demo_gallery.spec.ts to the new behavior. Using the existing electronTest fixture:
+
+From fresh startup:
+
+Assert the Welcome view is visible (e.g. data-testid="qv-home-welcome").
+
+Find and click the Demo Gallery button (data-testid="qv-btn-demo-gallery").
+
+Assert:
+
+The main content switches to gallery view (data-testid="qv-demo-gallery-view").
+
+Loading state appears then disappears.
+
+At least the Si Bands card is visible (qv-demo-card-si-bands).
+
+Optionally also check Si DOS card.
+
+Simulate creating a project:
+
+Click “Create project” on the Si Bands card:
+
+For tests, pick temp/e2e_projects/ as parent folder (same as other tests); ensure this directory exists or is created by the test helper.
+
+Wait for:
+
+No error toast / console error (remember: the fixture already fails on console errors).
+
+Summary/Home view showing the loaded project and its path.
+
+Make the test resilient:
+
+Use getByTestId everywhere, with reasonable timeouts.
+
+Avoid brittle text-matching.
+
+Make sure all tests pass:
+
+python -m pytest
+
+cd gui && npm run build:e2e && npm run test:e2e
+
+…and that manual usage feels smooth: no hanging spinners, no stray windows, Demo Gallery feels like part of Home.
+
+Keep the code tidy: remove any dead DemoGalleryDialog modal code, update exports, and update AI_understanding.md to describe:
+
+Demo snapshots (si_bands_demo, si_dos_demo) in resources/demo_projects.
+
+Demo Gallery as a Home sub-view.
+
+“Create demo from gallery” workflow + workspace/parent-folder semantics.
+
+
+Summary
+Refactored the Demo Gallery from a modal dialog to an inline Home sub-view. Changes:
+1. Backend improvements
+Updated error messages in QVService.init_project() and QVService.create_demo_project() to be clearer when creating a project inside an existing project.
+Error message: "Cannot create a new project inside an existing QuantumVITAS project. The selected folder is inside a project at: <path>. Please choose a parent folder above your current project directory."
+2. UI refactoring
+Converted DemoGalleryDialog (modal) to DemoGalleryPanel (inline panel component).
+Added HomeMode state ('welcome' | 'demo-gallery') to ProjectSummaryPanel.
+When homeMode === 'demo-gallery' and no project is loaded, ProjectSummaryPanel renders DemoGalleryPanel inline.
+Added "← Back to Home" button in the gallery to return to welcome view.
+Removed modal usage; gallery is now part of the Home view.
+3. Demo Gallery features
+Loading state with spinner and "Loading demo projects..." message.
+Error state with error card, message, and "Retry" button.
+Success state with demo cards showing:
+Title (e.g., "Silicon band structure")
+Description
+Tags/badges
+"Create Project" button per card
+Stable test IDs: qv-demo-card-si-bands-demo, qv-demo-card-si-dos-demo, etc.
+4. Create project flow
+Clicking "Create Project" on a demo card opens the file picker for workspace folder selection.
+On success: project is created, loaded, and view switches back to welcome (with project loaded).
+On error: error shown inline on the card, gallery stays open for retry.
+5. Error handling
+CreateProjectDialog keeps the dialog open on validation errors (e.g., "inside existing project").
+Users can correct the folder choice without losing context.
+6. E2E tests
+Updated demo_gallery.spec.ts to test the new inline gallery UX.
+Tests verify:
+Welcome view → Demo Gallery button → Gallery view appears
+Loading state → Demo cards visible
+Create project flow → Project loads successfully
+7. Cleanup
+Deleted DemoGalleryDialog.tsx and DemoGalleryDialog.css.
+Removed DemoGalleryDialog export from components/dialogs/index.ts.
+Updated AI_understanding.md to document the new architecture.
+Files changed
+src/quantumvitas/api.py - Improved error messages
+gui/src/components/panels/DemoGalleryPanel.tsx - New inline panel component
+gui/src/components/panels/DemoGalleryPanel.css - New styles
+gui/src/components/panels/ProjectSummaryPanel.tsx - Added HomeMode state
+gui/src/App.tsx - Removed modal usage, updated props
+gui/tests/e2e/demo_gallery.spec.ts - Updated for new UX
+AI_understanding.md - Updated documentation
+All unit tests pass, and the E2E build completes successfully. The Demo Gallery is now integrated into the Home view as a sub-view rather than a modal.
+
+
+You are working in the QuantumVITAS v2 repo (Python core + Typer CLI + Python daemon + Electron/React GUI + Playwright E2E).
+
+Context
+- The Demo Gallery has already been refactored from a modal to an inline “Home” sub-view.
+- Demo snapshots live in `resources/demo_projects/` (e.g. `si_bands_demo.yml`, `si_dos_demo.yml`) and are exposed via:
+  - `QVService.list_demo_projects()`
+  - `QVService.create_demo_project(parent_dir, demo_id)`
+- Creating a project inside an existing project is forbidden and already validated via `detect_enclosing_project()`. GUI shows the backend error and keeps dialogs open.
+- The Home view is implemented in `gui/src/components/panels/ProjectSummaryPanel.tsx` with a `HomeMode` state (`'welcome' | 'demo-gallery'`).
+- E2E tests exist in `gui/tests/e2e/demo_gallery.spec.ts` and use the unified `electronTest` fixture.
+
+Please:
+1. Re-skim the design docs and code
+   - Read `AI_understanding.md` sections about:
+     - GUI architecture
+     - Resources vs demo snapshots
+     - E2E tests and electronTest fixture
+   - Scan:
+     - `src/quantumvitas/api.py` (init_project, create_demo_project, list_demo_projects)
+     - `src/quantumvitas/daemon/server.py` (demo RPC handlers)
+     - `src/quantumvitas/core/context.py` (detect_enclosing_project)
+     - `gui/src/App.tsx`
+     - `gui/src/components/panels/ProjectSummaryPanel.tsx`
+     - `gui/src/components/panels/DemoGalleryPanel.tsx`
+     - `gui/src/types/qv.ts`
+     - `gui/tests/e2e/demo_gallery.spec.ts`
+
+   Maintain the layering:
+   - GUI → `window.qv.*` → daemon → `QVService` → core.
+   - No direct GUI → core imports.
+
+2. Unify the Home + Demo Gallery entry
+   - Goal: for a new user, there should be a **single obvious entry point** for demos.
+   - Change the Home / Welcome view so that:
+     - We keep a “Demo Gallery” entry as the **main demo entry**.
+     - The simple “Create Demo Project” shortcut should:
+       - Either be removed, OR
+       - Just switch `HomeMode` to `'demo-gallery'` and focus the recommended demo (Si bands).
+   - The idea: All demo creation flows go through the gallery, not through a separate shortcut with different UX.
+   - Make sure the behavior is:
+     - When no project is loaded:
+       - Home shows “Open Project”, “Create New Project”, and one clear “Browse Demo Gallery” or similar button.
+       - Clicking that switches to `HomeMode = 'demo-gallery'`.
+     - When a project is loaded:
+       - Home shows the current project summary; the gallery may be hidden or shown as a small “Explore demos…” link (you decide a clean, non-confusing layout).
+
+3. Enrich demo metadata (backend + types) with forward-compatible fields
+   - In `resources/demo_projects/*.yml`, extend the snapshot schema to include a `meta` section if it doesn’t already, for example:
+
+     meta:
+       id: si_bands_demo
+       title: "Silicon band structure"
+       subtitle: "SCF → NSCF → Bands"
+       tags: ["bands", "Si", "PW", "tutorial"]
+       recommended_analysis: "bands"
+       difficulty: "beginner"
+
+   - Update the Python side (`list_demo_projects()` and its return type) and TS types (`DemoProjectInfo`) so these fields are available in the GUI.
+   - Keep the snapshot format backward-compatible: if older snapshots are missing a field, use sensible defaults.
+
+4. Improve Demo Gallery UI using the new metadata
+   - In `DemoGalleryPanel`:
+     - Use `title` and `subtitle` for the card heading and subheading.
+     - Render tags as small badges/pills.
+     - Optionally display `difficulty` in a subtle way.
+   - On “Create Project”:
+     - Continue to use `create_demo_project(parent_dir, demo_id)` as now.
+     - After successful creation:
+       - Set the new project as current.
+       - Switch back to the normal “project loaded” Home summary.
+       - If `recommended_analysis` is present, store it in state so that:
+         - When the user later switches to the Analysis view, the default analysis type can be pre-selected (e.g. Bands for Si bands demo). It’s okay if this is a small helper function in `App.tsx` or a dedicated hook.
+
+5. Make workspace / project context more visible (small UX tweak)
+   - Without changing the underlying model, add a subtle line on Home when a project is loaded, for example:
+
+     “Workspace: /Users/... · Current project: demo-si-project”
+
+   - You can derive “workspace” as the parent directory of `project_root`.
+   - Keep it visually light (small text), but give users a hint about where their projects live.
+
+6. Update E2E tests to match the new UX
+   - Adapt `gui/tests/e2e/demo_gallery.spec.ts` so it:
+     - Starts on Welcome.
+     - Clicks the Demo Gallery entry (whatever the new button is called; use data-testid).
+     - Verifies the gallery view, cards, and “Create Project” flow behave as before.
+     - If you change test IDs on the cards (for tags, subtitles, etc.), update the assertions accordingly.
+   - Ensure tests still create demo projects in `temp/e2e_projects/` and that all existing tests continue to pass.
+
+7. Documentation
+   - Update `AI_understanding.md`:
+     - Demo section: explain that Demo Gallery is the single entry point for demo projects.
+     - Document the updated snapshot meta fields and how they are used in the UI.
+     - Add a short note about the workspace vs project display on Home.
+
+After implementing, run:
+- `python -m pytest`
+- `cd gui && npm run build:e2e && npm run test:e2e`
+
+Ensure:
+- No TypeScript errors.
+- No Playwright failures.
+- No uncaught console errors during E2E (the electronTest fixture should enforce this).
+
+
+Summary
+1. Unified Home + Demo Gallery entry
+Removed "Quick Demo (Si Bands)" button
+"Browse Demo Gallery" is now the single entry point for demos
+All demo creation flows go through the gallery
+2. Enriched demo metadata
+Added meta section to snapshot schema (ProjectSnapshot.meta)
+Metadata fields:
+id: Demo identifier
+title: Display title
+subtitle: Short description (e.g., "SCF → NSCF → Bands")
+tags: List of tags (e.g., ["bands", "Si", "PW", "tutorial"])
+recommended_analysis: Default analysis type ("bands", "dos")
+difficulty: Difficulty level ("beginner", "intermediate", "advanced")
+Updated si_bands_demo.yml and si_dos_demo.yml with metadata
+Backend (QVService.list_demo_projects()) reads metadata from snapshots with fallback to defaults for backward compatibility
+3. Updated TypeScript types
+Extended DemoProjectInfo interface with title, subtitle, tags, recommended_analysis, difficulty
+4. Improved Demo Gallery UI
+Cards display:
+Title and subtitle (from metadata)
+Tags as badges
+Difficulty badge (highlighted)
+Description
+Updated CSS for the new layout
+5. Workspace/project context display
+Added context line on Home when a project is loaded:
+"Workspace: /path/to/parent · Current project: project-name"
+Derived from project path (parent directory)
+Styled as subtle text below the panel header
+6. Recommended analysis integration
+When a demo project is created with recommended_analysis, the Analysis view pre-selects that analysis type
+Stored in app state and passed to AnalysisPanel as defaultAnalysis prop
+7. Updated E2E tests
+demo_gallery.spec.ts updated for new UX:
+Verifies metadata display (title, subtitle, tags)
+Tests gallery as inline sub-view (not modal)
+Uses stable test IDs
+8. Updated documentation
+Updated AI_understanding.md with:
+Demo Gallery as single entry point
+Snapshot metadata schema
+Workspace/project context display
+Recommended analysis flow
+Files changed
+src/quantumvitas/project/snapshot.py - Added meta field to ProjectSnapshot
+src/quantumvitas/api.py - Updated list_demo_projects() to read metadata from snapshots
+resources/demo_projects/si_bands_demo.yml - Added metadata section
+resources/demo_projects/si_dos_demo.yml - Added metadata section
+gui/src/types/qv.ts - Extended DemoProjectInfo interface
+gui/src/components/panels/ProjectSummaryPanel.tsx - Removed Quick Demo, added workspace context
+gui/src/components/panels/DemoGalleryPanel.tsx - Enhanced UI with metadata display
+gui/src/components/panels/DemoGalleryPanel.css - Updated styles for new layout
+gui/src/components/panels/ProjectSummaryPanel.css - Added workspace context styles
+gui/src/components/panels/AnalysisPanel.tsx - Added defaultAnalysis prop support
+gui/src/App.tsx - Integrated recommended analysis flow
+gui/tests/e2e/demo_gallery.spec.ts - Updated for new UX
+AI_understanding.md - Updated documentation
+All TypeScript builds pass, and the code is ready for testing. The Demo Gallery is now the single entry point with enriched metadata and improved UX.
+
+
+You are debugging my Electron + Playwright E2E tests for QuantumVITAS GUI.
+
+Context (please read these first)
+
+High-level doc
+
+Open AI_understanding.md and re-read the sections about:
+
+Home / Welcome screen
+
+Demo Gallery (inline sub-view, not a modal)
+
+Demo snapshots in resources/demo_projects/ (esp. si_bands_demo.yml and si_dos_demo.yml)
+
+The current UX is:
+
+Home shows:
+
+“Open Project”
+
+“Create New Project”
+
+“Browse Demo Gallery” (single entry point for demos)
+
+Demo flow:
+Home → Browse Demo Gallery → pick a demo card (e.g. Silicon Bands) → Create Project → pick workspace folder → project loads
+
+E2E tests we have:
+
+welcome.spec.ts
+
+demo_workflow.spec.ts
+
+demo_workflow_run.spec.ts
+
+demo_gallery.spec.ts
+
+step_defaults.spec.ts
+
+All of them use the unified electronTest fixture from gui/tests/e2e/fixtures/electronTest.ts.
+
+After recent refactors, these tests are now slow/hanging and eventually failing.
+
+What I want you to do
+
+Please debug and fix the E2E tests so they match the current GUI behavior and are stable again.
+
+Step 1 — Inspect current tests vs current UI
+
+Open all the E2E specs listed above and very carefully note where they still assume:
+
+A button with test ID qv-btn-create-demo-project exists on the welcome screen, or
+
+A demo is created directly without going through Demo Gallery, or
+
+Demo Gallery is a modal dialog instead of an inline panel.
+
+Open these React components to see the current structure and test IDs actually used:
+
+gui/src/App.tsx
+
+gui/src/components/panels/ProjectSummaryPanel.tsx
+
+gui/src/components/panels/DemoGalleryPanel.tsx
+
+Any other panel used by the tests (Workflows, Jobs, Analysis, StepDetail, etc.)
+
+Confirm:
+
+The Home screen test IDs for buttons:
+
+“Open Project”
+
+“Create New Project”
+
+“Browse Demo Gallery”
+
+The Demo Gallery test IDs for:
+
+The gallery root panel
+
+The Si Bands demo card (id is something like qv-demo-card-si-bands-demo)
+
+The Si DOS demo card
+
+The “Create Project” button on each card
+
+If any of these test IDs have changed since the tests were written, note them.
+
+Step 2 — Update demo creation flow in tests
+
+Right now, the real UX is:
+
+Home → click "Browse Demo Gallery"
+    → wait for demo gallery panel
+    → click Si Bands demo card's "Create Project" button
+    → choose workspace (Playwright uses our helper / test path)
+    → wait for project load (Home shows current project / Structures / Workflows enabled)
+
+
+You need to:
+
+Refactor all tests that create a demo project (demo_workflow*.spec.ts, step_defaults.spec.ts, etc.) to use a single helper:
+
+Create a helper function in gui/tests/e2e/helpers/ (or inside fixtures/electronTest.ts), e.g.:
+
+async function createDemoProject(
+  page: Page,
+  options?: { demoId?: string; projectName?: string }
+) { ... }
+
+
+Default should use Si Bands (demoId = 'si-bands-demo') for workflow/analysis tests.
+
+The helper should:
+
+Wait for home to be ready (welcome test id)
+
+Click "Browse Demo Gallery"
+
+Wait for gallery panel
+
+Locate the correct demo card by data-testid (e.g. qv-demo-card-si-bands-demo)
+
+Click its “Create Project” button
+
+Handle the workspace selection using the same mechanism as current tests (we already choose temp/e2e_projects as parent)
+
+Wait until:
+
+The Home view shows project loaded (project name somewhere), and
+
+The Workflows/Structures tabs are enabled
+
+Replace all existing inline “create demo project” flows in specs with this helper.
+
+For example, demo_workflow_run.spec.ts should call await createDemoProject(appPage, { demoId: 'si-bands-demo', projectName: 'e2e-run' }) at the beginning.
+
+For demo_gallery.spec.ts, update the assertions:
+
+There is no standalone “Create Demo Project” button anymore.
+
+Flow should be:
+
+Wait for Home welcome
+
+Click “Browse Demo Gallery” (check the correct test ID)
+
+Wait for gallery root visible
+
+Assert both demo cards exist: Si Bands & Si DOS
+
+Assert metadata (title, subtitle, tags) appears
+
+Then pick one demo (e.g. Si DOS) to create a project, and verify project loads.
+
+Step 3 — Add logging & debug failing step
+
+Right now tests “stick and fail slowly”. We need to see exactly where.
+
+Run one test at a time in headed debug mode:
+
+cd gui
+npm run build:e2e
+npx playwright test tests/e2e/demo_workflow.spec.ts --project=electron --debug
+
+
+Add temporary console.log (or Playwright test.step) inside the tests to log progress:
+
+Before clicking a button
+
+After waiting for a selector
+
+Before any long waitFor or polling
+
+If a test is waiting for an element that never appears, fix the selector or wait condition to match the current UI:
+
+e.g. old qv-btn-create-demo-project → new qv-btn-demo-gallery
+
+old modal testId → new inline panel testId
+
+Keep in mind we now have automatic console-error assertion in electronTest fixture:
+
+If the app logs unexpected errors to console.error, the test will fail.
+
+If needed, extend the allowlist in the fixture, but do not blindly ignore errors; instead, fix real front-end errors.
+
+Step 4 — Keep tests DRY and robust
+
+While refactoring, please:
+
+Centralize common flows:
+
+waitForHomeWelcome(appPage)
+
+createDemoProject(appPage, { demoId, projectName })
+
+navigateToWorkflows(appPage) / navigateToJobs(appPage) / navigateToAnalysis(appPage)
+
+Prefer getByTestId over text-based selectors.
+
+Never hard-code texts that might change in translation or copy tweaks (e.g., use test IDs like data-testid="qv-btn-demo-gallery").
+
+Step 5 — Make sure CI stays green
+
+After fixing tests, ensure:
+
+npm run build:e2e
+
+npm run test:e2e
+both pass locally.
+
+Then double-check .github/workflows/tests.yml to confirm:
+
+The same specs run on Linux & macOS,
+
+No references to old *_cdp.spec.ts files (we unified them already).
+
+Deliverables I expect from you:
+
+Updated E2E specs that match the current demo flow via Demo Gallery.
+
+A small helper function for “create demo project via gallery” that all tests reuse.
+
+Clear comments in the tests explaining the expected UX flow (Home → Gallery → Demo → Project loaded).
+
+No hangs/timeouts in E2E tests, and no unexpected console errors during runs.
+
+If something in the UX or code structure blocks you (e.g., missing test IDs, unclear flow), please first propose minimal, concrete changes in the React components (like adding data-testids) and then update the tests accordingly.
+
+

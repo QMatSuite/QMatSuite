@@ -1,4 +1,4 @@
-export PYTHONSRC="/Users/pu1/src/quantumVITAS"
+export PYTHONSRC="/Users/up/quantumVITAS"
 qv init project --name project1
 cd project1
 qv import-structure $PYTHONSRC/tests/integration/ci_test_data/4_Si_DOS/si.1_scf.in

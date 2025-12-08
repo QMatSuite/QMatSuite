@@ -80,6 +80,79 @@ workflows:
   working_dir: raw
   steps:
   - meta:
+      id: 01KBYDEDM2CXB5BW629KHP2YRW
+      name: scf
+      slug: scf
+      path: workflows/si-bands/steps/scf.step.yaml
+      kind: step
+    structure: si
+    step_type: scf
+    parent_workflow_id: 01KBH0RGF179RD73PNKD0N8GNS
+    parameters:
+      CONTROL:
+        calculation: scf
+        outdir: ./outdir
+        prefix: si
+        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+        restart_mode: from_scratch
+      ELECTRONS:
+        conv_thr: 1.0e-08
+      SYSTEM:
+        ecutrho: 320
+        ecutwfc: 40
+        nbnd: 8
+    cards:
+      K_POINTS:
+        option: automatic
+        data:
+        - - 8
+          - 8
+          - 8
+          - 0
+          - 0
+          - 0
+    species_overrides:
+      Si:
+        mass: 28.0855
+        pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+  - meta:
+      id: 01KBYDGAW6A16J9DF6GTBWWQNE
+      name: nscf
+      slug: nscf
+      path: workflows/si-bands/steps/nscf.step.yaml
+      kind: step
+    structure: si
+    step_type: nscf
+    parent_workflow_id: 01KBH0RGF179RD73PNKD0N8GNS
+    parameters:
+      CONTROL:
+        calculation: nscf
+        outdir: ./outdir
+        prefix: si
+        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+        restart_mode: from_scratch
+      ELECTRONS:
+        conv_thr: 1.0e-08
+      SYSTEM:
+        ecutrho: 320
+        ecutwfc: 40
+        nbnd: 8
+        occupations: tetrahedra
+    cards:
+      K_POINTS:
+        option: automatic
+        data:
+        - - 12
+          - 12
+          - 12
+          - 0
+          - 0
+          - 0
+    species_overrides:
+      Si:
+        mass: 28.0855
+        pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+  - meta:
       id: 01KBH1ZPE9F10VY6WG88X6ZMPC
       name: bands_pw
       slug: bands_pw
@@ -132,9 +205,9 @@ workflows:
         pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
   - meta:
       id: 01KBH1V6W4P5X65ZA6SAM0FYER
-      name: bands2
-      slug: bands2
-      path: workflows/si-bands/steps/bands2.step.yaml
+      name: bands_pp
+      slug: bands_pp
+      path: bands2.step.yaml
       kind: step
     structure: si
     step_type: bands
@@ -144,342 +217,14 @@ workflows:
         filband: si.bands.pp.dat
         outdir: ./outdir/
         prefix: si
-- meta:
-    id: 01KBH5KYPE659SWXHXQP1BXX16
-    name: Si bands auto k
-    slug: si-bands-auto-k
-    path: workflows/si-bands-auto-k
-    kind: workflow
-  structure: si
-  mode: normal
-  working_dir: raw
-  steps:
-  - meta:
-      id: 01KBH5N16S5F4B4N1N2FDJE30V
-      name: scf
-      slug: scf
-      path: scf.step.yaml
-      kind: step
-    structure: si
-    step_type: scf
-    parent_workflow_id: 01KBH5KYPE659SWXHXQP1BXX16
-    parameters:
-      CONTROL:
-        calculation: scf
-        outdir: ./outdir
-        prefix: si
-        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
-        restart_mode: from_scratch
-      ELECTRONS:
-        conv_thr: 1.0e-08
-      SYSTEM:
-        ecutrho: 320
-        ecutwfc: 40
-        nbnd: 8
-    cards:
-      K_POINTS:
-        option: automatic
-        data:
-        - - 8
-          - 8
-          - 8
-          - 0
-          - 0
-          - 0
-    species_overrides:
-      Si:
-        mass: 28.0855
-        pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
-  - meta:
-      id: 01KBH6NXY0WVRQ0FAB992Y0WFP
-      name: nscf
-      slug: nscf
-      path: workflows/si-bands-auto-k/steps/nscf.step.yaml
-      kind: step
-    structure: si
-    step_type: nscf
-    parent_workflow_id: 01KBH5KYPE659SWXHXQP1BXX16
-    parameters:
-      CONTROL:
-        calculation: nscf
-        outdir: ./outdir
-        prefix: si
-        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
-        restart_mode: from_scratch
-      ELECTRONS:
-        conv_thr: 1.0e-08
-      SYSTEM:
-        ecutrho: 320
-        ecutwfc: 40
-        nbnd: 8
-        occupations: tetrahedra
-    cards:
-      K_POINTS:
-        option: automatic
-        data:
-        - - 12
-          - 12
-          - 12
-          - 0
-          - 0
-          - 0
-    species_overrides:
-      Si:
-        mass: 28.0855
-        pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
-  - meta:
-      id: 01KBH6W3X8CAHHYWH3SEDFV2K3
-      name: bands_pw
-      slug: bands_pw
-      path: workflows/si-bands-auto-k/steps/bands_pw.step.yaml
-      kind: step
-    structure: si
-    step_type: bands_pw
-    parent_workflow_id: 01KBH5KYPE659SWXHXQP1BXX16
-    parameters:
-      CONTROL:
-        calculation: bands
-        outdir: ./outdir
-        prefix: si
-        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
-        restart_mode: from_scratch
-      ELECTRONS:
-        conv_thr: 1.0e-08
-      SYSTEM:
-        ecutrho: 320
-        ecutwfc: 40
-        nbnd: 8
-    cards:
-      K_POINTS:
-        option: crystal_b
-        data:
-        - - 11
-        - - 0.0
-          - 0.0
-          - 0.0
-          - 20
-        - - 0.5
-          - 0.0
-          - 0.5
-          - 20
-        - - 0.5
-          - 0.25
-          - 0.75
-          - 20
-        - - 0.375
-          - 0.375
-          - 0.75
-          - 20
-        - - 0.0
-          - 0.0
-          - 0.0
-          - 20
-        - - 0.5
-          - 0.5
-          - 0.5
-          - 20
-        - - 0.625
-          - 0.25
-          - 0.625
-          - 20
-        - - 0.5
-          - 0.25
-          - 0.75
-          - 20
-        - - 0.5
-          - 0.5
-          - 0.5
-          - 20
-        - - 0.375
-          - 0.375
-          - 0.75
-          - 20
-        - - 0.5
-          - 0.0
-          - 0.5
-          - 0
-    species_overrides:
-      Si:
-        mass: 28.0855
-        pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
-    kpath_metadata:
-      segments:
-      - start_label: "\u0393"
-        end_label: X
-        start_coords:
-        - 0.0
-        - 0.0
-        - 0.0
-        end_coords:
-        - 0.5
-        - 0.0
-        - 0.5
-        n_points: 20
-      - start_label: X
-        end_label: W
-        start_coords:
-        - 0.5
-        - 0.0
-        - 0.5
-        end_coords:
-        - 0.5
-        - 0.25
-        - 0.75
-        n_points: 20
-      - start_label: W
-        end_label: K
-        start_coords:
-        - 0.5
-        - 0.25
-        - 0.75
-        end_coords:
-        - 0.375
-        - 0.375
-        - 0.75
-        n_points: 20
-      - start_label: K
-        end_label: "\u0393"
-        start_coords:
-        - 0.375
-        - 0.375
-        - 0.75
-        end_coords:
-        - 0.0
-        - 0.0
-        - 0.0
-        n_points: 20
-      - start_label: "\u0393"
-        end_label: L
-        start_coords:
-        - 0.0
-        - 0.0
-        - 0.0
-        end_coords:
-        - 0.5
-        - 0.5
-        - 0.5
-        n_points: 20
-      - start_label: L
-        end_label: U
-        start_coords:
-        - 0.5
-        - 0.5
-        - 0.5
-        end_coords:
-        - 0.625
-        - 0.25
-        - 0.625
-        n_points: 20
-      - start_label: U
-        end_label: W
-        start_coords:
-        - 0.625
-        - 0.25
-        - 0.625
-        end_coords:
-        - 0.5
-        - 0.25
-        - 0.75
-        n_points: 20
-      - start_label: W
-        end_label: L
-        start_coords:
-        - 0.5
-        - 0.25
-        - 0.75
-        end_coords:
-        - 0.5
-        - 0.5
-        - 0.5
-        n_points: 20
-      - start_label: L
-        end_label: K
-        start_coords:
-        - 0.5
-        - 0.5
-        - 0.5
-        end_coords:
-        - 0.375
-        - 0.375
-        - 0.75
-        n_points: 20
-      - start_label: U
-        end_label: X
-        start_coords:
-        - 0.625
-        - 0.25
-        - 0.625
-        end_coords:
-        - 0.5
-        - 0.0
-        - 0.5
-        n_points: 20
-      labels:
-      - "\u0393"
-      - X
-      - W
-      - K
-      - "\u0393"
-      - L
-      - U
-      - W
-      - L
-      - K
-      - U
-      - X
-      coords:
-      - - 0.0
-        - 0.0
-        - 0.0
-      - - 0.5
-        - 0.0
-        - 0.5
-      - - 0.5
-        - 0.25
-        - 0.75
-      - - 0.375
-        - 0.375
-        - 0.75
-      - - 0.0
-        - 0.0
-        - 0.0
-      - - 0.5
-        - 0.5
-        - 0.5
-      - - 0.625
-        - 0.25
-        - 0.625
-      - - 0.5
-        - 0.25
-        - 0.75
-      - - 0.5
-        - 0.5
-        - 0.5
-      - - 0.375
-        - 0.375
-        - 0.75
-      - - 0.625
-        - 0.25
-        - 0.625
-      - - 0.5
-        - 0.0
-        - 0.5
-      lattice_type: cubic
-      spacegroup_symbol: Fd-3m
-      spacegroup_number: 227
-      tick_positions: null
-      tick_labels: null
-  - meta:
-      id: 01KBH6NZB9EPXD4P9FK4H4EGB8
-      name: bands
-      slug: bands
-      path: bands.step.yaml
-      kind: step
-    structure: si
-    step_type: bands
-    parent_workflow_id: 01KBH5KYPE659SWXHXQP1BXX16
-    parameters:
-      BANDS:
-        filband: si.bands.pp.dat
-        outdir: ./outdir/
-        prefix: si
+meta:
+  id: si_bands_demo
+  title: Silicon band structure
+  subtitle: "SCF \u2192 NSCF \u2192 Bands"
+  tags:
+  - bands
+  - Si
+  - PW
+  - tutorial
+  recommended_analysis: bands
+  difficulty: beginner
