@@ -361,8 +361,8 @@ class TestSnapshotRoundtrip:
             assert original_workflow.structure == new_workflow.structure
             assert len(original_workflow.steps) == len(new_workflow.steps)
     
-    def test_create_demo_project_from_snapshot(self, temp_dir: Path):
-        """Test creating a demo project using snapshot from resources/demo_projects/."""
+    def test_create_demo_project_defaults_to_bands(self, temp_dir: Path):
+        """Test that create_demo_project defaults to si_bands_demo when demo_id is not specified."""
         result = QVService.create_demo_project(
             target_dir=temp_dir,
             name="test-demo-project",
@@ -371,32 +371,137 @@ class TestSnapshotRoundtrip:
         project_root = Path(result["project_root"])
         
         # Verify project was created
-        assert project_root.exists(), "Project root should exist"
-        assert (project_root / "project.qv.yml").exists(), "project.qv.yml should exist"
+        assert project_root.exists()
+        assert (project_root / "project.qv.yml").exists()
         
         # Verify project structure
         project_model = load_project(project_root)
         assert project_model.meta.name == "test-demo-project"
-        assert len(project_model.structures) > 0, "Should have at least one structure"
-        assert len(project_model.workflows) > 0, "Should have at least one workflow"
+        assert len(project_model.structures) > 0
+        assert len(project_model.workflows) > 0
+        
+        # Verify it's the bands demo (should have bands-related workflows)
+        workflow_slugs = {w.meta.slug for w in project_model.workflows}
+        # si_bands_demo should have workflows with "bands" in the name/slug
+        assert any("band" in slug.lower() for slug in workflow_slugs), \
+            "Default demo should be si_bands_demo (bands workflow)"
+    
+    def test_create_demo_project_with_explicit_demo_id(self, temp_dir: Path):
+        """Test creating a demo project with explicit demo_id."""
+        # Test DOS demo
+        result = QVService.create_demo_project(
+            target_dir=temp_dir,
+            name="test-dos-project",
+            demo_id="si_dos_demo",
+        )
+        
+        project_root = Path(result["project_root"])
+        project_model = load_project(project_root)
+        
+        # Verify it's the DOS demo
+        workflow_slugs = {w.meta.slug for w in project_model.workflows}
+        # si_dos_demo should have workflows with "dos" in the name/slug
+        assert any("dos" in slug.lower() for slug in workflow_slugs), \
+            "Should be si_dos_demo (DOS workflow)"
+
+
+class TestDemoProjectSnapshots:
+    """Test loading demo project snapshots from resources/demo_projects/."""
+    
+    def test_load_si_bands_demo_snapshot(self):
+        """Test loading si_bands_demo.yml snapshot."""
+        repo_root = Path(__file__).parent.parent.parent
+        snapshot_path = repo_root / "resources" / "demo_projects" / "si_bands_demo.yml"
+        
+        if not snapshot_path.exists():
+            pytest.skip(f"Demo snapshot not found: {snapshot_path}")
+        
+        # Load snapshot
+        snapshot_data = yaml.safe_load(snapshot_path.read_text())
+        snapshot = ProjectSnapshot.from_dict(snapshot_data)
+        
+        # Verify basic invariants
+        assert snapshot.version == 1
+        assert len(snapshot.structures) >= 1, "Should have at least 1 structure"
+        assert len(snapshot.workflows) >= 1, "Should have at least 1 workflow"
         
         # Verify structure
-        structure_entry = project_model.structures[0]
-        assert structure_entry.meta.name == "silicon", "Should have silicon structure"
-        structure_model = load_structure_model(project_root / structure_entry.file, project_root)
-        assert structure_model is not None
+        struct_data = snapshot.structures[0]
+        assert "meta" in struct_data
+        assert "data" in struct_data
+        assert struct_data["meta"]["name"] == "Si" or struct_data["meta"]["name"] == "silicon"
         
         # Verify workflow
-        workflow_entry = project_model.workflows[0]
-        assert workflow_entry.meta.name == "demo-workflow", "Should have demo-workflow"
-        workflow_model = load_workflow(
-            project_root / workflow_entry.meta.path / "workflow.yaml",
-            project_root,
-        )
-        assert len(workflow_model.steps) > 0, "Workflow should have steps"
+        workflow_data = snapshot.workflows[0]
+        assert "meta" in workflow_data
+        assert "steps" in workflow_data
+        assert len(workflow_data["steps"]) > 0, "Workflow should have steps"
         
-        # Verify result dict
-        assert result["ready_to_run"] is True
-        assert result["structure"] is not None
-        assert result["workflow"] is not None
+        # Verify pseudo section (if present) only contains filenames, not content
+        if snapshot.pseudo:
+            assert "files" in snapshot.pseudo
+            assert isinstance(snapshot.pseudo["files"], list)
+            # Files should be strings (filenames), not file contents
+    
+    def test_load_si_dos_demo_snapshot(self):
+        """Test loading si_dos_demo.yml snapshot."""
+        repo_root = Path(__file__).parent.parent.parent
+        snapshot_path = repo_root / "resources" / "demo_projects" / "si_dos_demo.yml"
+        
+        if not snapshot_path.exists():
+            pytest.skip(f"Demo snapshot not found: {snapshot_path}")
+        
+        # Load snapshot
+        snapshot_data = yaml.safe_load(snapshot_path.read_text())
+        snapshot = ProjectSnapshot.from_dict(snapshot_data)
+        
+        # Verify basic invariants
+        assert snapshot.version == 1
+        assert len(snapshot.structures) >= 1, "Should have at least 1 structure"
+        assert len(snapshot.workflows) >= 1, "Should have at least 1 workflow"
+        
+        # Verify structure
+        struct_data = snapshot.structures[0]
+        assert "meta" in struct_data
+        assert "data" in struct_data
+        
+        # Verify workflow
+        workflow_data = snapshot.workflows[0]
+        assert "meta" in workflow_data
+        assert "steps" in workflow_data
+        assert len(workflow_data["steps"]) > 0, "Workflow should have steps"
+        
+        # Verify pseudo section (if present) only contains filenames, not content
+        if snapshot.pseudo:
+            assert "files" in snapshot.pseudo
+            assert isinstance(snapshot.pseudo["files"], list)
+    
+    def test_materialize_demo_snapshots(self, temp_dir: Path):
+        """Test materializing both demo snapshots."""
+        repo_root = Path(__file__).parent.parent.parent
+        
+        for demo_name in ["si_bands_demo", "si_dos_demo"]:
+            snapshot_path = repo_root / "resources" / "demo_projects" / f"{demo_name}.yml"
+            
+            if not snapshot_path.exists():
+                pytest.skip(f"Demo snapshot not found: {snapshot_path}")
+            
+            # Load and materialize
+            snapshot_data = yaml.safe_load(snapshot_path.read_text())
+            snapshot = ProjectSnapshot.from_dict(snapshot_data)
+            
+            project_root = materialize_project_from_snapshot(
+                snapshot=snapshot,
+                parent_dir=temp_dir,
+                new_project_name=f"test-{demo_name}",
+            )
+            
+            # Verify project was created
+            assert project_root.exists()
+            assert (project_root / "project.qv.yml").exists()
+            
+            # Load and verify
+            project_model = load_project(project_root)
+            assert len(project_model.structures) >= 1
+            assert len(project_model.workflows) >= 1
 

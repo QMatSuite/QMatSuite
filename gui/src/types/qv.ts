@@ -649,8 +649,16 @@ export interface QVCommandMap {
     payload: {
       target_dir: string;
       name?: string;
+      demo_id?: string;
     };
     result: DemoProjectResult;
+  };
+  list_demo_projects: {
+    payload: Record<string, never>;
+    result: {
+      demos: DemoProjectInfo[];
+      count: number;
+    };
   };
   
   // Find project root (search up)
@@ -707,6 +715,14 @@ export interface PreflightCheckResult {
   checks: PreflightCheck[];
   errors: string[];
   warnings: string[];
+}
+
+export interface DemoProjectInfo {
+  id: string;
+  name: string;
+  description: string;
+  recommended_use: string;
+  estimated_runtime_scf?: number | null;
 }
 
 export interface DemoProjectResult {

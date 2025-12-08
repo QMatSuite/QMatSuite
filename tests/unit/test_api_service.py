@@ -44,6 +44,39 @@ class TestQVServiceProject:
         
         config = yaml.safe_load((project_dir / "project.qv.yml").read_text())
         assert config["project"]["name"] == "Renamed"
+    
+    def test_init_project_prevents_nested_project(self, tmp_path):
+        """Test that init_project raises ValueError if target_dir is inside an existing project."""
+        # Create a project
+        parent_project = tmp_path / "parent-project"
+        QVService.init_project(parent_project, name="Parent Project")
+        
+        # Try to create a project inside the existing project
+        nested_dir = parent_project / "nested-project"
+        with pytest.raises(ValueError, match="inside an existing QuantumVITAS project"):
+            QVService.init_project(nested_dir, name="Nested Project")
+    
+    def test_init_project_prevents_creating_in_project_subdir(self, tmp_path):
+        """Test that init_project prevents creating in structures/workflows subdirectories."""
+        # Create a project
+        project_dir = tmp_path / "project"
+        QVService.init_project(project_dir, name="Test Project")
+        
+        # Try to create a project in the structures subdirectory
+        structures_dir = project_dir / "structures" / "new-project"
+        with pytest.raises(ValueError, match="inside an existing QuantumVITAS project"):
+            QVService.init_project(structures_dir, name="Nested Project")
+    
+    def test_create_demo_project_prevents_nested_project(self, tmp_path):
+        """Test that create_demo_project raises ValueError if target_dir is inside an existing project."""
+        # Create a project
+        parent_project = tmp_path / "parent-project"
+        QVService.init_project(parent_project, name="Parent Project")
+        
+        # Try to create a demo project inside the existing project
+        nested_dir = parent_project / "demo-project"
+        with pytest.raises(ValueError, match="inside an existing QuantumVITAS project"):
+            QVService.create_demo_project(nested_dir, name="Demo Project")
 
 
 class TestQVServiceStructure:
