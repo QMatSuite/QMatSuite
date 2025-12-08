@@ -28,6 +28,19 @@ const DEFAULT_TEST_TIMEOUT = 30 * 1000;
 // Extended timeout: 3 minutes for tests with QE job execution
 const QE_JOB_TEST_TIMEOUT = 3 * 60 * 1000;
 
+// Allowlist of known benign console messages that don't indicate bugs
+// Keep this minimal and documented - only add patterns for messages we can't avoid
+const BENIGN_CONSOLE_PATTERNS = [
+  /^Warning:/,  // React warnings (dev mode)
+  /React DevTools/,  // React DevTools messages
+  /^\[webpack-dev-server\]/,  // Webpack dev server messages (if in dev mode)
+  /^Download the React DevTools/,  // React DevTools suggestion
+];
+
+function isBenignConsoleMessage(text: string): boolean {
+  return BENIGN_CONSOLE_PATTERNS.some(pattern => pattern.test(text));
+}
+
 /**
  * Unified Electron test fixture
  * 
@@ -100,6 +113,11 @@ export const electronTest = base.extend<ElectronFixtures>({
         throw new Error('Electron page crashed during test.');
       });
       
+      // Collect console errors and page errors for auto-assertion
+      const consoleErrors: string[] = [];
+      const pageErrors: string[] = [];
+      const networkFailures: string[] = [];
+      
       // Monitor console for errors (including EPIPE)
       page.on('console', (msg) => {
         const text = msg.text();
@@ -110,6 +128,11 @@ export const electronTest = base.extend<ElectronFixtures>({
           const error = new Error(`Electron process encountered EPIPE error during test execution: ${text}. This indicates stdout/stderr streams were closed prematurely. Test will stop immediately.`);
           // Reject the test immediately
           throw error;
+        }
+        
+        // Collect console errors (excluding benign messages)
+        if (type === 'error' && !isBenignConsoleMessage(text)) {
+          consoleErrors.push(`[Console Error] ${text}`);
         }
         
         // Log other console messages for debugging
@@ -125,11 +148,36 @@ export const electronTest = base.extend<ElectronFixtures>({
         if (errorMessage.includes('EPIPE') || errorMessage.includes('write EPIPE')) {
           throw new Error(`Electron process encountered EPIPE error (uncaught exception): ${errorMessage}. Test will stop immediately.`);
         }
+        // Collect page errors
+        pageErrors.push(`[Page Error] ${errorMessage}`);
+      });
+      
+      // Monitor network failures
+      page.on('requestfailed', (request) => {
+        const failure = request.failure();
+        if (failure) {
+          networkFailures.push(`[Network Failure] ${request.method()} ${request.url()}: ${failure.errorText}`);
+        }
       });
       
       // Use the page in the test
       // The app will stay open throughout the entire test execution
       await use(page);
+      
+      // Auto-assert: fail test if there were any unexpected errors
+      if (consoleErrors.length > 0 || pageErrors.length > 0 || networkFailures.length > 0) {
+        const errorMessages: string[] = [];
+        if (consoleErrors.length > 0) {
+          errorMessages.push(`Console errors (${consoleErrors.length}):\n${consoleErrors.join('\n')}`);
+        }
+        if (pageErrors.length > 0) {
+          errorMessages.push(`Page errors (${pageErrors.length}):\n${pageErrors.join('\n')}`);
+        }
+        if (networkFailures.length > 0) {
+          errorMessages.push(`Network failures (${networkFailures.length}):\n${networkFailures.join('\n')}`);
+        }
+        throw new Error(`Test failed due to unexpected errors:\n${errorMessages.join('\n\n')}`);
+      }
       
     } catch (error: any) {
       // If test timed out or failed, provide clear error message

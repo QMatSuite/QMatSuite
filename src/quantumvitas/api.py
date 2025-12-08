@@ -83,7 +83,6 @@ class QVService:
     def init_project(
         target_dir: Path,
         name: Optional[str] = None,
-        template: Optional[str] = None,
     ) -> Path:
         """
         Initialize a new QuantumVITAS project.
@@ -91,16 +90,11 @@ class QVService:
         Args:
             target_dir: Directory to create the project in
             name: Project name (defaults to directory name)
-            template: Optional template name to use
             
         Returns:
             Path to project root
         """
         target_dir = Path(target_dir).resolve()
-        
-        if template:
-            from quantumvitas.core.templates import copy_project_template
-            return copy_project_template(template, target_dir, name)
         
         target_dir.mkdir(parents=True, exist_ok=True)
         
@@ -160,6 +154,98 @@ class QVService:
         parent = project_root.parent
         trash = parent / "trash"
         move_to_trash(project_root, trash)
+    
+    @staticmethod
+    def export_project_snapshot(
+        project_root: Path,
+    ) -> Dict[str, Any]:
+        """
+        Export project into a snapshot dict (ready to dump as YAML).
+        
+        Args:
+            project_root: Path to project root
+            
+        Returns:
+            Dictionary representation of the snapshot
+        """
+        from quantumvitas.project.snapshot import export_project_to_snapshot
+        
+        project_root = Path(project_root).resolve()
+        if not (project_root / "project.qv.yml").exists():
+            raise QVServiceError(f"Not a project: {project_root}")
+        
+        snapshot = export_project_to_snapshot(project_root)
+        return snapshot.to_dict()
+    
+    @staticmethod
+    def save_project_snapshot(
+        project_root: Path,
+        output_path: Path,
+        overwrite: bool = False,
+    ) -> Path:
+        """
+        Export project and write snapshot YAML to output_path.
+        
+        Args:
+            project_root: Path to project root
+            output_path: Path where snapshot YAML will be written
+            overwrite: If False, raise error if output_path exists
+            
+        Returns:
+            Path to the written snapshot file
+        """
+        import yaml
+        
+        output_path = Path(output_path).resolve()
+        
+        if output_path.exists() and not overwrite:
+            raise QVServiceError(f"Snapshot file already exists: {output_path}. Use overwrite=True to replace.")
+        
+        snapshot_dict = QVService.export_project_snapshot(project_root)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(yaml.safe_dump(snapshot_dict, sort_keys=False, default_flow_style=False))
+        
+        return output_path
+    
+    @staticmethod
+    def create_project_from_snapshot(
+        parent_dir: Path,
+        snapshot_path: Path,
+        project_name: Optional[str] = None,
+    ) -> Path:
+        """
+        Read snapshot YAML and create a new project directory under parent_dir.
+        
+        Args:
+            parent_dir: Directory where the new project will be created
+            snapshot_path: Path to snapshot YAML file
+            project_name: Optional name for the new project (defaults to snapshot name)
+            
+        Returns:
+            Path to the new project root
+        """
+        import yaml
+        from quantumvitas.project.snapshot import ProjectSnapshot, materialize_project_from_snapshot
+        
+        snapshot_path = Path(snapshot_path).resolve()
+        if not snapshot_path.exists():
+            raise QVServiceError(f"Snapshot file not found: {snapshot_path}")
+        
+        parent_dir = Path(parent_dir).resolve()
+        parent_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Load snapshot
+        snapshot_data = yaml.safe_load(snapshot_path.read_text())
+        snapshot = ProjectSnapshot.from_dict(snapshot_data)
+        
+        # Materialize project
+        project_dir = materialize_project_from_snapshot(
+            snapshot=snapshot,
+            parent_dir=parent_dir,
+            new_project_name=project_name,
+        )
+        
+        return project_dir
     
     # -------------------------------------------------------------------------
     # Structure operations
@@ -478,7 +564,6 @@ class QVService:
         step_type: str,
         name: Optional[str] = None,
         structure_selector: Optional[str] = None,
-        template: Optional[str] = None,
     ) -> ResolvedResource:
         """
         Create a new step in a workflow.
@@ -489,13 +574,14 @@ class QVService:
             step_type: Step type (scf, nscf, dos, bands, etc.)
             name: Optional step name (defaults to step_type)
             structure_selector: Optional structure (defaults to workflow's structure)
-            template: Optional template name
             
         Returns:
             ResolvedResource for the new step
         """
         from quantumvitas.workflow.structure_steps import StructureStepSpec
+        from quantumvitas.workflow.step_defaults import get_default_step_params
         from quantumvitas.core.models import WorkflowModel
+        import yaml
         
         workflow = resolve_workflow(project_root, workflow_selector)
         workflow_dir = workflow.absolute_path
@@ -530,30 +616,30 @@ class QVService:
                 structure=structure_selector,
             )
         
-        if template:
-            from quantumvitas.core.templates import copy_step_template
-            copy_step_template(
-                template,
-                step_yaml_path.parent,
-                project_root,
-                workflow_ulid=workflow.meta.id,
-                structure=structure_selector,
-            )
-        else:
-            # Create step spec
-            spec = StructureStepSpec(
-                meta=ResourceMeta(
-                    id=step_id,
-                    name=step_name,
-                    slug=step_slug,
-                    path=ensure_relative_path(step_yaml_path, base=project_root),
-                    kind="step",
-                ),
-                step_type=step_type,
-                structure=structure_selector,
-                parent_workflow_id=workflow.meta.id,
-            )
-            step_yaml_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
+        # Get default parameters for this step type
+        defaults = get_default_step_params(step_type)
+        
+        # Create step spec with defaults
+        # Calculate relative path from project root
+        step_yaml_path = step_yaml_path.resolve()
+        project_root_resolved = project_root.resolve()
+        rel_path = step_yaml_path.relative_to(project_root_resolved)
+        spec = StructureStepSpec(
+            meta=ResourceMeta(
+                id=step_id,
+                name=step_name,
+                slug=step_slug,
+                path=str(rel_path.as_posix()),
+                kind="step",
+            ),
+            step_type=step_type,
+            structure=structure_selector,
+            parent_workflow_id=workflow.meta.id,
+            parameters=defaults.get("parameters", {}),
+            cards=defaults.get("cards", {}),
+            species_overrides=defaults.get("species_overrides", {}),
+        )
+        step_yaml_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
         
         # Add step to workflow model
         wf_model.steps.append(WorkflowStepEntry(
@@ -1963,48 +2049,161 @@ class QVService:
         }
     
     @staticmethod
+    def import_step_from_qe_input(
+        project_root: Path,
+        workflow_selector: str,
+        input_file: Path,
+        step_name: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Import a QE input file as a step in a workflow (preserves original parameters).
+        
+        This uses apply_defaults=False to preserve the original QE input parameters
+        without injecting QV defaults (outdir, restart_mode, conv_thr, etc.).
+        
+        Args:
+            project_root: Project root path
+            workflow_selector: Workflow selector (name, slug, or id)
+            input_file: Path to QE input file (.in)
+            step_name: Optional name for the new step (defaults to input file stem)
+            
+        Returns:
+            Updated workflow info with the new step
+        """
+        from quantumvitas.workflow.importers import build_step_spec_from_qe_input
+        from quantumvitas.core.models import load_workflow, save_workflow, WorkflowStepEntry
+        import yaml
+        
+        project_root = Path(project_root).resolve()
+        input_file = Path(input_file).resolve()
+        
+        if not input_file.exists():
+            raise QVServiceError(f"QE input file not found: {input_file}")
+        
+        # Resolve workflow
+        workflow = resolve_workflow(project_root, workflow_selector)
+        workflow_dir = workflow.absolute_path
+        steps_dir = workflow_dir / "steps"
+        steps_dir.mkdir(exist_ok=True)
+        
+        # Load workflow model
+        wf_model = load_workflow(workflow_dir, project_root)
+        
+        # Determine step name
+        step_name = step_name or input_file.stem
+        
+        # Import step spec from QE input (apply_defaults=False for import mode)
+        import_result = build_step_spec_from_qe_input(
+            input_file=input_file,
+            destination_dir=steps_dir,
+            structure_dir=project_root / "structures",
+            step_id=step_name,
+            structure_id=None,  # Will be auto-generated from input
+            reference_structure_by="id",  # Reference by structure ID in project
+            apply_defaults=False,  # IMPORTANT: Preserve original parameters
+        )
+        
+        # Load the created spec to get step type
+        spec = import_result.spec
+        
+        # Import structure into project if not already present
+        structure_id = import_result.structure_id
+        structure_path = import_result.structure_path
+        
+        # Check if structure already exists in project
+        config = load_project_config(project_root)
+        structures = config.get("structures", [])
+        existing_structure = None
+        for struct_entry in structures:
+            struct_file = project_root / struct_entry.get("file", "")
+            if struct_file.exists() and struct_file.samefile(structure_path):
+                existing_structure = struct_entry.get("meta", {}).get("slug") or struct_entry.get("name")
+                break
+        
+        if not existing_structure:
+            # Register structure in project
+            from quantumvitas.core.resources import meta_from_name, ensure_relative_path
+            from quantumvitas.io import write_structure, read_structure
+            
+            # Move structure to project structures directory
+            project_structures_dir = project_root / "structures"
+            project_structures_dir.mkdir(exist_ok=True)
+            final_structure_path = project_structures_dir / f"{structure_id}.json"
+            
+            if not final_structure_path.exists():
+                structure = read_structure(structure_path)
+                meta = meta_from_name(
+                    "structure",
+                    name=structure_id,
+                    path=ensure_relative_path(final_structure_path, base=project_root),
+                )
+                write_structure(structure, final_structure_path, metadata=meta)
+            
+            # Add to project config
+            entry = {
+                "name": structure_id,
+                "file": ensure_relative_path(final_structure_path, base=project_root),
+                "meta": meta.to_dict(),
+            }
+            structures.append(entry)
+            save_project_config(project_root, config)
+            existing_structure = structure_id
+        
+        # Update step spec to reference structure by ID
+        spec.structure = existing_structure
+        spec_path = import_result.spec_path
+        spec_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
+        
+        # Add step to workflow model
+        rel_step_path = spec_path.relative_to(workflow_dir)
+        wf_model.steps.append(WorkflowStepEntry(
+            id=step_name,
+            type=spec.step_type,
+            step_file=str(rel_step_path.as_posix()),
+        ))
+        save_workflow(wf_model, workflow_dir)
+        
+        # Update workflow structure if not set
+        if not wf_model.structure:
+            wf_model.structure = existing_structure
+            save_workflow(wf_model, workflow_dir)
+        
+        return QVService.get_workflow_detail(
+            project_root=project_root,
+            workflow_selector=workflow_selector,
+        )
+    
+    @staticmethod
     def reset_step_params(
         project_root: Path,
         workflow_selector: str,
         step_selector: str,
-        template_name: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Reset step parameters to template defaults or empty.
+        Reset step parameters to in-code defaults based on step type.
         
         Args:
             project_root: Project root path
             workflow_selector: Workflow selector
             step_selector: Step selector
-            template_name: Optional template name to reset from
             
         Returns:
             Updated step detail dict
         """
         from quantumvitas.workflow.structure_steps import StructureStepSpec
+        from quantumvitas.workflow.step_defaults import get_default_step_params
+        import yaml
         
         step = resolve_step(project_root, workflow_selector, step_selector)
         spec = StructureStepSpec.from_yaml(step.absolute_path)
         
-        if template_name:
-            # Load template parameters
-            from quantumvitas.core.templates import load_workflow_template
-            template = load_workflow_template(template_name)
-            
-            # Find matching step type in template
-            template_step = None
-            for ts in template.get("steps", []):
-                if ts.get("step_type") == spec.step_type:
-                    template_step = ts
-                    break
-            
-            if template_step:
-                spec.parameters = template_step.get("parameters", {})
-                spec.cards = template_step.get("cards", {})
-        else:
-            # Reset to minimal defaults based on step type
-            spec.parameters = {}
-            spec.cards = {}
+        # Get defaults for this step type
+        defaults = get_default_step_params(spec.step_type)
+        
+        # Reset parameters and cards to defaults, keep meta/structure/parent_workflow_id
+        spec.parameters = defaults.get("parameters", {})
+        spec.cards = defaults.get("cards", {})
+        spec.species_overrides = defaults.get("species_overrides", {})
         
         # Save the updated spec
         step.absolute_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
@@ -2105,7 +2304,6 @@ class QVService:
             step_name = step_type
         
         # Generate unique slug from name
-        from quantumvitas.core.slug import slugify
         base_slug = slugify(step_name)
         
         # Check for duplicates and add suffix if needed
@@ -2129,41 +2327,16 @@ class QVService:
             step_file=step_file,
         )
         
-        # Map step_type to QE calculation type
-        type_mapping = {
-            'scf': 'scf',
-            'nscf': 'nscf',
-            'relax': 'relax',
-            'vc-relax': 'vc-relax',
-            'bands_pw': 'bands',
-            'bands': 'bands',
-            'dos': 'dos',
-            'projwfc': 'projwfc',
-            'ph': 'ph',
-            'pp': 'pp',
-        }
-        calc_type = type_mapping.get(step_type, step_type)
-        
-        # Determine executable
-        exec_mapping = {
-            'scf': 'pw.x',
-            'nscf': 'pw.x',
-            'relax': 'pw.x',
-            'vc-relax': 'pw.x',
-            'bands_pw': 'pw.x',
-            'bands': 'bands.x',
-            'dos': 'dos.x',
-            'projwfc': 'projwfc.x',
-            'ph': 'ph.x',
-            'pp': 'pp.x',
-        }
-        executable = exec_mapping.get(step_type, 'pw.x')
-        
-        # Create step spec with defaults
+        # Get default parameters for this step type (from-scratch mode uses defaults)
+        from quantumvitas.workflow.step_defaults import get_default_step_params
         from quantumvitas.core.models import ResourceMeta
-        from quantumvitas.core.utils import ensure_relative_path
         
-        # Create step spec based on type
+        defaults = get_default_step_params(step_type)
+        default_params = defaults.get("parameters", {})
+        default_cards = defaults.get("cards", {})
+        default_species = defaults.get("species_overrides", {})
+        
+        # Create step spec with defaults (from-scratch mode, same as CLI init_step without --no-defaults)
         step_spec = StructureStepSpec(
             meta=ResourceMeta(
                 id=str(ulid_module.new()),  # Actual ULID for the step spec
@@ -2173,12 +2346,11 @@ class QVService:
                 kind="step",
             ),
             step_type=step_type,
-            executable=executable,
             structure=wf_model.structure,  # Inherit from workflow
             parent_workflow_id=wf_model.meta.id,
-            parameters={},
-            cards={},
-            species_overrides={},
+            parameters=default_params,
+            cards=default_cards,
+            species_overrides=default_species,
         )
         
         # Write step file
@@ -2189,8 +2361,9 @@ class QVService:
         step_file_path.write_text(yaml.safe_dump(step_spec.to_dict(), sort_keys=False))
         
         # Add step to workflow
+        from quantumvitas.core.models import save_workflow
         wf_model.steps.append(new_step)
-        wf_model.save(wf_path)
+        save_workflow(wf_model, wf_path)
         
         # Return updated workflow info
         return QVService.get_workflow_detail(project_root, workflow_selector)
@@ -2429,75 +2602,80 @@ class QVService:
     def create_demo_project(
         target_dir: Path,
         name: str = "demo-si-project",
+        demo_name: str = "si_bands_demo",
     ) -> Dict[str, Any]:
         """
         Create a demo Si project with a ready-to-run workflow.
         
-        Creates a project with:
-        - Silicon structure
-        - Band structure workflow (SCF -> NSCF -> Bands -> Bands Post-Processing)
+        Creates a project from a snapshot in resources/demo_projects/.
+        Default demo is si_bands_demo (Silicon band structure workflow).
         
         Args:
             target_dir: Directory to create the project in
             name: Project name
+            demo_name: Name of demo snapshot (without .yml extension)
             
         Returns:
             Dict with project info
         """
-        from quantumvitas.core.templates import (
-            list_workflow_templates,
-            get_template_path,
+        from quantumvitas.core.resources import get_resources_dir
+        from quantumvitas.project.snapshot import (
+            ProjectSnapshot,
+            materialize_project_from_snapshot,
+        )
+        import yaml
+        
+        # Locate demo snapshot
+        resources_dir = get_resources_dir()
+        demo_snapshot_path = resources_dir / "demo_projects" / f"{demo_name}.yml"
+        
+        if not demo_snapshot_path.exists():
+            raise QVServiceError(
+                f"Demo snapshot '{demo_name}' not found at {demo_snapshot_path}. "
+                f"Available demos: {', '.join([f.stem for f in (resources_dir / 'demo_projects').glob('*.yml')]) or 'none'}"
+            )
+        
+        # Load snapshot
+        with open(demo_snapshot_path, "r") as f:
+            snapshot_data = yaml.safe_load(f)
+        
+        snapshot = ProjectSnapshot.from_dict(snapshot_data)
+        
+        # Materialize project from snapshot
+        project_root = materialize_project_from_snapshot(
+            snapshot=snapshot,
+            parent_dir=Path(target_dir),
+            new_project_name=name,
         )
         
-        project_root = Path(target_dir) / name
-        
-        # Create the project
-        QVService.init_project(project_root)
+        # Get project summary
         project_summary = QVService.get_project_summary(project_root)
         
-        # Import the Si structure from templates
-        si_template_path = get_template_path("structure", "si")
-        structure_result = None
-        if si_template_path and si_template_path.exists():
-            structure_result = QVService.import_structure(
-                project_root=project_root,
-                source=si_template_path,
-                name="silicon",
-            )
+        # Extract structure and workflow info from snapshot
+        structure_info = None
+        workflow_info = None
         
-        # Create workflow from template (prefer si-bands, else si-dos)
-        templates = list_workflow_templates()
-        template_names = [t["name"] for t in templates]
+        if snapshot.structures:
+            struct_meta = snapshot.structures[0].get("meta", {})
+            structure_info = {
+                "id": struct_meta.get("id"),
+                "name": struct_meta.get("name"),
+            }
         
-        if "si-bands" in template_names:
-            template = "si-bands"
-        elif "si-dos" in template_names:
-            template = "si-dos"
-        else:
-            template = templates[0]["name"] if templates else None
-        
-        workflow_result = None
-        if template and structure_result:
-            workflow_result = QVService.init_workflow(
-                project_root=project_root,
-                name="demo-workflow",
-                structure_selector="silicon",
-                template=template,
-            )
+        if snapshot.workflows:
+            wf_meta = snapshot.workflows[0].get("meta", {})
+            workflow_info = {
+                "id": wf_meta.get("id"),
+                "name": wf_meta.get("name"),
+            }
         
         return {
             "project_root": str(project_root),
             "project_id": project_summary.get("id"),
             "project_name": project_summary.get("name"),
-            "structure": {
-                "id": structure_result.meta.id if structure_result else None,
-                "name": structure_result.meta.name if structure_result else None,
-            } if structure_result else None,
-            "workflow": {
-                "id": workflow_result.meta.id if workflow_result else None,
-                "name": workflow_result.meta.name if workflow_result else None,
-            } if workflow_result else None,
-            "ready_to_run": workflow_result is not None,
+            "structure": structure_info,
+            "workflow": workflow_info,
+            "ready_to_run": len(snapshot.workflows) > 0,
         }
     
     @staticmethod
@@ -2507,21 +2685,24 @@ class QVService:
         name: Optional[str] = None,
     ) -> ResolvedResource:
         """
-        Import a structure from built-in templates.
+        Import a structure from the structure library.
+        
+        Reads from resources/structure_library/ (public API).
+        Reads from resources/structure_library/ only.
         
         Args:
             project_root: Project root path
-            template_name: Template name (e.g., "si", "graphene")
+            template_name: Structure name (e.g., "si", "graphene")
             name: Optional custom name for the structure
             
         Returns:
             ResolvedResource for the imported structure
         """
-        from quantumvitas.core.templates import get_template_path
+        from quantumvitas.core.templates import get_structure_library_path
         
-        template_path = get_template_path("structure", template_name)
+        template_path = get_structure_library_path(template_name)
         if not template_path or not template_path.exists():
-            raise QVServiceError(f"Structure template '{template_name}' not found")
+            raise QVServiceError(f"Structure '{template_name}' not found in structure library")
         
         return QVService.import_structure(
             project_root=project_root,

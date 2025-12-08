@@ -586,9 +586,26 @@ export interface QVCommandMap {
       project_root: string;
       workflow: string;
       step: string;
-      template_name?: string;
     };
     result: StepDetail;
+  };
+  import_step_from_qe_input: {
+    payload: {
+      project_root: string;
+      workflow: string;
+      input_file: string;
+      step_name?: string;
+    };
+    result: WorkflowDetailResult;
+  };
+  add_step_to_workflow: {
+    payload: {
+      project_root: string;
+      workflow: string;
+      step_type: string;
+      step_name?: string;
+    };
+    result: WorkflowDetailResult;
   };
   
   // Workflow configuration

@@ -45,6 +45,52 @@ class WorkflowImportResult:
     structure_path: Path
 
 
+def _build_step_spec_from_qe_input_data(
+    qe_input: QEInput,
+    step_type: str,
+    *,
+    apply_defaults: bool = False,
+) -> tuple[Dict[str, Dict[str, object]], Dict[str, Dict[str, object]]]:
+    """
+    Build step spec parameters and cards from a QE input, optionally merging with defaults.
+    
+    Args:
+        qe_input: Parsed QE input
+        step_type: Step type (scf, nscf, etc.)
+        apply_defaults: If True, merge extracted parameters with in-code defaults.
+                       If False, use only what's in the input file.
+    
+    Returns:
+        Tuple of (parameters_dict, cards_dict)
+    """
+    # Extract parameters and cards from the input
+    parameters = _extract_parameters(qe_input)
+    cards = _extract_cards(qe_input)
+    
+    if apply_defaults:
+        # Merge with in-code defaults (defaults provide base, extracted params override)
+        from quantumvitas.workflow.step_defaults import get_default_step_params
+        
+        defaults = get_default_step_params(step_type)
+        default_params = defaults.get("parameters", {})
+        default_cards = defaults.get("cards", {})
+        
+        # Merge: start with defaults, then update with extracted params
+        merged_params = {}
+        for section in set(list(default_params.keys()) + list(parameters.keys())):
+            merged_params[section] = dict(default_params.get(section, {}))
+            merged_params[section].update(parameters.get(section, {}))
+        
+        # Merge cards: defaults first, then extracted
+        merged_cards = dict(default_cards)
+        merged_cards.update(cards)
+        
+        return merged_params, merged_cards
+    else:
+        # Use only what's in the input file
+        return parameters, cards
+
+
 def build_step_spec_from_qe_input(
     input_file: Path | str,
     *,
@@ -53,6 +99,7 @@ def build_step_spec_from_qe_input(
     step_id: Optional[str] = None,
     structure_id: Optional[str] = None,
     reference_structure_by: str = "path",
+    apply_defaults: bool = False,
 ) -> StepImportResult:
     """
     Convert a QE input file into a StructureStepSpec + structure JSON.
@@ -68,6 +115,9 @@ def build_step_spec_from_qe_input(
                                 step spec references the structure. When ``id``
                                 is used you are responsible for ensuring the
                                 structure is registered in ``project.qv.yml``.
+        apply_defaults: If True, merge extracted parameters with in-code defaults.
+                       If False (default), preserve only what's in the input file.
+                       Use False for round-trip import scenarios, True for "from scratch" creation.
 
     Returns:
         StepImportResult describing the generated assets.
@@ -91,9 +141,10 @@ def build_step_spec_from_qe_input(
     structure_path = (structure_base / f"{structure_id}.json").resolve()
     write_structure(structure, structure_path, format="json")
 
-    parameters = _extract_parameters(qe_input)
-    cards = _extract_cards(qe_input)
     step_type = _infer_step_type(qe_input)
+    parameters, cards = _build_step_spec_from_qe_input_data(
+        qe_input, step_type, apply_defaults=apply_defaults
+    )
 
     if reference_structure_by not in {"path", "id"}:
         raise ValueError("reference_structure_by must be either 'path' or 'id'")

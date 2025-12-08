@@ -1,0 +1,76 @@
+export PYTHONSRC="/Users/pu1/src/quantumVITAS"
+qv init project --name project1
+cd project1
+qv import-structure $PYTHONSRC/tests/integration/ci_test_data/4_Si_DOS/si.1_scf.in
+qv init workflow "Si dos" --structure si
+cd workflows/Si-dos
+qv init step scf
+qv show-command $PYTHONSRC/tests/integration/ci_test_data/4_Si_DOS/si.1_scf.in
+
+qv configure step steps/scf.step.yaml --CONTROL.calculation=scf --CONTROL.outdir=./outdir --CONTROL.prefix=si --CONTROL.pseudo_dir=/home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos --CONTROL.restart_mode=from_scratch --ELECTRONS.conv_thr=1e-08 --SYSTEM.ecutwfc=50 '--CARD.K_POINTS={"option":"automatic","data":[["8","8","8","0","0","0"]]}' --SPECIES.Si.mass=28.0855 --SPECIES.Si.pseudopot=Si.pbe-n-rrkjus_psl.1.0.0.UPF
+
+qv init step nscf
+qv init step dos
+qv delete step nscf
+qv delete step si-dos dos
+
+qv show-command $PYTHONSRC/tests/integration/ci_test_data/4_Si_DOS/si.2_nscf.in
+qv init step nscf --CONTROL.calculation=nscf --CONTROL.outdir=./outdir --CONTROL.prefix=si --CONTROL.pseudo_dir=/home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos --CONTROL.restart_mode=from_scratch --ELECTRONS.conv_thr=1e-08 --SYSTEM.ecutwfc=50 --SYSTEM.occupations=tetrahedra '--CARD.K_POINTS={"option":"automatic","data":[["12","12","12","0","0","0"]]}' --SPECIES.Si.mass=28.0855 --SPECIES.Si.pseudopot=Si.pbe-n-rrkjus_psl.1.0.0.UPF
+
+qv show-command $PYTHONSRC/tests/integration/ci_test_data/4_Si_DOS/si.3_dos.in
+qv init step dos --DOS.emax=16.0 --DOS.emin=-9.0 --DOS.fildos=si.dos.dat --DOS.outdir=./outdir/ --DOS.prefix=si
+
+qv run workflow
+
+qv analyze dos raw/si.dos.dat --scf si.nscf.out --plot
+
+
+# ------------------ dos full -----------------
+
+qv init project --name project1
+cd project1
+qv import-structure $PYTHONSRC/tests/integration/ci_test_data/4_Si_DOS/si.1_scf.in
+qv init workflow "Si dos" --structure si
+cd workflows/Si-dos
+qv init step scf --CONTROL.calculation=scf --CONTROL.outdir=./outdir --CONTROL.prefix=si --CONTROL.pseudo_dir=/home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos --CONTROL.restart_mode=from_scratch --ELECTRONS.conv_thr=1e-08 --SYSTEM.ecutwfc=50 '--CARD.K_POINTS={"option":"automatic","data":[["8","8","8","0","0","0"]]}' --SPECIES.Si.mass=28.0855 --SPECIES.Si.pseudopot=Si.pbe-n-rrkjus_psl.1.0.0.UPF
+qv init step nscf --CONTROL.calculation=nscf --CONTROL.outdir=./outdir --CONTROL.prefix=si --CONTROL.pseudo_dir=/home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos --CONTROL.restart_mode=from_scratch --ELECTRONS.conv_thr=1e-08 --SYSTEM.ecutwfc=50 --SYSTEM.occupations=tetrahedra '--CARD.K_POINTS={"option":"automatic","data":[["12","12","12","0","0","0"]]}' --SPECIES.Si.mass=28.0855 --SPECIES.Si.pseudopot=Si.pbe-n-rrkjus_psl.1.0.0.UPF
+qv init step dos --DOS.emax=16.0 --DOS.emin=-9.0 --DOS.fildos=si.dos.dat --DOS.outdir=./outdir/ --DOS.prefix=si
+qv run workflow
+qv analyze dos raw/si.dos.dat --scf si.nscf.out --plot
+
+# ------------------------ band structure workflow ------------------------
+
+export PYTHONSRC="/Users/hh7465/Code/quantumVITAS"
+qv init project --name project2_bands
+cd project2_bands
+qv import-structure $PYTHONSRC/tests/data/7_Si_bandStructure/si.0_scf.in
+
+qv init workflow "Si bands" --structure si
+# qv init workflow "Si bands auto k" --structure si
+cd workflows/si-bands
+qv init step scf
+qv show-command $PYTHONSRC/tests/data/7_Si_bandStructure/si.0_scf.in
+qv configure step scf --CONTROL.calculation=scf --CONTROL.outdir=./outdir --CONTROL.prefix=si --CONTROL.pseudo_dir=/home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos --CONTROL.restart_mode=from_scratch --ELECTRONS.conv_thr=1e-08 --SYSTEM.ecutrho=320 --SYSTEM.ecutwfc=40 --SYSTEM.nbnd=8 '--CARD.K_POINTS={"option":"automatic","data":[["8","8","8","0","0","0"]]}' --SPECIES.Si.mass=28.0855 --SPECIES.Si.pseudopot=Si.pbe-n-rrkjus_psl.1.0.0.UPF
+
+qv init step nscf
+qv delete step nscf  #--workflow si-bands # (ran from project root)
+qv show-command $PYTHONSRC/tests/data/7_Si_bandStructure/si.1_nscf.in
+qv init step nscf --CONTROL.calculation=nscf --CONTROL.outdir=./outdir --CONTROL.prefix=si --CONTROL.pseudo_dir=/home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos --CONTROL.restart_mode=from_scratch --ELECTRONS.conv_thr=1e-08 --SYSTEM.ecutrho=320 --SYSTEM.ecutwfc=40 --SYSTEM.nbnd=8 --SYSTEM.occupations=tetrahedra '--CARD.K_POINTS={"option":"automatic","data":[["12","12","12","0","0","0"]]}' --SPECIES.Si.mass=28.0855 --SPECIES.Si.pseudopot=Si.pbe-n-rrkjus_psl.1.0.0.UPF
+
+qv show-command $PYTHONSRC/tests/data/7_Si_bandStructure/si.3_bands.pp.in
+qv init step bands --BANDS.filband=si.bands.dat --BANDS.outdir=./outdir/ --BANDS.prefix=si
+qv configure step bands --BANDS.filband=si.bands.pp.dat
+
+qv show-command $PYTHONSRC/tests/data/7_Si_bandStructure/si.2_bands.in
+qv init step bands_pw --CONTROL.calculation=bands --CONTROL.outdir=./outdir --CONTROL.prefix=si --CONTROL.pseudo_dir=/home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos --CONTROL.restart_mode=from_scratch --ELECTRONS.conv_thr=1e-08 --SYSTEM.ecutrho=320 --SYSTEM.ecutwfc=40 --SYSTEM.nbnd=8 '--CARD.K_POINTS={"option":"crystal_b","data":[[5],["0.0000","0.5000","0.0000","20"],["0.0000","0.0000","0.0000","30"],["-0.500","0.0000","-0.500","10"],["-0.375","0.2500","-0.375","30"],["0.0000","0.0000","0.0000","20"]]}' --SPECIES.Si.mass=28.0855 --SPECIES.Si.pseudopot=Si.pbe-n-rrkjus_psl.1.0.0.UPF
+# autopath
+# qv init step bands_pw --auto-kpath --kpath-points=20 --CONTROL.calculation=bands --CONTROL.outdir=./outdir --CONTROL.prefix=si --CONTROL.pseudo_dir=/home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos --CONTROL.restart_mode=from_scratch --ELECTRONS.conv_thr=1e-08 --SYSTEM.ecutrho=320 --SYSTEM.ecutwfc=40 --SYSTEM.nbnd=8  --SPECIES.Si.mass=28.0855 --SPECIES.Si.pseudopot=Si.pbe-n-rrkjus_psl.1.0.0.UPF
+
+cat ../workflow.yaml
+qv configure workflow --reorder scf,nscf,bands_pw,bands
+
+qv run workflow
+
+qv analyze band ../raw/si.bands.pp.dat.gnu --plot --format png --symmetry ../raw/bands.pw_run.out --scf ../raw/nscf.pw_run.out
+
+

@@ -1,0 +1,11 @@
+&control
+    pseudo_dir = '/Users/pu1/src/quantumVITAS/manual_tests/project1/pseudo'
+/
+
+&dos
+    emax = 16.0
+    emin = -9.0
+    fildos = 'si.dos.dat'
+    outdir = './outdir'
+    prefix = 'si'
+/

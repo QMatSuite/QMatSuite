@@ -1,13 +1,14 @@
 """
 Test that workflow created from template can be run successfully.
 
-This test uses the project1 template which contains a complete Si DOS workflow
+This test uses a snapshot-based project which contains a complete Si DOS workflow
 with scf, nscf, and dos steps.
 """
 
 import pytest
 from pathlib import Path
 import yaml
+import shutil
 
 from typer.testing import CliRunner
 
@@ -17,18 +18,17 @@ runner = CliRunner()
 
 
 @pytest.fixture
-def template_project(tmp_path):
-    """Create a project from template."""
+def template_project(tmp_path, project_root_path):
+    """Create a project from example project data."""
+    # Use project1 example from tests/data/project_examples/
+    example_project = project_root_path / "tests" / "data" / "project_examples" / "project1"
     project_dir = tmp_path / "test_project"
     
-    # Create project from template
-    result = runner.invoke(
-        app, 
-        ["init", "project", "--path", str(project_dir), "--template", "project1"],
-        catch_exceptions=False
-    )
-    assert result.exit_code == 0, f"Project init failed: {result.output}"
+    # Copy the example project
+    shutil.copytree(example_project, project_dir)
+    
     assert project_dir.exists()
+    assert (project_dir / "project.qv.yml").exists()
     
     return project_dir
 
