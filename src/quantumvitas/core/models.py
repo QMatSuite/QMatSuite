@@ -413,15 +413,20 @@ class StructureModel:
         default_path: str = "structures/structure.json",
     ) -> "StructureModel":
         """Create StructureModel from dictionary."""
+        # Check for both "meta" and "__qv_meta__" (structure file format)
+        meta_dict = data.get("meta") or data.get("__qv_meta__")
         meta = ResourceMeta.from_dict(
-            data.get("meta"),
+            meta_dict,
             kind="structure",
             default_name=default_name,
             default_path=default_path,
         )
         
         # Remove meta from data to get pure structure
-        structure_data = {k: v for k, v in data.items() if k != "meta"}
+        structure_data = {k: v for k, v in data.items() if k not in ("meta", "__qv_meta__", "structure")}
+        # If structure is wrapped in "structure" key, use that
+        if "structure" in data and isinstance(data["structure"], dict):
+            structure_data = data["structure"]
         
         return cls(meta=meta, data=structure_data)
 

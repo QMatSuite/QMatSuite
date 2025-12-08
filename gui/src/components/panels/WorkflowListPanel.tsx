@@ -184,6 +184,9 @@ export function WorkflowDetailPanel({
   const [newStepName, setNewStepName] = useState('');
   const [isAddingStep, setIsAddingStep] = useState(false);
   
+  // Import step state
+  const [isImportingStep, setIsImportingStep] = useState(false);
+  
   // Handle showing add step form
   const handleShowAddStep = useCallback(() => {
     setShowAddStep(true);
@@ -223,6 +226,45 @@ export function WorkflowDetailPanel({
       setIsAddingStep(false);
     }
   }, [workflow, projectRoot, newStepType, newStepName, onWorkflowUpdated]);
+  
+  // Handle importing QE input as step
+  const handleImportStep = useCallback(async () => {
+    if (!window.qv || !workflow) return;
+    
+    // Use window.qv.openFile to pick file
+    const inputFile = await window.qv.openFile({
+      title: 'Import QE Input File',
+      filters: [
+        { name: 'QE Input Files', extensions: ['in'] },
+        { name: 'All Files', extensions: ['*'] },
+      ],
+    });
+    
+    if (!inputFile) {
+      return; // User cancelled
+    }
+    
+    setIsImportingStep(true);
+    setError(null);
+    
+    try {
+      const response = await window.qv.request<WorkflowDetailResult>('import_step_from_qe_input', {
+        project_root: projectRoot,
+        workflow: workflow.slug,
+        input_file: inputFile,
+      });
+      
+      if (response.ok) {
+        onWorkflowUpdated?.();
+      } else {
+        setError(response.error?.message || 'Failed to import step');
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unknown error');
+    } finally {
+      setIsImportingStep(false);
+    }
+  }, [workflow, projectRoot, onWorkflowUpdated]);
   
   // Drag-and-drop state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -457,8 +499,18 @@ export function WorkflowDetailPanel({
                     className="section-action-btn section-action-btn--add"
                     onClick={handleShowAddStep}
                     title="Add a new step to this workflow"
+                    data-testid="qv-add-step-btn"
                   >
                     ➕ Add Step
+                  </button>
+                  <button 
+                    className="section-action-btn"
+                    onClick={handleImportStep}
+                    disabled={isImportingStep}
+                    title="Import QE input file as step (preserves original parameters)"
+                    data-testid="qv-import-step-btn"
+                  >
+                    {isImportingStep ? 'Importing...' : '📥 Import QE Input'}
                   </button>
                   <button 
                     className="section-action-btn"

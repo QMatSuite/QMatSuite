@@ -214,9 +214,9 @@ The CLI uses Typer with sub-apps. All commands support `--project PATH` for expl
 ```
 qv
 ├── init
-│   ├── project [--path PATH] [--name NAME] [--template TEMPLATE]
+│   ├── project [--path PATH] [--name NAME] [--snapshot SNAPSHOT]
 │   ├── workflow <name> [--structure STRUCT] [--parent WF] [--template TEMPLATE]
-│   └── step <type> [--structure STRUCT] [--workflow WF] [--template TEMPLATE] [overrides...]
+│   └── step <type> [--structure STRUCT] [--workflow WF] [overrides...]
 ├── import-structure <file> [--name NAME]
 ├── list [--verbose]
 ├── configure (PREFERRED for renaming)
@@ -437,6 +437,96 @@ Basic implementation for renaming structures:
 ```bash
 qv configure structure si --name "Silicon bulk"
 ```
+
+### 5.8 Step Parameter Defaults vs Import Semantics
+
+QuantumVITAS distinguishes two distinct scenarios for step creation, each with different default parameter behavior:
+
+#### Scenario A: "Create Step from Scratch" (Uses QV Defaults)
+
+**Sources:**
+- `qv init step <type>` (without `--no-defaults`)
+- GUI "Add Step" (type = scf / nscf / bands / dos / ...)
+- `reset_step_params` (reset to QV defaults)
+
+**Behavior:**
+- Step spec parameters and cards include QV's in-code default parameters
+- Defaults are defined in `workflow/step_defaults.py` per step type
+- Common defaults include:
+  - `CONTROL.outdir = "./outdir"`
+  - `CONTROL.restart_mode = "from_scratch"`
+  - `ELECTRONS.conv_thr = 1.0e-08`
+  - Step-type-specific defaults (e.g., `K_POINTS` for scf/nscf)
+- Generated QE input includes these defaults
+- User-provided parameters override defaults (merged behavior)
+
+**Example:**
+```bash
+qv init step scf --structure si
+# Creates step with defaults: outdir, restart_mode, conv_thr, etc.
+```
+
+#### Scenario B: "Import Existing QE Input" (Preserves Original)
+
+**Sources:**
+- `qv init step <type> --no-defaults` (with parameters extracted from QE input)
+- `show-command` → `qv init step` workflow (suggests `--no-defaults`)
+- Future GUI "Import QE Input" flow
+
+**Behavior:**
+- Step spec parameters reflect only what was in the original input file
+- No QV defaults are injected (no `outdir`, `restart_mode`, `conv_thr` unless present in original)
+- Round-trip preservation: original QE input → step spec → generated QE input should match
+- Run-time tweaks like `set_outdir_to_temp()` are allowed at execution time but not persisted back to the spec
+
+**Example:**
+```bash
+qv show-command si_scf.in
+# Suggests: qv init step scf --no-defaults --CONTROL.calculation=scf ...
+# This preserves original parameters without injecting defaults
+```
+
+**Implementation Details:**
+- `init_step_command` in `cli/main.py` accepts `--no-defaults` flag
+- When `--no-defaults` is set, `apply_defaults=False` in parameter merging
+- `build_step_spec_from_qe_input()` in `workflow/importers.py` accepts `apply_defaults` parameter (defaults to `False` for import scenarios)
+- `reset_step_params()` always uses `apply_defaults=True` (Scenario A)
+
+**GUI Wiring:**
+- **GUI "Add Step"** (`WorkflowDetailPanel.handleAddStep`):
+  - Calls RPC `add_step_to_workflow` → `QVService.add_step_to_workflow` → `init_step`
+  - Uses `apply_defaults=True` (Scenario A: from-scratch with QV defaults)
+  - Steps created this way include `outdir`, `restart_mode`, `conv_thr`, etc.
+  
+- **GUI "Import QE Input"** (`WorkflowDetailPanel.handleImportStep`):
+  - Calls RPC `import_step_from_qe_input` → `QVService.import_step_from_qe_input`
+  - Uses `apply_defaults=False` (Scenario B: preserve original parameters)
+  - Steps imported this way only contain parameters from the original QE input file
+  
+- **GUI "Reset Step Parameters"** (`StepDetailPanel.handleResetParams`):
+  - Calls RPC `reset_step_params` → `QVService.reset_step_params`
+  - Uses `apply_defaults=True` (Scenario A: reset to QV defaults)
+  - Always resets to in-code defaults, not to "original QE input file"
+
+**Decision Tree:**
+```
+Create Step
+├─ From scratch (GUI "Add Step", CLI `qv init step` without --no-defaults)
+│  └─ apply_defaults=True → QV defaults included
+│
+└─ Import existing QE input (GUI "Import QE Input", CLI `qv init step --no-defaults`)
+   └─ apply_defaults=False → Original parameters preserved
+
+Reset Step Parameters
+└─ Always apply_defaults=True → Reset to QV defaults
+```
+
+**Historical Context:**
+- Older behavior tended to always inject defaults, which broke round-trip import scenarios
+- Tests have been updated to reflect the clarified semantics:
+  - `test_init_step_scf_uses_defaults`: Verifies Scenario A (defaults present)
+  - `test_import_step_from_qe_input_does_not_inject_defaults`: Verifies Scenario B (no defaults)
+  - E2E tests in `gui/tests/e2e/step_defaults.spec.ts` verify GUI wiring
 
 Updates:
 - Entry in `project.qv.yml`
@@ -837,9 +927,9 @@ Implemented from `temporary_ai_prompts` (lines 372-379):
 | Item | Implementation |
 |------|---------------|
 | **Post-processing step support** | DOS/bands/projwfc steps now generate correct input format (just &DOS, &BANDS, etc. namelists) instead of pw.x format |
-| **`--template` for `qv init project`** | Copy from predefined template (e.g., `qv init project --template project1`) |
-| **`--template` for `qv init workflow`** | Copy workflow template with steps, auto-copies related structures (e.g., `qv init workflow my-dos --template si-dos`) |
-| **`--template` for `qv init step`** | Copy step template (e.g., `qv init step scf --template scf`) |
+| **`--snapshot` for `qv init project`** | Create project from snapshot YAML file (e.g., `qv init project --snapshot demo.yml`) |
+| **`--template` for `qv init workflow`** | Copy workflow template with steps from resources/workflow_templates/ (e.g., `qv init workflow my-dos --template si-dos`) |
+| **`qv init step`** | Creates step with in-code default parameters based on step type (no template option) |
 | **`qv import-structure` accepts .json** | Can now import QV-format JSON files with embedded metadata |
 | **`qv show-command` simplified** | No longer includes `--structure <structure-id>` placeholder; shows helpful explanation instead |
 | **Structure inheritance in `qv init step`** | When using `--workflow`, inherits structure from that workflow (not just from enclosing directory) |
@@ -850,22 +940,33 @@ Implemented from `temporary_ai_prompts` (lines 372-379):
 
 **New test file**: `tests/cli/test_template_workflow.py` - Tests for template copying and ULID consistency
 
-**Templates directory**: `/templates/` at project root contains:
+**Resources Layout** (new organization):
+
 ```
-templates/
-├── project/
-│   └── project1/       # Complete project with workflow and structures
-├── workflow/
-│   └── si-dos/         # Si DOS workflow with scf, nscf, dos steps
-├── step/
-│   └── steps/          # Individual step templates (scf, nscf, dos)
-└── structure/
-    └── si.json         # Si bulk structure
+resources/
+├── demo_projects/          # Complete project snapshots (.yml)
+│   └── si_bands_demo.yml  # Demo project snapshot (used by GUI "Create Demo Project")
+├── workflow_templates/     # Reusable workflow recipes (public API)
+│   ├── si-bands/          # Si band structure workflow
+│   └── si-dos/            # Si DOS workflow
+└── structure_library/      # Reusable structures (pymatgen JSON, public API)
+    └── si.json            # Si bulk structure
 ```
+
+**Key design principles**:
+- **Public API** (GUI, high-level features): Uses `resources/` directories
+  - Demo projects: `resources/demo_projects/*.yml` (project snapshots)
+  - Workflow templates: `resources/workflow_templates/` (for GUI listing and `list_workflow_templates()`)
+  - Structure library: `resources/structure_library/` (for `import_structure_from_template()`)
+- **Step defaults**: Step parameters use in-code defaults (no template files)
+  - Default parameters defined in `workflow/step_defaults.py`
+  - `qv init step` creates steps with default parameters based on step type
+  - `reset_step_params` resets to in-code defaults
 
 **Key implementation details**:
 - When creating workflow from template, CLI generates the workflow ULID first and passes it to `copy_workflow_template` so steps get the correct `parent_workflow_id`
 - When copying project template, old workflow ULIDs from project.qv.yml are mapped to new ULIDs for consistency
+- Demo project creation (`create_demo_project`) uses snapshots from `resources/demo_projects/` instead of templates
 
 ### 2025-11-30 Session 1
 
@@ -1691,7 +1792,30 @@ QVService.get_band_structure_data(project_root, workflow, step) -> dict
 # Returns: k_distances[], energies[bands][kpoints], high_symmetry_points
 ```
 
-### 16.5 JobManager and Background Execution
+### 16.5 Layering Rules
+
+**Architecture principle**: Strict layering to maintain clean separation of concerns.
+
+**Allowed paths**:
+```
+GUI (React/Electron) → Electron main → Daemon RPC → QVService → core/workflow/analysis
+```
+
+**Forbidden paths**:
+- ❌ GUI → core/workflow/analysis (direct Python imports)
+- ❌ Daemon handlers → core/workflow/analysis (bypassing QVService)
+- ❌ GUI → daemon internals (must use typed RPC protocol)
+
+**Exceptions** (documented):
+- `find_project_root` handler uses `quantumvitas.core.context` directly (utility function, not business logic)
+- `list_workflow_templates` handler uses `quantumvitas.core.templates` directly (read-only listing, no state mutation)
+
+**Enforcement**:
+- GUI TypeScript code must only use `window.qv.*` RPC calls (typed in `gui/src/types/qv.ts`)
+- Daemon handlers should delegate to `QVService` methods whenever possible
+- New handlers should follow the pattern: parse payload → call `QVService.method()` → return result
+
+### 16.6 JobManager and Background Execution
 
 **Design principles**:
 - All QE-invoking operations go through `JobManager`
@@ -2990,7 +3114,56 @@ function getElectronExecutablePath(): string {
 
 **Key point**: Always use the direct binary path, never a wrapper script or `require('electron')`.
 
-### 22.6 Running E2E Tests
+### 22.6 Automatic Console Error Detection
+
+**Location**: `gui/tests/e2e/fixtures/electronTest.ts`
+
+The unified Electron fixture automatically monitors and fails tests on unexpected console errors:
+
+**What is monitored**:
+- Console errors (`console.error()` calls)
+- Page errors (uncaught exceptions)
+- Network request failures
+
+**What is allowed** (benign messages):
+- React warnings (dev mode)
+- React DevTools messages
+- Webpack dev server messages (if in dev mode)
+
+**Implementation**:
+```typescript
+// Collect errors during test execution
+const consoleErrors: string[] = [];
+const pageErrors: string[] = [];
+const networkFailures: string[] = [];
+
+page.on('console', (msg) => {
+  if (msg.type() === 'error' && !isBenignConsoleMessage(msg.text())) {
+    consoleErrors.push(`[Console Error] ${msg.text()}`);
+  }
+});
+
+page.on('pageerror', (error) => {
+  pageErrors.push(`[Page Error] ${error.message}`);
+});
+
+// Auto-assert after test completes
+if (consoleErrors.length > 0 || pageErrors.length > 0 || networkFailures.length > 0) {
+  throw new Error(`Test failed due to unexpected errors:\n...`);
+}
+```
+
+**Benefits**:
+- Tests automatically catch runtime errors that might not cause visible UI failures
+- No need to manually check for errors in each test
+- Clear error messages with full console output
+
+**Allowlist maintenance**:
+- Keep `BENIGN_CONSOLE_PATTERNS` minimal and documented
+- Only add patterns for messages we can't avoid and don't indicate bugs
+- Review allowlist periodically to ensure it's still appropriate
+
+### 22.7 Running E2E Tests
 
 **Same command on all platforms** - the fixture handles platform differences:
 
@@ -3141,6 +3314,201 @@ All E2E-generated projects are created in `temp/e2e_projects/` (relative to repo
 - **Test coverage**: Add more E2E tests for edge cases and error handling
 - **Windows support**: Verify and extend Windows support if needed
 - **Playwright fix**: When Playwright fixes macOS compatibility, the fixture can be simplified to always use `_electron.launch()`
+
+---
+
+## 23. Project Snapshot Format
+
+The project snapshot format allows exporting a complete QuantumVITAS project into a single YAML file and recreating it elsewhere. This is useful for:
+- **Project templates**: Create reusable project definitions
+- **Version control**: Track project structure without binary files
+- **Sharing**: Distribute demo projects or workflows
+- **Backup**: Export project metadata and structure
+
+### 23.1 Snapshot Schema
+
+A snapshot is a YAML file with the following structure:
+
+```yaml
+version: 1
+project:
+  meta:
+    id: "<original_project_ulid>"
+    name: "Si demo"
+    slug: "si-demo"
+    kind: "project"
+    path: "."
+  settings:
+    # Project-level settings from project.qv.yml
+structures:
+  - meta:
+      id: "<structure_ulid>"
+      name: "Si bulk"
+      slug: "si-bulk"
+      kind: "structure"
+      path: "structures/si.json"
+    data:  # Full pymatgen structure JSON
+      @module: "pymatgen.core.structure"
+      @class: "Structure"
+      lattice: { ... }
+      sites: [ ... ]
+workflows:
+  - meta:
+      id: "<workflow_ulid>"
+      name: "Si bands+dos"
+      slug: "si-bands-dos"
+      kind: "workflow"
+      path: "workflows/si-bands-dos/workflow.yaml"
+    mode: "normal"
+    structure: "si-bulk"   # Structure reference (slug/name)
+    working_dir: "raw"
+    steps:
+      - meta:
+          id: "<step_ulid>"
+          name: "scf"
+          slug: "scf"
+          kind: "step"
+          path: "workflows/si-bands-dos/steps/scf.step.yaml"
+        parent_workflow_id: "<workflow_ulid>"
+        structure: "si-bulk"
+        step_type: "scf"
+        parameters: { ... }
+        cards: { ... }
+        species_overrides:
+          Si:
+            mass: 28.08
+            pseudopot: "Si.pbe-n-rrkjus_psl.1.0.0.UPF"
+pseudo:
+  directory: "pseudo"
+  files:
+    - "Si.pbe-n-rrkjus_psl.1.0.0.UPF"
+    - "O.pbe-n-rrkjus_psl.1.0.0.UPF"
+```
+
+**Key points**:
+- **Version**: Currently `1` (for future schema evolution)
+- **Project**: Project metadata and settings
+- **Structures**: Full structure data (pymatgen JSON) with metadata
+- **Workflows**: Complete workflow definitions with all steps
+- **Pseudo**: Pseudopotential filenames only (content NOT embedded)
+
+### 23.3 ULID Handling
+
+**Important**: When materializing a project from a snapshot, **all ULIDs are regenerated** to avoid collisions:
+
+- Original ULIDs are preserved in the snapshot for reference
+- New ULIDs are generated for: project, workflows, structures, steps
+- An internal mapping (`old_id → new_id`) is built during materialization
+- References (e.g., `parent_workflow_id` in steps) are rewritten using the mapping
+- Names, slugs, and logical relationships remain unchanged
+
+This ensures that:
+- Multiple projects can be created from the same snapshot without ID conflicts
+- The snapshot format is robust and reusable
+- Logical structure (workflow→structure, workflow→steps) is preserved
+
+### 23.4 Pseudopotential Files
+
+**Pseudopotential file contents are NOT embedded** in snapshots:
+
+- **Export**: Snapshot lists pseudopotential filenames from `pseudo/` directory
+- **Import**: `pseudo/` directory is created, but files are NOT created
+- **Rationale**: Pseudopotentials are large binary files; snapshot format focuses on project structure/metadata
+- **Usage**: Users must provide pseudopotential files separately after importing a snapshot
+
+### 23.5 CLI Commands
+
+#### Export Project to Snapshot
+
+```bash
+qv save-project snapshot.yml
+qv save-project my-project-snapshot.yml --overwrite
+```
+
+- Exports current project (auto-detected from CWD) to a YAML file
+- Use `--project` to specify project root explicitly
+- Use `--overwrite` to replace existing snapshot file
+
+#### Create Project from Snapshot
+
+```bash
+qv init project --snapshot snapshot.yml --path /path/to/parent --name "My New Project"
+```
+
+- `--snapshot`: Path to snapshot YAML file
+- `--path`: Parent directory where new project will be created (defaults to CWD)
+- `--name`: Optional name for the new project (defaults to snapshot's project name)
+
+**Note**: When using `--snapshot`, the `--path` argument is treated as the **parent directory** (not the project directory itself), similar to the demo project creation flow.
+
+### 23.5 API Methods
+
+The snapshot functionality is exposed via `QVService`:
+
+```python
+# Export project to snapshot dict
+snapshot_dict = QVService.export_project_snapshot(project_root)
+
+# Save snapshot to YAML file
+output_path = QVService.save_project_snapshot(
+    project_root=project_root,
+    output_path=Path("snapshot.yml"),
+    overwrite=False,
+)
+
+# Create project from snapshot
+new_project_root = QVService.create_project_from_snapshot(
+    parent_dir=Path("/path/to/parent"),
+    snapshot_path=Path("snapshot.yml"),
+    project_name="New Project",
+)
+```
+
+### 23.6 Implementation Details
+
+**Core module**: `src/quantumvitas/project/snapshot.py`
+
+- `ProjectSnapshot`: Dataclass representing snapshot structure
+- `export_project_to_snapshot()`: Reads project directory, packages into snapshot
+- `materialize_project_from_snapshot()`: Creates new project from snapshot with ULID remapping
+
+**Key implementation notes**:
+- Uses existing model loaders (`load_project`, `load_workflow`, `load_structure_model`)
+- Handles both `__qv_meta__` wrapper and direct structure dict formats
+- Rewrites `parent_workflow_id` references during materialization
+- Creates directory structure but not pseudopotential files
+
+### 23.7 Roundtrip Guarantees
+
+After `export → import` roundtrip, the following are guaranteed:
+
+✅ **Preserved**:
+- Project name, slug, settings
+- Structure data (composition, sites, lattice parameters)
+- Workflow structure (mode, working_dir, structure reference)
+- Step specifications (step_type, parameters, cards, species_overrides)
+- Logical relationships (workflow→structure, workflow→steps, step→workflow)
+
+❌ **Changed**:
+- All ULIDs (project, workflows, structures, steps)
+- Filesystem paths (relative to new project root)
+
+⚠️ **Not included**:
+- Pseudopotential file contents (only filenames)
+- QE output files (raw/, reference/ directories are empty)
+- Trash directory contents
+
+### 23.8 Unit Tests
+
+Comprehensive unit tests in `tests/unit/test_project_snapshot.py`:
+
+- **Export tests**: Verify snapshot structure and content
+- **Import tests**: Verify project recreation and ULID regeneration
+- **Roundtrip tests**: Verify complete export→import cycle
+- **CLI tests**: Test `save-project` and `init project --snapshot` commands
+- **Edge cases**: Pseudo files, overwrite protection, etc.
+
+All tests use temporary directories and clean up after themselves.
 
 ---
 

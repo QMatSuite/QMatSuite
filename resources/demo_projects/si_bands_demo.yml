@@ -1,0 +1,271 @@
+version: 1
+project:
+  meta:
+    id: 01KBY12TWG2V99TQCRPZJ4TZQ7
+    name: demo-si-project
+    slug: demo-si-project
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    id: 01KBY12TWKPEJJAW9QJ83HBEZY
+    name: silicon
+    slug: silicon
+    path: structures/silicon.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - -2.7546079563238743
+        - 0.0
+        - 2.7546079563238743
+      - - 0.0
+        - 2.7546079563238743
+        - 2.7546079563238743
+      - - -2.7546079563238743
+        - 2.7546079563238743
+        - 0.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 3.8956039308540573
+      b: 3.8956039308540573
+      c: 3.8956039308540573
+      alpha: 59.99999999999999
+      beta: 59.99999999999999
+      gamma: 59.99999999999999
+      volume: 41.803186562694144
+    properties: {}
+    sites:
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Si
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - -0.25
+      - 0.75
+      - -0.25
+      properties: {}
+      label: Si
+      xyz:
+      - 1.3773039781619372
+      - 1.3773039781619374
+      - 1.3773039781619374
+workflows:
+- meta:
+    id: 01KBY12TWPB33KBMYMRX9Q7RPQ
+    name: demo-workflow
+    slug: demo-workflow
+    path: workflows/demo-workflow
+    kind: workflow
+  structure: silicon
+  mode: normal
+  working_dir: raw
+  steps:
+  - meta:
+      id: 01KBY12TWX0Q00EKXGWDFNE7QW
+      name: scf
+      slug: scf
+      path: workflows/demo-workflow/steps/scf.step.yaml
+      kind: step
+    structure: silicon
+    step_type: scf
+    parent_workflow_id: 01KBY12TWPB33KBMYMRX9Q7RPQ
+    parameters:
+      CONTROL:
+        calculation: scf
+        outdir: ./outdir
+        prefix: si
+        restart_mode: from_scratch
+      ELECTRONS:
+        conv_thr: 1.0e-08
+      SYSTEM:
+        ecutwfc: 40
+        ecutrho: 320
+        nbnd: 8
+    cards:
+      K_POINTS:
+        option: automatic
+        data:
+        - - 8
+          - 8
+          - 8
+          - 0
+          - 0
+          - 0
+    species_overrides:
+      Si:
+        mass: 28.0855
+        pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+  - meta:
+      id: 01KBY12TWZHCE9BKNYZNHHFP1J
+      name: nscf
+      slug: nscf
+      path: workflows/demo-workflow/steps/nscf.step.yaml
+      kind: step
+    structure: silicon
+    step_type: nscf
+    parent_workflow_id: 01KBY12TWPB33KBMYMRX9Q7RPQ
+    parameters:
+      CONTROL:
+        calculation: nscf
+        outdir: ./outdir
+        prefix: si
+        restart_mode: from_scratch
+      ELECTRONS:
+        conv_thr: 1.0e-08
+      SYSTEM:
+        ecutwfc: 40
+        ecutrho: 320
+        nbnd: 8
+        occupations: tetrahedra
+    cards:
+      K_POINTS:
+        option: automatic
+        data:
+        - - 12
+          - 12
+          - 12
+          - 0
+          - 0
+          - 0
+    species_overrides:
+      Si:
+        mass: 28.0855
+        pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+  - meta:
+      id: 01KBY12TWV73XS50N1M23T48FK
+      name: bands
+      slug: bands
+      path: workflows/demo-workflow/steps/bands.step.yaml
+      kind: step
+    structure: silicon
+    step_type: bands_pw
+    parent_workflow_id: 01KBY12TWPB33KBMYMRX9Q7RPQ
+    parameters:
+      CONTROL:
+        calculation: bands
+        outdir: ./outdir
+        prefix: si
+        restart_mode: from_scratch
+      ELECTRONS:
+        conv_thr: 1.0e-08
+      SYSTEM:
+        ecutwfc: 40
+        ecutrho: 320
+        nbnd: 8
+    cards:
+      K_POINTS:
+        option: crystal_b
+        data:
+        - - 5
+        - - 0.0
+          - 0.5
+          - 0.0
+          - 20
+        - - 0.0
+          - 0.0
+          - 0.0
+          - 30
+        - - -0.5
+          - 0.0
+          - -0.5
+          - 10
+        - - -0.375
+          - 0.25
+          - -0.375
+          - 30
+        - - 0.0
+          - 0.0
+          - 0.0
+          - 0
+    species_overrides:
+      Si:
+        mass: 28.0855
+        pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+    kpath_metadata:
+      segments:
+      - start_label: L
+        end_label: "\u0393"
+        start_coords:
+        - 0.0
+        - 0.5
+        - 0.0
+        end_coords:
+        - 0.0
+        - 0.0
+        - 0.0
+        n_points: 20
+      - start_label: "\u0393"
+        end_label: X
+        start_coords:
+        - 0.0
+        - 0.0
+        - 0.0
+        end_coords:
+        - -0.5
+        - 0.0
+        - -0.5
+        n_points: 30
+      - start_label: X
+        end_label: U
+        start_coords:
+        - -0.5
+        - 0.0
+        - -0.5
+        end_coords:
+        - -0.375
+        - 0.25
+        - -0.375
+        n_points: 10
+      - start_label: U
+        end_label: "\u0393"
+        start_coords:
+        - -0.375
+        - 0.25
+        - -0.375
+        end_coords:
+        - 0.0
+        - 0.0
+        - 0.0
+        n_points: 30
+      labels:
+      - L
+      - "\u0393"
+      - X
+      - U
+      - "\u0393"
+      lattice_type: fcc
+      spacegroup_symbol: Fd-3m
+      spacegroup_number: 227
+  - meta:
+      id: 01KBY12TX1F895V4FCV0X890BD
+      name: bands-pp
+      slug: bands-pp
+      path: workflows/demo-workflow/steps/bands-pp.step.yaml
+      kind: step
+    structure: silicon
+    step_type: bands
+    parent_workflow_id: 01KBY12TWPB33KBMYMRX9Q7RPQ
+    parameters:
+      BANDS:
+        outdir: ./outdir
+        prefix: si
+        filband: si.bands.dat

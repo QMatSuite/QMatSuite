@@ -553,17 +553,46 @@ def init_project_command(
         "--path",
         help="Directory where the project should be created (defaults to ./projectN).",
     ),
-    template: Optional[str] = typer.Option(
-        None, "--template", help="Project template to use (e.g., 'project1')"
+    snapshot: Optional[Path] = typer.Option(
+        None,
+        "--snapshot",
+        help="Path to a project snapshot YAML file to use as template",
     ),
 ) -> None:
     """
     Scaffold a new QuantumVITAS project skeleton (no workflows by default).
     
-    Use --template to copy from a predefined project template with example
-    structures and workflows.
+    Use --snapshot to create a project from a snapshot YAML file (exported via qv save project).
+    When using --snapshot, --path is treated as the parent directory where the new project will be created.
+    
+    For demo projects with pre-populated workflows, use the GUI "Create Demo Project" button
+    or call create_demo_project via the API.
     """
-    from quantumvitas.core.templates import copy_project_template, list_templates
+    # Handle snapshot first
+    if snapshot:
+        snapshot_path = Path(snapshot).expanduser().resolve()
+        if not snapshot_path.exists():
+            raise typer.BadParameter(f"Snapshot file not found: {snapshot_path}")
+        
+        # When using snapshot, path is the parent directory
+        if path:
+            parent_dir = Path(path).expanduser().resolve()
+        else:
+            parent_dir = Path.cwd()
+        
+        parent_dir.mkdir(parents=True, exist_ok=True)
+        
+        project_dir = QVService.create_project_from_snapshot(
+            parent_dir=parent_dir,
+            snapshot_path=snapshot_path,
+            project_name=name,
+        )
+        
+        typer.secho(
+            f"Project created from snapshot at {project_dir}",
+            fg=typer.colors.GREEN
+        )
+        return
 
     base_dir = Path.cwd()
     project_dir = _determine_project_directory(
@@ -574,17 +603,6 @@ def init_project_command(
         raise typer.BadParameter(
             f"Destination '{project_dir}' already exists and is not empty."
         )
-
-    if template:
-        available = list_templates("project")
-        if template not in available:
-            raise typer.BadParameter(
-                f"Template '{template}' not found. Available: {', '.join(available) or 'none'}"
-            )
-        project_dir.mkdir(parents=True, exist_ok=True)
-        copy_project_template(template, project_dir, new_name=name)
-        typer.secho(f"Project created from template '{template}' at {project_dir}", fg=typer.colors.GREEN)
-        return
 
     project_dir.mkdir(parents=True, exist_ok=True)
     project_name = name or project_dir.name
@@ -636,7 +654,9 @@ def init_workflow_command(
     If using a template, --structure is optional (template's structure is used).
     """
     from quantumvitas.core.templates import (
-        copy_workflow_template, copy_structure_template, list_templates
+        copy_workflow_template,
+        copy_structure_template,
+        list_workflow_templates,
     )
 
     project_root = (project or _resolve_project_root()).resolve()
@@ -660,7 +680,8 @@ def init_workflow_command(
         )
 
     if template:
-        available = list_templates("workflow")
+        available_templates = list_workflow_templates()
+        available = [t["name"] for t in available_templates]
         if template not in available:
             raise typer.BadParameter(
                 f"Template '{template}' not found. Available: {', '.join(available) or 'none'}"
@@ -803,9 +824,6 @@ def init_step_command(
         "--index",
         help="Insert position when attaching to a workflow (0-indexed, defaults to append).",
     ),
-    template: Optional[str] = typer.Option(
-        None, "--template", help="Step template to copy (e.g., 'scf', 'nscf', 'dos')"
-    ),
     auto_kpath: bool = typer.Option(
         False, "--auto-kpath", 
         help="Auto-generate high-symmetry k-path for band structure calculations (requires structure)"
@@ -814,22 +832,30 @@ def init_step_command(
         20, "--kpath-points",
         help="Number of k-points per segment when using --auto-kpath"
     ),
+    no_defaults: bool = typer.Option(
+        False, "--no-defaults",
+        help="Do not apply in-code default parameters. Use only explicitly provided parameters. "
+             "Useful when importing from an existing QE input file to preserve original parameters."
+    ),
 ) -> None:
     """Create a StructureStepSpec YAML file and optionally attach it to a workflow.
     
     Step type is required and must be a known QE calculation type.
     Structure is optional if inside a workflow directory (inherits from workflow).
-    Use --template to copy from a predefined step template.
+    
+    By default, step is created with QV's in-code default parameters (outdir, restart_mode, 
+    conv_thr, etc.) merged with any explicitly provided parameters. Use --no-defaults to create
+    a step with only the explicitly provided parameters (useful for importing from existing QE inputs).
     
     For band structure steps, use --auto-kpath to automatically generate a 
     high-symmetry k-path using the structure's symmetry.
     
     Examples:
-        qv init step scf --structure si
-        qv init step nscf                    # inside workflow, inherits structure
+        qv init step scf --structure si                    # Uses defaults
+        qv init step nscf                                  # inside workflow, inherits structure, uses defaults
         qv init step relax --structure si --workflow my_workflow
-        qv init step scf --template scf      # copy from template
         qv init step bands --structure si --auto-kpath
+        qv init step scf --no-defaults --CONTROL.calculation=scf  # Import mode, no defaults
     """
     # Validate step type
     if step_type.lower() not in KNOWN_STEP_TYPES:
@@ -951,82 +977,53 @@ def init_step_command(
                 f"Failed to generate k-path for structure: {exc}"
             ) from exc
 
-    if template:
-        from quantumvitas.core.templates import copy_step_template, list_templates
-        
-        available = list_templates("step")
-        if template not in available:
-            raise typer.BadParameter(
-                f"Template '{template}' not found. Available: {', '.join(available) or 'none'}"
-            )
-        
-        copy_step_template(
-            template_name=template,
-            dest_dir=spec_path.parent,
-            new_name=step_display_name,
-            parent_workflow_id=parent_workflow_id,
-            structure=structure_value,
-        )
-        # Rename to expected path if different
-        expected_name = f"{step_slug}.step.yaml"
-        copied_path = spec_path.parent / f"{slugify(step_display_name)}.step.yaml"
-        if copied_path.name != expected_name and copied_path.exists():
-            spec_path = copied_path
-        else:
-            spec_path = spec_path.parent / expected_name
-        
-        # Apply any additional overrides (including auto-kpath)
-        spec = StructureStepSpec.from_yaml(spec_path)
-        
-        # Merge parameter overrides
-        if bundle.has_any():
-            params = dict(spec.parameters) if spec.parameters else {}
-            for section, section_params in _overrides_to_parameter_dict(bundle.parameters).items():
-                if section not in params:
-                    params[section] = {}
-                params[section].update(section_params)
-            spec.parameters = params
-            if bundle.card_overrides:
-                cards = dict(spec.cards) if spec.cards else {}
-                cards.update(bundle.card_overrides)
-                spec.cards = cards
-            if bundle.species_overrides:
-                species = dict(spec.species_overrides) if spec.species_overrides else {}
-                species.update(bundle.species_overrides)
-                spec.species_overrides = species
-        
-        # Apply auto-kpath card overrides (only if not manually specified)
-        if kpath_card_overrides:
-            cards = dict(spec.cards) if spec.cards else {}
-            for card_name, card_data in kpath_card_overrides.items():
-                if card_name not in cards:  # Don't override manual K_POINTS
-                    cards[card_name] = card_data
-            spec.cards = cards
-        
-        # Store k-path metadata in step spec (not sidecar file)
-        if kpath_result:
-            spec.kpath_metadata = kpath_result.to_dict()
-        
-        _write_step_spec(spec_path, spec, project_root=project_root)
-        typer.echo(f"Step spec created from template '{template}' at {spec_path}")
+    # Get default parameters for this step type (if not in --no-defaults mode)
+    from quantumvitas.workflow.step_defaults import get_default_step_params
+    
+    apply_defaults = not no_defaults
+    
+    if apply_defaults:
+        defaults = get_default_step_params(step_type)
+        default_params = defaults.get("parameters", {})
+        default_cards = defaults.get("cards", {})
+        default_species = defaults.get("species_overrides", {})
     else:
-        # Merge card overrides with auto-kpath (manual takes precedence)
-        cards = dict(bundle.card_overrides) if bundle.card_overrides else {}
-        for card_name, card_data in kpath_card_overrides.items():
-            if card_name not in cards:  # Don't override manual K_POINTS
-                cards[card_name] = card_data
-        
-        spec = StructureStepSpec(
-            meta=meta_from_name("step", name=step_display_name, path=""),
-            structure=structure_value,
-            step_type=step_type,
-            parameters=_overrides_to_parameter_dict(bundle.parameters),
-            cards=cards,
-            species_overrides=bundle.species_overrides or {},
-            parent_workflow_id=parent_workflow_id,
-            kpath_metadata=kpath_result.to_dict() if kpath_result else None,
-        )
-        _write_step_spec(spec_path, spec, project_root=project_root)
+        # No defaults: start with empty dicts
+        default_params = {}
+        default_cards = {}
+        default_species = {}
+    
+    # Merge user overrides with defaults (user overrides take precedence)
+    params = dict(default_params)
+    for section, section_params in _overrides_to_parameter_dict(bundle.parameters).items():
+        if section not in params:
+            params[section] = {}
+        params[section].update(section_params)
+    
+    # Merge card overrides with defaults and auto-kpath (manual takes precedence)
+    cards = dict(default_cards)
+    if bundle.card_overrides:
+        cards.update(bundle.card_overrides)
+    for card_name, card_data in kpath_card_overrides.items():
+        if card_name not in cards:  # Don't override manual K_POINTS
+            cards[card_name] = card_data
+    
+    # Merge species overrides with defaults
+    species = dict(default_species)
+    if bundle.species_overrides:
+        species.update(bundle.species_overrides)
+    
+    spec = StructureStepSpec(
+        meta=meta_from_name("step", name=step_display_name, path=""),
+        structure=structure_value,
+        step_type=step_type,
+        parameters=params,
+        cards=cards,
+        species_overrides=species,
+        parent_workflow_id=parent_workflow_id,
+        kpath_metadata=kpath_result.to_dict() if kpath_result else None,
+    )
+    _write_step_spec(spec_path, spec, project_root=project_root)
 
     if workflow_entry and workflow_steps is not None and workflow_data is not None:
         assert workflow_dir is not None
@@ -1050,6 +1047,58 @@ def init_step_command(
         )
 
     typer.echo(f"Step spec created at {spec_path}")
+
+
+@app.command("save-project")
+def save_project_command(
+    output: Path = typer.Argument(..., help="Path to output YAML snapshot file"),
+    project: Optional[Path] = typer.Option(
+        None,
+        "--project",
+        help="Project root; if omitted, auto-detect from CWD",
+    ),
+    overwrite: bool = typer.Option(
+        False,
+        "--overwrite",
+        help="Overwrite existing snapshot file if it exists",
+    ),
+) -> None:
+    """
+    Export the current project to a snapshot YAML file.
+    
+    The snapshot contains all project metadata, structures, workflows, and steps
+    needed to recreate the project. Pseudopotential filenames are preserved
+    but file contents are NOT embedded.
+    
+    Examples:
+        qv save-project snapshot.yml
+        qv save-project my-project-snapshot.yml --overwrite
+    """
+    from quantumvitas.core.context import find_path_context_from_pwd
+    
+    # Determine project root
+    if project:
+        project_root = Path(project).expanduser().resolve()
+    else:
+        project_root = find_path_context_from_pwd().project_root
+    
+    if not (project_root / "project.qv.yml").exists():
+        raise typer.BadParameter(f"Not a project: {project_root}")
+    
+    # Export snapshot
+    output_path = Path(output).expanduser().resolve()
+    try:
+        QVService.save_project_snapshot(
+            project_root=project_root,
+            output_path=output_path,
+            overwrite=overwrite,
+        )
+        typer.secho(
+            f"Project snapshot saved to {output_path}",
+            fg=typer.colors.GREEN
+        )
+    except QVServiceError as e:
+        raise typer.BadParameter(str(e))
 
 
 @app.command("import-structure")
@@ -2316,9 +2365,11 @@ def show_command(input_file: Path = typer.Argument(..., help="QE input file to i
         "init",
         "step",
         step_type,
+        "--no-defaults",  # Preserve original parameters, don't inject QV defaults
     ] + cli_args
 
-    typer.echo("Example 1: create a step spec with all detected parameters")
+    typer.echo("Example 1: create a step spec preserving original parameters (import mode)")
+    typer.echo("  # --no-defaults preserves the QE input exactly (no QV default parameters added)")
     typer.echo("  " + shlex.join(base_cmd))
     
     # Different hint based on whether this is a post-processing step

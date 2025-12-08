@@ -11,6 +11,21 @@ from typing import Literal, Optional, Sequence
 
 import ulid
 
+# Find resources directory relative to this file's location
+# resources/ is at the root of the repo, not in src/
+_PACKAGE_ROOT = Path(__file__).parent.parent.parent.parent  # src/quantumvitas/core -> root
+RESOURCES_DIR = _PACKAGE_ROOT / "resources"
+
+
+def get_resources_dir() -> Path:
+    """
+    Get the path to the resources directory.
+    
+    Returns:
+        Path to resources/ directory at repo root
+    """
+    return RESOURCES_DIR
+
 ResourceKind = Literal["project", "workflow", "step", "structure"]
 
 _SLUG_INVALID_RE = re.compile(r"[^a-z0-9_]+")
@@ -45,7 +60,21 @@ def ensure_relative_path(path: Path | str, *, base: Optional[Path] = None) -> st
     if path_obj.is_absolute():
         if base is None:
             raise ValueError("Absolute paths require a base to relativize against.")
-        path_obj = path_obj.relative_to(base)
+        base_resolved = base.resolve()
+        path_obj_resolved = path_obj.resolve()
+        # Handle symlink issues by comparing resolved paths
+        try:
+            path_obj = path_obj_resolved.relative_to(base_resolved)
+        except ValueError:
+            # If relative_to fails, try with string comparison
+            # This can happen with symlinks or different path representations
+            base_str = str(base_resolved)
+            path_str = str(path_obj_resolved)
+            if path_str.startswith(base_str):
+                rel_str = path_str[len(base_str):].lstrip('/')
+                path_obj = Path(rel_str)
+            else:
+                raise
     return path_obj.as_posix()
 
 
