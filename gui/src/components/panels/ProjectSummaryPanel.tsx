@@ -13,6 +13,7 @@ interface ProjectSummaryPanelProps {
   onBrowseAndLoad?: () => void;
   onCreateProject?: () => void;
   onCreateDemoProject?: () => void;
+  onQuickDemo?: () => void;
   onOpenRecentProject?: (path: string) => void;
   onRemoveRecentProject?: (path: string) => void;
   onNavigateToStructure?: (name: string) => void;
@@ -28,6 +29,7 @@ export function ProjectSummaryPanel({
   onBrowseAndLoad,
   onCreateProject,
   onCreateDemoProject,
+  onQuickDemo,
   onOpenRecentProject,
   onRemoveRecentProject,
   onNavigateToStructure,
@@ -105,17 +107,33 @@ export function ProjectSummaryPanel({
               </button>
             )}
             {onCreateDemoProject && (
-              <button 
-                className="welcome-button welcome-button--demo" 
-                onClick={onCreateDemoProject}
-                data-testid="qv-btn-create-demo-project"
-              >
-                <span className="welcome-button__icon">🚀</span>
-                <span className="welcome-button__content">
-                  <span className="welcome-button__title">Create Demo Project</span>
-                  <span className="welcome-button__desc">Start with a ready-to-run Si workflow</span>
-                </span>
-              </button>
+              <>
+                <button 
+                  className="welcome-button welcome-button--demo" 
+                  onClick={onCreateDemoProject}
+                  data-testid="qv-btn-demo-gallery"
+                >
+                  <span className="welcome-button__icon">🎨</span>
+                  <span className="welcome-button__content">
+                    <span className="welcome-button__title">Demo Gallery</span>
+                    <span className="welcome-button__desc">Browse available demo projects</span>
+                  </span>
+                </button>
+                {onQuickDemo && (
+                  <button 
+                    className="welcome-button welcome-button--demo-secondary" 
+                    onClick={onQuickDemo}
+                    data-testid="qv-btn-quick-demo"
+                    title="Quick Demo (Si Bands) - See more in Demo Gallery"
+                  >
+                    <span className="welcome-button__icon">🚀</span>
+                    <span className="welcome-button__content">
+                      <span className="welcome-button__title">Quick Demo (Si Bands)</span>
+                      <span className="welcome-button__desc">See more in Demo Gallery</span>
+                    </span>
+                  </button>
+                )}
+              </>
             )}
           </div>
           

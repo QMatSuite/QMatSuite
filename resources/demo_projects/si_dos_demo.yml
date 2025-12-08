@@ -1,0 +1,166 @@
+version: 1
+project:
+  meta:
+    id: 01KB9J9K06K6400PY3J2QYJ0Z4
+    name: project1
+    slug: project1
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    id: 01KB9JA63339W4J7YFM9FDYJKA
+    name: Si
+    slug: si
+    path: structures/si.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - -2.7546079563238743
+        - 0.0
+        - 2.7546079563238743
+      - - 0.0
+        - 2.7546079563238743
+        - 2.7546079563238743
+      - - -2.7546079563238743
+        - 2.7546079563238743
+        - 0.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 3.8956039308540573
+      b: 3.8956039308540573
+      c: 3.8956039308540573
+      alpha: 59.99999999999999
+      beta: 59.99999999999999
+      gamma: 59.99999999999999
+      volume: 41.803186562694144
+    properties: {}
+    sites:
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Si
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - -0.25
+      - 0.75
+      - -0.25
+      properties: {}
+      label: Si
+      xyz:
+      - 1.3773039781619372
+      - 1.3773039781619374
+      - 1.3773039781619374
+workflows:
+- meta:
+    id: 01KB9JA6JSMH7XFZ1AK917TV6J
+    name: Si dos
+    slug: si-dos
+    path: workflows/si-dos
+    kind: workflow
+  structure: si
+  mode: normal
+  working_dir: raw
+  steps:
+  - meta:
+      id: 01KB9JR6C8550NT0EFR361ZVTR
+      name: scf
+      slug: scf
+      path: scf.step.yaml
+      kind: step
+    structure: si
+    step_type: scf
+    parent_workflow_id: 01KB9JA6JSMH7XFZ1AK917TV6J
+    parameters:
+      CONTROL:
+        calculation: scf
+        outdir: ./outdir
+        prefix: si
+        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+        restart_mode: from_scratch
+      ELECTRONS:
+        conv_thr: 1.0e-08
+      SYSTEM:
+        ecutwfc: 50
+    cards:
+      K_POINTS:
+        option: automatic
+        data:
+        - - 8
+          - 8
+          - 8
+          - 0
+          - 0
+          - 0
+    species_overrides:
+      Si:
+        mass: 28.0855
+        pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+  - meta:
+      id: 01KB9JWASAS0TZPM0H6QDJKTGC
+      name: nscf
+      slug: nscf
+      path: workflows/si-dos/steps/nscf.step.yaml
+      kind: step
+    structure: si
+    step_type: nscf
+    parent_workflow_id: 01KB9JA6JSMH7XFZ1AK917TV6J
+    parameters:
+      CONTROL:
+        calculation: nscf
+        outdir: ./outdir
+        prefix: si
+        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+        restart_mode: from_scratch
+      ELECTRONS:
+        conv_thr: 1.0e-08
+      SYSTEM:
+        ecutwfc: 50
+        occupations: tetrahedra
+    cards:
+      K_POINTS:
+        option: automatic
+        data:
+        - - 12
+          - 12
+          - 12
+          - 0
+          - 0
+          - 0
+    species_overrides:
+      Si:
+        mass: 28.0855
+        pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+  - meta:
+      id: 01KB9K4N11RGJTEMFF3BHQ69ME
+      name: dos
+      slug: dos
+      path: workflows/si-dos/steps/dos.step.yaml
+      kind: step
+    structure: si
+    step_type: dos
+    parent_workflow_id: 01KB9JA6JSMH7XFZ1AK917TV6J
+    parameters:
+      DOS:
+        emax: 16.0
+        emin: -9.0
+        fildos: si.dos.dat
+        outdir: ./outdir/
+        prefix: si

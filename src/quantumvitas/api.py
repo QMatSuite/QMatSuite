@@ -39,6 +39,7 @@ from quantumvitas.core.resolution import (
     list_workflows,
     list_steps,
 )
+from quantumvitas.core.context import detect_enclosing_project
 from quantumvitas.core.project_utils import (
     ProjectConfigError,
     ResourceNotFoundError,
@@ -83,6 +84,7 @@ class QVService:
     def init_project(
         target_dir: Path,
         name: Optional[str] = None,
+        template: Optional[str] = None,
     ) -> Path:
         """
         Initialize a new QuantumVITAS project.
@@ -90,11 +92,23 @@ class QVService:
         Args:
             target_dir: Directory to create the project in
             name: Project name (defaults to directory name)
+            template: Optional template name (deprecated, not used)
             
         Returns:
             Path to project root
+            
+        Raises:
+            ValueError: If target_dir is inside an existing project
         """
         target_dir = Path(target_dir).resolve()
+        
+        # Check if target_dir is inside an existing project
+        enclosing_project = detect_enclosing_project(target_dir)
+        if enclosing_project:
+            raise ValueError(
+                f"The selected folder is inside an existing QuantumVITAS project at: {enclosing_project}. "
+                "Please choose a parent workspace folder, not a project folder."
+            )
         
         target_dir.mkdir(parents=True, exist_ok=True)
         
@@ -2602,7 +2616,7 @@ class QVService:
     def create_demo_project(
         target_dir: Path,
         name: str = "demo-si-project",
-        demo_name: str = "si_bands_demo",
+        demo_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Create a demo Si project with a ready-to-run workflow.
@@ -2613,10 +2627,13 @@ class QVService:
         Args:
             target_dir: Directory to create the project in
             name: Project name
-            demo_name: Name of demo snapshot (without .yml extension)
+            demo_id: Name of demo snapshot (without .yml extension). Defaults to "si_bands_demo".
             
         Returns:
             Dict with project info
+            
+        Raises:
+            ValueError: If target_dir is inside an existing project
         """
         from quantumvitas.core.resources import get_resources_dir
         from quantumvitas.project.snapshot import (
@@ -2624,6 +2641,19 @@ class QVService:
             materialize_project_from_snapshot,
         )
         import yaml
+        
+        target_dir = Path(target_dir).resolve()
+        
+        # Check if target_dir is inside an existing project
+        enclosing_project = detect_enclosing_project(target_dir)
+        if enclosing_project:
+            raise ValueError(
+                f"The selected folder is inside an existing QuantumVITAS project at: {enclosing_project}. "
+                "Please choose a parent workspace folder, not a project folder."
+            )
+        
+        # Use default demo if not specified
+        demo_name = demo_id or "si_bands_demo"
         
         # Locate demo snapshot
         resources_dir = get_resources_dir()
@@ -2677,6 +2707,50 @@ class QVService:
             "workflow": workflow_info,
             "ready_to_run": len(snapshot.workflows) > 0,
         }
+    
+    @staticmethod
+    def list_demo_projects() -> List[Dict[str, Any]]:
+        """
+        List available demo project snapshots.
+        
+        Returns:
+            List of demo project info dicts (JSON-serializable)
+        """
+        from quantumvitas.core.resources import get_resources_dir
+        
+        # Hardcoded metadata for demo projects
+        # This can be extended later to read from snapshot files or a metadata file
+        METADATA = {
+            "si_bands_demo": {
+                "id": "si_bands_demo",
+                "name": "Si Band Structure",
+                "description": "Silicon band structure calculation with SCF, NSCF, and bands steps. Demonstrates k-path generation and band structure analysis.",
+                "recommended_use": "Band structure analysis",
+                "estimated_runtime_scf": None,  # Can be added later
+            },
+            "si_dos_demo": {
+                "id": "si_dos_demo",
+                "name": "Si DOS",
+                "description": "Silicon density of states calculation with SCF, NSCF, and DOS steps. Demonstrates DOS analysis workflow.",
+                "recommended_use": "Density of states analysis",
+                "estimated_runtime_scf": None,  # Can be added later
+            },
+        }
+        
+        # Scan resources/demo_projects/*.yml
+        resources_dir = get_resources_dir()
+        demo_projects_dir = resources_dir / "demo_projects"
+        
+        if not demo_projects_dir.exists():
+            return []
+        
+        demos = []
+        for snapshot_file in demo_projects_dir.glob("*.yml"):
+            demo_id = snapshot_file.stem
+            if demo_id in METADATA:
+                demos.append(METADATA[demo_id].copy())
+        
+        return sorted(demos, key=lambda d: d["id"])
     
     @staticmethod
     def import_structure_from_template(

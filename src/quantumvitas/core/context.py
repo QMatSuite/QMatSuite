@@ -146,6 +146,24 @@ def _find_project_root(start: Path, max_depth: int) -> Optional[Path]:
     return None
 
 
+def detect_enclosing_project(path: Path, max_depth: int = 20) -> Optional[Path]:
+    """
+    Walk upward from `path` looking for `project.qv.yml`.
+    
+    Return the project root if found, otherwise None.
+    Does NOT look at cwd, only the given path.
+    
+    Args:
+        path: Starting path to search from
+        max_depth: Maximum directories to scan upward
+        
+    Returns:
+        Path to project root if found, None otherwise
+    """
+    path = Path(path).resolve()
+    return _find_project_root(path, max_depth)
+
+
 def _build_context_chain(project_root: Path, start_path: Path) -> List[ContextNode]:
     """Build the context node chain from project root to start."""
     nodes: List[ContextNode] = []

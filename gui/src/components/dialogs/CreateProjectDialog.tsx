@@ -121,6 +121,7 @@ export function CreateProjectDialog({
         onSuccess(response.data.project_root);
         handleClose();
       } else {
+        // Show error but keep dialog open (for validation errors like "inside existing project")
         setError(response.error?.message || 'Failed to create project');
       }
     }
