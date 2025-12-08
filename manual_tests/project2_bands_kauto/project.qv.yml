@@ -1,0 +1,38 @@
+project:
+  name: project2_bands_kauto
+  meta:
+    id: 01KBH0N8H2W53FFED02D8T3W3T
+    name: project2_bands_kauto
+    slug: project2_bands_kauto
+    path: .
+    kind: project
+  structures_dir: structures
+  workflows_dir: workflows
+workflows:
+- name: Si bands
+  path: workflows/si-bands
+  meta:
+    id: 01KBH0RGF179RD73PNKD0N8GNS
+    name: Si bands
+    slug: si-bands
+    path: workflows/si-bands
+    kind: workflow
+- name: Si bands auto k
+  path: workflows/si-bands-auto-k
+  meta:
+    id: 01KBH5KYPE659SWXHXQP1BXX16
+    name: Si bands auto k
+    slug: si-bands-auto-k
+    path: workflows/si-bands-auto-k
+    kind: workflow
+structures:
+- name: Si
+  file: structures/si.json
+  format: json
+  meta:
+    id: 01KBH0RFSSZ1G305C8PS5F1WHC
+    name: Si
+    slug: si
+    path: structures/si.json
+    kind: structure
+settings: {}

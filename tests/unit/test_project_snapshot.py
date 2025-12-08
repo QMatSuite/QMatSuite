@@ -318,7 +318,7 @@ class TestSnapshotRoundtrip:
     def test_complete_roundtrip_project2_bands(
         self, project2_bands_path: Path, temp_dir: Path
     ):
-        """Test complete roundtrip with project2_bands (multiple workflows)."""
+        """Test complete roundtrip with project2_bands (bands workflow with multiple steps)."""
         # Export
         snapshot = export_project_to_snapshot(project2_bands_path)
         original_project = load_project(project2_bands_path)
@@ -334,7 +334,7 @@ class TestSnapshotRoundtrip:
         # Verify project structure
         assert len(new_project.structures) == len(original_project.structures)
         assert len(new_project.workflows) == len(original_project.workflows)
-        assert len(new_project.workflows) == 2  # project2_bands has 2 workflows
+        assert len(new_project.workflows) == 1  # project2_bands has 1 workflow (si-bands)
         
         # Verify all workflows - match by slug since order might differ
         original_workflow_slugs = {w.meta.slug for w in original_project.workflows}
