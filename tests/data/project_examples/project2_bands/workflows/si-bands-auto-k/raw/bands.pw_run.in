@@ -1,9 +1,0 @@
-&control
-    pseudo_dir = '<HOME>/Code/quantumVITAS/pseudo'
-/
-
-&bands
-    filband = 'si.bands.pp.dat'
-    outdir = './outdir'
-    prefix = 'si'
-/

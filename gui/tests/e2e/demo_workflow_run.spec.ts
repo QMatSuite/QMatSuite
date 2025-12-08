@@ -21,7 +21,7 @@
  */
 
 import { electronTest as test, expect, navigateToView, QE_JOB_TEST_TIMEOUT } from './fixtures/electronTest';
-import { createUniqueProjectDir, cleanupProjectDir, clearE2EProjectsRoot } from './helpers';
+import { createUniqueProjectDir, cleanupProjectDir, clearE2EProjectsRoot, createDemoProject } from './helpers';
 
 // Skip if explicitly requested via environment variable
 const SKIP_E2E = process.env.SKIP_ELECTRON_E2E === 'true';
@@ -48,17 +48,16 @@ test.describe('E2E Test 3: Run workflow → Jobs → Analysis', () => {
     // Override timeout to 3 minutes for QE job execution
     testInfo.setTimeout(QE_JOB_TEST_TIMEOUT);
     
-    // === STEP 1: Create Demo Project ===
-    await expect(appPage.getByTestId('qv-welcome-title')).toBeVisible({ timeout: 30000 });
+    // === STEP 1: Create Demo Project via Demo Gallery ===
+    // Flow: Home → Browse Demo Gallery → Si Bands demo card → Create Project → Project loaded
+    await createDemoProject(appPage, {
+      demoId: 'si_bands_demo',
+      projectName: 'e2e-run',
+      parentDir: projectDir,
+    });
     
-    await appPage.getByTestId('qv-btn-create-demo-project').click();
-    await expect(appPage.getByTestId('qv-create-project-dialog')).toBeVisible({ timeout: 10000 });
-    
-    await appPage.getByTestId('qv-input-parent-dir').fill(projectDir);
-    await appPage.getByTestId('qv-input-project-name').fill('e2e-run');
-    await appPage.getByTestId('qv-btn-confirm-create').click();
-    
-    await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 60000 });
+    // Verify project is loaded
+    await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 10000 });
     
     // === STEP 2: Navigate to Workflows and Run ===
     await navigateToView(appPage, 'workflows');

@@ -689,8 +689,12 @@ export function AnalysisPanel({
   onLoadDos,
   onLoadBands,
   autoAnalysis = false,
-}: AnalysisPanelProps) {
-  const [analysisType, setAnalysisType] = useState<AnalysisType>('scf');
+  defaultAnalysis,
+}: AnalysisPanelProps & { defaultAnalysis?: string | null }) {
+  // Initialize analysis type from defaultAnalysis if provided
+  const [analysisType, setAnalysisType] = useState<AnalysisType>(
+    defaultAnalysis === 'bands' ? 'bands' : defaultAnalysis === 'dos' ? 'dos' : 'scf'
+  );
   const [scfData, setScfData] = useState<ScfConvergenceData | null>(null);
   const [dosData, setDosData] = useState<DosData | null>(null);
   const [bandsData, setBandsData] = useState<BandStructureData | null>(null);
@@ -699,6 +703,16 @@ export function AnalysisPanel({
   
   // Track last auto-loaded workflow to prevent infinite loops
   const lastAutoLoadedRef = useRef<string | null>(null);
+  
+  // Update analysis type when defaultAnalysis changes (e.g., from demo project)
+  useEffect(() => {
+    if (defaultAnalysis) {
+      const newType: AnalysisType = defaultAnalysis === 'bands' ? 'bands' : defaultAnalysis === 'dos' ? 'dos' : 'scf';
+      if (newType !== analysisType) {
+        setAnalysisType(newType);
+      }
+    }
+  }, [defaultAnalysis, analysisType]);
   
   // Auto-detect best analysis type based on workflow's last step
   const detectAnalysisType = useCallback((workflow: WorkflowInfo): AnalysisType => {

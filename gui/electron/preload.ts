@@ -201,6 +201,16 @@ const qvApi = {
   revealPath: async (targetPath: string): Promise<boolean> => {
     return ipcRenderer.invoke('qv-reveal-path', targetPath);
   },
+  
+  /**
+   * Set E2E test directory (for testing only)
+   * This allows E2E tests to bypass the native file dialog
+   * 
+   * @param directory - Directory path to use for file dialogs
+   */
+  setE2ETestDirectory: async (directory: string): Promise<void> => {
+    return ipcRenderer.invoke('qv-set-e2e-test-directory', directory);
+  },
 };
 
 // Expose to renderer via contextBridge

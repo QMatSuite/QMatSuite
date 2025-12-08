@@ -1,4 +1,11 @@
 version: 1
+meta:
+  id: si_dos_demo
+  title: "Silicon density of states"
+  subtitle: "SCF → NSCF → DOS"
+  tags: ["dos", "Si", "PW", "tutorial"]
+  recommended_analysis: "dos"
+  difficulty: "beginner"
 project:
   meta:
     id: 01KB9J9K06K6400PY3J2QYJ0Z4

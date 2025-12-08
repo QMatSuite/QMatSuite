@@ -646,3 +646,33 @@
 .quick-action-btn__icon {
   font-size: var(--text-lg);
 }
+
+/* Workspace/Project Context */
+.project-summary-panel__context {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 24px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.context-label {
+  font-weight: 500;
+}
+
+.context-value {
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 0.9em;
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.context-separator {
+  color: var(--text-tertiary);
+  margin: 0 4px;
+}

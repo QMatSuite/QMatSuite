@@ -2,8 +2,12 @@
  * ProjectSummaryPanel - Displays project overview in a structured format
  */
 
+import { useState } from 'react';
 import type { ProjectSummary } from '../../types/qv';
+import { DemoGalleryPanel } from './DemoGalleryPanel';
 import './ProjectSummaryPanel.css';
+
+type HomeMode = 'welcome' | 'demo-gallery';
 
 interface ProjectSummaryPanelProps {
   summary: ProjectSummary | null;
@@ -19,6 +23,7 @@ interface ProjectSummaryPanelProps {
   onNavigateToStructure?: (name: string) => void;
   onNavigateToWorkflow?: (name: string) => void;
   onCloseProject?: () => void;
+  onProjectCreated?: (projectRoot: string, recommendedAnalysis?: string | null) => void;
 }
 
 export function ProjectSummaryPanel({ 
@@ -29,13 +34,27 @@ export function ProjectSummaryPanel({
   onBrowseAndLoad,
   onCreateProject,
   onCreateDemoProject,
-  onQuickDemo,
   onOpenRecentProject,
   onRemoveRecentProject,
   onNavigateToStructure,
   onNavigateToWorkflow,
   onCloseProject,
+  onProjectCreated,
 }: ProjectSummaryPanelProps) {
+  const [homeMode, setHomeMode] = useState<HomeMode>('welcome');
+  
+  // If we're in demo gallery mode and no project is loaded, show gallery
+  if (!summary && homeMode === 'demo-gallery') {
+    return (
+      <DemoGalleryPanel
+        onBack={() => setHomeMode('welcome')}
+        onCreateProject={(projectRoot, recommendedAnalysis) => {
+          setHomeMode('welcome');
+          onProjectCreated?.(projectRoot, recommendedAnalysis);
+        }}
+      />
+    );
+  }
   if (isLoading) {
     return (
       <div className="project-summary-panel project-summary-panel--loading">
@@ -107,33 +126,17 @@ export function ProjectSummaryPanel({
               </button>
             )}
             {onCreateDemoProject && (
-              <>
-                <button 
-                  className="welcome-button welcome-button--demo" 
-                  onClick={onCreateDemoProject}
-                  data-testid="qv-btn-demo-gallery"
-                >
-                  <span className="welcome-button__icon">🎨</span>
-                  <span className="welcome-button__content">
-                    <span className="welcome-button__title">Demo Gallery</span>
-                    <span className="welcome-button__desc">Browse available demo projects</span>
-                  </span>
-                </button>
-                {onQuickDemo && (
-                  <button 
-                    className="welcome-button welcome-button--demo-secondary" 
-                    onClick={onQuickDemo}
-                    data-testid="qv-btn-quick-demo"
-                    title="Quick Demo (Si Bands) - See more in Demo Gallery"
-                  >
-                    <span className="welcome-button__icon">🚀</span>
-                    <span className="welcome-button__content">
-                      <span className="welcome-button__title">Quick Demo (Si Bands)</span>
-                      <span className="welcome-button__desc">See more in Demo Gallery</span>
-                    </span>
-                  </button>
-                )}
-              </>
+              <button 
+                className="welcome-button welcome-button--demo" 
+                onClick={() => setHomeMode('demo-gallery')}
+                data-testid="qv-btn-demo-gallery"
+              >
+                <span className="welcome-button__icon">🎨</span>
+                <span className="welcome-button__content">
+                  <span className="welcome-button__title">Browse Demo Gallery</span>
+                  <span className="welcome-button__desc">Explore ready-to-run demo projects</span>
+                </span>
+              </button>
             )}
           </div>
           
@@ -198,6 +201,22 @@ export function ProjectSummaryPanel({
           )}
         </div>
       </div>
+      
+      {(() => {
+        // Derive workspace from project path (parent directory)
+        const pathParts = summary.path.split(/[/\\]/);
+        pathParts.pop(); // Remove project name
+        const workspace = pathParts.join('/') || '/';
+        return (
+          <div className="project-summary-panel__context" data-testid="qv-project-context">
+            <span className="context-label">Workspace:</span>
+            <code className="context-value">{workspace}</code>
+            <span className="context-separator">·</span>
+            <span className="context-label">Current project:</span>
+            <code className="context-value">{summary.name}</code>
+          </div>
+        );
+      })()}
       
       <div className="panel-content">
         <div className="summary-grid">

@@ -17,14 +17,6 @@ workflows:
     slug: si-bands
     path: workflows/si-bands
     kind: workflow
-- name: Si bands auto k
-  path: workflows/si-bands-auto-k
-  meta:
-    id: 01KBH5KYPE659SWXHXQP1BXX16
-    name: Si bands auto k
-    slug: si-bands-auto-k
-    path: workflows/si-bands-auto-k
-    kind: workflow
 structures:
 - name: Si
   file: structures/si.json

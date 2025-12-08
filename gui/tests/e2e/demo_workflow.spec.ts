@@ -16,7 +16,7 @@
 import { electronTest as test, expect, navigateToView } from './fixtures/electronTest';
 import * as fs from 'fs';
 import * as path from 'path';
-import { createUniqueProjectDir, cleanupProjectDir, clearE2EProjectsRoot, getRepoRoot } from './helpers';
+import { createUniqueProjectDir, cleanupProjectDir, clearE2EProjectsRoot, getRepoRoot, createDemoProject } from './helpers';
 
 // Skip if explicitly requested via environment variable
 const SKIP_E2E = process.env.SKIP_ELECTRON_E2E === 'true';
@@ -39,32 +39,17 @@ test.describe('E2E Test 2: Create Demo Project → Workflow & Steps', () => {
   test('create demo project and verify workflow steps', async ({ appPage }, testInfo) => {
     // Project creation can take time, increase timeout to 60 seconds
     testInfo.setTimeout(60 * 1000);
-      // Wait for welcome screen
-      await expect(appPage.getByTestId('qv-welcome-title')).toBeVisible({ timeout: 30000 });
-      
-      // Click "Create Demo Project" button
-      await appPage.getByTestId('qv-btn-create-demo-project').click();
-      
-      // Wait for the create project dialog
-      await expect(appPage.getByTestId('qv-create-project-dialog')).toBeVisible({ timeout: 10000 });
-      
-      // Fill in the parent directory (use the unique project dir)
-      await appPage.getByTestId('qv-input-parent-dir').fill(projectDir);
-      
-      // Fill in project name
-      await appPage.getByTestId('qv-input-project-name').fill('e2e-demo');
-      
-      // Wait for preview path to show
-      await expect(appPage.getByTestId('qv-project-preview-path')).toBeVisible();
-      
-      // Click create button
-      await appPage.getByTestId('qv-btn-confirm-create').click();
-      
-      // Wait for project to be loaded - home project view should appear
-      await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 60000 });
-      
-      // Verify project path contains our project name
-      await expect(appPage.getByTestId('qv-project-path')).toContainText('e2e-demo');
+    
+    // Create demo project via Demo Gallery flow
+    // Flow: Home → Browse Demo Gallery → Si Bands demo card → Create Project → Project loaded
+    await createDemoProject(appPage, {
+      demoId: 'si_bands_demo',
+      projectName: 'e2e-demo',
+      parentDir: projectDir,
+    });
+    
+    // Verify project is loaded (createDemoProject already checks this, but double-check)
+    await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 10000 });
       
       // Navigate to Workflows view
       await navigateToView(appPage, 'workflows');
@@ -106,7 +91,9 @@ test.describe('E2E Test 2: Create Demo Project → Workflow & Steps', () => {
         const stepFilePath = await appPage.getByTestId('qv-step-file-path').textContent();
         
         // Get step type from the UI (stable identifier, not regenerated)
-        const stepTypeElement = appPage.locator('.step-type-badge').first();
+        // The step type badge is within the step detail panel, so scope it
+        const stepDetailPanel = appPage.getByTestId('qv-step-detail');
+        const stepTypeElement = stepDetailPanel.locator('.step-type-badge').first();
         const stepType = await stepTypeElement.textContent();
         
         expect(stepIdText).toBeTruthy();
@@ -132,8 +119,13 @@ test.describe('E2E Test 2: Create Demo Project → Workflow & Steps', () => {
           expect(fileContent).toContain('step_type:');
           
           // Verify step type matches (this is stable across snapshot materialization)
+          // The step type in the file should match the step type from the UI
           if (stepType) {
-            expect(fileContent).toContain(`step_type: ${stepType.trim()}`);
+            const trimmedStepType = stepType.trim().toLowerCase();
+            // The file uses lowercase for step_type, so check case-insensitively
+            // Also handle potential whitespace variations
+            const stepTypePattern = new RegExp(`step_type:\\s*${trimmedStepType}`, 'i');
+            expect(fileContent).toMatch(stepTypePattern);
           }
           
           // Verify the file has a valid meta.id field (ULID format, 26 chars)
@@ -157,24 +149,16 @@ test.describe('E2E Test 2: Create Demo Project → Workflow & Steps', () => {
   test('step detail panel shows correct file for each step', async ({ appPage }, testInfo) => {
     // Project creation can take time, increase timeout to 60 seconds
     testInfo.setTimeout(60 * 1000);
-      // Wait for welcome screen
-      await expect(appPage.getByTestId('qv-welcome-title')).toBeVisible({ timeout: 30000 });
-      
-      // Click "Create Demo Project" button
-      await appPage.getByTestId('qv-btn-create-demo-project').click();
-      
-      // Wait for the create project dialog
-      await expect(appPage.getByTestId('qv-create-project-dialog')).toBeVisible({ timeout: 10000 });
-      
-      // Fill in the parent directory and project name
-      await appPage.getByTestId('qv-input-parent-dir').fill(projectDir);
-      await appPage.getByTestId('qv-input-project-name').fill('e2e-demo-steps');
-      
-      // Click create button
-      await appPage.getByTestId('qv-btn-confirm-create').click();
-      
-      // Wait for project to be loaded
-      await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 60000 });
+    
+    // Create demo project via Demo Gallery flow
+    await createDemoProject(appPage, {
+      demoId: 'si_bands_demo',
+      projectName: 'e2e-demo-steps',
+      parentDir: projectDir,
+    });
+    
+    // Verify project is loaded
+    await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 10000 });
       
       // Navigate to Workflows
       await navigateToView(appPage, 'workflows');

@@ -47,6 +47,14 @@ class ProjectSnapshot:
     Contains all metadata, structures, workflows, and steps needed to
     recreate the project. ULIDs are preserved for reference but will be
     regenerated when materializing the project.
+    
+    The `meta` field (optional) contains demo-specific metadata for gallery display:
+    - id: Demo identifier (e.g., "si_bands_demo")
+    - title: Display title (e.g., "Silicon band structure")
+    - subtitle: Short description (e.g., "SCF → NSCF → Bands")
+    - tags: List of tags (e.g., ["bands", "Si", "PW", "tutorial"])
+    - recommended_analysis: Default analysis type (e.g., "bands", "dos")
+    - difficulty: Difficulty level (e.g., "beginner", "intermediate", "advanced")
     """
     version: int = 1
     project: Dict[str, Any] = field(default_factory=dict)
@@ -54,6 +62,7 @@ class ProjectSnapshot:
     workflows: List[Dict[str, Any]] = field(default_factory=list)
     pseudo: Optional[Dict[str, Any]] = None
     extra: Optional[Dict[str, Any]] = None
+    meta: Optional[Dict[str, Any]] = None
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for YAML serialization."""
@@ -67,6 +76,8 @@ class ProjectSnapshot:
             result["pseudo"] = self.pseudo
         if self.extra:
             result["extra"] = self.extra
+        if self.meta:
+            result["meta"] = self.meta
         return result
     
     @classmethod
@@ -79,6 +90,7 @@ class ProjectSnapshot:
             workflows=data.get("workflows", []),
             pseudo=data.get("pseudo"),
             extra=data.get("extra"),
+            meta=data.get("meta"),
         )
 
 
