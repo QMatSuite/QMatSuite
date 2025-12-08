@@ -28,6 +28,7 @@ import {
   DebugView,
   DaemonErrorBanner,
   CreateProjectDialog,
+  DemoGalleryDialog,
   ImportStructureDialog,
   CreateWorkflowDialog,
   RenameDialog,
@@ -97,6 +98,7 @@ function App() {
   // Dialog states
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [showCreateDemoProject, setShowCreateDemoProject] = useState(false);
+  const [showDemoGallery, setShowDemoGallery] = useState(false);
   const [showImportStructure, setShowImportStructure] = useState(false);
   const [showCreateWorkflow, setShowCreateWorkflow] = useState(false);
   
@@ -470,8 +472,13 @@ function App() {
     }
   }, [qv, addToRecentProjects]);
   
-  // Create demo Si project - now uses dialog
+  // Create demo Si project - opens gallery dialog
   const handleCreateDemoProject = useCallback(() => {
+    setShowDemoGallery(true);
+  }, []);
+  
+  // Quick demo (direct create with si_bands_demo)
+  const handleQuickDemo = useCallback(() => {
     setShowCreateDemoProject(true);
   }, []);
   
@@ -928,6 +935,7 @@ function App() {
             onBrowseAndLoad={handleBrowseAndLoad}
             onCreateProject={() => setShowCreateProject(true)}
             onCreateDemoProject={handleCreateDemoProject}
+            onQuickDemo={handleQuickDemo}
             onOpenRecentProject={handleOpenRecentProject}
             onRemoveRecentProject={removeFromRecentProjects}
             onNavigateToStructure={handleNavigateToStructure}
@@ -1198,6 +1206,13 @@ function App() {
         onClose={() => setShowCreateDemoProject(false)}
         onSuccess={handleCreateProjectSuccess}
         isDemoProject={true}
+        defaultParentDir={appSettings.defaultProjectsDir}
+      />
+      
+      <DemoGalleryDialog
+        isOpen={showDemoGallery}
+        onClose={() => setShowDemoGallery(false)}
+        onSuccess={handleCreateProjectSuccess}
         defaultParentDir={appSettings.defaultProjectsDir}
       />
       

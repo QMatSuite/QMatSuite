@@ -140,6 +140,7 @@ class QVDaemon:
             
             # Demo project
             "create_demo_project": self._handle_create_demo_project,
+            "list_demo_projects": self._handle_list_demo_projects,
             
             # Visualization data (pure data, no matplotlib)
             "get_structure_vis": self._handle_get_structure_vis,
@@ -413,7 +414,7 @@ class QVDaemon:
         Payload:
             target_dir: str - Directory to create project in
             name: str - Optional project name (defaults to dir name)
-            template: str - Optional template name
+            template: str - Optional template name (deprecated)
         """
         target_dir = Path(payload.get("target_dir", "")).resolve()
         name = payload.get("name")
@@ -422,11 +423,15 @@ class QVDaemon:
         if not target_dir:
             raise ValueError("Missing required field: target_dir")
         
-        project_root = QVService.init_project(
-            target_dir=target_dir,
-            name=name,
-            template=template,
-        )
+        try:
+            project_root = QVService.init_project(
+                target_dir=target_dir,
+                name=name,
+                template=template,
+            )
+        except ValueError as e:
+            # Re-raise ValueError as-is (for validation errors like "inside existing project")
+            raise
         
         # Get summary of newly created project
         summary = QVService.get_project_summary(project_root)
@@ -873,14 +878,45 @@ class QVDaemon:
         Payload:
             target_dir: str - Directory to create project in
             name: Optional[str] - Project name (default 'demo-si-project')
+            demo_id: Optional[str] - Demo snapshot ID (default 'si_bands_demo')
         """
         target_dir = self._require_path(payload, "target_dir")
         name = payload.get("name", "demo-si-project")
+        demo_id = payload.get("demo_id")
         
-        return QVService.create_demo_project(
-            target_dir=target_dir,
-            name=name,
-        )
+        try:
+            return QVService.create_demo_project(
+                target_dir=target_dir,
+                name=name,
+                demo_id=demo_id,
+            )
+        except ValueError as e:
+            # Re-raise ValueError as-is (for validation errors like "inside existing project")
+            raise
+    
+    def _handle_list_demo_projects(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        List available demo project snapshots.
+        
+        Payload: (empty)
+        
+        Returns:
+            Dict with demos list and count
+        """
+        try:
+            demos = QVService.list_demo_projects()
+            return {
+                "demos": demos,
+                "count": len(demos),
+            }
+        except Exception as e:
+            # Log error but return empty list rather than raising
+            # This ensures the RPC always returns a valid response
+            self.log(f"Error listing demo projects: {e}\n{traceback.format_exc()}")
+            return {
+                "demos": [],
+                "count": 0,
+            }
     
     # -------------------------------------------------------------------------
     # Visualization data handlers

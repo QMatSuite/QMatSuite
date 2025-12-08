@@ -967,6 +967,8 @@ resources/
 - When creating workflow from template, CLI generates the workflow ULID first and passes it to `copy_workflow_template` so steps get the correct `parent_workflow_id`
 - When copying project template, old workflow ULIDs from project.qv.yml are mapped to new ULIDs for consistency
 - Demo project creation (`create_demo_project`) uses snapshots from `resources/demo_projects/` instead of templates
+- Demo snapshots are generated from test projects using `scripts/generate_demo_snapshots.py`
+- If test example projects change, rerun `python scripts/generate_demo_snapshots.py` to regenerate the demo snapshot files
 
 ### 2025-11-30 Session 1
 
@@ -2655,7 +2657,25 @@ Shows detailed step information with:
 ### 17.18 Demo Project & Recent Projects (2025-12-06)
 
 **Demo Project Creation**:
-- "Create Demo Project" button in welcome screen
+- "Demo Gallery" button in welcome screen opens a modal with available demo projects
+- "Quick Demo (Si Bands)" button for direct creation of si_bands_demo
+- Demo projects are stored as snapshots in `resources/demo_projects/*.yml`
+- Default demo is `si_bands_demo` (Silicon band structure workflow)
+- Available demos: `si_bands_demo`, `si_dos_demo`
+- Demo snapshots are generated from test projects using `scripts/generate_demo_snapshots.py`
+- If test example projects change, rerun the script to regenerate snapshots
+
+**Demo Gallery**:
+- RPC: `list_demo_projects` returns available demo projects with metadata
+- RPC: `create_demo_project` accepts optional `demo_id` parameter (defaults to "si_bands_demo")
+- GUI shows demo cards with name, description, tags, and recommended use
+- User selects demo, picks workspace folder, and creates project
+
+**Project Creation Validation**:
+- Both `create_project` and `create_demo_project` check if target directory is inside an existing project
+- Uses `detect_enclosing_project()` helper from `core/context.py`
+- Raises `ValueError` with clear message if inside existing project
+- GUI shows error and keeps dialog open (doesn't close on validation error)
 - Creates Si project with ready-to-run workflow
 - RPC: `create_demo_project` - creates project, imports Si structure, adds workflow
 
