@@ -1,0 +1,37 @@
+meta:
+  id: 01KBH1DVVWG974Y147X34ZPXMP
+  name: nscf
+  slug: nscf
+  path: workflows/si-bands/steps/nscf.step.yaml
+  kind: step
+structure: si
+step_type: nscf
+parent_workflow_id: 01KBH0RGF179RD73PNKD0N8GNS
+parameters:
+  CONTROL:
+    calculation: nscf
+    outdir: ./outdir
+    prefix: si
+    pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+    restart_mode: from_scratch
+  ELECTRONS:
+    conv_thr: 1.0e-08
+  SYSTEM:
+    ecutrho: 320
+    ecutwfc: 40
+    nbnd: 8
+    occupations: tetrahedra
+cards:
+  K_POINTS:
+    option: automatic
+    data:
+    - - 12
+      - 12
+      - 12
+      - 0
+      - 0
+      - 0
+species_overrides:
+  Si:
+    mass: 28.0855
+    pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
