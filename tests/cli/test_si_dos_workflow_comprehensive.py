@@ -18,10 +18,6 @@ import sys
 from pathlib import Path
 
 import pytest
-from pymatgen.core import Lattice, Structure
-
-from quantumvitas.io import QEInputGenerator
-from quantumvitas.io.structure_io import qe_input_from_structure
 
 # Mark all tests as requiring QE
 pytestmark = pytest.mark.qe_core
@@ -58,29 +54,38 @@ def test_project_dir(project_root_path: Path) -> Path:
 @pytest.fixture(scope="module")
 def project_with_structure(test_project_dir: Path, project_root_path: Path) -> Path:
     """Initialize project and import Si structure."""
-    # Create Si structure in rhombohedral representation to match the correct format
-    # The correct structure uses rhombohedral lattice (alpha=60 degrees)
-    # Lattice matrix from the correct structure file
-    lattice_matrix = [
-        [-2.7546079563238743, 0.0, 2.7546079563238743],
-        [0.0, 2.7546079563238743, 2.7546079563238743],
-        [-2.7546079563238743, 2.7546079563238743, 0.0],
-    ]
-    lattice = Lattice(lattice_matrix)
+    # Create a QE input file inline (hardcoded in the test)
+    # Based on the format from instructions: ibrav=2 (fcc), celldm(1), ATOMIC_POSITIONS (alat)
+    qe_input_content = """&control
+    calculation = 'scf'
+    restart_mode = 'from_scratch'
+    prefix = 'si'
+    outdir = './outdir'
+/
+&system
+    ibrav = 2
+    celldm(1) = 10.410909236
+    nat = 2
+    ntyp = 1
+    ecutwfc = 50
+/
+&electrons
+    conv_thr = 1e-8
+/
+ATOMIC_SPECIES
+ Si  28.0855  Si.pbe-n-rrkjus_psl.1.0.0.UPF
+
+ATOMIC_POSITIONS (alat)
+ Si 0.00 0.00 0.00
+ Si 0.25 0.25 0.25
+
+K_POINTS (automatic)
+  8 8 8 0 0 0
+"""
     
-    # Create structure with the correct fractional coordinates
-    # First atom at origin, second at [-0.25, 0.75, -0.25] in fractional coordinates
-    structure = Structure(
-        lattice,
-        ["Si", "Si"],
-        [[0.0, 0.0, 0.0], [-0.25, 0.75, -0.25]],
-        coords_are_cartesian=False,  # Use fractional coordinates
-    )
-    
-    # Create a QE input file from the structure (same approach as bands test)
-    qe_input = qe_input_from_structure(structure)
+    # Save the QE input file temporarily
     scf_in = test_project_dir / "si.0_scf.in"
-    QEInputGenerator.write_file(qe_input, scf_in)
+    scf_in.write_text(qe_input_content)
     
     # Initialize project
     run_qv(["init", "project", "--name", "si_dos_test"], cwd=test_project_dir)
