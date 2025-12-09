@@ -1,7 +1,7 @@
 project:
   name: project3_graphene_bands
   meta:
-    id: 01KC0VVQG8RMK17HWYKR9ZW16E
+    id: 01KC10Q81A219HCXC0X58XTFQX
     name: project3_graphene_bands
     slug: project3_graphene_bands
     path: .
@@ -9,20 +9,20 @@ project:
   structures_dir: structures
   workflows_dir: workflows
 workflows:
-- name: graph
-  path: workflows/graph
+- name: graphene bands
+  path: workflows/graphene-bands
   meta:
-    id: 01KC0WCFZC8V3QN8BP2SBHJ181
-    name: graph
-    slug: graph
-    path: workflows/graph
+    id: 01KC10S2CGYQ2FBB2B6PGD5SC7
+    name: graphene bands
+    slug: graphene-bands
+    path: workflows/graphene-bands
     kind: workflow
 structures:
 - name: C
   file: structures/c.json
   format: json
   meta:
-    id: 01KC0W017YWD88HPAMCQ4WYW4E
+    id: 01KC10R9XYCCQYTGGXVCQQ0KEV
     name: C
     slug: c
     path: structures/c.json

@@ -2,7 +2,7 @@
  * WorkflowListPanel - Displays a list of workflows in a project
  */
 
-import type { WorkflowInfo } from '../../types/qv';
+import type { WorkflowInfo, WorkflowDetailResult } from '../../types/qv';
 import './WorkflowListPanel.css';
 
 interface WorkflowListPanelProps {
@@ -97,7 +97,7 @@ export function WorkflowListPanel({
               </div>
               
               <div className="workflow-item__steps">
-                {workflow.steps.map((step, idx) => (
+                {(workflow.steps || []).map((step, idx) => (
                   <span key={step.id} className="step-chip">
                     {idx > 0 && <span className="step-arrow">→</span>}
                     <span className="step-type">{step.type}</span>
@@ -149,8 +149,8 @@ export function WorkflowListPanel({
 // Workflow Detail View
 // =============================================================================
 
-import { useState, useCallback } from 'react';
-import type { StructureInfo, WorkflowDetailResult } from '../../types/qv';
+import { useState, useCallback, useEffect } from 'react';
+import type { StructureInfo } from '../../types/qv';
 
 interface WorkflowDetailPanelProps {
   workflow: WorkflowInfo | null;
@@ -173,10 +173,64 @@ export function WorkflowDetailPanel({
   onGoToJobs,
   onWorkflowUpdated,
 }: WorkflowDetailPanelProps) {
+  const [workflowDetail, setWorkflowDetail] = useState<WorkflowInfo | null>(workflow);
   const [isReordering, setIsReordering] = useState(false);
   const [stepOrder, setStepOrder] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Use workflowDetail (fetched) if available, otherwise fallback to workflow prop
+  const displayWorkflow = workflowDetail || workflow;
+  
+  // Fetch full workflow detail when workflow changes
+  useEffect(() => {
+    const fetchWorkflowDetail = async () => {
+      if (!workflow || !window.qv) {
+        setWorkflowDetail(null);
+        return;
+      }
+      
+      // If workflow already has steps, use it directly
+      if (workflow.steps && workflow.steps.length > 0) {
+        setWorkflowDetail(workflow);
+        return;
+      }
+      
+      // Otherwise fetch full detail
+      setError(null);
+      
+      try {
+        const response = await window.qv.request<WorkflowDetailResult>('get_workflow_detail', {
+          project_root: projectRoot,
+          workflow: workflow.slug,
+        });
+        
+        if (response.ok && response.data) {
+          // Convert WorkflowDetailResult to WorkflowInfo
+          const detail: WorkflowInfo = {
+            id: response.data.id,
+            name: response.data.name,
+            slug: response.data.slug,
+            path: response.data.path,
+            absolute_path: response.data.absolute_path,
+            structure: response.data.structure || '',
+            mode: response.data.mode,
+            n_steps: response.data.n_steps,
+            steps: response.data.steps || [],
+          };
+          setWorkflowDetail(detail);
+        } else {
+          // Fallback to passed workflow if fetch fails
+          setWorkflowDetail(workflow);
+        }
+      } catch (e) {
+        // Fallback to passed workflow on error
+        setWorkflowDetail(workflow);
+      }
+    };
+    
+    fetchWorkflowDetail();
+  }, [workflow, projectRoot]);
   
   // Add step state
   const [showAddStep, setShowAddStep] = useState(false);
@@ -197,7 +251,7 @@ export function WorkflowDetailPanel({
   
   // Handle adding a new step
   const handleAddStep = useCallback(async () => {
-    if (!window.qv || !workflow || !newStepType) return;
+    if (!window.qv || !displayWorkflow || !newStepType) return;
     
     setIsAddingStep(true);
     setError(null);
@@ -207,7 +261,7 @@ export function WorkflowDetailPanel({
       
       const response = await window.qv.request<WorkflowDetailResult>('add_step_to_workflow', {
         project_root: projectRoot,
-        workflow: workflow.slug,
+        workflow: displayWorkflow.slug,
         step_type: newStepType,
         step_name: stepName,
       });
@@ -225,11 +279,11 @@ export function WorkflowDetailPanel({
     } finally {
       setIsAddingStep(false);
     }
-  }, [workflow, projectRoot, newStepType, newStepName, onWorkflowUpdated]);
+  }, [displayWorkflow, projectRoot, newStepType, newStepName, onWorkflowUpdated]);
   
   // Handle importing QE input as step
   const handleImportStep = useCallback(async () => {
-    if (!window.qv || !workflow) return;
+    if (!window.qv || !displayWorkflow) return;
     
     // Use window.qv.openFile to pick file
     const inputFile = await window.qv.openFile({
@@ -250,7 +304,7 @@ export function WorkflowDetailPanel({
     try {
       const response = await window.qv.request<WorkflowDetailResult>('import_step_from_qe_input', {
         project_root: projectRoot,
-        workflow: workflow.slug,
+        workflow: displayWorkflow.slug,
         input_file: inputFile,
       });
       
@@ -264,7 +318,7 @@ export function WorkflowDetailPanel({
     } finally {
       setIsImportingStep(false);
     }
-  }, [workflow, projectRoot, onWorkflowUpdated]);
+  }, [displayWorkflow, projectRoot, onWorkflowUpdated]);
   
   // Drag-and-drop state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -340,11 +394,11 @@ export function WorkflowDetailPanel({
   
   // Start reorder mode
   const handleStartReorder = useCallback(() => {
-    if (!workflow) return;
-    setStepOrder(workflow.steps.map(s => s.id));
+    if (!displayWorkflow) return;
+    setStepOrder((displayWorkflow.steps || []).map(s => s.id));
     setIsReordering(true);
     setError(null);
-  }, [workflow]);
+  }, [displayWorkflow]);
   
   // Cancel reorder
   const handleCancelReorder = useCallback(() => {
@@ -354,7 +408,7 @@ export function WorkflowDetailPanel({
   
   // Save reorder
   const handleSaveReorder = useCallback(async () => {
-    if (!window.qv || !workflow) return;
+    if (!window.qv || !displayWorkflow) return;
     
     setIsSaving(true);
     setError(null);
@@ -362,7 +416,7 @@ export function WorkflowDetailPanel({
     try {
       const response = await window.qv.request<WorkflowDetailResult>('reorder_workflow_steps', {
         project_root: projectRoot,
-        workflow: workflow.slug,
+        workflow: displayWorkflow.slug,
         new_order: stepOrder,
       });
       
@@ -378,11 +432,11 @@ export function WorkflowDetailPanel({
     } finally {
       setIsSaving(false);
     }
-  }, [workflow, projectRoot, stepOrder, onWorkflowUpdated]);
+  }, [displayWorkflow, projectRoot, stepOrder, onWorkflowUpdated]);
   
   // Handle structure change
   const handleStructureChange = useCallback(async (newStructure: string) => {
-    if (!window.qv || !workflow) return;
+    if (!window.qv || !displayWorkflow) return;
     
     setIsSaving(true);
     setError(null);
@@ -390,7 +444,7 @@ export function WorkflowDetailPanel({
     try {
       const response = await window.qv.request<WorkflowDetailResult>('change_workflow_structure', {
         project_root: projectRoot,
-        workflow: workflow.slug,
+        workflow: displayWorkflow.slug,
         new_structure: newStructure,
         update_steps: true,
       });
@@ -405,29 +459,31 @@ export function WorkflowDetailPanel({
     } finally {
       setIsSaving(false);
     }
-  }, [workflow, projectRoot, onWorkflowUpdated]);
+  }, [displayWorkflow, projectRoot, onWorkflowUpdated]);
   
-  if (!workflow) {
+  if (!displayWorkflow) {
     return null;
   }
   
   // Get ordered steps for display (use stepOrder if reordering, else workflow.steps)
+  // Safety: ensure workflow.steps is always an array
+  const workflowSteps = displayWorkflow.steps || [];
   const displaySteps = isReordering
-    ? stepOrder.map(id => workflow.steps.find(s => s.id === id)!).filter(Boolean)
-    : workflow.steps;
+    ? stepOrder.map(id => workflowSteps.find(s => s.id === id)!).filter(Boolean)
+    : workflowSteps;
   
   return (
     <div className="workflow-detail-panel" data-testid="qv-workflow-detail">
       <div className="panel-header">
         <h2 className="panel-title">
           <span className="panel-icon">📊</span>
-          {workflow.name}
+          {displayWorkflow.name}
         </h2>
         <div className="panel-header-actions">
           {onRunWorkflow && (
             <button 
               className="panel-header-btn panel-header-btn--primary"
-              onClick={() => onRunWorkflow(workflow)}
+              onClick={() => onRunWorkflow(displayWorkflow)}
               disabled={isReordering || isSaving}
               title="Run all steps in this workflow"
               data-testid="qv-btn-run-workflow"
@@ -459,7 +515,7 @@ export function WorkflowDetailPanel({
               {structures && structures.length > 0 ? (
                 <select
                   className="structure-selector"
-                  value={workflow.structure || ''}
+                  value={displayWorkflow.structure || ''}
                   onChange={(e) => handleStructureChange(e.target.value)}
                   disabled={isSaving}
                 >
@@ -469,22 +525,22 @@ export function WorkflowDetailPanel({
                   ))}
                 </select>
               ) : (
-                <code className="detail-value">{workflow.structure || 'None'}</code>
+                <code className="detail-value">{displayWorkflow.structure || 'None'}</code>
               )}
             </div>
             <div className="detail-item">
               <span className="detail-label">Mode</span>
-              <span className={`detail-value mode-badge mode-badge--${workflow.mode}`}>
-                {workflow.mode}
+              <span className={`detail-value mode-badge mode-badge--${displayWorkflow.mode}`}>
+                {displayWorkflow.mode}
               </span>
             </div>
             <div className="detail-item">
               <span className="detail-label">Steps</span>
-              <span className="detail-value">{workflow.n_steps}</span>
+              <span className="detail-value">{displayWorkflow.n_steps}</span>
             </div>
             <div className="detail-item">
               <span className="detail-label">ID</span>
-              <code className="detail-value detail-value--id">{workflow.id}</code>
+              <code className="detail-value detail-value--id">{displayWorkflow.id}</code>
             </div>
           </div>
         </div>
@@ -515,7 +571,7 @@ export function WorkflowDetailPanel({
                   <button 
                     className="section-action-btn"
                     onClick={handleStartReorder}
-                    disabled={workflow.n_steps < 2}
+                    disabled={!displayWorkflow || displayWorkflow.n_steps < 2}
                     title="Reorder steps"
                   >
                     ↕️ Reorder
@@ -663,12 +719,12 @@ export function WorkflowDetailPanel({
         <div className="detail-section">
           <h3>File Location</h3>
           <div className="file-location">
-            <code className="file-location__path" title={workflow.absolute_path}>
-              {workflow.absolute_path}
+            <code className="file-location__path" title={displayWorkflow.absolute_path}>
+              {displayWorkflow.absolute_path}
             </code>
             <button 
               className="file-location__reveal-btn"
-              onClick={() => window.qv?.revealPath?.(workflow.absolute_path)}
+              onClick={() => window.qv?.revealPath?.(displayWorkflow.absolute_path)}
               title="Reveal in Finder"
             >
               📂 Reveal

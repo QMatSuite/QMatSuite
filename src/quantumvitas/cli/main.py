@@ -1047,9 +1047,21 @@ def init_step_command(
     if bundle.species_overrides:
         species.update(bundle.species_overrides)
     
+    # Resolve structure selector to structure_id
+    structure_id = None
+    if structure_value and project_root:
+        try:
+            from quantumvitas.core.resolution import resolve_structure
+            resolved_structure = resolve_structure(project_root, structure_value, config if project_root else None)
+            structure_id = resolved_structure.meta.id
+        except Exception:
+            # If resolution fails, keep structure selector for backwards compat
+            pass
+    
     spec = StructureStepSpec(
         meta=meta_from_name("step", name=step_display_name, path=""),
-        structure=structure_value,
+        structure=structure_value,  # Keep for backwards compat
+        structure_id=structure_id,  # Canonical reference (ULID)
         step_type=step_type,
         parameters=params,
         cards=cards,
@@ -1067,12 +1079,18 @@ def init_step_command(
             if index is not None
             else len(workflow_steps)
         )
+        # Use step_id (ULID) from step spec meta (canonical reference)
+        from quantumvitas.core.models import WorkflowStepEntry
+        # rel_step_path is already a relative path string from ensure_relative_path
+        step_file_str = str(rel_step_path) if isinstance(rel_step_path, Path) else rel_step_path
+        step_entry = WorkflowStepEntry(
+            step_id=spec.meta.id,  # Use ULID from step spec meta (canonical reference)
+            type=step_type,
+            step_file=step_file_str,
+        )
         workflow_steps.insert(
             insertion_index,
-            {
-                "id": step_slug,
-                "step_file": rel_step_path,
-            },
+            step_entry.to_dict(),
         )
         workflow_yaml = workflow_dir / "workflow.yaml"
         workflow_yaml.write_text(yaml.safe_dump(workflow_data, sort_keys=False))

@@ -159,11 +159,19 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
         
         workflow_dict = {
             "meta": workflow_meta_dict,
-            "structure": workflow_model.structure,
             "mode": workflow_model.mode,
             "working_dir": workflow_model.working_dir,
             "steps": [],
         }
+        # Export structure_id (canonical reference)
+        if workflow_model.structure_id:
+            workflow_dict["structure_id"] = workflow_model.structure_id
+            # Optionally include structure_name for display
+            if workflow_model.structure_name:
+                workflow_dict["structure_name"] = workflow_model.structure_name
+        # Keep structure selector for backwards compatibility
+        if workflow_model.structure:
+            workflow_dict["structure"] = workflow_model.structure
         
         # Export each step
         for step_entry in workflow_model.steps:
@@ -366,6 +374,48 @@ def materialize_project_from_snapshot(
         steps_dir.mkdir(exist_ok=True)
         (workflow_path / "raw").mkdir(exist_ok=True)
         
+        # Resolve structure reference from snapshot
+        # New format: structure_id (canonical)
+        workflow_structure_id = workflow_data.get("structure_id")
+        workflow_structure_name = workflow_data.get("structure_name")
+        # Legacy format: structure selector
+        workflow_structure_selector = workflow_data.get("structure")
+        
+        # If structure_id is present, map it to the new structure ID
+        if workflow_structure_id:
+            # Find the structure in the snapshot by old ID
+            structure_found = False
+            for struct_data in snapshot.structures:
+                struct_meta = struct_data.get("meta", {})
+                if struct_meta.get("id") == workflow_structure_id:
+                    # Map to new structure ID
+                    new_structure_id = id_mapping.get(workflow_structure_id)
+                    if new_structure_id:
+                        workflow_structure_id = new_structure_id
+                        workflow_structure_name = struct_meta.get("name")
+                    structure_found = True
+                    break
+            if not structure_found:
+                # Structure ID not found in snapshot - this shouldn't happen, but handle gracefully
+                workflow_structure_id = None
+        
+        # If only structure selector is present (legacy), try to resolve it
+        elif workflow_structure_selector:
+            # Try to find structure by slug/name in the snapshot
+            for struct_data in snapshot.structures:
+                struct_meta = struct_data.get("meta", {})
+                struct_slug = struct_meta.get("slug") or slugify(struct_meta.get("name", ""))
+                struct_name = struct_meta.get("name", "")
+                old_struct_id = struct_meta.get("id")
+                
+                if (struct_slug == workflow_structure_selector or 
+                    struct_name.lower() == workflow_structure_selector.lower()):
+                    # Found matching structure - use its new ID
+                    if old_struct_id:
+                        workflow_structure_id = id_mapping.get(old_struct_id)
+                        workflow_structure_name = struct_name
+                    break
+        
         # Create workflow.yaml
         workflow_model = WorkflowModel(
             meta=ResourceMeta(
@@ -375,7 +425,9 @@ def materialize_project_from_snapshot(
                 path=f"workflows/{workflow_slug}",
                 kind="workflow",
             ),
-            structure=workflow_data.get("structure"),  # Keep structure selector (slug/name)
+            structure_id=workflow_structure_id,
+            structure_name=workflow_structure_name,
+            structure=workflow_structure_selector,  # Keep for backwards compat
             mode=workflow_data.get("mode", "normal"),
             working_dir=workflow_data.get("working_dir", "raw"),
             steps=[],
@@ -402,14 +454,60 @@ def materialize_project_from_snapshot(
             if step_spec_dict.get("parent_workflow_id"):
                 step_spec_dict["parent_workflow_id"] = new_workflow_id
             
+            # Resolve structure reference from snapshot
+            # New format: structure_id (canonical)
+            step_structure_id = step_spec_dict.get("structure_id")
+            step_structure_selector = step_spec_dict.get("structure")
+            
+            # If structure_id is present, map it to the new structure ID
+            if step_structure_id:
+                new_structure_id = id_mapping.get(step_structure_id)
+                if new_structure_id:
+                    step_spec_dict["structure_id"] = new_structure_id
+                else:
+                    # Structure ID not found in mapping - this shouldn't happen, but handle gracefully
+                    step_spec_dict.pop("structure_id", None)
+            # If only structure selector is present (legacy), try to resolve it
+            elif step_structure_selector:
+                # Try to find structure by slug/name in the snapshot
+                for struct_data in snapshot.structures:
+                    struct_meta = struct_data.get("meta", {})
+                    struct_slug = struct_meta.get("slug") or slugify(struct_meta.get("name", ""))
+                    struct_name = struct_meta.get("name", "")
+                    old_struct_id = struct_meta.get("id")
+                    
+                    if (struct_slug == step_structure_selector or 
+                        struct_name.lower() == step_structure_selector.lower()):
+                        # Found matching structure - use its new ID
+                        if old_struct_id:
+                            step_spec_dict["structure_id"] = id_mapping.get(old_struct_id)
+                            # Remove structure selector since we now have structure_id
+                            step_spec_dict.pop("structure", None)
+                        break
+            
+            # If step still has no structure_id, inherit from workflow
+            if not step_spec_dict.get("structure_id"):
+                if workflow_structure_id:
+                    step_spec_dict["structure_id"] = workflow_structure_id
+                    # Remove structure selector since we now have structure_id
+                    step_spec_dict.pop("structure", None)
+                elif step_structure_selector:
+                    # Keep structure selector for backwards compat if we can't resolve to ID
+                    pass  # Already set above
+                elif workflow_data.get("structure"):
+                    # Fallback: use workflow structure selector
+                    step_spec_dict["structure"] = workflow_data.get("structure")
+            
             # Write step file
             step_file = steps_dir / f"{step_slug}.step.yaml"
             step_file.write_text(yaml.safe_dump(step_spec_dict, sort_keys=False))
             
-            # Add to workflow steps list
+            # Add to workflow steps list using step_id (ULID) from step meta
             from quantumvitas.core.models import WorkflowStepEntry
+            step_meta = step_spec_dict.get("meta", {})
+            step_id = step_meta.get("id") or step_spec_dict.get("id")
             workflow_model.steps.append(WorkflowStepEntry(
-                id=step_slug,
+                step_id=step_id,  # Use ULID from step meta (canonical reference)
                 type=step_data.get("step_type"),
                 step_file=f"steps/{step_slug}.step.yaml",
             ))

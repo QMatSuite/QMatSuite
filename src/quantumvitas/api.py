@@ -449,6 +449,14 @@ class QVService:
             (workflow_dir / "raw").mkdir(exist_ok=True)
             (workflow_dir / "reference").mkdir(exist_ok=True)
             
+            # Resolve structure selector to structure_id
+            structure_id = None
+            structure_name = None
+            if structure_selector:
+                resolved_structure = resolve_structure(project_root, structure_selector, config)
+                structure_id = resolved_structure.meta.id
+                structure_name = resolved_structure.meta.name
+            
             # Create workflow using model
             workflow_meta = ResourceMeta(
                 id=workflow_id,
@@ -459,7 +467,9 @@ class QVService:
             )
             workflow_model = WorkflowModel(
                 meta=workflow_meta,
-                structure=structure_selector,
+                structure_id=structure_id,
+                structure_name=structure_name,
+                structure=structure_selector,  # Keep for backwards compat
             )
             save_workflow(workflow_model, workflow_dir)
         
@@ -623,7 +633,14 @@ class QVService:
         if workflow_yaml_path.exists():
             wf_model = load_workflow(workflow_dir, project_root)
             if structure_selector is None:
-                structure_selector = wf_model.structure
+                # Use structure_id if available, else fall back to legacy structure selector
+                if wf_model.structure_id:
+                    # Resolve structure_id to get selector for step
+                    from quantumvitas.core.resolution import resolve_structure
+                    resolved = resolve_structure(project_root, wf_model.structure_id)
+                    structure_selector = resolved.meta.slug
+                else:
+                    structure_selector = wf_model.structure
         else:
             # Create workflow model if it doesn't exist
             wf_model = WorkflowModel(
@@ -639,6 +656,12 @@ class QVService:
         step_yaml_path = step_yaml_path.resolve()
         project_root_resolved = project_root.resolve()
         rel_path = step_yaml_path.relative_to(project_root_resolved)
+        # Resolve structure selector to structure_id
+        structure_id = None
+        if structure_selector:
+            resolved_structure = resolve_structure(project_root, structure_selector, config)
+            structure_id = resolved_structure.meta.id
+        
         spec = StructureStepSpec(
             meta=ResourceMeta(
                 id=step_id,
@@ -648,7 +671,8 @@ class QVService:
                 kind="step",
             ),
             step_type=step_type,
-            structure=structure_selector,
+            structure_id=structure_id,
+            structure=structure_selector,  # Keep for backwards compat
             parent_workflow_id=workflow.meta.id,
             parameters=defaults.get("parameters", {}),
             cards=defaults.get("cards", {}),
@@ -656,9 +680,9 @@ class QVService:
         )
         step_yaml_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
         
-        # Add step to workflow model
+        # Add step to workflow model using step_id (ULID) from step spec meta
         wf_model.steps.append(WorkflowStepEntry(
-            id=step_name,
+            step_id=spec.meta.id,  # Use ULID from step spec meta (canonical reference)
             type=step_type,
             step_file=f"steps/{base_name}.step.yaml",
         ))
@@ -1361,16 +1385,23 @@ class QVService:
                     entry["structure"] = wf_model.structure
                     entry["mode"] = wf_model.mode
                     entry["n_steps"] = len(wf_model.steps)
+                    # Use step_id (ULID) as canonical ID, fall back to legacy id (slug) if needed
                     entry["steps"] = [
                         {
-                            "id": s.id,
-                            "type": s.type,
+                            "id": s.step_id or s.id or f"step-{idx}",  # Ensure ID is always present
+                            "type": s.type or "unknown",
                             "step_file": s.step_file,
                         }
-                        for s in wf_model.steps
+                        for idx, s in enumerate(wf_model.steps)
                     ]
+                else:
+                    # Workflow directory doesn't exist - provide empty steps array
+                    entry["n_steps"] = 0
+                    entry["steps"] = []
             except Exception:
-                pass  # Workflow details are optional
+                # Workflow details are optional, but ensure steps is always an array
+                entry["n_steps"] = 0
+                entry["steps"] = []
             
             result.append(entry)
         
@@ -1842,17 +1873,22 @@ class QVService:
         config = load_project_config(project_root)
         
         # Check if project has demo origin
+        # NOTE: Demo recognition uses origin.kind == "demo" and origin.demo_id (stable identifier),
+        # NOT project/workflow ULIDs. This allows reference analysis to work even though
+        # materialized projects have fresh ULIDs that differ from the snapshot.
         project_settings = config.get("project", {}).get("settings", {})
         origin = project_settings.get("origin", {})
         
         if origin.get("kind") != "demo":
             return None
         
-        demo_id = origin.get("demo_id")
+        demo_id = origin.get("demo_id")  # Stable demo identifier (not a ULID)
         if not demo_id:
             return None
         
         # Get reference_artifacts mapping
+        # NOTE: Reference lookup uses origin.reference_artifacts or snapshot.meta.reference_artifacts,
+        # NOT project/workflow ULIDs. The artifact filenames are stable identifiers.
         reference_artifacts = origin.get("reference_artifacts", {})
         
         # If no reference_artifacts in project settings, try to load from snapshot meta
@@ -2326,14 +2362,15 @@ class QVService:
         # Check if structure already exists in project
         config = load_project_config(project_root)
         structures = config.get("structures", [])
-        existing_structure = None
+        structure_id_value = None
         for struct_entry in structures:
             struct_file = project_root / struct_entry.get("file", "")
             if struct_file.exists() and struct_file.samefile(structure_path):
-                existing_structure = struct_entry.get("meta", {}).get("slug") or struct_entry.get("name")
+                # Get structure ID (canonical reference)
+                structure_id_value = struct_entry.get("meta", {}).get("id") or struct_entry.get("id")
                 break
         
-        if not existing_structure:
+        if not structure_id_value:
             # Register structure in project
             from quantumvitas.core.resources import meta_from_name, ensure_relative_path
             from quantumvitas.io import write_structure, read_structure
@@ -2360,25 +2397,33 @@ class QVService:
             }
             structures.append(entry)
             save_project_config(project_root, config)
-            existing_structure = structure_id
+            structure_id_value = meta.id  # Use the structure's ULID (canonical reference)
         
-        # Update step spec to reference structure by ID
-        spec.structure = existing_structure
+        # Update step spec to reference structure by ID (canonical reference)
+        spec.structure_id = structure_id_value
         spec_path = import_result.spec_path
         spec_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
         
-        # Add step to workflow model
+        # Add step to workflow model using step_id (ULID) from step spec meta
         rel_step_path = spec_path.relative_to(workflow_dir)
         wf_model.steps.append(WorkflowStepEntry(
-            id=step_name,
+            step_id=spec.meta.id,  # Use ULID from step spec meta (canonical reference)
             type=spec.step_type,
             step_file=str(rel_step_path.as_posix()),
         ))
         save_workflow(wf_model, workflow_dir)
         
-        # Update workflow structure if not set
-        if not wf_model.structure:
-            wf_model.structure = existing_structure
+        # Update workflow structure if not set (use structure_id, canonical reference)
+        if not wf_model.structure_id:
+            wf_model.structure_id = structure_id_value
+            # Also set structure_name for display
+            if structure_id_value:
+                # Resolve structure to get name
+                try:
+                    resolved = resolve_structure(project_root, structure_id_value, config)
+                    wf_model.structure_name = resolved.meta.name
+                except Exception:
+                    pass  # If resolution fails, structure_name stays None
             save_workflow(wf_model, workflow_dir)
         
         return QVService.get_workflow_detail(
@@ -2533,13 +2578,6 @@ class QVService:
         # Determine step file name
         step_file = f"steps/{slug}.step.yaml"
         
-        # Create step entry for workflow.yaml
-        new_step = WorkflowStepEntry(
-            id=step_id,
-            type=step_type,
-            step_file=step_file,
-        )
-        
         # Get default parameters for this step type (from-scratch mode uses defaults)
         from quantumvitas.workflow.step_defaults import get_default_step_params
         from quantumvitas.core.models import ResourceMeta
@@ -2549,17 +2587,72 @@ class QVService:
         default_cards = defaults.get("cards", {})
         default_species = defaults.get("species_overrides", {})
         
+        # Resolve structure from workflow to structure_id
+        from quantumvitas.core.project_utils import load_project_config
+        from quantumvitas.core.resolution import _is_path_like
+        config = load_project_config(project_root)
+        
+        structure_id = None
+        structure_selector = None
+        if wf_model.structure_id:
+            structure_id = wf_model.structure_id
+            # Get selector for backwards compat
+            try:
+                resolved = resolve_structure(project_root, wf_model.structure_id, config)
+                structure_selector = resolved.meta.slug
+            except Exception:
+                # If resolution fails, use structure_name or fall back to structure
+                structure_selector = wf_model.structure_name or wf_model.structure or ""
+        elif wf_model.structure:
+            # Legacy: try to resolve selector to structure_id
+            # If it's a path and not registered, we can't get structure_id, so keep the path
+            if _is_path_like(wf_model.structure):
+                # It's a path - check if file exists
+                structure_path = Path(wf_model.structure)
+                if not structure_path.is_absolute():
+                    structure_path = project_root / structure_path
+                if structure_path.exists():
+                    # Path exists but structure isn't registered - use path directly
+                    structure_selector = wf_model.structure
+                else:
+                    # Path doesn't exist, try as selector
+                    try:
+                        resolved = resolve_structure(project_root, wf_model.structure, config)
+                        structure_id = resolved.meta.id
+                        structure_selector = resolved.meta.slug
+                    except Exception:
+                        # Resolution failed, use original value
+                        structure_selector = wf_model.structure
+            else:
+                # Try to resolve as selector
+                try:
+                    resolved = resolve_structure(project_root, wf_model.structure, config)
+                    structure_id = resolved.meta.id
+                    structure_selector = resolved.meta.slug
+                except Exception:
+                    # Resolution failed, use original value
+                    structure_selector = wf_model.structure
+        
+        # Ensure we have at least structure_id or structure
+        if not structure_id and not structure_selector:
+            raise ValueError(
+                f"Workflow '{workflow_selector}' has no structure. "
+                "Please set a structure for the workflow first."
+            )
+        
         # Create step spec with defaults (from-scratch mode, same as CLI init_step without --no-defaults)
+        step_meta = ResourceMeta(
+            id=str(ulid_module.new()),  # Actual ULID for the step spec
+            name=step_name,
+            slug=slug,
+            path=f"workflows/{wf_model.meta.slug}/{step_file}",
+            kind="step",
+        )
         step_spec = StructureStepSpec(
-            meta=ResourceMeta(
-                id=str(ulid_module.new()),  # Actual ULID for the step spec
-                name=step_name,
-                slug=slug,
-                path=f"workflows/{wf_model.meta.slug}/{step_file}",
-                kind="step",
-            ),
+            meta=step_meta,
             step_type=step_type,
-            structure=wf_model.structure,  # Inherit from workflow
+            structure_id=structure_id,
+            structure=structure_selector or (wf_model.structure or ""),  # Keep for backwards compat
             parent_workflow_id=wf_model.meta.id,
             parameters=default_params,
             cards=default_cards,
@@ -2572,6 +2665,13 @@ class QVService:
         step_yaml_filename = f"{slug}.step.yaml"
         step_file_path = steps_dir / step_yaml_filename
         step_file_path.write_text(yaml.safe_dump(step_spec.to_dict(), sort_keys=False))
+        
+        # Create step entry for workflow.yaml using step_id (ULID) from step spec meta
+        new_step = WorkflowStepEntry(
+            step_id=step_spec.meta.id,  # Use ULID from step spec meta (canonical reference)
+            type=step_type,
+            step_file=f"steps/{step_yaml_filename}",
+        )
         
         # Add step to workflow
         from quantumvitas.core.models import save_workflow
@@ -2604,16 +2704,20 @@ class QVService:
         from quantumvitas.workflow.structure_steps import StructureStepSpec
         
         # Validate structure exists
-        structure = resolve_structure(project_root, new_structure)
+        resolved_structure = resolve_structure(project_root, new_structure)
         
-        from quantumvitas.core.models import load_workflow
+        from quantumvitas.core.models import load_workflow, save_workflow
         workflow = resolve_workflow(project_root, workflow_selector)
         wf_path = workflow.absolute_path / "workflow.yaml"
-        wf_model = load_workflow(wf_path)
+        wf_model = load_workflow(wf_path, project_root)
         
-        old_structure = wf_model.structure
-        wf_model.structure = structure.meta.slug
-        wf_model.save(wf_path)
+        old_structure = wf_model.structure_name or wf_model.structure
+        # Update structure_id (canonical reference)
+        wf_model.structure_id = resolved_structure.meta.id
+        wf_model.structure_name = resolved_structure.meta.name
+        # Keep structure for backwards compat (but it's not authoritative)
+        wf_model.structure = resolved_structure.meta.slug
+        save_workflow(wf_model, wf_path)
         
         warnings = []
         updated_steps = []
@@ -2667,9 +2771,14 @@ class QVService:
         
         steps = []
         for step_entry in wf_model.steps:
+            # Use step_id (ULID) as canonical ID, fall back to legacy id (slug) if needed
+            step_id = step_entry.step_id or step_entry.id
+            if not step_id:
+                # Skip steps without valid ID
+                continue
             steps.append({
-                "id": step_entry.id,
-                "slug": step_entry.id,  # WorkflowStepEntry uses id as slug
+                "id": step_id,
+                "slug": step_entry.id or step_id,  # Use legacy id as slug if available
                 "type": step_entry.type or "unknown",
                 "step_file": step_entry.step_file,
             })
@@ -2878,6 +2987,8 @@ class QVService:
         )
         
         # Store demo origin info in project settings
+        # NOTE: Demo recognition relies on origin.kind and demo_id, NOT on preserving snapshot ULIDs.
+        # Materialized projects have fresh ULIDs, but demo_id is a stable identifier from snapshot meta.
         from quantumvitas.core.project_utils import load_project_config, save_project_config
         config = load_project_config(project_root)
         if "project" not in config:
@@ -2886,9 +2997,11 @@ class QVService:
             config["project"]["settings"] = {}
         config["project"]["settings"]["origin"] = {
             "kind": "demo",
-            "demo_id": demo_name,
+            "demo_id": demo_name,  # Stable demo identifier (not a ULID)
         }
         # Also store reference_artifacts info if present in snapshot meta
+        # NOTE: Reference analysis lookup uses origin.reference_artifacts or snapshot.meta.reference_artifacts,
+        # NOT project ULIDs. This allows reference data to work even though materialized projects have fresh IDs.
         snapshot_meta = snapshot_data.get("meta", {})
         if snapshot_meta.get("reference_artifacts"):
             config["project"]["settings"]["origin"]["reference_artifacts"] = snapshot_meta["reference_artifacts"]

@@ -34,33 +34,64 @@ from quantumvitas.core.resources import (
 
 @dataclass
 class WorkflowStepEntry:
-    """An entry in the workflow's step list."""
-    id: str
+    """
+    An entry in the workflow's step list.
+    
+    Cross-resource reference: step_id (ULID) is the canonical reference to the step.
+    step_file is kept for file location (not a cross-resource reference).
+    """
+    step_id: Optional[str] = None  # Canonical step reference (ULID from step meta)
+    step_file: Optional[str] = None  # File path for locating step file (not a cross-ref)
     type: Optional[str] = None
-    step_file: Optional[str] = None
     input: Optional[str] = None
     reference: Optional[str] = None
     
+    # Legacy field for backwards compatibility
+    id: Optional[str] = None  # Legacy slug-based id (deprecated, use step_id)
+    
     def to_dict(self) -> Dict[str, Any]:
-        d: Dict[str, Any] = {"id": self.id}
-        if self.type:
-            d["type"] = self.type
+        """
+        Convert to dictionary for YAML serialization.
+        
+        Writes step_id (ULID) as canonical reference.
+        Keeps step_file for file location.
+        Does not write legacy id field.
+        """
+        d: Dict[str, Any] = {}
+        if self.step_id:
+            d["step_id"] = self.step_id
         if self.step_file:
             d["step_file"] = self.step_file
+        if self.type:
+            d["type"] = self.type
         if self.input:
             d["input"] = self.input
         if self.reference:
             d["reference"] = self.reference
+        # Do not write legacy "id" field
         return d
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "WorkflowStepEntry":
+        """
+        Create WorkflowStepEntry from dictionary.
+        
+        Backwards compatibility: Accepts legacy "id" (slug) field,
+        but step_id (ULID) is preferred and canonical.
+        """
+        # New format: step_id (ULID)
+        step_id = data.get("step_id")
+        
+        # Legacy format: id (slug) - for backwards compat
+        legacy_id = data.get("id")
+        
         return cls(
-            id=data.get("id", "step"),
-            type=data.get("type"),
+            step_id=step_id,
             step_file=data.get("step_file"),
+            type=data.get("type"),
             input=data.get("input") or data.get("file"),
             reference=data.get("reference"),
+            id=legacy_id,  # Keep for backwards compat
         )
 
 
@@ -70,9 +101,16 @@ class WorkflowModel:
     Data model for a workflow (workflow.yaml).
     
     All workflows have a meta section with id, name, slug, path.
+    
+    Structure references:
+    - structure_id: ULID of the structure (canonical reference)
+    - structure_name: Optional display name (cosmetic only, not used for resolution)
+    - structure: Legacy selector field (for backwards compatibility when loading)
     """
     meta: ResourceMeta
-    structure: Optional[str] = None  # Structure selector
+    structure_id: Optional[str] = None  # Canonical structure reference (ULID)
+    structure_name: Optional[str] = None  # Optional display name (cosmetic)
+    structure: Optional[str] = None  # Legacy selector (backwards compat, not authoritative)
     mode: str = "normal"
     working_dir: str = "raw"
     steps: List[WorkflowStepEntry] = field(default_factory=list)
@@ -90,14 +128,27 @@ class WorkflowModel:
         return self.meta.slug
     
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for YAML serialization."""
-        return {
+        """
+        Convert to dictionary for YAML serialization.
+        
+        Cross-resource references:
+        - structure_id: ULID only (no structure name/slug/path)
+        - steps: step_id (ULID) only (no step name/slug/path)
+        """
+        result: Dict[str, Any] = {
             "meta": self.meta.to_dict(),
-            "structure": self.structure,
             "mode": self.mode,
             "working_dir": self.working_dir,
             "steps": [s.to_dict() for s in self.steps],
         }
+        # Write structure_id (canonical reference - ID only)
+        if self.structure_id:
+            result["structure_id"] = self.structure_id
+        # Optionally write structure_name for UI display (cosmetic only)
+        if self.structure_name:
+            result["structure_name"] = self.structure_name
+        # Do not write structure selector (legacy field - not authoritative)
+        return result
     
     @classmethod
     def from_dict(
@@ -107,11 +158,23 @@ class WorkflowModel:
         default_name: str = "Workflow",
         default_path: str = ".",
     ) -> "WorkflowModel":
-        """Create WorkflowModel from dictionary."""
+        """
+        Create WorkflowModel from dictionary.
+        
+        Handles both new format (structure_id) and legacy format (structure selector).
+        Legacy structure selector is kept in memory for backwards compatibility but
+        should be resolved to structure_id when project_root is available.
+        """
         # Handle legacy format where structure is in workflow sub-dict
         workflow_section = data.get("workflow", {})
-        structure = data.get("structure") or workflow_section.get("structure")
         working_dir = data.get("working_dir") or workflow_section.get("working_dir", "raw")
+        
+        # New format: structure_id (canonical)
+        structure_id = data.get("structure_id")
+        structure_name = data.get("structure_name")
+        
+        # Legacy format: structure selector (for backwards compat)
+        structure = data.get("structure") or workflow_section.get("structure")
         
         # Build meta
         meta = ResourceMeta.from_dict(
@@ -126,20 +189,45 @@ class WorkflowModel:
         
         return cls(
             meta=meta,
-            structure=structure,
+            structure_id=structure_id,
+            structure_name=structure_name,
+            structure=structure,  # Keep for backwards compat
             mode=data.get("mode", "normal"),
             working_dir=working_dir,
             steps=steps,
         )
+    
+    def resolve_step_ids(self, workflow_dir: Path) -> None:
+        """
+        Resolve step_id (ULID) for steps that only have legacy id (slug).
+        
+        This is called after loading a workflow to ensure all steps have step_id.
+        """
+        for step_entry in self.steps:
+            if not step_entry.step_id and step_entry.step_file:
+                # Try to load step file and get its meta.id
+                step_file_path = workflow_dir / step_entry.step_file
+                if step_file_path.exists():
+                    try:
+                        import yaml
+                        step_data = yaml.safe_load(step_file_path.read_text()) or {}
+                        step_meta = step_data.get("meta", {})
+                        if step_meta and step_meta.get("id"):
+                            step_entry.step_id = step_meta.get("id")
+                    except Exception:
+                        pass  # If loading fails, keep step_id as None
 
 
 def load_workflow(path: Path, project_root: Optional[Path] = None) -> WorkflowModel:
     """
     Load a WorkflowModel from a workflow.yaml file.
     
+    If project_root is provided and the workflow has a legacy structure selector,
+    it will be resolved to structure_id automatically.
+    
     Args:
         path: Path to workflow.yaml or workflow directory
-        project_root: Project root for relative path calculation
+        project_root: Project root for relative path calculation and structure resolution
         
     Returns:
         WorkflowModel instance
@@ -164,7 +252,38 @@ def load_workflow(path: Path, project_root: Optional[Path] = None) -> WorkflowMo
     else:
         default_path = workflow_dir.name
     
-    return WorkflowModel.from_dict(data, default_name=default_name, default_path=default_path)
+    model = WorkflowModel.from_dict(data, default_name=default_name, default_path=default_path)
+    
+    # Resolve legacy structure selector to structure_id if needed
+    if project_root and model.structure and not model.structure_id:
+        try:
+            from quantumvitas.core.resolution import resolve_structure, _is_path_like
+            # If structure looks like a path, try to resolve it as a path first
+            if _is_path_like(model.structure):
+                # Try to resolve as path
+                structure_path = Path(model.structure)
+                if not structure_path.is_absolute():
+                    structure_path = project_root / structure_path
+                if structure_path.exists():
+                    # Path exists, but we can't get structure_id without registration
+                    # Keep the path for now - it will be resolved when needed
+                    pass
+                else:
+                    # Path doesn't exist, try as selector
+                    resolved = resolve_structure(project_root, model.structure)
+                    model.structure_id = resolved.meta.id
+                    model.structure_name = resolved.meta.name
+            else:
+                # Try to resolve as selector
+                resolved = resolve_structure(project_root, model.structure)
+                model.structure_id = resolved.meta.id
+                model.structure_name = resolved.meta.name
+        except Exception:
+            # If resolution fails, keep structure selector for backwards compat
+            # This allows loading workflows even if structure is missing or not registered
+            pass
+    
+    return model
 
 
 def save_workflow(model: WorkflowModel, path: Path) -> None:
@@ -195,21 +314,87 @@ class StructureEntry:
     format: str = "auto"
     
     def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert to dictionary for YAML serialization.
+        
+        Stores only ID for cross-resource reference (no duplicated name/slug/path).
+        The structure's own meta (name/slug/path) lives in the structure JSON file.
+        """
         return {
-            "name": self.meta.name,
-            "file": self.file,
+            "id": self.meta.id,  # Only ID - name/slug/path come from structure file meta
             "format": self.format,
-            "meta": self.meta.to_dict(),
         }
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any], project_root: Path) -> "StructureEntry":
-        meta_dict = data.get("meta") or {}
-        name = data.get("name") or meta_dict.get("name") or "Structure"
-        file_path = data.get("file") or meta_dict.get("path") or f"structures/{slugify(name)}.json"
+        """
+        Create StructureEntry from dictionary.
         
+        Backwards compatibility: Accepts legacy format with name/slug/path,
+        but these are only used to locate the structure file and read its meta.
+        """
+        # New format: id only
+        structure_id = data.get("id")
+        
+        # Legacy format: name/slug/path (for backwards compat)
+        meta_dict = data.get("meta") or {}
+        name = data.get("name") or meta_dict.get("name")
+        file_path = data.get("file") or meta_dict.get("path")
+        
+        # If we have an ID, try to load meta from the structure file
+        if structure_id:
+            # Try to find structure file and load its meta
+            structures_dir = project_root / "structures"
+            if structures_dir.exists():
+                for struct_file in structures_dir.glob("*.json"):
+                    try:
+                        import json
+                        struct_data = json.loads(struct_file.read_text())
+                        struct_meta_dict = struct_data.get("__qv_meta__") or struct_data.get("meta")
+                        if struct_meta_dict and struct_meta_dict.get("id") == structure_id:
+                            # Found matching structure file - use its meta
+                            meta = ResourceMeta.from_dict(
+                                struct_meta_dict,
+                                kind="structure",
+                                default_name=struct_meta_dict.get("name", "Structure"),
+                                default_path=struct_meta_dict.get("path", f"structures/{struct_file.name}"),
+                            )
+                            return cls(
+                                meta=meta,
+                                file=meta.path,
+                                format=data.get("format", "auto"),
+                            )
+                    except Exception:
+                        continue
+        
+        # Fallback: legacy format or structure file not found
+        # Use provided name/path or defaults
+        if not name:
+            name = "Structure"
+        if not file_path:
+            file_path = f"structures/{slugify(name)}.json"
+        
+        # Try to load meta from structure file if it exists
+        struct_file = project_root / file_path
+        if struct_file.exists():
+            try:
+                import json
+                struct_data = json.loads(struct_file.read_text())
+                struct_meta_dict = struct_data.get("__qv_meta__") or struct_data.get("meta")
+                if struct_meta_dict:
+                    meta = ResourceMeta.from_dict(
+                        struct_meta_dict,
+                        kind="structure",
+                        default_name=name,
+                        default_path=file_path,
+                    )
+                    return cls(meta=meta, file=file_path, format=data.get("format", "auto"))
+            except Exception:
+                pass
+        
+        # Last resort: create meta from provided/defaults
         meta = ResourceMeta(
-            id=meta_dict.get("id") or generate_resource_id(),
+            id=meta_dict.get("id") or structure_id or generate_resource_id(),
             name=name,
             slug=meta_dict.get("slug") or slugify(name),
             path=file_path,
@@ -229,20 +414,86 @@ class WorkflowEntry:
     meta: ResourceMeta
     
     def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert to dictionary for YAML serialization.
+        
+        Stores only ID for cross-resource reference (no duplicated name/slug/path).
+        The workflow's own meta (name/slug/path) lives in workflow.yaml.
+        """
         return {
-            "name": self.meta.name,
-            "path": self.meta.path,
-            "meta": self.meta.to_dict(),
+            "id": self.meta.id,  # Only ID - name/slug/path come from workflow.yaml meta
         }
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any], project_root: Path) -> "WorkflowEntry":
-        meta_dict = data.get("meta") or {}
-        name = data.get("name") or meta_dict.get("name") or "Workflow"
-        path = data.get("path") or meta_dict.get("path") or f"workflows/{slugify(name)}"
+        """
+        Create WorkflowEntry from dictionary.
         
+        Backwards compatibility: Accepts legacy format with name/slug/path,
+        but these are only used to locate the workflow.yaml file and read its meta.
+        """
+        # New format: id only
+        workflow_id = data.get("id")
+        
+        # Legacy format: name/slug/path (for backwards compat)
+        meta_dict = data.get("meta") or {}
+        name = data.get("name") or meta_dict.get("name")
+        path = data.get("path") or meta_dict.get("path")
+        
+        # If we have an ID, try to load meta from workflow.yaml
+        if workflow_id:
+            # Try to find workflow.yaml and load its meta
+            workflows_dir = project_root / "workflows"
+            if workflows_dir.exists():
+                for workflow_dir in workflows_dir.iterdir():
+                    if not workflow_dir.is_dir():
+                        continue
+                    workflow_yaml = workflow_dir / "workflow.yaml"
+                    if workflow_yaml.exists():
+                        try:
+                            import yaml
+                            wf_data = yaml.safe_load(workflow_yaml.read_text()) or {}
+                            wf_meta_dict = wf_data.get("meta", {})
+                            if wf_meta_dict and wf_meta_dict.get("id") == workflow_id:
+                                # Found matching workflow - use its meta
+                                meta = ResourceMeta.from_dict(
+                                    wf_meta_dict,
+                                    kind="workflow",
+                                    default_name=wf_meta_dict.get("name", "Workflow"),
+                                    default_path=wf_meta_dict.get("path", f"workflows/{workflow_dir.name}"),
+                                )
+                                return cls(meta=meta)
+                        except Exception:
+                            continue
+        
+        # Fallback: legacy format or workflow.yaml not found
+        # Use provided name/path or defaults
+        if not name:
+            name = "Workflow"
+        if not path:
+            path = f"workflows/{slugify(name)}"
+        
+        # Try to load meta from workflow.yaml if it exists
+        workflow_yaml = project_root / path / "workflow.yaml"
+        if workflow_yaml.exists():
+            try:
+                import yaml
+                wf_data = yaml.safe_load(workflow_yaml.read_text()) or {}
+                wf_meta_dict = wf_data.get("meta", {})
+                if wf_meta_dict:
+                    meta = ResourceMeta.from_dict(
+                        wf_meta_dict,
+                        kind="workflow",
+                        default_name=name,
+                        default_path=path,
+                    )
+                    return cls(meta=meta)
+            except Exception:
+                pass
+        
+        # Last resort: create meta from provided/defaults
         meta = ResourceMeta(
-            id=meta_dict.get("id") or generate_resource_id(),
+            id=meta_dict.get("id") or workflow_id or generate_resource_id(),
             name=name,
             slug=meta_dict.get("slug") or slugify(name),
             path=path,

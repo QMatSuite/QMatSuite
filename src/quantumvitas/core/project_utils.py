@@ -155,9 +155,36 @@ def find_structure_entry(
     """
     Find a structure entry by name, slug, or file path.
     
+    DEPRECATED: Prefer using resolve_structure() with ResourceIndex for new code.
+    This function is kept for backwards compatibility.
+    
     Raises:
         ResourceNotFoundError: If the structure is not found.
     """
+    # Try to use ResourceIndex if project_root is available
+    if project_root:
+        try:
+            from quantumvitas.core.resolution import build_resource_index, resolve_structure
+            index = build_resource_index(project_root)
+            resolved = resolve_structure(project_root, identifier, config, index=index)
+            # Convert ResolvedResource back to entry dict format for backwards compat
+            structure_id = resolved.meta.id
+            # Find entry by ID
+            entries = config.setdefault("structures", [])
+            for entry in entries:
+                entry_id = (entry.get("meta") or {}).get("id") or entry.get("id")
+                if entry_id == structure_id:
+                    return entry
+            # If not found in config, create minimal entry from resolved resource
+            return {
+                "id": structure_id,
+                "meta": resolved.meta.to_dict(),
+            }
+        except Exception:
+            # Fall back to legacy resolution if ResourceIndex fails
+            pass
+    
+    # Legacy resolution (for backwards compatibility)
     entries = config.setdefault("structures", [])
     for entry in entries:
         ensure_structure_entry_defaults(entry)
@@ -194,9 +221,36 @@ def find_workflow_entry(
     """
     Find a workflow entry by name, slug, or directory path.
     
+    DEPRECATED: Prefer using resolve_workflow() with ResourceIndex for new code.
+    This function is kept for backwards compatibility.
+    
     Raises:
         ResourceNotFoundError: If the workflow is not found.
     """
+    # Try to use ResourceIndex if project_root is available
+    if project_root:
+        try:
+            from quantumvitas.core.resolution import build_resource_index, resolve_workflow
+            index = build_resource_index(project_root)
+            resolved = resolve_workflow(project_root, identifier, config, index=index)
+            # Convert ResolvedResource back to entry dict format for backwards compat
+            workflow_id = resolved.meta.id
+            # Find entry by ID
+            entries = config.setdefault("workflows", [])
+            for entry in entries:
+                entry_id = (entry.get("meta") or {}).get("id") or entry.get("id")
+                if entry_id == workflow_id:
+                    return entry
+            # If not found in config, create minimal entry from resolved resource
+            return {
+                "id": workflow_id,
+                "meta": resolved.meta.to_dict(),
+            }
+        except Exception:
+            # Fall back to legacy resolution if ResourceIndex fails
+            pass
+    
+    # Legacy resolution (for backwards compatibility)
     entries = config.setdefault("workflows", [])
     for entry in entries:
         ensure_workflow_entry_defaults(entry)
