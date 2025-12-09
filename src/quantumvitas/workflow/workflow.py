@@ -84,7 +84,10 @@ def _build_step(
     working_dir: Path,
     project: Project,
 ) -> Step:
-    step_id = step_data["id"]
+    # Prefer step_id (ULID) - canonical reference, fall back to legacy id field
+    step_id = step_data.get("step_id") or step_data.get("id")
+    if not step_id:
+        raise ValueError(f"Step entry missing both 'step_id' and 'id': {step_data}")
     engine_name = step_data.get("engine", "qe")
 
     step_file_value = step_data.get("step_file")

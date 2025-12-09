@@ -1150,8 +1150,8 @@ export function AnalysisPanel({
         {/* Charts */}
         {analysisState !== 'error' && analysisState !== 'analyzing' && (
           <>
-            {analysisType === 'scf' && <ScfConvergenceChart data={scfData} isLoading={isLoading} />}
-            {analysisType === 'dos' && <DosChart data={dosData} isLoading={isLoading} />}
+        {analysisType === 'scf' && <ScfConvergenceChart data={scfData} isLoading={isLoading} />}
+        {analysisType === 'dos' && <DosChart data={dosData} isLoading={isLoading} />}
             {analysisType === 'bands' && (
               <BandsChart 
                 data={bandsData} 

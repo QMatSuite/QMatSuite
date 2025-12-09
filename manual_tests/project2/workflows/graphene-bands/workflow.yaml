@@ -1,0 +1,10 @@
+meta:
+  id: 01KC1Y9AWS3DCNW9QF0CCRNCWZ
+  name: graphene bands
+  slug: graphene-bands
+  path: workflows/graphene-bands
+  kind: workflow
+structure: C
+mode: normal
+working_dir: raw
+steps: []

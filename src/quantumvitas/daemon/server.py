@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Optional, TextIO
 
 from quantumvitas.api import QVService, QVServiceError
+from quantumvitas.core.resolution import ResourceNotFoundError
 from quantumvitas.daemon.jobs import JobManager, JobStatus
 
 
@@ -283,6 +284,19 @@ class QVDaemon:
             result = handler(request.payload)
             return RPCResponse(id=request.id, ok=True, data=result)
             
+        except ResourceNotFoundError as e:
+            # Convert ResourceNotFoundError to structured daemon error
+            return RPCResponse(
+                id=request.id,
+                ok=False,
+                error={
+                    "code": "resource_not_found",
+                    "kind": e.kind,
+                    "selector": e.selector,
+                    "id": e.id,
+                    "message": str(e),
+                },
+            )
         except QVServiceError as e:
             return RPCResponse(
                 id=request.id,

@@ -51,6 +51,46 @@ class SelectorNotFoundError(ValueError):
     pass
 
 
+class ResourceNotFoundError(Exception):
+    """
+    Raised when a required resource cannot be found.
+    
+    This is a more specific error than SelectorNotFoundError, intended for
+    cases where a resource is required (not optional) and its absence should
+    be treated as a hard failure.
+    
+    Attributes:
+        kind: Resource kind ("workflow", "structure", "step", "project")
+        selector: Selector that was used (name, slug, path, or ULID)
+        id: Resource ID (ULID) if known
+        project_root: Project root path where the resource was expected
+    """
+    def __init__(
+        self,
+        kind: str,
+        selector: str | None = None,
+        *,
+        id: str | None = None,
+        project_root: Path | None = None,
+    ):
+        self.kind = kind
+        self.selector = selector
+        self.id = id
+        self.project_root = project_root
+        
+        # Build error message
+        parts = [f"{kind.capitalize()} not found"]
+        if selector:
+            parts.append(f"selector: '{selector}'")
+        if id:
+            parts.append(f"id: '{id}'")
+        if project_root:
+            parts.append(f"in project: {project_root}")
+        
+        message = " - ".join(parts)
+        super().__init__(message)
+
+
 @dataclass
 class ResourceIndex:
     """
@@ -774,6 +814,127 @@ def _load_config(project_root: Path) -> dict:
     if not config_file.exists():
         raise SelectorNotFoundError(f"No project.qv.yml found at {project_root}")
     return yaml.safe_load(config_file.read_text()) or {}
+
+
+# ---------------------------------------------------------------------------
+# Required resource helpers (raise ResourceNotFoundError on failure)
+# ---------------------------------------------------------------------------
+
+
+def require_structure(
+    project_root: Path,
+    selector_or_id: str,
+    config: Optional[dict] = None,
+    index: Optional[ResourceIndex] = None,
+) -> ResolvedResource:
+    """
+    Require a structure resource - raise ResourceNotFoundError if not found.
+    
+    This is a wrapper around resolve_structure that converts SelectorNotFoundError
+    to ResourceNotFoundError for clearer error handling in API/CLI layers.
+    
+    Args:
+        project_root: Path to project root
+        selector_or_id: Structure selector (name, slug, path, or ULID)
+        config: Optional pre-loaded config dict
+        index: Optional ResourceIndex (built if None)
+        
+    Returns:
+        ResolvedResource for the structure
+        
+    Raises:
+        ResourceNotFoundError: If structure not found
+        AmbiguousSelectorError: If multiple structures match
+    """
+    try:
+        return resolve_structure(project_root, selector_or_id, config, index)
+    except SelectorNotFoundError as e:
+        # Convert to ResourceNotFoundError for API/CLI layers
+        raise ResourceNotFoundError(
+            kind="structure",
+            selector=selector_or_id,
+            project_root=project_root,
+        ) from e
+
+
+def require_workflow(
+    project_root: Path,
+    selector_or_id: str,
+    config: Optional[dict] = None,
+    index: Optional[ResourceIndex] = None,
+) -> ResolvedResource:
+    """
+    Require a workflow resource - raise ResourceNotFoundError if not found.
+    
+    This is a wrapper around resolve_workflow that converts SelectorNotFoundError
+    to ResourceNotFoundError for clearer error handling in API/CLI layers.
+    
+    Args:
+        project_root: Path to project root
+        selector_or_id: Workflow selector (name, slug, path, or ULID)
+        config: Optional pre-loaded config dict
+        index: Optional ResourceIndex (built if None)
+        
+    Returns:
+        ResolvedResource for the workflow
+        
+    Raises:
+        ResourceNotFoundError: If workflow not found
+        AmbiguousSelectorError: If multiple workflows match
+    """
+    try:
+        return resolve_workflow(project_root, selector_or_id, config, index)
+    except SelectorNotFoundError as e:
+        # Convert to ResourceNotFoundError for API/CLI layers
+        raise ResourceNotFoundError(
+            kind="workflow",
+            selector=selector_or_id,
+            project_root=project_root,
+        ) from e
+
+
+def require_step(
+    project_root: Path,
+    workflow_selector: str,
+    step_selector_or_id: str,
+    config: Optional[dict] = None,
+) -> ResolvedResource:
+    """
+    Require a step resource within a workflow - raise ResourceNotFoundError if not found.
+    
+    This is a wrapper around resolve_step that converts SelectorNotFoundError
+    to ResourceNotFoundError for clearer error handling in API/CLI layers.
+    
+    Args:
+        project_root: Path to project root
+        workflow_selector: Workflow selector (name, slug, path, or ULID)
+        step_selector_or_id: Step selector (ULID, id, name, or path)
+        config: Optional pre-loaded config dict
+        
+    Returns:
+        ResolvedResource for the step
+        
+    Raises:
+        ResourceNotFoundError: If workflow or step not found
+        AmbiguousSelectorError: If multiple workflows match
+    """
+    try:
+        return resolve_step(project_root, workflow_selector, step_selector_or_id, config)
+    except SelectorNotFoundError as e:
+        # Convert to ResourceNotFoundError for API/CLI layers
+        # Try to extract workflow name for better error message
+        workflow_name = workflow_selector
+        try:
+            workflow = resolve_workflow(project_root, workflow_selector, config)
+            workflow_name = workflow.meta.name
+        except Exception:
+            pass
+        
+        raise ResourceNotFoundError(
+            kind="step",
+            selector=step_selector_or_id,
+            project_root=project_root,
+        ) from e
 
 
 def list_structures(project_root: Path, config: Optional[dict] = None) -> List[ResolvedResource]:

@@ -420,9 +420,9 @@ async function sendDaemonRequest(request: QVRequest): Promise<QVResponse> {
     const jsonLine = JSON.stringify(request) + '\n';
     try {
       stdin.write(jsonLine, (err) => {
-        if (err) {
-          clearTimeout(timeoutId);
-          pendingRequests.delete(request.id);
+      if (err) {
+        clearTimeout(timeoutId);
+        pendingRequests.delete(request.id);
           const errorMsg = `[main] Failed to write to daemon stdin: ${err.message}`;
           console.error(errorMsg);
           process.stderr.write(`${errorMsg}\n`);
@@ -482,18 +482,18 @@ async function shutdownDaemon(): Promise<void> {
     // Try to send shutdown command if daemon is still connected
     if (daemonStatus.connected && processToKill.stdin && !processToKill.stdin.destroyed && !processToKill.stdin.writableEnded) {
       try {
-        await sendDaemonRequest({
-          id: `shutdown-${Date.now()}`,
-          type: 'shutdown',
-          payload: {},
-        });
-      } catch (e) {
+    await sendDaemonRequest({
+      id: `shutdown-${Date.now()}`,
+      type: 'shutdown',
+      payload: {},
+    });
+  } catch (e) {
         // Ignore errors during shutdown (daemon may have already exited)
         console.log('[main] Shutdown command failed (daemon may already be stopped)');
-      }
-      
-      // Wait for graceful shutdown
-      await delay(2000);
+  }
+  
+  // Wait for graceful shutdown
+  await delay(2000);
     } else {
       console.log('[main] Daemon stdin not available, skipping graceful shutdown');
     }
@@ -506,7 +506,7 @@ async function shutdownDaemon(): Promise<void> {
   if (processToKill && !processToKill.killed && processToKill.pid) {
     console.log('[main] Force killing daemon');
     try {
-      processToKill.kill('SIGTERM');
+    processToKill.kill('SIGTERM');
       // Wait a bit for SIGTERM to take effect
       await delay(1000);
       // If still running, use SIGKILL

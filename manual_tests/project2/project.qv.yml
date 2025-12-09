@@ -1,0 +1,30 @@
+project:
+  name: project2
+  meta:
+    id: 01KC1Y7VQGPHDZ6GM7SRKDH3E7
+    name: project2
+    slug: project2
+    path: .
+    kind: project
+  structures_dir: structures
+  workflows_dir: workflows
+workflows:
+- name: graphene bands
+  path: workflows/graphene-bands
+  meta:
+    id: 01KC1Y9AWS3DCNW9QF0CCRNCWZ
+    name: graphene bands
+    slug: graphene-bands
+    path: workflows/graphene-bands
+    kind: workflow
+structures:
+- name: C
+  file: structures/c.json
+  format: json
+  meta:
+    id: 01KC1Y8ZJRDVG0C0DQJZT24CQH
+    name: C
+    slug: c
+    path: structures/c.json
+    kind: structure
+settings: {}
