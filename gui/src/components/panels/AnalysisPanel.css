@@ -157,6 +157,20 @@
   cursor: not-allowed;
 }
 
+.load-button--secondary {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  margin-top: 8px;
+  font-size: 0.8rem;
+  padding: 8px 12px;
+}
+
+.load-button--secondary:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
 /* Main Content */
 .analysis-content {
   flex: 1;
@@ -177,7 +191,8 @@
 }
 
 .chart-container--loading,
-.chart-container--empty {
+.chart-container--empty,
+.chart-container--error {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -185,6 +200,10 @@
   padding: 48px 24px;
   text-align: center;
   color: var(--text-muted);
+}
+
+.chart-container--error {
+  background: var(--color-error-bg);
 }
 
 .chart-placeholder {
@@ -209,6 +228,27 @@
   font-size: 0.85rem;
   color: var(--text-muted);
   margin: 0;
+}
+
+.chart-placeholder--error h3 {
+  color: var(--color-error);
+}
+
+.analysis-error-message {
+  max-width: 400px;
+  word-break: break-word;
+  color: var(--color-error);
+  background: var(--bg-card);
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  margin: 8px 0;
+}
+
+.analysis-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 8px;
 }
 
 /* Chart Header */
@@ -383,5 +423,46 @@
 
 .recharts-legend-item-text {
   color: var(--text-secondary) !important;
+}
+
+/* Reference Data Styles */
+.reference-badge {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--color-warning);
+  margin-left: 8px;
+}
+
+.reference-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--bg-secondary);
+  border-left: 3px solid var(--color-warning);
+  border-radius: 4px;
+  margin: 8px 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.notice-icon {
+  font-size: 1rem;
+}
+
+.reference-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-left: auto;
+  cursor: pointer;
+}
+
+.reference-toggle input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
 }
 

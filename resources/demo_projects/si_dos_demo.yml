@@ -6,6 +6,9 @@ meta:
   tags: ["dos", "Si", "PW", "tutorial"]
   recommended_analysis: "dos"
   difficulty: "beginner"
+  reference_artifacts:
+    dos: si_dos_demo.dos.json
+    scf: si_dos_demo.scf.json
 project:
   meta:
     id: 01KB9J9K06K6400PY3J2QYJ0Z4

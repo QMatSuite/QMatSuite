@@ -228,3 +228,6 @@ meta:
   - tutorial
   recommended_analysis: bands
   difficulty: beginner
+  reference_artifacts:
+    bands: si_bands_demo.bands.json
+    scf: si_bands_demo.scf.json

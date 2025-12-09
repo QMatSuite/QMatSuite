@@ -142,11 +142,15 @@ class QVDaemon:
             "create_demo_project": self._handle_create_demo_project,
             "list_demo_projects": self._handle_list_demo_projects,
             
+            # Analysis (ensure artifacts exist, parse if needed)
+            "ensure_workflow_analysis": self._handle_ensure_workflow_analysis,
+            
             # Visualization data (pure data, no matplotlib)
             "get_structure_vis": self._handle_get_structure_vis,
             "get_scf_convergence": self._handle_get_scf_convergence,
             "get_dos_data": self._handle_get_dos_data,
             "get_band_structure_data": self._handle_get_band_structure_data,
+            "get_reference_analysis": self._handle_get_reference_analysis,
             
             # Job management
             "run_workflow": self._handle_run_workflow,
@@ -919,6 +923,43 @@ class QVDaemon:
             }
     
     # -------------------------------------------------------------------------
+    # Analysis handlers
+    # -------------------------------------------------------------------------
+    
+    def _handle_ensure_workflow_analysis(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Ensure analysis artifacts exist for a workflow.
+        
+        Payload:
+            project_root: str - Path to project root
+            workflow: str - Workflow selector
+            analysis_type: str - Type of analysis ("scf", "dos", "bands")
+            step: str - Optional step selector (for SCF)
+            force: bool - Force re-parse even if artifact exists (default false)
+            
+        Returns:
+            ok: bool - Whether analysis succeeded
+            analysis_type: str - Type of analysis
+            artifact_path: str | null - Path to JSON artifact
+            parsed_fresh: bool - True if just parsed (vs loaded from cache)
+            error: str | null - Error message if failed
+            summary: dict | null - Quick summary data
+        """
+        project_root = self._require_path(payload, "project_root")
+        workflow = self._require_str(payload, "workflow")
+        analysis_type = self._require_str(payload, "analysis_type")
+        step = payload.get("step")
+        force = payload.get("force", False)
+        
+        return QVService.ensure_workflow_analysis(
+            project_root=project_root,
+            workflow_selector=workflow,
+            analysis_type=analysis_type,
+            step_selector=step,
+            force=force,
+        )
+    
+    # -------------------------------------------------------------------------
     # Visualization data handlers
     # -------------------------------------------------------------------------
     
@@ -1000,6 +1041,38 @@ class QVDaemon:
             workflow_selector=workflow,
             step_selector=step,
         )
+    
+    def _handle_get_reference_analysis(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get reference analysis data for demo projects.
+        
+        Returns reference analysis data if the project was created from a demo
+        snapshot that includes reference artifacts.
+        
+        Payload:
+            project_root: str - Path to project root
+            workflow: str - Workflow selector
+            analysis_type: str - Analysis type ("scf", "dos", "bands")
+            
+        Returns:
+            Reference analysis data dict, or null if not a demo project
+            or no reference data exists for the requested type.
+        """
+        project_root = self._require_path(payload, "project_root")
+        workflow = self._require_str(payload, "workflow")
+        analysis_type = self._require_str(payload, "analysis_type")
+        
+        if analysis_type not in ("scf", "dos", "bands"):
+            raise ValueError(f"Invalid analysis_type: {analysis_type}. Must be one of: scf, dos, bands")
+        
+        result = QVService.get_reference_analysis(
+            project_root=project_root,
+            workflow_selector=workflow,
+            analysis_type=analysis_type,  # type: ignore
+        )
+        
+        # Return None-safe dict for JSON serialization
+        return {"data": result, "has_reference": result is not None}
     
     # -------------------------------------------------------------------------
     # Job management handlers

@@ -15,7 +15,7 @@ import shutil
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple, TYPE_CHECKING
+from typing import Any, Dict, List, Literal, Optional, Sequence, Tuple, TYPE_CHECKING
 
 import yaml
 
@@ -742,6 +742,9 @@ class QVService:
         """
         Run all steps in a workflow.
         
+        This method clears any existing analysis artifacts before running
+        to ensure fresh analysis on completion.
+        
         Args:
             project_root: Project root path
             workflow_selector: Workflow selector
@@ -754,9 +757,16 @@ class QVService:
         from quantumvitas.project.model import Project
         from quantumvitas.workflow.runner import WorkflowRunner
         from quantumvitas.engine.registry import create_default_registry
+        from quantumvitas.analysis.artifacts import clear_analysis_artifacts
         
         project = Project.open(project_root)
         workflow = project.get_workflow(workflow_selector)
+        
+        # Clear analysis artifacts before running (cache invalidation)
+        # This ensures fresh analysis is generated after the run completes
+        workflow_dir = workflow.directory
+        if workflow_dir and workflow_dir.exists():
+            clear_analysis_artifacts(workflow_dir)
         
         # WorkflowRunner expects an EngineRegistry with engines registered
         registry = create_default_registry()
@@ -1494,6 +1504,67 @@ class QVService:
         }
     
     @staticmethod
+    def ensure_workflow_analysis(
+        project_root: Path,
+        workflow_selector: str,
+        analysis_type: str,
+        step_selector: Optional[str] = None,
+        force: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Ensure analysis artifacts exist for a workflow.
+        
+        If JSON artifact exists and force=False, returns cached status.
+        Otherwise, parses QE outputs and writes JSON artifact.
+        
+        The artifact is written to: <workflow>/analysis/<type>.json
+        
+        Args:
+            project_root: Project root path
+            workflow_selector: Workflow selector
+            analysis_type: Type of analysis ("scf", "dos", "bands")
+            step_selector: Optional step selector (used for SCF step identification)
+            force: Force re-parse even if artifact exists
+            
+        Returns:
+            Dict with:
+                ok: bool - Whether analysis succeeded
+                analysis_type: str - Type of analysis
+                artifact_path: str | None - Path to JSON artifact
+                parsed_fresh: bool - True if just parsed (vs loaded from cache)
+                error: str | None - Error message if failed
+                summary: dict | None - Quick summary data
+        """
+        from quantumvitas.analysis.artifacts import ensure_analysis_artifact
+        from quantumvitas.workflow.naming import find_workflow_raw_dir
+        
+        project_root = Path(project_root).resolve()
+        workflow = resolve_workflow(project_root, workflow_selector)
+        workflow_dir = workflow.absolute_path
+        raw_dir = find_workflow_raw_dir(workflow_dir)
+        
+        if not raw_dir.exists():
+            return {
+                "ok": False,
+                "analysis_type": analysis_type,
+                "artifact_path": None,
+                "parsed_fresh": False,
+                "error": f"Workflow raw directory not found: {raw_dir}. The workflow may not have been run yet.",
+                "summary": None,
+            }
+        
+        # Delegate to the artifacts module
+        status = ensure_analysis_artifact(
+            analysis_type=analysis_type,
+            workflow_dir=workflow_dir,
+            raw_dir=raw_dir,
+            step_selector=step_selector,
+            force=force,
+        )
+        
+        return status.to_dict()
+    
+    @staticmethod
     def get_scf_convergence_data(
         project_root: Path,
         workflow_selector: str,
@@ -1501,6 +1572,9 @@ class QVService:
     ) -> Dict[str, Any]:
         """
         Get SCF convergence data for a specific step in a workflow.
+        
+        First attempts to load from JSON artifact (<workflow>/analysis/scf.json).
+        If artifact doesn't exist, parses QE output directly and writes artifact.
         
         Args:
             project_root: Project root path
@@ -1510,14 +1584,14 @@ class QVService:
         Returns:
             Dict with SCF convergence data (iterations, energies, etc.)
         """
+        from quantumvitas.analysis.artifacts import read_artifact, ensure_analysis_artifact, AnalysisType
         from quantumvitas.analysis.parsers import parse_scf_output
         from quantumvitas.workflow.naming import find_workflow_raw_dir
         
         project_root = Path(project_root).resolve()
         workflow = resolve_workflow(project_root, workflow_selector)
-        
-        # Find output file in raw directory
-        raw_dir = find_workflow_raw_dir(workflow.absolute_path)
+        workflow_dir = workflow.absolute_path
+        raw_dir = find_workflow_raw_dir(workflow_dir)
         
         if not raw_dir.exists():
             raise QVServiceError(
@@ -1525,72 +1599,57 @@ class QVService:
                 f"The workflow may not have been run yet."
             )
         
-        # Look for output files matching step selector
-        # Patterns try to match the naming convention: {slug}_{step_type}.pw.out
-        scf_output = None
-        patterns = [
-            f"{step_selector}_*.out",     # scf_scf.pw.out, scf_*.out
-            f"*{step_selector}*.out",     # Any file containing step selector
-            f"{step_selector}.out",        # Direct match
-            f"{step_selector}.pw.out",     # With .pw extension
-            "*scf*.out",                   # Fallback for any SCF output
-        ]
+        # Try to load from artifact first
+        cached = read_artifact(workflow_dir, AnalysisType.SCF)
+        if cached:
+            # Return cached data (already in correct format)
+            return {
+                "workflow": workflow_selector,
+                "step": step_selector,
+                "output_file": cached.get("source_file", ""),
+                "converged": cached.get("converged", False),
+                "n_iterations": len(cached.get("iterations", [])),
+                "total_energy_ry": cached.get("total_energy_ry"),
+                "fermi_energy_ev": cached.get("fermi_energy_ev"),
+                "iterations": cached.get("iterations", []),
+                "calculation_type": cached.get("calculation_type"),
+                "n_electrons": cached.get("n_electrons"),
+                "n_kpoints": cached.get("n_kpoints"),
+                "ecutwfc_ry": cached.get("ecutwfc_ry"),
+                "units": cached.get("units", {"energy": "Ry", "fermi": "eV"}),
+            }
         
-        for pattern in patterns:
-            matches = list(raw_dir.glob(pattern))
-            if matches:
-                # Prefer .pw.out over .out if both exist
-                pw_matches = [m for m in matches if m.suffix == '.out' and '.pw' in m.stem]
-                if pw_matches:
-                    scf_output = pw_matches[0]
-                else:
-                    scf_output = matches[0]
-                break
+        # No artifact - parse and create one
+        status = ensure_analysis_artifact(
+            analysis_type=AnalysisType.SCF,
+            workflow_dir=workflow_dir,
+            raw_dir=raw_dir,
+            step_selector=step_selector,
+            force=False,
+        )
         
-        if scf_output is None or not scf_output.exists():
-            # List available output files for a better error message
-            available_outputs = list(raw_dir.glob("*.out"))
-            if available_outputs:
-                output_names = ", ".join(f.name for f in available_outputs[:5])
-                raise QVServiceError(
-                    f"SCF output not found for step '{step_selector}' in workflow '{workflow_selector}'.\n"
-                    f"Available outputs: {output_names}"
-                )
-            else:
-                raise QVServiceError(
-                    f"No output files found in {raw_dir}.\n"
-                    f"The workflow may not have been run yet."
-                )
+        if not status.ok:
+            raise QVServiceError(status.error or "Failed to parse SCF output")
         
-        # Parse SCF output
-        result = parse_scf_output(scf_output)
-        
-        # Build convergence series data
-        iterations_data = []
-        for it in result.iterations:
-            iterations_data.append({
-                "iteration": it.iteration,
-                "total_energy_ry": it.total_energy,
-                "scf_accuracy_ry": it.scf_accuracy,
-            })
+        # Now read the freshly created artifact
+        cached = read_artifact(workflow_dir, AnalysisType.SCF)
+        if not cached:
+            raise QVServiceError("Failed to read SCF artifact after creation")
         
         return {
             "workflow": workflow_selector,
             "step": step_selector,
-            "output_file": str(scf_output),
-            "converged": result.converged,
-            "n_iterations": len(result.iterations),
-            "total_energy_ry": result.total_energy,
-            "fermi_energy_ev": result.fermi_energy,
-            "iterations": iterations_data,
-            "calculation_type": result.calculation_type,
-            "n_electrons": result.n_electrons,
-            "n_kpoints": result.n_kpoints,
-            "ecutwfc_ry": result.ecutwfc,
-            "units": {
-                "energy": "Ry",
-                "fermi": "eV",
-            },
+            "output_file": cached.get("source_file", ""),
+            "converged": cached.get("converged", False),
+            "n_iterations": len(cached.get("iterations", [])),
+            "total_energy_ry": cached.get("total_energy_ry"),
+            "fermi_energy_ev": cached.get("fermi_energy_ev"),
+            "iterations": cached.get("iterations", []),
+            "calculation_type": cached.get("calculation_type"),
+            "n_electrons": cached.get("n_electrons"),
+            "n_kpoints": cached.get("n_kpoints"),
+            "ecutwfc_ry": cached.get("ecutwfc_ry"),
+            "units": cached.get("units", {"energy": "Ry", "fermi": "eV"}),
         }
     
     @staticmethod
@@ -1602,6 +1661,9 @@ class QVService:
         """
         Get DOS data for plotting in GUI.
         
+        First attempts to load from JSON artifact (<workflow>/analysis/dos.json).
+        If artifact doesn't exist, parses QE output directly and writes artifact.
+        
         Args:
             project_root: Project root path
             workflow_selector: Workflow selector
@@ -1610,60 +1672,64 @@ class QVService:
         Returns:
             Dict with DOS data arrays and Fermi energy
         """
-        from quantumvitas.analysis.parsers import parse_dos_data, parse_scf_output
+        from quantumvitas.analysis.artifacts import read_artifact, ensure_analysis_artifact, AnalysisType
         from quantumvitas.workflow.naming import find_workflow_raw_dir
         
         project_root = Path(project_root).resolve()
         workflow = resolve_workflow(project_root, workflow_selector)
-        raw_dir = find_workflow_raw_dir(workflow.absolute_path)
+        workflow_dir = workflow.absolute_path
+        raw_dir = find_workflow_raw_dir(workflow_dir)
         
-        # Find DOS data file
-        dos_file = None
-        patterns = ["*.dos.dat", "*dos*.dat", "*.dos"]
-        if step_selector:
-            patterns = [f"*{step_selector}*.dat", f"{step_selector}.dat"] + patterns
-        
-        for pattern in patterns:
-            matches = list(raw_dir.glob(pattern))
-            if matches:
-                dos_file = matches[0]
-                break
-        
-        if dos_file is None or not dos_file.exists():
+        if not raw_dir.exists():
             raise QVServiceError(
-                f"DOS data file not found in workflow '{workflow_selector}'"
+                f"Workflow raw directory not found: {raw_dir}\n"
+                f"The workflow may not have been run yet."
             )
         
-        # Parse DOS data
-        dos_data = parse_dos_data(dos_file)
+        # Try to load from artifact first
+        cached = read_artifact(workflow_dir, AnalysisType.DOS)
+        if cached:
+            return {
+                "workflow": workflow_selector,
+                "step": step_selector,
+                "data_file": cached.get("source_file", ""),
+                "n_points": cached.get("n_points", 0),
+                "fermi_energy_ev": cached.get("fermi_energy_ev"),
+                "energy_range_ev": cached.get("energy_range_ev", [0, 0]),
+                "energies_ev": cached.get("energies_ev", []),
+                "dos_states_per_ev": cached.get("dos_states_per_ev", []),
+                "idos": cached.get("idos"),
+                "units": cached.get("units", {"energy": "eV", "dos": "states/eV"}),
+            }
         
-        # Try to get Fermi energy from NSCF/SCF output
-        fermi_energy = dos_data.fermi_energy
-        if fermi_energy is None:
-            for pattern in ["*nscf*.out", "*scf*.out"]:
-                matches = list(raw_dir.glob(pattern))
-                if matches:
-                    try:
-                        scf_result = parse_scf_output(matches[0])
-                        fermi_energy = scf_result.fermi_energy
-                        break
-                    except Exception:
-                        pass
+        # No artifact - parse and create one
+        status = ensure_analysis_artifact(
+            analysis_type=AnalysisType.DOS,
+            workflow_dir=workflow_dir,
+            raw_dir=raw_dir,
+            step_selector=step_selector,
+            force=False,
+        )
+        
+        if not status.ok:
+            raise QVServiceError(status.error or "Failed to parse DOS data")
+        
+        # Now read the freshly created artifact
+        cached = read_artifact(workflow_dir, AnalysisType.DOS)
+        if not cached:
+            raise QVServiceError("Failed to read DOS artifact after creation")
         
         return {
             "workflow": workflow_selector,
             "step": step_selector,
-            "data_file": str(dos_file),
-            "n_points": len(dos_data.energies),
-            "fermi_energy_ev": fermi_energy,
-            "energy_range_ev": [float(dos_data.energies.min()), float(dos_data.energies.max())],
-            "energies_ev": dos_data.energies.tolist(),
-            "dos_states_per_ev": dos_data.dos.tolist(),
-            "idos": dos_data.idos.tolist() if dos_data.idos is not None else None,
-            "units": {
-                "energy": "eV",
-                "dos": "states/eV",
-            },
+            "data_file": cached.get("source_file", ""),
+            "n_points": cached.get("n_points", 0),
+            "fermi_energy_ev": cached.get("fermi_energy_ev"),
+            "energy_range_ev": cached.get("energy_range_ev", [0, 0]),
+            "energies_ev": cached.get("energies_ev", []),
+            "dos_states_per_ev": cached.get("dos_states_per_ev", []),
+            "idos": cached.get("idos"),
+            "units": cached.get("units", {"energy": "eV", "dos": "states/eV"}),
         }
     
     @staticmethod
@@ -1675,6 +1741,9 @@ class QVService:
         """
         Get band structure data for plotting in GUI.
         
+        First attempts to load from JSON artifact (<workflow>/analysis/bands.json).
+        If artifact doesn't exist, parses QE output directly and writes artifact.
+        
         Args:
             project_root: Project root path
             workflow_selector: Workflow selector
@@ -1683,66 +1752,195 @@ class QVService:
         Returns:
             Dict with band energies, k-distances, high-symmetry points, and Fermi energy
         """
-        from quantumvitas.analysis.parsers import parse_bands_gnu, parse_scf_output
-        from quantumvitas.workflow.naming import find_band_analysis_files, find_workflow_raw_dir
+        from quantumvitas.analysis.artifacts import read_artifact, ensure_analysis_artifact, AnalysisType
+        from quantumvitas.workflow.naming import find_workflow_raw_dir
         
         project_root = Path(project_root).resolve()
         workflow = resolve_workflow(project_root, workflow_selector)
-        raw_dir = find_workflow_raw_dir(workflow.absolute_path)
+        workflow_dir = workflow.absolute_path
+        raw_dir = find_workflow_raw_dir(workflow_dir)
         
-        # Find band analysis files
-        found_files = find_band_analysis_files(raw_dir)
-        
-        if found_files.bands_gnu is None:
+        if not raw_dir.exists():
             raise QVServiceError(
-                f"Band structure data not found in workflow '{workflow_selector}'"
+                f"Workflow raw directory not found: {raw_dir}\n"
+                f"The workflow may not have been run yet."
             )
         
-        # Get Fermi energy from pw.x output if available
-        fermi_energy = None
-        if found_files.pw_output:
-            try:
-                scf_result = parse_scf_output(found_files.pw_output)
-                fermi_energy = scf_result.fermi_energy
-            except Exception:
-                pass
+        # Try to load from artifact first
+        cached = read_artifact(workflow_dir, AnalysisType.BANDS)
+        if cached:
+            return {
+                "workflow": workflow_selector,
+                "step": step_selector,
+                "data_file": cached.get("source_file", ""),
+                "n_bands": cached.get("n_bands", 0),
+                "n_kpoints": cached.get("n_kpoints", 0),
+                "fermi_energy_ev": cached.get("fermi_energy_ev"),
+                "k_distances": cached.get("k_distances", []),
+                "energies_ev": cached.get("energies_ev", []),
+                "high_symmetry_points": cached.get("high_symmetry_points", []),
+                "units": cached.get("units", {"energy": "eV", "k_distance": "2π/a"}),
+            }
         
-        # Parse band data
-        band_data = parse_bands_gnu(
-            found_files.bands_gnu,
-            symmetry_file=found_files.bands_pp_out,
-            fermi_energy=fermi_energy,
-            pw_output_file=found_files.pw_output,
+        # No artifact - parse and create one
+        status = ensure_analysis_artifact(
+            analysis_type=AnalysisType.BANDS,
+            workflow_dir=workflow_dir,
+            raw_dir=raw_dir,
+            step_selector=step_selector,
+            force=False,
         )
         
-        # Format high-symmetry points (ensure JSON-serializable)
-        high_sym_points = []
-        for pt in band_data.high_symmetry_points:
-            # Convert k_coords to list of floats (may be numpy array)
-            k_coords = None
-            if pt.k_coords is not None:
-                k_coords = [float(x) for x in pt.k_coords]
-            high_sym_points.append({
-                "label": pt.label,
-                "k_distance": float(pt.k_distance) if pt.k_distance is not None else None,
-                "k_coords": k_coords,
-            })
+        if not status.ok:
+            raise QVServiceError(status.error or "Failed to parse band structure data")
+        
+        # Now read the freshly created artifact
+        cached = read_artifact(workflow_dir, AnalysisType.BANDS)
+        if not cached:
+            raise QVServiceError("Failed to read bands artifact after creation")
         
         return {
             "workflow": workflow_selector,
             "step": step_selector,
-            "data_file": str(found_files.bands_gnu),
-            "n_bands": band_data.n_bands,
-            "n_kpoints": band_data.n_kpoints,
-            "fermi_energy_ev": band_data.fermi_energy,
-            "k_distances": band_data.k_distances.tolist(),
-            "energies_ev": band_data.energies.tolist(),  # Shape: [n_bands, n_kpoints]
-            "high_symmetry_points": high_sym_points,
-            "units": {
-                "energy": "eV",
-                "k_distance": "2π/a",
-            },
+            "data_file": cached.get("source_file", ""),
+            "n_bands": cached.get("n_bands", 0),
+            "n_kpoints": cached.get("n_kpoints", 0),
+            "fermi_energy_ev": cached.get("fermi_energy_ev"),
+            "k_distances": cached.get("k_distances", []),
+            "energies_ev": cached.get("energies_ev", []),
+            "high_symmetry_points": cached.get("high_symmetry_points", []),
+            "units": cached.get("units", {"energy": "eV", "k_distance": "2π/a"}),
         }
+
+    @staticmethod
+    def get_reference_analysis(
+        project_root: Path,
+        workflow_selector: str,
+        analysis_type: Literal["scf", "dos", "bands"],
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get reference analysis data for demo projects.
+        
+        If the project was created from a demo snapshot that includes reference
+        artifacts, this returns the reference data for comparison with user-generated
+        analysis results.
+        
+        Args:
+            project_root: Project root path
+            workflow_selector: Workflow selector (used to match against demo workflow)
+            analysis_type: Type of analysis ("scf", "dos", "bands")
+            
+        Returns:
+            Dict with reference analysis data (same format as get_*_data methods),
+            or None if project is not from a demo or no reference data exists.
+        """
+        import json
+        from quantumvitas.core.project_utils import load_project_config
+        from quantumvitas.core.resources import get_resources_dir
+        
+        project_root = Path(project_root).resolve()
+        config = load_project_config(project_root)
+        
+        # Check if project has demo origin
+        project_settings = config.get("project", {}).get("settings", {})
+        origin = project_settings.get("origin", {})
+        
+        if origin.get("kind") != "demo":
+            return None
+        
+        demo_id = origin.get("demo_id")
+        if not demo_id:
+            return None
+        
+        # Get reference_artifacts mapping
+        reference_artifacts = origin.get("reference_artifacts", {})
+        
+        # If no reference_artifacts in project settings, try to load from snapshot meta
+        if not reference_artifacts:
+            resources_dir = get_resources_dir()
+            demo_snapshot_path = resources_dir / "demo_projects" / f"{demo_id}.yml"
+            if demo_snapshot_path.exists():
+                import yaml
+                try:
+                    snapshot_data = yaml.safe_load(demo_snapshot_path.read_text())
+                    snapshot_meta = snapshot_data.get("meta", {})
+                    reference_artifacts = snapshot_meta.get("reference_artifacts", {})
+                except Exception:
+                    pass
+        
+        # Check if reference artifact exists for this analysis type
+        artifact_filename = reference_artifacts.get(analysis_type)
+        if not artifact_filename:
+            return None
+        
+        # Load reference JSON from demo_projects directory
+        resources_dir = get_resources_dir()
+        reference_path = resources_dir / "demo_projects" / artifact_filename
+        
+        if not reference_path.exists():
+            return None
+        
+        try:
+            data = json.loads(reference_path.read_text())
+            
+            # Add metadata indicating this is reference data
+            data["_is_reference"] = True
+            data["_reference_source"] = demo_id
+            
+            # Return in format compatible with get_*_data methods
+            if analysis_type == "scf":
+                return {
+                    "workflow": workflow_selector,
+                    "step": None,
+                    "output_file": str(reference_path),
+                    "converged": data.get("converged"),
+                    "n_iterations": len(data.get("iterations", [])),
+                    "total_energy_ry": data.get("total_energy_ry"),
+                    "fermi_energy_ev": data.get("fermi_energy_ev"),
+                    "iterations": data.get("iterations", []),
+                    "calculation_type": data.get("calculation_type"),
+                    "n_electrons": data.get("n_electrons"),
+                    "n_kpoints": data.get("n_kpoints"),
+                    "ecutwfc_ry": data.get("ecutwfc_ry"),
+                    "units": data.get("units", {"energy": "Ry", "fermi": "eV"}),
+                    "_is_reference": True,
+                    "_reference_source": demo_id,
+                }
+            elif analysis_type == "dos":
+                return {
+                    "workflow": workflow_selector,
+                    "step": None,
+                    "data_file": str(reference_path),
+                    "n_points": data.get("n_points", len(data.get("energies_ev", []))),
+                    "fermi_energy_ev": data.get("fermi_energy_ev"),
+                    "energy_range_ev": data.get("energy_range_ev"),
+                    "energies_ev": data.get("energies_ev", []),
+                    "dos_states_per_ev": data.get("dos_states_per_ev", []),
+                    "idos": data.get("idos"),
+                    "units": data.get("units", {"energy": "eV", "dos": "states/eV"}),
+                    "_is_reference": True,
+                    "_reference_source": demo_id,
+                }
+            elif analysis_type == "bands":
+                return {
+                    "workflow": workflow_selector,
+                    "step": None,
+                    "data_file": str(reference_path),
+                    "n_bands": data.get("n_bands", 0),
+                    "n_kpoints": data.get("n_kpoints", 0),
+                    "fermi_energy_ev": data.get("fermi_energy_ev"),
+                    "k_distances": data.get("k_distances", []),
+                    "energies_ev": data.get("energies_ev", []),
+                    "high_symmetry_points": data.get("high_symmetry_points", []),
+                    "units": data.get("units", {"energy": "eV", "k_distance": "2π/a"}),
+                    "_is_reference": True,
+                    "_reference_source": demo_id,
+                }
+            
+            return None
+            
+        except (json.JSONDecodeError, OSError) as e:
+            return None
 
 
     # -------------------------------------------------------------------------
@@ -2678,6 +2876,23 @@ class QVService:
             parent_dir=Path(target_dir),
             new_project_name=name,
         )
+        
+        # Store demo origin info in project settings
+        from quantumvitas.core.project_utils import load_project_config, save_project_config
+        config = load_project_config(project_root)
+        if "project" not in config:
+            config["project"] = {}
+        if "settings" not in config["project"]:
+            config["project"]["settings"] = {}
+        config["project"]["settings"]["origin"] = {
+            "kind": "demo",
+            "demo_id": demo_name,
+        }
+        # Also store reference_artifacts info if present in snapshot meta
+        snapshot_meta = snapshot_data.get("meta", {})
+        if snapshot_meta.get("reference_artifacts"):
+            config["project"]["settings"]["origin"]["reference_artifacts"] = snapshot_meta["reference_artifacts"]
+        save_project_config(project_root, config)
         
         # Get project summary
         project_summary = QVService.get_project_summary(project_root)
