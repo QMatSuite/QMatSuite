@@ -245,12 +245,16 @@ function spawnDaemon(): boolean {
   console.log(`[main]   CWD: ${projectRoot}`);
   
   try {
+    // Spawn daemon with independent stdio pipes
+    // This ensures the daemon's stdin/stdout/stderr are completely independent
+    // from Electron's stdin, which may be ignored in E2E test environments
     daemonProcess = spawn(pythonInfo.path, ['-m', daemonModule], {
       cwd: projectRoot,
       env: {
         ...process.env,
         PYTHONUNBUFFERED: '1', // Ensure unbuffered output
       },
+      // Use independent pipes - daemon's stdio is not tied to Electron's stdin
       stdio: ['pipe', 'pipe', 'pipe'],
     });
   } catch (err) {
@@ -276,32 +280,58 @@ function spawnDaemon(): boolean {
     handleDaemonLine(line);
   });
   
-  // Forward daemon stderr to console, renderer, and log file
+  // Forward daemon stderr to console, renderer, log file, AND process stderr (for E2E test visibility)
   daemonProcess.stderr?.on('data', (data: Buffer) => {
     const message = data.toString().trim();
+    // Log to console (visible in Electron DevTools)
     console.log(`[daemon] ${message}`);
+    // Also write to process stderr so E2E tests can capture it
+    process.stderr.write(`[daemon stderr] ${message}\n`);
     // Forward to renderer for debug panel
     safeSend('daemon-log', message);
     // Append to log file
     appendToLogFile(message);
   });
   
+  // Also capture daemon stdout (Python print statements, tracebacks, etc.)
+  // Note: JSON-RPC responses go through stdout but are handled separately via readline
+  // This captures any unexpected stdout (errors, warnings, etc.)
+  daemonProcess.stdout?.on('data', (data: Buffer) => {
+    const message = data.toString().trim();
+    // Only log non-empty lines that aren't JSON-RPC responses
+    // JSON-RPC responses are handled by readline and start with '{'
+    if (message && !message.trim().startsWith('{')) {
+      console.log(`[daemon stdout] ${message}`);
+      process.stderr.write(`[daemon stdout] ${message}\n`);
+    }
+  });
+  
   daemonProcess.on('error', (err: Error) => {
-    console.error('[main] Daemon process error:', err);
+    const errorMsg = `[main] Daemon process error: ${err.message}`;
+    console.error(errorMsg);
+    // Write to stderr for E2E test visibility
+    process.stderr.write(`${errorMsg}\n`);
     daemonStatus.connected = false;
     daemonStatus.startupError = `Daemon error: ${err.message}`;
     // Notify renderer of daemon error
     safeSend('daemon-status', { ...daemonStatus });
   });
   
+  // Monitor daemon exit
   daemonProcess.on('exit', (code: number | null, signal: string | null) => {
-    console.log(`[main] Daemon exited with code ${code}, signal ${signal}`);
+    const exitMsg = `[main] Daemon exited with code ${code}, signal ${signal}`;
+    console.log(exitMsg);
+    // Write to stderr for E2E test visibility
+    process.stderr.write(`${exitMsg}\n`);
+    
     daemonStatus.connected = false;
     
     if (code !== 0 && code !== null) {
       daemonStatus.startupError = `Daemon exited with code ${code}`;
+      process.stderr.write(`[main] Daemon exit error: ${daemonStatus.startupError}\n`);
     }
     
+    // Clean up references
     daemonProcess = null;
     daemonReadline = null;
     
@@ -348,6 +378,7 @@ function handleDaemonLine(line: string): void {
  * Send a request to the daemon
  */
 async function sendDaemonRequest(request: QVRequest): Promise<QVResponse> {
+  // Robust guards: check process exists, stdin exists, and stdin is writable
   if (!daemonProcess || !daemonProcess.stdin || !daemonStatus.connected) {
     return {
       id: request.id,
@@ -355,6 +386,22 @@ async function sendDaemonRequest(request: QVRequest): Promise<QVResponse> {
       error: {
         code: 'daemon_not_connected',
         message: daemonStatus.startupError || 'Daemon process is not running',
+      },
+    };
+  }
+  
+  // Check if stdin is destroyed or ended before attempting write
+  const stdin = daemonProcess.stdin;
+  if (stdin.destroyed || stdin.writableEnded) {
+    const errorMsg = `[main] Cannot write to daemon: stdin is ${stdin.destroyed ? 'destroyed' : 'ended'}`;
+    console.error(errorMsg);
+    process.stderr.write(`${errorMsg}\n`);
+    return {
+      id: request.id,
+      ok: false,
+      error: {
+        code: 'daemon_stdin_closed',
+        message: 'Daemon stdin pipe is closed',
       },
     };
   }
@@ -369,15 +416,44 @@ async function sendDaemonRequest(request: QVRequest): Promise<QVResponse> {
     // Store pending request
     pendingRequests.set(request.id, { resolve, reject, timeoutId });
     
-    // Send request
+    // Send request with error handling
     const jsonLine = JSON.stringify(request) + '\n';
-    daemonProcess!.stdin!.write(jsonLine, (err) => {
-      if (err) {
-        clearTimeout(timeoutId);
-        pendingRequests.delete(request.id);
-        reject(err);
-      }
-    });
+    try {
+      stdin.write(jsonLine, (err) => {
+        if (err) {
+          clearTimeout(timeoutId);
+          pendingRequests.delete(request.id);
+          const errorMsg = `[main] Failed to write to daemon stdin: ${err.message}`;
+          console.error(errorMsg);
+          process.stderr.write(`${errorMsg}\n`);
+          // Don't crash - return error response instead
+          resolve({
+            id: request.id,
+            ok: false,
+            error: {
+              code: 'write_error',
+              message: err.message,
+            },
+          });
+        }
+      });
+    } catch (err) {
+      // Handle synchronous errors (e.g., if stdin was closed between check and write)
+      clearTimeout(timeoutId);
+      pendingRequests.delete(request.id);
+      const error = err as Error;
+      const errorMsg = `[main] Exception writing to daemon stdin: ${error.message}`;
+      console.error(errorMsg);
+      process.stderr.write(`${errorMsg}\n`);
+      resolve({
+        id: request.id,
+        ok: false,
+        error: {
+          code: 'write_exception',
+          message: error.message,
+        },
+      });
+    }
   });
 }
 
@@ -394,29 +470,55 @@ function delay(ms: number): Promise<void> {
  * Sends shutdown command and waits, then force kills if necessary.
  */
 async function shutdownDaemon(): Promise<void> {
-  if (!daemonProcess || !daemonStatus.connected) return;
-  
-  const processToKill = daemonProcess;
-  
-  try {
-    // Send shutdown command
-    await sendDaemonRequest({
-      id: `shutdown-${Date.now()}`,
-      type: 'shutdown',
-      payload: {},
-    });
-  } catch (e) {
-    // Ignore errors during shutdown
-    console.log('[main] Shutdown command failed (may already be stopped)');
+  if (!daemonProcess) {
+    console.log('[main] No daemon process to shutdown');
+    return;
   }
   
-  // Wait for graceful shutdown
-  await delay(2000);
+  const processToKill = daemonProcess;
+  console.log('[main] Shutting down daemon...');
+  
+  try {
+    // Try to send shutdown command if daemon is still connected
+    if (daemonStatus.connected && processToKill.stdin && !processToKill.stdin.destroyed && !processToKill.stdin.writableEnded) {
+      try {
+        await sendDaemonRequest({
+          id: `shutdown-${Date.now()}`,
+          type: 'shutdown',
+          payload: {},
+        });
+      } catch (e) {
+        // Ignore errors during shutdown (daemon may have already exited)
+        console.log('[main] Shutdown command failed (daemon may already be stopped)');
+      }
+      
+      // Wait for graceful shutdown
+      await delay(2000);
+    } else {
+      console.log('[main] Daemon stdin not available, skipping graceful shutdown');
+    }
+  } catch (e) {
+    // Ignore errors during shutdown
+    console.log('[main] Error during graceful shutdown, proceeding to kill');
+  }
   
   // Force kill if still running
-  if (processToKill && !processToKill.killed) {
+  if (processToKill && !processToKill.killed && processToKill.pid) {
     console.log('[main] Force killing daemon');
-    processToKill.kill('SIGTERM');
+    try {
+      processToKill.kill('SIGTERM');
+      // Wait a bit for SIGTERM to take effect
+      await delay(1000);
+      // If still running, use SIGKILL
+      if (!processToKill.killed && processToKill.pid) {
+        console.log('[main] Daemon still running, using SIGKILL');
+        processToKill.kill('SIGKILL');
+      }
+    } catch (err) {
+      const error = err as Error;
+      console.error(`[main] Failed to kill daemon: ${error.message}`);
+      process.stderr.write(`[main] Failed to kill daemon: ${error.message}\n`);
+    }
   }
 }
 
@@ -633,11 +735,15 @@ app.on('activate', () => {
 app.on('before-quit', async (event) => {
   // Only handle once - prevent infinite loop
   if (isQuitting) return;
-  if (!daemonProcess) return;
+  if (!daemonProcess) {
+    // No daemon to clean up, allow quit
+    return;
+  }
   
   isQuitting = true;
   event.preventDefault();
   
+  console.log('[main] App quitting, shutting down daemon...');
   await shutdownDaemon();
   app.quit();
 });

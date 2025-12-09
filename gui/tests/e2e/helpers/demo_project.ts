@@ -50,7 +50,10 @@ export async function createDemoProject(
   await waitForHomeWelcome(page);
   
   // Step 2: Click "Browse Demo Gallery" button
-  const demoGalleryBtn = page.getByTestId('qv-btn-demo-gallery');
+  // Scope to welcome screen to avoid duplicate test IDs in sidebar
+  const welcomeContainer = page.getByTestId('qv-welcome');
+  await expect(welcomeContainer).toBeVisible({ timeout: 10000 });
+  const demoGalleryBtn = welcomeContainer.getByTestId('qv-btn-demo-gallery');
   await expect(demoGalleryBtn).toBeVisible({ timeout: 10000 });
   await demoGalleryBtn.click();
   
@@ -61,18 +64,19 @@ export async function createDemoProject(
   const loadingState = page.getByTestId('qv-demo-gallery-loading');
   await expect(loadingState).not.toBeVisible({ timeout: 15000 });
   
-  // Step 5: Verify gallery loaded successfully (not error/empty state)
-  const errorState = page.getByTestId('qv-demo-gallery-error');
-  const emptyState = page.getByTestId('qv-demo-gallery-empty-state');
-  const hasError = await errorState.isVisible().catch(() => false);
-  const hasEmpty = await emptyState.isVisible().catch(() => false);
+  // Step 5: Verify gallery loaded successfully by waiting for a demo card to appear
+  // This is the correct feature to detect - when cards are rendered, gallery has loaded
+  // Use a known demo card that should always exist (si-bands-demo)
+  const siBandsCard = page.getByTestId('qv-demo-card-si-bands-demo');
+  await expect(siBandsCard).toBeVisible({ timeout: 10000 });
   
+  // If card appears, gallery loaded successfully
+  // If it doesn't appear, check for error state to provide better error message
+  const errorState = page.getByTestId('qv-demo-gallery-error');
+  const hasError = await errorState.isVisible().catch(() => false);
   if (hasError) {
     const errorText = await errorState.textContent();
     throw new Error(`Demo gallery failed to load: ${errorText}`);
-  }
-  if (hasEmpty) {
-    throw new Error('Demo gallery is empty - no demo projects found');
   }
   
   // Step 6: Find and click the demo card's "Create Project" button
