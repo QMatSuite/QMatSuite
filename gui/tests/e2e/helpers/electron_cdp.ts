@@ -182,7 +182,7 @@ export async function launchElectronViaCDP(options?: {
       // Disable security warnings
       ELECTRON_DISABLE_SECURITY_WARNINGS: 'true',
     },
-    stdio: ['ignore', 'ignore', 'pipe'], // Only capture stderr initially for WebSocket URL, then ignore
+    stdio: ['ignore', 'pipe', 'pipe'], // Capture both stdout and stderr to see daemon errors
   });
   
   // Track if process exited unexpectedly
@@ -197,12 +197,19 @@ export async function launchElectronViaCDP(options?: {
   });
   
   // Log Electron output and extract WebSocket URL from stderr
-  // Note: stdout is set to 'ignore' to prevent EPIPE errors
+  // Capture both stdout and stderr to see daemon errors
   const outputLines: string[] = [];
   let wsUrlFromOutput: string | null = null;
   
-  // Handle stderr - we only need this temporarily to extract the WebSocket URL
-  // After that, we'll stop reading to prevent EPIPE errors
+  // Handle stdout - capture daemon errors and other output
+  electronProcess.stdout?.on('data', (data) => {
+    const text = data.toString();
+    outputLines.push(text);
+    // Always log stdout to see daemon errors
+    console.log('[Electron stdout]', text.trim());
+  });
+  
+  // Handle stderr - extract WebSocket URL and capture daemon errors
   electronProcess.stderr?.on('data', (data) => {
     const text = data.toString();
     outputLines.push(text);
@@ -213,9 +220,8 @@ export async function launchElectronViaCDP(options?: {
       wsUrlFromOutput = wsMatch[1];
     }
     
-    if (process.env.DEBUG_ELECTRON) {
-      console.error('[Electron stderr]', text);
-    }
+    // Always log stderr to see daemon errors (not just in DEBUG mode)
+    console.error('[Electron stderr]', text.trim());
   });
   
   // Handle stderr errors gracefully - ignore EPIPE
@@ -253,16 +259,16 @@ export async function launchElectronViaCDP(options?: {
     wsUrl = await waitForDebuggingPort(debugPort, 15000);
   }
   
-  // After we have the WebSocket URL, keep reading stderr but discard data
-  // This prevents EPIPE errors - we must keep reading from the pipe or it will close
-  // and cause EPIPE when Electron tries to write to it
+  // After we have the WebSocket URL, keep reading stdout/stderr but log it
+  // This prevents EPIPE errors - we must keep reading from the pipes or they will close
+  // and cause EPIPE when Electron tries to write to them
+  // We also want to see daemon errors, so we log everything
+  if (electronProcess.stdout) {
+    // Keep the existing handler - it already logs to console
+  }
   if (electronProcess.stderr) {
-    // Replace the data handler to just discard data (prevent EPIPE)
-    electronProcess.stderr.removeAllListeners('data');
-    electronProcess.stderr.on('data', () => {
-      // Discard data - we don't need it after getting the WebSocket URL
-      // But we must keep reading to prevent EPIPE errors
-    });
+    // Keep the existing handler - it already logs to console
+    // Don't remove listeners - we want to see all daemon errors
   }
   
   // Connect to Electron via CDP

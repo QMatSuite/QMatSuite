@@ -221,11 +221,14 @@ test.describe('E2E Test 3: Run workflow → Jobs → Analysis', () => {
     await bandsTab.click();
     
     // Wait for the tab click to register and UI to update
+    // The analysis type state needs to update, and the button needs to render
     await appPage.waitForTimeout(1000);
     
     // Find and click the Load button - wait for it to be enabled
-    const loadButton = appPage.locator('.load-button');
-    await expect(loadButton).toBeVisible({ timeout: 5000 });
+    // Use test ID to avoid duplicate selector issue (there's also a Re-analyze button)
+    // Wait for the button to appear (it's rendered when analysisType is set)
+    const loadButton = appPage.getByTestId('qv-btn-load-bands');
+    await expect(loadButton).toBeVisible({ timeout: 10000 });
     
     // Wait for button to be enabled (not disabled)
     await expect(loadButton).toBeEnabled({ timeout: 10000 });
