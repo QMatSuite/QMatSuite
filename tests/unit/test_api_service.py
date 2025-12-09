@@ -309,7 +309,13 @@ class TestQVServiceStep:
         )
         
         step_data = yaml.safe_load(result.absolute_path.read_text())
-        assert step_data.get("structure") == "silicon"
+        # With ID-only references, step.yaml stores structure_id (ULID), not structure selector
+        assert step_data.get("structure_id") is not None, "Step should have structure_id (inherited from workflow)"
+        # Verify structure_id points to the silicon structure
+        from quantumvitas.core.resolution import build_resource_index, require_structure
+        index = build_resource_index(project_with_workflow)
+        structure_resolved = require_structure(project_with_workflow, step_data.get("structure_id"), index=index)
+        assert structure_resolved.meta.name.lower() == "silicon" or structure_resolved.meta.slug == "silicon"
     
     def test_list_steps(self, project_with_workflow):
         """List steps in a workflow."""

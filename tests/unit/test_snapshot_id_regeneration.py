@@ -129,13 +129,19 @@ class TestSnapshotIDRegeneration:
             )
             
             # Check step types match (order may differ, so use sets)
+            # Resolve step files via registry using step_id
+            # (materialized_index is already built earlier in the test at line 90)
+            
             new_step_types = []
             for step_entry in new_workflow.steps:
-                if step_entry.step_file:
-                    step_path = new_project_root / new_workflow_entry.meta.path / step_entry.step_file
-                    if step_path.exists():
-                        step_spec = StructureStepSpec.from_yaml(step_path)
-                        new_step_types.append(step_spec.step_type)
+                if step_entry.step_id:
+                    # Resolve step file via registry using step_id
+                    step_meta = materialized_index.by_id.get(step_entry.step_id)
+                    if step_meta and step_meta.kind == "step":
+                        step_path = new_project_root / step_meta.path
+                        if step_path.exists():
+                            step_spec = StructureStepSpec.from_yaml(step_path)
+                            new_step_types.append(step_spec.step_type)
             
             assert set(new_step_types) == set(snapshot_step_types), (
                 f"Workflow {i} step types mismatch: snapshot has {set(snapshot_step_types)}, "
@@ -163,11 +169,15 @@ class TestSnapshotIDRegeneration:
                 )
             
             # Check step → workflow references
+            # Use materialized_index to resolve step files via step_id
             for step_entry in workflow.steps:
-                if step_entry.step_file:
-                    step_path = new_project_root / workflow_entry.meta.path / step_entry.step_file
-                    if step_path.exists():
-                        step_spec = StructureStepSpec.from_yaml(step_path)
+                if step_entry.step_id:
+                    # Resolve step file via registry using step_id
+                    step_meta = materialized_index.by_id.get(step_entry.step_id)
+                    if step_meta and step_meta.kind == "step":
+                        step_path = new_project_root / step_meta.path
+                        if step_path.exists():
+                            step_spec = StructureStepSpec.from_yaml(step_path)
                         
                         # Step should reference parent workflow
                         if step_spec.parent_workflow_id:

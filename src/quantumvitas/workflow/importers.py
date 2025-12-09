@@ -262,8 +262,8 @@ def build_workflow_from_qe_inputs(
 
     steps_section = [
         {
-            "id": result.step_id,
-            "step_file": str(result.spec_path.relative_to(workflow_dir)),
+            "step_id": result.step_id,  # ULID (canonical reference)
+            # step_file is NOT stored - step location resolved via registry using step_id
         }
         for result in step_results
     ]

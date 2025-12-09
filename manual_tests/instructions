@@ -79,6 +79,7 @@ qv analyze band ../raw/si.bands.pp.dat.gnu --plot --format png --symmetry ../raw
 qv init project --name project3_graphene_bands
 cd project3_graphene_bands
 qv import-structure $PYTHONSRC/tests/data/13_graphene/graphene.2_scf.in
+
 qv init workflow "graphene bands" --structure C
 cd workflows/graphene-bands
 qv init step scf

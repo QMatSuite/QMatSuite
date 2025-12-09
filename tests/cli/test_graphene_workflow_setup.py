@@ -154,9 +154,12 @@ def test_graphene_workflow_setup(ci_test_data_dir: Path, tmp_path: Path):
             # Steps now use step_id (ULID) instead of id (slug)
             step_ids = [s.get("step_id") or s.get("id") for s in workflow_data.get("steps", [])]
             assert len(step_ids) > 0, "SCF step should be in workflow"
-            # Verify step file exists and has the step_id
+            # Verify step entry has step_id (ULID) - step_file is NOT stored (resolved via registry)
             step_entry = workflow_data.get("steps", [])[0]
-            assert step_entry.get("step_file") == "steps/scf.step.yaml", "Step file path should be correct"
+            assert step_entry.get("step_id") is not None, "Step entry should have step_id (ULID)"
+            # step_file is NOT stored in workflow.yaml - step location resolved via registry using step_id
+            assert "step_file" not in step_entry or step_entry.get("step_file") is None, \
+                "step_file should not be stored in workflow.yaml (resolved via registry)"
             
             # Verify defaults were applied (not import mode)
             assert "parameters" in step_data, "Step should have parameters (defaults applied)"

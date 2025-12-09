@@ -175,14 +175,31 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
         
         # Export each step
         for step_entry in workflow_model.steps:
-            if not step_entry.step_file:
+            # Resolve step file via registry using step_id
+            if not step_entry.step_id:
                 continue
             
-            step_path = workflow_dir / step_entry.step_file
+            # Use ResourceIndex to find step file by step_id
+            from quantumvitas.core.resolution import build_resource_index
+            index = build_resource_index(project_root)
+            step_meta = index.by_id.get(step_entry.step_id)
+            if not step_meta or step_meta.kind != "step":
+                continue
+            
+            step_path = project_root / step_meta.path
             if not step_path.exists():
                 continue
             
-            step_spec = StructureStepSpec.from_yaml(step_path)
+            # Load step spec - project_root available for resolving legacy structure selectors
+            # Load step spec; legacy 'structure' selectors (if present) are normalized to structure_id via the registry
+            from quantumvitas.core.resolution import make_structure_selector_resolver
+            from quantumvitas.core.project_utils import load_project_config
+            try:
+                config = load_project_config(project_root)
+                resolver = make_structure_selector_resolver(project_root, config=config)
+            except Exception:
+                resolver = None
+            step_spec = StructureStepSpec.from_yaml(step_path, resolve_structure_selector=resolver)
             step_dict = step_spec.to_dict()
             
             workflow_dict["steps"].append(step_dict)
@@ -509,7 +526,7 @@ def materialize_project_from_snapshot(
             workflow_model.steps.append(WorkflowStepEntry(
                 step_id=step_id,  # Use ULID from step meta (canonical reference)
                 type=step_data.get("step_type"),
-                step_file=f"steps/{step_slug}.step.yaml",
+                # step_file is NOT stored - step location resolved via registry using step_id
             ))
         
         # Save workflow.yaml

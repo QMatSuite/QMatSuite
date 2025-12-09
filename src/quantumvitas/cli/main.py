@@ -1112,11 +1112,11 @@ def init_step_command(
         # Use step_id (ULID) from step spec meta (canonical reference)
         from quantumvitas.core.models import WorkflowStepEntry
         # rel_step_path is already a relative path string from ensure_relative_path
-        step_file_str = str(rel_step_path) if isinstance(rel_step_path, Path) else rel_step_path
+        # Create step entry with only step_id (ULID) - no step_file (resolved via registry)
         step_entry = WorkflowStepEntry(
             step_id=spec.meta.id,  # Use ULID from step spec meta (canonical reference)
             type=step_type,
-            step_file=step_file_str,
+            # step_file is NOT stored - step location resolved via registry using step_id
         )
         workflow_steps.insert(
             insertion_index,
@@ -2341,8 +2341,16 @@ def configure_workflow_command(
             if not step_path.exists():
                 continue
             try:
-                spec = StructureStepSpec.from_yaml(step_path)
-                spec.structure = structure
+                # Load step spec with project_root for resolving legacy structure selectors
+                spec = StructureStepSpec.from_yaml(step_path, project_root=project_root)
+                # Update structure_id (canonical reference) - structure selector is not written
+                from quantumvitas.core.resolution import resolve_structure
+                from quantumvitas.core.project_utils import load_project_config
+                config = load_project_config(project_root)
+                resolved = resolve_structure(project_root, structure, config)
+                spec.structure_id = resolved.meta.id
+                # Clear legacy structure field (not written to YAML)
+                spec.structure = ""
                 step_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
                 steps_updated += 1
             except Exception as e:

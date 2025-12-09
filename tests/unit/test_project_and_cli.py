@@ -26,24 +26,67 @@ def _write_yaml(path: Path, data: dict) -> None:
 
 @pytest.fixture()
 def sample_project(tmp_path: Path) -> Path:
+    from quantumvitas.core.resources import generate_resource_id, meta_from_name
+    
     project_root = tmp_path / "project"
     project_root.mkdir()
+    
+    # Create structure with proper meta
+    structure_id = generate_resource_id()
+    structure_meta = meta_from_name("structure", name="si", path="structures/si.json")
+    structure_meta.id = structure_id
+    
     project_config = {
         "project": {"name": "sample"},
         "workflows": [{"id": "wf", "path": "workflows/wf"}],
-        "structures": [{"id": "si", "file": "structures/si.cif"}],
+        "structures": [
+            {
+                "id": structure_id,
+                "file": "structures/si.json",
+                "meta": structure_meta.to_dict(),
+            }
+        ],
     }
     _write_yaml(project_root / "project.qv.yml", project_config)
     (project_root / "structures").mkdir()
-    (project_root / "structures" / "si.cif").write_text("placeholder")
+    # Create a minimal valid structure JSON file
+    structure_json = {
+        "__qv_meta__": structure_meta.to_dict(),
+        "lattice": {
+            "matrix": [[5.43, 0.0, 0.0], [0.0, 5.43, 0.0], [0.0, 0.0, 5.43]]
+        },
+        "sites": [
+            {"species": [{"element": "Si", "occu": 1}], "xyz": [0.0, 0.0, 0.0]},
+            {"species": [{"element": "Si", "occu": 1}], "xyz": [1.3575, 1.3575, 1.3575]},
+        ],
+    }
+    import json
+    (project_root / "structures" / "si.json").write_text(json.dumps(structure_json, indent=2))
+    
     workflow_dir = project_root / "workflows" / "wf"
     (workflow_dir / "raw").mkdir(parents=True)
+    (workflow_dir / "steps").mkdir(parents=True)
+    
+    # Create a minimal step file for legacy workflow
+    step_id = generate_resource_id()
+    step_file = workflow_dir / "steps" / "scf.step.yaml"
+    step_meta = meta_from_name("step", name="scf", path=f"workflows/wf/steps/scf.step.yaml")
+    step_meta.id = step_id
+    _write_yaml(
+        step_file,
+        {
+            "meta": step_meta.to_dict(),
+            "step_type": "scf",
+            "structure_id": structure_id,  # Reference to the structure
+        },
+    )
+    
     _write_yaml(
         workflow_dir / "workflow.yaml",
         {
             "id": "wf",
             "workflow": {"working_dir": "raw"},
-            "steps": [{"id": "scf", "input": "raw/scf.in"}],
+            "steps": [{"id": "scf", "input": "raw/scf.in"}],  # Legacy: id is name, not ULID
         },
     )
     (workflow_dir / "raw" / "scf.in").write_text("&control\n calculation='scf'\n/")
