@@ -1,0 +1,58 @@
+{
+  "converged": true,
+  "iterations": [
+    {
+      "iteration": 1,
+      "total_energy_ry": -22.83736058,
+      "scf_accuracy_ry": 0.05179419,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 2,
+      "total_energy_ry": -22.83930911,
+      "scf_accuracy_ry": 0.00225094,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 3,
+      "total_energy_ry": -22.83944651,
+      "scf_accuracy_ry": 4.323e-05,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 4,
+      "total_energy_ry": -22.83945454,
+      "scf_accuracy_ry": 8e-08,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    }
+  ],
+  "total_energy_ry": -22.83945479,
+  "fermi_energy_ev": 5.7618,
+  "homo_ev": 5.7618,
+  "lumo_ev": 6.4468,
+  "band_gap_ev": 0.6849999999999996,
+  "n_electrons": 8.0,
+  "n_kpoints": 29,
+  "n_bands": 8,
+  "ecutwfc_ry": 40.0,
+  "ecutrho_ry": 320.0,
+  "calculation_type": null,
+  "total_cpu_time_s": 1.89,
+  "total_wall_time_s": 2.02,
+  "units": {
+    "energy": "Ry",
+    "fermi": "eV",
+    "time": "s"
+  },
+  "workflow_dir": "<HOME>/quantumVITAS/tests/data/project_examples/project2_bands/workflows/si-bands",
+  "source_file": "<HOME>/quantumVITAS/tests/data/project_examples/project2_bands/workflows/si-bands/raw/scf.pw_run.out",
+  "_artifact_meta": {
+    "analysis_type": "scf",
+    "created_at": "2025-12-09T03:02:20.858846+00:00",
+    "qv_version": "2.0.0"
+  }
+}

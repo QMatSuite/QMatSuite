@@ -2,22 +2,22 @@
  * ProjectSummaryPanel - Displays project overview in a structured format
  */
 
-import { useState } from 'react';
 import type { ProjectSummary } from '../../types/qv';
 import { DemoGalleryPanel } from './DemoGalleryPanel';
 import './ProjectSummaryPanel.css';
 
-type HomeMode = 'welcome' | 'demo-gallery';
+export type HomeMode = 'welcome' | 'demo-gallery';
 
 interface ProjectSummaryPanelProps {
   summary: ProjectSummary | null;
   isLoading?: boolean;
   error?: string | null;
   recentProjects?: string[];
+  homeMode?: HomeMode;
+  onHomeModeChange?: (mode: HomeMode) => void;
   onBrowseAndLoad?: () => void;
   onCreateProject?: () => void;
-  onCreateDemoProject?: () => void;
-  onQuickDemo?: () => void;
+  onOpenDemoGallery?: () => void;
   onOpenRecentProject?: (path: string) => void;
   onRemoveRecentProject?: (path: string) => void;
   onNavigateToStructure?: (name: string) => void;
@@ -31,9 +31,11 @@ export function ProjectSummaryPanel({
   isLoading,
   error,
   recentProjects,
+  homeMode = 'welcome',
+  onHomeModeChange,
   onBrowseAndLoad,
   onCreateProject,
-  onCreateDemoProject,
+  onOpenDemoGallery,
   onOpenRecentProject,
   onRemoveRecentProject,
   onNavigateToStructure,
@@ -41,15 +43,13 @@ export function ProjectSummaryPanel({
   onCloseProject,
   onProjectCreated,
 }: ProjectSummaryPanelProps) {
-  const [homeMode, setHomeMode] = useState<HomeMode>('welcome');
-  
-  // If we're in demo gallery mode and no project is loaded, show gallery
-  if (!summary && homeMode === 'demo-gallery') {
+  // If we're in demo gallery mode, show gallery (regardless of project state)
+  if (homeMode === 'demo-gallery') {
     return (
       <DemoGalleryPanel
-        onBack={() => setHomeMode('welcome')}
+        onBack={() => onHomeModeChange?.('welcome')}
         onCreateProject={(projectRoot, recommendedAnalysis) => {
-          setHomeMode('welcome');
+          onHomeModeChange?.('welcome');
           onProjectCreated?.(projectRoot, recommendedAnalysis);
         }}
       />
@@ -125,10 +125,10 @@ export function ProjectSummaryPanel({
                 </span>
               </button>
             )}
-            {onCreateDemoProject && (
+            {onOpenDemoGallery && (
               <button 
                 className="welcome-button welcome-button--demo" 
-                onClick={() => setHomeMode('demo-gallery')}
+                onClick={onOpenDemoGallery}
                 data-testid="qv-btn-demo-gallery"
               >
                 <span className="welcome-button__icon">🎨</span>
@@ -173,7 +173,7 @@ export function ProjectSummaryPanel({
           
           <div className="welcome-hint">
             <span className="hint-icon">💡</span>
-            <span>Or enter a project path in the sidebar and click "Load Project"</span>
+            <span>Use the sidebar buttons to open, create, or explore demo projects</span>
           </div>
         </div>
       </div>

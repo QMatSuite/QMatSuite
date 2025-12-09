@@ -3888,5 +3888,99 @@ result = QVService.get_reference_analysis(
 
 ---
 
+## 25. GUI Polish Phase (2025-12-XX)
+
+### 25.1 Sidebar Refactoring
+
+**Before**: The sidebar had an editable text input for project path that was confusing - users could type paths but hitting Enter didn't always work as expected.
+
+**After**: 
+- **Read-only project path display**: Shows current project path (or "No project loaded") as non-editable text
+- **Reveal button**: Opens the project folder in system file manager (Finder/Explorer)
+- **Always-visible action buttons**: Three compact buttons are always available regardless of current view:
+  - "Open Project…" (`data-testid="qv-btn-open-project"`)
+  - "Create New…" (`data-testid="qv-btn-create-new-project"`)
+  - "Demo Gallery…" (`data-testid="qv-btn-demo-gallery"`)
+
+These buttons work from any view, not just Home. They're styled as compact text buttons in expanded mode, and icon-only buttons when sidebar is collapsed.
+
+**Files Changed**:
+- `gui/src/components/layout/Sidebar.tsx` - Complete refactor
+- `gui/src/components/layout/Sidebar.css` - New styles for path display, action buttons
+- `gui/src/App.tsx` - Updated to pass new props, removed old handlers
+
+### 25.2 Analysis UX: SCF vs DOS/Bands
+
+**Key distinction**:
+- **SCF analysis** is **step-based** - you analyze SCF convergence for a specific SCF step
+- **DOS/Bands analysis** is **workflow-level** - combines data from multiple steps
+
+**Changes**:
+- SCF tab shows a step selector dropdown that **only lists SCF-type steps** (scf, relax, vc-relax, nscf)
+- First SCF step is auto-selected when entering SCF view
+- DOS/Bands tabs **do not show a step selector** - analysis is workflow-level
+- State machine fixes prevent UI from "locking" onto wrong analysis type
+
+**Code Location**: `gui/src/components/panels/AnalysisPanel.tsx`
+
+### 25.3 Demo Project Naming
+
+**Problem**: If user creates the same demo twice in the same workspace, the second would silently overwrite.
+
+**Solution**: When materializing a project from snapshot, if the target directory exists, automatically append a numeric suffix:
+
+```
+si-bands-demo/      # First creation
+si-bands-demo-2/    # Second creation
+si-bands-demo-3/    # Third creation
+```
+
+All suffixed projects still get `origin.kind: demo` and `origin.demo_id` metadata, so reference analysis still works.
+
+**Code Location**: `src/quantumvitas/project/snapshot.py::materialize_project_from_snapshot()`
+
+### 25.4 Graceful Handling of Deleted Resources
+
+**Problem**: If user deletes project folder or files while app is running, RPC calls would crash with unhelpful errors.
+
+**Solution**: Enhanced error handling in daemon:
+
+1. **Project path validation**: The `_require_path()` helper now specifically detects missing project roots and project.qv.yml files
+2. **Specific error codes**: Returns `project_missing` error code (with `kind: "project_missing"`) for GUI to handle
+3. **Clear error messages**: "Project folder not found: /path" or "Project configuration not found: project.qv.yml"
+
+**GUI Behavior** (recommended implementation):
+- On `project_missing` error, show a banner: "Project folder is missing. Close this project or restore the folder."
+- Offer a "Close project" button that returns to no-project Home state
+
+**Code Location**: `src/quantumvitas/daemon/server.py::_require_path()` and error handling in `handle_line()`
+
+### 25.5 Home Mode State Management
+
+The Home view now has two modes managed at the App level:
+- `welcome` - Shows welcome card with action buttons (or project dashboard if loaded)
+- `demo-gallery` - Shows the demo gallery inline
+
+**HomeMode** is lifted from `ProjectSummaryPanel` to `App.tsx` so the sidebar can trigger demo gallery mode:
+
+```tsx
+// App.tsx
+const [homeMode, setHomeMode] = useState<HomeMode>('welcome');
+
+const handleOpenDemoGallery = useCallback(() => {
+  setHomeMode('demo-gallery');
+  setCurrentView('home');
+}, []);
+```
+
+### 25.6 E2E Test Compatibility
+
+The sidebar changes maintain backward compatibility with existing E2E tests:
+- Same `data-testid` values (`qv-btn-open-project`, `qv-btn-create-new-project`, `qv-btn-demo-gallery`)
+- Buttons now exist in both sidebar and welcome screen
+- Demo Gallery flow unchanged: click button → gallery view → create demo
+
+---
+
 *Last updated: 2025-12-XX*
 *Based on commit history through v2-python branch*
