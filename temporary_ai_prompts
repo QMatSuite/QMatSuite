@@ -8160,3 +8160,140 @@ Tests Passed
 All 291 Python unit tests pass
 TypeScript compilation succeeds with no errors
 Demo project naming logic verified manually
+
+
+
+Summary: Deprecated PathContext.workflow_selector
+Changes Made
+Updated init_step_command (lines ~898-917):
+Replaced PathContext.workflow_selector with find_enclosing_workflow()
+Uses directory path matching instead of reading from workflow.yaml
+Updated analyze_output_command (lines ~2755-2760):
+Uses find_enclosing_workflow() for detection
+Still uses PathContext.workflow_directory for the directory path (which is fine)
+Deprecated PathContext.workflow_selector property:
+Added deprecation docstring explaining why it's unreliable
+Recommends using find_enclosing_workflow() instead
+Deprecated get_workflow_from_pwd() helper:
+Added deprecation docstring
+Still works for backward compatibility
+Current Usage
+PathContext.workflow_selector:
+Still used in unit tests (testing the property itself)
+Still used in deprecated analyze_output_command (for echo message only)
+Deprecated but functional for backward compatibility
+get_workflow_from_pwd():
+Only used in unit tests
+Deprecated but functional for backward compatibility
+Recommendation
+For new code:
+Use find_enclosing_workflow(project_root, config) for workflow auto-detection
+Avoid PathContext.workflow_selector and get_workflow_from_pwd()
+The deprecation warnings guide developers away from the unreliable selector while maintaining backward compatibility. All tests pass.
+
+
+All tests pass. Summary:
+Implementation complete: ID-only cross-resource references
+Completed steps
+Step 1: Audit ✅
+Created audit document identifying 5 duplication points
+Documented current state of cross-resource references
+Step 2: ResourceIndex ✅
+Implemented ResourceIndex dataclass with by_id, by_slug, by_path, by_name mappings
+Implemented build_resource_index() that scans resource files
+Updated resolve_structure() and resolve_workflow() to use ResourceIndex (with backwards compat fallback)
+Documented in AI_understanding.md section 28
+Step 3: ID-only references ✅
+Updated StructureEntry.to_dict() to write only id (not name/slug/path)
+Updated WorkflowEntry.to_dict() to write only id (not name/slug/path)
+Updated WorkflowModel.to_dict() to not write structure selector (only structure_id)
+Updated StructureStepSpec.to_dict() to not write structure selector (only structure_id)
+Updated WorkflowStepEntry to use step_id (ULID) instead of id (slug)
+Updated all step creation code to use step_id from step spec meta
+Updated snapshot materialization to ensure structure_id is set
+Updated load_workflow() to resolve step_id from step files
+All 28 tests passing
+Step 4: ResourceIndex everywhere ✅
+Updated find_structure_entry() and find_workflow_entry() to use ResourceIndex when available
+Updated CLI init_step_command to resolve structure_id and use step_id
+Updated QVService methods to use ResourceIndex via resolve_* functions
+All resolution now goes through ResourceIndex as the canonical source
+Step 5: Cleanup + documentation ✅
+Added section 28 to AI_understanding.md documenting:
+Hard invariants (ID-only cross-references)
+ResourceIndex as canonical resolver
+Implementation details
+Migration and legacy support
+Updated section 2.3 with new YAML format examples
+Added test_resource_rename_safety.py with 4 tests verifying rename-safety
+Removed audit document (no longer needed)
+All 30 tests passing
+Key achievements
+No duplication: project.qv.yml stores only IDs for workflows/structures
+Rename-safe: Renaming a resource only updates its own meta; all ID-based references remain valid
+Backwards compatible: Legacy YAML files are automatically migrated when loaded
+Single source of truth: ResourceIndex built from filesystem is authoritative for selector resolution
+Consistent: All cross-references use ULIDs, ensuring consistency across the codebase
+Files modified
+src/quantumvitas/core/models.py: ID-only serialization for entries and models
+src/quantumvitas/core/resolution.py: ResourceIndex implementation
+src/quantumvitas/core/project_utils.py: Updated find_*_entry to use ResourceIndex
+src/quantumvitas/workflow/structure_steps.py: ID-only structure references
+src/quantumvitas/api.py: Step creation uses step_id from meta
+src/quantumvitas/cli/main.py: Step creation resolves structure_id and uses step_id
+src/quantumvitas/project/snapshot.py: ID-only references in snapshots
+tests/unit/test_id_based_references.py: Updated for ID-only model
+tests/unit/test_project_snapshot.py: Updated for ID-only model
+tests/cli/test_graphene_workflow_setup.py: Updated for ID-only model
+tests/unit/test_resource_rename_safety.py: New tests for rename-safety
+AI_understanding.md: Comprehensive documentation
+All tests pass. The codebase now uses ID-only cross-references with full backwards compatibility.
+
+
+
+
+
+
+You just finished implementing ID-only cross-resource references in QuantumVITAS v2.
+
+Recap of the intended invariants (do NOT change them, just check):
+
+- Each resource file (project.qv.yml, structures/*.json, workflows/**/workflow.yaml, steps/*.step.yaml) keeps its own full meta: { id (ULID), name, slug, path }.
+- All cross-resource references must be ID-only:
+  - project.qv.yml only stores structure_ids and workflow_ids.
+  - workflow.yaml only stores structure_id and step_ids.
+  - step YAML only stores structure_id and parent_workflow_id.
+- ResourceIndex is the canonical way to resolve selectors (user-facing name/slug/path) → IDs/files.
+- Snapshots store real project IDs and reuse them on restore.
+
+All tests currently pass.
+
+Please do a focused consistency sweep (no big refactors, just checks):
+
+1. Grep the codebase for any cross-resource reference that still stores or relies on
+   name/slug/path instead of IDs:
+   - project → workflow / structure
+   - workflow → structure / step
+   - step → structure / workflow
+   - snapshot import/export
+   List any offenders.
+
+2. Verify that:
+   - All CLI resolution of --workflow / --structure selectors uses ResourceIndex or helper functions built on top of it.
+   - All QVService methods that resolve workflows/structures/steps use resolve_* helpers that go through ResourceIndex.
+
+3. Verify legacy migration:
+   - Find all places that load old YAML formats (with name/slug/path references).
+   - Confirm they either:
+     - Normalize into the new ID-only model immediately, or
+     - Are only used in tests explicitly marked as legacy.
+
+4. For each problem or semi-suspicious spot you find:
+   - Propose a minimal fix that preserves the ID-only invariant.
+   - If a fix is trivial and clearly safe, you may implement it and add/adjust tests.
+   - Otherwise, just leave a TODO comment and describe the risk.
+
+Output:
+- A short list of “remaining issues or confirmed clean”.
+- Any test additions you made (filenames + what they assert).
+- Confirm that after your changes, all cross-resource references are truly ID-only and all tests still pass.
