@@ -559,7 +559,7 @@ export function WorkflowDetailPanel({
                 onDragOver={isReordering ? (e) => handleDragOver(e, idx) : undefined}
                 onDragLeave={isReordering ? handleDragLeave : undefined}
                 onDrop={isReordering ? (e) => handleDrop(e, idx) : undefined}
-                data-testid="qv-step-row"
+                data-testid={`qv-step-row-${step.id}`}
                 data-step-id={step.id}
               >
                 {isReordering && (

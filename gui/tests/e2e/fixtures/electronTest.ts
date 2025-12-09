@@ -17,6 +17,7 @@ import type { Page } from '@playwright/test';
 import * as os from 'os';
 import { launchApp, closeApp } from '../helpers/electron';
 import { launchElectronViaCDP } from '../helpers/electron_cdp';
+import { assertNoDuplicateTestIds } from '../helpers/testid';
 
 type ElectronFixtures = {
   appPage: Page;
@@ -163,6 +164,18 @@ export const electronTest = base.extend<ElectronFixtures>({
       // Use the page in the test
       // The app will stay open throughout the entire test execution
       await use(page);
+      
+      // Auto-check: verify no duplicate data-testid values in the DOM
+      // Only check if page is still alive (test might have failed earlier)
+      if (page && !page.isClosed()) {
+        try {
+          await assertNoDuplicateTestIds(page);
+        } catch (error) {
+          // If duplicate test IDs are found, fail the test
+          // This check happens after the test logic but before other error checks
+          throw error;
+        }
+      }
       
       // Auto-assert: fail test if there were any unexpected errors
       if (consoleErrors.length > 0 || pageErrors.length > 0 || networkFailures.length > 0) {

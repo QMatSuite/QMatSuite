@@ -135,7 +135,7 @@ export function DemoGalleryPanel({
               <button 
                 onClick={loadDemos} 
                 className="action-button"
-                data-testid="qv-demo-gallery-retry-btn"
+                data-testid="qv-demo-gallery-error-retry-btn"
               >
                 Retry
               </button>
@@ -150,7 +150,7 @@ export function DemoGalleryPanel({
               <button 
                 onClick={loadDemos} 
                 className="action-button"
-                data-testid="qv-demo-gallery-retry-btn"
+                data-testid="qv-demo-gallery-empty-retry-btn"
               >
                 Retry
               </button>

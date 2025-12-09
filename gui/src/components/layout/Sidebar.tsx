@@ -142,7 +142,7 @@ export function Sidebar({
                 onClick={onBrowseAndLoad}
                 disabled={isLoading}
                 title="Open Project"
-                data-testid="qv-btn-open-project"
+                data-testid="qv-sidebar-btn-open-project"
               >
                 📂
               </button>
@@ -151,7 +151,7 @@ export function Sidebar({
                 onClick={onCreateProject}
                 disabled={isLoading}
                 title="Create New Project"
-                data-testid="qv-btn-create-new-project"
+                data-testid="qv-sidebar-btn-create-new-project"
               >
                 ✨
               </button>
@@ -160,7 +160,7 @@ export function Sidebar({
                 onClick={onOpenDemoGallery}
                 disabled={isLoading}
                 title="Browse Demo Gallery"
-                data-testid="qv-btn-demo-gallery"
+                data-testid="qv-sidebar-btn-demo-gallery"
               >
                 🎨
               </button>
@@ -172,7 +172,7 @@ export function Sidebar({
                 onClick={onBrowseAndLoad}
                 disabled={isLoading}
                 title="Browse and load an existing project"
-                data-testid="qv-btn-open-project"
+                data-testid="qv-sidebar-btn-open-project"
               >
                 <span className="sidebar__action-icon">📂</span>
                 Open Project…
@@ -182,7 +182,7 @@ export function Sidebar({
                 onClick={onCreateProject}
                 disabled={isLoading}
                 title="Create a new QE project"
-                data-testid="qv-btn-create-new-project"
+                data-testid="qv-sidebar-btn-create-new-project"
               >
                 <span className="sidebar__action-icon">✨</span>
                 Create New…
@@ -192,7 +192,7 @@ export function Sidebar({
                 onClick={onOpenDemoGallery}
                 disabled={isLoading}
                 title="Browse ready-to-run demo projects"
-                data-testid="qv-btn-demo-gallery"
+                data-testid="qv-sidebar-btn-demo-gallery"
               >
                 <span className="sidebar__action-icon">🎨</span>
                 Demo Gallery…

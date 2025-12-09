@@ -103,7 +103,7 @@ export function ProjectSummaryPanel({
               <button 
                 className="welcome-button welcome-button--primary" 
                 onClick={onBrowseAndLoad}
-                data-testid="qv-btn-open-project"
+                data-testid="qv-welcome-btn-open-project"
               >
                 <span className="welcome-button__icon">📂</span>
                 <span className="welcome-button__content">
@@ -116,7 +116,7 @@ export function ProjectSummaryPanel({
               <button 
                 className="welcome-button" 
                 onClick={onCreateProject}
-                data-testid="qv-btn-create-new-project"
+                data-testid="qv-welcome-btn-create-new-project"
               >
                 <span className="welcome-button__icon">✨</span>
                 <span className="welcome-button__content">
@@ -129,7 +129,7 @@ export function ProjectSummaryPanel({
               <button 
                 className="welcome-button welcome-button--demo" 
                 onClick={onOpenDemoGallery}
-                data-testid="qv-btn-demo-gallery"
+                data-testid="qv-welcome-btn-demo-gallery"
               >
                 <span className="welcome-button__icon">🎨</span>
                 <span className="welcome-button__content">

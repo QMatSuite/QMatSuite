@@ -71,7 +71,9 @@ test.describe('E2E Test 2: Create Demo Project → Workflow & Steps', () => {
       await expect(appPage.getByTestId('qv-btn-run-workflow')).toBeVisible();
       
       // Get all step rows
-      const stepRows = appPage.getByTestId('qv-step-row');
+      // Step rows now have unique test IDs (qv-step-row-{stepId})
+      // Use a locator that matches the pattern
+      const stepRows = appPage.locator('[data-testid^="qv-step-row-"]');
       const stepCount = await stepRows.count();
       
       expect(stepCount).toBeGreaterThan(0);
@@ -182,7 +184,9 @@ test.describe('E2E Test 2: Create Demo Project → Workflow & Steps', () => {
       // Track which files we've seen for each step
       const stepFiles: Map<string, string> = new Map();
       
-      const stepRows = appPage.getByTestId('qv-step-row');
+      // Step rows now have unique test IDs (qv-step-row-{stepId})
+      // Use a locator that matches the pattern
+      const stepRows = appPage.locator('[data-testid^="qv-step-row-"]');
       const stepCount = await stepRows.count();
       
       for (let i = 0; i < stepCount; i++) {
