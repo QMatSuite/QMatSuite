@@ -49,16 +49,27 @@ def sample_project(tmp_path: Path) -> Path:
     }
     _write_yaml(project_root / "project.qv.yml", project_config)
     (project_root / "structures").mkdir()
-    # Create a minimal valid structure JSON file
+    # Create a minimal valid structure JSON file (pymatgen format with structure key)
+    from quantumvitas.io.structure_io import STRUCTURE_META_KEY, STRUCTURE_DATA_KEY
     structure_json = {
-        "__qv_meta__": structure_meta.to_dict(),
-        "lattice": {
-            "matrix": [[5.43, 0.0, 0.0], [0.0, 5.43, 0.0], [0.0, 0.0, 5.43]]
+        STRUCTURE_META_KEY: structure_meta.to_dict(),
+        STRUCTURE_DATA_KEY: {
+            "@module": "pymatgen.core.structure",
+            "@class": "Structure",
+            "lattice": {
+                "matrix": [[5.43, 0.0, 0.0], [0.0, 5.43, 0.0], [0.0, 0.0, 5.43]],
+                "a": 5.43,
+                "b": 5.43,
+                "c": 5.43,
+                "alpha": 90.0,
+                "beta": 90.0,
+                "gamma": 90.0,
+            },
+            "sites": [
+                {"species": [{"element": "Si", "occu": 1}], "abc": [0.0, 0.0, 0.0], "xyz": [0.0, 0.0, 0.0]},
+                {"species": [{"element": "Si", "occu": 1}], "abc": [0.25, 0.25, 0.25], "xyz": [1.3575, 1.3575, 1.3575]},
+            ],
         },
-        "sites": [
-            {"species": [{"element": "Si", "occu": 1}], "xyz": [0.0, 0.0, 0.0]},
-            {"species": [{"element": "Si", "occu": 1}], "xyz": [1.3575, 1.3575, 1.3575]},
-        ],
     }
     import json
     (project_root / "structures" / "si.json").write_text(json.dumps(structure_json, indent=2))
@@ -588,7 +599,11 @@ def test_cli_step_create_and_insert(sample_project: Path):
     spec_path = steps_dir / "nscf.step.yaml"
     assert spec_path.exists()
     spec_data = yaml.safe_load(spec_path.read_text())
-    assert spec_data["structure"] == "si"
+    # With ID-only model, we use structure_id, not structure selector
+    assert "structure_id" in spec_data
+    assert spec_data.get("structure_id") is not None
+    # structure field should not be present (or be empty string for legacy compat)
+    assert "structure" not in spec_data or spec_data.get("structure") == ""
     assert spec_data["parameters"]["SYSTEM"]["ecutwfc"] == 60
     assert spec_data["cards"]["K_POINTS"]["option"] == "automatic"
     assert spec_data["cards"]["K_POINTS"]["data"][0] == [4, 4, 4, 0, 0, 0]
@@ -600,14 +615,48 @@ def test_cli_step_create_and_insert(sample_project: Path):
 
     workflow_yaml = sample_project / "workflows" / "wf" / "workflow.yaml"
     workflow_data = yaml.safe_load(workflow_yaml.read_text())
-    assert any(step["id"] == "nscf" for step in workflow_data["steps"])
+    # With ID-only model, we use step_id (ULID), not id (legacy slug)
+    assert any(step.get("step_id") is not None for step in workflow_data["steps"])
 
 
 def test_cli_step_set_param(tmp_path: Path):
-    step_file = tmp_path / "custom.step.yaml"
+    # Create a minimal project so structure can be resolved
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    from quantumvitas.core.resources import generate_resource_id, meta_from_name
+    structure_id = generate_resource_id()
+    structure_meta = meta_from_name("structure", name="si", path="structures/si.json")
+    structure_meta.id = structure_id
+    
+    project_config = {
+        "project": {"name": "test"},
+        "structures": [
+            {
+                "id": structure_id,
+                "file": "structures/si.json",
+                "meta": structure_meta.to_dict(),
+            }
+        ],
+    }
+    _write_yaml(project_root / "project.qv.yml", project_config)
+    (project_root / "structures").mkdir()
+    from quantumvitas.io.structure_io import STRUCTURE_META_KEY, STRUCTURE_DATA_KEY
+    import json
+    structure_json = {
+        STRUCTURE_META_KEY: structure_meta.to_dict(),
+        STRUCTURE_DATA_KEY: {
+            "@module": "pymatgen.core.structure",
+            "@class": "Structure",
+            "lattice": {"matrix": [[5.43, 0.0, 0.0], [0.0, 5.43, 0.0], [0.0, 0.0, 5.43]]},
+            "sites": [{"species": [{"element": "Si", "occu": 1}], "abc": [0.0, 0.0, 0.0]}],
+        },
+    }
+    (project_root / "structures" / "si.json").write_text(json.dumps(structure_json, indent=2))
+    
+    step_file = project_root / "custom.step.yaml"
     yaml.safe_dump(
         {
-            "structure": "si",
+            "structure": "si",  # Legacy selector - will be resolved to structure_id
             "step_type": "scf",
             "parameters": {"SYSTEM": {"ecutwfc": 40}},
         },
@@ -621,6 +670,8 @@ def test_cli_step_set_param(tmp_path: Path):
             "configure",
             "step",
             str(step_file),
+            "--project",
+            str(project_root),
             "--SYSTEM.ecutwfc=80",
             "--CONTROL.tstress=true",
             "--CARD.K_POINTS.data=[[8,8,8,0,0,0]]",
@@ -781,7 +832,14 @@ def test_cli_show_command_import_preserves_original_parameters(
         workflow_dir = project_root / "workflows" / workflow_slug
         workflow_yaml = yaml.safe_load((workflow_dir / "workflow.yaml").read_text())
         last_step = workflow_yaml["steps"][-1]
-        step_spec_path = workflow_dir / last_step["step_file"]
+        # With ID-only model, resolve step file via step_id
+        from quantumvitas.core.resolution import resolve_step, build_resource_index
+        from quantumvitas.core.project_utils import load_project_config
+        config = load_project_config(project_root)
+        index = build_resource_index(project_root)
+        step_id = last_step.get("step_id") or last_step.get("id")
+        step_resolved = resolve_step(project_root, workflow_slug, step_id, config=config, index=index)
+        step_spec_path = step_resolved.absolute_path
 
         captured_runs.clear()
         workdir = tmp_path / f"workdir_{input_path.stem}"
