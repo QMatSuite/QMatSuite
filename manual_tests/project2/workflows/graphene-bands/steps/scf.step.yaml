@@ -1,0 +1,28 @@
+meta:
+  id: 01KC226GSW1B35W73WH6KKM3RT
+  name: scf
+  slug: scf
+  path: workflows/graphene-bands/steps/scf.step.yaml
+  kind: step
+step_type: scf
+structure_id: 01KC225MA7AHHN0A28GB4H3HGK
+parent_workflow_id: 01KC225VJ5AG52PD3WGCCA7A36
+parameters:
+  CONTROL:
+    calculation: scf
+    outdir: ./outdir
+    restart_mode: from_scratch
+  ELECTRONS:
+    conv_thr: 1.0e-08
+  SYSTEM:
+    ecutwfc: 50
+cards:
+  K_POINTS:
+    option: automatic
+    data:
+    - - 8
+      - 8
+      - 8
+      - 0
+      - 0
+      - 0

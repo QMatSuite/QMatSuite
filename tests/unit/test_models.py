@@ -27,24 +27,26 @@ class TestWorkflowStepEntry:
     """Test WorkflowStepEntry dataclass."""
     
     def test_to_dict_minimal(self):
-        """Minimal entry only has id."""
-        entry = WorkflowStepEntry(id="scf")
+        """Minimal entry only has step_id (ULID)."""
+        entry = WorkflowStepEntry(step_id="01TESTSTEPID123456789")
         d = entry.to_dict()
-        assert d == {"id": "scf"}
+        assert d == {"step_id": "01TESTSTEPID123456789"}
     
     def test_to_dict_full(self):
-        """Full entry has all fields."""
+        """Full entry has all fields (ID-only model)."""
         entry = WorkflowStepEntry(
-            id="scf",
+            step_id="01TESTSTEPID123456789",
             type="scf",
-            step_file="steps/scf.step.yaml",
             reference="reference/scf.out",
         )
         d = entry.to_dict()
-        assert d["id"] == "scf"
+        assert d["step_id"] == "01TESTSTEPID123456789"
         assert d["type"] == "scf"
-        assert d["step_file"] == "steps/scf.step.yaml"
         assert d["reference"] == "reference/scf.out"
+        # step_file is NOT written (resolved via registry using step_id)
+        assert "step_file" not in d
+        # legacy id field is NOT written
+        assert "id" not in d
     
     def test_from_dict(self):
         """Parse entry from dict."""
@@ -101,7 +103,7 @@ class TestWorkflowModel:
         assert model.working_dir == "raw"
     
     def test_to_dict_roundtrip(self):
-        """Convert to dict and back."""
+        """Convert to dict and back (ID-only model)."""
         meta = ResourceMeta(
             id="01WORKFLOW_ID_HERE______",
             name="My Workflow",
@@ -111,19 +113,25 @@ class TestWorkflowModel:
         )
         model = WorkflowModel(
             meta=meta,
-            structure="graphene",
-            steps=[WorkflowStepEntry(id="scf", type="scf")],
+            structure_id="01STRUCTURE_ID_HERE_____",
+            structure_name="Graphene",
+            structure="graphene",  # Legacy field (not written to YAML)
+            steps=[WorkflowStepEntry(step_id="01STEP_ID_HERE________", type="scf")],
         )
         
         d = model.to_dict()
         assert d["meta"]["id"] == "01WORKFLOW_ID_HERE______"
-        assert d["structure"] == "graphene"
+        assert d["structure_id"] == "01STRUCTURE_ID_HERE_____"
+        assert d["structure_name"] == "Graphene"
+        # Legacy structure selector is NOT written (ID-only model)
+        assert "structure" not in d
         assert len(d["steps"]) == 1
         
         # Roundtrip
         model2 = WorkflowModel.from_dict(d, default_name="fallback", default_path="workflows/fallback")
         assert model2.meta.id == model.meta.id
-        assert model2.structure == model.structure
+        assert model2.structure_id == model.structure_id
+        assert model2.structure_name == model.structure_name
 
 
 class TestWorkflowIO:
@@ -171,7 +179,7 @@ class TestWorkflowIO:
         assert model.meta.name == "Test Workflow"
     
     def test_save_workflow(self, tmp_path):
-        """Save workflow creates yaml file."""
+        """Save workflow creates yaml file (ID-only model)."""
         wf_dir = tmp_path / "workflows" / "new-workflow"
         wf_dir.mkdir(parents=True)
         
@@ -184,7 +192,9 @@ class TestWorkflowIO:
         )
         model = WorkflowModel(
             meta=meta,
-            structure="graphene",
+            structure_id="01STRUCTURE_ID_HERE_____",
+            structure_name="Graphene",
+            structure="graphene",  # Legacy field (not written to YAML)
         )
         
         save_workflow(model, wf_dir)
@@ -194,7 +204,10 @@ class TestWorkflowIO:
         
         loaded = yaml.safe_load(yaml_path.read_text())
         assert loaded["meta"]["id"] == "01NEW_WORKFLOW__________"
-        assert loaded["structure"] == "graphene"
+        assert loaded["structure_id"] == "01STRUCTURE_ID_HERE_____"
+        assert loaded["structure_name"] == "Graphene"
+        # Legacy structure selector is NOT written (ID-only model)
+        assert "structure" not in loaded
     
     def test_roundtrip(self, tmp_path):
         """Save and load produces equivalent model."""
@@ -210,12 +223,14 @@ class TestWorkflowIO:
         )
         original = WorkflowModel(
             meta=meta,
-            structure="silicon",
+            structure_id="01STRUCTURE_ID_HERE_____",
+            structure_name="Silicon",
+            structure="silicon",  # Legacy field (not written to YAML)
             mode="normal",
             working_dir="raw",
             steps=[
-                WorkflowStepEntry(id="scf", type="scf"),
-                WorkflowStepEntry(id="nscf", type="nscf"),
+                WorkflowStepEntry(step_id="01STEP_SCF_ID_HERE_____", type="scf"),
+                WorkflowStepEntry(step_id="01STEP_NSCF_ID_HERE____", type="nscf"),
             ],
         )
         
@@ -224,7 +239,8 @@ class TestWorkflowIO:
         
         assert loaded.meta.id == original.meta.id
         assert loaded.meta.name == original.meta.name
-        assert loaded.structure == original.structure
+        assert loaded.structure_id == original.structure_id
+        assert loaded.structure_name == original.structure_name
         assert len(loaded.steps) == len(original.steps)
 
 

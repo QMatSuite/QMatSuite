@@ -53,23 +53,49 @@ class StructureStepSpec:
     kpath_metadata: Optional[Dict[str, Any]] = None  # K-path info for band plots
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any], source_path: Optional[Path] = None) -> "StructureStepSpec":
+    def from_dict(
+        cls, 
+        data: Dict[str, Any], 
+        source_path: Optional[Path] = None,
+        resolve_structure_selector: Optional[callable] = None,
+    ) -> "StructureStepSpec":
         """
         Create StructureStepSpec from dictionary.
         
         Handles both new format (structure_id) and legacy format (structure selector).
-        Legacy structure selector is kept in memory for backwards compatibility but
-        should be resolved to structure_id when project_root is available.
+        
+        Backwards compatibility (legacy structure selector):
+        - If structure_id is missing but structure selector is present, resolve it to structure_id
+        - This resolution happens only on input (from_dict/loader), not on output (to_dict)
+        - After resolution, the structure_id is stored and the selector is dropped
+        
+        Args:
+            data: Dictionary containing step spec data
+            source_path: Optional path to the step spec file
+            resolve_structure_selector: Optional callable(selector: str) -> str that resolves
+                a structure selector (name/slug/path) to a structure_id (ULID).
+                If provided and structure_id is missing, legacy 'structure' selector will be resolved.
         """
         # New format: structure_id (canonical)
         structure_id = data.get("structure_id")
         
-        # Legacy format: structure selector (required for backwards compat)
+        # Legacy format: structure selector (for backwards compat on input only)
         structure = data.get("structure")
-        if not structure and not structure_id:
-            raise ValueError("Step spec is missing required field 'structure' or 'structure_id'")
-        # If only structure_id is present, we still need structure for backwards compat
-        # It will be resolved later if project_root is available
+        
+        # If structure_id is missing but structure selector is present, resolve it via resolver
+        if not structure_id and structure and resolve_structure_selector:
+            try:
+                resolved_resource = resolve_structure_selector(structure)
+                # Extract the ID from the resolved resource
+                structure_id = resolved_resource.meta.id if hasattr(resolved_resource, 'meta') else str(resolved_resource)
+                # Drop the legacy selector after resolution
+                structure = None
+            except Exception:
+                # Resolution failed - keep structure selector for now (will fail on to_dict if not resolved)
+                pass
+        
+        if not structure_id and not structure:
+            raise ValueError("Step spec is missing required field 'structure_id' or legacy 'structure' selector")
         
         step_type = data.get("step_type", "scf")
         parameters = data.get("parameters") or {}
@@ -116,12 +142,25 @@ class StructureStepSpec:
         )
 
     @classmethod
-    def from_yaml(cls, path: Path | str) -> "StructureStepSpec":
+    def from_yaml(
+        cls, 
+        path: Path | str, 
+        resolve_structure_selector: Optional[callable] = None,
+    ) -> "StructureStepSpec":
+        """
+        Load StructureStepSpec from YAML file.
+        
+        Args:
+            path: Path to step spec YAML file
+            resolve_structure_selector: Optional callable(selector: str) -> str that resolves
+                a structure selector (name/slug/path) to a structure_id (ULID).
+                If provided and structure_id is missing, legacy 'structure' selector will be resolved.
+        """
         spec_path = Path(path)
         content = yaml.safe_load(spec_path.read_text()) or {}
         if not isinstance(content, dict):
             raise ValueError(f"Step file {path} must contain a mapping at the root")
-        return cls.from_dict(content, source_path=spec_path)
+        return cls.from_dict(content, source_path=spec_path, resolve_structure_selector=resolve_structure_selector)
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -131,7 +170,9 @@ class StructureStepSpec:
         - structure_id: ULID only (no structure name/slug/path)
         - parent_workflow_id: ULID only (no workflow name/slug/path)
         
-        Does not write structure selector (legacy field - not authoritative).
+        Enforces ID-only rule:
+        - If structure_id is present, write only structure_id (no structure selector)
+        - If structure_id is None, raise an error (structure selector is legacy-only, not written)
         """
         data: Dict[str, Any] = {
             "meta": self.meta.to_dict(),
@@ -140,7 +181,13 @@ class StructureStepSpec:
         # Write structure_id (canonical reference - ID only)
         if self.structure_id:
             data["structure_id"] = self.structure_id
-        # Do not write structure selector (legacy field - not authoritative)
+        else:
+            # structure_id is required - legacy structure selector is not written
+            raise ValueError(
+                f"Step spec '{self.meta.name or self.step_type}' is missing required field 'structure_id'. "
+                "Legacy 'structure' selector is not written to YAML. "
+                "Please resolve the structure selector to structure_id before serialization."
+            )
         if self.parent_workflow_id:
             data["parent_workflow_id"] = self.parent_workflow_id
         if self.parameters:
@@ -439,7 +486,20 @@ def materialize_step_spec(
         Tuple of (generated_input_path, StructureStepSpec)
     """
 
-    spec_obj, resolved_spec_path = _load_step_spec(spec, spec_path)
+    # Create resolver for legacy structure selectors if project_root is available
+    resolve_structure_selector = None
+    if project_root:
+        def _make_resolver(proj_root: Path):
+            from quantumvitas.core.resolution import resolve_structure
+            from quantumvitas.core.project_utils import load_project_config
+            config = load_project_config(proj_root)
+            def resolver(selector: str) -> str:
+                resolved = resolve_structure(proj_root, selector, config)
+                return resolved.meta.id
+            return resolver
+        resolve_structure_selector = _make_resolver(project_root)
+    
+    spec_obj, resolved_spec_path = _load_step_spec(spec, spec_path, resolve_structure_selector=resolve_structure_selector)
     output_dir = Path(output_dir).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -467,13 +527,15 @@ def materialize_step_spec(
 def _load_step_spec(
     spec: SpecLike,
     spec_path: Optional[Path | str],
+    resolve_structure_selector: Optional[callable] = None,
 ) -> tuple[StructureStepSpec, Path]:
     if isinstance(spec, StructureStepSpec):
         path = Path(spec_path).resolve() if spec_path else Path.cwd()
         return spec, path
 
     path = Path(spec).resolve()
-    return StructureStepSpec.from_yaml(path), path
+    # Load step spec with resolver for legacy structure selector normalization
+    return StructureStepSpec.from_yaml(path, resolve_structure_selector=resolve_structure_selector), path
 
 
 def _resolve_structure_for_spec(
@@ -487,19 +549,43 @@ def _resolve_structure_for_spec(
     Resolve structure from spec, preferring structure_id (canonical) over structure (legacy selector).
     """
     # First, try structure_id (canonical reference)
-    if spec.structure_id and project:
+    # Note: spec.structure_id might be a string, so check it's truthy and non-empty
+    if spec.structure_id:
+        if project is None:
+            raise ValueError(
+                f"Step spec at {spec_path} has structure_id ({spec.structure_id}) but project is None. "
+                f"Cannot resolve structure without a project context."
+            )
         try:
-            struct_ref = project.get_structure(spec.structure_id)
+            # Try to find structure by ID in project's structures dict
+            struct_ref = None
+            for ref in project.structures.values():
+                if ref.meta.id == spec.structure_id:
+                    struct_ref = ref
+                    break
+            
+            if struct_ref is None:
+                # Fall back to get_structure which might resolve by slug/name
+                struct_ref = project.get_structure(spec.structure_id)
+            
             return read_structure(struct_ref.path)
-        except KeyError:
+        except (KeyError, AttributeError) as e:
             # If structure_id doesn't resolve, fall back to structure selector
+            # But provide a helpful error if structure selector is also missing
+            if not spec.structure:
+                raise FileNotFoundError(
+                    f"Step spec at {spec_path} has structure_id ({spec.structure_id}) but structure not found in project. "
+                    f"Project has {len(project.structures)} structures. Error: {e}"
+                )
+            # Fall through to legacy structure selector
             pass
     
     # Fall back to structure selector (legacy)
     structure_value = spec.structure
     if not structure_value:
         raise FileNotFoundError(
-            f"Step spec at {spec_path} has neither structure_id nor structure field"
+            f"Step spec at {spec_path} has neither structure_id (current: {spec.structure_id}) nor structure field (current: {spec.structure}). "
+            f"Please ensure the step spec has a valid structure_id or structure selector."
         )
     
     candidate = Path(structure_value)

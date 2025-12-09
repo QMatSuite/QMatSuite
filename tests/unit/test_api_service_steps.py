@@ -22,24 +22,18 @@ def temp_project():
         project_root = Path(tmpdir) / "test_project"
         project_root.mkdir()
         
-        # Create project.qv.yml with workflow entry
-        (project_root / "project.qv.yml").write_text("""name: Test Project
-workflows:
-  - meta:
-      id: test-workflow-ulid
-      name: Test Workflow
-      slug: test-workflow
-      path: workflows/test-workflow
-      kind: workflow
-    workflow:
-      structure: structures/si.json
-""")
-        
-        # Create a structure
+        # Create a structure first (with meta)
         structures_dir = project_root / "structures"
         structures_dir.mkdir()
         structure_file = structures_dir / "si.json"
         structure_file.write_text("""{
+  "__qv_meta__": {
+    "id": "01TESTSTRUCTUREID123456789",
+    "name": "Si",
+    "slug": "si",
+    "path": "structures/si.json",
+    "kind": "structure"
+  },
   "@module": "Structure",
   "@class": "Structure",
   "lattice": {
@@ -50,6 +44,14 @@ workflows:
     {"species": [{"element": "Si", "occu": 1}], "abc": [0.25, 0.25, 0.25]}
   ]
 }""")
+        
+        # Create project.qv.yml with structure and workflow entries (ID-only)
+        (project_root / "project.qv.yml").write_text("""name: Test Project
+structures:
+  - id: 01TESTSTRUCTUREID123456789
+workflows:
+  - id: test-workflow-ulid
+""")
         
         # Create a workflow
         workflows_dir = project_root / "workflows"
@@ -63,8 +65,8 @@ workflows:
   slug: test-workflow
   path: workflows/test-workflow
   kind: workflow
-workflow:
-  structure: structures/si.json
+structure_id: 01TESTSTRUCTUREID123456789
+structure_name: Si
 steps: []
 """)
         
@@ -86,7 +88,10 @@ def test_add_step_to_workflow_creates_valid_spec(temp_project):
     assert "steps" in result
     assert len(result["steps"]) == 1
     assert result["steps"][0]["type"] == "scf"
-    assert result["steps"][0]["id"] == "test-scf"
+    # With ID-only model, step entry uses step_id (ULID) as canonical reference
+    assert result["steps"][0].get("step_id") is not None, "Step entry should have step_id (ULID)"
+    # Legacy id field may be None if step was created with step_id only
+    # The step name "test-scf" is stored in the step spec meta, not in the workflow entry
     
     # Load the step spec file
     step_file = temp_project / "workflows" / "test-workflow" / "steps" / "test-scf.step.yaml"
@@ -101,7 +106,9 @@ def test_add_step_to_workflow_creates_valid_spec(temp_project):
     # Verify it can be loaded as StructureStepSpec
     spec = StructureStepSpec.from_dict(step_data, source_path=step_file)
     assert spec.step_type == "scf"
-    assert spec.structure == "structures/si.json"
+    # With ID-only model, step spec should have structure_id (ULID), not structure selector
+    assert spec.structure_id is not None, "Step spec should have structure_id (ULID)"
+    assert spec.structure_id == "01TESTSTRUCTUREID123456789", "Step spec should reference the correct structure ID"
     
     # Verify defaults are present (from-scratch mode uses defaults)
     assert "CONTROL" in spec.parameters
