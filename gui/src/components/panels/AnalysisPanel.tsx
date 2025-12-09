@@ -1099,6 +1099,7 @@ export function AnalysisPanel({
           className="load-button"
           onClick={() => handleLoadAnalysis()}
           disabled={!selectedWorkflow || isLoading || analysisState === 'analyzing'}
+          data-testid={`qv-btn-load-${analysisType}`}
         >
           {isLoading || analysisState === 'analyzing' ? 'Analyzing...' : `Load ${analysisType.toUpperCase()}`}
         </button>
@@ -1110,6 +1111,7 @@ export function AnalysisPanel({
             onClick={() => handleLoadAnalysis(undefined, true)}
             disabled={isLoading}
             title="Force re-parse analysis from QE outputs"
+            data-testid={`qv-btn-reanalyze-${analysisType}`}
           >
             🔄 Re-analyze
           </button>
