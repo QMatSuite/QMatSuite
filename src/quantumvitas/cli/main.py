@@ -2145,9 +2145,16 @@ def configure_step_command(
     step_file = Path(step_identifier)
     workflow_yaml = None
     workflow_dir = None
+    project_root_resolved = project
     
     if step_file.exists() and step_file.suffix in (".yaml", ".yml"):
-        pass  # Use directly
+        # For direct paths, try to auto-detect project_root
+        if not project_root_resolved:
+            from quantumvitas.core.project_utils import find_project_root
+            try:
+                project_root_resolved = find_project_root(step_file.parent)
+            except Exception:
+                pass  # No project found, that's OK for standalone step files
     else:
         # Resolve using project_utils
         try:
@@ -2160,14 +2167,25 @@ def configure_step_command(
             step_file = ctx_res.resource_path
             # Also get workflow directory for step renaming
             if ctx_res.parent_entry:
-                project_root = ctx_res.project_root
-                workflow_dir = workflow_directory(project_root, ctx_res.parent_entry)
+                project_root_resolved = ctx_res.project_root
+                workflow_dir = workflow_directory(project_root_resolved, ctx_res.parent_entry)
                 workflow_yaml = workflow_dir / "workflow.yaml"
         except ResourceNotFoundError as exc:
             raise typer.BadParameter(str(exc)) from exc
 
+    # Load step spec with resolver to normalize legacy structure selectors
+    resolve_structure_selector = None
+    if project_root_resolved:
+        try:
+            from quantumvitas.core.resolution import make_structure_selector_resolver
+            from quantumvitas.core.project_utils import load_project_config
+            config = load_project_config(project_root_resolved)
+            resolve_structure_selector = make_structure_selector_resolver(project_root_resolved, config=config)
+        except Exception:
+            pass
+    
     try:
-        spec = StructureStepSpec.from_yaml(step_file)
+        spec = StructureStepSpec.from_yaml(step_file, resolve_structure_selector=resolve_structure_selector)
     except FileNotFoundError as exc:
         raise typer.BadParameter(f"Step file not found: {step_file}") from exc
 
@@ -2333,20 +2351,29 @@ def configure_workflow_command(
         
         # Update all step yaml files
         steps_updated = 0
+        from quantumvitas.core.resolution import resolve_structure, resolve_step, build_resource_index
+        index = build_resource_index(project_root)
+        
         for step_entry in workflow_data.get("steps", []):
-            step_file = step_entry.get("step_file")
-            if not step_file:
+            # With ID-only model, resolve step file via step_id
+            step_id = step_entry.get("step_id") or step_entry.get("id")
+            if not step_id:
                 continue
-            step_path = (workflow_dir / step_file).resolve()
-            if not step_path.exists():
-                continue
+            
             try:
-                # Load step spec with project_root for resolving legacy structure selectors
-                spec = StructureStepSpec.from_yaml(step_path, project_root=project_root)
+                # Resolve step file path via step_id
+                step_resolved = resolve_step(project_root, workflow_entry.get("meta", {}).get("slug") or workflow_entry.get("name"), step_id, config=config, index=index)
+                step_path = step_resolved.absolute_path
+                
+                if not step_path.exists():
+                    continue
+                
+                # Load step spec with resolver to normalize legacy structure selectors
+                from quantumvitas.core.resolution import make_structure_selector_resolver
+                resolve_structure_selector = make_structure_selector_resolver(project_root, config=config)
+                spec = StructureStepSpec.from_yaml(step_path, resolve_structure_selector=resolve_structure_selector)
+                
                 # Update structure_id (canonical reference) - structure selector is not written
-                from quantumvitas.core.resolution import resolve_structure
-                from quantumvitas.core.project_utils import load_project_config
-                config = load_project_config(project_root)
                 resolved = resolve_structure(project_root, structure, config)
                 spec.structure_id = resolved.meta.id
                 # Clear legacy structure field (not written to YAML)
@@ -2354,7 +2381,7 @@ def configure_workflow_command(
                 step_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
                 steps_updated += 1
             except Exception as e:
-                typer.secho(f"  Warning: Could not update {step_file}: {e}", fg=typer.colors.YELLOW)
+                typer.secho(f"  Warning: Could not update step {step_id}: {e}", fg=typer.colors.YELLOW)
         
         typer.secho(
             f"Structure changed from '{old_structure}' to '{structure}' ({steps_updated} steps updated)",

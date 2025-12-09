@@ -141,7 +141,15 @@ def test_cli_show_command_executes_against_references(
         workflow_dir = project_root / "workflows" / workflow_slug
         workflow_yaml = yaml.safe_load((workflow_dir / "workflow.yaml").read_text())
         last_step = workflow_yaml["steps"][-1]
-        step_spec_path = workflow_dir / last_step["step_file"]
+        # With ID-only model, resolve step file via step_id
+        from quantumvitas.core.resolution import resolve_step, build_resource_index
+        from quantumvitas.core.project_utils import load_project_config
+        config = load_project_config(project_root)
+        index = build_resource_index(project_root)
+        step_id = last_step.get("step_id") or last_step.get("id")
+        workflow_slug = workflow_dir.name
+        step_resolved = resolve_step(project_root, workflow_slug, step_id, config=config, index=index)
+        step_spec_path = step_resolved.absolute_path
 
         workdir = runs_root / input_path.stem
         _ensure_clean_directory(workdir)
