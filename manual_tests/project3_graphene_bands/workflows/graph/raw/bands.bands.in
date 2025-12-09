@@ -1,0 +1,9 @@
+&control
+    pseudo_dir = '/Users/up/quantumVITAS/pseudo'
+/
+
+&bands
+    filband = 'graphene.bands.dat'
+    outdir = './outdir'
+    prefix = 'graphene'
+/

@@ -31,6 +31,10 @@ from quantumvitas.core.resources import (
     meta_from_name,
     slugify,
 )
+from quantumvitas.core.context import (
+    find_path_context_from_pwd,
+    ContextNotFoundError,
+)
 from quantumvitas.core.project_utils import (
     ProjectConfigError,
     ResourceNotFoundError,
@@ -864,17 +868,20 @@ def init_step_command(
             f"Known types: {', '.join(sorted(KNOWN_STEP_TYPES))}"
         )
 
-    project_root = _maybe_project_root(project)
     bundle = _parse_override_args(ctx.args)
     if bundle.has_any():
         typer.echo(f"Applying overrides: {_render_override_summary(bundle)}")
 
-    if project_root:
-        project_root = project_root.resolve()
-        config = load_project_config(project_root)
+    # Determine project root: explicit --project, or auto-detect from cwd
+    if project:
+        project_root = Path(project).expanduser().resolve()
     else:
-        config = {"structures": [], "workflows": []}
+        try:
+            project_root = _resolve_project_root()
+        except typer.BadParameter:
+            project_root = None
 
+    # Determine workflow: explicit --workflow, or auto-detect from cwd using PathContext
     workflow_entry = None
     workflow_dir: Optional[Path] = None
     workflow_steps: list[dict] | None = None
@@ -885,14 +892,40 @@ def init_step_command(
 
     if workflow:
         if not project_root:
-            raise typer.BadParameter("Specify --project when attaching to a workflow.")
+            raise typer.BadParameter("Specify --project when using --workflow.")
+        config = load_project_config(project_root)
         workflow_entry = find_workflow_entry(config, workflow, project_root)
     elif project_root:
-        detected = _detect_enclosing_workflow(
-            project_root, Path.cwd().resolve(), config.get("workflows", [])
-        )
-        if detected:
-            workflow_entry = find_workflow_entry(config, detected, project_root)
+        # Try to detect enclosing workflow from cwd using find_enclosing_workflow
+        # This is more reliable than PathContext.workflow_selector (which reads from workflow.yaml)
+        try:
+            config = load_project_config(project_root)
+            workflow_entry = find_enclosing_workflow(project_root, config)
+        except Exception:
+            # Fall back to old method if find_enclosing_workflow fails
+            config = load_project_config(project_root)
+            detected = _detect_enclosing_workflow(
+                project_root, Path.cwd().resolve(), config.get("workflows", [])
+            )
+            if detected:
+                workflow_entry = find_workflow_entry(config, detected, project_root)
+    
+    # If we still don't have a workflow and we're at project root, fail with clear error
+    if not workflow_entry and project_root:
+        # Check if we're at project root (not inside a workflow)
+        try:
+            ctx = find_path_context_from_pwd()
+            if ctx.project_root == Path.cwd().resolve() and not ctx.is_inside_workflow():
+                raise typer.BadParameter(
+                    "You are at project root. Please specify --workflow <workflow> or run from inside a workflow directory."
+                )
+        except ContextNotFoundError:
+            pass  # Can't determine context, continue with existing error handling
+    
+    if not project_root:
+        config = {"structures": [], "workflows": []}
+    elif not workflow_entry:
+        config = load_project_config(project_root)
 
     if workflow_entry and project_root:
         workflow_dir = workflow_directory(project_root, workflow_entry)
@@ -907,10 +940,11 @@ def init_step_command(
         parent_workflow_id = (
             (workflow_entry.get("meta") or {}).get("id") or
             workflow_entry.get("id") or
+            workflow_data.get("meta", {}).get("id") or
             workflow_data.get("id")
         )
-        workflow_section = workflow_data.get("workflow", {})
-        workflow_structure = workflow_section.get("structure")
+        # Structure is at top level in workflow.yaml (new format), or under workflow key (legacy)
+        workflow_structure = workflow_data.get("structure") or workflow_data.get("workflow", {}).get("structure")
 
     # Resolve structure: use provided, or inherit from parent workflow
     if structure:
@@ -2138,6 +2172,10 @@ def configure_workflow_command(
     
     # Handle name change (rename)
     if name:
+        # Store old path to detect if directory was moved
+        old_workflow_dir = workflow_dir
+        old_workflow_yaml = workflow_yaml
+        
         apply_workflow_rename(
             project_root=project_root,
             config=config,
@@ -2148,10 +2186,22 @@ def configure_workflow_command(
         )
         save_project_config(project_root, config)
         
-        # Also update meta in workflow.yaml if it exists
+        # Re-resolve workflow directory in case it was moved
+        workflow_dir = workflow_directory(project_root, workflow_entry)
+        workflow_yaml = workflow_dir / "workflow.yaml"
+        
+        # Re-read workflow.yaml if directory was moved
+        if workflow_dir != old_workflow_dir:
+            if not workflow_yaml.exists():
+                raise typer.BadParameter(f"workflow.yaml not found at {workflow_yaml} after rename")
+            workflow_data = yaml.safe_load(workflow_yaml.read_text()) or {}
+        
+        # Update meta in workflow.yaml
         if "meta" in workflow_data:
             workflow_data["meta"]["name"] = name
-            workflow_data["meta"]["slug"] = slugify(name)
+            # Use the slug from the entry (which was updated by apply_workflow_rename)
+            new_slug = (workflow_entry.get("meta") or {}).get("slug") or slugify(name)
+            workflow_data["meta"]["slug"] = new_slug
         
         modified = True
         typer.secho(f"Workflow renamed to '{name}'", fg=typer.colors.GREEN)
@@ -2699,8 +2749,13 @@ def analyze_output_command(
             ctx = find_path_context_from_pwd()
             project_root = ctx.project_root
             if ctx.is_inside_workflow():
-                workflow_dir = ctx.workflow_directory
-                typer.echo(f"Detected workflow: {ctx.workflow_selector}")
+                # Use find_enclosing_workflow for reliable detection (not PathContext.workflow_selector)
+                config = load_project_config(project_root)
+                wf_entry = find_enclosing_workflow(project_root, config)
+                if wf_entry:
+                    workflow_dir = ctx.workflow_directory
+                    workflow_name = wf_entry.get("name") or (wf_entry.get("meta") or {}).get("name")
+                    typer.echo(f"Detected workflow: {workflow_name}")
         except ContextNotFoundError:
             pass  # Not inside a project/workflow, will search pwd
     
@@ -2956,8 +3011,16 @@ def analyze_band_command(
             project_root = ctx.project_root
             # Only auto-detect workflow if no input file provided
             if input_file is None and ctx.is_inside_workflow():
-                workflow_selector = ctx.workflow_selector
-                typer.echo(f"Detected workflow: {workflow_selector}")
+                # Use find_enclosing_workflow to get the actual entry from project config
+                # This is more reliable than using the selector from workflow.yaml
+                # (which might be stale after a rename)
+                config = load_project_config(project_root)
+                wf_entry = find_enclosing_workflow(project_root, config)
+                if wf_entry:
+                    # Use the slug or name from the entry (which is authoritative)
+                    workflow_selector = (wf_entry.get("meta") or {}).get("slug") or wf_entry.get("name")
+                    if workflow_selector:
+                        typer.echo(f"Detected workflow: {workflow_selector}")
         except ContextNotFoundError:
             pass  # Not inside a project
     

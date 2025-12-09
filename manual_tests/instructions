@@ -74,3 +74,23 @@ qv run workflow
 qv analyze band ../raw/si.bands.pp.dat.gnu --plot --format png --symmetry ../raw/bands.pw_run.out --scf ../raw/nscf.pw_run.out
 
 
+# ------------------------ graphene workflow ------------------------
+# export PYTHONSRC="/Users/up/quantumVITAS"
+qv init project --name graphene_project
+cd graphene_project
+qv import-structure $PYTHONSRC/tests/data/13_graphene/graphene.2_scf.in
+qv init workflow "graphene bands" --structure C
+cd workflows/graphene-bands
+qv init step scf
+qv analyze band
+
+qv configure workflow --name "graph"
+
+qv show-command $PYTHONSRC/tests/data/13_graphene/graphene.2_scf.in
+
+qv init step scf --no-defaults --CONTROL.calculation=scf --CONTROL.outdir=./outdir --CONTROL.prefix=graphene --CONTROL.pseudo_dir=/home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos --CONTROL.restart_mode=from_scratch --ELECTRONS.conv_thr=1e-10 --ELECTRONS.mixing_beta=0.3 --SYSTEM.degauss=0.0001 --SYSTEM.ecutrho=400.0 --SYSTEM.ecutwfc=40.0 --SYSTEM.occupations=smearing --SYSTEM.smearing=marzari-vanderbilt '--CARD.K_POINTS={"option":"automatic","data":[["12","12","1","0","0","0"]]}' --SPECIES.C.mass=12.0107 --SPECIES.C.pseudopot=C.pbe-n-kjpaw_psl.1.0.0.UPF
+
+qv show-command $PYTHONSRC/tests/data/13_graphene/graphene.3_bands.in
+qv show-command $PYTHONSRC/tests/data/13_graphene/graphene.4_bands_pp.in
+
+
