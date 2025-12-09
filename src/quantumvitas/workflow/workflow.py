@@ -223,43 +223,58 @@ def _build_step(
         step_file_path = step_resolved.absolute_path
         # Normal path: step_id is a real ULID, no migration needed
     except ResourceNotFoundError:
-        # Legacy fallback: step_id might be a name, not a ULID
-        migrated = True
-        
-        # Check for legacy step_file
-        legacy_step_file = step_data.get("step_file")
-        
-        # If legacy_step_file is not specified, infer a candidate old-style path
-        if not legacy_step_file:
-            candidate = (workflow_dir / "steps" / f"{step_id}.step.yaml").resolve()
-            if candidate.exists():
-                # Treat this as a legacy step_file
-                legacy_step_file = str(candidate.relative_to(workflow_dir))
-        
-        # If we have a legacy_step_file, load the step directly
-        if legacy_step_file:
-            step_file_path = (workflow_dir / legacy_step_file).resolve()
-            if not step_file_path.exists():
-                raise ValueError(f"Step '{step_id}' file not found at {step_file_path}")
-            
-            # Load step spec with resolver for legacy structure selector normalization
-            try:
-                config = load_project_config(project.root)
-                resolver = make_structure_selector_resolver(project.root, config=config)
-            except Exception:
-                resolver = None
-            
-            spec = StructureStepSpec.from_yaml(
-                step_file_path,
-                resolve_structure_selector=resolver,
-            )
-            # Here spec.meta.id is the real ULID for this step
-            new_step_id = spec.meta.id
-        else:
-            # No registry entry, no legacy path: real error
-            raise ValueError(
-                f"Step '{step_id}' not found in registry and no legacy step_file/candidate found"
-            )
+                # Legacy fallback: step_id might be a name, not a ULID
+                migrated = True
+                
+                # Check for legacy step_file
+                legacy_step_file = step_data.get("step_file")
+                
+                # If legacy_step_file is not specified, try to find step file by:
+                # 1. Try step_id as filename (if it's a name like "scf")
+                # 2. Scan all step files and match by ULID in meta.id
+                if not legacy_step_file:
+                    # First try: step_id as filename (legacy: id is name)
+                    candidate = (workflow_dir / "steps" / f"{step_id}.step.yaml").resolve()
+                    if candidate.exists():
+                        legacy_step_file = str(candidate.relative_to(workflow_dir))
+                    else:
+                        # Second try: scan step files and match by ULID
+                        steps_dir = workflow_dir / "steps"
+                        if steps_dir.exists():
+                            for step_file in steps_dir.glob("*.step.yaml"):
+                                try:
+                                    step_data_file = yaml.safe_load(step_file.read_text()) or {}
+                                    step_meta = step_data_file.get("meta", {})
+                                    if step_meta.get("id") == step_id:
+                                        legacy_step_file = str(step_file.relative_to(workflow_dir))
+                                        break
+                                except Exception:
+                                    continue
+                
+                # If we have a legacy_step_file, load the step directly
+                if legacy_step_file:
+                    step_file_path = (workflow_dir / legacy_step_file).resolve()
+                    if not step_file_path.exists():
+                        raise ValueError(f"Step '{step_id}' file not found at {step_file_path}")
+                    
+                    # Load step spec with resolver for legacy structure selector normalization
+                    try:
+                        config = load_project_config(project.root)
+                        resolver = make_structure_selector_resolver(project.root, config=config)
+                    except Exception:
+                        resolver = None
+                    
+                    spec = StructureStepSpec.from_yaml(
+                        step_file_path,
+                        resolve_structure_selector=resolver,
+                    )
+                    # Here spec.meta.id is the real ULID for this step
+                    new_step_id = spec.meta.id
+                else:
+                    # No registry entry, no legacy path: real error
+                    raise ValueError(
+                        f"Step '{step_id}' not found in registry and no legacy step_file/candidate found"
+                    )
     except Exception as e:
         # Other exceptions (not ResourceNotFoundError) - re-raise
         raise
