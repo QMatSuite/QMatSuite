@@ -50,10 +50,10 @@ export async function createDemoProject(
   await waitForHomeWelcome(page);
   
   // Step 2: Click "Browse Demo Gallery" button
-  // Scope to welcome screen to avoid duplicate test IDs in sidebar
+  // Use namespaced test ID (welcome-* instead of generic qv-btn-*)
   const welcomeContainer = page.getByTestId('qv-welcome');
   await expect(welcomeContainer).toBeVisible({ timeout: 10000 });
-  const demoGalleryBtn = welcomeContainer.getByTestId('qv-btn-demo-gallery');
+  const demoGalleryBtn = welcomeContainer.getByTestId('qv-welcome-btn-demo-gallery');
   await expect(demoGalleryBtn).toBeVisible({ timeout: 10000 });
   await demoGalleryBtn.click();
   

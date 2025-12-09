@@ -35,11 +35,11 @@ test.describe('E2E Test 1: Welcome Screen', () => {
     await expect(welcomeContainer).toBeVisible();
     
     // Verify all action buttons are present within the welcome screen
-    // Scope the search to the welcome container to avoid duplicate test IDs in sidebar
-    await expect(welcomeContainer.getByTestId('qv-btn-open-project')).toBeVisible();
-    await expect(welcomeContainer.getByTestId('qv-btn-create-new-project')).toBeVisible();
+    // Use namespaced test IDs (welcome-* instead of generic qv-btn-*)
+    await expect(welcomeContainer.getByTestId('qv-welcome-btn-open-project')).toBeVisible();
+    await expect(welcomeContainer.getByTestId('qv-welcome-btn-create-new-project')).toBeVisible();
     // Updated: "Create Demo Project" button is now "Browse Demo Gallery"
-    await expect(welcomeContainer.getByTestId('qv-btn-demo-gallery')).toBeVisible();
+    await expect(welcomeContainer.getByTestId('qv-welcome-btn-demo-gallery')).toBeVisible();
     
     // Verify the welcome title text
     const title = appPage.getByTestId('qv-welcome-title');
