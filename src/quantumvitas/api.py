@@ -30,11 +30,15 @@ from quantumvitas.core.resources import (
 from quantumvitas.core.resolution import (
     AmbiguousSelectorError,
     ResolvedResource,
+    ResourceNotFoundError,
     SelectorNotFoundError,
     resolve_project,
     resolve_structure,
     resolve_workflow,
     resolve_step,
+    require_structure,
+    require_workflow,
+    require_step,
     list_structures,
     list_workflows,
     list_steps,
@@ -42,7 +46,7 @@ from quantumvitas.core.resolution import (
 from quantumvitas.core.context import detect_enclosing_project
 from quantumvitas.core.project_utils import (
     ProjectConfigError,
-    ResourceNotFoundError,
+    ResourceNotFoundError as ProjectResourceNotFoundError,  # Legacy error from project_utils
     load_project_config,
     save_project_config,
     collect_slugs,
@@ -325,7 +329,7 @@ class QVService:
         structures.append(entry)
         save_project_config(project_root, config)
         
-        return resolve_structure(project_root, final_slug, config)
+        return require_structure(project_root, final_slug, config)
     
     @staticmethod
     def configure_structure(
@@ -391,7 +395,7 @@ class QVService:
     @staticmethod
     def get_structure(project_root: Path, selector: str) -> ResolvedResource:
         """Get a structure by selector."""
-        return resolve_structure(project_root, selector)
+        return require_structure(project_root, selector)
     
     # -------------------------------------------------------------------------
     # Workflow operations
@@ -453,7 +457,7 @@ class QVService:
             structure_id = None
             structure_name = None
             if structure_selector:
-                resolved_structure = resolve_structure(project_root, structure_selector, config)
+                resolved_structure = require_structure(project_root, structure_selector, config)
                 structure_id = resolved_structure.meta.id
                 structure_name = resolved_structure.meta.name
             
@@ -488,7 +492,7 @@ class QVService:
         workflows.append(entry)
         save_project_config(project_root, config)
         
-        return resolve_workflow(project_root, final_slug, config)
+        return require_workflow(project_root, final_slug, config)
     
     @staticmethod
     def configure_workflow(
@@ -636,8 +640,7 @@ class QVService:
                 # Use structure_id if available, else fall back to legacy structure selector
                 if wf_model.structure_id:
                     # Resolve structure_id to get selector for step
-                    from quantumvitas.core.resolution import resolve_structure
-                    resolved = resolve_structure(project_root, wf_model.structure_id)
+                    resolved = require_structure(project_root, wf_model.structure_id)
                     structure_selector = resolved.meta.slug
                 else:
                     structure_selector = wf_model.structure
@@ -659,7 +662,9 @@ class QVService:
         # Resolve structure selector to structure_id
         structure_id = None
         if structure_selector:
-            resolved_structure = resolve_structure(project_root, structure_selector, config)
+            from quantumvitas.core.project_utils import load_project_config
+            config = load_project_config(project_root)
+            resolved_structure = require_structure(project_root, structure_selector, config)
             structure_id = resolved_structure.meta.id
         
         spec = StructureStepSpec(
@@ -688,7 +693,7 @@ class QVService:
         ))
         save_workflow(wf_model, workflow_dir)
         
-        return resolve_step(project_root, workflow_selector, step_slug)
+        return require_step(project_root, workflow_selector, step_slug)
     
     @staticmethod
     def configure_step(
@@ -698,7 +703,7 @@ class QVService:
         **kwargs: Any,
     ) -> None:
         """Configure a step's parameters."""
-        step = resolve_step(project_root, workflow_selector, step_selector)
+        step = require_step(project_root, workflow_selector, step_selector)
         step_path = step.absolute_path
         
         data = yaml.safe_load(step_path.read_text()) or {}
@@ -720,8 +725,8 @@ class QVService:
         step_selector: str,
     ) -> None:
         """Delete a step (move to trash)."""
-        workflow = resolve_workflow(project_root, workflow_selector)
-        step = resolve_step(project_root, workflow_selector, step_selector)
+        workflow = require_workflow(project_root, workflow_selector)
+        step = require_step(project_root, workflow_selector, step_selector)
         
         # Move file to trash
         trash = project_root / "trash"
@@ -750,7 +755,7 @@ class QVService:
         step_selector: str,
     ) -> ResolvedResource:
         """Get a step by selector."""
-        return resolve_step(project_root, workflow_selector, step_selector)
+        return require_step(project_root, workflow_selector, step_selector)
     
     # -------------------------------------------------------------------------
     # Run operations
@@ -782,6 +787,19 @@ class QVService:
         from quantumvitas.workflow.runner import WorkflowRunner
         from quantumvitas.engine.registry import create_default_registry
         from quantumvitas.analysis.artifacts import clear_analysis_artifacts
+        
+        # Resolve workflow and check it has a structure
+        workflow_resolved = require_workflow(project_root, workflow_selector)
+        workflow_dir = workflow_resolved.absolute_path
+        workflow_yaml = workflow_dir / "workflow.yaml"
+        
+        if workflow_yaml.exists():
+            from quantumvitas.core.models import load_workflow
+            wf_model = load_workflow(workflow_dir, project_root)
+            if not wf_model.structure_id and not wf_model.structure:
+                raise QVServiceError(
+                    f"Workflow '{workflow_selector}' has no structure. Please set a structure for the workflow first."
+                )
         
         project = Project.open(project_root)
         workflow = project.get_workflow(workflow_selector)
@@ -845,17 +863,31 @@ class QVService:
         from quantumvitas.io import read_structure
         
         project_root = Path(project_root).resolve()
-        step = resolve_step(project_root, workflow_selector, step_selector)
-        workflow = resolve_workflow(project_root, workflow_selector)
+        step = require_step(project_root, workflow_selector, step_selector)
+        workflow = require_workflow(project_root, workflow_selector)
         
         spec = StructureStepSpec.from_yaml(step.absolute_path)
         
         # Resolve structure from spec
+        # Prefer structure_id (canonical), fall back to structure selector (legacy)
+        structure_id = spec.structure_id
         structure_selector = spec.structure
-        if not structure_selector:
-            raise QVServiceError(f"Step '{step_selector}' has no structure defined")
         
-        structure_resolved = resolve_structure(project_root, structure_selector)
+        if structure_id:
+            # Use structure_id to resolve structure
+            structure_resolved = require_structure(project_root, structure_id)
+        elif structure_selector:
+            # Legacy: use structure selector
+            structure_resolved = require_structure(project_root, structure_selector)
+        else:
+            # No structure at all - check if workflow has one
+            if workflow.structure_id:
+                structure_resolved = require_structure(project_root, workflow.structure_id)
+            else:
+                raise QVServiceError(
+                    f"Step '{step_selector}' has no structure defined and workflow '{workflow_selector}' has no structure. "
+                    "Please set a structure for the workflow or step."
+                )
         structure = read_structure(structure_resolved.absolute_path)
         
         # Generate QE input
@@ -1385,23 +1417,16 @@ class QVService:
                     entry["structure"] = wf_model.structure
                     entry["mode"] = wf_model.mode
                     entry["n_steps"] = len(wf_model.steps)
-                    # Use step_id (ULID) as canonical ID, fall back to legacy id (slug) if needed
                     entry["steps"] = [
                         {
-                            "id": s.step_id or s.id or f"step-{idx}",  # Ensure ID is always present
-                            "type": s.type or "unknown",
+                            "id": s.id,
+                            "type": s.type,
                             "step_file": s.step_file,
                         }
-                        for idx, s in enumerate(wf_model.steps)
+                        for s in wf_model.steps
                     ]
-                else:
-                    # Workflow directory doesn't exist - provide empty steps array
-                    entry["n_steps"] = 0
-                    entry["steps"] = []
             except Exception:
-                # Workflow details are optional, but ensure steps is always an array
-                entry["n_steps"] = 0
-                entry["steps"] = []
+                pass  # Workflow details are optional
             
             result.append(entry)
         
@@ -1570,7 +1595,7 @@ class QVService:
         from quantumvitas.workflow.naming import find_workflow_raw_dir
         
         project_root = Path(project_root).resolve()
-        workflow = resolve_workflow(project_root, workflow_selector)
+        workflow = require_workflow(project_root, workflow_selector)
         workflow_dir = workflow.absolute_path
         raw_dir = find_workflow_raw_dir(workflow_dir)
         
@@ -1620,7 +1645,7 @@ class QVService:
         from quantumvitas.workflow.naming import find_workflow_raw_dir
         
         project_root = Path(project_root).resolve()
-        workflow = resolve_workflow(project_root, workflow_selector)
+        workflow = require_workflow(project_root, workflow_selector)
         workflow_dir = workflow.absolute_path
         raw_dir = find_workflow_raw_dir(workflow_dir)
         
@@ -1707,7 +1732,7 @@ class QVService:
         from quantumvitas.workflow.naming import find_workflow_raw_dir
         
         project_root = Path(project_root).resolve()
-        workflow = resolve_workflow(project_root, workflow_selector)
+        workflow = require_workflow(project_root, workflow_selector)
         workflow_dir = workflow.absolute_path
         raw_dir = find_workflow_raw_dir(workflow_dir)
         
@@ -1787,7 +1812,7 @@ class QVService:
         from quantumvitas.workflow.naming import find_workflow_raw_dir
         
         project_root = Path(project_root).resolve()
-        workflow = resolve_workflow(project_root, workflow_selector)
+        workflow = require_workflow(project_root, workflow_selector)
         workflow_dir = workflow.absolute_path
         raw_dir = find_workflow_raw_dir(workflow_dir)
         
@@ -2771,14 +2796,9 @@ class QVService:
         
         steps = []
         for step_entry in wf_model.steps:
-            # Use step_id (ULID) as canonical ID, fall back to legacy id (slug) if needed
-            step_id = step_entry.step_id or step_entry.id
-            if not step_id:
-                # Skip steps without valid ID
-                continue
             steps.append({
-                "id": step_id,
-                "slug": step_entry.id or step_id,  # Use legacy id as slug if available
+                "id": step_entry.id,
+                "slug": step_entry.id,  # WorkflowStepEntry uses id as slug
                 "type": step_entry.type or "unknown",
                 "step_file": step_entry.step_file,
             })

@@ -35,9 +35,15 @@ from quantumvitas.core.context import (
     find_path_context_from_pwd,
     ContextNotFoundError,
 )
+from quantumvitas.core.resolution import (
+    ResourceNotFoundError,
+    require_workflow,
+    require_structure,
+    require_step,
+)
 from quantumvitas.core.project_utils import (
     ProjectConfigError,
-    ResourceNotFoundError,
+    ResourceNotFoundError as ProjectResourceNotFoundError,  # Legacy error
     ResourceContext,
     load_project_config,
     save_project_config,
@@ -531,17 +537,28 @@ def _render_override_summary(bundle: ParsedOverrides) -> str:
 
 
 def _resolve_structure_input(
-    project_root: Path, identifier: str
+    project_root: Path, identifier: Optional[str]
 ) -> tuple[PMGStructure, str]:
     """
     Load a structure either from a file path or from project metadata.
+    
+    Args:
+        project_root: Project root path
+        identifier: Structure identifier (path, name, slug, or ULID), or None
+        
+    Returns:
+        Tuple of (PMGStructure, structure_name)
     """
-
+    if not identifier:
+        raise ValueError("Structure identifier is required")
+    
     candidate = Path(identifier)
-    if candidate.exists():
+    # Check if it's a file (not a directory)
+    if candidate.exists() and candidate.is_file():
         structure = read_structure(candidate)
         return structure, candidate.stem
 
+    # Try to resolve via project metadata
     project = Project.open(project_root)
     ref = project.get_structure(identifier)
     structure = read_structure(ref.path)
@@ -943,7 +960,8 @@ def init_step_command(
             workflow_data.get("meta", {}).get("id") or
             workflow_data.get("id")
         )
-        # Structure is at top level in workflow.yaml (new format), or under workflow key (legacy)
+        # Structure: prefer structure_id (canonical), fall back to structure selector (legacy)
+        workflow_structure_id = workflow_data.get("structure_id")
         workflow_structure = workflow_data.get("structure") or workflow_data.get("workflow", {}).get("structure")
 
     # Resolve structure: use provided, or inherit from parent workflow
@@ -951,6 +969,14 @@ def init_step_command(
         structure_value = _resolve_structure_reference(
             structure, project_root, config if project_root else None
         )
+    elif workflow_structure_id:
+        # Workflow has structure_id - resolve it to get the selector for display
+        try:
+            resolved = require_structure(project_root, workflow_structure_id, config if project_root else None)
+            structure_value = resolved.meta.slug or resolved.meta.name
+            typer.echo(f"Using structure '{structure_value}' from workflow")
+        except ResourceNotFoundError as e:
+            raise typer.BadParameter(f"Workflow references structure_id '{workflow_structure_id}' which cannot be resolved: {e}") from e
     elif workflow_structure:
         structure_value = workflow_structure
         typer.echo(f"Using structure '{structure_value}' from workflow")
@@ -1048,15 +1074,19 @@ def init_step_command(
         species.update(bundle.species_overrides)
     
     # Resolve structure selector to structure_id
+    # If workflow has structure_id, use that directly (canonical)
     structure_id = None
-    if structure_value and project_root:
+    if workflow_structure_id and project_root:
+        # Workflow already has structure_id - use it directly (canonical reference)
+        structure_id = workflow_structure_id
+    elif structure_value and project_root:
+        # Resolve structure selector to structure_id
         try:
-            from quantumvitas.core.resolution import resolve_structure
-            resolved_structure = resolve_structure(project_root, structure_value, config if project_root else None)
+            resolved_structure = require_structure(project_root, structure_value, config if project_root else None)
             structure_id = resolved_structure.meta.id
-        except Exception:
-            # If resolution fails, keep structure selector for backwards compat
-            pass
+        except ResourceNotFoundError as e:
+            # Structure is required - fail clearly
+            raise typer.BadParameter(f"Structure not found: {e}")
     
     spec = StructureStepSpec(
         meta=meta_from_name("step", name=step_display_name, path=""),
@@ -1473,11 +1503,15 @@ def list_resources(
         if not step_summaries:
             typer.echo("    (no steps)")
             continue
-        for step_id, rel_path, step_meta in step_summaries:
-            slug_display = step_meta.slug if step_meta else "-"
-            step_line = f"    - {step_id} [{slug_display}] -> {rel_path or '(inline)'}"
+        for step_display_name, rel_path, step_meta in step_summaries:
+            # Display: step name [ULID] -> step_file
+            # ULID is the canonical identifier for qv delete step
+            step_id_display = step_meta.id if step_meta else "-"
+            step_line = f"    - {step_display_name} [{step_id_display}] -> {rel_path or '(inline)'}"
             if verbose and step_meta:
-                step_line += f" (id: {step_meta.id})"
+                # In verbose mode, also show slug if different from name
+                if step_meta.slug and step_meta.slug != step_meta.name:
+                    step_line += f" (slug: {step_meta.slug})"
             elif rel_path is None:
                 step_line += " (missing step_file)"
             typer.echo(step_line)
@@ -1500,6 +1534,13 @@ def _find_workflow_structures(workflow_dir: Path, proj: Project) -> list[str]:
 
 
 def _workflow_step_summaries(workflow_dir: Path) -> list[tuple[str, Optional[str], Optional[ResourceMeta]]]:
+    """
+    Get step summaries for a workflow.
+    
+    Returns list of (step_display_name, step_file, step_meta) tuples.
+    step_display_name: from step's meta.name if available, otherwise step type or "(unnamed)"
+    step_meta: ResourceMeta from step file (contains ULID)
+    """
     workflow_yaml = workflow_dir / "workflow.yaml"
     if not workflow_yaml.exists():
         return []
@@ -1509,18 +1550,35 @@ def _workflow_step_summaries(workflow_dir: Path) -> list[tuple[str, Optional[str
         return []
     summaries: list[tuple[str, Optional[str], Optional[ResourceMeta]]] = []
     for step_entry in data.get("steps", []):
-        step_id = step_entry.get("id") or "(unnamed)"
         rel_path = step_entry.get("step_file")
         step_meta: Optional[ResourceMeta] = None
+        step_display_name = "(unnamed)"
+        
+        # Try to load step file to get meta (name and ULID)
         if rel_path:
             spec_path = (workflow_dir / rel_path).resolve()
             if spec_path.exists():
                 try:
                     spec = StructureStepSpec.from_yaml(spec_path)
                     step_meta = spec.meta
+                    # Use step's own meta.name if available, otherwise fall back to step_type
+                    step_display_name = step_meta.name or spec.step_type or "(unnamed)"
                 except Exception:
-                    step_meta = None
-        summaries.append((step_id, rel_path, step_meta))
+                    # If we can't load the step file, try to infer from filename
+                    step_display_name = spec_path.stem.replace(".step", "") or "(unnamed)"
+        else:
+            # No step_file - try to get step_id (ULID) from entry
+            step_id_ulid = step_entry.get("step_id")
+            if step_id_ulid:
+                # We have ULID but no file - mark as missing
+                step_display_name = f"(missing: {step_id_ulid[:8]}...)"
+            else:
+                # Legacy: try old id field
+                legacy_id = step_entry.get("id")
+                if legacy_id:
+                    step_display_name = legacy_id
+        
+        summaries.append((step_display_name, rel_path, step_meta))
     return summaries
 
 
@@ -1877,28 +1935,66 @@ def delete_step_command(
     Remove a workflow step and move its step spec file to trash.
     
     The workflow is auto-detected from pwd if not specified with --workflow.
+    Step can be identified by ULID (step_id), step filename, or legacy slug.
     """
-    try:
-        ctx = resolve_resource(
-            "step", 
-            identifier=step_id,
-            parent_identifier=workflow,
-            project_path=project
-        )
-    except ResourceNotFoundError as exc:
-        raise typer.BadParameter(str(exc)) from exc
+    # Determine project root
+    if project:
+        project_root = Path(project).expanduser().resolve()
+    else:
+        try:
+            project_root = find_project_root()
+        except Exception as exc:
+            raise typer.BadParameter(str(exc)) from exc
     
-    project_root = ctx.project_root
-    config = ctx.config
-    workflow_entry = ctx.parent_entry
+    config = load_project_config(project_root)
+    
+    # Determine workflow
+    workflow_selector: Optional[str] = workflow
+    if not workflow_selector:
+        # Auto-detect from pwd
+        try:
+            wf_entry = find_enclosing_workflow(project_root, config)
+            if wf_entry:
+                workflow_selector = (wf_entry.get("meta") or {}).get("slug") or wf_entry.get("name")
+        except Exception:
+            pass
+    
+    if not workflow_selector:
+        raise typer.BadParameter(
+            "No workflow specified and not inside a workflow directory. "
+            "Specify --workflow <workflow> or run from inside a workflow directory."
+        )
+    
+    # Use require_step to find the step (handles ULID, filename, legacy slug)
+    try:
+        step_resolved = require_step(project_root, workflow_selector, step_id, config)
+    except ResourceNotFoundError as e:
+        raise typer.BadParameter(str(e)) from e
+    
+    # Get workflow entry for display
+    workflow_entry = find_workflow_entry(config, workflow_selector, project_root)
     workflow_dir = workflow_directory(project_root, workflow_entry)
     workflow_yaml = workflow_dir / "workflow.yaml"
+    
     if not workflow_yaml.exists():
         raise typer.BadParameter(f"workflow.yaml not found at {workflow_yaml}")
 
     data = yaml.safe_load(workflow_yaml.read_text()) or {}
     steps: list[dict] = data.get("steps") or []
-    target_step = next((step for step in steps if step.get("id") == step_id), None)
+    
+    # Find step by step_id (ULID) - this is the canonical reference
+    step_id_to_find = step_resolved.meta.id
+    target_step = None
+    for step in steps:
+        # Match by step_id (ULID) - canonical reference
+        if step.get("step_id") == step_id_to_find:
+            target_step = step
+            break
+        # Fallback: match by legacy id field
+        if step.get("id") == step_id_to_find:
+            target_step = step
+            break
+    
     if not target_step:
         wf_name = entry_display_name(workflow_entry)
         raise typer.BadParameter(f"Step '{step_id}' not found in workflow '{wf_name}'.")
@@ -3048,7 +3144,7 @@ def analyze_band_command(
             "Cannot resolve --workflow without being in a project. Use --project to specify project root."
         )
     
-    # Call QVService
+    # Call QVService (will raise ResourceNotFoundError if workflow not found)
     try:
         result = QVService.analyze_band(
             project_root=project_root,
@@ -3792,7 +3888,26 @@ def _execute_step_spec(
             spec_copy.species_overrides or {}, bundle.species_overrides, remove=False
         )
 
-    structure, struct_name = _resolve_structure_input(project_root, spec_copy.structure)
+    # Resolve structure: prefer structure_id (canonical), fall back to structure selector (legacy)
+    structure_identifier = None
+    if spec_copy.structure_id:
+        # Use structure_id to resolve structure
+        try:
+            resolved = require_structure(project_root, spec_copy.structure_id)
+            structure_identifier = resolved.meta.slug or resolved.meta.name
+        except ResourceNotFoundError:
+            # Fall back to structure selector if structure_id resolution fails
+            structure_identifier = spec_copy.structure
+    else:
+        structure_identifier = spec_copy.structure
+    
+    if not structure_identifier:
+        raise typer.BadParameter(
+            f"Step spec at {spec_path} has no structure defined. "
+            "Please set a structure for the step or its parent workflow."
+        )
+    
+    structure, struct_name = _resolve_structure_input(project_root, structure_identifier)
     qe_input, _ = generate_qe_input_from_spec(
         structure=structure,
         spec=spec_copy,

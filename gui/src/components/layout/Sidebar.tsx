@@ -177,10 +177,10 @@ export function Sidebar({
                 <span className="sidebar__action-icon">📂</span>
                 Open Project…
               </button>
-              <button
+            <button
                 className="sidebar__action-btn"
-                onClick={onCreateProject}
-                disabled={isLoading}
+              onClick={onCreateProject}
+              disabled={isLoading}
                 title="Create a new QE project"
                 data-testid="qv-sidebar-btn-create-new-project"
               >
@@ -196,7 +196,7 @@ export function Sidebar({
               >
                 <span className="sidebar__action-icon">🎨</span>
                 Demo Gallery…
-              </button>
+            </button>
             </div>
           )}
         </div>
