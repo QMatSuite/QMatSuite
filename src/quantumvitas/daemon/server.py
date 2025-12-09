@@ -290,6 +290,14 @@ class QVDaemon:
                 error={"code": "service_error", "message": str(e)},
             )
         except FileNotFoundError as e:
+            # Check if this is a project-missing error
+            error_str = str(e).lower()
+            if "project.qv.yml" in error_str or "project" in error_str:
+                return RPCResponse(
+                    id=request.id,
+                    ok=False,
+                    error={"code": "project_missing", "message": str(e), "kind": "project_missing"},
+                )
             return RPCResponse(
                 id=request.id,
                 ok=False,
@@ -1259,7 +1267,15 @@ class QVDaemon:
             raise ValueError(f"Missing required field: {key}")
         path = Path(value).resolve()
         if not path.exists():
+            # Provide more specific error for project roots
+            if key == "project_root":
+                raise FileNotFoundError(f"Project folder not found: {path}. The project may have been deleted or moved.")
             raise FileNotFoundError(f"Path not found: {path}")
+        # For project_root, also check that project.qv.yml exists
+        if key == "project_root":
+            config_file = path / "project.qv.yml"
+            if not config_file.exists():
+                raise FileNotFoundError(f"Project configuration not found: {config_file}. This folder is not a valid QuantumVITAS project.")
         return path
     
     def _require_str(self, payload: Dict[str, Any], key: str) -> str:

@@ -227,8 +227,24 @@ def materialize_project_from_snapshot(
     original_name = project_meta.get("name", "project")
     project_name = new_project_name or original_name
     project_slug = slugify(project_name)
+    
+    # Find a unique directory name (add suffix if needed)
     project_dir = parent_dir / project_slug
-    project_dir.mkdir(parents=True, exist_ok=True)
+    if project_dir.exists():
+        # Directory exists - find unique name with suffix
+        suffix = 2
+        while True:
+            candidate = parent_dir / f"{project_slug}-{suffix}"
+            if not candidate.exists():
+                project_dir = candidate
+                project_name = f"{project_name}-{suffix}"
+                project_slug = f"{project_slug}-{suffix}"
+                break
+            suffix += 1
+            if suffix > 100:  # Safety limit
+                raise RuntimeError(f"Could not find unique project name for {project_slug}")
+    
+    project_dir.mkdir(parents=True, exist_ok=False)
     
     # Build ULID mapping: old_id -> new_id
     id_mapping: Dict[str, str] = {}

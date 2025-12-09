@@ -134,6 +134,23 @@
   border-color: var(--color-primary);
 }
 
+.step-select-hint {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.no-scf-steps {
+  font-size: 0.85rem;
+  color: var(--text-tertiary);
+  font-style: italic;
+  margin: 0;
+  padding: 8px;
+  background: var(--bg-secondary);
+  border-radius: 6px;
+  text-align: center;
+}
+
 /* Load Button */
 .load-button {
   padding: 12px 16px;

@@ -809,6 +809,19 @@ export function AnalysisPanel({
   // Track last auto-loaded workflow to prevent infinite loops
   const lastAutoLoadedRef = useRef<string | null>(null);
   
+  // Track analysis type changes to trigger reload
+  const lastAnalysisTypeRef = useRef<AnalysisTypeUI>(analysisType);
+  
+  // Helper: Get only SCF-type steps from workflow
+  const scfSteps = useMemo(() => {
+    if (!selectedWorkflow?.steps) return [];
+    return selectedWorkflow.steps.filter(step => {
+      const t = step.type?.toLowerCase() || '';
+      // Include scf, relax, vc-relax, etc. (pw.x based calculations with SCF data)
+      return t === 'scf' || t === 'relax' || t === 'vc-relax' || t === 'nscf';
+    });
+  }, [selectedWorkflow]);
+  
   // Update analysis type when defaultAnalysis changes (e.g., from demo project)
   useEffect(() => {
     if (defaultAnalysis) {
@@ -954,6 +967,34 @@ export function AnalysisPanel({
     }
   }, [selectedWorkflow, analysisType, selectedStep, onLoadScf, onLoadDos, onLoadBands, ensureAnalysis, fetchReferenceData]);
   
+  // Auto-select first SCF step when entering SCF view or workflow changes
+  useEffect(() => {
+    if (analysisType === 'scf' && scfSteps.length > 0) {
+      // Auto-select first SCF step if current selection is invalid
+      const currentValid = scfSteps.some(s => s.id === selectedStep);
+      if (!currentValid) {
+        setSelectedStep(scfSteps[0].id);
+      }
+    }
+  }, [analysisType, scfSteps, selectedStep]);
+  
+  // Handle analysis type changes - reload data when type changes
+  useEffect(() => {
+    if (lastAnalysisTypeRef.current !== analysisType && selectedWorkflow && autoAnalysis) {
+      lastAnalysisTypeRef.current = analysisType;
+      // Clear data for the new type
+      if (analysisType === 'scf') {
+        setScfData(null);
+      } else if (analysisType === 'dos') {
+        setDosData(null);
+      } else if (analysisType === 'bands') {
+        setBandsData(null);
+      }
+      // Load the new analysis type
+      handleLoadAnalysis(analysisType);
+    }
+  }, [analysisType, selectedWorkflow, autoAnalysis, handleLoadAnalysis]);
+  
   // Auto-select analysis type and load when workflow changes
   useEffect(() => {
     if (selectedWorkflow && autoAnalysis) {
@@ -962,6 +1003,7 @@ export function AnalysisPanel({
         const detectedType = detectAnalysisType(selectedWorkflow);
         setAnalysisType(detectedType);
         lastAutoLoadedRef.current = selectedWorkflow.id;
+        lastAnalysisTypeRef.current = detectedType;
         
         // Reset previous data
         setScfData(null);
@@ -1028,20 +1070,28 @@ export function AnalysisPanel({
           )}
         </div>
         
-        {selectedWorkflow && analysisType === 'scf' && (
+        {selectedWorkflow && analysisType === 'scf' && scfSteps.length > 0 && (
           <div className="sidebar-section">
-            <h3 className="sidebar-title">Step</h3>
+            <h3 className="sidebar-title">SCF Step</h3>
             <select 
               value={selectedStep}
               onChange={(e) => setSelectedStep(e.target.value)}
               className="step-select"
             >
-              {selectedWorkflow.steps.map((step) => (
+              {scfSteps.map((step) => (
                 <option key={step.id} value={step.id}>
                   {step.id} ({step.type})
                 </option>
               ))}
             </select>
+            <span className="step-select-hint">
+              {scfSteps.length === 1 ? '1 SCF step' : `${scfSteps.length} SCF steps`}
+            </span>
+          </div>
+        )}
+        {selectedWorkflow && analysisType === 'scf' && scfSteps.length === 0 && (
+          <div className="sidebar-section">
+            <p className="no-scf-steps">No SCF steps in this workflow</p>
           </div>
         )}
         

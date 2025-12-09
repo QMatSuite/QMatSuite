@@ -468,3 +468,100 @@
 .sidebar--collapsed .sidebar__footer {
   justify-content: center;
 }
+
+/* Path Display (read-only) */
+.sidebar__path-display {
+  display: flex;
+  gap: 0;
+  align-items: stretch;
+}
+
+.sidebar__path-text {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  border-right: none;
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+}
+
+.sidebar__path-text--empty {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.sidebar__path-text--error {
+  border-color: var(--color-error);
+}
+
+.sidebar__reveal-button {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-color);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  background: var(--bg-button);
+  color: var(--text-secondary);
+  font-size: var(--text-base);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar__reveal-button:hover:not(:disabled) {
+  background: var(--bg-button-hover);
+  color: var(--text-primary);
+}
+
+.sidebar__reveal-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Action Buttons (always visible) */
+.sidebar__action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.sidebar__action-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2);
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+}
+
+.sidebar__action-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.sidebar__action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sidebar__action-icon {
+  width: 20px;
+  text-align: center;
+  font-size: var(--text-sm);
+}

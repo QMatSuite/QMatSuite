@@ -71,6 +71,10 @@ function App() {
   // View state
   const [currentView, setCurrentView] = useState<ViewType>('home');
   
+  // Home mode (welcome vs demo-gallery)
+  type HomeMode = 'welcome' | 'demo-gallery';
+  const [homeMode, setHomeMode] = useState<HomeMode>('welcome');
+  
   // Project state
   const [projectSummary, setProjectSummary] = useState<ProjectSummary | null>(null);
   const [projectLoaded, setProjectLoaded] = useState(false);
@@ -203,12 +207,6 @@ function App() {
   // Project Management
   // ==========================================================================
   
-  const handleProjectRootChange = useCallback((path: string) => {
-    setProjectRoot(path);
-    setProjectError(null);
-    localStorage.setItem('qv-project-root', path);
-  }, []);
-  
   // Add to recent projects
   const addToRecentProjects = useCallback((path: string) => {
     setRecentProjects(prev => {
@@ -257,95 +255,6 @@ function App() {
       setProjectError(response.error?.message || 'Failed to load project');
     }
   }, [qv, addToRecentProjects]);
-  
-  const handleLoadProject = useCallback(async () => {
-    if (!projectRoot) return;
-    
-    setIsLoadingProject(true);
-    setProjectError(null);
-    
-    // First try loading directly from the path
-    const response = await qv.getProjectSummary(projectRoot);
-    
-    if (response.ok && response.data) {
-      setIsLoadingProject(false);
-      setProjectSummary(response.data);
-      setProjectLoaded(true);
-      setProjectError(null);
-      setDebugResult(response as QVResponse);
-      setStructures(null);
-      setWorkflows(null);
-      setSelectedStructure(null);
-      setSelectedWorkflow(null);
-      addToRecentProjects(projectRoot);
-      window.qv?.setProject?.(projectRoot);
-      return;
-    }
-    
-    // Not a project directly - search up for project root
-    const findResponse = await qv.call('find_project_root', { start_dir: projectRoot });
-    
-    if (findResponse.ok && findResponse.data?.found && findResponse.data?.project_root) {
-      // Found a project in parent directory
-      const foundRoot = findResponse.data.project_root;
-      setProjectRoot(foundRoot);
-      localStorage.setItem('qv-project-root', foundRoot);
-      
-      const parentResponse = await qv.getProjectSummary(foundRoot);
-      
-      if (parentResponse.ok && parentResponse.data) {
-        setIsLoadingProject(false);
-        setProjectSummary(parentResponse.data);
-        setProjectLoaded(true);
-        setProjectError(null);
-        setStructures(null);
-        setWorkflows(null);
-        setSelectedStructure(null);
-        setSelectedWorkflow(null);
-        addToRecentProjects(foundRoot);
-        window.qv?.setProject?.(foundRoot);
-        showNotification(`Loaded project from: ${foundRoot}`, 'success');
-        return;
-      }
-    }
-    
-    setIsLoadingProject(false);
-    
-    // No project found - offer to create one
-    const shouldCreate = window.confirm(
-      `This folder is not a QuantumVITAS project.\n\nWould you like to create a new project here?\n\n${projectRoot}`
-    );
-    
-    if (shouldCreate) {
-      setIsLoadingProject(true);
-      const createResponse = await qv.call('create_project', {
-        target_dir: projectRoot,
-      });
-      
-      if (createResponse.ok && createResponse.data) {
-        const loadResponse = await qv.getProjectSummary(projectRoot);
-        setIsLoadingProject(false);
-        
-        if (loadResponse.ok && loadResponse.data) {
-          setProjectSummary(loadResponse.data);
-          setProjectLoaded(true);
-          setProjectError(null);
-          setStructures(null);
-          setWorkflows(null);
-          addToRecentProjects(projectRoot);
-          showNotification('Project created successfully!', 'success');
-          window.qv?.setProject?.(projectRoot);
-        } else {
-          setProjectError(loadResponse.error?.message || 'Failed to load created project');
-        }
-      } else {
-        setIsLoadingProject(false);
-        setProjectError(createResponse.error?.message || 'Failed to create project');
-      }
-    } else {
-      setProjectError(null);
-    }
-  }, [qv, projectRoot, addToRecentProjects, showNotification]);
   
   const handleBrowseAndLoad = useCallback(async () => {
     if (!window.qv?.openDirectory) return;
@@ -472,9 +381,10 @@ function App() {
     }
   }, [qv, addToRecentProjects]);
   
-  // Create demo Si project - handled by ProjectSummaryPanel (opens gallery sub-view)
-  const handleCreateDemoProject = useCallback(() => {
-    // This is now handled by ProjectSummaryPanel's homeMode state
+  // Open demo gallery - can be triggered from sidebar or welcome screen
+  const handleOpenDemoGallery = useCallback(() => {
+    setHomeMode('demo-gallery');
+    setCurrentView('home');
   }, []);
   
   // ==========================================================================
@@ -927,9 +837,11 @@ function App() {
             isLoading={isLoadingProject}
             error={projectError}
             recentProjects={recentProjects}
+            homeMode={homeMode}
+            onHomeModeChange={setHomeMode}
             onBrowseAndLoad={handleBrowseAndLoad}
             onCreateProject={() => setShowCreateProject(true)}
-            onCreateDemoProject={handleCreateDemoProject}
+            onOpenDemoGallery={handleOpenDemoGallery}
             onOpenRecentProject={handleOpenRecentProject}
             onRemoveRecentProject={removeFromRecentProjects}
             onNavigateToStructure={handleNavigateToStructure}
@@ -1118,10 +1030,9 @@ function App() {
             projectRoot={projectRoot}
             projectLoaded={projectLoaded}
             projectError={projectError}
-            onProjectRootChange={handleProjectRootChange}
-            onLoadProject={handleLoadProject}
             onBrowseAndLoad={handleBrowseAndLoad}
             onCreateProject={() => setShowCreateProject(true)}
+            onOpenDemoGallery={handleOpenDemoGallery}
             currentView={currentView}
             onViewChange={setCurrentView}
             daemonStatus={daemonStatus}

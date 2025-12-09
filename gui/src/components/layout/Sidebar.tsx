@@ -1,9 +1,9 @@
 /**
  * Sidebar - Navigation and controls for QuantumVITAS
  * 
- * Simplified design:
- * - Project path input with Browse button
- * - Load Project / Create Project actions
+ * Design:
+ * - Read-only project path display with Reveal button
+ * - Always-visible project action buttons (Open/Create/Demo)
  * - View tabs for navigation
  * - Connection status
  * - Running jobs indicator
@@ -22,10 +22,9 @@ interface SidebarProps {
   projectRoot: string;
   projectLoaded: boolean;
   projectError: string | null;
-  onProjectRootChange: (path: string) => void;
-  onLoadProject: () => void;
   onBrowseAndLoad: () => void;
   onCreateProject: () => void;
+  onOpenDemoGallery: () => void;
   currentView: ViewType;
   onViewChange: (view: ViewType) => void;
   daemonStatus: DaemonStatus | null;
@@ -37,10 +36,9 @@ export function Sidebar({
   projectRoot,
   projectLoaded,
   projectError,
-  onProjectRootChange,
-  onLoadProject,
   onBrowseAndLoad,
   onCreateProject,
+  onOpenDemoGallery,
   currentView,
   onViewChange,
   daemonStatus,
@@ -71,6 +69,18 @@ export function Sidebar({
     setIsCollapsed(prev => !prev);
   }, []);
   
+  // Reveal project folder in system file manager
+  const handleRevealProject = useCallback(() => {
+    if (projectRoot && projectLoaded) {
+      window.qv?.revealPath?.(projectRoot);
+    }
+  }, [projectRoot, projectLoaded]);
+  
+  // Get display path (truncated for long paths)
+  const displayPath = projectRoot 
+    ? (projectRoot.length > 35 ? '...' + projectRoot.slice(-32) : projectRoot)
+    : 'No project loaded';
+  
   return (
     <div className={`sidebar ${isCollapsed ? 'sidebar--collapsed' : ''}`}>
       {/* Header */}
@@ -92,30 +102,24 @@ export function Sidebar({
         )}
       </div>
       
-      {/* Project Path Input - hidden when collapsed */}
+      {/* Project Path Display - read-only with reveal button */}
       {!isCollapsed && (
         <div className="sidebar__section">
           <label className="sidebar__label">
             Project Root
-            <div className="sidebar__input-group">
-              <input
-                type="text"
-                className={`sidebar__input sidebar__input--with-button ${projectError ? 'sidebar__input--error' : ''}`}
-                value={projectRoot}
-                onChange={(e) => onProjectRootChange(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && projectRoot.trim()) {
-                    onLoadProject();
-                  }
-                }}
-                placeholder="/path/to/project (press Enter to load)"
-                disabled={isLoading}
-              />
+            <div className="sidebar__path-display">
+              <span 
+                className={`sidebar__path-text ${!projectLoaded ? 'sidebar__path-text--empty' : ''} ${projectError ? 'sidebar__path-text--error' : ''}`}
+                title={projectRoot || 'No project loaded'}
+              >
+                {displayPath}
+              </span>
               <button
-                className="sidebar__browse-button"
-                onClick={onBrowseAndLoad}
-                disabled={isLoading}
-                title="Browse and load project"
+                className="sidebar__reveal-button"
+                onClick={handleRevealProject}
+                disabled={!projectLoaded || !projectRoot}
+                title={projectLoaded ? 'Reveal in Finder/Explorer' : 'No project loaded'}
+                data-testid="qv-btn-reveal-project"
               >
                 📂
               </button>
@@ -127,8 +131,9 @@ export function Sidebar({
         </div>
       )}
       
-      {/* Project Actions - icon-only when collapsed */}
+      {/* Project Actions - always visible */}
       <div className="sidebar__section">
+        {!isCollapsed && <h2 className="sidebar__section-title">Project</h2>}
         <div className="sidebar__actions">
           {isCollapsed ? (
             <>
@@ -137,6 +142,7 @@ export function Sidebar({
                 onClick={onBrowseAndLoad}
                 disabled={isLoading}
                 title="Open Project"
+                data-testid="qv-btn-open-project"
               >
                 📂
               </button>
@@ -144,19 +150,54 @@ export function Sidebar({
                 className="sidebar__icon-button"
                 onClick={onCreateProject}
                 disabled={isLoading}
-                title="Create Project"
+                title="Create New Project"
+                data-testid="qv-btn-create-new-project"
               >
                 ✨
               </button>
+              <button
+                className="sidebar__icon-button"
+                onClick={onOpenDemoGallery}
+                disabled={isLoading}
+                title="Browse Demo Gallery"
+                data-testid="qv-btn-demo-gallery"
+              >
+                🎨
+              </button>
             </>
           ) : (
-            <button
-              className="sidebar__button"
-              onClick={onCreateProject}
-              disabled={isLoading}
-            >
-              ✨ Create Project
-            </button>
+            <div className="sidebar__action-buttons">
+              <button
+                className="sidebar__action-btn"
+                onClick={onBrowseAndLoad}
+                disabled={isLoading}
+                title="Browse and load an existing project"
+                data-testid="qv-btn-open-project"
+              >
+                <span className="sidebar__action-icon">📂</span>
+                Open Project…
+              </button>
+              <button
+                className="sidebar__action-btn"
+                onClick={onCreateProject}
+                disabled={isLoading}
+                title="Create a new QE project"
+                data-testid="qv-btn-create-new-project"
+              >
+                <span className="sidebar__action-icon">✨</span>
+                Create New…
+              </button>
+              <button
+                className="sidebar__action-btn"
+                onClick={onOpenDemoGallery}
+                disabled={isLoading}
+                title="Browse ready-to-run demo projects"
+                data-testid="qv-btn-demo-gallery"
+              >
+                <span className="sidebar__action-icon">🎨</span>
+                Demo Gallery…
+              </button>
+            </div>
           )}
         </div>
       </div>

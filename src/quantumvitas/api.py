@@ -764,7 +764,7 @@ class QVService:
         
         # Clear analysis artifacts before running (cache invalidation)
         # This ensures fresh analysis is generated after the run completes
-        workflow_dir = workflow.directory
+        workflow_dir = workflow.dir
         if workflow_dir and workflow_dir.exists():
             clear_analysis_artifacts(workflow_dir)
         
