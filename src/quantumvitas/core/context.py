@@ -66,7 +66,16 @@ class PathContext:
     
     @property
     def workflow_selector(self) -> Optional[str]:
-        """Get workflow selector if inside a workflow."""
+        """
+        Get workflow selector if inside a workflow.
+        
+        .. deprecated:: 2025-12-XX
+            This property reads the selector from workflow.yaml, which may be stale after renames.
+            For CLI auto-detection, use `find_enclosing_workflow()` from `core/project_utils.py` instead,
+            which uses directory path matching against project.qv.yml (the source of truth).
+            
+            This property is kept for backward compatibility but should not be used for workflow resolution.
+        """
         node = self.workflow_node
         return node.selector if node else None
     
@@ -366,6 +375,13 @@ def get_project_root_from_pwd(start: Optional[Path] = None, max_depth: int = 20)
 def get_workflow_from_pwd(start: Optional[Path] = None) -> Optional[str]:
     """
     Get workflow selector if cwd is inside a workflow, None otherwise.
+    
+    .. deprecated:: 2025-12-XX
+        This function uses `PathContext.workflow_selector`, which reads from workflow.yaml
+        and may be stale after renames. Use `find_enclosing_workflow()` from `core/project_utils.py`
+        instead, which uses directory path matching against project.qv.yml.
+        
+        This function is kept for backward compatibility but should not be used for workflow resolution.
     """
     try:
         ctx = find_path_context_from_pwd(start)
