@@ -7178,248 +7178,442 @@ If something in the UX or code structure blocks you (e.g., missing test IDs, unc
 
 
 2025-12-08_prompt_1 (analysis):
-Prompt to Cursor:
+You’re working in the QuantumVITAS v2 repo (Python core + Electron/React GUI).
 
-You already know this codebase well (QuantumVITAS v2, Python core + Electron/React GUI).
-Please re-read AI_understanding.md sections about:
+I’m using you as a new AI, so:
 
-Analysis layer (SCF/DOS/bands parsers & plotting)
+0. First, re-learn the project
 
-GUI architecture (daemon RPC, AnalysisPanel)
+Please read these before coding:
 
-Demo projects & snapshots
+AI_understanding.md
 
-E2E tests (Playwright)
+Focus on: core architecture (QVService, daemon, CLI), analysis layer (SCF/DOS/Bands), GUI architecture, E2E tests, layering rules.
 
-I want to implement a clean “Automatic analysis” system that fits the existing architecture and UX.
-Please follow these constraints:
+docs/GUI_ARCHITECTURE.md (if present)
 
-GUI ➜ Electron ➜ Daemon ➜ QVService ➜ core/analysis
+Key code:
 
-GUI must only talk to the daemon via window.qv.* RPCs (no direct Python imports).
+src/quantumvitas/analysis/*
 
-The analysis layer stays the source of truth for parsing QE outputs; do not reimplement parsers in the GUI.
+src/quantumvitas/api.py
 
-1. Settings: “Automatic analysis” toggle
+src/quantumvitas/daemon/server.py
 
-Goal: Add a user preference that controls whether analysis runs automatically when opening the Analysis view.
+gui/src/components/panels/AnalysisPanel.tsx
 
-Requirements:
+gui/src/types/qv.ts
 
-Add a boolean setting automaticAnalysis in the GUI.
+E2E helpers/tests under gui/tests/e2e
 
-Surface it in the Settings panel as a toggle:
+Respect the layering:
+React → window.qv.* → Electron → daemon → QVService → core.
+No GUI → core imports.
 
-Label: "Automatic analysis"
+Goal
 
-Tooltip: "Automatically analyze workflow outputs when opening the Analysis view."
+Implement a clean analysis pipeline so the GUI can:
 
-Persist this setting using the existing GUI preference mechanism (likely localStorage or an app-level config).
+Treat analysis (parsing QE outputs) as a backend step that writes JSON artifacts.
 
-Do not write it into project.qv.yml; this is a per-user GUI preference.
+Treat plotting as “read JSON via RPC + render charts”.
 
-Wire it into App.tsx state and pass it down to AnalysisPanel.
+Have an automatic analysis option when entering the Analysis view.
 
-2. Backend: ensure_workflow_analysis RPC
+Be covered by unit tests + E2E tests.
 
-Introduce a unified “ensure” style RPC for analysis:
+Think carefully about design; you have freedom in naming and details, but keep it consistent with existing patterns.
 
-Add a QVService method, e.g. in src/quantumvitas/api.py:
+1. Analysis artifacts on disk
+
+Design a simple convention like:
+
+<project_root>/workflows/<workflow-slug>/analysis/scf.json
+
+<project_root>/workflows/<workflow-slug>/analysis/dos.json
+
+<project_root>/workflows/<workflow-slug>/analysis/bands.json
+
+Use existing dataclasses (SCFResult, DOSData, BandStructureData) and their .to_dict() to define the JSON schema, including units.
+
+If useful, create a small helper module (e.g. analysis/artifacts.py) that:
+
+Knows where JSON lives for (project_root, workflow, analysis_type)
+
+Reads/writes these JSON files.
+
+JSON should be the primary source for GUI plotting.
+
+2. Backend API: “ensure analysis” per workflow
+
+In src/quantumvitas/api.py add something like:
 
 def ensure_workflow_analysis(
     self,
     project_root: Path,
     workflow_selector: str,
-    analysis_kind: str,  # "bands" | "dos" | "scf"
+    analysis_type: Literal["scf", "dos", "bands"],
     force: bool = False,
-) -> Dict[str, Any]:
-    """
-    Ensure analysis data exists for given workflow & kind.
+) -> AnalysisStatus: ...
 
-    - Locate workflow, working_dir, and required raw output files.
-    - Determine canonical analysis JSON path:
-        bands -> analysis/bands.json
-        dos   -> analysis/dos.json
-        scf   -> analysis/scf.json
-    - If force=False:
-        - If JSON exists and is up-to-date (mtime >= all raw outputs):
-            return {"status": "ok", "updated": False, "path": "..."}
-    - Otherwise:
-        - Call the existing analysis parsers (parse_scf_output, parse_dos_data, parse_bands_gnu, etc.)
-        - Serialize to JSON using the existing .to_dict() structures
-        - Save to the canonical path, creating analysis/ directory if needed.
-        - Return {"status": "ok", "updated": True, "path": "..."}.
-    - On missing output or parsing errors:
-        - Raise a well-typed exception that daemon can translate to an error response.
-    """
 
+Desired behavior:
 
-Add a daemon command in src/quantumvitas/daemon/server.py:
+Resolve workflow using existing resolution.
 
-"ensure_workflow_analysis": self._handle_ensure_workflow_analysis,
+Map analysis_type → required step(s)/QE outputs (SCF output, DOS .dat, bands .dat.gnu + symmetry file, etc.).
 
+If JSON exists and force=False: return a small AnalysisStatus (ok, path, some summary).
 
-and implement _handle_ensure_workflow_analysis to:
+If JSON missing or force=True:
 
-Parse payload: project_root, workflow, analysis_kind, force.
+Use existing parsers to parse QE outputs.
 
-Call QVService.ensure_workflow_analysis.
+Serialize to JSON into the analysis/ folder.
 
-Return a JSON-safe dict with:
+Return AnalysisStatus with useful summary info.
 
-status: "ok" or "error"
+If outputs missing/broken: return a structured error, not a raw traceback.
 
-analysis_kind
+Wire this via daemon:
 
-updated
+Add RPC handler in src/quantumvitas/daemon/server.py (e.g. ensure_workflow_analysis).
 
-path (relative to project root)
+Add types to gui/src/types/qv.ts for request/response.
 
-message on error.
+Try to centralize mapping analysis_type → what to parse in a small helper instead of scattering it.
 
-Update gui/src/types/qv.ts:
+3. Make get_*_data use JSON artifacts
 
-Add an interface for the request/response.
+Refactor existing analysis RPCs:
 
-Extend QVCommandMap with "ensure_workflow_analysis".
+get_scf_convergence
 
-3. GUI: Analysis view behavior
+get_dos_data
 
-Update the React side to make use of this:
+get_band_structure_data
 
-Automatic analysis on entering Analysis view
+So they:
 
-In App.tsx (or wherever views are switched), when:
+First try to load from JSON artifact (via helper).
 
-The view becomes "analysis", and
+If JSON missing:
 
-automaticAnalysis === true, and
+Either call the same internal parser logic and write JSON on the fly,
 
-A workflow is currently selected (you already keep selected workflow state),
+Or return a clear “no analysis yet” error, and let GUI call ensure_workflow_analysis first.
 
-then:
+Pick one approach and keep it consistent.
+Important: don’t duplicate parsing logic; reuse the analysis layer.
 
-Determine the target analysisKind:
+4. GUI: automatic analysis behavior
 
-Use the current tab in AnalysisPanel if one is active ("bands" | "dos" | "scf").
+In AnalysisPanel + App + SettingsPanel:
 
-If nothing selected yet, fall back to:
+Add a boolean setting, e.g. automaticAnalysis, stored in React state and persisted (e.g. localStorage). Expose it in the Settings view.
 
-demo snapshot’s recommended_analysis, if available, or
+When user enters Analysis view and a workflow is selected:
 
-a sensible default (e.g. "bands" if bands data exists; otherwise "dos").
+If automaticAnalysis === true:
 
-Call the new RPC:
+Call ensure_workflow_analysis for the relevant type (start with bands; you can extend to scf/dos where applicable).
 
-await window.qv.ensure_workflow_analysis({
-  project_root: currentProjectRoot,
-  workflow: selectedWorkflowSlugOrId,
-  analysis_kind: currentAnalysisTab,
-  force: false,
-});
+Show a loading state (“Analyzing…” in the chart area).
 
+After success, call get_*_data and render charts.
 
-While this is in progress:
+If automaticAnalysis === false:
 
-Let AnalysisPanel show a loading state in the relevant chart area:
+Show a clear empty/error state:
 
-Text: "Automatic analysis is running…"
+e.g. “No analysis data yet. Click Run analysis to parse outputs.”
 
-Spinner.
+Wire the existing button(s) (“Load” / “Run analysis”) to:
 
-Do not block the rest of the UI (no modal).
+Call ensure_workflow_analysis(force=true) then reload data.
 
-As soon as RPC returns status: "ok":
+Manage states in AnalysisPanel:
 
-Use the existing analysis data RPCs (get_band_structure_data, get_dos_data, get_scf_convergence, etc.) to fetch the JSON and render the charts.
+idle (no workflow)
 
-If updated === false, just reuse existing JSON (or still call the getter; it’s cheap).
+analyzing (RPC in progress)
 
-If RPC returns an error:
+ready (data loaded)
 
-Show a toast with the error message.
+error (analysis failed, show message & retry action)
 
-In the chart area, show an inline error message:
+Parsing already occurs in Python; from the UI side it’s just async RPC with good UX.
 
-"Analysis failed. Please check workflow outputs or job logs."
+5. Cache invalidation when workflow is run
 
-Keep the “Run Analysis” button available.
+Update workflow execution logic (QVService.run_workflow and/or daemon wrapper):
 
-Run Analysis button semantics
+When a workflow is (re)run, invalidate old analysis for that workflow.
 
-You already have a “Run Analysis” button in the Analysis view.
+Simplest acceptable option:
 
-Rewire it to call the same RPC, but with force=true:
+On workflow run start or completion, clear the analysis/ directory for that workflow (delete JSON files for scf/dos/bands).
 
-await window.qv.ensure_workflow_analysis({
-  project_root,
-  workflow: selectedWorkflow,
-  analysis_kind: currentAnalysisTab,
-  force: true,
-});
+Document this behavior.
 
+6. Tests
+Python unit tests
 
-After it completes, refresh the chart using the same get_*_data API.
+Add tests in tests/unit, using existing small projects (ci test data or demo snapshots):
 
-UX rule: The button should be enabled even when automaticAnalysis is ON — it’s an explicit “re-analyze”.
+Test ensure_workflow_analysis for scf, dos, bands:
 
-Empty-state behavior when JSON is missing
+Creates JSON in the expected analysis/ folder.
 
-Inside AnalysisPanel, when no analysis JSON is found yet for selected workflow & analysis kind:
+JSON has reasonable keys/shape.
 
-If an automatic analysis is currently in progress → show “自动分析中…” loading state.
+Calling again with force=False does not redo work (either via mtime or a mocked parser).
 
-If automatic analysis is OFF or failed → show:
+Test integration with get_*_data:
 
-"No analysis data found for this workflow."
+With JSON present → returns expected data.
 
-"Click 'Run Analysis' to generate analysis from workflow outputs."
+With JSON missing → matches your chosen behavior (either auto-parse or explicit error).
 
-Keep the “Run Analysis” primary button prominent.
+E2E tests (Playwright)
 
-Consistency with jobs
+Extend/update gui/tests/e2e/demo_workflow_run.spec.ts:
 
-Do not turn analysis into a “job” at this stage; it is fast and local.
+After running the demo workflow and the job completes:
 
-Keep job system for QE runs only.
+Navigate to Analysis view.
 
-However, if analysis errors because raw outputs are missing / job failed, reuse job logs link or copy message from the job panel where reasonable.
+With automaticAnalysis enabled:
 
-4. Tests & docs
+Ensure charts appear without manual “Load” click for Bands.
 
-Add unit tests on the Python side:
+Assert Fermi energy is non-empty.
 
-For ensure_workflow_analysis:
+Assert k-path labels (e.g. Γ, X, L, etc.) are visible.
 
-Creates a temporary project with known test data (you already have tests/data/analysis_* and ci_test_data).
+Ensure no error toasts or console errors (the fixture already fails on console errors).
 
-Case 1: JSON missing → call ensure → JSON created, updated=True.
+Use existing helpers:
 
-Case 2: JSON up-to-date → call ensure → no re-run, updated=False.
+electronTest fixture (appPage)
 
-Case 3: Missing raw outputs → raises well-defined exception, daemon maps to error.
+navigateToView
 
-For TS/React:
+Demo project creation helper via Demo Gallery.
 
-At minimum, add a simple unit test or integration-style test (if you already have React tests) to verify:
+Stick to data-testid selectors.
 
-automaticAnalysis=true triggers an RPC call when Analysis view is opened.
+7. Docs
 
-Update AI_understanding.md:
+Update AI_understanding.md to briefly document:
 
-New section “Analysis caching & automatic analysis”:
+Where analysis JSON lives (analysis/ directory).
 
-Explain:
+ensure_workflow_analysis and its semantics.
 
-canonical JSON paths per analysis kind;
+Cache invalidation behavior on workflow runs.
 
-ensure_workflow_analysis semantics (force flag & mtime check);
+GUI behavior: automatic analysis vs manual analysis toggle.
 
-GUI automatic analysis behavior vs manual “Run Analysis” button;
+Please:
 
-recommended pattern for future analysis types.
+Think through the design first (you can leave yourself short comments in the code).
 
-Please keep the implementation clean and aligned with existing patterns (e.g., how other RPCs and hooks are structured). If you find a simpler way to reuse the existing analysis RPCs without duplication, feel free to do so — but keep the core semantics above intact.
+Implement in small steps, running unit tests and E2E tests as you go.
+
+Keep the architecture (GUI ↔ daemon ↔ QVService ↔ core) clean and consistent.
+
+
+
+All tasks are now complete. Let me provide a summary of what was implemented:
+Summary: Analysis Pipeline Implementation Complete ✅
+I've implemented the complete analysis pipeline for QuantumVITAS v2. Here's what was done:
+1. Analysis Artifacts Module (src/quantumvitas/analysis/artifacts.py)
+AnalysisArtifacts class with methods for:
+get_artifact_path() - standardized path convention
+write_artifact() - serialize dataclass to JSON
+read_artifact() - deserialize JSON to dataclass
+clear_artifacts() - delete all JSON for a workflow
+2. Backend API (src/quantumvitas/api.py)
+Added ensure_workflow_analysis() method with:
+Support for scf, dos, bands analysis types
+force parameter to re-parse even if JSON exists
+Returns AnalysisStatus with clear success/error info
+Refactored get_scf_convergence_data(), get_dos_data(), get_band_structure_data() to:
+First check for JSON artifacts
+Fall back to parsing raw QE outputs (and save JSON on-the-fly)
+Modified run_workflow() to clear analysis artifacts on re-run
+3. Daemon RPC (src/quantumvitas/daemon/server.py)
+Added ensure_workflow_analysis RPC handler
+4. GUI TypeScript Types (gui/src/types/qv.ts)
+Added AnalysisStatus interface
+Added ensure_workflow_analysis to QVCommandMap
+5. GUI Components
+AnalysisPanel.tsx: Now calls ensure_workflow_analysis before loading data, with proper loading/error states
+App.tsx: Added handleEnsureAnalysis callback and passes projectRoot to AnalysisPanel
+6. Tests
+Unit tests (tests/unit/test_analysis_artifacts.py): Comprehensive tests for artifact management and ensure_workflow_analysis
+E2E tests (gui/tests/e2e/demo_workflow_run.spec.ts): Test for automatic analysis loading
+7. Documentation (AI_understanding.md)
+New Section 24 documenting:
+JSON artifact locations and schema
+AnalysisArtifacts helper usage
+ensure_workflow_analysis API semantics
+Cache invalidation behavior
+GUI automatic vs manual analysis toggle
+Test coverage
+
+
+Goal
+
+Make demo projects have reference analysis and polish the Analysis UX:
+
+Demo projects (e.g. si_bands_demo, si_dos_demo) should ship reference JSON analysis so users can:
+
+See expected bands/DOS/SCF without running QE.
+
+Compare their run vs reference in the Analysis view.
+
+Analysis view should:
+
+Automatically use existing JSON artifacts for the current project (already implemented).
+
+Optionally overlay “Reference (demo)” curves when available.
+
+Have clear empty/error states and look professional.
+
+Backend tasks (Python)
+
+Reference artifacts for demos
+
+Use the existing demo snapshots in resources/demo_projects/
+(e.g. si_bands_demo.yml, si_dos_demo.yml).
+
+Store reference JSON next to them, e.g.:
+
+resources/demo_projects/
+  si_bands_demo.yml
+  si_bands_demo.bands.json
+  si_bands_demo.scf.json
+  si_dos_demo.yml
+  si_dos_demo.dos.json
+  si_dos_demo.scf.json
+
+
+Use the same schema as AnalysisArtifacts (SCFResult, DOSData, BandStructureData).
+
+Extend the snapshot meta schema in a backward-compatible way, e.g.:
+
+meta:
+  id: si_bands_demo
+  ...
+  reference_artifacts:
+    bands: si_bands_demo.bands.json
+    scf: si_bands_demo.scf.json
+
+
+When create_demo_project materializes a project, ensure project.qv.yml has something like:
+
+origin:
+  kind: demo
+  demo_id: si_bands_demo
+
+
+API: get_reference_analysis
+
+In QVService (api.py), add something like:
+
+def get_reference_analysis(
+    self,
+    project_root: Path,
+    workflow_selector: str,
+    analysis_type: Literal["bands", "dos", "scf"],
+) -> Optional[Dict[str, Any]]:
+    ...
+
+
+Logic (high level; you can design details):
+
+If project is not from a demo → return None.
+
+Map demo_id + analysis_type → JSON path from snapshot meta.
+
+Load the JSON and return a dict compatible with existing get_*_data() outputs.
+
+Expose this as a daemon RPC and wire types in gui/src/types/qv.ts.
+
+Frontend tasks (React GUI)
+
+Analysis overlay
+
+In AnalysisPanel + related hooks:
+
+When a workflow + analysis type is selected:
+
+Ensure current analysis via ensure_workflow_analysis (already there).
+
+Fetch current data via get_scf_convergence_data / get_dos_data / get_band_structure_data.
+
+Also call get_reference_analysis. Store both in local state.
+
+If referenceData == null: behave as today.
+
+If referenceData is present:
+
+Add a small toggle or legend for:
+
+“My run”
+
+“Reference (demo)”
+
+Plot both series (bands / DOS / SCF) with clear visual distinction
+(e.g. solid vs dashed, lower opacity for reference).
+
+If no current analysis exists yet but reference exists:
+
+Show only reference, with a clear message like:
+“Showing reference results from the demo. Run the workflow to generate your own data.”
+
+UX polish
+
+Per-tab empty/error states:
+
+Bands/DOS/SCF tab shows a specific “no data yet / need to run workflow” message instead of generic errors.
+
+Keep the layout clean and “professional” (titles, toolbars, legend/toggles aligned; no clutter).
+
+Tests & docs
+
+Python unit tests for get_reference_analysis:
+
+Non-demo project → None.
+
+Demo project created from si_bands_demo → valid dict for "bands" that can be parsed into BandStructureData.
+
+E2E:
+
+Extend an existing demo test (e.g. demo_workflow_run.spec.ts):
+
+Create si_bands_demo project via gallery helper.
+
+Go to Analysis → Bands.
+
+Verify reference series / toggle / legend exists.
+
+Before workflow run: reference visible, current absent.
+
+After workflow run: both visible, no console errors.
+
+Update AI_understanding.md with a short subsection describing:
+
+Where demo reference JSON lives.
+
+How get_reference_analysis works.
+
+How the GUI overlays current vs reference.
+
+You can adjust naming and minor details as long as it stays consistent with existing architecture and tests.
+
 
 
 

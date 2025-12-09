@@ -3560,5 +3560,333 @@ All tests use temporary directories and clean up after themselves.
 
 ---
 
-*Last updated: 2025-01-XX*
+## 24. Analysis Pipeline - JSON Artifacts System (2025-12-XX)
+
+### 24.1 Overview
+
+The analysis pipeline provides a clean separation between:
+1. **Analysis** (backend) - Parsing QE outputs and writing JSON artifacts
+2. **Plotting** (frontend) - Reading JSON via RPC and rendering charts
+
+This design ensures:
+- Parsed data persists across sessions
+- No redundant re-parsing of QE outputs
+- Clean error states when outputs are missing
+- Automatic and manual analysis modes
+
+### 24.2 JSON Artifact Locations
+
+Analysis JSON files are stored in a dedicated directory per workflow:
+
+```
+<project_root>/
+└── workflows/
+    └── <workflow-slug>/
+        ├── workflow.yaml
+        ├── raw/                    # QE output files
+        │   ├── scf.out
+        │   ├── bands.dat.gnu
+        │   └── ...
+        └── analysis/               # JSON artifacts
+            ├── scf.json
+            ├── dos.json
+            └── bands.json
+```
+
+### 24.3 JSON Schema (from Dataclasses)
+
+**SCF (`scf.json`)**:
+```json
+{
+  "converged": true,
+  "total_energy": -10.5,
+  "fermi_energy": 5.123,
+  "calculation_type": "scf",
+  "n_electrons": 8,
+  "n_kpoints": 10,
+  "ecutwfc": 50.0,
+  "iterations": [
+    {"iteration": 1, "total_energy": -10.4, "scf_accuracy": 1e-4},
+    {"iteration": 2, "total_energy": -10.5, "scf_accuracy": 1e-8}
+  ]
+}
+```
+
+**DOS (`dos.json`)**:
+```json
+{
+  "energies": [-10.0, -9.9, ...],
+  "dos": [0.0, 0.01, ...],
+  "idos": [0.0, 0.005, ...],
+  "fermi_energy": 5.123
+}
+```
+
+**Bands (`bands.json`)**:
+```json
+{
+  "k_distances": [0.0, 0.1, ...],
+  "energies": [[-5.0, -4.9, ...], [1.0, 1.1, ...]],
+  "n_bands": 8,
+  "n_kpoints": 100,
+  "fermi_energy": 5.123,
+  "high_symmetry_points": [
+    {"label": "Γ", "k_distance": 0.0, "k_coords": [0, 0, 0]},
+    {"label": "X", "k_distance": 1.5, "k_coords": [0.5, 0, 0.5]}
+  ]
+}
+```
+
+### 24.4 Backend: AnalysisArtifacts Helper
+
+**Module**: `src/quantumvitas/analysis/artifacts.py`
+
+```python
+from quantumvitas.analysis.artifacts import AnalysisArtifacts
+
+# Get expected path for an artifact
+path = AnalysisArtifacts.get_artifact_path(project_root, workflow_slug, "bands")
+
+# Write analysis data to JSON
+AnalysisArtifacts.write_artifact(project_root, workflow_slug, "bands", band_data)
+
+# Read analysis data from JSON (returns None if missing)
+band_data = AnalysisArtifacts.read_artifact(project_root, workflow_slug, "bands", BandStructureData)
+
+# Clear all artifacts for a workflow (called on re-run)
+AnalysisArtifacts.clear_artifacts(project_root, workflow_slug)
+```
+
+### 24.5 Backend API: ensure_workflow_analysis
+
+**Method**: `QVService.ensure_workflow_analysis()`
+
+```python
+from quantumvitas.api import QVService, AnalysisStatus
+
+status = QVService.ensure_workflow_analysis(
+    project_root=project_root,
+    workflow_selector="si-bands",
+    analysis_type="bands",  # "scf" | "dos" | "bands"
+    force=False,            # True to re-parse even if JSON exists
+    step_selector="scf",    # Required for SCF analysis
+)
+
+# AnalysisStatus contains:
+# - ok: bool (success/failure)
+# - message: str (human-readable)
+# - artifact_path: Path | None (JSON file location)
+# - data_available: bool (whether JSON has valid data)
+# - error_code: str | None ("file_not_found", "analysis_error", etc.)
+```
+
+**Behavior**:
+1. If JSON artifact exists and `force=False`: Return success immediately
+2. If JSON missing or `force=True`: Parse QE outputs, write JSON, return status
+3. If QE outputs missing: Return error with clear message
+
+### 24.6 RPC Handler
+
+**Daemon**: `src/quantumvitas/daemon/server.py`
+
+```python
+# RPC command: "ensure_workflow_analysis"
+# Payload:
+{
+  "project_root": "/path/to/project",
+  "workflow_selector": "si-bands",
+  "analysis_type": "bands",
+  "force": false,
+  "step_selector": null  # Only needed for SCF
+}
+
+# Response:
+{
+  "ok": true,
+  "message": "Bands analysis artifact created",
+  "artifact_path": "/path/to/project/workflows/si-bands/analysis/bands.json",
+  "data_available": true,
+  "error_code": null
+}
+```
+
+### 24.7 GUI TypeScript Types
+
+**File**: `gui/src/types/qv.ts`
+
+```typescript
+interface AnalysisStatus {
+  ok: boolean;
+  message: string;
+  artifact_path: string | null;
+  data_available: boolean;
+  error_code: string | null;
+}
+
+// In QVCommandMap:
+ensure_workflow_analysis: {
+  payload: {
+    project_root: string;
+    workflow_selector: string;
+    analysis_type: 'scf' | 'dos' | 'bands';
+    force?: boolean;
+    step_selector?: string;
+  };
+  result: AnalysisStatus;
+};
+```
+
+### 24.8 get_*_data Artifact Integration
+
+The existing analysis RPC methods now:
+1. **First** try to load from JSON artifact
+2. **If missing**, parse raw QE output and save JSON on-the-fly
+3. **Return** data in the same format as before
+
+This ensures backward compatibility while gaining caching benefits.
+
+### 24.9 Cache Invalidation
+
+**When workflow is run** (`QVService.run_workflow`):
+- `AnalysisArtifacts.clear_artifacts()` is called at the start
+- Deletes all JSON files in `<workflow>/analysis/`
+- Ensures old analysis data doesn't persist after re-run
+
+**Manual invalidation**:
+- Call `ensure_workflow_analysis(force=True)` to re-parse
+- "Run Analysis" button in GUI does this
+
+### 24.10 GUI Automatic Analysis Behavior
+
+**Setting**: `automaticAnalysis` (boolean, default: `true`)
+- Stored in `AppSettings` (localStorage)
+- Toggled in Settings → Analysis section
+
+**AnalysisPanel States**:
+| State | Condition | Display |
+|-------|-----------|---------|
+| `idle` | No workflow selected | "Select a workflow" placeholder |
+| `analyzing` | RPC in progress | Loading spinner + "Analyzing {type}..." |
+| `ready` | Data loaded | Chart renders |
+| `error` | Analysis failed | Error message + "Retry" button |
+
+**Flow when entering Analysis view**:
+1. If `automaticAnalysis === true` and workflow selected:
+   - Call `ensure_workflow_analysis(force=false)`
+   - Show "Analyzing..." state
+   - On success, call `get_*_data` and render chart
+2. If `automaticAnalysis === false`:
+   - Show "No analysis data yet" placeholder
+   - User must click "Run Analysis" button
+
+**"Run Analysis" button**:
+- Calls `ensure_workflow_analysis(force=true)` (re-parse)
+- Then calls `get_*_data` to refresh chart
+
+### 24.11 Unit Tests
+
+**File**: `tests/unit/test_analysis_artifacts.py`
+
+Tests cover:
+- `AnalysisArtifacts.get_artifact_path()` - correct path convention
+- `write_artifact()` / `read_artifact()` - roundtrip serialization
+- `clear_artifacts()` - deletion behavior
+- `ensure_workflow_analysis()` for scf/dos/bands
+- `force=False` behavior (no re-parse if JSON exists)
+- `force=True` behavior (always re-parse)
+- Integration with `get_*_data` (artifact-first loading)
+- Cache invalidation on `run_workflow`
+
+### 24.12 E2E Tests
+
+**File**: `gui/tests/e2e/demo_workflow_run.spec.ts`
+
+Test case: "automatic analysis loads charts without manual click"
+
+1. Enable `autoAnalysis` in Settings
+2. Create demo project (si_bands_demo)
+3. Run workflow and wait for completion
+4. Navigate to Analysis view
+5. Assert: "Analyzing..." loading state appears
+6. Assert: Bands chart renders automatically
+7. Assert: Fermi energy is displayed (non-empty)
+8. Assert: K-path labels (Γ, X, L, etc.) are visible
+
+### 24.13 Reference Analysis for Demo Projects
+
+Demo projects include pre-computed reference analysis data so users can:
+1. See expected bands/DOS/SCF results without running QE
+2. Compare their computed results with reference data
+
+**Reference JSON Locations**:
+
+```
+resources/demo_projects/
+├── si_bands_demo.yml              # Demo snapshot
+├── si_bands_demo.bands.json       # Reference bands data
+├── si_bands_demo.scf.json         # Reference SCF data
+├── si_dos_demo.yml
+├── si_dos_demo.dos.json           # Reference DOS data
+└── si_dos_demo.scf.json
+```
+
+**Snapshot Meta Schema Extension**:
+
+Demo snapshots now include a `reference_artifacts` field:
+
+```yaml
+meta:
+  id: si_bands_demo
+  title: Silicon band structure
+  reference_artifacts:
+    bands: si_bands_demo.bands.json
+    scf: si_bands_demo.scf.json
+```
+
+**Project Origin Tracking**:
+
+When `create_demo_project` materializes a project, it stores origin info in `project.qv.yml`:
+
+```yaml
+project:
+  settings:
+    origin:
+      kind: demo
+      demo_id: si_bands_demo
+      reference_artifacts:
+        bands: si_bands_demo.bands.json
+        scf: si_bands_demo.scf.json
+```
+
+**API: `get_reference_analysis`**:
+
+```python
+from quantumvitas.api import QVService
+
+result = QVService.get_reference_analysis(
+    project_root=project_root,
+    workflow_selector="si-bands",
+    analysis_type="bands",  # or "dos", "scf"
+)
+
+# Returns: Dict with reference data (same format as get_*_data)
+# or None if not a demo project or no reference for this type
+```
+
+**RPC Handler**: `get_reference_analysis` in daemon/server.py
+
+**GUI Behavior**:
+
+1. When loading analysis, `AnalysisPanel` fetches both current data and reference data
+2. If reference data exists:
+   - Bands: Reference curves shown as dashed gray lines behind current (solid) bands
+   - Toggle in header to show/hide reference (not yet user-controllable)
+3. If only reference data exists (workflow not run):
+   - Shows reference chart with notice: "Showing reference results from the demo. Run the workflow to generate your own data."
+
+**Unit Tests**: `tests/unit/test_analysis_artifacts.py::TestGetReferenceAnalysis`
+
+---
+
+*Last updated: 2025-12-XX*
 *Based on commit history through v2-python branch*

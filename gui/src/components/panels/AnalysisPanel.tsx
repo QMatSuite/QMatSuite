@@ -23,6 +23,7 @@ import type {
   DosData, 
   BandStructureData,
   WorkflowInfo,
+  AnalysisStatus,
 } from '../../types/qv';
 import './AnalysisPanel.css';
 
@@ -30,11 +31,16 @@ import './AnalysisPanel.css';
 // Types
 // =============================================================================
 
-type AnalysisType = 'scf' | 'dos' | 'bands';
+// Use local type for UI state, re-export from types for consistency
+type AnalysisTypeUI = 'scf' | 'dos' | 'bands';
+
+// Analysis panel state
+type AnalysisState = 'idle' | 'analyzing' | 'ready' | 'error';
 
 interface AnalysisPanelProps {
   workflows: WorkflowInfo[] | null;
   selectedWorkflow: WorkflowInfo | null;
+  projectRoot: string;
   onSelectWorkflow: (workflow: WorkflowInfo) => void;
   onLoadScf: (workflow: WorkflowInfo, step: string) => Promise<ScfConvergenceData | null>;
   onLoadDos: (workflow: WorkflowInfo) => Promise<DosData | null>;
@@ -355,10 +361,12 @@ export function DosChart({ data, isLoading }: DosChartProps) {
 
 interface BandsChartProps {
   data: BandStructureData | null;
+  referenceData?: BandStructureData | null;
+  showReference?: boolean;
   isLoading?: boolean;
 }
 
-export function BandsChart({ data, isLoading }: BandsChartProps) {
+export function BandsChart({ data, referenceData, showReference = true, isLoading }: BandsChartProps) {
   const [shiftFermi, setShiftFermi] = useState(true);
   const [energyRange, setEnergyRange] = useState<[number, number] | null>(null);
   
@@ -503,6 +511,52 @@ export function BandsChart({ data, isLoading }: BandsChartProps) {
     return data.high_symmetry_points.filter(pt => pt.k_distance != null);
   }, [data]);
   
+  // Reference chart data (for demo comparison)
+  const refChartData = useMemo(() => {
+    if (!showReference || !referenceData?.k_distances || !referenceData?.energies_ev) return [];
+    
+    const fermiShift = shiftFermi && referenceData.fermi_energy_ev ? referenceData.fermi_energy_ev : 0;
+    
+    return referenceData.k_distances.map((k, kIdx) => {
+      const point: { k: number; [key: string]: number } = { k };
+      referenceData.energies_ev.forEach((bandEnergies, bandIdx) => {
+        point[`refBand${bandIdx}`] = bandEnergies[kIdx] - fermiShift;
+      });
+      return point;
+    });
+  }, [referenceData, shiftFermi, showReference]);
+  
+  // Reference band lines config
+  const refBandLines = useMemo(() => {
+    if (!showReference || !referenceData?.energies_ev) return [];
+    
+    return referenceData.energies_ev.map((_, idx) => ({
+      dataKey: `refBand${idx}`,
+      stroke: '#9ca3af',  // Gray for reference
+    }));
+  }, [referenceData, showReference]);
+  
+  // Merged chart data: combine current and reference data
+  const mergedChartData = useMemo(() => {
+    // If we have current data, use it as base
+    if (chartData.length > 0) {
+      // Merge reference data if available
+      if (refChartData.length > 0 && chartData.length === refChartData.length) {
+        return chartData.map((point, idx) => ({
+          ...point,
+          ...refChartData[idx],
+        }));
+      }
+      return chartData;
+    }
+    // Only reference data available
+    return refChartData;
+  }, [chartData, refChartData]);
+  
+  // Determine if we have any data to show
+  const hasData = data !== null;
+  const hasReferenceOnly = !hasData && referenceData !== null;
+  
   if (isLoading) {
     return (
       <div className="chart-container chart-container--loading">
@@ -512,7 +566,7 @@ export function BandsChart({ data, isLoading }: BandsChartProps) {
     );
   }
   
-  if (!data) {
+  if (!data && !referenceData) {
     return (
       <div className="chart-container chart-container--empty">
         <div className="chart-placeholder">
@@ -524,15 +578,39 @@ export function BandsChart({ data, isLoading }: BandsChartProps) {
     );
   }
   
+  // Use reference data for display when current data is not available
+  const displayData = data || referenceData;
+  
   return (
     <div className="chart-container" data-testid="qv-analysis-bands-chart">
       <div className="chart-header">
-        <h3 className="chart-title">Band Structure</h3>
+        <h3 className="chart-title">
+          Band Structure
+          {hasReferenceOnly && <span className="reference-badge"> (Reference)</span>}
+        </h3>
         <div className="chart-info">
-          <span className="info-item">{data.n_bands} bands</span>
-          <span className="info-item">{data.n_kpoints} k-points</span>
+          <span className="info-item">{displayData?.n_bands} bands</span>
+          <span className="info-item">{displayData?.n_kpoints} k-points</span>
+          {referenceData && data && (
+            <label className="reference-toggle">
+              <input
+                type="checkbox"
+                checked={showReference}
+                onChange={() => {/* handled by parent */}}
+                disabled
+              />
+              Show reference
+            </label>
+          )}
         </div>
       </div>
+      
+      {hasReferenceOnly && (
+        <div className="reference-notice">
+          <span className="notice-icon">ℹ️</span>
+          Showing reference results from the demo. Run the workflow to generate your own data.
+        </div>
+      )}
       
       <div className="chart-controls">
         <label className="control-item">
@@ -540,7 +618,7 @@ export function BandsChart({ data, isLoading }: BandsChartProps) {
             type="checkbox"
             checked={shiftFermi}
             onChange={(e) => setShiftFermi(e.target.checked)}
-            disabled={!data.fermi_energy_ev}
+            disabled={!displayData?.fermi_energy_ev}
           />
           Shift to Fermi Level
         </label>
@@ -585,7 +663,7 @@ export function BandsChart({ data, isLoading }: BandsChartProps) {
       
       <div className="chart-wrapper">
         <ResponsiveContainer width="100%" height={400}>
-          <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 30 }}>
+          <LineChart data={mergedChartData} margin={{ top: 20, right: 30, left: 20, bottom: 30 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
             <XAxis 
               dataKey="k" 
@@ -618,7 +696,7 @@ export function BandsChart({ data, isLoading }: BandsChartProps) {
             />
             
             {/* Fermi level reference line */}
-            {data.fermi_energy_ev && (
+            {displayData?.fermi_energy_ev && (
               <ReferenceLine 
                 y={0} 
                 stroke="#ef4444" 
@@ -643,7 +721,22 @@ export function BandsChart({ data, isLoading }: BandsChartProps) {
               />
             ))}
             
-            {/* Band lines */}
+            {/* Reference band lines (dashed, gray) */}
+            {showReference && refBandLines.map((band, idx) => (
+              <Line 
+                key={`ref-${idx}`}
+                type="monotone" 
+                dataKey={band.dataKey} 
+                stroke={band.stroke}
+                strokeWidth={1}
+                strokeDasharray="4 2"
+                strokeOpacity={0.6}
+                dot={false}
+                isAnimationActive={false}
+              />
+            ))}
+            
+            {/* Current band lines (solid) */}
             {bandLines.map((band, idx) => (
               <Line 
                 key={idx}
@@ -660,16 +753,16 @@ export function BandsChart({ data, isLoading }: BandsChartProps) {
       </div>
       
       <div className="chart-stats">
-        {data.fermi_energy_ev && (
+        {displayData?.fermi_energy_ev && (
           <div className="stat-item" data-testid="qv-analysis-fermi">
             <span className="stat-label">Fermi Energy</span>
-            <span className="stat-value">{data.fermi_energy_ev.toFixed(4)} eV</span>
+            <span className="stat-value">{displayData.fermi_energy_ev.toFixed(4)} eV</span>
           </div>
         )}
         <div className="stat-item" data-testid="qv-analysis-kpath">
           <span className="stat-label">K-path</span>
           <span className="stat-value kpath-value">
-            {data.high_symmetry_points.map(pt => pt.label).join(' → ')}
+            {displayData?.high_symmetry_points.map(pt => pt.label).join(' → ')}
           </span>
         </div>
       </div>
@@ -684,6 +777,7 @@ export function BandsChart({ data, isLoading }: BandsChartProps) {
 export function AnalysisPanel({
   workflows,
   selectedWorkflow,
+  projectRoot,
   onSelectWorkflow,
   onLoadScf,
   onLoadDos,
@@ -692,7 +786,7 @@ export function AnalysisPanel({
   defaultAnalysis,
 }: AnalysisPanelProps & { defaultAnalysis?: string | null }) {
   // Initialize analysis type from defaultAnalysis if provided
-  const [analysisType, setAnalysisType] = useState<AnalysisType>(
+  const [analysisType, setAnalysisType] = useState<AnalysisTypeUI>(
     defaultAnalysis === 'bands' ? 'bands' : defaultAnalysis === 'dos' ? 'dos' : 'scf'
   );
   const [scfData, setScfData] = useState<ScfConvergenceData | null>(null);
@@ -701,21 +795,68 @@ export function AnalysisPanel({
   const [isLoading, setIsLoading] = useState(false);
   const [selectedStep, setSelectedStep] = useState<string>('scf');
   
+  // Reference data for demo projects
+  // Note: SCF and DOS reference overlay not yet implemented, using _ prefix
+  const [_refScfData, setRefScfData] = useState<ScfConvergenceData | null>(null);
+  const [_refDosData, setRefDosData] = useState<DosData | null>(null);
+  const [refBandsData, setRefBandsData] = useState<BandStructureData | null>(null);
+  const [showReference, _setShowReference] = useState(true);
+  
+  // Analysis pipeline state
+  const [analysisState, setAnalysisState] = useState<AnalysisState>('idle');
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  
   // Track last auto-loaded workflow to prevent infinite loops
   const lastAutoLoadedRef = useRef<string | null>(null);
   
   // Update analysis type when defaultAnalysis changes (e.g., from demo project)
   useEffect(() => {
     if (defaultAnalysis) {
-      const newType: AnalysisType = defaultAnalysis === 'bands' ? 'bands' : defaultAnalysis === 'dos' ? 'dos' : 'scf';
+      const newType: AnalysisTypeUI = defaultAnalysis === 'bands' ? 'bands' : defaultAnalysis === 'dos' ? 'dos' : 'scf';
       if (newType !== analysisType) {
         setAnalysisType(newType);
       }
     }
   }, [defaultAnalysis, analysisType]);
   
+  // Ensure analysis artifacts exist before loading data
+  const ensureAnalysis = useCallback(async (
+    workflow: WorkflowInfo, 
+    type: AnalysisTypeUI,
+    force: boolean = false
+  ): Promise<boolean> => {
+    if (!window.qv || !projectRoot) return false;
+    
+    setAnalysisState('analyzing');
+    setAnalysisError(null);
+    
+    try {
+      const response = await window.qv.request<AnalysisStatus>('ensure_workflow_analysis', {
+        project_root: projectRoot,
+        workflow: workflow.slug,
+        analysis_type: type,
+        force,
+      });
+      
+      if (response.ok && response.data?.ok) {
+        setAnalysisState('ready');
+        return true;
+      } else {
+        const errorMsg = response.data?.error || response.error?.message || 'Analysis failed';
+        setAnalysisError(errorMsg);
+        setAnalysisState('error');
+        return false;
+      }
+    } catch (e) {
+      const errorMsg = e instanceof Error ? e.message : 'Analysis failed';
+      setAnalysisError(errorMsg);
+      setAnalysisState('error');
+      return false;
+    }
+  }, [projectRoot]);
+  
   // Auto-detect best analysis type based on workflow's last step
-  const detectAnalysisType = useCallback((workflow: WorkflowInfo): AnalysisType => {
+  const detectAnalysisType = useCallback((workflow: WorkflowInfo): AnalysisTypeUI => {
     if (!workflow.steps || workflow.steps.length === 0) return 'scf';
     
     // Check last step type
@@ -740,12 +881,58 @@ export function AnalysisPanel({
     return 'scf';
   }, []);
   
-  const handleLoadAnalysis = useCallback(async (type?: AnalysisType) => {
+  // Fetch reference analysis data for demo projects
+  const fetchReferenceData = useCallback(async (workflow: WorkflowInfo, type: AnalysisTypeUI) => {
+    if (!window.qv || !projectRoot) return null;
+    
+    try {
+      const response = await window.qv.request<{ data: ScfConvergenceData | DosData | BandStructureData | null; has_reference: boolean }>('get_reference_analysis', {
+        project_root: projectRoot,
+        workflow: workflow.slug,
+        analysis_type: type,
+      });
+      
+      if (response.ok && response.data?.has_reference && response.data?.data) {
+        return response.data.data;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }, [projectRoot]);
+  
+  const handleLoadAnalysis = useCallback(async (type?: AnalysisTypeUI, force: boolean = false) => {
     if (!selectedWorkflow) return;
     
     const typeToLoad = type || analysisType;
     setIsLoading(true);
+    setAnalysisError(null);
+    
     try {
+      // Fetch reference data (doesn't require workflow to be run)
+      const refData = await fetchReferenceData(selectedWorkflow, typeToLoad);
+      if (typeToLoad === 'scf') {
+        setRefScfData(refData as ScfConvergenceData | null);
+      } else if (typeToLoad === 'dos') {
+        setRefDosData(refData as DosData | null);
+      } else if (typeToLoad === 'bands') {
+        setRefBandsData(refData as BandStructureData | null);
+      }
+      
+      // Try to ensure analysis artifacts exist
+      const analysisReady = await ensureAnalysis(selectedWorkflow, typeToLoad, force);
+      
+      if (!analysisReady) {
+        // If analysis failed but we have reference data, show reference only
+        if (refData) {
+          setAnalysisState('ready');
+          return;
+        }
+        // No reference and no analysis - error state
+        return;
+      }
+      
+      // Now load the current analysis data
       if (typeToLoad === 'scf') {
         const data = await onLoadScf(selectedWorkflow, selectedStep);
         setScfData(data);
@@ -756,10 +943,16 @@ export function AnalysisPanel({
         const data = await onLoadBands(selectedWorkflow);
         setBandsData(data);
       }
+      
+      setAnalysisState('ready');
+    } catch (e) {
+      const errorMsg = e instanceof Error ? e.message : 'Failed to load analysis';
+      setAnalysisError(errorMsg);
+      setAnalysisState('error');
     } finally {
       setIsLoading(false);
     }
-  }, [selectedWorkflow, analysisType, selectedStep, onLoadScf, onLoadDos, onLoadBands]);
+  }, [selectedWorkflow, analysisType, selectedStep, onLoadScf, onLoadDos, onLoadBands, ensureAnalysis, fetchReferenceData]);
   
   // Auto-select analysis type and load when workflow changes
   useEffect(() => {
@@ -770,30 +963,22 @@ export function AnalysisPanel({
         setAnalysisType(detectedType);
         lastAutoLoadedRef.current = selectedWorkflow.id;
         
-        // Load the detected analysis type
-        setIsLoading(true);
-        (async () => {
-          try {
-            if (detectedType === 'scf') {
-              const data = await onLoadScf(selectedWorkflow, selectedStep);
-              setScfData(data);
-            } else if (detectedType === 'dos') {
-              const data = await onLoadDos(selectedWorkflow);
-              setDosData(data);
-            } else if (detectedType === 'bands') {
-              const data = await onLoadBands(selectedWorkflow);
-              setBandsData(data);
-            }
-          } finally {
-            setIsLoading(false);
-          }
-        })();
+        // Reset previous data
+        setScfData(null);
+        setDosData(null);
+        setBandsData(null);
+        setAnalysisError(null);
+        
+        // Load the detected analysis type via the new pipeline
+        handleLoadAnalysis(detectedType);
       }
     } else if (!selectedWorkflow) {
       // Reset when no workflow is selected
       lastAutoLoadedRef.current = null;
+      setAnalysisState('idle');
+      setAnalysisError(null);
     }
-  }, [selectedWorkflow, autoAnalysis, detectAnalysisType, selectedStep, onLoadScf, onLoadDos, onLoadBands]);
+  }, [selectedWorkflow, autoAnalysis, detectAnalysisType, handleLoadAnalysis]);
   
   return (
     <div className="analysis-panel" data-testid="qv-analysis-view">
@@ -863,17 +1048,68 @@ export function AnalysisPanel({
         <button
           className="load-button"
           onClick={() => handleLoadAnalysis()}
-          disabled={!selectedWorkflow || isLoading}
+          disabled={!selectedWorkflow || isLoading || analysisState === 'analyzing'}
         >
-          {isLoading ? 'Loading...' : `Load ${analysisType.toUpperCase()}`}
+          {isLoading || analysisState === 'analyzing' ? 'Analyzing...' : `Load ${analysisType.toUpperCase()}`}
         </button>
+        
+        {/* Re-analyze button (force refresh) */}
+        {analysisState === 'ready' && (
+          <button
+            className="load-button load-button--secondary"
+            onClick={() => handleLoadAnalysis(undefined, true)}
+            disabled={isLoading}
+            title="Force re-parse analysis from QE outputs"
+          >
+            🔄 Re-analyze
+          </button>
+        )}
       </div>
       
       {/* Main Chart Area */}
       <div className="analysis-content">
-        {analysisType === 'scf' && <ScfConvergenceChart data={scfData} isLoading={isLoading} />}
-        {analysisType === 'dos' && <DosChart data={dosData} isLoading={isLoading} />}
-        {analysisType === 'bands' && <BandsChart data={bandsData} isLoading={isLoading} />}
+        {/* Error State */}
+        {analysisState === 'error' && analysisError && (
+          <div className="chart-container chart-container--error">
+            <div className="chart-placeholder chart-placeholder--error">
+              <span className="chart-icon">⚠️</span>
+              <h3>Analysis Error</h3>
+              <p className="analysis-error-message">{analysisError}</p>
+              <button
+                className="btn btn-primary"
+                onClick={() => handleLoadAnalysis(undefined, true)}
+                disabled={isLoading}
+              >
+                Retry Analysis
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {/* Analyzing State */}
+        {analysisState === 'analyzing' && (
+          <div className="chart-container chart-container--loading">
+            <div className="loading-spinner" />
+            <p>Analyzing workflow outputs...</p>
+            <p className="analysis-hint">Parsing QE output files and generating analysis data</p>
+          </div>
+        )}
+        
+        {/* Charts */}
+        {analysisState !== 'error' && analysisState !== 'analyzing' && (
+          <>
+            {analysisType === 'scf' && <ScfConvergenceChart data={scfData} isLoading={isLoading} />}
+            {analysisType === 'dos' && <DosChart data={dosData} isLoading={isLoading} />}
+            {analysisType === 'bands' && (
+              <BandsChart 
+                data={bandsData} 
+                referenceData={refBandsData} 
+                showReference={showReference}
+                isLoading={isLoading} 
+              />
+            )}
+          </>
+        )}
       </div>
     </div>
   );

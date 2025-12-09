@@ -7,9 +7,22 @@ This module provides:
 - Data structures for analysis results
 - K-path generation for band structure calculations
 - 3D crystal structure visualization
+- JSON artifact management for GUI integration
 """
 
 from .workflow_analysis import analyze_workflow
+from .artifacts import (
+    AnalysisType,
+    AnalysisStatus,
+    get_analysis_dir,
+    get_artifact_path,
+    artifact_exists,
+    read_artifact,
+    write_artifact,
+    delete_artifact,
+    clear_analysis_artifacts,
+    ensure_analysis_artifact,
+)
 from .parsers import (
     # Data classes
     SCFResult,
@@ -56,6 +69,17 @@ from .structure_viz import (
 __all__ = [
     # Workflow analysis
     "analyze_workflow",
+    # Analysis artifacts
+    "AnalysisType",
+    "AnalysisStatus",
+    "get_analysis_dir",
+    "get_artifact_path",
+    "artifact_exists",
+    "read_artifact",
+    "write_artifact",
+    "delete_artifact",
+    "clear_analysis_artifacts",
+    "ensure_analysis_artifact",
     # Data classes
     "SCFResult",
     "SCFIteration",
