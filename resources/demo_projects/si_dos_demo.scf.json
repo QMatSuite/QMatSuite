@@ -1,0 +1,34 @@
+{
+  "converged": true,
+  "iterations": [
+    {"iteration": 1, "total_energy_ry": -15.84921782, "scf_accuracy_ry": 5.8e-02, "cpu_time_s": 1.2, "wall_time_s": 1.3},
+    {"iteration": 2, "total_energy_ry": -15.85089412, "scf_accuracy_ry": 1.9e-03, "cpu_time_s": 0.9, "wall_time_s": 1.0},
+    {"iteration": 3, "total_energy_ry": -15.85092641, "scf_accuracy_ry": 3.6e-05, "cpu_time_s": 0.8, "wall_time_s": 0.9},
+    {"iteration": 4, "total_energy_ry": -15.85092718, "scf_accuracy_ry": 6.2e-07, "cpu_time_s": 0.7, "wall_time_s": 0.8},
+    {"iteration": 5, "total_energy_ry": -15.85092720, "scf_accuracy_ry": 8.9e-09, "cpu_time_s": 0.6, "wall_time_s": 0.7}
+  ],
+  "total_energy_ry": -15.85092720,
+  "fermi_energy_ev": 6.45,
+  "homo_ev": 6.45,
+  "lumo_ev": 7.13,
+  "band_gap_ev": 0.68,
+  "n_electrons": 8.0,
+  "n_kpoints": 29,
+  "n_bands": 8,
+  "ecutwfc_ry": 50.0,
+  "ecutrho_ry": 400.0,
+  "calculation_type": "scf",
+  "total_cpu_time_s": 4.2,
+  "total_wall_time_s": 4.7,
+  "units": {
+    "energy": "Ry",
+    "fermi": "eV",
+    "time": "s"
+  },
+  "_reference": {
+    "source": "Si FCC conventional cell, PBE functional",
+    "description": "Reference SCF convergence for Si DOS demo project",
+    "computed_with": "Quantum ESPRESSO 7.0"
+  }
+}
+

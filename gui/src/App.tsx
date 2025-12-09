@@ -1083,6 +1083,7 @@ function App() {
           <AnalysisPanel
             workflows={workflows}
             selectedWorkflow={selectedWorkflow}
+            projectRoot={projectRoot}
             onSelectWorkflow={handleSelectWorkflow}
             onLoadScf={handleLoadScf}
             onLoadDos={handleLoadDos}

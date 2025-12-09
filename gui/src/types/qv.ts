@@ -153,6 +153,32 @@ export interface ProjectSummary {
 // Data Types - Analysis
 // =============================================================================
 
+/** Analysis type for ensure_workflow_analysis */
+export type AnalysisType = 'scf' | 'dos' | 'bands';
+
+/** Result of ensure_workflow_analysis RPC call */
+export interface AnalysisStatus {
+  ok: boolean;
+  analysis_type: AnalysisType;
+  artifact_path: string | null;
+  parsed_fresh: boolean;  // True if just parsed (vs loaded from cache)
+  error: string | null;
+  summary: {
+    // SCF summary
+    converged?: boolean;
+    n_iterations?: number;
+    total_energy_ry?: number;
+    // DOS/bands summary
+    n_points?: number;
+    n_bands?: number;
+    n_kpoints?: number;
+    n_high_symmetry_points?: number;
+    // Common
+    fermi_energy_ev?: number | null;
+    energy_range_ev?: [number, number];
+  } | null;
+}
+
 export interface ScfIteration {
   iteration: number;
   total_energy_ry: number;
@@ -350,6 +376,18 @@ export interface QVCommandMap {
     result: { workflows: WorkflowInfo[]; count: number };
   };
   
+  // Analysis - ensure artifacts exist
+  ensure_workflow_analysis: {
+    payload: {
+      project_root: string;
+      workflow: string;
+      analysis_type: AnalysisType;
+      step?: string;
+      force?: boolean;
+    };
+    result: AnalysisStatus;
+  };
+  
   // Visualization data
   get_structure_vis: {
     payload: {
@@ -383,6 +421,18 @@ export interface QVCommandMap {
       step?: string;
     };
     result: BandStructureData;
+  };
+  
+  get_reference_analysis: {
+    payload: {
+      project_root: string;
+      workflow: string;
+      analysis_type: 'scf' | 'dos' | 'bands';
+    };
+    result: {
+      data: ScfConvergenceData | DosData | BandStructureData | null;
+      has_reference: boolean;
+    };
   };
   
   // Job management
