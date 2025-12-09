@@ -236,7 +236,7 @@ class TestStructureStepSpecStructureReferences:
         }
         
         # Should raise error if neither structure nor structure_id is provided
-        with pytest.raises(ValueError, match="missing required field 'structure' or 'structure_id'"):
+        with pytest.raises(ValueError, match="missing required field 'structure_id' or legacy 'structure' selector"):
             StructureStepSpec.from_dict(data)
 
 
@@ -287,10 +287,13 @@ class TestBackwardsCompatibility:
             "parent_workflow_id": generate_resource_id(),
         }))
         
-        # Should load without error
+        # Should load without error (legacy structure selector preserved in memory)
         spec = StructureStepSpec.from_yaml(step_yaml)
-        assert spec.structure == "si"
+        assert spec.structure == "si"  # Legacy selector preserved in memory
         assert spec.structure_id is None  # Not resolved without project_root
+        
+        # When project_root is provided, structure selector should be resolved to structure_id
+        # (This would require a project with a structure registered, so we test it separately)
     
     def test_workflow_save_preserves_legacy_structure(self, tmp_path):
         """Test that saving workflow preserves legacy structure field."""

@@ -482,6 +482,31 @@ def _resolve_structure_by_path(
     return None
 
 
+def make_structure_selector_resolver(
+    project_root: Path,
+    config: Optional[dict] = None,
+    index: Optional[ResourceIndex] = None,
+) -> callable:
+    """
+    Create a resolver function that converts structure selectors to structure_id (ULID).
+    
+    This is used for normalizing legacy 'structure' selectors in step specs to structure_id.
+    
+    Args:
+        project_root: Project root path
+        config: Optional pre-loaded config dict (loaded if None)
+        index: Optional ResourceIndex (built if None)
+        
+    Returns:
+        A callable(selector: str) -> str that resolves a structure selector to structure_id.
+        Raises ResourceNotFoundError if selector cannot be resolved.
+    """
+    def resolver(selector: str) -> str:
+        resolved = resolve_structure(project_root, selector, config=config, index=index)
+        return resolved.meta.id
+    return resolver
+
+
 def _structure_to_resolved(project_root: Path, entry: dict) -> ResolvedResource:
     """Convert a structure entry to ResolvedResource."""
     meta = entry.get("meta") or {}
@@ -645,15 +670,20 @@ def resolve_step(
     workflow_selector: str,
     step_selector: str,
     config: Optional[dict] = None,
+    index: Optional[ResourceIndex] = None,
 ) -> ResolvedResource:
     """
     Resolve a step selector within a workflow.
+    
+    Uses ResourceIndex (built from resource files) as the authoritative source.
+    Falls back to scanning step files for backwards compatibility.
     
     Args:
         project_root: Path to project root
         workflow_selector: Selector for parent workflow
         step_selector: ULID, id, name, or path to step YAML
         config: Optional pre-loaded config dict
+        index: Optional ResourceIndex (built if None)
         
     Returns:
         ResolvedResource for the step
@@ -661,19 +691,51 @@ def resolve_step(
     Raises:
         SelectorNotFoundError: If workflow or step not found
     """
+    # Resolve workflow first
     workflow = resolve_workflow(project_root, workflow_selector, config)
     workflow_dir = workflow.absolute_path
-    steps_dir = workflow_dir / "steps"
     
     step_selector = step_selector.strip()
     
-    # Strategy 1: Path
+    # Build index if not provided
+    if index is None:
+        index = build_resource_index(project_root)
+    
+    # Strategy 1: Try ResourceIndex first (preferred)
+    resource_id = index.resolve_id(step_selector, project_root)
+    if resource_id:
+        meta = index.by_id.get(resource_id)
+        if meta and meta.kind == "step":
+            # Verify this step belongs to the workflow
+            # Check if step path is within workflow directory
+            step_path = project_root / meta.path
+            if step_path.is_relative_to(workflow_dir):
+                # Find absolute path
+                abs_path = None
+                for path, path_id in index.by_path.items():
+                    if path_id == resource_id:
+                        abs_path = path
+                        break
+                
+                if abs_path is None:
+                    abs_path = step_path.resolve()
+                
+                # Build entry dict for backwards compatibility
+                try:
+                    entry_data = yaml.safe_load(abs_path.read_text()) or {}
+                except Exception:
+                    entry_data = {}
+                
+                return ResolvedResource(meta=meta, entry=entry_data, absolute_path=abs_path)
+    
+    # Strategy 2: Path (fallback for backwards compat)
     if _is_path_like(step_selector):
         step_path = _resolve_step_by_path(workflow_dir, step_selector)
         if step_path:
             return _step_path_to_resolved(step_path, project_root)
     
-    # Collect all step files
+    # Strategy 3: Scan step files (fallback for backwards compat)
+    steps_dir = workflow_dir / "steps"
     step_files = list(steps_dir.glob("*.step.yaml")) if steps_dir.exists() else []
     step_entries = []
     for step_file in step_files:
@@ -683,14 +745,14 @@ def resolve_step(
         except Exception:
             continue
     
-    # Strategy 2: ULID (in step meta)
+    # Strategy 4: ULID (in step meta)
     if _is_ulid_like(step_selector):
         for step_file, data in step_entries:
             meta = data.get("meta") or {}
             if meta.get("id") == step_selector:
                 return _step_path_to_resolved(step_file, project_root)
     
-    # Strategy 3: step meta.name or meta.slug (exact match)
+    # Strategy 5: step meta.name or meta.slug (exact match)
     for step_file, data in step_entries:
         meta = data.get("meta") or {}
         step_name = meta.get("name", "")
@@ -698,19 +760,19 @@ def resolve_step(
         if step_name.lower() == step_selector.lower() or step_slug.lower() == step_selector.lower():
             return _step_path_to_resolved(step_file, project_root)
     
-    # Strategy 4: step id field from workflow reference (exact match)
+    # Strategy 6: step id field from workflow reference (exact match)
     for step_file, data in step_entries:
         step_id = data.get("id", "")
         if step_id.lower() == step_selector.lower():
             return _step_path_to_resolved(step_file, project_root)
     
-    # Strategy 5: step_type (exact match) - for backwards compatibility
+    # Strategy 7: step_type (exact match) - for backwards compatibility
     for step_file, data in step_entries:
         step_type = data.get("step_type", "")
         if step_type.lower() == step_selector.lower():
             return _step_path_to_resolved(step_file, project_root)
     
-    # Strategy 6: filename stem match
+    # Strategy 8: filename stem match
     for step_file, _ in step_entries:
         stem = step_file.stem.replace(".step", "")
         if stem.lower() == step_selector.lower():
