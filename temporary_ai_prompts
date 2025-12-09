@@ -7177,3 +7177,249 @@ No hangs/timeouts in E2E tests, and no unexpected console errors during runs.
 If something in the UX or code structure blocks you (e.g., missing test IDs, unclear flow), please first propose minimal, concrete changes in the React components (like adding data-testids) and then update the tests accordingly.
 
 
+2025-12-08_prompt_1 (analysis):
+Prompt to Cursor:
+
+You already know this codebase well (QuantumVITAS v2, Python core + Electron/React GUI).
+Please re-read AI_understanding.md sections about:
+
+Analysis layer (SCF/DOS/bands parsers & plotting)
+
+GUI architecture (daemon RPC, AnalysisPanel)
+
+Demo projects & snapshots
+
+E2E tests (Playwright)
+
+I want to implement a clean “Automatic analysis” system that fits the existing architecture and UX.
+Please follow these constraints:
+
+GUI ➜ Electron ➜ Daemon ➜ QVService ➜ core/analysis
+
+GUI must only talk to the daemon via window.qv.* RPCs (no direct Python imports).
+
+The analysis layer stays the source of truth for parsing QE outputs; do not reimplement parsers in the GUI.
+
+1. Settings: “Automatic analysis” toggle
+
+Goal: Add a user preference that controls whether analysis runs automatically when opening the Analysis view.
+
+Requirements:
+
+Add a boolean setting automaticAnalysis in the GUI.
+
+Surface it in the Settings panel as a toggle:
+
+Label: "Automatic analysis"
+
+Tooltip: "Automatically analyze workflow outputs when opening the Analysis view."
+
+Persist this setting using the existing GUI preference mechanism (likely localStorage or an app-level config).
+
+Do not write it into project.qv.yml; this is a per-user GUI preference.
+
+Wire it into App.tsx state and pass it down to AnalysisPanel.
+
+2. Backend: ensure_workflow_analysis RPC
+
+Introduce a unified “ensure” style RPC for analysis:
+
+Add a QVService method, e.g. in src/quantumvitas/api.py:
+
+def ensure_workflow_analysis(
+    self,
+    project_root: Path,
+    workflow_selector: str,
+    analysis_kind: str,  # "bands" | "dos" | "scf"
+    force: bool = False,
+) -> Dict[str, Any]:
+    """
+    Ensure analysis data exists for given workflow & kind.
+
+    - Locate workflow, working_dir, and required raw output files.
+    - Determine canonical analysis JSON path:
+        bands -> analysis/bands.json
+        dos   -> analysis/dos.json
+        scf   -> analysis/scf.json
+    - If force=False:
+        - If JSON exists and is up-to-date (mtime >= all raw outputs):
+            return {"status": "ok", "updated": False, "path": "..."}
+    - Otherwise:
+        - Call the existing analysis parsers (parse_scf_output, parse_dos_data, parse_bands_gnu, etc.)
+        - Serialize to JSON using the existing .to_dict() structures
+        - Save to the canonical path, creating analysis/ directory if needed.
+        - Return {"status": "ok", "updated": True, "path": "..."}.
+    - On missing output or parsing errors:
+        - Raise a well-typed exception that daemon can translate to an error response.
+    """
+
+
+Add a daemon command in src/quantumvitas/daemon/server.py:
+
+"ensure_workflow_analysis": self._handle_ensure_workflow_analysis,
+
+
+and implement _handle_ensure_workflow_analysis to:
+
+Parse payload: project_root, workflow, analysis_kind, force.
+
+Call QVService.ensure_workflow_analysis.
+
+Return a JSON-safe dict with:
+
+status: "ok" or "error"
+
+analysis_kind
+
+updated
+
+path (relative to project root)
+
+message on error.
+
+Update gui/src/types/qv.ts:
+
+Add an interface for the request/response.
+
+Extend QVCommandMap with "ensure_workflow_analysis".
+
+3. GUI: Analysis view behavior
+
+Update the React side to make use of this:
+
+Automatic analysis on entering Analysis view
+
+In App.tsx (or wherever views are switched), when:
+
+The view becomes "analysis", and
+
+automaticAnalysis === true, and
+
+A workflow is currently selected (you already keep selected workflow state),
+
+then:
+
+Determine the target analysisKind:
+
+Use the current tab in AnalysisPanel if one is active ("bands" | "dos" | "scf").
+
+If nothing selected yet, fall back to:
+
+demo snapshot’s recommended_analysis, if available, or
+
+a sensible default (e.g. "bands" if bands data exists; otherwise "dos").
+
+Call the new RPC:
+
+await window.qv.ensure_workflow_analysis({
+  project_root: currentProjectRoot,
+  workflow: selectedWorkflowSlugOrId,
+  analysis_kind: currentAnalysisTab,
+  force: false,
+});
+
+
+While this is in progress:
+
+Let AnalysisPanel show a loading state in the relevant chart area:
+
+Text: "Automatic analysis is running…"
+
+Spinner.
+
+Do not block the rest of the UI (no modal).
+
+As soon as RPC returns status: "ok":
+
+Use the existing analysis data RPCs (get_band_structure_data, get_dos_data, get_scf_convergence, etc.) to fetch the JSON and render the charts.
+
+If updated === false, just reuse existing JSON (or still call the getter; it’s cheap).
+
+If RPC returns an error:
+
+Show a toast with the error message.
+
+In the chart area, show an inline error message:
+
+"Analysis failed. Please check workflow outputs or job logs."
+
+Keep the “Run Analysis” button available.
+
+Run Analysis button semantics
+
+You already have a “Run Analysis” button in the Analysis view.
+
+Rewire it to call the same RPC, but with force=true:
+
+await window.qv.ensure_workflow_analysis({
+  project_root,
+  workflow: selectedWorkflow,
+  analysis_kind: currentAnalysisTab,
+  force: true,
+});
+
+
+After it completes, refresh the chart using the same get_*_data API.
+
+UX rule: The button should be enabled even when automaticAnalysis is ON — it’s an explicit “re-analyze”.
+
+Empty-state behavior when JSON is missing
+
+Inside AnalysisPanel, when no analysis JSON is found yet for selected workflow & analysis kind:
+
+If an automatic analysis is currently in progress → show “自动分析中…” loading state.
+
+If automatic analysis is OFF or failed → show:
+
+"No analysis data found for this workflow."
+
+"Click 'Run Analysis' to generate analysis from workflow outputs."
+
+Keep the “Run Analysis” primary button prominent.
+
+Consistency with jobs
+
+Do not turn analysis into a “job” at this stage; it is fast and local.
+
+Keep job system for QE runs only.
+
+However, if analysis errors because raw outputs are missing / job failed, reuse job logs link or copy message from the job panel where reasonable.
+
+4. Tests & docs
+
+Add unit tests on the Python side:
+
+For ensure_workflow_analysis:
+
+Creates a temporary project with known test data (you already have tests/data/analysis_* and ci_test_data).
+
+Case 1: JSON missing → call ensure → JSON created, updated=True.
+
+Case 2: JSON up-to-date → call ensure → no re-run, updated=False.
+
+Case 3: Missing raw outputs → raises well-defined exception, daemon maps to error.
+
+For TS/React:
+
+At minimum, add a simple unit test or integration-style test (if you already have React tests) to verify:
+
+automaticAnalysis=true triggers an RPC call when Analysis view is opened.
+
+Update AI_understanding.md:
+
+New section “Analysis caching & automatic analysis”:
+
+Explain:
+
+canonical JSON paths per analysis kind;
+
+ensure_workflow_analysis semantics (force flag & mtime check);
+
+GUI automatic analysis behavior vs manual “Run Analysis” button;
+
+recommended pattern for future analysis types.
+
+Please keep the implementation clean and aligned with existing patterns (e.g., how other RPCs and hooks are structured). If you find a simpler way to reuse the existing analysis RPCs without duplication, feel free to do so — but keep the core semantics above intact.
+
+
+
