@@ -1,15 +1,15 @@
 meta:
-  id: 01KC0XYZ9EGQMYQPK3HS0PWANG
-  name: bands_pw
-  slug: bands_pw
-  path: workflows/graph/steps/bands_pw.step.yaml
+  id: 01KC10VC0G396NVNC2SRHM238W
+  name: scf
+  slug: scf
+  path: workflows/graphene-bands/steps/scf.step.yaml
   kind: step
+step_type: scf
 structure: C
-step_type: bands_pw
-parent_workflow_id: 01KC0WCFZC8V3QN8BP2SBHJ181
+parent_workflow_id: 01KC10S2CGYQ2FBB2B6PGD5SC7
 parameters:
   CONTROL:
-    calculation: bands
+    calculation: scf
     outdir: ./outdir
     prefix: graphene
     pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
@@ -25,25 +25,14 @@ parameters:
     smearing: marzari-vanderbilt
 cards:
   K_POINTS:
-    option: crystal_b
+    option: automatic
     data:
-    - - 4
-    - - 0.0
-      - 0.0
-      - 0.0
-      - 30
-    - - -0.333333333
-      - 0.666666667
-      - 0.0
-      - 30
-    - - 0.0
-      - 0.5
-      - 0.0
-      - 30
-    - - 0.0
-      - 0.0
-      - 0.0
-      - 30
+    - - 12
+      - 12
+      - 1
+      - 0
+      - 0
+      - 0
 species_overrides:
   C:
     mass: 12.0107

@@ -295,7 +295,10 @@ def _copy_workflow_from_path(
     template_structure = workflow_data.get("structure") or workflow_section.get("structure")
     
     if structure:
-        # New format: structure at top level
+        # DEPRECATED: Writing structure selector directly to YAML
+        # This is for template copying only. New workflows should use structure_id.
+        # For now, we write the selector for backwards compatibility with template format.
+        # The workflow will be migrated to structure_id on next load.
         workflow_data["structure"] = structure
         # Also update old format section if present
         if "workflow" in workflow_data:

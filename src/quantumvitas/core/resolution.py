@@ -14,14 +14,20 @@ Resolution rules (in order):
 4. name - case-insensitive exact name match
 
 This module does NOT use Path.cwd().
+
+ResourceIndex:
+The ResourceIndex is built by scanning resource files (workflow.yaml, *.step.yaml, *.json)
+and reading their meta blocks. This is the authoritative source for selector → ID resolution.
+project.qv.yml only stores IDs for relationships, not duplicated name/slug/path.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional, List, TYPE_CHECKING
+from typing import Optional, List, Dict, TYPE_CHECKING
 
+import json
 import yaml
 
 from quantumvitas.core.resources import (
@@ -43,6 +49,75 @@ class AmbiguousSelectorError(ValueError):
 class SelectorNotFoundError(ValueError):
     """Raised when a selector matches no resources."""
     pass
+
+
+@dataclass
+class ResourceIndex:
+    """
+    Index of all resources in a project, built by scanning resource files.
+    
+    This is the authoritative source for selector → ID resolution.
+    Resource files (workflow.yaml, *.step.yaml, *.json) are scanned and
+    their meta blocks are indexed. project.qv.yml only stores IDs for relationships.
+    """
+    by_id: Dict[str, ResourceMeta] = field(default_factory=dict)
+    by_slug: Dict[str, str] = field(default_factory=dict)  # slug -> id
+    by_path: Dict[Path, str] = field(default_factory=dict)  # absolute path -> id
+    by_name: Dict[str, List[str]] = field(default_factory=dict)  # lower(name) -> [id,...]
+    
+    def add_resource(self, meta: ResourceMeta, absolute_path: Path) -> None:
+        """Add a resource to the index."""
+        self.by_id[meta.id] = meta
+        self.by_slug[meta.slug] = meta.id
+        self.by_path[absolute_path.resolve()] = meta.id
+        name_lower = meta.name.lower()
+        if name_lower not in self.by_name:
+            self.by_name[name_lower] = []
+        if meta.id not in self.by_name[name_lower]:
+            self.by_name[name_lower].append(meta.id)
+    
+    def resolve_id(self, selector: str, project_root: Path) -> Optional[str]:
+        """
+        Resolve a selector to a resource ID.
+        
+        Resolution order:
+        1. ULID (if selector is a ULID)
+        2. slug (exact match)
+        3. name (case-insensitive exact match)
+        4. path (if selector looks like a path)
+        
+        Returns:
+            Resource ID (ULID) if found, None otherwise
+        """
+        # Strategy 1: ULID
+        if _is_ulid_like(selector):
+            if selector in self.by_id:
+                return selector
+        
+        # Strategy 2: slug (exact match)
+        if selector in self.by_slug:
+            return self.by_slug[selector]
+        
+        # Strategy 3: name (case-insensitive exact match)
+        name_lower = selector.lower()
+        if name_lower in self.by_name:
+            ids = self.by_name[name_lower]
+            if len(ids) == 1:
+                return ids[0]
+            elif len(ids) > 1:
+                # Ambiguous - multiple resources with same name
+                # For now, return None (caller should handle ambiguity)
+                return None
+        
+        # Strategy 4: path
+        if _is_path_like(selector):
+            path = Path(selector)
+            if not path.is_absolute():
+                path = (project_root / path).resolve()
+            if path in self.by_path:
+                return self.by_path[path]
+        
+        return None
 
 
 @dataclass(slots=True)
@@ -84,6 +159,106 @@ def _is_ulid_like(s: str) -> bool:
 def _is_path_like(s: str) -> bool:
     """Check if string looks like a path."""
     return "/" in s or "\\" in s or s.endswith((".yaml", ".yml", ".json"))
+
+
+# ---------------------------------------------------------------------------
+# ResourceIndex building
+# ---------------------------------------------------------------------------
+
+def build_resource_index(project_root: Path) -> ResourceIndex:
+    """
+    Build a ResourceIndex by scanning resource files in the project.
+    
+    Scans:
+    - workflows/**/workflow.yaml
+    - workflows/**/steps/*.step.yaml
+    - structures/*.json
+    
+    Reads meta blocks from each resource file and indexes them.
+    This is the authoritative source for selector → ID resolution.
+    
+    Args:
+        project_root: Path to project root directory
+        
+    Returns:
+        ResourceIndex with all resources indexed
+    """
+    project_root = project_root.resolve()
+    index = ResourceIndex()
+    
+    # Scan workflows
+    workflows_dir = project_root / "workflows"
+    if workflows_dir.exists():
+        for workflow_dir in workflows_dir.iterdir():
+            if not workflow_dir.is_dir():
+                continue
+            
+            workflow_yaml = workflow_dir / "workflow.yaml"
+            if workflow_yaml.exists():
+                try:
+                    data = yaml.safe_load(workflow_yaml.read_text()) or {}
+                    meta_dict = data.get("meta", {})
+                    if meta_dict and meta_dict.get("id"):
+                        from quantumvitas.core.resources import ResourceMeta
+                        default_name = meta_dict.get("name") or workflow_dir.name
+                        default_path = meta_dict.get("path") or f"workflows/{workflow_dir.name}"
+                        meta = ResourceMeta.from_dict(
+                            meta_dict, 
+                            kind="workflow",
+                            default_name=default_name,
+                            default_path=default_path,
+                        )
+                        index.add_resource(meta, workflow_yaml)
+                except Exception as e:
+                    # Skip invalid workflow files (log in debug mode if needed)
+                    continue
+            
+            # Scan steps in this workflow
+            steps_dir = workflow_dir / "steps"
+            if steps_dir.exists():
+                for step_file in steps_dir.glob("*.step.yaml"):
+                    try:
+                        data = yaml.safe_load(step_file.read_text()) or {}
+                        meta_dict = data.get("meta", {})
+                        if meta_dict and meta_dict.get("id"):
+                            from quantumvitas.core.resources import ResourceMeta
+                            default_name = meta_dict.get("name") or step_file.stem
+                            default_path = meta_dict.get("path") or f"workflows/{workflow_dir.name}/steps/{step_file.name}"
+                            meta = ResourceMeta.from_dict(
+                                meta_dict,
+                                kind="step",
+                                default_name=default_name,
+                                default_path=default_path,
+                            )
+                            index.add_resource(meta, step_file)
+                    except Exception:
+                        # Skip invalid step files
+                        continue
+    
+    # Scan structures
+    structures_dir = project_root / "structures"
+    if structures_dir.exists():
+        for struct_file in structures_dir.glob("*.json"):
+            try:
+                data = json.loads(struct_file.read_text())
+                # Handle both __qv_meta__ wrapper and direct meta
+                meta_dict = data.get("__qv_meta__") or data.get("meta")
+                if meta_dict and meta_dict.get("id"):
+                    from quantumvitas.core.resources import ResourceMeta
+                    default_name = meta_dict.get("name") or struct_file.stem
+                    default_path = meta_dict.get("path") or f"structures/{struct_file.name}"
+                    meta = ResourceMeta.from_dict(
+                        meta_dict,
+                        kind="structure",
+                        default_name=default_name,
+                        default_path=default_path,
+                    )
+                    index.add_resource(meta, struct_file)
+            except Exception:
+                # Skip invalid structure files
+                continue
+    
+    return index
 
 
 # ---------------------------------------------------------------------------
@@ -149,14 +324,19 @@ def resolve_structure(
     project_root: Path,
     selector: str,
     config: Optional[dict] = None,
+    index: Optional[ResourceIndex] = None,
 ) -> ResolvedResource:
     """
     Resolve a structure selector to a resource.
+    
+    Uses ResourceIndex (built from resource files) as the authoritative source.
+    Falls back to config entries for backwards compatibility.
     
     Args:
         project_root: Path to project root (contains project.qv.yml)
         selector: ULID, slug, name, or path to structure
         config: Optional pre-loaded config dict (loaded if None)
+        index: Optional ResourceIndex (built if None)
         
     Returns:
         ResolvedResource for the structure
@@ -165,11 +345,41 @@ def resolve_structure(
         SelectorNotFoundError: If no structure matches
         AmbiguousSelectorError: If multiple structures match
     """
+    # Build index if not provided
+    if index is None:
+        index = build_resource_index(project_root)
+    
+    selector = selector.strip()
+    
+    # Try to resolve via ResourceIndex first
+    resource_id = index.resolve_id(selector, project_root)
+    if resource_id:
+        # Found in index - get meta and build ResolvedResource
+        meta = index.by_id[resource_id]
+        if meta.kind != "structure":
+            raise SelectorNotFoundError(f"Resource '{selector}' is not a structure (kind: {meta.kind})")
+        
+        # Find absolute path
+        abs_path = None
+        for path, path_id in index.by_path.items():
+            if path_id == resource_id:
+                abs_path = path
+                break
+        
+        if abs_path is None:
+            # Fallback: construct from meta.path
+            abs_path = (project_root / meta.path).resolve()
+        
+        # Build entry dict for backwards compatibility (minimal, ID-only)
+        entry = {"id": resource_id, "meta": meta.to_dict()}
+        
+        return ResolvedResource(meta=meta, entry=entry, absolute_path=abs_path)
+    
+    # Fallback to legacy config-based resolution for backwards compatibility
     if config is None:
         config = _load_config(project_root)
     
     entries = config.get("structures", [])
-    selector = selector.strip()
     
     # Strategy 1: Path
     if _is_path_like(selector):
@@ -253,14 +463,19 @@ def resolve_workflow(
     project_root: Path,
     selector: str,
     config: Optional[dict] = None,
+    index: Optional[ResourceIndex] = None,
 ) -> ResolvedResource:
     """
     Resolve a workflow selector to a resource.
+    
+    Uses ResourceIndex (built from resource files) as the authoritative source.
+    Falls back to config entries for backwards compatibility.
     
     Args:
         project_root: Path to project root (contains project.qv.yml)
         selector: ULID, slug, name, or path to workflow directory
         config: Optional pre-loaded config dict (loaded if None)
+        index: Optional ResourceIndex (built if None)
         
     Returns:
         ResolvedResource for the workflow
@@ -269,6 +484,38 @@ def resolve_workflow(
         SelectorNotFoundError: If no workflow matches
         AmbiguousSelectorError: If multiple workflows match
     """
+    # Build index if not provided
+    if index is None:
+        index = build_resource_index(project_root)
+    
+    selector = selector.strip()
+    
+    # Try to resolve via ResourceIndex first
+    resource_id = index.resolve_id(selector, project_root)
+    if resource_id:
+        # Found in index - get meta and build ResolvedResource
+        meta = index.by_id[resource_id]
+        if meta.kind != "workflow":
+            raise SelectorNotFoundError(f"Resource '{selector}' is not a workflow (kind: {meta.kind})")
+        
+        # Find absolute path (workflow directory)
+        abs_path = None
+        for path, path_id in index.by_path.items():
+            if path_id == resource_id:
+                # workflow.yaml path -> workflow directory
+                abs_path = path.parent
+                break
+        
+        if abs_path is None:
+            # Fallback: construct from meta.path
+            abs_path = (project_root / meta.path).resolve()
+        
+        # Build entry dict for backwards compatibility (minimal, ID-only)
+        entry = {"id": resource_id, "meta": meta.to_dict()}
+        
+        return ResolvedResource(meta=meta, entry=entry, absolute_path=abs_path)
+    
+    # Fallback to legacy config-based resolution for backwards compatibility
     if config is None:
         config = _load_config(project_root)
     

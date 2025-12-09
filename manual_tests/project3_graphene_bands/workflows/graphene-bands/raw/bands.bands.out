@@ -1,5 +1,5 @@
 
-     Program BANDS v.7.5 starts on  9Dec2025 at 14:51: 2 
+     Program BANDS v.7.5 starts on  9Dec2025 at 15:41:37 
 
      This program is part of the open-source Quantum ESPRESSO suite
      for quantum simulation of materials; please cite
@@ -1477,10 +1477,10 @@ E_2u   2.00 -1.00 -1.00  2.00  0.00  0.00 -2.00  1.00  1.00 -2.00  0.00  0.00
 
  **************************************************************************
 
-     BANDS        :      6.18s CPU      6.78s WALL
+     BANDS        :      5.48s CPU      6.11s WALL
 
 
-   This run was terminated on:  14:51: 9   9Dec2025            
+   This run was terminated on:  15:41:43   9Dec2025            
 
 =------------------------------------------------------------------------------=
    JOB DONE.

@@ -86,7 +86,7 @@ project/
 
 ### 2.3 Workflow and Step YAML Structure
 
-**workflow.yaml** (new format with meta section):
+**workflow.yaml** (ID-only cross-references):
 ```yaml
 meta:
   id: 01JXYZ123ABC456DEF789GHI  # ULID
@@ -95,18 +95,17 @@ meta:
   path: workflows/si-dos
   kind: workflow
 mode: normal
-structure: si               # Structure reference (slug/name)
+structure_id: 01SABC123...        # Structure reference (ULID only)
+structure_name: Si               # Optional display name (cosmetic)
 working_dir: raw
 steps:
-- id: scf
-  type: scf
+- step_id: 01TXYZ789...          # Step reference (ULID only)
   step_file: steps/scf.step.yaml
-- id: nscf
-  type: nscf
+- step_id: 01TUVW456...
   step_file: steps/nscf.step.yaml
 ```
 
-**step.yaml** (StructureStepSpec):
+**step.yaml** (StructureStepSpec, ID-only cross-references):
 ```yaml
 meta:
   id: 01KB8FEQWVYJAB16NMRVZ7JYEG  # ULID
@@ -114,8 +113,8 @@ meta:
   slug: scf
   path: scf.step.yaml
   kind: step
-parent_workflow_id: 01KB8ABCD...   # Links to parent workflow (optional)
-structure: si                       # Structure reference
+parent_workflow_id: 01KB8ABCD...   # Workflow reference (ULID only)
+structure_id: 01SABC123...         # Structure reference (ULID only)
 step_type: scf
 parameters:
   CONTROL:
@@ -3408,7 +3407,9 @@ The project snapshot format allows exporting a complete QuantumVITAS project int
 - **Project templates**: Create reusable project definitions
 - **Version control**: Track project structure without binary files
 - **Sharing**: Distribute demo projects or workflows
-- **Backup**: Export project metadata and structure
+- **Demo projects**: Pre-configured projects with reference analysis data
+
+**Important**: Snapshots are **templates**, not bit-for-bit backups. When materializing a snapshot, all ULIDs are regenerated to create a fresh ID universe.
 
 ### 23.1 Snapshot Schema
 
@@ -3454,8 +3455,8 @@ workflows:
           slug: "scf"
           kind: "step"
           path: "workflows/si-bands-dos/steps/scf.step.yaml"
-        parent_workflow_id: "<workflow_ulid>"
-        structure: "si-bulk"
+        parent_workflow_id: "<workflow_ulid>"  # Workflow reference (ULID only)
+        structure_id: "<structure_ulid>"  # Structure reference (ULID only)
         step_type: "scf"
         parameters: { ... }
         cards: { ... }
@@ -3477,20 +3478,31 @@ pseudo:
 - **Workflows**: Complete workflow definitions with all steps
 - **Pseudo**: Pseudopotential filenames only (content NOT embedded)
 
-### 23.3 ULID Handling
+### 23.3 Snapshot Semantics (Option B: Template with Fresh IDs)
 
-**Important**: When materializing a project from a snapshot, **all ULIDs are regenerated** to avoid collisions:
+**Export behavior** (`export_project_to_snapshot`):
+- Preserves all `id` and `*_id` fields as recorded in the original project
+- Exports complete resource graph with all cross-references (`structure_id`, `parent_workflow_id`, `step_id`)
+- Snapshot contains the full graph structure with original ULIDs
 
-- Original ULIDs are preserved in the snapshot for reference
-- New ULIDs are generated for: project, workflows, structures, steps
-- An internal mapping (`old_id → new_id`) is built during materialization
-- References (e.g., `parent_workflow_id` in steps) are rewritten using the mapping
-- Names, slugs, and logical relationships remain unchanged
+**Materialize behavior** (`materialize_project_from_snapshot`):
+- **Always regenerates new ULIDs** for all resources (project, workflows, structures, steps)
+- Builds an internal mapping (`old_id → new_id`) during materialization
+- Rewrites all `*_id` cross-references using the mapping to maintain graph structure
+- Snapshot IDs are used **only as a template graph** - they do not survive materialization
+- Names, slugs, and logical relationships (which workflow uses which structure/steps) are preserved
 
-This ensures that:
-- Multiple projects can be created from the same snapshot without ID conflicts
-- The snapshot format is robust and reusable
-- Logical structure (workflow→structure, workflow→steps) is preserved
+**Key implications**:
+- ✅ Multiple projects from the same snapshot are independent and have distinct ULIDs
+- ✅ Graph structure is preserved (same counts, same relationships)
+- ✅ No ID collisions between projects created from the same snapshot
+- ❌ Snapshot is **not a bit-for-bit backup** - IDs change on materialization
+- ❌ Original project ULIDs are **not preserved** in materialized projects
+
+**Demo/Reference Features**:
+- Demo recognition relies on `origin.kind == "demo"` and `origin.demo_id` (stored in project settings)
+- Reference analysis lookup uses `origin.reference_artifacts` or `snapshot.meta.reference_artifacts`
+- **These features do NOT depend on preserving snapshot ULIDs** - they use stable demo identifiers
 
 ### 23.4 Pseudopotential Files
 
@@ -4075,6 +4087,378 @@ This section documents critical fixes to CLI workflow detection and rename opera
 - ✅ Step gets correct `parent_workflow_id` and structure from workflow
 
 **Test**: `tests/cli/test_graphene_workflow_setup.py` - Verifies the exact sequence from manual instructions.
+
+---
+
+## 27. ID-Only Cross-Resource References (2025-12-XX)
+
+### 27.1 Overview
+
+This section documents the refactoring to use **ID-only cross-references** between resources, eliminating duplication and out-of-sync problems (e.g., workflow renamed but step still stores stale workflow slug/name).
+
+### 27.2 Current Cross-Resource References (Before Refactor)
+
+**Workflow → Structure**:
+- **File**: `workflow.yaml` (via `WorkflowModel`)
+- **Field**: `structure: Optional[str]` (selector: name/slug/path)
+- **Current**: Selector-based (e.g., `structure: "si"` or `structure: "C"`)
+- **Location**: `src/quantumvitas/core/models.py` line 75
+
+**Step → Workflow**:
+- **File**: `*.step.yaml` (via `StructureStepSpec`)
+- **Field**: `parent_workflow_id: Optional[str]`
+- **Current**: ✅ Already ID-based (ULID)
+- **Location**: `src/quantumvitas/workflow/structure_steps.py` line 47
+
+**Step → Structure**:
+- **File**: `*.step.yaml` (via `StructureStepSpec`)
+- **Field**: `structure: str`
+- **Current**: Selector-based (e.g., `structure: "si"`)
+- **Location**: `src/quantumvitas/workflow/structure_steps.py` line 41
+
+**Snapshots**:
+- **File**: `resources/demo_projects/*.yml` and `ProjectSnapshot`
+- **Fields**: Workflows have `structure: <selector>`, steps have `structure: <selector>` and `parent_workflow_id: <id>`
+- **Current**: Mixed (workflow ID-based, structure selector-based)
+- **Location**: `src/quantumvitas/project/snapshot.py` line 378
+
+### 27.3 New Reference Contract
+
+**Rule**: Every resource file keeps its own `meta` block (id, name, slug, path, kind). Any reference to another resource must store **only its ULID (id)**, not name/slug/path.
+
+**Users still select resources by name/slug/path** in CLI/GUI. All resolution of references is internal: `selector → id → resource`.
+
+**Workflow YAML**:
+```yaml
+meta:
+  id: 01JXYZ123ABC456DEF789GHI
+  name: si-dos
+  slug: si-dos
+  path: workflows/si-dos
+  kind: workflow
+structure_id: 01JABC123DEF456GHI789JKL  # Canonical reference (ULID)
+structure_name: "Si"                    # Optional, cosmetic for UI only
+mode: normal
+working_dir: raw
+```
+
+**Step YAML**:
+```yaml
+meta:
+  id: 01KB8FEQWVYJAB16NMRVZ7JYEG
+  name: scf
+  slug: scf
+  path: scf.step.yaml
+  kind: step
+parent_workflow_id: 01JXYZ123ABC456DEF789GHI  # Canonical link to workflow (ULID)
+structure_id: 01JABC123DEF456GHI789JKL          # Canonical link to structure (ULID)
+step_type: scf
+parameters: {...}
+```
+
+**Backwards Compatibility**:
+- Loaders accept older fields (`structure`, `parent_workflow_slug`, etc.) as fallback
+- Resolve them immediately to the proper resource and fill in `*_id` fields in memory
+- When saving, write only `*_id` fields (and optional `*_name` for display)
+
+### 27.4 Implementation Details
+
+**Workflow → Structure**:
+- `WorkflowModel` has `structure_id: Optional[str]` and `structure_name: Optional[str] = None`
+- On load: If `structure_id` present, use it. Else, if `structure` (selector) present, resolve via `resolve_structure()` and fill `structure_id`
+- On save: Write only `structure_id` (and optional `structure_name` for UI)
+
+**Step → Structure**:
+- `StructureStepSpec` has `structure_id: Optional[str]` and `structure: str` (legacy)
+- On load: If `structure_id` present, use it. Else, resolve `structure` selector and fill `structure_id`
+- On save: Write only `structure_id` (keep `structure` for backwards compat if needed)
+
+**Step → Workflow**:
+- Already uses `parent_workflow_id: Optional[str]` ✅
+- No changes needed
+
+**Resolution Flow**:
+1. User provides selector (name/slug/path) via CLI/GUI
+2. `QVService` resolves selector → resource via `resolve_structure()` / `resolve_workflow()`
+3. Extract `resource.meta.id` and store in `*_id` field
+4. When loading, use `*_id` to resolve back to resource via registry lookup
+
+### 27.5 Concrete Examples
+
+**New Workflow YAML Format**:
+```yaml
+meta:
+  id: 01JXYZ123ABC456DEF789GHI
+  name: si-dos
+  slug: si-dos
+  path: workflows/si-dos
+  kind: workflow
+structure_id: 01JABC123DEF456GHI789JKL  # Canonical reference (ULID)
+structure_name: "Si"                    # Optional, cosmetic for UI only
+structure: si                            # Legacy selector (backwards compat, not authoritative)
+mode: normal
+working_dir: raw
+steps: [...]
+```
+
+**New Step YAML Format**:
+```yaml
+meta:
+  id: 01KB8FEQWVYJAB16NMRVZ7JYEG
+  name: scf
+  slug: scf
+  path: scf.step.yaml
+  kind: step
+parent_workflow_id: 01JXYZ123ABC456DEF789GHI  # Canonical link to workflow (ULID)
+structure_id: 01JABC123DEF456GHI789JKL          # Canonical link to structure (ULID)
+structure: si                                 # Legacy selector (backwards compat)
+step_type: scf
+parameters: {...}
+```
+
+**Legacy Format (Still Supported)**:
+```yaml
+# workflow.yaml (legacy)
+meta:
+  id: 01JXYZ123ABC456DEF789GHI
+  name: si-dos
+  slug: si-dos
+  path: workflows/si-dos
+  kind: workflow
+structure: si  # Selector only (no structure_id)
+mode: normal
+working_dir: raw
+```
+
+When loading a legacy workflow with `load_workflow(path, project_root)`, the structure selector is automatically resolved to `structure_id` if the structure exists in the project.
+
+### 27.6 How CLI/GUI Still Use Selectors
+
+**User-facing operations** (CLI/GUI) continue to use selectors (name/slug/path):
+- `qv init workflow --structure si` (uses selector)
+- `qv init step --structure C` (uses selector)
+- GUI workflow creation: user selects structure by name
+
+**Internal resolution flow**:
+1. User provides selector → `QVService` receives selector
+2. `QVService` resolves selector → `resolve_structure(project_root, selector)` → `ResolvedResource`
+3. Extract `resource.meta.id` → store in `structure_id` field
+4. When loading, use `structure_id` to resolve back to resource via registry lookup
+
+**Example: Creating a workflow**:
+```python
+# User: qv init workflow --structure si
+structure_selector = "si"  # From CLI
+
+# QVService resolves selector to structure
+resolved = resolve_structure(project_root, structure_selector)
+structure_id = resolved.meta.id  # e.g., "01JABC123DEF456GHI789JKL"
+
+# Create workflow with structure_id
+workflow_model = WorkflowModel(
+    meta=workflow_meta,
+    structure_id=structure_id,      # Canonical reference
+    structure_name=resolved.meta.name,  # Display name
+    structure=structure_selector,    # Legacy field for backwards compat
+)
+```
+
+### 27.7 Rename Behavior
+
+**Before (selector-based)**:
+- Rename structure "Si" → "Silicon"
+- All workflows with `structure: "si"` break (selector no longer matches)
+- Must manually update all workflow.yaml files
+
+**After (ID-based)**:
+- Rename structure "Si" → "Silicon"
+- Structure's `meta.id` remains unchanged (ULID is immutable)
+- All workflows with `structure_id: "01JABC..."` still work
+- Only `structure_name` field needs update (cosmetic, optional)
+- No need to touch workflow.yaml or step.yaml files
+
+**Example**:
+```python
+# Structure renamed from "Si" to "Silicon"
+# Old workflow.yaml:
+structure_id: 01JABC123DEF456GHI789JKL  # Still valid!
+structure_name: "Si"  # Outdated, but not critical
+
+# After reloading workflow (auto-updates structure_name):
+structure_id: 01JABC123DEF456GHI789JKL  # Still valid!
+structure_name: "Silicon"  # Updated from registry
+```
+
+### 27.8 Benefits
+
+- **No duplication**: Structure name/slug/path only stored in structure's own meta and project registry
+- **Rename-safe**: Renaming a structure only updates its own meta and registry; all references via `structure_id` remain valid
+- **Single source of truth**: Project registry (`project.qv.yml`) is authoritative for resource metadata
+- **Backwards compatible**: Legacy YAML files with selector-based references still load correctly
+- **Resolution is explicit**: When loading, structure selector is resolved to `structure_id` if `project_root` is provided
+
+### 27.9 Implementation Files
+
+**Core Models**:
+- `src/quantumvitas/core/models.py`: `WorkflowModel` with `structure_id`/`structure_name` fields
+- `src/quantumvitas/workflow/structure_steps.py`: `StructureStepSpec` with `structure_id` field
+
+**Resolution**:
+- `src/quantumvitas/core/resolution.py`: `resolve_structure()` converts selector → `ResolvedResource` with `meta.id`
+- `src/quantumvitas/core/models.py`: `load_workflow()` auto-resolves legacy `structure` selector to `structure_id`
+
+**Service Layer**:
+- `src/quantumvitas/api.py`: `QVService.init_workflow()`, `QVService.init_step()`, etc. resolve selectors to IDs
+
+**Snapshots**:
+- `src/quantumvitas/project/snapshot.py`: Exports `structure_id`, materializes with ID mapping
+
+**Tests**:
+- `tests/unit/test_id_based_references.py`: Comprehensive tests for ID-based references and backwards compatibility
+
+---
+
+## 28. Resource Identity and Cross-References (2025-12-XX)
+
+### 28.1 Hard Invariants
+
+**Every resource file is self-describing:**
+- `project.qv.yml` (project)
+- `workflows/<slug>/workflow.yaml` (workflow)
+- `workflows/<slug>/steps/*.step.yaml` (step)
+- `structures/*.json` (structure)
+
+Each has a `meta` block with:
+```yaml
+meta:
+  id: <ULID>          # Single source of truth for id
+  name: <str>         # Only appears here for this resource
+  slug: <str>         # Only appears here for this resource
+  path: <relative>    # Path from project root
+  kind: project|workflow|structure|step
+```
+
+**Cross-resource references store ONLY the id, never name/slug/path:**
+
+**workflow.yaml:**
+```yaml
+meta: {... kind: workflow}
+structure_id: 01S...           # Structure reference (ULID only)
+steps:
+  - step_id: 01T...            # Step reference (ULID only)
+  - step_id: 01U...
+```
+
+***.step.yaml:**
+```yaml
+meta: {... kind: step}
+parent_workflow_id: 01H...     # Workflow reference (ULID only)
+structure_id: 01S...           # Structure reference (ULID only)
+```
+
+**project.qv.yml:**
+```yaml
+meta: {... kind: project}
+structures:
+  - id: 01S...                 # Only ID, no name/slug/path
+workflows:
+  - id: 01H...                 # Only ID, no name/slug/path
+```
+
+**No other resource's name/slug/path is allowed anywhere.** Names/slugs/paths of a resource appear only in that resource's own file.
+
+### 28.2 Registry (project.qv.yml)
+
+The registry stores only:
+- The project's own meta (with name/slug/path, because it's "self")
+- Top-level id lists / id mappings (project → structure ids, workflow ids, etc.)
+- Project-level settings (origin, analysis options, etc.)
+
+It must **not** contain copies of workflow/structure/step name/slug/path.
+
+**Allowed:**
+```yaml
+workflows:
+  - id: 01H...
+structures:
+  - id: 01S...
+workflow_structure:
+  01H...: 01S...
+```
+
+**Not allowed:**
+```yaml
+workflows:
+  - id: 01H...
+    name: graphene bands      # ❌ Not allowed anymore
+    slug: graphene-bands      # ❌
+    path: workflows/...       # ❌
+```
+
+### 28.3 ResourceIndex as the Canonical Selector Resolver
+
+### 28.1 Overview
+
+The `ResourceIndex` is the authoritative source for selector → ID resolution. It is built by scanning resource files (workflow.yaml, *.step.yaml, *.json) and reading their meta blocks, not from project.qv.yml entries.
+
+### 28.2 ResourceIndex Structure
+
+```python
+@dataclass
+class ResourceIndex:
+    by_id: Dict[str, ResourceMeta]      # id -> full meta
+    by_slug: Dict[str, str]              # slug -> id
+    by_path: Dict[Path, str]            # absolute path -> id
+    by_name: Dict[str, List[str]]        # lower(name) -> [id,...]
+```
+
+### 28.3 Building the Index
+
+`build_resource_index(project_root: Path) -> ResourceIndex`:
+- Scans `workflows/**/workflow.yaml` → reads meta, indexes by id/slug/path/name
+- Scans `workflows/**/steps/*.step.yaml` → reads meta, indexes by id/slug/path/name
+- Scans `structures/*.json` → reads `__qv_meta__` or `meta`, indexes by id/slug/path/name
+
+**Key principle**: Resource files are self-describing. Their meta blocks are the source of truth for name/slug/path. project.qv.yml only stores IDs for relationships.
+
+### 28.4 Resolution Flow
+
+**New flow (preferred)**:
+1. Build `ResourceIndex` from filesystem
+2. Use `index.resolve_id(selector, project_root)` to get ID
+3. Use ID + registry to find relationships
+4. Use ID + index to get display name/slug/path when needed
+
+**Legacy flow (backwards compat)**:
+- Falls back to reading from project.qv.yml entries if ResourceIndex doesn't find the resource
+- This ensures old projects still work
+
+### 28.5 Usage in Resolution Functions
+
+`resolve_structure()` and `resolve_workflow()` now:
+- Accept optional `index: ResourceIndex` parameter
+- Build index if not provided
+- Try ResourceIndex resolution first
+- Fall back to config-based resolution for backwards compatibility
+
+**Example**:
+```python
+# Preferred: use ResourceIndex
+index = build_resource_index(project_root)
+resolved = resolve_structure(project_root, "si", index=index)
+
+# Backwards compat: auto-builds index
+resolved = resolve_structure(project_root, "si")
+```
+
+### 28.6 Benefits
+
+- **Single source of truth**: Resource files' meta blocks are authoritative
+- **No duplication**: project.qv.yml doesn't duplicate name/slug/path
+- **Rename-safe**: Renaming a resource only updates its own file, index rebuilds automatically
+- **Backwards compatible**: Falls back to config-based resolution for old projects
+
+---
 
 ### 26.3 Fix: Workflow Rename Bug
 

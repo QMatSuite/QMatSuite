@@ -35,10 +35,15 @@ if TYPE_CHECKING:
 class StructureStepSpec:
     """
     Declarative specification for generating a QE input from a stored structure.
+    
+    Structure references:
+    - structure_id: ULID of the structure (canonical reference)
+    - structure: Legacy selector field (for backwards compatibility when loading)
     """
 
     meta: ResourceMeta
-    structure: str
+    structure: str  # Legacy selector (backwards compat, not authoritative)
+    structure_id: Optional[str] = None  # Canonical structure reference (ULID)
     step_type: str = "scf"
     parameters: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     input_name: Optional[str] = None
@@ -49,9 +54,23 @@ class StructureStepSpec:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any], source_path: Optional[Path] = None) -> "StructureStepSpec":
+        """
+        Create StructureStepSpec from dictionary.
+        
+        Handles both new format (structure_id) and legacy format (structure selector).
+        Legacy structure selector is kept in memory for backwards compatibility but
+        should be resolved to structure_id when project_root is available.
+        """
+        # New format: structure_id (canonical)
+        structure_id = data.get("structure_id")
+        
+        # Legacy format: structure selector (required for backwards compat)
         structure = data.get("structure")
-        if not structure:
-            raise ValueError("Step spec is missing required field 'structure'")
+        if not structure and not structure_id:
+            raise ValueError("Step spec is missing required field 'structure' or 'structure_id'")
+        # If only structure_id is present, we still need structure for backwards compat
+        # It will be resolved later if project_root is available
+        
         step_type = data.get("step_type", "scf")
         parameters = data.get("parameters") or {}
         if not isinstance(parameters, dict):
@@ -85,7 +104,8 @@ class StructureStepSpec:
 
         return cls(
             meta=meta,
-            structure=structure,
+            structure_id=structure_id,
+            structure=structure or "",  # Provide empty string if only structure_id present
             step_type=str(step_type),
             parameters=parameters,
             input_name=input_name,
@@ -104,11 +124,23 @@ class StructureStepSpec:
         return cls.from_dict(content, source_path=spec_path)
 
     def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert to dictionary for YAML serialization.
+        
+        Cross-resource references:
+        - structure_id: ULID only (no structure name/slug/path)
+        - parent_workflow_id: ULID only (no workflow name/slug/path)
+        
+        Does not write structure selector (legacy field - not authoritative).
+        """
         data: Dict[str, Any] = {
             "meta": self.meta.to_dict(),
-            "structure": self.structure,
             "step_type": self.step_type,
         }
+        # Write structure_id (canonical reference - ID only)
+        if self.structure_id:
+            data["structure_id"] = self.structure_id
+        # Do not write structure selector (legacy field - not authoritative)
         if self.parent_workflow_id:
             data["parent_workflow_id"] = self.parent_workflow_id
         if self.parameters:
@@ -451,17 +483,35 @@ def _resolve_structure_for_spec(
     workflow_dir: Optional[Path | str],
     project: Optional["Project"],
 ) -> PMGStructure:
+    """
+    Resolve structure from spec, preferring structure_id (canonical) over structure (legacy selector).
+    """
+    # First, try structure_id (canonical reference)
+    if spec.structure_id and project:
+        try:
+            struct_ref = project.get_structure(spec.structure_id)
+            return read_structure(struct_ref.path)
+        except KeyError:
+            # If structure_id doesn't resolve, fall back to structure selector
+            pass
+    
+    # Fall back to structure selector (legacy)
+    structure_value = spec.structure
+    if not structure_value:
+        raise FileNotFoundError(
+            f"Step spec at {spec_path} has neither structure_id nor structure field"
+        )
+    
+    candidate = Path(structure_value)
+
+    if candidate.is_absolute() and candidate.exists():
+        return read_structure(candidate)
+
     search_roots: list[Path] = [spec_path.parent]
     if workflow_dir:
         workflow_dir_path = Path(workflow_dir).resolve()
         search_roots.append(workflow_dir_path)
         search_roots.append(workflow_dir_path.parent)
-
-    structure_value = spec.structure
-    candidate = Path(structure_value)
-
-    if candidate.is_absolute() and candidate.exists():
-        return read_structure(candidate)
 
     for root in search_roots:
         candidate_path = (root / candidate).resolve()
