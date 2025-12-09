@@ -260,8 +260,11 @@ Resources can be identified by:
 
 **Auto-detection from current directory**:
 - `find_project_root()`: Walks up to find `project.qv.yml`
-- `find_enclosing_workflow()`: Detects if pwd is inside a workflow
-- Used by `qv run workflow`, `qv init step`, `qv delete workflow`, etc.
+- `find_enclosing_workflow()`: Detects if pwd is inside a workflow (uses directory path matching)
+- `PathContext` (`core/context.py`): Scans upward to find project/workflow/step context
+- Used by `qv run workflow`, `qv init step`, `qv analyze band`, etc.
+
+**Important**: For workflow auto-detection, prefer `find_enclosing_workflow()` over `PathContext.workflow_selector` because it uses directory paths (more reliable after renames). See section 26.4 for details.
 
 Key utility: `resolve_resource()` in `core/project_utils.py`
 
@@ -4013,6 +4016,159 @@ The sidebar changes maintain backward compatibility with existing E2E tests:
 - Same `data-testid` values (`qv-btn-open-project`, `qv-btn-create-new-project`, `qv-btn-demo-gallery`)
 - Buttons now exist in both sidebar and welcome screen
 - Demo Gallery flow unchanged: click button → gallery view → create demo
+
+---
+
+## 26. CLI Workflow Detection and Rename Fixes (2025-12-XX)
+
+### 26.1 Overview
+
+This section documents critical fixes to CLI workflow detection and rename operations that ensure commands work correctly when run from inside workflow directories, especially after renames.
+
+### 26.2 Fix: `qv init step` Workflow Auto-Detection
+
+**Problem**: The `qv init step scf` command from inside a workflow directory was not reliably detecting the enclosing workflow and inheriting its structure.
+
+**Root Causes**:
+1. Used `_detect_enclosing_workflow()` instead of `PathContext` from `core/context.py`
+2. Structure was read from `workflow_data.get("workflow", {}).get("structure")` instead of top-level `workflow_data.get("structure")` (new format)
+3. No clear error message when run from project root without `--workflow`
+
+**Solution** (`src/quantumvitas/cli/main.py`, lines ~867-930):
+
+1. **Use PathContext for workflow detection**:
+   ```python
+   # Try to detect enclosing workflow from cwd using PathContext
+   try:
+       ctx = find_path_context_from_pwd()
+       if ctx.is_inside_workflow():
+           workflow_selector = ctx.workflow_selector
+           if workflow_selector:
+               config = load_project_config(project_root)
+               workflow_entry = find_workflow_entry(config, workflow_selector, project_root)
+   except ContextNotFoundError:
+       pass
+   ```
+
+2. **Fix structure reading**:
+   ```python
+   # Structure is at top level in workflow.yaml (new format), or under workflow key (legacy)
+   workflow_structure = workflow_data.get("structure") or workflow_data.get("workflow", {}).get("structure")
+   ```
+
+3. **Clear error at project root**:
+   ```python
+   if not workflow_entry and project_root:
+       try:
+           ctx = find_path_context_from_pwd()
+           if ctx.project_root == Path.cwd().resolve() and not ctx.is_inside_workflow():
+               raise typer.BadParameter(
+                   "You are at project root. Please specify --workflow <workflow> or run from inside a workflow directory."
+               )
+       except ContextNotFoundError:
+           pass
+   ```
+
+**Behavior**:
+- ✅ From inside workflow directory: Auto-detects workflow and inherits structure
+- ✅ From project root without `--workflow`: Fails with clear error message
+- ✅ Step gets correct `parent_workflow_id` and structure from workflow
+
+**Test**: `tests/cli/test_graphene_workflow_setup.py` - Verifies the exact sequence from manual instructions.
+
+### 26.3 Fix: Workflow Rename Bug
+
+**Problem**: `qv configure workflow --name "graph"` failed with `FileNotFoundError` after renaming because the code tried to read/write `workflow.yaml` at the old location after the directory was moved.
+
+**Root Cause**: `apply_workflow_rename()` can move the workflow directory if the slug changes (e.g., "graphene bands" → "graph" changes slug from "graphene-bands" to "graph"), but the CLI code captured `workflow_dir` and `workflow_yaml` paths before the rename.
+
+**Solution** (`src/quantumvitas/cli/main.py`, lines ~2179-2197):
+
+```python
+# Handle name change (rename)
+if name:
+    # Store old path to detect if directory was moved
+    old_workflow_dir = workflow_dir
+    old_workflow_yaml = workflow_yaml
+    
+    apply_workflow_rename(...)
+    save_project_config(project_root, config)
+    
+    # Re-resolve workflow directory in case it was moved
+    workflow_dir = workflow_directory(project_root, workflow_entry)
+    workflow_yaml = workflow_dir / "workflow.yaml"
+    
+    # Re-read workflow.yaml if directory was moved
+    if workflow_dir != old_workflow_dir:
+        if not workflow_yaml.exists():
+            raise typer.BadParameter(f"workflow.yaml not found at {workflow_yaml} after rename")
+        workflow_data = yaml.safe_load(workflow_yaml.read_text()) or {}
+    
+    # Update meta in workflow.yaml
+    if "meta" in workflow_data:
+        workflow_data["meta"]["name"] = name
+        new_slug = (workflow_entry.get("meta") or {}).get("slug") or slugify(name)
+        workflow_data["meta"]["slug"] = new_slug
+```
+
+**Behavior**:
+- ✅ Rename works whether slug changes or stays the same
+- ✅ `workflow.yaml` is updated at the correct location (new directory if moved)
+- ✅ Project config and workflow.yaml stay in sync
+
+### 26.4 Fix: `qv analyze band` Workflow Detection
+
+**Problem**: `qv analyze band` from inside a workflow directory failed with "Workflow not found: graphene-bands" because `PathContext` extracted the selector from `workflow.yaml`, which might be stale after a rename.
+
+**Root Cause**: `PathContext.workflow_selector` reads from `workflow.yaml` meta, but after a rename, the selector might not match what's in `project.qv.yml` (the source of truth for `resolve_workflow`).
+
+**Solution** (`src/quantumvitas/cli/main.py`, lines ~3002-3024):
+
+```python
+# Only auto-detect workflow if no input file provided
+if input_file is None and ctx.is_inside_workflow():
+    # Use find_enclosing_workflow to get the actual entry from project config
+    # This is more reliable than using the selector from workflow.yaml
+    # (which might be stale after a rename)
+    config = load_project_config(project_root)
+    wf_entry = find_enclosing_workflow(project_root, config)
+    if wf_entry:
+        # Use the slug or name from the entry (which is authoritative)
+        workflow_selector = (wf_entry.get("meta") or {}).get("slug") or wf_entry.get("name")
+        if workflow_selector:
+            typer.echo(f"Detected workflow: {workflow_selector}")
+```
+
+**Why This Works**:
+- `find_enclosing_workflow()` matches the current directory path against entries in `project.qv.yml`
+- Uses directory path, not selector from `workflow.yaml`, so it works after renames
+- Selector comes from the authoritative entry in `project.qv.yml`
+
+**Behavior**:
+- ✅ Works from inside workflow directory, even after rename
+- ✅ Uses authoritative selector from project config, not stale workflow.yaml
+
+### 26.5 Key Principles
+
+1. **Use `find_enclosing_workflow()` for auto-detection**: More reliable than selectors from `workflow.yaml` because it uses directory paths
+2. **Re-resolve paths after rename operations**: Always re-resolve workflow directory and re-read files after `apply_workflow_rename()`
+3. **Read structure from top-level first**: Check `workflow_data.get("structure")` before legacy `workflow_data.get("workflow", {}).get("structure")`
+4. **Clear error messages**: When at project root without `--workflow`, provide explicit guidance
+
+### 26.6 Files Modified
+
+| File | Changes |
+|------|---------|
+| `src/quantumvitas/cli/main.py` | Fixed `init_step_command` to use `PathContext`, fixed structure reading, added clear error at project root |
+| `src/quantumvitas/cli/main.py` | Fixed `configure_workflow_command` to re-resolve paths after rename |
+| `src/quantumvitas/cli/main.py` | Fixed `analyze_band_command` to use `find_enclosing_workflow` instead of `PathContext.workflow_selector` |
+| `tests/cli/test_graphene_workflow_setup.py` | New test verifying exact CLI sequence from manual instructions |
+
+### 26.7 Test Coverage
+
+- ✅ `test_graphene_workflow_setup.py::test_graphene_workflow_setup` - Full sequence including rename
+- ✅ `test_graphene_workflow_setup.py::test_init_step_fails_at_project_root_without_workflow` - Error handling
+- ✅ All existing CLI tests pass (20 tests)
 
 ---
 

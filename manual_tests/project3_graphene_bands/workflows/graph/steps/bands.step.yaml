@@ -1,0 +1,14 @@
+meta:
+  id: 01KC0XZDC9DQ6M1BRJW25Z3ZNM
+  name: bands
+  slug: bands
+  path: workflows/graph/steps/bands.step.yaml
+  kind: step
+structure: C
+step_type: bands
+parent_workflow_id: 01KC0WCFZC8V3QN8BP2SBHJ181
+parameters:
+  BANDS:
+    filband: graphene.bands.dat
+    outdir: ./outdir
+    prefix: graphene

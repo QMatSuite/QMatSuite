@@ -1,0 +1,28 @@
+meta:
+  id: 01KC0XV98TGFZJ6R250FMFY9K9
+  name: scf
+  slug: scf
+  path: workflows/graph/steps/scf.step.yaml
+  kind: step
+structure: C
+step_type: scf
+parent_workflow_id: 01KC0WCFZC8V3QN8BP2SBHJ181
+parameters:
+  CONTROL:
+    calculation: scf
+    outdir: ./outdir
+    restart_mode: from_scratch
+  ELECTRONS:
+    conv_thr: 1.0e-08
+  SYSTEM:
+    ecutwfc: 50
+cards:
+  K_POINTS:
+    option: automatic
+    data:
+    - - 8
+      - 8
+      - 8
+      - 0
+      - 0
+      - 0
