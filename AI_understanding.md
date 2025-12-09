@@ -3122,6 +3122,40 @@ const browser = await chromium.connectOverCDP(wsUrl);
 - `tests/e2e/demo_workflow.spec.ts` - Demo project creation and workflow step verification
 - `tests/e2e/demo_workflow_run.spec.ts` - Full workflow execution with status tracking and analysis verification (combined test)
 
+### 22.6 Duplicate Test ID Detection
+
+The `electronTest` fixture automatically checks for duplicate `data-testid` values at the end of each test. This prevents test selector ambiguity and ensures reliable E2E tests.
+
+**Implementation**:
+- Helper function: `gui/tests/e2e/helpers/testid.ts` - `assertNoDuplicateTestIds()`
+- Integrated into `electronTest` fixture teardown (runs after each test)
+- Fails the test immediately if duplicates are detected
+
+**Test ID Naming Convention**:
+- **Always use namespaced IDs** to avoid collisions across different views/components:
+  - `qv-welcome-btn-open-project` (Welcome screen)
+  - `qv-sidebar-btn-open-project` (Sidebar)
+  - `qv-demo-card-si-bands-demo` (Demo Gallery)
+  - `qv-step-row-{stepId}` (Workflow steps - includes step ID for uniqueness)
+- **Never reuse the same test ID** for different UI elements, even in different views
+- **For list items**, include a unique identifier (e.g., item ID, index, or slug) in the test ID
+
+**Example violations that will fail tests**:
+```typescript
+// ❌ BAD - same ID in different components
+<button data-testid="qv-btn-open-project">  // In Welcome
+<button data-testid="qv-btn-open-project">  // In Sidebar
+
+// ✅ GOOD - namespaced IDs
+<button data-testid="qv-welcome-btn-open-project">  // In Welcome
+<button data-testid="qv-sidebar-btn-open-project">  // In Sidebar
+```
+
+**When adding new components**:
+- Use a clear namespace prefix (e.g., `qv-{component}-{element}`)
+- For repeated elements (lists), include unique identifiers
+- Run E2E tests to verify no duplicates are introduced
+
 ### 22.4 Remote Debugging Setup
 
 The Electron main process (`gui/electron/main.ts`) enables remote debugging when `ELECTRON_REMOTE_DEBUG_PORT` is set:

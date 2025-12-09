@@ -21,10 +21,10 @@ test.describe('E2E: Demo Gallery', () => {
     await expect(appPage.getByTestId('qv-welcome')).toBeVisible();
     
     // Click "Demo Gallery" button
-    // Scope to welcome screen to avoid duplicate test IDs in sidebar
+    // Use namespaced test ID (welcome-* instead of generic qv-btn-*)
     const welcomeContainer = appPage.getByTestId('qv-welcome');
     await expect(welcomeContainer).toBeVisible();
-    const demoGalleryBtn = welcomeContainer.getByTestId('qv-btn-demo-gallery');
+    const demoGalleryBtn = welcomeContainer.getByTestId('qv-welcome-btn-demo-gallery');
     await expect(demoGalleryBtn).toBeVisible();
     await demoGalleryBtn.click();
     

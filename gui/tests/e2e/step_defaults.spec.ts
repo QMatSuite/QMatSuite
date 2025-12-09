@@ -96,7 +96,9 @@ test.describe('E2E: Step Parameter Defaults', () => {
     
     // Find the step we just added - look for a step with type 'scf'
     // The step rows contain step type badges
-    const stepRows = appPage.getByTestId('qv-step-row');
+    // Step rows now have unique test IDs (qv-step-row-{stepId})
+    // Use a locator that matches the pattern
+    const stepRows = appPage.locator('[data-testid^="qv-step-row-"]');
     const stepCount = await stepRows.count();
     expect(stepCount).toBeGreaterThan(0);
     
