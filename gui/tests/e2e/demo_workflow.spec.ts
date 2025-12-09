@@ -80,21 +80,32 @@ test.describe('E2E Test 2: Create Demo Project → Workflow & Steps', () => {
       for (let i = 0; i < stepCount; i++) {
         const stepRow = stepRows.nth(i);
         
+        // Get step type from the step row BEFORE clicking (more reliable)
+        // The step type badge is in the step row itself, so we get it before the detail panel updates
+        const stepTypeBadgeInRow = stepRow.locator('.step-type-badge');
+        await expect(stepTypeBadgeInRow).toBeVisible({ timeout: 5000 });
+        const stepType = await stepTypeBadgeInRow.textContent();
+        
+        // Verify we got a valid step type
+        expect(stepType).toBeTruthy();
+        expect(stepType?.trim().length).toBeGreaterThan(0);
+        const trimmedStepType = stepType.trim().toLowerCase();
+        
         // Click on the step to view details
         await stepRow.click();
         
-        // Wait for step detail panel
-        await expect(appPage.getByTestId('qv-step-detail')).toBeVisible({ timeout: 10000 });
+        // Wait for step detail panel to be visible
+        const stepDetailPanel = appPage.getByTestId('qv-step-detail');
+        await expect(stepDetailPanel).toBeVisible({ timeout: 10000 });
+        
+        // Wait for the detail panel to show the correct step by verifying the step type badge matches
+        // This ensures the panel has fully updated before we read the file path
+        const stepTypeInDetail = stepDetailPanel.locator('.step-type-badge').first();
+        await expect(stepTypeInDetail).toHaveText(new RegExp(trimmedStepType, 'i'), { timeout: 5000 });
         
         // Get step ID and file path from the detail panel
         const stepIdText = await appPage.getByTestId('qv-step-id').textContent();
         const stepFilePath = await appPage.getByTestId('qv-step-file-path').textContent();
-        
-        // Get step type from the UI (stable identifier, not regenerated)
-        // The step type badge is within the step detail panel, so scope it
-        const stepDetailPanel = appPage.getByTestId('qv-step-detail');
-        const stepTypeElement = stepDetailPanel.locator('.step-type-badge').first();
-        const stepType = await stepTypeElement.textContent();
         
         expect(stepIdText).toBeTruthy();
         expect(stepFilePath).toBeTruthy();
@@ -120,8 +131,8 @@ test.describe('E2E Test 2: Create Demo Project → Workflow & Steps', () => {
           
           // Verify step type matches (this is stable across snapshot materialization)
           // The step type in the file should match the step type from the UI
-          if (stepType) {
-            const trimmedStepType = stepType.trim().toLowerCase();
+          // trimmedStepType was already computed above from the step row
+          if (trimmedStepType) {
             // The file uses lowercase for step_type, so check case-insensitively
             // Also handle potential whitespace variations
             const stepTypePattern = new RegExp(`step_type:\\s*${trimmedStepType}`, 'i');
