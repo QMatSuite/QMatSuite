@@ -297,7 +297,7 @@ class QVService:
         
         config = load_project_config(project_root)
         structures = config.setdefault("structures", [])
-        existing_slugs = collect_slugs(structures)
+        existing_slugs = collect_slugs(structures, project_root=project_root)
         
         # Also check existing structure files for slugs (ID-only model: config only has structure_id)
         structures_dir = project_root / "structures"
@@ -444,7 +444,7 @@ class QVService:
         """
         config = load_project_config(project_root)
         workflows = config.setdefault("workflows", [])
-        existing_slugs = collect_slugs(workflows)
+        existing_slugs = collect_slugs(workflows, project_root=project_root)
         
         final_name, final_slug = generate_unique_name_and_slug(
             kind="workflow",
@@ -954,7 +954,7 @@ class QVService:
             "step": step_selector,
             "step_id": step_resolved.meta.id,
             "step_type": result.step_type.value if hasattr(result.step_type, 'value') else str(result.step_type),
-            "output_file": str(result.output_file) if result.output_file else None,
+            "output_file": str(result.output_file.resolve()) if result.output_file and result.output_file.exists() else None,
             "success": result.error is None,
             "error": result.error,
             "input_file": str(input_path),
@@ -1477,6 +1477,9 @@ class QVService:
                     "slug": res.meta.slug,
                     "path": res.meta.path,
                     "absolute_path": str(res.absolute_path),
+                    "mode": "normal",  # Default mode
+                    "n_steps": 0,
+                    "steps": [],
                 }
                 for res in resolved_list
             ]
@@ -1489,14 +1492,17 @@ class QVService:
                 "slug": workflow_ref.meta.slug,
                 "path": workflow_ref.meta.path,
                 "absolute_path": str(workflow_ref.absolute_path),
+                "mode": "normal",  # Default mode (will be overridden if workflow loads successfully)
+                "n_steps": 0,  # Default (will be overridden if workflow loads successfully)
+                "steps": [],  # Default (will be overridden if workflow loads successfully)
             }
             
-            # Try to load workflow with migration support
+            # Try to load workflow with migration support (inspection mode)
             # This uses Workflow.from_yaml() which handles legacy step entries
             try:
                 from quantumvitas.workflow.workflow import Workflow
                 if workflow_ref.absolute_path.exists():
-                    workflow = Workflow.from_yaml(workflow_ref.absolute_path, project)
+                    workflow = Workflow.from_yaml(workflow_ref.absolute_path, project, materialize_steps=False)
                     
                     # Extract structure info
                     if workflow.structure:
@@ -1506,7 +1512,8 @@ class QVService:
                         entry["structure"] = None
                         entry["structure_id"] = None
                     
-                    entry["mode"] = workflow.mode.value if hasattr(workflow.mode, 'value') else str(workflow.mode)
+                    # Ensure mode is always present (default to "normal" if not set)
+                    entry["mode"] = workflow.mode.value if hasattr(workflow.mode, 'value') else (str(workflow.mode) if workflow.mode else "normal")
                     entry["n_steps"] = len(workflow.steps)
                     
                     # Extract step info from actual Step objects (which have ULID meta.id)
@@ -1525,7 +1532,7 @@ class QVService:
                 import logging
                 logger = logging.getLogger(__name__)
                 logger.warning(f"Failed to load workflow details for {workflow_ref.meta.name}: {e}")
-                # Workflow details are optional, continue with basic entry
+                # Workflow details are optional, but mode/n_steps/steps are already set to defaults above
             
             result.append(entry)
         
@@ -3011,11 +3018,11 @@ class QVService:
                 project_root=project_root,
             ) from e
         
-        # Load workflow using Workflow.from_yaml (which handles legacy migration)
+        # Load workflow using Workflow.from_yaml in inspection mode (no step materialization)
         # Note: We catch exceptions here but only re-raise as ResourceNotFoundError if it's
         # a workflow loading issue. Structure resolution failures are handled gracefully.
         try:
-            workflow = Workflow.from_yaml(workflow_resolved.absolute_path, project)
+            workflow = Workflow.from_yaml(workflow_resolved.absolute_path, project, materialize_steps=False)
         except FileNotFoundError as e:
             # If workflow.yaml is missing, that's a real workflow not found error
             if "workflow.yaml" in str(e):

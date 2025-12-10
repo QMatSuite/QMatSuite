@@ -384,6 +384,7 @@ def test_cli_delete_workflow(tmp_path: Path):
 
 
 def test_cli_run_workflow_strict_option(sample_project: Path, monkeypatch):
+    """Test that --strict flag sets workflow mode to STRICT."""
     runner = CliRunner()
     captured = {}
 
@@ -409,7 +410,22 @@ def test_cli_run_workflow_strict_option(sample_project: Path, monkeypatch):
         captured["mode"] = workflow.mode
         return DummyResult()
 
+    # Mock WorkflowRunner.run to avoid actual QE execution
     monkeypatch.setattr("quantumvitas.workflow.runner.WorkflowRunner.run", fake_run)
+    
+    # Mock pseudopotential resolution to avoid pseudo requirements
+    def fake_ensure_qe_pseudos(*args, **kwargs):
+        from quantumvitas.core.pseudo import PseudoResolutionResult
+        from pathlib import Path
+        # Return success without actually resolving pseudos
+        return PseudoResolutionResult(
+            project_pseudo_dir=Path("/tmp/pseudo"),
+            system_pseudo_dir=None,
+            resolved_pseudos={},
+            all_available=True,
+        )
+    
+    monkeypatch.setattr("quantumvitas.core.pseudo.ensure_qe_pseudos", fake_ensure_qe_pseudos)
 
     result = runner.invoke(
         app,
@@ -454,20 +470,59 @@ def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
     )
     assert result.exit_code == 0
 
-    # Step file referencing structure
-    step_file = tmp_path / "step.yaml"
+    # Create a workflow with the structure
+    from quantumvitas.core.resources import generate_resource_id, meta_from_name
+    workflow_id = generate_resource_id()
+    workflow_dir = project_root / "workflows" / "test_workflow"
+    workflow_dir.mkdir(parents=True)
+    (workflow_dir / "steps").mkdir()
+    
+    # Get structure_id from registry
+    from quantumvitas.core.resolution import build_resource_index, require_structure
+    index = build_resource_index(project_root)
+    struct_resolved = require_structure(project_root, "si", index=index)
+    
+    # Create workflow.yaml with structure_id
+    workflow_meta = meta_from_name("workflow", name="test_workflow", path="workflows/test_workflow")
+    workflow_meta.id = workflow_id
+    workflow_yaml_data = {
+        "meta": workflow_meta.to_dict(),
+        "structure_id": struct_resolved.meta.id,
+        "steps": [],
+    }
+    (workflow_dir / "workflow.yaml").write_text(yaml.safe_dump(workflow_yaml_data))
+    
+    # Update project config
+    config = yaml.safe_load((project_root / "project.qv.yml").read_text())
+    config["workflows"] = [{"id": workflow_id}]
+    (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
+
+    # Step file in workflow directory (DAG model: no structure_id in step YAML)
+    step_file = workflow_dir / "steps" / "scf.step.yaml"
+    from quantumvitas.core.resources import generate_resource_id, meta_from_name
+    step_id = generate_resource_id()
+    step_meta = meta_from_name("step", name="scf", path="workflows/test_workflow/steps/scf.step.yaml")
+    step_meta.id = step_id
     yaml.safe_dump(
         {
-            "structure": "si",
+            "meta": step_meta.to_dict(),
             "step_type": "scf",
             "input_name": "si_step.pw.in",
             "parameters": {
                 "SYSTEM": {"ecutwfc": 60},
                 "ELECTRONS": {"conv_thr": 1e-8},
             },
+            "species_overrides": {
+                "Si": {"pseudopot": "Si.pbe-n-rrkjus_psl.1.0.0.UPF"}
+            },
+            # DAG model: no structure_id or structure in step YAML
         },
         step_file.open("w"),
     )
+    
+    # Update workflow.yaml to include step
+    workflow_yaml_data["steps"] = [{"step_id": step_id}]
+    (workflow_dir / "workflow.yaml").write_text(yaml.safe_dump(workflow_yaml_data))
 
     captured = {}
 
@@ -485,11 +540,15 @@ def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
     ):
         captured["input_file"] = input_file
         captured["working_dir"] = working_dir
+        # Create the output file so QVService.run_step includes it in the result dict
+        output_file = working_dir / "si_step.pw.out"
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        output_file.write_text("Mock QE output")
         return (
             StepResult(
                 step_type="scf",
                 input_file=input_file,
-                output_file=working_dir / "si_step.pw.out",
+                output_file=output_file,
                 success=True,
                 return_code=0,
             ),
@@ -501,16 +560,21 @@ def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
             ),
         )
 
-    monkeypatch.setattr("quantumvitas.cli.main.run_input_step", fake_run_input_step)
+    # Mock the actual run_input_step function that QVService uses
+    monkeypatch.setattr("quantumvitas.workflow.input_runner.run_input_step", fake_run_input_step)
 
+    # Use new CLI pattern: --workflow + --step (deprecated bare step path still works but requires workflow context)
     result = runner.invoke(
         app,
         [
             "run",
             "step",
-            str(step_file),
             "--project",
             str(project_root),
+            "--workflow",
+            "test_workflow",
+            "--step",
+            "scf",
         ],
     )
 
@@ -543,11 +607,55 @@ def test_cli_run_step_accepts_step_yaml(tmp_path: Path, monkeypatch):
         ],
     )
 
-    step_file = tmp_path / "step.yaml"
+    # Create a workflow with the structure
+    from quantumvitas.core.resources import generate_resource_id, meta_from_name
+    workflow_id = generate_resource_id()
+    workflow_dir = project_root / "workflows" / "test_workflow"
+    workflow_dir.mkdir(parents=True)
+    (workflow_dir / "steps").mkdir()
+    
+    # Get structure_id from registry
+    from quantumvitas.core.resolution import build_resource_index, require_structure
+    index = build_resource_index(project_root)
+    struct_resolved = require_structure(project_root, "si", index=index)
+    
+    # Create workflow.yaml with structure_id
+    workflow_meta = meta_from_name("workflow", name="test_workflow", path="workflows/test_workflow")
+    workflow_meta.id = workflow_id
+    workflow_yaml_data = {
+        "meta": workflow_meta.to_dict(),
+        "structure_id": struct_resolved.meta.id,
+        "steps": [],
+    }
+    (workflow_dir / "workflow.yaml").write_text(yaml.safe_dump(workflow_yaml_data))
+    
+    # Update project config
+    config = yaml.safe_load((project_root / "project.qv.yml").read_text())
+    config["workflows"] = [{"id": workflow_id}]
+    (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
+
+    # Step file in workflow directory (DAG model: no structure_id in step YAML)
+    step_file = workflow_dir / "steps" / "scf.step.yaml"
+    step_id = generate_resource_id()
+    step_meta = meta_from_name("step", name="scf", path="workflows/test_workflow/steps/scf.step.yaml")
+    step_meta.id = step_id
     yaml.safe_dump(
-        {"structure": "si", "step_type": "scf", "input_name": "si_step.pw.in"},
+        {
+            "meta": step_meta.to_dict(),
+            "step_type": "scf",
+            "input_name": "si_step.pw.in",
+            # DAG model: no structure_id or structure in step YAML
+            # Add pseudopotential configuration to avoid "not configured" error
+            "species_overrides": {
+                "Si": {"pseudopot": "Si.pbe-n-rrkjus_psl.1.0.0.UPF"}
+            },
+        },
         step_file.open("w"),
     )
+    
+    # Update workflow.yaml to include step
+    workflow_yaml_data["steps"] = [{"step_id": step_id}]
+    (workflow_dir / "workflow.yaml").write_text(yaml.safe_dump(workflow_yaml_data))
 
     captured = {}
 
@@ -563,11 +671,15 @@ def test_cli_run_step_accepts_step_yaml(tmp_path: Path, monkeypatch):
     ):
         captured["input_file"] = input_file
         captured["working_dir"] = working_dir
+        # Create the output file so QVService.run_step includes it in the result dict
+        output_file = working_dir / "si_step.pw.out"
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        output_file.write_text("Mock QE output")
         return (
             StepResult(
                 step_type="scf",
                 input_file=input_file,
-                output_file=working_dir / "si_step.pw.out",
+                output_file=output_file,
                 success=True,
                 return_code=0,
             ),
@@ -579,16 +691,21 @@ def test_cli_run_step_accepts_step_yaml(tmp_path: Path, monkeypatch):
             ),
         )
 
-    monkeypatch.setattr("quantumvitas.cli.main.run_input_step", fake_run_input_step)
+    # Mock the actual run_input_step function that QVService uses
+    monkeypatch.setattr("quantumvitas.workflow.input_runner.run_input_step", fake_run_input_step)
 
+    # Use new CLI pattern: --workflow + --step (deprecated bare step path still works but requires workflow context)
     result = runner.invoke(
         app,
         [
             "run",
             "step",
-            str(step_file),
             "--project",
             str(project_root),
+            "--workflow",
+            "test_workflow",
+            "--step",
+            "scf",
         ],
     )
 
@@ -626,11 +743,11 @@ def test_cli_step_create_and_insert(sample_project: Path):
     spec_path = steps_dir / "nscf.step.yaml"
     assert spec_path.exists()
     spec_data = yaml.safe_load(spec_path.read_text())
-    # With ID-only model, we use structure_id, not structure selector
-    assert "structure_id" in spec_data
-    assert spec_data.get("structure_id") is not None
-    # structure field should not be present (or be empty string for legacy compat)
-    assert "structure" not in spec_data or spec_data.get("structure") == ""
+    # DAG + ID-only model: Step YAML must NOT contain structure_id or parent_workflow_id
+    # Structure is resolved via workflow.structure_id at runtime
+    assert "structure_id" not in spec_data, "Step YAML should NOT contain structure_id (DAG model: inherits from workflow)"
+    assert "parent_workflow_id" not in spec_data, "Step YAML should NOT contain parent_workflow_id (DAG model: parent is implicit)"
+    assert "structure" not in spec_data, "Step YAML should NOT contain structure selector (DAG model)"
     assert spec_data["parameters"]["SYSTEM"]["ecutwfc"] == 60
     assert spec_data["cards"]["K_POINTS"]["option"] == "automatic"
     assert spec_data["cards"]["K_POINTS"]["data"][0] == [4, 4, 4, 0, 0, 0]
@@ -796,7 +913,8 @@ def test_cli_show_command_import_preserves_original_parameters(
             ),
         )
 
-    monkeypatch.setattr("quantumvitas.cli.main.run_input_step", fake_run_input_step)
+    # Mock the actual run_input_step function that QVService uses
+    monkeypatch.setattr("quantumvitas.workflow.input_runner.run_input_step", fake_run_input_step)
 
     geometry_skipped = []
     for case in cases:

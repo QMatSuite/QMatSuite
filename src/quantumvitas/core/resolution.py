@@ -369,8 +369,13 @@ def resolve_structure(
     """
     Resolve a structure selector to a resource.
     
+    Resolution order (preferred first):
+    1. ID (ULID) via registry: if selector is 26-char ULID, resolve by ID
+    2. Slug/name via registry: match by meta.slug or meta.name (case-insensitive)
+    3. Path-based resolution: match by meta.path (legacy/compat)
+    4. Config fallback: scan project.qv.yml entries (backwards compatibility)
+    
     Uses ResourceIndex (built from resource files) as the authoritative source.
-    Falls back to config entries for backwards compatibility.
     
     Args:
         project_root: Path to project root (contains project.qv.yml)
@@ -758,7 +763,11 @@ def resolve_step(
     """
     # Resolve workflow first
     workflow = resolve_workflow(project_root, workflow_selector, config)
-    workflow_dir = workflow.absolute_path
+    # workflow.absolute_path points to workflow.yaml, so get the parent directory
+    if workflow.absolute_path.name == "workflow.yaml":
+        workflow_dir = workflow.absolute_path.parent
+    else:
+        workflow_dir = workflow.absolute_path
     
     step_selector = step_selector.strip()
     
@@ -825,10 +834,13 @@ def resolve_step(
         if step_name.lower() == step_selector.lower() or step_slug.lower() == step_selector.lower():
             return _step_path_to_resolved(step_file, project_root)
     
-    # Strategy 6: step id field from workflow reference (exact match)
+    # Strategy 6: step id field from step YAML (exact match) - check both top-level and meta
     for step_file, data in step_entries:
         step_id = data.get("id", "")
-        if step_id.lower() == step_selector.lower():
+        meta = data.get("meta") or {}
+        meta_id = meta.get("id", "")
+        # Check both top-level id and meta.id
+        if step_id.lower() == step_selector.lower() or meta_id.lower() == step_selector.lower():
             return _step_path_to_resolved(step_file, project_root)
     
     # Strategy 7: step_type (exact match) - for backwards compatibility
@@ -850,6 +862,10 @@ def resolve_step(
 
 def _resolve_step_by_path(workflow_dir: Path, selector: str) -> Optional[Path]:
     """Try to resolve step by direct path."""
+    # Handle relative paths like "steps/scf.step.yaml"
+    if selector.startswith("steps/"):
+        selector = selector[6:]  # Remove "steps/" prefix
+    
     candidates = [
         Path(selector),
         workflow_dir / selector,

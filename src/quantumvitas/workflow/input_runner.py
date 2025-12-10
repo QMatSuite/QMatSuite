@@ -242,9 +242,13 @@ def prepare_input_step(
     )
     
     if not pseudo_result.all_available:
+        # This is a missing file error (pseudopotential was configured but file not found)
+        # Configuration errors are caught earlier in ensure_qe_pseudos
         raise RuntimeError(
-            f"Failed to obtain required pseudopotentials. "
-            f"Project pseudo dir: {project_pseudo_dir}"
+            f"Pseudopotential file(s) not found or could not be downloaded. "
+            f"This is a missing file error (pseudopotential was configured but the file is missing). "
+            f"Project pseudo dir: {project_pseudo_dir}. "
+            f"Check that the pseudopotential filenames in your step spec are correct and the files exist."
         )
     
     try:
@@ -488,7 +492,11 @@ def apply_species_overrides_to_qe_input(
         if "pseudopot" in values:
             while len(row) < 3:
                 row.append("")
-            row[2] = str(values["pseudopot"])
+            pseudo_value = values["pseudopot"]
+            # Only set if value is non-empty (empty string means keep placeholder/default)
+            if pseudo_value:
+                row[2] = str(pseudo_value)
+            # If empty, leave placeholder in place (will be caught by ensure_qe_pseudos)
 
 
 def apply_card_overrides_to_qe_input(

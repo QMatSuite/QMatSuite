@@ -148,12 +148,16 @@ def test_init_workflow_from_template_with_custom_structure(tmp_path):
     structures_dir = project_dir / "structures"
     structures_dir.mkdir(exist_ok=True)
     
+    # Generate proper ULID for structure
+    from quantumvitas.core.resources import generate_resource_id
+    structure_ulid = generate_resource_id()
+    
     struct_file = structures_dir / "custom_si.json"
     with open(struct_file, "w") as f:
         json.dump({
             "structure": struct.as_dict(),
             "__qv_meta__": {
-                "id": "01TEST12345",
+                "id": structure_ulid,
                 "name": "custom_si",
                 "slug": "custom_si",
                 "path": "structures/custom_si.json",
@@ -164,9 +168,7 @@ def test_init_workflow_from_template_with_custom_structure(tmp_path):
     # Register structure in project
     config = yaml.safe_load((project_dir / "project.qv.yml").read_text())
     config.setdefault("structures", []).append({
-        "name": "custom_si",
-        "path": "structures/custom_si.json",
-        "meta": {"id": "01TEST12345", "name": "custom_si", "slug": "custom_si", "kind": "structure"}
+        "structure_id": structure_ulid,  # ID-only reference (ULID)
     })
     with open(project_dir / "project.qv.yml", "w") as f:
         yaml.safe_dump(config, f)

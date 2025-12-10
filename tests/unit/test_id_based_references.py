@@ -154,7 +154,12 @@ class TestStructureStepSpecStructureReferences:
     """Test StructureStepSpec structure_id vs structure selector."""
     
     def test_step_spec_with_structure_id(self):
-        """Test StructureStepSpec with structure_id (new format)."""
+        """Test StructureStepSpec with structure_id (new format).
+        
+        DAG + ID-only model: Step YAML must NOT contain structure_id or parent_workflow_id.
+        Structure is resolved via workflow.structure_id at runtime.
+        Parent workflow is implicit from step file location.
+        """
         structure_id = generate_resource_id()
         
         meta = ResourceMeta(
@@ -167,20 +172,21 @@ class TestStructureStepSpecStructureReferences:
         
         spec = StructureStepSpec(
             meta=meta,
-            structure="si",  # Legacy selector for backwards compat
-            structure_id=structure_id,
+            structure="si",  # Legacy selector for backwards compat (in memory only)
+            structure_id=structure_id,  # In memory only (for backwards compat)
             step_type="scf",
-            parent_workflow_id=generate_resource_id(),
+            parent_workflow_id=generate_resource_id(),  # In memory only (for backwards compat)
         )
         
-        # Verify structure_id is canonical
+        # Verify structure_id is stored in memory (for backwards compat)
         assert spec.structure_id == structure_id
-        assert spec.structure == "si"  # Legacy field preserved
+        assert spec.structure == "si"  # Legacy field preserved in memory
         
-        # Verify to_dict writes structure_id (ID-only reference)
+        # Verify to_dict does NOT write structure_id or parent_workflow_id (DAG invariant)
         data = spec.to_dict()
-        assert data["structure_id"] == structure_id
-        assert "structure" not in data  # Legacy selector NOT written (ID-only model)
+        assert "structure_id" not in data, "Step YAML must NOT contain structure_id (DAG model: inherits from workflow)"
+        assert "parent_workflow_id" not in data, "Step YAML must NOT contain parent_workflow_id (DAG model: parent is implicit)"
+        assert "structure" not in data  # Legacy selector NOT written (DAG model)
     
     def test_step_spec_from_dict_new_format(self):
         """Test loading StructureStepSpec from dict with structure_id."""
@@ -222,8 +228,12 @@ class TestStructureStepSpecStructureReferences:
         assert spec.structure_id is None  # Not resolved yet
         assert spec.structure == "si"  # Legacy field preserved
     
-    def test_step_spec_requires_structure_or_structure_id(self):
-        """Test that StructureStepSpec requires at least structure or structure_id."""
+    def test_step_spec_does_not_require_structure_or_structure_id(self):
+        """Test that StructureStepSpec does NOT require structure or structure_id.
+        
+        DAG + ID-only model: Steps inherit structure from workflow.structure_id.
+        Step YAML does not need to contain structure_id or structure selector.
+        """
         data = {
             "meta": {
                 "id": generate_resource_id(),
@@ -235,9 +245,10 @@ class TestStructureStepSpecStructureReferences:
             "step_type": "scf",
         }
         
-        # Should raise error if neither structure nor structure_id is provided
-        with pytest.raises(ValueError, match="missing required field 'structure_id' or legacy 'structure' selector"):
-            StructureStepSpec.from_dict(data)
+        # Should NOT raise error - structure is resolved from workflow at runtime
+        spec = StructureStepSpec.from_dict(data)
+        assert spec.structure_id is None
+        assert spec.structure == ""  # Empty string default
 
 
 class TestBackwardsCompatibility:

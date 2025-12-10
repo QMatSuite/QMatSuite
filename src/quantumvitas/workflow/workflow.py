@@ -29,6 +29,7 @@ class Workflow:
     io: WorkflowIO
     structure: Optional[StructureRef] = None
     working_dir: Path = field(default_factory=Path)
+    _structure_id: Optional[str] = field(default=None, init=False, repr=False)  # Cached structure_id from model
 
     @property
     def raw_dir(self) -> Path:
@@ -42,8 +43,55 @@ class Workflow:
     def results_dir(self) -> Path:
         return self.io.results_dir
 
+    @property
+    def structure_id(self) -> Optional[str]:
+        """
+        Get structure_id from the workflow.
+        
+        DAG + ID-only model invariants:
+        - Workflow holds structure_id (ULID) as the canonical structure reference.
+        - Steps do NOT persist structure_id in their YAML (they inherit from workflow).
+        - All cross-resource relationships go through IDs + registry.
+        
+        This property reads from the underlying workflow.yaml model.
+        """
+        # If cached, return it
+        if self._structure_id is not None:
+            return self._structure_id
+        
+        # Otherwise, load from workflow.yaml
+        workflow_yaml = self.dir / "workflow.yaml"
+        if workflow_yaml.exists():
+            try:
+                from quantumvitas.core.models import load_workflow
+                wf_model = load_workflow(workflow_yaml, self.project.root)
+                self._structure_id = wf_model.structure_id
+                return self._structure_id
+            except Exception:
+                pass
+        
+        # Fallback: get from structure ref if available
+        if self.structure:
+            return self.structure.meta.id
+        
+        return None
+
     @classmethod
-    def from_yaml(cls, workflow_dir: Path, project: Project) -> "Workflow":
+    def from_yaml(
+        cls, 
+        workflow_dir: Path, 
+        project: Project,
+        materialize_steps: bool = True,
+    ) -> "Workflow":
+        """
+        Load workflow from workflow.yaml.
+        
+        DAG + ID-only model:
+        - Workflow.yaml contains structure_id (ULID) pointing to structure resource.
+        - Steps are referenced by step_id (ULID) in workflow.steps entries.
+        - Step YAML files do NOT contain structure_id or parent_workflow_id.
+        - Structure is resolved via workflow.structure_id at execution time.
+        """
         workflow_yaml = workflow_dir / "workflow.yaml"
         if not workflow_yaml.exists():
             raise FileNotFoundError(f"workflow.yaml not found: {workflow_yaml}")
@@ -98,22 +146,41 @@ class Workflow:
         migrated_step_entries: List[dict] = []  # Track step entries that need migration
         
         for step_data in data.get("steps", []):
-            step, step_migrated = _build_step(step_data, workflow_dir, working_dir, project)
-            steps.append(step)
-            
-            if step_migrated:
-                needs_migration = True
-                # Store the migrated step entry (with real ULID) for YAML rewrite
-                # Get the real ULID from the step's meta (which was set from spec.meta.id)
-                migrated_step_entries.append({
-                    "step_id": step.meta.id,  # Real ULID from spec.meta.id (via legacy fallback)
-                    "type": step_data.get("type") or (step.step_type.value if step.step_type else None),
-                    "input": step_data.get("input"),
-                    "reference": step_data.get("reference"),
-                })
+            if materialize_steps:
+                # Execution mode: fully materialize steps (calls materialize_step_spec, requires pseudos)
+                step, step_migrated = _build_step(step_data, workflow_dir, working_dir, project)
+                steps.append(step)
+                
+                if step_migrated:
+                    needs_migration = True
+                    # Store the migrated step entry (with real ULID) for YAML rewrite
+                    # Get the real ULID from the step's meta (which was set from spec.meta.id)
+                    migrated_step_entries.append({
+                        "step_id": step.meta.id,  # Real ULID from spec.meta.id (via legacy fallback)
+                        "type": step_data.get("type") or (step.step_type.value if step.step_type else None),
+                        "input": step_data.get("input"),
+                        "reference": step_data.get("reference"),
+                    })
+                else:
+                    # Step didn't need migration, but we still need to track it for the upgraded YAML
+                    migrated_step_entries.append(None)  # Marker that this step didn't need migration
             else:
-                # Step didn't need migration, but we still need to track it for the upgraded YAML
-                migrated_step_entries.append(None)  # Marker that this step didn't need migration
+                # Inspection mode: create lightweight step objects without materialization
+                # This avoids calling materialize_step_spec and ensure_qe_pseudos
+                step, step_migrated = _build_step_inspection(step_data, workflow_dir, working_dir, project)
+                steps.append(step)
+                
+                if step_migrated:
+                    needs_migration = True
+                    # Store the migrated step entry with the real ULID from step file
+                    migrated_step_entries.append({
+                        "step_id": step.meta.id,  # Real ULID from step file (via new_step_id)
+                        "type": step_data.get("type") or (step.step_type.value if step.step_type else None),
+                        "input": step_data.get("input"),
+                        "reference": step_data.get("reference"),
+                    })
+                else:
+                    migrated_step_entries.append(None)
 
         # Create workflow instance
         workflow = cls(
@@ -126,6 +193,8 @@ class Workflow:
             structure=structure_ref,
             working_dir=working_dir,
         )
+        # Cache structure_id for quick access
+        workflow._structure_id = structure_id
         
         # Auto-migration: write upgraded YAML back to disk if needed
         if needs_migration:
@@ -206,79 +275,86 @@ def _build_step(
     migrated = False
     new_step_id = step_id  # Will be updated if legacy path is used
     
-    # Try ID-first via registry
-    try:
-        # Try to get workflow from project by matching directory
-        workflow_ref = None
-        for wf_ref in project.workflows.values():
-            if wf_ref.absolute_path == workflow_dir:
-                workflow_ref = wf_ref
-                break
+    # Check if step_id is a ULID (26 chars starting with "01")
+    is_ulid = len(step_id) == 26 and step_id.startswith("01")
+    
+    # Try ID-first via registry (only if step_id is a ULID)
+    if is_ulid:
+        try:
+            # Try to get workflow from project by matching directory
+            workflow_ref = None
+            for wf_ref in project.workflows.values():
+                if wf_ref.absolute_path == workflow_dir:
+                    workflow_ref = wf_ref
+                    break
+            
+            if workflow_ref:
+                workflow_selector = workflow_ref.meta.slug or workflow_ref.meta.name
+            else:
+                workflow_selector = workflow_dir.name
+            
+            step_resolved = require_step(project.root, workflow_selector, step_id)
+            step_file_path = step_resolved.absolute_path
+            new_step_id = step_resolved.meta.id  # Use the ULID from registry
+            # Normal path: step_id is a real ULID, no migration needed
+        except ResourceNotFoundError:
+            # ULID not found in registry - treat as legacy
+            is_ulid = False
+    
+    # Legacy fallback: step_id is not a ULID or ULID not found
+    if not is_ulid:
+        # Legacy fallback: step_id might be a name, not a ULID
+        migrated = True
         
-        if workflow_ref:
-            workflow_selector = workflow_ref.meta.slug or workflow_ref.meta.name
+        # Check for legacy step_file
+        legacy_step_file = step_data.get("step_file")
+        
+        # If legacy_step_file is not specified, try to find step file by:
+        # 1. Try step_id as filename (if it's a name like "scf")
+        # 2. Scan all step files and match by ULID in meta.id
+        if not legacy_step_file:
+            # First try: step_id as filename (legacy: id is name)
+            candidate = (workflow_dir / "steps" / f"{step_id}.step.yaml").resolve()
+            if candidate.exists():
+                legacy_step_file = str(candidate.relative_to(workflow_dir))
+            else:
+                # Second try: scan step files and match by ULID
+                steps_dir = workflow_dir / "steps"
+                if steps_dir.exists():
+                    for step_file in steps_dir.glob("*.step.yaml"):
+                        try:
+                            step_data_file = yaml.safe_load(step_file.read_text()) or {}
+                            step_meta = step_data_file.get("meta", {})
+                            if step_meta.get("id") == step_id:
+                                legacy_step_file = str(step_file.relative_to(workflow_dir))
+                                break
+                        except Exception:
+                            continue
+        
+        # If we have a legacy_step_file, load the step directly
+        if legacy_step_file:
+            step_file_path = (workflow_dir / legacy_step_file).resolve()
+            if not step_file_path.exists():
+                raise ValueError(f"Step '{step_id}' file not found at {step_file_path}")
+            
+            # Load step spec with resolver for legacy structure selector normalization
+            try:
+                config = load_project_config(project.root)
+                resolver = make_structure_selector_resolver(project.root, config=config)
+            except Exception:
+                resolver = None
+            
+            spec = StructureStepSpec.from_yaml(
+                step_file_path,
+                resolve_structure_selector=resolver,
+            )
+            # Here spec.meta.id is the real ULID for this step
+            new_step_id = spec.meta.id
         else:
-            workflow_selector = workflow_dir.name
-        
-        step_resolved = require_step(project.root, workflow_selector, step_id)
-        step_file_path = step_resolved.absolute_path
-        # Normal path: step_id is a real ULID, no migration needed
-    except ResourceNotFoundError:
-                # Legacy fallback: step_id might be a name, not a ULID
-                migrated = True
-                
-                # Check for legacy step_file
-                legacy_step_file = step_data.get("step_file")
-                
-                # If legacy_step_file is not specified, try to find step file by:
-                # 1. Try step_id as filename (if it's a name like "scf")
-                # 2. Scan all step files and match by ULID in meta.id
-                if not legacy_step_file:
-                    # First try: step_id as filename (legacy: id is name)
-                    candidate = (workflow_dir / "steps" / f"{step_id}.step.yaml").resolve()
-                    if candidate.exists():
-                        legacy_step_file = str(candidate.relative_to(workflow_dir))
-                    else:
-                        # Second try: scan step files and match by ULID
-                        steps_dir = workflow_dir / "steps"
-                        if steps_dir.exists():
-                            for step_file in steps_dir.glob("*.step.yaml"):
-                                try:
-                                    step_data_file = yaml.safe_load(step_file.read_text()) or {}
-                                    step_meta = step_data_file.get("meta", {})
-                                    if step_meta.get("id") == step_id:
-                                        legacy_step_file = str(step_file.relative_to(workflow_dir))
-                                        break
-                                except Exception:
-                                    continue
-                
-                # If we have a legacy_step_file, load the step directly
-                if legacy_step_file:
-                    step_file_path = (workflow_dir / legacy_step_file).resolve()
-                    if not step_file_path.exists():
-                        raise ValueError(f"Step '{step_id}' file not found at {step_file_path}")
-                    
-                    # Load step spec with resolver for legacy structure selector normalization
-                    try:
-                        config = load_project_config(project.root)
-                        resolver = make_structure_selector_resolver(project.root, config=config)
-                    except Exception:
-                        resolver = None
-                    
-                    spec = StructureStepSpec.from_yaml(
-                        step_file_path,
-                        resolve_structure_selector=resolver,
-                    )
-                    # Here spec.meta.id is the real ULID for this step
-                    new_step_id = spec.meta.id
-                else:
-                    # No registry entry, no legacy path: real error
-                    raise ValueError(
-                        f"Step '{step_id}' not found in registry and no legacy step_file/candidate found"
-                    )
-    except Exception as e:
-        # Other exceptions (not ResourceNotFoundError) - re-raise
-        raise
+            # No registry entry, no legacy path: real error
+            raise ValueError(
+                f"Step '{step_id}' not found in registry and no legacy step_file/candidate found"
+            )
     
     input_path_value = step_data.get("input") or step_data.get("file")
     input_path: Optional[Path] = None
@@ -329,6 +405,178 @@ def _build_step(
     )
     
     return step, migrated
+
+
+def _build_step_inspection(
+    step_data: dict,
+    workflow_dir: Path,
+    working_dir: Path,
+    project: Project,
+) -> tuple[Step, bool]:
+    """
+    Build a lightweight Step for inspection (no materialization).
+    
+    This function creates Step objects without calling materialize_step_spec
+    or ensure_qe_pseudos, making it suitable for inspection/metadata APIs.
+    
+    Returns:
+        Tuple of (Step, migrated_flag) where migrated_flag indicates if legacy
+        fallback path was used.
+    """
+    from quantumvitas.core.resources import ResourceMeta, generate_resource_id
+    from quantumvitas.core.resolution import require_step, ResourceNotFoundError
+    from quantumvitas.workflow.structure_steps import StructureStepSpec
+    from quantumvitas.core.resolution import make_structure_selector_resolver
+    from quantumvitas.core.project_utils import load_project_config
+    
+    # Prefer step_id (ULID) - canonical reference, fall back to legacy id field
+    step_id = step_data.get("step_id") or step_data.get("id")
+    if not step_id:
+        raise ValueError(f"Step entry missing both 'step_id' and 'id': {step_data}")
+    
+    engine_name = step_data.get("engine", "qe")
+    migrated = False
+    step_meta: Optional[ResourceMeta] = None
+    step_type: Optional[StepType] = None
+    input_path: Optional[Path] = None
+    new_step_id = step_id  # Will be updated if legacy path is used
+    
+    # Check if step_id is a ULID (26 chars starting with "01")
+    is_ulid = len(step_id) == 26 and step_id.startswith("01")
+    
+    # Try ID-first via registry (only if step_id is a ULID)
+    if is_ulid:
+        try:
+            # Try to get workflow from project by matching directory
+            workflow_ref = None
+            for wf_ref in project.workflows.values():
+                if wf_ref.absolute_path == workflow_dir:
+                    workflow_ref = wf_ref
+                    break
+            
+            if workflow_ref:
+                workflow_selector = workflow_ref.meta.slug or workflow_ref.meta.name
+            else:
+                workflow_selector = workflow_dir.name
+            
+            step_resolved = require_step(project.root, workflow_selector, step_id)
+            step_file_path = step_resolved.absolute_path
+            step_meta = step_resolved.meta
+            new_step_id = step_meta.id  # Use the ULID from registry
+            
+            # Load step spec just to get metadata (no materialization)
+            try:
+                config = load_project_config(project.root)
+                resolver = make_structure_selector_resolver(project.root, config=config)
+            except Exception:
+                resolver = None
+            
+            spec = StructureStepSpec.from_yaml(
+                step_file_path,
+                resolve_structure_selector=resolver,
+            )
+            step_type = _coerce_step_type(spec.step_type)
+        except ResourceNotFoundError:
+            # ULID not found in registry - treat as legacy
+            is_ulid = False
+    
+    # Legacy fallback: step_id is not a ULID or ULID not found
+    if not is_ulid:
+        # Legacy fallback: step_id might be a name, not a ULID
+        migrated = True
+        
+        # Check for legacy step_file
+        legacy_step_file = step_data.get("step_file")
+        
+        # If legacy_step_file is not specified, try to find step file by name
+        if not legacy_step_file:
+            candidate = (workflow_dir / "steps" / f"{step_id}.step.yaml").resolve()
+            if candidate.exists():
+                legacy_step_file = str(candidate.relative_to(workflow_dir))
+        
+        # If we have a legacy_step_file, load the step spec
+        if legacy_step_file:
+            step_file_path = (workflow_dir / legacy_step_file).resolve()
+            if step_file_path.exists():
+                try:
+                    config = load_project_config(project.root)
+                    resolver = make_structure_selector_resolver(project.root, config=config)
+                except Exception:
+                    resolver = None
+                
+                spec = StructureStepSpec.from_yaml(
+                    step_file_path,
+                    resolve_structure_selector=resolver,
+                )
+                step_meta = spec.meta  # This contains the ULID from the step file
+                step_type = _coerce_step_type(spec.step_type)
+                # Store the real ULID for migration
+                new_step_id = step_meta.id
+            else:
+                # Create minimal meta if file doesn't exist
+                step_meta = ResourceMeta(
+                    id=generate_resource_id(),
+                    name=step_id,
+                    slug=step_id,
+                    path=f"workflows/{workflow_dir.name}/steps/{step_id}.step.yaml",
+                    kind="step",
+                )
+                step_type = StepType.CUSTOM
+        else:
+            # Create minimal meta if no file found
+            step_meta = ResourceMeta(
+                id=generate_resource_id(),
+                name=step_id,
+                slug=step_id,
+                path=f"workflows/{workflow_dir.name}/steps/{step_id}.step.yaml",
+                kind="step",
+            )
+            step_type = StepType.CUSTOM
+    
+    # Handle input path (if specified)
+    input_path_value = step_data.get("input") or step_data.get("file")
+    if input_path_value:
+        input_path = Path(input_path_value)
+        if not input_path.is_absolute():
+            parts = input_path.parts
+            if parts and parts[0] == working_dir.name:
+                if len(parts) > 1:
+                    input_path = Path(*parts[1:])
+            input_path = (working_dir / input_path).resolve() if input_path else None
+    
+    # Handle reference path (if specified)
+    reference_path: Optional[Path] = None
+    reference_value = step_data.get("reference")
+    if reference_value:
+        reference_path = Path(reference_value)
+        if not reference_path.is_absolute():
+            reference_path = (workflow_dir / reference_path).resolve()
+    
+    # Create lightweight step (no materialization, no input file generation)
+    # Use a dummy input file path if needed (won't be used in inspection mode)
+    dummy_input = input_path or (working_dir / f"{step_id}.in")
+    
+    # Ensure step_meta has the correct ULID (from step file if migrated, or generated if not)
+    if not step_meta:
+        step_meta = ResourceMeta(
+            id=new_step_id,  # Use new_step_id (which is step_id if not migrated, or ULID if migrated)
+            name=step_id,
+            slug=step_id,
+            path=f"workflows/{workflow_dir.name}/steps/{step_id}.step.yaml",
+            kind="step",
+        )
+    else:
+        # Ensure step_meta.id is set to the correct ULID (new_step_id)
+        step_meta.id = new_step_id
+    
+    return Step(
+        meta=step_meta,
+        input_file=dummy_input,
+        engine=engine_name,
+        step_type=step_type or StepType.CUSTOM,
+        options={},
+        reference_output=reference_path,
+    ), migrated
 
 
 def _build_step_from_spec(
@@ -458,11 +706,14 @@ def _build_step_from_spec(
                     if isinstance(row, list) and len(row) >= 3:
                         element_symbol = str(row[0]).strip()
                         pseudo_filename = str(row[2]).strip()
-                        # Only add if it's not the default generic name
-                        if pseudo_filename and pseudo_filename != f"{element_symbol}.upf":
-                            extracted_overrides[element_symbol] = {
-                                "pseudopot": pseudo_filename,
-                            }
+                        # Skip placeholder names (missing configuration) and old default pattern
+                        from quantumvitas.core.pseudo import is_missing_pseudo_placeholder
+                        if pseudo_filename and not is_missing_pseudo_placeholder(pseudo_filename):
+                            # Also skip old default pattern for backward compatibility
+                            if pseudo_filename != f"{element_symbol}.upf":
+                                extracted_overrides[element_symbol] = {
+                                    "pseudopot": pseudo_filename,
+                                }
                 
                 # Merge extracted overrides into step spec (extracted takes precedence)
                 if extracted_overrides:
