@@ -509,6 +509,32 @@ def make_structure_selector_resolver(
 
 def _structure_to_resolved(project_root: Path, entry: dict) -> ResolvedResource:
     """Convert a structure entry to ResolvedResource."""
+    # ID-only model: entry only has structure_id, need to load structure file to get meta
+    structure_id = entry.get("structure_id") or entry.get("id")
+    
+    # Try to find and load structure file by ID
+    structures_dir = project_root / "structures"
+    if structures_dir.exists() and structure_id:
+        for struct_file in structures_dir.glob("*.json"):
+            try:
+                import json
+                struct_data = json.loads(struct_file.read_text())
+                struct_meta_dict = struct_data.get("__qv_meta__") or struct_data.get("meta")
+                if struct_meta_dict and struct_meta_dict.get("id") == structure_id:
+                    # Found matching structure file - use its meta
+                    from quantumvitas.core.resources import ResourceMeta
+                    resource_meta = ResourceMeta.from_dict(
+                        struct_meta_dict,
+                        kind="structure",
+                        default_name=struct_meta_dict.get("name", "Structure"),
+                        default_path=struct_meta_dict.get("path", f"structures/{struct_file.name}"),
+                    )
+                    abs_path = struct_file.resolve()
+                    return ResolvedResource(meta=resource_meta, entry=entry, absolute_path=abs_path)
+            except Exception:
+                continue
+    
+    # Fallback: use entry data (legacy format or structure file not found)
     meta = entry.get("meta") or {}
     default_name = entry.get("name") or meta.get("name") or "Structure"
     default_path = entry.get("file") or meta.get("path") or f"structures/{slugify(default_name)}.json"
@@ -649,6 +675,45 @@ def _resolve_workflow_by_path(
 
 
 def _workflow_to_resolved(project_root: Path, entry: dict) -> ResolvedResource:
+    """Convert a workflow entry to ResolvedResource."""
+    # ID-only model: entry only has workflow_id (or id), need to load workflow.yaml to get meta
+    workflow_id = entry.get("workflow_id") or entry.get("id")
+    
+    # Try to find and load workflow.yaml by ID
+    workflows_dir = project_root / "workflows"
+    if workflows_dir.exists() and workflow_id:
+        for workflow_dir in workflows_dir.iterdir():
+            if not workflow_dir.is_dir():
+                continue
+            workflow_yaml = workflow_dir / "workflow.yaml"
+            if workflow_yaml.exists():
+                try:
+                    import yaml
+                    wf_data = yaml.safe_load(workflow_yaml.read_text())
+                    wf_meta_dict = wf_data.get("meta") or {}
+                    if wf_meta_dict.get("id") == workflow_id:
+                        # Found matching workflow - use its meta
+                        from quantumvitas.core.resources import ResourceMeta
+                        resource_meta = ResourceMeta.from_dict(
+                            wf_meta_dict,
+                            kind="workflow",
+                            default_name=wf_meta_dict.get("name", "Workflow"),
+                            default_path=wf_meta_dict.get("path", f"workflows/{workflow_dir.name}"),
+                        )
+                        abs_path = workflow_yaml.resolve()
+                        return ResolvedResource(meta=resource_meta, entry=entry, absolute_path=abs_path)
+                except Exception:
+                    continue
+    
+    # Fallback: use entry data (legacy format or workflow.yaml not found)
+    meta = entry.get("meta") or {}
+    default_name = entry.get("name") or meta.get("name") or "Workflow"
+    default_path = entry.get("path") or meta.get("path") or f"workflows/{slugify(default_name)}"
+    
+    resource_meta = _entry_to_meta(entry, "workflow", default_path)
+    abs_path = (project_root / resource_meta.path / "workflow.yaml").resolve()
+    
+    return ResolvedResource(meta=resource_meta, entry=entry, absolute_path=abs_path)
     """Convert a workflow entry to ResolvedResource."""
     meta = entry.get("meta") or {}
     default_name = entry.get("name") or meta.get("name") or "Workflow"

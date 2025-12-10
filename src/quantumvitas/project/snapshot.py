@@ -82,7 +82,18 @@ class ProjectSnapshot:
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ProjectSnapshot":
-        """Create ProjectSnapshot from dictionary."""
+        """
+        Create ProjectSnapshot from dictionary.
+        
+        Supports both old format (project/structures/workflows at top level)
+        and new minimal format (snapshot_meta + files list).
+        """
+        # Check for new minimal format (snapshot_meta + files)
+        if "snapshot_meta" in data and "files" in data:
+            # New minimal format: convert files list to old format structure
+            return cls._from_minimal_format(data)
+        
+        # Old format: project/structures/workflows at top level
         return cls(
             version=data.get("version", 1),
             project=data.get("project", {}),
@@ -91,6 +102,87 @@ class ProjectSnapshot:
             pseudo=data.get("pseudo"),
             extra=data.get("extra"),
             meta=data.get("meta"),
+        )
+    
+    @classmethod
+    def _from_minimal_format(cls, data: Dict[str, Any]) -> "ProjectSnapshot":
+        """
+        Convert new minimal snapshot format (snapshot_meta + files) to ProjectSnapshot.
+        
+        The minimal format has:
+        - snapshot_meta: {version, created_at, ...}
+        - files: [{path: "project.qv.yml", content: "..."}, ...]
+        
+        We need to parse the YAML content from files to reconstruct the old format structure.
+        """
+        import yaml
+        
+        snapshot_meta = data.get("snapshot_meta", {})
+        files = data.get("files", [])
+        
+        # Build a map of file paths to content
+        file_map: Dict[str, str] = {}
+        for file_entry in files:
+            path = file_entry.get("path", "")
+            content = file_entry.get("content", "")
+            if path and content:
+                file_map[path] = content
+        
+        # Parse project.qv.yml to get project metadata
+        project_data = {}
+        if "project.qv.yml" in file_map:
+            try:
+                project_data = yaml.safe_load(file_map["project.qv.yml"]) or {}
+            except Exception:
+                project_data = {}
+        
+        # Parse structures
+        structures_data = []
+        for file_path, content in file_map.items():
+            if file_path.startswith("structures/") and file_path.endswith(".json"):
+                try:
+                    import json
+                    struct_data = json.loads(content)
+                    # Extract meta if present
+                    meta = struct_data.get("__qv_meta__", {})
+                    # Extract structure data
+                    structure_data = struct_data.get("structure", struct_data)
+                    structures_data.append({
+                        "meta": meta,
+                        "data": structure_data,
+                    })
+                except Exception:
+                    pass  # Skip malformed structure files
+        
+        # Parse workflows
+        workflows_data = []
+        for file_path, content in file_map.items():
+            if file_path.endswith("/workflow.yaml"):
+                try:
+                    workflow_data = yaml.safe_load(content) or {}
+                    # Extract steps from step files
+                    workflow_dir = file_path.rsplit("/", 1)[0]
+                    steps_data = []
+                    for step_path, step_content in file_map.items():
+                        if step_path.startswith(workflow_dir + "/steps/") and step_path.endswith(".step.yaml"):
+                            try:
+                                step_data = yaml.safe_load(step_content) or {}
+                                steps_data.append(step_data)
+                            except Exception:
+                                pass
+                    workflow_data["steps"] = steps_data
+                    workflows_data.append(workflow_data)
+                except Exception:
+                    pass  # Skip malformed workflow files
+        
+        return cls(
+            version=snapshot_meta.get("version", 1),
+            project=project_data,
+            structures=structures_data,
+            workflows=workflows_data,
+            pseudo=None,  # Pseudo files not embedded in minimal format
+            extra=None,
+            meta=snapshot_meta,  # Use snapshot_meta as meta
         )
 
 
@@ -119,9 +211,11 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
     }
     
     # Export structures
+    # Use structure's meta.path (ID-only model) instead of legacy file field
     structures_data = []
     for struct_entry in project_model.structures:
-        struct_path = project_root / struct_entry.file
+        # Use meta.path (canonical) or fall back to legacy file field for location
+        struct_path = project_root / (struct_entry.meta.path or struct_entry.file)
         if struct_path.exists():
             # Get structure data (pymatgen format)
             # Handle both __qv_meta__ wrapper and direct structure dict
@@ -140,14 +234,40 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
             })
     
     # Export workflows and their steps
+    # Use Project.open() and Workflow.from_yaml() to ensure legacy workflows are migrated
+    from quantumvitas.project.model import Project
+    from quantumvitas.workflow.workflow import Workflow
+    
+    try:
+        project = Project.open(project_root)
+    except Exception:
+        # Fall back to basic loading if Project.open() fails
+        project = None
+    
     workflows_data = []
     for workflow_entry in project_model.workflows:
         workflow_path = project_root / workflow_entry.meta.path / "workflow.yaml"
         if not workflow_path.exists():
             continue
         
-        workflow_model = load_workflow(workflow_path, project_root)
         workflow_dir = workflow_path.parent
+        
+        # Try to load via Workflow.from_yaml (with migration support) if project is available
+        if project:
+            try:
+                workflow = Workflow.from_yaml(workflow_dir, project)
+                # Extract workflow model data from the Workflow object
+                workflow_model = load_workflow(workflow_path, project_root)
+                # But use the actual Step objects from Workflow for step export
+                workflow_steps = workflow.steps
+            except Exception:
+                # Fall back to basic load_workflow if Workflow.from_yaml fails
+                workflow_model = load_workflow(workflow_path, project_root)
+                workflow_steps = None
+        else:
+            # Fall back to basic loading
+            workflow_model = load_workflow(workflow_path, project_root)
+            workflow_steps = None
         
         # Export workflow metadata
         # Use workflow_entry.meta (from project.qv.yml) for name, as it has the correct name
@@ -174,35 +294,46 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
             workflow_dict["structure"] = workflow_model.structure
         
         # Export each step
-        for step_entry in workflow_model.steps:
-            # Resolve step file via registry using step_id
-            if not step_entry.step_id:
-                continue
-            
-            # Use ResourceIndex to find step file by step_id
-            from quantumvitas.core.resolution import build_resource_index
-            index = build_resource_index(project_root)
-            step_meta = index.by_id.get(step_entry.step_id)
-            if not step_meta or step_meta.kind != "step":
-                continue
-            
-            step_path = project_root / step_meta.path
-            if not step_path.exists():
-                continue
-            
-            # Load step spec - project_root available for resolving legacy structure selectors
-            # Load step spec; legacy 'structure' selectors (if present) are normalized to structure_id via the registry
-            from quantumvitas.core.resolution import make_structure_selector_resolver
-            from quantumvitas.core.project_utils import load_project_config
-            try:
-                config = load_project_config(project_root)
-                resolver = make_structure_selector_resolver(project_root, config=config)
-            except Exception:
-                resolver = None
-            step_spec = StructureStepSpec.from_yaml(step_path, resolve_structure_selector=resolver)
-            step_dict = step_spec.to_dict()
-            
-            workflow_dict["steps"].append(step_dict)
+        # Strategy: Scan step files directly and export them, matching by ID when possible
+        # This handles cases where workflow.yaml step_id doesn't match step file meta.id
+        # Create resolver for legacy structure selector normalization
+        from quantumvitas.core.resolution import make_structure_selector_resolver
+        from quantumvitas.core.project_utils import load_project_config
+        try:
+            config = load_project_config(project_root)
+            resolver = make_structure_selector_resolver(project_root, config=config)
+        except Exception:
+            resolver = None
+        
+        # Collect expected step IDs from workflow (for reference, but we'll export all found steps)
+        expected_step_ids = set()
+        if workflow_steps:
+            expected_step_ids = {step.meta.id for step in workflow_steps}
+        else:
+            expected_step_ids = {s.step_id for s in workflow_model.steps if s.step_id}
+        
+        # Scan step files directory and export all found steps
+        steps_dir = workflow_dir / "steps"
+        exported_step_ids = set()
+        
+        if steps_dir.exists():
+            for step_file in steps_dir.glob("*.step.yaml"):
+                try:
+                    # Load step spec (with resolver for legacy structure selector normalization)
+                    step_spec = StructureStepSpec.from_yaml(step_file, resolve_structure_selector=resolver)
+                    step_id = step_spec.meta.id
+                    
+                    # Skip if already exported
+                    if step_id in exported_step_ids:
+                        continue
+                    
+                    # Export step data (ID-only model: structure_id, no structure selector)
+                    step_dict = step_spec.to_dict()
+                    workflow_dict["steps"].append(step_dict)
+                    exported_step_ids.add(step_id)
+                except Exception:
+                    # Skip step files that can't be loaded
+                    continue
         
         workflows_data.append(workflow_dict)
     

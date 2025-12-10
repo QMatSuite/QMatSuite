@@ -2,7 +2,7 @@
     calculation = 'bands'
     outdir = './outdir'
     prefix = 'si'
-    pseudo_dir = '/Users/up/quantumVITAS/pseudo'
+    pseudo_dir = '/Users/up/quantumVITAS/tests/data/project_examples/project2_bands/pseudo'
     restart_mode = 'from_scratch'
 /
 

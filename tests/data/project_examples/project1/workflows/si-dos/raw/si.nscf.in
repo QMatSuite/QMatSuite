@@ -2,7 +2,7 @@
     calculation = 'nscf'
     outdir = './outdir'
     prefix = 'si'
-    pseudo_dir = '/Users/up/quantumVITAS/tests/data/project_examples/project2_bands/pseudo'
+    pseudo_dir = '/Users/up/quantumVITAS/tests/data/project_examples/project1/pseudo'
     restart_mode = 'from_scratch'
 /
 
@@ -10,9 +10,7 @@
     ibrav = 0
     nat = 2
     ntyp = 1
-    ecutrho = 320
-    ecutwfc = 40
-    nbnd = 8
+    ecutwfc = 50
     occupations = 'tetrahedra'
 /
 

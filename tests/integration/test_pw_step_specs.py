@@ -4,7 +4,7 @@ import pytest
 
 from quantumvitas.core.engines.base import EngineConfig
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.qe_pseudopotentials import ensure_pseudopotentials
+# Using ensure_qe_pseudos directly (canonical entry point)
 from quantumvitas.workflow import (
     build_step_spec_from_qe_input,
     materialize_step_spec,
@@ -94,7 +94,22 @@ class TestPWStepSpecsExecution:
             # Ensure pseudopotentials are available
             unified_pseudo_dir = project_root / "pseudo"
             unified_pseudo_dir.mkdir(parents=True, exist_ok=True)
-            if not ensure_pseudopotentials(generated_input, raw_dir, unified_pseudo_dir, None):
+            from quantumvitas.core.pseudo import ensure_qe_pseudos, get_system_pseudo_dir
+            result = ensure_qe_pseudos(
+                qe_input_file=generated_input,
+                project_pseudo_dir=unified_pseudo_dir,
+                system_pseudo_dir=get_system_pseudo_dir(),
+                strict=False,
+                additional_search_dirs=None,
+            )
+            # Copy to working_dir for compatibility with old behavior
+            if result.all_available:
+                import shutil
+                for pp_name, pp_path in result.resolved_pseudos.items():
+                    working_pp = raw_dir / pp_name
+                    if not working_pp.exists() or working_pp.stat().st_mtime < pp_path.stat().st_mtime:
+                        shutil.copy2(pp_path, working_pp)
+            if not result.all_available:
                 results.append(
                     {
                         "test": f"{category}/{test_name}",

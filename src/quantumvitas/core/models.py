@@ -185,8 +185,9 @@ class WorkflowModel:
         working_dir = data.get("working_dir") or workflow_section.get("working_dir", "raw")
         
         # New format: structure_id (canonical)
-        structure_id = data.get("structure_id")
-        structure_name = data.get("structure_name")
+        # Check both top-level and workflow section for structure_id
+        structure_id = data.get("structure_id") or workflow_section.get("structure_id")
+        structure_name = data.get("structure_name") or workflow_section.get("structure_name")
         
         # Legacy format: structure selector (for backwards compat on input only)
         structure = data.get("structure") or workflow_section.get("structure")
@@ -372,24 +373,33 @@ class StructureEntry:
         """
         Convert to dictionary for YAML serialization.
         
-        Stores only ID for cross-resource reference (no duplicated name/slug/path).
-        The structure's own meta (name/slug/path) lives in the structure JSON file.
+        DAG + ID-only model: Stores only structure_id (ULID) for cross-resource reference.
+        No duplicated name/slug/path - structure's own meta lives in structure JSON file.
+        No file path - structure location resolved via ResourceIndex using structure_id.
         """
-        return {
-            "id": self.meta.id,  # Only ID - name/slug/path come from structure file meta
-            "format": self.format,
+        result = {
+            "structure_id": self.meta.id,  # ID-only reference (ULID)
         }
+        # Format is optional metadata, not a cross-reference
+        if self.format != "auto":
+            result["format"] = self.format
+        return result
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any], project_root: Path) -> "StructureEntry":
         """
         Create StructureEntry from dictionary.
         
-        Backwards compatibility: Accepts legacy format with name/slug/path,
+        DAG + ID-only model: Accepts structure_id (new) or id (legacy).
+        Structure file location is resolved via ResourceIndex using structure_id.
+        Legacy format with name/slug/path is accepted for backwards compatibility,
         but these are only used to locate the structure file and read its meta.
         """
-        # New format: id only
-        structure_id = data.get("id")
+        # New format: structure_id (ULID)
+        structure_id = data.get("structure_id")
+        # Legacy format: id (for backwards compat)
+        if not structure_id:
+            structure_id = data.get("id")
         
         # Legacy format: name/slug/path (for backwards compat)
         meta_dict = data.get("meta") or {}
@@ -472,11 +482,12 @@ class WorkflowEntry:
         """
         Convert to dictionary for YAML serialization.
         
-        Stores only ID for cross-resource reference (no duplicated name/slug/path).
-        The workflow's own meta (name/slug/path) lives in workflow.yaml.
+        DAG + ID-only model: Stores only workflow_id (ULID) for cross-resource reference.
+        No duplicated name/slug/path - workflow's own meta lives in workflow.yaml.
+        No path - workflow location resolved via ResourceIndex using workflow_id.
         """
         return {
-            "id": self.meta.id,  # Only ID - name/slug/path come from workflow.yaml meta
+            "workflow_id": self.meta.id,  # ID-only reference (ULID)
         }
     
     @classmethod
@@ -484,11 +495,16 @@ class WorkflowEntry:
         """
         Create WorkflowEntry from dictionary.
         
-        Backwards compatibility: Accepts legacy format with name/slug/path,
+        DAG + ID-only model: Accepts workflow_id (new) or id (legacy).
+        Workflow file location is resolved via ResourceIndex using workflow_id.
+        Legacy format with name/slug/path is accepted for backwards compatibility,
         but these are only used to locate the workflow.yaml file and read its meta.
         """
-        # New format: id only
-        workflow_id = data.get("id")
+        # New format: workflow_id (ULID)
+        workflow_id = data.get("workflow_id")
+        # Legacy format: id (for backwards compat)
+        if not workflow_id:
+            workflow_id = data.get("id")
         
         # Legacy format: name/slug/path (for backwards compat)
         meta_dict = data.get("meta") or {}

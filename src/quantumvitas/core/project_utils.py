@@ -805,6 +805,21 @@ def apply_structure_rename(
         old_abs.rename(new_abs)
         entry["file"] = relative
         meta["path"] = relative
+        
+        # Update structure file's meta block (for registry consistency)
+        try:
+            import json
+            from quantumvitas.io.structure_io import STRUCTURE_META_KEY
+            struct_data = json.loads(new_abs.read_text())
+            if STRUCTURE_META_KEY in struct_data:
+                struct_data[STRUCTURE_META_KEY].update({
+                    "name": meta.get("name"),
+                    "slug": meta.get("slug"),
+                    "path": relative,
+                })
+                new_abs.write_text(json.dumps(struct_data, indent=2))
+        except Exception:
+            pass  # If update fails, continue (config is still updated)
     elif slug_changed and previous_path:
         old_abs = (project_root / previous_path).resolve()
         if old_abs.exists():
@@ -822,6 +837,21 @@ def apply_structure_rename(
             rel_str = new_rel_path.as_posix()
             entry["file"] = rel_str
             meta["path"] = rel_str
+            
+            # Update structure file's meta block (for registry consistency)
+            try:
+                import json
+                from quantumvitas.io.structure_io import STRUCTURE_META_KEY
+                struct_data = json.loads(new_abs.read_text())
+                if STRUCTURE_META_KEY in struct_data:
+                    struct_data[STRUCTURE_META_KEY].update({
+                        "name": meta.get("name"),
+                        "slug": meta.get("slug"),
+                        "path": rel_str,
+                    })
+                    new_abs.write_text(json.dumps(struct_data, indent=2))
+            except Exception:
+                pass  # If update fails, continue (config is still updated)
 
 
 def apply_workflow_rename(
@@ -967,7 +997,18 @@ def delete_workflow_entry(
         if workflow_dir.exists():
             move_to_trash(workflow_dir, trash_dir)
 
+    # Remove from config by workflow_id (ID-only model)
+    # entry from resolve_resource might be a new dict, so match by ID
+    workflow_id = entry.get("workflow_id") or entry.get("id") or (entry.get("meta") or {}).get("id")
     workflows = config.setdefault("workflows", [])
-    if entry in workflows:
-        workflows.remove(entry)
+    if workflow_id:
+        # Remove by matching workflow_id
+        workflows[:] = [
+            e for e in workflows
+            if (e.get("workflow_id") or e.get("id") or (e.get("meta") or {}).get("id")) != workflow_id
+        ]
+    else:
+        # Fallback: try to remove by object identity
+        if entry in workflows:
+            workflows.remove(entry)
 

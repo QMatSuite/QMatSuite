@@ -22,7 +22,7 @@ from quantumvitas.io import (
     QEModule,
     QENamelist,
 )
-from quantumvitas.core.engines import ensure_pseudopotentials
+# Pseudopotential resolution is handled by ensure_qe_pseudos in quantumvitas.core.pseudo
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.qe_workflow import StepResult
 from quantumvitas.data import load_qe_parameter_map
@@ -37,7 +37,7 @@ class PreparedInputStep:
     working_dir: Path
     original_input: Path
     modified_input: Path
-    project_root: Path
+    project_root: Optional[Path]  # None in standalone mode
 
 
 @dataclass(slots=True)
@@ -110,18 +110,37 @@ def set_outdir_to_temp(qe_input: QEInput, _project_root: Optional[Path] = None) 
             qe_input.namelists.insert(0, control_namelist)
 
 
-def set_pseudo_dir_to_temp(qe_input: QEInput, project_root: Path) -> None:
+def set_pseudo_dir_in_input(qe_input: QEInput, pseudo_dir: Path, working_dir: Path) -> None:
     """
-    Force pseudo_dir to project_root/pseudo for all control namelists.
+    Set pseudo_dir in QE input to point to the project/run pseudo directory.
+    
+    The pseudo_dir is set as a relative path from working_dir if provided,
+    otherwise as an absolute path.
+    
+    Args:
+        qe_input: QE input object to modify
+        pseudo_dir: Absolute path to the project/run pseudo directory
+        working_dir: Optional working directory (for computing relative path)
     """
-    pseudo_dir_path = str((project_root / "pseudo").resolve())
+    # Compute relative path from working_dir to pseudo_dir if working_dir is provided
+    if working_dir:
+        try:
+            pseudo_dir_rel = pseudo_dir.relative_to(working_dir)
+            pseudo_dir_str = str(pseudo_dir_rel)
+        except ValueError:
+            # If pseudo_dir is not relative to working_dir, use absolute path
+            pseudo_dir_str = str(pseudo_dir.resolve())
+    else:
+        # No working_dir provided, use absolute path
+        pseudo_dir_str = str(pseudo_dir.resolve())
+    
     module = qe_input.module or qe_input.detect_module()
     no_control_modules = [QEModule.PH, QEModule.Q2R, QEModule.MATDYN, QEModule.DYNMAT]
 
     found_pseudo = False
     for namelist in qe_input.namelists:
         if "pseudo_dir" in namelist.parameters:
-            namelist.parameters["pseudo_dir"] = pseudo_dir_path
+            namelist.parameters["pseudo_dir"] = pseudo_dir_str
             found_pseudo = True
 
     if found_pseudo:
@@ -137,10 +156,21 @@ def set_pseudo_dir_to_temp(qe_input: QEInput, project_root: Path) -> None:
             break
 
     if control_namelist:
-        control_namelist.parameters["pseudo_dir"] = pseudo_dir_path
+        control_namelist.parameters["pseudo_dir"] = pseudo_dir_str
     else:
-        control_namelist = QENamelist("control", {"pseudo_dir": pseudo_dir_path})
+        control_namelist = QENamelist("control", {"pseudo_dir": pseudo_dir_str})
         qe_input.namelists.insert(0, control_namelist)
+
+
+def set_pseudo_dir_to_temp(qe_input: QEInput, project_root: Path) -> None:
+    """
+    [DEPRECATED] Legacy function for backwards compatibility.
+    
+    Use set_pseudo_dir_in_input() instead.
+    """
+    pseudo_dir = project_root / "pseudo"
+    # Use working_dir = project_root as fallback (not ideal but maintains compatibility)
+    set_pseudo_dir_in_input(qe_input, pseudo_dir, project_root)
 
 
 def prepare_input_step(
@@ -175,7 +205,10 @@ def prepare_input_step(
         - Original copy: <name>_original.in (only if keep_original=True and 
           input is from outside working_dir)
     """
-    project_root = detect_project_root(project_root)
+    # Handle project_root: if None (standalone mode), skip project-specific setup
+    # Otherwise, detect project root for pseudo_dir resolution
+    if project_root is not None:
+        project_root = detect_project_root(project_root)
     working_dir = Path(working_dir)
     working_dir.mkdir(parents=True, exist_ok=True)
     (working_dir / "outdir").mkdir(parents=True, exist_ok=True)
@@ -192,6 +225,28 @@ def prepare_input_step(
     input_is_external = input_path.resolve().parent != working_dir.resolve()
     original_copy: Optional[Path] = None
     
+    # Determine project/run pseudo directory
+    if project_root is not None:
+        project_pseudo_dir = project_root / "pseudo"
+    else:
+        # Standalone mode: use workdir/pseudo
+        project_pseudo_dir = working_dir / "pseudo"
+    
+    # Use central pseudopotential resolution
+    from quantumvitas.core.pseudo import ensure_qe_pseudos, get_system_pseudo_dir
+    
+    pseudo_result = ensure_qe_pseudos(
+        qe_input_file=input_file,
+        project_pseudo_dir=project_pseudo_dir,
+        system_pseudo_dir=get_system_pseudo_dir(),
+    )
+    
+    if not pseudo_result.all_available:
+        raise RuntimeError(
+            f"Failed to obtain required pseudopotentials. "
+            f"Project pseudo dir: {project_pseudo_dir}"
+        )
+    
     try:
         qe_input = QEInputParser.parse_file(input_file)
         if parameter_overrides:
@@ -199,7 +254,8 @@ def prepare_input_step(
         apply_card_overrides_to_qe_input(qe_input, card_overrides)
         apply_species_overrides_to_qe_input(qe_input, species_overrides)
         set_outdir_to_temp(qe_input)
-        set_pseudo_dir_to_temp(qe_input, project_root)
+        # Set pseudo_dir to point to project/run pseudo directory
+        set_pseudo_dir_in_input(qe_input, project_pseudo_dir, working_dir)
         QEInputGenerator.write_file(qe_input, working_dir_input)
         
         # Only keep a copy of original if:
@@ -214,16 +270,12 @@ def prepare_input_step(
         else:
             working_dir_input = input_file
 
-    unified_pseudo_dir = project_root / "pseudo"
-    unified_pseudo_dir.mkdir(parents=True, exist_ok=True)
-    if not ensure_pseudopotentials(working_dir_input, working_dir, unified_pseudo_dir, None):
-        raise RuntimeError("Failed to obtain required pseudopotentials")
-
+    # For PreparedInputStep, project_root can be None in standalone mode
     return PreparedInputStep(
         working_dir=working_dir,
         original_input=original_copy or input_path,
         modified_input=working_dir_input,
-        project_root=project_root,
+        project_root=project_root or Path.cwd(),  # Use cwd as fallback for dataclass
     )
 
 

@@ -13,7 +13,7 @@ project_root = Path(__file__).parent
 
 from quantumvitas.core.engines.qe import QuantumEspressoEngine, EngineConfig
 from quantumvitas.io import QEInputParser, QEInputGenerator
-from quantumvitas.core.engines import ensure_pseudopotentials
+from quantumvitas.core.pseudo import ensure_qe_pseudos, get_system_pseudo_dir
 from quantumvitas.workflow.input_runner import set_outdir_to_temp, set_pseudo_dir_to_temp
 from tests.core import run_and_verify_step_with_assert
 
@@ -56,7 +56,35 @@ def generate_reference_outputs():
     # 确保 pseudopotentials 存在（从第一个输入文件）
     print("\n检查 pseudopotentials...")
     scf_file = si_dos_dir / "si.1_scf.in"
-    ensure_pseudopotentials(scf_file, work_dir)
+    # Find project pseudo_dir
+    current = Path(scf_file).parent
+    project_root = None
+    while current != current.parent:
+        if (current / "pseudo").exists() or (current / "project.qv.yml").exists():
+            project_root = current
+            break
+        current = current.parent
+    if project_root:
+        pseudo_dir = project_root / "pseudo"
+    else:
+        pseudo_dir = work_dir / "pseudo"
+    result = ensure_qe_pseudos(
+        qe_input_file=scf_file,
+        project_pseudo_dir=pseudo_dir,
+        system_pseudo_dir=get_system_pseudo_dir(),
+        strict=False,
+        additional_search_dirs=None,
+    )
+    # Copy to working_dir for compatibility
+    if result.all_available:
+        import shutil
+        for pp_name, pp_path in result.resolved_pseudos.items():
+            working_pp = work_dir / pp_name
+            if not working_pp.exists() or working_pp.stat().st_mtime < pp_path.stat().st_mtime:
+                shutil.copy2(pp_path, working_pp)
+    if not result.all_available:
+        print("❌ Failed to obtain required pseudopotentials")
+        return False
     print("✓ Pseudopotentials 准备完成")
     
     # Step 1: 运行 SCF 计算
