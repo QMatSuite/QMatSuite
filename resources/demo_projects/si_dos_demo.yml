@@ -1,17 +1,7 @@
 version: 1
-meta:
-  id: si_dos_demo
-  title: "Silicon density of states"
-  subtitle: "SCF → NSCF → DOS"
-  tags: ["dos", "Si", "PW", "tutorial"]
-  recommended_analysis: "dos"
-  difficulty: "beginner"
-  reference_artifacts:
-    dos: si_dos_demo.dos.json
-    scf: si_dos_demo.scf.json
 project:
   meta:
-    id: 01KB9J9K06K6400PY3J2QYJ0Z4
+    id: 01KC38M041WTC1XKXQHHRC1AHY
     name: project1
     slug: project1
     path: .
@@ -19,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KB9JA63339W4J7YFM9FDYJKA
+    id: 01KC38MBGSS8MX3Z4ETZMXZZY4
     name: Si
     slug: si
     path: structures/si.json
@@ -80,24 +70,35 @@ structures:
       - 1.3773039781619374
 workflows:
 - meta:
-    id: 01KB9JA6JSMH7XFZ1AK917TV6J
+    id: 01KC38MFJZ7RF3SB7SHVYDQ4J8
     name: Si dos
     slug: si-dos
     path: workflows/si-dos
     kind: workflow
-  structure: si
   mode: normal
   working_dir: raw
   steps:
   - meta:
-      id: 01KB9JR6C8550NT0EFR361ZVTR
+      id: 01KC38PGMYFABDDE5T6CA8A2J8
+      name: dos
+      slug: dos
+      path: workflows/si-dos/steps/dos.step.yaml
+      kind: step
+    step_type: dos
+    parameters:
+      DOS:
+        emax: 16.0
+        emin: -9.0
+        fildos: si.dos.dat
+        outdir: ./outdir/
+        prefix: si
+  - meta:
+      id: 01KC38NVA0NES3T6YG7DK8DP82
       name: scf
       slug: scf
-      path: scf.step.yaml
+      path: workflows/si-dos/steps/scf.step.yaml
       kind: step
-    structure: si
     step_type: scf
-    parent_workflow_id: 01KB9JA6JSMH7XFZ1AK917TV6J
     parameters:
       CONTROL:
         calculation: scf
@@ -124,14 +125,12 @@ workflows:
         mass: 28.0855
         pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
   - meta:
-      id: 01KB9JWASAS0TZPM0H6QDJKTGC
+      id: 01KC38P68GFY8CSNGKWZJRZ50E
       name: nscf
       slug: nscf
       path: workflows/si-dos/steps/nscf.step.yaml
       kind: step
-    structure: si
     step_type: nscf
-    parent_workflow_id: 01KB9JA6JSMH7XFZ1AK917TV6J
     parameters:
       CONTROL:
         calculation: nscf
@@ -158,19 +157,22 @@ workflows:
       Si:
         mass: 28.0855
         pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
-  - meta:
-      id: 01KB9K4N11RGJTEMFF3BHQ69ME
-      name: dos
-      slug: dos
-      path: workflows/si-dos/steps/dos.step.yaml
-      kind: step
-    structure: si
-    step_type: dos
-    parent_workflow_id: 01KB9JA6JSMH7XFZ1AK917TV6J
-    parameters:
-      DOS:
-        emax: 16.0
-        emin: -9.0
-        fildos: si.dos.dat
-        outdir: ./outdir/
-        prefix: si
+  structure_id: 01KC38MBGSS8MX3Z4ETZMXZZY4
+pseudo:
+  directory: pseudo
+  files:
+  - Si.pbe-n-rrkjus_psl.1.0.0.UPF
+meta:
+  id: si_dos_demo
+  title: Silicon density of states
+  subtitle: "SCF \u2192 NSCF \u2192 DOS"
+  tags:
+  - dos
+  - Si
+  - PW
+  - tutorial
+  recommended_analysis: dos
+  difficulty: beginner
+  reference_artifacts:
+    dos: si_dos_demo.dos.json
+    scf: si_dos_demo.scf.json

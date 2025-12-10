@@ -40,6 +40,17 @@ from quantumvitas.core.resolution import (
     require_workflow,
     require_structure,
     require_step,
+    AmbiguousSelectorError,
+    SelectorNotFoundError,
+)
+from quantumvitas.core.selectors import (
+    extract_workflow_selector_from_entry,
+    extract_structure_selector_from_entry,
+    extract_step_selector_from_entry,
+    match_step_selector,
+    get_workflow_selector_from_entry_or_raise,
+    get_structure_selector_from_entry_or_raise,
+    get_step_selector_from_entry_or_raise,
 )
 from quantumvitas.core.project_utils import (
     ProjectConfigError,
@@ -801,11 +812,10 @@ def init_workflow_command(
 
     # Write workflow.yaml with proper meta section (contains ULID)
     # DAG + ID-only model: use structure_id (ULID) as canonical reference
+    # Do NOT write structure_name or structure selector (violates DAG + ID-only constitution)
     workflow_payload = {
         "meta": workflow_meta_dict,
-        "structure_id": structure_id,  # Canonical reference (ULID)
-        "structure_name": structure_name,  # Optional display name
-        "structure": structure,  # Legacy selector (for backwards compat, not authoritative)
+        "structure_id": structure_id,  # Canonical reference (ULID only)
         "mode": "normal",
         "working_dir": "raw",
         "steps": [],
@@ -964,15 +974,17 @@ def init_step_command(
             raise typer.BadParameter(f"workflow.yaml not found under {workflow_dir}")
         workflow_data = yaml.safe_load(workflow_yaml.read_text()) or {}
         workflow_steps = workflow_data.setdefault("steps", [])
-        existing_step_ids = [step.get("id") for step in workflow_steps if step.get("id")]
+        existing_step_ids = [
+            extract_step_selector_from_entry(step) 
+            for step in workflow_steps 
+            if extract_step_selector_from_entry(step)
+        ]
         
         # Get parent workflow id and structure
-        parent_workflow_id = (
-            (workflow_entry.get("meta") or {}).get("id") or
-            workflow_entry.get("id") or
-            workflow_data.get("meta", {}).get("id") or
-            workflow_data.get("id")
-        )
+        parent_workflow_id = extract_workflow_selector_from_entry(workflow_entry)
+        if not parent_workflow_id:
+            # Fallback to workflow.yaml meta.id
+            parent_workflow_id = workflow_data.get("meta", {}).get("id") or workflow_data.get("id")
         # Structure: prefer structure_id (canonical), fall back to structure selector (legacy)
         workflow_structure_id = workflow_data.get("structure_id")
         workflow_structure = workflow_data.get("structure") or workflow_data.get("workflow", {}).get("structure")
@@ -1138,6 +1150,12 @@ def init_step_command(
             insertion_index,
             step_entry.to_dict(),
         )
+        # Remove legacy structure_name and structure fields before writing (DAG + ID-only constitution)
+        workflow_data.pop("structure_name", None)
+        workflow_data.pop("structure", None)
+        if "workflow" in workflow_data:
+            workflow_data["workflow"].pop("structure_name", None)
+            workflow_data["workflow"].pop("structure", None)
         workflow_yaml = workflow_dir / "workflow.yaml"
         workflow_yaml.write_text(yaml.safe_dump(workflow_data, sort_keys=False))
         typer.echo(
@@ -1813,7 +1831,7 @@ def _workflow_step_summaries(workflow_dir: Path) -> list[tuple[str, Optional[str
         step_display_name = "(unnamed)"
         
         # New DAG model: step_id (ULID) is the canonical reference
-        step_id_ulid = step_entry.get("step_id")
+        step_id_ulid = extract_step_selector_from_entry(step_entry)
         
         # Legacy: step_file (for backwards compatibility)
         legacy_step_file = step_entry.get("step_file")
@@ -1821,8 +1839,9 @@ def _workflow_step_summaries(workflow_dir: Path) -> list[tuple[str, Optional[str
         # Try to resolve step file using ResourceIndex
         if step_id_ulid and index and project_root:
             try:
-                # Use require_step to resolve step_id (ULID) to step file
-                step_resolved = require_step(project_root, workflow_slug, step_id_ulid, config=config, index=index)
+                # Use resolve_step directly (it accepts index parameter)
+                from quantumvitas.core.resolution import resolve_step
+                step_resolved = resolve_step(project_root, workflow_slug, step_id_ulid, config=config, index=index)
                 if step_resolved and step_resolved.absolute_path:
                     # Calculate relative path from workflow_dir
                     try:
@@ -1839,7 +1858,7 @@ def _workflow_step_summaries(workflow_dir: Path) -> list[tuple[str, Optional[str
                     except Exception:
                         # If we can't load, infer from filename
                         step_display_name = step_resolved.absolute_path.stem.replace(".step", "") or "(unnamed)"
-            except Exception:
+            except Exception as e:
                 # Resolution failed - mark as missing
                 step_display_name = f"(missing: {step_id_ulid[:8]}...)"
         elif legacy_step_file:
@@ -1858,10 +1877,9 @@ def _workflow_step_summaries(workflow_dir: Path) -> list[tuple[str, Optional[str
             # Have ULID but couldn't resolve - mark as missing
             step_display_name = f"(missing: {step_id_ulid[:8]}...)"
         else:
-            # Legacy: try old id field
-            legacy_id = step_entry.get("id")
-            if legacy_id:
-                step_display_name = legacy_id
+            # Legacy: try old id field (already handled by extract_step_selector_from_entry)
+            # If we got here, step_id_ulid is None, so no valid selector found
+            step_display_name = "(invalid entry)"
         
         summaries.append((step_display_name, rel_path, step_meta))
     return summaries
@@ -2049,17 +2067,29 @@ def rename_step_command(
 
     data = yaml.safe_load(workflow_yaml.read_text()) or {}
     steps: list[dict] = data.get("steps") or []
-    target_step = next((step for step in steps if step.get("id") == step_id), None)
+    
+    # Find step by matching selector (ID-only model uses step_id)
+    target_step = None
+    for step in steps:
+        step_selector = extract_step_selector_from_entry(step)
+        if step_selector == step_id:
+            target_step = step
+            break
+    
     if not target_step:
         raise typer.BadParameter(
             f"Step '{step_id}' not found in workflow '{workflow_entry.get('name')}'."
         )
 
     if new_id:
-        if any(step.get("id") == new_id for step in steps if step is not target_step):
+        # Check for duplicate step_id
+        if any(extract_step_selector_from_entry(step) == new_id for step in steps if step is not target_step):
             raise typer.BadParameter(
                 f"Step id '{new_id}' already exists in workflow '{workflow_entry.get('name')}'."
             )
+        # Update step_id (ID-only model)
+        target_step["step_id"] = new_id
+        # Also update legacy id for backwards compatibility
         target_step["id"] = new_id
 
     source_rel = target_step.get("step_file")
@@ -2100,6 +2130,12 @@ def rename_step_command(
         )
         spec_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
 
+    # Remove legacy structure_name and structure fields before writing (DAG + ID-only constitution)
+    data.pop("structure_name", None)
+    data.pop("structure", None)
+    if "workflow" in data:
+        data["workflow"].pop("structure_name", None)
+        data["workflow"].pop("structure", None)
     workflow_yaml.write_text(yaml.safe_dump(data, sort_keys=False))
     typer.secho("Step updated successfully.", fg=typer.colors.GREEN)
 
@@ -2251,7 +2287,13 @@ def delete_step_command(
         try:
             wf_entry = find_enclosing_workflow(project_root, config)
             if wf_entry:
-                workflow_selector = (wf_entry.get("meta") or {}).get("slug") or wf_entry.get("name")
+                # Use centralized selector extraction - single selector, single resolution pattern
+                workflow_selector = extract_workflow_selector_from_entry(wf_entry)
+                if not workflow_selector:
+                    raise typer.BadParameter(
+                        "Workflow entry found but no valid identifier. "
+                        "This may indicate a corrupted project.qv.yml."
+                    )
         except Exception:
             pass
     
@@ -2282,12 +2324,9 @@ def delete_step_command(
     step_id_to_find = step_resolved.meta.id
     target_step = None
     for step in steps:
-        # Match by step_id (ULID) - canonical reference
-        if step.get("step_id") == step_id_to_find:
-            target_step = step
-            break
-        # Fallback: match by legacy id field
-        if step.get("id") == step_id_to_find:
+        # Use centralized selector extraction to get step_id
+        step_id = extract_step_selector_from_entry(step)
+        if step_id == step_id_to_find:
             target_step = step
             break
     
@@ -2296,13 +2335,19 @@ def delete_step_command(
         raise typer.BadParameter(f"Step '{step_id}' not found in workflow '{wf_name}'.")
 
     trash_dir = (project_root / "trash").resolve()
-    rel_file = target_step.get("step_file")
-    if rel_file:
-        spec_path = (workflow_dir / rel_file).resolve()
-        if spec_path.exists():
-            move_to_trash(spec_path, trash_dir)
+    # In ID-only model, step_resolved.absolute_path is the canonical step file location
+    # (step entries in workflow.yaml only have step_id, not step_file)
+    spec_path = step_resolved.absolute_path
+    if spec_path.exists():
+        move_to_trash(spec_path, trash_dir)
 
     steps.remove(target_step)
+    # Remove legacy structure_name and structure fields before writing (DAG + ID-only constitution)
+    data.pop("structure_name", None)
+    data.pop("structure", None)
+    if "workflow" in data:
+        data["workflow"].pop("structure_name", None)
+        data["workflow"].pop("structure", None)
     workflow_yaml.write_text(yaml.safe_dump(data, sort_keys=False))
     typer.secho(
         f"Step '{step_id}' removed from workflow '{entry_display_name(workflow_entry)}'.",
@@ -2506,6 +2551,12 @@ def configure_step_command(
                 if step_entry.get("id") == step_identifier or step_entry.get("id") == old_name:
                     step_entry["id"] = new_slug
                     break
+            # Remove legacy structure_name and structure fields before writing (DAG + ID-only constitution)
+            wf_data.pop("structure_name", None)
+            wf_data.pop("structure", None)
+            if "workflow" in wf_data:
+                wf_data["workflow"].pop("structure_name", None)
+                wf_data["workflow"].pop("structure", None)
             workflow_yaml.write_text(yaml.safe_dump(wf_data, sort_keys=False))
         
         typer.secho(f"Step renamed from '{old_name}' to '{name}'", fg=typer.colors.GREEN)
@@ -2621,7 +2672,7 @@ def configure_workflow_command(
         except ProjectConfigError:
             # Entry might not have path yet - try to resolve via registry
             from quantumvitas.core.resolution import build_resource_index, require_workflow
-            workflow_id = workflow_entry.get("workflow_id") or workflow_entry.get("id") or (workflow_entry.get("meta") or {}).get("id")
+            workflow_id = extract_workflow_selector_from_entry(workflow_entry)
             if workflow_id:
                 index = build_resource_index(project_root)
                 resolved = require_workflow(project_root, workflow_id, index=index)
@@ -2681,13 +2732,17 @@ def configure_workflow_command(
         
         for step_entry in workflow_data.get("steps", []):
             # With ID-only model, resolve step file via step_id
-            step_id = step_entry.get("step_id") or step_entry.get("id")
+            step_id = extract_step_selector_from_entry(step_entry)
             if not step_id:
                 continue
             
             try:
                 # Resolve step file path via step_id
-                step_resolved = resolve_step(project_root, workflow_entry.get("meta", {}).get("slug") or workflow_entry.get("name"), step_id, config=config, index=index)
+                # Use centralized selector extraction for workflow selector
+                workflow_selector = extract_workflow_selector_from_entry(workflow_entry)
+                if not workflow_selector:
+                    continue  # Skip if no valid selector
+                step_resolved = resolve_step(project_root, workflow_selector, step_id, config=config, index=index)
                 step_path = step_resolved.absolute_path
                 
                 if not step_path.exists():
@@ -2715,36 +2770,76 @@ def configure_workflow_command(
     
     # Handle reorder
     if reorder:
-        step_ids = [s.strip() for s in reorder.split(",") if s.strip()]
-        if not step_ids:
-            raise typer.BadParameter("--reorder requires a comma-separated list of step ids")
+        step_selectors = [s.strip() for s in reorder.split(",") if s.strip()]
+        if not step_selectors:
+            raise typer.BadParameter("--reorder requires a comma-separated list of step identifiers (slug, name, type, or ULID)")
         
         current_steps = workflow_data.get("steps", [])
-        current_step_map = {step.get("id"): step for step in current_steps if step.get("id")}
         
-        # Validate all provided ids exist
-        for step_id in step_ids:
-            if step_id not in current_step_map:
-                raise typer.BadParameter(
-                    f"Step '{step_id}' not found in workflow. "
-                    f"Available: {', '.join(current_step_map.keys())}"
+        # Build index for step resolution
+        from quantumvitas.core.resolution import build_resource_index
+        index = build_resource_index(project_root)
+        
+        # Match each selector to a step entry using centralized helper
+        reordered_entries = []
+        seen_ulids = set()
+        
+        for selector in step_selectors:
+            try:
+                step_entry = match_step_selector(
+                    project_root=project_root,
+                    workflow_dir=workflow_dir,
+                    steps=current_steps,
+                    selector=selector,
+                    index=index,
+                    config=config,
                 )
+                step_ulid = extract_step_selector_from_entry(step_entry)
+                if step_ulid and step_ulid not in seen_ulids:
+                    reordered_entries.append(step_entry)
+                    seen_ulids.add(step_ulid)
+                elif step_ulid in seen_ulids:
+                    raise typer.BadParameter(
+                        f"Step '{selector}' appears multiple times in reorder list. "
+                        f"Each step can only appear once."
+                    )
+            except (SelectorNotFoundError, AmbiguousSelectorError) as e:
+                raise typer.BadParameter(str(e)) from e
         
         # Check if all current steps are accounted for
-        if set(step_ids) != set(current_step_map.keys()):
-            missing = set(current_step_map.keys()) - set(step_ids)
+        current_ulids = {
+            extract_step_selector_from_entry(step) 
+            for step in current_steps 
+            if extract_step_selector_from_entry(step)
+        }
+        if seen_ulids != current_ulids:
+            missing_ulids = current_ulids - seen_ulids
+            missing_identifiers = []
+            workflow_slug = (workflow_entry.get("meta") or {}).get("slug") or workflow_entry.get("name") or workflow_dir.name
+            for missing_ulid in missing_ulids:
+                # Try to get a friendly identifier for the missing step
+                try:
+                    step_resolved = require_step(project_root, workflow_slug, missing_ulid, config=config, index=index)
+                    missing_identifiers.append(step_resolved.meta.slug or step_resolved.meta.name or missing_ulid[:8])
+                except Exception:
+                    missing_identifiers.append(missing_ulid[:8])
             raise typer.BadParameter(
-                f"All steps must be included in reorder. Missing: {', '.join(missing)}"
+                f"All steps must be included in reorder. Missing: {', '.join(missing_identifiers)}"
             )
         
         # Reorder
-        new_steps = [current_step_map[step_id] for step_id in step_ids]
-        workflow_data["steps"] = new_steps
+        workflow_data["steps"] = reordered_entries
         modified = True
         
-        typer.secho(f"Steps reordered: {' -> '.join(step_ids)}", fg=typer.colors.GREEN)
+        typer.secho(f"Steps reordered: {' -> '.join(step_selectors)}", fg=typer.colors.GREEN)
     
     if modified:
+        # Remove legacy structure_name and structure fields before writing (DAG + ID-only constitution)
+        workflow_data.pop("structure_name", None)
+        workflow_data.pop("structure", None)
+        if "workflow" in workflow_data:
+            workflow_data["workflow"].pop("structure_name", None)
+            workflow_data["workflow"].pop("structure", None)
         workflow_yaml.write_text(yaml.safe_dump(workflow_data, sort_keys=False))
         typer.secho(f"Workflow updated: {workflow_yaml}", fg=typer.colors.GREEN)
     else:
@@ -2991,7 +3086,13 @@ def run_workflow_command(
                 "No workflow specified and not inside a workflow directory. "
                 "Specify workflow name/slug/path or cd into a workflow folder."
             )
-        wf_id = (wf_entry.get("meta") or {}).get("id") or (wf_entry.get("meta") or {}).get("slug") or wf_entry.get("name")
+        # Use centralized selector extraction - single selector, single resolution pattern
+        wf_id = extract_workflow_selector_from_entry(wf_entry)
+        if not wf_id:
+            raise typer.BadParameter(
+                "Workflow entry found but no valid identifier. "
+                "This may indicate a corrupted project.qv.yml."
+            )
         workflow_resolved = require_workflow(project_root, wf_id, config=config, index=registry)
         wf = Workflow.from_yaml(workflow_resolved.absolute_path, proj)
 
@@ -3236,8 +3337,18 @@ def analyze_output_command(
                 wf_entry = find_enclosing_workflow(project_root, config)
                 if wf_entry:
                     workflow_dir = ctx.workflow_directory
-                    workflow_name = wf_entry.get("name") or (wf_entry.get("meta") or {}).get("name")
-                    typer.echo(f"Detected workflow: {workflow_name}")
+                    # Use centralized selector extraction for consistency
+                    workflow_selector = extract_workflow_selector_from_entry(wf_entry)
+                    if workflow_selector:
+                        # For display, resolve to get user-friendly name
+                        try:
+                            from quantumvitas.core.resolution import build_resource_index, require_workflow
+                            index = build_resource_index(project_root)
+                            resolved = require_workflow(project_root, workflow_selector, config=config, index=index)
+                            workflow_name = resolved.meta.name or resolved.meta.slug or workflow_selector
+                        except Exception:
+                            workflow_name = workflow_selector
+                        typer.echo(f"Detected workflow: {workflow_name}")
         except ContextNotFoundError:
             pass  # Not inside a project/workflow, will search pwd
     
@@ -3499,10 +3610,18 @@ def analyze_band_command(
                 config = load_project_config(project_root)
                 wf_entry = find_enclosing_workflow(project_root, config)
                 if wf_entry:
-                    # Use the slug or name from the entry (which is authoritative)
-                    workflow_selector = (wf_entry.get("meta") or {}).get("slug") or wf_entry.get("name")
+                    # Use centralized selector extraction - single selector, single resolution pattern
+                    workflow_selector = extract_workflow_selector_from_entry(wf_entry)
                     if workflow_selector:
-                        typer.echo(f"Detected workflow: {workflow_selector}")
+                        # For display, resolve to get user-friendly name
+                        try:
+                            from quantumvitas.core.resolution import build_resource_index, require_workflow
+                            index = build_resource_index(project_root)
+                            resolved = require_workflow(project_root, workflow_selector, config=config, index=index)
+                            display_name = resolved.meta.name or resolved.meta.slug or workflow_selector
+                            typer.echo(f"Detected workflow: {display_name}")
+                        except Exception:
+                            typer.echo(f"Detected workflow: {workflow_selector}")
         except ContextNotFoundError:
             pass  # Not inside a project
     

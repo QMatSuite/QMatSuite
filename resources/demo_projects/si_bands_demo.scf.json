@@ -1,35 +1,51 @@
 {
   "converged": true,
   "iterations": [
-    {"iteration": 1, "total_energy_ry": -15.84982341, "scf_accuracy_ry": 6.5e-02, "cpu_time_s": 0.8, "wall_time_s": 0.9},
-    {"iteration": 2, "total_energy_ry": -15.85146823, "scf_accuracy_ry": 2.3e-03, "cpu_time_s": 0.6, "wall_time_s": 0.7},
-    {"iteration": 3, "total_energy_ry": -15.85150194, "scf_accuracy_ry": 4.8e-05, "cpu_time_s": 0.5, "wall_time_s": 0.6},
-    {"iteration": 4, "total_energy_ry": -15.85150287, "scf_accuracy_ry": 8.1e-07, "cpu_time_s": 0.5, "wall_time_s": 0.5},
-    {"iteration": 5, "total_energy_ry": -15.85150289, "scf_accuracy_ry": 1.2e-08, "cpu_time_s": 0.5, "wall_time_s": 0.5},
-    {"iteration": 6, "total_energy_ry": -15.85150289, "scf_accuracy_ry": 3.4e-10, "cpu_time_s": 0.4, "wall_time_s": 0.4}
+    {
+      "iteration": 1,
+      "total_energy_ry": -22.83736058,
+      "scf_accuracy_ry": 0.05179419,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 2,
+      "total_energy_ry": -22.83930911,
+      "scf_accuracy_ry": 0.00225094,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 3,
+      "total_energy_ry": -22.83944651,
+      "scf_accuracy_ry": 4.323e-05,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 4,
+      "total_energy_ry": -22.83945454,
+      "scf_accuracy_ry": 8e-08,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    }
   ],
-  "total_energy_ry": -15.85150289,
-  "fermi_energy_ev": 6.4,
-  "homo_ev": 6.4,
-  "lumo_ev": 7.08,
-  "band_gap_ev": 0.68,
+  "total_energy_ry": -22.83945479,
+  "fermi_energy_ev": 5.7618,
+  "homo_ev": 5.7618,
+  "lumo_ev": 6.4468,
+  "band_gap_ev": 0.6849999999999996,
   "n_electrons": 8.0,
   "n_kpoints": 29,
   "n_bands": 8,
   "ecutwfc_ry": 40.0,
   "ecutrho_ry": 320.0,
-  "calculation_type": "scf",
-  "total_cpu_time_s": 3.3,
-  "total_wall_time_s": 3.6,
+  "calculation_type": null,
+  "total_cpu_time_s": 2.47,
+  "total_wall_time_s": 2.69,
   "units": {
     "energy": "Ry",
     "fermi": "eV",
     "time": "s"
-  },
-  "_reference": {
-    "source": "Si FCC conventional cell, PBE functional",
-    "description": "Reference SCF convergence for Si demo project",
-    "computed_with": "Quantum ESPRESSO 7.0"
   }
 }
-

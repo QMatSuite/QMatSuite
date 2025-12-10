@@ -1,7 +1,7 @@
 project:
   name: project1
   meta:
-    id: 01KC36A85K8ATSRVPRCE26EDFW
+    id: 01KC38M041WTC1XKXQHHRC1AHY
     name: project1
     slug: project1
     path: .
@@ -9,7 +9,7 @@ project:
   structures_dir: structures
   workflows_dir: workflows
 workflows:
-- workflow_id: 01KC36BVK8HFX32CQZ3Y3S3TRT
+- workflow_id: 01KC38MFJZ7RF3SB7SHVYDQ4J8
 structures:
-- structure_id: 01KC36ANY8M3GTSS39XV1GR3D7
+- structure_id: 01KC38MBGSS8MX3Z4ETZMXZZY4
 settings: {}

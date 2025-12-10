@@ -141,22 +141,93 @@ class Project:
     def _load_structures(
         root: Path, entries: list[dict], default_dir: str
     ) -> Dict[str, StructureRef]:
+        """
+        Load structures from project entries.
+        
+        In the new DAG + ID-only model:
+        - Entries have structure_id (ULID), not file path
+        - Structure file location is resolved via ResourceIndex using structure_id
+        - Structure meta (name, slug, path) is loaded from the structure file itself
+        """
         structures: Dict[str, StructureRef] = {}
+        
+        # Build ResourceIndex to resolve structure_id to files
+        index = None
+        try:
+            from quantumvitas.core.resolution import build_resource_index
+            index = build_resource_index(root)
+        except Exception:
+            pass
+        
         for entry in entries:
-            default_name = entry.get("name") or entry.get("id") or Path(
-                entry.get("file") or "structure"
-            ).stem
-            default_path = entry.get("file") or f"{default_dir.rstrip('/')}/{default_name}.json"
-            struct_meta = _entry_to_meta(
-                entry=entry,
-                root=root,
-                kind="structure",
-                default_path=default_path,
-                default_name=default_name,
-            )
+            structure_id = entry.get("structure_id") or entry.get("id")
+            legacy_file = entry.get("file")
+            
+            struct_meta: Optional[ResourceMeta] = None
+            absolute_path: Optional[Path] = None
+            
+            # New DAG model: resolve structure_id via ResourceIndex
+            if structure_id and index:
+                try:
+                    # Find structure in index by ID
+                    if structure_id in index.by_id:
+                        meta = index.by_id[structure_id]
+                        if meta.kind == "structure":
+                            struct_meta = meta
+                            # Find absolute path from index
+                            for path, path_id in index.by_path.items():
+                                if path_id == structure_id:
+                                    absolute_path = path
+                                    break
+                except Exception:
+                    pass
+            
+            # Legacy: use file path if available
+            if not absolute_path and legacy_file:
+                default_path = legacy_file
+                absolute_path = (root / default_path).resolve()
+                if absolute_path.exists():
+                    # Load meta from structure file
+                    try:
+                        import json
+                        data = json.loads(absolute_path.read_text())
+                        meta_dict = data.get("__qv_meta__") or data.get("meta") or {}
+                        struct_meta = ResourceMeta.from_dict(
+                            meta_dict,
+                            kind="structure",
+                            default_name=Path(legacy_file).stem,
+                            default_path=default_path,
+                        )
+                    except Exception:
+                        # Fallback: construct meta from file path
+                        default_name = entry.get("name") or Path(legacy_file).stem
+                        struct_meta = _entry_to_meta(
+                            entry=entry,
+                            root=root,
+                            kind="structure",
+                            default_path=default_path,
+                            default_name=default_name,
+                        )
+            
+            # If still no meta, construct from entry (fallback)
+            if not struct_meta:
+                default_name = entry.get("name") or entry.get("id") or Path(
+                    legacy_file or "structure"
+                ).stem
+                default_path = legacy_file or f"{default_dir.rstrip('/')}/{default_name}.json"
+                struct_meta = _entry_to_meta(
+                    entry=entry,
+                    root=root,
+                    kind="structure",
+                    default_path=default_path,
+                    default_name=default_name,
+                )
+                if not absolute_path:
+                    absolute_path = (root / struct_meta.path).resolve()
+            
             ref = StructureRef(
                 meta=struct_meta,
-                absolute_path=(root / struct_meta.path).resolve(),
+                absolute_path=absolute_path or (root / struct_meta.path).resolve(),
                 format=entry.get("format", "auto"),
             )
             structures[ref.slug] = ref

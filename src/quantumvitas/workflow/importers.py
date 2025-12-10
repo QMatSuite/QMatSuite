@@ -312,12 +312,12 @@ def build_workflow_from_qe_inputs(
 
     workflow_meta: Dict[str, object] = {"working_dir": working_dir_name}
     # Write structure_id (ID-only model) - use the actual structure_id from step results (ULID)
-    workflow_meta["structure_id"] = actual_structure_id
-    # Also write structure as legacy selector for backwards compatibility
-    if reference_structure_by == "id":
-        workflow_meta["structure"] = actual_structure_id  # For backwards compat, also write as structure
-    else:
-        workflow_meta["structure"] = str(_relative_path_for_spec(step_results[0].structure_path, workflow_dir))
+    # Do NOT write structure_name or structure selector (violates DAG + ID-only constitution)
+    if actual_structure_id:
+        workflow_meta["structure_id"] = actual_structure_id
+    # Explicitly ensure structure_name and structure are NOT written
+    workflow_meta.pop("structure_name", None)
+    workflow_meta.pop("structure", None)
 
     steps_section = [
         {
@@ -333,6 +333,10 @@ def build_workflow_from_qe_inputs(
         "workflow": workflow_meta,
         "steps": steps_section,
     }
+    # Ensure top-level structure_name and structure are also NOT written (DAG + ID-only constitution)
+    workflow_config.pop("structure_name", None)
+    workflow_config.pop("structure", None)
+    
     workflow_file = workflow_dir / "workflow.yaml"
     workflow_file.write_text(yaml.safe_dump(workflow_config, sort_keys=False))
 

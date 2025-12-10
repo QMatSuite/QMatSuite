@@ -1,17 +1,16 @@
 meta:
-  id: 01KB9JA6JSMH7XFZ1AK917TV6J
-  name: si-dos
+  id: 01KC38MFJZ7RF3SB7SHVYDQ4J8
+  name: Si dos
   slug: si-dos
   path: workflows/si-dos
   kind: workflow
+structure_id: 01KC38MBGSS8MX3Z4ETZMXZZY4
 mode: normal
 working_dir: raw
-structure_id: 01KB9JA63339W4J7YFM9FDYJKA
-structure_name: Si
 steps:
-- step_id: 01KB9JR6C8550NT0EFR361ZVTR
+- step_id: 01KC38NVA0NES3T6YG7DK8DP82
   type: scf
-- step_id: 01KB9JWASAS0TZPM0H6QDJKTGC
+- step_id: 01KC38P68GFY8CSNGKWZJRZ50E
   type: nscf
-- step_id: 01KB9K4N11RGJTEMFF3BHQ69ME
+- step_id: 01KC38PGMYFABDDE5T6CA8A2J8
   type: dos

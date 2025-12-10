@@ -22,7 +22,7 @@ qv init step dos --DOS.emax=16.0 --DOS.emin=-9.0 --DOS.fildos=si.dos.dat --DOS.o
 
 qv run workflow
 
-qv analyze dos raw/si.dos.dat --scf si.nscf.out --plot
+qv analyze dos raw/si.dos.dat --scf nscf.out --plot
 
 
 # ------------------ dos full -----------------
@@ -71,7 +71,7 @@ qv configure workflow --reorder scf,nscf,bands_pw,bands
 
 qv run workflow
 
-qv analyze band ../raw/si.bands.pp.dat.gnu --plot --format png --symmetry ../raw/bands.pw_run.out --scf ../raw/nscf.pw_run.out
+qv analyze band ./raw/si.bands.dat.gnu --plot --format png --symmetry ./raw/bands.bands.out --scf ./raw/nscf.out
 
 
 # ------------------------ graphene workflow ------------------------

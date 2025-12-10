@@ -134,9 +134,10 @@ class WorkflowModel:
         """
         Convert to dictionary for YAML serialization.
         
-        Cross-resource references:
-        - structure_id: ULID only (no structure name/slug/path)
-        - steps: step_id (ULID) only (no step name/slug/path)
+        DAG + ID-only constitution:
+        - structure_id: ULID only (canonical reference)
+        - steps: step_id (ULID) only
+        - Do NOT write structure_name or structure selector (these are in-memory only)
         """
         result: Dict[str, Any] = {
             "meta": self.meta.to_dict(),
@@ -145,12 +146,9 @@ class WorkflowModel:
             "steps": [s.to_dict() for s in self.steps],
         }
         # Write structure_id (canonical reference - ID only)
+        # Do NOT write structure_name or structure selector (violates DAG + ID-only constitution)
         if self.structure_id:
             result["structure_id"] = self.structure_id
-        # Optionally write structure_name for UI display (cosmetic only)
-        if self.structure_name:
-            result["structure_name"] = self.structure_name
-        # Do not write structure selector (legacy field - not authoritative)
         return result
     
     @classmethod

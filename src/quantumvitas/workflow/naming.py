@@ -71,16 +71,101 @@ class WorkflowFileNaming:
         return ".out"
     
     @classmethod
-    def input_filename(cls, step_id: str, step_type: str) -> str:
-        """Generate input filename for a step."""
+    def input_filename(cls, step_type: str, working_dir: Optional[Path] = None) -> str:
+        """
+        Generate human-readable input filename for a step based on step_type.
+        
+        Uses step_type (e.g., "scf", "nscf") instead of ULID for human readability.
+        If multiple steps of the same type exist, numbers them (e.g., "scf-1.in", "scf-2.in").
+        
+        Args:
+            step_type: Step type (e.g., "scf", "nscf", "dos")
+            working_dir: Optional working directory to check for existing files
+            
+        Returns:
+            Filename like "scf.in" or "scf-1.in" if duplicates exist
+        """
         ext = cls.input_extension(step_type)
-        return f"{step_id}{ext}"
+        base_name = f"{step_type}{ext}"
+        
+        # If working_dir is provided, check for duplicates and number them
+        if working_dir and working_dir.exists():
+            base_stem = step_type
+            existing_files = list(working_dir.glob(f"{base_stem}*{ext}"))
+            
+            # Count how many files with this step_type already exist
+            # Files can be: step_type.in, step_type-1.in, step_type-2.in, etc.
+            existing_numbers = set()
+            for file in existing_files:
+                stem = file.stem
+                if stem == base_stem:
+                    existing_numbers.add(0)  # Base name exists
+                elif stem.startswith(f"{base_stem}-"):
+                    # Try to extract number from "step_type-N"
+                    suffix = stem[len(f"{base_stem}-"):]
+                    try:
+                        num = int(suffix)
+                        existing_numbers.add(num)
+                    except ValueError:
+                        pass
+            
+            # If base name exists or we have numbered versions, add a number
+            if existing_numbers:
+                # Find the next available number
+                next_num = 1
+                while next_num in existing_numbers:
+                    next_num += 1
+                base_name = f"{base_stem}-{next_num}{ext}"
+        
+        return base_name
     
     @classmethod
-    def output_filename(cls, step_id: str, step_type: str) -> str:
-        """Generate expected output filename for a step."""
+    def output_filename(cls, step_type: str, working_dir: Optional[Path] = None) -> str:
+        """
+        Generate expected output filename for a step based on step_type.
+        
+        Uses step_type (e.g., "scf", "nscf") instead of ULID for human readability.
+        If multiple steps of the same type exist, numbers them (e.g., "scf-1.out", "scf-2.out").
+        
+        Args:
+            step_type: Step type (e.g., "scf", "nscf", "dos")
+            working_dir: Optional working directory to check for existing files
+            
+        Returns:
+            Filename like "scf.out" or "scf-1.out" if duplicates exist
+        """
         ext = cls.output_extension(step_type)
-        return f"{step_id}{ext}"
+        base_name = f"{step_type}{ext}"
+        
+        # If working_dir is provided, check for duplicates and number them
+        if working_dir and working_dir.exists():
+            base_stem = step_type
+            existing_files = list(working_dir.glob(f"{base_stem}*{ext}"))
+            
+            # Count how many files with this step_type already exist
+            existing_numbers = set()
+            for file in existing_files:
+                stem = file.stem
+                if stem == base_stem:
+                    existing_numbers.add(0)  # Base name exists
+                elif stem.startswith(f"{base_stem}-"):
+                    # Try to extract number from "step_type-N"
+                    suffix = stem[len(f"{base_stem}-"):]
+                    try:
+                        num = int(suffix)
+                        existing_numbers.add(num)
+                    except ValueError:
+                        pass
+            
+            # If base name exists or we have numbered versions, add a number
+            if existing_numbers:
+                # Find the next available number
+                next_num = 1
+                while next_num in existing_numbers:
+                    next_num += 1
+                base_name = f"{base_stem}-{next_num}{ext}"
+        
+        return base_name
 
 
 @dataclass
