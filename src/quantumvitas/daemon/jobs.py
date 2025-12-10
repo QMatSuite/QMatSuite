@@ -344,7 +344,12 @@ class JobManager:
         if job_type is not None:
             jobs = [j for j in jobs if j.job_type == job_type]
         if project_root is not None:
-            jobs = [j for j in jobs if j.project_root == project_root]
+            # Normalize project_root for comparison (handle trailing slashes, relative vs absolute)
+            normalized_filter = str(Path(project_root).resolve())
+            jobs = [
+                j for j in jobs
+                if j.project_root and str(Path(j.project_root).resolve()) == normalized_filter
+            ]
         
         # Sort by created_at (newest first)
         jobs.sort(key=lambda j: j.created_at, reverse=True)

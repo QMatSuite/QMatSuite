@@ -585,6 +585,7 @@ function App() {
   }, [workflows, fetchWorkflows]);
   
   const handleSelectStep = useCallback((stepId: string) => {
+    console.log('[App] handleSelectStep called with:', stepId);
     setSelectedStepId(stepId);
   }, []);
   

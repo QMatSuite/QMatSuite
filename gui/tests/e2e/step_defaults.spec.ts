@@ -138,7 +138,12 @@ test.describe('E2E: Step Parameter Defaults', () => {
     
     // If still not found, just click the last step (fallback)
     if (!scfStepFound) {
-      await stepRows.last().click();
+      const lastStepRow = stepRows.last();
+      const stepButton = lastStepRow.locator('button.step-item');
+      await expect(stepButton).toBeVisible({ timeout: 5000 });
+      await expect(stepButton).toBeEnabled({ timeout: 5000 });
+      await stepButton.click({ timeout: 5000 });
+      await appPage.waitForTimeout(100);
     }
     
     // Wait for step detail panel
