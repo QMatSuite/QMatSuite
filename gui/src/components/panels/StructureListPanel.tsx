@@ -2,6 +2,7 @@
  * StructureListPanel - Displays a list of structures in a project
  */
 
+import { useState, useCallback } from 'react';
 import type { StructureInfo } from '../../types/qv';
 import './StructureListPanel.css';
 
@@ -12,6 +13,7 @@ interface StructureListPanelProps {
   onSelect?: (structure: StructureInfo) => void;
   onRename?: (structure: StructureInfo) => void;
   onDelete?: (structure: StructureInfo) => void;
+  onRefreshProjectRegistry?: () => void;
 }
 
 export function StructureListPanel({ 
@@ -62,7 +64,19 @@ export function StructureListPanel({
           <span className="panel-icon">🔬</span>
           Structures
         </h2>
-        <span className="panel-count">{structures.length} total</span>
+        <div className="panel-header__actions">
+          {onRefreshProjectRegistry && (
+            <button
+              className="panel-refresh-btn"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              title="Refresh project registry"
+            >
+              {isRefreshing ? '⟳' : '🔄'} Refresh
+            </button>
+          )}
+          <span className="panel-count">{structures.length} total</span>
+        </div>
       </div>
       
       <div className="structure-list">

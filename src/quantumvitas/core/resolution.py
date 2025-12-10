@@ -80,6 +80,9 @@ class ResourceNotFoundError(Exception):
         self.project_root = project_root
         self._custom_message = message
         
+        # Store details dict for additional context (workflow_path, expected_step_path, reason, etc.)
+        self.details: Dict[str, Any] = {}
+        
         # Build error message
         if message:
             # Use custom message if provided (for more specific errors like "Step file not found")
@@ -95,7 +98,65 @@ class ResourceNotFoundError(Exception):
             error_msg = " - ".join(parts)
         
         super().__init__(error_msg)
-        super().__init__(message)
+
+
+class RegistryOutOfSyncError(Exception):
+    """
+    Raised when the registry (ResourceIndex) is out of sync with the filesystem or DAG.
+    
+    This error indicates that:
+    - A resource exists in the registry but the file is missing on disk
+    - A resource is referenced in a DAG (e.g. workflow.yaml) but not in the registry
+    - The registry and filesystem are inconsistent
+    
+    The user must explicitly refresh the registry to resolve this.
+    
+    Attributes:
+        kind: Resource kind ("workflow", "structure", "step", "project")
+        selector: Selector that was used (name, slug, path, or ULID)
+        id: Resource ID (ULID) if known
+        project_root: Project root path where the resource was expected
+        expected_path: Expected file path from registry (if known)
+        actual_state: Description of what was wrong ("file does not exist", "step not in workflow DAG", etc.)
+        details: Additional context (workflow_path, step_id, etc.)
+    """
+    def __init__(
+        self,
+        kind: str,
+        selector: str | None = None,
+        *,
+        id: str | None = None,
+        project_root: Path | None = None,
+        expected_path: Path | str | None = None,
+        actual_state: str | None = None,
+        details: Dict[str, Any] | None = None,
+    ):
+        self.kind = kind
+        self.selector = selector
+        self.id = id
+        self.project_root = project_root
+        self.expected_path = Path(expected_path) if expected_path else None
+        self.actual_state = actual_state or "registry and filesystem are inconsistent"
+        self.details = details or {}
+        
+        # Build user-facing error message
+        parts = [
+            f"{kind.capitalize()} '{selector or id or 'unknown'}' could not be resolved."
+        ]
+        
+        if expected_path:
+            parts.append(f"Expected path from registry: {expected_path}")
+        
+        if actual_state:
+            parts.append(f"Issue: {actual_state}")
+        
+        parts.append(
+            "The project registry may be out of sync with the filesystem. "
+            "Please use the Refresh action in the GUI (or run the appropriate CLI refresh command) to rebuild the registry."
+        )
+        
+        error_msg = " ".join(parts)
+        super().__init__(error_msg)
 
 
 @dataclass
@@ -122,6 +183,98 @@ class ResourceIndex:
             self.by_name[name_lower] = []
         if meta.id not in self.by_name[name_lower]:
             self.by_name[name_lower].append(meta.id)
+    
+    def remove_resource(self, resource_id: str) -> None:
+        """
+        Remove a resource from the index by ID.
+        
+        This is used for in-place updates when resources are deleted.
+        """
+        if resource_id not in self.by_id:
+            return
+        
+        meta = self.by_id[resource_id]
+        
+        # Remove from all mappings
+        del self.by_id[resource_id]
+        
+        if meta.slug in self.by_slug and self.by_slug[meta.slug] == resource_id:
+            del self.by_slug[meta.slug]
+        
+        # Remove from by_path (need to find the path)
+        paths_to_remove = [
+            path for path, path_id in self.by_path.items()
+            if path_id == resource_id
+        ]
+        for path in paths_to_remove:
+            del self.by_path[path]
+        
+        # Remove from by_name
+        name_lower = meta.name.lower()
+        if name_lower in self.by_name:
+            if resource_id in self.by_name[name_lower]:
+                self.by_name[name_lower].remove(resource_id)
+            if not self.by_name[name_lower]:
+                del self.by_name[name_lower]
+    
+    def update_resource_path(self, resource_id: str, old_path: Path, new_path: Path) -> None:
+        """
+        Update the path mapping for a resource (used for renames/moves).
+        
+        Args:
+            resource_id: Resource ID (ULID)
+            old_path: Old absolute path
+            new_path: New absolute path
+        """
+        if resource_id not in self.by_id:
+            return
+        
+        old_path = old_path.resolve()
+        new_path = new_path.resolve()
+        
+        # Update by_path mapping
+        if old_path in self.by_path and self.by_path[old_path] == resource_id:
+            del self.by_path[old_path]
+        self.by_path[new_path] = resource_id
+    
+    def update_resource_meta(self, resource_id: str, new_meta: ResourceMeta) -> None:
+        """
+        Update the metadata for a resource (used for renames).
+        
+        Args:
+            resource_id: Resource ID (ULID) - must match new_meta.id
+            new_meta: Updated ResourceMeta
+        """
+        if resource_id != new_meta.id:
+            raise ValueError(f"Resource ID mismatch: {resource_id} != {new_meta.id}")
+        
+        if resource_id not in self.by_id:
+            return
+        
+        old_meta = self.by_id[resource_id]
+        
+        # Update metadata
+        self.by_id[resource_id] = new_meta
+        
+        # Update slug mapping if changed
+        if old_meta.slug != new_meta.slug:
+            if old_meta.slug in self.by_slug and self.by_slug[old_meta.slug] == resource_id:
+                del self.by_slug[old_meta.slug]
+            self.by_slug[new_meta.slug] = resource_id
+        
+        # Update name mapping if changed
+        old_name_lower = old_meta.name.lower()
+        new_name_lower = new_meta.name.lower()
+        if old_name_lower != new_name_lower:
+            if old_name_lower in self.by_name:
+                if resource_id in self.by_name[old_name_lower]:
+                    self.by_name[old_name_lower].remove(resource_id)
+                if not self.by_name[old_name_lower]:
+                    del self.by_name[old_name_lower]
+            if new_name_lower not in self.by_name:
+                self.by_name[new_name_lower] = []
+            if resource_id not in self.by_name[new_name_lower]:
+                self.by_name[new_name_lower].append(resource_id)
     
     def resolve_id(self, selector: str, project_root: Path) -> Optional[str]:
         """
@@ -235,12 +388,28 @@ def build_resource_index(project_root: Path) -> ResourceIndex:
     project_root = project_root.resolve()
     index = ResourceIndex()
     
+    # Skip anything under trash/ folder
+    trash_dir = project_root / "trash"
+    
     # Scan workflows
     workflows_dir = project_root / "workflows"
     if workflows_dir.exists():
         for workflow_dir in workflows_dir.iterdir():
             if not workflow_dir.is_dir():
                 continue
+            
+            # Skip if under trash/
+            try:
+                if trash_dir.exists() and workflow_dir.is_relative_to(trash_dir):
+                    continue
+            except (ValueError, AttributeError):
+                # is_relative_to may not be available in older Python versions
+                # Fallback: check if trash_dir is a parent
+                try:
+                    workflow_dir.resolve().relative_to(trash_dir.resolve())
+                    continue  # Under trash, skip
+                except ValueError:
+                    pass  # Not under trash, continue
             
             workflow_yaml = workflow_dir / "workflow.yaml"
             if workflow_yaml.exists():
@@ -266,6 +435,16 @@ def build_resource_index(project_root: Path) -> ResourceIndex:
             steps_dir = workflow_dir / "steps"
             if steps_dir.exists():
                 for step_file in steps_dir.glob("*.step.yaml"):
+                    # Skip if under trash/
+                    try:
+                        if trash_dir.exists() and step_file.is_relative_to(trash_dir):
+                            continue
+                    except (ValueError, AttributeError):
+                        try:
+                            step_file.resolve().relative_to(trash_dir.resolve())
+                            continue  # Under trash, skip
+                        except ValueError:
+                            pass  # Not under trash, continue
                     try:
                         data = yaml.safe_load(step_file.read_text()) or {}
                         meta_dict = data.get("meta", {})
@@ -288,6 +467,16 @@ def build_resource_index(project_root: Path) -> ResourceIndex:
     structures_dir = project_root / "structures"
     if structures_dir.exists():
         for struct_file in structures_dir.glob("*.json"):
+            # Skip if under trash/
+            try:
+                if trash_dir.exists() and struct_file.is_relative_to(trash_dir):
+                    continue
+            except (ValueError, AttributeError):
+                try:
+                    struct_file.resolve().relative_to(trash_dir.resolve())
+                    continue  # Under trash, skip
+                except ValueError:
+                    pass  # Not under trash, continue
             try:
                 data = json.loads(struct_file.read_text())
                 # Handle both __qv_meta__ wrapper and direct meta
@@ -332,6 +521,142 @@ def build_resource_index(project_root: Path) -> ResourceIndex:
         )
     
     return index
+
+
+# ---------------------------------------------------------------------------
+# In-place registry update helpers (for write operations)
+# ---------------------------------------------------------------------------
+
+def update_registry_add_step(
+    index: ResourceIndex,
+    step_meta: "ResourceMeta",
+    step_file_path: Path,
+) -> None:
+    """
+    Add a step to the registry in-place (after step creation).
+    
+    Args:
+        index: ResourceIndex to update
+        step_meta: ResourceMeta for the new step
+        step_file_path: Absolute path to the step YAML file
+    """
+    index.add_resource(step_meta, step_file_path.resolve())
+
+
+def update_registry_remove_step(
+    index: ResourceIndex,
+    step_id: str,
+) -> None:
+    """
+    Remove a step from the registry in-place (after step deletion).
+    
+    Args:
+        index: ResourceIndex to update
+        step_id: Step ID (ULID) to remove
+    """
+    index.remove_resource(step_id)
+
+
+def update_registry_add_workflow(
+    index: ResourceIndex,
+    workflow_meta: "ResourceMeta",
+    workflow_yaml_path: Path,
+) -> None:
+    """
+    Add a workflow to the registry in-place (after workflow creation).
+    
+    Args:
+        index: ResourceIndex to update
+        workflow_meta: ResourceMeta for the new workflow
+        workflow_yaml_path: Absolute path to workflow.yaml
+    """
+    index.add_resource(workflow_meta, workflow_yaml_path.resolve())
+
+
+def update_registry_remove_workflow(
+    index: ResourceIndex,
+    workflow_id: str,
+) -> None:
+    """
+    Remove a workflow from the registry in-place (after workflow deletion).
+    
+    Args:
+        index: ResourceIndex to update
+        workflow_id: Workflow ID (ULID) to remove
+    """
+    index.remove_resource(workflow_id)
+
+
+def update_registry_rename_workflow(
+    index: ResourceIndex,
+    workflow_id: str,
+    new_meta: "ResourceMeta",
+    old_path: Path,
+    new_path: Path,
+) -> None:
+    """
+    Update workflow metadata in registry in-place (after rename).
+    
+    Args:
+        index: ResourceIndex to update
+        workflow_id: Workflow ID (ULID)
+        new_meta: Updated ResourceMeta
+        old_path: Old absolute path to workflow.yaml
+        new_path: New absolute path to workflow.yaml
+    """
+    index.update_resource_meta(workflow_id, new_meta)
+    index.update_resource_path(workflow_id, old_path, new_path)
+
+
+def update_registry_add_structure(
+    index: ResourceIndex,
+    structure_meta: "ResourceMeta",
+    structure_file_path: Path,
+) -> None:
+    """
+    Add a structure to the registry in-place (after structure import).
+    
+    Args:
+        index: ResourceIndex to update
+        structure_meta: ResourceMeta for the new structure
+        structure_file_path: Absolute path to the structure JSON file
+    """
+    index.add_resource(structure_meta, structure_file_path.resolve())
+
+
+def update_registry_remove_structure(
+    index: ResourceIndex,
+    structure_id: str,
+) -> None:
+    """
+    Remove a structure from the registry in-place (after structure deletion).
+    
+    Args:
+        index: ResourceIndex to update
+        structure_id: Structure ID (ULID) to remove
+    """
+    index.remove_resource(structure_id)
+
+
+def update_registry_rename_structure(
+    index: ResourceIndex,
+    structure_id: str,
+    new_meta: "ResourceMeta",
+    old_path: Path,
+    new_path: Path,
+) -> None:
+    """
+    Update structure metadata in registry in-place (after rename).
+    
+    Args:
+        index: ResourceIndex to update
+        structure_id: Structure ID (ULID)
+        new_meta: Updated ResourceMeta
+        old_path: Old absolute path to structure file
+        new_path: New absolute path to structure file
+    """
+    index.update_resource_meta(structure_id, new_meta)
+    index.update_resource_path(structure_id, old_path, new_path)
 
 
 # ---------------------------------------------------------------------------
@@ -840,6 +1165,23 @@ def resolve_step(
                 if abs_path is None:
                     abs_path = step_path.resolve()
                 
+                # CRITICAL: Verify the file actually exists on disk
+                # If registry says it exists but file is missing, raise RegistryOutOfSyncError
+                if not abs_path.exists():
+                    raise RegistryOutOfSyncError(
+                        kind="step",
+                        selector=step_selector,
+                        id=resource_id,
+                        project_root=project_root,
+                        expected_path=abs_path,
+                        actual_state="file does not exist",
+                        details={
+                            "workflow_selector": workflow_selector,
+                            "workflow_dir": str(workflow_dir),
+                            "reason": "step_file_missing",
+                        },
+                    )
+                
                 # Build entry dict for backwards compatibility
                 try:
                     entry_data = yaml.safe_load(abs_path.read_text()) or {}
@@ -847,38 +1189,6 @@ def resolve_step(
                     entry_data = {}
                 
                 return ResolvedResource(meta=meta, entry=entry_data, absolute_path=abs_path)
-    
-    # RACE CONDITION HANDLING: If step not found in index and selector looks like a ULID,
-    # the step may have just been created and the index is stale. Rebuild index once and retry.
-    # This handles the case where add_step_to_workflow creates a step file, but get_step_detail
-    # is called before the ResourceIndex has been refreshed.
-    if _is_ulid_like(step_selector):
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.debug(
-            f"Step '{step_selector}' not found in ResourceIndex for workflow '{workflow_selector}'. "
-            f"Rebuilding index once to handle potential race condition after step creation."
-        )
-        # Rebuild index and retry
-        fresh_index = build_resource_index(project_root)
-        resource_id = fresh_index.resolve_id(step_selector, project_root)
-        if resource_id:
-            meta = fresh_index.by_id.get(resource_id)
-            if meta and meta.kind == "step":
-                step_path = project_root / meta.path
-                if step_path.is_relative_to(workflow_dir):
-                    abs_path = None
-                    for path, path_id in fresh_index.by_path.items():
-                        if path_id == resource_id:
-                            abs_path = path
-                            break
-                    if abs_path is None:
-                        abs_path = step_path.resolve()
-                    try:
-                        entry_data = yaml.safe_load(abs_path.read_text()) or {}
-                    except Exception:
-                        entry_data = {}
-                    return ResolvedResource(meta=meta, entry=entry_data, absolute_path=abs_path)
     
     # Strategy 2: Path (fallback for backwards compat)
     if _is_path_like(step_selector):
@@ -1068,7 +1378,37 @@ def require_structure(
         AmbiguousSelectorError: If multiple structures match
     """
     try:
-        return resolve_structure(project_root, selector_or_id, config, index)
+        resolved = resolve_structure(project_root, selector_or_id, config, index)
+        
+        # CRITICAL: Verify the file actually exists on disk
+        # If registry says it exists but file is missing, raise RegistryOutOfSyncError
+        if not resolved.absolute_path.exists():
+            # Find expected path from registry if available
+            expected_path = None
+            if index:
+                resource_id = index.resolve_id(selector_or_id, project_root)
+                if resource_id:
+                    for path, path_id in index.by_path.items():
+                        if path_id == resource_id:
+                            expected_path = path
+                            break
+            
+            raise RegistryOutOfSyncError(
+                kind="structure",
+                selector=selector_or_id,
+                id=resolved.meta.id if resolved.meta else None,
+                project_root=project_root,
+                expected_path=expected_path or resolved.absolute_path,
+                actual_state="file does not exist",
+                details={
+                    "reason": "structure_file_missing",
+                },
+            )
+        
+        return resolved
+    except RegistryOutOfSyncError:
+        # Propagate RegistryOutOfSyncError as-is
+        raise
     except SelectorNotFoundError as e:
         # Convert to ResourceNotFoundError for API/CLI layers
         raise ResourceNotFoundError(
@@ -1104,7 +1444,37 @@ def require_workflow(
         AmbiguousSelectorError: If multiple workflows match
     """
     try:
-        return resolve_workflow(project_root, selector_or_id, config, index)
+        resolved = resolve_workflow(project_root, selector_or_id, config, index)
+        
+        # CRITICAL: Verify the file actually exists on disk
+        # If registry says it exists but file is missing, raise RegistryOutOfSyncError
+        if not resolved.absolute_path.exists():
+            # Find expected path from registry if available
+            expected_path = None
+            if index:
+                resource_id = index.resolve_id(selector_or_id, project_root)
+                if resource_id:
+                    for path, path_id in index.by_path.items():
+                        if path_id == resource_id:
+                            expected_path = path
+                            break
+            
+            raise RegistryOutOfSyncError(
+                kind="workflow",
+                selector=selector_or_id,
+                id=resolved.meta.id if resolved.meta else None,
+                project_root=project_root,
+                expected_path=expected_path or resolved.absolute_path,
+                actual_state="file does not exist",
+                details={
+                    "reason": "workflow_file_missing",
+                },
+            )
+        
+        return resolved
+    except RegistryOutOfSyncError:
+        # Propagate RegistryOutOfSyncError as-is
+        raise
     except SelectorNotFoundError as e:
         # Convert to ResourceNotFoundError for API/CLI layers
         raise ResourceNotFoundError(

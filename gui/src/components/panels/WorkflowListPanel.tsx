@@ -2,6 +2,7 @@
  * WorkflowListPanel - Displays a list of workflows in a project
  */
 
+import { useState, useCallback } from 'react';
 import type { WorkflowInfo } from '../../types/qv';
 import './WorkflowListPanel.css';
 
@@ -12,6 +13,7 @@ interface WorkflowListPanelProps {
   onSelect?: (workflow: WorkflowInfo) => void;
   onRename?: (workflow: WorkflowInfo) => void;
   onDelete?: (workflow: WorkflowInfo) => void;
+  onRefreshProjectRegistry?: () => void;
 }
 
 export function WorkflowListPanel({ 
@@ -21,7 +23,19 @@ export function WorkflowListPanel({
   onSelect,
   onRename,
   onDelete,
+  onRefreshProjectRegistry,
 }: WorkflowListPanelProps) {
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  const handleRefresh = useCallback(async () => {
+    if (!onRefreshProjectRegistry) return;
+    setIsRefreshing(true);
+    try {
+      await onRefreshProjectRegistry();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [onRefreshProjectRegistry]);
   if (isLoading) {
     return (
       <div className="workflow-list-panel workflow-list-panel--loading">
@@ -62,7 +76,19 @@ export function WorkflowListPanel({
           <span className="panel-icon">📊</span>
           Workflows
         </h2>
-        <span className="panel-count">{workflows.length} total</span>
+        <div className="panel-header__actions">
+          {onRefreshProjectRegistry && (
+            <button
+              className="panel-refresh-btn"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              title="Refresh project registry"
+            >
+              {isRefreshing ? '⟳' : '🔄'} Refresh
+            </button>
+          )}
+          <span className="panel-count">{workflows.length} total</span>
+        </div>
       </div>
       
       <div className="workflow-list" data-testid="qv-workflows-list">
