@@ -394,6 +394,10 @@ def resolve_structure(
     if index is None:
         index = build_resource_index(project_root)
     
+    # Handle None selector (should not happen, but be defensive)
+    if selector is None:
+        raise ValueError("Structure selector cannot be None")
+    
     selector = selector.strip()
     
     # Try to resolve via ResourceIndex first
@@ -579,10 +583,15 @@ def resolve_workflow(
     Raises:
         SelectorNotFoundError: If no workflow matches
         AmbiguousSelectorError: If multiple workflows match
+        ValueError: If selector is None
     """
     # Build index if not provided
     if index is None:
         index = build_resource_index(project_root)
+    
+    # Handle None selector (should not happen, but be defensive)
+    if selector is None:
+        raise ValueError("Workflow selector cannot be None")
     
     selector = selector.strip()
     
@@ -768,6 +777,10 @@ def resolve_step(
         workflow_dir = workflow.absolute_path.parent
     else:
         workflow_dir = workflow.absolute_path
+    
+    # Handle None step_selector (should not happen, but be defensive)
+    if step_selector is None:
+        raise ValueError("Step selector cannot be None")
     
     step_selector = step_selector.strip()
     

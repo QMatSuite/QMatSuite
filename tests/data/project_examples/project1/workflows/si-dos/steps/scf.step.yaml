@@ -1,8 +1,8 @@
 meta:
-  id: 01KB9JR6C8550NT0EFR361ZVTR
+  id: 01KC38NVA0NES3T6YG7DK8DP82
   name: scf
   slug: scf
-  path: scf.step.yaml
+  path: workflows/si-dos/steps/scf.step.yaml
   kind: step
 step_type: scf
 parameters:

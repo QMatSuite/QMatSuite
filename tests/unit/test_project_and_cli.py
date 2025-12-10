@@ -976,6 +976,10 @@ def test_cli_show_command_import_preserves_original_parameters(
         workflow_slug = slugify(workflow_name)
         workflow_dir = project_root / "workflows" / workflow_slug
         workflow_yaml = yaml.safe_load((workflow_dir / "workflow.yaml").read_text())
+        # Verify DAG + ID-only constitution: only structure_id is persisted
+        assert "structure_id" in workflow_yaml, "workflow.yaml should contain structure_id"
+        assert "structure_name" not in workflow_yaml, "workflow.yaml should NOT contain structure_name"
+        assert "structure" not in workflow_yaml, "workflow.yaml should NOT contain structure selector"
         last_step = workflow_yaml["steps"][-1]
         # With ID-only model, resolve step file via step_id
         from quantumvitas.core.resolution import resolve_step, build_resource_index

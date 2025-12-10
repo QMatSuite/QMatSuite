@@ -15,6 +15,7 @@ from quantumvitas.core.resolution import ResourceIndex, build_resource_index
 from quantumvitas.core.project_utils import find_project_root, load_project_config
 from quantumvitas.core.resolution import resolve_workflow, require_workflow, require_step
 from quantumvitas.core.resolution import ResolvedResource, ResourceNotFoundError
+from quantumvitas.core.selectors import extract_workflow_selector_from_entry
 
 
 @dataclass
@@ -199,7 +200,8 @@ def resolve_workflow_for_cli(
     # Check if project has exactly one workflow
     workflows = ctx.config.get("workflows", [])
     if len(workflows) == 1:
-        workflow_id = workflows[0].get("id") or workflows[0].get("workflow_id")
+        # Use centralized selector extraction - single selector, single resolution pattern
+        workflow_id = extract_workflow_selector_from_entry(workflows[0])
         if workflow_id:
             return require_workflow(
                 ctx.project_root,

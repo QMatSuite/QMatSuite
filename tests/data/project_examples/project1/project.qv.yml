@@ -1,7 +1,7 @@
 project:
   name: project1
   meta:
-    id: 01KB9J9K06K6400PY3J2QYJ0Z4
+    id: 01KC38M041WTC1XKXQHHRC1AHY
     name: project1
     slug: project1
     path: .
@@ -9,22 +9,7 @@ project:
   structures_dir: structures
   workflows_dir: workflows
 workflows:
-- name: Si dos
-  path: workflows/si-dos
-  meta:
-    id: 01KB9JA6JSMH7XFZ1AK917TV6J
-    name: Si dos
-    slug: si-dos
-    path: workflows/si-dos
-    kind: workflow
+- workflow_id: 01KC38MFJZ7RF3SB7SHVYDQ4J8
 structures:
-- name: Si
-  file: structures/si.json
-  format: json
-  meta:
-    id: 01KB9JA63339W4J7YFM9FDYJKA
-    name: Si
-    slug: si
-    path: structures/si.json
-    kind: structure
+- structure_id: 01KC38MBGSS8MX3Z4ETZMXZZY4
 settings: {}

@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KBH0N8H2W53FFED02D8T3W3T
+    id: 01KC38Z11XMKJWB5HGV58QHEJZ
     name: project2_bands
     slug: project2_bands
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KBH0RFSSZ1G305C8PS5F1WHC
+    id: 01KC38ZCMZZQ8DAA61A6SC8X23
     name: Si
     slug: si
     path: structures/si.json
@@ -70,24 +70,33 @@ structures:
       - 1.3773039781619374
 workflows:
 - meta:
-    id: 01KBH0RGF179RD73PNKD0N8GNS
+    id: 01KC38ZHBGWW0T1W9BV7ASEP2Z
     name: Si bands
     slug: si-bands
     path: workflows/si-bands
     kind: workflow
-  structure: si
   mode: normal
   working_dir: raw
   steps:
   - meta:
-      id: 01KBYDEDM2CXB5BW629KHP2YRW
+      id: 01KC39BB6NNP4AF070GWPKK0J0
+      name: bands
+      slug: bands
+      path: workflows/si-bands/steps/bands.step.yaml
+      kind: step
+    step_type: bands
+    parameters:
+      BANDS:
+        filband: si.bands.dat
+        outdir: ./outdir/
+        prefix: si
+  - meta:
+      id: 01KC3901JEVJJ7S8G3E7Z9K2RZ
       name: scf
       slug: scf
       path: workflows/si-bands/steps/scf.step.yaml
       kind: step
-    structure: si
     step_type: scf
-    parent_workflow_id: 01KBH0RGF179RD73PNKD0N8GNS
     parameters:
       CONTROL:
         calculation: scf
@@ -116,51 +125,12 @@ workflows:
         mass: 28.0855
         pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
   - meta:
-      id: 01KBYDGAW6A16J9DF6GTBWWQNE
-      name: nscf
-      slug: nscf
-      path: workflows/si-bands/steps/nscf.step.yaml
-      kind: step
-    structure: si
-    step_type: nscf
-    parent_workflow_id: 01KBH0RGF179RD73PNKD0N8GNS
-    parameters:
-      CONTROL:
-        calculation: nscf
-        outdir: ./outdir
-        prefix: si
-        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
-        restart_mode: from_scratch
-      ELECTRONS:
-        conv_thr: 1.0e-08
-      SYSTEM:
-        ecutrho: 320
-        ecutwfc: 40
-        nbnd: 8
-        occupations: tetrahedra
-    cards:
-      K_POINTS:
-        option: automatic
-        data:
-        - - 12
-          - 12
-          - 12
-          - 0
-          - 0
-          - 0
-    species_overrides:
-      Si:
-        mass: 28.0855
-        pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
-  - meta:
-      id: 01KBH1ZPE9F10VY6WG88X6ZMPC
+      id: 01KC39C21NREKW2YVZJY8E40RN
       name: bands_pw
       slug: bands_pw
       path: workflows/si-bands/steps/bands_pw.step.yaml
       kind: step
-    structure: si
     step_type: bands_pw
-    parent_workflow_id: 01KBH0RGF179RD73PNKD0N8GNS
     parameters:
       CONTROL:
         calculation: bands
@@ -204,19 +174,45 @@ workflows:
         mass: 28.0855
         pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
   - meta:
-      id: 01KBH1V6W4P5X65ZA6SAM0FYER
-      name: bands_pp
-      slug: bands_pp
-      path: bands2.step.yaml
+      id: 01KC39AWHWQ5EQSNFQADAA2AGP
+      name: nscf
+      slug: nscf
+      path: workflows/si-bands/steps/nscf.step.yaml
       kind: step
-    structure: si
-    step_type: bands
-    parent_workflow_id: 01KBH0RGF179RD73PNKD0N8GNS
+    step_type: nscf
     parameters:
-      BANDS:
-        filband: si.bands.pp.dat
-        outdir: ./outdir/
+      CONTROL:
+        calculation: nscf
+        outdir: ./outdir
         prefix: si
+        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+        restart_mode: from_scratch
+      ELECTRONS:
+        conv_thr: 1.0e-08
+      SYSTEM:
+        ecutrho: 320
+        ecutwfc: 40
+        nbnd: 8
+        occupations: tetrahedra
+    cards:
+      K_POINTS:
+        option: automatic
+        data:
+        - - 12
+          - 12
+          - 12
+          - 0
+          - 0
+          - 0
+    species_overrides:
+      Si:
+        mass: 28.0855
+        pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+  structure_id: 01KC38ZCMZZQ8DAA61A6SC8X23
+pseudo:
+  directory: pseudo
+  files:
+  - Si.pbe-n-rrkjus_psl.1.0.0.UPF
 meta:
   id: si_bands_demo
   title: Silicon band structure
@@ -226,6 +222,7 @@ meta:
   - Si
   - PW
   - tutorial
+  - beginner
   recommended_analysis: bands
   difficulty: beginner
   reference_artifacts:

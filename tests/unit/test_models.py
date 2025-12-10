@@ -122,7 +122,8 @@ class TestWorkflowModel:
         d = model.to_dict()
         assert d["meta"]["id"] == "01WORKFLOW_ID_HERE______"
         assert d["structure_id"] == "01STRUCTURE_ID_HERE_____"
-        assert d["structure_name"] == "Graphene"
+        # DAG + ID-only model: structure_name is NOT written to YAML (cosmetic only)
+        assert "structure_name" not in d
         # Legacy structure selector is NOT written (ID-only model)
         assert "structure" not in d
         assert len(d["steps"]) == 1
@@ -131,7 +132,8 @@ class TestWorkflowModel:
         model2 = WorkflowModel.from_dict(d, default_name="fallback", default_path="workflows/fallback")
         assert model2.meta.id == model.meta.id
         assert model2.structure_id == model.structure_id
-        assert model2.structure_name == model.structure_name
+        # structure_name is not persisted, so it will be None after roundtrip
+        # (it's cosmetic only, structure_id is the canonical reference)
 
 
 class TestWorkflowIO:
@@ -205,9 +207,9 @@ class TestWorkflowIO:
         loaded = yaml.safe_load(yaml_path.read_text())
         assert loaded["meta"]["id"] == "01NEW_WORKFLOW__________"
         assert loaded["structure_id"] == "01STRUCTURE_ID_HERE_____"
-        assert loaded["structure_name"] == "Graphene"
-        # Legacy structure selector is NOT written (ID-only model)
-        assert "structure" not in loaded
+        # DAG + ID-only constitution: structure_name and structure selector are NOT persisted
+        assert "structure_name" not in loaded, "structure_name should not be written to workflow.yaml"
+        assert "structure" not in loaded, "structure selector should not be written to workflow.yaml"
     
     def test_roundtrip(self, tmp_path):
         """Save and load produces equivalent model."""
@@ -240,8 +242,16 @@ class TestWorkflowIO:
         assert loaded.meta.id == original.meta.id
         assert loaded.meta.name == original.meta.name
         assert loaded.structure_id == original.structure_id
-        assert loaded.structure_name == original.structure_name
+        # structure_name is in-memory only (not persisted)
+        # It may be None after roundtrip if not provided in YAML
         assert len(loaded.steps) == len(original.steps)
+        
+        # Verify on-disk YAML only contains structure_id (DAG + ID-only constitution)
+        yaml_path = wf_dir / "workflow.yaml"
+        on_disk = yaml.safe_load(yaml_path.read_text())
+        assert "structure_id" in on_disk
+        assert "structure_name" not in on_disk, "structure_name should not be persisted to workflow.yaml"
+        assert "structure" not in on_disk, "structure selector should not be persisted to workflow.yaml"
 
 
 class TestProjectModel:

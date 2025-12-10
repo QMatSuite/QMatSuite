@@ -308,15 +308,10 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
             "working_dir": workflow_model.working_dir,
             "steps": [],
         }
-        # Export structure_id (canonical reference)
+        # Export structure_id (canonical reference - ID only)
+        # Do NOT export structure_name or structure selector (violates DAG + ID-only constitution)
         if workflow_model.structure_id:
             workflow_dict["structure_id"] = workflow_model.structure_id
-            # Optionally include structure_name for display
-            if workflow_model.structure_name:
-                workflow_dict["structure_name"] = workflow_model.structure_name
-        # Keep structure selector for backwards compatibility
-        if workflow_model.structure:
-            workflow_dict["structure"] = workflow_model.structure
         
         # Export each step
         # Strategy: Scan step files directly and export them, matching by ID when possible
@@ -599,8 +594,9 @@ def materialize_project_from_snapshot(
                 kind="workflow",
             ),
             structure_id=workflow_structure_id,
+            # structure_name and structure are in-memory only (not persisted to YAML)
             structure_name=workflow_structure_name,
-            structure=workflow_structure_selector,  # Keep for backwards compat
+            structure=workflow_structure_selector,  # In-memory only for backwards compat
             mode=workflow_data.get("mode", "normal"),
             working_dir=workflow_data.get("working_dir", "raw"),
             steps=[],

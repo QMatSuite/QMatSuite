@@ -21,6 +21,11 @@ from quantumvitas.core.resources import (
     generate_unique_name_and_slug,
     slugify,
 )
+from quantumvitas.core.selectors import (
+    extract_workflow_selector_from_entry,
+    extract_structure_selector_from_entry,
+    extract_step_selector_from_entry,
+)
 
 if TYPE_CHECKING:
     from quantumvitas.workflow.structure_steps import StructureStepSpec
@@ -196,10 +201,10 @@ def find_structure_entry(
             resolved = resolve_structure(project_root, identifier, config, index=index)
             # Convert ResolvedResource back to entry dict format for backwards compat
             structure_id = resolved.meta.id
-            # Find entry by ID
+            # Find entry by ID using centralized selector extraction
             entries = config.setdefault("structures", [])
             for entry in entries:
-                entry_id = (entry.get("meta") or {}).get("id") or entry.get("id")
+                entry_id = extract_structure_selector_from_entry(entry)
                 if entry_id == structure_id:
                     return entry
             # If not found in config, create minimal entry from resolved resource
@@ -262,10 +267,10 @@ def find_workflow_entry(
             resolved = resolve_workflow(project_root, identifier, config, index=index)
             # Convert ResolvedResource back to entry dict format for backwards compat
             workflow_id = resolved.meta.id
-            # Find entry by ID
+            # Find entry by ID using centralized selector extraction
             entries = config.setdefault("workflows", [])
             for entry in entries:
-                entry_id = (entry.get("meta") or {}).get("id") or entry.get("id")
+                entry_id = extract_workflow_selector_from_entry(entry)
                 if entry_id == workflow_id:
                     return entry
             # If not found in config, create minimal entry from resolved resource
@@ -874,6 +879,16 @@ def apply_structure_rename(
     previous_slug = meta.get("slug")
     slug_changed = False
     previous_path = entry.get("file") or meta.get("path")
+    
+    # In ID-only model, entry might only have structure_id - resolve path from registry
+    if not previous_path and entry.get("structure_id"):
+        from quantumvitas.core.resolution import build_resource_index, require_structure
+        try:
+            index = build_resource_index(project_root)
+            resolved = require_structure(project_root, entry["structure_id"], index=index)
+            previous_path = resolved.meta.path
+        except Exception:
+            pass  # If resolution fails, previous_path stays None
 
     if new_name or new_slug:
         if new_slug:
@@ -894,6 +909,7 @@ def apply_structure_rename(
         meta["name"] = name_candidate
         meta["slug"] = slug_candidate
         slug_changed = slug_candidate != previous_slug
+        name_changed = name_candidate != (entry.get("name") or meta.get("name"))
 
     if new_path is not None:
         relative = ensure_relative_path(new_path, base=project_root)
@@ -955,6 +971,30 @@ def apply_structure_rename(
                     new_abs.write_text(json.dumps(struct_data, indent=2))
             except Exception:
                 pass  # If update fails, continue (config is still updated)
+    
+    # Always update structure file's meta block when name/slug changes (even if path doesn't change)
+    # This ensures that get_structure() reads the updated name from the file
+    if (new_name or new_slug) and previous_path:
+        struct_abs = (project_root / previous_path).resolve()
+        if struct_abs.exists():
+            try:
+                import json
+                from quantumvitas.io.structure_io import STRUCTURE_META_KEY
+                struct_data = json.loads(struct_abs.read_text())
+                # Ensure meta block exists
+                if STRUCTURE_META_KEY not in struct_data:
+                    struct_data[STRUCTURE_META_KEY] = {}
+                # Update with the new name and slug from meta (which was updated above)
+                struct_data[STRUCTURE_META_KEY].update({
+                    "name": meta.get("name"),
+                    "slug": meta.get("slug"),
+                })
+                struct_abs.write_text(json.dumps(struct_data, indent=2))
+            except Exception as e:
+                # Log but don't fail - config is still updated
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Could not update structure file meta: {e}")
 
 
 def apply_workflow_rename(
@@ -1045,6 +1085,12 @@ def apply_workflow_rename(
                     wf_meta["name"] = name_candidate
                     wf_meta["slug"] = slug_candidate
                     wf_meta["path"] = rel_str
+                    # Remove legacy structure_name and structure fields before writing (DAG + ID-only constitution)
+                    wf_data.pop("structure_name", None)
+                    wf_data.pop("structure", None)
+                    if "workflow" in wf_data:
+                        wf_data["workflow"].pop("structure_name", None)
+                        wf_data["workflow"].pop("structure", None)
                     workflow_yaml_path.write_text(yaml.safe_dump(wf_data, sort_keys=False))
                 except Exception:
                     pass  # If update fails, continue (config is still updated)
@@ -1107,16 +1153,29 @@ def delete_workflow_entry(
                 "Use force to remove it anyway or cascade to delete dependents."
             )
 
+    # Resolve workflow directory - try path first, then resolve via registry
     workflow_dir = None
     rel_path = entry.get("path") or (entry.get("meta") or {}).get("path")
     if rel_path:
         workflow_dir = (project_root / rel_path).resolve()
-        if workflow_dir.exists():
-            move_to_trash(workflow_dir, trash_dir)
+    else:
+        # ID-only model: resolve via registry
+        workflow_id = extract_workflow_selector_from_entry(entry)
+        if workflow_id:
+            try:
+                from quantumvitas.core.resolution import build_resource_index, require_workflow
+                index = build_resource_index(project_root)
+                resolved = require_workflow(project_root, workflow_id, index=index)
+                workflow_dir = resolved.absolute_path.parent if resolved.absolute_path.name == "workflow.yaml" else resolved.absolute_path
+            except Exception:
+                pass  # If resolution fails, workflow_dir stays None
+    
+    if workflow_dir and workflow_dir.exists():
+        move_to_trash(workflow_dir, trash_dir)
 
     # Remove from config by workflow_id (ID-only model)
     # entry from resolve_resource might be a new dict, so match by ID
-    workflow_id = entry.get("workflow_id") or entry.get("id") or (entry.get("meta") or {}).get("id")
+    workflow_id = extract_workflow_selector_from_entry(entry)
     workflows = config.setdefault("workflows", [])
     if workflow_id:
         # Remove by matching workflow_id
