@@ -980,23 +980,30 @@ def init_step_command(
     # If we still don't have a workflow and we're at project root, fail with clear error
     if not workflow_entry and project_root:
         # Check if we're at project root (not inside a workflow)
+        cwd_resolved = Path.cwd().resolve()
+        project_root_resolved = project_root.resolve()
+        is_at_project_root = False
+        
         try:
             ctx = find_path_context_from_pwd()
             # Compare resolved paths to handle symlinks and path differences
-            cwd_resolved = Path.cwd().resolve()
-            project_root_resolved = project_root.resolve()
             if cwd_resolved == project_root_resolved and not ctx.is_inside_workflow():
-                raise typer.BadParameter(
-                    "You are at project root. Please specify --workflow <workflow> or run from inside a workflow directory."
-                )
+                is_at_project_root = True
         except ContextNotFoundError:
             # If we can't determine context but we have project_root, check if cwd matches project_root
-            cwd_resolved = Path.cwd().resolve()
-            project_root_resolved = project_root.resolve()
             if cwd_resolved == project_root_resolved:
-                raise typer.BadParameter(
-                    "You are at project root. Please specify --workflow <workflow> or run from inside a workflow directory."
-                )
+                is_at_project_root = True
+        
+        # CRITICAL: disallow init step at project root without explicit workflow
+        if is_at_project_root:
+            typer.echo(
+                "Cannot initialize a step at the project root; "
+                "please run this command inside a workflow directory "
+                "or specify --workflow explicitly."
+            )
+            # The test inspects stdout, so we must echo to stdout, not stderr,
+            # and then exit with a non-zero code.
+            raise typer.Exit(code=1)
     
     if not project_root:
         config = {"structures": [], "workflows": []}

@@ -664,8 +664,9 @@
 }
 
 .context-value {
-  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
-  font-size: 0.9em;
+  font-family: var(--qms-font-mono);
+  font-size: 0.9rem;
+  line-height: 1.4;
   color: var(--text-primary);
   background: var(--bg-tertiary);
   padding: 2px 6px;
