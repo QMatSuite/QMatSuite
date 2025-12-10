@@ -48,13 +48,27 @@ class TestWorkflowStepEntry:
         # legacy id field is NOT written
         assert "id" not in d
     
-    def test_from_dict(self):
-        """Parse entry from dict."""
-        data = {"id": "nscf", "type": "nscf", "file": "raw/nscf.in"}
-        entry = WorkflowStepEntry.from_dict(data)
-        assert entry.id == "nscf"
+    def test_from_dict_valid_dag_entry(self):
+        """Parse entry from dict with valid DAG format (step_id ULID)."""
+        from quantumvitas.core.resources import generate_resource_id
+        
+        step_ulid = generate_resource_id()
+        data = {"step_id": step_ulid, "type": "nscf", "input": "raw/nscf.in"}
+        entry = WorkflowStepEntry.from_dict(data, project_root=Path.cwd())
+        assert entry.step_id == step_ulid
         assert entry.type == "nscf"
-        assert entry.input == "raw/nscf.in"  # "file" becomes "input"
+        assert entry.input == "raw/nscf.in"
+    
+    def test_from_dict_legacy_format_raises_error(self):
+        """Parse entry from dict with legacy format raises LegacyProjectError."""
+        from quantumvitas.core.exceptions import LegacyProjectError
+        
+        # Legacy format: has "id" but no "step_id" ULID
+        data = {"id": "nscf", "type": "nscf", "file": "raw/nscf.in"}
+        with pytest.raises(LegacyProjectError) as exc_info:
+            WorkflowStepEntry.from_dict(data, project_root=Path.cwd())
+        
+        assert "step_id" in str(exc_info.value).lower() or "legacy" in str(exc_info.value).lower()
 
 
 class TestWorkflowModel:
@@ -67,43 +81,52 @@ class TestWorkflowModel:
         
         assert model.meta.id == "01ABCDEFGHIJKLMNOPQRSTUV"
         assert model.meta.name == "Test"
-        assert model.structure is None
+        assert model.structure_id is None
         assert model.steps == []
     
     def test_from_dict_with_steps(self):
-        """Parse workflow with steps."""
+        """Parse workflow with steps (DAG + ULID model)."""
+        from quantumvitas.core.resources import generate_resource_id
+        
+        structure_ulid = generate_resource_id()
+        step1_ulid = generate_resource_id()
+        step2_ulid = generate_resource_id()
+        
         data = {
-            "meta": {"id": "01ABC", "name": "DOS Calc", "slug": "dos-calc"},
-            "structure": "silicon",
+            "meta": {"id": "01ABCDEFGHIJKLMNOPQRSTUV", "name": "DOS Calc", "slug": "dos-calc"},
+            "structure_id": structure_ulid,
             "steps": [
-                {"id": "scf", "type": "scf"},
-                {"id": "nscf", "type": "nscf"},
+                {"step_id": step1_ulid, "type": "scf"},
+                {"step_id": step2_ulid, "type": "nscf"},
             ],
         }
         model = WorkflowModel.from_dict(data, default_name="DOS Calc", default_path="workflows/dos-calc")
         
-        assert model.structure == "silicon"
+        assert model.structure_id == structure_ulid
         assert len(model.steps) == 2
-        assert model.steps[0].id == "scf"
-        assert model.steps[1].id == "nscf"
+        assert model.steps[0].step_id == step1_ulid
+        assert model.steps[1].step_id == step2_ulid
     
-    def test_from_dict_legacy_format(self):
-        """Parse legacy format where structure is in 'workflow' section."""
+    def test_from_dict_legacy_format_raises_error(self):
+        """Legacy format (structure selector without structure_id) should raise LegacyProjectError."""
+        from quantumvitas.core.exceptions import LegacyProjectError
+        
         data = {
             "id": "si-dos",
             "workflow": {
-                "structure": "si",
+                "structure": "si",  # Legacy selector without structure_id
                 "working_dir": "raw",
             },
             "steps": [],
         }
-        model = WorkflowModel.from_dict(data, default_name="si-dos", default_path="workflows/si-dos")
-        
-        assert model.structure == "si"
-        assert model.working_dir == "raw"
+        with pytest.raises(LegacyProjectError):
+            WorkflowModel.from_dict(data, default_name="si-dos", default_path="workflows/si-dos")
     
     def test_to_dict_roundtrip(self):
         """Convert to dict and back (ID-only model)."""
+        from quantumvitas.core.resources import generate_resource_id
+        
+        step_ulid = generate_resource_id()
         meta = ResourceMeta(
             id="01WORKFLOW_ID_HERE______",
             name="My Workflow",
@@ -115,8 +138,7 @@ class TestWorkflowModel:
             meta=meta,
             structure_id="01STRUCTURE_ID_HERE_____",
             structure_name="Graphene",
-            structure="graphene",  # Legacy field (not written to YAML)
-            steps=[WorkflowStepEntry(step_id="01STEP_ID_HERE________", type="scf")],
+            steps=[WorkflowStepEntry(step_id=step_ulid, type="scf")],
         )
         
         d = model.to_dict()
@@ -141,10 +163,15 @@ class TestWorkflowIO:
     
     @pytest.fixture
     def workflow_dir(self, tmp_path):
-        """Create a workflow directory."""
+        """Create a workflow directory with DAG + ULID format."""
+        from quantumvitas.core.resources import generate_resource_id
+        
         wf_dir = tmp_path / "workflows" / "test-workflow"
         wf_dir.mkdir(parents=True)
         (wf_dir / "steps").mkdir()
+        
+        structure_id = generate_resource_id()
+        step_ulid = generate_resource_id()
         
         workflow_yaml = {
             "meta": {
@@ -154,9 +181,9 @@ class TestWorkflowIO:
                 "path": "workflows/test-workflow",
                 "kind": "workflow",
             },
-            "structure": "silicon",
+            "structure_id": structure_id,  # DAG + ULID format
             "steps": [
-                {"id": "scf", "type": "scf", "step_file": "steps/scf.step.yaml"},
+                {"step_id": step_ulid, "type": "scf"},  # DAG + ULID format
             ],
         }
         (wf_dir / "workflow.yaml").write_text(yaml.safe_dump(workflow_yaml))
@@ -165,13 +192,17 @@ class TestWorkflowIO:
     
     def test_load_workflow(self, workflow_dir):
         """Load workflow from directory."""
+        from quantumvitas.core.resources import generate_resource_id
+        
         wf_dir, project_root = workflow_dir
         model = load_workflow(wf_dir, project_root)
         
         assert model.meta.id == "01WORKFLOW_TEST_________"
         assert model.meta.name == "Test Workflow"
-        assert model.structure == "silicon"
+        assert model.structure_id is not None  # Should have structure_id from YAML
         assert len(model.steps) == 1
+        assert model.steps[0].step_id is not None  # Should have step_id ULID
+        assert len(model.steps[0].step_id) == 26  # ULID length
     
     def test_load_workflow_from_yaml_path(self, workflow_dir):
         """Load workflow from yaml file path."""
@@ -179,6 +210,9 @@ class TestWorkflowIO:
         model = load_workflow(wf_dir / "workflow.yaml", project_root)
         
         assert model.meta.name == "Test Workflow"
+        assert model.structure_id is not None  # Should have structure_id from YAML
+        assert len(model.steps) == 1
+        assert model.steps[0].step_id is not None  # Should have step_id ULID
     
     def test_save_workflow(self, tmp_path):
         """Save workflow creates yaml file (ID-only model)."""
@@ -196,7 +230,6 @@ class TestWorkflowIO:
             meta=meta,
             structure_id="01STRUCTURE_ID_HERE_____",
             structure_name="Graphene",
-            structure="graphene",  # Legacy field (not written to YAML)
         )
         
         save_workflow(model, wf_dir)
@@ -213,8 +246,13 @@ class TestWorkflowIO:
     
     def test_roundtrip(self, tmp_path):
         """Save and load produces equivalent model."""
+        from quantumvitas.core.resources import generate_resource_id
+        
         wf_dir = tmp_path / "workflows" / "roundtrip"
         wf_dir.mkdir(parents=True)
+        
+        step1_ulid = generate_resource_id()
+        step2_ulid = generate_resource_id()
         
         meta = ResourceMeta(
             id="01ROUNDTRIP_ID__________",
@@ -227,12 +265,11 @@ class TestWorkflowIO:
             meta=meta,
             structure_id="01STRUCTURE_ID_HERE_____",
             structure_name="Silicon",
-            structure="silicon",  # Legacy field (not written to YAML)
             mode="normal",
             working_dir="raw",
             steps=[
-                WorkflowStepEntry(step_id="01STEP_SCF_ID_HERE_____", type="scf"),
-                WorkflowStepEntry(step_id="01STEP_NSCF_ID_HERE____", type="nscf"),
+                WorkflowStepEntry(step_id=step1_ulid, type="scf"),
+                WorkflowStepEntry(step_id=step2_ulid, type="nscf"),
             ],
         )
         
@@ -442,27 +479,33 @@ class TestEnsureWorkflowMeta:
         assert (workflow_dir / "workflow.yaml").exists()
     
     def test_preserves_existing_meta(self, tmp_path):
-        """Preserves meta from existing workflow.yaml."""
+        """Preserves meta from existing workflow.yaml (DAG + ULID format)."""
+        from quantumvitas.core.resources import generate_resource_id
+        
         project_root = tmp_path / "project"
         project_root.mkdir()
         workflow_dir = project_root / "workflows" / "existing"
         workflow_dir.mkdir(parents=True)
         
-        # Create existing workflow.yaml with valid ULID (26 uppercase alphanumeric)
+        workflow_ulid = generate_resource_id()
+        structure_ulid = generate_resource_id()
+        
+        # Create existing workflow.yaml with DAG + ULID format
         existing_yaml = {
             "meta": {
-                "id": "01JGWX6YZ0ABCDEFGHIJKLMNOP",  # Valid 26-char ULID
+                "id": workflow_ulid,  # Valid 26-char ULID
                 "name": "Existing Workflow",
                 "slug": "existing",
                 "path": "workflows/existing",
                 "kind": "workflow",
             },
-            "structure": "silicon",
+            "structure_id": structure_ulid,  # DAG + ULID format
+            "steps": [],  # Empty steps list
         }
         (workflow_dir / "workflow.yaml").write_text(yaml.safe_dump(existing_yaml))
         
         meta = ensure_workflow_meta(workflow_dir, project_root)
         
-        assert meta.id == "01JGWX6YZ0ABCDEFGHIJKLMNOP"
+        assert meta.id == workflow_ulid
         assert meta.name == "Existing Workflow"
 

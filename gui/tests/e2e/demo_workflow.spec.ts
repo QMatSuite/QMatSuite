@@ -1,7 +1,15 @@
 /**
- * E2E Test 2: Create Demo Project → Workflow & Steps
+ * E2E Test 2: Create Demo Project → Workflow & Steps UI
  * 
  * Tests creating a demo project and verifying workflow/step UI consistency.
+ * 
+ * **This spec does NOT run any workflows.** It only tests:
+ * - Workflow list rendering
+ * - Step list order (DAG / ULID-based)
+ * - Step detail panel UI (file paths, step IDs, metadata)
+ * - Step file existence and YAML structure
+ * 
+ * All assertions are independent of QE execution outputs.
  * 
  * Each test file runs in its own Playwright process, ensuring complete isolation.
  * The unified Electron fixture automatically chooses the appropriate launch strategy
@@ -67,7 +75,7 @@ test.describe('E2E Test 2: Create Demo Project → Workflow & Steps', () => {
       // Wait for workflow detail panel
       await expect(appPage.getByTestId('qv-workflow-detail')).toBeVisible({ timeout: 10000 });
       
-      // Verify "Run Workflow" button is visible
+      // Verify "Run Workflow" button is visible (but we do NOT click it - no workflow execution in this spec)
       await expect(appPage.getByTestId('qv-btn-run-workflow')).toBeVisible();
       
       // Get all step rows

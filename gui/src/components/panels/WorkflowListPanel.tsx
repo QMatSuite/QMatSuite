@@ -2,7 +2,7 @@
  * WorkflowListPanel - Displays a list of workflows in a project
  */
 
-import type { WorkflowInfo, WorkflowDetailResult } from '../../types/qv';
+import type { WorkflowInfo } from '../../types/qv';
 import './WorkflowListPanel.css';
 
 interface WorkflowListPanelProps {
@@ -182,7 +182,6 @@ export function WorkflowDetailPanel({
   // as the canonical source of step order, since it is built from workflow.yaml.
   // Fall back to summary only if detail is still loading.
   const workflowForSteps = workflowDetail ?? workflowSummary;
-  // For backwards compatibility with existing code that uses `workflow` variable
   // Both WorkflowInfo and WorkflowDetailResult have compatible fields (id, name, slug, structure, mode, n_steps)
   const workflow = workflowForSteps as WorkflowInfo | null;
   const [isReordering, setIsReordering] = useState(false);
@@ -248,7 +247,6 @@ export function WorkflowDetailPanel({
       await onWorkflowUpdated?.();
     } finally {
       setIsDeletingStep(false);
-      setStepToDelete(null);
     }
   }, [workflowForSteps, projectRoot, isDeletingStep, onDeleteStep, onWorkflowUpdated]);
   
@@ -431,10 +429,11 @@ export function WorkflowDetailPanel({
     setError(null);
     
     try {
+      // new_order must be array of step ULIDs (from step.id) in the desired order
       const response = await window.qv.request<WorkflowDetailResult>('reorder_workflow_steps', {
         project_root: projectRoot,
-        workflow: workflowForSteps.slug,
-        new_order: stepOrder,
+        workflow: workflowForSteps.slug, // workflow selector: slug
+        new_order: stepOrder, // array of step ULIDs (from step.id)
       });
       
       if (response.ok) {
@@ -494,8 +493,8 @@ export function WorkflowDetailPanel({
   
   // CRITICAL: Use workflowDetail.steps if available (canonical from workflow.yaml),
   // otherwise fall back to workflowSummary.steps (may have wrong order, but better than nothing)
-  // IMPORTANT: When selectedWorkflowDetail is available, we must use its steps array
-  // as the canonical source of step order, since it is built from workflow.yaml.
+  // The steps array from get_workflow_detail is the canonical source of step order and IDs.
+  // Each step.id is a ULID (26 chars) that must be used as the step selector for RPC calls.
   const displaySteps = workflowDetail?.steps ?? workflowSummary?.steps ?? [];
   
   // INSTRUMENTATION: Log steps to verify order matches workflow.yaml
@@ -512,6 +511,19 @@ export function WorkflowDetailPanel({
     })),
   });
   
+  // Early return if no workflow data
+  if (!workflow) {
+    return (
+      <div className="workflow-detail-panel">
+        <div className="panel-placeholder">
+          <span className="panel-icon">📊</span>
+          <h3>No Workflow Selected</h3>
+          <p>Select a workflow to view its details.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="workflow-detail-panel" data-testid="qv-workflow-detail">
       <div className="panel-header">

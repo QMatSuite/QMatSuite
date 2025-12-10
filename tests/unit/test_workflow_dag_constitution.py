@@ -24,7 +24,7 @@ def test_workflow_yaml_only_persists_structure_id(tmp_path):
     structure_name = "Test Structure"
     structure_selector = "test-structure"
     
-    # Create workflow model with all fields (in-memory)
+    # Create workflow model with structure_id only (DAG + ULID model)
     model = WorkflowModel(
         meta=ResourceMeta(
             id=generate_resource_id(),
@@ -34,8 +34,7 @@ def test_workflow_yaml_only_persists_structure_id(tmp_path):
             kind="workflow",
         ),
         structure_id=structure_id,
-        structure_name=structure_name,  # In-memory only
-        structure=structure_selector,  # In-memory only (legacy)
+        structure_name=structure_name,  # In-memory only (cosmetic)
         mode="normal",
         working_dir="raw",
         steps=[],
@@ -106,9 +105,11 @@ def test_workflow_roundtrip_strips_legacy_fields(tmp_path):
     assert "structure" not in on_disk, "Legacy structure selector should be stripped"
 
 
-def test_workflow_migration_from_legacy_selector(tmp_path):
-    """Test that legacy structure selector is migrated to structure_id on load."""
-    wf_dir = tmp_path / "workflows" / "migration"
+def test_workflow_legacy_selector_raises_error(tmp_path):
+    """Test that legacy structure selector (without structure_id) raises LegacyProjectError."""
+    from quantumvitas.core.exceptions import LegacyProjectError
+    
+    wf_dir = tmp_path / "workflows" / "legacy"
     wf_dir.mkdir(parents=True)
     
     # Create a structure in the project
@@ -148,16 +149,16 @@ def test_workflow_migration_from_legacy_selector(tmp_path):
     }
     (project_root / "project.qv.yml").write_text(yaml.safe_dump(project_config))
     
-    # Create workflow.yaml with legacy structure selector
+    # Create workflow.yaml with legacy structure selector (no structure_id)
     legacy_yaml = {
         "meta": {
             "id": generate_resource_id(),
-            "name": "Migration Test",
-            "slug": "migration-test",
-            "path": "workflows/migration-test",
+            "name": "Legacy Test",
+            "slug": "legacy-test",
+            "path": "workflows/legacy-test",
             "kind": "workflow",
         },
-        "structure": "test-structure",  # Legacy selector
+        "structure": "test-structure",  # Legacy selector without structure_id
         "mode": "normal",
         "working_dir": "raw",
         "steps": [],
@@ -166,19 +167,8 @@ def test_workflow_migration_from_legacy_selector(tmp_path):
     yaml_path = wf_dir / "workflow.yaml"
     yaml_path.write_text(yaml.safe_dump(legacy_yaml))
     
-    # Load workflow (should resolve structure selector to structure_id)
-    # load_workflow will automatically create a resolver if project_root is provided
-    model = load_workflow(wf_dir, project_root)
+    # Load workflow should raise LegacyProjectError (no auto-migration)
+    with pytest.raises(LegacyProjectError) as exc_info:
+        load_workflow(wf_dir, project_root)
     
-    # Verify structure_id was resolved
-    assert model.structure_id == structure_id, f"Expected structure_id {structure_id}, got {model.structure_id}"
-    
-    # Save workflow (should write structure_id, not structure selector)
-    save_workflow(model, wf_dir)
-    
-    # Verify on-disk YAML
-    on_disk = yaml.safe_load(yaml_path.read_text())
-    assert "structure_id" in on_disk
-    assert on_disk["structure_id"] == structure_id
-    assert "structure" not in on_disk, "Legacy structure selector should be removed"
-    assert "structure_name" not in on_disk, "structure_name should not be persisted"
+    assert "structure" in str(exc_info.value).lower() or "legacy" in str(exc_info.value).lower()

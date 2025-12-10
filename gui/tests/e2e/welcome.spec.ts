@@ -3,6 +3,8 @@
  * 
  * Tests that the welcome screen displays correctly when no project is loaded.
  * 
+ * **This spec does NOT run any workflows.** It only tests UI state and navigation.
+ * 
  * Each test file runs in its own Playwright process, ensuring complete isolation.
  * The unified Electron fixture automatically chooses the appropriate launch strategy
  * based on platform (Linux: _electron.launch, macOS: CDP).

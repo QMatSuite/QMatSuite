@@ -28,6 +28,10 @@ export interface QVError {
   available_commands?: string[];
   kind?: string;  // Resource kind for resource_not_found errors (e.g., "step", "workflow", "structure")
   selector?: string;  // Selector that was not found
+  details?: {
+    project_root?: string;
+    hint?: string;
+  };
 }
 
 export interface QVResponse<T = unknown> {
@@ -122,7 +126,7 @@ export interface WorkflowInfo {
   slug: string;
   path: string;
   absolute_path: string;
-  structure: string;
+  structure: string | null;  // Can be null in DAG + ULID model
   mode: string;
   n_steps: number;
   steps: StepInfo[];

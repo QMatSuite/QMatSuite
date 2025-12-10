@@ -136,7 +136,18 @@ def build_step_spec_from_qe_input(
     qe_input = QEInputParser.parse_file(input_path)
     structure = structure_from_qe_input(qe_input)
 
-    step_id = step_id or input_path.stem
+    # Generate ULID for step_id (DAG + ULID model requirement)
+    from quantumvitas.core.resources import generate_resource_id
+    if step_id:
+        # If step_id is provided but not a ULID, generate one
+        if len(step_id) != 26 or not step_id.startswith("01"):
+            step_id = generate_resource_id()
+    else:
+        # Generate new ULID for step_id
+        step_id = generate_resource_id()
+    
+    # Use input_path.stem for step name/slug (human-readable identifier)
+    step_name = input_path.stem
     # Generate a proper ULID for structure_id if not provided
     from quantumvitas.core.resources import generate_resource_id, meta_from_name, ensure_relative_path
     if not structure_id:
@@ -184,9 +195,12 @@ def build_step_spec_from_qe_input(
         structure_ref_value = _relative_path_for_spec(structure_path, destination)
         structure_selector = str(structure_ref_value)  # Legacy path selector for backwards compat
 
-    step_file = destination / f"{step_id}.step.yaml"
+    # Use step_name for filename (human-readable), step_id (ULID) for meta.id
+    step_file = destination / f"{step_name}.step.yaml"
+    step_meta = meta_from_name("step", name=step_name, path=step_file.name)
+    step_meta.id = step_id  # Set ULID as meta.id
     spec = StructureStepSpec(
-        meta=meta_from_name("step", name=step_id, path=step_file.name),
+        meta=step_meta,
         structure_id=structure_id,  # Always set structure_id (ID-only model)
         structure=structure_selector,  # Legacy selector (empty if using ID-only)
         step_type=step_type,
@@ -287,11 +301,13 @@ def build_workflow_from_qe_inputs(
     # Pass it to all step creation calls so they all use the same structure
     step_results: list[StepImportResult] = []
     for input_path in files:
+        # Generate ULID for step_id (DAG + ULID model)
+        # step_id will be generated inside build_step_spec_from_qe_input if not provided
         step_result = build_step_spec_from_qe_input(
             input_path,
             destination_dir=steps_dir,
             structure_dir=structure_store,
-            step_id=input_path.stem,
+            step_id=None,  # Let function generate ULID
             structure_id=structure_id,  # This is now a ULID
             reference_structure_by=reference_structure_by,
         )
