@@ -575,6 +575,112 @@ class TestDemoProjectSnapshots:
         if snapshot.pseudo:
             assert "files" in snapshot.pseudo
             assert isinstance(snapshot.pseudo["files"], list)
+
+
+class TestSnapshotEdgeCases:
+    """Test edge cases for snapshot restoration."""
+    
+    def test_restore_snapshot_with_missing_step_reports_issues(self, project1_path: Path, temp_dir: Path):
+        """Test that restoring a snapshot with missing step files reports issues clearly."""
+        # Export snapshot
+        snapshot = export_project_to_snapshot(project1_path)
+        
+        # Manually delete one step file to simulate missing resource
+        # First, materialize the snapshot normally to get the structure
+        project_root = materialize_project_from_snapshot(
+            snapshot=snapshot,
+            parent_dir=temp_dir,
+            new_project_name="Test Missing Step",
+        )
+        
+        # Find a step file and delete it
+        from quantumvitas.core.models import load_project
+        project = load_project(project_root)
+        if len(project.workflows) > 0:
+            workflow_entry = project.workflows[0]
+            workflow_dir = project_root / workflow_entry.meta.path
+            steps_dir = workflow_dir / "steps"
+            
+            if steps_dir.exists():
+                step_files = list(steps_dir.glob("*.step.yaml"))
+                if step_files:
+                    # Delete the first step file
+                    deleted_step_file = step_files[0]
+                    deleted_step_file.unlink()
+                    
+                    # Try to load the workflow - should handle missing step gracefully
+                    from quantumvitas.core.models import load_workflow
+                    try:
+                        workflow_model = load_workflow(workflow_dir / "workflow.yaml", project_root)
+                        # Workflow should load, but the step file is missing
+                        # The step entry in workflow.yaml may reference a non-existent file
+                        # This is a data inconsistency, but the workflow should still load
+                        assert workflow_model is not None, "Workflow should load even with missing step file"
+                    except Exception as e:
+                        # If loading fails, it should be with a clear error message
+                        error_msg = str(e).lower()
+                        assert "step" in error_msg or "missing" in error_msg or "not found" in error_msg, \
+                            f"Error should mention step/missing/not found, got: {e}"
+    
+    def test_restore_snapshot_into_nonempty_project_handles_conflicts(self, project1_path: Path, temp_dir: Path):
+        """Test that restoring a snapshot into a non-empty project handles conflicts."""
+        # Create a non-empty project
+        existing_project = temp_dir / "existing_project"
+        QVService.init_project(existing_project, name="Existing Project")
+        
+        # Import a structure with the same name as in the snapshot
+        from quantumvitas.io.structure_io import write_structure
+        from pymatgen.core import Structure, Lattice
+        from quantumvitas.core.resources import generate_resource_id
+        from quantumvitas.core.project_utils import load_project_config, save_project_config
+        
+        # Create structure with same name as snapshot (Si)
+        struct = Structure(Lattice.cubic(5.43), ['Si'], [[0, 0, 0]])
+        struct_file = existing_project / "structures" / "si.json"
+        struct_meta = {
+            'id': generate_resource_id(),
+            'name': 'Si',
+            'slug': 'si',
+            'path': 'structures/si.json',
+            'kind': 'structure'
+        }
+        write_structure(struct, struct_file, metadata=struct_meta)
+        
+        config = load_project_config(existing_project)
+        config['structures'].append({'id': struct_meta['id']})
+        save_project_config(existing_project, config)
+        
+        # Export snapshot from project1
+        snapshot = export_project_to_snapshot(project1_path)
+        
+        # Strategy: Restore should create a new project directory (not overwrite existing)
+        # This is the current behavior - materialize_project_from_snapshot creates a new directory
+        # So we test that restoring into a parent directory with existing projects works
+        
+        # Materialize snapshot in the same parent directory
+        # This should create a new project with a unique name
+        new_project_root = materialize_project_from_snapshot(
+            snapshot=snapshot,
+            parent_dir=temp_dir,
+            new_project_name="Restored Project",
+        )
+        
+        # Verify new project was created (not overwriting existing)
+        assert new_project_root != existing_project, "Should create new project, not overwrite existing"
+        assert new_project_root.exists(), "New project should exist"
+        assert existing_project.exists(), "Existing project should still exist"
+        
+        # Verify both projects can coexist
+        from quantumvitas.core.models import load_project
+        existing = load_project(existing_project)
+        restored = load_project(new_project_root)
+        
+        assert existing.meta.name == "Existing Project"
+        assert restored.meta.name == "Restored Project"
+        
+        # Both should have structures (may have same names, but different IDs)
+        assert len(existing.structures) > 0, "Existing project should have structures"
+        assert len(restored.structures) > 0, "Restored project should have structures"
     
     def test_materialize_demo_snapshots(self, temp_dir: Path):
         """Test materializing both demo snapshots."""

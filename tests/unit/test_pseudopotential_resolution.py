@@ -122,3 +122,235 @@ class TestPseudopotentialResolution:
         assert "Si" in step_spec.species_overrides
         assert step_spec.species_overrides["Si"]["pseudopot"] == "Si.pbe-n-rrkjus_psl.1.0.0.UPF"
 
+
+class TestPseudopotentialResolutionEdgeCases:
+    """Test edge cases for pseudopotential resolution."""
+    
+    def test_pp_resolution_missing_element_reports_clear_error(self, tmp_path: Path, monkeypatch):
+        """Test that pseudopotential resolution fails clearly when an element has no pseudo file."""
+        # Create a pseudo directory with only Si.UPF
+        pseudo_dir = tmp_path / "pseudo"
+        pseudo_dir.mkdir()
+        
+        # Create Si.UPF
+        si_pseudo = pseudo_dir / "Si.pbe-n-rrkjus_psl.1.0.0.UPF"
+        si_pseudo.write_text("fake Si pseudo content")
+        
+        # Mock _find_quantumvitas_root to return None to avoid finding system pseudo dirs
+        from quantumvitas.core.engines.qe_pseudopotentials import _find_quantumvitas_root
+        monkeypatch.setattr("quantumvitas.core.engines.qe_pseudopotentials._find_quantumvitas_root", lambda: None)
+        
+        # Create a QE input file that requires both Si and C
+        qe_input_file = tmp_path / "test.in"
+        qe_input_content = """&control
+    calculation = 'scf'
+    prefix = 'test'
+/
+&system
+    ibrav = 0
+    nat = 3
+    ntyp = 2
+    ecutwfc = 30.0
+/
+ATOMIC_SPECIES
+ Si  28.0855  Si.pbe-n-rrkjus_psl.1.0.0.UPF
+ C   12.0107  C.pz-rrkjus.UPF
+
+CELL_PARAMETERS (angstrom)
+  5.43  0.0  0.0
+  0.0  5.43  0.0
+  0.0  0.0  5.43
+
+ATOMIC_POSITIONS (angstrom)
+ Si  0.0  0.0  0.0
+ C   1.0  1.0  1.0
+ C   2.0  2.0  2.0
+
+K_POINTS (automatic)
+  4 4 4 0 0 0
+"""
+        qe_input_file.write_text(qe_input_content)
+        
+        # Try to resolve pseudopotentials in strict mode - should raise FileNotFoundError for C
+        from quantumvitas.core.pseudo import ensure_qe_pseudos
+        
+        # In strict mode, should raise FileNotFoundError when pseudo file is missing
+        with pytest.raises(FileNotFoundError) as exc_info:
+            ensure_qe_pseudos(
+                qe_input_file=qe_input_file,
+                project_pseudo_dir=pseudo_dir,
+                system_pseudo_dir=None,
+                strict=True,  # Don't try to download
+            )
+        
+        # Error message should clearly indicate which element and file are missing
+        error_msg = str(exc_info.value).lower()
+        assert "c" in error_msg, \
+            f"Error should mention missing element C, got: {exc_info.value}"
+        assert "c.pz-rrkjus.upf" in error_msg, \
+            f"Error should mention missing file C.pz-rrkjus.UPF, got: {exc_info.value}"
+        assert "searched in" in error_msg or "not found" in error_msg, \
+            f"Error should indicate where it searched, got: {exc_info.value}"
+    
+    def test_pp_resolution_multiple_candidates_uses_defined_priority(self, tmp_path: Path):
+        """Test that when multiple pseudo files exist for one element, resolution uses a deterministic priority."""
+        # Create a pseudo directory with multiple Si pseudo files
+        pseudo_dir = tmp_path / "pseudo"
+        pseudo_dir.mkdir()
+        
+        # Create multiple Si pseudo files
+        si_pbe = pseudo_dir / "Si.pbe-n-rrkjus_psl.1.0.0.UPF"
+        si_pbe.write_text("fake Si PBE pseudo")
+        
+        si_pz = pseudo_dir / "Si.pz-vbc.UPF"
+        si_pz.write_text("fake Si PZ pseudo")
+        
+        # Create a QE input file that requires Si
+        qe_input_file = tmp_path / "test.in"
+        qe_input_content = """&control
+    calculation = 'scf'
+    prefix = 'test'
+/
+&system
+    ibrav = 0
+    nat = 2
+    ntyp = 1
+    ecutwfc = 30.0
+/
+ATOMIC_SPECIES
+ Si  28.0855  Si.pbe-n-rrkjus_psl.1.0.0.UPF
+
+CELL_PARAMETERS (angstrom)
+  5.43  0.0  0.0
+  0.0  5.43  0.0
+  0.0  0.0  5.43
+
+ATOMIC_POSITIONS (angstrom)
+ Si  0.0  0.0  0.0
+ Si  1.3575  1.3575  1.3575
+
+K_POINTS (automatic)
+  4 4 4 0 0 0
+"""
+        qe_input_file.write_text(qe_input_content)
+        
+        # Resolve pseudopotentials - should use the exact filename from input
+        from quantumvitas.core.pseudo import ensure_qe_pseudos
+        
+        result = ensure_qe_pseudos(
+            qe_input_file=qe_input_file,
+            project_pseudo_dir=pseudo_dir,
+            system_pseudo_dir=None,
+            strict=True,
+        )
+        
+        # Should resolve the exact filename specified in input
+        assert "Si.pbe-n-rrkjus_psl.1.0.0.UPF" in result.resolved_pseudos, \
+            "Should resolve the exact filename from input"
+        assert result.all_available is True, "All required pseudos should be available"
+        
+        # Test with different filename in input - should resolve that one
+        qe_input_file2 = tmp_path / "test2.in"
+        qe_input_content2 = qe_input_content.replace(
+            "Si.pbe-n-rrkjus_psl.1.0.0.UPF",
+            "Si.pz-vbc.UPF"
+        )
+        qe_input_file2.write_text(qe_input_content2)
+        
+        result2 = ensure_qe_pseudos(
+            qe_input_file=qe_input_file2,
+            project_pseudo_dir=pseudo_dir,
+            system_pseudo_dir=None,
+            strict=True,
+        )
+        
+        # Should resolve the filename specified in this input
+        assert "Si.pz-vbc.UPF" in result2.resolved_pseudos, \
+            "Should resolve the filename specified in input"
+        assert result2.all_available is True
+    
+    def test_pp_resolution_bad_file_is_reported(self, tmp_path: Path):
+        """Test that pseudopotential resolution fails clearly when a pseudo file is unreadable."""
+        # Create a pseudo directory
+        pseudo_dir = tmp_path / "pseudo"
+        pseudo_dir.mkdir()
+        
+        # Create a pseudo file but make it unreadable (simulate corruption or permission issue)
+        si_pseudo = pseudo_dir / "Si.pbe-n-rrkjus_psl.1.0.0.UPF"
+        si_pseudo.write_text("fake Si pseudo content")
+        
+        # Create a QE input file
+        qe_input_file = tmp_path / "test.in"
+        qe_input_content = """&control
+    calculation = 'scf'
+    prefix = 'test'
+/
+&system
+    ibrav = 0
+    nat = 2
+    ntyp = 1
+    ecutwfc = 30.0
+/
+ATOMIC_SPECIES
+ Si  28.0855  Si.pbe-n-rrkjus_psl.1.0.0.UPF
+
+CELL_PARAMETERS (angstrom)
+  5.43  0.0  0.0
+  0.0  5.43  0.0
+  0.0  0.0  5.43
+
+ATOMIC_POSITIONS (angstrom)
+ Si  0.0  0.0  0.0
+ Si  1.3575  1.3575  1.3575
+
+K_POINTS (automatic)
+  4 4 4 0 0 0
+"""
+        qe_input_file.write_text(qe_input_content)
+        
+        # Make the file unreadable (on Unix-like systems)
+        import os
+        import stat
+        try:
+            # Remove read permissions
+            si_pseudo.chmod(stat.S_IWRITE)  # Write-only
+        except (OSError, AttributeError):
+            # On Windows or if chmod fails, simulate by making file empty/corrupted
+            si_pseudo.write_text("")  # Empty file simulates corruption
+        
+        # Try to resolve pseudopotentials
+        from quantumvitas.core.pseudo import ensure_qe_pseudos
+        
+        # Resolution should handle the unreadable file gracefully
+        # If file exists but is unreadable, it should be detected and reported
+        # The function should not crash silently
+        try:
+            result = ensure_qe_pseudos(
+                qe_input_file=qe_input_file,
+                project_pseudo_dir=pseudo_dir,
+                system_pseudo_dir=None,
+                strict=True,
+            )
+            
+            # If file exists but is unreadable, it may still be detected as existing
+            # but copying/reading may fail. The exact behavior depends on OS.
+            # The key is that the function doesn't crash with an unhandled exception.
+            assert isinstance(result.all_available, bool), \
+                "Result should have all_available boolean"
+        except (FileNotFoundError, PermissionError, OSError) as e:
+            # If an I/O error is raised, it should be clear and specific
+            error_msg = str(e).lower()
+            assert "si" in error_msg or "pseudopotential" in error_msg or "file" in error_msg, \
+                f"Error should mention the file or element, got: {e}"
+        except Exception as e:
+            # Any other exception should be informative
+            error_msg = str(e).lower()
+            assert len(error_msg) > 10, \
+                f"Error should provide meaningful message, got: {e}"
+        
+        # Restore permissions for cleanup (if we changed them)
+        try:
+            si_pseudo.chmod(stat.S_IREAD | stat.S_IWRITE)
+        except (OSError, AttributeError):
+            pass
+

@@ -259,6 +259,32 @@ def ensure_qe_pseudos(
             # error (which would have __MISSING_PSEUDO__ placeholder or empty pseudo name).
             all_available = False
     
+    # After resolution, if any required pseudos are missing and we're in strict mode, raise error
+    if strict and not all_available:
+        missing_files = [pp_name for pp_name in required_pps if pp_name not in resolved_pseudos]
+        if missing_files:
+            # Extract element symbols from filenames for better error message
+            missing_elements = set()
+            for pp_name in missing_files:
+                element = pp_name.split(".")[0] if "." in pp_name else "unknown"
+                missing_elements.add(element)
+            
+            elements_str = ", ".join(sorted(missing_elements))
+            files_str = ", ".join(missing_files)
+            search_locations = [str(project_pseudo_dir)]
+            if system_pseudo_dir:
+                search_locations.append(str(system_pseudo_dir))
+            if search_dirs:
+                search_locations.extend(str(d) for d in search_dirs)
+            locations_str = ", ".join(search_locations)
+            
+            raise FileNotFoundError(
+                f"Pseudopotential file(s) not found for element(s): {elements_str}. "
+                f"Missing files: {files_str}. "
+                f"Searched in: {locations_str}. "
+                f"Please ensure the pseudopotential files are available in one of these locations."
+            )
+    
     return PseudoResolutionResult(
         project_pseudo_dir=project_pseudo_dir,
         system_pseudo_dir=system_pseudo_dir,
