@@ -4,6 +4,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { JobSummary, JobInfo, JobLogs, JobCounts, JobStatus } from '../types/qv';
+import { normalizeProjectRoot } from '../utils/pathUtils';
 
 interface UseJobsOptions {
   /** Polling interval in ms (default: 3000) */
@@ -64,16 +65,28 @@ export function useJobs(options: UseJobsOptions = {}): UseJobsResult {
     setError(null);
     
     try {
+      // Normalize project_root to absolute path (backend expects normalized paths for matching)
+      // NOTE: Backend expects project_root as normalized absolute path, see tests/daemon/test_gui_job_and_step_flows.py
+      const normalizedProjectRoot = normalizeProjectRoot(projectRoot);
+      
       // Fetch jobs list
+      // Backend contract: { project_root?: string (normalized absolute), limit?: int }
       const listResponse = await window.qv.request<{ jobs: JobSummary[]; count: number }>(
         'list_jobs',
-        { project_root: projectRoot, status, limit }
+        { 
+          project_root: normalizedProjectRoot, // Only include if defined (backend handles None/undefined)
+          status, 
+          limit 
+        }
       );
       
       if (listResponse.ok && listResponse.data) {
-        setJobs(listResponse.data.jobs);
+        setJobs(listResponse.data.jobs || []);
       } else if (listResponse.error) {
-        setError(listResponse.error.message);
+        setError(listResponse.error.message || 'Failed to fetch jobs');
+      } else {
+        // Empty response - no jobs (not an error)
+        setJobs([]);
       }
       
       // Fetch counts
@@ -82,7 +95,9 @@ export function useJobs(options: UseJobsOptions = {}): UseJobsResult {
         setCounts(countsResponse.data);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to fetch jobs');
+      const errorMsg = e instanceof Error ? e.message : 'Failed to fetch jobs';
+      setError(errorMsg);
+      setJobs([]); // Clear jobs on error
     } finally {
       setIsLoading(false);
     }

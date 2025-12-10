@@ -242,7 +242,7 @@ def test_init_step_fails_at_project_root_without_workflow(ci_test_data_dir: Path
         assert len(project_dirs) > 0, f"No project directory found. Created dirs: {list(fs_path.iterdir())}"
         project_dir = project_dirs[0]
         
-        # Change to project root
+        # Change to project directory to simulate being at project root
         import os
         original_cwd = os.getcwd()
         try:
@@ -250,9 +250,11 @@ def test_init_step_fails_at_project_root_without_workflow(ci_test_data_dir: Path
             
             # Try to create step without --workflow (should fail)
             result = runner.invoke(app, ["init", "step", "scf"])
-            assert result.exit_code != 0, "Should fail when at project root without --workflow"
-            assert "project root" in result.stdout.lower() or "specify --workflow" in result.stdout.lower(), \
-                f"Error message should mention project root or --workflow. Got: {result.stdout}"
+            assert result.exit_code != 0, f"Should fail when at project root without --workflow. stdout: {result.stdout}"
+            # Check stdout for the error message (typer errors go to stdout via CliRunner)
+            error_output = result.stdout.lower()
+            assert "project root" in error_output or "specify --workflow" in error_output or "--workflow" in error_output, \
+                f"Error message should mention project root or --workflow. Got stdout: {result.stdout}"
                 
         finally:
             os.chdir(original_cwd)

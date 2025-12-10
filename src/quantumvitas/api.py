@@ -70,6 +70,7 @@ from quantumvitas.core.project_utils import (
 
 if TYPE_CHECKING:
     from quantumvitas.workflow.structure_steps import StructureStepSpec
+    from quantumvitas.core.resolution import ResourceIndex
 
 
 class QVServiceError(Exception):
@@ -1496,7 +1497,11 @@ class QVService:
         return result
     
     @staticmethod
-    def list_workflows_data(project_root: Path) -> List[Dict[str, Any]]:
+    def list_workflows_data(
+        project_root: Path,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
+    ) -> List[Dict[str, Any]]:
         """
         List all workflows as JSON-serializable dicts.
         
@@ -1505,6 +1510,8 @@ class QVService:
         
         Args:
             project_root: Project root path
+            index: Optional ResourceIndex (avoids rebuilding if provided)
+            config: Optional project config (avoids reloading if provided)
             
         Returns:
             List of dicts, each with workflow metadata and step info
@@ -1512,6 +1519,7 @@ class QVService:
         project_root = Path(project_root).resolve()
         
         # Use Project.open() to get workflow references
+        # Project.open() builds its own index internally (keeps it self-contained)
         from quantumvitas.project.model import Project
         try:
             project = Project.open(project_root)
@@ -2360,6 +2368,8 @@ class QVService:
         project_root: Path,
         workflow_selector: str,
         step_selector: str,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
     ) -> Dict[str, Any]:
         """
         Get detailed information about a step.
@@ -2368,18 +2378,21 @@ class QVService:
             project_root: Project root path
             workflow_selector: Workflow selector
             step_selector: Step selector
+            index: Optional ResourceIndex (avoids rebuilding if provided)
+            config: Optional project config (avoids reloading if provided)
             
         Returns:
             Dict with step metadata, parameters, cards, etc.
         """
         from quantumvitas.workflow.structure_steps import StructureStepSpec
         
-        step = resolve_step(project_root, workflow_selector, step_selector)
+        step = resolve_step(project_root, workflow_selector, step_selector, config=config, index=index)
         
         # Load step spec; legacy 'structure' selectors (if present) are normalized to structure_id via the registry
         from quantumvitas.core.resolution import make_structure_selector_resolver
         from quantumvitas.core.project_utils import load_project_config
-        config = load_project_config(project_root)
+        if config is None:
+            config = load_project_config(project_root)
         resolver = make_structure_selector_resolver(project_root, config=config)
         spec = StructureStepSpec.from_yaml(step.absolute_path, resolve_structure_selector=resolver)
         
@@ -2491,6 +2504,8 @@ class QVService:
         workflow_selector: str,
         input_file: Path,
         step_name: Optional[str] = None,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
     ) -> Dict[str, Any]:
         """
         Import a QE input file as a step in a workflow (preserves original parameters).
@@ -2517,8 +2532,11 @@ class QVService:
         if not input_file.exists():
             raise QVServiceError(f"QE input file not found: {input_file}")
         
-        # Resolve workflow
-        workflow = resolve_workflow(project_root, workflow_selector)
+        # Resolve workflow (use cached index if provided)
+        from quantumvitas.core.project_utils import load_project_config
+        if config is None:
+            config = load_project_config(project_root)
+        workflow = resolve_workflow(project_root, workflow_selector, config=config, index=index)
         workflow_dir = workflow.absolute_path
         steps_dir = workflow_dir / "steps"
         steps_dir.mkdir(exist_ok=True)
@@ -2547,8 +2565,7 @@ class QVService:
         structure_id = import_result.structure_id
         structure_path = import_result.structure_path
         
-        # Check if structure already exists in project
-        config = load_project_config(project_root)
+        # Check if structure already exists in project (config already loaded above)
         structures = config.get("structures", [])
         structure_id_value = None
         for struct_entry in structures:
@@ -2615,9 +2632,12 @@ class QVService:
                     pass  # If resolution fails, structure_name stays None
             save_workflow(wf_model, workflow_dir)
         
+        # Pass cached index to avoid rebuilding ResourceIndex
         return QVService.get_workflow_detail(
             project_root=project_root,
             workflow_selector=workflow_selector,
+            index=index,
+            config=config,
         )
     
     @staticmethod
@@ -2671,6 +2691,8 @@ class QVService:
         project_root: Path,
         workflow_selector: str,
         new_order: List[str],
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
     ) -> Dict[str, Any]:
         """
         Reorder workflow steps.
@@ -2684,8 +2706,11 @@ class QVService:
             Updated workflow info
         """
         from quantumvitas.core.models import load_workflow
+        from quantumvitas.core.project_utils import load_project_config
         
-        workflow = resolve_workflow(project_root, workflow_selector)
+        if config is None:
+            config = load_project_config(project_root)
+        workflow = resolve_workflow(project_root, workflow_selector, config=config, index=index)
         wf_path = workflow.absolute_path / "workflow.yaml"
         wf_model = load_workflow(wf_path)
         
@@ -2719,8 +2744,13 @@ class QVService:
         wf_model.steps = reordered
         wf_model.save(wf_path)
         
-        # Return updated workflow info
-        return QVService.get_workflow_detail(project_root, workflow_selector)
+        # Return updated workflow info (pass cached index to avoid rebuilding)
+        return QVService.get_workflow_detail(
+            project_root,
+            workflow_selector,
+            index=index,
+            config=config,
+        )
     
     @staticmethod
     def add_step_to_workflow(
@@ -2728,6 +2758,8 @@ class QVService:
         workflow_selector: str,
         step_type: str,
         step_name: str = None,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
     ) -> Dict[str, Any]:
         """
         Add a new step to a workflow.
@@ -2750,8 +2782,12 @@ class QVService:
         from quantumvitas.core.resolution import build_resource_index, require_workflow
         from quantumvitas.core.project_utils import load_project_config
         
-        config = load_project_config(project_root)
-        registry = build_resource_index(project_root)
+        if config is None:
+            config = load_project_config(project_root)
+        if index is None:
+            registry = build_resource_index(project_root)
+        else:
+            registry = index
         workflow = require_workflow(project_root, workflow_selector, config=config, index=registry)
         wf_path = workflow.absolute_path / "workflow.yaml"
         # Load workflow model; legacy 'structure' selectors (if present) are normalized to structure_id via the registry
@@ -2943,6 +2979,8 @@ class QVService:
         workflow_selector: str,
         new_structure: str,
         update_steps: bool = True,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
     ) -> Dict[str, Any]:
         """
         Change the structure associated with a workflow.
@@ -2952,6 +2990,8 @@ class QVService:
             workflow_selector: Workflow selector
             new_structure: New structure selector
             update_steps: Whether to also update all steps' structure field
+            index: Optional ResourceIndex (avoids rebuilding if provided)
+            config: Optional project config (avoids reloading if provided)
             
         Returns:
             Updated workflow info with any warnings
@@ -2960,12 +3000,14 @@ class QVService:
         from quantumvitas.workflow.structure_steps import StructureStepSpec
         
         # Validate structure exists
-        resolved_structure = resolve_structure(project_root, new_structure)
+        resolved_structure = resolve_structure(project_root, new_structure, config=config, index=index)
         
         from quantumvitas.core.models import load_workflow, save_workflow
         from quantumvitas.core.resolution import make_structure_selector_resolver
         from quantumvitas.core.project_utils import load_project_config
-        workflow = resolve_workflow(project_root, workflow_selector)
+        if config is None:
+            config = load_project_config(project_root)
+        workflow = resolve_workflow(project_root, workflow_selector, config=config, index=index)
         wf_path = workflow.absolute_path / "workflow.yaml"
         # Load workflow model; legacy 'structure' selectors (if present) are normalized to structure_id via the registry
         config = load_project_config(project_root)
@@ -2989,8 +3031,9 @@ class QVService:
             if steps_dir.exists():
                 # Create resolver for normalizing legacy structure selectors
                 from quantumvitas.core.resolution import make_structure_selector_resolver
-                from quantumvitas.core.project_utils import load_project_config
-                config = load_project_config(project_root)
+                if config is None:
+                    from quantumvitas.core.project_utils import load_project_config
+                    config = load_project_config(project_root)
                 resolver = make_structure_selector_resolver(project_root, config=config)
                 
                 for step_file in steps_dir.glob("*.step.yaml"):
@@ -3013,7 +3056,13 @@ class QVService:
                     except Exception as e:
                         warnings.append(f"Failed to update step {step_file.name}: {e}")
         
-        result = QVService.get_workflow_detail(project_root, workflow_selector)
+        # Pass cached index and config to avoid rebuilding ResourceIndex
+        result = QVService.get_workflow_detail(
+            project_root,
+            workflow_selector,
+            index=index,
+            config=config,
+        )
         result["old_structure"] = old_structure
         result["updated_steps"] = updated_steps
         result["warnings"] = warnings
@@ -3024,6 +3073,8 @@ class QVService:
     def get_workflow_detail(
         project_root: Path,
         workflow_selector: str,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
     ) -> Dict[str, Any]:
         """
         Get detailed workflow information for GUI display.
@@ -3034,6 +3085,8 @@ class QVService:
         Args:
             project_root: Project root path
             workflow_selector: Workflow selector
+            index: Optional ResourceIndex (avoids rebuilding if provided)
+            config: Optional project config (avoids reloading if provided)
             
         Returns:
             Dict with workflow details including steps
@@ -3045,19 +3098,28 @@ class QVService:
         project_root = Path(project_root).resolve()
         
         # Use Project.open() to get project context
+        # Project.open() builds its own index internally (keeps it self-contained)
         try:
             project = Project.open(project_root)
+        except FileNotFoundError as e:
+            # If project.qv.yml is missing, that's a real project not found error
+            if "project.qv.yml" in str(e):
+                raise ResourceNotFoundError(
+                    kind="project",
+                    selector=None,  # Don't use project_root as selector (it's a path, not a selector)
+                    id=None,
+                    project_root=project_root,
+                ) from e
+            # Re-raise other FileNotFoundErrors as-is
+            raise
         except Exception as e:
-            raise ResourceNotFoundError(
-                kind="project",
-                selector=str(project_root),
-                id=None,
-                project_root=project_root,
-            ) from e
+            # For other exceptions, re-raise as-is (don't convert to ResourceNotFoundError)
+            # Project.open() failures are usually configuration issues, not "project not found"
+            raise
         
         # First resolve workflow to get the reference (handles name/slug/id selectors)
         try:
-            workflow_resolved = resolve_workflow(project_root, workflow_selector)
+            workflow_resolved = resolve_workflow(project_root, workflow_selector, config=config, index=index)
         except Exception as e:
             raise ResourceNotFoundError(
                 kind="workflow",

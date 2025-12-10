@@ -7,6 +7,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import type { StepDetail, JobSubmitResult } from '../../types/qv';
+import { normalizeProjectRoot } from '../../utils/pathUtils';
 import './StepDetailPanel.css';
 
 interface StepDetailPanelProps {
@@ -116,10 +117,22 @@ export function StepDetailPanel({
       setError(null);
       
       try {
+        // Normalize project_root to absolute path (backend expects normalized paths)
+        // NOTE: Backend expects project_root as normalized absolute path, see tests/daemon/test_gui_job_and_step_flows.py
+        const normalizedProjectRoot = normalizeProjectRoot(projectRoot);
+        if (!normalizedProjectRoot) {
+          throw new Error('Project root is required');
+        }
+        
+        // Backend contract: { project_root: string (normalized absolute), workflow: string (slug), step: string (ULID preferred) }
+        // GUI passes:
+        //   - workflow: workflow.slug (from selectedWorkflow.slug) - backend expects workflow selector (slug or ULID)
+        //   - step: step.id (ULID from workflow.steps[]) - backend expects step selector (ULID preferred, slug fallback)
+        // See tests/daemon/test_gui_job_and_step_flows.py for RPC contract details
         const response = await window.qv.request<StepDetail>('get_step_detail', {
-          project_root: projectRoot,
-          workflow: workflowSelector,
-          step: stepSelector,
+          project_root: normalizedProjectRoot,
+          workflow: workflowSelector, // Backend expects workflow selector (slug or ULID)
+          step: stepSelector, // Backend expects step selector (ULID preferred, slug fallback)
         });
         
         if (response.ok && response.data) {
@@ -131,11 +144,13 @@ export function StepDetailPanel({
           const errorMsg = response.error?.message || 'Failed to load step details';
           console.error('[StepDetailPanel] API error:', errorMsg, response.error);
           setError(errorMsg);
+          setStepDetail(null); // Clear step detail on error
         }
       } catch (e) {
         const errorMsg = e instanceof Error ? e.message : 'Unknown error';
         console.error('[StepDetailPanel] Exception:', errorMsg, e);
         setError(errorMsg);
+        setStepDetail(null); // Clear step detail on error
       } finally {
         setIsLoading(false);
       }
@@ -149,10 +164,17 @@ export function StepDetailPanel({
     if (!window.qv || !stepDetail) return;
     
     setIsRunning(true);
+    setError(null);
     
     try {
+      // Normalize project_root (same as get_step_detail)
+      const normalizedProjectRoot = normalizeProjectRoot(projectRoot);
+      if (!normalizedProjectRoot) {
+        throw new Error('Project root is required');
+      }
+      
       const response = await window.qv.request<JobSubmitResult>('run_step', {
-        project_root: projectRoot,
+        project_root: normalizedProjectRoot,
         workflow: workflowSelector,
         step: stepSelector,
       });
@@ -160,10 +182,12 @@ export function StepDetailPanel({
       if (response.ok && response.data) {
         onRunStep?.(response.data);
       } else {
-        setError(response.error?.message || 'Failed to run step');
+        const errorMsg = response.error?.message || 'Failed to run step';
+        setError(errorMsg);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unknown error');
+      const errorMsg = e instanceof Error ? e.message : 'Unknown error';
+      setError(errorMsg);
     } finally {
       setIsRunning(false);
     }
@@ -190,6 +214,12 @@ export function StepDetailPanel({
     setError(null);
     
     try {
+      // Normalize project_root
+      const normalizedProjectRoot = normalizeProjectRoot(projectRoot);
+      if (!normalizedProjectRoot) {
+        throw new Error('Project root is required');
+      }
+      
       // Build the parameter update object
       const paramUpdates: Record<string, Record<string, unknown>> = {};
       const editableForType = EDITABLE_PARAMS[stepDetail.step_type] || [];
@@ -208,7 +238,7 @@ export function StepDetailPanel({
       }
       
       const response = await window.qv.request<StepDetail>('update_step_params', {
-        project_root: projectRoot,
+        project_root: normalizedProjectRoot,
         workflow: workflowSelector,
         step: stepSelector,
         parameters: paramUpdates,
@@ -238,8 +268,14 @@ export function StepDetailPanel({
     setError(null);
     
     try {
+      // Normalize project_root
+      const normalizedProjectRoot = normalizeProjectRoot(projectRoot);
+      if (!normalizedProjectRoot) {
+        throw new Error('Project root is required');
+      }
+      
       const response = await window.qv.request<StepDetail>('reset_step_params', {
-        project_root: projectRoot,
+        project_root: normalizedProjectRoot,
         workflow: workflowSelector,
         step: stepSelector,
       });
