@@ -37,8 +37,26 @@ class WorkflowRunner:
         started = datetime.now(timezone.utc)
         step_summaries: List[StepResultSummary] = []
         status = StepStatus.SUCCESS
+        workflow_failed = False
 
         for step in workflow.steps:
+            # If a previous step failed in strict mode, mark remaining steps as SKIPPED
+            if workflow_failed:
+                step_type = _coerce_step_type(step.step_type) if step.step_type else StepType.CUSTOM
+                summary = StepResultSummary(
+                    step_id=step.id,
+                    step_type=step_type,
+                    status=StepStatus.SKIPPED,
+                    working_dir=workflow.raw_dir,
+                    input_file=step.input_file if hasattr(step, 'input_file') else Path(),
+                    output_file=Path(),
+                    reference_file=step.reference_output,
+                    message="Step skipped because a previous step failed",
+                    metrics={},
+                )
+                step_summaries.append(summary)
+                continue
+
             engine = self.engine_registry.get(step.engine)
             raw_dir = workflow.raw_dir
             raw_dir.mkdir(parents=True, exist_ok=True)
@@ -79,7 +97,9 @@ class WorkflowRunner:
 
             if step_status != StepStatus.SUCCESS:
                 status = StepStatus.FAILED
+                workflow_failed = True
                 if workflow.mode == StepMode.STRICT:
+                    # In strict mode, stop execution and mark remaining steps as SKIPPED
                     break
 
         finished = datetime.now(timezone.utc)
