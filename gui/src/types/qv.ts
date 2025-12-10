@@ -26,6 +26,8 @@ export interface QVError {
   code: string;
   message: string;
   available_commands?: string[];
+  kind?: string;  // Resource kind for resource_not_found errors (e.g., "step", "workflow", "structure")
+  selector?: string;  // Selector that was not found
 }
 
 export interface QVResponse<T = unknown> {

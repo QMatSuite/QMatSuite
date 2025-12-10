@@ -6,23 +6,25 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import type { StepDetail, JobSubmitResult } from '../../types/qv';
+import type { StepDetail, JobSubmitResult, WorkflowDetailResult, QVError } from '../../types/qv';
 import { normalizeProjectRoot } from '../../utils/pathUtils';
 import './StepDetailPanel.css';
 
 interface StepDetailPanelProps {
   /** Project root path */
-  projectRoot: string;
-  /** Workflow selector (slug or name) */
-  workflowSelector: string;
-  /** Step selector (id, slug, or name) */
-  stepSelector: string;
+  projectRoot: string | null;
+  /** Selected workflow detail (from get_workflow_detail) - canonical source for step order */
+  selectedWorkflow: WorkflowDetailResult | null;
+  /** Selected step ID (ULID from workflow.yaml) */
+  selectedStepId: string | null;
   /** Called to close the panel */
   onClose?: () => void;
   /** Called when a step run is submitted */
   onRunStep?: (result: JobSubmitResult) => void;
   /** Called when parameters are updated */
   onParametersUpdated?: () => void;
+  /** Called when a step is deleted */
+  onStepDeleted?: (stepId: string) => void;
 }
 
 // Common editable parameters by step type
@@ -75,12 +77,27 @@ const EDITABLE_PARAMS: Record<string, Array<{
 
 export function StepDetailPanel({
   projectRoot,
-  workflowSelector,
-  stepSelector,
+  selectedWorkflow,
+  selectedStepId,
   onClose,
   onRunStep,
   onParametersUpdated,
+  onStepDeleted,
 }: StepDetailPanelProps) {
+  // Derive workflow selector from selectedWorkflow
+  const workflowSelector = selectedWorkflow?.slug ?? selectedWorkflow?.id ?? null;
+  const stepSelector = selectedStepId;
+  
+  // INSTRUMENTATION: Log render props to verify correct step ID is being passed
+  console.log('[StepDetailPanel] render', {
+    workflowSelector,
+    stepSelector,
+    stepSelectorType: typeof stepSelector,
+    stepSelectorLength: stepSelector ? stepSelector.length : 0,
+    hasSelectedWorkflow: !!selectedWorkflow,
+    workflowStepsCount: selectedWorkflow?.steps?.length ?? 0,
+  });
+  
   const [stepDetail, setStepDetail] = useState<StepDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -92,15 +109,30 @@ export function StepDetailPanel({
   const [editedParams, setEditedParams] = useState<Record<string, Record<string, unknown>>>({});
   const [hasChanges, setHasChanges] = useState(false);
   
+  // Delete step state
+  const [isDeletingStep, setIsDeletingStep] = useState(false);
+  
   // Fetch step detail on mount and when selector changes
+  // STATE MACHINE: isLoading -> (success: stepDetail) | (error: error message)
+  // Always set isLoading=false in finally block to prevent infinite spinner
   useEffect(() => {
+    // Clear previous error and step detail when selectors change
+    // This ensures subsequent step selections recover from previous errors
+    setError(null);
+    setStepDetail(null);
+    
     const fetchStepDetail = async () => {
-      console.log('[StepDetailPanel] fetchStepDetail effect triggered', { projectRoot, workflowSelector, stepSelector });
+      // INSTRUMENTATION: Log inputs when we start a fetch
+      console.log('[StepDetailPanel] fetchStepDetail START', {
+        projectRoot: projectRoot ? projectRoot.substring(projectRoot.lastIndexOf('/') + 1) : null,
+        workflowSelector,
+        stepSelector,
+      });
       
-      // Always render the panel if stepSelector is provided (even if workflowSelector is missing)
-      // This ensures the panel is visible to tests even during API calls
+      // Early return checks - these should NOT set isLoading=true
       if (!window.qv || !stepSelector) {
         // Don't fetch if stepSelector is missing, but still render the panel
+        console.log('[StepDetailPanel] Early return: missing stepSelector or window.qv');
         setIsLoading(false);
         setStepDetail(null);
         setError(null);
@@ -109,6 +141,7 @@ export function StepDetailPanel({
       
       if (!workflowSelector) {
         // Workflow selector missing - show error but still render
+        console.log('[StepDetailPanel] Early return: missing workflowSelector');
         setIsLoading(false);
         setStepDetail(null);
         setError('Workflow selector is required');
@@ -117,14 +150,36 @@ export function StepDetailPanel({
       
       if (!projectRoot) {
         // Project root missing
+        console.log('[StepDetailPanel] Early return: missing projectRoot');
         setIsLoading(false);
         setStepDetail(null);
         setError('Project root is required');
         return;
       }
       
+      // RACE CONDITION PREVENTION: If selectedWorkflow is provided, validate that stepSelector
+      // exists in the workflow's steps list before attempting to fetch. This prevents
+      // "Step not found" errors when a step is clicked before the workflow detail has
+      // been refreshed after step creation.
+      if (selectedWorkflow && selectedWorkflow.steps && selectedWorkflow.steps.length > 0) {
+        const stepExists = selectedWorkflow.steps.some(step => step.id === stepSelector);
+        if (!stepExists) {
+          console.log('[StepDetailPanel] Step not found in workflow steps list, waiting for refresh...', {
+            stepSelector,
+            availableSteps: selectedWorkflow.steps.map(s => s.id),
+          });
+          setIsLoading(false);
+          setStepDetail(null);
+          setError('Step not yet available. Please wait for workflow to refresh.');
+          return;
+        }
+      }
+      
+      // Set loading state before making request
+      // CRITICAL: This must be paired with setIsLoading(false) in finally block
       setIsLoading(true);
       setError(null);
+      setStepDetail(null);
       
       try {
         // Normalize project_root to absolute path (backend expects normalized paths)
@@ -134,40 +189,84 @@ export function StepDetailPanel({
           throw new Error('Project root is required');
         }
         
-        // Backend contract: { project_root: string (normalized absolute), workflow: string (slug), step: string (ULID preferred) }
-        // GUI passes:
-        //   - workflow: workflow.slug (from selectedWorkflow.slug) - backend expects workflow selector (slug or ULID)
-        //   - step: step.id (ULID from workflow.steps[]) - backend expects step selector (ULID preferred, slug fallback)
-        // See tests/daemon/test_gui_job_and_step_flows.py for RPC contract details
-        const response = await window.qv.request<StepDetail>('get_step_detail', {
+        // CRITICAL: Use stepSelector directly (this is selectedStepId from App.tsx)
+        // stepSelector MUST be the ULID from workflow.yaml's steps array
+        // Do NOT derive it from workflowSteps[0].id or any index-based mapping
+        console.log('[StepDetailPanel] calling get_step_detail RPC', {
           project_root: normalizedProjectRoot,
-          workflow: workflowSelector, // Backend expects workflow selector (slug or ULID)
-          step: stepSelector, // Backend expects step selector (ULID preferred, slug fallback)
+          workflow: workflowSelector,
+          step: stepSelector, // This should be the ULID from selectedStepId
         });
         
+        const response = await window.qv.request<StepDetail>('get_step_detail', {
+          project_root: normalizedProjectRoot,
+          workflow: workflowSelector,
+          step: stepSelector, // CRITICAL: Use stepSelector (selectedStepId) directly, not derived from array
+        });
+        
+        // INSTRUMENTATION: Log success or error separately
         if (response.ok && response.data) {
+          // Success: set step detail and clear error
+          console.log('[StepDetailPanel] get_step_detail SUCCESS', {
+            stepSelector,
+            stepDetail: {
+              id: response.data.id,
+              name: response.data.name,
+              step_type: response.data.step_type,
+            },
+          });
           setStepDetail(response.data);
+          setError(null);
           // Initialize edited params from current values
           setEditedParams(JSON.parse(JSON.stringify(response.data.parameters)));
           setHasChanges(false);
         } else {
-          const errorMsg = response.error?.message || 'Failed to load step details';
-          console.error('[StepDetailPanel] API error:', errorMsg, response.error);
+          // Error response: set error message and clear step detail
+          // Handle structured errors from daemon (resource_not_found, etc.)
+          const errorData = response.error as QVError | undefined;
+          let errorMsg = 'Failed to load step details';
+          
+          if (errorData) {
+            // Check for resource_not_found with kind="step" (ghost step)
+            if (errorData.code === 'resource_not_found' && errorData.kind === 'step') {
+              errorMsg = 'Step not found or step file is missing.';
+              if (errorData.message) {
+                errorMsg = errorData.message;
+              }
+            } else if (errorData.message) {
+              errorMsg = errorData.message;
+            }
+          }
+          
+          console.error('[StepDetailPanel] get_step_detail ERROR', {
+            stepSelector,
+            error: errorData,
+            errorMessage: errorMsg,
+          });
           setError(errorMsg);
-          setStepDetail(null); // Clear step detail on error
+          setStepDetail(null);
         }
       } catch (e) {
+        // Exception: set error message and clear step detail
+        // This handles cases where the RPC client throws an Error
         const errorMsg = e instanceof Error ? e.message : 'Unknown error';
-        console.error('[StepDetailPanel] Exception:', errorMsg, e);
+        console.error('[StepDetailPanel] get_step_detail EXCEPTION', {
+          stepSelector,
+          error: e,
+          errorMessage: errorMsg,
+        });
         setError(errorMsg);
-        setStepDetail(null); // Clear step detail on error
+        setStepDetail(null);
       } finally {
+        // CRITICAL: Always set isLoading=false in finally block to prevent infinite spinner
+        // This ensures the spinner stops even if there's an error or the component unmounts
+        // There must be NO code path where we set isLoading=true but never reach this finally block
         setIsLoading(false);
       }
     };
     
     fetchStepDetail();
-  }, [projectRoot, workflowSelector, stepSelector]);
+  }, [projectRoot, workflowSelector, stepSelector, selectedWorkflow]);
   
   // Handle running the step
   const handleRunStep = useCallback(async () => {
@@ -314,33 +413,72 @@ export function StepDetailPanel({
     setIsEditing(false);
   }, [stepDetail]);
   
-  if (isLoading) {
-    return (
-      <div className="step-detail-panel step-detail-panel--loading" data-testid="qv-step-detail">
-        <div className="loading-spinner" />
-        <p>Loading step details...</p>
-      </div>
+  // Handle deleting the step
+  const handleDeleteStep = useCallback(async () => {
+    if (!window.qv || !selectedWorkflow || !selectedStepId || isDeletingStep) return;
+    
+    // Show confirmation dialog
+    const stepType = stepDetail?.step_type || 'step';
+    const stepIdShort = selectedStepId.substring(0, 8);
+    const confirmed = window.confirm(
+      `Delete step "${stepType}" (${stepIdShort}...) from workflow "${selectedWorkflow.name}"?\n\n` +
+      `This will move the step file to the project's trash folder. It cannot be undone from the GUI.`
     );
-  }
+    
+    if (!confirmed) return;
+    
+    setIsDeletingStep(true);
+    setError(null);
+    
+    try {
+      const normalizedProjectRoot = normalizeProjectRoot(projectRoot);
+      if (!normalizedProjectRoot) {
+        throw new Error('Project root is required');
+      }
+      
+      const response = await window.qv.request('delete_step', {
+        project_root: normalizedProjectRoot,
+        workflow: workflowSelector,
+        step: stepSelector, // ULID from workflow.yaml
+      });
+      
+      if (response.ok) {
+        // Step deleted successfully
+        // Clear step detail and selection
+        setStepDetail(null);
+        setError(null);
+        setIsLoading(false);
+        
+        // Notify parent to clear selection and refresh workflow
+        if (onStepDeleted) {
+          onStepDeleted(selectedStepId);
+        }
+        
+        // Close panel if onClose is available
+        if (onClose) {
+          onClose();
+        }
+      } else {
+        const errorMsg = response.error?.message || 'Failed to delete step';
+        setError(errorMsg);
+      }
+    } catch (e) {
+      const errorMsg = e instanceof Error ? e.message : 'Unknown error';
+      setError(errorMsg);
+    } finally {
+      setIsDeletingStep(false);
+    }
+  }, [window.qv, selectedWorkflow, selectedStepId, stepDetail, workflowSelector, stepSelector, projectRoot, isDeletingStep, onStepDeleted, onClose]);
   
-  if (error && !stepDetail) {
-    return (
-      <div className="step-detail-panel step-detail-panel--error" data-testid="qv-step-detail">
-        <div className="error-message">
-          <span className="error-icon">⚠️</span>
-          <span>{error}</span>
-        </div>
-        {onClose && (
-          <button className="action-button" onClick={onClose}>
-            Close
-          </button>
-        )}
-      </div>
-    );
-  }
+  // STATE MACHINE RENDER LOGIC:
+  // 1. No step selected → show "No step selected"
+  // 2. Loading → show spinner (NOT error)
+  // 3. Error (and not loading) → show error banner (NOT spinner)
+  // 4. No stepDetail but not loading and no error → show fallback message
+  // 5. stepDetail exists → render step detail
   
-  if (!stepDetail) {
-    // Return a placeholder with test ID so tests can detect the panel exists but has no data
+  if (!selectedStepId) {
+    // No step selected
     return (
       <div className="step-detail-panel" data-testid="qv-step-detail">
         <div className="panel-header">
@@ -351,6 +489,70 @@ export function StepDetailPanel({
         </div>
         <div className="panel-content">
           <p>No step selected</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (isLoading) {
+    // Loading state: show spinner (do NOT show error while loading)
+    return (
+      <div className="step-detail-panel step-detail-panel--loading" data-testid="qv-step-detail">
+        <div className="loading-spinner" />
+        <p>Loading step details...</p>
+      </div>
+    );
+  }
+  
+  if (error) {
+    // Error state: show error banner (NOT spinner, NOT step detail)
+    // This handles cases like "Step file not found" (ghost step)
+    // CRITICAL: isLoading must be false at this point (ensured by finally block)
+    // Users can click another step to recover from this error state
+    return (
+      <div className="step-detail-panel step-detail-panel--error" data-testid="qv-step-detail">
+        <div className="panel-header">
+          <h2 className="panel-title">Step Detail</h2>
+          {onClose && (
+            <button className="panel-close" onClick={onClose}>×</button>
+          )}
+        </div>
+        <div className="panel-content">
+          <div className="error-banner">
+            <span className="error-icon">⚠️</span>
+            <div className="error-message">
+              <strong>Error loading step:</strong>
+              <p>{error}</p>
+            </div>
+          </div>
+          <div className="error-actions">
+            {onClose && (
+              <button className="action-button" onClick={onClose}>
+                Close
+              </button>
+            )}
+            <p className="error-hint">
+              Try selecting a different step, or refresh the workflow to update the step list.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!stepDetail) {
+    // No step detail but not loading and no error → fallback message
+    // This should rarely happen, but handle it gracefully
+    return (
+      <div className="step-detail-panel" data-testid="qv-step-detail">
+        <div className="panel-header">
+          <h2 className="panel-title">Step Detail</h2>
+          {onClose && (
+            <button className="panel-close" onClick={onClose}>×</button>
+          )}
+        </div>
+        <div className="panel-content">
+          <p>Step detail not available</p>
         </div>
       </div>
     );
@@ -371,9 +573,20 @@ export function StepDetailPanel({
           <span className="panel-icon">📋</span>
           {stepDetail.name || stepDetail.id}
         </h2>
-        {onClose && (
-          <button className="panel-close" onClick={onClose}>×</button>
-        )}
+        <div className="panel-header-actions">
+          <button
+            className="panel-action-btn panel-action-btn--danger"
+            onClick={handleDeleteStep}
+            disabled={isDeletingStep}
+            title="Delete this step"
+            data-testid="qv-delete-step-btn"
+          >
+            {isDeletingStep ? 'Deleting...' : '🗑️ Delete'}
+          </button>
+          {onClose && (
+            <button className="panel-close" onClick={onClose}>×</button>
+          )}
+        </div>
       </div>
       
       <div className="panel-content">

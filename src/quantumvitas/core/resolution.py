@@ -72,22 +72,29 @@ class ResourceNotFoundError(Exception):
         *,
         id: str | None = None,
         project_root: Path | None = None,
+        message: str | None = None,
     ):
         self.kind = kind
         self.selector = selector
         self.id = id
         self.project_root = project_root
+        self._custom_message = message
         
         # Build error message
-        parts = [f"{kind.capitalize()} not found"]
-        if selector:
-            parts.append(f"selector: '{selector}'")
-        if id:
-            parts.append(f"id: '{id}'")
-        if project_root:
-            parts.append(f"in project: {project_root}")
+        if message:
+            # Use custom message if provided (for more specific errors like "Step file not found")
+            error_msg = message
+        else:
+            parts = [f"{kind.capitalize()} not found"]
+            if selector:
+                parts.append(f"selector: '{selector}'")
+            if id:
+                parts.append(f"id: '{id}'")
+            if project_root:
+                parts.append(f"in project: {project_root}")
+            error_msg = " - ".join(parts)
         
-        message = " - ".join(parts)
+        super().__init__(error_msg)
         super().__init__(message)
 
 
@@ -841,6 +848,38 @@ def resolve_step(
                 
                 return ResolvedResource(meta=meta, entry=entry_data, absolute_path=abs_path)
     
+    # RACE CONDITION HANDLING: If step not found in index and selector looks like a ULID,
+    # the step may have just been created and the index is stale. Rebuild index once and retry.
+    # This handles the case where add_step_to_workflow creates a step file, but get_step_detail
+    # is called before the ResourceIndex has been refreshed.
+    if _is_ulid_like(step_selector):
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug(
+            f"Step '{step_selector}' not found in ResourceIndex for workflow '{workflow_selector}'. "
+            f"Rebuilding index once to handle potential race condition after step creation."
+        )
+        # Rebuild index and retry
+        fresh_index = build_resource_index(project_root)
+        resource_id = fresh_index.resolve_id(step_selector, project_root)
+        if resource_id:
+            meta = fresh_index.by_id.get(resource_id)
+            if meta and meta.kind == "step":
+                step_path = project_root / meta.path
+                if step_path.is_relative_to(workflow_dir):
+                    abs_path = None
+                    for path, path_id in fresh_index.by_path.items():
+                        if path_id == resource_id:
+                            abs_path = path
+                            break
+                    if abs_path is None:
+                        abs_path = step_path.resolve()
+                    try:
+                        entry_data = yaml.safe_load(abs_path.read_text()) or {}
+                    except Exception:
+                        entry_data = {}
+                    return ResolvedResource(meta=meta, entry=entry_data, absolute_path=abs_path)
+    
     # Strategy 2: Path (fallback for backwards compat)
     if _is_path_like(step_selector):
         step_path = _resolve_step_by_path(workflow_dir, step_selector)
@@ -1080,6 +1119,7 @@ def require_step(
     workflow_selector: str,
     step_selector_or_id: str,
     config: Optional[dict] = None,
+    index: Optional[ResourceIndex] = None,
 ) -> ResolvedResource:
     """
     Require a step resource within a workflow - raise ResourceNotFoundError if not found.
@@ -1092,6 +1132,7 @@ def require_step(
         workflow_selector: Workflow selector (name, slug, path, or ULID)
         step_selector_or_id: Step selector (ULID, id, name, or path)
         config: Optional pre-loaded config dict
+        index: Optional ResourceIndex (built if None)
         
     Returns:
         ResolvedResource for the step
@@ -1101,13 +1142,13 @@ def require_step(
         AmbiguousSelectorError: If multiple workflows match
     """
     try:
-        return resolve_step(project_root, workflow_selector, step_selector_or_id, config)
+        return resolve_step(project_root, workflow_selector, step_selector_or_id, config=config, index=index)
     except SelectorNotFoundError as e:
         # Convert to ResourceNotFoundError for API/CLI layers
         # Try to extract workflow name for better error message
         workflow_name = workflow_selector
         try:
-            workflow = resolve_workflow(project_root, workflow_selector, config)
+            workflow = resolve_workflow(project_root, workflow_selector, config=config, index=index)
             workflow_name = workflow.meta.name
         except Exception:
             pass

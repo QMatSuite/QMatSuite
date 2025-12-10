@@ -221,6 +221,7 @@ class QVDaemon:
             "add_step_to_workflow": self._handle_add_step_to_workflow,
             "import_step_from_qe_input": self._handle_import_step_from_qe_input,
             "change_workflow_structure": self._handle_change_workflow_structure,
+            "delete_step": self._handle_delete_step,
             
             # Pre-flight checks
             "preflight_check": self._handle_preflight_check,
@@ -865,6 +866,15 @@ class QVDaemon:
             project_root: str - Path to project root
             workflow: str - Workflow selector (GUI uses workflow.slug)
             step: str - Step selector (GUI uses step.id ULID from workflow.steps[])
+        
+        Returns:
+            Step detail dict with id, name, slug, step_type, parameters, etc.
+        
+        Error Handling:
+            - If step file is missing (ghost step), QVService.get_step_detail raises ResourceNotFoundError
+            - This is caught by handle_request() and converted to RPC error response:
+              { ok: False, error: { code: "resource_not_found", kind: "step", ... } }
+            - The RPC always resolves (never hangs) - either with data or with an error
         """
         project_root = self._require_path(payload, "project_root")
         workflow = self._require_str(payload, "workflow")
@@ -876,6 +886,11 @@ class QVDaemon:
         # Pass cached index and config to QVService to avoid rebuilding ResourceIndex
         # This eliminates the ~20s delay from duplicate index building
         cache = self.state.get_cache(project_root)
+        
+        # CRITICAL: QVService.get_step_detail will raise ResourceNotFoundError
+        # if the step file is missing (ghost step). This is caught by handle_request
+        # and converted to a structured RPC error response with ok=False.
+        # The RPC always resolves (never hangs) - either with data or with an error.
         return QVService.get_step_detail(
             project_root=project_root,
             workflow_selector=workflow,
@@ -945,6 +960,51 @@ class QVDaemon:
     # -------------------------------------------------------------------------
     # Workflow configuration handlers
     # -------------------------------------------------------------------------
+    
+    def _handle_delete_step(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Delete a step from a workflow.
+        
+        Payload:
+            project_root: str - Path to project root
+            workflow: str - Workflow selector (slug or ULID)
+            step: str - Step selector (ULID from workflow.yaml)
+        
+        Returns:
+            Dict with status: "deleted"
+        
+        Raises:
+            ResourceNotFoundError: If workflow or step not found in workflow.yaml
+        """
+        project_root = self._require_path(payload, "project_root")
+        workflow = self._require_str(payload, "workflow")
+        step = self._require_str(payload, "step")
+        
+        # For delete operations, we only need to resolve the workflow (not the step)
+        # because delete_step_from_workflow handles ghost steps gracefully
+        # Resolve workflow with fallback to ensure cache is up-to-date
+        self._resolve_workflow_with_fallback(project_root, workflow)
+        
+        # Pass cached index and config to QVService to avoid rebuilding ResourceIndex
+        cache = self.state.get_cache(project_root)
+        
+        # Delete the step (moves file to trash and removes from workflow.yaml)
+        # This will handle ghost steps (missing files) gracefully
+        QVService.delete_step_from_workflow(
+            project_root=project_root,
+            workflow_selector=workflow,
+            step_selector=step,
+            index=cache.index,
+            config=cache.config,
+        )
+        
+        # CRITICAL: Rebuild cache immediately after deletion to ensure next get_workflow_detail
+        # sees the updated steps array without the deleted step
+        self.state.rebuild_cache(project_root)
+        
+        return {
+            "status": "deleted",
+        }
     
     def _handle_get_workflow_detail(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -1033,8 +1093,12 @@ class QVDaemon:
             config=cache.config,
         )
         
-        # Invalidate cache after mutation
-        self.state.invalidate_cache(project_root)
+        # CRITICAL: Rebuild cache immediately after step creation to avoid race condition.
+        # When a step is created, the step file and workflow.yaml are written to disk.
+        # If get_step_detail is called immediately after, the ResourceIndex may be stale
+        # and not include the new step. Rebuilding the cache ensures the new step is
+        # immediately available for resolution.
+        self.state.rebuild_cache(project_root)
         
         return result
     
@@ -1067,8 +1131,12 @@ class QVDaemon:
             config=cache.config,
         )
         
-        # Invalidate cache after mutation
-        self.state.invalidate_cache(project_root)
+        # CRITICAL: Rebuild cache immediately after step creation to avoid race condition.
+        # When a step is imported, the step file and workflow.yaml are written to disk.
+        # If get_step_detail is called immediately after, the ResourceIndex may be stale
+        # and not include the new step. Rebuilding the cache ensures the new step is
+        # immediately available for resolution.
+        self.state.rebuild_cache(project_root)
         
         return result
     

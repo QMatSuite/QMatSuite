@@ -92,9 +92,10 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
   
   return (
     <div className="settings-panel">
-      {/* QE Detection Section */}
-      <div className="settings-section">
-        <div className="settings-section__header">
+      <div className="settings-scroll-container">
+        {/* QE Detection Section */}
+        <div className="settings-section">
+          <div className="settings-section__header">
           <h3 className="settings-section__title">
             <span className="settings-icon">⚛️</span>
             Quantum ESPRESSO
@@ -105,10 +106,10 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
             disabled={isDetecting}
           >
             {isDetecting ? '🔄 Detecting...' : '🔍 Re-detect'}
-          </button>
-        </div>
-        
-        <div className="settings-section__content">
+            </button>
+          </div>
+          
+          <div className="settings-section__content">
           {qeInfo ? (
             <div className={`qe-status qe-status--${qeInfo.found ? 'found' : 'missing'}`}>
               <div className="qe-status__indicator">
@@ -172,11 +173,11 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
           ) : (
             <p className="settings-empty">Click &quot;Re-detect&quot; to check for QE installation</p>
           )}
+          </div>
         </div>
-      </div>
-      
-      {/* Python/Daemon Section */}
-      <div className="settings-section">
+        
+        {/* Python/Daemon Section */}
+        <div className="settings-section">
         <div className="settings-section__header">
           <h3 className="settings-section__title">
             <span className="settings-icon">🐍</span>
@@ -206,16 +207,16 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
         </div>
       </div>
       
-      {/* Error Display */}
-      {error && (
-        <div className="settings-error">
-          <span className="error-icon">⚠️</span>
-          <span className="error-text">{error}</span>
-        </div>
-      )}
+        {/* Error Display */}
+        {error && (
+          <div className="settings-error">
+            <span className="error-icon">⚠️</span>
+            <span className="error-text">{error}</span>
+          </div>
+        )}
       
-      {/* Appearance Section */}
-      <div className="settings-section">
+        {/* Appearance Section */}
+        <div className="settings-section">
         <div className="settings-section__header">
           <h3 className="settings-section__title">
             <span className="settings-icon">🎨</span>
@@ -249,8 +250,8 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
         </div>
       </div>
       
-      {/* Analysis Section */}
-      <div className="settings-section">
+        {/* Analysis Section */}
+        <div className="settings-section">
         <div className="settings-section__header">
           <h3 className="settings-section__title">
             <span className="settings-icon">📊</span>
@@ -280,8 +281,8 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
         </div>
       </div>
       
-      {/* Default Projects Directory Section */}
-      <div className="settings-section">
+        {/* Default Projects Directory Section */}
+        <div className="settings-section">
         <div className="settings-section__header">
           <h3 className="settings-section__title">
             <span className="settings-icon">📁</span>
@@ -335,14 +336,15 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
         </div>
       </div>
       
-      {/* Info Section */}
-      <div className="settings-section settings-section--info">
-        <div className="settings-info">
-          <span className="info-icon">💡</span>
-          <p>
-            The GUI communicates with a Python daemon process that handles QE execution.
-            All calculations are performed through Quantum ESPRESSO executables.
-          </p>
+        {/* Info Section */}
+        <div className="settings-section settings-section--info">
+          <div className="settings-info">
+            <span className="info-icon">💡</span>
+            <p>
+              The GUI communicates with a Python daemon process that handles QE execution.
+              All calculations are performed through Quantum ESPRESSO executables.
+            </p>
+          </div>
         </div>
       </div>
     </div>
