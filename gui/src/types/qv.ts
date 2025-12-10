@@ -26,11 +26,19 @@ export interface QVError {
   code: string;
   message: string;
   available_commands?: string[];
-  kind?: string;  // Resource kind for resource_not_found errors (e.g., "step", "workflow", "structure")
+  kind?: string;  // Resource kind for resource_not_found/registry_out_of_sync errors (e.g., "step", "workflow", "structure")
   selector?: string;  // Selector that was not found
+  id?: string;  // Resource ID if known
+  expected_path?: string;  // Expected path from registry (for registry_out_of_sync)
+  actual_state?: string;  // Description of what was wrong (for registry_out_of_sync)
   details?: {
     project_root?: string;
     hint?: string;
+    workflow_path?: string;
+    expected_step_path?: string;
+    step_id?: string;
+    structure_id?: string;
+    reason?: string;  // e.g., "step_file_missing", "step_not_in_workflow_dag"
   };
 }
 
@@ -380,6 +388,31 @@ export interface QVCommandMap {
   list_workflows: {
     payload: { project_root: string };
     result: { workflows: WorkflowInfo[]; count: number };
+  };
+  rebuild_project_registry: {
+    payload: { project_root: string };
+    result: {
+      project_root: string;
+      index_stats: {
+        structures: number;
+        workflows: number;
+        steps: number;
+      };
+      dag_diff: {
+        structures_added: Array<{ id: string; slug: string; name: string; suffix: string }>;
+        structures_removed: Array<{ id: string; slug: string; name: string; suffix: string }>;
+        workflows_added: Array<{ id: string; slug: string; name: string; suffix: string }>;
+        workflows_removed: Array<{ id: string; slug: string; name: string; suffix: string }>;
+        workflows_changed: Array<{
+          workflow_id: string;
+          workflow_slug: string;
+          workflow_name: string;
+          suffix: string;
+          steps_added: Array<{ id: string; suffix: string }>;
+          steps_removed: Array<{ id: string; suffix: string }>;
+        }>;
+      };
+    };
   };
   
   // Analysis - ensure artifacts exist

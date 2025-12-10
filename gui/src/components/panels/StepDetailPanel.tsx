@@ -102,6 +102,7 @@ export function StepDetailPanel({
   const [stepDetail, setStepDetail] = useState<StepDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<QVError['details'] | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
@@ -120,6 +121,7 @@ export function StepDetailPanel({
     // Clear previous error and step detail when selectors change
     // This ensures subsequent step selections recover from previous errors
     setError(null);
+    setErrorDetails(null);
     setStepDetail(null);
     
     const fetchStepDetail = async () => {
@@ -223,26 +225,46 @@ export function StepDetailPanel({
           setHasChanges(false);
         } else {
           // Error response: set error message and clear step detail
-          // Handle structured errors from daemon (resource_not_found, etc.)
+          // Handle structured errors from daemon (resource_not_found, registry_out_of_sync, etc.)
           const errorData = response.error as QVError | undefined;
           let errorMsg = 'Failed to load step details';
           
           if (errorData) {
-            // Check for resource_not_found with kind="step" (ghost step)
-            if (errorData.code === 'resource_not_found' && errorData.kind === 'step') {
-              errorMsg = 'Step not found or step file is missing.';
-              if (errorData.message) {
-                errorMsg = errorData.message;
+            // Check for registry_out_of_sync error
+            if (errorData.code === 'registry_out_of_sync') {
+              errorMsg = errorData.message || 'Registry is out of sync with the filesystem.';
+              // Store detailed error information for display
+              setErrorDetails({
+                ...errorData.details,
+                expected_path: errorData.expected_path,
+                actual_state: errorData.actual_state,
+                reason: errorData.details?.reason || 'registry_out_of_sync',
+              });
+            }
+            // Check for resource_not_found with kind="step" (ghost step or DAG mismatch)
+            else if (errorData.code === 'resource_not_found' && errorData.kind === 'step') {
+              errorMsg = errorData.message || 'Step not found or step file is missing.';
+              // Store detailed error information for display
+              if (errorData.details) {
+                setErrorDetails(errorData.details);
+              } else {
+                setErrorDetails(null);
               }
             } else if (errorData.message) {
               errorMsg = errorData.message;
+              setErrorDetails(errorData.details || null);
+            } else {
+              setErrorDetails(null);
             }
+          } else {
+            setErrorDetails(null);
           }
           
           console.error('[StepDetailPanel] get_step_detail ERROR', {
             stepSelector,
             error: errorData,
             errorMessage: errorMsg,
+            errorDetails,
           });
           setError(errorMsg);
           setStepDetail(null);
@@ -522,6 +544,34 @@ export function StepDetailPanel({
           <div className="error-banner">
             <span className="error-icon">⚠️</span>
             <div className="error-message">
+              {errorDetails && (
+                <div className="error-details" style={{ marginTop: '12px', padding: '12px', backgroundColor: 'var(--bg-secondary)', borderRadius: '4px', fontSize: '0.9em' }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Details:</div>
+                  {errorDetails.workflow_path && (
+                    <div style={{ marginBottom: '4px' }}>
+                      <strong>Workflow file:</strong> <code style={{ fontSize: '0.85em' }}>{errorDetails.workflow_path}</code>
+                    </div>
+                  )}
+                  {(errorDetails.expected_step_path || errorDetails.expected_path) && (
+                    <div style={{ marginBottom: '4px' }}>
+                      <strong>Expected step YAML:</strong> <code style={{ fontSize: '0.85em' }}>{errorDetails.expected_step_path || errorDetails.expected_path}</code>
+                    </div>
+                  )}
+                  {errorDetails.actual_state && (
+                    <div style={{ marginTop: '8px', fontStyle: 'italic', color: 'var(--text-secondary)' }}>
+                      Issue: {errorDetails.actual_state}
+                    </div>
+                  )}
+                  {errorDetails.reason && (
+                    <div style={{ marginTop: '8px', fontStyle: 'italic', color: 'var(--text-secondary)' }}>
+                      Reason: {errorDetails.reason === 'step_file_missing' ? 'Step file missing' : errorDetails.reason === 'step_not_in_workflow_dag' ? 'Step not in workflow DAG' : errorDetails.reason === 'registry_out_of_sync' ? 'Registry out of sync' : errorDetails.reason}
+                    </div>
+                  )}
+                  <div style={{ marginTop: '12px', paddingTop: '8px', borderTop: '1px solid var(--border-color)' }}>
+                    <em>If you edited files manually, click "Refresh" in the Workflows panel to rebuild the project registry.</em>
+                  </div>
+                </div>
+              )}
               <strong>Error loading step:</strong>
               <p>{error}</p>
             </div>

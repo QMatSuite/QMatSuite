@@ -881,14 +881,9 @@ def apply_structure_rename(
     previous_path = entry.get("file") or meta.get("path")
     
     # In ID-only model, entry might only have structure_id - resolve path from registry
-    if not previous_path and entry.get("structure_id"):
-        from quantumvitas.core.resolution import build_resource_index, require_structure
-        try:
-            index = build_resource_index(project_root)
-            resolved = require_structure(project_root, entry["structure_id"], index=index)
-            previous_path = resolved.meta.path
-        except Exception:
-            pass  # If resolution fails, previous_path stays None
+    # NOTE: We don't auto-rebuild the registry here. If the registry is needed, it should
+    # be passed in or the user should refresh. For now, we skip this lookup.
+    # If previous_path is missing, the rename operation will handle it appropriately.
 
     if new_name or new_slug:
         if new_slug:

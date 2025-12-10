@@ -301,7 +301,8 @@ class QVService:
         if not source.exists():
             raise QVServiceError(f"Source file not found: {source}")
         
-        config = load_project_config(project_root)
+        if config is None:
+            config = load_project_config(project_root)
         structures = config.setdefault("structures", [])
         existing_slugs = collect_slugs(structures, project_root=project_root)
         
@@ -346,7 +347,14 @@ class QVService:
         structures.append(entry)
         save_project_config(project_root, config)
         
-        return require_structure(project_root, final_slug, config)
+        # Update registry in-place if index is provided (do NOT rebuild)
+        # Note: This requires the structure to be resolved to get its meta
+        resolved = require_structure(project_root, final_slug, config)
+        if index is not None:
+            from quantumvitas.core.resolution import update_registry_add_structure
+            update_registry_add_structure(index, resolved.meta, dest_path)
+        
+        return resolved
     
     @staticmethod
     def configure_structure(
@@ -414,6 +422,11 @@ class QVService:
             if extract_structure_selector_from_entry(e) != structure_id
         ]
         save_project_config(project_root, config)
+        
+        # Update registry in-place (remove structure, do NOT rebuild)
+        if index is not None:
+            from quantumvitas.core.resolution import update_registry_remove_structure
+            update_registry_remove_structure(index, structure_id)
     
     @staticmethod
     def list_structures(project_root: Path) -> List[ResolvedResource]:
@@ -435,6 +448,9 @@ class QVService:
         name: str,
         structure_selector: Optional[str] = None,
         template: Optional[str] = None,
+        *,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
     ) -> ResolvedResource:
         """
         Create a new workflow.
@@ -485,7 +501,7 @@ class QVService:
             structure_id = None
             structure_name = None
             if structure_selector:
-                resolved_structure = require_structure(project_root, structure_selector, config)
+                resolved_structure = require_structure(project_root, structure_selector, config=config, index=index)
                 structure_id = resolved_structure.meta.id
                 structure_name = resolved_structure.meta.name
             
@@ -511,7 +527,15 @@ class QVService:
         workflows.append(entry)
         save_project_config(project_root, config)
         
-        return require_workflow(project_root, final_slug, config)
+        # Update registry in-place if index is provided (do NOT rebuild)
+        # Note: This requires the workflow to be resolved to get its meta
+        resolved = require_workflow(project_root, final_slug, config=config, index=index)
+        if index is not None:
+            from quantumvitas.core.resolution import update_registry_add_workflow
+            workflow_yaml_path = resolved.absolute_path / "workflow.yaml" if resolved.absolute_path.is_dir() else resolved.absolute_path
+            update_registry_add_workflow(index, resolved.meta, workflow_yaml_path)
+        
+        return resolved
     
     @staticmethod
     def configure_workflow(
@@ -574,11 +598,28 @@ class QVService:
         selector: str,
         force: bool = False,
         cascade: bool = False,
+        *,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
     ) -> None:
         """Delete a workflow (move to trash)."""
-        config = load_project_config(project_root)
+        if config is None:
+            config = load_project_config(project_root)
+        
         entry = find_workflow_entry(config, selector, project_root)
+        workflow_id = extract_workflow_selector_from_entry(entry)
         trash = project_root / "trash"
+        
+        # If cascade=True, we need to collect all workflow IDs that will be deleted
+        workflow_ids_to_remove = [workflow_id] if workflow_id else []
+        if cascade and index is not None:
+            # Find dependent workflows
+            from quantumvitas.core.project_utils import workflows_depending_on
+            dependents = workflows_depending_on(config, entry)
+            for dep in dependents:
+                dep_id = extract_workflow_selector_from_entry(dep)
+                if dep_id:
+                    workflow_ids_to_remove.append(dep_id)
         
         delete_workflow_entry(
             project_root=project_root,
@@ -590,6 +631,13 @@ class QVService:
         )
         
         save_project_config(project_root, config)
+        
+        # Update registry in-place (remove workflows, do NOT rebuild)
+        if index is not None:
+            from quantumvitas.core.resolution import update_registry_remove_workflow
+            for wf_id in workflow_ids_to_remove:
+                if wf_id:
+                    update_registry_remove_workflow(index, wf_id)
     
     @staticmethod
     def list_workflows(project_root: Path) -> List[ResolvedResource]:
@@ -942,11 +990,14 @@ class QVService:
         from quantumvitas.core.resolution import build_resource_index
         from quantumvitas.core.project_utils import load_project_config
         
-        config = load_project_config(project_root)
-        registry = build_resource_index(project_root)
+        if config is None:
+            config = load_project_config(project_root)
+        # If index is None, build it (project load scenario)
+        if index is None:
+            index = build_resource_index(project_root)
         
         # Resolve workflow via registry
-        workflow_resolved = require_workflow(project_root, workflow_selector, config=config, index=registry)
+        workflow_resolved = require_workflow(project_root, workflow_selector, config=config, index=index)
         
         # Load workflow to check structure_id (canonical source in DAG model)
         project = Project.open(project_root)
@@ -992,6 +1043,9 @@ class QVService:
         workflow_selector: str,
         step_selector: str,
         verbose: bool = False,
+        *,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
     ) -> Dict[str, Any]:
         """
         Run a single step in project mode.
@@ -1023,12 +1077,15 @@ class QVService:
         from quantumvitas.core.resolution import build_resource_index, require_workflow, require_step
         from quantumvitas.core.project_utils import load_project_config
         
-        config = load_project_config(project_root)
-        registry = build_resource_index(project_root)
+        if config is None:
+            config = load_project_config(project_root)
+        # If index is None, build it (project load scenario)
+        if index is None:
+            index = build_resource_index(project_root)
         
         # Resolve workflow and step via registry
-        workflow_resolved = require_workflow(project_root, workflow_selector, config=config, index=registry)
-        step_resolved = require_step(project_root, workflow_selector, step_selector, config=config)
+        workflow_resolved = require_workflow(project_root, workflow_selector, config=config, index=index)
+        step_resolved = require_step(project_root, workflow_selector, step_selector, config=config, index=index)
         
         # Load workflow to get structure_id (canonical source)
         project = Project.open(project_root)
@@ -1438,7 +1495,12 @@ class QVService:
         }
     
     @staticmethod
-    def _detect_workflow_results_dir(project_root: Path, file_path: Path) -> Optional[Path]:
+    def _detect_workflow_results_dir(
+        project_root: Path, 
+        file_path: Path,
+        *,
+        index: Optional["ResourceIndex"] = None,
+    ) -> Optional[Path]:
         """
         Detect the workflow results directory from a file's location.
         
@@ -1456,9 +1518,13 @@ class QVService:
             project_root = project_root.resolve()
             
             # Use ResourceIndex to find all workflows (DAG + ID-only model)
+            # NOTE: This is a read operation that needs the registry. If index is not provided,
+            # we build it here (project load scenario). In daemon context, index should be provided.
             from quantumvitas.core.resolution import build_resource_index
             
-            index = build_resource_index(project_root)
+            # If index is None, build it (project load scenario)
+            if index is None:
+                index = build_resource_index(project_root)
             
             # Check if file is within any workflow directory
             # ResourceIndex stores workflows in by_id, need to check meta.kind
@@ -2364,6 +2430,9 @@ class QVService:
         project_root: Path,
         selector: str,
         new_name: str,
+        *,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
     ) -> Dict[str, Any]:
         """
         Rename a structure.
@@ -2372,18 +2441,48 @@ class QVService:
             project_root: Project root path
             selector: Structure selector (name/slug/path)
             new_name: New name for the structure
+            index: Optional ResourceIndex to update in-place
+            config: Optional project config
             
         Returns:
             Dict with old_name, new_name, new_slug
         """
-        resolved = resolve_structure(project_root, selector)
+        resolved = resolve_structure(project_root, selector, config=config, index=index)
         old_name = resolved.meta.name
+        old_path = resolved.absolute_path
+        structure_id = resolved.meta.id
+        old_meta = resolved.meta
+        
+        # Get config entry to see what will be updated
+        entry = find_structure_entry(config, selector, project_root)
+        old_entry_meta = (entry.get("meta") or {}).copy()
         
         QVService.configure_structure(
             project_root=project_root,
             selector=selector,
             new_name=new_name,
         )
+        
+        # Update registry in-place (do NOT rebuild)
+        if index is not None:
+            from quantumvitas.core.resolution import update_registry_rename_structure
+            from quantumvitas.core.resources import ResourceMeta
+            # Get updated metadata from entry (apply_structure_rename updated it)
+            new_entry_meta = entry.get("meta") or {}
+            new_path_str = entry.get("file") or new_entry_meta.get("path")
+            new_path = (project_root / new_path_str).resolve() if new_path_str else old_path
+            
+            # Construct new ResourceMeta from updated entry
+            # Ensure ID is preserved (it should be in the entry or we use the old one)
+            new_entry_meta["id"] = new_entry_meta.get("id") or structure_id
+            new_meta = ResourceMeta.from_dict(
+                new_entry_meta,
+                kind="structure",
+                default_name=new_entry_meta.get("name", new_name),
+                default_path=new_path_str or str(new_path.relative_to(project_root)),
+            )
+            
+            update_registry_rename_structure(index, structure_id, new_meta, old_path, new_path)
         
         return {
             "success": True,
@@ -2424,6 +2523,9 @@ class QVService:
         project_root: Path,
         selector: str,
         new_name: str,
+        *,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
     ) -> Dict[str, Any]:
         """
         Rename a workflow.
@@ -2432,18 +2534,52 @@ class QVService:
             project_root: Project root path
             selector: Workflow selector
             new_name: New name for the workflow
+            index: Optional ResourceIndex to update in-place
+            config: Optional project config
             
         Returns:
             Dict with old_name, new_name, new_slug
         """
-        resolved = resolve_workflow(project_root, selector)
+        resolved = resolve_workflow(project_root, selector, config=config, index=index)
         old_name = resolved.meta.name
+        workflow_id = resolved.meta.id
+        # Get workflow.yaml path (not directory)
+        old_workflow_yaml = resolved.absolute_path / "workflow.yaml" if resolved.absolute_path.is_dir() else resolved.absolute_path
+        
+        # Get config entry to see what will be updated
+        if config is None:
+            config = load_project_config(project_root)
+        entry = find_workflow_entry(config, selector, project_root)
+        old_entry_meta = (entry.get("meta") or {}).copy()
+        old_entry_path = entry.get("path") or old_entry_meta.get("path")
         
         QVService.configure_workflow(
             project_root=project_root,
             selector=selector,
             new_name=new_name,
         )
+        
+        # Update registry in-place (do NOT rebuild)
+        if index is not None:
+            from quantumvitas.core.resolution import update_registry_rename_workflow
+            from quantumvitas.core.resources import ResourceMeta
+            # Get updated metadata from entry (apply_workflow_rename updated it)
+            new_entry_meta = entry.get("meta") or {}
+            new_path_str = entry.get("path") or new_entry_meta.get("path")
+            new_workflow_dir = (project_root / new_path_str).resolve() if new_path_str else old_workflow_yaml.parent
+            new_workflow_yaml = new_workflow_dir / "workflow.yaml"
+            
+            # Construct new ResourceMeta from updated entry
+            # Ensure ID is preserved (it should be in the entry or we use the old one)
+            new_entry_meta["id"] = new_entry_meta.get("id") or workflow_id
+            new_meta = ResourceMeta.from_dict(
+                new_entry_meta,
+                kind="workflow",
+                default_name=new_entry_meta.get("name", new_name),
+                default_path=new_path_str or str(new_workflow_dir.relative_to(project_root)),
+            )
+            
+            update_registry_rename_workflow(index, workflow_id, new_meta, old_workflow_yaml, new_workflow_yaml)
         
         return {
             "success": True,
@@ -2554,15 +2690,21 @@ class QVService:
         # this will raise FileNotFoundError which we convert to a clear error.
         if not step.absolute_path.exists():
             from quantumvitas.core.resolution import ResourceNotFoundError
-            raise ResourceNotFoundError(
+            error = ResourceNotFoundError(
                 kind="step",
                 selector=step_selector,
                 id=step.meta.id if step.meta else None,
                 project_root=project_root,
-                message=f"Step file not found: {step.absolute_path}. "
-                        f"The workflow entry exists but the step YAML file is missing. "
-                        f"This may indicate a corrupted workflow or incomplete step creation."
+                message=f"Step '{step_selector[:8]}...{step_selector[-6:]}' is listed in workflow '{wf_model.meta.name or wf_model.meta.slug or workflow_selector}', "
+                        f"but the expected step YAML file '{step.absolute_path}' "
+                        f"does not exist. Registry and filesystem are out of sync. Try refreshing the project registry.",
             )
+            error.details = {
+                "workflow_path": str(workflow_yaml_path),
+                "expected_step_path": str(step.absolute_path),
+                "reason": "step_file_missing",
+            }
+            raise error
         
         # Load step spec (DAG + ULID model: structure_id is already in spec)
         try:
@@ -2570,14 +2712,21 @@ class QVService:
         except FileNotFoundError:
             # Step file was deleted or never created (ghost step)
             from quantumvitas.core.resolution import ResourceNotFoundError
-            raise ResourceNotFoundError(
+            error = ResourceNotFoundError(
                 kind="step",
                 selector=step_selector,
                 id=step.meta.id if step.meta else None,
                 project_root=project_root,
-                message=f"Step file not found: {step.absolute_path}. "
-                        f"The workflow entry exists but the step YAML file is missing."
+                message=f"Step '{step_selector[:8] if len(step_selector) > 14 else step_selector}...{step_selector[-6:] if len(step_selector) > 6 else step_selector}' is listed in workflow '{wf_model.meta.name or wf_model.meta.slug or workflow_selector}', "
+                        f"but the expected step YAML file '{step.absolute_path}' "
+                        f"does not exist. Registry and filesystem are out of sync. Try refreshing the project registry.",
             )
+            error.details = {
+                "workflow_path": str(workflow_yaml_path),
+                "expected_step_path": str(step.absolute_path),
+                "reason": "step_file_missing",
+            }
+            raise error
         
         return {
             "id": step.meta.id,
@@ -2814,6 +2963,24 @@ class QVService:
                     pass  # If resolution fails, structure_name stays None
             save_workflow(wf_model, workflow_dir)
         
+        # Update registry in-place (add step, do NOT rebuild)
+        if index is not None:
+            from quantumvitas.core.resolution import update_registry_add_step
+            update_registry_add_step(index, spec.meta, spec_path)
+            # Also add structure if it was newly imported
+            if structure_id_value and not structure_id_value in [m.id for m in index.by_id.values() if m.kind == "structure"]:
+                from quantumvitas.core.resolution import update_registry_add_structure
+                # Get structure meta from the file
+                try:
+                    import json
+                    struct_data = json.loads(final_structure_path.read_text())
+                    struct_meta_dict = struct_data.get("__qv_meta__") or struct_data.get("meta") or {}
+                    from quantumvitas.core.resources import ResourceMeta
+                    struct_meta = ResourceMeta.from_dict(struct_meta_dict, kind="structure", default_name=structure_id, default_path=f"structures/{final_structure_path.name}")
+                    update_registry_add_structure(index, struct_meta, final_structure_path)
+                except Exception:
+                    pass  # If we can't add structure to registry, continue (it will be picked up on next refresh)
+        
         # Pass cached index to avoid rebuilding ResourceIndex
         return QVService.get_workflow_detail(
             project_root=project_root,
@@ -2982,10 +3149,8 @@ class QVService:
         if config is None:
             config = load_project_config(project_root)
         if index is None:
-            registry = build_resource_index(project_root)
-        else:
-            registry = index
-        workflow = require_workflow(project_root, workflow_selector, config=config, index=registry)
+            index = build_resource_index(project_root)
+        workflow = require_workflow(project_root, workflow_selector, config=config, index=index)
         wf_path = workflow.absolute_path / "workflow.yaml"
         # Load workflow model; legacy 'structure' selectors (if present) are normalized to structure_id via the registry
         from quantumvitas.core.resolution import make_structure_selector_resolver
@@ -3173,6 +3338,11 @@ class QVService:
         # Ensure workflow.structure_id is preserved (never cleared)
         assert wf_model.structure_id is not None, "Workflow structure_id must not be cleared when adding steps"
         save_workflow(wf_model, wf_path)
+        
+        # Update registry in-place (do NOT rebuild)
+        if index is not None:
+            from quantumvitas.core.resolution import update_registry_add_step
+            update_registry_add_step(index, step_meta, step_file_path)
         
         # Return updated workflow info without materializing steps (avoids pseudo requirements)
         # This is sufficient for tests and most use cases

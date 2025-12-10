@@ -28,6 +28,7 @@ from quantumvitas.api import QVService, QVServiceError
 from quantumvitas.core.exceptions import LegacyProjectError
 from quantumvitas.core.resolution import (
     ResourceNotFoundError,
+    RegistryOutOfSyncError,
     SelectorNotFoundError,
     build_resource_index,
     resolve_workflow,
@@ -194,6 +195,7 @@ class QVDaemon:
             "list_structures": self._handle_list_structures,
             "list_workflows": self._handle_list_workflows,
             "find_project_root": self._handle_find_project_root,
+            "rebuild_project_registry": self._handle_rebuild_project_registry,
             
             # Project creation and management
             "create_project": self._handle_create_project,
@@ -438,16 +440,20 @@ class QVDaemon:
             )
         except ResourceNotFoundError as e:
             # Convert ResourceNotFoundError to structured daemon error
+            error_dict = {
+                "code": "resource_not_found",
+                "kind": e.kind,
+                "selector": e.selector,
+                "id": e.id,
+                "message": str(e),
+            }
+            # Include details if present (workflow_path, expected_step_path, reason, etc.)
+            if hasattr(e, 'details') and e.details:
+                error_dict["details"] = e.details
             return RPCResponse(
                 id=request.id,
                 ok=False,
-                error={
-                    "code": "resource_not_found",
-                    "kind": e.kind,
-                    "selector": e.selector,
-                    "id": e.id,
-                    "message": str(e),
-                },
+                error=error_dict,
             )
         except QVServiceError as e:
             return RPCResponse(
@@ -614,6 +620,8 @@ class QVDaemon:
             # Re-raise ValueError as-is (for validation errors like "inside existing project")
             raise
         
+        # Project creation creates a new project - registry will be built on first access
+        
         # Get summary of newly created project
         summary = QVService.get_project_summary(project_root)
         
@@ -639,14 +647,15 @@ class QVDaemon:
         if not source_file or not source_file.exists():
             raise FileNotFoundError(f"Structure file not found: {source_file}")
         
+        # Pass cached index and config for in-place registry updates
+        cache = self.state.get_cache(project_root)
         result = QVService.import_structure(
             project_root=project_root,
             source=source_file,
             name=name,
+            index=cache.index,
+            config=cache.config,
         )
-        
-        # Invalidate cache after mutation
-        self.state.invalidate_cache(project_root)
         
         # Get structure metadata
         structures = QVService.list_structures_data(project_root)
@@ -677,14 +686,15 @@ class QVDaemon:
         selector = self._require_str(payload, "selector")
         new_name = self._require_str(payload, "new_name")
         
+        # Pass cached index and config for in-place registry updates
+        cache = self.state.get_cache(project_root)
         result = QVService.rename_structure(
             project_root=project_root,
             selector=selector,
             new_name=new_name,
+            index=cache.index,
+            config=cache.config,
         )
-        
-        # Invalidate cache after mutation
-        self.state.invalidate_cache(project_root)
         
         return result
     
@@ -721,14 +731,15 @@ class QVDaemon:
         check = QVService.can_delete_structure(project_root, selector)
         structure_name = check.get("structure_name", selector)
         
+        # Pass cached index and config for in-place registry updates
+        cache = self.state.get_cache(project_root)
         QVService.delete_structure(
             project_root=project_root,
             selector=selector,
             force=force,
+            index=cache.index,
+            config=cache.config,
         )
-        
-        # Invalidate cache after mutation
-        self.state.invalidate_cache(project_root)
         
         return {
             "success": True,
@@ -776,11 +787,15 @@ class QVDaemon:
         structure = payload.get("structure")
         template = payload.get("template")
         
+        # Pass cached index and config for in-place registry updates
+        cache = self.state.get_cache(project_root)
         result = QVService.init_workflow(
             project_root=project_root,
             name=name,
             structure_selector=structure,
             template=template,
+            index=cache.index,
+            config=cache.config,
         )
         
         # Get workflow details
@@ -811,14 +826,15 @@ class QVDaemon:
         selector = self._require_str(payload, "selector")
         new_name = self._require_str(payload, "new_name")
         
+        # Pass cached index and config for in-place registry updates
+        cache = self.state.get_cache(project_root)
         result = QVService.rename_workflow(
             project_root=project_root,
             selector=selector,
             new_name=new_name,
+            index=cache.index,
+            config=cache.config,
         )
-        
-        # Invalidate cache after mutation
-        self.state.invalidate_cache(project_root)
         
         return result
     
@@ -941,7 +957,7 @@ class QVDaemon:
         
         # Pass cached index and config to avoid rebuilding ResourceIndex
         cache = self.state.get_cache(project_root)
-        return QVService.update_step_params(
+        result = QVService.update_step_params(
             project_root=project_root,
             workflow_selector=workflow,
             step_selector=step,
@@ -950,6 +966,10 @@ class QVDaemon:
             index=cache.index,
             config=cache.config,
         )
+        
+        # Parameter updates don't change registry (only change step file contents)
+        
+        return result
     
     def _handle_reset_step_params(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -969,13 +989,17 @@ class QVDaemon:
         
         # Pass cached index and config to avoid rebuilding ResourceIndex
         cache = self.state.get_cache(project_root)
-        return QVService.reset_step_params(
+        result = QVService.reset_step_params(
             project_root=project_root,
             workflow_selector=workflow,
             step_selector=step,
             index=cache.index,
             config=cache.config,
         )
+        
+        # Parameter resets don't change registry (only change step file contents)
+        
+        return result
     
     # -------------------------------------------------------------------------
     # Workflow configuration handlers
@@ -1018,9 +1042,7 @@ class QVDaemon:
             config=cache.config,
         )
         
-        # CRITICAL: Rebuild cache immediately after deletion to ensure next get_workflow_detail
-        # sees the updated steps array without the deleted step
-        self.state.rebuild_cache(project_root)
+        # Registry updated in-place by QVService.delete_step_from_workflow (no rebuild needed)
         
         return {
             "status": "deleted",
@@ -1079,8 +1101,7 @@ class QVDaemon:
             config=cache.config,
         )
         
-        # Invalidate cache after mutation
-        self.state.invalidate_cache(project_root)
+        # Reorder doesn't change registry (only changes step order in workflow.yaml)
         
         return result
     
@@ -1113,12 +1134,7 @@ class QVDaemon:
             config=cache.config,
         )
         
-        # CRITICAL: Rebuild cache immediately after step creation to avoid race condition.
-        # When a step is created, the step file and workflow.yaml are written to disk.
-        # If get_step_detail is called immediately after, the ResourceIndex may be stale
-        # and not include the new step. Rebuilding the cache ensures the new step is
-        # immediately available for resolution.
-        self.state.rebuild_cache(project_root)
+        # Registry updated in-place by QVService.add_step_to_workflow (no rebuild needed)
         
         return result
     
@@ -1151,12 +1167,7 @@ class QVDaemon:
             config=cache.config,
         )
         
-        # CRITICAL: Rebuild cache immediately after step creation to avoid race condition.
-        # When a step is imported, the step file and workflow.yaml are written to disk.
-        # If get_step_detail is called immediately after, the ResourceIndex may be stale
-        # and not include the new step. Rebuilding the cache ensures the new step is
-        # immediately available for resolution.
-        self.state.rebuild_cache(project_root)
+        # Registry updated in-place by QVService.import_step_from_qe_input (no rebuild needed)
         
         return result
     
@@ -1189,8 +1200,7 @@ class QVDaemon:
             config=cache.config,
         )
         
-        # Invalidate cache after mutation
-        self.state.invalidate_cache(project_root)
+        # Reorder doesn't change registry (only changes step order in workflow.yaml)
         
         return result
     
@@ -1245,11 +1255,15 @@ class QVDaemon:
         demo_id = payload.get("demo_id")
         
         try:
-            return QVService.create_demo_project(
+            result = QVService.create_demo_project(
                 target_dir=target_dir,
                 name=name,
                 demo_id=demo_id,
             )
+            # Rebuild registry after demo project creation
+            project_root = Path(result.get("project_root", target_dir)).resolve()
+            self._rebuild_registry_after_write(project_root, "write_operation:create_demo_project")
+            return result
         except ValueError as e:
             # Re-raise ValueError as-is (for validation errors like "inside existing project")
             raise
@@ -1657,14 +1671,17 @@ class QVDaemon:
     
     def _resolve_workflow_with_fallback(self, project_root: Path, selector: str):
         """
-        Resolve workflow with automatic cache rebuild on failure.
+        Resolve workflow using cached index.
         
-        NOTE:
-        The daemon keeps a cached ResourceIndex per project. In rare cases the cache
-        may become stale (e.g. manual edits on disk or a missing invalidation call).
-        This helper tries the cached index first, then rebuilds the cache ONCE if the
-        resource is not found, logging a warning. If it still fails, the original
-        SelectorNotFoundError is propagated.
+        NOTE: This helper NO LONGER auto-rebuilds on cache miss. The registry
+        is only rebuilt in two cases:
+        1. When a project is first loaded (get_cache)
+        2. When explicitly requested via rebuild_project_registry RPC
+        
+        Write operations update the registry in-place without rebuilding.
+        
+        If the resource is not found, SelectorNotFoundError is raised immediately.
+        The user should click the Refresh button to rebuild the registry.
         
         Args:
             project_root: Path to project root
@@ -1674,34 +1691,16 @@ class QVDaemon:
             ResolvedResource for the workflow
             
         Raises:
-            SelectorNotFoundError: If workflow not found even after cache rebuild
+            SelectorNotFoundError: If workflow not found
         """
-        # 1. Use cached index
+        # Use cached index (no auto-rebuild on miss)
         cache = self.state.get_cache(project_root)
-        try:
-            return resolve_workflow(
-                project_root,
-                selector,
-                index=cache.index,
-                config=cache.config,
-            )
-        except SelectorNotFoundError:
-            # 2. Fallback: rebuild cache once
-            self.logger.warning(
-                "Registry cache miss for workflow '%s' in project '%s'. "
-                "Rebuilding ResourceIndex once. "
-                "If this happens often, there may be a missing cache invalidation.",
-                selector,
-                project_root,
-            )
-            cache = self.state.rebuild_cache(project_root)
-            # 3. Retry with fresh index (if this still fails, propagate)
-            return resolve_workflow(
-                project_root,
-                selector,
-                index=cache.index,
-                config=cache.config,
-            )
+        return resolve_workflow(
+            project_root,
+            selector,
+            index=cache.index,
+            config=cache.config,
+        )
     
     def _resolve_step_with_fallback(
         self,
@@ -1710,14 +1709,17 @@ class QVDaemon:
         step_selector: str,
     ):
         """
-        Resolve step with automatic cache rebuild on failure.
+        Resolve step using cached index.
         
-        NOTE:
-        The daemon keeps a cached ResourceIndex per project. In rare cases the cache
-        may become stale (e.g. manual edits on disk or a missing invalidation call).
-        This helper tries the cached index first, then rebuilds the cache ONCE if the
-        resource is not found, logging a warning. If it still fails, the original
-        SelectorNotFoundError is propagated.
+        NOTE: This helper NO LONGER auto-rebuilds on cache miss. The registry
+        is only rebuilt in two cases:
+        1. When a project is first loaded (get_cache)
+        2. When explicitly requested via rebuild_project_registry RPC
+        
+        Write operations update the registry in-place without rebuilding.
+        
+        If the resource is not found, SelectorNotFoundError is raised immediately.
+        The user should click the Refresh button to rebuild the registry.
         
         Args:
             project_root: Path to project root
@@ -1728,34 +1730,282 @@ class QVDaemon:
             ResolvedResource for the step
             
         Raises:
-            SelectorNotFoundError: If step not found even after cache rebuild
+            SelectorNotFoundError: If step not found
         """
+        # Use cached index (no auto-rebuild on miss)
         cache = self.state.get_cache(project_root)
+        return resolve_step(
+            project_root,
+            workflow_selector,
+            step_selector,
+            index=cache.index,
+            config=cache.config,
+        )
+    
+    # -------------------------------------------------------------------------
+    # Registry rebuild handler
+    # -------------------------------------------------------------------------
+    
+    def _handle_rebuild_project_registry(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Explicitly rebuild the project registry (ResourceIndex).
+        
+        This is the ONLY way to rebuild the registry from the GUI.
+        The registry is also rebuilt automatically after write operations.
+        
+        Payload:
+            project_root: str (required) - Path to project root
+            
+        Returns:
+            {
+                "ok": true,
+                "project_root": "<normalized>",
+                "index_stats": {
+                    "structures": <count>,
+                    "workflows": <count>,
+                    "steps": <count>
+                },
+                "dag_diff": {
+                    "structures_added": [...],
+                    "structures_removed": [...],
+                    "workflows_added": [...],
+                    "workflows_removed": [...],
+                    "workflows_changed": [...]
+                }
+            }
+        """
+        import time
+        
+        project_root = self._require_path(payload, "project_root")
+        project_root = project_root.resolve()
+        
+        # Get project name for logging
         try:
-            return resolve_step(
-                project_root,
-                workflow_selector,
-                step_selector,
-                index=cache.index,
-                config=cache.config,
+            config = load_project_config(project_root)
+            project_name = config.get("meta", {}).get("name") or project_root.name
+        except Exception:
+            project_name = project_root.name
+        
+        # Take snapshot of current registry (if any)
+        old_cache = self.state._caches.get(project_root)
+        old_snapshot = self._snapshot_dag(old_cache.index if old_cache else None)
+        
+        # Rebuild the registry
+        t0 = time.perf_counter()
+        try:
+            index = build_resource_index(project_root)
+            config = load_project_config(project_root)
+            self.state._caches[project_root] = ProjectCache(
+                project_root=project_root,
+                index=index,
+                config=config,
             )
-        except SelectorNotFoundError:
-            self.logger.warning(
-                "Registry cache miss for step '%s' in workflow '%s' (project '%s'). "
-                "Rebuilding ResourceIndex once. "
-                "If this happens often, there may be a missing cache invalidation.",
-                step_selector,
-                workflow_selector,
-                project_root,
-            )
-            cache = self.state.rebuild_cache(project_root)
-            return resolve_step(
-                project_root,
-                workflow_selector,
-                step_selector,
-                index=cache.index,
-                config=cache.config,
-            )
+        except Exception as e:
+            self.logger.error(f"Failed to rebuild registry: {e}", exc_info=True)
+            raise
+        
+        dt_ms = (time.perf_counter() - t0) * 1000
+        
+        # Log with reason
+        self.logger.info(
+            "[RPC] rebuild_project_registry (project: %s) took %.1fms [reason=manual_refresh]",
+            project_name,
+            dt_ms,
+        )
+        
+        # Take snapshot of new registry
+        new_snapshot = self._snapshot_dag(index)
+        
+        # Compute DAG diff
+        dag_diff = self._diff_dag(old_snapshot, new_snapshot)
+        
+        # Compute index stats
+        structures = [r for r in index.by_id.values() if r.kind == "structure"]
+        workflows = [r for r in index.by_id.values() if r.kind == "workflow"]
+        steps = [r for r in index.by_id.values() if r.kind == "step"]
+        
+        return {
+            "project_root": str(project_root),
+            "index_stats": {
+                "structures": len(structures),
+                "workflows": len(workflows),
+                "steps": len(steps),
+            },
+            "dag_diff": dag_diff,
+        }
+    
+    def _snapshot_dag(self, index: Optional[ResourceIndex]) -> Dict[str, Any]:
+        """
+        Return a lightweight representation of the DAG for diffing.
+        
+        Args:
+            index: ResourceIndex to snapshot (None for empty snapshot)
+            
+        Returns:
+            {
+                "structures": { structure_id: { "slug": ..., "name": ... } },
+                "workflows": {
+                    workflow_id: {
+                        "slug": ...,
+                        "name": ...,
+                        "steps": [step_id1, step_id2, ...]   # in order
+                    },
+                    ...
+                }
+            }
+        """
+        from quantumvitas.core.models import load_workflow
+        
+        if index is None:
+            return {"structures": {}, "workflows": {}}
+        
+        snapshot: Dict[str, Any] = {
+            "structures": {},
+            "workflows": {},
+        }
+        
+        # Collect all structures
+        for resource_id, meta in index.by_id.items():
+            if meta.kind == "structure":
+                snapshot["structures"][resource_id] = {
+                    "slug": meta.slug,
+                    "name": meta.name,
+                }
+        
+        # Collect all workflows with their step lists
+        for resource_id, meta in index.by_id.items():
+            if meta.kind == "workflow":
+                # Find workflow.yaml path from index
+                workflow_path = None
+                for path, path_id in index.by_path.items():
+                    if path_id == resource_id and path.name == "workflow.yaml":
+                        workflow_path = path
+                        break
+                
+                if workflow_path and workflow_path.exists():
+                    try:
+                        # Determine project root (workflows/workflow_name/workflow.yaml -> project_root)
+                        project_root = workflow_path.parent.parent.parent
+                        # Load workflow model to get steps
+                        wf_model = load_workflow(workflow_path, project_root=project_root)
+                        step_ids = [entry.step_id for entry in wf_model.steps if entry.step_id]
+                    except Exception:
+                        # If we can't load the workflow, just use empty steps
+                        step_ids = []
+                else:
+                    step_ids = []
+                
+                snapshot["workflows"][resource_id] = {
+                    "slug": meta.slug,
+                    "name": meta.name,
+                    "steps": step_ids,
+                }
+        
+        return snapshot
+    
+    def _diff_dag(self, old: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Compute a high-level DAG diff between old and new snapshots.
+        
+        Args:
+            old: Old snapshot (from _snapshot_dag)
+            new: New snapshot (from _snapshot_dag)
+        
+        Returns:
+            {
+                "structures_added": [ { "id": ..., "slug": ..., "suffix": ... }, ... ],
+                "structures_removed": [ ... ],
+                "workflows_added": [ { "id": ..., "slug": ..., "suffix": ... }, ... ],
+                "workflows_removed": [ ... ],
+                "workflows_changed": [
+                    {
+                        "workflow_id": ...,
+                        "workflow_slug": ...,
+                        "suffix": ...,
+                        "steps_added": [ { "id": ..., "suffix": ... }, ... ],
+                        "steps_removed": [ { "id": ..., "suffix": ... }, ... ],
+                    },
+                    ...
+                ]
+            }
+        """
+        def _ulid_suffix(ulid: str, length: int = 6) -> str:
+            """Compute a short suffix for debugging."""
+            return ulid[-length:] if ulid and len(ulid) > length else ulid
+        
+        diff: Dict[str, Any] = {
+            "structures_added": [],
+            "structures_removed": [],
+            "workflows_added": [],
+            "workflows_removed": [],
+            "workflows_changed": [],
+        }
+        
+        old_structures = old.get("structures", {})
+        new_structures = new.get("structures", {})
+        old_workflows = old.get("workflows", {})
+        new_workflows = new.get("workflows", {})
+        
+        # Structures added
+        for struct_id in new_structures:
+            if struct_id not in old_structures:
+                diff["structures_added"].append({
+                    "id": struct_id,
+                    "slug": new_structures[struct_id]["slug"],
+                    "name": new_structures[struct_id]["name"],
+                    "suffix": _ulid_suffix(struct_id),
+                })
+        
+        # Structures removed
+        for struct_id in old_structures:
+            if struct_id not in new_structures:
+                diff["structures_removed"].append({
+                    "id": struct_id,
+                    "slug": old_structures[struct_id]["slug"],
+                    "name": old_structures[struct_id]["name"],
+                    "suffix": _ulid_suffix(struct_id),
+                })
+        
+        # Workflows added
+        for wf_id in new_workflows:
+            if wf_id not in old_workflows:
+                diff["workflows_added"].append({
+                    "id": wf_id,
+                    "slug": new_workflows[wf_id]["slug"],
+                    "name": new_workflows[wf_id]["name"],
+                    "suffix": _ulid_suffix(wf_id),
+                })
+        
+        # Workflows removed
+        for wf_id in old_workflows:
+            if wf_id not in new_workflows:
+                diff["workflows_removed"].append({
+                    "id": wf_id,
+                    "slug": old_workflows[wf_id]["slug"],
+                    "name": old_workflows[wf_id]["name"],
+                    "suffix": _ulid_suffix(wf_id),
+                })
+        
+        # Workflows changed (step lists differ)
+        for wf_id in old_workflows:
+            if wf_id in new_workflows:
+                old_steps = old_workflows[wf_id].get("steps", [])
+                new_steps = new_workflows[wf_id].get("steps", [])
+                
+                steps_added = [s for s in new_steps if s not in old_steps]
+                steps_removed = [s for s in old_steps if s not in new_steps]
+                
+                if steps_added or steps_removed:
+                    diff["workflows_changed"].append({
+                        "workflow_id": wf_id,
+                        "workflow_slug": new_workflows[wf_id]["slug"],
+                        "workflow_name": new_workflows[wf_id]["name"],
+                        "suffix": _ulid_suffix(wf_id),
+                        "steps_added": [{"id": s, "suffix": _ulid_suffix(s)} for s in steps_added],
+                        "steps_removed": [{"id": s, "suffix": _ulid_suffix(s)} for s in steps_removed],
+                    })
+        
+        return diff
     
     # -------------------------------------------------------------------------
     # Helpers
