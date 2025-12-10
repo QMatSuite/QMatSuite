@@ -234,7 +234,7 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
             })
     
     # Export workflows and their steps
-    # Use Project.open() and Workflow.from_yaml() to ensure legacy workflows are migrated
+    # Use Project.open() and Workflow.from_yaml() to load workflows (DAG + ULID model only)
     from quantumvitas.project.model import Project
     from quantumvitas.workflow.workflow import Workflow
     from quantumvitas.core.project_utils import load_project_config
@@ -346,7 +346,7 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
         # Export steps in the order from workflow.yaml
         # Use workflow_model.steps which preserves the order from workflow.yaml
         for step_entry in workflow_model.steps:
-            step_id = step_entry.step_id or step_entry.id
+            step_id = step_entry.step_id  # DAG + ULID model: only step_id (ULID) is used
             if not step_id:
                 continue
             
@@ -361,7 +361,7 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
                 continue
             
             try:
-                # Load step spec (with resolver for legacy structure selector normalization)
+                # Load step spec (DAG + ULID model: structure_id is already in spec)
                 step_spec = StructureStepSpec.from_yaml(step_file, resolve_structure_selector=resolver)
                 
                 # Export step data (ID-only model: structure_id, no structure selector)
@@ -584,7 +584,7 @@ def materialize_project_from_snapshot(
                 # Structure ID not found in snapshot - this shouldn't happen, but handle gracefully
                 workflow_structure_id = None
         
-        # If only structure selector is present (legacy), try to resolve it
+        # If only structure selector is present, try to resolve it to structure_id
         elif workflow_structure_selector:
             # Try to find structure by slug/name in the snapshot
             for struct_data in snapshot.structures:
@@ -613,7 +613,7 @@ def materialize_project_from_snapshot(
             structure_id=workflow_structure_id,
             # structure_name and structure are in-memory only (not persisted to YAML)
             structure_name=workflow_structure_name,
-            structure=workflow_structure_selector,  # In-memory only for backwards compat
+            # structure selector field removed - use structure_id (ULID) only
             mode=workflow_data.get("mode", "normal"),
             working_dir=workflow_data.get("working_dir", "raw"),
             steps=[],

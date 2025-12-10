@@ -35,6 +35,7 @@ from quantumvitas.core.context import (
     find_path_context_from_pwd,
     ContextNotFoundError,
 )
+from quantumvitas.core.exceptions import LegacyProjectError
 from quantumvitas.core.resolution import (
     ResourceNotFoundError,
     require_workflow,
@@ -161,6 +162,29 @@ def _maybe_project_root(path: Optional[Path]) -> Optional[Path]:
         return _resolve_project_root()
     except typer.BadParameter:
         return None
+
+
+def _handle_legacy_project_error(e: LegacyProjectError) -> None:
+    """Handle LegacyProjectError by printing a clear message and exiting."""
+    typer.secho(
+        f"\n❌ Legacy project detected at {e.project_root}",
+        fg=typer.colors.RED,
+        err=True,
+    )
+    typer.secho(
+        f"\nThis project uses a legacy workflow format (structure selector / step_file / non-ULID step IDs).",
+        err=True,
+    )
+    typer.secho(
+        f"Please migrate it using:\n",
+        err=True,
+    )
+    typer.secho(
+        f"  python scripts/qv_migrate_legacy_project.py --project-root {e.project_root}",
+        fg=typer.colors.YELLOW,
+        err=True,
+    )
+    raise typer.Exit(1)
 
 
 def _ensure_empty_dir(path: Path) -> None:
@@ -580,7 +604,10 @@ def _resolve_structure_input(
     except Exception as e:
         # Fallback to legacy Project.get_structure for backwards compatibility
         try:
-            project = Project.open(project_root)
+            try:
+                project = Project.open(project_root)
+            except LegacyProjectError as e:
+                _handle_legacy_project_error(e)
             ref = project.get_structure(identifier)
             structure = read_structure(ref.path)
             return structure, identifier
@@ -1687,7 +1714,10 @@ def list_resources(
     """
 
     project_root = project or _resolve_project_root()
-    proj = Project.open(project_root)
+    try:
+        proj = Project.open(project_root)
+    except LegacyProjectError as e:
+        _handle_legacy_project_error(e)
 
     typer.echo(f"Project: {proj.meta.name} [{proj.meta.slug}] ({proj.root})")
     if verbose:

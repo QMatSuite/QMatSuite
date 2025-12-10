@@ -5,6 +5,13 @@
  * A. From-scratch creation uses QV defaults (outdir, restart_mode, conv_thr, etc.)
  * B. Import from QE input preserves original parameters (no defaults injected)
  * 
+ * **This spec does NOT run any workflows.** It only tests:
+ * - Step default parameters visible in step detail panels
+ * - Step YAML file contents (defaults vs imported parameters)
+ * - UI elements for step creation/import buttons
+ * 
+ * All assertions are based on step definitions and YAML files, not computation outputs.
+ * 
  * To run locally:
  *   cd gui
  *   npm run build:e2e

@@ -65,12 +65,20 @@ export function ProjectSummaryPanel({
   }
   
   if (error) {
+    // Check if this is a legacy project error (contains migration command)
+    const isLegacyError = error.includes('legacy workflow format') || error.includes('migrate it using');
+    
     return (
       <div className="project-summary-panel project-summary-panel--error">
         <div className="error-card">
           <span className="error-icon">⚠️</span>
-          <h3>Failed to Load Project</h3>
-          <p className="error-message">{error}</p>
+          <h3>{isLegacyError ? 'Legacy Project Detected' : 'Failed to Load Project'}</h3>
+          <p className="error-message" style={{ whiteSpace: 'pre-line' }}>{error}</p>
+          {isLegacyError && (
+            <div className="error-hint">
+              <p>This project uses an older format that needs to be migrated before it can be used.</p>
+            </div>
+          )}
           <div className="error-actions">
             {onBrowseAndLoad && (
               <button className="action-button" onClick={onBrowseAndLoad}>

@@ -121,6 +121,15 @@ def test_build_workflow_from_qe_inputs_and_load(tmp_path: Path):
 
     assert result.workflow_file.exists()
     assert len(result.step_results) == 2
+    
+    # Verify step_ids are ULIDs (DAG + ULID model)
+    for step_result in result.step_results:
+        assert len(step_result.step_id) == 26, f"step_id should be ULID (26 chars), got: {step_result.step_id}"
+        assert step_result.step_id.startswith("01"), f"step_id should start with '01', got: {step_result.step_id}"
+        # Verify step file has meta.id matching step_id
+        spec_data = yaml.safe_load(step_result.spec_path.read_text())
+        spec_meta = spec_data.get("meta", {})
+        assert spec_meta.get("id") == step_result.step_id, "Step file meta.id should match step_id ULID"
 
     # Create minimal project manifest referencing generated files
     # Need to use the actual structure_id from the step result, not "si"
@@ -165,6 +174,18 @@ def test_build_workflow_from_qe_inputs_and_load(tmp_path: Path):
         workflow_yaml_data["meta"] = workflow_meta.to_dict()
         workflow_yaml_path.write_text(yaml.safe_dump(workflow_yaml_data, sort_keys=False))
     
+    # Verify workflow.yaml steps have ULID step_ids
+    workflow_steps = workflow_yaml_data.get("steps", [])
+    assert len(workflow_steps) == 2
+    for step_entry in workflow_steps:
+        step_id = step_entry.get("step_id")
+        assert step_id is not None, "Step entry must have step_id"
+        assert len(step_id) == 26, f"step_id should be ULID (26 chars), got: {step_id}"
+        assert step_id.startswith("01"), f"step_id should start with '01', got: {step_id}"
+        # Verify no legacy fields
+        assert "step_file" not in step_entry, "Step entry should not have step_file (DAG + ID-only model)"
+        assert "id" not in step_entry, "Step entry should not have legacy id field"
+    
     project_config = {
         "project": {"name": "si_project"},
         "structures": [{
@@ -186,4 +207,7 @@ def test_build_workflow_from_qe_inputs_and_load(tmp_path: Path):
     assert len(workflow.steps) == 2
     for step in workflow.steps:
         assert step.input_file.exists()
+        # Verify step has ULID meta.id
+        assert len(step.meta.id) == 26, f"Step meta.id should be ULID (26 chars), got: {step.meta.id}"
+        assert step.meta.id.startswith("01"), f"Step meta.id should start with '01', got: {step.meta.id}"
 

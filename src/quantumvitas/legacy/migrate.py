@@ -1,0 +1,263 @@
+"""
+Migration script for legacy QuantumVITAS projects.
+
+This script migrates legacy projects (using structure/step_file fields)
+to the new DAG + ULID model (structure_id/step_id ULIDs).
+
+Usage:
+    python -m quantumvitas.legacy.migrate <project_root>
+
+Or from Python:
+    from quantumvitas.legacy.migrate import migrate_legacy_project
+    migrate_legacy_project(Path("/path/to/project"))
+"""
+
+from __future__ import annotations
+
+import shutil
+import yaml
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Dict, Any, Optional
+
+from quantumvitas.core.resources import generate_resource_id, meta_from_name, slugify
+from quantumvitas.core.project_utils import load_project_config, save_project_config
+from quantumvitas.core.resolution import build_resource_index, resolve_structure
+from quantumvitas.core.models import load_workflow, save_workflow, WorkflowModel, WorkflowStepEntry
+from quantumvitas.workflow.structure_steps import StructureStepSpec
+
+
+def migrate_legacy_project(project_root: Path) -> None:
+    """
+    Migrate a legacy QuantumVITAS project at project_root to the DAG + ULID layout.
+    
+    This function is intended for manual one-shot use by the developer.
+    
+    Migration steps:
+    1. Backup original project.qv.yml and workflow.yaml files
+    2. Ensure all structures have ULID meta.id
+    3. For each workflow:
+       - Ensure meta.id is a ULID
+       - Ensure meta.slug exists
+       - Convert structure selector to structure_id (ULID)
+       - Convert step entries to use step_id (ULID)
+    4. Remove legacy fields (structure, step_file) from YAML files
+    
+    Args:
+        project_root: Path to the project root directory
+        
+    Raises:
+        FileNotFoundError: If project.qv.yml is not found
+        ValueError: If migration fails
+    """
+    project_root = Path(project_root).resolve()
+    config_file = project_root / "project.qv.yml"
+    
+    if not config_file.exists():
+        raise FileNotFoundError(f"project.qv.yml not found at {config_file}")
+    
+    print(f"Migrating project at {project_root}...")
+    
+    # Step 1: Backup original files
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    backup_dir = project_root / f".migration_backup_{timestamp}"
+    backup_dir.mkdir(exist_ok=True)
+    
+    print(f"Creating backup in {backup_dir}...")
+    shutil.copy2(config_file, backup_dir / "project.qv.yml")
+    
+    # Step 2: Load project config
+    config = load_project_config(project_root)
+    
+    # Step 3: Migrate structures (ensure ULID meta.id)
+    structures = config.get("structures", [])
+    structures_dir = project_root / "structures"
+    
+    for struct_entry in structures:
+        struct_file = struct_entry.get("file")
+        if not struct_file:
+            continue
+        
+        struct_path = (project_root / struct_file).resolve()
+        if not struct_path.exists():
+            continue
+        
+        # Load structure JSON to check/update meta
+        try:
+            import json
+            struct_data = json.loads(struct_path.read_text())
+            struct_meta_dict = struct_data.get("__qv_meta__") or struct_data.get("meta") or {}
+            
+            # Generate ULID if missing
+            if not struct_meta_dict.get("id"):
+                struct_meta_dict["id"] = generate_resource_id()
+                struct_meta_dict.setdefault("name", Path(struct_file).stem)
+                struct_meta_dict.setdefault("slug", slugify(struct_meta_dict["name"]))
+                struct_meta_dict.setdefault("kind", "structure")
+                struct_meta_dict.setdefault("path", struct_file)
+                
+                # Update structure file
+                if "__qv_meta__" in struct_data:
+                    struct_data["__qv_meta__"] = struct_meta_dict
+                else:
+                    struct_data["meta"] = struct_meta_dict
+                
+                struct_path.write_text(json.dumps(struct_data, indent=2))
+                print(f"  Added ULID to structure: {struct_file}")
+            
+            # Update entry meta
+            if "meta" not in struct_entry:
+                struct_entry["meta"] = struct_meta_dict
+            elif not struct_entry["meta"].get("id"):
+                struct_entry["meta"]["id"] = struct_meta_dict["id"]
+        except Exception as e:
+            print(f"  Warning: Could not migrate structure {struct_file}: {e}")
+    
+    # Step 4: Migrate workflows
+    workflows = config.get("workflows", [])
+    workflows_dir = project_root / "workflows"
+    
+    for workflow_entry in workflows:
+        workflow_path = workflow_entry.get("path")
+        if not workflow_path:
+            continue
+        
+        workflow_dir = (project_root / workflow_path).resolve()
+        workflow_yaml = workflow_dir / "workflow.yaml"
+        
+        if not workflow_yaml.exists():
+            print(f"  Warning: workflow.yaml not found at {workflow_yaml}")
+            continue
+        
+        # Backup workflow.yaml
+        shutil.copy2(workflow_yaml, backup_dir / f"{workflow_dir.name}_workflow.yaml")
+        
+        print(f"  Migrating workflow: {workflow_dir.name}")
+        
+        # Load workflow YAML
+        try:
+            wf_data = yaml.safe_load(workflow_yaml.read_text()) or {}
+        except Exception as e:
+            print(f"    Error loading workflow.yaml: {e}")
+            continue
+        
+        # Ensure workflow meta has ULID
+        wf_meta = wf_data.get("meta", {})
+        if not wf_meta.get("id"):
+            wf_meta["id"] = generate_resource_id()
+            wf_meta.setdefault("name", workflow_dir.name)
+            wf_meta.setdefault("slug", slugify(wf_meta["name"]))
+            wf_meta.setdefault("kind", "workflow")
+            wf_meta.setdefault("path", workflow_path)
+            wf_data["meta"] = wf_meta
+            print(f"    Added ULID to workflow meta")
+        
+        # Convert structure selector to structure_id
+        legacy_structure = wf_data.get("structure") or wf_data.get("workflow", {}).get("structure")
+        if legacy_structure and not wf_data.get("structure_id"):
+            try:
+                # Resolve structure to get ULID
+                index = build_resource_index(project_root)
+                resolved = resolve_structure(project_root, legacy_structure, index=index)
+                structure_id = resolved.meta.id
+                
+                wf_data["structure_id"] = structure_id
+                print(f"    Converted structure selector '{legacy_structure}' to structure_id: {structure_id}")
+            except Exception as e:
+                print(f"    Warning: Could not resolve structure '{legacy_structure}': {e}")
+        
+        # Remove legacy structure fields
+        wf_data.pop("structure", None)
+        if "workflow" in wf_data:
+            wf_data["workflow"].pop("structure", None)
+            wf_data["workflow"].pop("structure_name", None)
+        wf_data.pop("structure_name", None)
+        
+        # Migrate steps
+        steps = wf_data.get("steps", [])
+        steps_dir = workflow_dir / "steps"
+        steps_dir.mkdir(exist_ok=True)
+        
+        for i, step_entry in enumerate(steps):
+            step_id_ulid = step_entry.get("step_id")
+            legacy_step_file = step_entry.get("step_file")
+            legacy_id = step_entry.get("id")
+            step_type = step_entry.get("type", "unknown")
+            
+            # If step_id is missing or not a ULID, we need to find/create the step file
+            if not step_id_ulid or len(step_id_ulid) != 26 or not step_id_ulid.startswith("01"):
+                # Try to find step file
+                step_file_path = None
+                
+                if legacy_step_file:
+                    step_file_path = (workflow_dir / legacy_step_file).resolve()
+                elif legacy_id:
+                    # Try legacy_id as filename
+                    candidate = steps_dir / f"{legacy_id}.step.yaml"
+                    if candidate.exists():
+                        step_file_path = candidate
+                
+                # If step file exists, load it to get ULID
+                if step_file_path and step_file_path.exists():
+                    try:
+                        spec = StructureStepSpec.from_yaml(step_file_path)
+                        step_id_ulid = spec.meta.id
+                        print(f"    Step {i+1}: Found ULID {step_id_ulid} from existing file")
+                    except Exception as e:
+                        print(f"    Step {i+1}: Warning: Could not load step file {step_file_path}: {e}")
+                        step_id_ulid = None
+                
+                # If still no ULID, generate one and create minimal step file
+                if not step_id_ulid:
+                    step_id_ulid = generate_resource_id()
+                    step_name = legacy_id or step_type or f"step_{i+1}"
+                    step_slug = slugify(step_name)
+                    step_filename = f"{step_slug}.step.yaml"
+                    step_file_path = steps_dir / step_filename
+                    
+                    # Create minimal step spec
+                    step_meta = meta_from_name(
+                        "step",
+                        name=step_name,
+                        path=f"{workflow_path}/steps/{step_filename}",
+                    )
+                    step_meta.id = step_id_ulid
+                    
+                    minimal_spec = StructureStepSpec(
+                        meta=step_meta,
+                        step_type=step_type or "scf",
+                    )
+                    
+                    step_file_path.write_text(yaml.safe_dump(minimal_spec.to_dict(), sort_keys=False))
+                    print(f"    Step {i+1}: Created step file with ULID {step_id_ulid}")
+            
+            # Update step entry
+            step_entry["step_id"] = step_id_ulid
+            step_entry.pop("step_file", None)
+            step_entry.pop("id", None)  # Remove legacy id field
+        
+        # Remove legacy fields from workflow data
+        wf_data.pop("structure", None)
+        wf_data.pop("structure_name", None)
+        
+        # Write migrated workflow.yaml
+        workflow_yaml.write_text(yaml.safe_dump(wf_data, sort_keys=False))
+        print(f"    Saved migrated workflow.yaml")
+    
+    # Step 5: Save migrated project config
+    save_project_config(project_root, config)
+    print(f"Saved migrated project.qv.yml")
+    
+    print(f"\nMigration complete! Backup saved to {backup_dir}")
+    print(f"You can now use this project with the current QuantumVITAS codebase.")
+
+
+if __name__ == "__main__":
+    import sys
+    
+    if len(sys.argv) < 2:
+        print("Usage: python -m quantumvitas.legacy.migrate <project_root>")
+        sys.exit(1)
+    
+    project_root = Path(sys.argv[1]).resolve()
+    migrate_legacy_project(project_root)

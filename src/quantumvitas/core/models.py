@@ -47,8 +47,7 @@ class WorkflowStepEntry:
     input: Optional[str] = None  # Workflow-local metadata (legacy input file reference)
     reference: Optional[str] = None  # Workflow-local metadata (reference file)
     
-    # Legacy field for backwards compatibility
-    id: Optional[str] = None  # Legacy slug-based id (deprecated, use step_id)
+    # Legacy field removed - step_id (ULID) is the only identifier
     
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -72,29 +71,54 @@ class WorkflowStepEntry:
         return d
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "WorkflowStepEntry":
+    def from_dict(cls, data: Dict[str, Any], project_root: Optional[Path] = None) -> "WorkflowStepEntry":
         """
         Create WorkflowStepEntry from dictionary.
         
-        Backwards compatibility: 
-        - Accepts legacy "id" (slug) field, but step_id (ULID) is preferred
-        - Accepts legacy "step_file" but ignores it (file resolved via registry)
+        This method only supports the DAG + ULID model. Legacy workflows
+        (with step_file or non-ULID step_id) must be migrated first.
+        
+        Args:
+            data: Dictionary containing step entry data
+            project_root: Optional project root for error messages
+        
+        Raises:
+            LegacyProjectError: If legacy fields are detected (step_file, non-ULID step_id)
         """
-        # New format: step_id (ULID)
+        from quantumvitas.core.exceptions import LegacyProjectError
+        
+        # New format: step_id (ULID) - REQUIRED
         step_id = data.get("step_id")
         
-        # Legacy format: id (slug) - for backwards compat
-        legacy_id = data.get("id")
+        # Detect legacy patterns
+        has_step_file = "step_file" in data
+        has_legacy_id = "id" in data and data.get("id") != step_id
         
-        # Legacy step_file is ignored - step location resolved via registry using step_id
-        # data.get("step_file") is intentionally not stored
+        # Check if step_id is missing or not a ULID (26 chars starting with "01")
+        is_ulid = step_id and len(step_id) == 26 and step_id.startswith("01")
+        missing_or_invalid_step_id = not step_id or not is_ulid
+        
+        if has_step_file or has_legacy_id or missing_or_invalid_step_id:
+            error_msg = "Legacy workflow step entry detected. "
+            if has_step_file:
+                error_msg += "Field 'step_file' is not supported (use step_id ULID instead). "
+            if missing_or_invalid_step_id:
+                error_msg += f"step_id must be a ULID (26 chars), got: {step_id}. "
+            if has_legacy_id:
+                error_msg += "Legacy 'id' field detected (use step_id ULID instead). "
+            error_msg += "Please run the migration script to upgrade this workflow."
+            
+            if project_root:
+                raise LegacyProjectError(project_root, error_msg)
+            else:
+                raise LegacyProjectError(Path.cwd(), error_msg)
         
         return cls(
             step_id=step_id,
             type=data.get("type"),
             input=data.get("input") or data.get("file"),
             reference=data.get("reference"),
-            id=legacy_id,  # Keep for backwards compat
+            # Do not store legacy id field
         )
 
 
@@ -108,12 +132,11 @@ class WorkflowModel:
     Structure references:
     - structure_id: ULID of the structure (canonical reference)
     - structure_name: Optional display name (cosmetic only, not used for resolution)
-    - structure: Legacy selector field (for backwards compatibility when loading)
     """
     meta: ResourceMeta
     structure_id: Optional[str] = None  # Canonical structure reference (ULID)
     structure_name: Optional[str] = None  # Optional display name (cosmetic)
-    structure: Optional[str] = None  # Legacy selector (backwards compat, not authoritative)
+    # Legacy structure selector field removed - use structure_id (ULID) only
     mode: str = "normal"
     working_dir: str = "raw"
     steps: List[WorkflowStepEntry] = field(default_factory=list)
@@ -137,7 +160,7 @@ class WorkflowModel:
         DAG + ID-only constitution:
         - structure_id: ULID only (canonical reference)
         - steps: step_id (ULID) only
-        - Do NOT write structure_name or structure selector (these are in-memory only)
+        - Do NOT write structure_name (cosmetic only, not used for resolution)
         """
         result: Dict[str, Any] = {
             "meta": self.meta.to_dict(),
@@ -146,7 +169,7 @@ class WorkflowModel:
             "steps": [s.to_dict() for s in self.steps],
         }
         # Write structure_id (canonical reference - ID only)
-        # Do NOT write structure_name or structure selector (violates DAG + ID-only constitution)
+        # Do NOT write structure_name (cosmetic only, not used for resolution)
         if self.structure_id:
             result["structure_id"] = self.structure_id
         return result
@@ -158,57 +181,48 @@ class WorkflowModel:
         *,
         default_name: str = "Workflow",
         default_path: str = ".",
-        resolve_structure_selector: Optional[callable] = None,
+        resolve_structure_selector: Optional[callable] = None,  # DEPRECATED - no longer used
+        project_root: Optional[Path] = None,  # Optional project root for error messages
     ) -> "WorkflowModel":
         """
         Create WorkflowModel from dictionary.
         
-        Handles both new format (structure_id) and legacy format (structure selector).
-        
-        Backwards compatibility (legacy structure selector):
-        - If structure_id is missing but structure selector is present, resolve it to structure_id
-        - This resolution happens only on input (from_dict/loader), not on output (to_dict)
-        - After resolution, the structure_id is stored and the selector is dropped
+        This method only supports the DAG + ULID model. Legacy workflows
+        (with structure selector instead of structure_id) must be migrated first.
         
         Args:
             data: Dictionary containing workflow data
             default_name: Default name if not in data
             default_path: Default path if not in data
-            resolve_structure_selector: Optional callable(selector: str) -> str that resolves
-                a structure selector (name/slug/path) to a structure_id (ULID).
-                If provided and structure_id is missing, legacy 'structure' selector will be resolved.
+            resolve_structure_selector: DEPRECATED - no longer used (legacy compatibility removed)
+            project_root: Optional project root for error messages
+        
+        Raises:
+            LegacyProjectError: If legacy fields are detected (structure selector without structure_id)
         """
-        # Handle legacy format where structure is in workflow sub-dict
+        from quantumvitas.core.exceptions import LegacyProjectError
+        
+        # Handle workflow section (for working_dir)
         workflow_section = data.get("workflow", {})
         working_dir = data.get("working_dir") or workflow_section.get("working_dir", "raw")
         
-        # New format: structure_id (canonical)
-        # Check both top-level and workflow section for structure_id
+        # New format: structure_id (canonical) - REQUIRED if structure is referenced
         structure_id = data.get("structure_id") or workflow_section.get("structure_id")
         structure_name = data.get("structure_name") or workflow_section.get("structure_name")
         
-        # Legacy format: structure selector (for backwards compat on input only)
+        # Legacy format: structure selector (NOT SUPPORTED)
         structure = data.get("structure") or workflow_section.get("structure")
         
-        # If structure_id is missing but structure selector is present, resolve it via resolver
-        if not structure_id and structure and resolve_structure_selector:
-            try:
-                structure_id = resolve_structure_selector(structure)
-                # Try to get structure_name by resolving the structure_id
-                # (resolver only returns ID, so we need to look up name separately)
-                if structure_id and not structure_name:
-                    try:
-                        # If we have project_root context, we can resolve to get name
-                        # For now, structure_name will remain None if not provided
-                        # It's cosmetic and can be set later if needed
-                        pass
-                    except Exception:
-                        pass
-                # Drop the legacy selector after resolution
-                structure = None
-            except Exception:
-                # Resolution failed - keep structure selector for now (will fail on to_dict if not resolved)
-                pass
+        # Detect legacy pattern: structure selector without structure_id
+        if structure and not structure_id:
+            error_msg = (
+                "Legacy workflow detected: has 'structure' selector but no 'structure_id' ULID. "
+                "Please run the migration script to upgrade this workflow."
+            )
+            if project_root:
+                raise LegacyProjectError(project_root, error_msg)
+            else:
+                raise LegacyProjectError(Path(default_path) if default_path else Path.cwd(), error_msg)
         
         # Build meta
         meta = ResourceMeta.from_dict(
@@ -218,73 +232,44 @@ class WorkflowModel:
             default_path=default_path,
         )
         
-        # Parse steps
-        steps = [WorkflowStepEntry.from_dict(s) for s in data.get("steps", [])]
-        
-        # Keep legacy structure field for backwards compatibility (not written to YAML)
-        # If structure_id was resolved from structure selector, keep the original selector
-        if structure_id and not structure and data.get("structure"):
-            structure = data.get("structure") or workflow_section.get("structure")
+        # Parse steps with legacy detection
+        effective_project_root = project_root if project_root else (Path(default_path) if default_path else Path.cwd())
+        steps = [WorkflowStepEntry.from_dict(s, project_root=effective_project_root) for s in data.get("steps", [])]
         
         return cls(
             meta=meta,
             structure_id=structure_id,
             structure_name=structure_name,
-            structure=structure,  # Legacy field - kept for backwards compat, not authoritative
             mode=data.get("mode", "normal"),
             working_dir=working_dir,
             steps=steps,
         )
     
-    def resolve_step_ids(self, project_root: Path, index: Optional["ResourceIndex"] = None) -> None:
-        """
-        Resolve step_id (ULID) for steps that only have legacy id (slug).
-        
-        This is called after loading a workflow to ensure all steps have step_id.
-        Uses ResourceIndex to find step files by scanning the project.
-        
-        Args:
-            project_root: Project root path
-            index: Optional ResourceIndex (built if None)
-        """
-        from quantumvitas.core.resolution import build_resource_index
-        
-        if index is None:
-            index = build_resource_index(project_root)
-        
-        for step_entry in self.steps:
-            if not step_entry.step_id:
-                # Try to resolve via legacy id (slug) if present
-                if step_entry.id:
-                    # Try to find step by slug in registry
-                    resource_id = index.resolve_id(step_entry.id, project_root)
-                    if resource_id:
-                        # Verify it's a step
-                        meta = index.by_id.get(resource_id)
-                        if meta and meta.kind == "step":
-                            step_entry.step_id = resource_id
+    # Legacy resolve_step_ids method removed - all steps must have step_id (ULID) at load time
 
 
 def load_workflow(
     path: Path, 
     project_root: Optional[Path] = None,
-    resolve_structure_selector: Optional[callable] = None,
+    resolve_structure_selector: Optional[callable] = None,  # DEPRECATED - no longer used
 ) -> WorkflowModel:
     """
     Load a WorkflowModel from a workflow.yaml file.
     
-    If project_root is provided and the workflow has a legacy structure selector,
-    it will be resolved to structure_id automatically via a resolver.
+    This function only supports the DAG + ULID model. Legacy workflows
+    (with structure selector instead of structure_id) will raise LegacyProjectError.
     
     Args:
         path: Path to workflow.yaml or workflow directory
-        project_root: Project root for relative path calculation and structure resolution
-        resolve_structure_selector: Optional callable(selector: str) -> str that resolves
-            a structure selector (name/slug/path) to a structure_id (ULID).
-            If None and project_root is provided, a resolver will be created automatically.
+        project_root: Project root for relative path calculation and error messages
+        resolve_structure_selector: DEPRECATED - no longer used (legacy compatibility removed)
         
     Returns:
         WorkflowModel instance
+        
+    Raises:
+        LegacyProjectError: If legacy fields are detected in the workflow
+        FileNotFoundError: If workflow.yaml does not exist
     """
     if path.is_dir():
         path = path / "workflow.yaml"
@@ -306,26 +291,15 @@ def load_workflow(
     else:
         default_path = workflow_dir.name
     
-    # Create resolver if project_root is provided but resolver is not
-    if not resolve_structure_selector and project_root:
-        from quantumvitas.core.resolution import make_structure_selector_resolver
-        from quantumvitas.core.project_utils import load_project_config
-        try:
-            config = load_project_config(project_root)
-            resolve_structure_selector = make_structure_selector_resolver(project_root, config=config)
-        except Exception:
-            # If config loading fails, proceed without resolver (legacy structure will remain)
-            pass
-    
-    # Load workflow model; legacy 'structure' selectors (if present) are normalized to structure_id via resolver
+    # Load workflow model - will raise LegacyProjectError if legacy fields detected
     model = WorkflowModel.from_dict(
         data, 
         default_name=default_name, 
         default_path=default_path,
-        resolve_structure_selector=resolve_structure_selector,
+        project_root=project_root or workflow_dir,
     )
     
-    # If structure_id was resolved but structure_name is missing, look it up
+    # If structure_id exists but structure_name is missing, look it up for display
     if model.structure_id and not model.structure_name and project_root:
         try:
             from quantumvitas.core.resolution import resolve_structure
@@ -388,18 +362,15 @@ class StructureEntry:
         """
         Create StructureEntry from dictionary.
         
-        DAG + ID-only model: Accepts structure_id (new) or id (legacy).
+        DAG + ID-only model: Requires structure_id (ULID).
         Structure file location is resolved via ResourceIndex using structure_id.
-        Legacy format with name/slug/path is accepted for backwards compatibility,
-        but these are only used to locate the structure file and read its meta.
         """
-        # New format: structure_id (ULID)
+        # structure_id (ULID) is required
         structure_id = data.get("structure_id")
-        # Legacy format: id (for backwards compat)
         if not structure_id:
-            structure_id = data.get("id")
+            structure_id = data.get("id")  # Fallback to 'id' field if structure_id missing
         
-        # Legacy format: name/slug/path (for backwards compat)
+        # Extract name/slug/path from meta for display
         meta_dict = data.get("meta") or {}
         name = data.get("name") or meta_dict.get("name")
         file_path = data.get("file") or meta_dict.get("path")
@@ -493,18 +464,15 @@ class WorkflowEntry:
         """
         Create WorkflowEntry from dictionary.
         
-        DAG + ID-only model: Accepts workflow_id (new) or id (legacy).
+        DAG + ID-only model: Requires workflow_id (ULID).
         Workflow file location is resolved via ResourceIndex using workflow_id.
-        Legacy format with name/slug/path is accepted for backwards compatibility,
-        but these are only used to locate the workflow.yaml file and read its meta.
         """
-        # New format: workflow_id (ULID)
+        # workflow_id (ULID) is required
         workflow_id = data.get("workflow_id")
-        # Legacy format: id (for backwards compat)
         if not workflow_id:
-            workflow_id = data.get("id")
+            workflow_id = data.get("id")  # Fallback to 'id' field if workflow_id missing
         
-        # Legacy format: name/slug/path (for backwards compat)
+        # Extract name/slug/path from meta for display
         meta_dict = data.get("meta") or {}
         name = data.get("name") or meta_dict.get("name")
         path = data.get("path") or meta_dict.get("path")
