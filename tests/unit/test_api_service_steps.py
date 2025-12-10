@@ -49,8 +49,22 @@ def temp_project():
         (project_root / "project.qv.yml").write_text("""name: Test Project
 structures:
   - id: 01TESTSTRUCTUREID123456789
+    file: structures/si.json
+    meta:
+      id: 01TESTSTRUCTUREID123456789
+      name: Si
+      slug: si
+      path: structures/si.json
+      kind: structure
 workflows:
   - id: test-workflow-ulid
+    path: workflows/test-workflow
+    meta:
+      id: test-workflow-ulid
+      name: Test Workflow
+      slug: test-workflow
+      path: workflows/test-workflow
+      kind: workflow
 """)
         
         # Create a workflow
@@ -106,9 +120,14 @@ def test_add_step_to_workflow_creates_valid_spec(temp_project):
     # Verify it can be loaded as StructureStepSpec
     spec = StructureStepSpec.from_dict(step_data, source_path=step_file)
     assert spec.step_type == "scf"
-    # With ID-only model, step spec should have structure_id (ULID), not structure selector
-    assert spec.structure_id is not None, "Step spec should have structure_id (ULID)"
-    assert spec.structure_id == "01TESTSTRUCTUREID123456789", "Step spec should reference the correct structure ID"
+    # DAG model: Step YAML should NOT contain structure_id (inherits from workflow)
+    # Verify step YAML does not contain structure_id
+    assert "structure_id" not in step_data, "Step YAML should not contain structure_id (DAG model)"
+    # Structure is resolved via workflow.structure_id at runtime
+    # The workflow should have structure_id set
+    workflow_yaml = temp_project / "workflows" / "test-workflow" / "workflow.yaml"
+    workflow_data = yaml.safe_load(workflow_yaml.read_text())
+    assert workflow_data.get("structure_id") == "01TESTSTRUCTUREID123456789", "Workflow should reference structure via structure_id"
     
     # Verify defaults are present (from-scratch mode uses defaults)
     assert "CONTROL" in spec.parameters

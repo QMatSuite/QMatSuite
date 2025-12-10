@@ -17,7 +17,7 @@ from quantumvitas.io import (
     QECardType,
     QEModule,
 )
-from .qe_pseudopotentials import download_pseudopotential, ensure_pseudopotentials
+from .qe_pseudopotentials import download_pseudopotential
 
 __all__ = [
     "Engine",
@@ -35,6 +35,5 @@ __all__ = [
     "QECardType",
     "QEModule",
     "download_pseudopotential",
-    "ensure_pseudopotentials",
 ]
 

@@ -86,7 +86,8 @@ class PseudoManager:
     3. If not found, download to BOTH locations
     4. Always copy to working directory for execution
 
-    Public API remains the function-level `ensure_pseudopotentials`; tests and
+    Pseudopotential resolution is handled by `ensure_qe_pseudos` from
+    `quantumvitas.core.pseudo`. Tests and
     engine code can continue to use it unchanged. This manager is primarily
     an internal structuring and caching helper.
     """
@@ -207,48 +208,4 @@ def _find_quantumvitas_root() -> Optional[Path]:
     return None
 
 
-def ensure_pseudopotentials(
-    input_file: Path,
-    working_dir: Path,
-    pseudo_dir: Optional[Path] = None,
-    test_suite_dir: Optional[Path] = None,
-) -> bool:
-    """
-    Ensure all required pseudopotentials are available.
-
-    This is the public API used by tests and engine code. It preserves the
-    original behavior while delegating the internal logic to `PseudoManager`.
-    
-    Resolution order:
-    1. Check pseudo_dir (project's pseudo directory)
-    2. Check global quantumvitas_root/pseudo, copy to project if found
-    3. Check test-suite directories
-    4. Download to project (and global) if all else fails
-    
-    This ensures projects are self-contained with their own pseudo directory.
-    """
-    # Use provided pseudo_dir or try to find project_root/pseudo
-    if pseudo_dir is None:
-        current = Path(input_file).parent
-        project_root = None
-        while current != current.parent:
-            if (current / "pseudo").exists() or (current / "project.qv.yml").exists():
-                project_root = current
-                break
-            current = current.parent
-        if project_root:
-            pseudo_dir = project_root / "pseudo"
-        else:
-            pseudo_dir = working_dir / "pseudo"
-
-    # Find global quantumvitas pseudo directory
-    qv_root = _find_quantumvitas_root()
-    global_pseudo_dir = qv_root / "pseudo" if qv_root else None
-
-    manager = PseudoManager(
-        base_pseudo_dir=pseudo_dir,
-        global_pseudo_dir=global_pseudo_dir,
-        test_suite_dir=test_suite_dir,
-    )
-    return manager.ensure_for_input(input_file, working_dir)
 

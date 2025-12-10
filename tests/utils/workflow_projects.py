@@ -72,9 +72,12 @@ def create_workflow_project(
     }
     (structures_dir / "test_structure.json").write_text(json.dumps(structure_json, indent=2))
     
+    # Generate workflow ULID (ID-only model)
+    workflow_ulid = generate_resource_id()
+    
     project_config = {
         "project": {"name": project_root.name},
-        "workflows": [{"id": workflow_id, "path": f"workflows/{workflow_id}"}],
+        "workflows": [{"id": workflow_ulid, "path": f"workflows/{workflow_id}"}],  # Use ULID, not human-readable name
         "structures": [
             {
                 "id": structure_id,
@@ -101,11 +104,11 @@ def create_workflow_project(
         step_meta = meta_from_name("step", name=step_id, path=f"workflows/{workflow_id}/steps/{step_id}.step.yaml")
         step_meta.id = step_ulid
         
-        # Create minimal step spec with structure_id
+        # DAG model: Step YAML should NOT contain structure_id (inherits from workflow)
         step_spec = {
             "meta": step_meta.to_dict(),
             "step_type": step_id,  # Use step id as step_type (scf, nscf, dos, etc.)
-            "structure_id": structure_id,  # Reference to the test structure
+            # structure_id is NOT written to step YAML (DAG model)
         }
         step_file.write_text(yaml.safe_dump(step_spec, sort_keys=False))
         
@@ -119,10 +122,16 @@ def create_workflow_project(
         step_entries.append(step_entry)
     
     workflow_config = {
-        "id": workflow_id,
+        "meta": {
+            "id": workflow_ulid,
+            "name": workflow_id,  # Human-readable name
+            "slug": workflow_id,
+            "path": f"workflows/{workflow_id}",
+            "kind": "workflow",
+        },
         "mode": "strict",
         "workflow": {"working_dir": "raw"},
-        "structure_id": structure_id,  # Workflow-level structure reference
+        "structure_id": structure_id,  # Workflow-level structure reference (ULID)
         "steps": step_entries,
     }
     (workflow_dir / "workflow.yaml").write_text(

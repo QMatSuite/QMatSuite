@@ -1,8 +1,8 @@
 &CONTROL
-    calculation = 'bands'
+    calculation = 'scf'
     outdir = './outdir'
     prefix = 'si'
-    pseudo_dir = '<HOME>/quantumVITAS/tests/data/project_examples/project2_bands/pseudo'
+    pseudo_dir = '<HOME>/quantumVITAS/tests/data/project_examples/project1/pseudo'
     restart_mode = 'from_scratch'
 /
 
@@ -10,9 +10,7 @@
     ibrav = 0
     nat = 2
     ntyp = 1
-    ecutrho = 320
-    ecutwfc = 40
-    nbnd = 8
+    ecutwfc = 50
 /
 
 &ELECTRONS
@@ -31,10 +29,5 @@ CELL_PARAMETERS (angstrom)
   0.0 2.7546079563238743 2.7546079563238743
   -2.7546079563238743 2.7546079563238743 0.0
 
-K_POINTS {crystal_b}
-  5
-  0.0 0.5 0.0 20
-  0.0 0.0 0.0 30
-  -0.5 0.0 -0.5 10
-  -0.375 0.25 -0.375 30
-  0.0 0.0 0.0 20
+K_POINTS {automatic}
+  8 8 8 0 0 0

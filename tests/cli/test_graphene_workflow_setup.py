@@ -145,9 +145,13 @@ def test_graphene_workflow_setup(ci_test_data_dir: Path, tmp_path: Path):
             # Verify step content
             step_data = yaml.safe_load(scf_step_file.read_text())
             assert step_data["step_type"] == "scf"
-            # Structure reference uses ID (structure_id is canonical)
-            assert "structure_id" in step_data, "Step should have structure_id (inherited from workflow)"
-            assert step_data.get("parent_workflow_id") is not None, "Step should have parent_workflow_id set"
+            # DAG model: Step YAML should NOT contain structure_id or parent_workflow_id
+            # Structure is resolved via workflow.structure_id at runtime
+            assert "structure_id" not in step_data, "Step YAML should not contain structure_id (DAG model)"
+            assert "parent_workflow_id" not in step_data, "Step YAML should not contain parent_workflow_id (DAG model)"
+            # Verify workflow has structure_id set
+            workflow_data = yaml.safe_load((workflow_dir / "workflow.yaml").read_text())
+            assert workflow_data.get("structure_id") is not None, "Workflow should have structure_id set"
             
             # Verify step is in workflow.yaml
             workflow_data = yaml.safe_load((workflow_dir / "workflow.yaml").read_text())

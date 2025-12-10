@@ -81,6 +81,7 @@ class Workflow:
         structure_ref: Optional[StructureRef] = None
         if structure_id:
             try:
+                # Try to resolve structure by ID (can be ULID, slug, or name)
                 structure_ref = project.get_structure(structure_id)
             except Exception:
                 # Try to resolve by ID if direct lookup fails
@@ -281,6 +282,7 @@ def _build_step(
     
     input_path_value = step_data.get("input") or step_data.get("file")
     input_path: Optional[Path] = None
+    existing_input_file: Optional[Path] = None
     if input_path_value:
         input_path = Path(input_path_value)
         if not input_path.is_absolute():
@@ -291,6 +293,15 @@ def _build_step(
                         f"Step '{step_id}' input path must point to a file inside '{working_dir.name}'"
                     )
                 input_path = Path(*parts[1:])
+        
+        # Resolve the full path to the existing input file
+        if input_path:
+            existing_input_file = (working_dir / input_path).resolve()
+            if not existing_input_file.exists():
+                # Try relative to workflow_dir instead
+                existing_input_file = (workflow_dir / input_path).resolve()
+                if not existing_input_file.exists():
+                    existing_input_file = None
 
     options = step_data.get("options", step_data.get("params", {})) or {}
     reference_path = _resolve_reference_path(step_data.get("reference"), workflow_dir)
@@ -303,6 +314,7 @@ def _build_step(
 
     # Always build from spec file (step_file_path resolved via registry or legacy fallback)
     # Use new_step_id (real ULID) for the step, not the original step_id (which might be a name)
+    # Pass existing_input_file so pseudopotentials can be extracted from it
     step = _build_step_from_spec(
         step_id=new_step_id,  # Use real ULID from spec.meta.id if legacy path was used
         engine_name=engine_name,
@@ -313,6 +325,7 @@ def _build_step(
         options=options,
         reference=reference_path,
         step_meta=step_meta,
+        existing_input_file=existing_input_file,
     )
     
     return step, migrated
@@ -329,7 +342,16 @@ def _build_step_from_spec(
     options: dict,
     reference: Optional[Path],
     step_meta: ResourceMeta,
+    existing_input_file: Optional[Path] = None,
 ) -> Step:
+    """
+    Build a Step from a step spec file.
+    
+    Args:
+        existing_input_file: Optional path to an existing input file. If provided,
+            pseudopotentials will be extracted from it and merged into the step spec's
+            species_overrides before generating the new input file.
+    """
     spec_path = Path(step_file)
     if not spec_path.is_absolute():
         spec_path = (workflow_dir / spec_path).resolve()
@@ -351,8 +373,128 @@ def _build_step_from_spec(
         spec_path,
         resolve_structure_selector=resolve_structure_selector,
     )
-    # Use centralized naming convention for input files
-    input_override = spec_preview.input_name or WorkflowFileNaming.input_filename(step_id, spec_preview.step_type)
+    
+    # If there's an existing input file, extract structure, parameters, cards, and pseudopotentials from it
+    # and merge them into the step spec (existing input takes precedence over step spec defaults)
+    if existing_input_file and existing_input_file.exists():
+        try:
+            from quantumvitas.io.parser.qe_parser import QEInputParser
+            from quantumvitas.io.model import QECardType
+            from quantumvitas.workflow.importers import _build_step_spec_from_qe_input_data
+            from quantumvitas.io.structure_io import structure_from_qe_input, write_structure
+            
+            existing_qe_input = QEInputParser.parse_file(existing_input_file)
+            
+            # Extract structure from existing input file and update the structure JSON file
+            # This ensures the structure matches what's in the input file (e.g., correct number of atoms)
+            # Only do this for steps that have structure (not post-processing steps like dos/bands)
+            if spec_preview.structure_id and project:
+                try:
+                    # Check if this input file has structure cards (ATOMIC_POSITIONS)
+                    # Post-processing steps (dos, bands, etc.) don't have structure
+                    from quantumvitas.io.model import QECardType
+                    has_structure = existing_qe_input.get_card(QECardType.ATOMIC_POSITIONS) is not None
+                    
+                    if has_structure:
+                        structure_from_input = structure_from_qe_input(existing_qe_input)
+                        structure_ref = project.get_structure(spec_preview.structure_id)
+                        structure_path = structure_ref.absolute_path
+                        
+                        # Update the structure file with the structure from the input file
+                        # Preserve the existing metadata (id, name, slug, etc.)
+                        from quantumvitas.io.structure_io import STRUCTURE_META_KEY
+                        import json
+                        
+                        # Read existing structure to preserve metadata
+                        if structure_path.exists():
+                            existing_data = json.loads(structure_path.read_text())
+                            existing_meta = existing_data.get(STRUCTURE_META_KEY, {})
+                        else:
+                            existing_meta = structure_ref.meta.to_dict() if hasattr(structure_ref, 'meta') else {}
+                        
+                        # Write updated structure with preserved metadata
+                        write_structure(
+                            structure_from_input,
+                            structure_path,
+                            format="json",
+                            metadata=existing_meta,
+                        )
+                except Exception as struct_e:
+                    # If structure update fails, log but continue (don't break the workflow)
+                    # This is expected for post-processing steps that don't have structure
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.debug(f"Could not extract structure from {existing_input_file.name} (may be post-processing step): {struct_e}")
+            
+            # Extract all parameters and cards from the existing input file
+            # Use apply_defaults=False to get only what's in the input file
+            extracted_params, extracted_cards = _build_step_spec_from_qe_input_data(
+                existing_qe_input,
+                spec_preview.step_type or "scf",
+                apply_defaults=False,
+            )
+            
+            # Merge extracted parameters into step spec (existing input takes precedence)
+            if extracted_params:
+                if not spec_preview.parameters:
+                    spec_preview.parameters = {}
+                # Merge each namelist section
+                for section, params in extracted_params.items():
+                    if section not in spec_preview.parameters:
+                        spec_preview.parameters[section] = {}
+                    spec_preview.parameters[section].update(params)
+            
+            # Merge extracted cards into step spec (existing input takes precedence)
+            if extracted_cards:
+                if not spec_preview.cards:
+                    spec_preview.cards = {}
+                spec_preview.cards.update(extracted_cards)
+            
+            # Extract pseudopotentials from ATOMIC_SPECIES card
+            atomic_species_card = existing_qe_input.get_card(QECardType.ATOMIC_SPECIES)
+            if atomic_species_card and atomic_species_card.data:
+                extracted_overrides = {}
+                for row in atomic_species_card.data:
+                    if isinstance(row, list) and len(row) >= 3:
+                        element_symbol = str(row[0]).strip()
+                        pseudo_filename = str(row[2]).strip()
+                        # Only add if it's not the default generic name
+                        if pseudo_filename and pseudo_filename != f"{element_symbol}.upf":
+                            extracted_overrides[element_symbol] = {
+                                "pseudopot": pseudo_filename,
+                            }
+                
+                # Merge extracted overrides into step spec (extracted takes precedence)
+                if extracted_overrides:
+                    if not spec_preview.species_overrides:
+                        spec_preview.species_overrides = {}
+                    spec_preview.species_overrides.update(extracted_overrides)
+        except Exception as e:
+            # If extraction fails, log but continue (don't break the workflow)
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Failed to extract parameters from existing input file {existing_input_file}: {e}")
+    
+    # Use proper file naming: {structure_slug}.{step_slug}.in
+    # Get structure slug from project
+    structure_slug = None
+    if project and spec_preview.structure_id:
+        try:
+            structure_ref = project.get_structure(spec_preview.structure_id)
+            structure_slug = structure_ref.meta.slug or structure_ref.meta.name
+        except Exception:
+            pass
+    
+    # Use step slug from step meta
+    step_slug = spec_preview.meta.slug or spec_preview.meta.name or step_id
+    
+    # Generate filename: {structure_slug}.{step_slug}.in (or fallback to step_id)
+    if structure_slug and step_slug:
+        ext = WorkflowFileNaming.input_extension(spec_preview.step_type or "scf")
+        input_override = spec_preview.input_name or f"{structure_slug}.{step_slug}{ext}"
+    else:
+        # Fallback to step_id if we can't get structure/step slugs
+        input_override = spec_preview.input_name or WorkflowFileNaming.input_filename(step_id, spec_preview.step_type)
     generated_input, spec = materialize_step_spec(
         spec_preview,
         output_dir=working_dir,

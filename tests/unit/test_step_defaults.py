@@ -216,11 +216,17 @@ class TestStepDefaultsImportFromInput:
         
         # Load the step spec
         from quantumvitas.core.resources import slugify
+        from quantumvitas.core.resolution import require_step
         workflow_slug = slugify(workflow_name)
         workflow_dir = project_root / "workflows" / workflow_slug
         workflow_yaml = yaml.safe_load((workflow_dir / "workflow.yaml").read_text())
         last_step = workflow_yaml["steps"][-1]
-        step_spec_path = workflow_dir / last_step["step_file"]
+        # ID-only model: use step_id (ULID) to resolve step file
+        step_id = last_step.get("step_id") or last_step.get("id")
+        assert step_id, "Step entry should have step_id"
+        # Resolve step to get its file path
+        step_resolved = require_step(project_root, workflow_slug, step_id)
+        step_spec_path = step_resolved.absolute_path
         
         spec = StructureStepSpec.from_yaml(step_spec_path)
         

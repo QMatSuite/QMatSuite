@@ -2,7 +2,7 @@
     calculation = 'scf'
     outdir = './outdir'
     prefix = 'si'
-    pseudo_dir = '<HOME>/quantumVITAS/pseudo'
+    pseudo_dir = '<HOME>/quantumVITAS/tests/data/project_examples/project2_bands/pseudo'
     restart_mode = 'from_scratch'
 /
 
