@@ -446,6 +446,14 @@ function App() {
       const response = await qv.listStructures(projectRoot);
       if (response.ok && response.data) {
         setStructures(response.data.structures);
+      } else {
+        // Check for registry_out_of_sync error
+        if (response.error?.code === 'registry_out_of_sync') {
+          setProjectError(
+            response.error.message || 
+            'Registry is out of sync. Click "Refresh" in the Structures panel to rebuild the project registry.'
+          );
+        }
       }
     } finally {
       setIsLoadingStructures(false);
@@ -464,11 +472,96 @@ function App() {
       const response = await qv.listWorkflows(projectRoot);
       if (response.ok && response.data) {
         setWorkflows(response.data.workflows);
+      } else {
+        // Check for registry_out_of_sync error
+        if (response.error?.code === 'registry_out_of_sync') {
+          setProjectError(
+            response.error.message || 
+            'Registry is out of sync. Click "Refresh" in the Workflows panel to rebuild the project registry.'
+          );
+        }
       }
     } finally {
       setIsLoadingWorkflows(false);
     }
   }, [qv, projectRoot, projectLoaded]);
+  
+  // Refresh project registry handler
+  const handleRefreshProjectRegistry = useCallback(async () => {
+    if (!projectRoot) {
+      console.warn('[App] Refresh requested but no project root');
+      return;
+    }
+    
+    const normalized = normalizeProjectRoot(projectRoot);
+    console.log('[App] Refreshing project registry', { projectRoot: normalized });
+    
+    try {
+      const response = await qv.rebuildProjectRegistry(normalized);
+      
+      if (response.ok && response.data) {
+        const { index_stats, dag_diff } = response.data;
+        console.log('[App] Registry refreshed', index_stats);
+        
+        // Build user-friendly message from DAG diff
+        const diff = dag_diff;
+        const hasChanges = 
+          diff.structures_added.length > 0 ||
+          diff.structures_removed.length > 0 ||
+          diff.workflows_added.length > 0 ||
+          diff.workflows_removed.length > 0 ||
+          diff.workflows_changed.length > 0;
+        
+        let message = 'Registry refreshed. ';
+        if (!hasChanges) {
+          message += 'No DAG changes detected.';
+        } else {
+          const parts: string[] = [];
+          
+          if (diff.structures_added.length > 0 || diff.structures_removed.length > 0) {
+            parts.push(`Structures: +${diff.structures_added.length}, -${diff.structures_removed.length}`);
+          }
+          
+          if (diff.workflows_added.length > 0 || diff.workflows_removed.length > 0) {
+            parts.push(`Workflows: +${diff.workflows_added.length}, -${diff.workflows_removed.length}`);
+          }
+          
+          if (diff.workflows_changed.length > 0) {
+            for (const wf of diff.workflows_changed) {
+              const stepChanges: string[] = [];
+              if (wf.steps_added.length > 0) {
+                stepChanges.push(`+${wf.steps_added.length} step${wf.steps_added.length > 1 ? 's' : ''} (${wf.steps_added.map(s => `…${s.suffix}`).join(', ')})`);
+              }
+              if (wf.steps_removed.length > 0) {
+                stepChanges.push(`-${wf.steps_removed.length} step${wf.steps_removed.length > 1 ? 's' : ''} (${wf.steps_removed.map(s => `…${s.suffix}`).join(', ')})`);
+              }
+              if (stepChanges.length > 0) {
+                parts.push(`Workflow '${wf.workflow_name}': ${stepChanges.join(', ')}`);
+              }
+            }
+          }
+          
+          message += parts.join('. ');
+        }
+        
+        // Show notification (you can replace this with a toast system if you have one)
+        console.log('[App]', message);
+        
+        // After registry is rebuilt, reload workflows / structures once
+        await fetchStructures();
+        await fetchWorkflows();
+      } else {
+        console.error('[App] Failed to refresh project registry', response.error);
+        if (response.error?.code === 'project_not_found') {
+          // Show visible error banner
+          setProjectError(response.error.message || 'Project not found');
+        }
+      }
+    } catch (err: any) {
+      console.error('[App] Failed to refresh project registry', err);
+      setProjectError(err.message || 'Failed to refresh project registry');
+    }
+  }, [projectRoot, qv, fetchStructures, fetchWorkflows]);
   
   // Auto-fetch data when switching views
   useEffect(() => {
@@ -594,6 +687,13 @@ function App() {
           setSelectedWorkflowDetail(detail);
         } else {
           console.error('[App] get_workflow_detail error', response.error);
+          // Check for registry_out_of_sync error
+          if (response.error?.code === 'registry_out_of_sync') {
+            setProjectError(
+              response.error.message || 
+              'Registry is out of sync. Click "Refresh" in the Workflows panel to rebuild the project registry.'
+            );
+          }
           setSelectedWorkflowDetail(null);
         }
       } catch (err) {
@@ -1000,6 +1100,7 @@ function App() {
               className="structures-view__list"
             >
               <StructureListPanel
+                onRefreshProjectRegistry={handleRefreshProjectRegistry}
                 structures={structures}
                 isLoading={isLoadingStructures}
                 selectedId={selectedStructure?.id}
@@ -1051,6 +1152,7 @@ function App() {
               className="workflows-view__list"
             >
               <WorkflowListPanel
+                onRefreshProjectRegistry={handleRefreshProjectRegistry}
                 workflows={workflows}
                 isLoading={isLoadingWorkflows}
                 selectedId={selectedWorkflow?.id}

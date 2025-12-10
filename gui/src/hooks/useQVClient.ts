@@ -276,6 +276,11 @@ export function useQVClient(): QVClient {
     [call]
   );
   
+  const rebuildProjectRegistry = useCallback(
+    (projectRoot: string) => call('rebuild_project_registry', { project_root: projectRoot }),
+    [call]
+  );
+  
   const listJobs = useCallback(
     (filter: { status?: JobStatus; job_type?: string } = {}) => call('list_jobs', filter),
     [call]
@@ -288,6 +293,7 @@ export function useQVClient(): QVClient {
     getProjectSummary,
     listStructures,
     listWorkflows,
+    rebuildProjectRegistry,
     listJobs,
     checkConnection,
     refreshDaemonStatus,
