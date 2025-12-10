@@ -832,10 +832,15 @@ class QVDaemon:
         """
         Get step detail.
         
+        GUI → Daemon → Backend API mapping:
+        - GUI: StepDetailPanel calls 'get_step_detail' with workflow.slug and step.id (ULID)
+        - Daemon: _handle_get_step_detail() resolves selectors via registry
+        - Backend: QVService.get_step_detail() returns step metadata and parameters
+        
         Payload:
             project_root: str - Path to project root
-            workflow: str - Workflow selector
-            step: str - Step selector
+            workflow: str - Workflow selector (GUI uses workflow.slug)
+            step: str - Step selector (GUI uses step.id ULID from workflow.steps[])
         """
         project_root = self._require_path(payload, "project_root")
         workflow = self._require_str(payload, "workflow")
@@ -1306,9 +1311,14 @@ class QVDaemon:
         """
         Submit a workflow run job.
         
+        GUI → Daemon → Backend API mapping:
+        - GUI: handleRunWorkflow() calls 'run_workflow' with workflow.slug
+        - Daemon: _handle_run_workflow() normalizes project_root and submits job
+        - Backend: QVService.run_workflow() executes the workflow
+        
         Payload:
-            project_root: str - Path to project root
-            workflow: str - Workflow selector
+            project_root: str - Path to project root (normalized to absolute)
+            workflow: str - Workflow selector (GUI uses workflow.slug)
             strict: bool - Optional strict mode (default false)
             verbose: bool - Optional verbose mode (default false)
             
@@ -1335,7 +1345,7 @@ class QVDaemon:
                 "strict": strict,
             },
             target_name=workflow,
-            project_root_display=str(project_root),
+            project_root_display=str(project_root.resolve()),  # Normalize to absolute path
             # kwargs for QVService.run_workflow
             project_root=project_root,
             workflow_selector=workflow,
@@ -1428,10 +1438,15 @@ class QVDaemon:
         """
         List jobs.
         
+        GUI → Daemon → Backend API mapping:
+        - GUI: useJobs hook calls 'list_jobs' with projectRoot (string from state)
+        - Daemon: _handle_list_jobs() normalizes project_root for filtering
+        - Backend: JobManager.list_jobs() filters by normalized project_root
+        
         Payload:
             status: str - Optional status filter
             job_type: str - Optional job type filter
-            project_root: str - Optional project filter
+            project_root: str - Optional project filter (normalized to absolute path)
             limit: int - Maximum jobs to return (default 50)
         """
         status_str = payload.get("status")
@@ -1439,6 +1454,16 @@ class QVDaemon:
         job_type = payload.get("job_type")
         project_root = payload.get("project_root")
         limit = payload.get("limit", 50)
+        
+        # Normalize project_root if provided (GUI sends string, normalize to absolute Path string)
+        # This ensures path matching works regardless of trailing slashes or relative vs absolute
+        # Handle None/empty string gracefully (list all jobs if no filter)
+        if project_root:
+            try:
+                project_root = str(Path(project_root).resolve())
+            except (ValueError, OSError):
+                # Invalid path - treat as no filter (list all jobs)
+                project_root = None
         
         jobs = self.job_manager.list_jobs(
             status=status,

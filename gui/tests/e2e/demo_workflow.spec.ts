@@ -93,8 +93,14 @@ test.describe('E2E Test 2: Create Demo Project → Workflow & Steps', () => {
         expect(stepType?.trim().length).toBeGreaterThan(0);
         const trimmedStepType = stepType.trim().toLowerCase();
         
-        // Click on the step to view details
-        await stepRow.click();
+        // Click on the step button to view details (click the button, not the container)
+        const stepButton = stepRow.locator('button.step-item');
+        await expect(stepButton).toBeVisible({ timeout: 5000 });
+        await expect(stepButton).toBeEnabled({ timeout: 5000 });
+        await stepButton.click({ timeout: 5000 });
+        
+        // Wait a bit for React to update state
+        await appPage.waitForTimeout(100);
         
         // Wait for step detail panel to be visible
         const stepDetailPanel = appPage.getByTestId('qv-step-detail');
