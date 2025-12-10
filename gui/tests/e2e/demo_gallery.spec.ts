@@ -2,6 +2,16 @@
  * E2E tests for Demo Gallery functionality
  * 
  * Tests the Demo Gallery as an inline Home sub-view (not a modal).
+ * 
+ * **This spec does NOT run any workflows.** It only tests:
+ * - Demo gallery UI (cards, metadata, navigation)
+ * - Project creation from demo gallery
+ * - Workflow/structure existence after creation (metadata only, no execution)
+ * 
+ * To run locally:
+ *   cd gui
+ *   npm run build:e2e
+ *   npx playwright test tests/e2e/demo_gallery.spec.ts --project=electron
  */
 
 import { electronTest as test, expect, navigateToView } from './fixtures/electronTest';

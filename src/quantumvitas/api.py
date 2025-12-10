@@ -501,7 +501,6 @@ class QVService:
                 meta=workflow_meta,
                 structure_id=structure_id,
                 structure_name=structure_name,
-                structure=structure_selector,  # Keep for backwards compat
             )
             save_workflow(workflow_model, workflow_dir)
         
@@ -558,7 +557,7 @@ class QVService:
                 model.structure = new_structure
             
             if new_step_order:
-                step_map = {s.id: s for s in model.steps}
+                step_map = {s.step_id: s for s in model.steps}
                 new_steps = []
                 for step_id in new_step_order:
                     if step_id in step_map:
@@ -764,7 +763,7 @@ class QVService:
                 s for s in steps 
                 if s.get("id", "").lower() != step.meta.name.lower()
             ]
-            # Remove legacy structure_name and structure fields before writing (DAG + ID-only constitution)
+            # Do not write structure_name or structure selector (DAG + ID-only model: only structure_id is written)
             wf_data.pop("structure_name", None)
             wf_data.pop("structure", None)
             if "workflow" in wf_data:
@@ -1693,7 +1692,7 @@ class QVService:
                     entry["steps"] = [
                         {
                             "step_id": step.meta.id,  # ULID (canonical reference)
-                            "id": step.meta.id,  # Use ULID for both fields
+                            "id": step.meta.id,  # Also include as 'id' for backwards compatibility in API response
                             "type": step.step_type.value if hasattr(step.step_type, 'value') else str(step.step_type),
                             # step_file is NOT included - step location resolved via registry
                         }
@@ -2565,15 +2564,9 @@ class QVService:
                         f"This may indicate a corrupted workflow or incomplete step creation."
             )
         
-        # Load step spec; legacy 'structure' selectors (if present) are normalized to structure_id via the registry
-        from quantumvitas.core.resolution import make_structure_selector_resolver
-        from quantumvitas.core.project_utils import load_project_config
-        if config is None:
-            config = load_project_config(project_root)
-        resolver = make_structure_selector_resolver(project_root, config=config)
-        
+        # Load step spec (DAG + ULID model: structure_id is already in spec)
         try:
-            spec = StructureStepSpec.from_yaml(step.absolute_path, resolve_structure_selector=resolver)
+            spec = StructureStepSpec.from_yaml(step.absolute_path, resolve_structure_selector=None)
         except FileNotFoundError:
             # Step file was deleted or never created (ghost step)
             from quantumvitas.core.resolution import ResourceNotFoundError
@@ -2631,7 +2624,7 @@ class QVService:
         from quantumvitas.workflow.structure_steps import StructureStepSpec
         
         step = resolve_step(project_root, workflow_selector, step_selector, config=config, index=index)
-        # Load step spec; legacy 'structure' selectors (if present) are normalized to structure_id via the registry
+        # Load step spec (DAG + ULID model: structure_id is already in spec)
         from quantumvitas.core.resolution import make_structure_selector_resolver
         from quantumvitas.core.project_utils import load_project_config
         if config is None:
@@ -2855,7 +2848,7 @@ class QVService:
         import yaml
         
         step = resolve_step(project_root, workflow_selector, step_selector, config=config, index=index)
-        # Load step spec; legacy 'structure' selectors (if present) are normalized to structure_id via the registry
+        # Load step spec (DAG + ULID model: structure_id is already in spec)
         from quantumvitas.core.resolution import make_structure_selector_resolver
         from quantumvitas.core.project_utils import load_project_config
         if config is None:
@@ -2916,13 +2909,16 @@ class QVService:
         wf_model = load_workflow(wf_path)
         
         # Validate all step IDs exist
-        existing_ids = {s.id for s in wf_model.steps}
+        existing_ids = {s.step_id for s in wf_model.steps}
         existing_slugs = {}
         for s in wf_model.steps:
             # Create a mapping from possible identifiers to step entries
-            existing_slugs[s.id] = s
-            if s.slug:
-                existing_slugs[s.slug] = s
+            # Use step_id (ULID) as primary key
+            if s.step_id:
+                existing_slugs[s.step_id] = s
+            # Also allow matching by type for convenience (if unique)
+            if s.type:
+                existing_slugs[s.type] = s
         
         # Resolve the new order
         reordered = []
@@ -2930,9 +2926,9 @@ class QVService:
         for selector in new_order:
             if selector in existing_slugs:
                 step = existing_slugs[selector]
-                if step.id not in seen:
+                if step.step_id not in seen:
                     reordered.append(step)
-                    seen.add(step.id)
+                    seen.add(step.step_id)
             else:
                 raise QVServiceError(f"Step '{selector}' not found in workflow")
         
@@ -3004,15 +3000,16 @@ class QVService:
         base_slug = slugify(step_name)
         
         # Check for duplicates and add suffix if needed
-        existing_ids = {s.id for s in wf_model.steps}
+        existing_ids = {s.step_id for s in wf_model.steps if s.step_id}
+        existing_types = {s.type for s in wf_model.steps if s.type}
         slug = base_slug
         counter = 1
-        while slug in existing_ids:
+        while slug in existing_types:
             counter += 1
             slug = f"{base_slug}-{counter}"
         
-        # Generate new step ID (use slug as the id in workflow.yaml)
-        step_id = slug
+        # Generate new step ID (ULID) - slug is only for display/naming
+        step_id = generate_resource_id()
         
         # Determine step file name
         step_file = f"steps/{slug}.step.yaml"
@@ -3259,7 +3256,7 @@ class QVService:
             # Update all step files
             steps_dir = workflow.absolute_path / "steps"
             if steps_dir.exists():
-                # Create resolver for normalizing legacy structure selectors
+                # Create resolver for structure selector resolution (if needed)
                 from quantumvitas.core.resolution import make_structure_selector_resolver
                 from quantumvitas.core.project_utils import load_project_config
                 if config is None:
@@ -3268,14 +3265,14 @@ class QVService:
                 
                 for step_file in steps_dir.glob("*.step.yaml"):
                     try:
-                        # Load step spec; legacy 'structure' selectors (if present) are normalized to structure_id via the registry
+                        # Load step spec (DAG + ULID model: structure_id is already in spec)
                         spec = StructureStepSpec.from_yaml(step_file, resolve_structure_selector=resolver)
                         # Check if step needs structure update (compare structure_id, not structure selector)
                         if spec.structure_id != resolved_structure.meta.id:
                             old_step_struct_id = spec.structure_id
                             # Update step spec structure_id (canonical reference)
                             spec.structure_id = resolved_structure.meta.id
-                            # Clear legacy structure field (not written to YAML)
+                            # Do not write structure selector (DAG + ID-only model: only structure_id is written)
                             spec.structure = ""
                             step_file.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
                             updated_steps.append({
@@ -3541,9 +3538,8 @@ class QVService:
                 wf_path = workflow.absolute_path / "workflow.yaml"
                 wf_model = load_workflow(wf_path)
                 
-                # DAG + ID-only model: check structure_id (ULID) first, then legacy structure selector
+                # DAG + ID-only model: check structure_id (ULID)
                 structure_id = wf_model.structure_id
-                structure_selector = wf_model.structure  # Legacy field for backwards compat
                 
                 if structure_id:
                     # Resolve structure by ID (ULID) via registry
@@ -3557,21 +3553,9 @@ class QVService:
                     except Exception as e:
                         checks.append({"name": "Structure", "ok": False, "message": f"Structure with ID '{structure_id}' not found: {e}"})
                         errors.append(f"Workflow references missing structure (ID: {structure_id})")
-                elif structure_selector:
-                    # Legacy: resolve by selector (for backwards compatibility)
-                    try:
-                        # Use provided index or build one if needed
-                        if index is None:
-                            from quantumvitas.core.resolution import build_resource_index
-                            index = build_resource_index(project_root)
-                        structure = resolve_structure(project_root, structure_selector, config=config, index=index)
-                        checks.append({"name": "Structure", "ok": True, "message": f"Structure found: {structure.meta.name}"})
-                    except Exception:
-                        checks.append({"name": "Structure", "ok": False, "message": f"Structure '{structure_selector}' not found"})
-                        errors.append(f"Workflow references missing structure: {structure_selector}")
                 else:
-                    checks.append({"name": "Structure", "ok": False, "message": "No structure assigned"})
-                    errors.append("Workflow has no structure assigned")
+                    # No structure_id - this is OK (workflow may not need a structure)
+                    checks.append({"name": "Structure", "ok": True, "message": "No structure referenced"})
             except Exception as e:
                 checks.append({"name": "Workflow Config", "ok": False, "message": f"Failed to parse workflow.yaml: {e}"})
                 errors.append(f"Workflow configuration error: {e}")

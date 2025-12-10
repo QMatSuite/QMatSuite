@@ -215,10 +215,11 @@ def match_step_selector(
                 pass
             
         except Exception:
-            # Resolution failed - try legacy fallback
+            # Resolution failed - continue to next strategy
             pass
         
-        # Strategy 4: Legacy fallback - match by type from workflow.yaml entry
+        # Strategy 4: Match by type from workflow.yaml entry (for CLI convenience)
+        # This is OK for CLI as long as the workflow is already in DAG + ULID format
         step_type = step_entry.get("type")
         if step_type and step_type.lower() == selector.lower():
             matches.append((step_entry, None, "type"))

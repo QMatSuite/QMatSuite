@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Optional, TextIO
 
 from quantumvitas.api import QVService, QVServiceError
+from quantumvitas.core.exceptions import LegacyProjectError
 from quantumvitas.core.resolution import (
     ResourceNotFoundError,
     SelectorNotFoundError,
@@ -416,6 +417,25 @@ class QVDaemon:
             
             return RPCResponse(id=request.id, ok=True, data=result)
             
+        except LegacyProjectError as e:
+            # Convert LegacyProjectError to structured daemon error
+            # Provide clear, actionable message with migration command
+            migration_command = f"python scripts/qv_migrate_legacy_project.py --project-root {e.project_root}"
+            return RPCResponse(
+                id=request.id,
+                ok=False,
+                error={
+                    "code": "legacy_project",
+                    "message": (
+                        f"This project uses a legacy workflow format (structure selector / step_file / non-ULID step IDs). "
+                        f"Please migrate it using: {migration_command}"
+                    ),
+                    "details": {
+                        "project_root": str(e.project_root),
+                        "hint": migration_command,
+                    },
+                },
+            )
         except ResourceNotFoundError as e:
             # Convert ResourceNotFoundError to structured daemon error
             return RPCResponse(

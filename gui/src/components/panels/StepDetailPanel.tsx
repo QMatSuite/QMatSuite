@@ -84,8 +84,9 @@ export function StepDetailPanel({
   onParametersUpdated,
   onStepDeleted,
 }: StepDetailPanelProps) {
-  // Derive workflow selector from selectedWorkflow
-  const workflowSelector = selectedWorkflow?.slug ?? selectedWorkflow?.id ?? null;
+  // Workflow selector: always use slug (backend expects workflow slug)
+  const workflowSelector = selectedWorkflow?.slug ?? null;
+  // Step selector: always use ULID from selectedStepId (must be ULID from workflow.yaml's steps array)
   const stepSelector = selectedStepId;
   
   // INSTRUMENTATION: Log render props to verify correct step ID is being passed
@@ -189,19 +190,19 @@ export function StepDetailPanel({
           throw new Error('Project root is required');
         }
         
-        // CRITICAL: Use stepSelector directly (this is selectedStepId from App.tsx)
-        // stepSelector MUST be the ULID from workflow.yaml's steps array
-        // Do NOT derive it from workflowSteps[0].id or any index-based mapping
+        // CRITICAL: stepSelector MUST be the ULID from workflow.yaml's steps array
+        // This is passed as selectedStepId from App.tsx, which gets it from workflow.steps[].id
+        // Backend requires step to be the ULID (26 chars), not slug/name/index
         console.log('[StepDetailPanel] calling get_step_detail RPC', {
           project_root: normalizedProjectRoot,
-          workflow: workflowSelector,
-          step: stepSelector, // This should be the ULID from selectedStepId
+          workflow: workflowSelector, // slug
+          step: stepSelector, // ULID from workflow.yaml - the only supported step selector steps array
         });
         
         const response = await window.qv.request<StepDetail>('get_step_detail', {
           project_root: normalizedProjectRoot,
-          workflow: workflowSelector,
-          step: stepSelector, // CRITICAL: Use stepSelector (selectedStepId) directly, not derived from array
+          workflow: workflowSelector, // slug
+          step: stepSelector, // ULID - the only supported step selector
         });
         
         // INSTRUMENTATION: Log success or error separately
@@ -439,7 +440,7 @@ export function StepDetailPanel({
       const response = await window.qv.request('delete_step', {
         project_root: normalizedProjectRoot,
         workflow: workflowSelector,
-        step: stepSelector, // ULID from workflow.yaml
+        step: stepSelector, // ULID from workflow.yaml - the only supported step selector
       });
       
       if (response.ok) {

@@ -346,11 +346,27 @@ function App() {
           showNotification('Project created successfully!', 'success');
           window.qv?.setProject?.(selectedPath);
         } else {
+          // Check for legacy_project error
+        if (loadResponse.error?.code === 'legacy_project') {
+          const migrationCmd = loadResponse.error?.details?.hint || loadResponse.error?.message || '';
+          setProjectError(
+            `This project uses a legacy workflow format. Please migrate it using:\n${migrationCmd}`
+          );
+        } else {
           setProjectError(loadResponse.error?.message || 'Failed to load created project');
+        }
         }
       } else {
         setIsLoadingProject(false);
-        setProjectError(createResponse.error?.message || 'Failed to create project');
+        // Check for legacy_project error
+        if (createResponse.error?.code === 'legacy_project') {
+          const migrationCmd = createResponse.error?.details?.hint || createResponse.error?.message || '';
+          setProjectError(
+            `This project uses a legacy workflow format. Please migrate it using:\n${migrationCmd}`
+          );
+        } else {
+          setProjectError(createResponse.error?.message || 'Failed to create project');
+        }
       }
     } else {
       setProjectError(null);
@@ -638,7 +654,7 @@ function App() {
     // See tests/daemon/test_gui_job_and_step_flows.py for RPC contract details
     const response = await qv.call('run_workflow', {
       project_root: normalizedProjectRoot,
-      workflow: workflow.slug, // Backend expects workflow selector (slug or ULID)
+      workflow: workflow.slug, // Backend expects workflow selector (slug)
     });
     
     if (response.ok && response.data) {
@@ -1151,7 +1167,7 @@ function App() {
         return (
           <AnalysisPanel
             workflows={workflows}
-            selectedWorkflow={selectedWorkflow}
+            selectedWorkflow={selectedWorkflowSummary}
             projectRoot={projectRoot}
             onSelectWorkflow={handleSelectWorkflow}
             onLoadScf={handleLoadScf}

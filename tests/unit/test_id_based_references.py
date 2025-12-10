@@ -39,13 +39,12 @@ class TestWorkflowModelStructureReferences:
             meta=meta,
             structure_id=structure_id,
             structure_name=structure_name,
-            structure="si",  # Legacy selector for backwards compat
         )
         
         # Verify structure_id is canonical
         assert model.structure_id == structure_id
         assert model.structure_name == structure_name
-        assert model.structure == "si"  # Legacy field preserved
+        # structure field removed - no longer exists
         
         # Verify to_dict writes structure_id (ID-only reference)
         # DAG + ID-only model: structure_name is NOT written to YAML (cosmetic only)
@@ -75,10 +74,12 @@ class TestWorkflowModelStructureReferences:
         model = WorkflowModel.from_dict(data)
         assert model.structure_id == structure_id
         assert model.structure_name == "Si"
-        assert model.structure is None  # Not provided in new format
+        # structure field removed - no longer exists
     
     def test_workflow_model_from_dict_legacy_format(self):
-        """Test loading WorkflowModel from dict with legacy structure selector."""
+        """Test loading WorkflowModel from dict with legacy structure selector raises LegacyProjectError."""
+        from quantumvitas.core.exceptions import LegacyProjectError
+        
         data = {
             "meta": {
                 "id": generate_resource_id(),
@@ -87,18 +88,22 @@ class TestWorkflowModelStructureReferences:
                 "path": "workflows/test-workflow",
                 "kind": "workflow",
             },
-            "structure": "si",  # Legacy selector
+            "structure": "si",  # Legacy selector without structure_id
             "mode": "normal",
             "working_dir": "raw",
             "steps": [],
         }
         
-        model = WorkflowModel.from_dict(data)
-        assert model.structure_id is None  # Not resolved yet
-        assert model.structure == "si"  # Legacy field preserved
+        # Should raise LegacyProjectError for legacy format
+        with pytest.raises(LegacyProjectError) as exc_info:
+            WorkflowModel.from_dict(data)
+        
+        assert "structure" in str(exc_info.value).lower() or "legacy" in str(exc_info.value).lower()
     
-    def test_workflow_model_load_resolves_structure_selector(self, tmp_path):
-        """Test that load_workflow resolves structure selector to structure_id."""
+    def test_workflow_model_load_legacy_selector_raises_error(self, tmp_path):
+        """Test that load_workflow raises LegacyProjectError for legacy structure selector."""
+        from quantumvitas.core.exceptions import LegacyProjectError
+        
         project_root = tmp_path / "project"
         project_root.mkdir()
         
@@ -126,7 +131,7 @@ class TestWorkflowModelStructureReferences:
         }
         (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
         
-        # Create workflow.yaml with legacy structure selector
+        # Create workflow.yaml with legacy structure selector (no structure_id)
         workflow_dir = project_root / "workflows" / "test-workflow"
         workflow_dir.mkdir(parents=True)
         workflow_yaml = workflow_dir / "workflow.yaml"
@@ -138,17 +143,17 @@ class TestWorkflowModelStructureReferences:
                 "path": "workflows/test-workflow",
                 "kind": "workflow",
             },
-            "structure": "si",  # Legacy selector
+            "structure": "si",  # Legacy selector without structure_id
             "mode": "normal",
             "working_dir": "raw",
             "steps": [],
         }))
         
-        # Load workflow - should resolve structure selector to structure_id
-        model = load_workflow(workflow_yaml, project_root)
-        assert model.structure_id == structure_id
-        assert model.structure_name == "Si"
-        assert model.structure == "si"  # Legacy field preserved
+        # Load workflow - should raise LegacyProjectError
+        with pytest.raises(LegacyProjectError) as exc_info:
+            load_workflow(workflow_yaml, project_root)
+        
+        assert "structure" in str(exc_info.value).lower() or "legacy" in str(exc_info.value).lower()
 
 
 class TestStructureStepSpecStructureReferences:
@@ -255,13 +260,15 @@ class TestStructureStepSpecStructureReferences:
 class TestBackwardsCompatibility:
     """Test backwards compatibility with legacy format."""
     
-    def test_workflow_yaml_legacy_structure_selector(self, tmp_path):
-        """Test that workflow.yaml with legacy structure selector still works."""
+    def test_workflow_yaml_legacy_structure_selector_raises_error(self, tmp_path):
+        """Test that workflow.yaml with legacy structure selector raises LegacyProjectError."""
+        from quantumvitas.core.exceptions import LegacyProjectError
+        
         workflow_dir = tmp_path / "workflow"
         workflow_dir.mkdir()
         workflow_yaml = workflow_dir / "workflow.yaml"
         
-        # Write legacy format (structure selector only)
+        # Write legacy format (structure selector only, no structure_id)
         workflow_yaml.write_text(yaml.safe_dump({
             "meta": {
                 "id": generate_resource_id(),
@@ -270,16 +277,17 @@ class TestBackwardsCompatibility:
                 "path": "workflows/test-workflow",
                 "kind": "workflow",
             },
-            "structure": "si",
+            "structure": "si",  # Legacy selector without structure_id
             "mode": "normal",
             "working_dir": "raw",
             "steps": [],
         }))
         
-        # Should load without error
-        model = WorkflowModel.from_dict(yaml.safe_load(workflow_yaml.read_text()))
-        assert model.structure == "si"
-        assert model.structure_id is None  # Not resolved without project_root
+        # Should raise LegacyProjectError
+        with pytest.raises(LegacyProjectError) as exc_info:
+            WorkflowModel.from_dict(yaml.safe_load(workflow_yaml.read_text()))
+        
+        assert "structure" in str(exc_info.value).lower() or "legacy" in str(exc_info.value).lower()
     
     def test_step_yaml_legacy_structure_selector(self, tmp_path):
         """Test that step.yaml with legacy structure selector still works."""
@@ -307,12 +315,13 @@ class TestBackwardsCompatibility:
         # When project_root is provided, structure selector should be resolved to structure_id
         # (This would require a project with a structure registered, so we test it separately)
     
-    def test_workflow_save_preserves_legacy_structure(self, tmp_path):
-        """Test that saving workflow preserves legacy structure field."""
+    def test_workflow_save_only_persists_structure_id(self, tmp_path):
+        """Test that saving workflow only persists structure_id, not structure selector."""
         workflow_dir = tmp_path / "workflow"
         workflow_dir.mkdir()
         workflow_yaml = workflow_dir / "workflow.yaml"
         
+        structure_id = generate_resource_id()
         meta = ResourceMeta(
             id=generate_resource_id(),
             name="Test Workflow",
@@ -323,17 +332,18 @@ class TestBackwardsCompatibility:
         
         model = WorkflowModel(
             meta=meta,
-            structure_id=generate_resource_id(),
+            structure_id=structure_id,
             structure_name="Si",
-            structure="si",  # Legacy field
         )
         
         save_workflow(model, workflow_yaml)
         
-        # Reload and verify both formats are present
+        # Reload and verify only structure_id is persisted
         data = yaml.safe_load(workflow_yaml.read_text())
         assert "structure_id" in data
+        assert data["structure_id"] == structure_id
         assert "structure" not in data  # Legacy selector NOT written (ID-only model)
+        assert "structure_name" not in data  # structure_name is NOT written (cosmetic only)
 
 
 class TestStructureResolution:
