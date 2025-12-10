@@ -36,9 +36,12 @@ def sample_project(tmp_path: Path) -> Path:
     structure_meta = meta_from_name("structure", name="si", path="structures/si.json")
     structure_meta.id = structure_id
     
+    # Generate workflow ULID (ID-only model)
+    workflow_ulid = generate_resource_id()
+    
     project_config = {
         "project": {"name": "sample"},
-        "workflows": [{"id": "wf", "path": "workflows/wf"}],
+        "workflows": [{"id": workflow_ulid, "path": "workflows/wf"}],  # Use ULID, not human-readable name
         "structures": [
             {
                 "id": structure_id,
@@ -78,7 +81,7 @@ def sample_project(tmp_path: Path) -> Path:
     (workflow_dir / "raw").mkdir(parents=True)
     (workflow_dir / "steps").mkdir(parents=True)
     
-    # Create a minimal step file for legacy workflow
+    # Create a minimal step file (DAG model: no structure_id in step YAML)
     step_id = generate_resource_id()
     step_file = workflow_dir / "steps" / "scf.step.yaml"
     step_meta = meta_from_name("step", name="scf", path=f"workflows/wf/steps/scf.step.yaml")
@@ -88,16 +91,23 @@ def sample_project(tmp_path: Path) -> Path:
         {
             "meta": step_meta.to_dict(),
             "step_type": "scf",
-            "structure_id": structure_id,  # Reference to the structure
+            # DAG model: structure_id is NOT in step YAML (inherits from workflow)
         },
     )
     
     _write_yaml(
         workflow_dir / "workflow.yaml",
         {
-            "id": "wf",
+            "meta": {
+                "id": workflow_ulid,
+                "name": "wf",
+                "slug": "wf",
+                "path": "workflows/wf",
+                "kind": "workflow",
+            },
             "workflow": {"working_dir": "raw"},
-            "steps": [{"id": "scf", "input": "raw/scf.in"}],  # Legacy: id is name, not ULID
+            "structure_id": structure_id,  # Workflow-level structure reference (ULID)
+            "steps": [{"step_id": step_id, "input": "raw/scf.in"}],  # Use step_id (ULID), not id (name)
         },
     )
     (workflow_dir / "raw" / "scf.in").write_text("&control\n calculation='scf'\n/")
@@ -106,11 +116,18 @@ def sample_project(tmp_path: Path) -> Path:
 
 def test_project_open(sample_project: Path):
     project = Project.open(sample_project)
-    assert project.list_workflows() == ["wf"]
-    assert project.list_structures() == ["si"]
-    workflow = project.get_workflow("wf")
-    assert workflow.id == "wf"
-    assert workflow.raw_dir == (sample_project / "workflows" / "wf" / "raw")
+    # In ID-only model, list_workflows returns names from workflow refs
+    workflows = project.list_workflows()
+    assert len(workflows) == 1
+    # Workflows are stored by their ULID slug in self.workflows
+    # Get the first workflow ref and verify its path (absolute_path is the workflow directory)
+    workflow_ref = list(project.workflows.values())[0]
+    assert workflow_ref.absolute_path == (sample_project / "workflows" / "wf")
+    # Check structures similarly
+    structures = project.list_structures()
+    assert len(structures) == 1
+    structure = project.get_structure("si")
+    assert structure.meta.slug == "si"
 
 
 def test_cli_init(tmp_path: Path):
@@ -202,7 +219,17 @@ def test_cli_import_structure_registers_json(tmp_path: Path):
     assert loaded.composition.reduced_formula == "Si"
 
     data = yaml.safe_load((dest / "project.qv.yml").read_text())
-    assert any(entry["meta"]["name"] == "si_struct" for entry in data["structures"])
+    # In ID-only model, structures entries only have structure_id, not meta
+    # Verify structure was registered by checking structure_id exists
+    assert len(data["structures"]) == 1
+    assert "structure_id" in data["structures"][0]
+    # Verify structure file exists and has correct name in its meta
+    structure_file = dest / "structures" / "si_struct.json"
+    assert structure_file.exists()
+    import json
+    struct_data = json.loads(structure_file.read_text())
+    struct_meta = struct_data.get("__qv_meta__") or struct_data.get("meta") or {}
+    assert struct_meta.get("name") == "si_struct"
 
 
 def test_cli_list(sample_project: Path):
@@ -939,7 +966,9 @@ def test_cli_delete_structure(tmp_path: Path):
     assert result.exit_code == 0, result.stdout
     assert not structure_file.exists()
     data = yaml.safe_load((project_root / "project.qv.yml").read_text())
-    assert not any(entry["name"] == "si" for entry in data["structures"])
+    # In ID-only model, structures entries only have structure_id, not name
+    # Verify structure was deleted by checking structures list is empty
+    assert len(data.get("structures", [])) == 0, "Structure should be deleted from project.qv.yml"
 
 
 def test_cli_delete_workflow(tmp_path: Path):
@@ -983,6 +1012,9 @@ def test_cli_delete_workflow(tmp_path: Path):
     assert result.exit_code == 0, result.stdout
     assert not wf_dir.exists()
     data = yaml.safe_load((project_root / "project.qv.yml").read_text())
-    assert not any(entry["name"] == "wf1" for entry in data["workflows"])
+    # In ID-only model, workflow entries only have workflow_id, not name
+    # Verify workflow was deleted by checking workflows list is empty
+    workflows = data.get("workflows", [])
+    assert len(workflows) == 0, "Workflow should be deleted from project.qv.yml"
 
 

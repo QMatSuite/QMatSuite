@@ -24,7 +24,7 @@ from quantumvitas.workflow.input_runner import (
     apply_species_overrides_to_qe_input,
     parameter_dict_to_overrides,
     set_outdir_to_temp,
-    set_pseudo_dir_to_temp,
+    set_pseudo_dir_in_input,
 )
 
 if TYPE_CHECKING:
@@ -94,8 +94,10 @@ class StructureStepSpec:
                 # Resolution failed - keep structure selector for now (will fail on to_dict if not resolved)
                 pass
         
-        if not structure_id and not structure:
-            raise ValueError("Step spec is missing required field 'structure_id' or legacy 'structure' selector")
+        # DAG + ID-only model: Step YAML does NOT contain structure_id.
+        # Structure is resolved from workflow.structure_id at execution time.
+        # Legacy structure_id/structure fields are accepted for backwards compatibility only.
+        # If present, they are kept in memory but not written to YAML.
         
         step_type = data.get("step_type", "scf")
         parameters = data.get("parameters") or {}
@@ -166,30 +168,22 @@ class StructureStepSpec:
         """
         Convert to dictionary for YAML serialization.
         
-        Cross-resource references:
-        - structure_id: ULID only (no structure name/slug/path)
-        - parent_workflow_id: ULID only (no workflow name/slug/path)
+        DAG + ID-only model: Step YAML contains ONLY step-local configuration.
+        NO cross-resource references (no structure_id, no parent_workflow_id).
         
-        Enforces ID-only rule:
-        - If structure_id is present, write only structure_id (no structure selector)
-        - If structure_id is None, raise an error (structure selector is legacy-only, not written)
+        Structure is resolved via workflow.structure_id at execution time.
+        Parent workflow is implicit (step file location determines parent).
+        
+        Enforces DAG rule:
+        - Step must NOT store structure_id (inherits from workflow)
+        - Step must NOT store parent_workflow_id (parent is implicit)
+        - Step must NOT store structure selector (legacy field, not written)
         """
         data: Dict[str, Any] = {
             "meta": self.meta.to_dict(),
             "step_type": self.step_type,
         }
-        # Write structure_id (canonical reference - ID only)
-        if self.structure_id:
-            data["structure_id"] = self.structure_id
-        else:
-            # structure_id is required - legacy structure selector is not written
-            raise ValueError(
-                f"Step spec '{self.meta.name or self.step_type}' is missing required field 'structure_id'. "
-                "Legacy 'structure' selector is not written to YAML. "
-                "Please resolve the structure selector to structure_id before serialization."
-            )
-        if self.parent_workflow_id:
-            data["parent_workflow_id"] = self.parent_workflow_id
+        # Step-local configuration only
         if self.parameters:
             data["parameters"] = self.parameters
         if self.input_name:
@@ -200,6 +194,9 @@ class StructureStepSpec:
             data["species_overrides"] = self.species_overrides
         if self.kpath_metadata:
             data["kpath_metadata"] = self.kpath_metadata
+        # Do NOT write structure_id (inherits from workflow)
+        # Do NOT write parent_workflow_id (parent is implicit)
+        # Do NOT write structure selector (legacy field)
         return data
 
 
@@ -487,27 +484,57 @@ def materialize_step_spec(
     """
 
     # Create resolver for legacy structure selectors if project_root is available
+    # Only create resolver if project_root is actually a project directory
     resolve_structure_selector = None
     if project_root:
         def _make_resolver(proj_root: Path):
             from quantumvitas.core.resolution import resolve_structure
-            from quantumvitas.core.project_utils import load_project_config
-            config = load_project_config(proj_root)
-            def resolver(selector: str) -> str:
-                resolved = resolve_structure(proj_root, selector, config)
-                return resolved.meta.id
-            return resolver
+            from quantumvitas.core.project_utils import load_project_config, ProjectConfigError
+            try:
+                config = load_project_config(proj_root)
+                def resolver(selector: str) -> str:
+                    resolved = resolve_structure(proj_root, selector, config)
+                    return resolved.meta.id
+                return resolver
+            except ProjectConfigError:
+                # project_root is not a project directory - return None (no resolver)
+                # Structure resolution will fall back to filesystem path resolution
+                return None
         resolve_structure_selector = _make_resolver(project_root)
     
     spec_obj, resolved_spec_path = _load_step_spec(spec, spec_path, resolve_structure_selector=resolve_structure_selector)
     output_dir = Path(output_dir).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # Infer workflow_dir from spec_path if not provided
+    # Pattern: workflows/<workflow_slug>/steps/<step_slug>.step.yaml
+    if workflow_dir is None and resolved_spec_path:
+        spec_path_obj = Path(resolved_spec_path)
+        # Check if spec_path looks like a workflow step: .../workflows/.../steps/...step.yaml
+        parts = spec_path_obj.parts
+        if "steps" in parts:
+            steps_idx = parts.index("steps")
+            if steps_idx > 0:
+                # workflow_dir is the parent of the steps directory
+                workflow_dir = spec_path_obj.parent.parent
+
+    # Load project from project_root if project is None but project_root is provided
+    if project is None and project_root:
+        try:
+            from quantumvitas.project.model import Project
+            project_root_path = Path(project_root).resolve()
+            if (project_root_path / "project.qv.yml").exists():
+                project = Project.open(project_root_path)
+        except Exception:
+            # If project loading fails, continue without project
+            pass
+
     structure = _resolve_structure_for_spec(
         spec_obj,
         resolved_spec_path,
         workflow_dir=workflow_dir,
         project=project,
+        project_root=project_root,  # Pass project_root for workflow resolution
     )
 
     qe_input, _ = generate_qe_input_from_spec(structure, spec_obj)
@@ -516,7 +543,36 @@ def materialize_step_spec(
     if project_root:
         project_root_path = Path(project_root).resolve()
         set_outdir_to_temp(qe_input)
-        set_pseudo_dir_to_temp(qe_input, project_root_path)
+        
+        # Use central pseudopotential resolution
+        from quantumvitas.core.pseudo import ensure_qe_pseudos, get_system_pseudo_dir
+        from quantumvitas.workflow.input_runner import set_pseudo_dir_in_input
+        
+        project_pseudo_dir = project_root_path / "pseudo"
+        
+        # Write temporary input file to extract required pseudos
+        temp_input = output_dir / ".temp_input_for_pseudo_resolution.in"
+        QEInputGenerator.write_file(qe_input, temp_input)
+        
+        # Resolve pseudopotentials
+        pseudo_result = ensure_qe_pseudos(
+            qe_input_file=temp_input,
+            project_pseudo_dir=project_pseudo_dir,
+            system_pseudo_dir=get_system_pseudo_dir(),
+        )
+        
+        # Clean up temp file
+        if temp_input.exists():
+            temp_input.unlink()
+        
+        if not pseudo_result.all_available:
+            raise RuntimeError(
+                f"Failed to obtain required pseudopotentials for step spec. "
+                f"Project pseudo dir: {project_pseudo_dir}"
+            )
+        
+        # Set pseudo_dir in QE input
+        set_pseudo_dir_in_input(qe_input, project_pseudo_dir, output_dir)
 
     filename = input_name or spec_obj.input_name or f"{resolved_spec_path.stem}.pw.in"
     generated_input = output_dir / filename
@@ -544,48 +600,472 @@ def _resolve_structure_for_spec(
     *,
     workflow_dir: Optional[Path | str],
     project: Optional["Project"],
+    project_root: Optional[Path | str] = None,
 ) -> PMGStructure:
     """
-    Resolve structure from spec, preferring structure_id (canonical) over structure (legacy selector).
+    Resolve structure for step spec.
+    
+    DAG + ID-only model: Steps inherit structure from workflow.structure_id.
+    Legacy: Steps may have structure_id (for backwards compatibility).
+    
+    Resolution order (strict):
+    1. Step-local structure (legacy support): If spec.structure_id or spec.structure is present
+    2. Workflow-based structure (preferred): If workflow_dir exists, load workflow.yaml and use workflow.structure_id
+    3. Registry-based resolution: If project/registry is available, use it
+    4. Last-resort filesystem search: Only when there is no workflow context
+    
+    Args:
+        spec: Step spec to resolve structure for
+        spec_path: Path to the step spec file
+        workflow_dir: Optional workflow directory (for workflow.yaml lookup)
+        project: Optional Project instance (for registry-based resolution)
+        project_root: Optional project root path (for loading project if project is None)
     """
-    # First, try structure_id (canonical reference)
+    # Debug logging (can be enabled for troubleshooting)
+    # import logging
+    # logger = logging.getLogger(__name__)
+    # logger.debug(f"_resolve_structure_for_spec: project_root={project_root}, workflow_dir={workflow_dir}, spec.structure_id={spec.structure_id}")
+    
+    # Normalize paths
+    workflow_dir_path = Path(workflow_dir).resolve() if workflow_dir else None
+    project_root_path = Path(project_root).resolve() if project_root else None
+    
+    # Load project from project_root if project is None but project_root is provided
+    if project is None and project_root_path:
+        try:
+            from quantumvitas.project.model import Project
+            if (project_root_path / "project.qv.yml").exists():
+                project = Project.open(project_root_path)
+                logger.debug(f"  Loaded project from project_root: {project.root}")
+        except Exception as e:
+            logger.debug(f"  Failed to load project from project_root: {e}")
+    
+    # ========================================================================
+    # 1. Step-local structure (legacy support)
+    # ========================================================================
+    if spec.structure_id or spec.structure:
+        # logger.debug("  Attempting step-local structure resolution")
+        if spec.structure_id:
+            # Try to resolve via project registry first
+            if project:
+                try:
+                    struct_ref = project.get_structure(spec.structure_id)
+                    # logger.debug(f"  Found structure via project registry: {struct_ref.path}")
+                    return read_structure(struct_ref.path)
+                except Exception:
+                    pass
+            
+            # Try filesystem search by structure_id
+            if project_root_path:
+                structures_dir = project_root_path / "structures"
+                if structures_dir.exists():
+                    import json
+                    from quantumvitas.io.structure_io import STRUCTURE_META_KEY
+                    for struct_file in structures_dir.glob("*.json"):
+                        try:
+                            struct_data = json.loads(struct_file.read_text())
+                            struct_meta = struct_data.get(STRUCTURE_META_KEY, {})
+                            if struct_meta.get("id") == spec.structure_id:
+                                return read_structure(struct_file)
+                        except Exception:
+                            continue
+        
+        # Try legacy structure selector (path-based)
+        if spec.structure:
+            structure_value = spec.structure
+            candidate = Path(structure_value)
+            
+            # Try absolute path
+            if candidate.is_absolute() and candidate.exists():
+                return read_structure(candidate)
+            
+            # Try relative paths
+            search_roots = [spec_path.parent]
+            if workflow_dir_path:
+                search_roots.extend([workflow_dir_path, workflow_dir_path.parent])
+            if project_root_path:
+                search_roots.append(project_root_path / "structures")
+            
+            for root in search_roots:
+                candidate_path = (root / candidate).resolve()
+                if candidate_path.exists():
+                    return read_structure(candidate_path)
+            
+            # Try project.get_structure for selector resolution
+            if project:
+                try:
+                    struct_ref = project.get_structure(structure_value)
+                    return read_structure(struct_ref.path)
+                except Exception:
+                    pass
+    
+    # ========================================================================
+    # 2. Workflow-based structure (preferred in project world)
+    # ========================================================================
+    if workflow_dir_path:
+        # logger.debug("  Attempting workflow-based structure resolution")
+        workflow_yaml = workflow_dir_path / "workflow.yaml" if workflow_dir_path.is_dir() else workflow_dir_path
+        if not workflow_yaml.exists() and workflow_dir_path.is_dir():
+            workflow_yaml = workflow_dir_path / "workflow.yaml"
+        
+        if workflow_yaml.exists():
+            try:
+                from quantumvitas.core.models import load_workflow
+                
+                # Determine project_root for load_workflow
+                wf_project_root = project.root if project else project_root_path
+                if not wf_project_root:
+                    # Try to infer from workflow_dir
+                    current = workflow_yaml.parent
+                    while current != current.parent:
+                        if (current / "project.qv.yml").exists():
+                            wf_project_root = current
+                            break
+                        current = current.parent
+                
+                if wf_project_root:
+                    wf_model = load_workflow(workflow_yaml, wf_project_root)
+                    # logger.debug(f"  Loaded workflow model: structure_id={wf_model.structure_id}")
+                    
+                    structure_to_resolve = wf_model.structure_id
+                    if not structure_to_resolve and wf_model.structure:
+                        # Legacy: workflow has structure path/selector, try to resolve it
+                        if project:
+                            try:
+                                struct_ref = project.get_structure(wf_model.structure)
+                                structure_to_resolve = struct_ref.meta.id
+                            except Exception:
+                                structure_to_resolve = wf_model.structure
+                    
+                    if structure_to_resolve:
+                        # Resolve structure from workflow.structure_id
+                        if project:
+                            try:
+                                struct_ref = project.get_structure(structure_to_resolve)
+                                return read_structure(struct_ref.path)
+                            except Exception:
+                                pass
+                        
+                        # Fallback: filesystem search by structure_id
+                        structures_dir = wf_project_root / "structures"
+                        if structures_dir.exists():
+                            import json
+                            from quantumvitas.io.structure_io import STRUCTURE_META_KEY
+                            for struct_file in structures_dir.glob("*.json"):
+                                try:
+                                    struct_data = json.loads(struct_file.read_text())
+                                    struct_meta = struct_data.get(STRUCTURE_META_KEY, {})
+                                    if struct_meta.get("id") == structure_to_resolve:
+                                        return read_structure(struct_file)
+                                except Exception:
+                                    continue
+            except Exception:
+                pass
+    
+    # ========================================================================
+    # 3. Registry-based resolution (if available)
+    # ========================================================================
+    # This would use step_id → workflow_id → structure_id via registry
+    # For now, this is handled by workflow-based resolution above
+    
+    # ========================================================================
+    # 4. Last-resort filesystem search (when there is no workflow context or workflow has no structure_id)
+    # ========================================================================
+    # Try to find structure files in common locations
+    import json
+    from quantumvitas.io.structure_io import STRUCTURE_META_KEY
+    
+    search_roots = []
+    if workflow_dir_path:
+        # Check structures directory relative to workflow_dir
+        search_roots.append(workflow_dir_path / "structures")
+        search_roots.append(workflow_dir_path.parent / "structures")
+    # Also check relative to step spec location
+    search_roots.append(spec_path.parent.parent / "structures")
+    if project_root_path:
+        search_roots.append(project_root_path / "structures")
+    
+    # Try to find structure JSON files in these directories
+    for root in search_roots:
+        if root.exists() and root.is_dir():
+            struct_files = list(root.glob("*.json"))
+            # If there's exactly one structure file, use it
+            if len(struct_files) == 1:
+                return read_structure(struct_files[0])
+            # If multiple, and we have a workflow structure_id, try to match by ID
+            if workflow_dir_path:
+                try:
+                    from quantumvitas.core.models import load_workflow
+                    workflow_yaml = workflow_dir_path / "workflow.yaml"
+                    if workflow_yaml.exists():
+                        wf_project_root = project.root if project else project_root_path
+                        if not wf_project_root:
+                            current = workflow_yaml.parent
+                            while current != current.parent:
+                                if (current / "project.qv.yml").exists():
+                                    wf_project_root = current
+                                    break
+                                current = current.parent
+                        if wf_project_root:
+                            wf_model = load_workflow(workflow_yaml, wf_project_root)
+                            if wf_model.structure_id:
+                                for struct_file in struct_files:
+                                    try:
+                                        struct_data = json.loads(struct_file.read_text())
+                                        struct_meta = struct_data.get(STRUCTURE_META_KEY, {})
+                                        if struct_meta.get("id") == wf_model.structure_id:
+                                            return read_structure(struct_file)
+                                    except Exception:
+                                        continue
+                except Exception:
+                    pass
+    
+    # ========================================================================
+    # All resolution attempts failed
+    # ========================================================================
+    raise FileNotFoundError(
+        f"Step spec at {spec_path} has neither structure_id (current: {spec.structure_id}) nor structure field (current: {spec.structure}). "
+        f"Workflow-based resolution also failed (workflow_dir: {workflow_dir_path}). "
+        f"Please ensure the step spec has a valid structure_id or structure selector, "
+        f"or that a workflow.yaml exists with a valid structure_id."
+    )
+    # First, try legacy structure_id from step spec (for backwards compatibility)
     # Note: spec.structure_id might be a string, so check it's truthy and non-empty
     if spec.structure_id:
-        if project is None:
-            raise ValueError(
-                f"Step spec at {spec_path} has structure_id ({spec.structure_id}) but project is None. "
-                f"Cannot resolve structure without a project context."
+        if project is not None:
+            # Try to resolve via project registry
+            try:
+                # Try to find structure by ID in project's structures dict
+                struct_ref = None
+                for ref in project.structures.values():
+                    if ref.meta.id == spec.structure_id:
+                        struct_ref = ref
+                        break
+                
+                if struct_ref is None:
+                    # Fall back to get_structure which might resolve by slug/name
+                    struct_ref = project.get_structure(spec.structure_id)
+                
+                return read_structure(struct_ref.path)
+            except (KeyError, AttributeError) as e:
+                # If structure_id doesn't resolve via project, fall through to workflow resolution
+                pass
+        
+        # If project is None or structure not found in project, try filesystem resolution
+        # Look for structure files in common locations relative to spec_path
+        import json
+        from quantumvitas.io.structure_io import STRUCTURE_META_KEY
+        
+        search_roots: list[Path] = [spec_path.parent]
+        if workflow_dir:
+            workflow_dir_path = Path(workflow_dir).resolve()
+            search_roots.append(workflow_dir_path)
+            search_roots.append(workflow_dir_path.parent)
+            # Check structures directory relative to workflow_dir (most common case)
+            structures_dir = workflow_dir_path / "structures"
+            if structures_dir.exists():
+                search_roots.append(structures_dir)
+            # Also check structures directory relative to workflow_dir.parent (project-level)
+            project_structures_dir = workflow_dir_path.parent / "structures"
+            if project_structures_dir.exists():
+                search_roots.append(project_structures_dir)
+        
+        # Try to find structure file by scanning for files with matching meta.id
+        for root in search_roots:
+            if root.exists() and root.is_dir():
+                # Look for JSON files in this directory
+                for struct_file in root.glob("*.json"):
+                    try:
+                        struct_data = json.loads(struct_file.read_text())
+                        struct_meta = struct_data.get(STRUCTURE_META_KEY, {})
+                        if struct_meta.get("id") == spec.structure_id:
+                            return read_structure(struct_file)
+                    except Exception:
+                        continue
+        
+        # If structure_id doesn't resolve and no structure selector, raise error
+        if not spec.structure:
+            raise FileNotFoundError(
+                f"Step spec at {spec_path} has structure_id ({spec.structure_id}) but structure not found. "
+                f"Tried project registry and filesystem search. Project: {project is not None}"
             )
-        try:
-            # Try to find structure by ID in project's structures dict
-            struct_ref = None
-            for ref in project.structures.values():
-                if ref.meta.id == spec.structure_id:
-                    struct_ref = ref
-                    break
-            
-            if struct_ref is None:
-                # Fall back to get_structure which might resolve by slug/name
-                struct_ref = project.get_structure(spec.structure_id)
-            
-            return read_structure(struct_ref.path)
-        except (KeyError, AttributeError) as e:
-            # If structure_id doesn't resolve, fall back to structure selector
-            # But provide a helpful error if structure selector is also missing
-            if not spec.structure:
-                raise FileNotFoundError(
-                    f"Step spec at {spec_path} has structure_id ({spec.structure_id}) but structure not found in project. "
-                    f"Project has {len(project.structures)} structures. Error: {e}"
-                )
-            # Fall through to legacy structure selector
-            pass
+        # Fall through to legacy structure selector
+        pass
+    
+    # DAG + ID-only model: If step doesn't have structure_id, resolve from workflow
+    if not spec.structure_id and workflow_dir:
+        # Try to load project if not provided but project_root is available
+        if project is None and project_root:
+            try:
+                from quantumvitas.project.model import Project
+                project_root_path = Path(project_root).resolve()
+                if (project_root_path / "project.qv.yml").exists():
+                    project = Project.open(project_root_path)
+            except Exception:
+                pass
+        
+        if project:
+            try:
+                from quantumvitas.core.models import load_workflow
+                workflow_path = Path(workflow_dir)
+                if workflow_path.is_dir():
+                    workflow_path = workflow_path / "workflow.yaml"
+                if workflow_path.exists():
+                    wf_model = load_workflow(workflow_path, project.root)
+                    # Check both structure_id (new) and structure (legacy path selector)
+                    structure_to_resolve = wf_model.structure_id
+                    if not structure_to_resolve and wf_model.structure:
+                        # Legacy: workflow has structure path, try to resolve it
+                        try:
+                            struct_ref = project.get_structure(wf_model.structure)
+                            structure_to_resolve = struct_ref.meta.id
+                        except Exception:
+                            # If resolution fails, try to use structure as a path
+                            structure_to_resolve = wf_model.structure
+                    
+                    if structure_to_resolve:
+                        # Resolve structure from workflow
+                        try:
+                            if structure_to_resolve.startswith("01") and len(structure_to_resolve) == 26:
+                                # It's a ULID, resolve by ID
+                                struct_ref = project.get_structure(structure_to_resolve)
+                            else:
+                                # It's a path or selector, resolve by selector
+                                struct_ref = project.get_structure(structure_to_resolve)
+                            return read_structure(struct_ref.path)
+                        except Exception:
+                            # If project.get_structure fails, try filesystem search
+                            import json
+                            from quantumvitas.io.structure_io import STRUCTURE_META_KEY
+                            
+                            search_roots = [
+                                project.root / "structures",
+                                workflow_path.parent / "structures",
+                                workflow_path.parent.parent / "structures",
+                            ]
+                            
+                            for root in search_roots:
+                                if root.exists() and root.is_dir():
+                                    for struct_file in root.glob("*.json"):
+                                        try:
+                                            struct_data = json.loads(struct_file.read_text())
+                                            struct_meta = struct_data.get(STRUCTURE_META_KEY, {})
+                                            if struct_meta.get("id") == structure_to_resolve:
+                                                return read_structure(struct_file)
+                                        except Exception:
+                                            continue
+            except Exception as e:
+                # If workflow resolution fails, fall through to legacy structure selector
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.debug(f"Workflow structure resolution failed: {e}")
+                pass
+        else:
+            # No project available, but try to load workflow.yaml directly and find structure via filesystem
+            try:
+                from quantumvitas.core.models import load_workflow
+                workflow_path = Path(workflow_dir)
+                if workflow_path.is_dir():
+                    workflow_path = workflow_path / "workflow.yaml"
+                if workflow_path.exists():
+                    # Try to infer project_root from workflow_dir
+                    inferred_project_root = None
+                    if project_root:
+                        inferred_project_root = Path(project_root).resolve()
+                    else:
+                        # Try to find project root by walking up from workflow_dir
+                        current = workflow_path.parent
+                        while current != current.parent:
+                            if (current / "project.qv.yml").exists():
+                                inferred_project_root = current
+                                break
+                            current = current.parent
+                    
+                    if inferred_project_root:
+                        wf_model = load_workflow(workflow_path, inferred_project_root)
+                        if wf_model.structure_id:
+                            # Try to find structure file by ID in common locations
+                            import json
+                            from quantumvitas.io.structure_io import STRUCTURE_META_KEY
+                            
+                            search_roots = [
+                                inferred_project_root / "structures",
+                                workflow_path.parent / "structures",
+                                workflow_path.parent.parent / "structures",
+                            ]
+                            
+                            for root in search_roots:
+                                if root.exists() and root.is_dir():
+                                    for struct_file in root.glob("*.json"):
+                                        try:
+                                            struct_data = json.loads(struct_file.read_text())
+                                            struct_meta = struct_data.get(STRUCTURE_META_KEY, {})
+                                            if struct_meta.get("id") == wf_model.structure_id:
+                                                return read_structure(struct_file)
+                                        except Exception:
+                                            continue
+            except Exception:
+                # If workflow resolution fails, fall through to legacy structure selector
+                pass
     
     # Fall back to structure selector (legacy)
     structure_value = spec.structure
     if not structure_value:
+        # Last resort: try to find structure file in common locations
+        # This handles cases where step spec was created without structure_id/structure
+        # (e.g., by build_step_spec_from_qe_input which creates structure in structures_dir)
+        import json
+        from quantumvitas.io.structure_io import STRUCTURE_META_KEY
+        
+        search_roots = []
+        if workflow_dir:
+            workflow_dir_path = Path(workflow_dir).resolve()
+            # Check structures directory relative to workflow_dir
+            search_roots.append(workflow_dir_path / "structures")
+            search_roots.append(workflow_dir_path.parent / "structures")
+        # Also check relative to step spec location
+        search_roots.append(spec_path.parent.parent / "structures")
+        if project_root:
+            project_root_path = Path(project_root).resolve()
+            search_roots.append(project_root_path / "structures")
+        
+        # Try to find any structure JSON file in these directories
+        # First, try to get workflow structure_id if available
+        workflow_structure_id = None
+        if workflow_dir and project:
+            try:
+                from quantumvitas.core.models import load_workflow
+                workflow_path = Path(workflow_dir)
+                if workflow_path.is_dir():
+                    workflow_path = workflow_path / "workflow.yaml"
+                if workflow_path.exists():
+                    wf_model = load_workflow(workflow_path, project.root)
+                    workflow_structure_id = wf_model.structure_id
+            except Exception:
+                pass
+        
+        for root in search_roots:
+            if root.exists() and root.is_dir():
+                struct_files = list(root.glob("*.json"))
+                # If there's only one structure file, use it
+                if len(struct_files) == 1:
+                    return read_structure(struct_files[0])
+                # Otherwise, try to match by ID (from spec or workflow)
+                structure_id_to_match = spec.structure_id or workflow_structure_id
+                if structure_id_to_match:
+                    for struct_file in struct_files:
+                        try:
+                            struct_data = json.loads(struct_file.read_text())
+                            struct_meta = struct_data.get(STRUCTURE_META_KEY, {})
+                            if struct_meta.get("id") == structure_id_to_match:
+                                return read_structure(struct_file)
+                        except Exception:
+                            continue
+        
+        # If still no structure found, raise error
         raise FileNotFoundError(
             f"Step spec at {spec_path} has neither structure_id (current: {spec.structure_id}) nor structure field (current: {spec.structure}). "
-            f"Please ensure the step spec has a valid structure_id or structure selector."
+            f"Please ensure the step spec has a valid structure_id or structure selector, or that a structure file exists in a structures/ directory."
         )
     
     candidate = Path(structure_value)

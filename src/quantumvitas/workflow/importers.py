@@ -137,9 +137,35 @@ def build_step_spec_from_qe_input(
     structure = structure_from_qe_input(qe_input)
 
     step_id = step_id or input_path.stem
-    structure_id = structure_id or input_path.stem
-    structure_path = (structure_base / f"{structure_id}.json").resolve()
-    write_structure(structure, structure_path, format="json")
+    # Generate a proper ULID for structure_id if not provided
+    from quantumvitas.core.resources import generate_resource_id, meta_from_name, ensure_relative_path
+    if not structure_id:
+        structure_id = generate_resource_id()
+    else:
+        # If structure_id is provided but not a ULID, generate one
+        # (structure_id should be a ULID, not a name)
+        if len(structure_id) != 26 or not structure_id.startswith("01"):
+            structure_id = generate_resource_id()
+    
+    # Use a filename based on the input stem for the structure file
+    structure_filename = input_path.stem
+    structure_path = (structure_base / f"{structure_filename}.json").resolve()
+    
+    # Create structure file with proper meta (ID-only model)
+    try:
+        structure_meta_path = ensure_relative_path(structure_path, base=structure_base.parent)
+    except ValueError:
+        structure_meta_path = f"structures/{structure_filename}.json"
+    
+    structure_meta = meta_from_name(
+        "structure",
+        name=input_path.stem,  # Use input filename as name
+        path=structure_meta_path,
+    )
+    structure_meta.id = structure_id  # Set the ULID
+    
+    # Write structure with meta
+    write_structure(structure, structure_path, format="json", metadata=structure_meta)
 
     step_type = _infer_step_type(qe_input)
     parameters, cards = _build_step_spec_from_qe_input_data(
@@ -149,15 +175,20 @@ def build_step_spec_from_qe_input(
     if reference_structure_by not in {"path", "id"}:
         raise ValueError("reference_structure_by must be either 'path' or 'id'")
 
+    # Always set structure_id (ID-only model requirement)
+    # For backwards compat, we can also set structure as a path selector if needed
     if reference_structure_by == "id":
         structure_ref_value = structure_id
+        structure_selector = ""  # ID-only: no legacy selector
     else:
         structure_ref_value = _relative_path_for_spec(structure_path, destination)
+        structure_selector = str(structure_ref_value)  # Legacy path selector for backwards compat
 
     step_file = destination / f"{step_id}.step.yaml"
     spec = StructureStepSpec(
         meta=meta_from_name("step", name=step_id, path=step_file.name),
-        structure=str(structure_ref_value),
+        structure_id=structure_id,  # Always set structure_id (ID-only model)
+        structure=structure_selector,  # Legacy selector (empty if using ID-only)
         step_type=step_type,
         parameters=parameters,
         input_name=input_path.name,
@@ -232,8 +263,28 @@ def build_workflow_from_qe_inputs(
     structure_store.mkdir(parents=True, exist_ok=True)
 
     workflow_id = workflow_id or workflow_dir.name
-    structure_id = structure_id or files[0].stem
-
+    
+    # Handle structure_id parameter:
+    # - If it's a ULID and reference_structure_by="id", treat it as a selector for existing structure
+    # - Otherwise, we're creating a new structure, so generate a ULID upfront
+    from quantumvitas.core.resources import generate_resource_id
+    
+    # Check if structure_id is a valid ULID
+    is_ulid = structure_id and len(structure_id) == 26 and structure_id.startswith("01")
+    
+    # If structure_id is provided but not a ULID, and we're creating new structures,
+    # generate a ULID upfront (the parameter is treated as a legacy name/selector, not used)
+    if structure_id and not is_ulid:
+        # This is a legacy name/selector - we'll create a new structure with a ULID
+        # The structure_id parameter is ignored when creating new structures
+        structure_id = None
+    
+    # Generate ULID if not provided (we're creating a new structure)
+    if not structure_id:
+        structure_id = generate_resource_id()
+    
+    # Now structure_id is guaranteed to be a ULID
+    # Pass it to all step creation calls so they all use the same structure
     step_results: list[StepImportResult] = []
     for input_path in files:
         step_result = build_step_spec_from_qe_input(
@@ -241,10 +292,15 @@ def build_workflow_from_qe_inputs(
             destination_dir=steps_dir,
             structure_dir=structure_store,
             step_id=input_path.stem,
-            structure_id=structure_id,
+            structure_id=structure_id,  # This is now a ULID
             reference_structure_by=reference_structure_by,
         )
         step_results.append(step_result)
+    
+    # Verify all steps have the same structure_id (they should, since we passed the same ULID)
+    actual_structure_id = step_results[0].structure_id if step_results else structure_id
+    assert all(r.structure_id == actual_structure_id for r in step_results), \
+        "All steps must share the same structure_id"
 
     raw_dir = (workflow_dir / working_dir_name).resolve()
     raw_dir.mkdir(parents=True, exist_ok=True)
@@ -255,8 +311,11 @@ def build_workflow_from_qe_inputs(
         shutil.copy2(input_path, originals_dir / input_path.name)
 
     workflow_meta: Dict[str, object] = {"working_dir": working_dir_name}
+    # Write structure_id (ID-only model) - use the actual structure_id from step results (ULID)
+    workflow_meta["structure_id"] = actual_structure_id
+    # Also write structure as legacy selector for backwards compatibility
     if reference_structure_by == "id":
-        workflow_meta["structure"] = structure_id
+        workflow_meta["structure"] = actual_structure_id  # For backwards compat, also write as structure
     else:
         workflow_meta["structure"] = str(_relative_path_for_spec(step_results[0].structure_path, workflow_dir))
 

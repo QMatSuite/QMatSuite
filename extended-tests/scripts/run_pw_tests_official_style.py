@@ -27,8 +27,7 @@ from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.base import EngineConfig
 from quantumvitas.io import QEInputParser, QEInputGenerator
 
-# Import from new locations
-from quantumvitas.core.engines import ensure_pseudopotentials
+# Pseudopotential resolution is handled by ensure_qe_pseudos (already migrated in this file)
 from quantumvitas.workflow.input_runner import set_outdir_to_temp, set_pseudo_dir_to_temp
 from tests.core import run_command_with_timeout, TimeoutError
 from tests.core.qe_test_utils import compare_with_benchmark
@@ -246,7 +245,42 @@ def run_test_category(
         if test_files:
             first_test_path = category_dir / test_files[0][0]
             if first_test_path.exists():
-                ensure_pseudopotentials(first_test_path, working_dir, test_suite_dir)
+                from quantumvitas.core.pseudo import ensure_qe_pseudos, get_system_pseudo_dir
+                # Build additional search directories from test_suite_dir
+                additional_search_dirs = []
+                if test_suite_dir:
+                    test_suite_path = Path(test_suite_dir)
+                    additional_search_dirs.extend([
+                        test_suite_path.parent / "pseudo",
+                        test_suite_path / "pseudo",
+                        test_suite_path.parent.parent / "pseudo",
+                    ])
+                # Find project pseudo_dir
+                current = Path(first_test_path).parent
+                project_root = None
+                while current != current.parent:
+                    if (current / "pseudo").exists() or (current / "project.qv.yml").exists():
+                        project_root = current
+                        break
+                    current = current.parent
+                if project_root:
+                    pseudo_dir = project_root / "pseudo"
+                else:
+                    pseudo_dir = working_dir / "pseudo"
+                result = ensure_qe_pseudos(
+                    qe_input_file=first_test_path,
+                    project_pseudo_dir=pseudo_dir,
+                    system_pseudo_dir=get_system_pseudo_dir(),
+                    strict=False,
+                    additional_search_dirs=additional_search_dirs if additional_search_dirs else None,
+                )
+                # Copy to working_dir for compatibility
+                if result.all_available:
+                    import shutil
+                    for pp_name, pp_path in result.resolved_pseudos.items():
+                        working_pp = working_dir / pp_name
+                        if not working_pp.exists() or working_pp.stat().st_mtime < pp_path.stat().st_mtime:
+                            shutil.copy2(pp_path, working_pp)
     else:
         working_dir = None
     
@@ -294,7 +328,43 @@ def run_test_category(
             QEInputGenerator.write_file(qe_input, generated_input)
             
             # Ensure pseudopotentials
-            if not ensure_pseudopotentials(test_path, test_working_dir, test_suite_dir):
+            from quantumvitas.core.pseudo import ensure_qe_pseudos, get_system_pseudo_dir
+            # Build additional search directories from test_suite_dir
+            additional_search_dirs = []
+            if test_suite_dir:
+                test_suite_path = Path(test_suite_dir)
+                additional_search_dirs.extend([
+                    test_suite_path.parent / "pseudo",
+                    test_suite_path / "pseudo",
+                    test_suite_path.parent.parent / "pseudo",
+                ])
+            # Find project pseudo_dir
+            current = Path(test_path).parent
+            project_root = None
+            while current != current.parent:
+                if (current / "pseudo").exists() or (current / "project.qv.yml").exists():
+                    project_root = current
+                    break
+                current = current.parent
+            if project_root:
+                pseudo_dir = project_root / "pseudo"
+            else:
+                pseudo_dir = test_working_dir / "pseudo"
+            result = ensure_qe_pseudos(
+                qe_input_file=test_path,
+                project_pseudo_dir=pseudo_dir,
+                system_pseudo_dir=get_system_pseudo_dir(),
+                strict=False,
+                additional_search_dirs=additional_search_dirs if additional_search_dirs else None,
+            )
+            # Copy to working_dir for compatibility
+            if result.all_available:
+                import shutil
+                for pp_name, pp_path in result.resolved_pseudos.items():
+                    working_pp = test_working_dir / pp_name
+                    if not working_pp.exists() or working_pp.stat().st_mtime < pp_path.stat().st_mtime:
+                        shutil.copy2(pp_path, working_pp)
+            if not result.all_available:
                 results.append({
                     "category": category,
                     "file": input_file,

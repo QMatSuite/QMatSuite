@@ -169,7 +169,9 @@ class TestResourceRenameSafety:
         step_file = project_root / workflow.meta.path / "steps" / "scf.step.yaml"
         step_data = yaml.safe_load(step_file.read_text())
         original_step_id = step_data["meta"]["id"]
-        assert step_data["parent_workflow_id"] == original_workflow_id
+        # DAG model: Step YAML should NOT contain parent_workflow_id
+        # Verify step YAML does not contain parent_workflow_id
+        assert "parent_workflow_id" not in step_data, "Step YAML should not contain parent_workflow_id (DAG model)"
         
         # Rename workflow
         QVService.configure_workflow(project_root, workflow.meta.slug, new_name="Renamed Workflow")
@@ -181,8 +183,9 @@ class TestResourceRenameSafety:
         step_file = project_root / renamed_workflow.meta.path / "steps" / "scf.step.yaml"
         if step_file.exists():
             step_data = yaml.safe_load(step_file.read_text())
-            # Verify parent_workflow_id is unchanged (workflow ID didn't change)
-            assert step_data["parent_workflow_id"] == original_workflow_id
+            # DAG model: Step YAML should NOT contain parent_workflow_id
+            # Verify step YAML does not contain parent_workflow_id
+            assert "parent_workflow_id" not in step_data, "Step YAML should not contain parent_workflow_id (DAG model)"
         
         # Verify step reference in workflow is unchanged
         workflow_yaml = project_root / renamed_workflow.meta.path / "workflow.yaml"

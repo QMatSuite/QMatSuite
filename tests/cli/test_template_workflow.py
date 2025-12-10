@@ -80,14 +80,14 @@ def test_template_workflow_ulids_consistent(template_project):
     workflow_ulid = (workflow_entry.get("meta") or {}).get("id")
     assert workflow_ulid, "Workflow should have a ULID in meta.id"
     
-    # Check step files have matching parent_workflow_id
+    # DAG model: Step YAML should NOT contain parent_workflow_id
+    # Verify step files do not contain parent_workflow_id
     steps_dir = project_dir / "workflows" / "si-dos" / "steps"
     for step_file in steps_dir.glob("*.step.yaml"):
         step_data = yaml.safe_load(step_file.read_text())
-        parent_id = step_data.get("parent_workflow_id")
-        assert parent_id == workflow_ulid, (
-            f"Step {step_file.name} has parent_workflow_id={parent_id}, "
-            f"expected {workflow_ulid}"
+        # Step YAML should not contain parent_workflow_id (DAG model)
+        assert "parent_workflow_id" not in step_data, (
+            f"Step {step_file.name} should not contain parent_workflow_id (DAG model)"
         )
 
 
@@ -99,13 +99,15 @@ def test_template_structure_copied(template_project):
     workflow_yaml = project_dir / "workflows" / "si-dos" / "workflow.yaml"
     workflow_data = yaml.safe_load(workflow_yaml.read_text())
     
-    # Check both new format (top-level) and old format (workflow section)
-    structure_name = workflow_data.get("structure") or (workflow_data.get("workflow") or {}).get("structure")
-    assert structure_name, "Workflow should reference a structure"
+    # ID-only model: check for structure_id instead of structure
+    structure_id = workflow_data.get("structure_id")
+    assert structure_id, "Workflow should reference a structure via structure_id"
     
-    # Check structure file exists
-    structure_file = project_dir / "structures" / f"{structure_name}.json"
-    assert structure_file.exists(), f"Structure file {structure_file} should exist"
+    # Check structure file exists by resolving via project
+    from quantumvitas.project.model import Project
+    project = Project.open(project_dir)
+    structure_ref = project.get_structure(structure_id)
+    assert structure_ref.absolute_path.exists(), f"Structure file {structure_ref.absolute_path} should exist"
 
 
 @pytest.mark.qe_cli
@@ -181,15 +183,25 @@ def test_init_workflow_from_template_with_custom_structure(tmp_path):
     # Check workflow uses custom structure
     workflow_yaml = project_dir / "workflows" / "my-workflow" / "workflow.yaml"
     workflow_data = yaml.safe_load(workflow_yaml.read_text())
-    # Check both new format (top-level) and old format (workflow section)
-    structure_in_workflow = workflow_data.get("structure") or (workflow_data.get("workflow") or {}).get("structure")
-    assert structure_in_workflow == "custom_si", f"Workflow should use custom_si structure, got: {structure_in_workflow}"
+    # ID-only model: workflow should reference structure via structure_id (ULID)
+    structure_id = workflow_data.get("structure_id")
+    assert structure_id is not None, "Workflow should reference structure via structure_id (ULID)"
+    # Verify structure_id is a ULID (26 chars), not a human-readable name
+    assert len(structure_id) == 26, "structure_id should be a ULID, not a human-readable name"
+    # Verify it resolves to the custom structure
+    from quantumvitas.core.resolution import resolve_structure
+    resolved_structure = resolve_structure(project_dir, structure_id)
+    assert resolved_structure.meta.slug == "custom_si", "Workflow should reference custom_si structure"
     
-    # Check step files use custom structure
+    # DAG model: Step YAML should NOT contain structure_id (inherits from workflow)
+    # Verify step files do not contain structure_id
     steps_dir = project_dir / "workflows" / "my-workflow" / "steps"
     for step_file in steps_dir.glob("*.step.yaml"):
         step_data = yaml.safe_load(step_file.read_text())
-        assert step_data["structure"] == "custom_si", (
-            f"Step {step_file.name} should use custom_si structure"
+        assert "structure_id" not in step_data, (
+            f"Step {step_file.name} should not contain structure_id (DAG model)"
+        )
+        assert "structure" not in step_data, (
+            f"Step {step_file.name} should not contain structure selector (DAG model)"
         )
 

@@ -1,9 +1,0 @@
-meta:
-  id: 01KB9JTHKX4Q11M4QYAN7G7X8W
-  name: nscf
-  slug: nscf
-  path: workflows/si-dos/steps/nscf.step.yaml
-  kind: step
-structure: si
-step_type: nscf
-parent_workflow_id: 01KB9JA6JSMH7XFZ1AK917TV6J

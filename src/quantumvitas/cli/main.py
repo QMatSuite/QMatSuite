@@ -738,10 +738,9 @@ def init_workflow_command(
                     struct_path = copy_structure_template(struct_name, structures_dir)
                     struct_rel_path = ensure_relative_path(struct_path, base=project_root)
                     struct_meta = meta_from_name("structure", name=struct_name, path=struct_rel_path)
+                    # DAG + ID-only: only structure_id, no meta duplication
                     structures_section.append({
-                        "name": struct_name,
-                        "path": struct_rel_path,
-                        "meta": struct_meta.to_dict(),
+                        "structure_id": struct_meta.id,  # ID-only reference (ULID)
                     })
                     typer.echo(f"Copied structure '{struct_name}' from template")
                 except ValueError:
@@ -754,10 +753,9 @@ def init_workflow_command(
         if parent:
             workflow_meta_dict["parents"] = parent
 
+        # DAG + ID-only: only workflow_id, no meta duplication
         workflows_section.append({
-            "name": workflow_id,
-            "path": rel_path,
-            "meta": workflow_meta_dict,
+            "workflow_id": workflow_meta.id,  # ID-only reference (ULID)
         })
         save_project_config(project_root, config)
         typer.secho(f"Workflow '{workflow_id}' created from template '{template}' at {workflow_dir}", fg=typer.colors.GREEN)
@@ -795,14 +793,10 @@ def init_workflow_command(
     }
     (workflow_dir / "workflow.yaml").write_text(yaml.safe_dump(workflow_payload, sort_keys=False))
 
-    # Add to project.qv.yml
-    workflows_section.append(
-        {
-            "name": workflow_id,
-            "path": str(rel_path),
-            "meta": workflow_meta_dict,
-        }
-    )
+    # Add to project.qv.yml (DAG + ID-only: only workflow_id, no meta duplication)
+    workflows_section.append({
+        "workflow_id": workflow_meta.id,  # ID-only reference (ULID)
+    })
     save_project_config(project_root, config)
 
     typer.secho(f"Workflow '{workflow_id}' created at {workflow_dir}", fg=typer.colors.GREEN)
@@ -1240,14 +1234,10 @@ def import_structure_command(
     metadata = meta_from_name("structure", name=structure_name, path=write_rel)
     write_structure(struct, out_path, format=output_format, metadata=metadata)
 
-    structures_section.append(
-        {
-            "name": structure_name,
-            "file": write_rel,
-            "format": output_format.lower(),
-            "meta": metadata.to_dict(),
-        }
-    )
+    # DAG + ID-only: only structure_id, no meta duplication
+    structures_section.append({
+        "structure_id": metadata.id,  # ID-only reference (ULID)
+    })
     save_project_config(project_root, config)
 
     typer.secho(
@@ -1297,69 +1287,222 @@ def detect_qe(
 )
 def run_step_command(
     ctx: typer.Context,
-    target: Path = typer.Argument(
-        ..., help="QE input (.in) or step spec (.yaml) to execute"
+    target: Optional[Path] = typer.Argument(
+        None, help="[DEPRECATED] Step spec (.yaml) or QE input (.in). Use --workflow + --step instead."
+    ),
+    workflow: Optional[str] = typer.Option(
+        None, "--workflow", "-w", help="Workflow selector (name, slug, path, or ULID). Auto-detected from cwd if omitted."
+    ),
+    step: Optional[str] = typer.Option(
+        None, "--step", "-s", help="Step selector (name, slug, ULID, or step_type). Auto-detected from cwd if omitted."
     ),
     working_dir: Optional[Path] = typer.Option(
-        None, "--workdir", help="Temporary working directory"
+        None, "--workdir", help="Temporary working directory (project mode only)"
     ),
     project: Optional[Path] = typer.Option(
-        None, "--project", help="Project root (for pseudo/pseudo_dir handling)"
+        None, "--project", help="Project root. Auto-detected from cwd if omitted."
+    ),
+    standalone: bool = typer.Option(
+        False, "--standalone", help="Run in standalone mode (no project context)"
+    ),
+    input: Optional[Path] = typer.Option(
+        None, "--input", help="QE input file (required in standalone mode)"
+    ),
+    engine: Optional[str] = typer.Option(
+        None, "--engine", help="Engine name (standalone mode only, default: auto-detect from input)"
+    ),
+    bidirectional: bool = typer.Option(
+        False, "--bidirectional", help="[DEPRECATED] Standalone mode always does roundtrip. This flag is ignored."
     ),
 ) -> None:
     """
-    Run a single QE input file or step spec in isolation.
+    Run a single QE input file or step spec.
+    
+    Two modes:
+    - Project mode (default): Run step from project/workflow context
+    - Standalone mode (--standalone): Run QE input file without project context.
+      Standalone mode always performs a full roundtrip: parses the original input,
+      generates a normalized QE input, and runs QE on the generated input.
+      The original input is preserved as <stem>.raw.in.
     """
-    registry = create_default_registry()
-    engine = registry.get("qe")
-
-    workdir = working_dir or (Path("temp") / "cli_outputs" / target.stem)
-    workdir = workdir.resolve()
-    workdir.mkdir(parents=True, exist_ok=True)
-
-    if project:
-        project_root = project.resolve()
-    else:
-        try:
-            project_root = _resolve_project_root()
-        except typer.BadParameter:
-            project_root = detect_project_root(target.parent)
-
-    bundle = _parse_override_args(ctx.args)
-    if bundle.has_any():
-        typer.echo(f"Applying overrides: {_render_override_summary(bundle)}")
-
-    if target.suffix.lower() in {".yaml", ".yml"}:
-        result, prepared, generated_input = _execute_step_spec_path(
-            spec_path=target,
-            bundle=bundle,
-            project_root=project_root,
-            working_dir=workdir,
-            engine_backend=engine.backend,
+    # Validate mutual exclusion
+    if standalone:
+        # Standalone mode: require --input, disallow project-related options
+        if project:
+            raise typer.BadParameter(
+                "--project cannot be used with --standalone. "
+                "Standalone mode does not use project context."
+            )
+        if not input:
+            raise typer.BadParameter(
+                "--input is required in standalone mode. "
+                "Example: qv run step --standalone --input pw.in"
+            )
+        if target:
+            raise typer.BadParameter(
+                "Positional argument (target) cannot be used with --standalone. "
+                "Use --input instead."
+            )
+        
+        # Run standalone mode (bidirectional flag is ignored - standalone always does roundtrip)
+        _run_standalone_step(
+            input_file=input,
+            workdir=working_dir,
+            engine_name=engine,
         )
-        typer.echo(
-            f"Step finished: {result.step_type} -> {result.output_file} "
-            f"(input {generated_input})"
-        )
-        typer.echo(f"Working dir: {prepared.working_dir}")
         return
+    
+    # Project mode: disallow standalone-only flags
+    if bidirectional:
+        typer.echo("Warning: --bidirectional is only meaningful in standalone mode (which always does roundtrip). Ignoring flag.")
+    
+    # Load project context
+    from quantumvitas.core.project_context import ProjectContext, resolve_workflow_for_cli, resolve_step_for_cli
+    from quantumvitas.core.resolution import ResourceNotFoundError
+    
+    cwd = Path.cwd()
+    try:
+        ctx_obj = ProjectContext.load(cwd, project)
+    except ResourceNotFoundError as e:
+        raise typer.BadParameter(
+            f"Project not found: {e}. "
+            "Run inside a project directory or specify --project <path>. "
+            "For standalone execution, use --standalone --input <file>."
+        ) from e
+    
+    # Resolve workflow and step
+    try:
+        workflow_resolved = resolve_workflow_for_cli(ctx_obj, workflow)
+    except ResourceNotFoundError as e:
+        raise typer.BadParameter(str(e)) from e
+    
+    # If target is provided (legacy support), try to resolve step from it
+    if target:
+        # Legacy: if target is a step YAML, try to resolve it via registry
+        if target.suffix.lower() in {".yaml", ".yml"}:
+            typer.echo(
+                "Warning: Using step YAML file directly is deprecated. "
+                "Use --workflow <selector> --step <selector> instead.",
+                err=True
+            )
+            # Try to find the step in the registry by path
+            step_path = target.resolve()
+            try:
+                rel_path = step_path.relative_to(ctx_obj.project_root)
+                # Extract step selector from path (e.g., workflows/wf/steps/scf.step.yaml -> scf)
+                if "workflows" in rel_path.parts and "steps" in rel_path.parts:
+                    step_selector = step_path.stem.replace(".step", "")
+                    step_resolved = resolve_step_for_cli(ctx_obj, workflow_resolved, step_selector)
+                else:
+                    raise typer.BadParameter(
+                        f"Step file {target} is not in a workflow steps directory. "
+                        "Please use --workflow <selector> --step <selector> instead."
+                    )
+            except (ValueError, ResourceNotFoundError):
+                raise typer.BadParameter(
+                    f"Cannot resolve step from {target}. "
+                    "Please use --workflow <selector> --step <selector> instead."
+                )
+        else:
+            # Target is a QE input file - not supported in project mode
+            raise typer.BadParameter(
+                f"QE input file '{target}' cannot be used in project mode. "
+                "Use --workflow <selector> --step <selector> to run a step, "
+                "or use --standalone --input <file> for standalone execution."
+            )
+    else:
+        # No target - use --step option or auto-detect
+        try:
+            step_resolved = resolve_step_for_cli(ctx_obj, workflow_resolved, step)
+        except ResourceNotFoundError as e:
+            raise typer.BadParameter(str(e)) from e
+    
+    # Run step via QVService (registry-based, uses workflow.structure_id)
+    from quantumvitas.api import QVService
+    
+    try:
+        result = QVService.run_step(
+            project_root=ctx_obj.project_root,
+            workflow_selector=workflow_resolved.meta.slug or workflow_resolved.meta.name or workflow_resolved.meta.id,
+            step_selector=step_resolved.meta.slug or step_resolved.meta.name or step_resolved.meta.id,
+        )
+        
+        typer.echo(f"Step '{result['step']}' ({result['step_type']}) finished successfully")
+        if result.get("output_file"):
+            typer.echo(f"Output: {result['output_file']}")
+        if result.get("error"):
+            typer.echo(f"Error: {result['error']}", err=True)
+            raise typer.Exit(1)
+    except Exception as e:
+        raise typer.BadParameter(f"Failed to run step: {e}") from e
 
-    if not target.exists():
-        raise typer.BadParameter(f"Input file '{target}' not found.")
 
-    result, prepared = run_input_step(
-        engine=engine.backend,
-        input_file=target.resolve(),
-        working_dir=workdir,
-        project_root=project_root,
-        step_type=None,
-        parameter_overrides=bundle.parameters or None,
-        card_overrides=bundle.card_overrides or None,
-        species_overrides=bundle.species_overrides or None,
+def _run_standalone_step(
+    input_file: Path,
+    workdir: Optional[Path],
+    engine_name: Optional[str],
+) -> None:
+    """
+    Run a step in standalone mode.
+    
+    Standalone mode always performs a full roundtrip: parse original input,
+    generate normalized input, and run QE on the generated input.
+    
+    Args:
+        input_file: Path to QE input file
+        workdir: Working directory (defaults to current directory)
+        engine_name: Engine name (defaults to "qe")
+    """
+    from quantumvitas.workflow.standalone import StandaloneStepContext, run_standalone_step
+    from quantumvitas.core.engines.base import EngineConfig
+    from quantumvitas.core.engines.qe import QuantumEspressoEngine
+    
+    input_path = Path(input_file).resolve()
+    if not input_path.exists():
+        raise typer.BadParameter(f"Input file not found: {input_path}")
+    
+    # Default workdir to current directory
+    if workdir:
+        workdir_path = Path(workdir).resolve()
+    else:
+        workdir_path = Path.cwd()
+    workdir_path.mkdir(parents=True, exist_ok=True)
+    
+    # Default outdir: workdir / "outdir"
+    outdir_path = workdir_path / "outdir"
+    
+    # Create engine (for now, only QE is supported)
+    if engine_name and engine_name != "qe":
+        raise typer.BadParameter(
+            f"Engine '{engine_name}' not supported in standalone mode. "
+            "Only 'qe' is currently supported."
+        )
+    
+    engine_config = EngineConfig(name="qe")
+    engine = QuantumEspressoEngine(engine_config)
+    
+    # Create context and run
+    ctx = StandaloneStepContext(
+        input_file=input_path,
+        workdir=workdir_path,
+        outdir=outdir_path,
+        engine=engine,
     )
-
-    typer.echo(f"Step finished: {result.step_type} -> {result.output_file}")
-    typer.echo(f"Working dir: {prepared.working_dir}")
+    
+    # Print standalone run info
+    typer.echo("Standalone QE run:")
+    typer.echo(f"  workdir: {workdir_path}")
+    typer.echo(f"  input:   {input_path}")
+    typer.echo(f"  outdir:  {outdir_path}")
+    
+    result, prepared = run_standalone_step(ctx)
+    
+    # Determine which input was actually used for the run
+    input_used = prepared.modified_input if hasattr(prepared, 'modified_input') else input_path
+    
+    typer.echo(
+        f"Step finished: {result.output_file} -> (input {input_used})"
+    )
 
 
 @run_app.command(
@@ -1864,15 +2007,26 @@ def delete_structure_command(
                 "Use --force to remove anyway or --cascade to delete the workflows first."
             )
 
-    file_rel = entry.get("file") or (entry.get("meta") or {}).get("path")
+    # Resolve structure to get its ID before moving file to trash
+    # (resolution might need the file to exist)
+    from quantumvitas.core.resolution import require_structure, build_resource_index
+    registry = build_resource_index(project_root)
+    resolved = require_structure(project_root, identifier, config=config, index=registry)
+    structure_id = resolved.meta.id
+    
+    # Move file to trash
+    file_rel = entry.get("file") or (entry.get("meta") or {}).get("path") or resolved.meta.path
     if file_rel:
         file_path = (project_root / file_rel).resolve()
         if file_path.exists():
             move_to_trash(file_path, trash_dir)
 
+    # Remove from config by structure_id (ID-only model)
     structures = config.setdefault("structures", [])
-    if entry in structures:
-        structures.remove(entry)
+    structures[:] = [
+        e for e in structures
+        if (e.get("structure_id") or e.get("id") or (e.get("meta") or {}).get("id")) != structure_id
+    ]
     save_project_config(project_root, config)
     typer.secho(f"Structure '{entry_display_name(entry)}' moved to trash.", fg=typer.colors.GREEN)
 
@@ -2643,6 +2797,11 @@ def run_workflow_command(
     proj = Project.open(project_root)
     config = load_project_config(project_root)
     
+    # Resolve workflow via registry (for consistent resolution)
+    from quantumvitas.core.resolution import build_resource_index, require_workflow
+    
+    registry = build_resource_index(project_root)
+    
     # Resolve workflow
     if workflow:
         # Accept either workflow id or direct path
@@ -2650,7 +2809,9 @@ def run_workflow_command(
         if workflow_path.exists():
             wf = Workflow.from_yaml(workflow_path, proj)
         else:
-            wf = proj.get_workflow(workflow)
+            # Use registry-based resolution
+            workflow_resolved = require_workflow(project_root, workflow, config=config, index=registry)
+            wf = Workflow.from_yaml(workflow_resolved.absolute_path, proj)
     else:
         # Auto-detect enclosing workflow from pwd
         wf_entry = find_enclosing_workflow(project_root, config)
@@ -2659,8 +2820,9 @@ def run_workflow_command(
                 "No workflow specified and not inside a workflow directory. "
                 "Specify workflow name/slug/path or cd into a workflow folder."
             )
-        wf_id = (wf_entry.get("meta") or {}).get("slug") or wf_entry.get("name")
-        wf = proj.get_workflow(wf_id)
+        wf_id = (wf_entry.get("meta") or {}).get("id") or (wf_entry.get("meta") or {}).get("slug") or wf_entry.get("name")
+        workflow_resolved = require_workflow(project_root, wf_id, config=config, index=registry)
+        wf = Workflow.from_yaml(workflow_resolved.absolute_path, proj)
 
     if strict:
         wf.mode = StepMode.STRICT

@@ -177,34 +177,35 @@ class TestSnapshotIDRegeneration:
                     if step_meta and step_meta.kind == "step":
                         step_path = new_project_root / step_meta.path
                         if step_path.exists():
+                            # DAG model: Step YAML should NOT contain structure_id or parent_workflow_id
+                            step_yaml_text = step_path.read_text()
+                            assert "parent_workflow_id:" not in step_yaml_text, (
+                                f"Step {step_meta.name} YAML should not contain parent_workflow_id (DAG model)"
+                            )
+                            assert "structure_id:" not in step_yaml_text, (
+                                f"Step {step_meta.name} YAML should not contain structure_id (DAG model)"
+                            )
+                            
+                            # Load spec for other validations
                             step_spec = StructureStepSpec.from_yaml(step_path)
                         
-                        # Step should reference parent workflow
-                        if step_spec.parent_workflow_id:
-                            assert step_spec.parent_workflow_id in materialized_index.by_id, (
-                                f"Step {step_spec.meta.name} references parent_workflow_id "
-                                f"{step_spec.parent_workflow_id} which does not exist"
+                        # Step structure is resolved via workflow.structure_id at runtime
+                        # Verify workflow has structure_id set
+                        assert workflow.structure_id is not None, (
+                            f"Workflow {workflow.meta.name} should have structure_id set"
+                        )
+                        # Verify structure exists in index
+                        if workflow.structure_id:
+                            assert workflow.structure_id in materialized_index.by_id, (
+                                f"Workflow {workflow.meta.name} references structure_id "
+                                f"{workflow.structure_id} which does not exist"
                             )
-                            parent_meta = materialized_index.by_id[step_spec.parent_workflow_id]
-                            assert parent_meta.kind == "workflow", (
-                                f"Step references {step_spec.parent_workflow_id} but it's not a workflow"
-                            )
-                            # Parent workflow ID should match the workflow containing this step
-                            assert step_spec.parent_workflow_id == workflow.meta.id, (
-                                f"Step {step_spec.meta.name} has parent_workflow_id "
-                                f"{step_spec.parent_workflow_id} but is in workflow {workflow.meta.id}"
-                            )
-                        
-                        # Step should reference structure (if present)
-                        if step_spec.structure_id:
-                            assert step_spec.structure_id in materialized_index.by_id, (
-                                f"Step {step_spec.meta.name} references structure_id "
-                                f"{step_spec.structure_id} which does not exist"
-                            )
-                            structure_meta = materialized_index.by_id[step_spec.structure_id]
+                            structure_meta = materialized_index.by_id[workflow.structure_id]
                             assert structure_meta.kind == "structure", (
-                                f"Step references {step_spec.structure_id} but it's not a structure"
+                                f"Workflow references {workflow.structure_id} but it's not a structure"
                             )
+                            # DAG model: Step structure is resolved via workflow.structure_id
+                            # No need to check step_spec.structure_id as it's not persisted in YAML
         
         # Assert: Graph structure matches snapshot pattern
         # In snapshot, each workflow has structure_id pointing to a structure

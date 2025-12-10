@@ -8297,3 +8297,12 @@ Output:
 - A short list of “remaining issues or confirmed clean”.
 - Any test additions you made (filenames + what they assert).
 - Confirm that after your changes, all cross-resource references are truly ID-only and all tests still pass.
+
+
+
+
+To be solved still:
+cd <HOME>/quantumVITAS && python3 -m pytest tests/integration/test_pw_scf_ibrav_step_specs.py::TestPWScfIbravStepSpecsExecution::test_pw_scf_ibrav_specs_generate_and_run -xvs 2>&1 | tail -30
+Updating _resolve_structure_for_spec to handle structure_id without a project by searching the filesystem:
+Fixing the search path: the structure file is in workflow_dir / "structures", not workflow_dir.parent / "structures".
+

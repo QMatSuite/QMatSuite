@@ -471,20 +471,25 @@ class TestStepSpecRoundtrip:
 
         original = si_diamond_structure
 
-        # Create step spec YAML
+        # Create step spec YAML (DAG model: should NOT contain structure_id)
         spec = StructureStepSpec(
             meta=meta_from_name("step", name="scf", path="step.yaml"),
-            structure="si",
             step_type="scf",
             parameters={
                 "SYSTEM": {"ecutwfc": 60},
             },
         )
         spec_file = tmp_path / "step.yaml"
-        spec_file.write_text(yaml.safe_dump(spec.to_dict()))
+        spec_dict = spec.to_dict()
+        # DAG model: Step YAML should NOT contain structure_id
+        assert "structure_id" not in spec_dict, "Step YAML should not contain structure_id (DAG model)"
+        spec_file.write_text(yaml.safe_dump(spec_dict))
 
         # Load spec from YAML
         spec = StructureStepSpec.from_yaml(spec_file)
+        # Verify YAML does not contain structure_id
+        spec_yaml_text = spec_file.read_text()
+        assert "structure_id:" not in spec_yaml_text, "Step YAML should not contain structure_id (DAG model)"
 
         # Generate QE input
         qe_input, _ = generate_qe_input_from_spec(original, spec)
