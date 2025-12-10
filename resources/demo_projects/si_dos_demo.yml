@@ -79,20 +79,6 @@ workflows:
   working_dir: raw
   steps:
   - meta:
-      id: 01KC38PGMYFABDDE5T6CA8A2J8
-      name: dos
-      slug: dos
-      path: workflows/si-dos/steps/dos.step.yaml
-      kind: step
-    step_type: dos
-    parameters:
-      DOS:
-        emax: 16.0
-        emin: -9.0
-        fildos: si.dos.dat
-        outdir: ./outdir/
-        prefix: si
-  - meta:
       id: 01KC38NVA0NES3T6YG7DK8DP82
       name: scf
       slug: scf
@@ -157,6 +143,20 @@ workflows:
       Si:
         mass: 28.0855
         pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+  - meta:
+      id: 01KC38PGMYFABDDE5T6CA8A2J8
+      name: dos
+      slug: dos
+      path: workflows/si-dos/steps/dos.step.yaml
+      kind: step
+    step_type: dos
+    parameters:
+      DOS:
+        emax: 16.0
+        emin: -9.0
+        fildos: si.dos.dat
+        outdir: ./outdir/
+        prefix: si
   structure_id: 01KC38MBGSS8MX3Z4ETZMXZZY4
 pseudo:
   directory: pseudo

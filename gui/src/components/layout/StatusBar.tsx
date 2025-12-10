@@ -48,7 +48,8 @@ export function StatusBar({
     return () => clearInterval(interval);
   }, [daemonConnected]);
   
-  // Fetch job counts
+  // Fetch job counts (polling at 5s interval to avoid conflicts with useJobs)
+  // NOTE: This is for StatusBar display only. JobsPanel uses useJobs hook which also polls.
   useEffect(() => {
     const fetchJobCounts = async () => {
       if (!window.qv || !daemonConnected) return;
@@ -64,7 +65,7 @@ export function StatusBar({
     };
     
     fetchJobCounts();
-    const interval = setInterval(fetchJobCounts, 3000); // Refresh every 3s
+    const interval = setInterval(fetchJobCounts, 5000); // Refresh every 5s (throttled to avoid conflicts)
     return () => clearInterval(interval);
   }, [daemonConnected]);
   

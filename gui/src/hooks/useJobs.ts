@@ -58,10 +58,15 @@ export function useJobs(options: UseJobsOptions = {}): UseJobsResult {
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   
-  const fetchJobs = useCallback(async () => {
+  const isInitialLoadRef = useRef(true);
+  
+  const fetchJobs = useCallback(async (isPolling = false) => {
     if (!window.qv) return;
     
-    setIsLoading(true);
+    // Only set loading state on initial load, not on polling updates
+    if (isInitialLoadRef.current || !isPolling) {
+      setIsLoading(true);
+    }
     setError(null);
     
     try {
@@ -94,10 +99,13 @@ export function useJobs(options: UseJobsOptions = {}): UseJobsResult {
       if (countsResponse.ok && countsResponse.data) {
         setCounts(countsResponse.data);
       }
+      
+      isInitialLoadRef.current = false;
     } catch (e) {
       const errorMsg = e instanceof Error ? e.message : 'Failed to fetch jobs';
       setError(errorMsg);
       setJobs([]); // Clear jobs on error
+      isInitialLoadRef.current = false;
     } finally {
       setIsLoading(false);
     }
@@ -117,12 +125,15 @@ export function useJobs(options: UseJobsOptions = {}): UseJobsResult {
   
   // Initial fetch and polling setup
   useEffect(() => {
+    // Reset initial load flag when projectRoot changes
+    isInitialLoadRef.current = true;
+    
     // Initial fetch
-    fetchJobs();
+    fetchJobs(false);
     
     // Setup polling if enabled
     if (isPolling) {
-      intervalRef.current = setInterval(fetchJobs, pollInterval);
+      intervalRef.current = setInterval(() => fetchJobs(true), pollInterval);
     }
     
     return () => {
@@ -131,14 +142,14 @@ export function useJobs(options: UseJobsOptions = {}): UseJobsResult {
         intervalRef.current = null;
       }
     };
-  }, [isPolling, pollInterval, fetchJobs]);
+  }, [isPolling, pollInterval, fetchJobs, projectRoot]);
   
   return {
     jobs,
     counts,
     isLoading,
     error,
-    refresh: fetchJobs,
+    refresh: () => fetchJobs(false), // Manual refresh is not polling
     startPolling,
     stopPolling,
     isPolling,
