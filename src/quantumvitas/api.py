@@ -3221,13 +3221,28 @@ class QVService:
                 wf_path = workflow.absolute_path / "workflow.yaml"
                 wf_model = load_workflow(wf_path)
                 
-                if wf_model.structure:
+                # DAG + ID-only model: check structure_id (ULID) first, then legacy structure selector
+                structure_id = wf_model.structure_id
+                structure_selector = wf_model.structure  # Legacy field for backwards compat
+                
+                if structure_id:
+                    # Resolve structure by ID (ULID) via registry
                     try:
-                        structure = resolve_structure(project_root, wf_model.structure)
+                        from quantumvitas.core.resolution import build_resource_index, require_structure
+                        index = build_resource_index(project_root)
+                        structure = require_structure(project_root, structure_id, index=index)
+                        checks.append({"name": "Structure", "ok": True, "message": f"Structure found: {structure.meta.name}"})
+                    except Exception as e:
+                        checks.append({"name": "Structure", "ok": False, "message": f"Structure with ID '{structure_id}' not found: {e}"})
+                        errors.append(f"Workflow references missing structure (ID: {structure_id})")
+                elif structure_selector:
+                    # Legacy: resolve by selector (for backwards compatibility)
+                    try:
+                        structure = resolve_structure(project_root, structure_selector)
                         checks.append({"name": "Structure", "ok": True, "message": f"Structure found: {structure.meta.name}"})
                     except Exception:
-                        checks.append({"name": "Structure", "ok": False, "message": f"Structure '{wf_model.structure}' not found"})
-                        errors.append(f"Workflow references missing structure: {wf_model.structure}")
+                        checks.append({"name": "Structure", "ok": False, "message": f"Structure '{structure_selector}' not found"})
+                        errors.append(f"Workflow references missing structure: {structure_selector}")
                 else:
                     checks.append({"name": "Structure", "ok": False, "message": "No structure assigned"})
                     errors.append("Workflow has no structure assigned")

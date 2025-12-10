@@ -585,8 +585,13 @@ export function WorkflowDetailPanel({
                 )}
                 <button 
                   className="step-item"
-                  onClick={() => !isReordering && onSelectStep?.(step.id)}
+                  onClick={() => {
+                    if (!isReordering) {
+                      onSelectStep?.(step.id);
+                    }
+                  }}
                   disabled={isReordering}
+                  data-testid={`qv-step-button-${step.id}`}
                 >
                   <span className="step-number">{idx + 1}</span>
                   <div className="step-info">
