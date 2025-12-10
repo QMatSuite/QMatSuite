@@ -600,3 +600,209 @@ class TestStepDeletion:
         if response.error.get("code") == "resource_not_found":
             assert response.error.get("kind") == "step"
 
+
+class TestWorkflowFailureHandling:
+    """Test that multi-step workflows stop after a step failure."""
+    
+    def test_workflow_stops_after_step_failure(self, temp_project: Path, daemon: QVDaemon, monkeypatch):
+        """
+        Test that when a multi-step workflow runs and a middle step fails,
+        later dependent steps are not executed and are marked as SKIPPED.
+        
+        Scenario:
+        - Workflow chain: scf → nscf → projwfc
+        - Simulate that nscf step fails
+        - Expected: scf succeeds, nscf fails, projwfc is SKIPPED, workflow is FAILED
+        """
+        # Create a workflow with multiple steps
+        project_root_str = str(temp_project.resolve())
+        
+        # Get workflow
+        index = build_resource_index(temp_project)
+        workflows = [meta for meta in index.by_id.values() if meta.kind == "workflow"]
+        assert len(workflows) > 0
+        workflow_slug = workflows[0].slug
+        
+        # Add additional steps to create a multi-step workflow
+        # Add nscf step
+        send_request(daemon, "add_step_to_workflow", {
+            "project_root": project_root_str,
+            "workflow": workflow_slug,
+            "step_type": "nscf",
+        })
+        
+        # Add projwfc step
+        send_request(daemon, "add_step_to_workflow", {
+            "project_root": project_root_str,
+            "workflow": workflow_slug,
+            "step_type": "projwfc",
+        })
+        
+        # Verify workflow has 3 steps now
+        workflow_resolved = require_workflow(temp_project, workflow_slug, index=index)
+        from quantumvitas.core.models import load_workflow
+        wf_model = load_workflow(workflow_resolved.absolute_path, temp_project)
+        assert len(wf_model.steps) >= 3, "Workflow should have at least 3 steps"
+        
+        # Get step IDs
+        step_ids = [s.step_id for s in wf_model.steps]
+        scf_step_id = step_ids[0]
+        nscf_step_id = step_ids[1]
+        projwfc_step_id = step_ids[2]
+        
+        # Mock the workflow runner to simulate nscf failure
+        from quantumvitas.workflow.runner import WorkflowRunner
+        from quantumvitas.workflow.types import StepStatus, StepType
+        from quantumvitas.workflow.results import WorkflowResult, StepResultSummary
+        from datetime import datetime, timezone
+        
+        original_run = WorkflowRunner.run
+        
+        def mock_run_with_failure(self, workflow):
+            """Mock runner that simulates nscf step failure."""
+            from quantumvitas.workflow.types import StepMode
+            started = datetime.now(timezone.utc)
+            step_summaries = []
+            workflow_failed = False
+            
+            # Get step IDs from workflow model (ULIDs from workflow.yaml)
+            from quantumvitas.core.models import load_workflow
+            wf_model = load_workflow(workflow.dir / "workflow.yaml", workflow.project.root)
+            step_ulids = [s.step_id for s in wf_model.steps]
+            
+            for i, step in enumerate(workflow.steps):
+                # Use ULID from workflow.yaml, not step.id (which is slug)
+                step_id = step_ulids[i] if i < len(step_ulids) else step.id
+                step_type = step.step_type or StepType.CUSTOM
+                
+                # If a previous step failed, mark remaining steps as SKIPPED
+                if workflow_failed:
+                    summary = StepResultSummary(
+                        step_id=step_id,
+                        step_type=step_type,
+                        status=StepStatus.SKIPPED,
+                        working_dir=workflow.raw_dir,
+                        input_file=step.input_file if hasattr(step, 'input_file') else Path(),
+                        output_file=Path(),
+                        reference_file=step.reference_output,
+                        message="Step skipped because a previous step failed",
+                        metrics={},
+                    )
+                    step_summaries.append(summary)
+                    continue
+                
+                # Simulate step execution
+                # First step (scf) succeeds
+                if i == 0:
+                    step_status = StepStatus.SUCCESS
+                    message = "SCF converged"
+                # Second step (nscf) fails
+                elif i == 1:
+                    step_status = StepStatus.FAILED
+                    message = "NSCF calculation failed"
+                    workflow_failed = True
+                # Third step (projwfc) should be skipped
+                else:
+                    step_status = StepStatus.SKIPPED
+                    message = "Step skipped because a previous step failed"
+                
+                summary = StepResultSummary(
+                    step_id=step_id,
+                    step_type=step_type,
+                    status=step_status,
+                    working_dir=workflow.raw_dir,
+                    input_file=step.input_file if hasattr(step, 'input_file') else Path(),
+                    output_file=Path() if step_status == StepStatus.SKIPPED else Path("/tmp/fake.out"),
+                    reference_file=step.reference_output,
+                    message=message,
+                    metrics={},
+                )
+                step_summaries.append(summary)
+                
+                if step_status != StepStatus.SUCCESS:
+                    workflow_failed = True
+                    if workflow.mode == StepMode.STRICT:
+                        break
+            
+            finished = datetime.now(timezone.utc)
+            workflow_status = StepStatus.FAILED if workflow_failed else StepStatus.SUCCESS
+            return WorkflowResult(
+                workflow_id=workflow.id,
+                mode=workflow.mode,
+                steps=step_summaries,
+                status=workflow_status,
+                started_at=started,
+                finished_at=finished,
+            )
+        
+        # Patch the runner
+        monkeypatch.setattr(WorkflowRunner, "run", mock_run_with_failure)
+        
+        # Mock pseudopotential resolution to avoid pseudo requirements
+        def fake_ensure_qe_pseudos(*args, **kwargs):
+            from quantumvitas.core.pseudo import PseudoResolutionResult
+            from pathlib import Path
+            # Return success without actually resolving pseudos
+            return PseudoResolutionResult(
+                project_pseudo_dir=Path("/tmp/pseudo"),
+                system_pseudo_dir=None,
+                resolved_pseudos={},
+                all_available=True,
+            )
+        
+        monkeypatch.setattr("quantumvitas.core.pseudo.ensure_qe_pseudos", fake_ensure_qe_pseudos)
+        
+        # Run workflow via daemon
+        submit_response = send_request(daemon, "run_workflow", {
+            "project_root": project_root_str,
+            "workflow": workflow_slug,
+            "strict": True,  # Use strict mode to ensure failure stops execution
+            "verbose": False,
+        })
+        
+        job_id = submit_response["job_id"]
+        
+        # Wait for job to complete (mocked runner should be fast)
+        import time
+        max_wait = 5
+        wait_time = 0
+        while wait_time < max_wait:
+            job_status = daemon.job_manager.get_job_status(job_id)
+            if job_status and job_status["status"] in ("completed", "failed"):
+                break
+            time.sleep(0.2)
+            wait_time += 0.2
+        
+        # Get job result
+        job = daemon.job_manager.get_job(job_id)
+        assert job is not None, "Job should exist"
+        assert job.status.value in ("completed", "failed"), \
+            f"Job should be completed or failed, got {job.status.value}. Job: {job.to_dict() if job else None}"
+        
+        # Get workflow result from job
+        result = job.result
+        assert result is not None, \
+            f"Job should have a result. Job status: {job.status.value}, error: {job.error}"
+        
+        # Verify workflow status is FAILED
+        assert result["status"] == "failed", f"Workflow should be FAILED, got {result['status']}"
+        
+        # Verify step statuses
+        steps = result["steps"]
+        assert len(steps) == 3, f"Should have 3 steps, got {len(steps)}"
+        
+        # First step (scf) should be SUCCESS
+        scf_step = next(s for s in steps if s["step_id"] == scf_step_id)
+        assert scf_step["status"] == "success", f"SCF step should be SUCCESS, got {scf_step['status']}"
+        
+        # Second step (nscf) should be FAILED
+        nscf_step = next(s for s in steps if s["step_id"] == nscf_step_id)
+        assert nscf_step["status"] == "failed", f"NSCF step should be FAILED, got {nscf_step['status']}"
+        
+        # Third step (projwfc) should be SKIPPED
+        projwfc_step = next(s for s in steps if s["step_id"] == projwfc_step_id)
+        assert projwfc_step["status"] == "skipped", \
+            f"PROJWFC step should be SKIPPED, got {projwfc_step['status']}"
+        assert "skipped because a previous step failed" in projwfc_step.get("message", "").lower(), \
+            "SKIPPED step should have appropriate message"
+
