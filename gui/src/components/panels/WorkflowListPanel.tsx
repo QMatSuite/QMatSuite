@@ -2,7 +2,7 @@
  * WorkflowListPanel - Displays a list of workflows in a project
  */
 
-import type { WorkflowInfo } from '../../types/qv';
+import type { WorkflowInfo, WorkflowDetailResult } from '../../types/qv';
 import './WorkflowListPanel.css';
 
 interface WorkflowListPanelProps {
@@ -151,28 +151,40 @@ export function WorkflowListPanel({
 
 import { useState, useCallback } from 'react';
 import type { StructureInfo, WorkflowDetailResult } from '../../types/qv';
+import { normalizeProjectRoot } from '../../utils/pathUtils';
 
 interface WorkflowDetailPanelProps {
-  workflow: WorkflowInfo | null;
+  workflowSummary: WorkflowInfo | null;  // Summary from list_workflows (for high-level fields)
+  workflowDetail: WorkflowDetailResult | null;  // Detail from get_workflow_detail (canonical steps array)
   projectRoot: string;
   structures?: StructureInfo[];
   onClose?: () => void;
   onRunWorkflow?: (workflow: WorkflowInfo) => void;
   onSelectStep?: (stepId: string) => void;
+  onDeleteStep?: (stepId: string) => void;  // Callback when step is deleted
   onGoToJobs?: () => void;
   onWorkflowUpdated?: () => void;
 }
 
 export function WorkflowDetailPanel({ 
-  workflow, 
+  workflowSummary,
+  workflowDetail,
   projectRoot,
   structures,
   onClose,
   onRunWorkflow,
   onSelectStep,
+  onDeleteStep,
   onGoToJobs,
   onWorkflowUpdated,
 }: WorkflowDetailPanelProps) {
+  // IMPORTANT: When workflowDetail is available, we MUST use its steps array
+  // as the canonical source of step order, since it is built from workflow.yaml.
+  // Fall back to summary only if detail is still loading.
+  const workflowForSteps = workflowDetail ?? workflowSummary;
+  // For backwards compatibility with existing code that uses `workflow` variable
+  // Both WorkflowInfo and WorkflowDetailResult have compatible fields (id, name, slug, structure, mode, n_steps)
+  const workflow = workflowForSteps as WorkflowInfo | null;
   const [isReordering, setIsReordering] = useState(false);
   const [stepOrder, setStepOrder] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -187,6 +199,59 @@ export function WorkflowDetailPanel({
   // Import step state
   const [isImportingStep, setIsImportingStep] = useState(false);
   
+  // Delete step state
+  const [isDeletingStep, setIsDeletingStep] = useState(false);
+  
+  // Handle deleting a step
+  const handleDeleteStep = useCallback(async (stepId: string, stepType: string) => {
+    if (!window.qv || !workflowForSteps || isDeletingStep) return;
+    
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      `Delete step "${stepType}" (${stepId.substring(0, 8)}...) from workflow "${workflowForSteps.name}"?\n\n` +
+      `This will move the step file to the project's trash folder. It cannot be undone from the GUI.`
+    );
+    
+    if (!confirmed) return;
+    
+    setIsDeletingStep(true);
+    setError(null);
+    
+    try {
+      const normalizedProjectRoot = normalizeProjectRoot(projectRoot);
+      if (!normalizedProjectRoot) {
+        throw new Error('Project root is required');
+      }
+      
+      const response = await window.qv.request('delete_step', {
+        project_root: normalizedProjectRoot,
+        workflow: workflowForSteps.slug,
+        step: stepId, // ULID from workflow.yaml
+      });
+      
+      if (response.ok) {
+        // Step deleted successfully
+        // Clear selection if the deleted step was selected
+        if (onDeleteStep) {
+          onDeleteStep(stepId);
+        }
+        // Refresh workflow detail to show updated steps list
+        await onWorkflowUpdated?.();
+      } else {
+        setError(response.error?.message || 'Failed to delete step');
+        // Still refresh workflow detail to avoid stale entries
+        await onWorkflowUpdated?.();
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unknown error');
+      // Still refresh workflow detail to avoid stale entries
+      await onWorkflowUpdated?.();
+    } finally {
+      setIsDeletingStep(false);
+      setStepToDelete(null);
+    }
+  }, [workflowForSteps, projectRoot, isDeletingStep, onDeleteStep, onWorkflowUpdated]);
+  
   // Handle showing add step form
   const handleShowAddStep = useCallback(() => {
     setShowAddStep(true);
@@ -197,7 +262,7 @@ export function WorkflowDetailPanel({
   
   // Handle adding a new step
   const handleAddStep = useCallback(async () => {
-    if (!window.qv || !workflow || !newStepType) return;
+    if (!window.qv || !workflowForSteps || !newStepType) return;
     
     setIsAddingStep(true);
     setError(null);
@@ -207,16 +272,22 @@ export function WorkflowDetailPanel({
       
       const response = await window.qv.request<WorkflowDetailResult>('add_step_to_workflow', {
         project_root: projectRoot,
-        workflow: workflow.slug,
+        workflow: workflowForSteps.slug,
         step_type: newStepType,
         step_name: stepName,
       });
       
-      if (response.ok) {
+      if (response.ok && response.data) {
         setShowAddStep(false);
         setNewStepType('');
         setNewStepName('');
-        onWorkflowUpdated?.();
+        // CRITICAL: Wait for workflow detail to refresh before allowing step selection.
+        // This ensures the new step is available in the workflow.steps list before
+        // the user can click it, preventing "Step not found" errors from race conditions.
+        // The onWorkflowUpdated callback will trigger a refetch of workflow detail.
+        // We also update the local workflow prop optimistically with the returned data
+        // to ensure the new step appears immediately in the UI.
+        await onWorkflowUpdated?.();
       } else {
         setError(response.error?.message || 'Failed to add step');
       }
@@ -229,7 +300,7 @@ export function WorkflowDetailPanel({
   
   // Handle importing QE input as step
   const handleImportStep = useCallback(async () => {
-    if (!window.qv || !workflow) return;
+    if (!window.qv || !workflowForSteps) return;
     
     // Use window.qv.openFile to pick file
     const inputFile = await window.qv.openFile({
@@ -250,7 +321,7 @@ export function WorkflowDetailPanel({
     try {
       const response = await window.qv.request<WorkflowDetailResult>('import_step_from_qe_input', {
         project_root: projectRoot,
-        workflow: workflow.slug,
+        workflow: workflowForSteps.slug,
         input_file: inputFile,
       });
       
@@ -354,7 +425,7 @@ export function WorkflowDetailPanel({
   
   // Save reorder
   const handleSaveReorder = useCallback(async () => {
-    if (!window.qv || !workflow) return;
+    if (!window.qv || !workflowForSteps) return;
     
     setIsSaving(true);
     setError(null);
@@ -362,7 +433,7 @@ export function WorkflowDetailPanel({
     try {
       const response = await window.qv.request<WorkflowDetailResult>('reorder_workflow_steps', {
         project_root: projectRoot,
-        workflow: workflow.slug,
+        workflow: workflowForSteps.slug,
         new_order: stepOrder,
       });
       
@@ -382,7 +453,7 @@ export function WorkflowDetailPanel({
   
   // Handle structure change
   const handleStructureChange = useCallback(async (newStructure: string) => {
-    if (!window.qv || !workflow) return;
+    if (!window.qv || !workflowForSteps) return;
     
     setIsSaving(true);
     setError(null);
@@ -390,7 +461,7 @@ export function WorkflowDetailPanel({
     try {
       const response = await window.qv.request<WorkflowDetailResult>('change_workflow_structure', {
         project_root: projectRoot,
-        workflow: workflow.slug,
+        workflow: workflowForSteps.slug,
         new_structure: newStructure,
         update_steps: true,
       });
@@ -405,16 +476,41 @@ export function WorkflowDetailPanel({
     } finally {
       setIsSaving(false);
     }
-  }, [workflow, projectRoot, onWorkflowUpdated]);
+  }, [workflowForSteps, projectRoot, onWorkflowUpdated]);
   
-  if (!workflow) {
+  if (!workflowForSteps) {
+    // Show loading state if we have summary but detail is still loading
+    if (workflowSummary && !workflowDetail) {
+      return (
+        <div className="workflow-detail-panel" data-testid="qv-workflow-detail">
+          <div className="panel-header">
+            <h2 className="panel-title">Loading workflow details...</h2>
+          </div>
+        </div>
+      );
+    }
     return null;
   }
   
-  // Get ordered steps for display (use stepOrder if reordering, else workflow.steps)
-  const displaySteps = isReordering
-    ? stepOrder.map(id => workflow.steps.find(s => s.id === id)!).filter(Boolean)
-    : workflow.steps;
+  // CRITICAL: Use workflowDetail.steps if available (canonical from workflow.yaml),
+  // otherwise fall back to workflowSummary.steps (may have wrong order, but better than nothing)
+  // IMPORTANT: When selectedWorkflowDetail is available, we must use its steps array
+  // as the canonical source of step order, since it is built from workflow.yaml.
+  const displaySteps = workflowDetail?.steps ?? workflowSummary?.steps ?? [];
+  
+  // INSTRUMENTATION: Log steps to verify order matches workflow.yaml
+  console.log('[WorkflowDetailPanel] displaySteps', {
+    workflowSlug: workflowForSteps.slug,
+    hasDetail: !!workflowDetail,
+    hasSummary: !!workflowSummary,
+    stepCount: displaySteps.length,
+    steps: displaySteps.map((s, i) => ({
+      index: i,
+      id: s.id,
+      type: s.type,
+      idLength: s.id?.length ?? 0,
+    })),
+  });
   
   return (
     <div className="workflow-detail-panel" data-testid="qv-workflow-detail">
@@ -548,6 +644,69 @@ export function WorkflowDetailPanel({
             </div>
           </div>
           
+          {/* Add Step Form - positioned right after the Add Step button for better UX */}
+          {showAddStep && (
+            <div className="add-step-form" data-testid="qv-add-step-form">
+              <div className="add-step-header">
+                <h4>Add New Step</h4>
+                <button 
+                  className="add-step-close"
+                  onClick={() => setShowAddStep(false)}
+                  title="Cancel adding step"
+                >×</button>
+              </div>
+              <div className="add-step-content">
+                <div className="form-group">
+                  <label htmlFor="step-type">Step Type</label>
+                  <select
+                    id="step-type"
+                    value={newStepType}
+                    onChange={(e) => setNewStepType(e.target.value)}
+                    autoFocus
+                  >
+                    <option value="">-- Select Type --</option>
+                    <option value="scf">SCF (pw.x)</option>
+                    <option value="nscf">NSCF (pw.x)</option>
+                    <option value="relax">Relax (pw.x)</option>
+                    <option value="vc-relax">VC-Relax (pw.x)</option>
+                    <option value="bands_pw">Bands PW (pw.x)</option>
+                    <option value="bands">Bands PP (bands.x)</option>
+                    <option value="dos">DOS (dos.x)</option>
+                    <option value="projwfc">PDOS (projwfc.x)</option>
+                    <option value="ph">Phonon (ph.x)</option>
+                    <option value="pp">Post-Process (pp.x)</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="step-name">Step Name (optional)</label>
+                  <input
+                    id="step-name"
+                    type="text"
+                    placeholder={newStepType || 'step name'}
+                    value={newStepName}
+                    onChange={(e) => setNewStepName(e.target.value)}
+                  />
+                </div>
+                <div className="add-step-actions">
+                  <button
+                    className="add-step-btn add-step-btn--cancel"
+                    onClick={() => setShowAddStep(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="add-step-btn add-step-btn--confirm"
+                    onClick={handleAddStep}
+                    disabled={!newStepType || isAddingStep}
+                    data-testid="qv-confirm-add-step"
+                  >
+                    {isAddingStep ? 'Adding...' : 'Add Step'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <div className="steps-list" data-testid="qv-steps-list">
             {displaySteps.map((step, idx) => (
               <div 
@@ -593,8 +752,17 @@ export function WorkflowDetailPanel({
                   className="step-item"
                   onClick={() => {
                     if (!isReordering) {
-                      // step.id is ULID from backend (get_workflow_detail returns step.meta.id)
-                      // This is the correct selector for get_step_detail RPC
+                      // CRITICAL: step.id is ULID from backend (get_workflow_detail returns step.id from workflow.yaml)
+                      // This is the ONLY correct selector for get_step_detail RPC
+                      // We MUST use step.id directly, NOT derived from index or any other source
+                      console.log('[WorkflowDetailPanel] step clicked', {
+                        workflowSlug: workflowForSteps.slug,
+                        stepIndex: idx,
+                        stepId: step.id,
+                        stepType: step.type,
+                      });
+                      // CRITICAL: Pass step.id (ULID) directly to onSelectStep
+                      // This will be stored as selectedStepId in App.tsx and passed to StepDetailPanel
                       onSelectStep?.(step.id);
                     }
                   }}
@@ -609,69 +777,23 @@ export function WorkflowDetailPanel({
                   </div>
                   <code className="step-file">{step.step_file}</code>
                 </button>
+                {!isReordering && onDeleteStep && (
+                  <button
+                    className="step-delete-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteStep(step.id, step.type);
+                    }}
+                    disabled={isDeletingStep}
+                    title={`Delete step "${step.type}"`}
+                    data-testid={`qv-delete-step-${step.id}`}
+                  >
+                    🗑️
+                  </button>
+                )}
               </div>
             ))}
           </div>
-          
-          {/* Add Step Form */}
-          {showAddStep && (
-            <div className="add-step-form">
-              <div className="add-step-header">
-                <h4>Add New Step</h4>
-                <button 
-                  className="add-step-close"
-                  onClick={() => setShowAddStep(false)}
-                >×</button>
-              </div>
-              <div className="add-step-content">
-                <div className="form-group">
-                  <label htmlFor="step-type">Step Type</label>
-                  <select
-                    id="step-type"
-                    value={newStepType}
-                    onChange={(e) => setNewStepType(e.target.value)}
-                  >
-                    <option value="">-- Select Type --</option>
-                    <option value="scf">SCF (pw.x)</option>
-                    <option value="nscf">NSCF (pw.x)</option>
-                    <option value="relax">Relax (pw.x)</option>
-                    <option value="vc-relax">VC-Relax (pw.x)</option>
-                    <option value="bands_pw">Bands PW (pw.x)</option>
-                    <option value="bands">Bands PP (bands.x)</option>
-                    <option value="dos">DOS (dos.x)</option>
-                    <option value="projwfc">PDOS (projwfc.x)</option>
-                    <option value="ph">Phonon (ph.x)</option>
-                    <option value="pp">Post-Process (pp.x)</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label htmlFor="step-name">Step Name (optional)</label>
-                  <input
-                    id="step-name"
-                    type="text"
-                    placeholder={newStepType || 'step name'}
-                    value={newStepName}
-                    onChange={(e) => setNewStepName(e.target.value)}
-                  />
-                </div>
-                <div className="add-step-actions">
-                  <button
-                    className="add-step-btn add-step-btn--cancel"
-                    onClick={() => setShowAddStep(false)}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="add-step-btn add-step-btn--confirm"
-                    onClick={handleAddStep}
-                    disabled={!newStepType || isAddingStep}
-                  >
-                    {isAddingStep ? 'Adding...' : 'Add Step'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
         
         <div className="detail-section">

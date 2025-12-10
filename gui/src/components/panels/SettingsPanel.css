@@ -3,10 +3,17 @@
 .settings-panel {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  padding: 1.5rem;
   height: 100%;
+  overflow: hidden;
+}
+
+.settings-scroll-container {
+  flex: 1;
   overflow-y: auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
 .settings-panel--loading {

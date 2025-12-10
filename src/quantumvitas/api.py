@@ -773,6 +773,127 @@ class QVService:
             workflow_yaml_path.write_text(yaml.safe_dump(wf_data, sort_keys=False))
     
     @staticmethod
+    def delete_step_from_workflow(
+        project_root: Path,
+        workflow_selector: str,
+        step_selector: str,
+        *,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
+    ) -> None:
+        """
+        Delete a step from a workflow in the DAG + ID-only model.
+        
+        CRITICAL: Uses workflow.yaml's steps array as the ONLY source of truth.
+        - workflow_selector: slug or ULID for the workflow
+        - step_selector: ULID for the step (no slug/name/index matching here in the GUI path)
+        - Removes step entry from workflow.yaml's steps array
+        - Moves the step YAML file into the project's trash folder (with timestamped/unique name),
+          using the same helper used by CLI delete commands.
+        - If the step YAML file is already missing (ghost step), still remove from workflow.yaml
+          and do NOT treat it as an error.
+        
+        Args:
+            project_root: Project root path
+            workflow_selector: Workflow selector (slug or ULID)
+            step_selector: Step selector (ULID from workflow.yaml)
+            index: Optional ResourceIndex (avoids rebuilding if provided)
+            config: Optional project config (avoids reloading if provided)
+        
+        Raises:
+            ResourceNotFoundError: If workflow or step not found in workflow.yaml
+        """
+        from quantumvitas.core.resolution import ResourceNotFoundError, require_workflow, require_step
+        from quantumvitas.core.models import load_workflow, save_workflow
+        from quantumvitas.core.project_utils import load_project_config
+        from quantumvitas.core.resolution import make_structure_selector_resolver
+        
+        project_root = Path(project_root).resolve()
+        
+        # Resolve workflow
+        workflow_resolved = require_workflow(project_root, workflow_selector, config=config, index=index)
+        
+        # Determine workflow directory and YAML path
+        if workflow_resolved.absolute_path.name == "workflow.yaml":
+            workflow_dir = workflow_resolved.absolute_path.parent
+            workflow_yaml_path = workflow_resolved.absolute_path
+        else:
+            workflow_dir = workflow_resolved.absolute_path
+            workflow_yaml_path = workflow_dir / "workflow.yaml"
+        
+        # Load workflow model to get canonical steps list
+        if config is None:
+            config = load_project_config(project_root)
+        resolver = make_structure_selector_resolver(project_root, config=config)
+        wf_model = load_workflow(workflow_yaml_path, project_root=project_root, resolve_structure_selector=resolver)
+        
+        # CRITICAL: Verify step_selector exists in workflow.yaml's steps array
+        # This ensures the step belongs to this workflow's DAG
+        step_id = step_selector
+        entry = next((e for e in wf_model.steps if e.step_id == step_id), None)
+        if entry is None:
+            # Step not in this workflow's DAG
+            raise ResourceNotFoundError(
+                kind="step",
+                selector=step_selector,
+                id=step_selector,
+                project_root=project_root,
+                message=f"Step '{step_selector}' not found in workflow '{wf_model.meta.name or wf_model.meta.slug or workflow_selector}'. "
+                        f"The step must be listed in workflow.yaml's steps array.",
+            )
+        
+        # Remove the step entry from workflow model
+        wf_model.steps = [s for s in wf_model.steps if s.step_id != step_id]
+        
+        # Save updated workflow.yaml
+        save_workflow(wf_model, workflow_yaml_path)
+        
+        # Try to resolve and move step file to trash (handle ghost steps gracefully)
+        # For ghost steps, require_step may fail, but we've already removed the entry from workflow.yaml
+        # We try to resolve the step file path directly from the ResourceIndex to avoid require_step validation
+        trash_dir = (project_root / "trash").resolve()
+        step_file_moved = False
+        
+        try:
+            # Try to resolve step via ResourceIndex to get file path
+            if index is not None:
+                # Look up step by ULID in the index
+                resource_id = index.resolve_id(step_id, project_root)
+                if resource_id:
+                    meta = index.by_id.get(resource_id)
+                    if meta and meta.kind == "step":
+                        # Find absolute path
+                        step_path = None
+                        for path, path_id in index.by_path.items():
+                            if path_id == resource_id:
+                                step_path = path
+                                break
+                        if step_path is None:
+                            step_path = (project_root / meta.path).resolve()
+                        
+                        # Check if file exists and is within the workflow directory
+                        if step_path.exists() and step_path.is_relative_to(workflow_dir):
+                            move_to_trash(step_path, trash_dir)
+                            step_file_moved = True
+        except Exception:
+            # If index lookup fails, try require_step as fallback
+            try:
+                step_resolved = require_step(project_root, workflow_selector, step_id, config=config, index=index)
+                if step_resolved.absolute_path.exists():
+                    move_to_trash(step_resolved.absolute_path, trash_dir)
+                    step_file_moved = True
+            except (ResourceNotFoundError, SelectorNotFoundError):
+                # Step file is missing (ghost step) - this is OK, we've already removed it from workflow.yaml
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.debug(
+                    f"Step file for '{step_id}' not found (ghost step). "
+                    f"Step entry has been removed from workflow.yaml."
+                )
+        
+        # If we couldn't move the file, it's a ghost step - that's fine, entry is already removed
+    
+    @staticmethod
     def list_steps(project_root: Path, workflow_selector: str) -> List[ResolvedResource]:
         """List all steps in a workflow."""
         return list_steps(project_root, workflow_selector)
@@ -2370,19 +2491,79 @@ class QVService:
         """
         Get detailed information about a step.
         
+        CRITICAL: For GUI path, step_selector MUST be a ULID that exists in workflow.yaml's steps array.
+        We verify this BEFORE resolving via ResourceIndex to ensure the step belongs to this workflow.
+        
         Args:
             project_root: Project root path
             workflow_selector: Workflow selector
-            step_selector: Step selector
+            step_selector: Step selector (for GUI: must be ULID from workflow.yaml)
             index: Optional ResourceIndex (avoids rebuilding if provided)
             config: Optional project config (avoids reloading if provided)
             
         Returns:
             Dict with step metadata, parameters, cards, etc.
+            
+        Raises:
+            ResourceNotFoundError: If step_selector is not in workflow.yaml's steps array
         """
         from quantumvitas.workflow.structure_steps import StructureStepSpec
+        from quantumvitas.core.resolution import ResourceNotFoundError, resolve_workflow
+        from quantumvitas.core.models import load_workflow
+        from quantumvitas.core.project_utils import load_project_config
+        from quantumvitas.core.resolution import make_structure_selector_resolver
         
-        step = resolve_step(project_root, workflow_selector, step_selector, config=config, index=index)
+        project_root = Path(project_root).resolve()
+        
+        # Resolve workflow first
+        workflow_resolved = resolve_workflow(project_root, workflow_selector, config=config, index=index)
+        
+        # Determine workflow directory and YAML path
+        if workflow_resolved.absolute_path.name == "workflow.yaml":
+            workflow_dir = workflow_resolved.absolute_path.parent
+            workflow_yaml_path = workflow_resolved.absolute_path
+        else:
+            workflow_dir = workflow_resolved.absolute_path
+            workflow_yaml_path = workflow_dir / "workflow.yaml"
+        
+        # Load workflow model to get canonical steps list
+        if config is None:
+            config = load_project_config(project_root)
+        resolver = make_structure_selector_resolver(project_root, config=config)
+        wf_model = load_workflow(workflow_yaml_path, project_root=project_root, resolve_structure_selector=resolver)
+        
+        # CRITICAL: Verify step_selector exists in workflow.yaml's steps array
+        # This ensures the step belongs to this workflow's DAG
+        step_id = step_selector
+        entry = next((e for e in wf_model.steps if e.step_id == step_id), None)
+        if entry is None:
+            # Step not in this workflow's DAG
+            raise ResourceNotFoundError(
+                kind="step",
+                selector=step_selector,
+                id=step_selector,
+                project_root=project_root,
+                message=f"Step '{step_selector}' not found in workflow '{wf_model.meta.name or wf_model.meta.slug or workflow_selector}'. "
+                        f"The step must be listed in workflow.yaml's steps array.",
+            )
+        
+        # Now that we know the step belongs to this workflow, resolve it via ResourceIndex
+        step = resolve_step(project_root, workflow_selector, step_id, config=config, index=index)
+        
+        # CRITICAL: Verify the step file actually exists on disk.
+        # If workflow.yaml has a step entry but the step file is missing (ghost step),
+        # this will raise FileNotFoundError which we convert to a clear error.
+        if not step.absolute_path.exists():
+            from quantumvitas.core.resolution import ResourceNotFoundError
+            raise ResourceNotFoundError(
+                kind="step",
+                selector=step_selector,
+                id=step.meta.id if step.meta else None,
+                project_root=project_root,
+                message=f"Step file not found: {step.absolute_path}. "
+                        f"The workflow entry exists but the step YAML file is missing. "
+                        f"This may indicate a corrupted workflow or incomplete step creation."
+            )
         
         # Load step spec; legacy 'structure' selectors (if present) are normalized to structure_id via the registry
         from quantumvitas.core.resolution import make_structure_selector_resolver
@@ -2390,7 +2571,20 @@ class QVService:
         if config is None:
             config = load_project_config(project_root)
         resolver = make_structure_selector_resolver(project_root, config=config)
-        spec = StructureStepSpec.from_yaml(step.absolute_path, resolve_structure_selector=resolver)
+        
+        try:
+            spec = StructureStepSpec.from_yaml(step.absolute_path, resolve_structure_selector=resolver)
+        except FileNotFoundError:
+            # Step file was deleted or never created (ghost step)
+            from quantumvitas.core.resolution import ResourceNotFoundError
+            raise ResourceNotFoundError(
+                kind="step",
+                selector=step_selector,
+                id=step.meta.id if step.meta else None,
+                project_root=project_root,
+                message=f"Step file not found: {step.absolute_path}. "
+                        f"The workflow entry exists but the step YAML file is missing."
+            )
         
         return {
             "id": step.meta.id,
@@ -2940,11 +3134,31 @@ class QVService:
         )
         
         # Write step file
-        steps_dir = workflow.absolute_path / "steps"
-        steps_dir.mkdir(exist_ok=True)
+        # CRITICAL: Ensure workflow.absolute_path is the workflow directory, not workflow.yaml
+        # Based on resolution.py line 637, workflow.absolute_path should be the directory
+        # But we verify this to avoid bugs where it might be the file
+        if workflow.absolute_path.name == "workflow.yaml":
+            workflow_dir = workflow.absolute_path.parent
+        else:
+            workflow_dir = workflow.absolute_path
+        
+        steps_dir = workflow_dir / "steps"
+        steps_dir.mkdir(parents=True, exist_ok=True)
         step_yaml_filename = f"{slug}.step.yaml"
         step_file_path = steps_dir / step_yaml_filename
-        step_file_path.write_text(yaml.safe_dump(step_spec.to_dict(), sort_keys=False))
+        
+        # Write the step spec to disk
+        # This creates the actual step YAML file that will be loaded by get_step_detail
+        step_dict = step_spec.to_dict()
+        step_yaml_content = yaml.safe_dump(step_dict, sort_keys=False)
+        step_file_path.write_text(step_yaml_content)
+        
+        # Verify the file was created (defensive check)
+        if not step_file_path.exists():
+            raise QVServiceError(
+                f"Failed to create step file: {step_file_path}. "
+                f"Directory exists: {steps_dir.exists()}, writable: {steps_dir.is_dir()}"
+            )
         
         # Create step entry for workflow.yaml using step_id (ULID) from step spec meta
         # step_file is NOT stored - step location resolved via registry using step_id
@@ -3095,8 +3309,12 @@ class QVService:
         """
         Get detailed workflow information for GUI display.
         
-        Uses Project.open() and Workflow.from_yaml() to ensure legacy workflows
-        are automatically migrated to the ID-only model.
+        CRITICAL: Uses workflow.yaml's steps array as the ONLY source of truth for:
+        - Which steps belong to the workflow
+        - The order of steps
+        - The ULID (step_id) used as the canonical identifier
+        
+        ResourceIndex is used ONLY to map step_id → file path/metadata, NOT for ordering or selector guessing.
         
         Args:
             project_root: Project root path
@@ -3105,35 +3323,17 @@ class QVService:
             config: Optional project config (avoids reloading if provided)
             
         Returns:
-            Dict with workflow details including steps
+            Dict with workflow details including steps (in workflow.yaml order)
         """
-        from quantumvitas.project.model import Project
-        from quantumvitas.workflow.workflow import Workflow
         from quantumvitas.core.resolution import ResourceNotFoundError, resolve_workflow
+        from quantumvitas.core.models import load_workflow
+        from quantumvitas.core.project_utils import load_project_config
+        from quantumvitas.workflow.structure_steps import StructureStepSpec
+        from quantumvitas.core.resolution import make_structure_selector_resolver
         
         project_root = Path(project_root).resolve()
         
-        # Use Project.open() to get project context
-        # Project.open() builds its own index internally (keeps it self-contained)
-        try:
-            project = Project.open(project_root)
-        except FileNotFoundError as e:
-            # If project.qv.yml is missing, that's a real project not found error
-            if "project.qv.yml" in str(e):
-                raise ResourceNotFoundError(
-                    kind="project",
-                    selector=None,  # Don't use project_root as selector (it's a path, not a selector)
-                    id=None,
-                    project_root=project_root,
-                ) from e
-            # Re-raise other FileNotFoundErrors as-is
-            raise
-        except Exception as e:
-            # For other exceptions, re-raise as-is (don't convert to ResourceNotFoundError)
-            # Project.open() failures are usually configuration issues, not "project not found"
-            raise
-        
-        # First resolve workflow to get the reference (handles name/slug/id selectors)
+        # Resolve workflow to get the reference (handles name/slug/id selectors)
         try:
             workflow_resolved = resolve_workflow(project_root, workflow_selector, config=config, index=index)
         except Exception as e:
@@ -3144,79 +3344,119 @@ class QVService:
                 project_root=project_root,
             ) from e
         
-        # Load workflow using Workflow.from_yaml in inspection mode (no step materialization)
-        # Note: We catch exceptions here but only re-raise as ResourceNotFoundError if it's
-        # a workflow loading issue. Structure resolution failures are handled gracefully.
-        try:
-            workflow = Workflow.from_yaml(workflow_resolved.absolute_path, project, materialize_steps=False)
-        except FileNotFoundError as e:
-            # If workflow.yaml is missing, that's a real workflow not found error
-            if "workflow.yaml" in str(e):
-                raise ResourceNotFoundError(
-                    kind="workflow",
-                    selector=workflow_selector,
-                    id=workflow_resolved.meta.id,
-                    project_root=project_root,
-                ) from e
-            # Otherwise, it might be a structure file issue - continue and handle gracefully
-            # Try to load workflow without structure resolution
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.warning(f"Structure resolution failed for workflow {workflow_selector}: {e}")
-            # Re-raise as workflow not found for now, but this could be made more graceful
-            raise ResourceNotFoundError(
-                kind="workflow",
-                selector=workflow_selector,
-                id=workflow_resolved.meta.id,
-                project_root=project_root,
-            ) from e
-        except Exception as e:
-            # For other exceptions, check if it's a workflow loading issue
-            # Structure resolution failures in Workflow.from_yaml are handled internally,
-            # so if we get here it's likely a real workflow loading problem
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.warning(f"Failed to load workflow {workflow_selector}: {e}")
-            raise ResourceNotFoundError(
-                kind="workflow",
-                selector=workflow_selector,
-                id=workflow_resolved.meta.id,
-                project_root=project_root,
-            ) from e
+        # Determine workflow directory
+        # workflow_resolved.absolute_path may be the directory or workflow.yaml file
+        if workflow_resolved.absolute_path.name == "workflow.yaml":
+            workflow_dir = workflow_resolved.absolute_path.parent
+            workflow_yaml_path = workflow_resolved.absolute_path
+        else:
+            workflow_dir = workflow_resolved.absolute_path
+            workflow_yaml_path = workflow_dir / "workflow.yaml"
         
-        # Extract structure info
+        # Load workflow model directly from YAML (this is the canonical source)
+        if not workflow_yaml_path.exists():
+            raise ResourceNotFoundError(
+                kind="workflow",
+                selector=workflow_selector,
+                id=workflow_resolved.meta.id,
+                project_root=project_root,
+                message=f"Workflow YAML not found: {workflow_yaml_path}",
+            )
+        
+        # Load config if not provided
+        if config is None:
+            config = load_project_config(project_root)
+        
+        # Create resolver for structure selectors (needed for load_workflow)
+        resolver = make_structure_selector_resolver(project_root, config=config)
+        
+        # Load workflow model - this gives us the canonical steps list from workflow.yaml
+        wf_model = load_workflow(workflow_yaml_path, project_root=project_root, resolve_structure_selector=resolver)
+        
+        # Extract structure info from model
         structure_name = None
-        structure_id = None
-        if workflow.structure:
-            if hasattr(workflow.structure, 'meta'):
-                structure_name = workflow.structure.meta.name
-                structure_id = workflow.structure.meta.id
-            else:
-                structure_name = str(workflow.structure)
+        structure_id = wf_model.structure_id
+        if structure_id and index:
+            # Try to get structure name from index
+            try:
+                from quantumvitas.core.resolution import resolve_structure
+                struct_resolved = resolve_structure(project_root, structure_id, config=config, index=index)
+                structure_name = struct_resolved.meta.name if struct_resolved.meta else None
+            except Exception:
+                pass
         
-        # Extract step info from actual Step objects (which have ULID meta.id)
-        steps = []
-        for step in workflow.steps:
-            step_type = step.step_type.value if hasattr(step.step_type, 'value') else str(step.step_type)
-            steps.append({
-                "step_id": step.meta.id,  # ULID (canonical reference)
-                "id": step.meta.id,  # Use ULID for both fields
-                "slug": step.meta.slug or step.meta.name,  # For display
-                "type": step_type or "unknown",
-                # step_file is NOT stored - step location resolved via registry using step_id
-            })
+        # CRITICAL: Build step summaries STRICTLY from wf_model.steps in order
+        # This is the ONLY source of truth for step identity and order
+        step_summaries = []
+        for idx, entry in enumerate(wf_model.steps):
+            step_id = entry.step_id  # ULID from workflow.yaml (canonical)
+            
+            # Use ResourceIndex ONLY to resolve path/meta, NOT for ordering or selector guessing
+            step_resolved = None
+            step_spec = None
+            missing = False
+            
+            if index is not None:
+                try:
+                    # Resolve step using the ULID from workflow.yaml
+                    from quantumvitas.core.resolution import resolve_step
+                    step_resolved = resolve_step(
+                        project_root,
+                        workflow_selector=workflow_resolved.meta.id or workflow_resolved.meta.slug,
+                        step_selector=step_id,
+                        config=config,
+                        index=index,
+                    )
+                    
+                    # Check if step file exists
+                    if step_resolved.absolute_path.exists():
+                        # Load spec to get step_type and metadata
+                        step_spec = StructureStepSpec.from_yaml(
+                            step_resolved.absolute_path,
+                            resolve_structure_selector=resolver
+                        )
+                    else:
+                        missing = True
+                except Exception:
+                    # Step cannot be resolved or file doesn't exist (ghost step)
+                    missing = True
+            
+            # Build summary dict - id MUST be step_id from workflow.yaml
+            if step_spec and step_resolved:
+                meta = step_resolved.meta or (step_spec.meta if hasattr(step_spec, 'meta') else None)
+                step_type = step_spec.step_type if hasattr(step_spec, 'step_type') else None
+                step_file = str(step_resolved.absolute_path.relative_to(workflow_dir)) if step_resolved.absolute_path.is_relative_to(workflow_dir) else str(step_resolved.absolute_path)
+                
+                step_summaries.append({
+                    "id": step_id,  # Canonical ULID from workflow.yaml
+                    "slug": meta.slug if meta else None,
+                    "name": meta.name if meta else None,
+                    "type": str(step_type) if step_type else None,
+                    "step_file": step_file,
+                    "missing": False,
+                })
+            else:
+                # Step entry exists in workflow.yaml but file is missing (ghost step)
+                step_summaries.append({
+                    "id": step_id,  # Still the same ULID from workflow.yaml
+                    "slug": None,
+                    "name": None,
+                    "type": entry.type if hasattr(entry, 'type') else None,
+                    "step_file": None,
+                    "missing": True,
+                })
         
         return {
             "id": workflow_resolved.meta.id,
             "name": workflow_resolved.meta.name,
             "slug": workflow_resolved.meta.slug,
             "path": workflow_resolved.meta.path,
-            "absolute_path": str(workflow.dir),
+            "absolute_path": str(workflow_dir),
             "structure": structure_name,
             "structure_id": structure_id,
-            "mode": workflow.mode.value if hasattr(workflow.mode, 'value') else str(workflow.mode),
-            "n_steps": len(steps),
-            "steps": steps,
+            "mode": wf_model.mode,
+            "n_steps": len(step_summaries),
+            "steps": step_summaries,
         }
     
     # -------------------------------------------------------------------------

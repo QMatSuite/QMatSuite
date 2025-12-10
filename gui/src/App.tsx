@@ -39,16 +39,17 @@ import {
 } from './components';
 import type { ViewType } from './components/layout/Sidebar';
 import { useQVClient, useDaemonStatus } from './hooks';
+import { useJobs } from './hooks/useJobs';
 import type { 
   ProjectSummary, 
   StructureInfo, 
   WorkflowInfo,
+  WorkflowDetailResult,
   StructureVisData,
   ScfConvergenceData,
   DosData,
   BandStructureData,
   QVResponse,
-  JobCounts,
   JobSubmitResult,
   PreflightCheckResult,
 } from './types';
@@ -86,8 +87,15 @@ function App() {
   const [structures, setStructures] = useState<StructureInfo[] | null>(null);
   const [workflows, setWorkflows] = useState<WorkflowInfo[] | null>(null);
   const [selectedStructure, setSelectedStructure] = useState<StructureInfo | null>(null);
-  const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowInfo | null>(null);
+  
+  // CRITICAL: Separate workflow summary (from list_workflows) from workflow detail (from get_workflow_detail)
+  // The detail's steps array is the canonical source of truth (built from workflow.yaml)
+  const [selectedWorkflowSummary, setSelectedWorkflowSummary] = useState<WorkflowInfo | null>(null);
+  const [selectedWorkflowDetail, setSelectedWorkflowDetail] = useState<WorkflowDetailResult | null>(null);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
+  
+  // Legacy alias for backwards compatibility (will be removed)
+  const selectedWorkflow = selectedWorkflowDetail || selectedWorkflowSummary;
   const [structureVisData, setStructureVisData] = useState<StructureVisData | null>(null);
   
   // Debug state
@@ -114,8 +122,8 @@ function App() {
   const [isRenaming, setIsRenaming] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   
-  // Job counts for sidebar badge (will be provided by StatusBar or JobsPanel)
-  const [jobCounts, setJobCounts] = useState<JobCounts | null>(null);
+  // Job counts for sidebar badge (get from useJobs hook)
+  const { counts: jobCounts } = useJobs({ autoStart: true, pollInterval: 5000 });
   
   // Toast/notification state for job submissions
   const [jobNotification, setJobNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -214,7 +222,8 @@ function App() {
   // Open a recent project
   const handleOpenRecentProject = useCallback(async (path: string) => {
     // Clear selected workflow and step when opening a new project (fixes stale step selection)
-    setSelectedWorkflow(null);
+    setSelectedWorkflowSummary(null);
+    setSelectedWorkflowDetail(null);
     setSelectedStepId(null);
     setSelectedStructure(null);
     
@@ -261,7 +270,8 @@ function App() {
     if (directResponse.ok && directResponse.data) {
       // Selected directory is a valid project
       // Clear selected workflow and step when opening a new project (fixes stale step selection)
-      setSelectedWorkflow(null);
+      setSelectedWorkflowSummary(null);
+      setSelectedWorkflowDetail(null);
       setSelectedStepId(null);
       setSelectedStructure(null);
       
@@ -285,7 +295,8 @@ function App() {
       projectPath = findResponse.data.project_root;
       
       // Clear selected workflow and step when opening a new project (fixes stale step selection)
-      setSelectedWorkflow(null);
+      setSelectedWorkflowSummary(null);
+      setSelectedWorkflowDetail(null);
       setSelectedStepId(null);
       setSelectedStructure(null);
       
@@ -350,7 +361,8 @@ function App() {
   
   const handleCreateProjectSuccess = useCallback(async (newProjectRoot: string, recommendedAnalysis?: string | null) => {
     // Clear selected workflow and step when opening a new project (fixes stale step selection)
-    setSelectedWorkflow(null);
+    setSelectedWorkflowSummary(null);
+    setSelectedWorkflowDetail(null);
     setSelectedStepId(null);
     setSelectedStructure(null);
     
@@ -373,7 +385,8 @@ function App() {
       setStructures(null);
       setWorkflows(null);
       setSelectedStructure(null);
-      setSelectedWorkflow(null);
+      setSelectedWorkflowSummary(null);
+      setSelectedWorkflowDetail(null);
       addToRecentProjects(newProjectRoot);
       
       // Set project path for log file storage
@@ -523,10 +536,56 @@ function App() {
   // ==========================================================================
   
   const handleSelectWorkflow = useCallback((workflow: WorkflowInfo) => {
-    // Clear selected step when switching workflows (fixes stale step selection)
+    console.log('[App] handleSelectWorkflow called', {
+      workflowSlug: workflow.slug,
+      workflowId: workflow.id,
+      stepCount: workflow.steps?.length ?? 0,
+    });
+    
+    // CRITICAL: Clear detail and step selection when switching workflows
+    // We will fetch the detail separately, which has the canonical steps array from workflow.yaml
+    setSelectedWorkflowSummary(workflow);
+    setSelectedWorkflowDetail(null);
     setSelectedStepId(null);
-    setSelectedWorkflow(workflow);
-  }, []);
+    
+    // Fire and forget async detail fetch
+    // The detail's steps array is the ONLY source of truth for step order and IDs
+    (async () => {
+      if (!projectRoot || !window.qv) return;
+      
+      try {
+        const normalizedRoot = normalizeProjectRoot(projectRoot);
+        if (!normalizedRoot) return;
+        
+        console.log('[App] fetching workflow detail', {
+          workflowSlug: workflow.slug,
+          workflowId: workflow.id,
+        });
+        
+        const response = await qv.call('get_workflow_detail', {
+          project_root: normalizedRoot,
+          workflow: workflow.slug ?? workflow.id,
+        });
+        
+        if (response.ok && response.data) {
+          const detail = response.data as WorkflowDetailResult;
+          console.log('[App] got workflow detail', {
+            workflowSlug: detail.slug,
+            stepCount: detail.steps?.length ?? 0,
+            stepIds: detail.steps?.map(s => s.id) ?? [],
+            stepOrder: detail.steps?.map((s, i) => ({ index: i, id: s.id, type: s.type })) ?? [],
+          });
+          setSelectedWorkflowDetail(detail);
+        } else {
+          console.error('[App] get_workflow_detail error', response.error);
+          setSelectedWorkflowDetail(null);
+        }
+      } catch (err) {
+        console.error('[App] get_workflow_detail exception', err);
+        setSelectedWorkflowDetail(null);
+      }
+    })();
+  }, [projectRoot, qv]);
   
   const handleCreateWorkflowSuccess = useCallback(async (workflowId: string) => {
     // Refresh workflows list and summary
@@ -612,7 +671,7 @@ function App() {
     // Try to find and select the workflow
     const wf = workflows?.find(w => w.slug === workflowSlug || w.name === workflowSlug);
     if (wf) {
-      setSelectedWorkflow(wf);
+      handleSelectWorkflow(wf);
     }
   }, [workflows, fetchWorkflows]);
   
@@ -620,6 +679,28 @@ function App() {
     console.log('[App] handleSelectStep called with:', stepId);
     setSelectedStepId(stepId);
   }, []);
+  
+  const handleDeleteStep = useCallback(async (stepId: string) => {
+    console.log('[App] handleDeleteStep called with:', stepId);
+    // Clear selection if the deleted step was selected
+    if (selectedStepId === stepId) {
+      setSelectedStepId(null);
+    }
+    // Refresh workflow detail to show updated steps list
+    if (selectedWorkflowSummary) {
+      const normalizedRoot = normalizeProjectRoot(projectRoot);
+      if (normalizedRoot && window.qv) {
+        const response = await qv.call('get_workflow_detail', {
+          project_root: normalizedRoot,
+          workflow: selectedWorkflowSummary.slug,
+        });
+        if (response.ok && response.data) {
+          const updatedDetail = response.data as WorkflowDetailResult;
+          setSelectedWorkflowDetail(updatedDetail);
+        }
+      }
+    }
+  }, [selectedStepId, selectedWorkflowSummary, projectRoot, qv]);
   
   const handleRunStepSuccess = useCallback((result: JobSubmitResult) => {
     const shortId = result.job_id.slice(0, 8);
@@ -704,7 +785,9 @@ function App() {
       await fetchWorkflows();
       // Update selected workflow if it was the one being renamed
       if (selectedWorkflow?.id === renameWorkflow.id) {
-        setSelectedWorkflow(null);
+        setSelectedWorkflowSummary(null);
+        setSelectedWorkflowDetail(null);
+        setSelectedStepId(null);
       }
       return true;
     } else {
@@ -730,7 +813,9 @@ function App() {
       await refreshSummary();
       // Clear selection if the deleted workflow was selected
       if (selectedWorkflow?.id === deleteWorkflow.id) {
-        setSelectedWorkflow(null);
+        setSelectedWorkflowSummary(null);
+        setSelectedWorkflowDetail(null);
+        setSelectedStepId(null);
       }
       return true;
     } else {
@@ -856,7 +941,8 @@ function App() {
     setStructures(null);
     setWorkflows(null);
     setSelectedStructure(null);
-    setSelectedWorkflow(null);
+    setSelectedWorkflowSummary(null);
+    setSelectedWorkflowDetail(null);
     setSelectedStepId(null); // Clear step selection
     setStructureVisData(null);
     localStorage.removeItem('qv-project-root');
@@ -975,38 +1061,74 @@ function App() {
                       className="workflow-detail-resizable"
                     >
                       <WorkflowDetailPanel
-                        workflow={selectedWorkflow}
+                        workflowSummary={selectedWorkflowSummary}
+                        workflowDetail={selectedWorkflowDetail}
                         projectRoot={projectRoot}
                         structures={structures || undefined}
                         onClose={() => {
-                          setSelectedWorkflow(null);
+                          setSelectedWorkflowSummary(null);
+                          setSelectedWorkflowDetail(null);
                           setSelectedStepId(null);
                         }}
                         onRunWorkflow={handleRunWorkflow}
                         onSelectStep={handleSelectStep}
+                        onDeleteStep={handleDeleteStep}
                         onGoToJobs={handleGoToJobs}
-                        onWorkflowUpdated={fetchWorkflows}
+                        onWorkflowUpdated={async () => {
+                          // CRITICAL: After adding a step, refresh workflow detail to show the new step
+                          // This ensures the step list updates immediately without needing to reopen the project
+                          console.log('[App] onWorkflowUpdated: refreshing workflow detail after step creation');
+                          
+                          // Refresh workflows list to get updated step counts
+                          await fetchWorkflows();
+                          
+                          // Also refresh the selected workflow detail if it exists
+                          // This updates selectedWorkflowDetail.steps with the new step entry
+                          if (selectedWorkflowSummary) {
+                            const response = await qv.call('get_workflow_detail', {
+                              project_root: projectRoot,
+                              workflow: selectedWorkflowSummary.slug,
+                            });
+                            if (response.ok && response.data) {
+                              // Update selectedWorkflowDetail with fresh data including new steps
+                              const updatedDetail = response.data as WorkflowDetailResult;
+                              console.log('[App] Workflow detail refreshed', {
+                                workflowSlug: updatedDetail.slug,
+                                stepCount: updatedDetail.steps.length,
+                                stepIds: updatedDetail.steps.map(s => s.id),
+                                stepOrder: updatedDetail.steps.map((s, i) => ({ index: i, id: s.id, type: s.type })),
+                              });
+                              setSelectedWorkflowDetail(updatedDetail);
+                            } else {
+                              console.error('[App] Failed to refresh workflow detail', response.error);
+                            }
+                          }
+                        }}
                       />
                     </VerticalResizablePane>
                     <StepDetailPanel
                       projectRoot={projectRoot}
-                      workflowSelector={selectedWorkflow.slug}
-                      stepSelector={selectedStepId}
+                      selectedWorkflow={selectedWorkflowDetail}
+                      selectedStepId={selectedStepId}
                       onClose={() => setSelectedStepId(null)}
                       onRunStep={handleRunStepSuccess}
+                      onStepDeleted={handleDeleteStep}
                     />
                   </>
                 ) : (
                   <WorkflowDetailPanel
-                    workflow={selectedWorkflow}
+                    workflowSummary={selectedWorkflowSummary}
+                    workflowDetail={selectedWorkflowDetail}
                     projectRoot={projectRoot}
                     structures={structures || undefined}
                     onClose={() => {
-                      setSelectedWorkflow(null);
+                      setSelectedWorkflowSummary(null);
+                      setSelectedWorkflowDetail(null);
                       setSelectedStepId(null);
                     }}
                     onRunWorkflow={handleRunWorkflow}
                     onSelectStep={handleSelectStep}
+                    onDeleteStep={handleDeleteStep}
                     onGoToJobs={handleGoToJobs}
                     onWorkflowUpdated={fetchWorkflows}
                   />
