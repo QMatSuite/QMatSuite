@@ -18,6 +18,35 @@ from quantumvitas.core.engines.qe_pseudopotentials import (
 )
 
 
+def make_missing_pseudo_placeholder(symbol: str) -> str:
+    """
+    Create an obvious placeholder name for missing pseudopotentials.
+    
+    This placeholder clearly indicates that no pseudopotential was configured,
+    distinguishing configuration errors from missing file errors.
+    
+    Args:
+        symbol: Element symbol (e.g., "Si", "C")
+        
+    Returns:
+        Placeholder filename like "__MISSING_PSEUDO__Si"
+    """
+    return f"__MISSING_PSEUDO__{symbol}"
+
+
+def is_missing_pseudo_placeholder(pp_name: str) -> bool:
+    """
+    Check if a pseudopotential name is a missing placeholder.
+    
+    Args:
+        pp_name: Pseudopotential filename to check
+        
+    Returns:
+        True if this is a placeholder indicating missing configuration
+    """
+    return pp_name.startswith("__MISSING_PSEUDO__")
+
+
 @dataclass
 class PseudoResolutionResult:
     """
@@ -75,12 +104,39 @@ def ensure_qe_pseudos(
     atomic_species = qe_input.get_card(QECardType.ATOMIC_SPECIES)
     
     required_pps: List[str] = []
+    missing_placeholders: List[str] = []
     if atomic_species and atomic_species.data:
         for line in atomic_species.data:
             if isinstance(line, list) and len(line) >= 3:
-                pp_name = str(line[2]).strip()
-                if pp_name:
+                pp_name = str(line[2]).strip() if line[2] else ""
+                element_symbol = str(line[0]).strip() if line[0] else "unknown"
+                
+                if not pp_name:
+                    # Empty or missing pseudopotential - treat as missing configuration
+                    # Placeholder semantics: __MISSING_PSEUDO__X = configuration error (not a file error)
+                    missing_placeholders.append(element_symbol)
+                elif is_missing_pseudo_placeholder(pp_name):
+                    # Explicit placeholder indicating missing configuration
+                    # Placeholder semantics: __MISSING_PSEUDO__X = configuration error (not a file error)
+                    element_symbol = pp_name.replace("__MISSING_PSEUDO__", "")
+                    missing_placeholders.append(element_symbol)
+                else:
+                    # Real pseudopotential filename (e.g., "Si.pbe-n-rrkjus_psl.1.0.0.UPF")
+                    # If this filename cannot be found, it's a missing-file error (not configuration)
                     required_pps.append(pp_name)
+    
+    # Fail early with clear configuration error if placeholders or empty pseudos are found
+    if missing_placeholders:
+        elements_str = ", ".join(sorted(set(missing_placeholders)))
+        first_element = elements_str.split(",")[0].strip()
+        raise ValueError(
+            f"Pseudopotential not configured for element(s): {elements_str}. "
+            f"This is a configuration error, not a missing file. "
+            f"Please configure pseudopotentials using:\n"
+            f"  - CLI: --SPECIES.{first_element}.pseudopot=<filename>\n"
+            f"  - Step spec: species_overrides['{first_element}'] = {{'pseudopot': '<filename>'}}\n"
+            f"  - Or import from existing QE input that has ATOMIC_SPECIES with pseudopotential filenames"
+        )
     
     # If no pseudos needed, return success
     if not required_pps:
@@ -197,7 +253,10 @@ def ensure_qe_pseudos(
                 # Downloaded directly to project_pseudo_dir
                 resolved_pseudos[pp_name] = project_pp_path
         else:
-            # Download failed
+            # Download failed - this is a missing file error (not configuration)
+            # The pseudopotential was configured (real filename present) but the file
+            # cannot be found locally or downloaded. This is different from a configuration
+            # error (which would have __MISSING_PSEUDO__ placeholder or empty pseudo name).
             all_available = False
     
     return PseudoResolutionResult(

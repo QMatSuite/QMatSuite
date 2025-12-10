@@ -51,26 +51,47 @@ def create_workflow_project(
 
     shutil.copytree(pseudo_src, project_root / "pseudo")
 
-    # Create a minimal structure for the workflow (required for steps)
+    # Extract structure from the first input file (SCF step typically has the structure)
     from quantumvitas.core.resources import generate_resource_id, meta_from_name
-    structure_id = generate_resource_id()
-    structure_meta = meta_from_name("structure", name="test_structure", path="structures/test_structure.json")
-    structure_meta.id = structure_id
+    from quantumvitas.io.parser.qe_parser import QEInputParser
+    from quantumvitas.io.structure_io import structure_from_qe_input, write_structure
     
+    structure_id = generate_resource_id()
     structures_dir = project_root / "structures"
     structures_dir.mkdir(parents=True, exist_ok=True)
-    from quantumvitas.io.structure_io import STRUCTURE_META_KEY, STRUCTURE_DATA_KEY
-    import json
-    structure_json = {
-        STRUCTURE_META_KEY: structure_meta.to_dict(),
-        STRUCTURE_DATA_KEY: {
-            "@module": "pymatgen.core.structure",
-            "@class": "Structure",
-            "lattice": {"matrix": [[5.43, 0.0, 0.0], [0.0, 5.43, 0.0], [0.0, 0.0, 5.43]]},
-            "sites": [{"species": [{"element": "Si", "occu": 1}], "abc": [0.0, 0.0, 0.0]}],
-        },
-    }
-    (structures_dir / "test_structure.json").write_text(json.dumps(structure_json, indent=2))
+    
+    # Try to extract structure from the first step's input file
+    structure_extracted = False
+    if steps:
+        first_input = raw_dir / steps[0]["input"]
+        if first_input.exists():
+            try:
+                qe_input = QEInputParser.parse_file(first_input)
+                structure = structure_from_qe_input(qe_input)
+                structure_meta = meta_from_name("structure", name="test_structure", path="structures/test_structure.json")
+                structure_meta.id = structure_id
+                structure_path = structures_dir / "test_structure.json"
+                write_structure(structure, structure_path, format="json", metadata=structure_meta)
+                structure_extracted = True
+            except Exception as e:
+                print(f"Warning: Failed to extract structure from {first_input}: {e}")
+    
+    # Fallback to hardcoded structure if extraction failed
+    if not structure_extracted:
+        structure_meta = meta_from_name("structure", name="test_structure", path="structures/test_structure.json")
+        structure_meta.id = structure_id
+        from quantumvitas.io.structure_io import STRUCTURE_META_KEY, STRUCTURE_DATA_KEY
+        import json
+        structure_json = {
+            STRUCTURE_META_KEY: structure_meta.to_dict(),
+            STRUCTURE_DATA_KEY: {
+                "@module": "pymatgen.core.structure",
+                "@class": "Structure",
+                "lattice": {"matrix": [[5.43, 0.0, 0.0], [0.0, 5.43, 0.0], [0.0, 0.0, 5.43]]},
+                "sites": [{"species": [{"element": "Si", "occu": 1}], "abc": [0.0, 0.0, 0.0]}],
+            },
+        }
+        (structures_dir / "test_structure.json").write_text(json.dumps(structure_json, indent=2))
     
     # Generate workflow ULID (ID-only model)
     workflow_ulid = generate_resource_id()
@@ -93,6 +114,8 @@ def create_workflow_project(
 
     # Create step files with proper meta (ID-only model)
     from quantumvitas.core.resources import generate_resource_id, meta_from_name
+    from quantumvitas.io.parser.qe_parser import QEInputParser
+    from quantumvitas.workflow.importers import _build_step_spec_from_qe_input_data
     steps_dir = workflow_dir / "steps"
     steps_dir.mkdir(parents=True, exist_ok=True)
     
@@ -104,12 +127,33 @@ def create_workflow_project(
         step_meta = meta_from_name("step", name=step_id, path=f"workflows/{workflow_id}/steps/{step_id}.step.yaml")
         step_meta.id = step_ulid
         
+        # Parse the reference input file to extract QE parameters
+        input_file = raw_dir / step["input"]
+        parameters = {}
+        cards = {}
+        if input_file.exists():
+            try:
+                qe_input = QEInputParser.parse_file(input_file)
+                # Extract parameters and cards WITHOUT applying defaults (preserve original)
+                parameters, cards = _build_step_spec_from_qe_input_data(
+                    qe_input, step_id, apply_defaults=False
+                )
+            except Exception as e:
+                # If parsing fails, fall back to minimal spec
+                print(f"Warning: Failed to parse {input_file}: {e}")
+        
         # DAG model: Step YAML should NOT contain structure_id (inherits from workflow)
         step_spec = {
             "meta": step_meta.to_dict(),
             "step_type": step_id,  # Use step id as step_type (scf, nscf, dos, etc.)
             # structure_id is NOT written to step YAML (DAG model)
         }
+        # Add extracted parameters and cards if available
+        if parameters:
+            step_spec["parameters"] = parameters
+        if cards:
+            step_spec["cards"] = cards
+        
         step_file.write_text(yaml.safe_dump(step_spec, sort_keys=False))
         
         # Create step entry with step_id (ULID)

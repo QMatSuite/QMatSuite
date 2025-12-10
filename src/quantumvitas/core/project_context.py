@@ -63,7 +63,6 @@ class ProjectContext:
                     kind="project",
                     selector=str(project_arg),
                     project_root=None,
-                    message=f"Project not found at {project_root}. project.qv.yml missing."
                 )
         else:
             # Auto-detect from cwd
@@ -214,7 +213,6 @@ def resolve_workflow_for_cli(
         kind="workflow",
         selector=None,
         project_root=ctx.project_root,
-        message="Multiple workflows found. Please specify --workflow <selector>."
     )
 
 
@@ -288,7 +286,8 @@ def resolve_step_for_cli(
     project = Project.open(ctx.project_root)
     # Use workflow selector (slug/name) to get workflow, not workflow_id
     workflow_selector = workflow_resolved.meta.slug or workflow_resolved.meta.name or workflow_id
-    workflow = Workflow.from_yaml(workflow_resolved.absolute_path, project)
+    # Use inspection mode (no step materialization) for context resolution
+    workflow = Workflow.from_yaml(workflow_resolved.absolute_path, project, materialize_steps=False)
     
     if len(workflow.steps) == 1:
         return require_step(
@@ -303,6 +302,5 @@ def resolve_step_for_cli(
         kind="step",
         selector=None,
         project_root=ctx.project_root,
-        message=f"Multiple steps in workflow '{workflow_resolved.meta.name}'. Please specify --step <selector>."
     )
 

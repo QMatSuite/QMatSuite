@@ -170,7 +170,15 @@ class TestProjectSnapshot:
         # But names/slugs should match
         assert original_project.meta.name == new_project.meta.name
         # Compare workflow entry names (from project.qv.yml), not workflow model names
-        assert original_project.workflows[0].meta.name == new_project.workflows[0].meta.name
+        # Note: workflow entry meta.name comes from project.qv.yml (which has "Si dos")
+        # but workflow.yaml meta.name might be "si-dos" (slug) if it was created with old format
+        # So we compare the workflow entry meta.name (from project.qv.yml) which should be preserved
+        original_wf_entry_name = original_project.workflows[0].meta.name
+        new_wf_entry_name = new_project.workflows[0].meta.name
+        # The snapshot export should preserve the name from project.qv.yml (legacy format)
+        # So both should have "Si dos" from the original project.qv.yml
+        assert original_wf_entry_name == new_wf_entry_name, \
+            f"Workflow entry names should match: original={original_wf_entry_name}, new={new_wf_entry_name}"
     
     def test_snapshot_pseudo_files(self, project1_path: Path, temp_dir: Path):
         """Test that pseudo file list is exported but files are not created."""

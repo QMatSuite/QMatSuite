@@ -152,11 +152,14 @@ def qe_input_from_structure(structure: PMGStructure) -> QEInput:
     electrons = QENamelist(name="ELECTRONS", parameters={})
 
     # ATOMIC_SPECIES: element symbol, atomic mass, pseudo file name (placeholder).
+    # Use obvious placeholder to indicate missing configuration (not a real file)
+    from quantumvitas.core.pseudo import make_missing_pseudo_placeholder
     species: List[Element] = unique_species
     atomic_species_data: List[list] = []
     for el in species:
         mass = float(el.atomic_mass)
-        pseudo_name = f"{el.symbol}.upf"
+        # Use placeholder to clearly indicate missing configuration
+        pseudo_name = make_missing_pseudo_placeholder(el.symbol)
         atomic_species_data.append([el.symbol, mass, pseudo_name])
 
     atomic_species_card = QECard(

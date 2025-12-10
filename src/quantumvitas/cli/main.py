@@ -558,11 +558,23 @@ def _resolve_structure_input(
         structure = read_structure(candidate)
         return structure, candidate.stem
 
-    # Try to resolve via project metadata
-    project = Project.open(project_root)
-    ref = project.get_structure(identifier)
-    structure = read_structure(ref.path)
-    return structure, identifier
+    # Try to resolve via registry-based resolution (ID-only model)
+    try:
+        from quantumvitas.core.resolution import build_resource_index, require_structure
+        config = load_project_config(project_root)
+        index = build_resource_index(project_root)
+        resolved = require_structure(project_root, identifier, config=config, index=index)
+        structure = read_structure(resolved.absolute_path)
+        return structure, resolved.meta.name or resolved.meta.slug or identifier
+    except Exception as e:
+        # Fallback to legacy Project.get_structure for backwards compatibility
+        try:
+            project = Project.open(project_root)
+            ref = project.get_structure(identifier)
+            structure = read_structure(ref.path)
+            return structure, identifier
+        except Exception:
+            raise ValueError(f"Could not resolve structure '{identifier}': {e}") from e
 
 
 
@@ -767,7 +779,11 @@ def init_workflow_command(
             "--structure is required when not using --template"
         )
 
-    find_structure_entry(config, structure, project_root)
+    # Resolve structure selector to structure_id (ULID)
+    from quantumvitas.core.resolution import require_structure
+    resolved_structure = require_structure(project_root, structure, config)
+    structure_id = resolved_structure.meta.id
+    structure_name = resolved_structure.meta.name
 
     raw_dir = workflow_dir / "raw"
     steps_dir = workflow_dir / "steps"
@@ -784,9 +800,12 @@ def init_workflow_command(
         workflow_meta_dict = workflow_meta.to_dict()
 
     # Write workflow.yaml with proper meta section (contains ULID)
+    # DAG + ID-only model: use structure_id (ULID) as canonical reference
     workflow_payload = {
         "meta": workflow_meta_dict,
-        "structure": structure,
+        "structure_id": structure_id,  # Canonical reference (ULID)
+        "structure_name": structure_name,  # Optional display name
+        "structure": structure,  # Legacy selector (for backwards compat, not authoritative)
         "mode": "normal",
         "working_dir": "raw",
         "steps": [],
@@ -957,6 +976,9 @@ def init_step_command(
         # Structure: prefer structure_id (canonical), fall back to structure selector (legacy)
         workflow_structure_id = workflow_data.get("structure_id")
         workflow_structure = workflow_data.get("structure") or workflow_data.get("workflow", {}).get("structure")
+    else:
+        workflow_structure_id = None
+        workflow_structure = None
 
     # Resolve structure: use provided, or inherit from parent workflow
     if structure:
@@ -1206,7 +1228,7 @@ def import_structure_command(
     struct = read_structure(structure_file)
     config = load_project_config(project_root)
     structures_section = config.setdefault("structures", [])
-    existing_slugs = collect_slugs(structures_section)
+    existing_slugs = collect_slugs(structures_section, project_root=project_root)
 
     user_name = name.strip() if name else None
     if user_name:
@@ -1318,12 +1340,20 @@ def run_step_command(
     """
     Run a single QE input file or step spec.
     
-    Two modes:
-    - Project mode (default): Run step from project/workflow context
-    - Standalone mode (--standalone): Run QE input file without project context.
-      Standalone mode always performs a full roundtrip: parses the original input,
-      generates a normalized QE input, and runs QE on the generated input.
-      The original input is preserved as <stem>.raw.in.
+    Two execution modes:
+    
+    1. Project mode (default):
+       - Requires: --project (or auto-detect) + --workflow + --step selectors
+       - Uses registry-based resolution: workflow → step → structure (via workflow.structure_id)
+       - Structure is resolved from workflow.structure_id (DAG model: workflow owns structure)
+       - Deprecated: bare step YAML file path (target argument)
+         - When provided, workflow is inferred from step path via registry
+         - Structure is still resolved from workflow.structure_id (not from step YAML)
+    
+    2. Standalone mode (--standalone):
+       - Requires: --standalone + --input (QE input file)
+       - No project context: parses → overrides → pseudo → generates → runs
+       - Always performs full roundtrip: original input preserved as <stem>.raw.in
     """
     # Validate mutual exclusion
     if standalone:
@@ -1370,13 +1400,8 @@ def run_step_command(
             "For standalone execution, use --standalone --input <file>."
         ) from e
     
-    # Resolve workflow and step
-    try:
-        workflow_resolved = resolve_workflow_for_cli(ctx_obj, workflow)
-    except ResourceNotFoundError as e:
-        raise typer.BadParameter(str(e)) from e
-    
     # If target is provided (legacy support), try to resolve step from it
+    # This will also resolve the workflow from the step path
     if target:
         # Legacy: if target is a step YAML, try to resolve it via registry
         if target.suffix.lower() in {".yaml", ".yml"}:
@@ -1389,20 +1414,52 @@ def run_step_command(
             step_path = target.resolve()
             try:
                 rel_path = step_path.relative_to(ctx_obj.project_root)
-                # Extract step selector from path (e.g., workflows/wf/steps/scf.step.yaml -> scf)
+                # Extract workflow and step from path (e.g., workflows/wf/steps/scf.step.yaml)
                 if "workflows" in rel_path.parts and "steps" in rel_path.parts:
-                    step_selector = step_path.stem.replace(".step", "")
-                    step_resolved = resolve_step_for_cli(ctx_obj, workflow_resolved, step_selector)
+                    # Find workflow slug from path
+                    workflows_idx = rel_path.parts.index("workflows")
+                    if workflows_idx + 1 < len(rel_path.parts):
+                        workflow_slug = rel_path.parts[workflows_idx + 1]
+                        # Resolve workflow from slug
+                        workflow_resolved = resolve_workflow_for_cli(ctx_obj, workflow_slug)
+                        # Extract step selector from filename
+                        step_selector = step_path.stem.replace(".step", "")
+                        step_resolved = resolve_step_for_cli(ctx_obj, workflow_resolved, step_selector)
+                    else:
+                        raise typer.BadParameter(
+                            f"Step file {target} path is invalid. "
+                            "Please use --workflow <selector> --step <selector> instead."
+                        )
                 else:
-                    raise typer.BadParameter(
-                        f"Step file {target} is not in a workflow steps directory. "
-                        "Please use --workflow <selector> --step <selector> instead."
-                    )
-            except (ValueError, ResourceNotFoundError):
+                    # Try to find step in registry by absolute path
+                    from quantumvitas.core.resolution import build_resource_index
+                    registry = ctx_obj.registry
+                    # Look for step by path in registry
+                    step_found = None
+                    for path, resource_id in registry.by_path.items():
+                        if path == step_path:
+                            meta = registry.by_id.get(resource_id)
+                            if meta and meta.kind == "step":
+                                # Find parent workflow from step path
+                                step_rel = Path(path).relative_to(ctx_obj.project_root)
+                                if "workflows" in step_rel.parts and "steps" in step_rel.parts:
+                                    workflows_idx = step_rel.parts.index("workflows")
+                                    if workflows_idx + 1 < len(step_rel.parts):
+                                        workflow_slug = step_rel.parts[workflows_idx + 1]
+                                        workflow_resolved = resolve_workflow_for_cli(ctx_obj, workflow_slug)
+                                        step_resolved = resolve_step_for_cli(ctx_obj, workflow_resolved, meta.slug or meta.name or meta.id)
+                                        step_found = True
+                                        break
+                    if not step_found:
+                        raise typer.BadParameter(
+                            f"Step file {target} is not in a workflow steps directory. "
+                            "Please use --workflow <selector> --step <selector> instead."
+                        )
+            except (ValueError, ResourceNotFoundError) as e:
                 raise typer.BadParameter(
-                    f"Cannot resolve step from {target}. "
+                    f"Cannot resolve step from {target}: {e}. "
                     "Please use --workflow <selector> --step <selector> instead."
-                )
+                ) from e
         else:
             # Target is a QE input file - not supported in project mode
             raise typer.BadParameter(
@@ -1411,7 +1468,13 @@ def run_step_command(
                 "or use --standalone --input <file> for standalone execution."
             )
     else:
-        # No target - use --step option or auto-detect
+        # No target - resolve workflow first, then step
+        try:
+            workflow_resolved = resolve_workflow_for_cli(ctx_obj, workflow)
+        except ResourceNotFoundError as e:
+            raise typer.BadParameter(str(e)) from e
+        
+        # Use --step option or auto-detect
         try:
             step_resolved = resolve_step_for_cli(ctx_obj, workflow_resolved, step)
         except ResourceNotFoundError as e:
@@ -1427,9 +1490,12 @@ def run_step_command(
             step_selector=step_resolved.meta.slug or step_resolved.meta.name or step_resolved.meta.id,
         )
         
-        typer.echo(f"Step '{result['step']}' ({result['step_type']}) finished successfully")
         if result.get("output_file"):
-            typer.echo(f"Output: {result['output_file']}")
+            # Match expected test output format: "Step finished: <output> -> (input <input>)"
+            input_file = result.get("input_file") or step_resolved.absolute_path
+            typer.echo(f"Step finished: {result['output_file']} -> (input {input_file})")
+        else:
+            typer.echo(f"Step '{result['step']}' ({result['step_type']}) finished successfully")
         if result.get("error"):
             typer.echo(f"Error: {result['error']}", err=True)
             raise typer.Exit(1)
@@ -1635,14 +1701,14 @@ def list_resources(
         typer.echo("  (none)")
     for wf in workflows:
         # Find structures used by this workflow
-        wf_structures = _find_workflow_structures(wf.path, proj)
+        wf_structures = _find_workflow_structures(wf.absolute_path, proj)
         struct_info = f"  (structure: {', '.join(wf_structures)})" if wf_structures else ""
         
         line = f"  - {wf.name} [{wf.meta.slug}] -> {wf.meta.path}{struct_info}"
         if verbose:
             line += f" (id: {wf.meta.id})"
         typer.echo(line)
-        step_summaries = _workflow_step_summaries(wf.path)
+        step_summaries = _workflow_step_summaries(wf.absolute_path)
         if not step_summaries:
             typer.echo("    (no steps)")
             continue
@@ -1661,18 +1727,39 @@ def list_resources(
 
 
 def _find_workflow_structures(workflow_dir: Path, proj: Project) -> list[str]:
-    """Find all structures referenced by a workflow's steps."""
+    """
+    Find all structures referenced by a workflow.
+    
+    In the new DAG model, structure is resolved via workflow.structure_id,
+    not from individual step files.
+    """
     structures: set[str] = set()
-    steps_dir = workflow_dir / "steps"
-    if steps_dir.exists():
-        for spec_path in steps_dir.glob("*.step.yaml"):
-            try:
-                spec = StructureStepSpec.from_yaml(spec_path)
-                if spec.structure:
-                    # Could be a name, slug, or path
-                    structures.add(spec.structure)
-            except Exception:
-                continue
+    
+    # First, check workflow.yaml for structure_id (canonical reference)
+    workflow_yaml = workflow_dir / "workflow.yaml"
+    if workflow_yaml.exists():
+        try:
+            data = yaml.safe_load(workflow_yaml.read_text()) or {}
+            structure_id = data.get("structure_id")
+            if structure_id:
+                # Resolve structure_id to structure name/slug
+                for struct_ref in proj.structures.values():
+                    if struct_ref.meta.id == structure_id:
+                        structures.add(struct_ref.name)
+                        break
+        except Exception:
+            pass
+    
+    # Also check legacy structure field for backwards compatibility
+    if workflow_yaml.exists():
+        try:
+            data = yaml.safe_load(workflow_yaml.read_text()) or {}
+            legacy_structure = data.get("structure")
+            if legacy_structure:
+                structures.add(legacy_structure)
+        except Exception:
+            pass
+    
     return sorted(structures)
 
 
@@ -1683,6 +1770,10 @@ def _workflow_step_summaries(workflow_dir: Path) -> list[tuple[str, Optional[str
     Returns list of (step_display_name, step_file, step_meta) tuples.
     step_display_name: from step's meta.name if available, otherwise step type or "(unnamed)"
     step_meta: ResourceMeta from step file (contains ULID)
+    
+    In the new DAG + ID-only model:
+    - Steps in workflow.yaml have step_id (ULID), not step_file
+    - Step file location is resolved via ResourceIndex using step_id
     """
     workflow_yaml = workflow_dir / "workflow.yaml"
     if not workflow_yaml.exists():
@@ -1691,35 +1782,86 @@ def _workflow_step_summaries(workflow_dir: Path) -> list[tuple[str, Optional[str
         data = yaml.safe_load(workflow_yaml.read_text()) or {}
     except Exception:
         return []
+    
+    # Get project root to build ResourceIndex
+    project_root = workflow_dir.parent.parent  # workflows/<slug> -> workflows -> project_root
+    if not (project_root / "project.qv.yml").exists():
+        # Fallback: try parent of workflows dir
+        project_root = workflow_dir.parent
+        if not (project_root / "project.qv.yml").exists():
+            project_root = None
+    
+    # Build ResourceIndex to resolve step_id (ULID) to step files
+    index = None
+    config = None
+    if project_root:
+        try:
+            from quantumvitas.core.resolution import build_resource_index
+            index = build_resource_index(project_root)
+            config = load_project_config(project_root)
+        except Exception:
+            pass
+    
+    # Get workflow selector for require_step
+    workflow_meta = data.get("meta", {})
+    workflow_slug = workflow_meta.get("slug") or workflow_dir.name
+    
     summaries: list[tuple[str, Optional[str], Optional[ResourceMeta]]] = []
     for step_entry in data.get("steps", []):
-        rel_path = step_entry.get("step_file")
+        rel_path: Optional[str] = None
         step_meta: Optional[ResourceMeta] = None
         step_display_name = "(unnamed)"
         
-        # Try to load step file to get meta (name and ULID)
-        if rel_path:
-            spec_path = (workflow_dir / rel_path).resolve()
+        # New DAG model: step_id (ULID) is the canonical reference
+        step_id_ulid = step_entry.get("step_id")
+        
+        # Legacy: step_file (for backwards compatibility)
+        legacy_step_file = step_entry.get("step_file")
+        
+        # Try to resolve step file using ResourceIndex
+        if step_id_ulid and index and project_root:
+            try:
+                # Use require_step to resolve step_id (ULID) to step file
+                step_resolved = require_step(project_root, workflow_slug, step_id_ulid, config=config, index=index)
+                if step_resolved and step_resolved.absolute_path:
+                    # Calculate relative path from workflow_dir
+                    try:
+                        rel_path = str(step_resolved.absolute_path.relative_to(workflow_dir))
+                    except ValueError:
+                        # If not relative, use absolute path
+                        rel_path = str(step_resolved.absolute_path)
+                    
+                    # Load step spec to get meta
+                    try:
+                        spec = StructureStepSpec.from_yaml(step_resolved.absolute_path)
+                        step_meta = spec.meta
+                        step_display_name = step_meta.name or spec.step_type or "(unnamed)"
+                    except Exception:
+                        # If we can't load, infer from filename
+                        step_display_name = step_resolved.absolute_path.stem.replace(".step", "") or "(unnamed)"
+            except Exception:
+                # Resolution failed - mark as missing
+                step_display_name = f"(missing: {step_id_ulid[:8]}...)"
+        elif legacy_step_file:
+            # Legacy: use step_file if available
+            spec_path = (workflow_dir / legacy_step_file).resolve()
             if spec_path.exists():
                 try:
                     spec = StructureStepSpec.from_yaml(spec_path)
                     step_meta = spec.meta
-                    # Use step's own meta.name if available, otherwise fall back to step_type
                     step_display_name = step_meta.name or spec.step_type or "(unnamed)"
+                    rel_path = legacy_step_file
                 except Exception:
-                    # If we can't load the step file, try to infer from filename
                     step_display_name = spec_path.stem.replace(".step", "") or "(unnamed)"
+                    rel_path = legacy_step_file
+        elif step_id_ulid:
+            # Have ULID but couldn't resolve - mark as missing
+            step_display_name = f"(missing: {step_id_ulid[:8]}...)"
         else:
-            # No step_file - try to get step_id (ULID) from entry
-            step_id_ulid = step_entry.get("step_id")
-            if step_id_ulid:
-                # We have ULID but no file - mark as missing
-                step_display_name = f"(missing: {step_id_ulid[:8]}...)"
-            else:
-                # Legacy: try old id field
-                legacy_id = step_entry.get("id")
-                if legacy_id:
-                    step_display_name = legacy_id
+            # Legacy: try old id field
+            legacy_id = step_entry.get("id")
+            if legacy_id:
+                step_display_name = legacy_id
         
         summaries.append((step_display_name, rel_path, step_meta))
     return summaries
@@ -2473,13 +2615,42 @@ def configure_workflow_command(
         save_project_config(project_root, config)
         
         # Re-resolve workflow directory in case it was moved
-        workflow_dir = workflow_directory(project_root, workflow_entry)
+        # After rename, the entry might have updated path, so resolve via registry if needed
+        try:
+            workflow_dir = workflow_directory(project_root, workflow_entry)
+        except ProjectConfigError:
+            # Entry might not have path yet - try to resolve via registry
+            from quantumvitas.core.resolution import build_resource_index, require_workflow
+            workflow_id = workflow_entry.get("workflow_id") or workflow_entry.get("id") or (workflow_entry.get("meta") or {}).get("id")
+            if workflow_id:
+                index = build_resource_index(project_root)
+                resolved = require_workflow(project_root, workflow_id, index=index)
+                workflow_dir = resolved.absolute_path.parent if resolved.absolute_path.name == "workflow.yaml" else resolved.absolute_path
+            else:
+                raise typer.BadParameter(f"Could not resolve workflow directory after rename")
+        
         workflow_yaml = workflow_dir / "workflow.yaml"
         
         # Re-read workflow.yaml if directory was moved
+        # Note: apply_workflow_rename should have moved the directory, so workflow.yaml should exist
+        # But if it doesn't, try to reload from the new location
         if workflow_dir != old_workflow_dir:
+            # Directory was moved - workflow.yaml should be at the new location
             if not workflow_yaml.exists():
-                raise typer.BadParameter(f"workflow.yaml not found at {workflow_yaml} after rename")
+                # Try to find it in the new directory
+                if workflow_dir.exists():
+                    # Directory exists but workflow.yaml doesn't - this shouldn't happen
+                    # but let's try to reload it anyway
+                    raise typer.BadParameter(
+                        f"workflow.yaml not found at {workflow_yaml} after rename. "
+                        f"Directory was moved from {old_workflow_dir} to {workflow_dir}, "
+                        f"but workflow.yaml is missing."
+                    )
+                else:
+                    raise typer.BadParameter(
+                        f"Workflow directory not found at {workflow_dir} after rename. "
+                        f"Expected to be moved from {old_workflow_dir}."
+                    )
             workflow_data = yaml.safe_load(workflow_yaml.read_text()) or {}
         
         # Update meta in workflow.yaml

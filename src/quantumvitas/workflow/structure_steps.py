@@ -168,16 +168,14 @@ class StructureStepSpec:
         """
         Convert to dictionary for YAML serialization.
         
-        DAG + ID-only model: Step YAML contains ONLY step-local configuration.
-        NO cross-resource references (no structure_id, no parent_workflow_id).
+        DAG + ID-only model invariants (enforced here):
+        - Step YAML contains ONLY step-local configuration (parameters, cards, species_overrides).
+        - NO cross-resource references: structure_id, parent_workflow_id, or structure selector.
+        - Structure is resolved via workflow.structure_id at execution time (workflow owns structure).
+        - Parent workflow is implicit from step file location (workflows/<slug>/steps/<step>.step.yaml).
         
-        Structure is resolved via workflow.structure_id at execution time.
-        Parent workflow is implicit (step file location determines parent).
-        
-        Enforces DAG rule:
-        - Step must NOT store structure_id (inherits from workflow)
-        - Step must NOT store parent_workflow_id (parent is implicit)
-        - Step must NOT store structure selector (legacy field, not written)
+        This method explicitly excludes structure_id, parent_workflow_id, and structure fields
+        to enforce the DAG invariant that steps do not duplicate workflow-level references.
         """
         data: Dict[str, Any] = {
             "meta": self.meta.to_dict(),
@@ -566,9 +564,13 @@ def materialize_step_spec(
             temp_input.unlink()
         
         if not pseudo_result.all_available:
+            # This is a missing file error (pseudopotential was configured but file not found)
+            # Configuration errors are caught earlier in ensure_qe_pseudos
             raise RuntimeError(
-                f"Failed to obtain required pseudopotentials for step spec. "
-                f"Project pseudo dir: {project_pseudo_dir}"
+                f"Pseudopotential file(s) not found or could not be downloaded. "
+                f"This is a missing file error (pseudopotential was configured but the file is missing). "
+                f"Project pseudo dir: {project_pseudo_dir}. "
+                f"Check that the pseudopotential filenames in your step spec are correct and the files exist."
             )
         
         # Set pseudo_dir in QE input

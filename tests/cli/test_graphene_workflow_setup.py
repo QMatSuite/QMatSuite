@@ -84,10 +84,19 @@ def test_graphene_workflow_setup(ci_test_data_dir: Path, tmp_path: Path):
             assert len(structure_files) > 0, "Structure file should be created"
             
             # Verify structure is registered in project config
+            # ID-only model: project.qv.yml only has structure_id, not name
+            # Resolve structure from registry to get its name
             project_config = yaml.safe_load((project_dir / "project.qv.yml").read_text())
             structures = project_config.get("structures", [])
-            structure_names = [s.get("name") for s in structures]
-            assert "C" in structure_names, f"Structure 'C' should be registered. Found: {structure_names}"
+            assert len(structures) > 0, "Structure should be registered"
+            # In ID-only model, entries have structure_id (ULID), not name
+            # Resolve the structure to get its meta.name
+            from quantumvitas.core.resolution import build_resource_index, require_structure
+            index = build_resource_index(project_dir)
+            structure_id = structures[0].get("structure_id")
+            assert structure_id is not None, "Structure entry should have structure_id"
+            resolved = require_structure(project_dir, structure_id, index=index)
+            assert resolved.meta.name == "C", f"Structure name should be 'C'. Found: {resolved.meta.name}"
             
             # Step 4: Create workflow
             # qv init workflow "graphene bands" --structure C
@@ -121,9 +130,17 @@ def test_graphene_workflow_setup(ci_test_data_dir: Path, tmp_path: Path):
             assert workflow_data["steps"] == []
             
             # Verify workflow is registered in project config
+            # ID-only model: project.qv.yml only has workflow_id, not name
+            # Resolve workflow from registry to get its name
             project_config = yaml.safe_load((project_dir / "project.qv.yml").read_text())
             workflows = project_config.get("workflows", [])
-            assert any(w.get("name") == "graphene bands" for w in workflows), "Workflow should be registered"
+            assert len(workflows) > 0, "Workflow should be registered"
+            from quantumvitas.core.resolution import build_resource_index, require_workflow
+            index = build_resource_index(project_dir)
+            workflow_id = workflows[0].get("id") or workflows[0].get("workflow_id")
+            assert workflow_id is not None, "Workflow entry should have id"
+            resolved = require_workflow(project_dir, workflow_id, index=index)
+            assert resolved.meta.name == "graphene bands", f"Workflow name should be 'graphene bands'. Found: {resolved.meta.name}"
             
             # Step 5: cd workflows/graphene-bands
             os.chdir(workflow_dir)

@@ -27,22 +27,41 @@ def qe_engine() -> QuantumEspressoEngine:
 
 
 def _extract_paths(stdout: str) -> tuple[Path, Path]:
+    """
+    Extract output and input file paths from CLI output.
+    
+    Expected format: "Step finished: <output_path> -> (input <input_path>)"
+    """
     for line in stdout.splitlines():
         line = line.strip()
         if not line.startswith("Step finished:"):
             continue
         if "->" not in line:
             break
-        _, rest = line.split("->", 1)
-        rest = rest.strip()
-        input_path = None
-        if "(input" in rest:
-            output_part, input_part = rest.split("(input", 1)
-            output_part = output_part.strip()
-            input_path = Path(input_part.strip().rstrip(")"))
+        
+        # Parse: "Step finished: <output_path> -> (input <input_path>)"
+        # Extract the part after "Step finished:"
+        after_prefix = line.split("Step finished:", 1)[1].strip()
+        
+        # Split on "->" to separate output and input
+        if "->" in after_prefix:
+            output_part, input_part = after_prefix.split("->", 1)
+            output_path_str = output_part.strip()
+            
+            # Extract input path from "(input <path>)"
+            input_path = None
+            if "(input" in input_part:
+                input_part_clean = input_part.split("(input", 1)[1].strip().rstrip(")")
+                if input_part_clean:
+                    input_path = Path(input_part_clean).resolve()
         else:
-            output_part = rest
-        return Path(output_part.strip()), input_path
+            # No "->" separator, treat entire line as output path
+            output_path_str = after_prefix
+            input_path = None
+        
+        if output_path_str:
+            return Path(output_path_str).resolve(), input_path
+    
     raise AssertionError("CLI output missing 'Step finished' line.")
 
 

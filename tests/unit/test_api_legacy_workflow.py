@@ -172,7 +172,9 @@ def test_legacy_workflow_auto_migrated_on_disk(legacy_workflow_project: Path):
     
     # Read original (legacy)
     original_data = yaml.safe_load(workflow_yaml_path.read_text())
-    assert original_data["steps"][0]["step_id"] == "scf"  # Legacy name
+    # Legacy format: step_id might be a name (not ULID)
+    original_step_id = original_data["steps"][0].get("step_id") or original_data["steps"][0].get("id")
+    assert original_step_id == "scf"  # Legacy name (not ULID)
     
     # Call list_workflows_data which should trigger migration
     QVService.list_workflows_data(legacy_workflow_project)

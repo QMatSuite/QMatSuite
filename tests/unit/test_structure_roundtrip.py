@@ -474,6 +474,7 @@ class TestStepSpecRoundtrip:
         # Create step spec YAML (DAG model: should NOT contain structure_id)
         spec = StructureStepSpec(
             meta=meta_from_name("step", name="scf", path="step.yaml"),
+            structure="",  # Empty legacy field (not written to YAML)
             step_type="scf",
             parameters={
                 "SYSTEM": {"ecutwfc": 60},

@@ -527,12 +527,18 @@ class WorkflowEntry:
                             wf_meta_dict = wf_data.get("meta", {})
                             if wf_meta_dict and wf_meta_dict.get("id") == workflow_id:
                                 # Found matching workflow - use its meta
+                                # But prefer name from entry (project.qv.yml) if it exists and is different from slug
+                                entry_name = data.get("name") or meta_dict.get("name")
+                                default_name = entry_name if entry_name and entry_name != wf_meta_dict.get("slug") else wf_meta_dict.get("name", "Workflow")
                                 meta = ResourceMeta.from_dict(
                                     wf_meta_dict,
                                     kind="workflow",
-                                    default_name=wf_meta_dict.get("name", "Workflow"),
+                                    default_name=default_name,
                                     default_path=wf_meta_dict.get("path", f"workflows/{workflow_dir.name}"),
                                 )
+                                # Override with entry name if it's different from slug (preserves human-readable names)
+                                if entry_name and entry_name != meta.slug:
+                                    meta.name = entry_name
                                 return cls(meta=meta)
                         except Exception:
                             continue
@@ -552,12 +558,18 @@ class WorkflowEntry:
                 wf_data = yaml.safe_load(workflow_yaml.read_text()) or {}
                 wf_meta_dict = wf_data.get("meta", {})
                 if wf_meta_dict:
+                    # Prefer name from entry (project.qv.yml) over workflow.yaml if entry has a human-readable name
+                    entry_name = data.get("name") or meta_dict.get("name")
+                    default_name = entry_name if entry_name and entry_name != wf_meta_dict.get("slug") else (name or wf_meta_dict.get("name", "Workflow"))
                     meta = ResourceMeta.from_dict(
                         wf_meta_dict,
                         kind="workflow",
-                        default_name=name,
+                        default_name=default_name,
                         default_path=path,
                     )
+                    # Override with entry name if it's different from slug (preserves human-readable names)
+                    if entry_name and entry_name != meta.slug:
+                        meta.name = entry_name
                     return cls(meta=meta)
             except Exception:
                 pass

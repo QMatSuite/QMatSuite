@@ -114,10 +114,14 @@ def run_standalone_step(ctx: StandaloneStepContext) -> tuple[StepResult, Prepare
     )
     
     if not pseudo_result.all_available:
+        # This is a missing file error (pseudopotential was configured but file not found)
+        # Configuration errors are caught earlier in ensure_qe_pseudos
         raise RuntimeError(
-            f"Failed to obtain required pseudopotentials. "
+            f"Pseudopotential file(s) not found or could not be downloaded. "
+            f"This is a missing file error (pseudopotential was configured but the file is missing). "
             f"Project pseudo dir: {project_pseudo_dir}, "
-            f"System pseudo dir: {system_pseudo_dir}"
+            f"System pseudo dir: {system_pseudo_dir}. "
+            f"Check that the pseudopotential filenames in your QE input are correct and the files exist."
         )
     
     # Set pseudo_dir in QE input to point to project_pseudo_dir

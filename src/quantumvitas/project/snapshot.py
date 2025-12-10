@@ -237,12 +237,22 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
     # Use Project.open() and Workflow.from_yaml() to ensure legacy workflows are migrated
     from quantumvitas.project.model import Project
     from quantumvitas.workflow.workflow import Workflow
+    from quantumvitas.core.project_utils import load_project_config
     
     try:
         project = Project.open(project_root)
     except Exception:
         # Fall back to basic loading if Project.open() fails
         project = None
+    
+    # Load raw config to check for legacy name fields in workflow entries
+    raw_config = load_project_config(project_root)
+    # Build mapping from workflow ID to raw entry (handle workflow_id, id, and meta.id keys)
+    raw_workflow_entries = {}
+    for entry in raw_config.get("workflows", []):
+        wf_id = entry.get("workflow_id") or entry.get("id") or (entry.get("meta") or {}).get("id")
+        if wf_id:
+            raw_workflow_entries[wf_id] = entry
     
     workflows_data = []
     for workflow_entry in project_model.workflows:
@@ -253,9 +263,10 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
         workflow_dir = workflow_path.parent
         
         # Try to load via Workflow.from_yaml (with migration support) if project is available
+        # Use inspection mode for snapshot export (no step materialization needed)
         if project:
             try:
-                workflow = Workflow.from_yaml(workflow_dir, project)
+                workflow = Workflow.from_yaml(workflow_dir, project, materialize_steps=False)
                 # Extract workflow model data from the Workflow object
                 workflow_model = load_workflow(workflow_path, project_root)
                 # But use the actual Step objects from Workflow for step export
@@ -270,12 +281,26 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
             workflow_steps = None
         
         # Export workflow metadata
-        # Use workflow_entry.meta (from project.qv.yml) for name, as it has the correct name
-        # workflow_model.meta might have name=slug if workflow.yaml uses old format
-        workflow_meta_dict = workflow_entry.meta.to_dict()
-        # But keep the path from workflow_model if it's more accurate
-        if workflow_model.meta.path:
-            workflow_meta_dict["path"] = workflow_model.meta.path
+        # Prefer name from raw project.qv.yml entry (legacy format) as it may have the correct human-readable name
+        # workflow.yaml might have name=slug if it was created with old format
+        # Use workflow_model.meta for other fields (slug, path) as workflow.yaml is the source of truth for those
+        workflow_meta_dict = workflow_model.meta.to_dict()
+        # Check raw project.qv.yml entry for legacy name field
+        # Try both workflow_entry.meta.id and workflow_model.meta.id as keys
+        raw_entry = raw_workflow_entries.get(workflow_entry.meta.id) or raw_workflow_entries.get(workflow_model.meta.id)
+        legacy_name = None
+        if raw_entry:
+            # Check for legacy 'name' field at top level or in meta
+            legacy_name = raw_entry.get("name") or (raw_entry.get("meta") or {}).get("name")
+        # Also check workflow_entry.meta.name directly (might be set from registry)
+        if not legacy_name:
+            legacy_name = workflow_entry.meta.name
+        # Override name with legacy name if it exists and is different from slug (preserves human-readable names)
+        if legacy_name and legacy_name != workflow_model.meta.slug and legacy_name != workflow_model.meta.name:
+            workflow_meta_dict["name"] = legacy_name
+        # Preserve the workflow ID from workflow_entry if it's different (shouldn't happen, but be safe)
+        if workflow_entry.meta.id and workflow_entry.meta.id != workflow_model.meta.id:
+            workflow_meta_dict["id"] = workflow_entry.meta.id
         
         workflow_dict = {
             "meta": workflow_meta_dict,
@@ -590,7 +615,17 @@ def materialize_project_from_snapshot(
             new_step_id = id_mapping.get(old_step_id, generate_resource_id())
             
             # Create step spec with new IDs
+            # DAG + ID-only model: Step YAML must NOT contain structure_id or parent_workflow_id
+            # Structure is resolved via workflow.structure_id at runtime
+            # Parent workflow is implicit from step file location
             step_spec_dict = dict(step_data)
+            
+            # Remove structure_id and parent_workflow_id from dict (DAG invariant)
+            step_spec_dict.pop("structure_id", None)
+            step_spec_dict.pop("parent_workflow_id", None)
+            step_spec_dict.pop("structure", None)  # Also remove legacy structure selector
+            
+            # Update meta with new IDs
             step_spec_dict["meta"] = {
                 "id": new_step_id,
                 "name": step_name,
@@ -598,57 +633,15 @@ def materialize_project_from_snapshot(
                 "path": f"workflows/{workflow_slug}/steps/{step_slug}.step.yaml",
                 "kind": "step",
             }
-            # Update parent_workflow_id reference
-            if step_spec_dict.get("parent_workflow_id"):
-                step_spec_dict["parent_workflow_id"] = new_workflow_id
             
-            # Resolve structure reference from snapshot
-            # New format: structure_id (canonical)
-            step_structure_id = step_spec_dict.get("structure_id")
-            step_structure_selector = step_spec_dict.get("structure")
+            # Create StructureStepSpec object to ensure proper serialization
+            # This will strip any remaining structure_id/parent_workflow_id via to_dict()
+            from quantumvitas.workflow.structure_steps import StructureStepSpec
+            step_spec = StructureStepSpec.from_dict(step_spec_dict)
             
-            # If structure_id is present, map it to the new structure ID
-            if step_structure_id:
-                new_structure_id = id_mapping.get(step_structure_id)
-                if new_structure_id:
-                    step_spec_dict["structure_id"] = new_structure_id
-                else:
-                    # Structure ID not found in mapping - this shouldn't happen, but handle gracefully
-                    step_spec_dict.pop("structure_id", None)
-            # If only structure selector is present (legacy), try to resolve it
-            elif step_structure_selector:
-                # Try to find structure by slug/name in the snapshot
-                for struct_data in snapshot.structures:
-                    struct_meta = struct_data.get("meta", {})
-                    struct_slug = struct_meta.get("slug") or slugify(struct_meta.get("name", ""))
-                    struct_name = struct_meta.get("name", "")
-                    old_struct_id = struct_meta.get("id")
-                    
-                    if (struct_slug == step_structure_selector or 
-                        struct_name.lower() == step_structure_selector.lower()):
-                        # Found matching structure - use its new ID
-                        if old_struct_id:
-                            step_spec_dict["structure_id"] = id_mapping.get(old_struct_id)
-                            # Remove structure selector since we now have structure_id
-                            step_spec_dict.pop("structure", None)
-                        break
-            
-            # If step still has no structure_id, inherit from workflow
-            if not step_spec_dict.get("structure_id"):
-                if workflow_structure_id:
-                    step_spec_dict["structure_id"] = workflow_structure_id
-                    # Remove structure selector since we now have structure_id
-                    step_spec_dict.pop("structure", None)
-                elif step_structure_selector:
-                    # Keep structure selector for backwards compat if we can't resolve to ID
-                    pass  # Already set above
-                elif workflow_data.get("structure"):
-                    # Fallback: use workflow structure selector
-                    step_spec_dict["structure"] = workflow_data.get("structure")
-            
-            # Write step file
+            # Write step file using to_dict() which enforces DAG invariants
             step_file = steps_dir / f"{step_slug}.step.yaml"
-            step_file.write_text(yaml.safe_dump(step_spec_dict, sort_keys=False))
+            step_file.write_text(yaml.safe_dump(step_spec.to_dict(), sort_keys=False))
             
             # Add to workflow steps list using step_id (ULID) from step meta
             from quantumvitas.core.models import WorkflowStepEntry

@@ -294,17 +294,44 @@ def _copy_workflow_from_path(
     workflow_section = workflow_data.get("workflow", {})
     template_structure = workflow_data.get("structure") or workflow_section.get("structure")
     
+    # Resolve structure to structure_id (ULID) if structure selector is provided
+    structure_id = None
     if structure:
-        # DEPRECATED: Writing structure selector directly to YAML
-        # This is for template copying only. New workflows should use structure_id.
-        # For now, we write the selector for backwards compatibility with template format.
-        # The workflow will be migrated to structure_id on next load.
-        workflow_data["structure"] = structure
-        # Also update old format section if present
-        if "workflow" in workflow_data:
-            workflow_data["workflow"]["structure"] = structure
+        # Resolve structure selector to structure_id (ULID)
+        from quantumvitas.core.resolution import resolve_structure
+        from quantumvitas.core.project_utils import load_project_config
+        try:
+            config = load_project_config(project_root)
+            resolved = resolve_structure(project_root, structure, config)
+            structure_id = resolved.meta.id
+            # Also keep structure selector for backwards compatibility
+            workflow_data["structure"] = structure
+            if "workflow" in workflow_data:
+                workflow_data["workflow"]["structure"] = structure
+        except Exception:
+            # If resolution fails, keep structure selector only
+            workflow_data["structure"] = structure
+            if "workflow" in workflow_data:
+                workflow_data["workflow"]["structure"] = structure
     elif template_structure:
         structures_needed.add(template_structure)
+        # Try to resolve template structure to structure_id if it exists in project
+        from quantumvitas.core.resolution import resolve_structure
+        from quantumvitas.core.project_utils import load_project_config
+        try:
+            config = load_project_config(project_root)
+            resolved = resolve_structure(project_root, template_structure, config)
+            structure_id = resolved.meta.id
+        except Exception:
+            # Structure not found in project yet - will be copied from template
+            pass
+    
+    # Set structure_id (ULID) if we have it
+    if structure_id:
+        workflow_data["structure_id"] = structure_id
+        # Also set in workflow section if present
+        if "workflow" in workflow_data:
+            workflow_data["workflow"]["structure_id"] = structure_id
     
     # Copy step files
     steps_src_dir = source_path / "steps"
@@ -318,23 +345,33 @@ def _copy_workflow_from_path(
             # Regenerate step ULID
             _regenerate_ulids_in_meta(step_data, ulid_map)
             
-            # Update parent_workflow_id
-            if "parent_workflow_id" in step_data:
-                step_data["parent_workflow_id"] = new_id
+            # Track structure name if present (for copying structure template) BEFORE removing it
+            structure_name = step_data.get("structure")
+            if structure_name:
+                structures_needed.add(structure_name)
             
-            # Update structure if provided
-            if structure:
-                step_data["structure"] = structure
-            elif step_data.get("structure"):
-                structures_needed.add(step_data["structure"])
+            # DAG + ID-only model: Step YAML must NOT contain structure, structure_id, or parent_workflow_id
+            # Remove these fields before writing
+            step_data.pop("parent_workflow_id", None)
+            step_data.pop("structure_id", None)
+            step_data.pop("structure", None)
             
             # Update path in meta
             if "meta" in step_data:
                 rel_path = f"workflows/{final_slug}/steps/{step_file.name}"
                 step_data["meta"]["path"] = rel_path
             
+            # Use StructureStepSpec.to_dict() to ensure proper serialization
+            from quantumvitas.workflow.structure_steps import StructureStepSpec
+            try:
+                step_spec = StructureStepSpec.from_dict(step_data)
+                step_dict = step_spec.to_dict()
+            except Exception:
+                # If parsing fails, use cleaned dict directly
+                step_dict = step_data
+            
             with open(steps_dest_dir / step_file.name, "w") as f:
-                yaml.safe_dump(step_data, f, default_flow_style=False, sort_keys=False)
+                yaml.safe_dump(step_dict, f, default_flow_style=False, sort_keys=False)
     
     # Copy raw input files if they exist
     raw_src_dir = source_path / "raw"

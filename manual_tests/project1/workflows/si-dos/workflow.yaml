@@ -1,12 +1,18 @@
 meta:
-  id: 01KC2PAM46ETTT1M3CX4HH0YTC
+  id: 01KC36BVK8HFX32CQZ3Y3S3TRT
   name: Si dos
   slug: si-dos
   path: workflows/si-dos
   kind: workflow
+structure_id: 01KC36ANY8M3GTSS39XV1GR3D7
+structure_name: Si
 structure: si
 mode: normal
 working_dir: raw
 steps:
-- step_id: 01KC2PBHT13P2EC9NAP34X4WZQ
+- step_id: 01KC36CGZHBKD88TXR70R8C3SR
   type: scf
+- step_id: 01KC36EEN03QQJSVSJ2NXDE2E2
+  type: nscf
+- step_id: 01KC36F2GN13JSG7BHQT166XZ0
+  type: dos

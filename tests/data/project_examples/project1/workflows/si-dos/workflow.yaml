@@ -1,9 +1,17 @@
-id: si-dos
+meta:
+  id: 01KB9JA6JSMH7XFZ1AK917TV6J
+  name: si-dos
+  slug: si-dos
+  path: workflows/si-dos
+  kind: workflow
 mode: normal
 working_dir: raw
 structure_id: 01KB9JA63339W4J7YFM9FDYJKA
 structure_name: Si
 steps:
 - step_id: 01KB9JR6C8550NT0EFR361ZVTR
+  type: scf
 - step_id: 01KB9JWASAS0TZPM0H6QDJKTGC
+  type: nscf
 - step_id: 01KB9K4N11RGJTEMFF3BHQ69ME
+  type: dos
