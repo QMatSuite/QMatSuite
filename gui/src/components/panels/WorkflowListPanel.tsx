@@ -459,7 +459,13 @@ export function WorkflowDetailPanel({
               {structures && structures.length > 0 ? (
                 <select
                   className="structure-selector"
-                  value={workflow.structure || ''}
+                  value={
+                    // Match workflow.structure (name) to structure slug for dropdown value
+                    // Backend returns structure name, but dropdown uses slug as value
+                    workflow.structure 
+                      ? (structures.find(s => s.name === workflow.structure)?.slug || '')
+                      : ''
+                  }
                   onChange={(e) => handleStructureChange(e.target.value)}
                   disabled={isSaving}
                 >
@@ -587,6 +593,8 @@ export function WorkflowDetailPanel({
                   className="step-item"
                   onClick={() => {
                     if (!isReordering) {
+                      // step.id is ULID from backend (get_workflow_detail returns step.meta.id)
+                      // This is the correct selector for get_step_detail RPC
                       onSelectStep?.(step.id);
                     }
                   }}
@@ -595,6 +603,7 @@ export function WorkflowDetailPanel({
                 >
                   <span className="step-number">{idx + 1}</span>
                   <div className="step-info">
+                    {/* step.id is ULID (26 chars) from backend - used as step selector */}
                     <span className="step-id">{step.id}</span>
                     <span className="step-type-badge">{step.type}</span>
                   </div>

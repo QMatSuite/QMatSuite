@@ -511,7 +511,16 @@ class QVDaemon:
             project_root: str - Path to project root
         """
         project_root = self._require_path(payload, "project_root")
-        workflows = QVService.list_workflows_data(project_root)
+        
+        # Use cached index and config to avoid rebuilding ResourceIndex
+        # NOTE: list_workflows_data still uses Project.open() which builds its own index
+        # This is a known limitation, but we pass what we can
+        cache = self.state.get_cache(project_root)
+        workflows = QVService.list_workflows_data(
+            project_root,
+            index=cache.index,
+            config=cache.config,
+        )
         return {"workflows": workflows, "count": len(workflows)}
     
     def _handle_find_project_root(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -849,11 +858,15 @@ class QVDaemon:
         # Resolve with fallback to ensure cache is up-to-date
         self._resolve_step_with_fallback(project_root, workflow, step)
         
-        # Now call QVService (it will build a fresh index, but cache is now up-to-date)
+        # Pass cached index and config to QVService to avoid rebuilding ResourceIndex
+        # This eliminates the ~20s delay from duplicate index building
+        cache = self.state.get_cache(project_root)
         return QVService.get_step_detail(
             project_root=project_root,
             workflow_selector=workflow,
             step_selector=step,
+            index=cache.index,
+            config=cache.config,
         )
     
     def _handle_update_step_params(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -924,10 +937,14 @@ class QVDaemon:
         # Resolve with fallback to ensure cache is up-to-date
         self._resolve_workflow_with_fallback(project_root, workflow)
         
-        # Now call QVService (it will build a fresh index, but cache is now up-to-date)
+        # Pass cached index and config to QVService to avoid rebuilding ResourceIndex
+        # This eliminates the ~20s delay from duplicate index building
+        cache = self.state.get_cache(project_root)
         return QVService.get_workflow_detail(
             project_root=project_root,
             workflow_selector=workflow,
+            index=cache.index,
+            config=cache.config,
         )
     
     def _handle_reorder_workflow_steps(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -949,10 +966,14 @@ class QVDaemon:
         # Resolve with fallback to ensure cache is up-to-date
         self._resolve_workflow_with_fallback(project_root, workflow)
         
+        # Pass cached index and config to avoid rebuilding ResourceIndex
+        cache = self.state.get_cache(project_root)
         result = QVService.reorder_workflow_steps(
             project_root=project_root,
             workflow_selector=workflow,
             new_order=new_order,
+            index=cache.index,
+            config=cache.config,
         )
         
         # Invalidate cache after mutation
@@ -978,11 +999,15 @@ class QVDaemon:
         # Resolve with fallback to ensure cache is up-to-date
         self._resolve_workflow_with_fallback(project_root, workflow)
         
+        # Pass cached index and config to avoid rebuilding ResourceIndex
+        cache = self.state.get_cache(project_root)
         result = QVService.add_step_to_workflow(
             project_root=project_root,
             workflow_selector=workflow,
             step_type=step_type,
             step_name=step_name,
+            index=cache.index,
+            config=cache.config,
         )
         
         # Invalidate cache after mutation
@@ -1008,11 +1033,15 @@ class QVDaemon:
         # Resolve with fallback to ensure cache is up-to-date
         self._resolve_workflow_with_fallback(project_root, workflow)
         
+        # Pass cached index and config to avoid rebuilding ResourceIndex
+        cache = self.state.get_cache(project_root)
         result = QVService.import_step_from_qe_input(
             project_root=project_root,
             workflow_selector=workflow,
             input_file=input_file,
             step_name=step_name,
+            index=cache.index,
+            config=cache.config,
         )
         
         # Invalidate cache after mutation
@@ -1038,11 +1067,15 @@ class QVDaemon:
         # Resolve with fallback to ensure cache is up-to-date
         self._resolve_workflow_with_fallback(project_root, workflow)
         
+        # Pass cached index and config to avoid rebuilding ResourceIndex
+        cache = self.state.get_cache(project_root)
         result = QVService.change_workflow_structure(
             project_root=project_root,
             workflow_selector=workflow,
             new_structure=new_structure,
             update_steps=update_steps,
+            index=cache.index,
+            config=cache.config,
         )
         
         # Invalidate cache after mutation

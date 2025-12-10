@@ -955,12 +955,24 @@ def init_step_command(
         # Check if we're at project root (not inside a workflow)
         try:
             ctx = find_path_context_from_pwd()
-            if ctx.project_root == Path.cwd().resolve() and not ctx.is_inside_workflow():
+            # Compare resolved paths to handle symlinks and path differences
+            cwd_resolved = Path.cwd().resolve()
+            project_root_resolved = project_root.resolve()
+            if cwd_resolved == project_root_resolved and not ctx.is_inside_workflow():
                 raise typer.BadParameter(
                     "You are at project root. Please specify --workflow <workflow> or run from inside a workflow directory."
                 )
         except ContextNotFoundError:
-            pass  # Can't determine context, continue with existing error handling
+            # If we can't determine context but we have project_root, check if cwd matches project_root
+            try:
+                cwd_resolved = Path.cwd().resolve()
+                project_root_resolved = project_root.resolve()
+                if cwd_resolved == project_root_resolved:
+                    raise typer.BadParameter(
+                        "You are at project root. Please specify --workflow <workflow> or run from inside a workflow directory."
+                    )
+            except Exception:
+                pass  # Can't determine, continue with existing error handling
     
     if not project_root:
         config = {"structures": [], "workflows": []}

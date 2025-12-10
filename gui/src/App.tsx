@@ -10,6 +10,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { normalizeProjectRoot } from './utils/pathUtils';
 import { 
   AppShell, 
   Sidebar,
@@ -229,6 +230,11 @@ function App() {
   
   // Open a recent project
   const handleOpenRecentProject = useCallback(async (path: string) => {
+    // Clear selected workflow and step when opening a new project (fixes stale step selection)
+    setSelectedWorkflow(null);
+    setSelectedStepId(null);
+    setSelectedStructure(null);
+    
     setProjectRoot(path);
     localStorage.setItem('qv-project-root', path);
     
@@ -271,6 +277,11 @@ function App() {
     
     if (directResponse.ok && directResponse.data) {
       // Selected directory is a valid project
+      // Clear selected workflow and step when opening a new project (fixes stale step selection)
+      setSelectedWorkflow(null);
+      setSelectedStepId(null);
+      setSelectedStructure(null);
+      
       setProjectRoot(selectedPath);
       localStorage.setItem('qv-project-root', selectedPath);
       setProjectSummary(directResponse.data);
@@ -289,6 +300,11 @@ function App() {
     if (findResponse.ok && findResponse.data?.found && findResponse.data?.project_root) {
       // Found a project in parent directory
       projectPath = findResponse.data.project_root;
+      
+      // Clear selected workflow and step when opening a new project (fixes stale step selection)
+      setSelectedWorkflow(null);
+      setSelectedStepId(null);
+      setSelectedStructure(null);
       
       setProjectRoot(projectPath);
       localStorage.setItem('qv-project-root', projectPath);
@@ -350,6 +366,11 @@ function App() {
   }, [qv, addToRecentProjects, showNotification]);
   
   const handleCreateProjectSuccess = useCallback(async (newProjectRoot: string, recommendedAnalysis?: string | null) => {
+    // Clear selected workflow and step when opening a new project (fixes stale step selection)
+    setSelectedWorkflow(null);
+    setSelectedStepId(null);
+    setSelectedStructure(null);
+    
     setRecommendedAnalysis(recommendedAnalysis || null);
     setProjectRoot(newProjectRoot);
     localStorage.setItem('qv-project-root', newProjectRoot);
@@ -503,6 +524,8 @@ function App() {
   // ==========================================================================
   
   const handleSelectWorkflow = useCallback((workflow: WorkflowInfo) => {
+    // Clear selected step when switching workflows (fixes stale step selection)
+    setSelectedStepId(null);
     setSelectedWorkflow(workflow);
   }, []);
   
@@ -543,10 +566,21 @@ function App() {
       }
     }
     
+    // Normalize project_root to absolute path (backend expects normalized paths)
+    // NOTE: Backend expects project_root as normalized absolute path, see tests/daemon/test_gui_job_and_step_flows.py
+    const normalizedProjectRoot = normalizeProjectRoot(projectRoot);
+    if (!normalizedProjectRoot) {
+      showNotification('Project root is required', 'error');
+      return;
+    }
+    
     // Submit the workflow run
+    // Backend contract: { project_root: string (normalized absolute), workflow: string (slug), strict?: bool, verbose?: bool }
+    // GUI sends: workflow.slug (from selectedWorkflow.slug)
+    // See tests/daemon/test_gui_job_and_step_flows.py for RPC contract details
     const response = await qv.call('run_workflow', {
-      project_root: projectRoot,
-      workflow: workflow.slug,
+      project_root: normalizedProjectRoot,
+      workflow: workflow.slug, // Backend expects workflow selector (slug or ULID)
     });
     
     if (response.ok && response.data) {

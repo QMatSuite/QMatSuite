@@ -364,15 +364,24 @@ export function JobsPanel({ projectRoot, onViewAnalysis }: JobsPanelProps) {
         {/* Job List */}
         <div className="jobs-panel__list" data-testid="qv-jobs-list">
           {isLoading && jobs.length === 0 ? (
-            <div className="jobs-panel__loading">
+            <div className="jobs-panel__loading" data-testid="qv-jobs-loading">
               <div className="loading-spinner" />
               <p>Loading jobs...</p>
             </div>
+          ) : error && jobs.length === 0 ? (
+            <div className="jobs-panel__empty" data-testid="qv-jobs-error">
+              <span className="jobs-panel__empty-icon">⚠️</span>
+              <h3>Error Loading Jobs</h3>
+              <p>{error}</p>
+            </div>
           ) : jobs.length === 0 ? (
-            <div className="jobs-panel__empty">
+            <div className="jobs-panel__empty" data-testid="qv-jobs-empty">
               <span className="jobs-panel__empty-icon">📋</span>
               <h3>No Jobs</h3>
               <p>Run a workflow to create jobs.</p>
+              {!projectRoot && (
+                <p className="jobs-panel__empty-hint">Open a project to see jobs</p>
+              )}
             </div>
           ) : (
             jobs.map((job) => (
