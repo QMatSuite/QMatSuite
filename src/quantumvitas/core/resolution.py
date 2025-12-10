@@ -301,19 +301,28 @@ def build_resource_index(project_root: Path) -> ResourceIndex:
                 continue
     
     duration = time.time() - start_time
-    if duration > 0.1:  # Only log if it takes more than 100ms
-        import sys
-        import traceback
-        # Get caller info for debugging
-        frame = sys._getframe(1)
-        caller_file = frame.f_code.co_filename
-        caller_name = frame.f_code.co_name
-        caller_line = frame.f_lineno
-        sys.stderr.write(
-            f"[build_resource_index] SLOW: {duration:.3f}s for {project_root} "
-            f"(called from {caller_file}:{caller_line} in {caller_name})\n"
+    duration_ms = duration * 1000
+    
+    # Log if it takes more than 100ms
+    if duration_ms > 100:
+        import inspect
+        import logging
+        
+        # Get caller info using inspect.stack() for better accuracy
+        stack = inspect.stack()
+        caller_info = "unknown"
+        if len(stack) > 1:
+            frame = stack[1]
+            caller_file = Path(frame.filename).name
+            caller_name = frame.function
+            caller_line = frame.lineno
+            caller_info = f"{caller_file}:{caller_line} in {caller_name}"
+        
+        logger = logging.getLogger(__name__)
+        logger.warning(
+            f"[build_resource_index] SLOW: {duration_ms:.1f}ms for {project_root} "
+            f"(called from {caller_info})"
         )
-        sys.stderr.flush()
     
     return index
 
@@ -787,8 +796,8 @@ def resolve_step(
     Raises:
         SelectorNotFoundError: If workflow or step not found
     """
-    # Resolve workflow first
-    workflow = resolve_workflow(project_root, workflow_selector, config)
+    # Resolve workflow first (pass index to avoid rebuilding)
+    workflow = resolve_workflow(project_root, workflow_selector, config=config, index=index)
     # workflow.absolute_path points to workflow.yaml, so get the parent directory
     if workflow.absolute_path.name == "workflow.yaml":
         workflow_dir = workflow.absolute_path.parent

@@ -325,35 +325,52 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
         except Exception:
             resolver = None
         
-        # Collect expected step IDs from workflow (for reference, but we'll export all found steps)
-        expected_step_ids = set()
-        if workflow_steps:
-            expected_step_ids = {step.meta.id for step in workflow_steps}
-        else:
-            expected_step_ids = {s.step_id for s in workflow_model.steps if s.step_id}
-        
-        # Scan step files directory and export all found steps
+        # Export steps in the order specified in workflow.yaml
+        # Use workflow_model.steps to get the correct order (from workflow.yaml)
         steps_dir = workflow_dir / "steps"
         exported_step_ids = set()
         
+        # Build a map of step_id -> step_file_path for quick lookup
+        step_file_map = {}
         if steps_dir.exists():
             for step_file in steps_dir.glob("*.step.yaml"):
                 try:
-                    # Load step spec (with resolver for legacy structure selector normalization)
+                    # Load step spec to get its ID
                     step_spec = StructureStepSpec.from_yaml(step_file, resolve_structure_selector=resolver)
                     step_id = step_spec.meta.id
-                    
-                    # Skip if already exported
-                    if step_id in exported_step_ids:
-                        continue
-                    
-                    # Export step data (ID-only model: structure_id, no structure selector)
-                    step_dict = step_spec.to_dict()
-                    workflow_dict["steps"].append(step_dict)
-                    exported_step_ids.add(step_id)
+                    step_file_map[step_id] = step_file
                 except Exception:
                     # Skip step files that can't be loaded
                     continue
+        
+        # Export steps in the order from workflow.yaml
+        # Use workflow_model.steps which preserves the order from workflow.yaml
+        for step_entry in workflow_model.steps:
+            step_id = step_entry.step_id or step_entry.id
+            if not step_id:
+                continue
+            
+            # Find the step file for this step_id
+            step_file = step_file_map.get(step_id)
+            if not step_file:
+                # Step file not found - skip this step
+                continue
+            
+            # Skip if already exported (shouldn't happen, but be safe)
+            if step_id in exported_step_ids:
+                continue
+            
+            try:
+                # Load step spec (with resolver for legacy structure selector normalization)
+                step_spec = StructureStepSpec.from_yaml(step_file, resolve_structure_selector=resolver)
+                
+                # Export step data (ID-only model: structure_id, no structure selector)
+                step_dict = step_spec.to_dict()
+                workflow_dict["steps"].append(step_dict)
+                exported_step_ids.add(step_id)
+            except Exception:
+                # Skip step files that can't be loaded
+                continue
         
         workflows_data.append(workflow_dict)
     

@@ -138,6 +138,16 @@ export function useQVClient(): QVClient {
       };
     }
     
+    // Instrumentation: log RPC calls for debugging
+    const timerLabel = `rpc:${type}`;
+    console.time(timerLabel);
+    const projectRoot = (payload as Record<string, unknown>)?.project_root as string | undefined;
+    if (projectRoot) {
+      console.log(`[RPC] ${type} called`, { projectRoot: projectRoot.substring(projectRoot.lastIndexOf('/') + 1) });
+    } else {
+      console.log(`[RPC] ${type} called`);
+    }
+    
     if (mountedRef.current) {
       setState(prev => ({ ...prev, isLoading: true, lastError: null }));
     }
@@ -147,6 +157,8 @@ export function useQVClient(): QVClient {
         type,
         payload as Record<string, unknown>
       );
+      
+      console.timeEnd(timerLabel);
       
       if (mountedRef.current) {
         setState(prev => ({
@@ -159,6 +171,8 @@ export function useQVClient(): QVClient {
       return response;
     } catch (e) {
       const error = e as Error;
+      console.timeEnd(timerLabel);
+      console.error(`[RPC] ${type} failed:`, error);
       
       if (mountedRef.current) {
         setState(prev => ({
