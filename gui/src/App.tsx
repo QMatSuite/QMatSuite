@@ -114,7 +114,7 @@ function App() {
   const [isRenaming, setIsRenaming] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   
-  // Job counts for sidebar badge
+  // Job counts for sidebar badge (will be provided by StatusBar or JobsPanel)
   const [jobCounts, setJobCounts] = useState<JobCounts | null>(null);
   
   // Toast/notification state for job submissions
@@ -156,26 +156,9 @@ function App() {
   // ==========================================================================
   // Job Counts Polling
   // ==========================================================================
-  
-  const fetchJobCounts = useCallback(async () => {
-    if (!window.qv) return;
-    
-    try {
-      const response = await window.qv.request<JobCounts>('job_counts', {});
-      if (response.ok && response.data) {
-        setJobCounts(response.data);
-      }
-    } catch {
-      // Ignore errors
-    }
-  }, []);
-  
-  // Poll job counts
-  useEffect(() => {
-    fetchJobCounts();
-    const interval = setInterval(fetchJobCounts, 5000);
-    return () => clearInterval(interval);
-  }, [fetchJobCounts]);
+  // NOTE: Job counts are now polled by useJobs hook (used in JobsPanel)
+  // and StatusBar. We don't need to poll here to avoid duplicate requests.
+  // We'll get job counts from the JobsPanel when needed.
   
   // ==========================================================================
   // Notification Helper
@@ -423,39 +406,55 @@ function App() {
   }, [qv, projectRoot, projectLoaded]);
   
   const fetchStructures = useCallback(async () => {
-    if (!projectRoot || !projectLoaded) return;
+    if (!projectRoot || !projectLoaded) {
+      console.log('[App] fetchStructures skipped', { projectRoot: !!projectRoot, projectLoaded });
+      return;
+    }
     
+    console.log('[App] fetchStructures called', { projectRoot: projectRoot.substring(projectRoot.lastIndexOf('/') + 1), projectLoaded });
     setIsLoadingStructures(true);
-    const response = await qv.listStructures(projectRoot);
-    setIsLoadingStructures(false);
-    
-    if (response.ok && response.data) {
-      setStructures(response.data.structures);
+    try {
+      const response = await qv.listStructures(projectRoot);
+      if (response.ok && response.data) {
+        setStructures(response.data.structures);
+      }
+    } finally {
+      setIsLoadingStructures(false);
     }
   }, [qv, projectRoot, projectLoaded]);
   
   const fetchWorkflows = useCallback(async () => {
-    if (!projectRoot || !projectLoaded) return;
+    if (!projectRoot || !projectLoaded) {
+      console.log('[App] fetchWorkflows skipped', { projectRoot: !!projectRoot, projectLoaded });
+      return;
+    }
     
+    console.log('[App] fetchWorkflows called', { projectRoot: projectRoot.substring(projectRoot.lastIndexOf('/') + 1), projectLoaded });
     setIsLoadingWorkflows(true);
-    const response = await qv.listWorkflows(projectRoot);
-    setIsLoadingWorkflows(false);
-    
-    if (response.ok && response.data) {
-      setWorkflows(response.data.workflows);
+    try {
+      const response = await qv.listWorkflows(projectRoot);
+      if (response.ok && response.data) {
+        setWorkflows(response.data.workflows);
+      }
+    } finally {
+      setIsLoadingWorkflows(false);
     }
   }, [qv, projectRoot, projectLoaded]);
   
   // Auto-fetch data when switching views
   useEffect(() => {
-    if (currentView === 'structures' && !structures && projectLoaded) {
+    console.log('[App] view change effect triggered', { currentView, hasStructures: !!structures, hasWorkflows: !!workflows, projectLoaded });
+    if (!projectLoaded) return;
+    
+    if (currentView === 'structures' && !structures) {
       fetchStructures();
-    } else if (currentView === 'workflows' && !workflows && projectLoaded) {
+    } else if (currentView === 'workflows' && !workflows) {
       fetchWorkflows();
-    } else if (currentView === 'analysis' && !workflows && projectLoaded) {
+    } else if (currentView === 'analysis' && !workflows) {
       fetchWorkflows();
     }
-  }, [currentView, structures, workflows, projectLoaded, fetchStructures, fetchWorkflows]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentView, projectLoaded]); // Intentionally exclude structures/workflows/fetchStructures/fetchWorkflows to prevent loops
   
   // ==========================================================================
   // Structure Handling
@@ -588,14 +587,13 @@ function App() {
       const shortId = result.job_id.slice(0, 8);
       showNotification(`Job #${shortId} started: ${result.target_name}`, 'success');
       
-      // Refresh job counts
-      fetchJobCounts();
+      // Job counts will be refreshed by StatusBar and JobsPanel polling
     } else {
       showNotification(`Failed to start job: ${response.error?.message || 'Unknown error'}`, 'error');
     }
     
     setDebugResult(response as QVResponse);
-  }, [qv, projectRoot, showNotification, fetchJobCounts]);
+  }, [qv, projectRoot, showNotification]);
   
   const handleGoToJobs = useCallback(() => {
     setCurrentView('jobs');
@@ -626,8 +624,8 @@ function App() {
   const handleRunStepSuccess = useCallback((result: JobSubmitResult) => {
     const shortId = result.job_id.slice(0, 8);
     showNotification(`Step job #${shortId} started: ${result.target_name}`, 'success');
-    fetchJobCounts();
-  }, [showNotification, fetchJobCounts]);
+    // Job counts will be refreshed by StatusBar and JobsPanel polling
+  }, [showNotification]);
   
   // ==========================================================================
   // Structure Rename/Delete
@@ -850,6 +848,7 @@ function App() {
   
   // Close the current project
   const handleCloseProject = useCallback(() => {
+    // Clear all state to prevent stale data
     setProjectRoot('');
     setProjectSummary(null);
     setProjectLoaded(false);
@@ -858,6 +857,7 @@ function App() {
     setWorkflows(null);
     setSelectedStructure(null);
     setSelectedWorkflow(null);
+    setSelectedStepId(null); // Clear step selection
     setStructureVisData(null);
     localStorage.removeItem('qv-project-root');
     setCurrentView('home');

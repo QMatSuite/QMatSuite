@@ -95,6 +95,8 @@ export function StepDetailPanel({
   // Fetch step detail on mount and when selector changes
   useEffect(() => {
     const fetchStepDetail = async () => {
+      console.log('[StepDetailPanel] fetchStepDetail effect triggered', { projectRoot, workflowSelector, stepSelector });
+      
       // Always render the panel if stepSelector is provided (even if workflowSelector is missing)
       // This ensures the panel is visible to tests even during API calls
       if (!window.qv || !stepSelector) {
@@ -110,6 +112,14 @@ export function StepDetailPanel({
         setIsLoading(false);
         setStepDetail(null);
         setError('Workflow selector is required');
+        return;
+      }
+      
+      if (!projectRoot) {
+        // Project root missing
+        setIsLoading(false);
+        setStepDetail(null);
+        setError('Project root is required');
         return;
       }
       

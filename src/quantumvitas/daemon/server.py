@@ -377,6 +377,9 @@ class QVDaemon:
         Returns:
             RPCResponse object
         """
+        import time
+        start_time = time.time()
+        
         handler = self._handlers.get(request.type)
         
         if handler is None:
@@ -390,8 +393,26 @@ class QVDaemon:
                 },
             )
         
+        # Extract project_root from payload for logging (if present)
+        project_root = None
+        if isinstance(request.payload, dict):
+            project_root_str = request.payload.get("project_root")
+            if project_root_str:
+                try:
+                    project_root = Path(project_root_str).resolve()
+                except Exception:
+                    pass
+        
         try:
             result = handler(request.payload)
+            duration_ms = (time.time() - start_time) * 1000
+            
+            # Log request timing (INFO level for all requests)
+            if project_root:
+                self.log(f"[RPC] {request.type} (project: {project_root.name}) took {duration_ms:.1f}ms")
+            else:
+                self.log(f"[RPC] {request.type} took {duration_ms:.1f}ms")
+            
             return RPCResponse(id=request.id, ok=True, data=result)
             
         except ResourceNotFoundError as e:
@@ -512,15 +533,9 @@ class QVDaemon:
         """
         project_root = self._require_path(payload, "project_root")
         
-        # Use cached index and config to avoid rebuilding ResourceIndex
-        # NOTE: list_workflows_data still uses Project.open() which builds its own index
-        # This is a known limitation, but we pass what we can
-        cache = self.state.get_cache(project_root)
-        workflows = QVService.list_workflows_data(
-            project_root,
-            index=cache.index,
-            config=cache.config,
-        )
+        # list_workflows_data uses Project.open() which builds its own index internally
+        # This keeps Project.open() self-contained and avoids index mismatches
+        workflows = QVService.list_workflows_data(project_root)
         return {"workflows": workflows, "count": len(workflows)}
     
     def _handle_find_project_root(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -889,12 +904,16 @@ class QVDaemon:
         # Resolve with fallback to ensure cache is up-to-date
         self._resolve_step_with_fallback(project_root, workflow, step)
         
+        # Pass cached index and config to avoid rebuilding ResourceIndex
+        cache = self.state.get_cache(project_root)
         return QVService.update_step_params(
             project_root=project_root,
             workflow_selector=workflow,
             step_selector=step,
             parameters=parameters,
             cards=cards,
+            index=cache.index,
+            config=cache.config,
         )
     
     def _handle_reset_step_params(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -913,10 +932,14 @@ class QVDaemon:
         # Resolve with fallback to ensure cache is up-to-date
         self._resolve_step_with_fallback(project_root, workflow, step)
         
+        # Pass cached index and config to avoid rebuilding ResourceIndex
+        cache = self.state.get_cache(project_root)
         return QVService.reset_step_params(
             project_root=project_root,
             workflow_selector=workflow,
             step_selector=step,
+            index=cache.index,
+            config=cache.config,
         )
     
     # -------------------------------------------------------------------------
@@ -1106,10 +1129,14 @@ class QVDaemon:
         if workflow and step:
             self._resolve_step_with_fallback(project_root, workflow, step)
         
+        # Pass cached index and config to avoid rebuilding ResourceIndex
+        cache = self.state.get_cache(project_root)
         return QVService.preflight_check(
             project_root=project_root,
             workflow_selector=workflow,
             step_selector=step,
+            index=cache.index,
+            config=cache.config,
         )
     
     # -------------------------------------------------------------------------

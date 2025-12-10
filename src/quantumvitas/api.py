@@ -1499,8 +1499,6 @@ class QVService:
     @staticmethod
     def list_workflows_data(
         project_root: Path,
-        index: Optional["ResourceIndex"] = None,
-        config: Optional[dict] = None,
     ) -> List[Dict[str, Any]]:
         """
         List all workflows as JSON-serializable dicts.
@@ -1510,8 +1508,6 @@ class QVService:
         
         Args:
             project_root: Project root path
-            index: Optional ResourceIndex (avoids rebuilding if provided)
-            config: Optional project config (avoids reloading if provided)
             
         Returns:
             List of dicts, each with workflow metadata and step info
@@ -2417,6 +2413,8 @@ class QVService:
         step_selector: str,
         parameters: Dict[str, Dict[str, Any]],
         cards: Optional[Dict[str, Dict[str, Any]]] = None,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
     ) -> Dict[str, Any]:
         """
         Update step parameters safely.
@@ -2430,17 +2428,20 @@ class QVService:
             step_selector: Step selector
             parameters: Dict of namelist -> {param: value} to update
             cards: Optional dict of card updates (e.g., K_POINTS)
+            index: Optional ResourceIndex (avoids rebuilding if provided)
+            config: Optional project config (avoids reloading if provided)
             
         Returns:
             Updated step detail dict
         """
         from quantumvitas.workflow.structure_steps import StructureStepSpec
         
-        step = resolve_step(project_root, workflow_selector, step_selector)
+        step = resolve_step(project_root, workflow_selector, step_selector, config=config, index=index)
         # Load step spec; legacy 'structure' selectors (if present) are normalized to structure_id via the registry
         from quantumvitas.core.resolution import make_structure_selector_resolver
         from quantumvitas.core.project_utils import load_project_config
-        config = load_project_config(project_root)
+        if config is None:
+            config = load_project_config(project_root)
         resolver = make_structure_selector_resolver(project_root, config=config)
         spec = StructureStepSpec.from_yaml(step.absolute_path, resolve_structure_selector=resolver)
         
@@ -2483,20 +2484,14 @@ class QVService:
         # Save the updated spec
         step.absolute_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
         
-        # Return the updated step detail
-        return {
-            "id": step.meta.id,
-            "name": step.meta.name,
-            "slug": step.meta.slug,
-            "path": step.meta.path,
-            "absolute_path": str(step.absolute_path),
-            "step_type": spec.step_type,
-            "structure": spec.structure,
-            "parent_workflow_id": spec.parent_workflow_id,
-            "parameters": spec.parameters,
-            "cards": spec.cards,
-            "species_overrides": spec.species_overrides,
-        }
+        # Return the updated step detail (pass cached index/config to avoid rebuilding)
+        return QVService.get_step_detail(
+            project_root=project_root,
+            workflow_selector=workflow_selector,
+            step_selector=step_selector,
+            index=index,
+            config=config,
+        )
     
     @staticmethod
     def import_step_from_qe_input(
@@ -2624,9 +2619,9 @@ class QVService:
             wf_model.structure_id = structure_id_value
             # Also set structure_name for display
             if structure_id_value:
-                # Resolve structure to get name
+                # Resolve structure to get name (use provided index/config if available)
                 try:
-                    resolved = resolve_structure(project_root, structure_id_value, config)
+                    resolved = resolve_structure(project_root, structure_id_value, config=config, index=index)
                     wf_model.structure_name = resolved.meta.name
                 except Exception:
                     pass  # If resolution fails, structure_name stays None
@@ -2645,6 +2640,8 @@ class QVService:
         project_root: Path,
         workflow_selector: str,
         step_selector: str,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
     ) -> Dict[str, Any]:
         """
         Reset step parameters to in-code defaults based on step type.
@@ -2653,6 +2650,8 @@ class QVService:
             project_root: Project root path
             workflow_selector: Workflow selector
             step_selector: Step selector
+            index: Optional ResourceIndex (avoids rebuilding if provided)
+            config: Optional project config (avoids reloading if provided)
             
         Returns:
             Updated step detail dict
@@ -2661,11 +2660,12 @@ class QVService:
         from quantumvitas.workflow.step_defaults import get_default_step_params
         import yaml
         
-        step = resolve_step(project_root, workflow_selector, step_selector)
+        step = resolve_step(project_root, workflow_selector, step_selector, config=config, index=index)
         # Load step spec; legacy 'structure' selectors (if present) are normalized to structure_id via the registry
         from quantumvitas.core.resolution import make_structure_selector_resolver
         from quantumvitas.core.project_utils import load_project_config
-        config = load_project_config(project_root)
+        if config is None:
+            config = load_project_config(project_root)
         resolver = make_structure_selector_resolver(project_root, config=config)
         spec = StructureStepSpec.from_yaml(step.absolute_path, resolve_structure_selector=resolver)
         
@@ -2680,7 +2680,14 @@ class QVService:
         # Save the updated spec
         step.absolute_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
         
-        return QVService.get_step_detail(project_root, workflow_selector, step_selector)
+        # Return the updated step detail (pass cached index/config to avoid rebuilding)
+        return QVService.get_step_detail(
+            project_root=project_root,
+            workflow_selector=workflow_selector,
+            step_selector=step_selector,
+            index=index,
+            config=config,
+        )
     
     # -------------------------------------------------------------------------
     # Workflow Configuration (Phase 4 - Reorder, Change Structure)
@@ -2828,7 +2835,8 @@ class QVService:
         # Resolve structure from workflow to structure_id
         from quantumvitas.core.project_utils import load_project_config
         from quantumvitas.core.resolution import _is_path_like
-        config = load_project_config(project_root)
+        if config is None:
+            config = load_project_config(project_root)
         
         structure_id = None
         structure_selector = None
@@ -2836,7 +2844,7 @@ class QVService:
             structure_id = wf_model.structure_id
             # Get selector for backwards compat
             try:
-                resolved = resolve_structure(project_root, wf_model.structure_id, config)
+                resolved = resolve_structure(project_root, wf_model.structure_id, config=config, index=index)
                 structure_selector = resolved.meta.slug
             except Exception:
                 # If resolution fails, use structure_name or fall back to structure
@@ -2853,7 +2861,7 @@ class QVService:
                     # Path exists - try to resolve it to get structure_id
                     # First check if it's registered in the project
                     try:
-                        resolved = resolve_structure(project_root, wf_model.structure, config)
+                        resolved = resolve_structure(project_root, wf_model.structure, config=config, index=index)
                         structure_id = resolved.meta.id
                         structure_selector = resolved.meta.slug
                     except Exception:
@@ -2862,7 +2870,7 @@ class QVService:
                 else:
                     # Path doesn't exist, try as selector
                     try:
-                        resolved = resolve_structure(project_root, wf_model.structure, config)
+                        resolved = resolve_structure(project_root, wf_model.structure, config=config, index=index)
                         structure_id = resolved.meta.id
                         structure_selector = resolved.meta.slug
                     except Exception:
@@ -2871,7 +2879,7 @@ class QVService:
             else:
                 # Try to resolve as selector
                 try:
-                    resolved = resolve_structure(project_root, wf_model.structure, config)
+                    resolved = resolve_structure(project_root, wf_model.structure, config=config, index=index)
                     structure_id = resolved.meta.id
                     structure_selector = resolved.meta.slug
                 except Exception:
@@ -2883,7 +2891,7 @@ class QVService:
             # Try to resolve structure_selector to structure_id
             if structure_selector:
                 try:
-                    resolved = resolve_structure(project_root, structure_selector, config)
+                    resolved = resolve_structure(project_root, structure_selector, config=config, index=index)
                     structure_id = resolved.meta.id
                 except Exception:
                     pass
@@ -2891,7 +2899,7 @@ class QVService:
             # If still no structure_id, try wf_model.structure as last resort
             if not structure_id and wf_model.structure:
                 try:
-                    resolved = resolve_structure(project_root, wf_model.structure, config)
+                    resolved = resolve_structure(project_root, wf_model.structure, config=config, index=index)
                     structure_id = resolved.meta.id
                 except Exception:
                     pass
@@ -2999,6 +3007,14 @@ class QVService:
         from quantumvitas.core.models import WorkflowModel
         from quantumvitas.workflow.structure_steps import StructureStepSpec
         
+        # Validate that new_structure is not accidentally project_root (common bug)
+        project_root_str = str(project_root.resolve())
+        if new_structure == project_root_str or new_structure == str(project_root):
+            raise ValueError(
+                f"Invalid structure selector: '{new_structure}' appears to be a project root path. "
+                f"Structure selectors must be structure names, slugs, or ULIDs, not absolute paths."
+            )
+        
         # Validate structure exists
         resolved_structure = resolve_structure(project_root, new_structure, config=config, index=index)
         
@@ -3031,8 +3047,8 @@ class QVService:
             if steps_dir.exists():
                 # Create resolver for normalizing legacy structure selectors
                 from quantumvitas.core.resolution import make_structure_selector_resolver
+                from quantumvitas.core.project_utils import load_project_config
                 if config is None:
-                    from quantumvitas.core.project_utils import load_project_config
                     config = load_project_config(project_root)
                 resolver = make_structure_selector_resolver(project_root, config=config)
                 
@@ -3212,6 +3228,8 @@ class QVService:
         project_root: Path,
         workflow_selector: Optional[str] = None,
         step_selector: Optional[str] = None,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
     ) -> Dict[str, Any]:
         """
         Perform pre-flight checks before running a workflow or step.
@@ -3269,7 +3287,7 @@ class QVService:
         workflow = None
         if workflow_selector:
             try:
-                workflow = resolve_workflow(project_root, workflow_selector)
+                workflow = resolve_workflow(project_root, workflow_selector, config=config, index=index)
                 checks.append({"name": "Workflow", "ok": True, "message": f"Workflow found: {workflow.meta.name}"})
             except Exception as e:
                 checks.append({"name": "Workflow", "ok": False, "message": str(e)})
@@ -3291,8 +3309,10 @@ class QVService:
                     # Resolve structure by ID (ULID) via registry
                     try:
                         from quantumvitas.core.resolution import build_resource_index, require_structure
-                        index = build_resource_index(project_root)
-                        structure = require_structure(project_root, structure_id, index=index)
+                        # Use provided index or build one if needed
+                        if index is None:
+                            index = build_resource_index(project_root)
+                        structure = require_structure(project_root, structure_id, index=index, config=config)
                         checks.append({"name": "Structure", "ok": True, "message": f"Structure found: {structure.meta.name}"})
                     except Exception as e:
                         checks.append({"name": "Structure", "ok": False, "message": f"Structure with ID '{structure_id}' not found: {e}"})
@@ -3300,7 +3320,11 @@ class QVService:
                 elif structure_selector:
                     # Legacy: resolve by selector (for backwards compatibility)
                     try:
-                        structure = resolve_structure(project_root, structure_selector)
+                        # Use provided index or build one if needed
+                        if index is None:
+                            from quantumvitas.core.resolution import build_resource_index
+                            index = build_resource_index(project_root)
+                        structure = resolve_structure(project_root, structure_selector, config=config, index=index)
                         checks.append({"name": "Structure", "ok": True, "message": f"Structure found: {structure.meta.name}"})
                     except Exception:
                         checks.append({"name": "Structure", "ok": False, "message": f"Structure '{structure_selector}' not found"})

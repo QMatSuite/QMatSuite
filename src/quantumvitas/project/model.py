@@ -132,22 +132,19 @@ class Project:
         settings = ProjectSettings(data.get("settings", {}))
 
         project = cls(root=root, meta=project_meta, settings=settings)
-        # Build index once and reuse for both structures and workflows
-        # This avoids duplicate index builds within Project.open()
-        from quantumvitas.core.resolution import build_resource_index
-        index = build_resource_index(root)
-        
+        # Project.open() is self-contained and builds its own index internally
+        # This keeps it simple and avoids issues with mismatched index/project_root
         project.structures = cls._load_structures(
-            root, data.get("structures", []), project_section.get("structures_dir", "structures"), index=index
+            root, data.get("structures", []), project_section.get("structures_dir", "structures")
         )
         project.workflows = cls._load_workflows(
-            root, data.get("workflows", []), project_section.get("workflows_dir", "workflows"), index=index
+            root, data.get("workflows", []), project_section.get("workflows_dir", "workflows")
         )
         return project
 
     @staticmethod
     def _load_structures(
-        root: Path, entries: list[dict], default_dir: str, index: Optional["ResourceIndex"] = None
+        root: Path, entries: list[dict], default_dir: str
     ) -> Dict[str, StructureRef]:
         """
         Load structures from project entries.
@@ -161,17 +158,15 @@ class Project:
             root: Project root path
             entries: Structure entries from project.qv.yml
             default_dir: Default structures directory name
-            index: Optional ResourceIndex (avoids rebuilding if provided)
         """
         structures: Dict[str, StructureRef] = {}
         
-        # Use provided index or build one if needed
-        if index is None:
-            try:
-                from quantumvitas.core.resolution import build_resource_index
-                index = build_resource_index(root)
-            except Exception:
-                index = None
+        # Build index for this project only
+        try:
+            from quantumvitas.core.resolution import build_resource_index
+            index = build_resource_index(root)
+        except Exception:
+            index = None
         
         for entry in entries:
             structure_id = entry.get("structure_id") or entry.get("id")
@@ -249,7 +244,7 @@ class Project:
 
     @staticmethod
     def _load_workflows(
-        root: Path, entries: list[dict], default_dir: str, index: Optional["ResourceIndex"] = None
+        root: Path, entries: list[dict], default_dir: str
     ) -> Dict[str, WorkflowRef]:
         """
         Load workflows from project entries using ID-based resolution.
@@ -264,7 +259,6 @@ class Project:
             root: Project root path
             entries: Workflow entries from project.qv.yml
             default_dir: Default workflows directory name
-            index: Optional ResourceIndex (built if None, passed from Project.open())
         """
         from quantumvitas.core.resolution import build_resource_index, require_workflow, ResourceNotFoundError
         from quantumvitas.core.resources import ResourceMeta
@@ -272,14 +266,11 @@ class Project:
         workflows: Dict[str, WorkflowRef] = {}
         workflows_dir = root / default_dir.rstrip('/')
         
-        # Use provided index or build one if needed
-        if index is None:
-            try:
-                registry = build_resource_index(root)
-            except Exception:
-                registry = None
-        else:
-            registry = index
+        # Build index for this project only
+        try:
+            registry = build_resource_index(root)
+        except Exception:
+            registry = None
         
         for entry in entries:
             workflow_id = entry.get("workflow_id") or entry.get("id")

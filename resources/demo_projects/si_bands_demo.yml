@@ -79,18 +79,6 @@ workflows:
   working_dir: raw
   steps:
   - meta:
-      id: 01KC39BB6NNP4AF070GWPKK0J0
-      name: bands
-      slug: bands
-      path: workflows/si-bands/steps/bands.step.yaml
-      kind: step
-    step_type: bands
-    parameters:
-      BANDS:
-        filband: si.bands.dat
-        outdir: ./outdir/
-        prefix: si
-  - meta:
       id: 01KC3901JEVJJ7S8G3E7Z9K2RZ
       name: scf
       slug: scf
@@ -117,6 +105,41 @@ workflows:
         - - 8
           - 8
           - 8
+          - 0
+          - 0
+          - 0
+    species_overrides:
+      Si:
+        mass: 28.0855
+        pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+  - meta:
+      id: 01KC39AWHWQ5EQSNFQADAA2AGP
+      name: nscf
+      slug: nscf
+      path: workflows/si-bands/steps/nscf.step.yaml
+      kind: step
+    step_type: nscf
+    parameters:
+      CONTROL:
+        calculation: nscf
+        outdir: ./outdir
+        prefix: si
+        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+        restart_mode: from_scratch
+      ELECTRONS:
+        conv_thr: 1.0e-08
+      SYSTEM:
+        ecutrho: 320
+        ecutwfc: 40
+        nbnd: 8
+        occupations: tetrahedra
+    cards:
+      K_POINTS:
+        option: automatic
+        data:
+        - - 12
+          - 12
+          - 12
           - 0
           - 0
           - 0
@@ -174,40 +197,17 @@ workflows:
         mass: 28.0855
         pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
   - meta:
-      id: 01KC39AWHWQ5EQSNFQADAA2AGP
-      name: nscf
-      slug: nscf
-      path: workflows/si-bands/steps/nscf.step.yaml
+      id: 01KC39BB6NNP4AF070GWPKK0J0
+      name: bands
+      slug: bands
+      path: workflows/si-bands/steps/bands.step.yaml
       kind: step
-    step_type: nscf
+    step_type: bands
     parameters:
-      CONTROL:
-        calculation: nscf
-        outdir: ./outdir
+      BANDS:
+        filband: si.bands.dat
+        outdir: ./outdir/
         prefix: si
-        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
-        restart_mode: from_scratch
-      ELECTRONS:
-        conv_thr: 1.0e-08
-      SYSTEM:
-        ecutrho: 320
-        ecutwfc: 40
-        nbnd: 8
-        occupations: tetrahedra
-    cards:
-      K_POINTS:
-        option: automatic
-        data:
-        - - 12
-          - 12
-          - 12
-          - 0
-          - 0
-          - 0
-    species_overrides:
-      Si:
-        mass: 28.0855
-        pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
   structure_id: 01KC38ZCMZZQ8DAA61A6SC8X23
 pseudo:
   directory: pseudo
