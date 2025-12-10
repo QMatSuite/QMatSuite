@@ -11,9 +11,30 @@
 
 :root {
   /* === Typography === */
-  --font-sans: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  --font-display: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  /* System font stack for general UI - no bundled fonts */
+  --qms-font-sans:
+    system-ui, -apple-system, BlinkMacSystemFont, /* generic system fallback */
+    "SF Pro Text", "SF Pro Display",              /* macOS English */
+    "Segoe UI",                                   /* Windows English */
+    Roboto, "Helvetica Neue", Arial,              /* Linux / legacy English */
+    /* Optional CJK fonts: only used if present, otherwise silently skipped */
+    "PingFang SC", "Hiragino Sans GB",            /* macOS Chinese */
+    "Microsoft YaHei",                            /* Windows Chinese */
+    "Noto Sans CJK SC", "WenQuanYi Micro Hei",    /* Linux Chinese */
+    sans-serif;                                   /* final generic fallback */
+  
+  /* System font stack for monospaced content (code, logs, paths) */
+  --qms-font-mono:
+    ui-monospace, SFMono-Regular, Menlo, Monaco,   /* macOS */
+    Consolas,                                      /* Windows */
+    "Liberation Mono", "DejaVu Sans Mono",         /* Linux */
+    "Noto Sans Mono CJK SC",                       /* optional CJK monospace */
+    monospace;                                     /* generic fallback */
+  
+  /* Legacy aliases for backwards compatibility (will be removed in future) */
+  --font-sans: var(--qms-font-sans);
+  --font-display: var(--qms-font-sans);
+  --font-mono: var(--qms-font-mono);
   
   /* Font sizes - Major Second scale (1.125) */
   --text-xs: 0.694rem;    /* 11.1px */
@@ -259,7 +280,7 @@ html {
 }
 
 body {
-  font-family: var(--font-sans);
+  font-family: var(--qms-font-sans);
   font-size: var(--text-base);
   font-weight: var(--font-normal);
   line-height: var(--leading-normal);
@@ -279,7 +300,7 @@ body {
    ============================================================================= */
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-display);
+  font-family: var(--qms-font-sans);
   font-weight: var(--font-semibold);
   line-height: var(--leading-tight);
   color: var(--text-primary);
@@ -292,9 +313,13 @@ h4 { font-size: var(--text-lg); }
 h5 { font-size: var(--text-md); }
 h6 { font-size: var(--text-base); }
 
-code, pre, kbd, samp {
-  font-family: var(--font-mono);
-  font-size: 0.9em;
+code, pre, kbd, samp,
+.qms-code,
+.qms-log,
+.qms-mono {
+  font-family: var(--qms-font-mono);
+  font-size: 0.9rem;
+  line-height: 1.4;
 }
 
 a {
@@ -643,7 +668,7 @@ input::placeholder, textarea::placeholder {
 .text-warning { color: var(--color-warning); }
 .text-error { color: var(--color-error); }
 
-.font-mono { font-family: var(--font-mono); }
+.font-mono { font-family: var(--qms-font-mono); }
 .font-medium { font-weight: var(--font-medium); }
 .font-semibold { font-weight: var(--font-semibold); }
 
