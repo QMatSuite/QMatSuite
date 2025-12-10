@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import yaml
 
@@ -145,10 +145,17 @@ class Workflow:
         steps: List[Step] = []
         migrated_step_entries: List[dict] = []  # Track step entries that need migration
         
+        # Track step types to generate unique filenames (only number if duplicates exist)
+        # Count is incremented inside _build_step_from_spec when generating filename
+        step_type_counts: Dict[str, int] = {}  # step_type -> count of steps with this type seen so far
+        
         for step_data in data.get("steps", []):
             if materialize_steps:
                 # Execution mode: fully materialize steps (calls materialize_step_spec, requires pseudos)
-                step, step_migrated = _build_step(step_data, workflow_dir, working_dir, project)
+                # Pass step_type_counts to track duplicates (count is incremented inside _build_step_from_spec)
+                step, step_migrated = _build_step(
+                    step_data, workflow_dir, working_dir, project, step_type_counts=step_type_counts
+                )
                 steps.append(step)
                 
                 if step_migrated:
@@ -210,11 +217,9 @@ class Workflow:
                 upgraded_data["meta"] = data["meta"]
             
             # Add structure_id (canonical reference - ID only)
+            # Do NOT write structure_name or structure selector (violates DAG + ID-only constitution)
             if structure_id:
                 upgraded_data["structure_id"] = structure_id
-                # Optionally add structure_name if we resolved it
-                if structure_ref:
-                    upgraded_data["structure_name"] = structure_ref.meta.name
             
             # Add steps (ID-only: step_id is ULID, no step_file)
             upgraded_steps = []
@@ -250,6 +255,7 @@ def _build_step(
     workflow_dir: Path,
     working_dir: Path,
     project: Project,
+    step_type_counts: Optional[Dict[str, int]] = None,
 ) -> tuple[Step, bool]:
     """
     Build a Step from step_data in workflow.yaml.
@@ -591,6 +597,7 @@ def _build_step_from_spec(
     reference: Optional[Path],
     step_meta: ResourceMeta,
     existing_input_file: Optional[Path] = None,
+    step_type_counts: Optional[Dict[str, int]] = None,
 ) -> Step:
     """
     Build a Step from a step spec file.
@@ -726,26 +733,36 @@ def _build_step_from_spec(
             logger = logging.getLogger(__name__)
             logger.warning(f"Failed to extract parameters from existing input file {existing_input_file}: {e}")
     
-    # Use proper file naming: {structure_slug}.{step_slug}.in
-    # Get structure slug from project
-    structure_slug = None
-    if project and spec_preview.structure_id:
-        try:
-            structure_ref = project.get_structure(spec_preview.structure_id)
-            structure_slug = structure_ref.meta.slug or structure_ref.meta.name
-        except Exception:
-            pass
-    
-    # Use step slug from step meta
-    step_slug = spec_preview.meta.slug or spec_preview.meta.name or step_id
-    
-    # Generate filename: {structure_slug}.{step_slug}.in (or fallback to step_id)
-    if structure_slug and step_slug:
-        ext = WorkflowFileNaming.input_extension(spec_preview.step_type or "scf")
-        input_override = spec_preview.input_name or f"{structure_slug}.{step_slug}{ext}"
+    # Generate human-readable filename based on step_type
+    # Use step_type (e.g., "scf", "nscf") instead of ULID for readability
+    # If multiple steps of same type exist, number them (e.g., "scf-1.in", "scf-2.in")
+    if spec_preview.input_name:
+        # Use explicit input_name if provided
+        input_override = spec_preview.input_name
     else:
-        # Fallback to step_id if we can't get structure/step slugs
-        input_override = spec_preview.input_name or WorkflowFileNaming.input_filename(step_id, spec_preview.step_type)
+        # Generate filename from step_type
+        step_type = spec_preview.step_type or "scf"
+        
+        # Use step_type_counts to determine if we need numbering
+        # Count how many steps of this type we've already processed
+        if step_type_counts is not None:
+            count = step_type_counts.get(step_type, 0)
+            # Increment count for this step type (will be used for next step of same type)
+            step_type_counts[step_type] = count + 1
+            
+            # If this is the first step of this type, use base name (e.g., "scf.in")
+            # If there are already steps of this type, number it (e.g., "scf-1.in", "scf-2.in")
+            if count == 0:
+                # First occurrence - use base name
+                ext = WorkflowFileNaming.input_extension(step_type)
+                input_override = f"{step_type}{ext}"
+            else:
+                # Duplicate step type - number it (count is already incremented, so use count)
+                ext = WorkflowFileNaming.input_extension(step_type)
+                input_override = f"{step_type}-{count}{ext}"
+        else:
+            # Fallback: check working_dir for existing files (for backwards compatibility)
+            input_override = WorkflowFileNaming.input_filename(step_type, working_dir=working_dir)
     generated_input, spec = materialize_step_spec(
         spec_preview,
         output_dir=working_dir,

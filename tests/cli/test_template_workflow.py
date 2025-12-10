@@ -68,17 +68,53 @@ def test_template_workflow_ulids_consistent(template_project):
     # Load project config
     config = yaml.safe_load((project_dir / "project.qv.yml").read_text())
     
-    # Find si-dos workflow
+    # Find si-dos workflow using centralized selector extraction
+    from quantumvitas.core.selectors import extract_workflow_selector_from_entry
+    
     workflow_entry = None
     for wf in config.get("workflows", []):
-        if wf.get("name") == "si-dos" or wf.get("path", "").endswith("si-dos"):
+        # Check by path (most reliable in ID-only model)
+        path = wf.get("path") or (wf.get("meta") or {}).get("path", "")
+        if path.endswith("si-dos"):
             workflow_entry = wf
             break
+        # Also check by slug/name from workflow.yaml if available
+        workflow_selector = extract_workflow_selector_from_entry(wf)
+        if workflow_selector and "si-dos" in str(workflow_selector).lower():
+            # Resolve to check if it's actually si-dos
+            try:
+                from quantumvitas.core.resolution import build_resource_index, require_workflow
+                index = build_resource_index(project_dir)
+                resolved = require_workflow(project_dir, workflow_selector, index=index)
+                if resolved.meta.slug == "si-dos" or resolved.meta.name == "si-dos":
+                    workflow_entry = wf
+                    break
+            except Exception:
+                pass
+    
+    # Fallback: check workflow.yaml directly
+    if workflow_entry is None:
+        workflow_yaml_path = project_dir / "workflows" / "si-dos" / "workflow.yaml"
+        if workflow_yaml_path.exists():
+            wf_data = yaml.safe_load(workflow_yaml_path.read_text())
+            wf_id = (wf_data.get("meta") or {}).get("id")
+            if wf_id:
+                # Find entry by ID
+                for wf in config.get("workflows", []):
+                    entry_id = extract_workflow_selector_from_entry(wf)
+                    if entry_id == wf_id:
+                        workflow_entry = wf
+                        break
     
     assert workflow_entry is not None, "si-dos workflow not found in project.qv.yml"
     
-    workflow_ulid = (workflow_entry.get("meta") or {}).get("id")
-    assert workflow_ulid, "Workflow should have a ULID in meta.id"
+    # In ID-only model, workflow entry might have workflow_id (ULID) directly or in meta.id
+    workflow_ulid = (
+        workflow_entry.get("workflow_id") or
+        workflow_entry.get("id") or
+        (workflow_entry.get("meta") or {}).get("id")
+    )
+    assert workflow_ulid, "Workflow should have a ULID (workflow_id, id, or meta.id)"
     
     # DAG model: Step YAML should NOT contain parent_workflow_id
     # Verify step files do not contain parent_workflow_id

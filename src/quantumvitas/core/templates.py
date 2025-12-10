@@ -304,15 +304,9 @@ def _copy_workflow_from_path(
             config = load_project_config(project_root)
             resolved = resolve_structure(project_root, structure, config)
             structure_id = resolved.meta.id
-            # Also keep structure selector for backwards compatibility
-            workflow_data["structure"] = structure
-            if "workflow" in workflow_data:
-                workflow_data["workflow"]["structure"] = structure
         except Exception:
-            # If resolution fails, keep structure selector only
-            workflow_data["structure"] = structure
-            if "workflow" in workflow_data:
-                workflow_data["workflow"]["structure"] = structure
+            # If resolution fails, structure_id remains None (will be set later if structure is added)
+            pass
     elif template_structure:
         structures_needed.add(template_structure)
         # Try to resolve template structure to structure_id if it exists in project
@@ -327,11 +321,23 @@ def _copy_workflow_from_path(
             pass
     
     # Set structure_id (ULID) if we have it
+    # Remove any legacy structure selector fields (violates DAG + ID-only constitution)
     if structure_id:
         workflow_data["structure_id"] = structure_id
-        # Also set in workflow section if present
+        # Remove legacy structure selector fields (DAG + ID-only constitution)
+        workflow_data.pop("structure", None)
+        workflow_data.pop("structure_name", None)
         if "workflow" in workflow_data:
             workflow_data["workflow"]["structure_id"] = structure_id
+            workflow_data["workflow"].pop("structure", None)
+            workflow_data["workflow"].pop("structure_name", None)
+    else:
+        # If no structure_id, remove any structure selector fields
+        workflow_data.pop("structure", None)
+        workflow_data.pop("structure_name", None)
+        if "workflow" in workflow_data:
+            workflow_data["workflow"].pop("structure", None)
+            workflow_data["workflow"].pop("structure_name", None)
     
     # Copy step files
     steps_src_dir = source_path / "steps"

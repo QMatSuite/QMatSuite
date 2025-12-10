@@ -48,9 +48,10 @@ class TestWorkflowModelStructureReferences:
         assert model.structure == "si"  # Legacy field preserved
         
         # Verify to_dict writes structure_id (ID-only reference)
+        # DAG + ID-only model: structure_name is NOT written to YAML (cosmetic only)
         data = model.to_dict()
         assert data["structure_id"] == structure_id
-        assert data["structure_name"] == structure_name
+        assert "structure_name" not in data  # structure_name is NOT written (DAG + ID-only model)
         assert "structure" not in data  # Legacy selector NOT written (ID-only model)
     
     def test_workflow_model_from_dict_new_format(self):

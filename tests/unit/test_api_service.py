@@ -205,7 +205,8 @@ class TestQVServiceWorkflow:
         wf_yaml = yaml.safe_load((result.absolute_path / "workflow.yaml").read_text())
         # With ID-only references, workflow.yaml stores structure_id (ULID), not structure selector
         assert wf_yaml.get("structure_id") is not None
-        assert wf_yaml.get("structure_name") == "Silicon"
+        # DAG + ID-only model: structure_name is NOT written to YAML (cosmetic only)
+        assert "structure_name" not in wf_yaml
     
     def test_list_workflows(self, project):
         """List workflows."""

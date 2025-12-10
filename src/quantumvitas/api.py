@@ -43,6 +43,11 @@ from quantumvitas.core.resolution import (
     list_workflows,
     list_steps,
 )
+from quantumvitas.core.selectors import (
+    extract_workflow_selector_from_entry,
+    extract_structure_selector_from_entry,
+    extract_step_selector_from_entry,
+)
 from quantumvitas.core.context import detect_enclosing_project
 from quantumvitas.core.project_utils import (
     ProjectConfigError,
@@ -405,7 +410,7 @@ class QVService:
         structures = config.get("structures", [])
         structures[:] = [
             e for e in structures
-            if (e.get("structure_id") or e.get("id") or (e.get("meta") or {}).get("id")) != structure_id
+            if extract_structure_selector_from_entry(e) != structure_id
         ]
         save_project_config(project_root, config)
     
@@ -758,6 +763,12 @@ class QVService:
                 s for s in steps 
                 if s.get("id", "").lower() != step.meta.name.lower()
             ]
+            # Remove legacy structure_name and structure fields before writing (DAG + ID-only constitution)
+            wf_data.pop("structure_name", None)
+            wf_data.pop("structure", None)
+            if "workflow" in wf_data:
+                wf_data["workflow"].pop("structure_name", None)
+                wf_data["workflow"].pop("structure", None)
             workflow_yaml_path.write_text(yaml.safe_dump(wf_data, sort_keys=False))
     
     @staticmethod
@@ -927,11 +938,12 @@ class QVService:
         workdir = workflow_resolved.absolute_path / "raw"
         workdir.mkdir(parents=True, exist_ok=True)
         
-        # Use consistent naming: structure_slug.step_type.in
+        # Use human-readable naming based on step_type (not ULID)
+        # If multiple steps of same type exist, they will be numbered (e.g., "scf-1.in", "scf-2.in")
         from quantumvitas.workflow.naming import WorkflowFileNaming
         input_name = spec.input_name or WorkflowFileNaming.input_filename(
-            step_resolved.meta.id,
-            spec.step_type,
+            spec.step_type or "scf",
+            working_dir=workdir,
         )
         input_path = workdir / input_name
         QEInputGenerator.write_file(qe_input, input_path)
@@ -1309,6 +1321,8 @@ class QVService:
         """
         Detect the workflow results directory from a file's location.
         
+        Uses ResourceIndex to resolve workflow paths in the DAG + ID-only model.
+        
         Args:
             project_root: Project root path
             file_path: Path to a file within the workflow
@@ -1318,8 +1332,42 @@ class QVService:
         """
         try:
             file_path = file_path.resolve()
-            config = load_project_config(project_root)
+            project_root = project_root.resolve()
             
+            # Use ResourceIndex to find all workflows (DAG + ID-only model)
+            from quantumvitas.core.resolution import build_resource_index
+            
+            index = build_resource_index(project_root)
+            
+            # Check if file is within any workflow directory
+            # ResourceIndex stores workflows in by_id, need to check meta.kind
+            for workflow_id, workflow_meta in index.by_id.items():
+                kind_str = workflow_meta.kind.value if hasattr(workflow_meta.kind, 'value') else str(workflow_meta.kind)
+                if kind_str != "workflow":
+                    continue
+                
+                # Find the workflow directory from the workflow.yaml path
+                workflow_path = None
+                for path, resource_id in index.by_path.items():
+                    if resource_id == workflow_id:
+                        workflow_path = path
+                        break
+                
+                if workflow_path:
+                    if workflow_path.is_file() and workflow_path.name == "workflow.yaml":
+                        # workflow.yaml path - get parent directory
+                        workflow_dir = workflow_path.parent
+                    else:
+                        # Directory path
+                        workflow_dir = workflow_path
+                    
+                    if file_path.is_relative_to(workflow_dir):
+                        results_dir = workflow_dir / "results"
+                        results_dir.mkdir(parents=True, exist_ok=True)
+                        return results_dir
+            
+            # Fallback: try legacy path-based lookup (for backwards compatibility)
+            config = load_project_config(project_root)
             for wf_entry in config.get("workflows", []):
                 wf_path = wf_entry.get("path") or (wf_entry.get("meta") or {}).get("path")
                 if wf_path:
@@ -2240,7 +2288,7 @@ class QVService:
         return {
             "can_delete": len(using_workflows) == 0,
             "using_workflows": workflow_names,
-            "structure_name": entry.get("name") or (entry.get("meta") or {}).get("name"),
+            "structure_name": (entry.get("meta") or {}).get("name") or entry.get("name"),
         }
     
     # -------------------------------------------------------------------------
@@ -2298,7 +2346,7 @@ class QVService:
         dep_names = [w.get("name", "?") for w in dependent_workflows]
         
         return {
-            "workflow_name": entry.get("name") or (entry.get("meta") or {}).get("name"),
+            "workflow_name": (entry.get("meta") or {}).get("name") or entry.get("name"),
             "dependent_workflows": dep_names,
             "has_dependencies": len(dep_names) > 0,
         }
@@ -2506,8 +2554,8 @@ class QVService:
         for struct_entry in structures:
             struct_file = project_root / struct_entry.get("file", "")
             if struct_file.exists() and struct_file.samefile(structure_path):
-                # Get structure ID (canonical reference)
-                structure_id_value = struct_entry.get("meta", {}).get("id") or struct_entry.get("id")
+                # Get structure ID (canonical reference) using centralized selector extraction
+                structure_id_value = extract_structure_selector_from_entry(struct_entry)
                 break
         
         if not structure_id_value:
