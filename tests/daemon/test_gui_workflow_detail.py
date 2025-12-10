@@ -131,9 +131,10 @@ class TestGetWorkflowDetail:
         for step in result["steps"]:
             assert "step_id" in step or "id" in step, "Step should have step_id or id"
             assert "type" in step, "Step should have type"
-            # step_file is NOT stored (resolved via registry)
-            assert "step_file" not in step or step.get("step_file") is None, \
-                "step_file should not be stored (resolved via registry)"
+            # step_file is now included for convenience (relative path from workflow directory)
+            # This helps GUI display step file paths without needing to resolve via registry
+            if "step_file" in step:
+                assert isinstance(step["step_file"], str), "step_file should be a string if present"
         
         # Verify step IDs match workflow model
         # Get workflow detail directly to compare
@@ -149,6 +150,114 @@ class TestGetWorkflowDetail:
         direct_step_ids = {s.get("step_id") or s.get("id") for s in direct_result["steps"]}
         assert daemon_step_ids == direct_step_ids, \
             "Step IDs from daemon should match direct QVService call"
+    
+    def test_multi_step_workflow_ulid_only_selectors(self, temp_project: Path, daemon: QVDaemon):
+        """
+        Test that multi-step workflows use ULID-only selectors and preserve order from workflow.yaml.
+        
+        This test ensures:
+        - Steps are returned in workflow.yaml order (not filesystem order)
+        - Each step.id is a 26-character ULID
+        - get_step_detail works for ALL steps (not just the first)
+        - The entire chain (workflow.yaml → API → GUI → daemon → API) is ULID-based
+        """
+        # Get workflow slug
+        workflows = QVService.list_workflows_data(temp_project)
+        assert len(workflows) > 0, "Project should have at least one workflow"
+        workflow = workflows[0]
+        workflow_slug = workflow["slug"]
+        
+        # Add more steps to create a multi-step workflow (scf, nscf, bands_pw, bands)
+        # The temp_project fixture already has scf and nscf, so add bands_pw and bands
+        QVService.add_step_to_workflow(
+            project_root=temp_project,
+            workflow_selector=workflow_slug,
+            step_type="bands_pw",
+        )
+        QVService.add_step_to_workflow(
+            project_root=temp_project,
+            workflow_selector=workflow_slug,
+            step_type="bands",
+        )
+        
+        # Get workflow detail via daemon
+        result = send_request(daemon, "get_workflow_detail", {
+            "project_root": str(temp_project.resolve()),
+            "workflow": workflow_slug,
+        })
+        
+        # Verify we have at least 3-4 steps
+        assert len(result["steps"]) >= 3, f"Workflow should have at least 3 steps, got {len(result['steps'])}"
+        assert result["n_steps"] == len(result["steps"]), "n_steps should match steps list length"
+        
+        # Verify each step has a ULID (26 characters)
+        step_ids = []
+        for step in result["steps"]:
+            step_id = step.get("id") or step.get("step_id")
+            assert step_id is not None, "Step must have id field"
+            assert isinstance(step_id, str), "Step id must be a string"
+            assert len(step_id) == 26, f"Step id must be a ULID (26 chars), got '{step_id}' (length {len(step_id)})"
+            step_ids.append(step_id)
+        
+        # Verify steps are in expected order (scf, nscf, bands_pw, bands)
+        # We can't verify exact types without loading the step files, but we can verify
+        # that the order is consistent (same order as workflow.yaml)
+        expected_types = ["scf", "nscf", "bands_pw", "bands"]
+        actual_types = [step.get("type") for step in result["steps"]]
+        
+        # Verify we have the expected step types (order may vary slightly, but all should be present)
+        for expected_type in expected_types[:len(actual_types)]:
+            assert expected_type in actual_types, f"Expected step type '{expected_type}' not found in {actual_types}"
+        
+        # CRITICAL: Test that get_step_detail works for ALL steps (not just the first)
+        # This ensures the ULID-based resolution works for every step in the workflow
+        for idx, step in enumerate(result["steps"]):
+            step_id = step.get("id") or step.get("step_id")
+            step_type = step.get("type")
+            
+            # Call get_step_detail via daemon with the ULID
+            step_detail = send_request(daemon, "get_step_detail", {
+                "project_root": str(temp_project.resolve()),
+                "workflow": workflow_slug,
+                "step": step_id,  # Use ULID as selector
+            })
+            
+            # Verify response structure
+            assert "id" in step_detail, f"Step {idx} detail should have id field"
+            assert step_detail["id"] == step_id, \
+                f"Step {idx} detail id should match workflow step id. Expected {step_id}, got {step_detail['id']}"
+            assert "step_type" in step_detail, f"Step {idx} detail should have step_type field"
+            
+            # Verify step_type matches (if available)
+            if step_type:
+                assert step_detail["step_type"] == step_type, \
+                    f"Step {idx} detail step_type should match. Expected {step_type}, got {step_detail['step_type']}"
+            
+            # Verify other expected fields
+            assert "parameters" in step_detail, f"Step {idx} detail should have parameters field"
+            assert "name" in step_detail or "slug" in step_detail, \
+                f"Step {idx} detail should have name or slug field"
+        
+        # Verify step order is preserved from workflow.yaml
+        # Load workflow model directly to compare order
+        from quantumvitas.core.models import load_workflow
+        from quantumvitas.core.project_utils import load_project_config
+        from quantumvitas.core.resolution import make_structure_selector_resolver
+        
+        config = load_project_config(temp_project)
+        resolver = make_structure_selector_resolver(temp_project, config=config)
+        workflow_yaml_path = temp_project / "workflows" / workflow_slug / "workflow.yaml"
+        wf_model = load_workflow(workflow_yaml_path, project_root=temp_project, resolve_structure_selector=resolver)
+        
+        # Verify step IDs match workflow.yaml order
+        workflow_yaml_step_ids = [entry.step_id for entry in wf_model.steps]
+        api_step_ids = [step.get("id") or step.get("step_id") for step in result["steps"]]
+        
+        assert len(workflow_yaml_step_ids) == len(api_step_ids), \
+            f"Step count mismatch: workflow.yaml has {len(workflow_yaml_step_ids)}, API returned {len(api_step_ids)}"
+        
+        assert workflow_yaml_step_ids == api_step_ids, \
+            f"Step order mismatch. workflow.yaml: {workflow_yaml_step_ids}, API: {api_step_ids}"
 
 
 class TestChangeWorkflowStructure:

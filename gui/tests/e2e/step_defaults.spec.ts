@@ -91,60 +91,39 @@ test.describe('E2E: Step Parameter Defaults', () => {
     await appPage.locator('.add-step-actions .add-step-btn--confirm').click();
     
     // Wait for step to be added and workflow to refresh
+    // CRITICAL: Wait for the new step to appear in the workflow steps list before clicking it.
+    // This prevents race conditions where get_step_detail is called before the step is
+    // available in the ResourceIndex. We wait for a step row with type 'scf' to appear.
     await expect(appPage.getByTestId('qv-steps-list')).toBeVisible({ timeout: 10000 });
-    await appPage.waitForTimeout(1000); // Wait for workflow refresh
     
-    // Find the step we just added - look for a step with type 'scf'
-    // The step rows contain step type badges
-    // Step rows now have unique test IDs (qv-step-row-{stepId})
-    // Use a locator that matches the pattern
+    // Wait for the new scf step to appear in the list (it should be the last one)
+    // Look for a step row with type 'scf' that appears after the add step form is hidden
+    const stepsList = appPage.getByTestId('qv-steps-list');
+    await expect(stepsList).toBeVisible({ timeout: 10000 });
+    
+    // Wait for the add step form to disappear (indicating the step was added)
+    await expect(appPage.locator('.add-step-form')).not.toBeVisible({ timeout: 10000 });
+    
+    // Wait for a new step row with type 'scf' to appear
+    // We'll look for step rows and find one with 'scf' type badge
     const stepRows = appPage.locator('[data-testid^="qv-step-row-"]');
-    const stepCount = await stepRows.count();
-    expect(stepCount).toBeGreaterThan(0);
     
-    // Find the scf step we just added (it should be in the list)
-    // Look for a step row that contains 'scf' in its step-type-badge
-    let scfStepFound = false;
-    for (let i = 0; i < stepCount; i++) {
-      const stepRow = stepRows.nth(i);
-      const stepTypeBadge = stepRow.locator('.step-type-badge');
-      const stepTypeText = await stepTypeBadge.textContent();
-      if (stepTypeText && stepTypeText.trim().toLowerCase() === 'scf') {
-        // This might be our step, but we want the one we just added
-        // Check if it's a new step by looking at the step ID or file
-        const stepId = await stepRow.locator('.step-id').textContent();
-        // If the step ID is just 'scf' (not 'scf-1', 'scf-2', etc.), it's likely the one we just added
-        // Or we can click the last scf step
-        if (stepId && stepId.trim() === 'scf') {
-          await stepRow.click();
-          scfStepFound = true;
-          break;
-        }
-      }
-    }
+    // Wait until we have at least one step row
+    await expect(stepRows.first()).toBeVisible({ timeout: 10000 });
     
-    // If we didn't find a step with ID 'scf', click the last step that has type 'scf'
-    if (!scfStepFound) {
-      // Find all scf steps and click the last one
-      const scfSteps = stepRows.filter({ 
-        has: appPage.locator('.step-type-badge').filter({ hasText: /^scf$/i })
-      });
-      const scfStepCount = await scfSteps.count();
-      if (scfStepCount > 0) {
-        await scfSteps.last().click();
-        scfStepFound = true;
-      }
-    }
+    // Find the scf step we just added - wait for it to appear with type 'scf'
+    // The step should be visible in the list with a step-type-badge showing 'scf'
+    const scfStepRow = stepRows.filter({
+      has: appPage.locator('.step-type-badge').filter({ hasText: /^scf$/i })
+    }).last();
     
-    // If still not found, just click the last step (fallback)
-    if (!scfStepFound) {
-      const lastStepRow = stepRows.last();
-      const stepButton = lastStepRow.locator('button.step-item');
-      await expect(stepButton).toBeVisible({ timeout: 5000 });
-      await expect(stepButton).toBeEnabled({ timeout: 5000 });
-      await stepButton.click({ timeout: 5000 });
-      await appPage.waitForTimeout(100);
-    }
+    // Wait for the scf step to be visible and enabled
+    await expect(scfStepRow).toBeVisible({ timeout: 10000 });
+    const stepButton = scfStepRow.locator('button.step-item');
+    await expect(stepButton).toBeEnabled({ timeout: 5000 });
+    
+    // Click the step button to open step detail
+    await stepButton.click({ timeout: 5000 });
     
     // Wait for step detail panel
     const stepDetailPanel = appPage.getByTestId('qv-step-detail');
