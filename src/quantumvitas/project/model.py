@@ -6,7 +6,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from quantumvitas.core.resolution import ResourceIndex
 
 import yaml
 
@@ -129,17 +132,22 @@ class Project:
         settings = ProjectSettings(data.get("settings", {}))
 
         project = cls(root=root, meta=project_meta, settings=settings)
+        # Build index once and reuse for both structures and workflows
+        # This avoids duplicate index builds within Project.open()
+        from quantumvitas.core.resolution import build_resource_index
+        index = build_resource_index(root)
+        
         project.structures = cls._load_structures(
-            root, data.get("structures", []), project_section.get("structures_dir", "structures")
+            root, data.get("structures", []), project_section.get("structures_dir", "structures"), index=index
         )
         project.workflows = cls._load_workflows(
-            root, data.get("workflows", []), project_section.get("workflows_dir", "workflows")
+            root, data.get("workflows", []), project_section.get("workflows_dir", "workflows"), index=index
         )
         return project
 
     @staticmethod
     def _load_structures(
-        root: Path, entries: list[dict], default_dir: str
+        root: Path, entries: list[dict], default_dir: str, index: Optional["ResourceIndex"] = None
     ) -> Dict[str, StructureRef]:
         """
         Load structures from project entries.
@@ -148,16 +156,22 @@ class Project:
         - Entries have structure_id (ULID), not file path
         - Structure file location is resolved via ResourceIndex using structure_id
         - Structure meta (name, slug, path) is loaded from the structure file itself
+        
+        Args:
+            root: Project root path
+            entries: Structure entries from project.qv.yml
+            default_dir: Default structures directory name
+            index: Optional ResourceIndex (avoids rebuilding if provided)
         """
         structures: Dict[str, StructureRef] = {}
         
-        # Build ResourceIndex to resolve structure_id to files
-        index = None
-        try:
-            from quantumvitas.core.resolution import build_resource_index
-            index = build_resource_index(root)
-        except Exception:
-            pass
+        # Use provided index or build one if needed
+        if index is None:
+            try:
+                from quantumvitas.core.resolution import build_resource_index
+                index = build_resource_index(root)
+            except Exception:
+                index = None
         
         for entry in entries:
             structure_id = entry.get("structure_id") or entry.get("id")
@@ -235,7 +249,7 @@ class Project:
 
     @staticmethod
     def _load_workflows(
-        root: Path, entries: list[dict], default_dir: str
+        root: Path, entries: list[dict], default_dir: str, index: Optional["ResourceIndex"] = None
     ) -> Dict[str, WorkflowRef]:
         """
         Load workflows from project entries using ID-based resolution.
@@ -245,6 +259,12 @@ class Project:
         2. Fall back to entry["path"] if available (legacy support)
         3. Fall back to scanning workflows/*/workflow.yaml by meta.id
         4. Raise error if workflow directory cannot be found
+        
+        Args:
+            root: Project root path
+            entries: Workflow entries from project.qv.yml
+            default_dir: Default workflows directory name
+            index: Optional ResourceIndex (built if None, passed from Project.open())
         """
         from quantumvitas.core.resolution import build_resource_index, require_workflow, ResourceNotFoundError
         from quantumvitas.core.resources import ResourceMeta
@@ -252,11 +272,14 @@ class Project:
         workflows: Dict[str, WorkflowRef] = {}
         workflows_dir = root / default_dir.rstrip('/')
         
-        # Build registry once for all workflows
-        try:
-            registry = build_resource_index(root)
-        except Exception:
-            registry = None
+        # Use provided index or build one if needed
+        if index is None:
+            try:
+                registry = build_resource_index(root)
+            except Exception:
+                registry = None
+        else:
+            registry = index
         
         for entry in entries:
             workflow_id = entry.get("workflow_id") or entry.get("id")

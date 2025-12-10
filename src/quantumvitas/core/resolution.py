@@ -223,6 +223,8 @@ def build_resource_index(project_root: Path) -> ResourceIndex:
     Returns:
         ResourceIndex with all resources indexed
     """
+    import time
+    start_time = time.time()
     project_root = project_root.resolve()
     index = ResourceIndex()
     
@@ -297,6 +299,21 @@ def build_resource_index(project_root: Path) -> ResourceIndex:
             except Exception:
                 # Skip invalid structure files
                 continue
+    
+    duration = time.time() - start_time
+    if duration > 0.1:  # Only log if it takes more than 100ms
+        import sys
+        import traceback
+        # Get caller info for debugging
+        frame = sys._getframe(1)
+        caller_file = frame.f_code.co_filename
+        caller_name = frame.f_code.co_name
+        caller_line = frame.f_lineno
+        sys.stderr.write(
+            f"[build_resource_index] SLOW: {duration:.3f}s for {project_root} "
+            f"(called from {caller_file}:{caller_line} in {caller_name})\n"
+        )
+        sys.stderr.flush()
     
     return index
 
