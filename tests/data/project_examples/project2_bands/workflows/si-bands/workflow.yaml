@@ -4,7 +4,19 @@ working_dir: raw
 structure_id: 01KBH0RFSSZ1G305C8PS5F1WHC
 structure_name: Si
 steps:
-- step_id: 01KC25A2SGHSY2S7W7CHSN6WM5
-- step_id: 01KC25A2TR5VDYYQTGAKJD0H1J
-- step_id: 01KC25A2W0B6TWEVDCH7228BAV
-- step_id: 01KC25A2XFVMJ1VQKRK4GK5J1D
+- step_id: 01KC319MSG7Q0449ZF574Y98ZQ
+  type: custom
+  input: null
+  reference: null
+- step_id: 01KC319MTKTAS1RYG7PD1Y7TJG
+  type: custom
+  input: null
+  reference: null
+- step_id: 01KC319MVM0XXG9AAP7GPAPWF5
+  type: custom
+  input: null
+  reference: null
+- step_id: 01KC319MWQS70Y4QNEWDBW77PH
+  type: custom
+  input: null
+  reference: null

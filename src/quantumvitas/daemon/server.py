@@ -20,12 +20,20 @@ from __future__ import annotations
 import json
 import sys
 import traceback
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional, TextIO
 
 from quantumvitas.api import QVService, QVServiceError
-from quantumvitas.core.resolution import ResourceNotFoundError
+from quantumvitas.core.resolution import (
+    ResourceNotFoundError,
+    SelectorNotFoundError,
+    build_resource_index,
+    resolve_workflow,
+    resolve_step,
+    ResourceIndex,
+)
+from quantumvitas.core.project_utils import load_project_config
 from quantumvitas.daemon.jobs import JobManager, JobStatus
 
 
@@ -53,6 +61,83 @@ class RPCResponse:
         else:
             result["error"] = self.error or {"code": "unknown", "message": "Unknown error"}
         return json.dumps(result)
+
+
+@dataclass
+class ProjectCache:
+    """
+    Cache for a project's ResourceIndex and config.
+    
+    The daemon keeps a long-lived cache per project to avoid rebuilding
+    the ResourceIndex on every request. The cache is invalidated when
+    mutations occur (rename, delete, import, etc.).
+    """
+    project_root: Path
+    index: ResourceIndex
+    config: dict
+
+
+@dataclass
+class DaemonState:
+    """
+    State management for the daemon.
+    
+    Maintains per-project caches of ResourceIndex to avoid rebuilding
+    on every request. Caches are invalidated on mutations.
+    """
+    _caches: Dict[Path, ProjectCache] = field(default_factory=dict)
+    
+    def get_cache(self, project_root: Path) -> ProjectCache:
+        """
+        Get or create cache for a project.
+        
+        Args:
+            project_root: Path to project root
+            
+        Returns:
+            ProjectCache for the project
+        """
+        project_root = project_root.resolve()
+        if project_root not in self._caches:
+            # Build fresh cache
+            index = build_resource_index(project_root)
+            config = load_project_config(project_root)
+            self._caches[project_root] = ProjectCache(
+                project_root=project_root,
+                index=index,
+                config=config,
+            )
+        return self._caches[project_root]
+    
+    def rebuild_cache(self, project_root: Path) -> ProjectCache:
+        """
+        Rebuild cache for a project (force refresh).
+        
+        Args:
+            project_root: Path to project root
+            
+        Returns:
+            Fresh ProjectCache for the project
+        """
+        project_root = project_root.resolve()
+        index = build_resource_index(project_root)
+        config = load_project_config(project_root)
+        self._caches[project_root] = ProjectCache(
+            project_root=project_root,
+            index=index,
+            config=config,
+        )
+        return self._caches[project_root]
+    
+    def invalidate_cache(self, project_root: Path) -> None:
+        """
+        Invalidate cache for a project (will be rebuilt on next access).
+        
+        Args:
+            project_root: Path to project root
+        """
+        project_root = project_root.resolve()
+        self._caches.pop(project_root, None)
 
 
 class QVDaemon:
@@ -90,6 +175,7 @@ class QVDaemon:
         self.stdout = stdout
         self.stderr = stderr
         self.job_manager = JobManager(max_workers=1)
+        self.state = DaemonState()
         self._running = False
         
         # Command dispatcher
@@ -163,10 +249,34 @@ class QVDaemon:
             "cancel_job": self._handle_cancel_job,
         }
     
-    def log(self, message: str):
+    def log(self, message: str, level: str = "INFO"):
         """Write log message to stderr."""
-        self.stderr.write(f"[qv-daemon] {message}\n")
+        self.stderr.write(f"[qv-daemon] [{level}] {message}\n")
         self.stderr.flush()
+    
+    @property
+    def logger(self):
+        """Logger-like interface for compatibility."""
+        class Logger:
+            def __init__(self, daemon):
+                self.daemon = daemon
+            
+            def warning(self, message: str, *args, **kwargs):
+                """Log warning message."""
+                formatted = message.format(*args, **kwargs) if args or kwargs else message
+                self.daemon.log(formatted, level="WARNING")
+            
+            def info(self, message: str, *args, **kwargs):
+                """Log info message."""
+                formatted = message.format(*args, **kwargs) if args or kwargs else message
+                self.daemon.log(formatted, level="INFO")
+            
+            def error(self, message: str, *args, **kwargs):
+                """Log error message."""
+                formatted = message.format(*args, **kwargs) if args or kwargs else message
+                self.daemon.log(formatted, level="ERROR")
+        
+        return Logger(self)
     
     def run(self):
         """
@@ -490,6 +600,9 @@ class QVDaemon:
             name=name,
         )
         
+        # Invalidate cache after mutation
+        self.state.invalidate_cache(project_root)
+        
         # Get structure metadata
         structures = QVService.list_structures_data(project_root)
         new_struct = next((s for s in structures if s.get("id") == result.meta.id), None)
@@ -519,11 +632,16 @@ class QVDaemon:
         selector = self._require_str(payload, "selector")
         new_name = self._require_str(payload, "new_name")
         
-        return QVService.rename_structure(
+        result = QVService.rename_structure(
             project_root=project_root,
             selector=selector,
             new_name=new_name,
         )
+        
+        # Invalidate cache after mutation
+        self.state.invalidate_cache(project_root)
+        
+        return result
     
     def _handle_can_delete_structure(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -563,6 +681,9 @@ class QVDaemon:
             selector=selector,
             force=force,
         )
+        
+        # Invalidate cache after mutation
+        self.state.invalidate_cache(project_root)
         
         return {
             "success": True,
@@ -645,11 +766,16 @@ class QVDaemon:
         selector = self._require_str(payload, "selector")
         new_name = self._require_str(payload, "new_name")
         
-        return QVService.rename_workflow(
+        result = QVService.rename_workflow(
             project_root=project_root,
             selector=selector,
             new_name=new_name,
         )
+        
+        # Invalidate cache after mutation
+        self.state.invalidate_cache(project_root)
+        
+        return result
     
     def _handle_can_delete_workflow(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -690,6 +816,9 @@ class QVDaemon:
             force=force,
         )
         
+        # Invalidate cache after mutation
+        self.state.invalidate_cache(project_root)
+        
         return {
             "success": True,
             "name": workflow_name,
@@ -712,6 +841,10 @@ class QVDaemon:
         workflow = self._require_str(payload, "workflow")
         step = self._require_str(payload, "step")
         
+        # Resolve with fallback to ensure cache is up-to-date
+        self._resolve_step_with_fallback(project_root, workflow, step)
+        
+        # Now call QVService (it will build a fresh index, but cache is now up-to-date)
         return QVService.get_step_detail(
             project_root=project_root,
             workflow_selector=workflow,
@@ -735,6 +868,9 @@ class QVDaemon:
         parameters = payload.get("parameters", {})
         cards = payload.get("cards")
         
+        # Resolve with fallback to ensure cache is up-to-date
+        self._resolve_step_with_fallback(project_root, workflow, step)
+        
         return QVService.update_step_params(
             project_root=project_root,
             workflow_selector=workflow,
@@ -755,6 +891,9 @@ class QVDaemon:
         project_root = self._require_path(payload, "project_root")
         workflow = self._require_str(payload, "workflow")
         step = self._require_str(payload, "step")
+        
+        # Resolve with fallback to ensure cache is up-to-date
+        self._resolve_step_with_fallback(project_root, workflow, step)
         
         return QVService.reset_step_params(
             project_root=project_root,
@@ -777,6 +916,10 @@ class QVDaemon:
         project_root = self._require_path(payload, "project_root")
         workflow = self._require_str(payload, "workflow")
         
+        # Resolve with fallback to ensure cache is up-to-date
+        self._resolve_workflow_with_fallback(project_root, workflow)
+        
+        # Now call QVService (it will build a fresh index, but cache is now up-to-date)
         return QVService.get_workflow_detail(
             project_root=project_root,
             workflow_selector=workflow,
@@ -798,11 +941,19 @@ class QVDaemon:
         if not isinstance(new_order, list):
             raise ValueError("new_order must be a list of step selectors")
         
-        return QVService.reorder_workflow_steps(
+        # Resolve with fallback to ensure cache is up-to-date
+        self._resolve_workflow_with_fallback(project_root, workflow)
+        
+        result = QVService.reorder_workflow_steps(
             project_root=project_root,
             workflow_selector=workflow,
             new_order=new_order,
         )
+        
+        # Invalidate cache after mutation
+        self.state.invalidate_cache(project_root)
+        
+        return result
     
     def _handle_add_step_to_workflow(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -819,12 +970,20 @@ class QVDaemon:
         step_type = self._require_str(payload, "step_type")
         step_name = payload.get("step_name", step_type)
         
-        return QVService.add_step_to_workflow(
+        # Resolve with fallback to ensure cache is up-to-date
+        self._resolve_workflow_with_fallback(project_root, workflow)
+        
+        result = QVService.add_step_to_workflow(
             project_root=project_root,
             workflow_selector=workflow,
             step_type=step_type,
             step_name=step_name,
         )
+        
+        # Invalidate cache after mutation
+        self.state.invalidate_cache(project_root)
+        
+        return result
     
     def _handle_import_step_from_qe_input(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -841,12 +1000,20 @@ class QVDaemon:
         input_file = self._require_path(payload, "input_file")
         step_name = payload.get("step_name")
         
-        return QVService.import_step_from_qe_input(
+        # Resolve with fallback to ensure cache is up-to-date
+        self._resolve_workflow_with_fallback(project_root, workflow)
+        
+        result = QVService.import_step_from_qe_input(
             project_root=project_root,
             workflow_selector=workflow,
             input_file=input_file,
             step_name=step_name,
         )
+        
+        # Invalidate cache after mutation
+        self.state.invalidate_cache(project_root)
+        
+        return result
     
     def _handle_change_workflow_structure(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -863,12 +1030,20 @@ class QVDaemon:
         new_structure = self._require_str(payload, "new_structure")
         update_steps = payload.get("update_steps", True)
         
-        return QVService.change_workflow_structure(
+        # Resolve with fallback to ensure cache is up-to-date
+        self._resolve_workflow_with_fallback(project_root, workflow)
+        
+        result = QVService.change_workflow_structure(
             project_root=project_root,
             workflow_selector=workflow,
             new_structure=new_structure,
             update_steps=update_steps,
         )
+        
+        # Invalidate cache after mutation
+        self.state.invalidate_cache(project_root)
+        
+        return result
     
     # -------------------------------------------------------------------------
     # Pre-flight check handlers
@@ -886,6 +1061,12 @@ class QVDaemon:
         project_root = self._require_path(payload, "project_root")
         workflow = payload.get("workflow")
         step = payload.get("step")
+        
+        # Resolve with fallback if selectors provided
+        if workflow:
+            self._resolve_workflow_with_fallback(project_root, workflow)
+        if workflow and step:
+            self._resolve_step_with_fallback(project_root, workflow, step)
         
         return QVService.preflight_check(
             project_root=project_root,
@@ -973,6 +1154,11 @@ class QVDaemon:
         step = payload.get("step")
         force = payload.get("force", False)
         
+        # Resolve with fallback to ensure cache is up-to-date
+        self._resolve_workflow_with_fallback(project_root, workflow)
+        if step:
+            self._resolve_step_with_fallback(project_root, workflow, step)
+        
         return QVService.ensure_workflow_analysis(
             project_root=project_root,
             workflow_selector=workflow,
@@ -1020,6 +1206,9 @@ class QVDaemon:
         workflow = self._require_str(payload, "workflow")
         step = self._require_str(payload, "step")
         
+        # Resolve with fallback to ensure cache is up-to-date
+        self._resolve_step_with_fallback(project_root, workflow, step)
+        
         return QVService.get_scf_convergence_data(
             project_root=project_root,
             workflow_selector=workflow,
@@ -1039,6 +1228,11 @@ class QVDaemon:
         workflow = self._require_str(payload, "workflow")
         step = payload.get("step")
         
+        # Resolve with fallback to ensure cache is up-to-date
+        self._resolve_workflow_with_fallback(project_root, workflow)
+        if step:
+            self._resolve_step_with_fallback(project_root, workflow, step)
+        
         return QVService.get_dos_data(
             project_root=project_root,
             workflow_selector=workflow,
@@ -1057,6 +1251,11 @@ class QVDaemon:
         project_root = self._require_path(payload, "project_root")
         workflow = self._require_str(payload, "workflow")
         step = payload.get("step")
+        
+        # Resolve with fallback to ensure cache is up-to-date
+        self._resolve_workflow_with_fallback(project_root, workflow)
+        if step:
+            self._resolve_step_with_fallback(project_root, workflow, step)
         
         return QVService.get_band_structure_data(
             project_root=project_root,
@@ -1086,6 +1285,9 @@ class QVDaemon:
         
         if analysis_type not in ("scf", "dos", "bands"):
             raise ValueError(f"Invalid analysis_type: {analysis_type}. Must be one of: scf, dos, bands")
+        
+        # Resolve with fallback to ensure cache is up-to-date
+        self._resolve_workflow_with_fallback(project_root, workflow)
         
         result = QVService.get_reference_analysis(
             project_root=project_root,
@@ -1119,6 +1321,9 @@ class QVDaemon:
         workflow = self._require_str(payload, "workflow")
         strict = payload.get("strict", False)
         verbose = payload.get("verbose", False)
+        
+        # Resolve with fallback to ensure cache is up-to-date before submitting job
+        self._resolve_workflow_with_fallback(project_root, workflow)
         
         # Submit job with target info for display
         job_id = self.job_manager.submit(
@@ -1159,6 +1364,9 @@ class QVDaemon:
         workflow = self._require_str(payload, "workflow")
         step = self._require_str(payload, "step")
         verbose = payload.get("verbose", False)
+        
+        # Resolve with fallback to ensure cache is up-to-date before submitting job
+        self._resolve_step_with_fallback(project_root, workflow, step)
         
         target_name = f"{workflow}/{step}"
         
@@ -1269,6 +1477,112 @@ class QVDaemon:
         
         cancelled = self.job_manager.cancel_job(job_id)
         return {"job_id": job_id, "cancelled": cancelled}
+    
+    # -------------------------------------------------------------------------
+    # Resolution helpers with cache fallback
+    # -------------------------------------------------------------------------
+    
+    def _resolve_workflow_with_fallback(self, project_root: Path, selector: str):
+        """
+        Resolve workflow with automatic cache rebuild on failure.
+        
+        NOTE:
+        The daemon keeps a cached ResourceIndex per project. In rare cases the cache
+        may become stale (e.g. manual edits on disk or a missing invalidation call).
+        This helper tries the cached index first, then rebuilds the cache ONCE if the
+        resource is not found, logging a warning. If it still fails, the original
+        SelectorNotFoundError is propagated.
+        
+        Args:
+            project_root: Path to project root
+            selector: Workflow selector (name, slug, id, or path)
+            
+        Returns:
+            ResolvedResource for the workflow
+            
+        Raises:
+            SelectorNotFoundError: If workflow not found even after cache rebuild
+        """
+        # 1. Use cached index
+        cache = self.state.get_cache(project_root)
+        try:
+            return resolve_workflow(
+                project_root,
+                selector,
+                index=cache.index,
+                config=cache.config,
+            )
+        except SelectorNotFoundError:
+            # 2. Fallback: rebuild cache once
+            self.logger.warning(
+                "Registry cache miss for workflow '%s' in project '%s'. "
+                "Rebuilding ResourceIndex once. "
+                "If this happens often, there may be a missing cache invalidation.",
+                selector,
+                project_root,
+            )
+            cache = self.state.rebuild_cache(project_root)
+            # 3. Retry with fresh index (if this still fails, propagate)
+            return resolve_workflow(
+                project_root,
+                selector,
+                index=cache.index,
+                config=cache.config,
+            )
+    
+    def _resolve_step_with_fallback(
+        self,
+        project_root: Path,
+        workflow_selector: str,
+        step_selector: str,
+    ):
+        """
+        Resolve step with automatic cache rebuild on failure.
+        
+        NOTE:
+        The daemon keeps a cached ResourceIndex per project. In rare cases the cache
+        may become stale (e.g. manual edits on disk or a missing invalidation call).
+        This helper tries the cached index first, then rebuilds the cache ONCE if the
+        resource is not found, logging a warning. If it still fails, the original
+        SelectorNotFoundError is propagated.
+        
+        Args:
+            project_root: Path to project root
+            workflow_selector: Workflow selector (name, slug, id, or path)
+            step_selector: Step selector (name, slug, id, or path)
+            
+        Returns:
+            ResolvedResource for the step
+            
+        Raises:
+            SelectorNotFoundError: If step not found even after cache rebuild
+        """
+        cache = self.state.get_cache(project_root)
+        try:
+            return resolve_step(
+                project_root,
+                workflow_selector,
+                step_selector,
+                index=cache.index,
+                config=cache.config,
+            )
+        except SelectorNotFoundError:
+            self.logger.warning(
+                "Registry cache miss for step '%s' in workflow '%s' (project '%s'). "
+                "Rebuilding ResourceIndex once. "
+                "If this happens often, there may be a missing cache invalidation.",
+                step_selector,
+                workflow_selector,
+                project_root,
+            )
+            cache = self.state.rebuild_cache(project_root)
+            return resolve_step(
+                project_root,
+                workflow_selector,
+                step_selector,
+                index=cache.index,
+                config=cache.config,
+            )
     
     # -------------------------------------------------------------------------
     # Helpers

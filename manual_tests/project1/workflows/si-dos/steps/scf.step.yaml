@@ -1,12 +1,10 @@
 meta:
-  id: 01KC2PBHT13P2EC9NAP34X4WZQ
+  id: 01KC36CGZHBKD88TXR70R8C3SR
   name: scf
   slug: scf
   path: workflows/si-dos/steps/scf.step.yaml
   kind: step
 step_type: scf
-structure_id: 01KC2PAD6XEZC7YQ8RP7YSCD8H
-parent_workflow_id: 01KC2PAM46ETTT1M3CX4HH0YTC
 parameters:
   CONTROL:
     calculation: scf

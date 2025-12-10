@@ -60,9 +60,36 @@ def save_project_config(project_root: Path, data: dict) -> None:
 # ---------------------------------------------------------------------------
 
 
-def collect_slugs(entries: list[dict], *, exclude: Optional[dict] = None) -> list[str]:
-    """Collect all slugs from a list of structure or workflow entries."""
+def collect_slugs(entries: list[dict], *, exclude: Optional[dict] = None, project_root: Optional[Path] = None) -> list[str]:
+    """
+    Collect all slugs from a list of structure or workflow entries.
+    
+    In ID-only model, entries may only have structure_id/workflow_id (ULID).
+    If project_root is provided, resolves slugs from registry.
+    Otherwise, falls back to legacy entry format (meta/name fields).
+    """
     slugs: list[str] = []
+    
+    # If project_root is provided, try to resolve from registry (ID-only model)
+    if project_root and project_root.exists():
+        try:
+            from quantumvitas.core.resolution import build_resource_index
+            index = build_resource_index(project_root)
+            for entry in entries:
+                if exclude is not None and entry is exclude:
+                    continue
+                # Try to get resource ID (structure_id, workflow_id, or id)
+                resource_id = entry.get("structure_id") or entry.get("workflow_id") or entry.get("id")
+                if resource_id and resource_id in index.by_id:
+                    meta = index.by_id[resource_id]
+                    if meta.slug:
+                        slugs.append(meta.slug)
+                        continue
+        except Exception:
+            # If registry resolution fails, fall back to legacy format
+            pass
+    
+    # Fallback: legacy format or registry unavailable
     for entry in entries:
         if exclude is not None and entry is exclude:
             continue
@@ -282,11 +309,58 @@ def find_workflow_entry(
 
 
 def workflow_directory(project_root: Path, entry: dict) -> Path:
-    """Get the absolute path to a workflow directory."""
+    """
+    Get the absolute path to a workflow directory.
+    
+    In ID-only model, entry may only have workflow_id/id, not path.
+    Uses registry to resolve workflow directory if path is missing.
+    
+    After renames, the entry path is updated immediately, so we check it first.
+    If the path doesn't exist, we fall back to registry resolution.
+    """
+    # Try to get path from entry (legacy format) - check this FIRST
+    # This is important after renames, as the entry path is updated immediately
     rel_path = entry.get("path") or (entry.get("meta") or {}).get("path")
-    if not rel_path:
-        raise ProjectConfigError("Workflow entry is missing a path.")
-    return (project_root / rel_path).resolve()
+    if rel_path:
+        candidate = (project_root / rel_path).resolve()
+        # Verify the directory exists (it should after rename)
+        if candidate.exists() and candidate.is_dir():
+            return candidate
+        # If path is set but directory doesn't exist, continue to registry resolution
+        # (might be a stale path or registry needs to be checked)
+    
+    # ID-only model: resolve via registry
+    workflow_id = entry.get("workflow_id") or entry.get("id") or (entry.get("meta") or {}).get("id")
+    if workflow_id:
+        try:
+            from quantumvitas.core.resolution import build_resource_index, require_workflow
+            index = build_resource_index(project_root)
+            resolved = require_workflow(project_root, workflow_id, index=index)
+            # resolved.absolute_path points to workflow.yaml, so get parent directory
+            if resolved.absolute_path.name == "workflow.yaml":
+                workflow_dir = resolved.absolute_path.parent
+            else:
+                workflow_dir = resolved.absolute_path
+            # Verify the directory exists
+            if workflow_dir.exists() and workflow_dir.is_dir():
+                return workflow_dir
+        except Exception:
+            pass
+    
+    # Fallback: try to construct from slug
+    slug = (entry.get("meta") or {}).get("slug") or entry.get("slug")
+    if slug:
+        candidate = (project_root / "workflows" / slug).resolve()
+        if candidate.exists() and candidate.is_dir():
+            return candidate
+    
+    # Last resort: error with helpful message
+    rel_path_str = entry.get("path") or (entry.get("meta") or {}).get("path")
+    raise ProjectConfigError(
+        f"Workflow entry is missing a path and cannot be resolved via registry. "
+        f"Entry path: {rel_path_str}, project_root: {project_root}, "
+        f"workflow_id: {entry.get('workflow_id') or entry.get('id') or (entry.get('meta') or {}).get('id')}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -342,6 +416,35 @@ def find_enclosing_workflow(
         return None
     
     workflows = config.get("workflows", [])
+    
+    # Try registry-based resolution first (ID-only model)
+    try:
+        from quantumvitas.core.resolution import build_resource_index, require_workflow
+        index = build_resource_index(project_root)
+        
+        for entry in workflows:
+            workflow_id = entry.get("workflow_id") or entry.get("id") or (entry.get("meta") or {}).get("id")
+            if not workflow_id:
+                continue
+            try:
+                resolved = require_workflow(project_root, workflow_id, index=index)
+                # resolved.absolute_path points to workflow.yaml, so get parent directory
+                workflow_dir = resolved.absolute_path.parent if resolved.absolute_path.name == "workflow.yaml" else resolved.absolute_path
+                # Check if current dir is workflow dir or inside it
+                if current == workflow_dir:
+                    return entry
+                try:
+                    current.relative_to(workflow_dir)
+                    return entry
+                except ValueError:
+                    continue
+            except Exception:
+                continue
+    except Exception:
+        # Registry resolution failed, fall back to path-based
+        pass
+    
+    # Fallback: path-based resolution (legacy format)
     for entry in workflows:
         ensure_workflow_entry_defaults(entry)
         rel_path = entry.get("path") or (entry.get("meta") or {}).get("path")
@@ -767,7 +870,7 @@ def apply_structure_rename(
     """
     structures = config.setdefault("structures", [])
     meta = entry.setdefault("meta", {})
-    existing_slugs = collect_slugs(structures, exclude=entry)
+    existing_slugs = collect_slugs(structures, exclude=entry, project_root=project_root)
     previous_slug = meta.get("slug")
     slug_changed = False
     previous_path = entry.get("file") or meta.get("path")
@@ -873,7 +976,7 @@ def apply_workflow_rename(
     """
     workflows = config.setdefault("workflows", [])
     meta = entry.setdefault("meta", {})
-    existing_slugs = collect_slugs(workflows, exclude=entry)
+    existing_slugs = collect_slugs(workflows, exclude=entry, project_root=project_root)
     previous_slug = meta.get("slug")
     slug_changed = False
     previous_path = entry.get("path") or meta.get("path")
@@ -931,6 +1034,20 @@ def apply_workflow_rename(
             rel_str = new_rel.as_posix()
             entry["path"] = rel_str
             meta["path"] = rel_str
+            
+            # Update workflow.yaml meta block to reflect new name/slug/path
+            workflow_yaml_path = new_abs / "workflow.yaml"
+            if workflow_yaml_path.exists():
+                try:
+                    import yaml
+                    wf_data = yaml.safe_load(workflow_yaml_path.read_text()) or {}
+                    wf_meta = wf_data.setdefault("meta", {})
+                    wf_meta["name"] = name_candidate
+                    wf_meta["slug"] = slug_candidate
+                    wf_meta["path"] = rel_str
+                    workflow_yaml_path.write_text(yaml.safe_dump(wf_data, sort_keys=False))
+                except Exception:
+                    pass  # If update fails, continue (config is still updated)
 
 
 # ---------------------------------------------------------------------------

@@ -86,14 +86,19 @@ class TestImportStructureCommand:
         assert loaded.formula == "Si2"
 
         # Verify project.qv.yml was updated
+        # ID-only model: entries only have structure_id, not name/file/meta
         config = yaml.safe_load((project_root / "project.qv.yml").read_text())
         structures = config.get("structures", [])
         assert len(structures) == 1
         entry = structures[0]
-        assert entry["name"] == "si"
-        assert entry["file"] == "structures/si.json"
-        assert entry["meta"]["kind"] == "structure"
-        assert entry["meta"]["slug"] == "si"
+        assert "structure_id" in entry, "Structure entry should have structure_id (ID-only model)"
+        # Resolve structure from registry to verify name and slug
+        from quantumvitas.core.resolution import build_resource_index, require_structure
+        index = build_resource_index(project_root)
+        resolved = require_structure(project_root, entry["structure_id"], index=index)
+        assert resolved.meta.name == "si", f"Structure name should be 'si'. Found: {resolved.meta.name}"
+        assert resolved.meta.slug == "si", f"Structure slug should be 'si'. Found: {resolved.meta.slug}"
+        assert resolved.meta.path == "structures/si.json", f"Structure path should be 'structures/si.json'. Found: {resolved.meta.path}"
 
     def test_import_structure_with_custom_format(self, sample_project):
         """
