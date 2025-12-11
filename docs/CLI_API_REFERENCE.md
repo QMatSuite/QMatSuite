@@ -57,7 +57,8 @@ description short and includes a minimal example you can run or adapt.
 
 | Command | What it does | Quick example |
 | --- | --- | --- |
-| `qv run step <input.in|step.yaml> [--project PATH] [--workdir PATH] [overrides…]` | Run a standalone QE input file **or** a `.step.yaml`, applying overrides to parameters/cards/species. | `qv run step workflows/si_dos/steps/scf.step.yaml --project . --CARD.K_POINTS.data=[[6,6,6,0,0,0]]` |
+| `qv run step <input.in|step.yaml> [--project PATH] [--workdir PATH] [overrides…]` | Run a QE input file **or** a `.step.yaml` in project mode, applying overrides to parameters/cards/species. | `qv run step workflows/si_dos/steps/scf.step.yaml --project . --CARD.K_POINTS.data=[[6,6,6,0,0,0]]` |
+| `qv run step --standalone --input <file> [--workdir PATH]` | Run a QE input file in standalone mode (no project context). See `docs/STANDALONE_QE.md` for details. | `qv run step --standalone --input pw.in --workdir ./run` |
 | `qv run structure <structure-id|file> [--project PATH] [--type scf] [overrides…]` | Load a stored structure, materialize a QE input, apply overrides, and run it. | `qv run structure si --project ~/projects/si_demo --type scf --k_points=4,4,4,0,0,0` |
 | `qv run workflow [<workflow-id|path>] [--project PATH] [--strict] [--verbose]` | Execute a workflow. Auto-detects enclosing workflow from pwd if not specified. | `qv run workflow --strict` |
 | `qv run [target] [--project PATH] [--workdir PATH] [--strict]` | Auto-detect the target type (QE input, step YAML, workflow id, structure id) and dispatch to the appropriate subcommand. If no target, runs enclosing workflow. | `qv run --strict` |

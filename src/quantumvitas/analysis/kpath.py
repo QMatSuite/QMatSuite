@@ -10,8 +10,29 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 import json
 
-if TYPE_CHECKING:
-    from pymatgen.core import Structure as PMGStructure
+# Import guard for pymatgen
+try:
+    from pymatgen.core import Structure as PMGStructure, Lattice
+    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+    from pymatgen.symmetry.bandstructure import HighSymmKpath
+    _HAS_PYMATGEN = True
+    _PYMATGEN_IMPORT_ERROR = None
+except Exception as exc:
+    _HAS_PYMATGEN = False
+    _PYMATGEN_IMPORT_ERROR = exc
+    # Define placeholder types for type checking
+    if TYPE_CHECKING:
+        from pymatgen.core import Structure as PMGStructure
+
+
+def _require_pymatgen() -> None:
+    """Raise a clear error if pymatgen is not available."""
+    if not _HAS_PYMATGEN:
+        raise RuntimeError(
+            "Auto k-path requires pymatgen, but it could not be imported. "
+            f"Import error: {_PYMATGEN_IMPORT_ERROR}. "
+            "Please install pymatgen: pip install pymatgen"
+        )
 
 
 @dataclass
@@ -45,13 +66,23 @@ class KPathResult:
         
         Returns dict with 'option' and 'data' for step spec cards.
         
-        Format:
-            K_POINTS crystal_b
-            nks                    <- number of k-points (REQUIRED)
-            k1 k2 k3 npts          <- k-point coordinates and weight
-            ...
+        The data returned is a normalized list of [kx, ky, kz, npts] segments.
+        The count line is NOT included here - QEInputGenerator will add it when writing.
+        
+        Format for data:
+            [
+                [kx_1, ky_1, kz_1, npts_1],
+                [kx_2, ky_2, kz_2, npts_2],
+                ...
+            ]
         """
-        # Build k-point list
+        if not self.segments:
+            raise RuntimeError(
+                "Cannot convert empty k-path to QE format. "
+                "No segments were generated for this structure."
+            )
+        
+        # Build k-point list (normalized format without count line)
         kpoints = []
         
         for i, segment in enumerate(self.segments):
@@ -72,12 +103,10 @@ class KPathResult:
                 int(segment.n_points) if i < len(self.segments) - 1 else 0,  # Last point has 0
             ])
         
-        # Prepend count as first row (required by QE crystal_b format)
-        data = [[len(kpoints)]] + kpoints
-        
+        # Return normalized data without count line (QEInputGenerator will add it)
         return {
             "option": "crystal_b",
-            "data": data,
+            "data": kpoints,
         }
     
     def to_dict(self) -> Dict[str, Any]:
@@ -129,9 +158,12 @@ def generate_kpath(
         
     Returns:
         KPathResult with k-path information
+        
+    Raises:
+        RuntimeError: If pymatgen is not available or k-path generation fails
+        ValueError: If no valid k-path segments could be generated
     """
-    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-    from pymatgen.symmetry.bandstructure import HighSymmKpath
+    _require_pymatgen()
     
     # Get spacegroup info
     sga = SpacegroupAnalyzer(structure)
@@ -198,6 +230,14 @@ def generate_kpath(
                 all_labels.append(final_label)
                 all_coords.append(tuple(kpoints.get(path_segment[-1], [0, 0, 0])))
     
+    # Validate that we generated at least one segment
+    if not segments:
+        raise RuntimeError(
+            f"Failed to generate auto k-path for this structure: no k-path segments were generated. "
+            f"Structure has spacegroup {spg_symbol} (#{spg_number}), lattice type {lattice_type}. "
+            f"This may indicate an issue with the structure or pymatgen's k-path generation."
+        )
+    
     return KPathResult(
         segments=segments,
         labels=all_labels,
@@ -231,13 +271,14 @@ def kpath_to_qe_input_data(
         
     Returns:
         Tuple of (option, data) for K_POINTS card
+        data is normalized: list of [kx, ky, kz, npts] rows (no count line)
     """
     card = kpath.to_qe_kpoints_crystal_b()
     
     if n_points_per_segment is not None:
-        # Update n_points in data
+        # Update n_points in data (all rows are [kx, ky, kz, npts] format now)
         for row in card["data"]:
-            if row[3] > 0:  # Don't update the last point (which has 0)
+            if len(row) >= 4 and row[3] > 0:  # Don't update the last point (which has 0)
                 row[3] = n_points_per_segment
     
     return card["option"], card["data"]

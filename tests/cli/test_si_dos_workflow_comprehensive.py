@@ -176,28 +176,42 @@ class TestSiDosWorkflow:
         
         return workflow_dir
     
-    def test_run_workflow(self, project_with_structure: Path, workflow_with_steps: Path):
-        """Run the complete DOS workflow."""
-        project_dir = project_with_structure
-        
-        result = run_qv([
-            "run", "workflow", "si_dos", "--verbose"
-        ], cwd=project_dir, check=False)
-        
-        # Check workflow completed
-        assert "status:" in result.stdout.lower() or result.returncode == 0, \
-            f"Workflow failed:\n{result.stdout}\n{result.stderr}"
-    
-    def test_analyze_dos(self, project_with_structure: Path, workflow_with_steps: Path):
-        """Analyze DOS and generate plot using qv analyze dos."""
+    def test_run_workflow_and_analyze(
+        self,
+        project_with_structure: Path,
+        workflow_with_steps: Path,
+    ) -> None:
+        """Run the complete DOS workflow and analyze DOS (end-to-end test)."""
         project_dir = project_with_structure
         workflow_dir = workflow_with_steps
         raw_dir = workflow_dir / "raw"
         
-        # Find the DOS data file
+        # Run the workflow once
+        result = run_qv(
+            ["run", "workflow", "si_dos", "--verbose"],
+            cwd=project_dir,
+            check=False,
+        )
+        
+        # Check if workflow completed successfully
+        if result.returncode != 0 or "status:" not in result.stdout.lower():
+            pytest.fail(
+                "DOS workflow failed:\n"
+                f"STDOUT:\n{result.stdout}\n\n"
+                f"STDERR:\n{result.stderr}"
+            )
+        
+        # Verify the DOS output exists; if not, fail with diagnostics
         dos_file = raw_dir / "si.dos.dat"
         if not dos_file.exists():
-            pytest.skip("DOS output not found - workflow may have failed")
+            raw_files = sorted(p.name for p in raw_dir.glob("*")) if raw_dir.exists() else []
+            crash_files = sorted(p.name for p in raw_dir.glob("CRASH*")) if raw_dir.exists() else []
+            pytest.fail(
+                "DOS output not found after running workflow:\n"
+                f"Expected: {dos_file}\n"
+                f"Files in raw/: {raw_files}\n"
+                f"CRASH files: {crash_files}"
+            )
         
         # Find NSCF output for Fermi energy (preferred over SCF for accuracy)
         fermi_file = None
@@ -215,7 +229,15 @@ class TestSiDosWorkflow:
         if fermi_file:
             args.extend(["--scf", str(fermi_file)])
         
-        result = run_qv(args, cwd=project_dir)
+        result = run_qv(args, cwd=project_dir, check=False)
+        
+        # Check if analyze command failed
+        if result.returncode != 0:
+            pytest.fail(
+                "qv analyze dos failed:\n"
+                f"STDOUT:\n{result.stdout}\n\n"
+                f"STDERR:\n{result.stderr}"
+            )
         
         # Check plot was created in results folder
         results_dir = workflow_dir / "results"
@@ -228,6 +250,8 @@ class TestSiDosWorkflow:
         assert plot_file.stat().st_size > 0, f"Plot file {plot_file} is empty"
         
         # Check that the analysis output contains expected information
-        assert "n_points" in result.stdout or "fermi_energy" in result.stdout.lower(), \
-            f"Analysis output should contain summary info:\n{result.stdout}"
+        assert (
+            "n_points" in result.stdout
+            or "fermi_energy" in result.stdout.lower()
+        ), f"Analysis output should contain summary info:\n{result.stdout}"
 

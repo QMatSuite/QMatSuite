@@ -157,7 +157,9 @@ def test_add_step_to_workflow_with_defaults(temp_project):
     
     # Verify nscf defaults are present
     assert spec.parameters["CONTROL"]["calculation"] == "nscf"
-    assert spec.parameters["SYSTEM"]["occupations"] == "tetrahedra"
+    # SYSTEM.occupations should NOT be present by default (only if explicitly set)
+    assert "occupations" not in spec.parameters.get("SYSTEM", {}), \
+        "occupations should not be in SYSTEM by default - only if explicitly set"
     assert "K_POINTS" in spec.cards
 
 

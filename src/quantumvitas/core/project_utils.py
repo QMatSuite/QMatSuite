@@ -880,10 +880,24 @@ def apply_structure_rename(
     slug_changed = False
     previous_path = entry.get("file") or meta.get("path")
     
-    # In ID-only model, entry might only have structure_id - resolve path from registry
-    # NOTE: We don't auto-rebuild the registry here. If the registry is needed, it should
-    # be passed in or the user should refresh. For now, we skip this lookup.
-    # If previous_path is missing, the rename operation will handle it appropriately.
+    # In ID-only model, entry might only have structure_id - resolve path from registry if needed
+    if not previous_path:
+        structure_id = entry.get("structure_id") or entry.get("id") or meta.get("id")
+        if structure_id:
+            try:
+                from quantumvitas.core.resolution import build_resource_index, resolve_structure
+                index = build_resource_index(project_root)
+                resolved = resolve_structure(project_root, structure_id, config=config, index=index)
+                # Get relative path from absolute path
+                previous_path = resolved.meta.path
+                # Also update entry and meta with path if missing
+                if not entry.get("file"):
+                    entry["file"] = previous_path
+                if not meta.get("path"):
+                    meta["path"] = previous_path
+            except Exception:
+                # If resolution fails, continue without path (file update will be skipped)
+                pass
 
     if new_name or new_slug:
         if new_slug:
@@ -969,8 +983,10 @@ def apply_structure_rename(
     
     # Always update structure file's meta block when name/slug changes (even if path doesn't change)
     # This ensures that get_structure() reads the updated name from the file
-    if (new_name or new_slug) and previous_path:
-        struct_abs = (project_root / previous_path).resolve()
+    # Use the current path (which may have changed due to file rename above)
+    current_path = entry.get("file") or meta.get("path") or previous_path
+    if (new_name or new_slug) and current_path:
+        struct_abs = (project_root / current_path).resolve()
         if struct_abs.exists():
             try:
                 import json
@@ -983,6 +999,7 @@ def apply_structure_rename(
                 struct_data[STRUCTURE_META_KEY].update({
                     "name": meta.get("name"),
                     "slug": meta.get("slug"),
+                    "path": current_path,  # Ensure path is also updated
                 })
                 struct_abs.write_text(json.dumps(struct_data, indent=2))
             except Exception as e:

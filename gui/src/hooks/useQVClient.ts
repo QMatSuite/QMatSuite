@@ -49,6 +49,7 @@ export interface QVClient {
   getProjectSummary: (projectRoot: string) => Promise<QVResponse<ProjectSummary>>;
   listStructures: (projectRoot: string) => Promise<QVResponse<{ structures: StructureInfo[]; count: number }>>;
   listWorkflows: (projectRoot: string) => Promise<QVResponse<{ workflows: WorkflowInfo[]; count: number }>>;
+  rebuildProjectRegistry: (projectRoot: string) => Promise<QVResponse<QVResult<'rebuild_project_registry'>>>;
   listJobs: (filter?: { status?: JobStatus; job_type?: string }) => Promise<QVResponse<{ jobs: JobSummary[]; count: number }>>;
   
   // Connection management

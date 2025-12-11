@@ -494,6 +494,10 @@ function App() {
     }
     
     const normalized = normalizeProjectRoot(projectRoot);
+    if (!normalized) {
+      console.warn('[App] Cannot refresh: project root normalization failed');
+      return;
+    }
     console.log('[App] Refreshing project registry', { projectRoot: normalized });
     
     try {
@@ -530,10 +534,10 @@ function App() {
             for (const wf of diff.workflows_changed) {
               const stepChanges: string[] = [];
               if (wf.steps_added.length > 0) {
-                stepChanges.push(`+${wf.steps_added.length} step${wf.steps_added.length > 1 ? 's' : ''} (${wf.steps_added.map(s => `…${s.suffix}`).join(', ')})`);
+                stepChanges.push(`+${wf.steps_added.length} step${wf.steps_added.length > 1 ? 's' : ''} (${wf.steps_added.map((s: { id: string; suffix: string }) => `…${s.suffix}`).join(', ')})`);
               }
               if (wf.steps_removed.length > 0) {
-                stepChanges.push(`-${wf.steps_removed.length} step${wf.steps_removed.length > 1 ? 's' : ''} (${wf.steps_removed.map(s => `…${s.suffix}`).join(', ')})`);
+                stepChanges.push(`-${wf.steps_removed.length} step${wf.steps_removed.length > 1 ? 's' : ''} (${wf.steps_removed.map((s: { id: string; suffix: string }) => `…${s.suffix}`).join(', ')})`);
               }
               if (stepChanges.length > 0) {
                 parts.push(`Workflow '${wf.workflow_name}': ${stepChanges.join(', ')}`);

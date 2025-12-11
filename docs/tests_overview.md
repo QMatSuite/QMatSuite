@@ -1,6 +1,34 @@
 # Test Suite Overview
 
-## 1. Overall Structure
+## 1. Quick Tests vs Extended Tests
+
+### Quick Tests (`tests/`)
+
+**Purpose**: Fast, focused tests that validate core functionality  
+**CI**: Run automatically on every push/PR  
+**Duration**: Should complete in < 5 minutes  
+**Location**: `tests/`
+
+**Examples**:
+- Unit tests for input parsing
+- Module detection tests
+- Basic integration tests with QE binaries
+
+### Extended Tests (`extended-tests/`)
+
+**Purpose**: Comprehensive tests based on full QE official test-suite  
+**CI**: NOT run automatically (manual trigger or schedule only)  
+**Duration**: Can take hours for full suite  
+**Location**: `extended-tests/`
+
+**Examples**:
+- All QE test-suite categories
+- Success rate analysis
+- Regression testing
+
+For detailed documentation of extended tests, see `extended-tests/README.md`.
+
+## 2. Overall Structure
 
 ### Test Organization
 
@@ -24,6 +52,40 @@ Tests are automatically marked based on location:
 - `@pytest.mark.qe_cli` - Tests in `tests/cli/` (run QE via CLI)
 - `@pytest.mark.extended` - Tests in `extended-tests/`
 
+### QE-backed Integration Tests
+
+**QE-backed integration tests** are test modules that actually run Quantum ESPRESSO executables (pw.x, bands.x, dos.x, ph.x, etc.) either via the `qv` CLI or directly through the `WorkflowRunner` or engine API. These tests exercise complete workflows end-to-end and require a QE installation.
+
+**Convention: "One QE-running test per file"**
+
+Each QE-backed test module must have exactly **one** QE-running test function (the canonical integration test for that workflow). This test is responsible for:
+- Creating the project and workflow (via CLI or fixtures)
+- Running the workflow (`qv run workflow ...`)
+- Verifying raw outputs (e.g., DOS/bands/SCF/NSCF outputs)
+- Running `qv analyze ...`
+- Checking plots and summary output
+
+Any additional tests in the same module must NOT spawn QE processes or call `qv run workflow`. They are pure unit tests that may:
+- Inspect YAML configurations
+- Parse existing output files
+- Check metadata
+- Use pure Python utilities (parsers, plotters, k-path generators)
+
+| File path                                       | QE-running test function                    | Workflow description                |
+|------------------------------------------------|---------------------------------------------|-------------------------------------|
+| `tests/cli/test_si_bands_manual_workflow_cli.py` | `test_run_workflow_and_analyze`             | Si band structure (manual k-path) via CLI   |
+| `tests/cli/test_si_bands_auto_workflow_cli.py`   | `test_run_workflow_and_analyze_auto`        | Si band structure (auto k-path) via CLI     |
+| `tests/cli/test_si_dos_workflow_comprehensive.py`| `test_run_workflow_and_analyze`             | Si DOS workflow (SCF → NSCF → DOS) via CLI  |
+| `tests/integration/test_si_bands_workflow.py`    | `test_run_full_workflow`                    | Si band structure workflow via WorkflowRunner |
+| `tests/integration/test_si_dos_workflow.py`      | `test_run_full_workflow`                    | Si DOS workflow (SCF → NSCF → DOS) via WorkflowRunner |
+| `tests/integration/test_pw_quick_tests_ci.py`    | `test_pw_quick_execution`                   | PW module quick CI tests (various step types) |
+| `tests/integration/test_pw_step_specs.py`        | `test_pw_specs_generate_and_run`            | PW step specs generation and execution |
+| `tests/integration/test_pw_scf_ibrav_step_specs.py` | `test_pw_scf_ibrav_specs_generate_and_run` | PW SCF with various ibrav values |
+| `tests/integration/test_ph_quick_tests.py`       | `test_ph_quick`                             | PH (phonon) module quick tests |
+| `tests/integration/test_ph_quick_tests.py`       | `test_ph_quick`                             | PH (phonon) module quick tests |
+
+For more details on QE-backed tests and how to run them, see the [Testing Guide](testing_guide.md#qe-backed-integration-tests).
+
 ### Subsystems Covered
 
 1. **Project & Workflow Models** - DAG + ULID architecture, schema validation
@@ -37,7 +99,33 @@ Tests are automatically marked based on location:
 9. **Step Defaults** - QE parameter defaults application
 10. **Workflow Execution** - Multi-step workflow runs, job management
 
-## 2. Summary Table
+### Directory Structure
+
+```
+.
+├── tests/                    # Quick tests (run in CI)
+│   ├── unit/                # Pure Python/unit tests
+│   ├── integration/         # QE integration via engine helpers
+│   ├── cli/                 # QE integration triggered through the CLI
+│   ├── daemon/              # Daemon RPC endpoint tests
+│   ├── examples/            # Example usage tests
+│   ├── core/                # Shared test helpers and utilities
+│   ├── utils/               # Additional test utilities
+│   ├── data/                # Test data files (QE inputs, outputs, project examples)
+│   └── conftest.py          # Pytest config & auto-markers
+│
+├── extended-tests/          # Extended QE test-suite mirroring upstream
+│   ├── suites/
+│   │   └── qe_testsuite/
+│   ├── utils/
+│   ├── conftest.py
+│   ├── run_all.py
+│   └── analyze_results.py
+│
+└── pytest.ini              # Pytest configuration
+```
+
+## 3. Summary Table
 
 | Test File | Main Area / Module | Key Responsibilities | Key Dependencies |
 |-----------|-------------------|---------------------|------------------|
@@ -94,7 +182,58 @@ Tests are automatically marked based on location:
 | `tests/examples/test_cli_usage_examples.py` | CLI usage examples | Example CLI command sequences | `tmp_path`, `CliRunner` |
 | `tests/examples/test_structure_io_examples.py` | Structure I/O examples | Example structure import/export | `tmp_path`, structure files |
 
-## 3. Per-file Details
+## 4. Running Tests
+
+### Quick Tests
+
+**Run all quick tests:**
+```bash
+pytest tests/ -m quick
+```
+
+**Run by category:**
+```bash
+pytest -m unit              # Pure Python/unit tests (no QE)
+pytest -m qe_core           # QE integration via engine helpers
+pytest -m qe_cli            # QE integration via the Typer CLI
+```
+
+**Run with coverage:**
+```bash
+pytest tests/ --cov=src/quantumvitas --cov-report=html
+```
+
+### Extended Tests
+
+**Run all extended tests:**
+```bash
+pytest extended-tests/ -m extended
+```
+
+**Or use the runner script:**
+```bash
+python3 extended-tests/run_all.py --all
+python3 extended-tests/run_all.py --suite qe-pw  # Run specific module
+python3 extended-tests/analyze_results.py results.json  # Analyze results
+```
+
+See `extended-tests/README.md` for detailed extended test documentation.
+
+### CI Configuration
+
+**GitHub Actions** (`.github/workflows/tests.yml`):
+
+- **Quick tests** run automatically:
+  - On push to main/develop
+  - On pull requests
+  - Daily schedule
+
+- **Extended tests** run:
+  - On manual workflow dispatch
+  - On schedule (optional)
+  - NOT on every push/PR
+
+## 5. Per-file Details
 
 ### `tests/unit/test_models.py`
 
@@ -1281,7 +1420,7 @@ Tests are automatically marked based on location:
 
 - Structure import/export examples
 
-## 4. Fixtures & Shared Test Infrastructure
+## 6. Fixtures & Shared Test Infrastructure
 
 ### Global Fixtures (`tests/conftest.py`)
 
@@ -1336,7 +1475,7 @@ Tests are automatically marked based on location:
   - QE step verification utilities
   - Used by QE verification tests
 
-## 5. Coverage Notes & Gaps
+## 7. Coverage Notes & Gaps
 
 ### Well-Covered Areas
 
@@ -1406,6 +1545,10 @@ Tests are automatically marked based on location:
 - **Example tests** (`tests/examples/`) - Example usage patterns, typically fast
 
 Tests are automatically marked based on location and can be filtered using pytest markers:
-- `pytest -m unit` - Run only unit tests
-- `pytest -m qe_core` - Run only integration tests
-- `pytest -m qe_cli` - Run only CLI tests
+- `pytest -m quick` - All tests under `tests/` (run in CI)
+- `pytest -m extended` - All tests under `extended-tests/`
+- `pytest -m unit` - Pure Python/unit tests (no QE)
+- `pytest -m qe_core` - QE integration via engine helpers
+- `pytest -m qe_cli` - QE integration via the Typer CLI
+- `pytest -m requires_qe` - Legacy marker (still present in extended-tests)
+- `pytest -m requires_test_suite` - Requires the official QE test-suite
