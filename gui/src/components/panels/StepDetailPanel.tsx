@@ -8,6 +8,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { StepDetail, JobSubmitResult, WorkflowDetailResult, QVError } from '../../types/qv';
 import { normalizeProjectRoot } from '../../utils/pathUtils';
+import { useQVClient } from '../../hooks/useQVClient';
 import './StepDetailPanel.css';
 
 interface StepDetailPanelProps {
@@ -27,8 +28,35 @@ interface StepDetailPanelProps {
   onStepDeleted?: (stepId: string) => void;
 }
 
-// Common editable parameters by step type
-const EDITABLE_PARAMS: Record<string, Array<{
+/**
+ * Map step_type to QE module for UI parameter fetching.
+ * Most pw.x-based steps use module "pw", but bands.x uses module "bands".
+ */
+function stepTypeToModule(stepType: string): string | null {
+  const stepTypeLower = stepType.toLowerCase();
+  
+  // pw.x-based steps
+  if (['scf', 'nscf', 'relax', 'vc-relax', 'md', 'bands_pw', 'dos'].includes(stepTypeLower)) {
+    return 'pw';
+  }
+  
+  // bands.x post-processing
+  if (stepTypeLower === 'bands') {
+    return 'bands';
+  }
+  
+  // Other modules map 1:1
+  const moduleMap: Record<string, string> = {
+    'ph': 'ph',
+    'projwfc': 'projwfc',
+    'pp': 'pp',
+  };
+  
+  return moduleMap[stepTypeLower] || null;
+}
+
+// Legacy fallback parameters (used if UI metadata is not available)
+const LEGACY_EDITABLE_PARAMS: Record<string, Array<{
   namelist: string;
   key: string;
   label: string;
@@ -84,6 +112,8 @@ export function StepDetailPanel({
   onParametersUpdated,
   onStepDeleted,
 }: StepDetailPanelProps) {
+  const qv = useQVClient();
+  
   // Workflow selector: always use slug (backend expects workflow slug)
   const workflowSelector = selectedWorkflow?.slug ?? null;
   // Step selector: always use ULID from selectedStepId (must be ULID from workflow.yaml's steps array)
@@ -113,6 +143,18 @@ export function StepDetailPanel({
   
   // Delete step state
   const [isDeletingStep, setIsDeletingStep] = useState(false);
+  
+  // UI parameter metadata (from daemon)
+  const [uiParams, setUiParams] = useState<Array<{
+    namelist: string;
+    name: string;
+    label: string;
+    type: string;
+    unit?: string;
+    description?: string;
+    options?: string[] | null;
+    importance?: string;
+  }>>([]);
   
   // Fetch step detail on mount and when selector changes
   // STATE MACHINE: isLoading -> (success: stepDetail) | (error: error message)
@@ -291,6 +333,47 @@ export function StepDetailPanel({
     fetchStepDetail();
   }, [projectRoot, workflowSelector, stepSelector, selectedWorkflow]);
   
+  // Fetch UI parameters when stepDetail changes
+  useEffect(() => {
+    if (!stepDetail || !window.qv) {
+      setUiParams([]);
+      return;
+    }
+    
+    const module = stepTypeToModule(stepDetail.step_type);
+    if (!module) {
+      // No module mapping - use legacy params or empty
+      setUiParams([]);
+      return;
+    }
+    
+    qv.listQeUiParameters(module, stepDetail.step_type)
+      .then(response => {
+        if (response.ok && response.data?.parameters) {
+          // Sort by importance: core first, then advanced
+          const sorted = [...response.data.parameters].sort((a, b) => {
+            const importanceOrder: Record<string, number> = { 'core': 0, 'high': 0, 'medium': 1, 'advanced': 2, 'low': 2 };
+            const aOrder = importanceOrder[a.importance || 'medium'] ?? 1;
+            const bOrder = importanceOrder[b.importance || 'medium'] ?? 1;
+            return aOrder - bOrder;
+          });
+          setUiParams(sorted);
+          
+          // Development logging (can be removed later)
+          if (sorted.length > 0) {
+            console.log(`[StepDetailPanel] Loaded ${sorted.length} UI parameters for ${module}/${stepDetail.step_type}`, sorted.slice(0, 3).map(p => p.name));
+          }
+        } else {
+          // Fall back to empty (will use legacy params)
+          setUiParams([]);
+        }
+      })
+      .catch(err => {
+        console.warn('[StepDetailPanel] Failed to load UI parameters, using fallback', err);
+        setUiParams([]);
+      });
+  }, [stepDetail, qv]);
+  
   // Handle running the step
   const handleRunStep = useCallback(async () => {
     if (!window.qv || !stepDetail) return;
@@ -354,7 +437,11 @@ export function StepDetailPanel({
       
       // Build the parameter update object
       const paramUpdates: Record<string, Record<string, unknown>> = {};
-      const editableForType = EDITABLE_PARAMS[stepDetail.step_type] || [];
+      // Use legacy params for this check (or derive from stepDetail.step_type)
+      const module = stepTypeToModule(stepDetail.step_type);
+      const editableForType = module && uiParams.length > 0
+        ? uiParams.map(p => ({ namelist: p.namelist, key: p.name }))
+        : (LEGACY_EDITABLE_PARAMS[stepDetail.step_type] || []);
       
       for (const param of editableForType) {
         const currentValue = stepDetail.parameters[param.namelist]?.[param.key];
@@ -609,8 +696,18 @@ export function StepDetailPanel({
     );
   }
   
-  // Get editable parameters for this step type
-  const editableParams = EDITABLE_PARAMS[stepDetail.step_type] || [];
+  // Get editable parameters: prefer UI metadata, fall back to legacy
+  const editableParams = uiParams.length > 0
+    ? uiParams.map(p => ({
+        namelist: p.namelist,
+        key: p.name,
+        label: p.label,
+        type: (p.type === 'float' ? 'number' : p.type) as 'number' | 'text' | 'select',
+        options: p.options || undefined,
+        unit: p.unit,
+        description: p.description,
+      }))
+    : (LEGACY_EDITABLE_PARAMS[stepDetail.step_type] || []);
   const hasEditableParams = editableParams.length > 0;
   
   // Extract namelist keys for display

@@ -25,7 +25,7 @@ from quantumvitas.io import (
 # Pseudopotential resolution is handled by ensure_qe_pseudos in quantumvitas.core.pseudo
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.qe_workflow import StepResult
-from quantumvitas.data import load_qe_parameter_map
+from quantumvitas.data import get_module_param_sections, load_qe_parameter_map
 
 
 @dataclass(slots=True)
@@ -362,10 +362,13 @@ def run_input_step(
     return result, prepared
 
 
+# Legacy function kept for backward compatibility.
+# New code should use get_module_param_sections() from qe_metadata instead.
 _PARAMETER_MAP_CACHE: Optional[Dict[str, Any]] = None
 
 
 def _get_parameter_map() -> Dict[str, Any]:
+    """Legacy function - use get_module_param_sections() instead."""
     global _PARAMETER_MAP_CACHE
     if _PARAMETER_MAP_CACHE is None:
         _PARAMETER_MAP_CACHE = load_qe_parameter_map()
@@ -394,14 +397,14 @@ def _apply_parameter_overrides(
 
     module = qe_input.module or qe_input.detect_module()
     module_key = module.value
-    parameter_map = _get_parameter_map().get("modules", {})
-    module_entry = parameter_map.get(module_key)
-    if not module_entry:
+    
+    # Use the centralized helper instead of direct JSON access
+    sections = get_module_param_sections(module_key)
+    if not sections:
         raise ValueError(
             f"No parameter metadata available for module '{module_key}'. Unable to apply overrides."
         )
-
-    sections: Dict[str, list[str]] = module_entry.get("sections", {})
+    
     section_lookup = {name.upper(): params for name, params in sections.items()}
 
     param_to_sections: Dict[str, list[str]] = {}

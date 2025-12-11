@@ -227,7 +227,9 @@ The QE parameter helper (`qv params`) is backed by the generated metadata in
 QE docs via:
 
 ```bash
-python tools/extract_qe_parameters.py --pretty
+# NOTE: The v1 extractor is deprecated. Use v2 tooling when available.
+# For now, use the deprecated v1 extractor:
+python tools/extract_qe_parameters_v1.py --pretty
 ```
 
 `qv run-step` accepts arbitrary `--parameter=value` overrides. Parameters are
