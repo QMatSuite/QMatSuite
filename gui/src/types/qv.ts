@@ -36,9 +36,11 @@ export interface QVError {
     hint?: string;
     workflow_path?: string;
     expected_step_path?: string;
+    expected_path?: string;
     step_id?: string;
     structure_id?: string;
     reason?: string;  // e.g., "step_file_missing", "step_not_in_workflow_dag"
+    actual_state?: string;
   };
 }
 

@@ -55,15 +55,15 @@ src/quantumvitas/
 
 ```
 project_root/
-  project.qv.yml          # lists structures + workflows + default settings
+  project.qv.yml          # lists structures + workflows by ID only (DAG + ID-only model)
   pseudo/                 # shared pseudopotentials (checked before downloading)
   workflows/
     si_dos/
-      workflow.yml        # structure ref (optional), working_dir=raw, step order
+      workflow.yaml       # structure_id (ULID), working_dir=raw, step order by step_id
       steps/
-        scf.yml           # metadata: which input file in raw/, extra options
-        nscf.yml
-        dos.yml
+        scf.step.yaml    # step-local config only (no structure_id, no parent_workflow_id)
+        nscf.step.yaml
+        dos.step.yaml
       raw/                # single QE workspace for this workflow
         scf.in
         nscf.in
@@ -77,6 +77,8 @@ project_root/
       reference/          # optional golden outputs for strict mode
       results/            # post-processing artifacts (JSON, plots, etc.)
 ```
+
+**Schema notes**: See `docs/SCHEMA.md` for detailed schema documentation. The project follows a DAG + ID-only model where all cross-resource references use ULIDs.
 
 All QE commands run inside `workflows/<id>/raw/` and use relative paths
 (`outdir='./outdir'`). This keeps restart directories alive for subsequent steps
@@ -102,4 +104,12 @@ and makes cleanup trivial (`rm -rf raw/`).
 Keeping this document current ensures future agents and contributors can pick up
 the intended structure immediately. Feel free to extend it with diagrams or
 component details as the project matures.
+
+## Current Working Directory Usage
+
+**Intended rule**: Only the CLI layer should use `Path.cwd()` or rely on current working directory. QVService/daemon/engine helpers should receive explicit paths/project_root.
+
+**Current status**: Some core modules (`core/project_utils.py`, `core/models.py`, `workflow/input_runner.py`, `workflow/structure_steps.py`) still use `Path.cwd()` for fallback behavior. This is acceptable for backwards compatibility but should be minimized in new code.
+
+**See also**: `docs/SCHEMA.md` for detailed schema documentation, `docs/STANDALONE_QE.md` for standalone execution mode.
 

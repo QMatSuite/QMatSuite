@@ -137,8 +137,8 @@ class TestPseudopotentialResolutionEdgeCases:
         si_pseudo.write_text("fake Si pseudo content")
         
         # Mock _find_quantumvitas_root to return None to avoid finding system pseudo dirs
-        from quantumvitas.core.engines.qe_pseudopotentials import _find_quantumvitas_root
-        monkeypatch.setattr("quantumvitas.core.engines.qe_pseudopotentials._find_quantumvitas_root", lambda: None)
+        # Patch it in both modules that use it
+        monkeypatch.setattr("quantumvitas.core.pseudo._find_quantumvitas_root", lambda: None)
         
         # Create a QE input file that requires both Si and C
         qe_input_file = tmp_path / "test.in"

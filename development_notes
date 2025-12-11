@@ -67,6 +67,9 @@ pip install --upgrade pip
   # After editable install, no PYTHONPATH needed
   python -m pytest tests/ -v --tb=short
 
+  pip install pytest-xdist
+  python -m pytest tests/ -v --tb=short -n 6 --dist=loadfile
+
   # Or run with explicit QE_HOME if needed
   QE_HOME=$HOME/src/q-e-qe-7.5 python -m pytest tests/ -v
 

@@ -53,7 +53,7 @@ invoked from the repository root and benefit from the same editable install.
 
 The new runtime exposes a Typer-powered CLI named `qv`. Key commands:
 
-> **📖 For detailed documentation with examples, see [docs/STRUCTURE_AND_CLI_USAGE.md](docs/STRUCTURE_AND_CLI_USAGE.md)**
+> **📖 For detailed documentation with examples, see [docs/CLI_API_REFERENCE.md](docs/CLI_API_REFERENCE.md) and [docs/STRUCTURE_AND_CLI_USAGE.md](docs/STRUCTURE_AND_CLI_USAGE.md)**
 
 ```bash
 # Create a scaffolded project (defaults to ./project1 if no path is provided)

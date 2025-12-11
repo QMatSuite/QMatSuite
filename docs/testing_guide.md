@@ -44,6 +44,86 @@ QMatSuite uses a pytest-based test suite with 412 tests organized by subsystem. 
 - **Legacy migration** (`quantumvitas.legacy.migrate`)
   - `pytest tests/unit/test_legacy_migration.py`
 
+### QE-backed Integration Tests
+
+**QE-backed integration tests** are test modules that actually run Quantum ESPRESSO executables (pw.x, bands.x, dos.x, etc.) via the `qv` CLI. These tests are slower than unit tests because they execute full QE workflows, but they provide end-to-end validation of the entire system.
+
+#### QE-backed vs Pure Unit Tests
+
+**Pure unit tests** (fast, no QE required):
+- Test individual functions and modules in isolation
+- Use mocked data or precomputed test files
+- Parse outputs, generate plots, validate models
+- Located primarily in `tests/unit/`
+- Run in CI without QE installation
+
+**QE-backed integration tests** (slower, require QE):
+- Execute complete workflows via `qv run workflow ...` or `WorkflowRunner.run()`
+- Spawn QE executables (pw.x, bands.x, dos.x, ph.x, etc.)
+- Require QE installation and pseudopotentials
+- Located in `tests/cli/` (CLI execution) or `tests/integration/` (WorkflowRunner/engine execution)
+- Marked with `@pytest.mark.qe_core` or `@pytest.mark.qe_cli`
+
+#### The "One QE-running Test Per File" Convention
+
+Each QE-backed test module must have exactly **one** QE-running test function that:
+- Runs the full workflow (`qv run workflow ...`)
+- Performs all post-processing checks (`qv analyze ...`)
+- Verifies outputs and plots
+
+All other tests in the same module must be pure unit tests (no QE execution). This convention ensures:
+- Each workflow is tested once end-to-end
+- Tests are predictable and not dependent on execution order
+- Fast unit tests can run without QE installation
+
+For the complete list of QE-backed test modules, see [Tests Overview](tests_overview.md#qe-backed-integration-tests).
+
+#### Running QE-backed Tests
+
+**Run all QE-backed tests:**
+```bash
+# Run all CLI tests (includes QE-backed integration tests)
+pytest tests/cli/
+
+# Run all QE integration tests via markers
+pytest -m qe_core
+pytest -m qe_cli
+```
+
+**Run specific QE-backed workflow test:**
+```bash
+# CLI-based workflows
+pytest tests/cli/test_si_dos_workflow_comprehensive.py
+pytest tests/cli/test_si_bands_manual_workflow_cli.py
+pytest tests/cli/test_si_bands_auto_workflow_cli.py
+
+# WorkflowRunner-based workflows
+pytest tests/integration/test_si_dos_workflow.py
+pytest tests/integration/test_si_bands_workflow.py
+
+# Step execution tests
+pytest tests/integration/test_pw_quick_tests_ci.py
+pytest tests/integration/test_pw_step_specs.py
+pytest tests/integration/test_pw_scf_ibrav_step_specs.py
+pytest tests/integration/test_ph_quick_tests.py
+```
+
+**Note:** QE-backed tests require:
+- Quantum ESPRESSO installation (pw.x, bands.x, dos.x, etc.)
+- QE_HOME environment variable or QE in PATH
+- Pseudopotential files (typically in `pseudo/` directory)
+
+#### Adding New QE-backed Tests
+
+When adding a new QE-backed workflow test:
+1. Create a new test module (or reuse an existing one if it's the same workflow)
+2. Put all QE-running logic into a **single** integration test function (e.g., `test_run_workflow_and_analyze`)
+3. Any other checks should either be:
+   - Folded into that single function, OR
+   - Split into pure unit tests (no `qv run workflow` calls)
+
+This ensures compliance with the "one QE-running test per file" convention.
+
 ### Running Tests Without QE Installation
 
 For environments without Quantum ESPRESSO installed, you can run only unit tests that don't require QE:

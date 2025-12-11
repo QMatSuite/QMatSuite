@@ -175,7 +175,6 @@ export function WorkflowListPanel({
 // Workflow Detail View
 // =============================================================================
 
-import { useState, useCallback } from 'react';
 import type { StructureInfo, WorkflowDetailResult } from '../../types/qv';
 import { normalizeProjectRoot } from '../../utils/pathUtils';
 
