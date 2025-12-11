@@ -518,11 +518,37 @@ def apply_card_overrides_to_qe_input(
             card = QECard(card_type=card_type)
             qe_input.cards.append(card)
             card_lookup[card_type.name] = card
-        if "option" in payload:
+        
+        # For K_POINTS cards with k-path formats (crystal_b, crystal_c, tpiba_b, tpiba_c),
+        # we must have valid data. If option is set but data is missing/invalid, clear the option.
+        if card.card_type == QECardType.K_POINTS:
+            if "option" in payload:
+                new_option = payload.get("option")
+                # K-path formats require valid segment data
+                kpath_formats = ["crystal_b", "crystal_c", "tpiba_b", "tpiba_c"]
+                if new_option and new_option.lower() in kpath_formats:
+                    # If setting to k-path format, data must be provided and valid
+                    if "data" not in payload:
+                        raise ValueError(
+                            f"K_POINTS option '{new_option}' requires 'data' to be provided. "
+                            "K-path formats (crystal_b, crystal_c, tpiba_b, tpiba_c) cannot use automatic grid data."
+                        )
+                    # Validate data format (should be list of [kx, ky, kz, npts] rows)
+                    data = payload.get("data")
+                    if not data or not isinstance(data, list):
+                        raise ValueError(
+                            f"K_POINTS option '{new_option}' requires 'data' to be a non-empty list of "
+                            "[kx, ky, kz, npts] segments."
+                        )
+                card.option = new_option
+            elif "data" in payload:
+                # Clear default 'automatic' option when explicit k-point list is provided
+                card.option = None
+        
+        # For non-K_POINTS cards or if option wasn't handled above
+        if card.card_type != QECardType.K_POINTS and "option" in payload:
             card.option = payload.get("option")
-        elif "data" in payload and card.card_type == QECardType.K_POINTS:
-            # Clear default 'automatic' option when explicit k-point list is provided
-            card.option = None
+        
         if "data" in payload:
             card.data = _normalize_card_data(payload["data"])
         rows = payload.get("rows")

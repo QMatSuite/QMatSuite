@@ -113,8 +113,9 @@ meta:
   slug: scf
   path: scf.step.yaml
   kind: step
-parent_workflow_id: 01KB8ABCD...   # Workflow reference (ULID only)
-structure_id: 01SABC123...         # Structure reference (ULID only)
+# DAG + ID-only model: NO structure_id or parent_workflow_id in step YAML
+# Structure is inherited from workflow.structure_id
+# Parent workflow is implicit from file location (workflows/<slug>/steps/<step>.step.yaml)
 step_type: scf
 parameters:
   CONTROL:
@@ -646,8 +647,8 @@ python -m pytest tests/cli/       # CLI tests (needs QE)
 ### 8.3 YAML Files
 
 - `project.qv.yml` - Project metadata
-- `workflow.yaml` - Workflow definition (includes `structure` reference)
-- `*.step.yaml` - Step specifications (includes `parent_workflow_id`)
+- `workflow.yaml` - Workflow definition (includes `structure_id` ULID reference)
+- `*.step.yaml` - Step specifications (DAG model: NO `parent_workflow_id` or `structure_id` - these are inherited from workflow)
 
 ### 8.4 Structure Storage
 
@@ -980,7 +981,7 @@ Implemented from `temporary_ai_prompts` (lines 344-365):
 |------|---------------|
 | `qv configure workflow --reorder` | Reorders steps in workflow.yaml |
 | `qv configure workflow --structure` | Changes structure, updates all step YAMLs |
-| `parent_workflow_id` in step.yaml | Links step to parent workflow |
+| DAG model: step.yaml | Step YAML contains only step-local config (no `parent_workflow_id` or `structure_id`) |
 | Structure optional in `qv init step` | Inherits from parent workflow if inside one |
 | Structure validation on run step | Warning if step structure differs from workflow |
 | Reduced input file output | Only one file when running from step spec |
@@ -3455,11 +3456,12 @@ workflows:
           slug: "scf"
           kind: "step"
           path: "workflows/si-bands-dos/steps/scf.step.yaml"
-        parent_workflow_id: "<workflow_ulid>"  # Workflow reference (ULID only)
-        structure_id: "<structure_ulid>"  # Structure reference (ULID only)
         step_type: "scf"
         parameters: { ... }
         cards: { ... }
+        # Note: structure_id and parent_workflow_id are NOT in step YAML
+        # Structure is inherited from workflow.structure_id
+        # Parent workflow is implicit from file location
         species_overrides:
           Si:
             mass: 28.08
@@ -3482,7 +3484,8 @@ pseudo:
 
 **Export behavior** (`export_project_to_snapshot`):
 - Preserves all `id` and `*_id` fields as recorded in the original project
-- Exports complete resource graph with all cross-references (`structure_id`, `parent_workflow_id`, `step_id`)
+- Exports complete resource graph with all cross-references (`structure_id` in workflows, `step_id` in workflow steps)
+- Note: Step YAML files do NOT contain `parent_workflow_id` or `structure_id` in the DAG model - these are only in snapshot's internal data structures for graph reconstruction
 - Snapshot contains the full graph structure with original ULIDs
 
 **Materialize behavior** (`materialize_project_from_snapshot`):

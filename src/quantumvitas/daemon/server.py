@@ -1497,6 +1497,9 @@ class QVDaemon:
         # Resolve with fallback to ensure cache is up-to-date before submitting job
         self._resolve_workflow_with_fallback(project_root, workflow)
         
+        # Pass cached index and config to avoid rebuilding ResourceIndex
+        cache = self.state.get_cache(project_root)
+        
         # Submit job with target info for display
         job_id = self.job_manager.submit(
             job_type="run_workflow",
@@ -1513,6 +1516,8 @@ class QVDaemon:
             workflow_selector=workflow,
             strict=strict,
             verbose=verbose,
+            index=cache.index,
+            config=cache.config,
         )
         
         return {"job_id": job_id, "status": "pending", "target_name": workflow}
@@ -1833,6 +1838,52 @@ class QVDaemon:
             },
             "dag_diff": dag_diff,
         }
+    
+    def _rebuild_registry_after_write(self, project_root: Path, reason: str) -> None:
+        """
+        Rebuild the project registry for a given project after a write operation.
+        
+        This is a thin wrapper around the canonical registry rebuild logic,
+        kept for backwards compatibility with handlers that used to call it.
+        
+        Args:
+            project_root: Path to project root (must be resolved)
+            reason: Reason string for logging (e.g., "write_operation:create_demo_project")
+        """
+        import time
+        
+        project_root = project_root.resolve()
+        
+        # Get project name for logging
+        try:
+            config = load_project_config(project_root)
+            project_name = config.get("meta", {}).get("name") or project_root.name
+        except Exception:
+            project_name = project_root.name
+        
+        # Rebuild the registry
+        t0 = time.perf_counter()
+        try:
+            index = build_resource_index(project_root)
+            config = load_project_config(project_root)
+            self.state._caches[project_root] = ProjectCache(
+                project_root=project_root,
+                index=index,
+                config=config,
+            )
+        except Exception as e:
+            self.logger.error(f"Failed to rebuild registry after {reason}: {e}", exc_info=True)
+            raise
+        
+        dt_ms = (time.perf_counter() - t0) * 1000
+        
+        # Log with reason
+        self.logger.info(
+            "[RPC] _rebuild_registry_after_write (project: %s) took %.1fms [reason=%s]",
+            project_name,
+            dt_ms,
+            reason,
+        )
     
     def _snapshot_dag(self, index: Optional[ResourceIndex]) -> Dict[str, Any]:
         """

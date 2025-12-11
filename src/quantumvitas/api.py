@@ -282,6 +282,8 @@ class QVService:
         source: Path,
         name: Optional[str] = None,
         format: str = "auto",
+        *,
+        index: Optional["ResourceIndex"] = None,
     ) -> ResolvedResource:
         """
         Import a structure file into the project.
@@ -301,8 +303,7 @@ class QVService:
         if not source.exists():
             raise QVServiceError(f"Source file not found: {source}")
         
-        if config is None:
-            config = load_project_config(project_root)
+        config = load_project_config(project_root)
         structures = config.setdefault("structures", [])
         existing_slugs = collect_slugs(structures, project_root=project_root)
         
@@ -349,7 +350,8 @@ class QVService:
         
         # Update registry in-place if index is provided (do NOT rebuild)
         # Note: This requires the structure to be resolved to get its meta
-        resolved = require_structure(project_root, final_slug, config)
+        from quantumvitas.core.resolution import require_structure
+        resolved = require_structure(project_root, final_slug, config=config, index=index)
         if index is not None:
             from quantumvitas.core.resolution import update_registry_add_structure
             update_registry_add_structure(index, resolved.meta, dest_path)
@@ -384,12 +386,14 @@ class QVService:
         project_root: Path,
         selector: str,
         force: bool = False,
+        *,
+        index: Optional["ResourceIndex"] = None,
     ) -> None:
         """Delete a structure (move to trash)."""
         from quantumvitas.core.resolution import require_structure, build_resource_index
         
         config = load_project_config(project_root)
-        registry = build_resource_index(project_root)
+        registry = build_resource_index(project_root) if index is None else index
         
         # Resolve structure to get its ID (canonical)
         resolved = require_structure(project_root, selector, config=config, index=registry)
@@ -424,6 +428,7 @@ class QVService:
         save_project_config(project_root, config)
         
         # Update registry in-place (remove structure, do NOT rebuild)
+        # Only update if index was provided (not if we built a local registry)
         if index is not None:
             from quantumvitas.core.resolution import update_registry_remove_structure
             update_registry_remove_structure(index, structure_id)
@@ -964,6 +969,9 @@ class QVService:
         workflow_selector: str,
         strict: bool = False,
         verbose: bool = False,
+        *,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
     ) -> Dict[str, Any]:
         """
         Run all steps in a workflow.
@@ -1097,7 +1105,7 @@ class QVService:
                 f"Workflow '{workflow_selector}' has no structure. Please set a structure for the workflow first."
             )
         
-        structure_resolved = require_structure(project_root, workflow.structure_id, config=config, index=registry)
+        structure_resolved = require_structure(project_root, workflow.structure_id, config=config, index=index)
         structure = read_structure(structure_resolved.absolute_path)
         
         # Load step spec (for step_type and other step-local config)

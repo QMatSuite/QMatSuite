@@ -43,7 +43,7 @@ DEFAULT_STEP_PARAMS: Dict[str, Dict[str, Any]] = {
             },
             "SYSTEM": {
                 "ecutwfc": 50,
-                "occupations": "tetrahedra",
+                # occupations: removed from defaults - only include if explicitly set
             },
         },
         "cards": {
@@ -90,7 +90,7 @@ DEFAULT_STEP_PARAMS: Dict[str, Dict[str, Any]] = {
     "bands_pw": {
         "parameters": {
             "CONTROL": {
-                "calculation": "nscf",
+                "calculation": "bands",  # bands_pw step uses calculation='bands' (not 'nscf')
                 "outdir": "./outdir",
                 "restart_mode": "from_scratch",
             },
@@ -99,13 +99,12 @@ DEFAULT_STEP_PARAMS: Dict[str, Dict[str, Any]] = {
             },
             "SYSTEM": {
                 "ecutwfc": 50,
-                "occupations": "tetrahedra",
+                # occupations: removed from defaults - only include if explicitly set
             },
         },
         "cards": {
-            "K_POINTS": {
-                "option": "crystal_b",
-            },
+            # K_POINTS is not set by default - must be provided via --auto-kpath or manual --CARD.K_POINTS
+            # (Setting option='crystal_b' without data would create invalid K_POINTS)
         },
         "species_overrides": {},
     },

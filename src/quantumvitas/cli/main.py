@@ -1284,7 +1284,19 @@ def import_structure_command(
     """
     Import a structure file via pymatgen and register it in project.qv.yml.
     """
-    project_root = project or _resolve_project_root()
+    # Resolve project root: if not explicitly provided, try cwd first, then fall back to structure file's directory
+    # This is more robust: cwd is usually the project root when called from tests, but structure file's parent
+    # works better when the file is outside the project or cwd is unstable in parallel execution
+    if project:
+        project_root = Path(project).resolve()
+    else:
+        try:
+            # First try cwd (most common case, especially in tests with explicit cwd)
+            project_root = _resolve_project_root()
+        except typer.BadParameter:
+            # Fall back to searching from structure file's directory
+            structure_file_resolved = Path(structure_file).resolve()
+            project_root = _resolve_project_root(start=structure_file_resolved.parent)
     project_root = project_root.resolve()
 
     struct = read_structure(structure_file)
@@ -1495,7 +1507,7 @@ def run_step_command(
                 else:
                     # Try to find step in registry by absolute path
                     from quantumvitas.core.resolution import build_resource_index
-                    registry = ctx_obj.registry
+                    registry = build_resource_index(ctx_obj.project_root)
                     # Look for step by path in registry
                     step_found = None
                     for path, resource_id in registry.by_path.items():
@@ -2454,22 +2466,22 @@ def delete_project_command(
         try:
             project_root = find_project_root()
         except RegistryOutOfSyncError as exc:
-        # Registry out of sync - provide clear user-facing message
-        typer.secho(
-            f"\n❌ Registry Out of Sync",
-            fg=typer.colors.RED,
-            bold=True,
-        )
-        typer.echo(f"\n{exc}")
-        if exc.expected_path:
-            typer.echo(f"\nExpected path: {exc.expected_path}")
-        typer.echo(
-            "\n💡 To fix this, refresh the project registry:\n"
-            "   - In the GUI: Click the 'Refresh' button in the Workflows or Structures panel\n"
-            "   - Or reopen the project in the GUI (registry rebuilds on project load)"
-        )
-        raise typer.Exit(1)
-    except ResourceNotFoundError as exc:
+            # Registry out of sync - provide clear user-facing message
+            typer.secho(
+                f"\n❌ Registry Out of Sync",
+                fg=typer.colors.RED,
+                bold=True,
+            )
+            typer.echo(f"\n{exc}")
+            if exc.expected_path:
+                typer.echo(f"\nExpected path: {exc.expected_path}")
+            typer.echo(
+                "\n💡 To fix this, refresh the project registry:\n"
+                "   - In the GUI: Click the 'Refresh' button in the Workflows or Structures panel\n"
+                "   - Or reopen the project in the GUI (registry rebuilds on project load)"
+            )
+            raise typer.Exit(1)
+        except ResourceNotFoundError as exc:
             raise typer.BadParameter(str(exc)) from exc
     
     if not (project_root / "project.qv.yml").exists():
@@ -2591,22 +2603,22 @@ def configure_step_command(
                 workflow_dir = workflow_directory(project_root_resolved, ctx_res.parent_entry)
                 workflow_yaml = workflow_dir / "workflow.yaml"
         except RegistryOutOfSyncError as exc:
-        # Registry out of sync - provide clear user-facing message
-        typer.secho(
-            f"\n❌ Registry Out of Sync",
-            fg=typer.colors.RED,
-            bold=True,
-        )
-        typer.echo(f"\n{exc}")
-        if exc.expected_path:
-            typer.echo(f"\nExpected path: {exc.expected_path}")
-        typer.echo(
-            "\n💡 To fix this, refresh the project registry:\n"
-            "   - In the GUI: Click the 'Refresh' button in the Workflows or Structures panel\n"
-            "   - Or reopen the project in the GUI (registry rebuilds on project load)"
-        )
-        raise typer.Exit(1)
-    except ResourceNotFoundError as exc:
+            # Registry out of sync - provide clear user-facing message
+            typer.secho(
+                f"\n❌ Registry Out of Sync",
+                fg=typer.colors.RED,
+                bold=True,
+            )
+            typer.echo(f"\n{exc}")
+            if exc.expected_path:
+                typer.echo(f"\nExpected path: {exc.expected_path}")
+            typer.echo(
+                "\n💡 To fix this, refresh the project registry:\n"
+                "   - In the GUI: Click the 'Refresh' button in the Workflows or Structures panel\n"
+                "   - Or reopen the project in the GUI (registry rebuilds on project load)"
+            )
+            raise typer.Exit(1)
+        except ResourceNotFoundError as exc:
             raise typer.BadParameter(str(exc)) from exc
 
     # Load step spec with resolver to normalize legacy structure selectors

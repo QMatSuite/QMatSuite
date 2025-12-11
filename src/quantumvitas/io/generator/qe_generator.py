@@ -68,9 +68,10 @@ class QEInputGenerator:
                 ) or isinstance(first_row, (int, float))
                 
                 if not is_count_line:
-                    # Need to add count line - count the k-points (rows with 4 elements)
-                    n_kpoints = sum(1 for row in data if isinstance(row, list) and len(row) >= 3)
-                    data = [[n_kpoints]] + list(data)
+                    # Need to add count line - count the k-path segments (rows with 4 elements: kx, ky, kz, npts)
+                    n_segments = sum(1 for row in data if isinstance(row, list) and len(row) >= 4)
+                    data = [[n_segments]] + list(data)
+                # else: count line is already present, use it as-is
 
         for line_data in data:
             if isinstance(line_data, list):

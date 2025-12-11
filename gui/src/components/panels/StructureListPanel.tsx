@@ -23,7 +23,19 @@ export function StructureListPanel({
   onSelect,
   onRename,
   onDelete,
+  onRefreshProjectRegistry,
 }: StructureListPanelProps) {
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  const handleRefresh = useCallback(async () => {
+    if (!onRefreshProjectRegistry) return;
+    setIsRefreshing(true);
+    try {
+      await onRefreshProjectRegistry();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [onRefreshProjectRegistry]);
   if (isLoading) {
     return (
       <div className="structure-list-panel structure-list-panel--loading">
