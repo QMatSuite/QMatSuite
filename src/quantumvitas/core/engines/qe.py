@@ -60,30 +60,11 @@ class QuantumEspressoEngine(Engine):
         "pprism": "pprism.x",
     }
     
-    # Mapping of QE modules to their primary namelists
-    # Documentation links:
-    # - pw: https://www.quantum-espresso.org/Doc/INPUT_PW.html
-    # - ph: https://www.quantum-espresso.org/Doc/INPUT_PH.html
-    # - q2r: https://www.quantum-espresso.org/Doc/INPUT_Q2R.html
-    # - matdyn: https://www.quantum-espresso.org/Doc/INPUT_MATDYN.html
-    # - pp: https://www.quantum-espresso.org/Doc/INPUT_PP.html
-    # - neb: https://www.quantum-espresso.org/Doc/INPUT_NEB.html
-    # - cp: https://www.quantum-espresso.org/Doc/INPUT_CP.html
-    # - ld1: https://www.quantum-espresso.org/Doc/INPUT_LD1.html
-    # - hp: https://www.quantum-espresso.org/Doc/INPUT_HP.html
-    # - pwcond: https://www.quantum-espresso.org/Doc/INPUT_PWCOND.html
-    # - bands: https://www.quantum-espresso.org/Doc/INPUT_BANDS.html
-    # - dos: https://www.quantum-espresso.org/Doc/INPUT_DOS.html
-    # - projwfc: https://www.quantum-espresso.org/Doc/INPUT_PROJWFC.html
-    # - postahc: https://www.quantum-espresso.org/Doc/INPUT_POSTAHC.html
-    # - dynmat: https://www.quantum-espresso.org/Doc/INPUT_DYNMAT.html
-    # - oscdft_et: https://www.quantum-espresso.org/Doc/INPUT_OSCDFT_ET.html
-    # - oscdft_pp: https://www.quantum-espresso.org/Doc/INPUT_OSCDFT_PP.html
-    # - band_interpolation: https://www.quantum-espresso.org/Doc/INPUT_BAND_INTERPOLATION.html
-    # - cppp: https://www.quantum-espresso.org/Doc/INPUT_CPPP.html
-    # - d3hess: https://www.quantum-espresso.org/Doc/INPUT_D3HESS.html
-    # - ppacf: https://www.quantum-espresso.org/Doc/INPUT_PPACF.html
-    # - pprism: https://www.quantum-espresso.org/Doc/INPUT_PPRISM.html
+    # Mapping of QE modules to their primary namelists.
+    # Note: This is a convenience mapping for module detection.
+    # For complete parameter metadata and documentation URLs, see:
+    # - qe_module_parameters.json (via quantumvitas.data.qe_metadata)
+    # - docs/QE_MODULE_DOCUMENTATION.md
     MODULE_NAMELISTS = {
         "pw": ["control", "system", "electrons", "ions", "cell"],
         "ph": ["inputph"],

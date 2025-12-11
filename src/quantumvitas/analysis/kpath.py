@@ -21,8 +21,8 @@ except Exception as exc:
     _HAS_PYMATGEN = False
     _PYMATGEN_IMPORT_ERROR = exc
     # Define placeholder types for type checking
-    if TYPE_CHECKING:
-        from pymatgen.core import Structure as PMGStructure
+if TYPE_CHECKING:
+    from pymatgen.core import Structure as PMGStructure
 
 
 def _require_pymatgen() -> None:

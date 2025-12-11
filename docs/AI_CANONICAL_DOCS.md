@@ -60,6 +60,20 @@ This document lists the canonical documentation files that should be treated as 
 - **Covers**: Module list, namelists, documentation links, detection methods
 - **Tag**: `qe-engine`
 
+### `docs/QE_MODULE_DOCUMENTATION.md`
+- **Purpose**: QE module documentation links and metadata schema
+- **Covers**: Runtime metadata via `quantumvitas.data.qe_metadata`, legacy v1 snapshot, tooling
+- **Tag**: `qe-engine`
+- **Note**: 
+  - Runtime code should access QE metadata only through `quantumvitas.data.qe_metadata` (canonical interface)
+  - Current metadata file: `src/quantumvitas/data/qe_module_parameters.json` (schema v2 with rich parameter map)
+  - Legacy snapshot: `src/quantumvitas/data/qe_module_parameters.legacy.json` (frozen v1, used only by comparison tools)
+  - Tools:
+    - `tools/extract_qe_parameters_v1.py` (deprecated, v1 extractor)
+    - `tools/extract_qe_parameters_v2.py` (current, converts v1 → v2)
+    - `tools/compare_qe_parameter_maps.py` (schema diff, supports both v1 and v2)
+  - Do not open JSON files directly; use `qe_metadata` helpers (schema-aware)
+
 ## Testing
 
 ### `docs/tests_overview.md`

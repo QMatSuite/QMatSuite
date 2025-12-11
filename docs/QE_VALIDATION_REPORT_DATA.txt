@@ -1,0 +1,107 @@
+================================================================================
+QE PARAMETER VALIDATION REPORT DATA
+================================================================================
+
+Generated from:
+  V1 (legacy): /Users/up/quantumVITAS/src/quantumvitas/data/qe_module_parameters.legacy.json
+  V2 (new): /Users/up/quantumVITAS/src/quantumvitas/data/qe_module_parameters.json
+
+## OVERALL SUMMARY
+
+Total parameters:
+  V1 (legacy): 1024
+  V2 (new): 1069
+  Difference: +45
+  Coverage: 104%
+
+## MODULE-BY-MODULE COMPARISON
+
+| Module | V1 | V2 | Coverage | Only V1 | Only V2 |
+|--------|----|----|----------|---------|---------|
+| band_interpolation   |  16 |  16 | 100% |   0 |   0 |
+| bands                |  12 |  12 | 100% |   0 |   0 |
+| cp                   | 182 | 187 | 102% |   0 |   5 |
+| cppp                 |  15 |  15 | 100% |   0 |   0 |
+| d3hess               |   4 |   4 | 100% |   0 |   0 |
+| dos                  |  10 |  10 | 100% |   0 |   0 |
+| dynmat               |  14 |  14 | 100% |   0 |   0 |
+| hp                   |  29 |  29 | 100% |   0 |   0 |
+| ld1                  |  95 | 121 | 127% |   0 |  26 |
+| matdyn               |  40 |  43 | 107% |   0 |   3 |
+| neb                  |  91 |  91 | 100% |   0 |   0 |
+| oscdft_et            |   7 |   7 | 100% |   0 |   0 |
+| oscdft_pp            |   2 |   2 | 100% |   0 |   0 |
+| ph                   |  74 |  75 | 101% |   1 |   2 |
+| postahc              |  16 |  16 | 100% |   0 |   0 |
+| pp                   |  32 |  32 | 100% |   0 |   0 |
+| ppacf                |   9 |   9 | 100% |   0 |   0 |
+| pprism               |  17 |  17 | 100% |   0 |   0 |
+| projwfc              |  21 |  21 | 100% |   0 |   0 |
+| pw                   | 289 | 295 | 102% |   0 |   6 |
+| pwcond               |  42 |  44 | 104% |   0 |   2 |
+| q2r                  |   7 |   9 | 128% |   0 |   2 |
+
+## DETAILED DIFFERENCES (Key Modules)
+
+### PW Module
+
+- V1 parameters: 289
+- V2 parameters: 295
+- Coverage: 102%
+- Only in V1: 0 parameters
+- Only in V2: 6 parameters
+  - Examples: &SYSTEM.input_dft, ATOMIC_FORCES.X, ATOMIC_POSITIONS.X, ATOMIC_SPECIES.X, ATOMIC_VELOCITIES.V
+
+### CP Module
+
+- V1 parameters: 182
+- V2 parameters: 187
+- Coverage: 102%
+- Only in V1: 0 parameters
+- Only in V2: 5 parameters
+  - Examples: &SYSTEM.input_dft, ATOMIC_FORCES.X, ATOMIC_POSITIONS.X, ATOMIC_SPECIES.X, ATOMIC_VELOCITIES.V
+
+### PH Module
+
+- V1 parameters: 74
+- V2 parameters: 75
+- Coverage: 101%
+- Only in V1: 1 parameters
+  - Examples: &INPUTPH.lmultipole
+- Only in V2: 2 parameters
+  - Examples: QPOINTSSPECS.nq, QPOINTSSPECS.nqs
+
+### LD1 Module
+
+- V1 parameters: 95
+- V2 parameters: 121
+- Coverage: 127%
+- Only in V1: 0 parameters
+- Only in V2: 26 parameters
+  - Examples: ALLELECTRONCARDS.isw, ALLELECTRONCARDS.jj, ALLELECTRONCARDS.l, ALLELECTRONCARDS.n, ALLELECTRONCARDS.nl
+
+### NEB Module
+
+- V1 parameters: 91
+- V2 parameters: 91
+- Coverage: 100%
+- Only in V1: 0 parameters
+- Only in V2: 0 parameters
+
+## METADATA COMPLETENESS (V2)
+
+Total parameters: 1069
+  - Namelist parameters (with type): 791
+  - Card parameters (no type): 278
+
+Overall metadata coverage:
+  - Type: 791/1069 (73%)
+  - Default: 623/1069 (58%)
+  - Enum: 192/1069 (17%)
+  - Description: 774/1069 (72%)
+
+Namelist parameters metadata (parameters with types):
+  - Type: 791/791 (100%)
+  - Default: 623/791 (78%)
+  - Enum: 192/791 (24%)
+  - Description: 774/791 (97%)
