@@ -1,0 +1,13 @@
+project:
+  name: test_final
+  meta:
+    id: 01KC666JCCNFH05KCYBWX5VNQV
+    name: test_final
+    slug: test_final
+    path: .
+    kind: project
+  structures_dir: structures
+  workflows_dir: workflows
+workflows: []
+structures: []
+settings: {}

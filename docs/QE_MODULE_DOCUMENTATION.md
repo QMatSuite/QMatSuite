@@ -7,6 +7,25 @@ This document lists all QE modules and their official documentation links follow
 
 **At runtime, QE parameter/namelist membership is driven by `qe_module_parameters.json` via `quantumvitas.data.qe_metadata`.**
 
+### Runtime Access Rules
+
+**`safe_load_metadata()` is the only runtime entry point for QE parameter metadata.**
+
+- **CLI/daemon code must never read `qe_module_parameters.json` directly.**
+- All runtime access must go through `quantumvitas.data.qe_metadata` helper functions:
+  - `safe_load_metadata()` - Main entry point (raises `RuntimeError` for better error handling)
+  - `get_module_param_sections(module)` - Get parameter sections for a module
+  - `list_supported_modules()` - List all supported QE modules
+  - `get_module_doc_url(module)` - Get documentation URL for a module
+  - `get_module_namelists(module)` - Get namelist names for a module
+  - Other helper functions in `qe_metadata` module
+
+This ensures:
+- Schema version compatibility (v1 or v2)
+- Consistent error handling (`RuntimeError` instead of `FileNotFoundError`)
+- No direct file I/O in application code
+- Future-proofing against schema changes
+
 ### QE metadata schema and legacy snapshot
 
 **Runtime uses:**
@@ -55,6 +74,8 @@ This document lists all QE modules and their official documentation links follow
   - Useful for verifying schema migrations and parameter coverage.
 
 **Important:** All new code should access QE metadata only through `quantumvitas.data.qe_metadata` helper functions. Do not open `qe_module_parameters.json` directly. This ensures compatibility when the schema migrates from v1 to v2.
+
+**Runtime entry point:** Use `safe_load_metadata()` for all QE metadata access. CLI/daemon code must never read the JSON file directly.
 
 The JSON file is the source of truth for:
 - Module → namelist/section mappings
