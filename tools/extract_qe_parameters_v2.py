@@ -340,14 +340,61 @@ def extract_parameter_metadata_from_table(param_table) -> Optional[List[Dict[str
         return None
     
     param_name_raw = th.get_text(strip=True)
+    
+    # Check if type is in a nested table (some QE docs have this structure)
+    nested_table = td_type.find("table")
+    if nested_table:
+        nested_first_row = nested_table.find_all("tr")
+        if nested_first_row:
+            nested_td = nested_first_row[0].find("td")
+            if nested_td:
+                td_type = nested_td  # Use the nested td for type extraction
     # Extract type - look for standard type keywords (INTEGER, REAL, CHARACTER, LOGICAL)
-    # Sometimes the type cell contains extra text, so extract just the type keyword
-    type_text = td_type.get_text(strip=True)
-    type_match = re.search(r'\b(INTEGER|REAL|CHARACTER|LOGICAL)\b', type_text, re.IGNORECASE)
+    # The type cell may contain nested tables/descriptions, so we need to extract only
+    # the type keyword. Strategy: Get text from first part before any nested tables.
+    # First, try to get text only from the first non-empty text node or element
+    type_text = ""
+    found_block = False
+    for item in td_type.children:
+        if found_block:
+            break
+        if isinstance(item, str):
+            text = item.strip()
+            if text:
+                type_text += text + " "
+        elif hasattr(item, 'name'):
+            # Stop at first nested table, blockquote, pre, or div (these contain descriptions/other params)
+            if item.name in ('table', 'pre', 'blockquote', 'div'):
+                found_block = True
+                break
+            # Get text from inline elements
+            child_text = item.get_text(strip=True)
+            if child_text:
+                type_text += child_text + " "
+    
+    type_text = type_text.strip()
+    
+    # Look for type pattern: param_name followed by TYPE keyword (case-insensitive)
+    # The pattern might be: "calculationCHARACTER" or "calculation CHARACTER"
+    type_match = re.search(
+        rf'{re.escape(param_name_raw)}\s*(INTEGER|REAL|CHARACTER|LOGICAL)',
+        type_text,
+        re.IGNORECASE
+    )
+    if not type_match:
+        # Try without parameter name prefix (just find first TYPE keyword)
+        type_match = re.search(r'\b(INTEGER|REAL|CHARACTER|LOGICAL)\b', type_text, re.IGNORECASE)
+    
     if type_match:
         param_type = type_match.group(1).upper()
     else:
-        param_type = type_text  # Fallback to full text if no standard type found
+        # Last resort: get all text and search in first 500 chars
+        all_text = td_type.get_text(separator=" ", strip=True)
+        type_match = re.search(r'\b(INTEGER|REAL|CHARACTER|LOGICAL)\b', all_text[:500], re.IGNORECASE)
+        if type_match:
+            param_type = type_match.group(1).upper()
+        else:
+            param_type = "UNKNOWN"
     
     if not param_name_raw:
         return None
