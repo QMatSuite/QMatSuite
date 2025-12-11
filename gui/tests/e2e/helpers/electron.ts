@@ -141,7 +141,7 @@ export async function waitForDaemonConnection(
  */
 export async function navigateToView(
   page: Page,
-  view: 'home' | 'structures' | 'workflows' | 'jobs' | 'analysis' | 'settings' | 'debug'
+  view: 'home' | 'structures' | 'workflows' | 'jobs' | 'analysis' | 'resources' | 'settings'
 ): Promise<void> {
   await page.getByTestId(`qv-nav-${view}`).click();
   

@@ -37,7 +37,14 @@ from quantumvitas.core.resolution import (
 )
 from quantumvitas.core.project_utils import load_project_config
 from quantumvitas.daemon.jobs import JobManager, JobStatus
-from quantumvitas.data.qe_metadata import get_ui_parameters, list_supported_modules
+from quantumvitas.data import qe_metadata
+from quantumvitas.data.qe_metadata import (
+    get_ui_parameters,
+    list_supported_modules,
+    get_module_param_sections,
+    get_module_doc_url,
+    safe_load_metadata,
+)
 
 
 @dataclass
@@ -191,6 +198,7 @@ class QVDaemon:
             "detect_qe": self._handle_detect_qe,
             "get_env_info": self._handle_get_env_info,
             "list_qe_ui_parameters": self._handle_list_qe_ui_parameters,
+            "list_qe_parameter_metadata": self._handle_list_qe_parameter_metadata,
             
             # Project/resource listing
             "get_project_summary": self._handle_get_project_summary,
@@ -421,6 +429,13 @@ class QVDaemon:
             
             return RPCResponse(id=request.id, ok=True, data=result)
             
+        except ValueError as e:
+            # ValueError from handler should be converted to structured error
+            return RPCResponse(
+                id=request.id,
+                ok=False,
+                error={"code": "invalid_argument", "message": str(e)},
+            )
         except LegacyProjectError as e:
             # Convert LegacyProjectError to structured daemon error
             # Provide clear, actionable message with migration command
@@ -584,6 +599,226 @@ class QVDaemon:
             result.append(param_dict)
         
         return {"parameters": result}
+    
+    def _handle_list_qe_parameter_metadata(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Browse QE parameter metadata (modules, sections, parameters, search).
+        
+        Payload:
+            operation: str (required) - One of: "list_modules", "list_sections", "list_parameters", "search"
+            
+            For "list_modules": no additional fields needed.
+            
+            For "list_sections": requires "module": str
+            
+            For "list_parameters": requires "module": str, "section": str (e.g., "&SYSTEM")
+            
+            For "search": requires "query": str (searches across all modules/sections)
+        
+        Returns:
+            For "list_modules": {"modules": [{"id": "pw", "label": "pw.x"}, ...]}
+            For "list_sections": {"sections": [{"id": "&SYSTEM", "kind": "namelist", "label": "&SYSTEM"}, ...]}
+            For "list_parameters": {"parameters": [{name, type, default, enum, description, indexing, ...}, ...]}
+            For "search": {"results": [{module, section, name, type, ...}, ...]}
+        """
+        operation = payload.get("operation", "").strip().lower()
+        
+        if not operation:
+            raise ValueError("'operation' is required in payload. Must be one of: list_modules, list_sections, list_parameters, search")
+        
+        # Log at info level for visibility with actual values
+        # Extract values before logging
+        module = payload.get("module", "")
+        section = payload.get("section", "")
+        query = payload.get("query", "")
+        
+        if operation == "list_modules":
+            self.log("[RPC] list_qe_parameter_metadata (operation: list_modules)")
+        elif operation == "list_sections":
+            self.log(f"[RPC] list_qe_parameter_metadata (operation: list_sections, module: {module})")
+        elif operation == "list_parameters":
+            self.log(f"[RPC] list_qe_parameter_metadata (operation: list_parameters, module: {module}, section: {section})")
+        elif operation == "search":
+            self.log(f"[RPC] list_qe_parameter_metadata (operation: search, query: {query})")
+        else:
+            self.log(f"[RPC] list_qe_parameter_metadata (operation: {operation})")
+        
+        try:
+            if operation == "list_modules":
+                # List all supported QE modules
+                modules = list_supported_modules()
+                result = []
+                for module_id in modules:
+                    doc_url = get_module_doc_url(module_id)
+                    label = f"{module_id}.x" if module_id else module_id
+                    result.append({
+                        "id": module_id,
+                        "label": label,
+                        "doc_url": doc_url,
+                    })
+                return {"modules": result}
+            
+            elif operation == "list_sections":
+                # List sections (namelists/cards) for a given module
+                module = payload.get("module", "").strip().lower()
+                if not module:
+                    raise ValueError("'module' is required for list_sections operation")
+                
+                # Validate module exists
+                supported_modules = list_supported_modules()
+                if module not in supported_modules:
+                    raise ValueError(
+                        f"Unknown module '{module}'. Supported modules: {', '.join(sorted(supported_modules))}"
+                    )
+                
+                sections_dict = get_module_param_sections(module)
+                result = []
+                
+                # Get all sections (namelists and cards)
+                # In QE, sections starting with '&' are namelists, others are cards
+                seen_sections = set()
+                for section_name in sections_dict.keys():
+                    if section_name in seen_sections:
+                        continue
+                    seen_sections.add(section_name)
+                    
+                    # Determine kind (namelist vs card)
+                    if section_name.startswith("&"):
+                        kind = "namelist"
+                        label = section_name
+                    else:
+                        kind = "card"
+                        label = section_name
+                    
+                    result.append({
+                        "id": section_name,
+                        "kind": kind,
+                        "label": label,
+                    })
+                
+                # Sort: namelists first, then cards
+                result.sort(key=lambda x: (x["kind"] != "namelist", x["label"]))
+                return {"sections": result}
+            
+            elif operation == "list_parameters":
+                # List parameters for a given module and section
+                module = payload.get("module", "").strip().lower()
+                section = payload.get("section", "").strip()
+                
+                if not module:
+                    raise ValueError("'module' is required for list_parameters operation")
+                if not section:
+                    raise ValueError("'section' is required for list_parameters operation")
+                
+                # Normalize section name (remove '&' prefix if present, but keep it for matching)
+                section_normalized = section[1:] if section.startswith("&") else section
+                section_with_prefix = f"&{section_normalized.upper()}" if not section.startswith("&") else section
+                
+                # Get all parameters for the module (use internal _iter_params)
+                params = qe_metadata._iter_params(module)
+                
+                # Filter by section
+                result = []
+                raw_data = safe_load_metadata()
+                schema_version = raw_data.get("schema_version", 1)
+                
+                for param in params:
+                    param_namelist = param.get("namelist", "")
+                    param_section = f"&{param_namelist.upper()}" if param_namelist else ""
+                    
+                    # Match section (try both with and without prefix)
+                    if param_section == section_with_prefix or param_namelist.upper() == section_normalized.upper():
+                        param_dict = {
+                            "name": param.get("name"),
+                            "type": param.get("type"),
+                            "default": param.get("default"),
+                            "enum": param.get("enum"),
+                            "description": param.get("description"),
+                            "section": section_with_prefix,
+                            "module": module,
+                        }
+                        
+                        # For v2 schema, get indexing metadata from raw data
+                        if schema_version == 2:
+                            modules_data = raw_data.get("modules", {})
+                            module_entry = modules_data.get(module)
+                            if module_entry:
+                                parameters_map = module_entry.get("parameters", {})
+                                # Find the parameter in the map (key format: "&SECTION.paramname")
+                                param_key = f"{section_with_prefix}.{param.get('name')}"
+                                param_meta = parameters_map.get(param_key)
+                                if param_meta and "indexing" in param_meta:
+                                    param_dict["indexing"] = param_meta["indexing"]
+                        
+                        result.append(param_dict)
+                
+                # Sort by name
+                result.sort(key=lambda x: x.get("name", ""))
+                return {"parameters": result}
+            
+            elif operation == "search":
+                # Global search across all modules and sections
+                query = payload.get("query", "").strip().lower()
+                if not query:
+                    raise ValueError("'query' is required for search operation")
+                
+                modules = list_supported_modules()
+                results = []
+                
+                for module in modules:
+                    params = qe_metadata._iter_params(module)
+                    sections_dict = get_module_param_sections(module)
+                    
+                    for param in params:
+                        param_name = param.get("name", "").lower()
+                        param_desc = (param.get("description") or "").lower()
+                        param_enum = param.get("enum") or []
+                        param_section = f"&{param.get('namelist', '').upper()}"
+                        
+                        # Match on name, description, or enum values
+                        matches = (
+                            query in param_name or
+                            (param_desc and query in param_desc) or
+                            any(query in str(val).lower() for val in param_enum)
+                        )
+                        
+                        if matches:
+                            param_dict = {
+                                "module": module,
+                                "section": param_section,
+                                "name": param.get("name"),
+                                "type": param.get("type"),
+                                "default": param.get("default"),
+                                "enum": param.get("enum"),
+                                "description": param.get("description"),
+                            }
+                            
+                            # Get indexing metadata for v2 schema
+                            try:
+                                raw_data = safe_load_metadata()
+                                if raw_data.get("schema_version") == 2:
+                                    modules_data = raw_data.get("modules", {})
+                                    module_entry = modules_data.get(module)
+                                    if module_entry:
+                                        parameters_map = module_entry.get("parameters", {})
+                                        param_key = f"{param_section}.{param.get('name')}"
+                                        param_meta = parameters_map.get(param_key)
+                                        if param_meta and "indexing" in param_meta:
+                                            param_dict["indexing"] = param_meta["indexing"]
+                            except Exception:
+                                # Ignore errors getting indexing metadata
+                                pass
+                            
+                            results.append(param_dict)
+                
+                return {"results": results}
+            
+            else:
+                raise ValueError(f"Unknown operation '{operation}'. Must be one of: list_modules, list_sections, list_parameters, search")
+        
+        except (RuntimeError, FileNotFoundError) as e:
+            # Metadata loading errors should be user-friendly
+            raise ValueError(f"QE parameter metadata is not available: {e}. Run `python tools/extract_qe_parameters_v2.py` to generate it.") from e
     
     # -------------------------------------------------------------------------
     # Project/resource handlers

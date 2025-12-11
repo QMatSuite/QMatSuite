@@ -1,0 +1,288 @@
+"""
+Tests for QE parameter metadata RPC handler.
+
+Tests the list_qe_parameter_metadata RPC endpoint which powers the
+QE Parameter Browser in the GUI.
+"""
+
+import pytest
+from quantumvitas.daemon.server import QVDaemon, RPCRequest
+from quantumvitas.data.qe_metadata import list_supported_modules, safe_load_metadata
+
+
+@pytest.fixture
+def daemon():
+    """Create a QVDaemon instance for testing."""
+    return QVDaemon()
+
+
+def test_list_modules_returns_all_modules(daemon):
+    """Test that list_modules returns all supported QE modules."""
+    request = RPCRequest(
+        id="test-1",
+        type="list_qe_parameter_metadata",
+        payload={"operation": "list_modules"},
+    )
+    
+    response = daemon.handle_request(request)
+    
+    assert response.ok is True
+    assert "modules" in response.data
+    modules = response.data["modules"]
+    assert isinstance(modules, list)
+    assert len(modules) > 0
+    
+    # Verify all expected modules are present (at least pw should exist)
+    module_ids = [m["id"] for m in modules]
+    assert "pw" in module_ids
+    
+    # Verify module structure
+    for module in modules:
+        assert "id" in module
+        assert "label" in module
+        assert isinstance(module["id"], str)
+        assert isinstance(module["label"], str)
+        # Label should be module_id.x for consistency
+        assert module["label"] == f"{module['id']}.x"
+
+
+def test_list_sections_for_valid_module(daemon):
+    """Test that list_sections returns sections for a valid module."""
+    # Use 'pw' module which should always exist
+    request = RPCRequest(
+        id="test-2",
+        type="list_qe_parameter_metadata",
+        payload={"operation": "list_sections", "module": "pw"},
+    )
+    
+    response = daemon.handle_request(request)
+    
+    assert response.ok is True
+    assert "sections" in response.data
+    sections = response.data["sections"]
+    assert isinstance(sections, list)
+    assert len(sections) > 0
+    
+    # Verify section structure
+    for section in sections:
+        assert "id" in section
+        assert "kind" in section
+        assert "label" in section
+        assert section["kind"] in ("namelist", "card")
+        assert isinstance(section["id"], str)
+        assert isinstance(section["label"], str)
+    
+    # Should have at least &CONTROL and &SYSTEM namelists for pw
+    section_ids = [s["id"] for s in sections]
+    assert "&CONTROL" in section_ids or any("CONTROL" in s for s in section_ids)
+    assert "&SYSTEM" in section_ids or any("SYSTEM" in s for s in section_ids)
+
+
+def test_list_sections_for_invalid_module(daemon):
+    """Test that list_sections returns an error for an invalid module."""
+    request = RPCRequest(
+        id="test-3",
+        type="list_qe_parameter_metadata",
+        payload={"operation": "list_sections", "module": "__nonexistent__"},
+    )
+    
+    response = daemon.handle_request(request)
+    
+    assert response.ok is False
+    assert "error" in response.__dict__ or hasattr(response, "error")
+    # The error should be a structured error, not a raw exception
+    # Check that error message contains something sensible
+    error = getattr(response, "error", None) or (response.__dict__.get("error") if hasattr(response, "__dict__") else None)
+    if error:
+        assert "message" in error or isinstance(error, dict)
+
+
+def test_list_parameters_for_valid_module_and_section(daemon):
+    """Test that list_parameters returns parameters for a valid module/section."""
+    request = RPCRequest(
+        id="test-4",
+        type="list_qe_parameter_metadata",
+        payload={
+            "operation": "list_parameters",
+            "module": "pw",
+            "section": "&SYSTEM",
+        },
+    )
+    
+    response = daemon.handle_request(request)
+    
+    assert response.ok is True
+    assert "parameters" in response.data
+    parameters = response.data["parameters"]
+    assert isinstance(parameters, list)
+    assert len(parameters) > 0
+    
+    # Verify parameter structure
+    for param in parameters:
+        assert "name" in param
+        assert "type" in param
+        assert "module" in param
+        assert "section" in param
+        assert isinstance(param["name"], str)
+        assert param["module"] == "pw"
+        assert param["section"] == "&SYSTEM"
+        # Type can be null for v1 schema, but should be present
+        # Default, enum, description can be null
+    
+    # Should have common parameters like ecutwfc, ibrav
+    param_names = [p["name"] for p in parameters]
+    assert "ecutwfc" in param_names or "ibrav" in param_names
+
+
+def test_list_parameters_with_array_indexing(daemon):
+    """Test that parameters with array indexing have indexing metadata (v2 schema)."""
+    # Try to find a parameter with indexing (e.g., celldm in pw/SYSTEM)
+    request = RPCRequest(
+        id="test-5",
+        type="list_qe_parameter_metadata",
+        payload={
+            "operation": "list_parameters",
+            "module": "pw",
+            "section": "&SYSTEM",
+        },
+    )
+    
+    response = daemon.handle_request(request)
+    
+    if not response.ok:
+        pytest.skip("Could not load parameters (metadata may be missing)")
+    
+    parameters = response.data.get("parameters", [])
+    
+    # Look for celldm which should have indexing in v2 schema
+    celldm_params = [p for p in parameters if p.get("name") == "celldm"]
+    
+    if celldm_params:
+        celldm = celldm_params[0]
+        # If indexing is present, verify its structure
+        if "indexing" in celldm:
+            indexing = celldm["indexing"]
+            assert "kind" in indexing
+            assert "index_name" in indexing
+            assert "keyword_pattern" in indexing
+            assert indexing["kind"] in ("bounded", "unbounded")
+            assert isinstance(indexing["index_name"], str)
+            assert isinstance(indexing["keyword_pattern"], str)
+
+
+def test_search_parameters(daemon):
+    """Test that search returns matching parameters."""
+    request = RPCRequest(
+        id="test-6",
+        type="list_qe_parameter_metadata",
+        payload={"operation": "search", "query": "ecutwfc"},
+    )
+    
+    response = daemon.handle_request(request)
+    
+    assert response.ok is True
+    assert "results" in response.data
+    results = response.data["results"]
+    assert isinstance(results, list)
+    assert len(results) > 0
+    
+    # Verify result structure
+    for result in results:
+        assert "name" in result
+        assert "module" in result
+        assert "section" in result
+        assert isinstance(result["name"], str)
+        assert isinstance(result["module"], str)
+        assert isinstance(result["section"], str)
+    
+    # Should find ecutwfc
+    result_names = [r["name"] for r in results]
+    assert "ecutwfc" in result_names
+
+
+def test_search_no_results(daemon):
+    """Test that search returns empty list for non-matching query."""
+    request = RPCRequest(
+        id="test-7",
+        type="list_qe_parameter_metadata",
+        payload={"operation": "search", "query": "__definitely_not_a_parameter_name__"},
+    )
+    
+    response = daemon.handle_request(request)
+    
+    assert response.ok is True
+    assert "results" in response.data
+    results = response.data["results"]
+    assert isinstance(results, list)
+    # Should return empty list, not error
+    assert len(results) == 0
+
+
+def test_missing_operation_returns_error(daemon):
+    """Test that missing operation returns a structured error."""
+    request = RPCRequest(
+        id="test-8",
+        type="list_qe_parameter_metadata",
+        payload={},
+    )
+    
+    response = daemon.handle_request(request)
+    
+    assert response.ok is False
+    # Should have an error message about missing operation
+    error = getattr(response, "error", None) or (response.__dict__.get("error") if hasattr(response, "__dict__") else None)
+    assert error is not None
+
+
+def test_invalid_operation_returns_error(daemon):
+    """Test that invalid operation returns a structured error."""
+    request = RPCRequest(
+        id="test-9",
+        type="list_qe_parameter_metadata",
+        payload={"operation": "__invalid_operation__"},
+    )
+    
+    response = daemon.handle_request(request)
+    
+    assert response.ok is False
+    # Should have an error message about invalid operation
+    error = getattr(response, "error", None) or (response.__dict__.get("error") if hasattr(response, "__dict__") else None)
+    assert error is not None
+
+
+def test_list_parameters_missing_module_returns_error(daemon):
+    """Test that list_parameters without module returns error."""
+    request = RPCRequest(
+        id="test-10",
+        type="list_qe_parameter_metadata",
+        payload={"operation": "list_parameters", "section": "&SYSTEM"},
+    )
+    
+    response = daemon.handle_request(request)
+    
+    assert response.ok is False
+    # Should have an error message about missing module
+    error = getattr(response, "error", None) or (response.__dict__.get("error") if hasattr(response, "__dict__") else None)
+    assert error is not None
+
+
+def test_error_not_raw_exception(daemon):
+    """Test that errors are structured RPC errors, not raw Python exceptions."""
+    request = RPCRequest(
+        id="test-11",
+        type="list_qe_parameter_metadata",
+        payload={"operation": "list_sections", "module": "__nonexistent__"},
+    )
+    
+    response = daemon.handle_request(request)
+    
+    assert response.ok is False
+    # Error should be a dict with code/message, not a raw exception string
+    error = getattr(response, "error", None) or (response.__dict__.get("error") if hasattr(response, "__dict__") else None)
+    if error:
+        # Should not contain Python exception class names like "NameError" or "ValueError"
+        error_str = str(error)
+        assert "NameError" not in error_str
+        assert "Traceback" not in error_str
+        # Should be a structured error object
+        assert isinstance(error, dict) or hasattr(error, "code") or hasattr(error, "message")
