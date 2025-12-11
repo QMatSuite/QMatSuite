@@ -37,6 +37,7 @@ from quantumvitas.core.resolution import (
 )
 from quantumvitas.core.project_utils import load_project_config
 from quantumvitas.daemon.jobs import JobManager, JobStatus
+from quantumvitas.data.qe_metadata import get_ui_parameters, list_supported_modules
 
 
 @dataclass
@@ -189,6 +190,7 @@ class QVDaemon:
             # Environment and settings
             "detect_qe": self._handle_detect_qe,
             "get_env_info": self._handle_get_env_info,
+            "list_qe_ui_parameters": self._handle_list_qe_ui_parameters,
             
             # Project/resource listing
             "get_project_summary": self._handle_get_project_summary,
@@ -525,6 +527,63 @@ class QVDaemon:
         Returns python_version, qv_version, qe_home, etc.
         """
         return QVService.get_environment_info()
+    
+    def _handle_list_qe_ui_parameters(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get UI parameter metadata for a QE module and step type.
+        
+        Payload:
+            module: str (required) - QE module name (e.g., "pw", "bands")
+            step_type: str (required) - Step type (e.g., "scf", "nscf", "dos", "bands")
+        
+        Returns:
+            List of UI parameter descriptors with namelist, name, label, type, unit, etc.
+        """
+        module = payload.get("module", "").strip().lower()
+        step_type = payload.get("step_type", "").strip().lower()
+        
+        if not module:
+            raise ValueError("'module' is required in payload")
+        if not step_type:
+            raise ValueError("'step_type' is required in payload")
+        
+        # Validate module is supported
+        supported_modules = list_supported_modules()
+        if module not in supported_modules:
+            raise ValueError(
+                f"Unknown module '{module}'. Supported: {', '.join(sorted(supported_modules))}"
+            )
+        
+        # Log at info level for visibility (short log line)
+        self.logger.info(
+            "[RPC] list_qe_ui_parameters (module: %s, step_type: %s)",
+            module,
+            step_type,
+        )
+        
+        # Get UI parameters
+        ui_params = get_ui_parameters(module, step_type)
+        
+        # Convert QEUIParam objects to dicts for JSON serialization
+        result = []
+        for param in ui_params:
+            param_dict = {
+                "namelist": param.namelist,
+                "name": param.name,
+                "label": param.label,
+                "type": param.type,
+            }
+            if param.unit:
+                param_dict["unit"] = param.unit
+            if param.description:
+                param_dict["description"] = param.description
+            if param.options:
+                param_dict["options"] = param.options
+            if param.importance:
+                param_dict["importance"] = param.importance
+            result.append(param_dict)
+        
+        return {"parameters": result}
     
     # -------------------------------------------------------------------------
     # Project/resource handlers

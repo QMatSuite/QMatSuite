@@ -3,6 +3,124 @@
 This document lists all QE modules and their official documentation links following the pattern:
 `https://www.quantum-espresso.org/Doc/INPUT_{MODULE_NAME}.html`
 
+## Runtime Metadata
+
+**At runtime, QE parameter/namelist membership is driven by `qe_module_parameters.json` via `quantumvitas.data.qe_metadata`.**
+
+### QE metadata schema and legacy snapshot
+
+**Runtime uses:**
+- `src/quantumvitas/data/qe_module_parameters.json` (schema v2, loaded via `qe_metadata`)
+  - This is the active metadata file used by all runtime code.
+  - Uses schema v2: `modules → parameters` map where each parameter has:
+    - `namelist`: Section name (e.g., "&CONTROL")
+    - `name`: Parameter name (e.g., "calculation")
+    - `type`: Parameter type (e.g., "CHARACTER", "INTEGER", "REAL", "LOGICAL")
+    - `default`: Default value if documented (e.g., "'scf'", "1.0D-6", "REQUIRED")
+    - `enum`: List of allowed values where applicable (e.g., ["'scf'", "'nscf'", "'bands'"])
+    - `description`: Free-text description from QE documentation
+  - Each parameter key is `"&SECTION.param_name"` format.
+  - The `qe_metadata` module is schema-aware and provides a stable API regardless of schema version.
+
+**Legacy snapshot:**
+- `src/quantumvitas/data/qe_module_parameters.legacy.json`
+  - Frozen v1 snapshot, kept for historical reference.
+  - Only used by `tools/compare_qe_parameter_maps.py` to compare schemas.
+  - Not used by runtime code or tests.
+
+**Tools:**
+- `tools/extract_qe_parameters_v1.py` (deprecated, for legacy schema v1)
+  - Used to generate the old v1 schema JSON (parameter names only).
+  - Kept for historical reference only.
+- `tools/extract_qe_parameters_v2.py` (current generator with rich metadata)
+  - Scrapes QE HTML documentation directly to extract rich parameter metadata.
+  - Extracts: parameter name, type, default value, allowed values (enum), description.
+  - Usage: `python tools/extract_qe_parameters_v2.py [--modules pw ph ...] [--cache-dir ...] [--use-cache]`
+  - Generates schema v2 JSON with full metadata.
+  - Supports caching HTML files locally for offline regeneration.
+  
+  **Current metadata coverage (as of latest extraction):**
+  - Total parameters: 954 across 22 modules (93% of legacy v1 snapshot)
+  - Type information: 83% (791/954 parameters with types; card sections have type=None)
+  - Default values: 65% (623/954 parameters)
+  - Enum/allowed values: 20% (192/954 parameters)
+  - Descriptions: 81% (774/954 parameters)
+  
+  **Note**: Card section parameters (extracted from ToC) have minimal metadata (names only), while namelist parameters (extracted from tables) have rich metadata (type, default, enum, description).
+  
+  The extractor parses QE HTML documentation structure (parameter tables with type, default, description blocks) to populate these fields. Some parameters may not have defaults (e.g., required parameters), enums (e.g., numeric ranges), or descriptions (edge cases in HTML structure).
+- `tools/compare_qe_parameter_maps.py` (schema diff tool)
+  - Compares legacy v1 snapshot against current JSON (supports both v1 and v2).
+  - Derives sections from current JSON regardless of schema version.
+  - Useful for verifying schema migrations and parameter coverage.
+
+**Important:** All new code should access QE metadata only through `quantumvitas.data.qe_metadata` helper functions. Do not open `qe_module_parameters.json` directly. This ensures compatibility when the schema migrates from v1 to v2.
+
+The JSON file is the source of truth for:
+- Module → namelist/section mappings
+- Namelist → parameter name lists
+- Documentation URLs
+- Parameter types, defaults, allowed values, and descriptions (schema v2)
+
+## Schema v2 Rich Metadata Extraction
+
+The v2 extractor (`tools/extract_qe_parameters_v2.py`) directly scrapes Quantum ESPRESSO HTML documentation to extract rich parameter metadata. This replaces the previous v1→v2 converter approach.
+
+### Extraction Process
+
+1. **HTML Download & Caching**: Downloads QE documentation HTML files (e.g., `INPUT_PW.html`) from quantum-espresso.org, with optional local caching for offline regeneration.
+
+2. **Table of Contents Parsing**: Extracts parameter names from the ToC section (similar to v1 extractor) as a reference for validation.
+
+3. **Parameter Table Parsing**: For each parameter, parses HTML table structure:
+   - Parameter name and type from table header row
+   - Default value from "Default:" row
+   - Description from blockquote content
+   - Enum values from definition lists (`<dl><dt><tt>value</tt></dt>`) or quoted strings in descriptions
+
+4. **Section Detection**: Handles both namelist sections (e.g., "Namelist: &CONTROL") and card sections (e.g., "Card: K_POINTS").
+
+5. **Schema Assembly**: Builds v2 JSON structure with `schema_version: 2`, `generated_at` timestamp, and `modules` containing `parameters` maps.
+
+### Metadata Coverage Statistics
+
+As of the latest extraction run:
+
+- **Total parameters**: 954 across 22 modules (93% of legacy v1 snapshot)
+- **Type information**: 83% coverage (791/954 parameters have types)
+  - All namelist parameters (table-based) have type extracted (CHARACTER, INTEGER, REAL, LOGICAL, etc.)
+  - Card section parameters (ToC-based) have type=None (they don't have explicit types in HTML)
+- **Default values**: 65% coverage (623/954 parameters)
+  - Missing defaults typically indicate required parameters or parameters without documented defaults
+  - Card section parameters typically don't have documented defaults
+- **Enum/allowed values**: 20% coverage (192/954 parameters)
+  - Extracted from definition lists in HTML or quoted strings in descriptions
+  - Only parameters with discrete allowed values have enums
+  - Card section parameters don't have enum information
+- **Descriptions**: 81% coverage (774/954 parameters)
+  - Most namelist parameters have free-text descriptions from QE documentation
+  - Missing descriptions are typically edge cases with unusual HTML structure
+  - Card section parameters (extracted from ToC) don't have descriptions
+
+### Validation
+
+The extractor includes optional validation against the legacy v1 snapshot:
+- `--validate-against-legacy`: Runs `tools/compare_qe_parameter_maps.py` to compare parameter names
+- Helps ensure no parameters were missed during extraction
+- Parameter name coverage: V2 has 1069 parameters vs V1's 1024 parameters (104% coverage)
+  - **V2 finds more parameters**: All ToC parameters included (v1-style extraction)
+  - **All previously missing parameters found**: `celldm`, `cosAB`, `fixed_magnetization`, etc.
+  - **Case-sensitive names**: Parameter names preserve original case (X != x)
+  - **New in V2**: Some newer parameters and normalized section names
+  - See `docs/QE_PARAMETER_VALIDATION_REPORT.md` for detailed analysis
+  - Generate fresh report data: `python tools/generate_qe_parameter_validation_report.py`
+
+**Note**: The v2 extractor now follows the exact same strategy as v1: extract ALL parameters from ToC first, then enrich with metadata from HTML tables. This ensures complete coverage with all parameters included.
+
+## Offline Documentation Snapshots
+
+For future work, QE HTML docs can be snapshotted into `resources/qe_docs_raw/` using `tools/snapshot_qe_docs.py`. Those snapshots are not required at runtime; they are only for offline regeneration of parameter metadata.
+
 ## Currently Supported Modules (with Documentation)
 
 ### Core Modules

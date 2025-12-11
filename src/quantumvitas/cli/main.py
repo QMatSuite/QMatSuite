@@ -83,7 +83,11 @@ from quantumvitas.core.project_utils import (
     find_resource_auto,
     resolve_resource,
 )
-from quantumvitas.data import load_qe_parameter_map
+from quantumvitas.data import (
+    get_module_doc_url,
+    get_module_param_sections,
+    list_supported_modules,
+)
 from quantumvitas.core.engines.base import EngineConfig
 from quantumvitas.core.engines.qe_installation import get_qe_home
 from quantumvitas.engine.registry import create_default_registry
@@ -2466,22 +2470,22 @@ def delete_project_command(
         try:
             project_root = find_project_root()
         except RegistryOutOfSyncError as exc:
-            # Registry out of sync - provide clear user-facing message
-            typer.secho(
-                f"\n❌ Registry Out of Sync",
-                fg=typer.colors.RED,
-                bold=True,
-            )
-            typer.echo(f"\n{exc}")
-            if exc.expected_path:
-                typer.echo(f"\nExpected path: {exc.expected_path}")
-            typer.echo(
-                "\n💡 To fix this, refresh the project registry:\n"
-                "   - In the GUI: Click the 'Refresh' button in the Workflows or Structures panel\n"
-                "   - Or reopen the project in the GUI (registry rebuilds on project load)"
-            )
-            raise typer.Exit(1)
-        except ResourceNotFoundError as exc:
+        # Registry out of sync - provide clear user-facing message
+        typer.secho(
+            f"\n❌ Registry Out of Sync",
+            fg=typer.colors.RED,
+            bold=True,
+        )
+        typer.echo(f"\n{exc}")
+        if exc.expected_path:
+            typer.echo(f"\nExpected path: {exc.expected_path}")
+        typer.echo(
+            "\n💡 To fix this, refresh the project registry:\n"
+            "   - In the GUI: Click the 'Refresh' button in the Workflows or Structures panel\n"
+            "   - Or reopen the project in the GUI (registry rebuilds on project load)"
+        )
+        raise typer.Exit(1)
+    except ResourceNotFoundError as exc:
             raise typer.BadParameter(str(exc)) from exc
     
     if not (project_root / "project.qv.yml").exists():
@@ -2603,22 +2607,22 @@ def configure_step_command(
                 workflow_dir = workflow_directory(project_root_resolved, ctx_res.parent_entry)
                 workflow_yaml = workflow_dir / "workflow.yaml"
         except RegistryOutOfSyncError as exc:
-            # Registry out of sync - provide clear user-facing message
-            typer.secho(
-                f"\n❌ Registry Out of Sync",
-                fg=typer.colors.RED,
-                bold=True,
-            )
-            typer.echo(f"\n{exc}")
-            if exc.expected_path:
-                typer.echo(f"\nExpected path: {exc.expected_path}")
-            typer.echo(
-                "\n💡 To fix this, refresh the project registry:\n"
-                "   - In the GUI: Click the 'Refresh' button in the Workflows or Structures panel\n"
-                "   - Or reopen the project in the GUI (registry rebuilds on project load)"
-            )
-            raise typer.Exit(1)
-        except ResourceNotFoundError as exc:
+        # Registry out of sync - provide clear user-facing message
+        typer.secho(
+            f"\n❌ Registry Out of Sync",
+            fg=typer.colors.RED,
+            bold=True,
+        )
+        typer.echo(f"\n{exc}")
+        if exc.expected_path:
+            typer.echo(f"\nExpected path: {exc.expected_path}")
+        typer.echo(
+            "\n💡 To fix this, refresh the project registry:\n"
+            "   - In the GUI: Click the 'Refresh' button in the Workflows or Structures panel\n"
+            "   - Or reopen the project in the GUI (registry rebuilds on project load)"
+        )
+        raise typer.Exit(1)
+    except ResourceNotFoundError as exc:
             raise typer.BadParameter(str(exc)) from exc
 
     # Load step spec with resolver to normalize legacy structure selectors
@@ -4083,15 +4087,15 @@ def params_command(
     Inspect module parameter metadata sourced from the QE documentation.
     """
     module_key = module.lower()
-    param_map = load_qe_parameter_map()
-    modules = param_map.get("modules", {})
-    if module_key not in modules:
+    # Use the centralized helper instead of direct JSON access
+    supported_modules = list_supported_modules()
+    if module_key not in supported_modules:
         raise typer.BadParameter(
-            f"Unknown module '{module}'. Available: {', '.join(sorted(modules))}"
+            f"Unknown module '{module}'. Available: {', '.join(sorted(supported_modules))}"
         )
 
-    module_entry = modules[module_key]
-    sections = module_entry.get("sections", {})
+    sections = get_module_param_sections(module_key)
+    doc_url = get_module_doc_url(module_key)
 
     def match_section(name: str) -> bool:
         if not section:
@@ -4106,7 +4110,8 @@ def params_command(
             f"Available: {', '.join(sections)}"
         )
 
-    typer.echo(f"Documentation: {module_entry.get('doc_url')}")
+    if doc_url:
+        typer.echo(f"Documentation: {doc_url}")
     for sec_name, params in filtered.items():
         typer.echo(f"\n{sec_name}:")
         for param in params:

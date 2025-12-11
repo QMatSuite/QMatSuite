@@ -377,6 +377,24 @@ export interface QVCommandMap {
     payload: Record<string, never>;
     result: EnvironmentInfo;
   };
+  list_qe_ui_parameters: {
+    payload: {
+      module: string;
+      step_type: string;
+    };
+    result: {
+      parameters: Array<{
+        namelist: string;
+        name: string;
+        label: string;
+        type: string;
+        unit?: string;
+        description?: string;
+        options?: string[] | null;
+        importance?: string;
+      }>;
+    };
+  };
   
   // Project/resource listing
   get_project_summary: {

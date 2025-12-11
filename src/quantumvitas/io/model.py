@@ -13,24 +13,10 @@ class QEModule(Enum):
     """
     Quantum ESPRESSO modules.
 
-    Documentation references:
-    - PW: https://www.quantum-espresso.org/Doc/INPUT_PW.html
-    - PH: https://www.quantum-espresso.org/Doc/INPUT_PH.html
-    - Q2R: https://www.quantum-espresso.org/Doc/INPUT_Q2R.html
-    - MATDYN: https://www.quantum-espresso.org/Doc/INPUT_MATDYN.html
-    - PP: https://www.quantum-espresso.org/Doc/INPUT_PP.html
-    - NEB: https://www.quantum-espresso.org/Doc/INPUT_NEB.html
-    - CP: https://www.quantum-espresso.org/Doc/INPUT_CP.html
-    - LD1: https://www.quantum-espresso.org/Doc/INPUT_LD1.html
-    - HP: https://www.quantum-espresso.org/Doc/INPUT_HP.html
-    - PWCOND: https://www.quantum-espresso.org/Doc/INPUT_PWCOND.html
-    - DOS: https://www.quantum-espresso.org/Doc/INPUT_DOS.html
-    - BANDS: https://www.quantum-espresso.org/Doc/INPUT_BANDS.html
-    - PROJWFC: https://www.quantum-espresso.org/Doc/INPUT_PROJWFC.html
-    - DYNMAT: https://www.quantum-espresso.org/Doc/INPUT_DYNMAT.html
-    - PPACF: https://www.quantum-espresso.org/Doc/INPUT_PPACF.html
-    - PPRISM: https://www.quantum-espresso.org/Doc/INPUT_PPRISM.html
-    - CPPP: https://www.quantum-espresso.org/Doc/INPUT_CPPP.html
+    For documentation URLs and parameter metadata, see:
+    - quantumvitas.data.qe_metadata.get_module_doc_url()
+    - quantumvitas.data.qe_metadata.get_module_param_sections()
+    - docs/QE_MODULE_DOCUMENTATION.md
     """
 
     PW = "pw"

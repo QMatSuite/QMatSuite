@@ -1,0 +1,215 @@
+{
+  "pw": {
+    "scf": [
+      {
+        "namelist": "SYSTEM",
+        "name": "ecutwfc",
+        "label": "Wavefunction Cutoff",
+        "type": "number",
+        "unit": "Ry",
+        "description": "Kinetic energy cutoff for wavefunctions",
+        "importance": "core"
+      },
+      {
+        "namelist": "SYSTEM",
+        "name": "ecutrho",
+        "label": "Charge Density Cutoff",
+        "type": "number",
+        "unit": "Ry",
+        "description": "Kinetic energy cutoff for charge density (default: 4×ecutwfc)",
+        "importance": "core"
+      },
+      {
+        "namelist": "SYSTEM",
+        "name": "occupations",
+        "label": "Occupations",
+        "type": "select",
+        "options": ["smearing", "fixed", "tetrahedra", "tetrahedra_lin", "tetrahedra_opt"],
+        "importance": "core"
+      },
+      {
+        "namelist": "SYSTEM",
+        "name": "smearing",
+        "label": "Smearing Type",
+        "type": "select",
+        "options": ["gaussian", "gauss", "methfessel-paxton", "m-p", "mp", "marzari-vanderbilt", "cold", "m-v", "mv", "fermi-dirac", "f-d", "fd"],
+        "importance": "advanced"
+      },
+      {
+        "namelist": "SYSTEM",
+        "name": "degauss",
+        "label": "Smearing Width",
+        "type": "number",
+        "unit": "Ry",
+        "description": "Gaussian spreading for Brillouin-zone integration",
+        "importance": "advanced"
+      },
+      {
+        "namelist": "ELECTRONS",
+        "name": "conv_thr",
+        "label": "Convergence Threshold",
+        "type": "number",
+        "description": "Convergence threshold for self-consistency",
+        "importance": "core"
+      }
+    ],
+    "nscf": [
+      {
+        "namelist": "SYSTEM",
+        "name": "ecutwfc",
+        "label": "Wavefunction Cutoff",
+        "type": "number",
+        "unit": "Ry",
+        "importance": "core"
+      },
+      {
+        "namelist": "SYSTEM",
+        "name": "ecutrho",
+        "label": "Charge Density Cutoff",
+        "type": "number",
+        "unit": "Ry",
+        "importance": "core"
+      },
+      {
+        "namelist": "SYSTEM",
+        "name": "occupations",
+        "label": "Occupations",
+        "type": "select",
+        "options": ["smearing", "fixed", "tetrahedra", "tetrahedra_lin", "tetrahedra_opt"],
+        "importance": "core"
+      },
+      {
+        "namelist": "SYSTEM",
+        "name": "smearing",
+        "label": "Smearing Type",
+        "type": "select",
+        "options": ["gaussian", "methfessel-paxton", "marzari-vanderbilt", "fermi-dirac"],
+        "importance": "advanced"
+      },
+      {
+        "namelist": "SYSTEM",
+        "name": "degauss",
+        "label": "Smearing Width",
+        "type": "number",
+        "unit": "Ry",
+        "importance": "advanced"
+      },
+      {
+        "namelist": "ELECTRONS",
+        "name": "conv_thr",
+        "label": "Convergence Threshold",
+        "type": "number",
+        "importance": "core"
+      }
+    ],
+    "relax": [
+      {
+        "namelist": "SYSTEM",
+        "name": "ecutwfc",
+        "label": "Wavefunction Cutoff",
+        "type": "number",
+        "unit": "Ry",
+        "importance": "core"
+      },
+      {
+        "namelist": "SYSTEM",
+        "name": "ecutrho",
+        "label": "Charge Density Cutoff",
+        "type": "number",
+        "unit": "Ry",
+        "importance": "core"
+      },
+      {
+        "namelist": "CONTROL",
+        "name": "forc_conv_thr",
+        "label": "Force Convergence",
+        "type": "number",
+        "unit": "Ry/au",
+        "description": "Convergence threshold on forces",
+        "importance": "core"
+      },
+      {
+        "namelist": "ELECTRONS",
+        "name": "conv_thr",
+        "label": "SCF Convergence",
+        "type": "number",
+        "importance": "core"
+      }
+    ],
+    "bands_pw": [
+      {
+        "namelist": "SYSTEM",
+        "name": "ecutwfc",
+        "label": "Wavefunction Cutoff",
+        "type": "number",
+        "unit": "Ry",
+        "description": "Kinetic energy cutoff for wavefunctions",
+        "importance": "core"
+      },
+      {
+        "namelist": "SYSTEM",
+        "name": "ecutrho",
+        "label": "Charge Density Cutoff",
+        "type": "number",
+        "unit": "Ry",
+        "description": "Kinetic energy cutoff for charge density (default: 4×ecutwfc)",
+        "importance": "core"
+      },
+      {
+        "namelist": "SYSTEM",
+        "name": "nbnd",
+        "label": "Number of Bands",
+        "type": "number",
+        "description": "Number of bands to compute",
+        "importance": "core"
+      },
+      {
+        "namelist": "ELECTRONS",
+        "name": "conv_thr",
+        "label": "Convergence Threshold",
+        "type": "number",
+        "description": "Convergence threshold for self-consistency",
+        "importance": "core"
+      }
+    ],
+    "dos": [
+      {
+        "namelist": "SYSTEM",
+        "name": "ecutwfc",
+        "label": "Wavefunction Cutoff",
+        "type": "number",
+        "unit": "Ry",
+        "importance": "core"
+      },
+      {
+        "namelist": "SYSTEM",
+        "name": "ecutrho",
+        "label": "Charge Density Cutoff",
+        "type": "number",
+        "unit": "Ry",
+        "importance": "core"
+      }
+    ]
+  },
+  "bands": {
+    "bands": [
+      {
+        "namelist": "BANDS",
+        "name": "filband",
+        "label": "Output File",
+        "type": "text",
+        "description": "Name of output file for band data",
+        "importance": "core"
+      },
+      {
+        "namelist": "BANDS",
+        "name": "lsym",
+        "label": "Use Symmetry",
+        "type": "select",
+        "options": [".true.", ".false."],
+        "description": "Use symmetry to reduce k-points",
+        "importance": "advanced"
+      }
+    ]
+  }
+}
