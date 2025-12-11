@@ -5,7 +5,7 @@
  * parameter editing and the ability to run an individual step.
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { StepDetail, JobSubmitResult, WorkflowDetailResult, QVError } from '../../types/qv';
 import { normalizeProjectRoot } from '../../utils/pathUtils';
 import { useQVClient } from '../../hooks/useQVClient';
@@ -113,6 +113,11 @@ export function StepDetailPanel({
   onStepDeleted,
 }: StepDetailPanelProps) {
   const qv = useQVClient();
+  
+  // Store stable reference to listQeUiParameters to avoid including qv object in dependencies
+  // The function is memoized in useQVClient, so this ref will be stable across renders
+  const listQeUiParametersRef = useRef(qv.listQeUiParameters);
+  listQeUiParametersRef.current = qv.listQeUiParameters;
   
   // Workflow selector: always use slug (backend expects workflow slug)
   const workflowSelector = selectedWorkflow?.slug ?? null;
@@ -334,6 +339,9 @@ export function StepDetailPanel({
   }, [projectRoot, workflowSelector, stepSelector, selectedWorkflow]);
   
   // Fetch UI parameters when stepDetail changes
+  // QE UI params are static metadata; we only fetch once per module+stepType combination.
+  // CRITICAL: Do not include `qv` in dependencies - it's a new object reference on every render.
+  // Instead, extract module and stepType as primitive values and depend only on those.
   useEffect(() => {
     if (!stepDetail || !window.qv) {
       setUiParams([]);
@@ -341,14 +349,24 @@ export function StepDetailPanel({
     }
     
     const module = stepTypeToModule(stepDetail.step_type);
+    const stepType = stepDetail.step_type;
+    
     if (!module) {
       // No module mapping - use legacy params or empty
       setUiParams([]);
       return;
     }
     
-    qv.listQeUiParameters(module, stepDetail.step_type)
+    // Track if component is still mounted to prevent state updates after unmount
+    let cancelled = false;
+    
+    // Fetch UI parameters (static metadata, no need to refetch on every render)
+    // Use ref to avoid including qv object in dependencies
+    listQeUiParametersRef.current(module, stepType)
       .then(response => {
+        // Only update state if component is still mounted
+        if (cancelled) return;
+        
         if (response.ok && response.data?.parameters) {
           // Sort by importance: core first, then advanced
           const sorted = [...response.data.parameters].sort((a, b) => {
@@ -361,7 +379,7 @@ export function StepDetailPanel({
           
           // Development logging (can be removed later)
           if (sorted.length > 0) {
-            console.log(`[StepDetailPanel] Loaded ${sorted.length} UI parameters for ${module}/${stepDetail.step_type}`, sorted.slice(0, 3).map(p => p.name));
+            console.log(`[StepDetailPanel] Loaded ${sorted.length} UI parameters for ${module}/${stepType}`, sorted.slice(0, 3).map(p => p.name));
           }
         } else {
           // Fall back to empty (will use legacy params)
@@ -369,10 +387,18 @@ export function StepDetailPanel({
         }
       })
       .catch(err => {
-        console.warn('[StepDetailPanel] Failed to load UI parameters, using fallback', err);
-        setUiParams([]);
+        // Only log if component is still mounted
+        if (!cancelled) {
+          console.warn('[StepDetailPanel] Failed to load UI parameters, using fallback', err);
+          setUiParams([]);
+        }
       });
-  }, [stepDetail, qv]);
+    
+    // Cleanup: mark as cancelled when component unmounts or dependencies change
+    return () => {
+      cancelled = true;
+    };
+  }, [stepDetail?.step_type, stepDetail?.id]); // Only depend on primitive values - module and stepType determine when to refetch
   
   // Handle running the step
   const handleRunStep = useCallback(async () => {
