@@ -1,0 +1,13 @@
+project:
+  name: test_no_metadata
+  meta:
+    id: 01KC6656RG3YBT12A2ZQ4FEWAY
+    name: test_no_metadata
+    slug: test_no_metadata
+    path: .
+    kind: project
+  structures_dir: structures
+  workflows_dir: workflows
+workflows: []
+structures: []
+settings: {}

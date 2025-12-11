@@ -2470,22 +2470,22 @@ def delete_project_command(
         try:
             project_root = find_project_root()
         except RegistryOutOfSyncError as exc:
-        # Registry out of sync - provide clear user-facing message
-        typer.secho(
-            f"\n❌ Registry Out of Sync",
-            fg=typer.colors.RED,
-            bold=True,
-        )
-        typer.echo(f"\n{exc}")
-        if exc.expected_path:
-            typer.echo(f"\nExpected path: {exc.expected_path}")
-        typer.echo(
-            "\n💡 To fix this, refresh the project registry:\n"
-            "   - In the GUI: Click the 'Refresh' button in the Workflows or Structures panel\n"
-            "   - Or reopen the project in the GUI (registry rebuilds on project load)"
-        )
-        raise typer.Exit(1)
-    except ResourceNotFoundError as exc:
+            # Registry out of sync - provide clear user-facing message
+            typer.secho(
+                f"\n❌ Registry Out of Sync",
+                fg=typer.colors.RED,
+                bold=True,
+            )
+            typer.echo(f"\n{exc}")
+            if exc.expected_path:
+                typer.echo(f"\nExpected path: {exc.expected_path}")
+            typer.echo(
+                "\n💡 To fix this, refresh the project registry:\n"
+                "   - In the GUI: Click the 'Refresh' button in the Workflows or Structures panel\n"
+                "   - Or reopen the project in the GUI (registry rebuilds on project load)"
+            )
+            raise typer.Exit(1)
+        except ResourceNotFoundError as exc:
             raise typer.BadParameter(str(exc)) from exc
     
     if not (project_root / "project.qv.yml").exists():
@@ -2607,22 +2607,22 @@ def configure_step_command(
                 workflow_dir = workflow_directory(project_root_resolved, ctx_res.parent_entry)
                 workflow_yaml = workflow_dir / "workflow.yaml"
         except RegistryOutOfSyncError as exc:
-        # Registry out of sync - provide clear user-facing message
-        typer.secho(
-            f"\n❌ Registry Out of Sync",
-            fg=typer.colors.RED,
-            bold=True,
-        )
-        typer.echo(f"\n{exc}")
-        if exc.expected_path:
-            typer.echo(f"\nExpected path: {exc.expected_path}")
-        typer.echo(
-            "\n💡 To fix this, refresh the project registry:\n"
-            "   - In the GUI: Click the 'Refresh' button in the Workflows or Structures panel\n"
-            "   - Or reopen the project in the GUI (registry rebuilds on project load)"
-        )
-        raise typer.Exit(1)
-    except ResourceNotFoundError as exc:
+            # Registry out of sync - provide clear user-facing message
+            typer.secho(
+                f"\n❌ Registry Out of Sync",
+                fg=typer.colors.RED,
+                bold=True,
+            )
+            typer.echo(f"\n{exc}")
+            if exc.expected_path:
+                typer.echo(f"\nExpected path: {exc.expected_path}")
+            typer.echo(
+                "\n💡 To fix this, refresh the project registry:\n"
+                "   - In the GUI: Click the 'Refresh' button in the Workflows or Structures panel\n"
+                "   - Or reopen the project in the GUI (registry rebuilds on project load)"
+            )
+            raise typer.Exit(1)
+        except ResourceNotFoundError as exc:
             raise typer.BadParameter(str(exc)) from exc
 
     # Load step spec with resolver to normalize legacy structure selectors

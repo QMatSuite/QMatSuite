@@ -17,6 +17,7 @@ from .qe_metadata import (
     get_module_param_sections,
     get_ui_parameters,
     list_supported_modules,
+    safe_load_metadata,
     validate_ui_parameters,
     QEUIParam,
 )
@@ -29,6 +30,7 @@ __all__ = [
     "get_module_namelists",
     "list_supported_modules",
     "get_ui_parameters",
+    "safe_load_metadata",
     "validate_ui_parameters",
     "QEUIParam",
 ]
@@ -42,8 +44,10 @@ def load_qe_parameter_map() -> Dict[str, Any]:
     DEPRECATED: Most code should use the helper functions in qe_metadata.py instead
     of calling this directly. This function is kept for backward compatibility only.
     
-    This now delegates to qe_metadata._load_raw_metadata() to ensure all access
-    goes through the single source of truth.
+    For new code that needs QE metadata, use safe_load_metadata() instead.
+    This now delegates to qe_metadata.safe_load_metadata() to ensure all access
+    goes through the single source of truth and raises RuntimeError for better
+    error handling.
     """
-    from .qe_metadata import _load_raw_metadata
-    return _load_raw_metadata()
+    from .qe_metadata import safe_load_metadata
+    return safe_load_metadata()

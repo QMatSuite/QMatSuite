@@ -60,17 +60,52 @@ def _load_raw_metadata() -> Dict[str, Any]:
         
     Raises:
         FileNotFoundError: If the JSON file is missing.
+        RuntimeError: If the JSON file is invalid or schema version is unsupported.
     """
     data_path = resources.files(__package__).joinpath("qe_module_parameters.json")
     try:
         with resources.as_file(data_path) as path:
             with open(path, "r", encoding="utf-8") as handle:
-                return json.load(handle)
+                data = json.load(handle)
     except FileNotFoundError as exc:
         raise FileNotFoundError(
             "qe_module_parameters.json is missing; run "
-            "`python tools/extract_qe_parameters_v1.py` (deprecated) to regenerate it, "
-            "or use future v2 extractor when available."
+            "`python tools/extract_qe_parameters_v2.py` to regenerate it."
+        ) from exc
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(
+            f"qe_module_parameters.json is invalid JSON: {exc}"
+        ) from exc
+    
+    # Validate schema version
+    schema_version = data.get("schema_version", 1)
+    if schema_version not in (1, 2):
+        raise RuntimeError(
+            f"Unsupported schema version {schema_version} in qe_module_parameters.json. "
+            f"Expected version 1 or 2."
+        )
+    
+    return data
+
+
+def safe_load_metadata() -> Dict[str, Any]:
+    """
+    Load QE metadata for runtime use.
+    
+    This is a wrapper around _load_raw_metadata() that raises RuntimeError
+    instead of FileNotFoundError for better error handling in runtime contexts.
+    
+    Raises:
+        RuntimeError: If metadata is missing, invalid, or has unsupported schema version.
+        Never calls extraction scripts or remote URLs.
+    """
+    try:
+        return _load_raw_metadata()
+    except FileNotFoundError as exc:
+        raise RuntimeError(
+            f"QE parameter metadata is not available: {exc}. "
+            f"This is required for QE-related operations. "
+            f"Run `python tools/extract_qe_parameters_v2.py` to generate it."
         ) from exc
 
 
@@ -78,7 +113,7 @@ def _load_qe_parameter_map() -> Dict[str, Any]:
     """
     Internal helper to load the JSON file, avoiding circular imports.
     
-    DEPRECATED: Use _load_raw_metadata() instead.
+    DEPRECATED: Use _load_raw_metadata() or safe_load_metadata() instead.
     Kept for backward compatibility.
     """
     return _load_raw_metadata()
@@ -101,8 +136,11 @@ def _iter_params(module: str) -> List[Dict[str, Any]]:
         
     Returns:
         List of parameter metadata dicts.
+        
+    Raises:
+        RuntimeError: If metadata is missing or invalid (via safe_load_metadata).
     """
-    raw_data = _load_raw_metadata()
+    raw_data = safe_load_metadata()
     schema_version = raw_data.get("schema_version", 1)
     modules = raw_data.get("modules", {})
     module_entry = modules.get(module.lower())
@@ -189,8 +227,11 @@ def list_supported_modules() -> List[str]:
     
     Returns:
         List of module names (e.g., ['pw', 'ph', 'dos', ...])
+        
+    Raises:
+        RuntimeError: If metadata is missing or invalid.
     """
-    raw_data = _load_raw_metadata()
+    raw_data = safe_load_metadata()
     modules = raw_data.get("modules", {})
     return sorted(modules.keys())
 
@@ -204,8 +245,11 @@ def get_module_doc_url(module: str) -> Optional[str]:
         
     Returns:
         Documentation URL string, or None if module not found.
+        
+    Raises:
+        RuntimeError: If metadata is missing or invalid.
     """
-    raw_data = _load_raw_metadata()
+    raw_data = safe_load_metadata()
     modules = raw_data.get("modules", {})
     module_entry = modules.get(module.lower())
     if not module_entry:
@@ -219,8 +263,11 @@ def get_doc_url_pattern() -> str:
     
     Returns:
         Pattern string like "https://www.quantum-espresso.org/Doc/INPUT_{name}.html"
+        
+    Raises:
+        RuntimeError: If metadata is missing or invalid.
     """
-    raw_data = _load_raw_metadata()
+    raw_data = safe_load_metadata()
     return raw_data.get("doc_pattern", "https://www.quantum-espresso.org/Doc/INPUT_{name}.html")
 
 
@@ -235,6 +282,9 @@ def get_module_namelists(module: str) -> List[str]:
         
     Returns:
         List of namelist names (e.g., ['control', 'system', 'electrons'] for 'pw')
+        
+    Raises:
+        RuntimeError: If metadata is missing or invalid (via get_module_param_sections).
     """
     sections = get_module_param_sections(module)
     # Extract namelist names from section keys (remove '&' prefix and convert to lowercase)
@@ -290,10 +340,13 @@ def validate_ui_parameters() -> List[str]:
     
     Returns:
         List of error messages. Empty list means all parameters are valid.
+        
+    Raises:
+        RuntimeError: If metadata is missing or invalid.
     """
     errors = []
     ui_data = _load_ui_parameters()
-    raw_data = _load_raw_metadata()
+    raw_data = safe_load_metadata()
     modules = raw_data.get("modules", {})
     
     for module_name, module_entry in ui_data.items():
