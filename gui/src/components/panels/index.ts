@@ -1,5 +1,6 @@
 export { ResultPanel } from './ResultPanel';
 export { DebugPanel, DebugView } from './DebugPanel';
+export { QEParameterBrowserPanel } from './QEParameterBrowserPanel';
 export { ProjectSummaryPanel } from './ProjectSummaryPanel';
 export { DemoGalleryPanel } from './DemoGalleryPanel';
 export { StructureListPanel, StructureDetailPanel } from './StructureListPanel';

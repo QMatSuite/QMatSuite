@@ -395,6 +395,58 @@ export interface QVCommandMap {
       }>;
     };
   };
+  list_qe_parameter_metadata: {
+    payload: {
+      operation: 'list_modules' | 'list_sections' | 'list_parameters' | 'search';
+      module?: string;
+      section?: string;
+      query?: string;
+    };
+    result: {
+      modules?: Array<{
+        id: string;
+        label: string;
+        doc_url?: string;
+      }>;
+      sections?: Array<{
+        id: string;
+        kind: 'namelist' | 'card';
+        label: string;
+      }>;
+      parameters?: Array<{
+        name: string;
+        type: string | null;
+        default: string | number | null;
+        enum: string[] | null;
+        description: string | null;
+        section: string;
+        module: string;
+        indexing?: {
+          kind: 'bounded' | 'unbounded';
+          index_name: string;
+          start?: number;
+          end?: number;
+          keyword_pattern: string;
+        };
+      }>;
+      results?: Array<{
+        module: string;
+        section: string;
+        name: string;
+        type: string | null;
+        default: string | number | null;
+        enum: string[] | null;
+        description: string | null;
+        indexing?: {
+          kind: 'bounded' | 'unbounded';
+          index_name: string;
+          start?: number;
+          end?: number;
+          keyword_pattern: string;
+        };
+      }>;
+    };
+  };
   
   // Project/resource listing
   get_project_summary: {

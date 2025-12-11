@@ -35,6 +35,7 @@ import {
   DeleteConfirmDialog,
   JobsPanel,
   SettingsPanel,
+  QEParameterBrowserPanel,
   ErrorBoundary,
 } from './components';
 import type { ViewType } from './components/layout/Sidebar';
@@ -1284,6 +1285,9 @@ function App() {
           />
         );
         
+      case 'resources':
+        return <QEParameterBrowserPanel />;
+        
       case 'settings':
         return (
           <SettingsPanel 
@@ -1291,9 +1295,6 @@ function App() {
             onSettingsChange={setAppSettings}
           />
         );
-        
-      case 'debug':
-        return <DebugView lastResult={debugResult} />;
         
       default:
         return null;
@@ -1355,8 +1356,8 @@ function App() {
               {currentView === 'workflows' && 'Workflows'}
               {currentView === 'jobs' && 'Jobs'}
               {currentView === 'analysis' && 'Analysis'}
+              {currentView === 'resources' && 'Resources'}
               {currentView === 'settings' && 'Settings'}
-              {currentView === 'debug' && 'Debug'}
             </h2>
             <div className="app-header__actions">
               <button

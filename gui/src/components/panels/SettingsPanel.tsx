@@ -9,8 +9,9 @@
  * - Default projects directory
  */
 
-import { useState, useCallback, useEffect } from 'react';
-import type { QEDetectionResult, EnvironmentInfo } from '../../types/qv';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { useQVClient, useQVLogs } from '../../hooks/useQVClient';
+import type { QEDetectionResult, EnvironmentInfo, QVResponse } from '../../types/qv';
 import './SettingsPanel.css';
 
 export interface AppSettings {
@@ -25,11 +26,19 @@ interface SettingsPanelProps {
 }
 
 export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps) {
+  const qv = useQVClient();
   const [envInfo, setEnvInfo] = useState<EnvironmentInfo | null>(null);
   const [qeInfo, setQeInfo] = useState<QEDetectionResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Debug/Diagnostics state
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [pingResult, setPingResult] = useState<string | null>(null);
+  const [isPinging, setIsPinging] = useState(false);
+  const logs = useQVLogs(200);
+  const logsScrollRef = useRef<HTMLDivElement>(null);
   
   // Fetch environment info on mount
   useEffect(() => {
@@ -80,6 +89,27 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
       setIsDetecting(false);
     }
   }, []);
+  
+  // Auto-scroll logs to bottom
+  useEffect(() => {
+    if (logsScrollRef.current && showDiagnostics) {
+      logsScrollRef.current.scrollTop = logsScrollRef.current.scrollHeight;
+    }
+  }, [logs, showDiagnostics]);
+  
+  const handlePing = useCallback(async () => {
+    setIsPinging(true);
+    setPingResult(null);
+    
+    const response = await qv.ping();
+    
+    if (response.ok && response.data) {
+      setPingResult(`✓ Daemon v${response.data.version} (connected)`);
+    } else {
+      setPingResult(`✗ ${response.error?.message || 'Connection failed'}`);
+    }
+    setIsPinging(false);
+  }, [qv]);
   
   if (isLoading) {
     return (
@@ -336,6 +366,93 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
         </div>
       </div>
       
+        {/* Diagnostics / Debug Section */}
+        <div className="settings-section">
+          <div className="settings-section__header">
+            <h3 className="settings-section__title">
+              <span className="settings-icon">🔧</span>
+              Diagnostics / Debug
+            </h3>
+            <button
+              className="settings-btn settings-btn--sm"
+              onClick={() => setShowDiagnostics(!showDiagnostics)}
+            >
+              {showDiagnostics ? '▼ Hide' : '▶ Show'}
+            </button>
+          </div>
+          
+          {showDiagnostics && (
+            <div className="settings-section__content">
+              {/* Connection Test */}
+              <div className="diagnostics-subsection">
+                <h4 className="diagnostics-subsection__title">Connection Test</h4>
+                <div className="diagnostics-subsection__content">
+                  <button
+                    className="settings-btn"
+                    onClick={handlePing}
+                    disabled={isPinging}
+                  >
+                    {isPinging ? '⏳ Pinging...' : '🏓 Ping Daemon'}
+                  </button>
+                  {pingResult && (
+                    <span className={`diagnostics-result ${pingResult.startsWith('✓') ? 'diagnostics-result--success' : 'diagnostics-result--error'}`}>
+                      {pingResult}
+                    </span>
+                  )}
+                </div>
+              </div>
+              
+              {/* Daemon Status */}
+              <div className="diagnostics-subsection">
+                <h4 className="diagnostics-subsection__title">Daemon Status</h4>
+                <div className="diagnostics-subsection__content">
+                  <div className="diagnostics-info">
+                    <div className="diagnostics-info-item">
+                      <span className="diagnostics-info-label">Connected:</span>
+                      <span className={`diagnostics-info-value ${qv.state.isConnected ? 'diagnostics-info-value--success' : 'diagnostics-info-value--error'}`}>
+                        {qv.state.isConnected ? 'Yes' : 'No'}
+                      </span>
+                    </div>
+                    {qv.state.daemonStatus?.pythonPath && (
+                      <div className="diagnostics-info-item">
+                        <span className="diagnostics-info-label">Python:</span>
+                        <code className="diagnostics-info-value">{qv.state.daemonStatus.pythonPath}</code>
+                      </div>
+                    )}
+                    {qv.state.daemonStatus?.projectRoot && (
+                      <div className="diagnostics-info-item">
+                        <span className="diagnostics-info-label">CWD:</span>
+                        <code className="diagnostics-info-value">{qv.state.daemonStatus.projectRoot}</code>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Daemon Logs */}
+              <div className="diagnostics-subsection">
+                <div className="diagnostics-subsection__header">
+                  <h4 className="diagnostics-subsection__title">Daemon Logs</h4>
+                  <span className="diagnostics-logs-count">{logs.length} lines</span>
+                </div>
+                <div className="diagnostics-logs-content" ref={logsScrollRef}>
+                  {logs.length === 0 ? (
+                    <div className="diagnostics-logs-empty">
+                      No daemon output yet...
+                    </div>
+                  ) : (
+                    logs.map((log, i) => (
+                      <div key={i} className="diagnostics-log-line">
+                        {log}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+        
         {/* Info Section */}
         <div className="settings-section settings-section--info">
           <div className="settings-info">
