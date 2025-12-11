@@ -15,10 +15,16 @@ Other code should not directly open or parse qe_module_parameters.json.
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from functools import lru_cache
 from importlib import resources
+from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+# Module-level cache for metadata
+_METADATA_CACHE: Optional[Dict[str, Any]] = None
+_METADATA_MTIME: Optional[float] = None
 
 
 @dataclass(frozen=True)
@@ -47,13 +53,16 @@ def _load_ui_parameters() -> Dict[str, Any]:
         return {}
 
 
-@lru_cache(maxsize=1)
 def _load_raw_metadata() -> Dict[str, Any]:
     """
     Load the raw QE parameter metadata JSON file.
     
     This is the single place that opens qe_module_parameters.json.
     All other functions should call this helper instead of opening the file directly.
+    
+    Uses module-level caching for performance. First call loads from disk and caches;
+    subsequent calls return the cached data. If QV_QE_METADATA_HOT_RELOAD=1 is set,
+    the function checks file mtime and reloads if the file has changed.
     
     Returns:
         Raw JSON data as dict.
@@ -62,30 +71,82 @@ def _load_raw_metadata() -> Dict[str, Any]:
         FileNotFoundError: If the JSON file is missing.
         RuntimeError: If the JSON file is invalid or schema version is unsupported.
     """
+    global _METADATA_CACHE, _METADATA_MTIME
+    
+    # Get the file path
     data_path = resources.files(__package__).joinpath("qe_module_parameters.json")
-    try:
-        with resources.as_file(data_path) as path:
-            with open(path, "r", encoding="utf-8") as handle:
-                data = json.load(handle)
-    except FileNotFoundError as exc:
-        raise FileNotFoundError(
-            "qe_module_parameters.json is missing; run "
-            "`python tools/extract_qe_parameters_v2.py` to regenerate it."
-        ) from exc
-    except json.JSONDecodeError as exc:
-        raise RuntimeError(
-            f"qe_module_parameters.json is invalid JSON: {exc}"
-        ) from exc
     
-    # Validate schema version
-    schema_version = data.get("schema_version", 1)
-    if schema_version not in (1, 2):
-        raise RuntimeError(
-            f"Unsupported schema version {schema_version} in qe_module_parameters.json. "
-            f"Expected version 1 or 2."
-        )
+    # Check if hot reload is enabled
+    hot_reload = os.environ.get("QV_QE_METADATA_HOT_RELOAD", "").strip() == "1"
     
-    return data
+    # If hot reload is enabled, check if file has changed
+    should_reload = False
+    if hot_reload:
+        try:
+            with resources.as_file(data_path) as path:
+                path_obj = Path(path)
+                if path_obj.exists():
+                    current_mtime = path_obj.stat().st_mtime
+                    # If cache exists and mtime matches, use cache
+                    if _METADATA_CACHE is not None and _METADATA_MTIME == current_mtime:
+                        return _METADATA_CACHE
+                    # Otherwise, mark for reload
+                    should_reload = True
+                    _METADATA_MTIME = current_mtime
+                else:
+                    # File doesn't exist - will be caught below
+                    should_reload = True
+        except Exception:
+            # If checking mtime fails, fall back to normal loading
+            should_reload = True
+    else:
+        # If hot reload is disabled and cache exists, return cached data
+        if _METADATA_CACHE is not None:
+            return _METADATA_CACHE
+        should_reload = True
+    
+    # Load from disk if cache is empty or hot reload detected changes
+    if should_reload or _METADATA_CACHE is None:
+        try:
+            with resources.as_file(data_path) as path:
+                path_obj = Path(path)
+                # Update mtime if not already set (for non-hot-reload case)
+                if _METADATA_MTIME is None and path_obj.exists():
+                    _METADATA_MTIME = path_obj.stat().st_mtime
+                
+                with open(path_obj, "r", encoding="utf-8") as handle:
+                    data = json.load(handle)
+        except FileNotFoundError as exc:
+            # Clear cache on file not found
+            _METADATA_CACHE = None
+            _METADATA_MTIME = None
+            raise FileNotFoundError(
+                "qe_module_parameters.json is missing; run "
+                "`python tools/extract_qe_parameters_v2.py` to regenerate it."
+            ) from exc
+        except json.JSONDecodeError as exc:
+            # Clear cache on JSON decode error
+            _METADATA_CACHE = None
+            _METADATA_MTIME = None
+            raise RuntimeError(
+                f"qe_module_parameters.json is invalid JSON: {exc}"
+            ) from exc
+        
+        # Validate schema version
+        schema_version = data.get("schema_version", 1)
+        if schema_version not in (1, 2):
+            # Clear cache on validation error
+            _METADATA_CACHE = None
+            _METADATA_MTIME = None
+            raise RuntimeError(
+                f"Unsupported schema version {schema_version} in qe_module_parameters.json. "
+                f"Expected version 1 or 2."
+            )
+        
+        # Cache the loaded data
+        _METADATA_CACHE = data
+    
+    return _METADATA_CACHE
 
 
 def safe_load_metadata() -> Dict[str, Any]:

@@ -15,7 +15,7 @@ import type { QVClient } from '../../hooks/useQVClient';
 import type { DaemonStatus, JobCounts } from '../../types/qv';
 import './Sidebar.css';
 
-export type ViewType = 'home' | 'structures' | 'workflows' | 'jobs' | 'analysis' | 'settings' | 'debug';
+export type ViewType = 'home' | 'structures' | 'workflows' | 'jobs' | 'analysis' | 'resources' | 'settings';
 
 interface SidebarProps {
   qv: QVClient;
@@ -260,6 +260,15 @@ export function Sidebar({
             {!isCollapsed && 'Analysis'}
           </button>
           <button
+            className={`sidebar__tab ${currentView === 'resources' ? 'active' : ''}`}
+            onClick={() => onViewChange('resources')}
+            title="Browse QE parameter metadata and resources"
+            data-testid="qv-nav-resources"
+          >
+            <span className="sidebar__tab-icon">📚</span>
+            {!isCollapsed && 'Resources'}
+          </button>
+          <button
             className={`sidebar__tab ${currentView === 'settings' ? 'active' : ''}`}
             onClick={() => onViewChange('settings')}
             title="Configure QE paths and app settings"
@@ -267,15 +276,6 @@ export function Sidebar({
           >
             <span className="sidebar__tab-icon">⚙️</span>
             {!isCollapsed && 'Settings'}
-          </button>
-          <button
-            className={`sidebar__tab ${currentView === 'debug' ? 'active' : ''}`}
-            onClick={() => onViewChange('debug')}
-            title="View daemon logs and debug info"
-            data-testid="qv-nav-debug"
-          >
-            <span className="sidebar__tab-icon">🔧</span>
-            {!isCollapsed && 'Debug'}
           </button>
         </div>
       </div>

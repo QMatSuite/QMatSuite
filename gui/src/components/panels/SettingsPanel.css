@@ -1,5 +1,119 @@
 /* SettingsPanel Styles */
 
+/* Diagnostics / Debug Section */
+.diagnostics-subsection {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.diagnostics-subsection:last-child {
+  border-bottom: none;
+}
+
+.diagnostics-subsection__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.diagnostics-subsection__title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.diagnostics-subsection__content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.diagnostics-result {
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.diagnostics-result--success {
+  background-color: var(--success-bg, rgba(0, 200, 0, 0.1));
+  color: var(--success-color, #0a8);
+}
+
+.diagnostics-result--error {
+  background-color: var(--error-bg, rgba(200, 0, 0, 0.1));
+  color: var(--error-color, #c00);
+}
+
+.diagnostics-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.diagnostics-info-item {
+  display: flex;
+  gap: 0.75rem;
+  align-items: baseline;
+}
+
+.diagnostics-info-label {
+  font-weight: 500;
+  color: var(--text-secondary);
+  min-width: 80px;
+}
+
+.diagnostics-info-value {
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.diagnostics-info-value--success {
+  color: var(--success-color, #0a8);
+}
+
+.diagnostics-info-value--error {
+  color: var(--error-color, #c00);
+}
+
+.diagnostics-subsection__header .diagnostics-subsection__title {
+  margin-bottom: 0;
+}
+
+.diagnostics-logs-count {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.diagnostics-logs-content {
+  max-height: 300px;
+  overflow-y: auto;
+  background-color: var(--bg-secondary, rgba(0, 0, 0, 0.2));
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 0.75rem;
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.diagnostics-logs-empty {
+  color: var(--text-secondary);
+  font-style: italic;
+  text-align: center;
+  padding: 1rem;
+}
+
+.diagnostics-log-line {
+  margin-bottom: 0.25rem;
+  color: var(--text-primary);
+  word-wrap: break-word;
+}
+
 .settings-panel {
   display: flex;
   flex-direction: column;

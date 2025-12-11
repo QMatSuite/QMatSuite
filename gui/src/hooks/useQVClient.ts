@@ -52,6 +52,10 @@ export interface QVClient {
   rebuildProjectRegistry: (projectRoot: string) => Promise<QVResponse<QVResult<'rebuild_project_registry'>>>;
   listJobs: (filter?: { status?: JobStatus; job_type?: string }) => Promise<QVResponse<{ jobs: JobSummary[]; count: number }>>;
   listQeUiParameters: (module: string, stepType: string) => Promise<QVResponse<QVResult<'list_qe_ui_parameters'>>>;
+  listQeParameterMetadata: (
+    operation: 'list_modules' | 'list_sections' | 'list_parameters' | 'search',
+    params?: { module?: string; section?: string; query?: string }
+  ) => Promise<QVResponse<QVResult<'list_qe_parameter_metadata'>>>;
   
   // Connection management
   checkConnection: () => Promise<boolean>;
@@ -293,6 +297,14 @@ export function useQVClient(): QVClient {
     [call]
   );
   
+  const listQeParameterMetadata = useCallback(
+    (
+      operation: 'list_modules' | 'list_sections' | 'list_parameters' | 'search',
+      params: { module?: string; section?: string; query?: string } = {}
+    ) => call('list_qe_parameter_metadata', { operation, ...params }),
+    [call]
+  );
+  
   return {
     state,
     call,
@@ -303,6 +315,7 @@ export function useQVClient(): QVClient {
     rebuildProjectRegistry,
     listJobs,
     listQeUiParameters,
+    listQeParameterMetadata,
     checkConnection,
     refreshDaemonStatus,
   };
