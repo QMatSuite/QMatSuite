@@ -15,6 +15,7 @@ from .qe_metadata import (
     get_module_doc_url,
     get_module_namelists,
     get_module_param_sections,
+    get_module_card_sections,
     get_ui_parameters,
     list_supported_modules,
     safe_load_metadata,
@@ -25,6 +26,7 @@ from .qe_metadata import (
 __all__ = [
     "load_qe_parameter_map",
     "get_module_param_sections",
+    "get_module_card_sections",
     "get_module_doc_url",
     "get_doc_url_pattern",
     "get_module_namelists",

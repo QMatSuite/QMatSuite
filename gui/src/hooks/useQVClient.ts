@@ -4,7 +4,7 @@
  * Provides a fully typed interface for making RPC calls.
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import type {
   QVCommandType,
   QVPayload,
@@ -305,20 +305,36 @@ export function useQVClient(): QVClient {
     [call]
   );
   
-  return {
-    state,
-    call,
-    ping,
-    getProjectSummary,
-    listStructures,
-    listWorkflows,
-    rebuildProjectRegistry,
-    listJobs,
-    listQeUiParameters,
-    listQeParameterMetadata,
-    checkConnection,
-    refreshDaemonStatus,
-  };
+  // Use ref to maintain stable client object reference
+  // This prevents infinite loops in effects that depend on qv
+  // The callbacks are already memoized, so they're stable
+  // NOTE: see docs/FRONTEND_RPC_PATTERNS.md for expected call counts and effect dependencies
+  const clientRef = useRef<QVClient | null>(null);
+  
+  // Create client object once, then update state property in place
+  // This maintains reference stability while allowing state to be reactive
+  if (!clientRef.current) {
+    clientRef.current = {
+      state,
+      call,
+      ping,
+      getProjectSummary,
+      listStructures,
+      listWorkflows,
+      rebuildProjectRegistry,
+      listJobs,
+      listQeUiParameters,
+      listQeParameterMetadata,
+      checkConnection,
+      refreshDaemonStatus,
+    };
+  } else {
+    // Update state property in place to maintain reference stability
+    // All other properties (callbacks) are already stable due to useCallback
+    clientRef.current.state = state;
+  }
+  
+  return clientRef.current;
 }
 
 // =============================================================================

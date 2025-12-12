@@ -243,6 +243,147 @@
   cursor: not-allowed;
 }
 
+/* Inline sort controls */
+.qv-row-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.qv-field-label {
+  margin-bottom: 0.5rem;
+}
+
+.qv-icon-button {
+  padding: 0.25rem 0.5rem;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qv-icon-button:hover {
+  background: var(--bg-hover, rgba(0, 0, 0, 0.05));
+  border-color: var(--color-primary);
+  color: var(--text-primary);
+}
+
+.qv-icon-button:active {
+  background: var(--color-primary-alpha, rgba(59, 130, 246, 0.1));
+}
+
+/* Sort button styling to match parameter table headers */
+.qv-sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-color, rgba(0, 0, 0, 0.1));
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: auto;
+}
+
+.qv-sort-button:hover {
+  background: var(--bg-hover, rgba(0, 0, 0, 0.05));
+  border-color: var(--color-primary);
+}
+
+.qv-sort-label {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.qv-sort-icon {
+  font-size: 0.75rem;
+  line-height: 1;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* Sortable table headers */
+.qv-sortable-header {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s;
+  position: relative;
+  padding-right: 1.5rem;
+}
+
+.qv-sortable-header:hover {
+  background: var(--bg-hover, rgba(0, 0, 0, 0.05));
+}
+
+.qv-sort-indicator {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.7rem;
+  color: var(--color-primary);
+}
+
+/* Sort Controls */
+.qe-parameter-browser__sort-controls {
+  max-width: none;
+  flex: 0 0 auto;
+}
+
+.qe-parameter-browser__sort-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.qe-parameter-browser__sort-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.qe-parameter-browser__sort-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  min-width: 60px;
+}
+
+.qe-parameter-browser__sort-btn {
+  padding: 0.375rem 0.75rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 400;
+}
+
+.qe-parameter-browser__sort-btn:hover {
+  background: var(--bg-hover, rgba(0, 0, 0, 0.05));
+  border-color: var(--color-primary);
+}
+
+.qe-parameter-browser__sort-btn.active {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+  font-weight: 500;
+}
+
 /* Parameters Table */
 .qe-parameter-browser__parameters {
   flex: 1;
@@ -251,6 +392,28 @@
   flex-direction: column;
 }
 
+/* Fixed layout table container - only vertical scrolling, no horizontal scroll */
+.qv-param-table-container {
+  width: 100%;
+  max-height: 400px;
+  overflow-y: auto;
+  overflow-x: hidden; /* IMPORTANT: no horizontal scroll */
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+/* Fixed layout table - columns have fixed widths, text ellipsis for overflow
+ * Column resize is done by adjusting two neighboring column widths in percentage space
+ * while avoiding horizontal scrolling.
+ */
+.qv-param-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed; /* IMPORTANT: fixed layout */
+  font-size: 0.875rem;
+}
+
+/* Legacy class for backward compatibility */
 .qe-parameter-browser__parameters-table-container {
   flex: 1;
   overflow-y: auto;
@@ -264,6 +427,7 @@
   font-size: 0.875rem;
 }
 
+.qv-param-table thead,
 .qe-parameter-browser__parameters-table thead {
   position: sticky;
   top: 0;
@@ -271,6 +435,7 @@
   z-index: 10;
 }
 
+.qv-param-table th,
 .qe-parameter-browser__parameters-table th {
   padding: 0.75rem 1rem;
   text-align: left;
@@ -282,6 +447,87 @@
   letter-spacing: 0.05em;
 }
 
+/* Header inner container for sort + resize controls */
+.qv-param-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  width: 100%;
+  gap: 0.5rem;
+}
+
+/* Adjust sort indicator position when resizer is present - make it inline */
+.qv-param-header-inner .qv-sort-indicator {
+  position: static; /* Override absolute positioning for parameter table headers */
+  margin-left: 0.25rem;
+  display: inline;
+}
+
+/* Column resizer handle - draggable vertical bar at right edge of header */
+.qv-param-col-resizer {
+  flex: 0 0 auto;
+  width: 4px;
+  min-width: 4px;
+  cursor: col-resize;
+  align-self: stretch;
+  background-color: transparent;
+  transition: background-color 0.2s;
+  margin-left: auto; /* Push to right edge */
+}
+
+.qv-param-col-resizer:hover {
+  background-color: rgba(0, 0, 0, 0.08);
+}
+
+/* Parameter row - compact by default, expands when selected */
+.qv-param-row {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.qv-param-row:hover {
+  background: var(--bg-hover, rgba(0, 0, 0, 0.02));
+}
+
+/* Selected row - expanded to show full text */
+.qv-param-row--selected {
+  background-color: var(--qv-row-selected-bg, rgba(0, 128, 255, 0.05));
+}
+
+.qv-param-row--selected:hover {
+  background-color: var(--qv-row-selected-bg, rgba(0, 128, 255, 0.08));
+}
+
+/* Parameter cell - compact (single line with ellipsis) by default
+ * Non-selected rows are forced into single-line ellipsis for compact view.
+ */
+.qv-param-cell {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+/* Selected row cells - allow wrapping to show full text
+ * The selected row removes ellipsis and wraps text to show full content.
+ */
+.qv-param-row--selected .qv-param-cell {
+  white-space: normal; /* allow wrapping */
+  overflow: visible;
+  text-overflow: unset;
+}
+
+/* Emphasize selected parameter name */
+.qv-param-row--selected .qv-param-col-name strong {
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+/* Legacy table styles for backward compatibility */
 .qe-parameter-browser__parameters-table td {
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--border-color);
@@ -336,6 +582,18 @@
   align-items: center;
 }
 
+/* In compact mode, enum values should not wrap (ellipsis will handle overflow) */
+.qv-param-cell .qe-parameter-browser__enum-values {
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+/* In selected row, enum values can wrap to show all values */
+.qv-param-row--selected .qv-param-cell .qe-parameter-browser__enum-values {
+  flex-wrap: wrap;
+  overflow: visible;
+}
+
 .qe-parameter-browser__enum-tag {
   font-size: 0.75rem;
   padding: 0.125rem 0.375rem;
@@ -356,6 +614,28 @@
   color: var(--text-secondary);
   line-height: 1.4;
   max-width: 400px;
+}
+
+/* Column-specific styles for parameter cells */
+.qv-param-col-name {
+  /* Name column - already has strong tag for emphasis */
+}
+
+.qv-param-col-type {
+  font-family: var(--font-mono, monospace);
+}
+
+.qv-param-col-default {
+  font-family: var(--font-mono, monospace);
+}
+
+.qv-param-col-enum {
+  /* Enum column - uses flex wrap for tags */
+}
+
+.qv-param-col-description {
+  color: var(--text-secondary);
+  line-height: 1.4;
 }
 
 /* Loading & Empty States */
