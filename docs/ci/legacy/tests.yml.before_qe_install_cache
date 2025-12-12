@@ -15,14 +15,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, macos-14]
+        os: [ubuntu-latest, macos-latest]
         python-version: ['3.12']
-    
-    env:
-      QE_VERSION: "qe-7.5"
-      QE_SRC_DIR: "$HOME/src/q-e-qe-7.5"
-      QE_PREFIX: "$HOME/qe-install/qe-7.5/${{ runner.os }}"
-      QE_BUILD_OPTS: "${{ matrix.os == 'ubuntu-22.04' && 'mpi=1 fftw=1 openblas=ubuntu' || 'mpi=1 fftw=1 openblas=mac accel=mac' }}"
     
     steps:
     - uses: actions/checkout@v4
@@ -33,7 +27,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
     
     - name: Install system dependencies (Ubuntu)
-      if: matrix.os == 'ubuntu-22.04'
+      if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
         sudo apt-get upgrade -y
@@ -49,14 +43,13 @@ jobs:
           mpich \
           libmpich-dev \
           wget \
-          make \
-          ccache
+          make
     
     - name: Install system dependencies and setup compilers (macOS)
-      if: matrix.os == 'macos-14'
+      if: matrix.os == 'macos-latest'
       run: |
         brew update
-        brew install gcc gfortran openmpi fftw wget make ccache
+        brew install gcc gfortran openmpi fftw wget make
         
         # Get gcc prefix and detect versioned gcc
         GCC_PREFIX=$(brew --prefix gcc)
@@ -84,57 +77,16 @@ jobs:
         
         echo "PATH=$GCC_PREFIX/bin:$PATH" >> $GITHUB_ENV
     
-    - name: Cache ccache
-      uses: actions/cache@v4
-      with:
-        path: ~/.ccache
-        key: ccache-${{ runner.os }}-${{ env.QE_VERSION }}-v1
-        restore-keys: |
-          ccache-${{ runner.os }}-${{ env.QE_VERSION }}-
-          ccache-${{ runner.os }}-
-    
-    - name: Setup ccache
-      run: |
-        ccache -M 2G
-        if [ "${{ matrix.os }}" == "ubuntu-22.04" ]; then
-          echo "CC=ccache gcc" >> $GITHUB_ENV
-          echo "CXX=ccache g++" >> $GITHUB_ENV
-          echo "FC=ccache gfortran" >> $GITHUB_ENV
-        else
-          # macOS: wrap existing compilers with ccache
-          if [ -n "$CC" ]; then
-            echo "CC=ccache $CC" >> $GITHUB_ENV
-          fi
-          if [ -n "$FC" ]; then
-            echo "FC=ccache $FC" >> $GITHUB_ENV
-          fi
-        fi
-    
     - name: Cache QE source
-      uses: actions/cache@v4
+      uses: actions/cache@v3
       with:
-        path: ${{ env.QE_SRC_DIR }}
-        key: qe-source-${{ env.QE_VERSION }}-${{ runner.os }}-v1
-        restore-keys: |
-          qe-source-${{ env.QE_VERSION }}-${{ runner.os }}-
-          qe-source-${{ env.QE_VERSION }}-
-    
-    - name: Cache QE install prefix
-      id: cache-qe-install
-      uses: actions/cache@v4
-      with:
-        path: ${{ env.QE_PREFIX }}
-        key: qe-install-${{ runner.os }}-${{ env.QE_VERSION }}-${{ env.QE_BUILD_OPTS }}-v1
-        restore-keys: |
-          qe-install-${{ runner.os }}-${{ env.QE_VERSION }}-${{ env.QE_BUILD_OPTS }}-
-          qe-install-${{ runner.os }}-${{ env.QE_VERSION }}-
+        path: $HOME/src/q-e-qe-7.5
+        key: qe-source-7.5-${{ runner.os }}
     
     - name: Install Quantum ESPRESSO (from source)
-      if: steps.cache-qe-install.outputs.cache-hit != 'true'
       run: |
-        # Create QE installation directories
-        mkdir -p ${{ env.QE_SRC_DIR }}
-        mkdir -p ${{ env.QE_PREFIX }}
+        # Create QE installation directory
+        mkdir -p $HOME/src
         cd $HOME/src
         
         # Download QE 7.5 source (if not cached)
@@ -146,10 +98,10 @@ jobs:
         
         cd q-e-qe-7.5
         
-        if [ "${{ matrix.os }}" == "ubuntu-22.04" ]; then
-          # Configure QE for Ubuntu with install prefix
+        if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+          # Configure QE for Ubuntu
+          # Let configure auto-detect most libraries, but explicitly set MPI
           ./configure \
-            --prefix="${{ env.QE_PREFIX }}" \
             MPIF90=mpif90
           
           # Modify make.inc to add FFTW3 support and ensure correct library paths
@@ -162,13 +114,12 @@ jobs:
             fi
           fi
         else
-          # Configure QE for macOS with install prefix
+          # Configure QE for macOS
           # Get brew paths
           FFTW_PREFIX=$(brew --prefix fftw)
           
-          # CC, FC, and CPP should already be set in GITHUB_ENV (with ccache wrapper)
+          # CC, FC, and CPP should already be set in GITHUB_ENV
           ./configure \
-            --prefix="${{ env.QE_PREFIX }}" \
             CC="$CC" \
             FC="$FC" \
             CPP="$CPP" \
@@ -193,21 +144,19 @@ jobs:
         make pp -j2 || make pp
         # dos.x is built automatically with pw.x, no need for explicit make
         
-        # Install QE to prefix
-        make install
-    
-    - name: Set QE environment variables
-      run: |
-        echo "QE_HOME=${{ env.QE_PREFIX }}" >> $GITHUB_ENV
-        echo "${{ env.QE_PREFIX }}/bin" >> $GITHUB_PATH
+        # Set QE_HOME environment variable
+        echo "QE_HOME=$HOME/src/q-e-qe-7.5" >> $GITHUB_ENV
+        echo "$HOME/src/q-e-qe-7.5/bin" >> $GITHUB_PATH
     
     - name: Verify QE installation
       run: |
-        export QE_HOME="${{ env.QE_PREFIX }}"
-        export PATH="${{ env.QE_PREFIX }}/bin:$PATH"
+        QE_HOME=$HOME/src/q-e-qe-7.5
+        export QE_HOME
+        export PATH="$QE_HOME/bin:$PATH"
         which pw.x || (echo "pw.x not found in PATH" && exit 1)
         pw.x --version || echo "pw.x version check failed (may be normal)"
-        ls -la ${{ env.QE_PREFIX }}/bin/pw.x || exit 1
+        ls -la $QE_HOME/bin/pw.x || exit 1
+        echo "QE_HOME=$QE_HOME" >> $GITHUB_ENV
     
     - name: Install Python dependencies
       run: |
@@ -216,11 +165,12 @@ jobs:
     
     - name: Run all tests in tests/ directory
       run: |
-        export QE_HOME="${{ env.QE_PREFIX }}"
-        export PATH="${{ env.QE_PREFIX }}/bin:$PATH"
-        python -m pytest tests/ -v --tb=short -n auto --dist=loadfile --cov=src/quantumvitas --cov-report=xml --cov-report=term
+        export QE_HOME=$HOME/src/q-e-qe-7.5
+        export PATH="$QE_HOME/bin:$PATH"
+        pytest tests/ -v --cov=src/quantumvitas --cov-report=xml --cov-report=term
+        echo "QE_HOME=$HOME/src/q-e-qe-7.5" >> $GITHUB_ENV
       env:
-        QE_HOME: ${{ env.QE_PREFIX }}
+        QE_HOME: ${{ env.QE_HOME }}
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
@@ -241,16 +191,6 @@ jobs:
         cache: 'npm'
         cache-dependency-path: gui/package-lock.json
     
-    - name: Configure npm for resiliency
-      working-directory: gui
-      run: |
-        npm config set fetch-retries 5
-        npm config set fetch-retry-factor 2
-        npm config set fetch-retry-mintimeout 20000
-        npm config set fetch-retry-maxtimeout 120000
-        npm config set fund false
-        npm config set audit false
-    
     - name: Install GUI dependencies
       working-directory: gui
       run: npm ci
@@ -266,13 +206,13 @@ jobs:
     - name: Run GUI E2E tests
       working-directory: gui
       run: |
-        export QE_HOME="${{ env.QE_PREFIX }}"
-        export PATH="${{ env.QE_PREFIX }}/bin:$PATH"
+        export QE_HOME=$HOME/src/q-e-qe-7.5
+        export PATH="$QE_HOME/bin:$PATH"
         # Unified E2E tests - fixture automatically chooses launch strategy:
         # Linux: uses Playwright's _electron.launch()
         # macOS: uses CDP workaround
         # All tests run on both platforms (no conditional skipping)
-        if [ "${{ matrix.os }}" == "ubuntu-22.04" ]; then
+        if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
           # Use xvfb for headless display on Linux
           xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" npx playwright test \
             tests/e2e/welcome.spec.ts \
@@ -288,7 +228,7 @@ jobs:
             --project=electron
         fi
       env:
-        QE_HOME: ${{ env.QE_PREFIX }}
+        QE_HOME: ${{ env.QE_HOME }}
         CI: true
     
     - name: Upload Playwright report
@@ -301,7 +241,7 @@ jobs:
 
   extended-tests:
     name: Extended Tests (Manual)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     # Only run on manual trigger or schedule
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     
