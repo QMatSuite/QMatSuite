@@ -19,6 +19,7 @@ from .qe_metadata import (
     get_ui_parameters,
     list_supported_modules,
     safe_load_metadata,
+    reload_metadata,
     validate_ui_parameters,
     QEUIParam,
 )
@@ -33,6 +34,7 @@ __all__ = [
     "list_supported_modules",
     "get_ui_parameters",
     "safe_load_metadata",
+    "reload_metadata",
     "validate_ui_parameters",
     "QEUIParam",
 ]

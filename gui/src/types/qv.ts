@@ -434,6 +434,7 @@ export interface QVCommandMap {
         module: string;
         section: string;
         name: string;
+        key: string; // unique per param, e.g. `${module}::${section}::${name}`
         type: string | null;
         default: string | number | null;
         enum: string[] | null;
