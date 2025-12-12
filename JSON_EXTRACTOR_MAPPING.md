@@ -1,19 +1,21 @@
 # JSON 文件与 Python 提取器对应关系
 
+> **最后更新**: 重新检查后确认（commit 后）
+
 ## 完整对应表
 
 | JSON 文件 | 旧编号 | 新编号 | Schema Version | 生成器脚本 | 说明 |
 |-----------|--------|--------|----------------|------------|------|
 | `qe_module_parameters.legacy.v0.json` | v1 | v0 | **无** | `extract_qe_parameters_v1.py` | 最初版本，无 schema_version 字段 |
-| `qe_module_parameters.legacy.v1.json` | v2 | v1 | **1** | `extract_qe_parameters_v2.py` (旧版本) | 引入 parameters map 结构 |
-| `qe_module_parameters.legacy.v2.json` | v3 | v2 | **2** | `extract_qe_parameters_v2.py` (当前版本) | 添加 status/see_also 字段 |
-| `qe_module_parameters.json` (生产) | v4 | v3 | **3** | `extract_qe_parameters_v3.py` (当前版本) | 添加 sections tree, optionality, card fields |
+| `qe_module_parameters.legacy.v1.json` | v2 | v1 | **1** | `extract_qe_parameters_v1.py` | 引入 parameters map 结构 |
+| `qe_module_parameters.legacy.v2.json` | v3 | v2 | **2** | `extract_qe_parameters_v2.py` | 添加 status/see_also 字段 |
+| `qe_module_parameters.json` (生产) | v4 | v3 | **3** | `extract_qe_parameters_v3.py` | 添加 sections tree, optionality, card fields |
 
 ## 详细说明
 
 ### 1. `legacy.v0.json` (旧 v1 → 新 v0)
 
-**生成器**: `tools/extract_qe_parameters_v1.py`
+**生成器**: `tools/extract_qe_parameters_v0.py`
 
 **特点**:
 - 最初的提取器，在引入 schema versioning 之前就存在
@@ -23,7 +25,7 @@
 
 **生成命令**:
 ```bash
-python3 tools/extract_qe_parameters_v1.py --use-cache
+python3 tools/extract_qe_parameters_v0.py --use-cache
 ```
 
 ---
@@ -53,7 +55,7 @@ python3 tools/extract_qe_parameters_v2.py --use-cache
 
 ### 3. `legacy.v2.json` (旧 v3 → 新 v2)
 
-**生成器**: `tools/extract_qe_parameters_v2.py` (当前版本，重新编号后)
+**生成器**: `tools/extract_qe_parameters_v2.py`
 
 **特点**:
 - 旧编号 v3，新编号 v2
@@ -68,14 +70,11 @@ python3 tools/extract_qe_parameters_v2.py --use-cache
 python3 tools/extract_qe_parameters_v2.py --use-cache
 ```
 
-**当前状态**: 
-- 该脚本现在生成 `schema_version=2`（对应新 v2，旧 v3）
-
 ---
 
 ### 4. `qe_module_parameters.json` (生产版本，旧 v4 → 新 v3)
 
-**生成器**: `tools/extract_qe_parameters_v3.py` (当前版本，重新编号后)
+**生成器**: `tools/extract_qe_parameters_v3.py`
 
 **特点**:
 - 旧编号 v4，新编号 v3
@@ -100,39 +99,48 @@ python3 tools/extract_qe_parameters_v3.py --use-cache --pretty
 ## 版本演进历史
 
 ```
-v0 (旧 v1) → extract_qe_parameters_v1.py
+v0 (旧 v1) → extract_qe_parameters_v0.py
   ↓ 无 schema_version 字段
   ↓ sections -> [param_names]
 
-v1 (旧 v2) → extract_qe_parameters_v2.py (旧版本)
+v1 (旧 v2) → extract_qe_parameters_v1.py
   ↓ schema_version=1
   ↓ 引入 parameters map
+  ↓ 不包含 status/see_also
 
-v2 (旧 v3) → extract_qe_parameters_v2.py (当前版本)
+v2 (旧 v3) → extract_qe_parameters_v2.py
   ↓ schema_version=2
   ↓ 添加 status/see_also
 
-v3 (旧 v4) → extract_qe_parameters_v3.py (当前版本)
+v3 (旧 v4) → extract_qe_parameters_v3.py (生产版本)
   ↓ schema_version=3
   ↓ 添加 sections tree, optionality, card fields
 ```
 
 ## 当前提取器脚本状态
 
-| 脚本 | 生成的 Schema Version | 对应新编号 | 对应旧编号 |
-|------|---------------------|-----------|-----------|
-| `extract_qe_parameters_v1.py` | 无 | v0 | v1 |
-| `extract_qe_parameters_v2.py` | 2 | v2 | v3 |
-| `extract_qe_parameters_v3.py` | 3 | v3 | v4 |
+| 脚本 | 生成的 Schema Version | 对应新编号 | 对应旧编号 | 说明 |
+|------|---------------------|-----------|-----------|------|
+| `extract_qe_parameters_v0.py` | 无 | v0 | v1 | Legacy，无 schema_version |
+| `extract_qe_parameters_v1.py` | 1 | v1 | v2 | Legacy，无 status/see_also |
+| `extract_qe_parameters_v2.py` | 2 | v2 | v3 | Legacy，有 status/see_also |
+| `extract_qe_parameters_v3.py` | 3 | v3 | v4 | **生产版本，不要修改** |
 
 ## 注意事项
 
-1. **legacy.v1.json** 是由**旧版本**的 `extract_qe_parameters_v2.py` 生成的（在重新编号之前）
-   - 该旧版本生成 `schema_version=1`（对应旧 v2）
-   - 重新编号后，该文件的 `schema_version` 值被更新为 1（对应新 v1）
+1. **每个 JSON 文件都有对应的独立生成器脚本**
+   - `legacy.v0.json` → `extract_qe_parameters_v0.py`
+   - `legacy.v1.json` → `extract_qe_parameters_v1.py`
+   - `legacy.v2.json` → `extract_qe_parameters_v2.py`
+   - `qe_module_parameters.json` → `extract_qe_parameters_v3.py` (生产版本)
 
-2. **legacy.v2.json** 是由**当前版本**的 `extract_qe_parameters_v2.py` 生成的
-   - 该脚本在重新编号后生成 `schema_version=2`（对应新 v2，旧 v3）
+2. **v3.py 是生产版本，不要修改**
+   - 这是当前使用的生产版本提取器
+   - 生成 `schema_version=3` 的 JSON 文件
+
+3. **v1.py 和 v2.py 的区别**
+   - v1.py: 不包含 status 和 see_also 字段
+   - v2.py: 包含 status 和 see_also 字段
 
 3. 所有提取器都使用 `json.dump(..., sort_keys=False)` 来保持文档顺序
 
