@@ -13,10 +13,11 @@ import { useQVClient } from '../../hooks/useQVClient';
 import type { QVResult } from '../../types/qv';
 import './QEParameterBrowserPanel.css';
 
-type QEModuleMeta = QVResult<'list_qe_parameter_metadata'>['modules'] extends Array<infer T> ? T : never;
-type QESectionMeta = QVResult<'list_qe_parameter_metadata'>['sections'] extends Array<infer T> ? T : never;
-type QEParameterMeta = QVResult<'list_qe_parameter_metadata'>['parameters'] extends Array<infer T> ? T : never;
-type GlobalSearchResult = QVResult<'list_qe_parameter_metadata'>['results'] extends Array<infer T> ? T : never;
+// Extract types from QVResult, handling optional arrays
+type QEModuleMeta = NonNullable<QVResult<'list_qe_parameter_metadata'>['modules']>[number];
+type QESectionMeta = NonNullable<QVResult<'list_qe_parameter_metadata'>['sections']>[number];
+type QEParameterMeta = NonNullable<QVResult<'list_qe_parameter_metadata'>['parameters']>[number];
+type GlobalSearchResult = NonNullable<QVResult<'list_qe_parameter_metadata'>['results']>[number];
 
 function normalizeError(err: unknown): string {
   if (err instanceof Error) {
@@ -52,6 +53,15 @@ export function QEParameterBrowserPanel() {
 
   // Reload metadata state
   const [isReloading, setIsReloading] = useState(false);
+
+  // Metadata file info (path and schema version)
+  const [metadataInfo, setMetadataInfo] = useState<{
+    pathAbs: string | null;
+    schemaVersion: number | null;
+  }>({
+    pathAbs: null,
+    schemaVersion: null,
+  });
 
   // Search: global search only (triggered by button/Enter)
   const [searchTerm, setSearchTerm] = useState('');
@@ -292,6 +302,14 @@ export function QEParameterBrowserPanel() {
 
         const moduleList = response.data?.modules ?? [];
         setModules(moduleList);
+        
+        // Update metadata info from initial load
+        if (response.data) {
+          setMetadataInfo({
+            pathAbs: response.data.metadata_path_abs ?? null,
+            schemaVersion: response.data.schema_version ?? null,
+          });
+        }
 
         // Auto-select first module ONCE if none is selected
         if (moduleList.length > 0) {
@@ -505,13 +523,22 @@ export function QEParameterBrowserPanel() {
         return;
       }
       modulesToUse = res.data?.modules ?? [];
+      
+      // Update metadata info from response
+      if (res.data) {
+        setMetadataInfo({
+          pathAbs: res.data.metadata_path_abs ?? null,
+          schemaVersion: res.data.schema_version ?? null,
+        });
+      }
     }
 
-    setModules(modulesToUse);
-
-    if (modulesToUse.length > 0) {
+    if (modulesToUse && modulesToUse.length > 0) {
+      setModules(modulesToUse);
       const first = modulesToUse[0];
       await handleModuleChange(first.id, { autoSelectSection: true });
+    } else {
+      setModules([]);
     }
   }, [qv, handleModuleChange]);
 
@@ -526,14 +553,27 @@ export function QEParameterBrowserPanel() {
       }
 
       // Call backend to clear metadata cache and get fresh modules
-      const response = await qv.call<{ modules?: QEModuleMeta[] }>('reload_qe_parameter_metadata', {});
+      const response = await qv.call('reload_qe_parameter_metadata', {});
 
       if (!response.ok) {
         throw new Error(response.error?.message ?? 'Failed to reload QE metadata');
       }
 
+      // Update metadata info from reload response
+      if (response.data) {
+        setMetadataInfo({
+          pathAbs: response.data.metadata_path_abs ?? null,
+          schemaVersion: response.data.schema_version ?? null,
+        });
+      }
+
       // After reload, refresh modules using our existing load logic
-      await loadModulesAfterReload(response.data?.modules);
+      if (response.data?.modules) {
+        await loadModulesAfterReload(response.data.modules);
+      } else {
+        // Fallback: reload modules manually
+        await loadModulesAfterReload(undefined);
+      }
     } catch (err: unknown) {
       console.error('[QEParamBrowser] Failed to reload QE metadata', err);
       // Surface error in global search error (reuse existing error display)
@@ -893,7 +933,7 @@ export function QEParameterBrowserPanel() {
 
   // Aggregate error for display
   const displayError = globalSearchError || parametersError || sectionsError || modulesError;
-  const isLoading = modulesLoading || sectionsLoading || parametersLoading || isGlobalSearching;
+  // const isLoading = modulesLoading || sectionsLoading || parametersLoading || isGlobalSearching;
 
   return (
     <div className="qe-parameter-browser">
@@ -910,9 +950,32 @@ export function QEParameterBrowserPanel() {
             {isReloading ? '⏳ Reloading…' : '🔄 Reload metadata'}
           </button>
         </div>
-        <p className="qe-parameter-browser__subtitle">
-          Browse Quantum ESPRESSO input parameters with rich metadata.
-        </p>
+        <div className="qe-parameter-browser__subtitle" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <p style={{ flex: 1, margin: 0 }}>
+            Browse Quantum ESPRESSO input parameters with rich metadata.
+          </p>
+          {metadataInfo.pathAbs && (
+            <span
+              className="qe-parameter-browser__metadata-info"
+              style={{
+                fontSize: '0.75rem',
+                color: 'var(--muted-foreground, #6b7280)',
+                marginLeft: 'auto',
+                maxWidth: '260px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+              title={metadataInfo.pathAbs}
+            >
+              {(() => {
+                const filename = metadataInfo.pathAbs.split(/[\\/]/).pop() ?? 'metadata';
+                const version = metadataInfo.schemaVersion !== null ? `v${metadataInfo.schemaVersion}` : '';
+                return version ? `${filename} · ${version}` : filename;
+              })()}
+            </span>
+          )}
+        </div>
       </div>
       
       {/* Search: Global search only (triggered by button/Enter) */}
@@ -1030,21 +1093,24 @@ export function QEParameterBrowserPanel() {
         <>
           {/* Filter Controls */}
           <div className="qe-parameter-browser__filters">
-            <div className="qe-parameter-browser__filter-group">
-              <div 
-                className="qv-row-between qv-field-label qv-sortable-header"
+            <div className="qe-parameter-browser__filter-group qe-parameter-browser__filter-group--module">
+              <label 
+                htmlFor="qe-module-select"
+                className="qv-field-label qv-sortable-header"
                 onClick={cycleModuleSort}
-                style={{ cursor: 'pointer' }}
+                style={{ cursor: 'pointer', margin: 0, display: 'flex', alignItems: 'center', gap: '4px' }}
                 title="Click to sort modules"
               >
-                <span>Module</span>
+                <span>Module:</span>
                 {renderSortIndicatorForMode(moduleSort)}
-              </div>
+              </label>
               <select
+                id="qe-module-select"
                 className="qe-parameter-browser__filter-select"
                 value={selectedModule || ''}
                 onChange={(e) => handleModuleChange(e.target.value || null)}
                 disabled={modulesLoading}
+                style={{ width: '200px' }}
               >
                 <option value="">Select module...</option>
                 {sortedModules.map(module => (
@@ -1055,24 +1121,27 @@ export function QEParameterBrowserPanel() {
               </select>
             </div>
             
-            <div className="qe-parameter-browser__filter-group">
-              <div 
-                className="qv-row-between qv-field-label qv-sortable-header"
+            <div className="qe-parameter-browser__filter-group qe-parameter-browser__filter-group--section">
+              <label 
+                htmlFor="qe-section-select"
+                className="qv-field-label qv-sortable-header"
                 onClick={cycleSectionSort}
-                style={{ cursor: 'pointer' }}
+                style={{ cursor: 'pointer', margin: 0, display: 'flex', alignItems: 'center', gap: '4px' }}
                 title="Click to sort sections"
               >
-                <span>Section</span>
+                <span>Section:</span>
                 {renderSortIndicatorForMode(sectionSort)}
-              </div>
+              </label>
               <select
+                id="qe-section-select"
                 className="qe-parameter-browser__filter-select"
                 value={selectedSection || ''}
                 onChange={(e) => handleSectionChange(e.target.value || null, { 
                   autoLoadParameters: true,
-                  module: selectedModule // Pass explicitly to avoid stale closure
+                  module: selectedModule || undefined // Pass explicitly to avoid stale closure
                 })}
                 disabled={sectionsLoading || !selectedModule}
+                style={{ flex: 1, minWidth: 0 }}
               >
                 <option value="">Select section...</option>
                 {sortedSections.map(section => {
@@ -1258,7 +1327,7 @@ export function QEParameterBrowserPanel() {
                           <td className="qv-param-cell qv-param-col-enum" title={enumText}>
                             {param.enum && param.enum.length > 0 ? (
                               <div className="qe-parameter-browser__enum-values">
-                                {param.enum.slice(0, 3).map((val, j) => (
+                                 {param.enum.slice(0, 3).map((val: string, j: number) => (
                                   <span key={j} className="qe-parameter-browser__enum-tag">
                                     {String(val)}
                                   </span>

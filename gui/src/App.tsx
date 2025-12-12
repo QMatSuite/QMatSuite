@@ -26,7 +26,6 @@ import {
   StructureViewer3D,
   AnalysisPanel,
   DebugPanel,
-  DebugView,
   DaemonErrorBanner,
   CreateProjectDialog,
   ImportStructureDialog,
@@ -100,7 +99,7 @@ function App() {
   const [structureVisData, setStructureVisData] = useState<StructureVisData | null>(null);
   
   // Debug state
-  const [debugResult, setDebugResult] = useState<QVResponse | null>(null);
+  const [, setDebugResult] = useState<QVResponse | null>(null);
   const [showDebugFooter, setShowDebugFooter] = useState(true);
   
   // Loading states

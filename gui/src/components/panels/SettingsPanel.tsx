@@ -11,7 +11,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useQVClient, useQVLogs } from '../../hooks/useQVClient';
-import type { QEDetectionResult, EnvironmentInfo, QVResponse } from '../../types/qv';
+import type { QEDetectionResult, EnvironmentInfo } from '../../types/qv';
 import './SettingsPanel.css';
 
 export interface AppSettings {
@@ -39,6 +39,29 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
   const [isPinging, setIsPinging] = useState(false);
   const logs = useQVLogs(200);
   const logsScrollRef = useRef<HTMLDivElement>(null);
+  
+  // QE metadata debug info
+  const [qeMetadataDebugInfo, setQeMetadataDebugInfo] = useState<{
+    loaded_via: 'cache' | 'disk' | 'not_loaded';
+    loaded_at: string | null;
+    schema_version: number | null;
+    path_abs: string | null;
+  } | null>(null);
+  
+  // Fetch QE metadata debug info
+  const fetchQEMetadataDebugInfo = useCallback(async () => {
+    if (!qv) return;
+    
+    try {
+      const response = await qv.call('get_qe_parameter_metadata_debug_info', {});
+      if (response.ok && response.data) {
+        setQeMetadataDebugInfo(response.data);
+      }
+    } catch (e) {
+      // Silently fail - debug info is optional
+      console.debug('[Settings] Failed to fetch QE metadata debug info', e);
+    }
+  }, [qv]);
   
   // Fetch environment info on mount
   useEffect(() => {
@@ -69,6 +92,13 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
     
     fetchEnvInfo();
   }, []);
+  
+  // Fetch QE metadata debug info when diagnostics section is shown
+  useEffect(() => {
+    if (showDiagnostics) {
+      fetchQEMetadataDebugInfo();
+    }
+  }, [showDiagnostics, fetchQEMetadataDebugInfo]);
   
   const handleRedetectQE = useCallback(async () => {
     if (!window.qv) return;
@@ -426,6 +456,83 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
                       </div>
                     )}
                   </div>
+                </div>
+              </div>
+              
+              {/* QE Metadata Load Status */}
+              <div className="diagnostics-subsection">
+                <div className="diagnostics-subsection__header">
+                  <h4 className="diagnostics-subsection__title">QE Metadata Load Status</h4>
+                  <button
+                    className="settings-btn settings-btn--sm"
+                    onClick={fetchQEMetadataDebugInfo}
+                    title="Refresh metadata load status"
+                  >
+                    🔄
+                  </button>
+                </div>
+                <div className="diagnostics-subsection__content">
+                  {qeMetadataDebugInfo ? (
+                    <div className="diagnostics-info">
+                      <div className="diagnostics-info-item">
+                        <span className="diagnostics-info-label">Loaded via:</span>
+                        <span className="diagnostics-info-value">
+                          {(() => {
+                            const loadedVia = qeMetadataDebugInfo.loaded_via;
+                            const loadedAt = qeMetadataDebugInfo.loaded_at;
+                            
+                            if (loadedVia === 'not_loaded') {
+                              return 'not loaded yet';
+                            }
+                            
+                            let timeStr = '—';
+                            if (loadedAt) {
+                              try {
+                                const date = new Date(loadedAt);
+                                const hours = date.getHours().toString().padStart(2, '0');
+                                const minutes = date.getMinutes().toString().padStart(2, '0');
+                                const seconds = date.getSeconds().toString().padStart(2, '0');
+                                timeStr = `${hours}:${minutes}:${seconds}`;
+                              } catch {
+                                timeStr = '—';
+                              }
+                            }
+                            return `${loadedVia} (${timeStr})`;
+                          })()}
+                        </span>
+                      </div>
+                      {qeMetadataDebugInfo.schema_version !== null && (
+                        <div className="diagnostics-info-item">
+                          <span className="diagnostics-info-label">Schema:</span>
+                          <span className="diagnostics-info-value">
+                            v{qeMetadataDebugInfo.schema_version}
+                          </span>
+                        </div>
+                      )}
+                      {qeMetadataDebugInfo.path_abs && (
+                        <div className="diagnostics-info-item">
+                          <span className="diagnostics-info-label">Path:</span>
+                          <code 
+                            className="diagnostics-info-value" 
+                            title={qeMetadataDebugInfo.path_abs}
+                            style={{
+                              maxWidth: '400px',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              display: 'inline-block',
+                            }}
+                          >
+                            {qeMetadataDebugInfo.path_abs}
+                          </code>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="diagnostics-info">
+                      <span className="diagnostics-info-value">Loading...</span>
+                    </div>
+                  )}
                 </div>
               </div>
               

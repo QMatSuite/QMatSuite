@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from functools import lru_cache
 from importlib import resources
 from pathlib import Path
@@ -25,6 +26,39 @@ from typing import Any, Dict, List, Optional
 # Module-level cache for metadata
 _METADATA_CACHE: Optional[Dict[str, Any]] = None
 _METADATA_MTIME: Optional[float] = None
+
+# Load state tracking (for debug/internal use only)
+QE_METADATA_LOAD_STATE: Dict[str, Any] = {
+    "loaded_via": "not_loaded",
+    "loaded_at": None,
+    "schema_version": None,
+    "path_abs": None,
+}
+
+
+def _update_qe_metadata_load_state(
+    loaded_via: str,
+    path_abs: Optional[str] = None,
+    schema_version: Optional[int] = None,
+) -> None:
+    """
+    Update the global QE metadata load state.
+    
+    This is called on every metadata access to track whether data was loaded
+    from cache or disk, and when it was loaded.
+    
+    Args:
+        loaded_via: "cache" or "disk" or "unknown"
+        path_abs: Absolute path to the JSON file (if known)
+        schema_version: Schema version from the JSON (if known)
+    """
+    global QE_METADATA_LOAD_STATE
+    QE_METADATA_LOAD_STATE["loaded_via"] = loaded_via
+    QE_METADATA_LOAD_STATE["loaded_at"] = datetime.now(timezone.utc).isoformat()
+    if path_abs is not None:
+        QE_METADATA_LOAD_STATE["path_abs"] = path_abs
+    if schema_version is not None:
+        QE_METADATA_LOAD_STATE["schema_version"] = schema_version
 
 
 @dataclass(frozen=True)
@@ -79,6 +113,16 @@ def _load_raw_metadata() -> Dict[str, Any]:
     # Check if hot reload is enabled
     hot_reload = os.environ.get("QV_QE_METADATA_HOT_RELOAD", "").strip() == "1"
     
+    # Get absolute path for load state tracking
+    path_abs = None
+    try:
+        with resources.as_file(data_path) as path:
+            path_obj = Path(path)
+            if path_obj.exists():
+                path_abs = str(path_obj.resolve())
+    except Exception:
+        pass
+    
     # If hot reload is enabled, check if file has changed
     should_reload = False
     if hot_reload:
@@ -89,6 +133,9 @@ def _load_raw_metadata() -> Dict[str, Any]:
                     current_mtime = path_obj.stat().st_mtime
                     # If cache exists and mtime matches, use cache
                     if _METADATA_CACHE is not None and _METADATA_MTIME == current_mtime:
+                        # Cache hit - update load state
+                        schema_version = _METADATA_CACHE.get("schema_version") if _METADATA_CACHE else None
+                        _update_qe_metadata_load_state("cache", path_abs, schema_version)
                         return _METADATA_CACHE
                     # Otherwise, mark for reload
                     should_reload = True
@@ -102,6 +149,9 @@ def _load_raw_metadata() -> Dict[str, Any]:
     else:
         # If hot reload is disabled and cache exists, return cached data
         if _METADATA_CACHE is not None:
+            # Cache hit - update load state
+            schema_version = _METADATA_CACHE.get("schema_version") if _METADATA_CACHE else None
+            _update_qe_metadata_load_state("cache", path_abs, schema_version)
             return _METADATA_CACHE
         should_reload = True
     
@@ -145,8 +195,48 @@ def _load_raw_metadata() -> Dict[str, Any]:
         
         # Cache the loaded data
         _METADATA_CACHE = data
+        
+        # Update load state - loaded from disk
+        _update_qe_metadata_load_state("disk", path_abs, schema_version)
     
     return _METADATA_CACHE
+
+
+def get_metadata_file_info() -> Dict[str, Any]:
+    """
+    Get metadata file information (absolute path and schema version).
+    
+    Returns:
+        Dict with keys:
+        - metadata_path_abs: str | None - Absolute path to the JSON file, or None if not found
+        - schema_version: int | None - Schema version from the JSON, or None if not loaded
+    """
+    try:
+        data_path = resources.files(__package__).joinpath("qe_module_parameters.json")
+        with resources.as_file(data_path) as path:
+            path_obj = Path(path)
+            if path_obj.exists():
+                abs_path = str(path_obj.resolve())
+                # Try to get schema version from cache or load it
+                try:
+                    data = _load_raw_metadata()
+                    schema_version = data.get("schema_version", None)
+                except Exception:
+                    schema_version = None
+                return {
+                    "metadata_path_abs": abs_path,
+                    "schema_version": schema_version,
+                }
+            else:
+                return {
+                    "metadata_path_abs": None,
+                    "schema_version": None,
+                }
+    except Exception:
+        return {
+            "metadata_path_abs": None,
+            "schema_version": None,
+        }
 
 
 def safe_load_metadata() -> Dict[str, Any]:
@@ -166,8 +256,22 @@ def safe_load_metadata() -> Dict[str, Any]:
         raise RuntimeError(
             f"QE parameter metadata is not available: {exc}. "
             f"This is required for QE-related operations. "
-            f"Run `python tools/extract_qe_parameters_v4.py` to generate it."
+            f"Run `python tools/extract_qe_parameters_v3.py` to generate it."
         ) from exc
+
+
+def get_qe_metadata_debug_info() -> Dict[str, Any]:
+    """
+    Get QE metadata load state for debug/internal use.
+    
+    Returns:
+        Dict with keys:
+        - loaded_via: "cache" | "disk" | "not_loaded"
+        - loaded_at: ISO timestamp string or None
+        - schema_version: int or None
+        - path_abs: str or None
+    """
+    return QE_METADATA_LOAD_STATE.copy()
 
 
 def reload_metadata() -> None:
@@ -452,16 +556,15 @@ def validate_ui_parameters() -> List[str]:
     """
     errors = []
     ui_data = _load_ui_parameters()
-    raw_data = safe_load_metadata()
-    modules = raw_data.get("modules", {})
     
     for module_name, module_entry in ui_data.items():
-        module_params = modules.get(module_name.lower())
-        if not module_params:
+        # Use get_module_param_sections to get the parameter mapping
+        # This function handles all schema versions correctly
+        sections = get_module_param_sections(module_name.lower())
+        if not sections:
             errors.append(f"Module '{module_name}' in UI parameters is not in qe_module_parameters.json")
             continue
         
-        sections = module_params.get("sections", {})
         # Build a set of all valid parameter names for this module
         all_params = set()
         for section_params in sections.values():
