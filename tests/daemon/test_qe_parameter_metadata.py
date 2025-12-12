@@ -46,6 +46,32 @@ def test_list_modules_returns_all_modules(daemon):
         assert module["label"] == f"{module['id']}.x"
 
 
+def test_list_modules_preserves_json_order(daemon):
+    """Test that list_modules returns modules in JSON insertion order (not sorted)."""
+    from quantumvitas.data.qe_metadata import safe_load_metadata
+    
+    # Get expected order from raw metadata
+    raw_data = safe_load_metadata()
+    expected_order = list(raw_data.get("modules", {}).keys())
+    
+    request = RPCRequest(
+        id="test-1b",
+        type="list_qe_parameter_metadata",
+        payload={"operation": "list_modules"},
+    )
+    
+    response = daemon.handle_request(request)
+    
+    assert response.ok is True
+    modules = response.data["modules"]
+    actual_order = [m["id"] for m in modules]
+    
+    # Verify order matches JSON order (at least for first few modules)
+    # We check the first 5 to allow for some flexibility, but order should be preserved
+    assert actual_order[:5] == expected_order[:5], \
+        f"Module order should match JSON order. Expected: {expected_order[:5]}, Got: {actual_order[:5]}"
+
+
 def test_list_sections_for_valid_module(daemon):
     """Test that list_sections returns sections for a valid module."""
     # Use 'pw' module which should always exist
@@ -66,16 +92,84 @@ def test_list_sections_for_valid_module(daemon):
     # Verify section structure
     for section in sections:
         assert "id" in section
+        assert "name" in section  # Clean name without '&'
+        assert "label" in section  # Display label from metadata
         assert "kind" in section
-        assert "label" in section
         assert section["kind"] in ("namelist", "card")
         assert isinstance(section["id"], str)
+        assert isinstance(section["name"], str)
         assert isinstance(section["label"], str)
+        # name should NOT have '&' prefix
+        assert not section["name"].startswith("&"), f"Section name should not have '&' prefix: {section['name']}"
+        # label should match metadata: namelists have '&', cards don't
+        if section["kind"] == "namelist":
+            assert section["label"].startswith("&"), f"Namelist label should have '&' prefix: {section['label']}"
+        else:
+            assert not section["label"].startswith("&"), f"Card label should not have '&' prefix: {section['label']}"
     
     # Should have at least &CONTROL and &SYSTEM namelists for pw
+    section_names = [s["name"] for s in sections]
     section_ids = [s["id"] for s in sections]
-    assert "&CONTROL" in section_ids or any("CONTROL" in s for s in section_ids)
-    assert "&SYSTEM" in section_ids or any("SYSTEM" in s for s in section_ids)
+    assert "CONTROL" in section_names or "&CONTROL" in section_ids
+    assert "SYSTEM" in section_names or "&SYSTEM" in section_ids
+    
+    # Verify K_POINTS is a card (not a namelist)
+    kpoints_sections = [s for s in sections if s["name"] == "K_POINTS" or s["id"] == "K_POINTS"]
+    if kpoints_sections:
+        kpoints = kpoints_sections[0]
+        assert kpoints["kind"] == "card", f"K_POINTS should be a card, got {kpoints['kind']}"
+        assert kpoints["name"] == "K_POINTS", f"K_POINTS name should be 'K_POINTS', got {kpoints['name']}"
+        assert not kpoints["name"].startswith("&"), "K_POINTS name should not have '&' prefix"
+        # Verify label is raw (no extra '&' added by backend)
+        assert kpoints["label"] == "K_POINTS", f"K_POINTS label should be 'K_POINTS', got {kpoints['label']}"
+
+
+def test_list_sections_preserves_metadata_order(daemon):
+    """Test that list_sections returns sections in metadata order (not sorted)."""
+    from quantumvitas.data.qe_metadata import safe_load_metadata, get_module_card_sections, get_module_param_sections
+    
+    # Get expected order from raw metadata
+    raw_data = safe_load_metadata()
+    pw_module = raw_data.get("modules", {}).get("pw", {})
+    
+    # Cards should be in card_metadata order
+    expected_card_order = list(pw_module.get("card_metadata", {}).keys())
+    
+    # Namelists should be in parameters map order (first appearance)
+    sections_dict = get_module_param_sections("pw")
+    expected_namelist_order = []
+    seen_namelists = set()
+    for section_name in sections_dict.keys():
+        if section_name.startswith("&"):
+            name = section_name[1:].upper()
+            if name not in seen_namelists and name not in [c.upper() for c in expected_card_order]:
+                expected_namelist_order.append(name)
+                seen_namelists.add(name)
+    
+    request = RPCRequest(
+        id="test-2b",
+        type="list_qe_parameter_metadata",
+        payload={"operation": "list_sections", "module": "pw"},
+    )
+    
+    response = daemon.handle_request(request)
+    
+    assert response.ok is True
+    sections = response.data["sections"]
+    
+    # Extract actual order
+    actual_card_order = [s["name"] for s in sections if s["kind"] == "card"]
+    actual_namelist_order = [s["name"] for s in sections if s["kind"] == "namelist"]
+    
+    # Verify cards are in metadata order (at least first few)
+    if expected_card_order and actual_card_order:
+        assert actual_card_order[:3] == [c.upper() for c in expected_card_order[:3]], \
+            f"Card order should match metadata. Expected: {expected_card_order[:3]}, Got: {actual_card_order[:3]}"
+    
+    # Verify namelists are in parameters map order (at least first few)
+    if expected_namelist_order and actual_namelist_order:
+        assert actual_namelist_order[:3] == expected_namelist_order[:3], \
+            f"Namelist order should match parameters map order. Expected: {expected_namelist_order[:3]}, Got: {actual_namelist_order[:3]}"
 
 
 def test_list_sections_for_invalid_module(daemon):
@@ -132,6 +226,38 @@ def test_list_parameters_for_valid_module_and_section(daemon):
     # Should have common parameters like ecutwfc, ibrav
     param_names = [p["name"] for p in parameters]
     assert "ecutwfc" in param_names or "ibrav" in param_names
+
+
+def test_list_parameters_for_card_section(daemon):
+    """Test that list_parameters returns card metadata for a card section."""
+    request = RPCRequest(
+        id="test-4b",
+        type="list_qe_parameter_metadata",
+        payload={
+            "operation": "list_parameters",
+            "module": "pw",
+            "section": "K_POINTS",  # Card section (no '&' prefix)
+        },
+    )
+    
+    response = daemon.handle_request(request)
+    
+    assert response.ok is True
+    assert "parameters" in response.data
+    parameters = response.data["parameters"]
+    assert isinstance(parameters, list)
+    # Cards typically have metadata but may not have individual parameters
+    # At minimum, should return card metadata if available
+    
+    # If K_POINTS card metadata exists, verify structure
+    if len(parameters) > 0:
+        for param in parameters:
+            assert "name" in param
+            assert "module" in param
+            assert "section" in param
+            assert param["module"] == "pw"
+            # Section should be K_POINTS (no '&' prefix for cards)
+            assert param["section"] == "K_POINTS" or param["section"] == "&K_POINTS"
 
 
 def test_list_parameters_with_array_indexing(daemon):

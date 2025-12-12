@@ -410,8 +410,9 @@ export interface QVCommandMap {
       }>;
       sections?: Array<{
         id: string;
+        name: string;  // Clean name without '&' prefix
         kind: 'namelist' | 'card';
-        label: string;
+        label: string;  // Display label from metadata (includes '&' for namelists, raw for cards)
       }>;
       parameters?: Array<{
         name: string;

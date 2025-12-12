@@ -664,6 +664,8 @@ class QVDaemon:
                 if not module:
                     raise ValueError("'module' is required for list_sections operation")
                 
+                self.log(f"[RPC] list_qe_parameter_metadata (operation: list_sections, module: {module})")
+                
                 # Validate module exists
                 supported_modules = list_supported_modules()
                 if module not in supported_modules:
@@ -671,33 +673,61 @@ class QVDaemon:
                         f"Unknown module '{module}'. Supported modules: {', '.join(sorted(supported_modules))}"
                     )
                 
-                sections_dict = get_module_param_sections(module)
                 result = []
-                
-                # Get all sections (namelists and cards)
-                # In QE, sections starting with '&' are namelists, others are cards
                 seen_sections = set()
-                for section_name in sections_dict.keys():
-                    if section_name in seen_sections:
-                        continue
-                    seen_sections.add(section_name)
-                    
-                    # Determine kind (namelist vs card)
-                    if section_name.startswith("&"):
-                        kind = "namelist"
-                        label = section_name
-                    else:
-                        kind = "card"
-                        label = section_name
-                    
+                
+                # First, get card sections (from card_metadata) - these take priority
+                # Cards are the source of truth, so if something is in card_metadata,
+                # it's a card, even if it also appears in parameters map
+                from quantumvitas.data import get_module_card_sections
+                card_sections = get_module_card_sections(module)
+                card_names_upper = {card_name.upper() for card_name in card_sections}
+                
+                for card_name in card_sections:
+                    card_name_upper = card_name.upper()
+                    seen_sections.add(card_name_upper)
                     result.append({
-                        "id": section_name,
-                        "kind": kind,
-                        "label": label,
+                        "id": card_name_upper,  # For lookups
+                        "name": card_name_upper,  # Clean name without '&'
+                        "label": card_name_upper,  # Label is same as name for cards (no '&')
+                        "kind": "card",
                     })
                 
-                # Sort: namelists first, then cards
-                result.sort(key=lambda x: (x["kind"] != "namelist", x["label"]))
+                # Then get namelist sections (from parameters with namelist field)
+                # Skip any that are already in card_metadata (they're cards, not namelists)
+                sections_dict = get_module_param_sections(module)
+                for section_name in sections_dict.keys():
+                    # Remove '&' prefix to get clean name
+                    if section_name.startswith("&"):
+                        name = section_name[1:].upper()  # Remove '&' and normalize
+                    else:
+                        name = section_name.upper()
+                    
+                    # Skip if this is a card (cards take priority)
+                    if name in card_names_upper:
+                        continue
+                    
+                    # Skip if already seen
+                    if name in seen_sections:
+                        continue
+                    seen_sections.add(name)
+                    
+                    # This is a namelist
+                    result.append({
+                        "id": section_name,  # Keep original for backward compatibility (with '&')
+                        "name": name,  # Clean name without '&'
+                        "label": section_name,  # Label includes '&' prefix for namelists
+                        "kind": "namelist",
+                    })
+                
+                # Preserve order: cards first (as added), then namelists (as added)
+                # No sorting - maintain JSON/metadata insertion order
+                
+                # Log sample sections for debugging
+                self.log(f"[RPC] list_sections returning {len(result)} sections (preserving metadata order)")
+                for sec in result[:3]:  # Log first 3
+                    self.log(f"  - {sec['name']} ({sec['kind']})")
+                
                 return {"sections": result}
             
             elif operation == "list_parameters":
@@ -705,52 +735,76 @@ class QVDaemon:
                 module = payload.get("module", "").strip().lower()
                 section = payload.get("section", "").strip()
                 
+                self.log(f"[RPC] list_qe_parameter_metadata (operation: list_parameters, module: {module}, section: {section})")
+                
                 if not module:
                     raise ValueError("'module' is required for list_parameters operation")
                 if not section:
                     raise ValueError("'section' is required for list_parameters operation")
                 
-                # Normalize section name (remove '&' prefix if present, but keep it for matching)
-                section_normalized = section[1:] if section.startswith("&") else section
-                section_with_prefix = f"&{section_normalized.upper()}" if not section.startswith("&") else section
+                # Normalize section name (remove '&' prefix if present)
+                section_normalized = section[1:].upper() if section.startswith("&") else section.upper()
+                is_namelist = section.startswith("&")
                 
-                # Get all parameters for the module (use internal _iter_params)
-                params = qe_metadata._iter_params(module)
-                
-                # Filter by section
                 result = []
                 raw_data = safe_load_metadata()
-                schema_version = raw_data.get("schema_version", 1)
+                modules_data = raw_data.get("modules", {})
+                module_entry = modules_data.get(module)
                 
-                for param in params:
-                    param_namelist = param.get("namelist", "")
-                    param_section = f"&{param_namelist.upper()}" if param_namelist else ""
+                if not module_entry:
+                    return {"parameters": []}
+                
+                if is_namelist:
+                    # Handle namelist sections
+                    section_with_prefix = f"&{section_normalized}"
                     
-                    # Match section (try both with and without prefix)
-                    if param_section == section_with_prefix or param_namelist.upper() == section_normalized.upper():
-                        param_dict = {
-                            "name": param.get("name"),
-                            "type": param.get("type"),
-                            "default": param.get("default"),
-                            "enum": param.get("enum"),
-                            "description": param.get("description"),
-                            "section": section_with_prefix,
-                            "module": module,
-                        }
+                    # Get all parameters for the module (use internal _iter_params)
+                    params = qe_metadata._iter_params(module)
+                    
+                    # Filter by section
+                    for param in params:
+                        param_namelist = param.get("namelist", "")
+                        param_section = f"&{param_namelist.upper()}" if param_namelist else ""
                         
-                        # For v2 schema, get indexing metadata from raw data
-                        if schema_version == 2:
-                            modules_data = raw_data.get("modules", {})
-                            module_entry = modules_data.get(module)
-                            if module_entry:
+                        # Match section
+                        if param_section == section_with_prefix or param_namelist.upper() == section_normalized:
+                            param_dict = {
+                                "name": param.get("name"),
+                                "type": param.get("type"),
+                                "default": param.get("default"),
+                                "enum": param.get("enum"),
+                                "description": param.get("description"),
+                                "section": section_with_prefix,
+                                "module": module,
+                            }
+                            
+                            # For v2 schema, get indexing metadata from raw data
+                            schema_version = raw_data.get("schema_version", 1)
+                            if schema_version == 2:
                                 parameters_map = module_entry.get("parameters", {})
                                 # Find the parameter in the map (key format: "&SECTION.paramname")
                                 param_key = f"{section_with_prefix}.{param.get('name')}"
                                 param_meta = parameters_map.get(param_key)
                                 if param_meta and "indexing" in param_meta:
                                     param_dict["indexing"] = param_meta["indexing"]
-                        
-                        result.append(param_dict)
+                            
+                            result.append(param_dict)
+                else:
+                    # Handle card sections - cards have metadata but not individual parameters
+                    # Return the card metadata as a single "parameter" entry
+                    card_metadata = module_entry.get("card_metadata", {})
+                    card_info = card_metadata.get(section_normalized)
+                    
+                    if card_info:
+                        result.append({
+                            "name": card_info.get("name", section_normalized),
+                            "type": card_info.get("type"),
+                            "default": card_info.get("default"),
+                            "enum": card_info.get("enum"),
+                            "description": card_info.get("description"),
+                            "section": section_normalized,  # Cards don't have '&' prefix
+                            "module": module,
+                        })
                 
                 # Sort by name
                 result.sort(key=lambda x: x.get("name", ""))
