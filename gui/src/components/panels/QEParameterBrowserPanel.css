@@ -236,7 +236,9 @@
 
 .qe-parameter-browser__filters {
   display: flex;
-  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 1.5rem;
   padding-bottom: 1rem;
   border-bottom: 1px solid var(--border-color);
@@ -244,10 +246,19 @@
 
 .qe-parameter-browser__filter-group {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.qe-parameter-browser__filter-group--module {
+  /* Module group: fixed width for dropdown */
+}
+
+.qe-parameter-browser__filter-group--section {
+  /* Section group: takes remaining space */
   flex: 1;
-  max-width: 300px;
+  min-width: 200px;
 }
 
 .qe-parameter-browser__filter-label {
@@ -265,6 +276,10 @@
   font-size: 0.9rem;
   cursor: pointer;
   transition: all 0.2s;
+  /* Ensure text truncation for long values */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .qe-parameter-browser__filter-select:focus {
@@ -288,6 +303,14 @@
 
 .qv-field-label {
   margin-bottom: 0.5rem;
+}
+
+/* Inline filter group labels (no bottom margin when inline) */
+.qe-parameter-browser__filter-group .qv-field-label {
+  margin-bottom: 0;
+  white-space: nowrap;
+  width: auto;
+  flex-shrink: 0;
 }
 
 .qv-icon-button {

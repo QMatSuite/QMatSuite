@@ -18,6 +18,7 @@ The daemon itself never touches cwd; all paths come from request payloads.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import traceback
 from dataclasses import dataclass, field
@@ -43,6 +44,8 @@ from quantumvitas.data.qe_metadata import (
     list_supported_modules,
     get_module_param_sections,
     get_module_doc_url,
+    get_metadata_file_info,
+    get_qe_metadata_debug_info,
     safe_load_metadata,
     reload_metadata,
 )
@@ -201,6 +204,7 @@ class QVDaemon:
             "list_qe_ui_parameters": self._handle_list_qe_ui_parameters,
             "list_qe_parameter_metadata": self._handle_list_qe_parameter_metadata,
             "reload_qe_parameter_metadata": self._handle_reload_qe_parameter_metadata,
+            "get_qe_parameter_metadata_debug_info": self._handle_get_qe_parameter_metadata_debug_info,
             
             # Project/resource listing
             "get_project_summary": self._handle_get_project_summary,
@@ -362,6 +366,10 @@ class QVDaemon:
             request_type = data.get("type")
             payload = data.get("payload", {})
             
+            # Log incoming request with req_id (dev-only, helps identify duplicate calls)
+            if os.environ.get("QV_DEBUG_RPC", "").strip() == "1":
+                self.log(f"[RPC-IN] {request_type} (req_id={request_id})")
+            
             if not request_type:
                 return RPCResponse(
                     id=request_id,
@@ -424,10 +432,11 @@ class QVDaemon:
             duration_ms = (time.time() - start_time) * 1000
             
             # Log request timing (INFO level for all requests)
+            # Include req_id to help identify duplicate calls
             if project_root:
-                self.log(f"[RPC] {request.type} (project: {project_root.name}) took {duration_ms:.1f}ms")
+                self.log(f"[RPC] {request.type} (req_id={request.id}, project: {project_root.name}) took {duration_ms:.1f}ms")
             else:
-                self.log(f"[RPC] {request.type} took {duration_ms:.1f}ms")
+                self.log(f"[RPC] {request.type} (req_id={request.id}) took {duration_ms:.1f}ms")
             
             return RPCResponse(id=request.id, ok=True, data=result)
             
@@ -646,6 +655,9 @@ class QVDaemon:
             self.log(f"[RPC] list_qe_parameter_metadata (operation: {operation})")
         
         try:
+            # Get metadata file info for all operations
+            metadata_info = get_metadata_file_info()
+            
             if operation == "list_modules":
                 # List all supported QE modules
                 modules = list_supported_modules()
@@ -658,7 +670,11 @@ class QVDaemon:
                         "label": label,
                         "doc_url": doc_url,
                     })
-                return {"modules": result}
+                return {
+                    "modules": result,
+                    "metadata_path_abs": metadata_info.get("metadata_path_abs"),
+                    "schema_version": metadata_info.get("schema_version"),
+                }
             
             elif operation == "list_sections":
                 # List sections (namelists/cards) for a given module
@@ -689,7 +705,12 @@ class QVDaemon:
                 module_entry = modules_data.get(module)
                 
                 if not module_entry:
-                    return {"sections": []}
+                    metadata_info = get_metadata_file_info()
+                    return {
+                        "sections": [],
+                        "metadata_path_abs": metadata_info.get("metadata_path_abs"),
+                        "schema_version": metadata_info.get("schema_version"),
+                    }
                 
                 # Extract section order from parameters map (v2/v3 schema) or sections dict (v1 schema)
                 # This preserves the JSON insertion order
@@ -774,7 +795,11 @@ class QVDaemon:
                 for sec in result[:3]:  # Log first 3
                     self.log(f"  - {sec['name']} ({sec['kind']})")
                 
-                return {"sections": result}
+                return {
+                    "sections": result,
+                    "metadata_path_abs": metadata_info.get("metadata_path_abs"),
+                    "schema_version": metadata_info.get("schema_version"),
+                }
             
             elif operation == "list_parameters":
                 # List parameters for a given module and section
@@ -798,7 +823,11 @@ class QVDaemon:
                 module_entry = modules_data.get(module)
                 
                 if not module_entry:
-                    return {"parameters": []}
+                    return {
+                        "parameters": [],
+                        "metadata_path_abs": metadata_info.get("metadata_path_abs"),
+                        "schema_version": metadata_info.get("schema_version"),
+                    }
                 
                 if is_namelist:
                     # Handle namelist sections
@@ -854,7 +883,11 @@ class QVDaemon:
                 
                 # Sort by name
                 result.sort(key=lambda x: x.get("name", ""))
-                return {"parameters": result}
+                return {
+                    "parameters": result,
+                    "metadata_path_abs": metadata_info.get("metadata_path_abs"),
+                    "schema_version": metadata_info.get("schema_version"),
+                }
             
             elif operation == "search":
                 # Global search across all modules and sections
@@ -961,7 +994,11 @@ class QVDaemon:
                                         "description": card_info.get("description"),
                                     })
                 
-                return {"results": results}
+                return {
+                    "results": results,
+                    "metadata_path_abs": metadata_info.get("metadata_path_abs"),
+                    "schema_version": metadata_info.get("schema_version"),
+                }
             
             else:
                 raise ValueError(f"Unknown operation '{operation}'. Must be one of: list_modules, list_sections, list_parameters, search")
@@ -991,6 +1028,9 @@ class QVDaemon:
             # Clear the cache
             reload_metadata()
             
+            # Get metadata file info after reload
+            metadata_info = get_metadata_file_info()
+            
             # Optionally return modules so the frontend can immediately refresh
             modules = list_supported_modules()
             result = []
@@ -1004,11 +1044,47 @@ class QVDaemon:
                 })
             
             self.log(f"[RPC] reload_qe_parameter_metadata: cache cleared, {len(result)} modules available")
-            return {"modules": result}
+            return {
+                "modules": result,
+                "metadata_path_abs": metadata_info.get("metadata_path_abs"),
+                "schema_version": metadata_info.get("schema_version"),
+            }
         
         except (RuntimeError, FileNotFoundError) as e:
             # Metadata loading errors should be user-friendly
-            raise ValueError(f"Failed to reload QE parameter metadata: {e}. Run `python tools/extract_qe_parameters_v2.py` to generate it.") from e
+            raise ValueError(f"Failed to reload QE parameter metadata: {e}. Run `python tools/extract_qe_parameters_v3.py` to generate it.") from e
+    
+    def _handle_get_qe_parameter_metadata_debug_info(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get QE metadata load state for debug/internal use.
+        
+        This command is intended for Settings/Debug UI only, not for customer-facing features.
+        
+        Payload:
+            No fields required.
+        
+        Returns:
+            {
+                "loaded_via": "cache" | "disk" | "not_loaded",
+                "loaded_at": "<ISO timestamp>" | null,
+                "schema_version": int | null,
+                "path_abs": str | null,
+            }
+        """
+        self.log("[RPC] get_qe_parameter_metadata_debug_info")
+        
+        try:
+            debug_info = get_qe_metadata_debug_info()
+            return debug_info
+        except Exception as e:
+            self.log(f"[RPC] get_qe_parameter_metadata_debug_info error: {e}")
+            # Return safe defaults on error
+            return {
+                "loaded_via": "not_loaded",
+                "loaded_at": None,
+                "schema_version": None,
+                "path_abs": None,
+            }
     
     # -------------------------------------------------------------------------
     # Project/resource handlers
