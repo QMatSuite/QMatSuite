@@ -11,7 +11,7 @@ The QE HTML extractor (`tools/extract_qe_parameters_v*.py`) scrapes Quantum ESPR
 - One HTML file per QE module (pw, ph, cp, neb, etc.)
 
 **Outputs**:
-- `src/quantumvitas/data/qe_module_parameters.json` - Schema v4 JSON with parameter metadata and section hierarchy
+- `src/quantumvitas/data/qe_module_parameters.json` - Schema v3 JSON with parameter metadata and section hierarchy
 - Legacy versions preserved as `qe_module_parameters.legacy.v*.json`
 
 **Why ToC-driven ordering?**
@@ -21,9 +21,9 @@ The QE HTML extractor (`tools/extract_qe_parameters_v*.py`) scrapes Quantum ESPR
 
 ---
 
-## V2 vs V3 Improvements
+## V1 vs V2 Improvements
 
-### V2 Limitations
+### V1 Limitations
 - Assumed second row of parameter table was always "Default:" (incorrect for parameters like `celldm` where "See:" appears first)
 - Enum extraction relied on regex heuristics that missed structured HTML (`<span class="flag">`)
 - Description rendering used `get_text()` which produced excessive blank lines and lost structure
@@ -57,14 +57,14 @@ The QE HTML extractor (`tools/extract_qe_parameters_v*.py`) scrapes Quantum ESPR
 - Handles `<br>`, inline tags (`<a>`, `<i>`, `<b>`, `<span>`)
 - Preserves structure while removing excessive whitespace
 
-**E) Schema Version 3**
+**E) Schema Version 2**
 - Adds optional `status` field (e.g., "REQUIRED", "OPTIONAL")
 - Adds optional `see_also` field (list of related parameter names or string)
-- Maintains backward compatibility with v2 structure
+- Maintains backward compatibility with v1 structure
 
 ---
 
-## V3 Pipeline (Step-by-Step)
+## V2 Pipeline (Step-by-Step)
 
 ### Stage 1: ToC-Driven Initialization
 
@@ -171,10 +171,10 @@ json.dump({
 
 ---
 
-## Known V3 Limitations (Before V4)
+## Known V2 Limitations (Before V3)
 
 1. **Section-level descriptions not stored**
-   - V3 only extracts parameter-level descriptions
+   - V2 only extracts parameter-level descriptions
    - Section-level context (e.g., "Input this namelist only if lfcp = .TRUE.") is lost
 
 2. **Card options/syntax/items not captured as structured data**
@@ -184,7 +184,7 @@ json.dump({
 
 3. **NEB supercards not represented as hierarchy**
    - NEB modules use `BEGIN_*` / `END_*` supercard containers
-   - V3 treats these as flat sections, losing the hierarchical structure
+   - V2 treats these as flat sections, losing the hierarchical structure
 
 4. **No optionality classification**
    - Cannot determine if a section is "optional", "required", or "conditional"
@@ -192,9 +192,9 @@ json.dump({
 
 ---
 
-## V4 Additions
+## V3 Additions
 
-V4 extends v3 with section-level metadata and hierarchical structure:
+V3 extends v2 with section-level metadata and hierarchical structure:
 
 ### New Features
 
@@ -222,13 +222,13 @@ V4 extends v3 with section-level metadata and hierarchical structure:
 
 ### Schema Changes
 
-- `schema_version`: 4
+- `schema_version`: 3
 - New top-level: `module.sections` (hierarchical tree)
 - Section nodes include: `kind`, `name`, `description`, `optionality`, `optionality_source`, `children`
 - Card sections may include: `options`, `default_option`, `options_description`, `syntax`, `items`
-- `module.parameters` unchanged (still uses v3 logic)
+- `module.parameters` unchanged (still uses v2 logic)
 
-### V4 Algorithm Overview
+### V3 Algorithm Overview
 
 1. **Build section hierarchy**:
    - Traverse `<h2>` elements in document order
@@ -238,7 +238,7 @@ V4 extends v3 with section-level metadata and hierarchical structure:
 
 2. **Extract section descriptions**:
    - Collect content after `<h2>` until first `<h3>` or parameter table
-   - Render using `render_description()` (same as v3)
+   - Render using `render_description()` (same as v2)
    - **Robustness**: Falls back to `content_td` if nested table is missing
    - **Improved stop detection**: Only stops at parameter tables with type tokens (INTEGER, REAL, CHARACTER, LOGICAL)
 
@@ -256,13 +256,13 @@ V4 extends v3 with section-level metadata and hierarchical structure:
    - Extract items from `<h3>Description of items:</h3>` block (searches forward until next h3)
    - **Robustness**: Uses same nested content root as section description extraction for consistency
 
-5. **Preserve v3 parameter extraction**:
-   - `module.parameters` still uses v3's ToC-driven + metadata fill logic
+5. **Preserve v2 parameter extraction**:
+   - `module.parameters` still uses v2's ToC-driven + metadata fill logic
    - No changes to parameter extraction behavior
 
 ---
 
-## V4 Pipeline (Detailed)
+## V3 Pipeline (Detailed)
 
 ### Stage 1: Section Hierarchy Building
 
@@ -327,7 +327,7 @@ The `extract_section_description()` function:
 2. Locates nested table inside that `<td>` (falls back to `content_td` if missing)
 3. Collects content elements (`<p>`, `<blockquote>`, `<pre>`, `<dl>`, `<div>`) from nested `<td>`
 4. Stops at first `<h3>` or parameter-definition table
-5. Renders collected elements using same logic as v3's `render_description()`
+5. Renders collected elements using same logic as v2's `render_description()`
 
 **Robustness improvements**:
 - **Missing nested table**: Falls back to `content_td` or first `<td>` within it if nested table is missing
@@ -388,11 +388,88 @@ The `extract_card_structured_fields()` function:
 - `module.parameters` structure unchanged
 - No sorting applied
 
+---
+
+## V3 Robustness Improvements (Final Pass)
+
+After the initial v3 implementation, a final robustness pass addressed several edge cases and false positives. These improvements maintain schema version 3 and do not change the JSON structure.
+
+### 1) Optionality False-Positive Reduction
+
+**Problem**: Substring matching (`"if" in desc`) incorrectly matched words like "diff", "interface", causing false conditional classifications.
+
+**Solution**: 
+- Keyword detection uses word-boundary regex: `\bif\b`, `\boptional\b`, `\brequired\b`
+- This prevents matches inside words (e.g., "diff" no longer triggers conditional)
+
+**Snippet extraction for `optionality_raw_snippet`**:
+- **First pass**: Scan line-by-line and pick the first line containing the relevant keyword
+- **Fallback pass**: Sentence splitting if no line match
+- **Normalization**: Whitespace inside snippet normalized (`\s+` → single space)
+
+**Example**:
+- Old: `"This is a diff calculation"` → `optionality="conditional"` (false positive)
+- New: `"This is a diff calculation"` → `optionality="none"` (correct)
+
+### 2) `extract_section_description()` Robustness
+
+**Problem**: Function returned `None` if expected nested table structure was missing, causing sections to lose descriptions.
+
+**Solution**:
+- **Missing nested table fallback**: If nested table is missing, fallback to `content_td` or the first `<td>` within it
+- This allows extraction even when HTML structure varies
+
+**Improved "stop" detection**:
+- Only stop when a `<table>` looks like a parameter-definition table:
+  - The type cell (`<td>`) contains "type" OR one of: INTEGER, REAL, CHARACTER, LOGICAL
+  - AND it's NOT a metadata table (whitelist check)
+- **Expanded metadata-table whitelist**:
+  - Include "see also:" (case-insensitive)
+  - Handle missing apostrophes (apostrophe-tolerant matching: "cards options" matches "Card's options:")
+
+**Result**: More sections have descriptions extracted, fewer false stops at metadata tables.
+
+### 3) `extract_card_structured_fields()` Traversal and Extraction Improvements
+
+**Problem**: Inconsistent traversal starting point and fragile extraction logic.
+
+**Solution**:
+- **Traversal root consistency**: Uses same nested content root logic as `extract_section_description()` for consistency
+  - Locates `tr_with_h2`, `next_tr`, `content_td`, `nested_table`, `nested_td` using identical logic
+  - Iterates through `nested_td.children` in document order
+
+**"Card's options" matching**:
+- Case-insensitive and apostrophe-tolerant
+- Matches "Card's options:", "card options", "CARDS OPTIONS", etc.
+
+**Syntax extraction fallback**:
+- If syntax table (`<div class="syntax"><table>`) is missing, extract `<pre>` text
+- Light whitespace normalization (line trimming, preserve structure)
+
+**Items extraction robustness**:
+- Search forward until the next `<h3>` boundary (not just immediate siblings)
+- Handle cases where blockquote nesting differs
+- Only extract parameter-definition tables (with type token detection: INTEGER, REAL, CHARACTER, LOGICAL)
+
+**Result**: More reliable card field extraction, especially for cards with non-standard HTML structure.
+
+### 4) Regeneration and Invariants
+
+After the robustness pass:
+- **JSON regenerated**: `src/quantumvitas/data/qe_module_parameters.json` updated
+- **Schema version**: Remains 3 (no schema changes)
+- **Parameter count**: Unchanged (no accidental drops)
+- **Order preservation**: Still guaranteed:
+  - No `sorted()` calls
+  - `json.dump(..., sort_keys=False)`
+
+---
+
 ### Output
 
 ```python
 json.dump({
-    "schema_version": 4,
+    "schema_version": 3,
     "modules": {
         "pw": {
             "doc_url": "...",
@@ -417,7 +494,7 @@ json.dump({
 
 ### Section Attribution
 
-V3 and v4 use the same strategy:
+V2 and v3 use the same strategy:
 - For each parameter table, find the nearest previous `<h2>` or `<h3>` that matches:
   - `"Namelist: &NAME"` → section = `"&NAME"`
   - `"Card: NAME"` → section = `"NAME"`
@@ -430,6 +507,156 @@ V3 and v4 use the same strategy:
 - Missing metadata fields default to `None` (not omitted from JSON)
 - Invalid HTML structures are skipped with warnings (verbose mode)
 
+### Known Limitations
+
+1. **Card item parameters**: Parameters extracted into `card.items[]` are NOT merged into `module.parameters`. This is intentional to preserve the distinction between card-specific items and module-level parameters.
+
+2. **Section descriptions**: Descriptions are extracted from content immediately after the `<h2>` header. If the HTML structure deviates significantly from the expected nested table pattern, some descriptions may be missed even with fallbacks.
+
+3. **Optionality classification**: Classification is based solely on keyword presence in the description text. It does not parse complex conditional logic or cross-reference other parameters.
+
+4. **Supercard nesting**: Only `BEGIN_*` supercards are stored as nodes. `END_*` elements are used only to close supercards and are not stored.
+
+5. **Parameter table detection**: The extractor relies on specific HTML patterns (parameter tables with type cells). Non-standard table structures may not be recognized.
+
+---
+
+## Validation Checklist
+
+To validate the v3 extractor locally:
+
+### 1. Run Extractor
+
+```bash
+cd <HOME>/quantumVITAS
+python3 tools/extract_qe_parameters_v3.py --use-cache --pretty
+```
+
+**Check**:
+- Only one canonical output JSON path: `src/quantumvitas/data/qe_module_parameters.json`
+- No errors or warnings (check stderr)
+
+### 2. Verify Schema and Structure
+
+```python
+import json
+from pathlib import Path
+
+v4_path = Path('src/quantumvitas/data/qe_module_parameters.json')
+v4_data = json.loads(v4_path.read_text())
+
+# Check schema version
+assert v3_data.get('schema_version') == 3
+
+# Check module count (should be 22)
+assert len(v3_data.get('modules', {})) == 22
+
+# Check parameter count (should be ~1081)
+total_params = sum(len(mod.get('parameters', {})) for mod in v3_data['modules'].values())
+assert total_params >= 1000  # Approximate check
+```
+
+### 3. Verify Order Preservation
+
+```python
+# Check that JSON was written with sort_keys=False
+# (Order is preserved in Python 3.7+ dicts)
+# Verify by checking that parameter keys appear in document order
+# (first parameters from first sections, etc.)
+```
+
+### 4. Verify Optionality Improvements
+
+```python
+# Check that optionality no longer misfires on "diff/interface"
+# Look for sections with descriptions containing "diff" or "interface"
+# They should have optionality="none", not "conditional"
+
+for mod_name, mod_data in v4_data['modules'].items():
+    sections = mod_data.get('sections', [])
+    def check_sections(sections_list):
+        for sec in sections_list:
+            desc = sec.get('description', '').lower()
+            opt = sec.get('optionality')
+            if 'diff' in desc or 'interface' in desc:
+                # Should NOT be conditional due to these words
+                if opt == 'conditional':
+                    # Check if it's actually conditional for other reasons
+                    if 'if' not in desc.replace('diff', '').replace('interface', ''):
+                        print(f"Warning: {mod_name}.{sec.get('name')} may have false positive")
+            if sec.get('children'):
+                check_sections(sec['children'])
+    check_sections(sections)
+```
+
+### 5. Verify Section Descriptions
+
+```python
+# Check that more sections have descriptions (due to fallbacks)
+sections_with_desc = 0
+total_sections = 0
+
+def count_sections(sections_list):
+    global sections_with_desc, total_sections
+    for sec in sections_list:
+        total_sections += 1
+        if sec.get('description'):
+            sections_with_desc += 1
+        if sec.get('children'):
+            count_sections(sec['children'])
+
+for mod_name, mod_data in v4_data['modules'].items():
+    count_sections(mod_data.get('sections', []))
+
+print(f"Sections with descriptions: {sections_with_desc}/{total_sections}")
+# Should be a reasonable percentage (e.g., >30%)
+```
+
+### 6. Verify Card Fields
+
+```python
+# Check that known cards have structured fields
+# Example: CELL_PARAMETERS in PW module should have options
+
+pw_data = v3_data['modules'].get('pw', {})
+pw_sections = pw_data.get('sections', [])
+
+def find_card(sections_list, card_name):
+    for sec in sections_list:
+        if sec.get('name') == card_name and sec.get('kind') == 'card':
+            return sec
+        if sec.get('children'):
+            found = find_card(sec['children'], card_name)
+            if found:
+                return found
+    return None
+
+cell_params = find_card(pw_sections, 'CELL_PARAMETERS')
+if cell_params:
+    assert cell_params.get('options') is not None, "CELL_PARAMETERS should have options"
+    print(f"✓ CELL_PARAMETERS has options: {cell_params.get('options')}")
+```
+
+### 7. Debugging Tips
+
+**If optionality seems wrong**:
+- Check the `optionality_raw_snippet` field to see which text triggered the classification
+- Verify the description text doesn't contain false-positive keywords (use word-boundary regex test)
+
+**If section descriptions are missing**:
+- Check the HTML structure in `temp/qe_docs/INPUT_*.html`
+- Verify the nested table structure exists (or fallback should handle it)
+- Use `--verbose` flag to see extraction diagnostics
+
+**If card fields are missing**:
+- Check that the card section has the expected HTML structure
+- Verify "Card's options:" row exists (case-insensitive matching should handle variations)
+- Check syntax extraction: look for `<div class="syntax">` or `<pre>` in the HTML
+
+**If parameter count changed unexpectedly**:
+- Compare with legacy v3 JSON: `qe_module_parameters.legacy.v3.json`
+- Check for any new parameters discovered in tables (should be appended, not replacing)
+
 ---
 
 ## File Structure
@@ -438,14 +665,14 @@ V3 and v4 use the same strategy:
 tools/
   extract_qe_parameters_v1.py  # Legacy (not used)
   extract_qe_parameters_v2.py  # Legacy (not used)
-  extract_qe_parameters_v3.py  # Current (documented, preserved)
-  extract_qe_parameters_v4.py  # Current (active)
+  extract_qe_parameters_v2.py  # Current (documented, preserved)
+  extract_qe_parameters_v3.py  # Current (active)
 
 src/quantumvitas/data/
-  qe_module_parameters.json              # Schema v4 (current)
+  qe_module_parameters.json              # Schema v3 (current)
+  qe_module_parameters.legacy.v0.json    # Schema v0
   qe_module_parameters.legacy.v1.json    # Schema v1
   qe_module_parameters.legacy.v2.json    # Schema v2
-  qe_module_parameters.legacy.v3.json    # Schema v3
 
 docs/
   QE_HTML_EXTRACTOR.md  # This file

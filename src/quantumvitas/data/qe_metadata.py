@@ -122,7 +122,7 @@ def _load_raw_metadata() -> Dict[str, Any]:
             _METADATA_MTIME = None
             raise FileNotFoundError(
                 "qe_module_parameters.json is missing; run "
-                "`python tools/extract_qe_parameters_v4.py` to regenerate it."
+                "`python tools/extract_qe_parameters_v3.py` to regenerate it."
             ) from exc
         except json.JSONDecodeError as exc:
             # Clear cache on JSON decode error
@@ -133,14 +133,14 @@ def _load_raw_metadata() -> Dict[str, Any]:
             ) from exc
         
         # Validate schema version
-        schema_version = data.get("schema_version", 1)
-        if schema_version not in (1, 2, 3, 4):
+        schema_version = data.get("schema_version", 0)
+        if schema_version not in (0, 1, 2, 3):
             # Clear cache on validation error
             _METADATA_CACHE = None
             _METADATA_MTIME = None
             raise RuntimeError(
                 f"Unsupported schema version {schema_version} in qe_module_parameters.json. "
-                f"Expected version 1, 2, 3, or 4."
+                f"Expected version 0, 1, 2, or 3."
             )
         
         # Cache the loaded data
@@ -218,7 +218,7 @@ def _iter_params(module: str) -> List[Dict[str, Any]]:
         RuntimeError: If metadata is missing or invalid (via safe_load_metadata).
     """
     raw_data = safe_load_metadata()
-    schema_version = raw_data.get("schema_version", 1)
+    schema_version = raw_data.get("schema_version", 0)
     modules = raw_data.get("modules", {})
     module_entry = modules.get(module.lower())
     if not module_entry:
@@ -226,8 +226,8 @@ def _iter_params(module: str) -> List[Dict[str, Any]]:
     
     result = []
     
-    if schema_version == 1:
-        # v1 schema: sections → [param names]
+    if schema_version == 0:
+        # v0 schema: sections → [param names]
         sections = module_entry.get("sections", {})
         for section_name, param_names in sections.items():
             # Remove '&' prefix from section name to get namelist
@@ -237,14 +237,14 @@ def _iter_params(module: str) -> List[Dict[str, Any]]:
                     "module": module.lower(),
                     "namelist": namelist,
                     "name": param_name,
-                    # v1 schema doesn't have these, set to None
+                    # v0 schema doesn't have these, set to None
                     "type": None,
                     "default": None,
                     "enum": None,
                     "description": None,
                 })
-    elif schema_version in (2, 3, 4):
-        # v2/v3/v4 schema: parameters map (v3 adds optional status and see_also fields, v4 adds sections tree but parameters structure is the same)
+    elif schema_version in (1, 2, 3):
+        # v1/v2/v3 schema: parameters map (v2 adds optional status and see_also fields, v3 adds sections tree but parameters structure is the same)
         parameters = module_entry.get("parameters", {})
         for key, meta in parameters.items():
             namelist = meta.get("namelist")

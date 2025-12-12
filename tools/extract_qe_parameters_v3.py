@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """
-Extract QE parameter metadata from HTML docs with improved metadata parsing (schema v3).
+Extract QE parameter metadata from HTML docs with section hierarchy and metadata (schema v3).
+
+V3 extends v2 with:
+- Section tree (hierarchical) with supercard support (NEB BEGIN_* / END_*)
+- Section-level descriptions
+- Optionality classification (optional/required/conditional/none)
+- Card structured fields (options, default_option, options_description, syntax, items)
 
 This script scrapes Quantum ESPRESSO HTML documentation (e.g. INPUT_PW.html)
 to extract parameter metadata including:
@@ -13,6 +19,41 @@ to extract parameter metadata including:
 - free-text description (rendered from HTML structure)
 
 Output: src/quantumvitas/data/qe_module_parameters.json (schema v3)
+
+V3 ALGORITHM SUMMARY:
+====================
+
+1) Section Hierarchy Building:
+   - Traverse all <h2> elements in document order
+   - Classify section kind: namelist/card/supercard/line_of_input/other
+   - Use stack to track open supercards (BEGIN_* pushes, END_* pops)
+   - Build hierarchical tree: supercard → children → (namelist/card/...)
+   - Attach sections to current supercard parent (if any) or module root
+
+2) Section-Level Description Extraction:
+   - Collect content after <h2> until first <h3> or parameter table
+   - Render using render_description() (same as v3)
+   - Store in section.description
+
+3) Optionality Classification:
+   - Analyze section.description for keywords
+   - Rules: "if" → conditional; "optional" (not "required") → optional;
+            "required" (not "optional") → required; both → conditional; else → none
+
+4) Card Structured Fields:
+   - options: Parse from header braces "{ ... }" or "Card's options:" row
+   - default_option: Parse from "Default:" row
+   - options_description: Parse <dl> blocks (option → description mapping)
+   - syntax: Extract from <h3>Syntax:</h3> block
+   - items: Extract from <h3>Description of items:</h3> block
+
+5) V3 Parameter Extraction (preserved):
+   - ToC-driven initialization + metadata fill + extras appended
+   - All v3 logic intact (Default/Status/See parsing, enum extraction, indexing, etc.)
+
+6) Output:
+   - Write JSON with sort_keys=False to preserve insertion order
+   - Schema version 3 with module.sections (hierarchical) and module.parameters (v2 logic)
 
 V3 ALGORITHM SUMMARY:
 ====================
@@ -1248,6 +1289,489 @@ def extract_card_parameter_metadata(soup: BeautifulSoup, card_name: str, param_n
     return None
 
 
+def classify_section_kind_and_name(h2_element) -> Tuple[str, str]:
+    """
+    Classify section kind and extract name from h2 element.
+    
+    Returns:
+        (kind, name) where:
+        - kind: "namelist" | "card" | "supercard" | "line_of_input" | "other"
+        - name: section name (e.g., "&CONTROL", "K_POINTS", "BEGIN_PATH_INPUT")
+    """
+    header_text = h2_element.get_text(" ", strip=True)
+    header_text_normalized = " ".join(header_text.split())  # Normalize whitespace
+    
+    # Check for Namelist (handle "Namelist: & NAME" with space after &)
+    namelist_match = re.search(r"Namelist:\s*&?\s*([A-Za-z0-9_]+)", header_text_normalized, re.IGNORECASE)
+    if namelist_match:
+        name = "&" + namelist_match.group(1).upper()
+        return ("namelist", name)
+    
+    # Check for Card
+    card_match = re.search(r"Card:\s*([A-Za-z0-9_]+)", header_text_normalized, re.IGNORECASE)
+    if card_match:
+        card_name = card_match.group(1).upper()
+        # Extract options from braces if present: "Card: NAME { opt1 | opt2 }"
+        return ("card", card_name)
+    
+    # Check for Line-of-input
+    line_match = re.search(r"Line-of-input:\s*([A-Za-z0-9_]+)", header_text_normalized, re.IGNORECASE)
+    if line_match:
+        return ("line_of_input", line_match.group(1).upper())
+    
+    # Check for supercard (BEGIN_* or END_*)
+    if "BEGIN_" in header_text_normalized or "END_" in header_text_normalized:
+        # Extract BEGIN_* or END_* token
+        supercard_match = re.search(r"(BEGIN_[A-Za-z0-9_]+|END_[A-Za-z0-9_]+)", header_text_normalized)
+        if supercard_match:
+            return ("supercard", supercard_match.group(1).upper())
+    
+    # Fallback: other
+    return ("other", header_text_normalized.upper()[:64])
+
+
+def extract_section_description(h2_element, soup: BeautifulSoup) -> Optional[str]:
+    """
+    Extract section-level description from content after h2 until first h3 or parameter table.
+    
+    The structure is typically:
+    <table>
+      <tr><th><h2>Namelist: &NAME</h2></th></tr>
+      <tr><td>
+        <table>
+          <tr><td>
+            <p><b>Description text here</b></p>  <!-- This is what we want -->
+            <a name="param">...</a><table>...</table>  <!-- Parameter table - stop here -->
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+    
+    Args:
+        h2_element: The h2 element for the section
+        soup: BeautifulSoup object (for finding next elements)
+        
+    Returns:
+        Rendered description text, or None if no description found
+    """
+    # Find the block_root (the outer table containing the section)
+    block_root = h2_element.find_parent("table")
+    if not block_root:
+        return None
+    
+    # Find the <td> in the row after the h2's row
+    tr_with_h2 = h2_element.find_parent("tr")
+    if not tr_with_h2:
+        return None
+    
+    next_tr = tr_with_h2.find_next_sibling("tr")
+    if not next_tr:
+        return None
+    
+    content_td = next_tr.find("td")
+    if not content_td:
+        return None
+    
+    # Find nested table inside content_td (fallback to content_td if missing)
+    nested_table = content_td.find("table")
+    if nested_table:
+        # Find the <td> inside nested_table (fallback to content_td if missing)
+        nested_td = nested_table.find("td")
+        if not nested_td:
+            nested_td = content_td
+    else:
+        # Fallback: use content_td directly or first <td> within it
+        nested_td = content_td.find("td") or content_td
+    
+    # Collect content elements from nested_td until we hit a parameter table or h3
+    content_elements = []
+    
+    for child in nested_td.children:
+        if not hasattr(child, 'name'):
+            continue
+        
+        # Stop at h3
+        if child.name == "h3":
+            break
+        
+        # Stop at parameter-definition table
+        # Improved detection: check if td contains a type token (INTEGER, REAL, CHARACTER, LOGICAL)
+        if child.name == "table":
+            rows = child.find_all("tr")
+            if len(rows) >= 2:
+                first_row = rows[0]
+                th = first_row.find("th")
+                td_type = first_row.find("td")
+                if th and td_type:
+                    th_text = th.get_text(strip=True).lower()
+                    td_text = td_type.get_text(strip=True).lower()
+                    
+                    # Whitelist for metadata tables (case-insensitive, apostrophe-tolerant)
+                    th_text_norm = re.sub(r"'", "", th_text)  # Remove apostrophes for matching
+                    is_metadata_table = (
+                        th_text in ["card's options:", "default:", "status:", "see:", "see also:"] or
+                        "card" in th_text_norm and "options" in th_text_norm or
+                        "default" in th_text or
+                        "status" in th_text or
+                        "see" in th_text
+                    )
+                    
+                    # Only stop if this looks like a parameter-definition table
+                    # (td contains "type" or a known type token, and it's not a metadata table)
+                    is_type_cell = (
+                        td_text == "type" or
+                        any(token in td_text for token in ["integer", "real", "character", "logical"])
+                    )
+                    
+                    if is_type_cell and not is_metadata_table:
+                        # This is a parameter table - stop here
+                        break
+        
+        # Collect content elements
+        if child.name in ["p", "blockquote", "pre", "dl", "div"]:
+            content_elements.append(child)
+    
+    if not content_elements:
+        return None
+    
+    # Render all collected elements
+    rendered_parts = []
+    for elem in content_elements:
+        if elem.name == "blockquote":
+            # Use render_description for blockquotes
+            rendered = render_description(elem)
+            if rendered:
+                rendered_parts.append(rendered)
+        elif elem.name == "pre":
+            pre_text = elem.get_text()
+            lines = pre_text.split('\n')
+            non_empty_lines = [line for line in lines if line.strip()]
+            if non_empty_lines:
+                min_indent = min(len(line) - len(line.lstrip()) for line in non_empty_lines)
+                lines = [line[min_indent:] if line.strip() else line for line in lines]
+            lines = [line.rstrip() for line in lines]
+            rendered_parts.append('\n'.join(lines))
+        elif elem.name == "p":
+            text = elem.get_text(separator=" ", strip=True)
+            if text:
+                rendered_parts.append(text)
+        elif elem.name == "dl":
+            # Render as bullets
+            for dt in elem.find_all("dt"):
+                dd = dt.find_next_sibling("dd")
+                dt_text = dt.get_text(separator=" ", strip=True)
+                dt_text = re.sub(r":\s*$", "", dt_text)
+                if dd:
+                    dd_text = dd.get_text(separator=" ", strip=True)
+                    rendered_parts.append(f"- {dt_text}: {dd_text}")
+                else:
+                    rendered_parts.append(f"- {dt_text}")
+        else:
+            text = elem.get_text(separator=" ", strip=True)
+            if text:
+                rendered_parts.append(text)
+    
+    result = '\n'.join(rendered_parts)
+    result = result.strip()
+    
+    # Collapse excessive blank lines
+    result = re.sub(r'\n{3,}', '\n\n', result)
+    
+    return result if result else None
+
+
+def classify_optionality(description: Optional[str]) -> Dict[str, Any]:
+    """
+    Classify section optionality based on description text.
+    
+    Rules (case-insensitive, word-boundary matching to avoid false positives):
+    - If description contains word "if" -> "conditional"
+    - Else if contains word "optional" and NOT "required" -> "optional"
+    - Else if contains word "required" and NOT "optional" -> "required"
+    - Else if contains BOTH "required" and "optional" -> "conditional"
+    - Else -> "none"
+    
+    Returns:
+        Dict with keys: optionality, optionality_source, optionality_raw_snippet
+    """
+    if not description:
+        return {
+            "optionality": "none",
+            "optionality_source": "description",
+        }
+    
+    desc_lower = description.lower()
+    
+    # Use word boundaries to avoid false positives (e.g., "diff", "interface")
+    has_if = bool(re.search(r"\bif\b", desc_lower))
+    has_optional = bool(re.search(r"\boptional\b", desc_lower))
+    has_required = bool(re.search(r"\brequired\b", desc_lower))
+    
+    if has_if:
+        optionality = "conditional"
+    elif has_optional and not has_required:
+        optionality = "optional"
+    elif has_required and not has_optional:
+        optionality = "required"
+    elif has_required and has_optional:
+        optionality = "conditional"
+    else:
+        optionality = "none"
+    
+    result = {
+        "optionality": optionality,
+        "optionality_source": "description",
+    }
+    
+    # Extract a snippet containing the relevant keywords
+    if optionality != "none":
+        # First try: scan line-by-line for better context
+        lines = description.split("\n")
+        for line in lines:
+            line_lower = line.lower()
+            if (optionality == "conditional" and re.search(r"\bif\b", line_lower)) or \
+               (optionality == "optional" and re.search(r"\boptional\b", line_lower)) or \
+               (optionality == "required" and re.search(r"\brequired\b", line_lower)):
+                snippet = line.strip()
+                # Collapse whitespace
+                snippet = re.sub(r'\s+', ' ', snippet)
+                result["optionality_raw_snippet"] = snippet
+                return result
+        
+        # Fallback: sentence split (original logic)
+        sentences = re.split(r'[.!?]\s+', description)
+        for sentence in sentences:
+            sentence_lower = sentence.lower()
+            if (optionality == "conditional" and re.search(r"\bif\b", sentence_lower)) or \
+               (optionality == "optional" and re.search(r"\boptional\b", sentence_lower)) or \
+               (optionality == "required" and re.search(r"\brequired\b", sentence_lower)):
+                snippet = sentence.strip()
+                snippet = re.sub(r'\s+', ' ', snippet)
+                result["optionality_raw_snippet"] = snippet
+                break
+    
+    return result
+
+
+def extract_card_structured_fields(h2_element, soup: BeautifulSoup) -> Dict[str, Any]:
+    """
+    Extract structured fields for card sections.
+    
+    Extracts:
+    - options: List from header braces "{ ... }" or "Card's options:" row
+    - default_option: From "Default:" row
+    - options_description: Mapping from <dl> blocks
+    - syntax: From <h3>Syntax:</h3> block
+    - items: From <h3>Description of items:</h3> block
+    
+    Returns:
+        Dict with card.* fields (only includes fields that were found)
+    """
+    result: Dict[str, Any] = {}
+    
+    # Extract options from header
+    header_text = h2_element.get_text(" ", strip=True)
+    options_match = re.search(r"\{([^}]+)\}", header_text)
+    if options_match:
+        options_text = options_match.group(1)
+        options = [opt.strip() for opt in options_text.split("|") if opt.strip()]
+        if options:
+            result["options"] = options
+    
+    # Locate nested content root (same logic as extract_section_description for consistency)
+    tr_with_h2 = h2_element.find_parent("tr")
+    if not tr_with_h2:
+        return result
+    
+    next_tr = tr_with_h2.find_next_sibling("tr")
+    if not next_tr:
+        return result
+    
+    content_td = next_tr.find("td")
+    if not content_td:
+        return result
+    
+    # Find nested table (fallback to content_td if missing)
+    nested_table = content_td.find("table")
+    if nested_table:
+        nested_td = nested_table.find("td") or content_td
+    else:
+        nested_td = content_td.find("td") or content_td
+    
+    # Traverse nested_td in document order to find structured fields
+    found_syntax = False
+    found_items = False
+    current = nested_td
+    
+    # Iterate through children of nested_td
+    for child in nested_td.children:
+        if not hasattr(child, 'name'):
+            continue
+        
+        # Extract options from "Card's options:" row (case-insensitive, apostrophe-tolerant)
+        if child.name == "table" and not result.get("options"):
+            rows = child.find_all("tr")
+            for row in rows:
+                th = row.find("th")
+                if th:
+                    th_text_norm = th.get_text(" ", strip=True).lower()
+                    th_text_norm_no_apos = re.sub(r"'", "", th_text_norm)
+                    # Match "card's options" or "card options" (case-insensitive, apostrophe-tolerant)
+                    if ("card" in th_text_norm_no_apos and "options" in th_text_norm_no_apos) or \
+                       ("card's options" in th_text_norm):
+                        td = row.find("td")
+                        if td:
+                            # Extract spans.flag or text
+                            flags = td.find_all("span", class_="flag")
+                            if flags:
+                                options = [flag.get_text(strip=True) for flag in flags]
+                                result["options"] = options
+                            else:
+                                options_text = td.get_text(strip=True)
+                                options = [opt.strip() for opt in options_text.split("|") if opt.strip()]
+                                if options:
+                                    result["options"] = options
+        
+        # Extract default_option from "Default:" row
+        if child.name == "table" and "default_option" not in result:
+            rows = child.find_all("tr")
+            for row in rows:
+                th = row.find("th")
+                if th and "default:" in th.get_text().lower():
+                    td = row.find("td")
+                    if td:
+                        default_text = td.get_text(strip=True)
+                        if default_text and default_text.lower() != "none":
+                            result["default_option"] = default_text
+        
+        # Extract syntax from <h3>Syntax:</h3>
+        if child.name == "h3" and "syntax" in child.get_text().lower() and not found_syntax:
+            found_syntax = True
+            syntax_parts = []
+            syntax_elem = child.next_sibling
+            while syntax_elem is not None:
+                if not hasattr(syntax_elem, 'name'):
+                    syntax_elem = syntax_elem.next_sibling
+                    continue
+                
+                # Stop at next h3
+                if syntax_elem.name == "h3":
+                    break
+                
+                # Extract from <div class="syntax"><table>
+                if syntax_elem.name == "blockquote":
+                    syntax_div = syntax_elem.find("div", class_="syntax")
+                    if syntax_div:
+                        syntax_table = syntax_div.find("table")
+                        if syntax_table:
+                            # Render table as tab-separated lines
+                            rows = syntax_table.find_all("tr")
+                            for row in rows:
+                                cells = row.find_all(["td", "th"])
+                                cell_texts = [cell.get_text(strip=True) for cell in cells]
+                                if any(cell_texts):
+                                    syntax_parts.append("\t".join(cell_texts))
+                    # Fallback: look for <pre> in blockquote
+                    if not syntax_parts:
+                        pre_elem = syntax_elem.find("pre")
+                        if pre_elem:
+                            pre_text = pre_elem.get_text("\n")
+                            # Normalize whitespace lightly
+                            lines = [line.rstrip() for line in pre_text.split("\n")]
+                            pre_text = "\n".join(lines).strip()
+                            if pre_text:
+                                syntax_parts.append(pre_text)
+                # Also check for <pre> immediately after h3
+                elif syntax_elem.name == "pre" and not syntax_parts:
+                    pre_text = syntax_elem.get_text("\n")
+                    lines = [line.rstrip() for line in pre_text.split("\n")]
+                    pre_text = "\n".join(lines).strip()
+                    if pre_text:
+                        syntax_parts.append(pre_text)
+                
+                syntax_elem = syntax_elem.next_sibling
+            
+            if syntax_parts:
+                result["syntax"] = "\n".join(syntax_parts)
+        
+        # Extract items from <h3>Description of items:</h3>
+        if child.name == "h3" and "description of items" in child.get_text().lower() and not found_items:
+            found_items = True
+            items = []
+            # Search forward until next <h3> and collect parameter-definition tables
+            search_elem = child.next_sibling
+            while search_elem is not None:
+                if not hasattr(search_elem, 'name'):
+                    search_elem = search_elem.next_sibling
+                    continue
+                
+                # Stop at next h3
+                if search_elem.name == "h3":
+                    break
+                
+                # Look for parameter tables (in blockquote or directly)
+                if search_elem.name == "blockquote":
+                    item_tables = search_elem.find_all("table")
+                elif search_elem.name == "table":
+                    item_tables = [search_elem]
+                else:
+                    item_tables = []
+                
+                for table in item_tables:
+                    rows = table.find_all("tr")
+                    if len(rows) >= 2:
+                        first_row = rows[0]
+                        th = first_row.find("th")
+                        td_type = first_row.find("td")
+                        if th and td_type:
+                            # Check if this is a parameter-definition table
+                            td_text = td_type.get_text(strip=True).lower()
+                            is_type_cell = (
+                                td_text == "type" or
+                                any(token in td_text for token in ["integer", "real", "character", "logical"])
+                            )
+                            if is_type_cell:
+                                # This is a parameter table - extract metadata
+                                meta_list = extract_parameter_metadata_from_table(table)
+                                if meta_list:
+                                    items.extend(meta_list)
+                
+                search_elem = search_elem.next_sibling
+            
+            if items:
+                result["items"] = items
+        
+        # Extract options_description from <dl> blocks
+        if child.name == "dl" and "options_description" not in result:
+            options_desc: Dict[str, str] = {}
+            for dt in current.find_all("dt"):
+                dd = dt.find_next_sibling("dd")
+                # Extract option key(s) from dt (often spans.flag)
+                flags = dt.find_all("span", class_="flag")
+                if flags:
+                    option_keys = [flag.get_text(strip=True) for flag in flags]
+                else:
+                    tt = dt.find("tt")
+                    if tt:
+                        option_text = tt.get_text(strip=True)
+                        # Remove trailing colons and split by comma
+                        option_text = re.sub(r":\s*$", "", option_text)
+                        option_keys = [opt.strip() for opt in option_text.split(",") if opt.strip()]
+                    else:
+                        option_keys = [dt.get_text(strip=True)]
+                
+                if dd:
+                    dd_text = render_description(dd) if dd.find("pre") or dd.find("blockquote") else dd.get_text(separator=" ", strip=True)
+                    for key in option_keys:
+                        if key:
+                            options_desc[key] = dd_text
+            
+            if options_desc:
+                result["options_description"] = options_desc
+        
+    return result
+
+
 def parse_module_doc(module_name: str, html_path: Path, verbose: bool = False) -> Dict[str, Any]:
     """
     Parse QE HTML documentation and extract rich parameter metadata (v3).
@@ -1296,7 +1820,107 @@ def parse_module_doc(module_name: str, html_path: Path, verbose: bool = False) -
     html_content = html_path.read_text(encoding="utf-8")
     soup = BeautifulSoup(html_content, "html.parser")
     
-    # STAGE 1: Extract ToC parameter names - use this for ordering and validation
+    # V4: Build section hierarchy first (before parameter extraction)
+    # 
+    # HIERARCHY BUILDING ALGORITHM:
+    # - Traverse all <h2> elements in document order (no sorting)
+    # - Classify each section: namelist/card/supercard/line_of_input/other
+    # - Use a stack to track open supercards (BEGIN_* pushes, END_* pops)
+    # - Attach sections to current top supercard (if any) or module root
+    # - This preserves document order and creates proper nesting for NEB supercards
+    #
+    # ORDERING PRESERVATION:
+    # - All sections processed in document order (soup.find_all("h2") order)
+    # - Children appended in order encountered
+    # - No sorting applied anywhere
+    #
+    sections_tree: List[Dict[str, Any]] = []
+    supercard_stack: List[Dict[str, Any]] = []  # Stack of open supercards
+    
+    all_h2_elements = soup.find_all("h2")
+    
+    for h2 in all_h2_elements:
+        kind, name = classify_section_kind_and_name(h2)
+        
+        # Skip END_* (they just close supercards)
+        if kind == "supercard" and name.startswith("END_"):
+            # Pop matching BEGIN_* from stack
+            if supercard_stack:
+                # Match by suffix: BEGIN_X <-> END_X
+                end_suffix = name[4:]  # Remove "END_"
+                for i in range(len(supercard_stack) - 1, -1, -1):
+                    begin_name = supercard_stack[i]["name"]
+                    if begin_name.startswith("BEGIN_") and begin_name[6:] == end_suffix:
+                        # Found match - pop everything from this point
+                        supercard_stack = supercard_stack[:i]
+                        break
+            continue
+        
+        # Extract section description
+        # SECTION DESCRIPTION EXTRACTION:
+        # - Collects content after <h2> until first <h3> or parameter table
+        # - Content is in nested table structure: <tr><td><table><tr><td><p>...</p></td></tr></table></td></tr>
+        # - Renders using same render_description() logic as v3
+        section_description = extract_section_description(h2, soup)
+        
+        # Classify optionality
+        # OPTIONALITY CLASSIFICATION RULES (case-insensitive):
+        # - "if" → conditional
+        # - "optional" (not "required") → optional
+        # - "required" (not "optional") → required
+        # - both "required" and "optional" → conditional
+        # - else → none
+        optionality_info = classify_optionality(section_description)
+        
+        # Build section node
+        section_node: Dict[str, Any] = {
+            "kind": kind,
+            "name": name,
+            "description": section_description,
+            "optionality": optionality_info["optionality"],
+            "optionality_source": optionality_info["optionality_source"],
+            "children": [],
+        }
+        
+        if "optionality_raw_snippet" in optionality_info:
+            section_node["optionality_raw_snippet"] = optionality_info["optionality_raw_snippet"]
+        
+        # Extract card structured fields if this is a card
+        # CARD STRUCTURED FIELDS:
+        # - options: from header braces "{ ... }" or "Card's options:" row
+        # - default_option: from "Default:" row
+        # - options_description: from <dl> blocks (option → description mapping)
+        # - syntax: from <h3>Syntax:</h3> block
+        # - items: from <h3>Description of items:</h3> block (NOT merged into module.parameters)
+        if kind == "card":
+            card_fields = extract_card_structured_fields(h2, soup)
+            section_node.update(card_fields)
+        
+        # Attach to parent (current top supercard if any, else module root)
+        if supercard_stack:
+            # Attach to current top supercard
+            supercard_stack[-1]["children"].append(section_node)
+        else:
+            # Attach to module root
+            sections_tree.append(section_node)
+        
+        # If this is a BEGIN_* supercard, push it onto stack
+        if kind == "supercard" and name.startswith("BEGIN_"):
+            supercard_stack.append(section_node)
+    
+    if verbose:
+        print(f"[{module_name}] Built section hierarchy: {len(sections_tree)} root sections")
+        # Count total sections including nested
+        def count_sections(sections):
+            total = len(sections)
+            for sec in sections:
+                if sec.get("children"):
+                    total += count_sections(sec["children"])
+            return total
+        total_sections = count_sections(sections_tree)
+        print(f"[{module_name}] Total sections (including nested): {total_sections}")
+    
+    # STAGE 1: Extract ToC parameter names - use this for ordering and validation (V3 logic preserved)
     toc_params = extract_toc_parameters(html_content)
     
     # Build doc URL
@@ -1479,12 +2103,14 @@ def parse_module_doc(module_name: str, html_path: Path, verbose: bool = False) -
         if key not in ordered_parameters:
             ordered_parameters[key] = param
     
+    # V3: Build result with sections tree and parameters
     result = {
         "doc_url": doc_url,
-        "parameters": ordered_parameters,
+        "sections": sections_tree,  # V3: hierarchical section tree
+        "parameters": ordered_parameters,  # V3 logic preserved
     }
     
-    # Add card metadata if any was found
+    # Add card metadata if any was found (for backward compatibility)
     if card_metadata:
         result["card_metadata"] = card_metadata
         if verbose:
@@ -1512,7 +2138,7 @@ def load_module_specs(
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Extract QE parameter metadata from HTML docs (schema v3 with improved parsing)."
+        description="Extract QE parameter metadata from HTML docs (schema v3 with section hierarchy)."
     )
     parser.add_argument(
         "--modules",
@@ -1620,8 +2246,42 @@ def main() -> int:
             if param.get("see_also"):
                 params_with_see_also += 1
     
+    # Count sections
+    total_sections = 0
+    sections_with_description = 0
+    sections_with_optionality = 0
+    cards_with_options = 0
+    
+    for module_name, module_data in payload["modules"].items():
+        sections = module_data.get("sections", [])
+        def count_and_analyze(sections_list):
+            nonlocal total_sections, sections_with_description, sections_with_optionality, cards_with_options
+            for sec in sections_list:
+                total_sections += 1
+                if sec.get("description"):
+                    sections_with_description += 1
+                if sec.get("optionality") != "none":
+                    sections_with_optionality += 1
+                if sec.get("kind") == "card" and sec.get("options"):
+                    cards_with_options += 1
+                if sec.get("children"):
+                    count_and_analyze(sec["children"])
+        count_and_analyze(sections)
+    
     sys.stdout.write(
         f"[extract_v3] Generated schema v3 for {len(results)} modules, {total_params} parameters total.\n"
+    )
+    sys.stdout.write(
+        f"[extract_v3] Total sections (hierarchical): {total_sections}\n"
+    )
+    sys.stdout.write(
+        f"[extract_v3] Sections with description: {sections_with_description}\n"
+    )
+    sys.stdout.write(
+        f"[extract_v3] Sections with optionality: {sections_with_optionality}\n"
+    )
+    sys.stdout.write(
+        f"[extract_v3] Cards with options: {cards_with_options}\n"
     )
     sys.stdout.write(
         f"[extract_v3] Parameters with indexing metadata: {params_with_indexing}\n"
