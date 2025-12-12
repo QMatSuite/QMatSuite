@@ -282,19 +282,48 @@ def get_module_param_sections(module: str) -> Dict[str, List[str]]:
     return {k: sorted(v) for k, v in sections.items()}
 
 
+def get_module_card_sections(module: str) -> List[str]:
+    """
+    Return list of card section names for a given module.
+    
+    Cards are stored separately in card_metadata and don't have parameters
+    in the same way as namelists. This function extracts card names.
+    
+    Args:
+        module: QE module name (e.g., 'pw', 'ph', 'dos')
+        
+    Returns:
+        List of card section names (e.g., ['K_POINTS', 'ATOMIC_SPECIES', ...]).
+        Returns empty list if module is not found or has no cards.
+        
+    Raises:
+        RuntimeError: If metadata is missing or invalid (via safe_load_metadata).
+    """
+    raw_data = safe_load_metadata()
+    modules = raw_data.get("modules", {})
+    module_entry = modules.get(module.lower())
+    if not module_entry:
+        return []
+    
+    card_metadata = module_entry.get("card_metadata", {})
+    # Preserve JSON insertion order (Python 3.7+ dicts maintain insertion order)
+    return list(card_metadata.keys())
+
+
 def list_supported_modules() -> List[str]:
     """
     Return list of all supported QE module names.
     
     Returns:
-        List of module names (e.g., ['pw', 'ph', 'dos', ...])
+        List of module names in JSON insertion order (e.g., ['pw', 'ph', 'dos', ...])
         
     Raises:
         RuntimeError: If metadata is missing or invalid.
     """
     raw_data = safe_load_metadata()
     modules = raw_data.get("modules", {})
-    return sorted(modules.keys())
+    # Preserve JSON insertion order (Python 3.7+ dicts maintain insertion order)
+    return list(modules.keys())
 
 
 def get_module_doc_url(module: str) -> Optional[str]:
