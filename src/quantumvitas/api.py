@@ -3114,7 +3114,8 @@ class QVService:
         
         # Update the model
         wf_model.steps = reordered
-        wf_model.save(wf_path)
+        from quantumvitas.core.models import save_workflow
+        save_workflow(wf_model, wf_path)
         
         # Return updated workflow info (pass cached index to avoid rebuilding)
         return QVService.get_workflow_detail(
