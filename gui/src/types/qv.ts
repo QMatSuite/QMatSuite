@@ -255,6 +255,14 @@ export interface BandStructureData {
 
 export type JobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 
+export interface JobStepInfo {
+  step_id?: string;
+  step_type: string;
+  status: JobStatus;
+  started_at?: string | null;
+  ended_at?: string | null;
+}
+
 export interface JobInfo {
   id: string;
   job_type: string;
@@ -269,6 +277,9 @@ export interface JobInfo {
   project_root: string | null;
   output_file: string | null;
   last_log_line: string | null;
+  // TODO: Backend should include these fields in get_job_status response
+  steps?: JobStepInfo[];  // Step-level progress info
+  io_dir?: string | null;  // Absolute path to I/O directory (the actual directory used by the runner to write QE input/output and artifacts)
 }
 
 export interface JobSummary {
@@ -282,6 +293,8 @@ export interface JobSummary {
   project_root: string | null;
   error: string | null;
   last_log_line: string | null;
+  // TODO: Backend should include these fields in list_jobs response for step progress visualization
+  steps?: JobStepInfo[];  // Step-level progress info (for stepper visualization)
 }
 
 export interface JobSubmitResult {

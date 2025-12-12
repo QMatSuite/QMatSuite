@@ -2,9 +2,9 @@
  * JobsPanel - Job list and detail view for QE runs
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useJobs, useJobDetail } from '../../hooks/useJobs';
-import type { JobSummary, JobStatus } from '../../types/qv';
+import type { JobSummary, JobStatus, JobStepInfo } from '../../types/qv';
 import './JobsPanel.css';
 
 // =============================================================================
@@ -46,10 +46,108 @@ interface JobListItemProps {
   onSelect: (job: JobSummary) => void;
 }
 
+// B) Step progress visualization component
+interface StepStepperProps {
+  steps: JobStepInfo[];
+  currentStepIndex?: number;
+}
+
+function StepStepper({ steps, currentStepIndex }: StepStepperProps) {
+  if (steps.length === 0) return null;
+  
+  return (
+    <div className="job-step-stepper">
+      <div className="job-step-stepper__track">
+        {steps.map((step, idx) => {
+          const isCompleted = step.status === 'completed';
+          const isRunning = step.status === 'running';
+          const isFailed = step.status === 'failed';
+          const isPending = step.status === 'pending';
+          
+          return (
+            <div key={idx} className="job-step-stepper__step">
+              <div
+                className={`job-step-stepper__dot ${
+                  isRunning ? 'job-step-stepper__dot--running' :
+                  isCompleted ? 'job-step-stepper__dot--completed' :
+                  isFailed ? 'job-step-stepper__dot--failed' :
+                  isPending ? 'job-step-stepper__dot--pending' :
+                  'job-step-stepper__dot--pending'
+                }`}
+                title={`${step.step_type}: ${step.status}`}
+              />
+              {idx < steps.length - 1 && (
+                <div
+                  className={`job-step-stepper__connector ${
+                    isCompleted ? 'job-step-stepper__connector--completed' :
+                    isRunning ? 'job-step-stepper__connector--active' :
+                    'job-step-stepper__connector--pending'
+                  }`}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div className="job-step-stepper__labels">
+        {steps.map((step, idx) => (
+          <div key={idx} className="job-step-stepper__label" title={step.step_type}>
+            {step.step_type}
+          </div>
+        ))}
+      </div>
+      {/* Compact summary */}
+      {currentStepIndex !== undefined && (
+        <div className="job-step-stepper__summary">
+          {(() => {
+            const runningCount = steps.filter(s => s.status === 'running').length;
+            const completedCount = steps.filter(s => s.status === 'completed').length;
+            const total = steps.length;
+            const currentStep = steps[currentStepIndex];
+            
+            if (runningCount > 0) {
+              return `${completedCount + runningCount}/${total} running: ${currentStep?.step_type || '...'}`;
+            } else if (completedCount === total) {
+              return `${total}/${total} completed`;
+            } else {
+              return `${completedCount}/${total} completed`;
+            }
+          })()}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function JobListItem({ job, isSelected, onSelect }: JobListItemProps) {
   const shortId = job.id.slice(0, 8);
   const createdDate = new Date(job.created_at);
   const timeStr = createdDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  
+  // Extract steps from job (may be in job.steps or job.result.steps)
+  const steps: JobStepInfo[] = useMemo(() => {
+    // First try job.steps (if backend includes it in list_jobs response)
+    if (job.steps && Array.isArray(job.steps)) {
+      return job.steps;
+    }
+    // Fallback: try to extract from result.steps (for completed/running jobs)
+    // This works for both list_jobs (if backend includes result.steps in summary) 
+    // and get_job_status (full detail)
+    const result = (job as any).result;
+    if (result && result.steps && Array.isArray(result.steps)) {
+      return result.steps;
+    }
+    return [];
+  }, [job]);
+  
+  // Find current step: first running, else last completed
+  const currentStepIndex = useMemo(() => {
+    if (steps.length === 0) return undefined;
+    const runningIdx = steps.findIndex(s => s.status === 'running');
+    if (runningIdx >= 0) return runningIdx;
+    const lastCompletedIdx = steps.map((s, i) => s.status === 'completed' ? i : -1).filter(i => i >= 0).pop();
+    return lastCompletedIdx;
+  }, [steps]);
   
   return (
     <button
@@ -68,6 +166,12 @@ function JobListItem({ job, isSelected, onSelect }: JobListItemProps) {
           <span className="job-list-item__target">{job.target_name}</span>
         )}
       </div>
+      {/* B) Step progress stepper */}
+      {steps.length > 0 && (
+        <div className="job-list-item__stepper">
+          <StepStepper steps={steps} currentStepIndex={currentStepIndex} />
+        </div>
+      )}
       <div className="job-list-item__footer">
         <span className="job-list-item__time">{timeStr}</span>
         {job.last_log_line && (
@@ -187,6 +291,32 @@ function JobDetailPanel({ jobId, onClose, onViewAnalysis }: JobDetailPanelProps)
           </div>
         </div>
         
+        {/* C) QE I/O Locations Section */}
+        {job.io_dir && (
+          <div className="job-detail-section">
+            <h3>I/O Directory</h3>
+            <div className="job-detail-paths">
+              <div className="job-detail-path-row">
+                <div className="job-detail-path-value">
+                  <code 
+                    className="job-detail-path-text" 
+                    title={job.io_dir}
+                  >
+                    {job.io_dir}
+                  </code>
+                  <button
+                    className="job-detail-path-reveal"
+                    onClick={() => window.qv?.revealPath?.(job.io_dir!)}
+                    title={`Reveal in Finder: ${job.io_dir}`}
+                  >
+                    📂 Reveal
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* Error Section */}
         {job.error && (
           <div className="job-detail-section job-detail-section--error">
@@ -299,6 +429,7 @@ interface JobsPanelProps {
 
 export function JobsPanel({ projectRoot, onViewAnalysis }: JobsPanelProps) {
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const didAutoSelectRef = useRef(false);
   const { jobs, counts, isLoading, error, refresh, isPolling, startPolling, stopPolling } = useJobs({
     projectRoot,
     pollInterval: 3000,
@@ -306,12 +437,68 @@ export function JobsPanel({ projectRoot, onViewAnalysis }: JobsPanelProps) {
     limit: 50,
   });
   
+  // A) Auto-select most recent job on panel entry
+  // D) Loop prevention: This effect ONLY sets selectedJobId state.
+  // It does NOT trigger list refresh or cause re-renders that would trigger more updates.
+  useEffect(() => {
+    // Reset auto-select flag when projectRoot changes (new panel mount)
+    if (projectRoot) {
+      didAutoSelectRef.current = false;
+    }
+  }, [projectRoot]);
+  
+  // D) Loop prevention: This effect is carefully guarded to prevent infinite loops:
+  // - Only runs when jobs or selectedJobId changes (not on every render)
+  // - Only sets selectedJobId (doesn't trigger list refresh)
+  // - Uses ref to track auto-select state (doesn't cause re-renders)
+  // - Manual selection sets the ref flag to prevent override
+  useEffect(() => {
+    // Only auto-select if:
+    // 1. Jobs list is non-empty
+    // 2. No job is currently selected
+    // 3. We haven't auto-selected yet (one-time per mount)
+    if (jobs.length > 0 && selectedJobId === null && !didAutoSelectRef.current) {
+      // Find most recent job: sort by started_at if present, else created_at (descending)
+      const mostRecent = [...jobs].sort((a, b) => {
+        const aTime = a.started_at ? new Date(a.started_at).getTime() : new Date(a.created_at).getTime();
+        const bTime = b.started_at ? new Date(b.started_at).getTime() : new Date(b.created_at).getTime();
+        return bTime - aTime; // Descending (most recent first)
+      })[0];
+      
+      if (mostRecent) {
+        setSelectedJobId(mostRecent.id);
+        didAutoSelectRef.current = true;
+      }
+    }
+    
+    // If selected job disappeared from list, fall back to most recent
+    // D) Loop prevention: This only runs when selectedJobId exists but job is missing from list
+    if (selectedJobId && !jobs.find(j => j.id === selectedJobId)) {
+      if (jobs.length > 0) {
+        const mostRecent = [...jobs].sort((a, b) => {
+          const aTime = a.started_at ? new Date(a.started_at).getTime() : new Date(a.created_at).getTime();
+          const bTime = b.started_at ? new Date(b.started_at).getTime() : new Date(b.created_at).getTime();
+          return bTime - aTime;
+        })[0];
+        if (mostRecent) {
+          setSelectedJobId(mostRecent.id);
+        }
+      } else {
+        setSelectedJobId(null);
+      }
+    }
+  }, [jobs, selectedJobId]);
+  
   const handleSelectJob = (job: JobSummary) => {
     setSelectedJobId(job.id);
+    // Mark that user has manually selected (prevent auto-select override)
+    didAutoSelectRef.current = true;
   };
   
   const handleCloseDetail = () => {
     setSelectedJobId(null);
+    // Reset auto-select flag when user closes detail (allow re-auto-select on next entry)
+    didAutoSelectRef.current = false;
   };
   
   return (

@@ -64,6 +64,12 @@ class Job:
     # Last log line (for quick status display)
     last_log_line: Optional[str] = None
     
+    # I/O directory (the actual directory used by the runner to write QE input/output and artifacts)
+    io_dir: Optional[str] = None
+    
+    # Step progress info (initialized at job creation, updated during execution)
+    steps: Optional[List[Dict[str, Any]]] = None
+    
     def to_dict(self) -> Dict[str, Any]:
         """Convert job to JSON-serializable dict."""
         return {
@@ -80,11 +86,13 @@ class Job:
             "project_root": self.project_root,
             "output_file": self.output_file,
             "last_log_line": self.last_log_line,
+            "io_dir": self.io_dir,
+            "steps": self.steps,
         }
     
     def to_summary_dict(self) -> Dict[str, Any]:
         """Convert job to a summary dict (less detail, for list views)."""
-        return {
+        result = {
             "id": self.id,
             "job_type": self.job_type,
             "status": self.status.value,
@@ -95,7 +103,9 @@ class Job:
             "project_root": self.project_root,
             "error": self.error[:200] if self.error and len(self.error) > 200 else self.error,
             "last_log_line": self.last_log_line,
+            "steps": self.steps,  # Include steps for step progress visualization
         }
+        return result
 
 
 class JobManager:
@@ -128,6 +138,8 @@ class JobManager:
         params: Dict[str, Any],
         target_name: Optional[str] = None,
         project_root_display: Optional[str] = None,
+        initial_steps: Optional[List[Dict[str, Any]]] = None,
+        initial_io_dir: Optional[str] = None,
         **kwargs,
     ) -> str:
         """
@@ -146,12 +158,26 @@ class JobManager:
         """
         job_id = str(uuid.uuid4())
         
+        # Initialize steps if provided (for workflow jobs, steps are known at creation time)
+        steps = initial_steps or []
+        
+        # Initialize io_dir if provided (so it shows immediately in UI, even before execution starts)
+        io_dir = None
+        if initial_io_dir:
+            # Ensure absolute path
+            io_dir_path = Path(initial_io_dir)
+            if not io_dir_path.is_absolute() and project_root_display:
+                io_dir_path = Path(project_root_display) / io_dir_path
+            io_dir = str(io_dir_path.resolve())
+        
         job = Job(
             id=job_id,
             job_type=job_type,
             params=params,
             target_name=target_name,
             project_root=project_root_display,
+            steps=steps if steps else None,
+            io_dir=io_dir,
         )
         
         with self._lock:
@@ -166,7 +192,7 @@ class JobManager:
             try:
                 result = func(**kwargs)
                 
-                # Try to extract output file from result for log reading
+                # Try to extract output file and io_dir from result
                 if isinstance(result, dict):
                     output_file = result.get("output_file") or result.get("last_output_file")
                     if output_file:
@@ -174,6 +200,65 @@ class JobManager:
                             job.output_file = str(output_file)
                         # Try to read last log line
                         self._update_last_log_line(job)
+                    
+                    # Extract io_dir from result (normalize legacy keys for backward compatibility)
+                    # Runner is the source of truth - it returns the actual I/O directory used
+                    final_io_dir = (
+                        result.get("io_dir") or 
+                        result.get("working_dir") or 
+                        result.get("work_dir") or 
+                        result.get("raw_dir")
+                    )
+                    if final_io_dir:
+                        # Ensure absolute path
+                        io_dir_path = Path(final_io_dir)
+                        if not io_dir_path.is_absolute():
+                            # If relative, try to resolve relative to project_root if available
+                            if job.project_root:
+                                io_dir_path = Path(job.project_root) / io_dir_path
+                            io_dir_path = io_dir_path.resolve()
+                        final_io_dir_str = str(io_dir_path)
+                        
+                        # Check if planned_io_dir (from job creation) differs from final io_dir (from runner)
+                        # This should be rare, but log a warning if it happens
+                        if job.io_dir and job.io_dir != final_io_dir_str:
+                            import logging
+                            logger = logging.getLogger(__name__)
+                            logger.warning(
+                                f"[WARN] job {job.id} planned io_dir != final io_dir: "
+                                f"planned={job.io_dir}, final={final_io_dir_str}"
+                            )
+                        
+                        with self._lock:
+                            # Runner is source of truth - update to final value
+                            job.io_dir = final_io_dir_str
+                    
+                    # Update steps status from result (if steps were initialized)
+                    # This allows step progress to update during execution
+                    if job.steps and "steps" in result:
+                        result_steps = result["steps"]
+                        if isinstance(result_steps, list):
+                            with self._lock:
+                                # Update existing steps with status from result
+                                # Match by step_id or step_type
+                                for job_step in job.steps:
+                                    step_id = job_step.get("step_id")
+                                    step_type = job_step.get("step_type")
+                                    # Find matching step in result
+                                    for result_step in result_steps:
+                                        result_step_id = result_step.get("step_id")
+                                        result_step_type = result_step.get("step_type")
+                                        # Match by step_id (preferred) or step_type (fallback)
+                                        if (step_id and result_step_id and step_id == result_step_id) or \
+                                           (step_type and result_step_type and step_type == result_step_type):
+                                            # Update status and timestamps
+                                            job_step["status"] = result_step.get("status", job_step.get("status", "pending"))
+                                            # Note: result steps may not have started_at/ended_at, preserve existing if not provided
+                                            if "started_at" in result_step:
+                                                job_step["started_at"] = result_step.get("started_at")
+                                            if "ended_at" in result_step or "completed_at" in result_step:
+                                                job_step["ended_at"] = result_step.get("ended_at") or result_step.get("completed_at")
+                                            break
                 
                 with self._lock:
                     job.status = JobStatus.COMPLETED

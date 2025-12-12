@@ -1028,6 +1028,17 @@ class QVService:
         
         results = runner.run(workflow)
         
+        # Runner is the source of truth for io_dir - it returns the actual I/O directory used
+        # Do NOT construct paths here; use what the runner provides
+        result_dict = results.to_dict()
+        io_dir = result_dict.get("io_dir")
+        
+        # Log for debugging
+        if io_dir:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"[INFO] run_workflow io_dir={io_dir}")
+        
         # Convert WorkflowResult to dict for JSON serialization
         return {
             "workflow": workflow_selector,
@@ -1043,6 +1054,7 @@ class QVService:
                 }
                 for s in results.steps
             ],
+            "io_dir": io_dir,  # I/O directory from runner (source of truth)
         }
     
     @staticmethod
@@ -1148,6 +1160,9 @@ class QVService:
             keep_original=False,
         )
         
+        # The runner uses workdir as the I/O directory (source of truth)
+        io_dir = str(workdir.resolve())
+        
         return {
             "step": step_selector,
             "step_id": step_resolved.meta.id,
@@ -1156,7 +1171,9 @@ class QVService:
             "success": result.error is None,
             "error": result.error,
             "input_file": str(input_path),
-            "working_dir": str(workdir),
+            "io_dir": io_dir,  # I/O directory from runner (source of truth)
+            # Keep working_dir for backward compatibility during migration
+            "working_dir": io_dir,
         }
     
     # -------------------------------------------------------------------------

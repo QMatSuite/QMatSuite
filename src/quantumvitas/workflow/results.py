@@ -33,9 +33,10 @@ class WorkflowResult:
     status: StepStatus
     started_at: datetime
     finished_at: datetime
+    io_dir: Optional[Path] = None  # The actual I/O directory used by the runner (source of truth)
 
     def to_dict(self) -> Dict[str, object]:
-        return {
+        result = {
             "workflow_id": self.workflow_id,
             "mode": self.mode.value,
             "status": self.status.value,
@@ -46,7 +47,7 @@ class WorkflowResult:
                     "step_id": step.step_id,
                     "step_type": step.step_type.value,
                     "status": step.status.value,
-                    "working_dir": str(step.working_dir),
+                    "working_dir": str(step.working_dir),  # Keep for backward compat in step summaries
                     "input_file": str(step.input_file),
                     "output_file": str(step.output_file),
                     "reference_file": str(step.reference_file) if step.reference_file else None,
@@ -56,4 +57,8 @@ class WorkflowResult:
                 for step in self.steps
             ],
         }
+        # Include io_dir if available (runner is source of truth)
+        if self.io_dir:
+            result["io_dir"] = str(self.io_dir.resolve())
+        return result
 
