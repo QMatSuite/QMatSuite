@@ -138,19 +138,38 @@ jobs:
     - name: Install Quantum ESPRESSO (from source)
       if: steps.cache-qe-install.outputs.cache-hit != 'true'
       run: |
-        # Create QE installation directories
-        mkdir -p ${{ env.QE_SRC_DIR }}
+        # Create QE installation prefix directory
         mkdir -p ${{ env.QE_PREFIX }}
-        cd $HOME/src
         
-        # Download QE 7.5 source (if not cached)
-        if [ ! -d "q-e-qe-7.5" ]; then
+        # Ensure source directory parent exists
+        mkdir -p $HOME/src
+        
+        # Download QE 7.5 source (if not cached or stale)
+        # Check for configure file existence as the guard (works even if directory exists but is empty)
+        if [ ! -f "${{ env.QE_SRC_DIR }}/configure" ]; then
+          # Clean up any stale/empty directory
+          rm -rf "${{ env.QE_SRC_DIR }}"
+          
+          # Download and extract
+          cd $HOME/src
           wget -q https://gitlab.com/QEF/q-e/-/archive/qe-7.5/q-e-qe-7.5.tar.gz
           tar -xzf q-e-qe-7.5.tar.gz
           rm q-e-qe-7.5.tar.gz
+          
+          # Verify extraction succeeded
+          if [ ! -f "${{ env.QE_SRC_DIR }}/configure" ]; then
+            echo "ERROR: QE source extraction failed - configure file not found"
+            exit 1
+          fi
         fi
         
-        cd q-e-qe-7.5
+        # Use QE_SRC_DIR consistently
+        cd "${{ env.QE_SRC_DIR }}"
+        
+        # Debug: verify source directory before configure
+        echo "QE_SRC_DIR=${{ env.QE_SRC_DIR }}"
+        ls -la "${{ env.QE_SRC_DIR }}" | head -10
+        test -f "${{ env.QE_SRC_DIR }}/configure" || (echo "ERROR: configure file missing" && exit 1)
         
         if [ "${{ matrix.os }}" == "ubuntu-22.04" ]; then
           # Configure QE for Ubuntu with install prefix
