@@ -21,11 +21,18 @@ jobs:
     env:
       QE_VERSION: "qe-7.5"
       QE_SRC_DIR: "$HOME/src/q-e-qe-7.5"
-      QE_PREFIX: "$HOME/qe-install/qe-7.5/${{ runner.os }}"
-      QE_BUILD_OPTS: "${{ matrix.os == 'ubuntu-22.04' && 'mpi=1 fftw=1 openblas=ubuntu' || 'mpi=1 fftw=1 openblas=mac accel=mac' }}"
     
     steps:
     - uses: actions/checkout@v4
+    
+    - name: Set QE env vars
+      run: |
+        if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
+          echo "QE_BUILD_OPTS=mpi=1 fftw=1 openblas=ubuntu" >> $GITHUB_ENV
+        else
+          echo "QE_BUILD_OPTS=mpi=1 fftw=1 openblas=mac accel=mac" >> $GITHUB_ENV
+        fi
+        echo "QE_PREFIX=$HOME/qe-install/${QE_VERSION}/${{ matrix.os }}" >> $GITHUB_ENV
     
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
@@ -88,10 +95,10 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/.ccache
-        key: ccache-${{ runner.os }}-${{ env.QE_VERSION }}-v1
+        key: ccache-${{ matrix.os }}-${{ env.QE_VERSION }}-v1
         restore-keys: |
-          ccache-${{ runner.os }}-${{ env.QE_VERSION }}-
-          ccache-${{ runner.os }}-
+          ccache-${{ matrix.os }}-${{ env.QE_VERSION }}-
+          ccache-${{ matrix.os }}-
     
     - name: Setup ccache
       run: |
@@ -114,9 +121,9 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ${{ env.QE_SRC_DIR }}
-        key: qe-source-${{ env.QE_VERSION }}-${{ runner.os }}-v1
+        key: qe-source-${{ env.QE_VERSION }}-${{ matrix.os }}-v1
         restore-keys: |
-          qe-source-${{ env.QE_VERSION }}-${{ runner.os }}-
+          qe-source-${{ env.QE_VERSION }}-${{ matrix.os }}-
           qe-source-${{ env.QE_VERSION }}-
     
     - name: Cache QE install prefix
@@ -124,10 +131,9 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ${{ env.QE_PREFIX }}
-        key: qe-install-${{ runner.os }}-${{ env.QE_VERSION }}-${{ env.QE_BUILD_OPTS }}-v1
+        key: qe-install-${{ matrix.os }}-${{ env.QE_VERSION }}-${{ env.QE_BUILD_OPTS }}-v1
         restore-keys: |
-          qe-install-${{ runner.os }}-${{ env.QE_VERSION }}-${{ env.QE_BUILD_OPTS }}-
-          qe-install-${{ runner.os }}-${{ env.QE_VERSION }}-
+          qe-install-${{ matrix.os }}-${{ env.QE_VERSION }}-
     
     - name: Install Quantum ESPRESSO (from source)
       if: steps.cache-qe-install.outputs.cache-hit != 'true'
