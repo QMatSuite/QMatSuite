@@ -447,6 +447,29 @@ export interface QVCommandMap {
           keyword_pattern: string;
         };
       }>;
+      metadata_path_abs?: string | null;
+      schema_version?: number | null;
+    };
+  };
+  reload_qe_parameter_metadata: {
+    payload: Record<string, never>;
+    result: {
+      modules: Array<{
+        id: string;
+        label: string;
+        doc_url?: string;
+      }>;
+      metadata_path_abs?: string | null;
+      schema_version?: number | null;
+    };
+  };
+  get_qe_parameter_metadata_debug_info: {
+    payload: Record<string, never>;
+    result: {
+      loaded_via: 'cache' | 'disk' | 'not_loaded';
+      loaded_at: string | null;
+      schema_version: number | null;
+      path_abs: string | null;
     };
   };
   
