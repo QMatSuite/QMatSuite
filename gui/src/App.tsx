@@ -1226,6 +1226,16 @@ function App() {
                             }
                           }
                         }}
+                        onWorkflowDetailUpdated={(detail) => {
+                          // CRITICAL: Directly update workflowDetail from reorder_workflow_steps response
+                          // This ensures UI reflects the new step order immediately without re-fetching
+                          console.log('[App] Workflow detail updated from reorder', {
+                            workflowSlug: detail.slug,
+                            stepCount: detail.steps.length,
+                            stepOrder: detail.steps.map((s, i) => ({ index: i, id: s.id, type: s.type })),
+                          });
+                          setSelectedWorkflowDetail(detail);
+                        }}
                       />
                     </VerticalResizablePane>
                     <StepDetailPanel
@@ -1253,6 +1263,16 @@ function App() {
                     onDeleteStep={handleDeleteStep}
                     onGoToJobs={handleGoToJobs}
                     onWorkflowUpdated={fetchWorkflows}
+                    onWorkflowDetailUpdated={(detail) => {
+                      // CRITICAL: Directly update workflowDetail from reorder_workflow_steps response
+                      // This ensures UI reflects the new step order immediately without re-fetching
+                      console.log('[App] Workflow detail updated from reorder', {
+                        workflowSlug: detail.slug,
+                        stepCount: detail.steps.length,
+                        stepOrder: detail.steps.map((s, i) => ({ index: i, id: s.id, type: s.type })),
+                      });
+                      setSelectedWorkflowDetail(detail);
+                    }}
                   />
                 )}
               </div>
