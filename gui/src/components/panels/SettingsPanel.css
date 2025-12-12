@@ -266,7 +266,7 @@
   font-family: var(--font-mono);
   font-size: 0.75rem;
   background: var(--color-primary);
-  color: white;
+  color: var(--text-on-primary);
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
 }
@@ -336,7 +336,7 @@
 .settings-btn:hover:not(:disabled) {
   background: var(--color-primary);
   border-color: var(--color-primary);
-  color: white;
+  color: var(--text-on-primary);
 }
 
 .settings-btn:disabled {
@@ -451,12 +451,12 @@
 .theme-btn--active {
   background: var(--color-primary);
   border-color: var(--color-primary);
-  color: white;
+  color: var(--text-on-primary);
 }
 
 .theme-btn--active:hover {
   background: var(--color-primary-hover);
-  color: white;
+  color: var(--text-on-primary);
 }
 
 /* Toggle Switch */

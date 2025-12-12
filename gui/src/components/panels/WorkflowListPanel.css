@@ -265,7 +265,7 @@
   border: none;
   border-radius: var(--radius-md);
   background: var(--color-success);
-  color: white;
+  color: var(--text-on-primary);
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
   cursor: pointer;
@@ -584,13 +584,13 @@
 
 .section-action-btn--add:hover:not(:disabled) {
   background: var(--color-success);
-  color: white;
+  color: var(--text-on-primary);
 }
 
 .section-action-btn--primary {
   border-color: var(--color-primary);
   background: var(--color-primary);
-  color: white;
+  color: var(--text-on-primary);
 }
 
 .section-action-btn--primary:hover:not(:disabled) {
@@ -889,7 +889,7 @@
 
 .add-step-btn--confirm {
   background: var(--color-success);
-  color: white;
+  color: var(--text-on-primary);
 }
 
 .add-step-btn--confirm:hover:not(:disabled) {
