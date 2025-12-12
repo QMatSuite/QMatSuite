@@ -27,20 +27,26 @@ def generate_diff_report() -> str:
     """Generate markdown diff report."""
     data_dir = Path(__file__).parent.parent / "src" / "quantumvitas" / "data"
     
+    v0_path = data_dir / "qe_module_parameters.legacy.v0.json"
     v1_path = data_dir / "qe_module_parameters.legacy.v1.json"
     v2_path = data_dir / "qe_module_parameters.legacy.v2.json"
     v3_path = data_dir / "qe_module_parameters.json"
     
-    v1_data = load_json(v1_path)
-    v2_data = load_json(v2_path)
+    v0_data = load_json(v0_path) if v0_path.exists() else None
+    v1_data = load_json(v1_path) if v1_path.exists() else None
+    v2_data = load_json(v2_path) if v2_path.exists() else None
     v3_data = load_json(v3_path)
     
     lines = []
     lines.append("# QE Parameter JSON Diff Report")
     lines.append("")
-    lines.append("This report compares parameter metadata across three JSON schema versions:")
-    lines.append("- **v1** (legacy): `qe_module_parameters.legacy.v1.json`")
-    lines.append("- **v2** (legacy): `qe_module_parameters.legacy.v2.json`")
+    lines.append("This report compares parameter metadata across JSON schema versions:")
+    if v0_data:
+        lines.append("- **v0** (legacy): `qe_module_parameters.legacy.v0.json`")
+    if v1_data:
+        lines.append("- **v1** (legacy): `qe_module_parameters.legacy.v1.json`")
+    if v2_data:
+        lines.append("- **v2** (legacy): `qe_module_parameters.legacy.v2.json`")
     lines.append("- **v3** (current): `qe_module_parameters.json`")
     lines.append("")
     lines.append("---")
@@ -48,6 +54,8 @@ def generate_diff_report() -> str:
     
     # Get all modules
     all_modules = set()
+    if v0_data:
+        all_modules.update(v0_data.get("modules", {}).keys())
     if v1_data:
         all_modules.update(v1_data.get("modules", {}).keys())
     if v2_data:
@@ -60,12 +68,19 @@ def generate_diff_report() -> str:
     # Per-module table
     lines.append("## Per-Module Parameter Counts")
     lines.append("")
-    lines.append("| Module | v1 | v2 | v3 | v2-v1 (added/removed) | v3-v2 (added/removed) |")
-    lines.append("|--------|----|----|----|------------------------|------------------------|")
+    if v0_data:
+        lines.append("| Module | v0 | v1 | v2 | v3 | v1-v0 | v2-v1 | v3-v2 |")
+        lines.append("|--------|----|----|----|----|-------|-------|-------|")
+    else:
+        lines.append("| Module | v1 | v2 | v3 | v1-v0 | v2-v1 | v3-v2 |")
+        lines.append("|--------|----|----|----|-------|-------|-------|")
     
+    global_v0_total = 0
     global_v1_total = 0
     global_v2_total = 0
     global_v3_total = 0
+    global_v1_added = 0
+    global_v1_removed = 0
     global_v2_added = 0
     global_v2_removed = 0
     global_v3_added = 0
@@ -74,17 +89,20 @@ def generate_diff_report() -> str:
     module_diffs: List[Dict[str, Any]] = []
     
     for module in all_modules:
+        v0_mod = v0_data.get("modules", {}).get(module, {}) if v0_data else {}
         v1_mod = v1_data.get("modules", {}).get(module, {}) if v1_data else {}
         v2_mod = v2_data.get("modules", {}).get(module, {}) if v2_data else {}
         v3_mod = v3_data.get("modules", {}).get(module, {}) if v3_data else {}
         
-        v1_keys = get_parameter_keys(v1_mod)
-        v2_keys = get_parameter_keys(v2_mod)
-        v3_keys = get_parameter_keys(v3_mod)
+        v0_keys = get_parameter_keys(v0_mod) if v0_data else set()
+        v1_keys = get_parameter_keys(v1_mod) if v1_data else set()
+        v2_keys = get_parameter_keys(v2_mod) if v2_data else set()
+        v3_keys = get_parameter_keys(v3_mod) if v3_data else set()
         
-        v1_count = len(v1_keys)
-        v2_count = len(v2_keys)
-        v3_count = len(v3_keys)
+        v0_count = len(v0_keys) if v0_data else 0
+        v1_count = len(v1_keys) if v1_data else 0
+        v2_count = len(v2_keys) if v2_data else 0
+        v3_count = len(v3_keys) if v3_data else 0
         
         v2_added = len(v2_keys - v1_keys)
         v2_removed = len(v1_keys - v2_keys)

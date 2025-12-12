@@ -693,10 +693,10 @@ class QVDaemon:
                 
                 # Extract section order from parameters map (v2/v3 schema) or sections dict (v1 schema)
                 # This preserves the JSON insertion order
-                schema_version = raw_data.get("schema_version", 1)
+                schema_version = raw_data.get("schema_version", 0)
                 section_order = []
                 
-                if schema_version in (2, 3, 4):
+                if schema_version in (1, 2, 3):
                     # v2 schema: extract section names from parameters map keys
                     # Key format: "&SECTION.paramname" or "SECTION.paramname"
                     parameters = module_entry.get("parameters", {})
@@ -825,8 +825,8 @@ class QVDaemon:
                             }
                             
                             # For v2/v3 schema, get indexing metadata from raw data
-                            schema_version = raw_data.get("schema_version", 1)
-                            if schema_version in (2, 3, 4):
+                            schema_version = raw_data.get("schema_version", 0)
+                            if schema_version in (1, 2, 3):
                                 parameters_map = module_entry.get("parameters", {})
                                 # Find the parameter in the map (key format: "&SECTION.paramname")
                                 param_key = f"{section_with_prefix}.{param.get('name')}"
@@ -909,7 +909,7 @@ class QVDaemon:
                             # Get indexing metadata for v2/v3 schema
                             try:
                                 raw_data = safe_load_metadata()
-                                if raw_data.get("schema_version") in (2, 3, 4):
+                                if raw_data.get("schema_version") in (1, 2, 3):
                                     modules_data = raw_data.get("modules", {})
                                     module_entry = modules_data.get(module)
                                     if module_entry:
