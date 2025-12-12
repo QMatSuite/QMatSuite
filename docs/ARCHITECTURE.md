@@ -24,9 +24,9 @@ src/quantumvitas/
 
 - **Workflow layer (`quantumvitas.workflow`)**  
   Defines `Workflow`, `Step`, `StepType`, `WorkflowRunner`, `input_runner`. Every
-  workflow owns exactly one runtime directory (`raw/`) under its folder; all QE
+  workflow owns exactly one I/O directory (default `raw/`, configurable via `working_dir` in workflow.yaml) under its folder; all QE
   I/O (inputs, modified copies, outputs, shared `outdir/`) happens inside that
-  folder so steps can pass restart data without juggling paths.
+  folder so steps can pass restart data without juggling paths. The I/O directory path is determined by the runner layer (single source of truth).
 
 - **Step execution**  
   Steps point to QE `.in` files located in the workflow’s `raw/` directory. Step
@@ -59,7 +59,7 @@ project_root/
   pseudo/                 # shared pseudopotentials (checked before downloading)
   workflows/
     si_dos/
-      workflow.yaml       # structure_id (ULID), working_dir=raw, step order by step_id
+      workflow.yaml       # structure_id (ULID), working_dir=raw (I/O directory name), step order by step_id
       steps/
         scf.step.yaml    # step-local config only (no structure_id, no parent_workflow_id)
         nscf.step.yaml

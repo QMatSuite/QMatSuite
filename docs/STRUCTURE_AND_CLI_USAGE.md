@@ -623,7 +623,7 @@ Runs a QE input step with optional parameter overrides.
 **Parameters:**
 - `engine`: QuantumEspressoEngine instance
 - `input_file`: Path to QE input file
-- `working_dir`: Working directory for execution
+- `working_dir`: I/O directory for execution (the actual directory used by the runner to write QE input/output and artifacts)
 - `project_root`: Project root (for pseudopotentials)
 - `step_type`: Optional step type hint
 - `timeout`: Optional timeout in seconds
