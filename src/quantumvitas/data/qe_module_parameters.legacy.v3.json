@@ -1,219 +1,10 @@
 {
-  "schema_version": 4,
-  "generated_at": "2025-12-12T04:27:53.692935+00:00",
+  "schema_version": 3,
+  "generated_at": "2025-12-12T03:58:12.601185+00:00",
   "doc_pattern": "https://www.quantum-espresso.org/Doc/INPUT_{name}.html",
   "modules": {
     "pw": {
       "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_PW.html",
-      "sections": [
-        {
-          "kind": "other",
-          "name": "PROGRAM: PW.X / PWSCF / QUANTUM ESPRESSO (VERSION: 7.5)",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&CONTROL",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&SYSTEM",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&ELECTRONS",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&IONS",
-          "description": "REQUIRED if calculation == 'relax', 'md', 'vc-hrelax', or 'vc-md'\nOPTIONAL for calculation == 'scf' (only ion_positions is used)",
-          "optionality": "conditional",
-          "optionality_source": "description",
-          "children": [],
-          "optionality_raw_snippet": "REQUIRED if calculation == 'relax', 'md', 'vc-hrelax', or 'vc-md'"
-        },
-        {
-          "kind": "namelist",
-          "name": "&CELL",
-          "description": "input this namelist only if calculation == 'vc-relax' or 'vc-md'",
-          "optionality": "conditional",
-          "optionality_source": "description",
-          "children": [],
-          "optionality_raw_snippet": "input this namelist only if calculation == 'vc-relax' or 'vc-md'"
-        },
-        {
-          "kind": "namelist",
-          "name": "&FCP",
-          "description": "Input this namelist only if lfcp = .TRUE.",
-          "optionality": "conditional",
-          "optionality_source": "description",
-          "children": [],
-          "optionality_raw_snippet": "Input this namelist only if lfcp = .TRUE."
-        },
-        {
-          "kind": "namelist",
-          "name": "&RISM",
-          "description": "Input this namelist only if trism = .TRUE.",
-          "optionality": "conditional",
-          "optionality_source": "description",
-          "children": [],
-          "optionality_raw_snippet": "Input this namelist only if trism = .TRUE."
-        },
-        {
-          "kind": "card",
-          "name": "ATOMIC_SPECIES",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": [],
-          "syntax": "X(1)\tMass_X(1)\tPseudoPot_X(1)\nX(2)\tMass_X(2)\tPseudoPot_X(2)\n. . .\nX(ntyp)\tMass_X(ntyp)\tPseudoPot_X(ntyp)"
-        },
-        {
-          "kind": "card",
-          "name": "ATOMIC_POSITIONS",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": [],
-          "options": [
-            "alat",
-            "bohr",
-            "angstrom",
-            "crystal",
-            "crystal_sg"
-          ]
-        },
-        {
-          "kind": "card",
-          "name": "K_POINTS",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": [],
-          "options": [
-            "tpiba",
-            "automatic",
-            "crystal",
-            "gamma",
-            "tpiba_b",
-            "crystal_b",
-            "tpiba_c",
-            "crystal_c"
-          ]
-        },
-        {
-          "kind": "card",
-          "name": "ADDITIONAL_K_POINTS",
-          "description": "Optional card. Adds a list of k-points with zero weight, after those used for\nthe scf calculation. When doing an EXX calculation and nq1x , nq2x or nq3x are\ndifferent from one, also include the required k+q points. The main use of this\ncard is to do band plots with EXX.",
-          "optionality": "conditional",
-          "optionality_source": "description",
-          "children": [],
-          "options": [
-            "tpiba",
-            "crystal",
-            "tpiba_b",
-            "crystal_b",
-            "tpiba_c",
-            "crystal_c"
-          ],
-          "syntax": "k_x(1)\tk_y(1)\tk_z(1)\twk_(1)\nk_x(2)\tk_y(2)\tk_z(2)\twk_(2)\n. . .\nk_x(nks_add)\tk_y(nks_add)\tk_z(nks_add)\twk_(nks_add)"
-        },
-        {
-          "kind": "card",
-          "name": "CELL_PARAMETERS",
-          "description": "Optional card, must be present if ibrav == 0, must be absent otherwise",
-          "optionality": "conditional",
-          "optionality_source": "description",
-          "children": [],
-          "optionality_raw_snippet": "Optional card, must be present if ibrav == 0, must be absent otherwise",
-          "options": [
-            "alat",
-            "bohr",
-            "angstrom"
-          ],
-          "syntax": "\tv1(1)\tv1(2)\tv1(3)\t\n\tv2(1)\tv2(2)\tv2(3)\t\n\tv3(1)\tv3(2)\tv3(3)\t"
-        },
-        {
-          "kind": "card",
-          "name": "CONSTRAINTS",
-          "description": "Optional card, used for constrained dynamics or constrained optimizations\n(only if ion_dynamics =='damp','verlet' or 'velocity-verlet', variable-cell excepted)\nWhen this card is present the SHAKE algorithm is automatically used.",
-          "optionality": "conditional",
-          "optionality_source": "description",
-          "children": [],
-          "optionality_raw_snippet": "(only if ion_dynamics =='damp','verlet' or 'velocity-verlet', variable-cell excepted)",
-          "syntax": "constr_type(1)\tconstr(1)(1)\tconstr(2)(1)\t[\tconstr(3)(1)\tconstr(4)(1)\t]\t{\tconstr_target(1)\t}\nconstr_type(2)\tconstr(1)(2)\tconstr(2)(2)\t[\tconstr(3)(2)\tconstr(4)(2)\t]\t{\tconstr_target(2)\t}\n. . .\nconstr_type(nconstr)\tconstr(1)(nconstr)\tconstr(2)(nconstr)\t[\tconstr(3)(nconstr)\tconstr(4)(nconstr)\t]\t{\tconstr_target(nconstr)\t}"
-        },
-        {
-          "kind": "card",
-          "name": "OCCUPATIONS",
-          "description": "Optional card, used only if occupations == 'from_input', ignored otherwise !",
-          "optionality": "conditional",
-          "optionality_source": "description",
-          "children": [],
-          "optionality_raw_snippet": "Optional card, used only if occupations == 'from_input', ignored otherwise !",
-          "syntax": "\tf_inp1(1)\tf_inp1(2)\t. . .\tf_inp1(nbnd)\t\n[\tf_inp2(1)\tf_inp2(2)\t. . .\tf_inp2(nbnd)\t]"
-        },
-        {
-          "kind": "card",
-          "name": "ATOMIC_VELOCITIES",
-          "description": "Optional card, reads velocities from standard input",
-          "optionality": "optional",
-          "optionality_source": "description",
-          "children": [],
-          "optionality_raw_snippet": "Optional card, reads velocities from standard input",
-          "options": [
-            "a.u"
-          ],
-          "syntax": "V(1)\tvx(1)\tvy(1)\tvz(1)\nV(2)\tvx(2)\tvy(2)\tvz(2)\n. . .\nV(nat)\tvx(nat)\tvy(nat)\tvz(nat)"
-        },
-        {
-          "kind": "card",
-          "name": "ATOMIC_FORCES",
-          "description": "Optional card used to specify external forces acting on atoms.\nBEWARE: if the sum of external forces is not zero, the center of mass of\n        the system will move",
-          "optionality": "conditional",
-          "optionality_source": "description",
-          "children": [],
-          "optionality_raw_snippet": "BEWARE: if the sum of external forces is not zero, the center of mass of",
-          "syntax": "X(1)\tfx(1)\tfy(1)\tfz(1)\nX(2)\tfx(2)\tfy(2)\tfz(2)\n. . .\nX(nat)\tfx(nat)\tfy(nat)\tfz(nat)"
-        },
-        {
-          "kind": "card",
-          "name": "SOLVENTS",
-          "description": "Optional card, used only if trism = .TRUE., ignored otherwise !",
-          "optionality": "conditional",
-          "optionality_source": "description",
-          "children": [],
-          "optionality_raw_snippet": "Optional card, used only if trism = .TRUE., ignored otherwise !",
-          "options": [
-            "1/cell",
-            "mol/L",
-            "g/cm^3"
-          ]
-        },
-        {
-          "kind": "card",
-          "name": "HUBBARD",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        }
-      ],
       "parameters": {
         "&CONTROL.calculation": {
           "namelist": "&CONTROL",
@@ -3677,33 +3468,6 @@
     },
     "ph": {
       "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_PH.html",
-      "sections": [
-        {
-          "kind": "other",
-          "name": "PROGRAM: PH.X / PHONON / QUANTUM ESPRESSO (VERSION: 7.5)",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&INPUTPH",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "card",
-          "name": "QPOINTSSPECS",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": [],
-          "syntax": "xq1(1)\txq2(1)\txq3(1)\tnq(1)\nxq1(2)\txq2(2)\txq3(2)\tnq(2)\n. . .\nxq1(nqs)\txq2(nqs)\txq3(nqs)\tnq(nqs)"
-        }
-      ],
       "parameters": {
         "&INPUTPH.amass": {
           "namelist": "&INPUTPH",
@@ -4600,33 +4364,6 @@
     },
     "q2r": {
       "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_Q2R.html",
-      "sections": [
-        {
-          "kind": "other",
-          "name": "PROGRAM: Q2R.X / PHONON / QUANTUM ESPRESSO (VERSION: 7.5)",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&INPUT",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "card",
-          "name": "FILESPECS",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": [],
-          "syntax": "file(1)\nfile(2)\n. . .\nfile(nfile)"
-        }
-      ],
       "parameters": {
         "&INPUT.fildyn": {
           "namelist": "&INPUT",
@@ -4768,53 +4505,6 @@
     },
     "matdyn": {
       "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_MATDYN.html",
-      "sections": [
-        {
-          "kind": "other",
-          "name": "PROGRAM: MATDYN.X / PHONON / QUANTUM ESPRESSO (VERSION: 7.5)",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&INPUT",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "card",
-          "name": "ATOMICPOSITIONSPECS",
-          "description": "if ( readtau ) atomic positions must be specified as follows:",
-          "optionality": "conditional",
-          "optionality_source": "description",
-          "children": [],
-          "optionality_raw_snippet": "if ( readtau ) atomic positions must be specified as follows:",
-          "syntax": "X(1)\tY(1)\tZ(1)\tityp(1)\nX(2)\tY(2)\tZ(2)\tityp(2)\n. . .\nX(nat)\tY(nat)\tZ(nat)\tityp(nat)"
-        },
-        {
-          "kind": "card",
-          "name": "QPOINTSSPECS",
-          "description": "if ( q_in_band_form .and. .not. dos ) q-points must be specified as follows:",
-          "optionality": "conditional",
-          "optionality_source": "description",
-          "children": [],
-          "optionality_raw_snippet": "if ( q_in_band_form .and. .not. dos ) q-points must be specified as follows:",
-          "syntax": "q_x(1)\tq_y(1)\tq_z(1)\tnptq(1)\nq_x(2)\tq_y(2)\tq_z(2)\tnptq(2)\n. . .\nq_x(nq)\tq_y(nq)\tq_z(nq)\tnptq(nq)"
-        },
-        {
-          "kind": "card",
-          "name": "QPOINTSSPECS",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": [],
-          "syntax": "q_x(1)\tq_y(1)\tq_z(1)\nq_x(2)\tq_y(2)\tq_z(2)\n. . .\nq_x(nq)\tq_y(nq)\tq_z(nq)"
-        }
-      ],
       "parameters": {
         "&INPUT.flfrc": {
           "namelist": "&INPUT",
@@ -5313,32 +5003,6 @@
     },
     "pp": {
       "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_PP.html",
-      "sections": [
-        {
-          "kind": "other",
-          "name": "PROGRAM: PP.X / PWSCF / QUANTUM ESPRESSO (VERSION: 7.5)",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&INPUTPP",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&PLOT",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        }
-      ],
       "parameters": {
         "&INPUTPP.title": {
           "namelist": "&INPUTPP",
@@ -5782,24 +5446,6 @@
     },
     "bands": {
       "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_BANDS.html",
-      "sections": [
-        {
-          "kind": "other",
-          "name": "PROGRAM: BANDS.X / PWSCF / QUANTUM ESPRESSO (VERSION: 7.5)",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&BANDS",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        }
-      ],
       "parameters": {
         "&BANDS.prefix": {
           "namelist": "&BANDS",
@@ -5935,24 +5581,6 @@
     },
     "dos": {
       "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_DOS.html",
-      "sections": [
-        {
-          "kind": "other",
-          "name": "PROGRAM: DOS.X / PWSCF / QUANTUM ESPRESSO (VERSION: 7.5)",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&DOS",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        }
-      ],
       "parameters": {
         "&DOS.prefix": {
           "namelist": "&DOS",
@@ -6063,24 +5691,6 @@
     },
     "projwfc": {
       "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_PROJWFC.html",
-      "sections": [
-        {
-          "kind": "other",
-          "name": "PROGRAM: PROJWFC.X / PWSCF / QUANTUM ESPRESSO (VERSION: 7.5)",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&PROJWFC",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        }
-      ],
       "parameters": {
         "&PROJWFC.prefix": {
           "namelist": "&PROJWFC",
@@ -6337,172 +5947,6 @@
     },
     "neb": {
       "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_NEB.html",
-      "sections": [
-        {
-          "kind": "other",
-          "name": "PROGRAM: NEB.X / NEB / QUANTUM ESPRESSO (VERSION: 7.5)",
-          "description": "BEGIN\u00a0\u00a0... content of the supercard here ...END",
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "other",
-          "name": "BEGIN",
-          "description": "BEGIN\u00a0\u00a0... content of the supercard here ...END",
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "supercard",
-          "name": "BEGIN_PATH_INPUT",
-          "description": "BEGIN_PATH_INPUT\u00a0\u00a0... content of the supercard here ...END_PATH_INPUT",
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": [
-            {
-              "kind": "namelist",
-              "name": "&PATH",
-              "description": null,
-              "optionality": "none",
-              "optionality_source": "description",
-              "children": []
-            },
-            {
-              "kind": "card",
-              "name": "CLIMBING_IMAGES",
-              "description": "Optional card, needed only if CI_scheme == 'manual', ignored otherwise !",
-              "optionality": "conditional",
-              "optionality_source": "description",
-              "children": [],
-              "optionality_raw_snippet": "Optional card, needed only if CI_scheme == 'manual', ignored otherwise !"
-            }
-          ]
-        },
-        {
-          "kind": "supercard",
-          "name": "BEGIN_ENGINE_INPUT",
-          "description": "BEGIN_ENGINE_INPUT\u00a0\u00a0... content of the supercard here ...END_ENGINE_INPUT",
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": [
-            {
-              "kind": "supercard",
-              "name": "BEGIN_POSITIONS",
-              "description": "BEGIN_POSITIONS\u00a0\u00a0... content of the supercard here ...END_POSITIONS",
-              "optionality": "none",
-              "optionality_source": "description",
-              "children": [
-                {
-                  "kind": "other",
-                  "name": "FIRST_IMAGE",
-                  "description": "FIRST_IMAGE\u00a0\u00a0... content of the supercard here ...",
-                  "optionality": "none",
-                  "optionality_source": "description",
-                  "children": []
-                },
-                {
-                  "kind": "card",
-                  "name": "ATOMIC_POSITIONS",
-                  "description": "For the description of ATOMIC_POSITIONS card see file: INPUT_PW.html or INPUT_PW.txt",
-                  "optionality": "none",
-                  "optionality_source": "description",
-                  "children": [],
-                  "options": [
-                    "alat",
-                    "bohr",
-                    "angstrom",
-                    "crystal",
-                    "crystal_sg"
-                  ]
-                },
-                {
-                  "kind": "card",
-                  "name": "TOTAL_CHARGE",
-                  "description": "Optional card, needed only if lfcp == .TRUE.",
-                  "optionality": "conditional",
-                  "optionality_source": "description",
-                  "children": [],
-                  "optionality_raw_snippet": "Optional card, needed only if lfcp == .TRUE."
-                },
-                {
-                  "kind": "other",
-                  "name": "INTERMEDIATE_IMAGE",
-                  "description": "INTERMEDIATE_IMAGE\u00a0\u00a0... content of the supercard here ...",
-                  "optionality": "none",
-                  "optionality_source": "description",
-                  "children": []
-                },
-                {
-                  "kind": "card",
-                  "name": "ATOMIC_POSITIONS",
-                  "description": "For the description of ATOMIC_POSITIONS card see file: INPUT_PW.html or INPUT_PW.txt",
-                  "optionality": "none",
-                  "optionality_source": "description",
-                  "children": [],
-                  "options": [
-                    "alat",
-                    "bohr",
-                    "angstrom",
-                    "crystal",
-                    "crystal_sg"
-                  ]
-                },
-                {
-                  "kind": "card",
-                  "name": "TOTAL_CHARGE",
-                  "description": "Optional card, needed only if lfcp == .TRUE.",
-                  "optionality": "conditional",
-                  "optionality_source": "description",
-                  "children": [],
-                  "optionality_raw_snippet": "Optional card, needed only if lfcp == .TRUE."
-                },
-                {
-                  "kind": "other",
-                  "name": "LAST_IMAGE",
-                  "description": "LAST_IMAGE\u00a0\u00a0... content of the supercard here ...",
-                  "optionality": "none",
-                  "optionality_source": "description",
-                  "children": []
-                },
-                {
-                  "kind": "card",
-                  "name": "ATOMIC_POSITIONS",
-                  "description": "For the description of ATOMIC_POSITIONS card see file: INPUT_PW.html or INPUT_PW.txt",
-                  "optionality": "none",
-                  "optionality_source": "description",
-                  "children": [],
-                  "options": [
-                    "alat",
-                    "bohr",
-                    "angstrom",
-                    "crystal",
-                    "crystal_sg"
-                  ]
-                },
-                {
-                  "kind": "card",
-                  "name": "TOTAL_CHARGE",
-                  "description": "Optional card, needed only if lfcp == .TRUE.",
-                  "optionality": "conditional",
-                  "optionality_source": "description",
-                  "children": [],
-                  "optionality_raw_snippet": "Optional card, needed only if lfcp == .TRUE."
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "kind": "other",
-          "name": "END",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        }
-      ],
       "parameters": {
         "BEGIN.BEGIN_PATH_INPUT": {
           "namelist": "BEGIN",
@@ -7466,193 +6910,6 @@
     },
     "cp": {
       "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_CP.html",
-      "sections": [
-        {
-          "kind": "other",
-          "name": "PROGRAM: CP.X / CP / QUANTUM ESPRESSO (VERSION: 7.5)",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&CONTROL",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&SYSTEM",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&ELECTRONS",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&IONS",
-          "description": "input this namelist only if calculation = 'cp', 'relax', 'vc-relax', 'vc-cp', 'cp-wf', 'vc-cp-wf'",
-          "optionality": "conditional",
-          "optionality_source": "description",
-          "children": [],
-          "optionality_raw_snippet": "input this namelist only if calculation = 'cp', 'relax', 'vc-relax', 'vc-cp', 'cp-wf', 'vc-cp-wf'"
-        },
-        {
-          "kind": "namelist",
-          "name": "&CELL",
-          "description": "input this namelist only if calculation = 'vc-relax', 'vc-cp', 'vc-cp-wf'",
-          "optionality": "conditional",
-          "optionality_source": "description",
-          "children": [],
-          "optionality_raw_snippet": "input this namelist only if calculation = 'vc-relax', 'vc-cp', 'vc-cp-wf'"
-        },
-        {
-          "kind": "namelist",
-          "name": "&PRESS_AI",
-          "description": "input this namelist only when tabps = .true.",
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&WANNIER",
-          "description": "only if calculation = 'cp-wf', 'vc-cp-wf'\nOutput files used by Wannier Function options are the following\n\n      fort.21: Used only when calwf=5, contains the full list of g-vecs.\n      fort.22: Used Only when calwf=5, contains the coeffs. corresponding\n               to the g-vectors in fort.21\n      fort.24: Used with calwf=3,contains the average spread\n      fort.25: Used with calwf=3, contains the individual Wannier\n               Function Spread of each state\n      fort.26: Used with calwf=3, contains the wannier centers along a\n               trajectory.\n      fort.27: Used with calwf=3 and 4,  contains some general runtime\n               information from ddyn, the subroutine that actually\n               does the localization of the orbitals.\n      fort.28: Used only if efield=.TRUE. , contains the polarization\n               contribution to the total energy.\n\nAlso, The center of mass is fixed during the Molecular Dynamics.\n\nBEWARE : THIS WILL ONLY WORK IF THE NUMBER OF PROCESSORS IS LESS THAN OR\n         EQUAL TO THE NUMBER OF STATES.\n\nNota Bene 1:   For calwf = 5, wffort is not used. The\n               Wannier/Wave(function) coefficients are written to unit 22\n               and the corresponding g-vectors (basis vectors) are\n               written to unit 21. This option gives the g-vecs and\n               their coeffs. in reciprocal space, and the coeffs. are\n               complex. You will have to convert them to real space\n               if you want to plot them for visualization. calwf=1 gives\n               the orbital densities in real space, and this is usually\n               good enough for visualization.",
-          "optionality": "conditional",
-          "optionality_source": "description",
-          "children": [],
-          "optionality_raw_snippet": "only if calculation = 'cp-wf', 'vc-cp-wf'"
-        },
-        {
-          "kind": "card",
-          "name": "ATOMIC_SPECIES",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": [],
-          "syntax": "X(1)\tMass_X(1)\tPseudoPot_X(1)\nX(2)\tMass_X(2)\tPseudoPot_X(2)\n. . .\nX(ntyp)\tMass_X(ntyp)\tPseudoPot_X(ntyp)"
-        },
-        {
-          "kind": "card",
-          "name": "ATOMIC_POSITIONS",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": [],
-          "options": [
-            "alat",
-            "bohr",
-            "angstrom",
-            "crystal"
-          ]
-        },
-        {
-          "kind": "card",
-          "name": "ATOMIC_VELOCITIES",
-          "description": "Optional card, reads velocities from standard input\nwhen starting with ion_velocities = \"from_input\" it is convenient\nto perform a few steps (~5-10) with a small time step (0.5 a.u.).\nThe velocities must be expressed using the same length units\nindicated in the card ATOMIC_POSITIONS , divided by time\nin atomic units.",
-          "optionality": "optional",
-          "optionality_source": "description",
-          "children": [],
-          "optionality_raw_snippet": "Optional card, reads velocities from standard input",
-          "syntax": "V(1)\tvx(1)\tvy(1)\tvz(1)\nV(2)\tvx(2)\tvy(2)\tvz(2)\n. . .\nV(nat)\tvx(nat)\tvy(nat)\tvz(nat)"
-        },
-        {
-          "kind": "card",
-          "name": "CELL_PARAMETERS",
-          "description": "Optional card, needed only if ibrav = 0 is specified, ignored otherwise !",
-          "optionality": "conditional",
-          "optionality_source": "description",
-          "children": [],
-          "optionality_raw_snippet": "Optional card, needed only if ibrav = 0 is specified, ignored otherwise !",
-          "options": [
-            "bohr",
-            "angstrom",
-            "alat"
-          ],
-          "syntax": "\tv1(1)\tv1(2)\tv1(3)\t\n\tv2(1)\tv2(2)\tv2(3)\t\n\tv3(1)\tv3(2)\tv3(3)\t"
-        },
-        {
-          "kind": "card",
-          "name": "REF_CELL_PARAMETERS",
-          "description": "Optional card, needed only if one wants to do variable cell calculations accurately.\nThe reference cell generates additional buffer planewaves.",
-          "optionality": "conditional",
-          "optionality_source": "description",
-          "children": [],
-          "optionality_raw_snippet": "Optional card, needed only if one wants to do variable cell calculations accurately.",
-          "options": [
-            "bohr",
-            "angstrom"
-          ],
-          "syntax": "\tv1(1)\tv1(2)\tv1(3)\t\n\tv2(1)\tv2(2)\tv2(3)\t\n\tv3(1)\tv3(2)\tv3(3)\t"
-        },
-        {
-          "kind": "card",
-          "name": "CONSTRAINTS",
-          "description": "Optional card, used for constrained dynamics or constrained optimisations\nWhen this card is present the SHAKE algorithm is automatically used.",
-          "optionality": "optional",
-          "optionality_source": "description",
-          "children": [],
-          "optionality_raw_snippet": "Optional card, used for constrained dynamics or constrained optimisations",
-          "syntax": "constr_type(1)\tconstr(1)(1)\tconstr(2)(1)\t[\tconstr(3)(1)\tconstr(4)(1)\t]\t{\tconstr_target(1)\t}\nconstr_type(2)\tconstr(1)(2)\tconstr(2)(2)\t[\tconstr(3)(2)\tconstr(4)(2)\t]\t{\tconstr_target(2)\t}\n. . .\nconstr_type(nconstr)\tconstr(1)(nconstr)\tconstr(2)(nconstr)\t[\tconstr(3)(nconstr)\tconstr(4)(nconstr)\t]\t{\tconstr_target(nconstr)\t}"
-        },
-        {
-          "kind": "card",
-          "name": "OCCUPATIONS",
-          "description": "Optional card, used only if occupations = 'from_input', ignored otherwise !",
-          "optionality": "conditional",
-          "optionality_source": "description",
-          "children": [],
-          "optionality_raw_snippet": "Optional card, used only if occupations = 'from_input', ignored otherwise !",
-          "syntax": "\tf_inp1(1)\tf_inp1(2)\t. . .\tf_inp1(nbnd)\t\n[\tf_inp2(1)\tf_inp2(2)\t. . .\tf_inp2(nbnd)\t]"
-        },
-        {
-          "kind": "card",
-          "name": "ATOMIC_FORCES",
-          "description": "Optional card used to specify external forces acting on atoms",
-          "optionality": "optional",
-          "optionality_source": "description",
-          "children": [],
-          "optionality_raw_snippet": "Optional card used to specify external forces acting on atoms",
-          "syntax": "X(1)\tfx(1)\tfy(1)\tfz(1)\nX(2)\tfx(2)\tfy(2)\tfz(2)\n. . .\nX(nat)\tfx(nat)\tfy(nat)\tfz(nat)"
-        },
-        {
-          "kind": "card",
-          "name": "PLOT_WANNIER",
-          "description": "Optional card, indices of the states that have to be printed (only for calf=1 and calf=5).",
-          "optionality": "optional",
-          "optionality_source": "description",
-          "children": [],
-          "optionality_raw_snippet": "Optional card, indices of the states that have to be printed (only for calf=1 and calf=5).",
-          "syntax": "iwf(1)\niwf(2)\n. . .\niwf(nwf)"
-        },
-        {
-          "kind": "other",
-          "name": "AUTOPILOT",
-          "description": "AUTOPILOT\u00a0\u00a0... content of the supercard here ...ENDRULES",
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "other",
-          "name": "ENDRULES",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        }
-      ],
       "parameters": {
         "&CONTROL.calculation": {
           "namelist": "&CONTROL",
@@ -9779,66 +9036,6 @@
     },
     "ld1": {
       "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_LD1.html",
-      "sections": [
-        {
-          "kind": "other",
-          "name": "PROGRAM: LD1.X / / QUANTUM ESPRESSO (VERSION: 7.4)",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&INPUT",
-          "description": "This namelist is always needed !",
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "card",
-          "name": "ALLELECTRONCARDS",
-          "description": "If config is empty the electronic configuration is read from\nthe following cards:",
-          "optionality": "conditional",
-          "optionality_source": "description",
-          "children": [],
-          "optionality_raw_snippet": "If config is empty the electronic configuration is read from"
-        },
-        {
-          "kind": "namelist",
-          "name": "&INPUTP",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "card",
-          "name": "PSEUDOPOTENTIALGENERATIONCARDS",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&TEST",
-          "description": "needed only if iswitch =2 or iswitch =4, optional if iswitch =3",
-          "optionality": "conditional",
-          "optionality_source": "description",
-          "children": [],
-          "optionality_raw_snippet": "needed only if iswitch =2 or iswitch =4, optional if iswitch =3"
-        },
-        {
-          "kind": "card",
-          "name": "PSEUDOPOTENTIALTESTCARDS",
-          "description": "IMPORTANT: this card has to be specified for each missing configts(i)",
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        }
-      ],
       "parameters": {
         "&INPUT.title": {
           "namelist": "&INPUT",
@@ -11126,24 +10323,6 @@
     },
     "hp": {
       "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_HP.html",
-      "sections": [
-        {
-          "kind": "other",
-          "name": "PROGRAM: HP.X / PWSCF / QUANTUM ESPRESSO (VERSION: 7.5)",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&INPUTHP",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        }
-      ],
       "parameters": {
         "&INPUTHP.prefix": {
           "namelist": "&INPUTHP",
@@ -11511,33 +10690,6 @@
     },
     "pwcond": {
       "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_PWCOND.html",
-      "sections": [
-        {
-          "kind": "other",
-          "name": "PROGRAM: PWCOND.X / PWSCF / QUANTUM ESPRESSO (VERSION: 7.5)",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&INPUTCOND",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "card",
-          "name": "K_AND_ENERGY_POINTS",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": [],
-          "syntax": "kx(1)\tky(1)\tweight(1)\nkx(2)\tky(2)\tweight(2)\n. . .\nkx(nkpts)\tky(nkpts)\tweight(nkpts)"
-        }
-      ],
       "parameters": {
         "&INPUTCOND.outdir": {
           "namelist": "&INPUTCOND",
@@ -12027,24 +11179,6 @@
     },
     "postahc": {
       "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_POSTAHC.html",
-      "sections": [
-        {
-          "kind": "other",
-          "name": "PROGRAM: POSTAHC.X / PHONON / QUANTUM ESPRESSO (VERSION: 7.5)",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&INPUT",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        }
-      ],
       "parameters": {
         "&INPUT.prefix": {
           "namelist": "&INPUT",
@@ -12219,24 +11353,6 @@
     },
     "dynmat": {
       "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_DYNMAT.html",
-      "sections": [
-        {
-          "kind": "other",
-          "name": "PROGRAM: DYNMAT.X / PHONON / QUANTUM ESPRESSO (VERSION: 7.5)",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&INPUT",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        }
-      ],
       "parameters": {
         "&INPUT.fildyn": {
           "namelist": "&INPUT",
@@ -12397,24 +11513,6 @@
     },
     "oscdft_et": {
       "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_OSCDFT_ET.html",
-      "sections": [
-        {
-          "kind": "other",
-          "name": "PROGRAM: OSCDFT_ET.X / PWSCF / QUANTUM ESPRESSO (VERSION: 7.5)",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&OSCDFT_ET_NAMELIST",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        }
-      ],
       "parameters": {
         "&OSCDFT_ET_NAMELIST.initial_prefix": {
           "namelist": "&OSCDFT_ET_NAMELIST",
@@ -12490,24 +11588,6 @@
     },
     "oscdft_pp": {
       "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_OSCDFT_PP.html",
-      "sections": [
-        {
-          "kind": "other",
-          "name": "PROGRAM: OSCDFT_PP.X / PWSCF / QUANTUM ESPRESSO (VERSION: 7.5)",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&OSCDFT_PP_NAMELIST",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        }
-      ],
       "parameters": {
         "&OSCDFT_PP_NAMELIST.prefix": {
           "namelist": "&OSCDFT_PP_NAMELIST",
@@ -12533,55 +11613,6 @@
     },
     "band_interpolation": {
       "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_BAND_INTERPOLATION.html",
-      "sections": [
-        {
-          "kind": "other",
-          "name": "PROGRAM: BAND_INTERPOLATION.X / PWSCF / QUANTUM ESPRESSO (VERSIO",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&INTERPOLATION",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "card",
-          "name": "ROUGHNESS",
-          "description": "Optional card, used only if method == 'fourier-diff', or 'fourier', ignored otherwise!\nThis card can be used to change the roughness functional that is minimized\n                 in the method == 'fourier-diff' and 'fourier'.\n                 In case method == 'fourier-diff', or 'fourier' and card ROUGHNESS is not specified the default\n                 roughness will be used with RoughN == 1 and RoughC (1) == 1.0d0.",
-          "optionality": "conditional",
-          "optionality_source": "description",
-          "children": [],
-          "optionality_raw_snippet": "Optional card, used only if method == 'fourier-diff', or 'fourier', ignored otherwise!",
-          "syntax": "\tRoughC(1)\tRoughC(2)\t. . .\tRoughC(RoughN)\t"
-        },
-        {
-          "kind": "card",
-          "name": "USER_STARS",
-          "description": "Optional card, used only if method == 'fourier-diff', or 'fourier', ignored otherwise !",
-          "optionality": "conditional",
-          "optionality_source": "description",
-          "children": [],
-          "optionality_raw_snippet": "Optional card, used only if method == 'fourier-diff', or 'fourier', ignored otherwise !",
-          "syntax": "vec_x(1)\tvec_y(1)\tvec_z(1)\nvec_x(2)\tvec_y(2)\tvec_z(2)\n. . .\nvec_x(NUser)\tvec_y(NUser)\tvec_z(NUser)"
-        },
-        {
-          "kind": "card",
-          "name": "K_POINTS",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": [],
-          "options": [
-            "tpiba_b"
-          ]
-        }
-      ],
       "parameters": {
         "&INTERPOLATION.method": {
           "namelist": "&INTERPOLATION",
@@ -12758,24 +11789,6 @@
     },
     "cppp": {
       "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_CPPP.html",
-      "sections": [
-        {
-          "kind": "other",
-          "name": "PROGRAM: CPPP.X / CP / QUANTUM ESPRESSO (VERSION: 7.5)",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&INPUTPP",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        }
-      ],
       "parameters": {
         "&INPUTPP.prefix": {
           "namelist": "&INPUTPP",
@@ -12943,24 +11956,6 @@
     },
     "d3hess": {
       "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_D3HESS.html",
-      "sections": [
-        {
-          "kind": "other",
-          "name": "PROGRAM: D3HESS.X / PWSCF / QUANTUM ESPRESSO (VERSION: 7.5)",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&INPUT",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        }
-      ],
       "parameters": {
         "&INPUT.prefix": {
           "namelist": "&INPUT",
@@ -13006,24 +12001,6 @@
     },
     "ppacf": {
       "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_PPACF.html",
-      "sections": [
-        {
-          "kind": "other",
-          "name": "PROGRAM: PPACF.X / PWSCF / QUANTUM ESPRESSO (VERSION: 7.5)",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&PPACF",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        }
-      ],
       "parameters": {
         "&PPACF.prefix": {
           "namelist": "&PPACF",
@@ -13122,32 +12099,6 @@
     },
     "pprism": {
       "doc_url": "https://www.quantum-espresso.org/Doc/INPUT_PPRISM.html",
-      "sections": [
-        {
-          "kind": "other",
-          "name": "PROGRAM: PPRISM.X / PWSCF / QUANTUM ESPRESSO (VERSION: 7.5)",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&INPUTPP",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        },
-        {
-          "kind": "namelist",
-          "name": "&PLOT",
-          "description": null,
-          "optionality": "none",
-          "optionality_source": "description",
-          "children": []
-        }
-      ],
       "parameters": {
         "&INPUTPP.prefix": {
           "namelist": "&INPUTPP",

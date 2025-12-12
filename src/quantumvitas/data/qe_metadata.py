@@ -122,7 +122,7 @@ def _load_raw_metadata() -> Dict[str, Any]:
             _METADATA_MTIME = None
             raise FileNotFoundError(
                 "qe_module_parameters.json is missing; run "
-                "`python tools/extract_qe_parameters_v2.py` to regenerate it."
+                "`python tools/extract_qe_parameters_v4.py` to regenerate it."
             ) from exc
         except json.JSONDecodeError as exc:
             # Clear cache on JSON decode error
@@ -134,13 +134,13 @@ def _load_raw_metadata() -> Dict[str, Any]:
         
         # Validate schema version
         schema_version = data.get("schema_version", 1)
-        if schema_version not in (1, 2):
+        if schema_version not in (1, 2, 3, 4):
             # Clear cache on validation error
             _METADATA_CACHE = None
             _METADATA_MTIME = None
             raise RuntimeError(
                 f"Unsupported schema version {schema_version} in qe_module_parameters.json. "
-                f"Expected version 1 or 2."
+                f"Expected version 1, 2, 3, or 4."
             )
         
         # Cache the loaded data
@@ -166,7 +166,7 @@ def safe_load_metadata() -> Dict[str, Any]:
         raise RuntimeError(
             f"QE parameter metadata is not available: {exc}. "
             f"This is required for QE-related operations. "
-            f"Run `python tools/extract_qe_parameters_v2.py` to generate it."
+            f"Run `python tools/extract_qe_parameters_v4.py` to generate it."
         ) from exc
 
 
@@ -243,8 +243,8 @@ def _iter_params(module: str) -> List[Dict[str, Any]]:
                     "enum": None,
                     "description": None,
                 })
-    elif schema_version == 2:
-        # v2 schema: parameters map
+    elif schema_version in (2, 3, 4):
+        # v2/v3/v4 schema: parameters map (v3 adds optional status and see_also fields, v4 adds sections tree but parameters structure is the same)
         parameters = module_entry.get("parameters", {})
         for key, meta in parameters.items():
             namelist = meta.get("namelist")

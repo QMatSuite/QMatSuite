@@ -691,12 +691,12 @@ class QVDaemon:
                 if not module_entry:
                     return {"sections": []}
                 
-                # Extract section order from parameters map (v2 schema) or sections dict (v1 schema)
+                # Extract section order from parameters map (v2/v3 schema) or sections dict (v1 schema)
                 # This preserves the JSON insertion order
                 schema_version = raw_data.get("schema_version", 1)
                 section_order = []
                 
-                if schema_version == 2:
+                if schema_version in (2, 3, 4):
                     # v2 schema: extract section names from parameters map keys
                     # Key format: "&SECTION.paramname" or "SECTION.paramname"
                     parameters = module_entry.get("parameters", {})
@@ -824,9 +824,9 @@ class QVDaemon:
                                 "module": module,
                             }
                             
-                            # For v2 schema, get indexing metadata from raw data
+                            # For v2/v3 schema, get indexing metadata from raw data
                             schema_version = raw_data.get("schema_version", 1)
-                            if schema_version == 2:
+                            if schema_version in (2, 3, 4):
                                 parameters_map = module_entry.get("parameters", {})
                                 # Find the parameter in the map (key format: "&SECTION.paramname")
                                 param_key = f"{section_with_prefix}.{param.get('name')}"
@@ -906,10 +906,10 @@ class QVDaemon:
                                 "description": param.get("description"),
                             }
                             
-                            # Get indexing metadata for v2 schema
+                            # Get indexing metadata for v2/v3 schema
                             try:
                                 raw_data = safe_load_metadata()
-                                if raw_data.get("schema_version") == 2:
+                                if raw_data.get("schema_version") in (2, 3, 4):
                                     modules_data = raw_data.get("modules", {})
                                     module_entry = modules_data.get(module)
                                     if module_entry:
