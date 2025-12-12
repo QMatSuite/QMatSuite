@@ -170,6 +170,22 @@ def safe_load_metadata() -> Dict[str, Any]:
         ) from exc
 
 
+def reload_metadata() -> None:
+    """
+    Clear the QE parameter metadata cache so it will be reloaded on next access.
+    
+    This function clears both the in-memory cache and the mtime tracking,
+    forcing the next call to _load_raw_metadata() or safe_load_metadata() to
+    re-read the JSON file from disk.
+    
+    This is useful when the metadata file has been updated externally and
+    you want to force a reload without restarting the daemon.
+    """
+    global _METADATA_CACHE, _METADATA_MTIME
+    _METADATA_CACHE = None
+    _METADATA_MTIME = None
+
+
 def _load_qe_parameter_map() -> Dict[str, Any]:
     """
     Internal helper to load the JSON file, avoiding circular imports.

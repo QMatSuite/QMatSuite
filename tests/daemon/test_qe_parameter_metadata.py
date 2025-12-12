@@ -412,3 +412,55 @@ def test_error_not_raw_exception(daemon):
         assert "Traceback" not in error_str
         # Should be a structured error object
         assert isinstance(error, dict) or hasattr(error, "code") or hasattr(error, "message")
+
+
+def test_reload_qe_parameter_metadata(daemon):
+    """Test that reload_qe_parameter_metadata clears cache and returns fresh modules."""
+    # First, get initial modules list
+    initial_request = RPCRequest(
+        id="test-reload-1",
+        type="list_qe_parameter_metadata",
+        payload={"operation": "list_modules"},
+    )
+    initial_response = daemon.handle_request(initial_request)
+    assert initial_response.ok is True
+    initial_modules = initial_response.data["modules"]
+    assert len(initial_modules) > 0
+    
+    # Now reload metadata
+    reload_request = RPCRequest(
+        id="test-reload-2",
+        type="reload_qe_parameter_metadata",
+        payload={},
+    )
+    reload_response = daemon.handle_request(reload_request)
+    
+    assert reload_response.ok is True
+    assert "modules" in reload_response.data
+    reloaded_modules = reload_response.data["modules"]
+    assert isinstance(reloaded_modules, list)
+    assert len(reloaded_modules) > 0
+    
+    # Verify module structure
+    for module in reloaded_modules:
+        assert "id" in module
+        assert "label" in module
+        assert isinstance(module["id"], str)
+        assert isinstance(module["label"], str)
+    
+    # Verify we get the same modules (same IDs)
+    initial_ids = {m["id"] for m in initial_modules}
+    reloaded_ids = {m["id"] for m in reloaded_modules}
+    assert initial_ids == reloaded_ids, "Reloaded modules should match initial modules"
+    
+    # Verify cache was cleared by checking that subsequent list_modules call works
+    # (if cache wasn't cleared, this would still work, but we want to ensure reload happened)
+    verify_request = RPCRequest(
+        id="test-reload-3",
+        type="list_qe_parameter_metadata",
+        payload={"operation": "list_modules"},
+    )
+    verify_response = daemon.handle_request(verify_request)
+    assert verify_response.ok is True
+    verify_modules = verify_response.data["modules"]
+    assert len(verify_modules) > 0

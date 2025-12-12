@@ -12,11 +12,20 @@
   margin-bottom: 1.5rem;
 }
 
+.qe-parameter-browser__header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
 .qe-parameter-browser__title {
   font-size: 1.5rem;
   font-weight: 600;
-  margin: 0 0 0.5rem;
+  margin: 0;
   color: var(--text-primary);
+  flex: 1;
 }
 
 .qe-parameter-browser__subtitle {
@@ -199,6 +208,32 @@
 }
 
 /* Filters */
+/* Reload button */
+.qv-param-reload-button {
+  font-size: 0.85rem;
+  padding: 0.4rem 0.75rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.qv-param-reload-button:hover:not(:disabled) {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
+.qv-param-reload-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .qe-parameter-browser__filters {
   display: flex;
   gap: 1rem;
@@ -447,37 +482,44 @@
   letter-spacing: 0.05em;
 }
 
-/* Header inner container for sort + resize controls */
-.qv-param-header-inner {
+/* Header content container for sort indicators */
+.qv-param-header-content {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  position: relative;
   width: 100%;
-  gap: 0.5rem;
+  padding-right: 6px; /* Space for resizer */
 }
 
-/* Adjust sort indicator position when resizer is present - make it inline */
-.qv-param-header-inner .qv-sort-indicator {
-  position: static; /* Override absolute positioning for parameter table headers */
+/* Sort indicator in table headers */
+.qv-param-header-content .qv-sort-indicator {
   margin-left: 0.25rem;
   display: inline;
+  font-size: 0.7rem;
+  color: var(--color-primary);
 }
 
-/* Column resizer handle - draggable vertical bar at right edge of header */
+/* Column resizer handle - absolutely positioned at right edge of header */
 .qv-param-col-resizer {
-  flex: 0 0 auto;
-  width: 4px;
-  min-width: 4px;
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 100%;
   cursor: col-resize;
-  align-self: stretch;
+  z-index: 2;
   background-color: transparent;
   transition: background-color 0.2s;
-  margin-left: auto; /* Push to right edge */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .qv-param-col-resizer:hover {
   background-color: rgba(0, 0, 0, 0.08);
+}
+
+/* Ensure table headers are positioned relative for absolute resizer positioning */
+.qv-param-table th {
+  position: relative;
 }
 
 /* Parameter row - compact by default, expands when selected */
@@ -667,4 +709,107 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Global Search Results Panel */
+.qv-global-search-panel {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.qv-global-search-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.qv-global-search-hint {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.qv-global-search-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  color: var(--text-secondary);
+}
+
+.qv-global-search-empty {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.qv-global-search-table-container {
+  max-height: 300px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+}
+
+.qv-global-search-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.qv-global-search-table thead {
+  position: sticky;
+  top: 0;
+  background: var(--bg-secondary);
+  z-index: 10;
+}
+
+.qv-global-search-table th {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--border-color);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.qv-global-search-table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.qv-global-search-row {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.qv-global-search-row:hover {
+  background: var(--bg-hover, rgba(0, 0, 0, 0.02));
+}
+
+/* Primary matches (name matches) - normal styling */
+.qv-global-result-primary {
+  /* Default styling - no special class needed */
+}
+
+/* Secondary matches (non-name matches) - greyed out */
+.qv-global-result-secondary {
+  opacity: 0.6;
+  font-style: italic;
+}
+
+.qv-global-result-secondary:hover {
+  opacity: 0.8;
+  font-style: italic;
 }

@@ -90,8 +90,8 @@
 }
 
 .diagnostics-logs-content {
-  max-height: 300px;
-  overflow-y: auto;
+  /* Removed max-height: 300px and overflow-y: auto to eliminate nested scroll */
+  /* Content naturally expands, scrolling handled by parent .app-shell__content */
   background-color: var(--bg-secondary, rgba(0, 0, 0, 0.2));
   border: 1px solid var(--border-color);
   border-radius: 4px;
@@ -117,13 +117,13 @@
 .settings-panel {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  overflow: hidden;
+  /* Removed height: 100% and overflow: hidden to allow natural expansion */
+  /* Single scroll container is at .app-shell__content level */
 }
 
 .settings-scroll-container {
-  flex: 1;
-  overflow-y: auto;
+  /* Removed flex: 1 and overflow-y: auto to eliminate nested scroll */
+  /* Content naturally expands, scrolling handled by parent .app-shell__content */
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
