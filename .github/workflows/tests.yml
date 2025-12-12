@@ -303,6 +303,8 @@ jobs:
             tests/e2e/welcome.spec.ts \
             tests/e2e/demo_workflow.spec.ts \
             tests/e2e/demo_workflow_run.spec.ts \
+            tests/e2e/demo_gallery.spec.ts \
+            tests/e2e/step_defaults.spec.ts \
             --project=electron
         else
           # macOS runs directly (no xvfb needed)
@@ -310,6 +312,8 @@ jobs:
             tests/e2e/welcome.spec.ts \
             tests/e2e/demo_workflow.spec.ts \
             tests/e2e/demo_workflow_run.spec.ts \
+            tests/e2e/demo_gallery.spec.ts \
+            tests/e2e/step_defaults.spec.ts \
             --project=electron
         fi
       env:

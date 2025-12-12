@@ -69,6 +69,8 @@ export function QEParameterBrowserPanel() {
   const [lastGlobalSearchTerm, setLastGlobalSearchTerm] = useState<string | null>(null);
   const [isGlobalSearching, setIsGlobalSearching] = useState(false);
   const [globalSearchError, setGlobalSearchError] = useState<string | null>(null);
+  const [isSearchPopoverOpen, setIsSearchPopoverOpen] = useState(false);
+  const searchInputGroupRef = useRef<HTMLDivElement>(null);
 
   // Sorting control
   type SortMode = 'original' | 'asc' | 'desc';
@@ -120,6 +122,38 @@ export function QEParameterBrowserPanel() {
   const resizeStateRef = useRef<ColumnResizeState>(null);
 
   // Ref to track pending parameter selection after navigation from global search
+  
+  // Click outside handler for Popover
+  useEffect(() => {
+    if (!isSearchPopoverOpen) return;
+    
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (searchInputGroupRef.current) {
+        // Check if click is inside the search input group (including popover)
+        if (!searchInputGroupRef.current.contains(target)) {
+          // Click is outside the entire search group, close popover
+          setIsSearchPopoverOpen(false);
+        }
+        // If click is inside searchInputGroupRef, keep popover open
+        // (popover content is inside searchInputGroupRef, so this handles it correctly)
+      }
+    };
+    
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsSearchPopoverOpen(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEsc);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEsc);
+    };
+  }, [isSearchPopoverOpen]);
   const pendingParamKeyRef = useRef<string | null>(null);
 
   // Event-driven: handle section selection
@@ -374,6 +408,7 @@ export function QEParameterBrowserPanel() {
       const results = response.data?.results ?? [];
       setGlobalResults(results);
       setLastGlobalSearchTerm(query); // Store the term that was searched
+      setIsSearchPopoverOpen(true); // Open popover when search completes
       
       if (process.env.NODE_ENV === 'development') {
         console.debug('[QEParamBrowser] global search completed', {
@@ -388,6 +423,7 @@ export function QEParameterBrowserPanel() {
       setGlobalSearchError(
         err instanceof Error ? err.message : 'Global search failed',
       );
+      setIsSearchPopoverOpen(true); // Open popover even on error so user can see it
     } finally {
       setIsGlobalSearching(false);
     }
@@ -425,6 +461,7 @@ export function QEParameterBrowserPanel() {
 
   // Handle global search result click - navigates to the specific module/section/parameter
   const handleGlobalResultClick = useCallback(async (result: GlobalSearchResult) => {
+    setIsSearchPopoverOpen(false); // Close popover when result is clicked
     if (process.env.NODE_ENV === 'development') {
       console.debug('[QEParamBrowser] handleGlobalResultClick start', { 
         module: result.module, 
@@ -486,12 +523,6 @@ export function QEParameterBrowserPanel() {
     setSelectedParamKey(paramKey);
   }, [selectedModule, selectedSection, handleModuleChange, handleSectionChange]);
 
-  // Check if global search is active (has results that match current searchTerm)
-  const isGlobalSearchActive = 
-    searchTerm.trim() !== '' && 
-    globalResults !== null && 
-    lastGlobalSearchTerm !== null && 
-    searchTerm.trim() === lastGlobalSearchTerm;
 
   // Helper to reload modules after metadata reload
   // Reuses existing event-driven chain: modules → sections → parameters
@@ -978,31 +1009,6 @@ export function QEParameterBrowserPanel() {
         </div>
       </div>
       
-      {/* Search: Global search only (triggered by button/Enter) */}
-      <div className="qe-parameter-browser__search">
-        <div className="qe-parameter-browser__search-input-group">
-          <input
-            type="text"
-            className="qe-parameter-browser__search-input"
-            placeholder="Search all modules… (Press Enter or click Search)"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleGlobalSearch();
-              }
-            }}
-          />
-          <button
-            className="qe-parameter-browser__search-button"
-            onClick={handleGlobalSearch}
-            disabled={isGlobalSearching || !searchTerm.trim()}
-          >
-            {isGlobalSearching ? '⏳ Searching...' : '🔍 Search all modules'}
-          </button>
-        </div>
-      </div>
-      
       {/* Error Display */}
       {displayError && (
         <div className="qe-parameter-browser__error">
@@ -1028,72 +1034,12 @@ export function QEParameterBrowserPanel() {
         </div>
       )}
       
-      {/* Global Search Results Panel */}
-      {isGlobalSearchActive && (
-        <div className="qv-global-search-panel">
-          <div className="qv-global-search-header">
-            <span>Global search results for &quot;{searchTerm}&quot; ({rankedResults.length} matches)</span>
-            <span className="qv-global-search-hint">
-              Click a row to jump to that parameter
-            </span>
-          </div>
-          {isGlobalSearching ? (
-            <div className="qv-global-search-loading">
-              <div className="loading-spinner" />
-              <span>Searching all modules…</span>
-            </div>
-          ) : globalSearchError ? (
-            <div className="qe-parameter-browser__error">
-              <span className="qe-parameter-browser__error-icon">⚠️</span>
-              <span className="qe-parameter-browser__error-message">{globalSearchError}</span>
-            </div>
-          ) : rankedResults.length === 0 ? (
-            <div className="qv-global-search-empty">
-              No matches found across modules.
-            </div>
-          ) : (
-            <div className="qv-global-search-table-container">
-              <table className="qv-global-search-table">
-                <thead>
-                  <tr>
-                    <th>Module</th>
-                    <th>Section</th>
-                    <th>Name</th>
-                    <th>Type</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rankedResults.map((result) => {
-                    const q = lastGlobalSearchTerm?.trim().toLowerCase() || '';
-                    const name = (result.name ?? '').toLowerCase();
-                    const isPrimaryMatch = name && name.includes(q);
-                    
-                    return (
-                      <tr
-                        key={result.key || `${result.module}::${result.section}::${result.name}`}
-                        className={`qv-global-search-row ${isPrimaryMatch ? 'qv-global-result-primary' : 'qv-global-result-secondary'}`}
-                        onClick={() => handleGlobalResultClick(result)}
-                      >
-                        <td>{result.module}</td>
-                        <td>{result.section}</td>
-                        <td><strong>{result.name}</strong></td>
-                        <td><code>{result.type ?? '—'}</code></td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-      
       {/* Filters and Parameter List */}
-      {!isGlobalSearchActive && (
-        <>
+      <div>
           {/* Filter Controls */}
           <div className="qe-parameter-browser__filters">
-            <div className="qe-parameter-browser__filter-group qe-parameter-browser__filter-group--module">
+            <div className="qe-parameter-browser__filters-left">
+              <div className="qe-parameter-browser__filter-group qe-parameter-browser__filter-group--module">
               <label 
                 htmlFor="qe-module-select"
                 className="qv-field-label qv-sortable-header"
@@ -1110,7 +1056,7 @@ export function QEParameterBrowserPanel() {
                 value={selectedModule || ''}
                 onChange={(e) => handleModuleChange(e.target.value || null)}
                 disabled={modulesLoading}
-                style={{ width: '200px' }}
+                style={{ width: '160px' }}
               >
                 <option value="">Select module...</option>
                 {sortedModules.map(module => (
@@ -1141,7 +1087,7 @@ export function QEParameterBrowserPanel() {
                   module: selectedModule || undefined // Pass explicitly to avoid stale closure
                 })}
                 disabled={sectionsLoading || !selectedModule}
-                style={{ flex: 1, minWidth: 0 }}
+                style={{ flex: '0 1 360px', minWidth: '220px', maxWidth: '520px' }}
               >
                 <option value="">Select section...</option>
                 {sortedSections.map(section => {
@@ -1163,6 +1109,100 @@ export function QEParameterBrowserPanel() {
                   );
                 })}
               </select>
+            </div>
+            </div>
+            
+            <div className="qe-parameter-browser__filters-right" ref={searchInputGroupRef} style={{ position: 'relative' }}>
+              <input
+                type="text"
+                className="qe-parameter-browser__search-input"
+                placeholder="Search all modules…"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleGlobalSearch();
+                  }
+                }}
+              />
+              <button
+                className="qe-parameter-browser__search-icon-button"
+                onClick={handleGlobalSearch}
+                disabled={isGlobalSearching || !searchTerm.trim()}
+                aria-label="Search all modules"
+                title="Search all modules"
+              >
+                {isGlobalSearching ? '⏳' : '🔍'}
+              </button>
+              
+              {/* Popover for search results */}
+              {isSearchPopoverOpen && (
+                <div className="qe-search-popover-content">
+                  <div className="qe-search-popover-header">
+                    <span className="qe-search-popover-title">
+                      {isGlobalSearching ? 'Searching…' : globalSearchError ? 'Search Error' : `Search results${lastGlobalSearchTerm ? ` for "${lastGlobalSearchTerm}"` : ''}${rankedResults.length > 0 ? ` (${rankedResults.length} matches)` : ''}`}
+                    </span>
+                    <button
+                      className="qe-search-popover-close"
+                      onClick={() => setIsSearchPopoverOpen(false)}
+                      aria-label="Close search results"
+                      title="Close search results"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="qe-search-popover-body">
+                    {isGlobalSearching ? (
+                      <div className="qv-global-search-loading">
+                        <div className="loading-spinner" />
+                        <span>Searching all modules…</span>
+                      </div>
+                    ) : globalSearchError ? (
+                      <div className="qe-parameter-browser__error">
+                        <span className="qe-parameter-browser__error-icon">⚠️</span>
+                        <span className="qe-parameter-browser__error-message">{globalSearchError}</span>
+                      </div>
+                    ) : rankedResults.length === 0 ? (
+                      <div className="qv-global-search-empty">
+                        No matches found across modules.
+                      </div>
+                    ) : (
+                      <div className="qv-global-search-table-container">
+                        <table className="qv-global-search-table">
+                          <thead>
+                            <tr>
+                              <th>Module</th>
+                              <th>Section</th>
+                              <th>Name</th>
+                              <th>Type</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {rankedResults.map((result) => {
+                              const q = lastGlobalSearchTerm?.trim().toLowerCase() || '';
+                              const name = (result.name ?? '').toLowerCase();
+                              const isPrimaryMatch = name && name.includes(q);
+                              
+                              return (
+                                <tr
+                                  key={result.key || `${result.module}::${result.section}::${result.name}`}
+                                  className={`qv-global-search-row ${isPrimaryMatch ? 'qv-global-result-primary' : 'qv-global-result-secondary'}`}
+                                  onClick={() => handleGlobalResultClick(result)}
+                                >
+                                  <td>{result.module}</td>
+                                  <td>{result.section}</td>
+                                  <td><strong>{result.name}</strong></td>
+                                  <td><code>{result.type ?? '—'}</code></td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           
@@ -1356,8 +1396,7 @@ export function QEParameterBrowserPanel() {
               </div>
             )}
           </div>
-        </>
-      )}
+      </div>
     </div>
   );
 }
