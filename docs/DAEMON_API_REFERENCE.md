@@ -474,9 +474,23 @@ Get the current status of a job.
   "params": {
     "project_root": "/path/to/project",
     "workflow": "si-bands"
-  }
+  },
+  "io_dir": "/path/to/project/workflows/si-bands/raw",
+  "steps": [
+    {
+      "step_id": "01TXYZ789...",
+      "step_type": "scf",
+      "status": "completed",
+      "started_at": "2025-12-05T10:00:10+00:00",
+      "ended_at": "2025-12-05T10:02:30+00:00"
+    }
+  ]
 }
 ```
+
+**Fields**:
+- `io_dir`: Absolute path to the I/O directory (the actual directory used by the runner to write QE input/output and artifacts). Available immediately when the job is created (pending state), computed using the same logic as the runner (single source of truth via `compute_io_dir_from_workflow_model()`).
+- `steps`: Array of step progress information (available for workflow jobs, initialized at job creation with pending status, updated during execution).
 
 **Job Status Values**:
 

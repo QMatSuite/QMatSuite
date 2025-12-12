@@ -6,13 +6,40 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from .workflow import Workflow
 from .results import WorkflowResult, StepResultSummary
 from .types import StepMode, StepStatus, StepType
 from .verification import evaluate_step_result
 from quantumvitas.engine.registry import EngineRegistry
+
+
+def compute_io_dir_from_workflow_model(workflow_dir: Path, working_dir_name: Optional[str] = None) -> Path:
+    """
+    Compute the I/O directory path from workflow model/context.
+    
+    This is the SINGLE SOURCE OF TRUTH for determining the I/O directory.
+    Both the server (for pending jobs) and runner (for execution) use this function.
+    
+    Args:
+        workflow_dir: Path to the workflow directory (containing workflow.yaml)
+        working_dir_name: Name of the working directory subdirectory (from workflow.working_dir).
+                         If None, defaults to "raw" (the convention for local runner).
+    
+    Returns:
+        Absolute Path to the I/O directory (the actual directory used by the runner
+        to write QE input/output and artifacts).
+    
+    Note:
+        This function encapsulates the default "raw" convention. If the runner's
+        I/O directory policy changes in the future, only this function needs to be updated.
+    """
+    # Default to "raw" if not specified (local runner convention)
+    # This is the ONLY place that knows the "raw" default
+    subdir = working_dir_name or "raw"
+    io_dir = (workflow_dir / subdir).resolve()
+    return io_dir
 
 
 def _coerce_step_type(value) -> StepType:
@@ -58,6 +85,8 @@ class WorkflowRunner:
                 continue
 
             engine = self.engine_registry.get(step.engine)
+            # Use compute_io_dir_from_workflow_model to ensure consistency with server-side planned_io_dir
+            # workflow.raw_dir uses the same logic (workflow_dir / working_dir, default "raw")
             raw_dir = workflow.raw_dir
             raw_dir.mkdir(parents=True, exist_ok=True)
 
@@ -103,6 +132,8 @@ class WorkflowRunner:
                     break
 
         finished = datetime.now(timezone.utc)
+        # Get the actual I/O directory used by the runner (source of truth)
+        io_dir = workflow.raw_dir.resolve() if workflow.raw_dir else None
         return WorkflowResult(
             workflow_id=workflow.id,
             mode=workflow.mode,
@@ -110,5 +141,6 @@ class WorkflowRunner:
             status=status,
             started_at=started,
             finished_at=finished,
+            io_dir=io_dir,  # The actual I/O directory used by the runner
         )
 

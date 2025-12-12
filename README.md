@@ -109,7 +109,7 @@ Overrides now cover namelists, cards, and species rows:
 Need a pre-populated layout? `qv init` exposes a `--template` flag (reserved for future bundles). By default it always creates a clean skeleton so you can wire structures and workflows manually.
 
 `qv run workflow` automatically locates `project.qv.yml` (walking up from the
-current directory). Each workflow owns a `raw/` folder where all QE input/output
+current directory). Each workflow owns an I/O directory (default `raw/`, configurable via `working_dir` in workflow.yaml) where all QE input/output
 data lives, so restart files persist between steps. Reference outputs belong in
 `workflows/<id>/reference/`, and strict workflows compare against the files
 named in `workflow.yaml`:
@@ -118,7 +118,7 @@ named in `workflow.yaml`:
 id: si_dos
 mode: strict
 workflow:
-  working_dir: raw
+  working_dir: raw  # I/O directory name (default: "raw")
 steps:
   - id: scf
     input: si.1_scf.in

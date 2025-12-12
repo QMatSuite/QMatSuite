@@ -148,7 +148,7 @@ Set `pseudo_dir` in step YAML or use `--pseudo_dir` override to customize.
 
 When running `.in` files via `qv run`:
 
-- The final processed input is written to `working_dir/<stem>.in`
+- The final processed input is written to `<io_dir>/<stem>.in` (where `io_dir` is the workflow's I/O directory, default `raw/`)
 - If `keep_original=true` and the input was modified, the original is saved as `<stem>_original.in`
 - For YAML-based steps, only the generated input file is saved
 

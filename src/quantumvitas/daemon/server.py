@@ -2055,10 +2055,39 @@ class QVDaemon:
         verbose = payload.get("verbose", False)
         
         # Resolve with fallback to ensure cache is up-to-date before submitting job
-        self._resolve_workflow_with_fallback(project_root, workflow)
+        workflow_resolved = self._resolve_workflow_with_fallback(project_root, workflow)
         
         # Pass cached index and config to avoid rebuilding ResourceIndex
         cache = self.state.get_cache(project_root)
+        
+        # Load workflow to get initial steps list and io_dir (for step progress visualization and I/O directory display)
+        initial_steps = []
+        initial_io_dir = None
+        try:
+            from quantumvitas.core.models import load_workflow
+            from quantumvitas.workflow.runner import compute_io_dir_from_workflow_model
+            workflow_path = workflow_resolved.absolute_path / "workflow.yaml" if workflow_resolved.absolute_path.is_dir() else workflow_resolved.absolute_path
+            if workflow_path.exists():
+                wf_model = load_workflow(workflow_path, project_root=project_root)
+                # Initialize steps with pending status
+                initial_steps = [
+                    {
+                        "step_id": step.step_id,
+                        "step_type": step.type or "unknown",
+                        "status": "pending",
+                        "started_at": None,
+                        "ended_at": None,
+                    }
+                    for step in wf_model.steps
+                ]
+                # Compute planned_io_dir using the same logic the runner uses (single source of truth)
+                # This ensures pending jobs show the correct io_dir that will match the runner's final io_dir
+                workflow_dir = workflow_resolved.absolute_path if workflow_resolved.absolute_path.is_dir() else workflow_resolved.absolute_path.parent
+                planned_io_dir = compute_io_dir_from_workflow_model(workflow_dir, wf_model.working_dir)
+                initial_io_dir = str(planned_io_dir)
+        except Exception:
+            # If we can't load workflow, just use empty steps and no io_dir
+            pass
         
         # Submit job with target info for display
         job_id = self.job_manager.submit(
@@ -2071,6 +2100,8 @@ class QVDaemon:
             },
             target_name=workflow,
             project_root_display=str(project_root.resolve()),  # Normalize to absolute path
+            initial_steps=initial_steps,  # Initialize steps at job creation
+            initial_io_dir=initial_io_dir,  # Initialize io_dir at job creation (so it shows immediately)
             # kwargs for QVService.run_workflow
             project_root=project_root,
             workflow_selector=workflow,
@@ -2107,6 +2138,20 @@ class QVDaemon:
         
         target_name = f"{workflow}/{step}"
         
+        # Compute planned_io_dir using the same logic the runner uses (single source of truth)
+        initial_io_dir = None
+        try:
+            from quantumvitas.core.models import load_workflow
+            from quantumvitas.workflow.runner import compute_io_dir_from_workflow_model
+            workflow_path = workflow_resolved.absolute_path / "workflow.yaml" if workflow_resolved.absolute_path.is_dir() else workflow_resolved.absolute_path
+            if workflow_path.exists():
+                wf_model = load_workflow(workflow_path, project_root=project_root)
+                workflow_dir = workflow_resolved.absolute_path if workflow_resolved.absolute_path.is_dir() else workflow_resolved.absolute_path.parent
+                planned_io_dir = compute_io_dir_from_workflow_model(workflow_dir, wf_model.working_dir)
+                initial_io_dir = str(planned_io_dir)
+        except Exception:
+            pass
+        
         # Submit job with target info for display
         job_id = self.job_manager.submit(
             job_type="run_step",
@@ -2118,6 +2163,7 @@ class QVDaemon:
             },
             target_name=target_name,
             project_root_display=str(project_root),
+            initial_io_dir=initial_io_dir,  # Initialize io_dir at job creation (so it shows immediately)
             # kwargs for QVService.run_step
             project_root=project_root,
             workflow_selector=workflow,
