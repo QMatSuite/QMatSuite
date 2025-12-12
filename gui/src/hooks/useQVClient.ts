@@ -315,19 +315,19 @@ export function useQVClient(): QVClient {
   // This maintains reference stability while allowing state to be reactive
   if (!clientRef.current) {
     clientRef.current = {
-      state,
-      call,
-      ping,
-      getProjectSummary,
-      listStructures,
-      listWorkflows,
-      rebuildProjectRegistry,
-      listJobs,
-      listQeUiParameters,
-      listQeParameterMetadata,
-      checkConnection,
-      refreshDaemonStatus,
-    };
+    state,
+    call,
+    ping,
+    getProjectSummary,
+    listStructures,
+    listWorkflows,
+    rebuildProjectRegistry,
+    listJobs,
+    listQeUiParameters,
+    listQeParameterMetadata,
+    checkConnection,
+    refreshDaemonStatus,
+  };
   } else {
     // Update state property in place to maintain reference stability
     // All other properties (callbacks) are already stable due to useCallback
