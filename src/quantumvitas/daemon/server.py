@@ -718,7 +718,7 @@ class QVDaemon:
                 section_order = []
                 
                 if schema_version in (1, 2, 3):
-                    # v2 schema: extract section names from parameters map keys
+                    # v2/v3 schema: extract section names from parameters map keys
                     # Key format: "&SECTION.paramname" or "SECTION.paramname"
                     parameters = module_entry.get("parameters", {})
                     for param_key in parameters.keys():
@@ -737,7 +737,7 @@ class QVDaemon:
                         if section_normalized not in seen_sections:
                             seen_sections.add(section_normalized)
                             section_order.append((section_name, section_normalized))
-                
+                    
                 # Build result in JSON order
                 for section_part, section_normalized in section_order:
                     # Check if it's a card (cards take priority over namelists)
@@ -955,7 +955,7 @@ class QVDaemon:
                                 pass  # Indexing is optional
                             
                             results.append(param_dict)
-                    
+                
                     # Search card sections
                     raw_data = safe_load_metadata()
                     modules_data = raw_data.get("modules", {})
