@@ -2,7 +2,7 @@
  * WorkflowListPanel - Displays a list of workflows in a project
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import type { WorkflowInfo } from '../../types/qv';
 import './WorkflowListPanel.css';
 
@@ -189,6 +189,7 @@ interface WorkflowDetailPanelProps {
   onDeleteStep?: (stepId: string) => void;  // Callback when step is deleted
   onGoToJobs?: () => void;
   onWorkflowUpdated?: () => void;
+  onWorkflowDetailUpdated?: (detail: WorkflowDetailResult) => void;  // Callback to update workflowDetail directly
 }
 
 export function WorkflowDetailPanel({ 
@@ -202,6 +203,7 @@ export function WorkflowDetailPanel({
   onDeleteStep,
   onGoToJobs,
   onWorkflowUpdated,
+  onWorkflowDetailUpdated,
 }: WorkflowDetailPanelProps) {
   // IMPORTANT: When workflowDetail is available, we MUST use its steps array
   // as the canonical source of step order, since it is built from workflow.yaml.
@@ -464,6 +466,13 @@ export function WorkflowDetailPanel({
       if (response.ok) {
         setIsReordering(false);
         setStepOrder([]);
+        // CRITICAL: Use the returned workflow detail to update UI immediately
+        // This ensures the UI reflects the new step order from workflow.yaml
+        // The response.data contains the WorkflowDetailResult with updated step order
+        if (response.data && onWorkflowDetailUpdated) {
+          onWorkflowDetailUpdated(response.data);
+        }
+        // Also call the general update callback for any other side effects
         onWorkflowUpdated?.();
       } else {
         setError(response.error?.message || 'Failed to reorder steps');
@@ -520,7 +529,18 @@ export function WorkflowDetailPanel({
   // otherwise fall back to workflowSummary.steps (may have wrong order, but better than nothing)
   // The steps array from get_workflow_detail is the canonical source of step order and IDs.
   // Each step.id is a ULID (26 chars) that must be used as the step selector for RPC calls.
-  const displaySteps = workflowDetail?.steps ?? workflowSummary?.steps ?? [];
+  const baseSteps = workflowDetail?.steps ?? workflowSummary?.steps ?? [];
+  
+  // When reordering, reorder baseSteps according to stepOrder
+  const displaySteps = useMemo(() => {
+    if (!isReordering || stepOrder.length === 0 || stepOrder.length !== baseSteps.length) {
+      return baseSteps;
+    }
+    // Create a map of step ID to step object
+    const stepMap = new Map(baseSteps.map(s => [s.id, s]));
+    // Reorder according to stepOrder
+    return stepOrder.map(id => stepMap.get(id)).filter((s): s is NonNullable<typeof s> => s !== undefined);
+  }, [isReordering, stepOrder, baseSteps]);
   
   // INSTRUMENTATION: Log steps to verify order matches workflow.yaml
   console.log('[WorkflowDetailPanel] displaySteps', {
@@ -769,7 +789,10 @@ export function WorkflowDetailPanel({
                     <span className="drag-handle" title="Drag to reorder">⋮⋮</span>
                     <button
                       className="reorder-btn"
-                      onClick={() => handleMoveUp(idx)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleMoveUp(idx);
+                      }}
                       disabled={idx === 0 || isSaving}
                       title="Move up"
                     >
@@ -777,7 +800,10 @@ export function WorkflowDetailPanel({
                     </button>
                     <button
                       className="reorder-btn"
-                      onClick={() => handleMoveDown(idx, displaySteps.length)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleMoveDown(idx, displaySteps.length);
+                      }}
                       disabled={idx >= displaySteps.length - 1 || isSaving}
                       title="Move down"
                     >
