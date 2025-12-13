@@ -40,6 +40,10 @@ interface UnitCellProps {
   matrix: number[][];
 }
 
+interface BoxFrameProps {
+  bounds: [number, number, number, number, number, number];
+}
+
 // =============================================================================
 // Atom Component
 // =============================================================================
@@ -177,6 +181,63 @@ function UnitCell({ matrix }: UnitCellProps) {
 }
 
 // =============================================================================
+// Box Frame Component (for Box mode)
+// =============================================================================
+
+function BoxFrame({ bounds }: BoxFrameProps) {
+  const [xmin, xmax, ymin, ymax, zmin, zmax] = bounds;
+  
+  // Calculate all 8 corners of the axis-aligned box
+  const corners = useMemo(() => {
+    return [
+      new THREE.Vector3(xmin, ymin, zmin),  // 0: origin
+      new THREE.Vector3(xmax, ymin, zmin),  // 1: +x
+      new THREE.Vector3(xmin, ymax, zmin),  // 2: +y
+      new THREE.Vector3(xmin, ymin, zmax),  // 3: +z
+      new THREE.Vector3(xmax, ymax, zmin),  // 4: +x+y
+      new THREE.Vector3(xmax, ymin, zmax),  // 5: +x+z
+      new THREE.Vector3(xmin, ymax, zmax),  // 6: +y+z
+      new THREE.Vector3(xmax, ymax, zmax),  // 7: +x+y+z
+    ];
+  }, [xmin, xmax, ymin, ymax, zmin, zmax]);
+  
+  // Define the 12 edges of the box
+  const edges = useMemo(() => [
+    // Bottom face
+    [corners[0], corners[1]], // 0->1 (x)
+    [corners[0], corners[2]], // 0->2 (y)
+    [corners[1], corners[4]], // 1->4 (y)
+    [corners[2], corners[4]], // 2->4 (x)
+    // Top face
+    [corners[3], corners[5]], // 3->5 (x)
+    [corners[3], corners[6]], // 3->6 (y)
+    [corners[5], corners[7]], // 5->7 (y)
+    [corners[6], corners[7]], // 6->7 (x)
+    // Vertical edges
+    [corners[0], corners[3]], // 0->3 (z)
+    [corners[1], corners[5]], // 1->5 (z)
+    [corners[2], corners[6]], // 2->6 (z)
+    [corners[4], corners[7]], // 4->7 (z)
+  ], [corners]);
+  
+  return (
+    <group>
+      {edges.map((edge, idx) => (
+        <Line
+          key={idx}
+          points={[edge[0].toArray(), edge[1].toArray()]}
+          color="#ff6b6b"
+          lineWidth={1.5}
+          dashed
+          dashSize={0.1}
+          gapSize={0.05}
+        />
+      ))}
+    </group>
+  );
+}
+
+// =============================================================================
 // Camera Controller - Auto-fit to structure (only on structure change)
 // =============================================================================
 
@@ -234,9 +295,10 @@ interface SceneProps {
   atomScale: number;
   bondScale: number;
   structureId: string | null;
+  boxBounds?: [number, number, number, number, number, number] | null;
 }
 
-function Scene({ data, showBonds, showUnitCell, showLabels, atomScale, bondScale, structureId }: SceneProps) {
+function Scene({ data, showBonds, showUnitCell, showLabels, atomScale, bondScale, structureId, boxBounds }: SceneProps) {
   const allAtoms = useMemo(() => {
     const atoms = [...data.atoms];
     if (data.boundary_atoms) {
@@ -267,9 +329,13 @@ function Scene({ data, showBonds, showUnitCell, showLabels, atomScale, bondScale
         <Bond key={`bond-${idx}`} bond={bond} scale={bondScale} />
       ))}
       
-      {/* Unit Cell */}
+      {/* Unit Cell or Box Frame */}
       {showUnitCell && data.lattice && (
-        <UnitCell matrix={data.lattice.matrix} />
+        data.display_mode === 'box' && boxBounds ? (
+          <BoxFrame bounds={boxBounds} />
+        ) : (
+          <UnitCell matrix={data.lattice.matrix} />
+        )
       )}
       
       {/* Camera Controller - only reset on structure change */}
@@ -295,6 +361,10 @@ interface StructureViewer3DPropsExtended extends StructureViewer3DProps {
   structureId?: string | null;
   onSupercellChange?: (supercell: [number, number, number]) => void;
   onRepeatBoundaryChange?: (repeatBoundary: boolean) => void;
+  onDisplayModeChange?: (mode: 'primitive' | 'supercell' | 'conventional' | 'box') => void;
+  onBoxBoundsChange?: (bounds: [number, number, number, number, number, number] | null) => void;
+  currentDisplayMode?: 'primitive' | 'supercell' | 'conventional' | 'box';
+  currentBoxBounds?: [number, number, number, number, number, number] | null;
 }
 
 export function StructureViewer3D({
@@ -308,6 +378,10 @@ export function StructureViewer3D({
   structureId = null,
   onSupercellChange,
   onRepeatBoundaryChange,
+  onDisplayModeChange,
+  onBoxBoundsChange,
+  currentDisplayMode = 'primitive',
+  currentBoxBounds = null,
 }: StructureViewer3DPropsExtended) {
   const [localShowBonds, setLocalShowBonds] = useState(showBonds);
   const [localShowUnitCell, setLocalShowUnitCell] = useState(showUnitCell);
@@ -316,7 +390,9 @@ export function StructureViewer3D({
   const [supercellX, setSupercellX] = useState(1);
   const [supercellY, setSupercellY] = useState(1);
   const [supercellZ, setSupercellZ] = useState(1);
-  const [repeatBoundary, setRepeatBoundary] = useState(false);
+  const [repeatBoundary, setRepeatBoundary] = useState(true);
+  const [displayMode, setDisplayMode] = useState<'primitive' | 'supercell' | 'conventional' | 'box'>(currentDisplayMode);
+  const [boxBounds, setBoxBounds] = useState<[number, number, number, number, number, number] | null>(currentBoxBounds);
   
   // Get unique elements present in the structure
   const presentElements = useMemo(() => {
@@ -344,6 +420,18 @@ export function StructureViewer3D({
   const handleRepeatBoundaryChange = (checked: boolean) => {
     setRepeatBoundary(checked);
     onRepeatBoundaryChange?.(checked);
+  };
+  
+  const handleDisplayModeChange = (mode: 'primitive' | 'supercell' | 'conventional' | 'box') => {
+    setDisplayMode(mode);
+    // IMPORTANT: Do NOT mutate repeatBoundary state - preserve user preference
+    // The effective boundary repeat will be computed in App.tsx
+    onDisplayModeChange?.(mode);
+  };
+  
+  const handleBoxBoundsChange = (bounds: [number, number, number, number, number, number] | null) => {
+    setBoxBounds(bounds);
+    onBoxBoundsChange?.(bounds);
   };
   
   if (isLoading) {
@@ -420,8 +508,26 @@ export function StructureViewer3D({
         </label>
       </div>
       
-      {/* Controls Row 2: Supercell and boundary */}
-      {(onSupercellChange || onRepeatBoundaryChange) && (
+      {/* Controls Row 2: Display mode */}
+      {onDisplayModeChange && (
+        <div className="viewer-controls viewer-controls--mode">
+          <label className="control-item">
+            <span className="control-label">Display Mode:</span>
+            <select
+              value={displayMode}
+              onChange={(e) => handleDisplayModeChange(e.target.value as 'primitive' | 'supercell' | 'conventional' | 'box')}
+            >
+              <option value="primitive">Primitive</option>
+              <option value="supercell">Supercell</option>
+              <option value="conventional">Conventional</option>
+              <option value="box">Box</option>
+            </select>
+          </label>
+        </div>
+      )}
+      
+      {/* Controls Row 3: Supercell and boundary */}
+      {(onSupercellChange || onRepeatBoundaryChange) && displayMode === 'supercell' && (
         <div className="viewer-controls viewer-controls--supercell">
           {onSupercellChange && (
             <div className="control-group">
@@ -471,6 +577,113 @@ export function StructureViewer3D({
         </div>
       )}
       
+      {/* Controls Row 4: Box bounds (for box mode) */}
+      {onBoxBoundsChange && displayMode === 'box' && (
+        <div className="viewer-controls viewer-controls--box">
+          <div className="control-group">
+            <span className="control-group-label">Box Bounds (Å):</span>
+            <label className="control-item control-item--number">
+              X: <input
+                type="number"
+                step="0.1"
+                value={boxBounds ? boxBounds[0].toFixed(1) : '0'}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value) || 0;
+                  const newBounds: [number, number, number, number, number, number] = boxBounds 
+                    ? [val, boxBounds[1], boxBounds[2], boxBounds[3], boxBounds[4], boxBounds[5]]
+                    : [val, 10, 0, 10, 0, 10];
+                  handleBoxBoundsChange(newBounds);
+                }}
+              />
+              to <input
+                type="number"
+                step="0.1"
+                value={boxBounds ? boxBounds[1].toFixed(1) : '10'}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value) || 10;
+                  const newBounds: [number, number, number, number, number, number] = boxBounds 
+                    ? [boxBounds[0], val, boxBounds[2], boxBounds[3], boxBounds[4], boxBounds[5]]
+                    : [0, val, 0, 10, 0, 10];
+                  handleBoxBoundsChange(newBounds);
+                }}
+              />
+            </label>
+            <label className="control-item control-item--number">
+              Y: <input
+                type="number"
+                step="0.1"
+                value={boxBounds ? boxBounds[2].toFixed(1) : '0'}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value) || 0;
+                  const newBounds: [number, number, number, number, number, number] = boxBounds 
+                    ? [boxBounds[0], boxBounds[1], val, boxBounds[3], boxBounds[4], boxBounds[5]]
+                    : [0, 10, val, 10, 0, 10];
+                  handleBoxBoundsChange(newBounds);
+                }}
+              />
+              to <input
+                type="number"
+                step="0.1"
+                value={boxBounds ? boxBounds[3].toFixed(1) : '10'}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value) || 10;
+                  const newBounds: [number, number, number, number, number, number] = boxBounds 
+                    ? [boxBounds[0], boxBounds[1], boxBounds[2], val, boxBounds[4], boxBounds[5]]
+                    : [0, 10, 0, val, 0, 10];
+                  handleBoxBoundsChange(newBounds);
+                }}
+              />
+            </label>
+            <label className="control-item control-item--number">
+              Z: <input
+                type="number"
+                step="0.1"
+                value={boxBounds ? boxBounds[4].toFixed(1) : '0'}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value) || 0;
+                  const newBounds: [number, number, number, number, number, number] = boxBounds 
+                    ? [boxBounds[0], boxBounds[1], boxBounds[2], boxBounds[3], val, boxBounds[5]]
+                    : [0, 10, 0, 10, val, 10];
+                  handleBoxBoundsChange(newBounds);
+                }}
+              />
+              to <input
+                type="number"
+                step="0.1"
+                value={boxBounds ? boxBounds[5].toFixed(1) : '10'}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value) || 10;
+                  const newBounds: [number, number, number, number, number, number] = boxBounds 
+                    ? [boxBounds[0], boxBounds[1], boxBounds[2], boxBounds[3], boxBounds[4], val]
+                    : [0, 10, 0, 10, 0, val];
+                  handleBoxBoundsChange(newBounds);
+                }}
+              />
+            </label>
+          </div>
+        </div>
+      )}
+      
+      {/* Controls Row 5: Boundary repeat (for other modes, static text in box mode) */}
+      {onRepeatBoundaryChange && displayMode !== 'supercell' && (
+        <div className="viewer-controls viewer-controls--boundary">
+          {displayMode === 'box' ? (
+            <div className="control-item" style={{ color: '#888', fontSize: '0.9em' }}>
+              Boundary Repeat: disabled in Box mode
+            </div>
+          ) : (
+            <label className="control-item">
+              <input
+                type="checkbox"
+                checked={repeatBoundary}
+                onChange={(e) => handleRepeatBoundaryChange(e.target.checked)}
+              />
+              Boundary Repeat
+            </label>
+          )}
+        </div>
+      )}
+      
       {/* Canvas */}
       <div className="viewer-canvas">
         <Canvas
@@ -485,6 +698,7 @@ export function StructureViewer3D({
             atomScale={localAtomScale}
             bondScale={bondScale}
             structureId={structureId}
+            boxBounds={boxBounds}
           />
         </Canvas>
       </div>

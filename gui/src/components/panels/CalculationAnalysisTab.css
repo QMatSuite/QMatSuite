@@ -1,0 +1,18 @@
+/* CalculationAnalysisTab Styles */
+
+.calculation-analysis-tab {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.calculation-analysis-tab--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+  text-align: center;
+  color: var(--text-muted);
+}
+

@@ -11,4 +11,9 @@ export { AnalysisPanel, ScfConvergenceChart, DosChart, BandsChart } from './Anal
 export { DaemonErrorBanner } from './DaemonErrorBanner';
 export { JobsPanel } from './JobsPanel';
 export { SettingsPanel } from './SettingsPanel';
+export { CalculationRunPanel } from './CalculationRunPanel';
+export { CalculationAnalysisPanel } from './CalculationAnalysisPanel';
+export { CalculationOverviewTab } from './CalculationOverviewTab';
+export { CalculationRunTab } from './CalculationRunTab';
+export { CalculationAnalysisTab } from './CalculationAnalysisTab';
 export type { AppSettings } from './SettingsPanel';

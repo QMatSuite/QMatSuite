@@ -16,15 +16,11 @@ import {
   Sidebar,
   StatusBar,
   ResizablePane,
-  VerticalResizablePane,
   ProjectSummaryPanel, 
   StructureListPanel,
   StructureDetailPanel,
   CalculationListPanel,
-  CalculationDetailPanel,
-  StepDetailPanel,
   StructureViewer3D,
-  AnalysisPanel,
   DebugPanel,
   DaemonErrorBanner,
   CreateProjectDialog,
@@ -36,6 +32,9 @@ import {
   SettingsPanel,
   QEParameterBrowserPanel,
   ErrorBoundary,
+  CalculationOverviewTab,
+  CalculationRunTab,
+  CalculationAnalysisTab,
 } from './components';
 import type { ViewType } from './components/layout/Sidebar';
 import { useQVClient, useDaemonStatus } from './hooks';
@@ -46,9 +45,6 @@ import type {
   CalculationInfo,
   CalculationDetailResult,
   StructureVisData,
-  ScfConvergenceData,
-  DosData,
-  BandStructureData,
   QVResponse,
   JobSubmitResult,
   PreflightCheckResult,
@@ -81,7 +77,6 @@ function App() {
   const [projectSummary, setProjectSummary] = useState<ProjectSummary | null>(null);
   const [projectLoaded, setProjectLoaded] = useState(false);
   const [projectError, setProjectError] = useState<string | null>(null);
-  const [recommendedAnalysis, setRecommendedAnalysis] = useState<string | null>(null); // Used in handleCreateProjectSuccess
   
   // Data state
   const [structures, setStructures] = useState<StructureInfo[] | null>(null);
@@ -93,6 +88,9 @@ function App() {
   const [selectedCalculationSummary, setSelectedCalculationSummary] = useState<CalculationInfo | null>(null);
   const [selectedCalculationDetail, setSelectedCalculationDetail] = useState<CalculationDetailResult | null>(null);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
+  
+  // Top-level tab state for Calculations view
+  const [activeCalcTab, setActiveCalcTab] = useState<'overview' | 'run' | 'analysis'>('overview');
   
   // Auto-select refs for Structures and Calculations (mirror JobsPanel pattern)
   const didAutoSelectStructureRef = useRef(false);
@@ -380,14 +378,13 @@ function App() {
     }
   }, [qv, addToRecentProjects, showNotification]);
   
-  const handleCreateProjectSuccess = useCallback(async (newProjectRoot: string, recommendedAnalysis?: string | null) => {
+  const handleCreateProjectSuccess = useCallback(async (newProjectRoot: string) => {
     // Clear selected calculation and step when opening a new project (fixes stale step selection)
     setSelectedCalculationSummary(null);
     setSelectedCalculationDetail(null);
     setSelectedStepId(null);
     setSelectedStructure(null);
     
-    setRecommendedAnalysis(recommendedAnalysis || null);
     setProjectRoot(newProjectRoot);
     localStorage.setItem('qv-project-root', newProjectRoot);
     
@@ -585,8 +582,6 @@ function App() {
       fetchStructures();
     } else if (currentView === 'calculations' && !calculations) {
       fetchCalculations();
-    } else if (currentView === 'analysis' && !calculations) {
-      fetchCalculations();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentView, projectLoaded]); // Intentionally exclude structures/calculations/fetchStructures/fetchCalculations to prevent loops
@@ -597,20 +592,29 @@ function App() {
   
   // Current supercell and repeat_boundary settings
   const [currentSupercell, setCurrentSupercell] = useState<[number, number, number]>([1, 1, 1]);
-  const [currentRepeatBoundary, setCurrentRepeatBoundary] = useState(false);
+  const [currentRepeatBoundary, setCurrentRepeatBoundary] = useState(true);
+  const [currentDisplayMode, setCurrentDisplayMode] = useState<'primitive' | 'supercell' | 'conventional' | 'box'>('primitive');
+  const [currentBoxBounds, setCurrentBoxBounds] = useState<[number, number, number, number, number, number] | null>(null);
   
   const loadStructureVis = useCallback(async (
     structure: StructureInfo, 
     supercell: [number, number, number] = [1, 1, 1],
-    repeatBoundary: boolean = false
+    repeatBoundary: boolean = true,
+    displayMode: 'primitive' | 'supercell' | 'conventional' | 'box' = 'primitive',
+    boxBounds: [number, number, number, number, number, number] | null = null
   ) => {
     setIsLoading3D(true);
-    const response = await qv.call('get_structure_vis', {
+    const payload: any = {
       project_root: projectRoot,
       selector: structure.slug,
       supercell: supercell,
       repeat_boundary: repeatBoundary,
-    });
+      display_mode: displayMode,
+    };
+    if (boxBounds) {
+      payload.box_bounds = boxBounds;
+    }
+    const response = await qv.call('get_structure_vis', payload);
     setIsLoading3D(false);
     
     if (response.ok && response.data) {
@@ -625,21 +629,75 @@ function App() {
     // Mark that user has manually selected (prevent auto-select override)
     didAutoSelectStructureRef.current = true;
     setCurrentSupercell([1, 1, 1]);
-    setCurrentRepeatBoundary(false);
-    await loadStructureVis(structure, [1, 1, 1], false);
+    setCurrentRepeatBoundary(true);
+    setCurrentDisplayMode('primitive');
+    setCurrentBoxBounds(null);
+    await loadStructureVis(structure, [1, 1, 1], true, 'primitive', null);
   }, [loadStructureVis]);
   
   const handleSupercellChange = useCallback(async (supercell: [number, number, number]) => {
     if (!selectedStructure) return;
     setCurrentSupercell(supercell);
-    await loadStructureVis(selectedStructure, supercell, currentRepeatBoundary);
-  }, [selectedStructure, currentRepeatBoundary, loadStructureVis]);
+    await loadStructureVis(selectedStructure, supercell, currentRepeatBoundary, currentDisplayMode, currentBoxBounds);
+  }, [selectedStructure, currentRepeatBoundary, currentDisplayMode, currentBoxBounds, loadStructureVis]);
   
   const handleRepeatBoundaryChange = useCallback(async (repeatBoundary: boolean) => {
     if (!selectedStructure) return;
+    // Ignore boundary repeat changes in box mode
+    if (currentDisplayMode === 'box') {
+      return;
+    }
     setCurrentRepeatBoundary(repeatBoundary);
-    await loadStructureVis(selectedStructure, currentSupercell, repeatBoundary);
-  }, [selectedStructure, currentSupercell, loadStructureVis]);
+    await loadStructureVis(selectedStructure, currentSupercell, repeatBoundary, currentDisplayMode, currentBoxBounds);
+  }, [selectedStructure, currentSupercell, currentDisplayMode, currentBoxBounds, loadStructureVis]);
+  
+  const handleDisplayModeChange = useCallback(async (mode: 'primitive' | 'supercell' | 'conventional' | 'box') => {
+    if (!selectedStructure) return;
+    
+    // For box mode, if bounds are unset, initialize defaults
+    let bounds = currentBoxBounds;
+    if (mode === 'box' && !bounds) {
+      if (structureVisData?.lattice) {
+        // Initialize box bounds based on lattice vectors
+        const lattice = structureVisData.lattice;
+        const a = Math.sqrt(lattice.matrix[0][0]**2 + lattice.matrix[0][1]**2 + lattice.matrix[0][2]**2);
+        const b = Math.sqrt(lattice.matrix[1][0]**2 + lattice.matrix[1][1]**2 + lattice.matrix[1][2]**2);
+        const c = Math.sqrt(lattice.matrix[2][0]**2 + lattice.matrix[2][1]**2 + lattice.matrix[2][2]**2);
+        // Use conservative bounds: [0, 2*L] for each dimension
+        bounds = [0, 2*a, 0, 2*b, 0, 2*c];
+      } else {
+        // Fallback: use a default box if no lattice info available
+        bounds = [0, 10, 0, 10, 0, 10];
+      }
+      setCurrentBoxBounds(bounds);
+    }
+    
+    // Compute effective boundary repeat: always false for box mode, otherwise use stored preference
+    // IMPORTANT: Do NOT mutate currentRepeatBoundary state - preserve user preference
+    const effectiveBoundaryRepeat = mode === 'box' ? false : currentRepeatBoundary;
+    
+    // Update state and trigger compute
+    setCurrentDisplayMode(mode);
+    
+    // Debug logging (dev mode)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[StructureViewer] Display mode change:', {
+        mode,
+        bounds,
+        storedBoundaryRepeat: currentRepeatBoundary,
+        effectiveBoundaryRepeat,
+        supercell: currentSupercell,
+      });
+    }
+    
+    await loadStructureVis(selectedStructure, currentSupercell, effectiveBoundaryRepeat, mode, bounds);
+  }, [selectedStructure, currentSupercell, currentRepeatBoundary, currentBoxBounds, loadStructureVis, structureVisData]);
+  
+  const handleBoxBoundsChange = useCallback(async (bounds: [number, number, number, number, number, number] | null) => {
+    if (!selectedStructure) return;
+    setCurrentBoxBounds(bounds);
+    await loadStructureVis(selectedStructure, currentSupercell, currentRepeatBoundary, currentDisplayMode, bounds);
+  }, [selectedStructure, currentSupercell, currentRepeatBoundary, currentDisplayMode, loadStructureVis]);
   
   const handleImportStructureSuccess = useCallback(async (structureId: string) => {
     // Refresh structures list and summary
@@ -673,6 +731,7 @@ function App() {
     didAutoSelectCalculationRef.current = true;
     setSelectedCalculationDetail(null);
     setSelectedStepId(null);
+    // DO NOT change activeCalcTab - user stays in current tab
     
     // Fire and forget async detail fetch
     // The detail's steps array is the ONLY source of truth for step order and IDs
@@ -897,9 +956,13 @@ function App() {
       const shortId = result.job_id.slice(0, 8);
       showNotification(`Job #${shortId} started: ${result.target_name}`, 'success');
       
+      // Auto-switch to Run & Logs tab after successful submission
+      setActiveCalcTab('run');
+      
       // Job counts will be refreshed by StatusBar and JobsPanel polling
     } else {
       showNotification(`Failed to start job: ${response.error?.message || 'Unknown error'}`, 'error');
+      // Do NOT change tabs on error - stay in Overview
     }
     
     setDebugResult(response as QVResponse);
@@ -910,9 +973,10 @@ function App() {
   }, []);
   
   // Handle "View Analysis" from Jobs panel
+  // Navigate to Calculations view and select the calculation, user can then click Analysis tab
   const handleViewAnalysisFromJob = useCallback(async (calculationSlug: string) => {
-    // Switch to analysis view
-    setCurrentView('analysis');
+    // Switch to calculations view
+    setCurrentView('calculations');
     
     // If calculations aren't loaded, fetch them first
     if (!calculations) {
@@ -923,12 +987,15 @@ function App() {
     const wf = calculations?.find(w => w.slug === calculationSlug || w.name === calculationSlug);
     if (wf) {
       handleSelectCalculation(wf);
+      // Auto-switch to Analysis tab after selecting calculation
+      setActiveCalcTab('analysis');
     }
-  }, [calculations, fetchCalculations]);
+  }, [calculations, fetchCalculations, handleSelectCalculation]);
   
   const handleSelectStep = useCallback((stepId: string) => {
     console.log('[App] handleSelectStep called with:', stepId);
-    setSelectedStepId(stepId);
+    // Empty string means clear selection
+    setSelectedStepId(stepId || null);
   }, []);
   
   const handleDeleteStep = useCallback(async (stepId: string) => {
@@ -953,11 +1020,6 @@ function App() {
     }
   }, [selectedStepId, selectedCalculationSummary, projectRoot, qv]);
   
-  const handleRunStepSuccess = useCallback((result: JobSubmitResult) => {
-    const shortId = result.job_id.slice(0, 8);
-    showNotification(`Step job #${shortId} started: ${result.target_name}`, 'success');
-    // Job counts will be refreshed by StatusBar and JobsPanel polling
-  }, [showNotification]);
   
   // ==========================================================================
   // Structure Rename/Delete
@@ -1078,31 +1140,7 @@ function App() {
   // ==========================================================================
   // Analysis Data Loading
   // ==========================================================================
-  
-  const handleLoadScf = useCallback(async (calculation: CalculationInfo, step: string): Promise<ScfConvergenceData | null> => {
-    const response = await qv.call('get_scf_convergence', {
-      project_root: projectRoot,
-      calculation: calculation.slug,
-      step: step,
-    });
-    return response.ok ? response.data as ScfConvergenceData : null;
-  }, [qv, projectRoot]);
-  
-  const handleLoadDos = useCallback(async (calculation: CalculationInfo): Promise<DosData | null> => {
-    const response = await qv.call('get_dos_data', {
-      project_root: projectRoot,
-      calculation: calculation.slug,
-    });
-    return response.ok ? response.data as DosData : null;
-  }, [qv, projectRoot]);
-  
-  const handleLoadBands = useCallback(async (calculation: CalculationInfo): Promise<BandStructureData | null> => {
-    const response = await qv.call('get_band_structure_data', {
-      project_root: projectRoot,
-      calculation: calculation.slug,
-    });
-    return response.ok ? response.data as BandStructureData : null;
-  }, [qv, projectRoot]);
+  // Note: Analysis data loading is now handled by CalculationAnalysisPanel component
   
   // ==========================================================================
   // View Rendering
@@ -1268,6 +1306,10 @@ function App() {
                     structureId={selectedStructure?.id}
                     onSupercellChange={handleSupercellChange}
                     onRepeatBoundaryChange={handleRepeatBoundaryChange}
+                    onDisplayModeChange={handleDisplayModeChange}
+                    onBoxBoundsChange={handleBoxBoundsChange}
+                    currentDisplayMode={currentDisplayMode}
+                    currentBoxBounds={currentBoxBounds}
                   />
                 </div>
               </div>
@@ -1279,10 +1321,11 @@ function App() {
         if (!projectLoaded) return renderNoProjectMessage();
         return (
           <div className="calculations-view">
+            {/* Left Column: Calculation List (fixed, like VS Code Explorer) */}
             <ResizablePane
-              defaultWidth={420}
-              minWidth={320}
-              maxWidth={600}
+              defaultWidth={200}
+              minWidth={180}
+              maxWidth={420}
               storageKey="qv-calculations-list-width"
               className="calculations-view__list"
             >
@@ -1302,101 +1345,73 @@ function App() {
                 ➕ New Calculation
               </button>
             </ResizablePane>
-            {selectedCalculation && (
-              <div className="calculations-view__detail">
-                {selectedStepId ? (
-                  <>
-                    <VerticalResizablePane
-                      defaultHeight={350}
-                      minHeight={200}
-                      maxHeight={500}
-                      storageKey="qv-calculation-detail-height"
-                      className="calculation-detail-resizable"
-                    >
-                      <CalculationDetailPanel
-                        calculationSummary={selectedCalculationSummary}
-                        calculationDetail={selectedCalculationDetail}
-                        projectRoot={projectRoot}
-                        structures={structures || undefined}
-                        onClose={() => {
-                          setSelectedCalculationSummary(null);
-                          setSelectedCalculationDetail(null);
-                          setSelectedStepId(null);
-                        }}
-                        onRunCalculation={handleRunCalculation}
-                        onSelectStep={handleSelectStep}
-                        onDeleteStep={handleDeleteStep}
-                        onGoToJobs={handleGoToJobs}
-                        onCalculationUpdated={async () => {
-                          // CRITICAL: After adding a step, refresh calculation detail to show the new step
-                          // This ensures the step list updates immediately without needing to reopen the project
-                          console.log('[App] onCalculationUpdated: refreshing calculation detail after step creation');
-                          
-                          // Refresh calculations list to get updated step counts
-                          await fetchCalculations();
-                          
-                          // Also refresh the selected calculation detail if it exists
-                          // This updates selectedCalculationDetail.steps with the new step entry
-                          if (selectedCalculationSummary) {
-                            const response = await qv.call('get_calculation_detail', {
-                              project_root: projectRoot,
-                              calculation: selectedCalculationSummary.slug,
-                            });
-                            if (response.ok && response.data) {
-                              // Update selectedCalculationDetail with fresh data including new steps
-                              const updatedDetail = response.data as CalculationDetailResult;
-                              console.log('[App] Calculation detail refreshed', {
-                                calculationSlug: updatedDetail.slug,
-                                stepCount: updatedDetail.steps.length,
-                                stepIds: updatedDetail.steps.map(s => s.id),
-                                stepOrder: updatedDetail.steps.map((s, i) => ({ index: i, id: s.id, type: s.type })),
-                              });
-                              setSelectedCalculationDetail(updatedDetail);
-                            } else {
-                              console.error('[App] Failed to refresh calculation detail', response.error);
-                            }
-                          }
-                        }}
-                        onCalculationDetailUpdated={(detail) => {
-                          // CRITICAL: Directly update calculationDetail from reorder_calculation_steps response
-                          // This ensures UI reflects the new step order immediately without re-fetching
-                          console.log('[App] Calculation detail updated from reorder', {
-                            calculationSlug: detail.slug,
-                            stepCount: detail.steps.length,
-                            stepOrder: detail.steps.map((s, i) => ({ index: i, id: s.id, type: s.type })),
-                          });
-                          setSelectedCalculationDetail(detail);
-                        }}
-                      />
-                    </VerticalResizablePane>
-                    <StepDetailPanel
-                      projectRoot={projectRoot}
-                      selectedCalculation={selectedCalculationDetail}
-                      selectedStepId={selectedStepId}
-                      onClose={() => setSelectedStepId(null)}
-                      onRunStep={handleRunStepSuccess}
-                      onStepDeleted={handleDeleteStep}
-                    />
-                  </>
-                ) : (
-                  <CalculationDetailPanel
+            
+            {/* Right Workspace: Top-level Tab Bar */}
+            <div className="calculations-view__workspace">
+              {/* Top-level Tab Bar */}
+              <div className="calculations-workspace-tabs">
+                <button
+                  className={`calculations-workspace-tab ${activeCalcTab === 'overview' ? 'calculations-workspace-tab--active' : ''}`}
+                  onClick={() => setActiveCalcTab('overview')}
+                  data-testid="qv-calc-tab-overview"
+                >
+                  Overview & Steps
+                </button>
+                <button
+                  className={`calculations-workspace-tab ${activeCalcTab === 'run' ? 'calculations-workspace-tab--active' : ''}`}
+                  onClick={() => setActiveCalcTab('run')}
+                  data-testid="qv-calc-tab-run"
+                >
+                  Run & Logs
+                </button>
+                <button
+                  className={`calculations-workspace-tab ${activeCalcTab === 'analysis' ? 'calculations-workspace-tab--active' : ''}`}
+                  onClick={() => setActiveCalcTab('analysis')}
+                  data-testid="qv-calc-tab-analysis"
+                >
+                  Analysis
+                </button>
+              </div>
+              
+              {/* Tab Content */}
+              <div className="calculations-workspace-content">
+                {activeCalcTab === 'overview' && (
+                  <CalculationOverviewTab
                     calculationSummary={selectedCalculationSummary}
                     calculationDetail={selectedCalculationDetail}
                     projectRoot={projectRoot}
                     structures={structures || undefined}
-                    onClose={() => {
-                      setSelectedCalculationSummary(null);
-                      setSelectedCalculationDetail(null);
-                      setSelectedStepId(null);
-                    }}
-                    onRunCalculation={handleRunCalculation}
+                    selectedStepId={selectedStepId}
                     onSelectStep={handleSelectStep}
+                    onRunCalculation={handleRunCalculation}
                     onDeleteStep={handleDeleteStep}
                     onGoToJobs={handleGoToJobs}
-                    onCalculationUpdated={fetchCalculations}
+                    onCalculationUpdated={async () => {
+                      // CRITICAL: After adding a step, refresh calculation detail to show the new step
+                      console.log('[App] onCalculationUpdated: refreshing calculation detail after step creation');
+                      
+                      await fetchCalculations();
+                      
+                      if (selectedCalculationSummary) {
+                        const response = await qv.call('get_calculation_detail', {
+                          project_root: projectRoot,
+                          calculation: selectedCalculationSummary.slug,
+                        });
+                        if (response.ok && response.data) {
+                          const updatedDetail = response.data as CalculationDetailResult;
+                          console.log('[App] Calculation detail refreshed', {
+                            calculationSlug: updatedDetail.slug,
+                            stepCount: updatedDetail.steps.length,
+                            stepIds: updatedDetail.steps.map(s => s.id),
+                            stepOrder: updatedDetail.steps.map((s, i) => ({ index: i, id: s.id, type: s.type })),
+                          });
+                          setSelectedCalculationDetail(updatedDetail);
+                        } else {
+                          console.error('[App] Failed to refresh calculation detail', response.error);
+                        }
+                      }
+                    }}
                     onCalculationDetailUpdated={(detail) => {
-                      // CRITICAL: Directly update calculationDetail from reorder_calculation_steps response
-                      // This ensures UI reflects the new step order immediately without re-fetching
                       console.log('[App] Calculation detail updated from reorder', {
                         calculationSlug: detail.slug,
                         stepCount: detail.steps.length,
@@ -1406,8 +1421,22 @@ function App() {
                     }}
                   />
                 )}
+                
+                {activeCalcTab === 'run' && (
+                  <CalculationRunTab
+                    projectRoot={projectRoot}
+                    calculation={selectedCalculationDetail || selectedCalculationSummary}
+                  />
+                )}
+                
+                {activeCalcTab === 'analysis' && (
+                  <CalculationAnalysisTab
+                    projectRoot={projectRoot}
+                    calculation={selectedCalculationDetail || selectedCalculationSummary}
+                  />
+                )}
               </div>
-            )}
+            </div>
           </div>
         );
         
@@ -1416,22 +1445,6 @@ function App() {
           <JobsPanel 
             projectRoot={projectLoaded ? projectRoot : undefined}
             onViewAnalysis={handleViewAnalysisFromJob}
-          />
-        );
-        
-      case 'analysis':
-        if (!projectLoaded) return renderNoProjectMessage();
-        return (
-          <AnalysisPanel
-            calculations={calculations}
-            selectedCalculation={selectedCalculationSummary}
-            projectRoot={projectRoot}
-            onSelectCalculation={handleSelectCalculation}
-            onLoadScf={handleLoadScf}
-            onLoadDos={handleLoadDos}
-            onLoadBands={handleLoadBands}
-            autoAnalysis={appSettings.autoAnalysis}
-            defaultAnalysis={recommendedAnalysis}
           />
         );
         
@@ -1505,7 +1518,6 @@ function App() {
               {currentView === 'structures' && 'Structures'}
               {currentView === 'calculations' && 'Calculations'}
               {currentView === 'jobs' && 'Jobs'}
-              {currentView === 'analysis' && 'Analysis'}
               {currentView === 'resources' && 'Resources'}
               {currentView === 'settings' && 'Settings'}
             </h2>

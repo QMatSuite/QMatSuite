@@ -18,6 +18,18 @@ interface StepDetailPanelProps {
   selectedCalculation: CalculationDetailResult | null;
   /** Selected step ID (ULID from calculation.yaml) */
   selectedStepId: string | null;
+  /** Calculation name for breadcrumb display */
+  calculationName?: string | null;
+  /** Step index (0-based) for breadcrumb display */
+  stepIndex?: number;
+  /** Total step count for breadcrumb display */
+  stepCount?: number;
+  /** Whether this panel is in focus mode (expanded as main workspace) */
+  isFocusMode?: boolean;
+  /** Calculation absolute path for reveal button in focus mode */
+  calculationAbsolutePath?: string | null;
+  /** Step YAML absolute path (directory) for reveal button in focus mode */
+  stepYamlAbsolutePath?: string | null;
   /** Called to close the panel */
   onClose?: () => void;
   /** Called when a step run is submitted */
@@ -107,6 +119,12 @@ export function StepDetailPanel({
   projectRoot,
   selectedCalculation,
   selectedStepId,
+  calculationName,
+  stepIndex,
+  stepCount,
+  isFocusMode = false,
+  calculationAbsolutePath,
+  stepYamlAbsolutePath,
   onClose,
   onRunStep,
   onParametersUpdated,
@@ -740,13 +758,48 @@ export function StepDetailPanel({
   const namelists = Object.keys(stepDetail.parameters);
   const cards = Object.keys(stepDetail.cards);
   
+  // Show breadcrumb if we have calculation name and step position info
+  const showBreadcrumb = calculationName && stepIndex != null && stepIndex >= 0 && stepCount != null && stepCount > 0;
+  
   return (
-    <div className="step-detail-panel" data-testid="qv-step-detail">
+    <div className={`step-detail-panel ${isFocusMode ? 'step-detail-panel--focus' : ''}`} data-testid="qv-step-detail">
+      {/* Focus mode header: breadcrumb + run button */}
+      {isFocusMode && showBreadcrumb && (
+        <div className="step-detail-panel__focus-header">
+          <div className="step-detail-panel__focus-breadcrumb">
+            {calculationName} › Step {stepIndex + 1} · {stepDetail?.step_type?.toUpperCase() || 'STEP'}
+          </div>
+          <button
+            className="step-detail-panel__focus-run-btn"
+            onClick={handleRunStep}
+            disabled={isRunning || isEditing}
+            title="Run this step"
+          >
+            <span className="step-detail-panel__focus-run-icon">▶️</span>
+            <span>Run step</span>
+          </button>
+        </div>
+      )}
+      
       <div className="panel-header">
-        <h2 className="panel-title">
-          <span className="panel-icon">📋</span>
-          {stepDetail.name || stepDetail.id}
-        </h2>
+        <div className="qv-step-header-content">
+          {!isFocusMode && showBreadcrumb && (
+            <div className="qv-step-breadcrumb">
+              {calculationName} · Step {stepIndex + 1} of {stepCount}
+            </div>
+          )}
+          <div className="qv-step-header-main">
+            <h2 className="panel-title qv-step-title">
+              <span className="panel-icon">📋</span>
+              {stepDetail.name || stepDetail.id}
+            </h2>
+            {!isFocusMode && stepDetail.step_type && (
+              <div className="qv-step-type-chip">
+                {stepDetail.step_type.toUpperCase()}
+              </div>
+            )}
+          </div>
+        </div>
         <div className="panel-header-actions">
           <button
             className="panel-action-btn panel-action-btn--danger"
@@ -757,7 +810,7 @@ export function StepDetailPanel({
           >
             {isDeletingStep ? 'Deleting...' : '🗑️ Delete'}
           </button>
-          {onClose && (
+          {onClose && !isFocusMode && (
             <button className="panel-close" onClick={onClose}>×</button>
           )}
         </div>
@@ -951,17 +1004,32 @@ export function StepDetailPanel({
           </div>
         </div>
         
-        {/* Actions */}
-        <div className="detail-actions">
+        {/* Actions - hide in focus mode (run button is in header) */}
+        {!isFocusMode && (
+          <div className="detail-actions">
+            <button
+              className="action-button action-button--primary"
+              onClick={handleRunStep}
+              disabled={isRunning || isEditing}
+            >
+              {isRunning ? '⏳ Running...' : '▶️ Run Step'}
+            </button>
+          </div>
+        )}
+      </div>
+      
+      {/* Focus mode footer: reveal button */}
+      {isFocusMode && (stepYamlAbsolutePath || calculationAbsolutePath) && (
+        <div className="step-detail-panel__focus-footer">
           <button
-            className="action-button action-button--primary"
-            onClick={handleRunStep}
-            disabled={isRunning || isEditing}
+            className="step-detail-panel__focus-reveal-btn"
+            onClick={() => window.qv?.revealPath?.(stepYamlAbsolutePath || calculationAbsolutePath!)}
+            title={stepYamlAbsolutePath ? "Reveal step YAML folder in Finder/Explorer" : "Reveal calculation folder in Finder/Explorer"}
           >
-            {isRunning ? '⏳ Running...' : '▶️ Run Step'}
+            📂
           </button>
         </div>
-      </div>
+      )}
     </div>
   );
 }

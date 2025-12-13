@@ -8,6 +8,7 @@
  * - Step list order (DAG / ULID-based)
  * - Step detail panel UI (file paths, step IDs, metadata)
  * - Step file existence and YAML structure
+ * - Step Focus mode (compact step list + StepDetailPanel)
  * 
  * All assertions are independent of QE execution outputs.
  * 
@@ -18,7 +19,15 @@
  * To run locally:
  *   cd gui
  *   npm run build:e2e
- *   npx playwright test tests/e2e/demo_workflow.spec.ts --project=electron
+ *   npx playwright test tests/e2e/demo_calculation.spec.ts --project=electron
+ * 
+ * REFACTOR NOTES (Updated for new Calculations UI):
+ * - Calculations view now has three tabs: Overview & Steps, Run & Logs, Analysis
+ * - Overview & Steps tab has two modes:
+ *   - Overview mode: Full calculation overview with step list
+ *   - Step Focus mode: Compact step list + StepDetailPanel (when step is selected)
+ * - StepDetailPanel is only visible in Step Focus mode (not always below calculation list)
+ * - "Run Calculation" button is in the calculation header (Overview mode) or compact panel (Focus mode)
  */
 
 import { electronTest as test, expect, navigateToView } from './fixtures/electronTest';
@@ -59,24 +68,37 @@ test.describe('E2E Test 2: Create Demo Project → Calculation & Steps', () => {
     // Verify project is loaded (createDemoProject already checks this, but double-check)
     await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 10000 });
       
-      // Navigate to Workflows view
+      // Navigate to Calculations view
       await navigateToView(appPage, 'calculations');
       
       // Wait for calculations view to be visible
       await expect(appPage.getByTestId('qv-calculations-view')).toBeVisible({ timeout: 10000 });
       
+      // Verify Overview & Steps tab is active by default
+      const overviewTab = appPage.getByTestId('qv-calc-tab-overview');
+      await expect(overviewTab).toBeVisible();
+      await expect(overviewTab).toHaveClass(/calculations-workspace-tab--active/);
+      
       // Verify there is exactly one calculation row
-      const workflowRows = appPage.getByTestId('qv-calculation-row');
-      await expect(workflowRows).toHaveCount(1);
+      const calculationRows = appPage.getByTestId('qv-calculation-row');
+      await expect(calculationRows).toHaveCount(1);
       
       // Click on the calculation row to select it
-      await workflowRows.first().click();
+      await calculationRows.first().click();
       
-      // Wait for calculation detail panel
+      // Wait for calculation detail panel (in Overview mode)
       await expect(appPage.getByTestId('qv-calculation-detail')).toBeVisible({ timeout: 10000 });
       
-      // Verify "Run Calculation" button is visible (but we do NOT click it - no calculation execution in this spec)
+      // Verify we're in Overview mode (not Step Focus mode)
+      await expect(appPage.getByTestId('qv-calc-overview-tab')).toBeVisible();
+      
+      // Verify "Run Calculation" button is visible in the header
       await expect(appPage.getByTestId('qv-btn-run-calculation')).toBeVisible();
+      
+      // Verify calculation header shows name and "Calculation" subtitle
+      const calcDetail = appPage.getByTestId('qv-calculation-detail');
+      await expect(calcDetail.locator('.panel-title')).toBeVisible();
+      await expect(calcDetail.locator('.qv-calc-header-subtitle')).toContainText('Calculation');
       
       // Get all step rows
       // Step rows now have unique test IDs (qv-step-row-{stepId})
@@ -107,10 +129,14 @@ test.describe('E2E Test 2: Create Demo Project → Calculation & Steps', () => {
         await expect(stepButton).toBeEnabled({ timeout: 5000 });
         await stepButton.click({ timeout: 5000 });
         
-        // Wait a bit for React to update state
-        await appPage.waitForTimeout(100);
+        // Wait a bit for React to update state and enter Step Focus mode
+        await appPage.waitForTimeout(200);
         
-        // Wait for step detail panel to be visible
+        // Verify we entered Step Focus mode
+        await expect(appPage.getByTestId('qv-calc-overview-tab-focus')).toBeVisible({ timeout: 10000 });
+        await expect(appPage.getByTestId('qv-compact-step-list')).toBeVisible({ timeout: 5000 });
+        
+        // Wait for step detail panel to be visible (in Step Focus mode, it's on the right)
         const stepDetailPanel = appPage.getByTestId('qv-step-detail');
         await expect(stepDetailPanel).toBeVisible({ timeout: 10000 });
         
@@ -166,9 +192,14 @@ test.describe('E2E Test 2: Create Demo Project → Calculation & Steps', () => {
           }
         }
         
-        // Close step detail to go back
-        // Click calculation detail panel header to deselect step
-        await appPage.getByTestId('qv-calculation-detail').locator('.panel-header').click();
+        // Exit Step Focus mode by clicking "Back to overview" button
+        const backButton = appPage.getByTestId('qv-btn-back-to-overview');
+        await expect(backButton).toBeVisible({ timeout: 5000 });
+        await backButton.click();
+        
+        // Wait for UI to return to Overview mode
+        await expect(appPage.getByTestId('qv-calc-overview-tab')).toBeVisible({ timeout: 5000 });
+        await expect(appPage.getByTestId('qv-compact-step-list')).not.toBeVisible({ timeout: 2000 });
         await appPage.waitForTimeout(200);
       }
   });
@@ -187,7 +218,7 @@ test.describe('E2E Test 2: Create Demo Project → Calculation & Steps', () => {
     // Verify project is loaded
     await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 10000 });
       
-      // Navigate to Workflows
+      // Navigate to Calculations
       await navigateToView(appPage, 'calculations');
       await expect(appPage.getByTestId('qv-calculations-view')).toBeVisible({ timeout: 10000 });
       
@@ -207,7 +238,11 @@ test.describe('E2E Test 2: Create Demo Project → Calculation & Steps', () => {
         const stepRow = stepRows.nth(i);
         const stepId = await stepRow.getAttribute('data-step-id');
         
-        await stepRow.click();
+        // Click step to enter Step Focus mode
+        await stepRow.locator('button.step-item').click();
+        
+        // Wait for Step Focus mode
+        await expect(appPage.getByTestId('qv-calc-overview-tab-focus')).toBeVisible({ timeout: 10000 });
         await expect(appPage.getByTestId('qv-step-detail')).toBeVisible({ timeout: 10000 });
         
         const stepFilePath = await appPage.getByTestId('qv-step-file-path').textContent();
@@ -220,8 +255,9 @@ test.describe('E2E Test 2: Create Demo Project → Calculation & Steps', () => {
           // (unless they intentionally share a step file)
         }
         
-        // Go back by clicking elsewhere
-        await appPage.getByTestId('qv-calculation-detail').locator('.panel-header').click();
+        // Go back to Overview mode
+        await appPage.getByTestId('qv-btn-back-to-overview').click();
+        await expect(appPage.getByTestId('qv-calc-overview-tab')).toBeVisible({ timeout: 5000 });
         await appPage.waitForTimeout(200);
       }
       
@@ -229,4 +265,3 @@ test.describe('E2E Test 2: Create Demo Project → Calculation & Steps', () => {
       expect(stepFiles.size).toBe(stepCount);
   });
 });
-

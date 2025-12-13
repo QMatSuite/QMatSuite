@@ -113,6 +113,7 @@ export interface StructureVisData {
   n_boundary_atoms: number;
   n_bonds: number;
   supercell: [number, number, number];
+  display_mode?: 'primitive' | 'supercell' | 'conventional' | 'box';
   lattice: LatticeVisData;
   atoms: AtomVisData[];
   boundary_atoms: AtomVisData[];
@@ -544,6 +545,8 @@ export interface QVCommandMap {
       selector: string;
       supercell?: [number, number, number];
       repeat_boundary?: boolean;
+      display_mode?: 'primitive' | 'supercell' | 'conventional' | 'box';
+      box_bounds?: [number, number, number, number, number, number]; // [xmin, xmax, ymin, ymax, zmin, zmax]
     };
     result: StructureVisData;
   };

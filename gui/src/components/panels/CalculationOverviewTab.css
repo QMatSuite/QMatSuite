@@ -1,0 +1,359 @@
+/* CalculationOverviewTab Styles */
+
+.calculation-overview-tab {
+  display: flex;
+  gap: var(--space-4);
+  height: 100%;
+  overflow: hidden;
+}
+
+.calculation-overview-tab--overview {
+  /* Overview mode: single column */
+}
+
+.calculation-overview-tab--focus {
+  /* Focus mode: two columns */
+  display: flex;
+  gap: var(--space-4);
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Content area in focus mode (two columns) */
+.calculation-overview-tab__focus-content {
+  display: flex;
+  gap: var(--space-4);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.calculation-overview-tab__overview-full {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Shared scroll container for both overview and focus modes */
+.calculation-overview-tab__scroll-container {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Ensure flex children don't overflow */
+  min-height: 0;
+}
+
+/* When scroll container is applied, override overflow-hidden */
+.calculation-overview-tab__overview-full.calculation-overview-tab__scroll-container {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.calculation-overview-tab__overview {
+  flex: 1;
+  min-width: 0;
+}
+
+.calculation-overview-tab__step-detail {
+  flex: 1;
+  min-width: 0;
+}
+
+.calculation-overview-tab__focus-list {
+  flex: 0 0 auto;
+  min-width: 0;
+  height: 100%;
+}
+
+.calculation-overview-tab__focus-detail {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative; /* For background click detection */
+  height: 100%;
+}
+
+/* When scroll container is applied, override overflow-hidden */
+.calculation-overview-tab__focus-detail.calculation-overview-tab__scroll-container {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Compact Step List (for focus mode) */
+.compact-step-list {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.compact-step-list__back {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+}
+
+/* Run Calculation button in compact step list */
+.compact-step-list__run-calculation {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+}
+
+.compact-step-list__run-calculation-btn {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: var(--text-on-primary, #fff);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+}
+
+.compact-step-list__run-calculation-btn:hover:not(:disabled) {
+  background: var(--color-accent-light);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.compact-step-list__run-calculation-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.compact-step-list__run-calculation-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.compact-step-list__back-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  padding: var(--space-1) 0;
+  transition: color var(--transition-fast);
+}
+
+.compact-step-list__back-btn:hover {
+  color: var(--text-primary);
+}
+
+.compact-step-list__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+}
+
+.compact-step-list__header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.compact-step-list__label {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.compact-step-list__count {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.compact-step-list__header-actions {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.compact-step-list__icon-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  font-size: var(--text-sm);
+}
+
+.compact-step-list__icon-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+.compact-step-list__icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.compact-step-list__add-form {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.compact-step-list__type-select,
+.compact-step-list__name-input {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: var(--text-xs);
+}
+
+.compact-step-list__add-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.compact-step-list__add-btn,
+.compact-step-list__cancel-btn {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-button);
+  color: var(--text-primary);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.compact-step-list__add-btn:hover:not(:disabled) {
+  background: var(--bg-button-hover);
+}
+
+.compact-step-list__cancel-btn {
+  background: transparent;
+}
+
+.compact-step-list__steps {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-height: 0;
+}
+
+.compact-step-list__step-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+  width: 100%;
+}
+
+.compact-step-list__step-item:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-alpha);
+}
+
+.compact-step-list__step-item--selected {
+  border-color: var(--color-primary);
+  background: var(--color-primary-alpha);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.compact-step-list__step-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  flex-shrink: 0;
+}
+
+.compact-step-list__step-item--selected .compact-step-list__step-number {
+  background: var(--color-primary);
+  color: var(--text-on-primary);
+}
+
+.compact-step-list__step-type {
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg-tertiary);
+  flex-shrink: 0;
+}
+
+.compact-step-list__step-file {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.compact-step-list__footer {
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.compact-step-list__reveal-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  font-size: var(--text-base);
+}
+
+.compact-step-list__reveal-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
