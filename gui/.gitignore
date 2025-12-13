@@ -7,10 +7,31 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
+
+# Build outputs
 dist
 dist-ssr
+dist-electron
+
+# Electron build artifacts
+release/
+
+# Test results
+test-results/
+playwright-report/
+test-results/
+
+# Vite cache
+.vite/
+.vite
+
+# Environment files
 *.local
+.env
+.env.local
+.env.*.local
 
 # Editor directories and files
 .vscode/*
