@@ -336,27 +336,56 @@ export function useJobDetail(options: UseJobDetailOptions): UseJobDetailResult {
     }
   }, [jobId, fetchJob]);
   
-  // Initial fetch and polling
+  // Store job in ref to access latest value in polling setup
+  const jobRef = useRef<JobInfo | null>(null);
   useEffect(() => {
-    if (!jobId) {
-      setJob(null);
-      setLogs(null);
-      return;
+    jobRef.current = job;
+  }, [job]);
+  
+  // Setup polling function that uses ref for latest job state
+  const setupPolling = useCallback(() => {
+    // Clear existing polling
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
     
-    // Initial fetch
-    fetchJob();
-    fetchLogs();
-    
-    // Setup polling if job is not terminal
-    const shouldPoll = autoStart && job && (job.status === 'pending' || job.status === 'running');
-    
-    if (shouldPoll) {
+    // Start polling if job is active
+    const currentJob = jobRef.current;
+    if (autoStart && currentJob && (currentJob.status === 'pending' || currentJob.status === 'running')) {
       intervalRef.current = setInterval(() => {
         fetchJob();
         fetchLogs();
       }, pollInterval);
     }
+  }, [autoStart, pollInterval, fetchJob, fetchLogs]);
+  
+  // Initial fetch and polling setup
+  useEffect(() => {
+    if (!jobId) {
+      setJob(null);
+      setLogs(null);
+      jobRef.current = null;
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      return;
+    }
+    
+    // Clear any existing polling
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    
+    // Initial fetch - then setup polling after fetch completes
+    (async () => {
+      await fetchJob();
+      await fetchLogs();
+      // Setup polling after fetch completes (job state should be set)
+      setupPolling();
+    })();
     
     return () => {
       if (intervalRef.current) {
@@ -364,7 +393,13 @@ export function useJobDetail(options: UseJobDetailOptions): UseJobDetailResult {
         intervalRef.current = null;
       }
     };
-  }, [jobId, autoStart, pollInterval, fetchJob, fetchLogs, job?.status]);
+  }, [jobId, fetchJob, fetchLogs, setupPolling]);
+  
+  // Update polling when job status changes
+  useEffect(() => {
+    if (!jobId || !autoStart) return;
+    setupPolling();
+  }, [job?.status, jobId, autoStart, setupPolling]);
   
   return {
     job,

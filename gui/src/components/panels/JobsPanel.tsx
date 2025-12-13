@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useJobs, useJobDetail } from '../../hooks/useJobs';
-import type { JobSummary, JobStatus, JobStepInfo } from '../../types/qv';
+import type { JobSummary, JobInfo, JobStatus, JobStepInfo } from '../../types/qv';
 import './JobsPanel.css';
 
 // =============================================================================
@@ -126,15 +126,15 @@ function JobListItem({ job, isSelected, onSelect }: JobListItemProps) {
   
   // Extract steps from job (may be in job.steps or job.result.steps)
   const steps: JobStepInfo[] = useMemo(() => {
-    // First try job.steps (if backend includes it in list_jobs response)
-    if (job.steps && Array.isArray(job.steps)) {
+    // First try job.steps (if backend includes it in list_jobs response or merged from detail)
+    if (job.steps && Array.isArray(job.steps) && job.steps.length > 0) {
       return job.steps;
     }
     // Fallback: try to extract from result.steps (for completed/running jobs)
     // This works for both list_jobs (if backend includes result.steps in summary) 
     // and get_job_status (full detail)
     const result = (job as any).result;
-    if (result && result.steps && Array.isArray(result.steps)) {
+    if (result && result.steps && Array.isArray(result.steps) && result.steps.length > 0) {
       return result.steps;
     }
     return [];
@@ -192,14 +192,23 @@ interface JobDetailPanelProps {
   jobId: string;
   onClose: () => void;
   onViewAnalysis?: (workflowSlug: string) => void;
+  onJobUpdate?: (job: JobInfo) => void;
 }
 
-function JobDetailPanel({ jobId, onClose, onViewAnalysis }: JobDetailPanelProps) {
+function JobDetailPanel({ jobId, onClose, onViewAnalysis, onJobUpdate }: JobDetailPanelProps) {
   const { job, logs, isLoading, error, cancelJob, refresh, refreshLogs } = useJobDetail({
     jobId,
     pollInterval: 2000,
     autoStart: true,
   });
+  
+  // C) Notify parent when job updates so it can merge steps into list
+  useEffect(() => {
+    if (job && onJobUpdate) {
+      // Always update, even if steps are empty (to clear stale data)
+      onJobUpdate(job);
+    }
+  }, [job, onJobUpdate]);
   
   const logsEndRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -429,6 +438,7 @@ interface JobsPanelProps {
 
 export function JobsPanel({ projectRoot, onViewAnalysis }: JobsPanelProps) {
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [selectedJobDetail, setSelectedJobDetail] = useState<JobInfo | null>(null);
   const didAutoSelectRef = useRef(false);
   const { jobs, counts, isLoading, error, refresh, isPolling, startPolling, stopPolling } = useJobs({
     projectRoot,
@@ -571,14 +581,29 @@ export function JobsPanel({ projectRoot, onViewAnalysis }: JobsPanelProps) {
               )}
             </div>
           ) : (
-            jobs.map((job) => (
-              <JobListItem
-                key={job.id}
-                job={job}
-                isSelected={selectedJobId === job.id}
-                onSelect={handleSelectJob}
-              />
-            ))
+            jobs.map((job) => {
+              // C) Merge detail steps into list job for selected job to show live updates
+              let jobWithSteps = job;
+              if (selectedJobId === job.id && selectedJobDetail) {
+                // Extract steps from detail (may be in steps or result.steps)
+                const detailSteps = selectedJobDetail.steps && selectedJobDetail.steps.length > 0
+                  ? selectedJobDetail.steps
+                  : (selectedJobDetail.result as any)?.steps;
+                
+                if (detailSteps && Array.isArray(detailSteps) && detailSteps.length > 0) {
+                  // Merge detail steps to show live progress
+                  jobWithSteps = { ...job, steps: detailSteps };
+                }
+              }
+              return (
+                <JobListItem
+                  key={job.id}
+                  job={jobWithSteps}
+                  isSelected={selectedJobId === job.id}
+                  onSelect={handleSelectJob}
+                />
+              );
+            })
           )}
         </div>
         
@@ -589,6 +614,7 @@ export function JobsPanel({ projectRoot, onViewAnalysis }: JobsPanelProps) {
               jobId={selectedJobId}
               onClose={handleCloseDetail}
               onViewAnalysis={onViewAnalysis}
+              onJobUpdate={setSelectedJobDetail}
             />
           </div>
         )}
