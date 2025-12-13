@@ -1,0 +1,12 @@
+meta:
+  id: 01KC39BB6NNP4AF070GWPKK0J0
+  name: bands
+  slug: bands
+  path: calculations/si-bands/steps/bands.step.yaml
+  kind: step
+step_type: bands
+parameters:
+  BANDS:
+    filband: si.bands.dat
+    outdir: ./outdir/
+    prefix: si

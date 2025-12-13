@@ -13,7 +13,7 @@ import type {
   DaemonStatus,
   ProjectSummary,
   StructureInfo,
-  WorkflowInfo,
+  CalculationInfo,
   JobSummary,
   JobStatus,
 } from '../types/qv';
@@ -48,7 +48,7 @@ export interface QVClient {
   ping: () => Promise<QVResponse<{ pong: boolean; version: string }>>;
   getProjectSummary: (projectRoot: string) => Promise<QVResponse<ProjectSummary>>;
   listStructures: (projectRoot: string) => Promise<QVResponse<{ structures: StructureInfo[]; count: number }>>;
-  listWorkflows: (projectRoot: string) => Promise<QVResponse<{ workflows: WorkflowInfo[]; count: number }>>;
+  listCalculations: (projectRoot: string) => Promise<QVResponse<{ calculations: CalculationInfo[]; count: number }>>;
   rebuildProjectRegistry: (projectRoot: string) => Promise<QVResponse<QVResult<'rebuild_project_registry'>>>;
   listJobs: (filter?: { status?: JobStatus; job_type?: string }) => Promise<QVResponse<{ jobs: JobSummary[]; count: number }>>;
   listQeUiParameters: (module: string, stepType: string) => Promise<QVResponse<QVResult<'list_qe_ui_parameters'>>>;
@@ -277,8 +277,8 @@ export function useQVClient(): QVClient {
     [call]
   );
   
-  const listWorkflows = useCallback(
-    (projectRoot: string) => call('list_workflows', { project_root: projectRoot }),
+  const listCalculations = useCallback(
+    (projectRoot: string) => call('list_calculations', { project_root: projectRoot }),
     [call]
   );
   
@@ -320,7 +320,7 @@ export function useQVClient(): QVClient {
     ping,
     getProjectSummary,
     listStructures,
-    listWorkflows,
+    listCalculations,
     rebuildProjectRegistry,
     listJobs,
     listQeUiParameters,

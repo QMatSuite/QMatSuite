@@ -10,11 +10,11 @@ from quantumvitas.core.resolution import (
     SelectorNotFoundError,
     ResolvedResource,
     resolve_structure,
-    resolve_workflow,
+    resolve_calculation,
     resolve_step,
     resolve_project,
     list_structures,
-    list_workflows,
+    list_calculations,
     list_steps,
     _is_ulid_like,
     _is_path_like,
@@ -38,7 +38,7 @@ class TestSelectorClassification:
     
     def test_is_path_like_slash(self):
         """Strings with slash are path-like."""
-        assert _is_path_like("workflows/si-dos")
+        assert _is_path_like("calculations/si-dos")
     
     def test_is_path_like_yaml_suffix(self):
         """Strings ending in .yaml are path-like."""
@@ -82,7 +82,7 @@ class TestStructureResolution:
                     },
                 },
             ],
-            "workflows": [],
+            "calculations": [],
         }
         (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
         
@@ -116,42 +116,42 @@ class TestStructureResolution:
             resolve_structure(project_with_structures, "nonexistent")
 
 
-class TestWorkflowResolution:
-    """Test workflow resolution."""
+class TestCalculationResolution:
+    """Test calculation resolution."""
     
     @pytest.fixture
-    def project_with_workflows(self, tmp_path):
-        """Create a project with workflows."""
+    def project_with_calculations(self, tmp_path):
+        """Create a project with calculations."""
         project_root = tmp_path / "project"
         project_root.mkdir()
-        workflow_dir = project_root / "workflows" / "si-dos"
-        workflow_dir.mkdir(parents=True)
-        (workflow_dir / "steps").mkdir()
+        calculation_dir = project_root / "calculations" / "si-dos"
+        calculation_dir.mkdir(parents=True)
+        (calculation_dir / "steps").mkdir()
         
-        # Create workflow.yaml
+        # Create calculation.yaml
         wf_yaml = {
             "meta": {
-                "id": "01WORKFLOW_ULID_HERE_____",
+                "id": "01CALCULATION_ULID_HERE_____",
                 "name": "Si DOS",
                 "slug": "si-dos",
             },
             "steps": [],
         }
-        (workflow_dir / "workflow.yaml").write_text(yaml.safe_dump(wf_yaml))
+        (calculation_dir / "calculation.yaml").write_text(yaml.safe_dump(wf_yaml))
         
         config = {
             "project": {"name": "Test"},
             "structures": [],
-            "workflows": [
+            "calculations": [
                 {
                     "name": "Si DOS",
-                    "path": "workflows/si-dos",
+                    "path": "calculations/si-dos",
                     "meta": {
-                        "id": "01WORKFLOW_ULID_HERE_____",
+                        "id": "01CALCULATION_ULID_HERE_____",
                         "name": "Si DOS",
                         "slug": "si-dos",
-                        "path": "workflows/si-dos",
-                        "kind": "workflow",
+                        "path": "calculations/si-dos",
+                        "kind": "calculation",
                     },
                 },
             ],
@@ -160,19 +160,19 @@ class TestWorkflowResolution:
         
         return project_root
     
-    def test_resolve_by_slug(self, project_with_workflows):
-        """Resolve workflow by slug."""
-        result = resolve_workflow(project_with_workflows, "si-dos")
+    def test_resolve_by_slug(self, project_with_calculations):
+        """Resolve calculation by slug."""
+        result = resolve_calculation(project_with_calculations, "si-dos")
         assert result.slug == "si-dos"
     
-    def test_resolve_by_name(self, project_with_workflows):
-        """Resolve workflow by name."""
-        result = resolve_workflow(project_with_workflows, "Si DOS")
+    def test_resolve_by_name(self, project_with_calculations):
+        """Resolve calculation by name."""
+        result = resolve_calculation(project_with_calculations, "Si DOS")
         assert result.name == "Si DOS"
     
-    def test_resolve_by_path(self, project_with_workflows):
-        """Resolve workflow by path."""
-        result = resolve_workflow(project_with_workflows, "workflows/si-dos")
+    def test_resolve_by_path(self, project_with_calculations):
+        """Resolve calculation by path."""
+        result = resolve_calculation(project_with_calculations, "calculations/si-dos")
         assert result.slug == "si-dos"
 
 
@@ -181,10 +181,10 @@ class TestStepResolution:
     
     @pytest.fixture
     def project_with_steps(self, tmp_path):
-        """Create a project with workflow and steps."""
+        """Create a project with calculation and steps."""
         project_root = tmp_path / "project"
-        workflow_dir = project_root / "workflows" / "test-workflow"
-        steps_dir = workflow_dir / "steps"
+        calculation_dir = project_root / "calculations" / "test-calculation"
+        steps_dir = calculation_dir / "steps"
         steps_dir.mkdir(parents=True)
         
         # Create step file
@@ -200,20 +200,20 @@ class TestStepResolution:
         }
         (steps_dir / "scf.step.yaml").write_text(yaml.safe_dump(step_yaml))
         
-        # Create workflow.yaml
-        wf_yaml = {"meta": {"slug": "test-workflow"}, "steps": [{"id": "scf-step"}]}
-        (workflow_dir / "workflow.yaml").write_text(yaml.safe_dump(wf_yaml))
+        # Create calculation.yaml
+        wf_yaml = {"meta": {"slug": "test-calculation"}, "steps": [{"id": "scf-step"}]}
+        (calculation_dir / "calculation.yaml").write_text(yaml.safe_dump(wf_yaml))
         
         config = {
             "project": {"name": "Test"},
             "structures": [],
-            "workflows": [
+            "calculations": [
                 {
-                    "name": "Test Workflow",
-                    "path": "workflows/test-workflow",
+                    "name": "Test Calculation",
+                    "path": "calculations/test-calculation",
                     "meta": {
-                        "id": "01WORKFLOW_HERE_________",
-                        "slug": "test-workflow",
+                        "id": "01CALCULATION_HERE_________",
+                        "slug": "test-calculation",
                     },
                 },
             ],
@@ -224,17 +224,17 @@ class TestStepResolution:
     
     def test_resolve_step_by_id(self, project_with_steps):
         """Resolve step by id."""
-        result = resolve_step(project_with_steps, "test-workflow", "scf-step")
+        result = resolve_step(project_with_steps, "test-calculation", "scf-step")
         assert "scf" in result.name.lower() or "scf" in result.slug.lower()
     
     def test_resolve_step_by_type(self, project_with_steps):
         """Resolve step by step_type."""
-        result = resolve_step(project_with_steps, "test-workflow", "scf")
+        result = resolve_step(project_with_steps, "test-calculation", "scf")
         assert result.absolute_path.exists()
     
     def test_resolve_step_by_path(self, project_with_steps):
         """Resolve step by path."""
-        result = resolve_step(project_with_steps, "test-workflow", "steps/scf.step.yaml")
+        result = resolve_step(project_with_steps, "test-calculation", "steps/scf.step.yaml")
         assert result.absolute_path.suffix == ".yaml"
 
 
@@ -247,19 +247,19 @@ class TestListFunctions:
         project_root = tmp_path / "project"
         project_root.mkdir()
         (project_root / "structures").mkdir()
-        (project_root / "workflows").mkdir()
+        (project_root / "calculations").mkdir()
         
         # Create structures
         for name in ["silicon", "graphene"]:
             f = project_root / "structures" / f"{name}.json"
             f.write_text('{"@module": "test"}')
         
-        # Create workflows
+        # Create calculations
         for name in ["scf-calc", "bands-calc"]:
-            wf_dir = project_root / "workflows" / name
+            wf_dir = project_root / "calculations" / name
             wf_dir.mkdir()
             (wf_dir / "steps").mkdir()
-            (wf_dir / "workflow.yaml").write_text(yaml.safe_dump({"meta": {"slug": name}}))
+            (wf_dir / "calculation.yaml").write_text(yaml.safe_dump({"meta": {"slug": name}}))
         
         config = {
             "project": {"name": "Test"},
@@ -267,9 +267,9 @@ class TestListFunctions:
                 {"name": "Silicon", "file": "structures/silicon.json", "meta": {"slug": "silicon"}},
                 {"name": "Graphene", "file": "structures/graphene.json", "meta": {"slug": "graphene"}},
             ],
-            "workflows": [
-                {"name": "SCF Calc", "path": "workflows/scf-calc", "meta": {"slug": "scf-calc"}},
-                {"name": "Bands Calc", "path": "workflows/bands-calc", "meta": {"slug": "bands-calc"}},
+            "calculations": [
+                {"name": "SCF Calc", "path": "calculations/scf-calc", "meta": {"slug": "scf-calc"}},
+                {"name": "Bands Calc", "path": "calculations/bands-calc", "meta": {"slug": "bands-calc"}},
             ],
         }
         (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
@@ -283,9 +283,9 @@ class TestListFunctions:
         assert "silicon" in slugs
         assert "graphene" in slugs
     
-    def test_list_workflows(self, project_with_resources):
-        """List all workflows."""
-        results = list_workflows(project_with_resources)
+    def test_list_calculations(self, project_with_resources):
+        """List all calculations."""
+        results = list_calculations(project_with_resources)
         slugs = {r.slug for r in results}
         assert "scf-calc" in slugs
         assert "bands-calc" in slugs

@@ -22,19 +22,19 @@
 - `q2r.x`: https://www.quantum-espresso.org/Doc/INPUT_Q2R.html
 - `matdyn.x`: https://www.quantum-espresso.org/Doc/INPUT_MATDYN.html
 
-### 3. Workflow 文件依赖关系说明
+### 3. Calculation 文件依赖关系说明
 
-✅ **在代码注释中记录了 workflow 执行顺序**:
+✅ **在代码注释中记录了 calculation 执行顺序**:
 ```
-Workflow Note:
-  Many QE workflows run modules sequentially where:
+Calculation Note:
+  Many QE calculations run modules sequentially where:
   - Previous step's OUTPUT determines next step's INPUT filename
   - Example: pw.x generates .save directory -> ph.x reads from .save
   - Example: ph.x generates dyn files -> q2r.x reads dyn files -> matdyn.x reads .fc file
   - The prefix/outdir from previous step's input determines output filenames
 ```
 
-**典型 workflow**:
+**典型 calculation**:
 1. `pw.x` (arg=1) → 生成 `.save` 目录（文件名由 `prefix`/`outdir` 决定）
 2. `ph.x` (arg=2) → 读取 `.save`（文件名由 pw.x 输入决定）
 3. `q2r.x` (arg=3) → 读取 `dyn` 文件（文件名由 ph.x 输入的 `fildyn` 参数决定）
@@ -102,12 +102,12 @@ Workflow Note:
 1. **新建测试脚本**:
    - 测试所有失败类别的 bidirectional 转换
    - 详细的差异报告
-   - 包含 workflow 说明和官方文档链接
+   - 包含 calculation 说明和官方文档链接
 
 ## 下一步
 
 1. ✅ 所有失败类别的文件现在都能正确进行 bidirectional 转换
-2. ⏭️ 可以重新运行 PH 测试，看看 workflow 修复后通过率是否提高
+2. ⏭️ 可以重新运行 PH 测试，看看 calculation 修复后通过率是否提高
 3. ⏭️ 继续调试其他模块的测试
 
 ## 参考文档

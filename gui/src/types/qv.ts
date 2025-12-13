@@ -26,7 +26,7 @@ export interface QVError {
   code: string;
   message: string;
   available_commands?: string[];
-  kind?: string;  // Resource kind for resource_not_found/registry_out_of_sync errors (e.g., "step", "workflow", "structure")
+  kind?: string;  // Resource kind for resource_not_found/registry_out_of_sync errors (e.g., "step", "calculation", "structure")
   selector?: string;  // Selector that was not found
   id?: string;  // Resource ID if known
   expected_path?: string;  // Expected path from registry (for registry_out_of_sync)
@@ -34,12 +34,12 @@ export interface QVError {
   details?: {
     project_root?: string;
     hint?: string;
-    workflow_path?: string;
+    calculation_path?: string;
     expected_step_path?: string;
     expected_path?: string;
     step_id?: string;
     structure_id?: string;
-    reason?: string;  // e.g., "step_file_missing", "step_not_in_workflow_dag"
+    reason?: string;  // e.g., "step_file_missing", "step_not_in_calculation_dag"
     actual_state?: string;
   };
 }
@@ -121,7 +121,7 @@ export interface StructureVisData {
 }
 
 // =============================================================================
-// Data Types - Workflows
+// Data Types - Calculations
 // =============================================================================
 
 export interface StepInfo {
@@ -130,7 +130,7 @@ export interface StepInfo {
   step_file: string;
 }
 
-export interface WorkflowInfo {
+export interface CalculationInfo {
   id: string;
   name: string;
   slug: string;
@@ -142,7 +142,7 @@ export interface WorkflowInfo {
   steps: StepInfo[];
 }
 
-export interface WorkflowTemplateInfo {
+export interface CalculationTemplateInfo {
   name: string;
   path: string;
   description?: string;
@@ -160,19 +160,19 @@ export interface ProjectSummary {
   slug: string;
   path: string;
   n_structures: number;
-  n_workflows: number;
+  n_calculations: number;
   structure_names: string[];
-  workflow_names: string[];
+  calculation_names: string[];
 }
 
 // =============================================================================
 // Data Types - Analysis
 // =============================================================================
 
-/** Analysis type for ensure_workflow_analysis */
+/** Analysis type for ensure_calculation_analysis */
 export type AnalysisType = 'scf' | 'dos' | 'bands';
 
-/** Result of ensure_workflow_analysis RPC call */
+/** Result of ensure_calculation_analysis RPC call */
 export interface AnalysisStatus {
   ok: boolean;
   analysis_type: AnalysisType;
@@ -202,7 +202,7 @@ export interface ScfIteration {
 }
 
 export interface ScfConvergenceData {
-  workflow: string;
+  calculation: string;
   step: string;
   output_file: string;
   converged: boolean;
@@ -218,7 +218,7 @@ export interface ScfConvergenceData {
 }
 
 export interface DosData {
-  workflow: string;
+  calculation: string;
   step: string;
   data_file: string;
   n_points: number;
@@ -237,7 +237,7 @@ export interface HighSymmetryPoint {
 }
 
 export interface BandStructureData {
-  workflow: string;
+  calculation: string;
   step: string;
   data_file: string;
   n_bands: number;
@@ -353,7 +353,7 @@ export interface StepDetail {
   absolute_path: string;
   step_type: string;
   structure: string | null;
-  parent_workflow_id: string | null;
+  parent_calculation_id: string | null;
   parameters: Record<string, Record<string, unknown>>;
   cards: Record<string, Record<string, unknown>>;
   species_overrides: Record<string, Record<string, unknown>>;
@@ -495,9 +495,9 @@ export interface QVCommandMap {
     payload: { project_root: string };
     result: { structures: StructureInfo[]; count: number };
   };
-  list_workflows: {
+  list_calculations: {
     payload: { project_root: string };
-    result: { workflows: WorkflowInfo[]; count: number };
+    result: { calculations: CalculationInfo[]; count: number };
   };
   rebuild_project_registry: {
     payload: { project_root: string };
@@ -505,18 +505,18 @@ export interface QVCommandMap {
       project_root: string;
       index_stats: {
         structures: number;
-        workflows: number;
+        calculations: number;
         steps: number;
       };
       dag_diff: {
         structures_added: Array<{ id: string; slug: string; name: string; suffix: string }>;
         structures_removed: Array<{ id: string; slug: string; name: string; suffix: string }>;
-        workflows_added: Array<{ id: string; slug: string; name: string; suffix: string }>;
-        workflows_removed: Array<{ id: string; slug: string; name: string; suffix: string }>;
-        workflows_changed: Array<{
-          workflow_id: string;
-          workflow_slug: string;
-          workflow_name: string;
+        calculations_added: Array<{ id: string; slug: string; name: string; suffix: string }>;
+        calculations_removed: Array<{ id: string; slug: string; name: string; suffix: string }>;
+        calculations_changed: Array<{
+          calculation_id: string;
+          calculation_slug: string;
+          calculation_name: string;
           suffix: string;
           steps_added: Array<{ id: string; suffix: string }>;
           steps_removed: Array<{ id: string; suffix: string }>;
@@ -526,10 +526,10 @@ export interface QVCommandMap {
   };
   
   // Analysis - ensure artifacts exist
-  ensure_workflow_analysis: {
+  ensure_calculation_analysis: {
     payload: {
       project_root: string;
-      workflow: string;
+      calculation: string;
       analysis_type: AnalysisType;
       step?: string;
       force?: boolean;
@@ -550,7 +550,7 @@ export interface QVCommandMap {
   get_scf_convergence: {
     payload: {
       project_root: string;
-      workflow: string;
+      calculation: string;
       step: string;
     };
     result: ScfConvergenceData;
@@ -558,7 +558,7 @@ export interface QVCommandMap {
   get_dos_data: {
     payload: {
       project_root: string;
-      workflow: string;
+      calculation: string;
       step?: string;
     };
     result: DosData;
@@ -566,7 +566,7 @@ export interface QVCommandMap {
   get_band_structure_data: {
     payload: {
       project_root: string;
-      workflow: string;
+      calculation: string;
       step?: string;
     };
     result: BandStructureData;
@@ -575,7 +575,7 @@ export interface QVCommandMap {
   get_reference_analysis: {
     payload: {
       project_root: string;
-      workflow: string;
+      calculation: string;
       analysis_type: 'scf' | 'dos' | 'bands';
     };
     result: {
@@ -585,10 +585,10 @@ export interface QVCommandMap {
   };
   
   // Job management
-  run_workflow: {
+  run_calculation: {
     payload: {
       project_root: string;
-      workflow: string;
+      calculation: string;
       strict?: boolean;
       verbose?: boolean;
     };
@@ -597,7 +597,7 @@ export interface QVCommandMap {
   run_step: {
     payload: {
       project_root: string;
-      workflow: string;
+      calculation: string;
       step: string;
       verbose?: boolean;
     };
@@ -684,7 +684,7 @@ export interface QVCommandMap {
     };
     result: {
       can_delete: boolean;
-      using_workflows: string[];
+      using_calculations: string[];
       structure_name: string;
     };
   };
@@ -700,16 +700,16 @@ export interface QVCommandMap {
     };
   };
   
-  // Workflow templates
-  list_workflow_templates: {
+  // Calculation templates
+  list_calculation_templates: {
     payload: Record<string, never>;
     result: {
-      templates: WorkflowTemplateInfo[];
+      templates: CalculationTemplateInfo[];
       count: number;
     };
   };
   
-  create_workflow: {
+  create_calculation: {
     payload: {
       project_root: string;
       name: string;
@@ -717,15 +717,15 @@ export interface QVCommandMap {
       template?: string;
     };
     result: {
-      workflow_id: string;
+      calculation_id: string;
       name: string;
       slug: string;
       n_steps: number;
     };
   };
   
-  // Workflow management
-  rename_workflow: {
+  // Calculation management
+  rename_calculation: {
     payload: {
       project_root: string;
       selector: string;
@@ -738,18 +738,18 @@ export interface QVCommandMap {
       new_slug: string;
     };
   };
-  can_delete_workflow: {
+  can_delete_calculation: {
     payload: {
       project_root: string;
       selector: string;
     };
     result: {
-      workflow_name: string;
-      dependent_workflows: string[];
+      calculation_name: string;
+      dependent_calculations: string[];
       has_dependencies: boolean;
     };
   };
-  delete_workflow: {
+  delete_calculation: {
     payload: {
       project_root: string;
       selector: string;
@@ -765,7 +765,7 @@ export interface QVCommandMap {
   get_step_detail: {
     payload: {
       project_root: string;
-      workflow: string;
+      calculation: string;
       step: string;
     };
     result: StepDetail;
@@ -773,7 +773,7 @@ export interface QVCommandMap {
   update_step_params: {
     payload: {
       project_root: string;
-      workflow: string;
+      calculation: string;
       step: string;
       parameters: Record<string, Record<string, unknown>>;
       cards?: Record<string, Record<string, unknown>>;
@@ -783,7 +783,7 @@ export interface QVCommandMap {
   reset_step_params: {
     payload: {
       project_root: string;
-      workflow: string;
+      calculation: string;
       step: string;
     };
     result: StepDetail;
@@ -791,53 +791,53 @@ export interface QVCommandMap {
   import_step_from_qe_input: {
     payload: {
       project_root: string;
-      workflow: string;
+      calculation: string;
       input_file: string;
       step_name?: string;
     };
-    result: WorkflowDetailResult;
+    result: CalculationDetailResult;
   };
-  add_step_to_workflow: {
+  add_step_to_calculation: {
     payload: {
       project_root: string;
-      workflow: string;
+      calculation: string;
       step_type: string;
       step_name?: string;
     };
-    result: WorkflowDetailResult;
+    result: CalculationDetailResult;
   };
   
-  // Workflow configuration
-  get_workflow_detail: {
+  // Calculation configuration
+  get_calculation_detail: {
     payload: {
       project_root: string;
-      workflow: string;
+      calculation: string;
     };
-    result: WorkflowDetailResult;
+    result: CalculationDetailResult;
   };
-  reorder_workflow_steps: {
+  reorder_calculation_steps: {
     payload: {
       project_root: string;
-      workflow: string;
+      calculation: string;
       new_order: string[];
     };
-    result: WorkflowDetailResult;
+    result: CalculationDetailResult;
   };
-  change_workflow_structure: {
+  change_calculation_structure: {
     payload: {
       project_root: string;
-      workflow: string;
+      calculation: string;
       new_structure: string;
       update_steps?: boolean;
     };
-    result: WorkflowStructureChangeResult;
+    result: CalculationStructureChangeResult;
   };
   
   // Pre-flight checks
   preflight_check: {
     payload: {
       project_root: string;
-      workflow?: string;
+      calculation?: string;
       step?: string;
     };
     result: PreflightCheckResult;
@@ -876,7 +876,7 @@ export interface QVCommandMap {
 // Extended Result Types
 // =============================================================================
 
-export interface WorkflowDetailResult {
+export interface CalculationDetailResult {
   id: string;
   name: string;
   slug: string;
@@ -893,7 +893,7 @@ export interface WorkflowDetailResult {
   }>;
 }
 
-export interface WorkflowStructureChangeResult extends WorkflowDetailResult {
+export interface CalculationStructureChangeResult extends CalculationDetailResult {
   old_structure: string | null;
   updated_steps: Array<{
     step_id: string;
@@ -940,8 +940,8 @@ export interface DemoProjectResult {
     formula: string;
     n_atoms: number;
   } | null;
-  workflow: {
-    workflow_id: string;
+  calculation: {
+    calculation_id: string;
     name: string;
     slug: string;
     n_steps: number;

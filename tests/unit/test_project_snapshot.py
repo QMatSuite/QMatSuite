@@ -14,13 +14,13 @@ import pytest
 import yaml
 
 from quantumvitas.api import QVService
-from quantumvitas.core.models import load_project, load_structure_model, load_workflow
+from quantumvitas.core.models import load_project, load_structure_model, load_calculation
 from quantumvitas.project.snapshot import (
     ProjectSnapshot,
     export_project_to_snapshot,
     materialize_project_from_snapshot,
 )
-from quantumvitas.workflow.structure_steps import StructureStepSpec
+from quantumvitas.calculation.structure_steps import StructureStepSpec
 
 
 @pytest.fixture
@@ -33,13 +33,13 @@ def temp_dir():
 
 @pytest.fixture
 def project1_path() -> Path:
-    """Path to project1 example (DOS workflow)."""
+    """Path to project1 example (DOS calculation)."""
     return Path(__file__).parent.parent / "data" / "project_examples" / "project1"
 
 
 @pytest.fixture
 def project2_bands_path() -> Path:
-    """Path to project2_bands example (bands workflows)."""
+    """Path to project2_bands example (bands calculations)."""
     return Path(__file__).parent.parent / "data" / "project_examples" / "project2_bands"
 
 
@@ -53,26 +53,26 @@ class TestProjectSnapshot:
         assert snapshot.version == 1
         assert "meta" in snapshot.project
         assert len(snapshot.structures) == 1
-        assert len(snapshot.workflows) == 1
+        assert len(snapshot.calculations) == 1
         
         # Check structure
         struct_data = snapshot.structures[0]
         assert struct_data["meta"]["name"] == "Si"
         assert "data" in struct_data
         
-        # Check workflow
-        workflow_data = snapshot.workflows[0]
-        assert workflow_data["meta"]["name"] == "Si dos"
+        # Check calculation
+        calculation_data = snapshot.calculations[0]
+        assert calculation_data["meta"]["name"] == "Si dos"
         # Structure reference: should use structure_id (ULID), not structure selector
         # New exports should have structure_id (ULID), old snapshots may have structure (selector)
-        structure_id = workflow_data.get("structure_id")
-        structure_selector = workflow_data.get("structure")
+        structure_id = calculation_data.get("structure_id")
+        structure_selector = calculation_data.get("structure")
         # Either structure_id (ULID) or structure (selector) should be present
         assert structure_id is not None or structure_selector is not None
         # If structure_id is present, it should be a ULID (26 chars), not a human-readable name
         if structure_id:
             assert len(structure_id) == 26, "structure_id should be a ULID, not a human-readable name"
-        assert len(workflow_data["steps"]) > 0
+        assert len(calculation_data["steps"]) > 0
     
     def test_materialize_project_from_snapshot(
         self, project1_path: Path, temp_dir: Path
@@ -91,13 +91,13 @@ class TestProjectSnapshot:
         assert new_project_root.exists()
         assert (new_project_root / "project.qv.yml").exists()
         assert (new_project_root / "structures" / "si.json").exists()
-        assert (new_project_root / "workflows" / "si-dos" / "workflow.yaml").exists()
+        assert (new_project_root / "calculations" / "si-dos" / "calculation.yaml").exists()
         
         # Load and verify project
         new_project = load_project(new_project_root)
         assert new_project.name == "Cloned Project"
         assert len(new_project.structures) == 1
-        assert len(new_project.workflows) == 1
+        assert len(new_project.calculations) == 1
         
         # Verify structure
         struct_entry = new_project.structures[0]
@@ -109,34 +109,34 @@ class TestProjectSnapshot:
         )
         assert struct_model.meta.name == "Si"
         
-        # Verify workflow
-        workflow_entry = new_project.workflows[0]
-        assert workflow_entry.meta.name == "Si dos"
-        workflow_model = load_workflow(
-            new_project_root / workflow_entry.meta.path / "workflow.yaml",
+        # Verify calculation
+        calculation_entry = new_project.calculations[0]
+        assert calculation_entry.meta.name == "Si dos"
+        calculation_model = load_calculation(
+            new_project_root / calculation_entry.meta.path / "calculation.yaml",
             new_project_root,
         )
         # Structure reference uses ID (structure_id is canonical)
-        assert workflow_model.structure_id is not None
-        assert workflow_model.structure_name == "Si"
-        assert len(workflow_model.steps) > 0
+        assert calculation_model.structure_id is not None
+        assert calculation_model.structure_name == "Si"
+        assert len(calculation_model.steps) > 0
         
         # Verify step
         # Resolve step file via registry using step_id (ID-only model)
         from quantumvitas.core.resolution import build_resource_index
         index = build_resource_index(new_project_root)
-        step_entry = workflow_model.steps[0]
+        step_entry = calculation_model.steps[0]
         step_meta = index.by_id.get(step_entry.step_id)
         assert step_meta is not None, f"Step {step_entry.step_id} not found in registry"
         step_file = new_project_root / step_meta.path
         step_spec = StructureStepSpec.from_yaml(step_file)
-        # DAG model: Step YAML should NOT contain structure_id or parent_workflow_id
-        # Structure is resolved via workflow.structure_id at runtime
+        # DAG model: Step YAML should NOT contain structure_id or parent_calculation_id
+        # Structure is resolved via calculation.structure_id at runtime
         # Verify step YAML does not contain these fields
         step_yaml_text = step_file.read_text()
         assert "structure_id:" not in step_yaml_text, "Step YAML should not contain structure_id (DAG model)"
-        assert "parent_workflow_id:" not in step_yaml_text, "Step YAML should not contain parent_workflow_id (DAG model)"
-        # Runtime structure resolution: step should resolve structure via workflow
+        assert "parent_calculation_id:" not in step_yaml_text, "Step YAML should not contain parent_calculation_id (DAG model)"
+        # Runtime structure resolution: step should resolve structure via calculation
         # The step spec may have structure_id in memory (for backward compatibility), but it's not persisted
     
     def test_snapshot_ulid_regeneration(
@@ -146,8 +146,8 @@ class TestProjectSnapshot:
         # Export original project
         snapshot = export_project_to_snapshot(project1_path)
         original_project = load_project(project1_path)
-        original_workflow = load_workflow(
-            project1_path / original_project.workflows[0].meta.path / "workflow.yaml",
+        original_calculation = load_calculation(
+            project1_path / original_project.calculations[0].meta.path / "calculation.yaml",
             project1_path,
         )
         
@@ -158,27 +158,27 @@ class TestProjectSnapshot:
         )
         
         new_project = load_project(new_project_root)
-        new_workflow = load_workflow(
-            new_project_root / new_project.workflows[0].meta.path / "workflow.yaml",
+        new_calculation = load_calculation(
+            new_project_root / new_project.calculations[0].meta.path / "calculation.yaml",
             new_project_root,
         )
         
         # ULIDs should be different
         assert original_project.meta.id != new_project.meta.id
-        assert original_workflow.meta.id != new_workflow.meta.id
+        assert original_calculation.meta.id != new_calculation.meta.id
         
         # But names/slugs should match
         assert original_project.meta.name == new_project.meta.name
-        # Compare workflow entry names (from project.qv.yml), not workflow model names
-        # Note: workflow entry meta.name comes from project.qv.yml (which has "Si dos")
-        # but workflow.yaml meta.name might be "si-dos" (slug) if it was created with old format
-        # So we compare the workflow entry meta.name (from project.qv.yml) which should be preserved
-        original_wf_entry_name = original_project.workflows[0].meta.name
-        new_wf_entry_name = new_project.workflows[0].meta.name
+        # Compare calculation entry names (from project.qv.yml), not calculation model names
+        # Note: calculation entry meta.name comes from project.qv.yml (which has "Si dos")
+        # but calculation.yaml meta.name might be "si-dos" (slug) if it was created with old format
+        # So we compare the calculation entry meta.name (from project.qv.yml) which should be preserved
+        original_wf_entry_name = original_project.calculations[0].meta.name
+        new_wf_entry_name = new_project.calculations[0].meta.name
         # The snapshot export should preserve the name from project.qv.yml (legacy format)
         # So both should have "Si dos" from the original project.qv.yml
         assert original_wf_entry_name == new_wf_entry_name, \
-            f"Workflow entry names should match: original={original_wf_entry_name}, new={new_wf_entry_name}"
+            f"Calculation entry names should match: original={original_wf_entry_name}, new={new_wf_entry_name}"
     
     def test_snapshot_pseudo_files(self, project1_path: Path, temp_dir: Path):
         """Test that pseudo file list is exported but files are not created."""
@@ -223,7 +223,7 @@ class TestSnapshotCLI:
         assert snapshot_data["version"] == 1
         assert "project" in snapshot_data
         assert "structures" in snapshot_data
-        assert "workflows" in snapshot_data
+        assert "calculations" in snapshot_data
     
     def test_create_project_from_snapshot_cli(
         self, project1_path: Path, temp_dir: Path
@@ -250,7 +250,7 @@ class TestSnapshotCLI:
         new_project = load_project(new_project_root)
         assert new_project.name == "CLI Test Project"
         assert len(new_project.structures) == 1
-        assert len(new_project.workflows) == 1
+        assert len(new_project.calculations) == 1
     
     def test_snapshot_overwrite_protection(
         self, project1_path: Path, temp_dir: Path
@@ -282,7 +282,7 @@ class TestSnapshotRoundtrip:
     """Test complete roundtrip: project → snapshot → project."""
     
     def test_complete_roundtrip_project1(self, project1_path: Path, temp_dir: Path):
-        """Test complete roundtrip with project1 (DOS workflow)."""
+        """Test complete roundtrip with project1 (DOS calculation)."""
         # Export
         snapshot = export_project_to_snapshot(project1_path)
         original_project = load_project(project1_path)
@@ -297,7 +297,7 @@ class TestSnapshotRoundtrip:
         
         # Verify project structure
         assert len(new_project.structures) == len(original_project.structures)
-        assert len(new_project.workflows) == len(original_project.workflows)
+        assert len(new_project.calculations) == len(original_project.calculations)
         
         # Verify structure content
         original_struct = load_structure_model(
@@ -316,24 +316,24 @@ class TestSnapshotRoundtrip:
         assert len(original_data.get("sites", [])) == len(new_data.get("sites", []))
         assert original_data.get("lattice", {}).get("a") == new_data.get("lattice", {}).get("a")
         
-        # Verify workflow structure
-        original_workflow = load_workflow(
-            project1_path / original_project.workflows[0].meta.path / "workflow.yaml",
+        # Verify calculation structure
+        original_calculation = load_calculation(
+            project1_path / original_project.calculations[0].meta.path / "calculation.yaml",
             project1_path,
         )
-        new_workflow = load_workflow(
-            new_project_root / new_project.workflows[0].meta.path / "workflow.yaml",
+        new_calculation = load_calculation(
+            new_project_root / new_project.calculations[0].meta.path / "calculation.yaml",
             new_project_root,
         )
         
         # Structure references use ID (structure_id is canonical)
         # IDs are remapped during materialization, so we just check they exist
-        assert original_workflow.structure_id is not None
-        assert new_workflow.structure_id is not None
-        assert len(original_workflow.steps) == len(new_workflow.steps)
+        assert original_calculation.structure_id is not None
+        assert new_calculation.structure_id is not None
+        assert len(original_calculation.steps) == len(new_calculation.steps)
         
         # Verify step content
-        # Note: The test project may have step_id mismatches between workflow.yaml and step files
+        # Note: The test project may have step_id mismatches between calculation.yaml and step files
         # This is a data inconsistency, but we can still verify the roundtrip by comparing step counts
         # and checking that steps exist. For detailed comparison, we'll use the first step file found.
         from quantumvitas.core.resolution import build_resource_index
@@ -341,9 +341,9 @@ class TestSnapshotRoundtrip:
         new_index = build_resource_index(new_project_root)
         
         # Compare steps by matching step_type (order may differ)
-        # Get all steps from each workflow and match by type
+        # Get all steps from each calculation and match by type
         original_steps_by_type = {}
-        for step_entry in original_workflow.steps:
+        for step_entry in original_calculation.steps:
             # Find step file
             step_meta = original_index.by_id.get(step_entry.step_id)
             if step_meta:
@@ -356,7 +356,7 @@ class TestSnapshotRoundtrip:
                         pass
         
         new_steps_by_type = {}
-        for step_entry in new_workflow.steps:
+        for step_entry in new_calculation.steps:
             # Find step file
             step_meta = new_index.by_id.get(step_entry.step_id)
             if step_meta:
@@ -380,7 +380,7 @@ class TestSnapshotRoundtrip:
             new_step = new_steps_by_type[common_type]
             assert original_step.step_type == new_step.step_type
         
-        # DAG model: Step YAML should NOT contain structure_id or parent_workflow_id
+        # DAG model: Step YAML should NOT contain structure_id or parent_calculation_id
         # Verify new step YAML does not contain these fields
         # Get any step file to check
         if new_steps_by_type:
@@ -388,7 +388,7 @@ class TestSnapshotRoundtrip:
             common_type = list(new_steps_by_type.keys())[0]
             new_step_spec = new_steps_by_type[common_type]
             # Find the step file path
-            for step_entry in new_workflow.steps:
+            for step_entry in new_calculation.steps:
                 step_meta = new_index.by_id.get(step_entry.step_id)
                 if step_meta:
                     step_file = new_project_root / step_meta.path
@@ -397,7 +397,7 @@ class TestSnapshotRoundtrip:
                         break
             else:
                 # Fallback: get first step file from directory
-                new_steps_dir = new_project_root / new_workflow.meta.path / "steps"
+                new_steps_dir = new_project_root / new_calculation.meta.path / "steps"
                 if new_steps_dir.exists():
                     step_files = list(new_steps_dir.glob("*.step.yaml"))
                     if step_files:
@@ -409,13 +409,13 @@ class TestSnapshotRoundtrip:
         else:
             pytest.skip("No steps found to verify")
         assert "structure_id:" not in new_step_yaml_text, "Step YAML should not contain structure_id (DAG model)"
-        assert "parent_workflow_id:" not in new_step_yaml_text, "Step YAML should not contain parent_workflow_id (DAG model)"
-        # Structure is resolved via workflow.structure_id at runtime
+        assert "parent_calculation_id:" not in new_step_yaml_text, "Step YAML should not contain parent_calculation_id (DAG model)"
+        # Structure is resolved via calculation.structure_id at runtime
     
     def test_complete_roundtrip_project2_bands(
         self, project2_bands_path: Path, temp_dir: Path
     ):
-        """Test complete roundtrip with project2_bands (bands workflow with multiple steps)."""
+        """Test complete roundtrip with project2_bands (bands calculation with multiple steps)."""
         # Export
         snapshot = export_project_to_snapshot(project2_bands_path)
         original_project = load_project(project2_bands_path)
@@ -430,36 +430,36 @@ class TestSnapshotRoundtrip:
         
         # Verify project structure
         assert len(new_project.structures) == len(original_project.structures)
-        assert len(new_project.workflows) == len(original_project.workflows)
-        assert len(new_project.workflows) == 1  # project2_bands has 1 workflow (si-bands)
+        assert len(new_project.calculations) == len(original_project.calculations)
+        assert len(new_project.calculations) == 1  # project2_bands has 1 calculation (si-bands)
         
-        # Verify all workflows - match by slug since order might differ
-        original_workflow_slugs = {w.meta.slug for w in original_project.workflows}
-        new_workflow_slugs = {w.meta.slug for w in new_project.workflows}
-        assert original_workflow_slugs == new_workflow_slugs
+        # Verify all calculations - match by slug since order might differ
+        original_calculation_slugs = {w.meta.slug for w in original_project.calculations}
+        new_calculation_slugs = {w.meta.slug for w in new_project.calculations}
+        assert original_calculation_slugs == new_calculation_slugs
         
-        # Verify each workflow
-        for original_workflow_entry in original_project.workflows:
-            # Find matching workflow in new project by slug
-            new_workflow_entry = next(
-                w for w in new_project.workflows if w.meta.slug == original_workflow_entry.meta.slug
+        # Verify each calculation
+        for original_calculation_entry in original_project.calculations:
+            # Find matching calculation in new project by slug
+            new_calculation_entry = next(
+                w for w in new_project.calculations if w.meta.slug == original_calculation_entry.meta.slug
             )
-            assert original_workflow_entry.meta.name == new_workflow_entry.meta.name
+            assert original_calculation_entry.meta.name == new_calculation_entry.meta.name
             
-            original_workflow = load_workflow(
-                project2_bands_path / original_workflow_entry.meta.path / "workflow.yaml",
+            original_calculation = load_calculation(
+                project2_bands_path / original_calculation_entry.meta.path / "calculation.yaml",
                 project2_bands_path,
             )
-            new_workflow = load_workflow(
-                new_project_root / new_workflow_entry.meta.path / "workflow.yaml",
+            new_calculation = load_calculation(
+                new_project_root / new_calculation_entry.meta.path / "calculation.yaml",
                 new_project_root,
             )
             
             # Structure references use ID (structure_id is canonical)
             # IDs are remapped during materialization, so we just check they exist
-            assert original_workflow.structure_id is not None
-            assert new_workflow.structure_id is not None
-            assert len(original_workflow.steps) == len(new_workflow.steps)
+            assert original_calculation.structure_id is not None
+            assert new_calculation.structure_id is not None
+            assert len(original_calculation.steps) == len(new_calculation.steps)
     
     def test_create_demo_project_defaults_to_bands(self, temp_dir: Path):
         """Test that create_demo_project defaults to si_bands_demo when demo_id is not specified."""
@@ -478,13 +478,13 @@ class TestSnapshotRoundtrip:
         project_model = load_project(project_root)
         assert project_model.meta.name == "test-demo-project"
         assert len(project_model.structures) > 0
-        assert len(project_model.workflows) > 0
+        assert len(project_model.calculations) > 0
         
-        # Verify it's the bands demo (should have bands-related workflows)
-        workflow_slugs = {w.meta.slug for w in project_model.workflows}
-        # si_bands_demo should have workflows with "bands" in the name/slug
-        assert any("band" in slug.lower() for slug in workflow_slugs), \
-            "Default demo should be si_bands_demo (bands workflow)"
+        # Verify it's the bands demo (should have bands-related calculations)
+        calculation_slugs = {w.meta.slug for w in project_model.calculations}
+        # si_bands_demo should have calculations with "bands" in the name/slug
+        assert any("band" in slug.lower() for slug in calculation_slugs), \
+            "Default demo should be si_bands_demo (bands calculation)"
     
     def test_create_demo_project_with_explicit_demo_id(self, temp_dir: Path):
         """Test creating a demo project with explicit demo_id."""
@@ -499,10 +499,10 @@ class TestSnapshotRoundtrip:
         project_model = load_project(project_root)
         
         # Verify it's the DOS demo
-        workflow_slugs = {w.meta.slug for w in project_model.workflows}
-        # si_dos_demo should have workflows with "dos" in the name/slug
-        assert any("dos" in slug.lower() for slug in workflow_slugs), \
-            "Should be si_dos_demo (DOS workflow)"
+        calculation_slugs = {w.meta.slug for w in project_model.calculations}
+        # si_dos_demo should have calculations with "dos" in the name/slug
+        assert any("dos" in slug.lower() for slug in calculation_slugs), \
+            "Should be si_dos_demo (DOS calculation)"
 
 
 class TestDemoProjectSnapshots:
@@ -523,7 +523,7 @@ class TestDemoProjectSnapshots:
         # Verify basic invariants
         assert snapshot.version == 1
         assert len(snapshot.structures) >= 1, "Should have at least 1 structure"
-        assert len(snapshot.workflows) >= 1, "Should have at least 1 workflow"
+        assert len(snapshot.calculations) >= 1, "Should have at least 1 calculation"
         
         # Verify structure
         struct_data = snapshot.structures[0]
@@ -531,11 +531,11 @@ class TestDemoProjectSnapshots:
         assert "data" in struct_data
         assert struct_data["meta"]["name"] == "Si" or struct_data["meta"]["name"] == "silicon"
         
-        # Verify workflow
-        workflow_data = snapshot.workflows[0]
-        assert "meta" in workflow_data
-        assert "steps" in workflow_data
-        assert len(workflow_data["steps"]) > 0, "Workflow should have steps"
+        # Verify calculation
+        calculation_data = snapshot.calculations[0]
+        assert "meta" in calculation_data
+        assert "steps" in calculation_data
+        assert len(calculation_data["steps"]) > 0, "Calculation should have steps"
         
         # Verify pseudo section (if present) only contains filenames, not content
         if snapshot.pseudo:
@@ -558,18 +558,18 @@ class TestDemoProjectSnapshots:
         # Verify basic invariants
         assert snapshot.version == 1
         assert len(snapshot.structures) >= 1, "Should have at least 1 structure"
-        assert len(snapshot.workflows) >= 1, "Should have at least 1 workflow"
+        assert len(snapshot.calculations) >= 1, "Should have at least 1 calculation"
         
         # Verify structure
         struct_data = snapshot.structures[0]
         assert "meta" in struct_data
         assert "data" in struct_data
         
-        # Verify workflow
-        workflow_data = snapshot.workflows[0]
-        assert "meta" in workflow_data
-        assert "steps" in workflow_data
-        assert len(workflow_data["steps"]) > 0, "Workflow should have steps"
+        # Verify calculation
+        calculation_data = snapshot.calculations[0]
+        assert "meta" in calculation_data
+        assert "steps" in calculation_data
+        assert len(calculation_data["steps"]) > 0, "Calculation should have steps"
         
         # Verify pseudo section (if present) only contains filenames, not content
         if snapshot.pseudo:
@@ -596,10 +596,10 @@ class TestSnapshotEdgeCases:
         # Find a step file and delete it
         from quantumvitas.core.models import load_project
         project = load_project(project_root)
-        if len(project.workflows) > 0:
-            workflow_entry = project.workflows[0]
-            workflow_dir = project_root / workflow_entry.meta.path
-            steps_dir = workflow_dir / "steps"
+        if len(project.calculations) > 0:
+            calculation_entry = project.calculations[0]
+            calculation_dir = project_root / calculation_entry.meta.path
+            steps_dir = calculation_dir / "steps"
             
             if steps_dir.exists():
                 step_files = list(steps_dir.glob("*.step.yaml"))
@@ -608,14 +608,14 @@ class TestSnapshotEdgeCases:
                     deleted_step_file = step_files[0]
                     deleted_step_file.unlink()
                     
-                    # Try to load the workflow - should handle missing step gracefully
-                    from quantumvitas.core.models import load_workflow
+                    # Try to load the calculation - should handle missing step gracefully
+                    from quantumvitas.core.models import load_calculation
                     try:
-                        workflow_model = load_workflow(workflow_dir / "workflow.yaml", project_root)
-                        # Workflow should load, but the step file is missing
-                        # The step entry in workflow.yaml may reference a non-existent file
-                        # This is a data inconsistency, but the workflow should still load
-                        assert workflow_model is not None, "Workflow should load even with missing step file"
+                        calculation_model = load_calculation(calculation_dir / "calculation.yaml", project_root)
+                        # Calculation should load, but the step file is missing
+                        # The step entry in calculation.yaml may reference a non-existent file
+                        # This is a data inconsistency, but the calculation should still load
+                        assert calculation_model is not None, "Calculation should load even with missing step file"
                     except Exception as e:
                         # If loading fails, it should be with a clear error message
                         error_msg = str(e).lower()
@@ -709,5 +709,5 @@ class TestSnapshotEdgeCases:
             # Load and verify
             project_model = load_project(project_root)
             assert len(project_model.structures) >= 1
-            assert len(project_model.workflows) >= 1
+            assert len(project_model.calculations) >= 1
 

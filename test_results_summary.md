@@ -18,8 +18,8 @@ $(date)
 - `test_pw_quick_tests_ci.py`: 3 tests - ✅ All passed
 - `test_qe_engine.py`: 3 tests - ✅ All passed
 - `test_qe_executable_integration.py`: 3 tests - ✅ All passed
-- `test_si_dos_workflow.py`: 11 tests - ✅ All passed
-  - Includes SCF, NSCF, DOS workflow tests with QE execution
+- `test_si_dos_calculation.py`: 11 tests - ✅ All passed
+  - Includes SCF, NSCF, DOS calculation tests with QE execution
   - Includes Fermi energy comparison for NSCF
   - Includes total energy comparison for SCF
 

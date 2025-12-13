@@ -3,12 +3,12 @@ from pathlib import Path
 import pytest
 from pymatgen.core import Lattice, Structure
 
-from quantumvitas.workflow.structure_steps import (
+from quantumvitas.calculation.structure_steps import (
     StructureStepSpec,
     generate_qe_input_from_spec,
     generate_qe_input_from_structure,
 )
-from quantumvitas.workflow.input_runner import ParameterOverride
+from quantumvitas.calculation.input_runner import ParameterOverride
 
 
 @pytest.fixture

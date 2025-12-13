@@ -1,0 +1,14 @@
+meta:
+  id: 01KBH6NZB9EPXD4P9FK4H4EGB8
+  name: bands
+  slug: bands
+  path: bands.step.yaml
+  kind: step
+structure: si
+step_type: bands
+parent_calculation_id: 01KBH5KYPE659SWXHXQP1BXX16
+parameters:
+  BANDS:
+    filband: si.bands.pp.dat
+    outdir: ./outdir/
+    prefix: si

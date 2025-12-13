@@ -6,7 +6,7 @@ import pytest
 from quantumvitas.core.engines.base import EngineConfig
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
 # Using ensure_qe_pseudos directly (canonical entry point)
-from quantumvitas.workflow import (
+from quantumvitas.calculation import (
     build_step_spec_from_qe_input,
     materialize_step_spec,
 )
@@ -106,7 +106,7 @@ class TestPWScfIbravStepSpecsExecution:
             generated_input, spec = materialize_step_spec(
                 step_result.spec_path,
                 output_dir=raw_dir,
-                workflow_dir=working_dir,
+                calculation_dir=working_dir,
                 project_root=project_root,  # This sets outdir and pseudo_dir during generation
             )
 

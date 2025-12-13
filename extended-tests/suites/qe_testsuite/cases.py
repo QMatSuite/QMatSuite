@@ -63,7 +63,7 @@ class QECategoryTestCase(TestCase):
             config = EngineConfig(name="qe", executable_path=self.qe_home)
             engine = QuantumEspressoEngine(config)
             
-            # Run tests in category using centralized workflow system
+            # Run tests in category using centralized calculation system
             results = run_test_category_workflow(
                 self.category,
                 self.test_files,

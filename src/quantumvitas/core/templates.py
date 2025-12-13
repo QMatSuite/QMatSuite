@@ -1,7 +1,7 @@
 """
 Resource management for QuantumVITAS.
 
-Provides functionality to access workflow templates and structure library
+Provides functionality to access calculation templates and structure library
 from resources/ directory. Step templates have been replaced with in-code defaults.
 """
 
@@ -26,19 +26,19 @@ def get_template_path(category: str, name: str) -> Optional[Path]:
     """
     Get path to a template.
     
-    For workflow templates, reads from resources/workflow_templates/ only.
+    For calculation templates, reads from resources/calculation_templates/ only.
     For structures, uses get_structure_library_path (resources/structure_library/ only).
     
     Args:
-        category: One of 'workflow', 'structure'
+        category: One of 'calculation', 'structure'
         name: Template name
         
     Returns:
         Path to template or None if not found
     """
-    if category == "workflow":
+    if category == "calculation":
         # Only read from resources/ (no fallback)
-        resources_dir = RESOURCES_DIR / "workflow_templates" / name
+        resources_dir = RESOURCES_DIR / "calculation_templates" / name
         if resources_dir.exists() and resources_dir.is_dir():
             return resources_dir
         return None
@@ -50,11 +50,11 @@ def get_template_path(category: str, name: str) -> Optional[Path]:
         return None
 
 
-def list_workflow_templates() -> List[Dict[str, Any]]:
+def list_calculation_templates() -> List[Dict[str, Any]]:
     """
-    List available workflow templates with metadata.
+    List available calculation templates with metadata.
     
-    Reads from resources/workflow_templates/ only.
+    Reads from resources/calculation_templates/ only.
     
     Returns:
         List of dicts, each containing:
@@ -64,7 +64,7 @@ def list_workflow_templates() -> List[Dict[str, Any]]:
         - n_steps: Number of steps
         - step_types: List of step types
     """
-    template_dir = RESOURCES_DIR / "workflow_templates"
+    template_dir = RESOURCES_DIR / "calculation_templates"
     if not template_dir.exists():
         return []
     
@@ -73,18 +73,18 @@ def list_workflow_templates() -> List[Dict[str, Any]]:
         if not tpl_dir.is_dir():
             continue
         
-        workflow_yaml = tpl_dir / "workflow.yaml"
-        if not workflow_yaml.exists():
+        calculation_yaml = tpl_dir / "calculation.yaml"
+        if not calculation_yaml.exists():
             continue
         
         try:
-            with open(workflow_yaml, "r") as f:
+            with open(calculation_yaml, "r") as f:
                 data = yaml.safe_load(f) or {}
             
             steps = data.get("steps", [])
             step_types = [s.get("type", "unknown") for s in steps]
             
-            # Try to get description from meta or workflow data
+            # Try to get description from meta or calculation data
             meta = data.get("meta", {})
             description = meta.get("description") or data.get("description")
             
@@ -155,12 +155,12 @@ def _regenerate_ulids_in_meta(data: Dict[str, Any], ulid_map: Dict[str, str]) ->
             data["__qv_meta__"]["id"] = new_id
 
 
-def _update_parent_workflow_ids(data: Dict[str, Any], ulid_map: Dict[str, str]) -> None:
-    """Update parent_workflow_id references using the ULID map."""
-    if "parent_workflow_id" in data:
-        old_id = data["parent_workflow_id"]
+def _update_parent_calculation_ids(data: Dict[str, Any], ulid_map: Dict[str, str]) -> None:
+    """Update parent_calculation_id references using the ULID map."""
+    if "parent_calculation_id" in data:
+        old_id = data["parent_calculation_id"]
         if old_id in ulid_map:
-            data["parent_workflow_id"] = ulid_map[old_id]
+            data["parent_calculation_id"] = ulid_map[old_id]
 
 
 def copy_structure_template(
@@ -227,21 +227,21 @@ def copy_structure_template(
     return dest_path
 
 
-def _copy_workflow_from_path(
+def _copy_calculation_from_path(
     source_path: Path,
     dest_dir: Path,
     project_root: Path,
     new_name: Optional[str] = None,
     structure: Optional[str] = None,
-    workflow_ulid: Optional[str] = None,
+    calculation_ulid: Optional[str] = None,
 ) -> tuple[Path, Set[str], str]:
     """
-    Internal: Copy workflow from a source path to destination.
+    Internal: Copy calculation from a source path to destination.
     
-    Handles both old format (with workflow: section) and new format (with meta: section).
+    Handles both old format (with calculation: section) and new format (with meta: section).
     
     Returns:
-        Tuple of (workflow.yaml path, set of structure names needed, workflow ULID)
+        Tuple of (calculation.yaml path, set of structure names needed, calculation ULID)
     """
     from quantumvitas.core.resources import slugify
     
@@ -250,13 +250,13 @@ def _copy_workflow_from_path(
     ulid_map: Dict[str, str] = {}
     structures_needed: Set[str] = set()
     
-    # First, read workflow.yaml to get the workflow ULID
-    workflow_yaml_src = source_path / "workflow.yaml"
-    with open(workflow_yaml_src, "r") as f:
-        workflow_data = yaml.safe_load(f)
+    # First, read calculation.yaml to get the calculation ULID
+    calculation_yaml_src = source_path / "calculation.yaml"
+    with open(calculation_yaml_src, "r") as f:
+        calculation_data = yaml.safe_load(f)
     
     # Use provided ULID or generate new one
-    new_id = workflow_ulid or generate_ulid()
+    new_id = calculation_ulid or generate_ulid()
     
     # Determine the new name and slug
     if new_name:
@@ -264,35 +264,35 @@ def _copy_workflow_from_path(
         final_slug = slugify(new_name)
     else:
         # Use template name
-        meta = workflow_data.get("meta", {})
-        final_name = meta.get("name") or workflow_data.get("id") or dest_dir.name
+        meta = calculation_data.get("meta", {})
+        final_name = meta.get("name") or calculation_data.get("id") or dest_dir.name
         final_slug = meta.get("slug") or slugify(final_name)
     
     # Get old ID for mapping (from meta or top-level id field)
-    meta = workflow_data.get("meta", {})
-    old_id = meta.get("id") or workflow_data.get("id", "")
+    meta = calculation_data.get("meta", {})
+    old_id = meta.get("id") or calculation_data.get("id", "")
     if old_id:
         ulid_map[old_id] = new_id
     
-    # Determine workflow path relative to project
-    workflow_path = f"workflows/{final_slug}"
+    # Determine calculation path relative to project
+    calculation_path = f"calculations/{final_slug}"
     
     # Update the meta section (new format)
-    workflow_data["meta"] = {
+    calculation_data["meta"] = {
         "id": new_id,
         "name": final_name,
         "slug": final_slug,
-        "path": workflow_path,
-        "kind": "workflow",
+        "path": calculation_path,
+        "kind": "calculation",
     }
     
     # Remove old-format id field if present (replaced by meta.id)
-    if "id" in workflow_data and workflow_data["id"] != new_id:
-        del workflow_data["id"]
+    if "id" in calculation_data and calculation_data["id"] != new_id:
+        del calculation_data["id"]
     
-    # Handle structure - check both new format (top-level) and old format (workflow section)
-    workflow_section = workflow_data.get("workflow", {})
-    template_structure = workflow_data.get("structure") or workflow_section.get("structure")
+    # Handle structure - check both new format (top-level) and old format (calculation section)
+    calculation_section = calculation_data.get("calculation", {})
+    template_structure = calculation_data.get("structure") or calculation_section.get("structure")
     
     # Resolve structure to structure_id (ULID) if structure selector is provided
     structure_id = None
@@ -323,21 +323,21 @@ def _copy_workflow_from_path(
     # Set structure_id (ULID) if we have it
     # Remove any legacy structure selector fields (violates DAG + ID-only constitution)
     if structure_id:
-        workflow_data["structure_id"] = structure_id
+        calculation_data["structure_id"] = structure_id
         # Remove legacy structure selector fields (DAG + ID-only constitution)
-        workflow_data.pop("structure", None)
-        workflow_data.pop("structure_name", None)
-        if "workflow" in workflow_data:
-            workflow_data["workflow"]["structure_id"] = structure_id
-            workflow_data["workflow"].pop("structure", None)
-            workflow_data["workflow"].pop("structure_name", None)
+        calculation_data.pop("structure", None)
+        calculation_data.pop("structure_name", None)
+        if "calculation" in calculation_data:
+            calculation_data["calculation"]["structure_id"] = structure_id
+            calculation_data["calculation"].pop("structure", None)
+            calculation_data["calculation"].pop("structure_name", None)
     else:
         # If no structure_id, remove any structure selector fields
-        workflow_data.pop("structure", None)
-        workflow_data.pop("structure_name", None)
-        if "workflow" in workflow_data:
-            workflow_data["workflow"].pop("structure", None)
-            workflow_data["workflow"].pop("structure_name", None)
+        calculation_data.pop("structure", None)
+        calculation_data.pop("structure_name", None)
+        if "calculation" in calculation_data:
+            calculation_data["calculation"].pop("structure", None)
+            calculation_data["calculation"].pop("structure_name", None)
     
     # Copy step files
     steps_src_dir = source_path / "steps"
@@ -356,19 +356,19 @@ def _copy_workflow_from_path(
             if structure_name:
                 structures_needed.add(structure_name)
             
-            # DAG + ID-only model: Step YAML must NOT contain structure, structure_id, or parent_workflow_id
+            # DAG + ID-only model: Step YAML must NOT contain structure, structure_id, or parent_calculation_id
             # Remove these fields before writing
-            step_data.pop("parent_workflow_id", None)
+            step_data.pop("parent_calculation_id", None)
             step_data.pop("structure_id", None)
             step_data.pop("structure", None)
             
             # Update path in meta
             if "meta" in step_data:
-                rel_path = f"workflows/{final_slug}/steps/{step_file.name}"
+                rel_path = f"calculations/{final_slug}/steps/{step_file.name}"
                 step_data["meta"]["path"] = rel_path
             
             # Use StructureStepSpec.to_dict() to ensure proper serialization
-            from quantumvitas.workflow.structure_steps import StructureStepSpec
+            from quantumvitas.calculation.structure_steps import StructureStepSpec
             try:
                 step_spec = StructureStepSpec.from_dict(step_data)
                 step_dict = step_spec.to_dict()
@@ -385,47 +385,47 @@ def _copy_workflow_from_path(
         raw_dest_dir = dest_dir / "raw"
         shutil.copytree(raw_src_dir, raw_dest_dir, dirs_exist_ok=True)
     
-    # Write workflow.yaml
-    workflow_dest = dest_dir / "workflow.yaml"
-    with open(workflow_dest, "w") as f:
-        yaml.safe_dump(workflow_data, f, default_flow_style=False, sort_keys=False)
+    # Write calculation.yaml
+    calculation_dest = dest_dir / "calculation.yaml"
+    with open(calculation_dest, "w") as f:
+        yaml.safe_dump(calculation_data, f, default_flow_style=False, sort_keys=False)
     
-    return workflow_dest, structures_needed, new_id
+    return calculation_dest, structures_needed, new_id
 
 
-def copy_workflow_template(
+def copy_calculation_template(
     template_name: str,
     dest_dir: Path,
     project_root: Path,
     new_name: Optional[str] = None,
     structure: Optional[str] = None,
-    workflow_ulid: Optional[str] = None,
+    calculation_ulid: Optional[str] = None,
 ) -> tuple[Path, Set[str], str]:
     """
-    Copy a workflow template to destination, including step files.
+    Copy a calculation template to destination, including step files.
     
     Args:
         template_name: Template name
-        dest_dir: Destination directory for workflow
+        dest_dir: Destination directory for calculation
         project_root: Project root directory
-        new_name: Optional new name for the workflow
+        new_name: Optional new name for the calculation
         structure: Optional structure name to use (overrides template)
-        workflow_ulid: Optional ULID to use for the workflow (for parent_workflow_id in steps)
+        calculation_ulid: Optional ULID to use for the calculation (for parent_calculation_id in steps)
         
     Returns:
-        Tuple of (workflow.yaml path, set of structure names needed, workflow ULID)
+        Tuple of (calculation.yaml path, set of structure names needed, calculation ULID)
     """
-    source_path = get_template_path("workflow", template_name)
+    source_path = get_template_path("calculation", template_name)
     if not source_path:
-        raise ValueError(f"Workflow template '{template_name}' not found")
+        raise ValueError(f"Calculation template '{template_name}' not found")
     
-    return _copy_workflow_from_path(
+    return _copy_calculation_from_path(
         source_path=source_path,
         dest_dir=dest_dir,
         project_root=project_root,
         new_name=new_name,
         structure=structure,
-        workflow_ulid=workflow_ulid,
+        calculation_ulid=calculation_ulid,
     )
 
 

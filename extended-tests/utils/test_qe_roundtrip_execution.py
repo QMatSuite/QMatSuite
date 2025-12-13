@@ -14,7 +14,7 @@ All new code should import from the new locations.
 """
 
 from quantumvitas.core.engines.qe_pseudopotentials import download_pseudopotential
-from quantumvitas.workflow.input_runner import set_outdir_to_temp, set_pseudo_dir_to_temp
+from quantumvitas.calculation.input_runner import set_outdir_to_temp, set_pseudo_dir_to_temp
 from tests.core import run_command_with_timeout, TimeoutError
 
 # Re-export for backward compatibility

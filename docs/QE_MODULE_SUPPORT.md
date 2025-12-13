@@ -120,9 +120,9 @@ The `QEInput.detect_module()` method uses the following detection order:
      - `'dos'` → DOS
    - Default → PW
 
-## Workflow Notes
+## Calculation Notes
 
-Many QE workflows run modules sequentially where:
+Many QE calculations run modules sequentially where:
 - Previous step's OUTPUT determines next step's INPUT filename
 - Example: `pw.x` generates `.save` directory → `ph.x` reads from `.save`
 - Example: `ph.x` generates `dyn` files → `q2r.x` reads `dyn` files → `matdyn.x` reads `.fc` file

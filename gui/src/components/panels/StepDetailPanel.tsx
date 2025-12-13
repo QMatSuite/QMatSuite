@@ -1,12 +1,12 @@
 /**
- * StepDetailPanel - Displays detailed information about a workflow step
+ * StepDetailPanel - Displays detailed information about a calculation step
  * 
  * Shows step metadata, QE parameters (namelists), and provides
  * parameter editing and the ability to run an individual step.
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import type { StepDetail, JobSubmitResult, WorkflowDetailResult, QVError } from '../../types/qv';
+import type { StepDetail, JobSubmitResult, CalculationDetailResult, QVError } from '../../types/qv';
 import { normalizeProjectRoot } from '../../utils/pathUtils';
 import { useQVClient } from '../../hooks/useQVClient';
 import './StepDetailPanel.css';
@@ -14,9 +14,9 @@ import './StepDetailPanel.css';
 interface StepDetailPanelProps {
   /** Project root path */
   projectRoot: string | null;
-  /** Selected workflow detail (from get_workflow_detail) - canonical source for step order */
-  selectedWorkflow: WorkflowDetailResult | null;
-  /** Selected step ID (ULID from workflow.yaml) */
+  /** Selected calculation detail (from get_calculation_detail) - canonical source for step order */
+  selectedCalculation: CalculationDetailResult | null;
+  /** Selected step ID (ULID from calculation.yaml) */
   selectedStepId: string | null;
   /** Called to close the panel */
   onClose?: () => void;
@@ -105,7 +105,7 @@ const LEGACY_EDITABLE_PARAMS: Record<string, Array<{
 
 export function StepDetailPanel({
   projectRoot,
-  selectedWorkflow,
+  selectedCalculation,
   selectedStepId,
   onClose,
   onRunStep,
@@ -119,19 +119,19 @@ export function StepDetailPanel({
   const listQeUiParametersRef = useRef(qv.listQeUiParameters);
   listQeUiParametersRef.current = qv.listQeUiParameters;
   
-  // Workflow selector: always use slug (backend expects workflow slug)
-  const workflowSelector = selectedWorkflow?.slug ?? null;
-  // Step selector: always use ULID from selectedStepId (must be ULID from workflow.yaml's steps array)
+  // Calculation selector: always use slug (backend expects calculation slug)
+  const calculationSelector = selectedCalculation?.slug ?? null;
+  // Step selector: always use ULID from selectedStepId (must be ULID from calculation.yaml's steps array)
   const stepSelector = selectedStepId;
   
   // INSTRUMENTATION: Log render props to verify correct step ID is being passed
   console.log('[StepDetailPanel] render', {
-    workflowSelector,
+    calculationSelector,
     stepSelector,
     stepSelectorType: typeof stepSelector,
     stepSelectorLength: stepSelector ? stepSelector.length : 0,
-    hasSelectedWorkflow: !!selectedWorkflow,
-    workflowStepsCount: selectedWorkflow?.steps?.length ?? 0,
+    hasSelectedCalculation: !!selectedCalculation,
+    calculationStepsCount: selectedCalculation?.steps?.length ?? 0,
   });
   
   const [stepDetail, setStepDetail] = useState<StepDetail | null>(null);
@@ -175,7 +175,7 @@ export function StepDetailPanel({
       // INSTRUMENTATION: Log inputs when we start a fetch
       console.log('[StepDetailPanel] fetchStepDetail START', {
         projectRoot: projectRoot ? projectRoot.substring(projectRoot.lastIndexOf('/') + 1) : null,
-        workflowSelector,
+        calculationSelector,
         stepSelector,
       });
       
@@ -189,12 +189,12 @@ export function StepDetailPanel({
         return;
       }
       
-      if (!workflowSelector) {
-        // Workflow selector missing - show error but still render
-        console.log('[StepDetailPanel] Early return: missing workflowSelector');
+      if (!calculationSelector) {
+        // Calculation selector missing - show error but still render
+        console.log('[StepDetailPanel] Early return: missing calculationSelector');
         setIsLoading(false);
         setStepDetail(null);
-        setError('Workflow selector is required');
+        setError('Calculation selector is required');
         return;
       }
       
@@ -207,20 +207,20 @@ export function StepDetailPanel({
         return;
       }
       
-      // RACE CONDITION PREVENTION: If selectedWorkflow is provided, validate that stepSelector
-      // exists in the workflow's steps list before attempting to fetch. This prevents
-      // "Step not found" errors when a step is clicked before the workflow detail has
+      // RACE CONDITION PREVENTION: If selectedCalculation is provided, validate that stepSelector
+      // exists in the calculation's steps list before attempting to fetch. This prevents
+      // "Step not found" errors when a step is clicked before the calculation detail has
       // been refreshed after step creation.
-      if (selectedWorkflow && selectedWorkflow.steps && selectedWorkflow.steps.length > 0) {
-        const stepExists = selectedWorkflow.steps.some(step => step.id === stepSelector);
+      if (selectedCalculation && selectedCalculation.steps && selectedCalculation.steps.length > 0) {
+        const stepExists = selectedCalculation.steps.some(step => step.id === stepSelector);
         if (!stepExists) {
-          console.log('[StepDetailPanel] Step not found in workflow steps list, waiting for refresh...', {
+          console.log('[StepDetailPanel] Step not found in calculation steps list, waiting for refresh...', {
             stepSelector,
-            availableSteps: selectedWorkflow.steps.map(s => s.id),
+            availableSteps: selectedCalculation.steps.map(s => s.id),
           });
           setIsLoading(false);
           setStepDetail(null);
-          setError('Step not yet available. Please wait for workflow to refresh.');
+          setError('Step not yet available. Please wait for calculation to refresh.');
           return;
         }
       }
@@ -239,18 +239,18 @@ export function StepDetailPanel({
           throw new Error('Project root is required');
         }
         
-        // CRITICAL: stepSelector MUST be the ULID from workflow.yaml's steps array
-        // This is passed as selectedStepId from App.tsx, which gets it from workflow.steps[].id
+        // CRITICAL: stepSelector MUST be the ULID from calculation.yaml's steps array
+        // This is passed as selectedStepId from App.tsx, which gets it from calculation.steps[].id
         // Backend requires step to be the ULID (26 chars), not slug/name/index
         console.log('[StepDetailPanel] calling get_step_detail RPC', {
           project_root: normalizedProjectRoot,
-          workflow: workflowSelector, // slug
-          step: stepSelector, // ULID from workflow.yaml - the only supported step selector steps array
+          calculation: calculationSelector, // slug
+          step: stepSelector, // ULID from calculation.yaml - the only supported step selector steps array
         });
         
         const response = await window.qv.request<StepDetail>('get_step_detail', {
           project_root: normalizedProjectRoot,
-          workflow: workflowSelector, // slug
+          calculation: calculationSelector, // slug
           step: stepSelector, // ULID - the only supported step selector
         });
         
@@ -336,7 +336,7 @@ export function StepDetailPanel({
     };
     
     fetchStepDetail();
-  }, [projectRoot, workflowSelector, stepSelector, selectedWorkflow]);
+  }, [projectRoot, calculationSelector, stepSelector, selectedCalculation]);
   
   // Fetch UI parameters when stepDetail changes
   // QE UI params are static metadata; we only fetch once per module+stepType combination.
@@ -416,7 +416,7 @@ export function StepDetailPanel({
       
       const response = await window.qv.request<JobSubmitResult>('run_step', {
         project_root: normalizedProjectRoot,
-        workflow: workflowSelector,
+        calculation: calculationSelector,
         step: stepSelector,
       });
       
@@ -432,7 +432,7 @@ export function StepDetailPanel({
     } finally {
       setIsRunning(false);
     }
-  }, [projectRoot, workflowSelector, stepSelector, stepDetail, onRunStep]);
+  }, [projectRoot, calculationSelector, stepSelector, stepDetail, onRunStep]);
   
   // Handle parameter change
   const handleParamChange = useCallback((namelist: string, key: string, value: unknown) => {
@@ -484,7 +484,7 @@ export function StepDetailPanel({
       
       const response = await window.qv.request<StepDetail>('update_step_params', {
         project_root: normalizedProjectRoot,
-        workflow: workflowSelector,
+        calculation: calculationSelector,
         step: stepSelector,
         parameters: paramUpdates,
       });
@@ -503,7 +503,7 @@ export function StepDetailPanel({
     } finally {
       setIsSaving(false);
     }
-  }, [projectRoot, workflowSelector, stepSelector, stepDetail, editedParams, onParametersUpdated]);
+  }, [projectRoot, calculationSelector, stepSelector, stepDetail, editedParams, onParametersUpdated]);
   
   // Reset parameters
   const handleResetParams = useCallback(async () => {
@@ -521,7 +521,7 @@ export function StepDetailPanel({
       
       const response = await window.qv.request<StepDetail>('reset_step_params', {
         project_root: normalizedProjectRoot,
-        workflow: workflowSelector,
+        calculation: calculationSelector,
         step: stepSelector,
       });
       
@@ -538,7 +538,7 @@ export function StepDetailPanel({
     } finally {
       setIsSaving(false);
     }
-  }, [projectRoot, workflowSelector, stepSelector, stepDetail, onParametersUpdated]);
+  }, [projectRoot, calculationSelector, stepSelector, stepDetail, onParametersUpdated]);
   
   // Cancel editing
   const handleCancelEdit = useCallback(() => {
@@ -551,13 +551,13 @@ export function StepDetailPanel({
   
   // Handle deleting the step
   const handleDeleteStep = useCallback(async () => {
-    if (!window.qv || !selectedWorkflow || !selectedStepId || isDeletingStep) return;
+    if (!window.qv || !selectedCalculation || !selectedStepId || isDeletingStep) return;
     
     // Show confirmation dialog
     const stepType = stepDetail?.step_type || 'step';
     const stepIdShort = selectedStepId.substring(0, 8);
     const confirmed = window.confirm(
-      `Delete step "${stepType}" (${stepIdShort}...) from workflow "${selectedWorkflow.name}"?\n\n` +
+      `Delete step "${stepType}" (${stepIdShort}...) from calculation "${selectedCalculation.name}"?\n\n` +
       `This will move the step file to the project's trash folder. It cannot be undone from the GUI.`
     );
     
@@ -574,8 +574,8 @@ export function StepDetailPanel({
       
       const response = await window.qv.request('delete_step', {
         project_root: normalizedProjectRoot,
-        workflow: workflowSelector,
-        step: stepSelector, // ULID from workflow.yaml - the only supported step selector
+        calculation: calculationSelector,
+        step: stepSelector, // ULID from calculation.yaml - the only supported step selector
       });
       
       if (response.ok) {
@@ -585,7 +585,7 @@ export function StepDetailPanel({
         setError(null);
         setIsLoading(false);
         
-        // Notify parent to clear selection and refresh workflow
+        // Notify parent to clear selection and refresh calculation
         if (onStepDeleted) {
           onStepDeleted(selectedStepId);
         }
@@ -604,7 +604,7 @@ export function StepDetailPanel({
     } finally {
       setIsDeletingStep(false);
     }
-  }, [window.qv, selectedWorkflow, selectedStepId, stepDetail, workflowSelector, stepSelector, projectRoot, isDeletingStep, onStepDeleted, onClose]);
+  }, [window.qv, selectedCalculation, selectedStepId, stepDetail, calculationSelector, stepSelector, projectRoot, isDeletingStep, onStepDeleted, onClose]);
   
   // STATE MACHINE RENDER LOGIC:
   // 1. No step selected → show "No step selected"
@@ -660,9 +660,9 @@ export function StepDetailPanel({
               {errorDetails && (
                 <div className="error-details" style={{ marginTop: '12px', padding: '12px', backgroundColor: 'var(--bg-secondary)', borderRadius: '4px', fontSize: '0.9em' }}>
                   <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Details:</div>
-                  {errorDetails.workflow_path && (
+                  {errorDetails.calculation_path && (
                     <div style={{ marginBottom: '4px' }}>
-                      <strong>Workflow file:</strong> <code style={{ fontSize: '0.85em' }}>{errorDetails.workflow_path}</code>
+                      <strong>Calculation file:</strong> <code style={{ fontSize: '0.85em' }}>{errorDetails.calculation_path}</code>
                     </div>
                   )}
                   {(errorDetails.expected_step_path || errorDetails.expected_path) && (
@@ -677,11 +677,11 @@ export function StepDetailPanel({
                   )}
                   {errorDetails.reason && (
                     <div style={{ marginTop: '8px', fontStyle: 'italic', color: 'var(--text-secondary)' }}>
-                      Reason: {errorDetails.reason === 'step_file_missing' ? 'Step file missing' : errorDetails.reason === 'step_not_in_workflow_dag' ? 'Step not in workflow DAG' : errorDetails.reason === 'registry_out_of_sync' ? 'Registry out of sync' : errorDetails.reason}
+                      Reason: {errorDetails.reason === 'step_file_missing' ? 'Step file missing' : errorDetails.reason === 'step_not_in_calculation_dag' ? 'Step not in calculation DAG' : errorDetails.reason === 'registry_out_of_sync' ? 'Registry out of sync' : errorDetails.reason}
                     </div>
                   )}
                   <div style={{ marginTop: '12px', paddingTop: '8px', borderTop: '1px solid var(--border-color)' }}>
-                    <em>If you edited files manually, click "Refresh" in the Workflows panel to rebuild the project registry.</em>
+                    <em>If you edited files manually, click "Refresh" in the Calculations panel to rebuild the project registry.</em>
                   </div>
                 </div>
               )}
@@ -696,7 +696,7 @@ export function StepDetailPanel({
               </button>
             )}
             <p className="error-hint">
-              Try selecting a different step, or refresh the workflow to update the step list.
+              Try selecting a different step, or refresh the calculation to update the step list.
             </p>
           </div>
         </div>

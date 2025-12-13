@@ -1,0 +1,50 @@
+meta:
+  id: 01KC10W54RDBP2HYEY16C9W7GQ
+  name: bands_pw
+  slug: bands_pw
+  path: calculations/graphene-bands/steps/bands_pw.step.yaml
+  kind: step
+step_type: bands_pw
+structure: C
+parent_calculation_id: 01KC10S2CGYQ2FBB2B6PGD5SC7
+parameters:
+  CONTROL:
+    calculation: bands
+    outdir: ./outdir
+    prefix: graphene
+    pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+    restart_mode: from_scratch
+  ELECTRONS:
+    conv_thr: 1.0e-10
+    mixing_beta: 0.3
+  SYSTEM:
+    degauss: 0.0001
+    ecutrho: 400.0
+    ecutwfc: 40.0
+    occupations: smearing
+    smearing: marzari-vanderbilt
+cards:
+  K_POINTS:
+    option: crystal_b
+    data:
+    - - 4
+    - - 0.0
+      - 0.0
+      - 0.0
+      - 30
+    - - -0.333333333
+      - 0.666666667
+      - 0.0
+      - 30
+    - - 0.0
+      - 0.5
+      - 0.0
+      - 30
+    - - 0.0
+      - 0.0
+      - 0.0
+      - 30
+species_overrides:
+  C:
+    mass: 12.0107
+    pseudopot: C.pbe-n-kjpaw_psl.1.0.0.UPF

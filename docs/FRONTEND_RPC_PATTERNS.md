@@ -102,7 +102,7 @@ useEffect(() => {
 
 ### General Pattern for "List" RPCs
 
-For any component that displays a list of items (structures, workflows, modules, sections, parameters), the expected pattern is:
+For any component that displays a list of items (structures, calculations, modules, sections, parameters), the expected pattern is:
 
 1. **Initial Load**: One RPC call on mount (via `useEffect` with stable dependencies).
 2. **User-Driven Updates**: RPC calls only triggered by explicit user actions (dropdown changes, button clicks, search submissions).

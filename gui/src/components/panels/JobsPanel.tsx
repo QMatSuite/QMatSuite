@@ -191,7 +191,7 @@ function JobListItem({ job, isSelected, onSelect }: JobListItemProps) {
 interface JobDetailPanelProps {
   jobId: string;
   onClose: () => void;
-  onViewAnalysis?: (workflowSlug: string) => void;
+  onViewAnalysis?: (calculationSlug: string) => void;
   onJobUpdate?: (job: JobInfo) => void;
 }
 
@@ -409,9 +409,9 @@ function JobDetailPanel({ jobId, onClose, onViewAnalysis, onJobUpdate }: JobDeta
               Cancel Job
             </button>
           )}
-          {/* View Analysis button for completed workflow jobs */}
+          {/* View Analysis button for completed calculation jobs */}
           {job.status === 'completed' && 
-           job.job_type === 'run_workflow' && 
+           job.job_type === 'run_calculation' && 
            job.target_name && 
            onViewAnalysis && (
             <button
@@ -433,7 +433,7 @@ function JobDetailPanel({ jobId, onClose, onViewAnalysis, onJobUpdate }: JobDeta
 
 interface JobsPanelProps {
   projectRoot?: string;
-  onViewAnalysis?: (workflowSlug: string) => void;
+  onViewAnalysis?: (calculationSlug: string) => void;
 }
 
 export function JobsPanel({ projectRoot, onViewAnalysis }: JobsPanelProps) {
@@ -575,7 +575,7 @@ export function JobsPanel({ projectRoot, onViewAnalysis }: JobsPanelProps) {
             <div className="jobs-panel__empty" data-testid="qv-jobs-empty">
               <span className="jobs-panel__empty-icon">📋</span>
               <h3>No Jobs</h3>
-              <p>Run a workflow to create jobs.</p>
+              <p>Run a calculation to create jobs.</p>
               {!projectRoot && (
                 <p className="jobs-panel__empty-hint">Open a project to see jobs</p>
               )}

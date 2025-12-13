@@ -11,7 +11,7 @@
 - **Docs**: `docs/` - architecture, API references, guides
 
 **Top-level folders:**
-- `src/quantumvitas/` - Python backend (core, workflow, engine, io, project, daemon, data)
+- `src/quantumvitas/` - Python backend (core, calculation, engine, io, project, daemon, data)
 - `gui/` - Electron frontend (React/TS, Vite build)
 - `tests/` - Python unit/integration tests
 - `tools/` - QE metadata extractors, validation scripts
@@ -38,7 +38,7 @@
 
 **Layout/Routing:**
 - **App shell**: `gui/src/App.tsx` - manages view state (`ViewType`), renders `Sidebar` + main panel
-- **Panels**: `gui/src/components/panels/` - `JobsPanel`, `WorkflowListPanel`, `StructureListPanel`, `QEParameterBrowserPanel`, `SettingsPanel`, etc.
+- **Panels**: `gui/src/components/panels/` - `JobsPanel`, `CalculationListPanel`, `StructureListPanel`, `QEParameterBrowserPanel`, `SettingsPanel`, etc.
 - **No router**: View switching via state (`selectedView`, `selectedWorkflow`, etc.)
 
 ## 3) Daemon / Backend
@@ -58,8 +58,8 @@
 - **Job model**: `src/quantumvitas/daemon/jobs.py` - `Job` dataclass (id, status, result, error, io_dir, steps)
 - **Job manager**: `JobManager` with `ThreadPoolExecutor(max_workers=1)` for sequential execution
 - **Execution**: `execute_job()` calls runner, updates job status/results, extracts `io_dir` from runner result
-- **Workflow execution**: `_handle_run_workflow()` → `api.run_workflow()` → `WorkflowRunner.run()` → `WorkflowResult` with `io_dir`
-- **I/O directory**: `compute_io_dir_from_workflow_model()` in `src/quantumvitas/workflow/runner.py` is single source of truth (default "raw")
+- **Calculation execution**: `_handle_run_calculation()` → `api.run_calculation()` → `CalculationRunner.run()` → `CalculationResult` with `io_dir`
+- **I/O directory**: `compute_io_dir_from_workflow_model()` in `src/quantumvitas/calculation/runner.py` is single source of truth (default "raw")
 
 **Metadata system:**
 - **JSON location**: `src/quantumvitas/data/qe_module_parameters.json` (production), `*.legacy.v*.json` (archived)
@@ -67,29 +67,29 @@
 - **State tracking**: `QE_METADATA_LOAD_STATE` dict (loaded_via, loaded_at, schema_version, path_abs) for debug panel
 - **RPC**: `list_qe_parameter_metadata`, `reload_qe_parameter_metadata`, `get_qe_parameter_metadata_debug_info`
 
-## 4) Workflow/Project Model
+## 4) Calculation/Project Model
 
 **Concepts:**
-- **Project**: Root directory with `project.qv.yml` (lists structures/workflows by ID only, DAG model)
+- **Project**: Root directory with `project.qv.yml` (lists structures/calculations by ID only, DAG model)
 - **Structure**: Crystal structure (JSON file in `structures/`, referenced by ULID)
-- **Workflow**: YAML file (`workflow.yaml`) with `structure_id` (ULID), `working_dir` (I/O dir name, default "raw"), `steps` list (step_id ULIDs)
-- **Step**: YAML file (`steps/*.step.yaml`) with step-local config (type, input, parameters), inherits `structure_id` from workflow
+- **Calculation**: YAML file (`calculation.yaml`) with `structure_id` (ULID), `working_dir` (I/O dir name, default "raw"), `steps` list (step_id ULIDs)
+- **Step**: YAML file (`steps/*.step.yaml`) with step-local config (type, input, parameters), inherits `structure_id` from calculation
 
 **YAML formats:**
-- **Parser**: `src/quantumvitas/core/models.py` - `load_workflow()`, `save_workflow()`, `WorkflowModel` dataclass
-- **Workflow YAML**: `id`, `structure_id`, `working_dir`, `steps: [{step_id, type, input, reference}]`
+- **Parser**: `src/quantumvitas/core/models.py` - `load_calculation()`, `save_calculation()`, `CalculationModel` dataclass
+- **Calculation YAML**: `id`, `structure_id`, `working_dir`, `steps: [{step_id, type, input, reference}]`
 - **Step YAML**: `id`, `type`, `input`, `parameters`, etc. (no cross-resource IDs except inherited structure_id)
 
 **IDs/Selectors:**
 - **ULIDs**: All resources use ULID (`ulid-py`) for stable IDs
-- **Resolution**: `src/quantumvitas/core/resolution.py` - `resolve_workflow()`, `resolve_step()` convert selectors (name/slug/ID) to `ResolvedResource`
+- **Resolution**: `src/quantumvitas/core/resolution.py` - `resolve_calculation()`, `resolve_step()` convert selectors (name/slug/ID) to `ResolvedResource`
 - **Registry**: `ResourceIndex` built from `project.qv.yml` + filesystem scan, cached per-project in daemon
 
 ## 5) Tests and CI
 
 **Test locations:**
 - **Unit tests**: `tests/unit/` - Python unit tests (pytest)
-- **Integration tests**: `tests/integration/` - Full workflow execution tests
+- **Integration tests**: `tests/integration/` - Full calculation execution tests
 - **Daemon tests**: `tests/daemon/` - JSON-RPC protocol tests
 - **E2E tests**: `gui/tests/e2e/` - Playwright tests for Electron GUI
 
@@ -98,7 +98,7 @@
 - **Launch**: `gui/tests/e2e/helpers/electron.ts` - spawns Electron app, connects via CDP
 - **Build**: `npm run build:e2e` (TypeScript + Vite), then `playwright test`
 
-**CI workflow:**
+**CI calculation:**
 - **File**: `.github/workflows/tests.yml`
 - **Steps**: Checkout → Set QE env vars → Install Python → Install system deps → Cache QE source/install/ccache → Build QE (if cache miss) → Install Python deps → Run pytest (`-n auto --dist=loadfile`) → Run GUI e2e (`npm run test:e2e`)
 - **QE caching**: Caches QE source tarball, built install prefix (per OS/build opts), ccache
@@ -108,12 +108,12 @@
 **Static data:**
 - **QE metadata**: `src/quantumvitas/data/qe_module_parameters.json` (schema v3), `*.legacy.v*.json` (v0/v1/v2)
 - **UI parameters**: `src/quantumvitas/data/qe_ui_parameters.json` - UI-friendly parameter metadata
-- **Templates**: `resources/workflow_templates/` - YAML templates
+- **Templates**: `resources/calculation_templates/` - YAML templates
 - **Demos**: `resources/demo_projects/` - example projects
 - **Structures**: `resources/structure_library/` - example crystal structures
 
 **Documentation:**
-- **Architecture**: `docs/ARCHITECTURE.md` - layered structure, workflow execution
+- **Architecture**: `docs/ARCHITECTURE.md` - layered structure, calculation execution
 - **API references**: `docs/DAEMON_API_REFERENCE.md`, `docs/CLI_API_REFERENCE.md`
 - **GUI**: `docs/GUI_ARCHITECTURE.md` - IPC patterns, component structure
 - **QE metadata**: `docs/JOB_IO_DIRECTORY_SEMANTICS.md` - io_dir semantics, runner source of truth
@@ -137,4 +137,5 @@
 5. User selects module → `list_sections` → `get_module_param_sections(module)` → returns namelist sections
 6. User clicks "Reload metadata" → `reload_qe_parameter_metadata` → `reload_metadata()` clears cache, reloads JSON, updates load state
 7. Debug panel (`SettingsPanel`) calls `get_qe_parameter_metadata_debug_info` → returns `loaded_via`, `loaded_at`, `schema_version`, `path_abs`
+
 

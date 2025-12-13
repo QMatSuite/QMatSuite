@@ -138,7 +138,7 @@ export function CreateProjectDialog({
   
   const title = isDemoProject ? 'Create Demo Project' : 'Create New Project';
   const description = isDemoProject 
-    ? 'Create a demo Silicon project with a ready-to-run SCF/DOS workflow.'
+    ? 'Create a demo Silicon project with a ready-to-run SCF/DOS calculation.'
     : 'Create a new QuantumVITAS project in the specified location.';
   
   return (

@@ -8,15 +8,15 @@ description short and includes a minimal example you can run or adapt.
 
 | Command | What it does | Quick example |
 | --- | --- | --- |
-| `qv init project [--path PATH] [--name NAME] [--template TEMPLATE]` | Create a project skeleton. Passing `--path` selects destination; `--name` controls metadata. Use `--template project1` to copy from predefined template with example structures and workflows. | `qv init project --template project1` |
-| `qv init workflow <name> --structure STRUCT [--project PATH] [--parent wfA] [--template TEMPLATE]` | Scaffold a workflow folder with `workflow.yaml`, `steps/`, and metadata. Use `--template si-dos` to copy from template (also copies related structures). When using `--template`, `--structure` is optional. | `qv init workflow my-dos --template si-dos` |
-| `qv init step <type> [--structure STRUCT] [--workflow ID] [--project PATH] [--template TEMPLATE] [overrides…]` | Generate a step `.yaml` in the enclosing workflow. Step type is required (scf, nscf, relax, dos, etc.). Structure is optional if inside a workflow. Use `--template scf` to copy from template. | `qv init step nscf --template nscf` or `qv init step scf` (inside workflow) |
+| `qv init project [--path PATH] [--name NAME] [--template TEMPLATE]` | Create a project skeleton. Passing `--path` selects destination; `--name` controls metadata. Use `--template project1` to copy from predefined template with example structures and calculations. | `qv init project --template project1` |
+| `qv init calculation <name> --structure STRUCT [--project PATH] [--parent wfA] [--template TEMPLATE]` | Scaffold a calculation folder with `calculation.yaml`, `steps/`, and metadata. Use `--template si-dos` to copy from template (also copies related structures). When using `--template`, `--structure` is optional. | `qv init calculation my-dos --template si-dos` |
+| `qv init step <type> [--structure STRUCT] [--calculation ID] [--project PATH] [--template TEMPLATE] [overrides…]` | Generate a step `.yaml` in the enclosing calculation. Step type is required (scf, nscf, relax, dos, etc.). Structure is optional if inside a calculation. Use `--template scf` to copy from template. | `qv init step nscf --template nscf` or `qv init step scf` (inside calculation) |
 | `qv import-structure <file> [--name NAME] [--project PATH] [--output-format json]` | Parse a structure with pymatgen, auto-generate name/slug if omitted, and register it. Supports .cif, POSCAR, QE .in, and .json (including QV format). | `qv import-structure si.cif --project ~/projects/si_demo --name "Si prim cell"` |
-| `qv list [--project PATH] [--verbose]` | Print the project tree down to each workflow step (IDs shown only with `--verbose`). | `qv list --project ~/projects/si_demo -v` |
+| `qv list [--project PATH] [--verbose]` | Print the project tree down to each calculation step (IDs shown only with `--verbose`). | `qv list --project ~/projects/si_demo -v` |
 | `qv detect-qe` | Print the QE installation detected via the engine registry. | `qv detect-qe` |
 | `qv show-command <input.in>` | Parse a QE input and print example `qv init step` / `qv configure step` commands. Auto-detects module type (pw.x, bands.x, dos.x, etc.). | `qv show-command ci_test_data/pw_single_tests/scf.in` |
 | `qv get-command <input.in>` | Alias for `qv show-command`. | `qv get-command inputs/si_scf.in` |
-| `qv analyze band [file] [--workflow WF] [--plot]` | Analyze band structure. Auto-detects files from workflow context. | `qv analyze band --workflow si-bands --plot` |
+| `qv analyze band [file] [--calculation WF] [--plot]` | Analyze band structure. Auto-detects files from calculation context. | `qv analyze band --calculation si-bands --plot` |
 | `qv analyze dos <file> [--scf FILE] [--plot]` | Analyze DOS data with optional Fermi energy extraction. | `qv analyze dos si.dos.dat --scf nscf.out --plot` |
 | `qv analyze energy <file> [--plot]` | Analyze SCF output for energies and convergence. | `qv analyze energy si.scf.out --plot` |
 | `qv analyze scf <file> [--plot]` | Alias for `analyze energy`. | `qv analyze scf si.scf.out --plot` |
@@ -28,8 +28,8 @@ description short and includes a minimal example you can run or adapt.
 
 | Command | What it does | Quick example |
 | --- | --- | --- |
-| `qv configure step <step-id|path> [--workflow ID] [--name NAME] [--remove] [overrides…]` | Edit step parameters. Use `--name` to rename. Use `--remove` to delete parameters. Step auto-detected from pwd if inside workflow. | `qv configure step nscf --name="NSCF high k" --SYSTEM.ecutwfc=70` |
-| `qv configure workflow [<workflow-id|path>] [--name NAME] [--structure STRUCT] [--reorder STEP1,STEP2,...]` | Modify workflow settings. Use `--name` to rename. Use `--structure` to change structure (updates all steps). Use `--reorder` to change step order. | `qv configure workflow --name="Si DOS v2" --reorder scf,nscf,dos` |
+| `qv configure step <step-id|path> [--calculation ID] [--name NAME] [--remove] [overrides…]` | Edit step parameters. Use `--name` to rename. Use `--remove` to delete parameters. Step auto-detected from pwd if inside calculation. | `qv configure step nscf --name="NSCF high k" --SYSTEM.ecutwfc=70` |
+| `qv configure calculation [<calculation-id|path>] [--name NAME] [--structure STRUCT] [--reorder STEP1,STEP2,...]` | Modify calculation settings. Use `--name` to rename. Use `--structure` to change structure (updates all steps). Use `--reorder` to change step order. | `qv configure calculation --name="Si DOS v2" --reorder scf,nscf,dos` |
 | `qv configure structure <identifier> [--project PATH] [--name NAME]` | Rename a structure using `--name`. For complex modifications, re-import. | `qv configure structure si --name "Silicon bulk"` |
 
 ### Rename Commands (Deprecated)
@@ -39,17 +39,17 @@ description short and includes a minimal example you can run or adapt.
 | Command | What it does | Quick example |
 | --- | --- | --- |
 | `qv rename structure <selector> [--name NAME] [--slug SLUG] [--path PATH]` | **Deprecated.** Use `qv configure structure <selector> --name <new_name>` instead. | `qv configure structure si --name "Si DOS"` |
-| `qv rename workflow <selector> [--name NAME] [--slug SLUG] [--path PATH]` | **Deprecated.** Use `qv configure workflow <selector> --name <new_name>` instead. | `qv configure workflow si_dos --name "Si DOS workflow"` |
-| `qv rename step <workflow> <step-id> [--project PATH] [--id NEW_ID]` | **Deprecated.** Use `qv configure step <step-id> --workflow <workflow> --name <new_name>` instead. | `qv configure step nscf --name nscf_relax` |
+| `qv rename calculation <selector> [--name NAME] [--slug SLUG] [--path PATH]` | **Deprecated.** Use `qv configure calculation <selector> --name <new_name>` instead. | `qv configure calculation si_dos --name "Si DOS calculation"` |
+| `qv rename step <calculation> <step-id> [--project PATH] [--id NEW_ID]` | **Deprecated.** Use `qv configure step <step-id> --calculation <calculation> --name <new_name>` instead. | `qv configure step nscf --name nscf_relax` |
 | `qv rename project [--project PATH] [--name NAME]` | **Deprecated.** Use project-level configuration. | — |
 
 ### Delete Commands
 
 | Command | What it does | Quick example |
 | --- | --- | --- |
-| `qv delete structure <selector> [--project PATH] [--force] [--cascade]` | Move a structure (and optionally referencing workflows) into the project's `trash/` folder. Selector = id/name/slug/path. | `qv delete structure si` |
-| `qv delete workflow [<selector>] [--project PATH] [--force] [--cascade]` | Move a workflow directory into `trash/`, optionally cascading dependent workflows. Auto-detects from pwd if not specified. | `qv delete workflow --cascade` |
-| `qv delete step <step-id> [--workflow ID] [--project PATH]` | Remove a step entry from a workflow and move its `.step.yaml` to trash. Workflow auto-detected from pwd if inside one. | `qv delete step nscf` |
+| `qv delete structure <selector> [--project PATH] [--force] [--cascade]` | Move a structure (and optionally referencing calculations) into the project's `trash/` folder. Selector = id/name/slug/path. | `qv delete structure si` |
+| `qv delete calculation [<selector>] [--project PATH] [--force] [--cascade]` | Move a calculation directory into `trash/`, optionally cascading dependent calculations. Auto-detects from pwd if not specified. | `qv delete calculation --cascade` |
+| `qv delete step <step-id> [--calculation ID] [--project PATH]` | Remove a step entry from a calculation and move its `.step.yaml` to trash. Calculation auto-detected from pwd if inside one. | `qv delete step nscf` |
 | `qv delete project [<selector>] [--project PATH]` | Move a project directory into the parent `trash/` folder. Selector = name/slug/path. | `qv delete project si_demo` |
 | `qv delete trash [--project PATH] [--path PATH] [--parent]` | Clean a trash directory (project-level by default, or explicit path). | `qv delete trash --project ~/projects/si_demo` |
 
@@ -57,21 +57,21 @@ description short and includes a minimal example you can run or adapt.
 
 | Command | What it does | Quick example |
 | --- | --- | --- |
-| `qv run step <input.in|step.yaml> [--project PATH] [--workdir PATH] [overrides…]` | Run a QE input file **or** a `.step.yaml` in project mode, applying overrides to parameters/cards/species. | `qv run step workflows/si_dos/steps/scf.step.yaml --project . --CARD.K_POINTS.data=[[6,6,6,0,0,0]]` |
+| `qv run step <input.in|step.yaml> [--project PATH] [--workdir PATH] [overrides…]` | Run a QE input file **or** a `.step.yaml` in project mode, applying overrides to parameters/cards/species. | `qv run step calculations/si_dos/steps/scf.step.yaml --project . --CARD.K_POINTS.data=[[6,6,6,0,0,0]]` |
 | `qv run step --standalone --input <file> [--workdir PATH]` | Run a QE input file in standalone mode (no project context). See `docs/STANDALONE_QE.md` for details. | `qv run step --standalone --input pw.in --workdir ./run` |
 | `qv run structure <structure-id|file> [--project PATH] [--type scf] [overrides…]` | Load a stored structure, materialize a QE input, apply overrides, and run it. | `qv run structure si --project ~/projects/si_demo --type scf --k_points=4,4,4,0,0,0` |
-| `qv run workflow [<workflow-id|path>] [--project PATH] [--strict] [--verbose]` | Execute a workflow. Auto-detects enclosing workflow from pwd if not specified. | `qv run workflow --strict` |
-| `qv run [target] [--project PATH] [--workdir PATH] [--strict]` | Auto-detect the target type (QE input, step YAML, workflow id, structure id) and dispatch to the appropriate subcommand. If no target, runs enclosing workflow. | `qv run --strict` |
+| `qv run calculation [<calculation-id|path>] [--project PATH] [--strict] [--verbose]` | Execute a calculation. Auto-detects enclosing calculation from pwd if not specified. | `qv run calculation --strict` |
+| `qv run [target] [--project PATH] [--workdir PATH] [--strict]` | Auto-detect the target type (QE input, step YAML, calculation id, structure id) and dispatch to the appropriate subcommand. If no target, runs enclosing calculation. | `qv run --strict` |
 
 > **Selectors:** Resources can be identified by:
 > - **id** (ULID): Exact match, case-sensitive (e.g., `01JXYZ...`)
 > - **name/slug**: Case-insensitive match (e.g., `si_dos`, `"Si DOS"`)
-> - **path**: Relative or absolute filesystem path (e.g., `workflows/si-dos`)
+> - **path**: Relative or absolute filesystem path (e.g., `calculations/si-dos`)
 >
 > **Auto-detection:** Many commands auto-detect resources from the current directory:
 > - **Project**: Walks up from pwd to find `project.qv.yml`
-> - **Workflow**: Detects if pwd is inside a workflow directory
-> - **Step**: If inside a workflow, step id can be used directly
+> - **Calculation**: Detects if pwd is inside a calculation directory
+> - **Step**: If inside a calculation, step id can be used directly
 
 **Overrides syntax:** Any extra `--name=value` flag is treated as a QE override.
 Parameters map into namelists (`--SYSTEM.ecutwfc=60`). Cards can be updated via
@@ -105,7 +105,7 @@ env:
 
 ## Resource Metadata
 
-All resources (projects, workflows, steps, structures) include a `meta` section with:
+All resources (projects, calculations, steps, structures) include a `meta` section with:
 
 | Field | Description |
 |-------|-------------|
@@ -113,17 +113,17 @@ All resources (projects, workflows, steps, structures) include a `meta` section 
 | `name` | Human-readable display name |
 | `slug` | URL-safe identifier (derived from name) |
 | `path` | Relative path from project root |
-| `kind` | Resource type: `project`, `workflow`, `step`, `structure` |
+| `kind` | Resource type: `project`, `calculation`, `step`, `structure` |
 
-Example `workflow.yaml` with metadata:
+Example `calculation.yaml` with metadata:
 
 ```yaml
 meta:
   id: 01JXYZ123ABC456DEF789GHI
   name: Si DOS calculation
   slug: si-dos-calculation
-  path: workflows/si-dos-calculation
-  kind: workflow
+  path: calculations/si-dos-calculation
+  kind: calculation
 mode: normal
 structure: si
 working_dir: raw
@@ -148,7 +148,7 @@ Set `pseudo_dir` in step YAML or use `--pseudo_dir` override to customize.
 
 When running `.in` files via `qv run`:
 
-- The final processed input is written to `<io_dir>/<stem>.in` (where `io_dir` is the workflow's I/O directory, default `raw/`)
+- The final processed input is written to `<io_dir>/<stem>.in` (where `io_dir` is the calculation's I/O directory, default `raw/`)
 - If `keep_original=true` and the input was modified, the original is saved as `<stem>_original.in`
 - For YAML-based steps, only the generated input file is saved
 
@@ -169,14 +169,14 @@ In the metrics dictionary returned by analysis functions:
 
 ### `qv analyze output` - QE Output Analysis
 
-For `qv analyze output band`, files can be auto-detected from workflow context:
+For `qv analyze output band`, files can be auto-detected from calculation context:
 
 ```bash
-# Explicit workflow selector
-qv analyze output band --workflow si-bands --plot
+# Explicit calculation selector
+qv analyze output band --calculation si-bands --plot
 
-# Auto-detect from current directory (if inside a workflow)
-cd project/workflows/si-bands/raw
+# Auto-detect from current directory (if inside a calculation)
+cd project/calculations/si-bands/raw
 qv analyze output band --plot
 
 # Auto-detect from pwd (searches for files in current directory)
@@ -256,42 +256,42 @@ struct = QVService.import_structure(project_root, Path("si.cif"), name="Silicon"
 QVService.configure_structure(project_root, "si", new_name="Silicon bulk")
 structures = QVService.list_structures(project_root)
 
-# Workflow operations
-workflow = QVService.init_workflow(project_root, "my-workflow", structure_selector="si")
-QVService.configure_workflow(project_root, "my-workflow", new_name="Renamed workflow")
-workflows = QVService.list_workflows(project_root)
+# Calculation operations
+calculation = QVService.init_workflow(project_root, "my-calculation", structure_selector="si")
+QVService.configure_workflow(project_root, "my-calculation", new_name="Renamed calculation")
+calculations = QVService.list_calculations(project_root)
 
 # Step operations
-step = QVService.init_step(project_root, "my-workflow", "scf", name="SCF calculation")
-QVService.configure_step(project_root, "my-workflow", "scf", parameters={"ecutwfc": 60})
-steps = QVService.list_steps(project_root, "my-workflow")
+step = QVService.init_step(project_root, "my-calculation", "scf", name="SCF calculation")
+QVService.configure_step(project_root, "my-calculation", "scf", parameters={"ecutwfc": 60})
+steps = QVService.list_steps(project_root, "my-calculation")
 
 # Run operations
-result = QVService.run_workflow(project_root, "my-workflow", strict=True)
+result = QVService.run_calculation(project_root, "my-calculation", strict=True)
 ```
 
-### Project & Workflow loading
+### Project & Calculation loading
 
 | Symbol | Description | Example |
 | --- | --- | --- |
-| `quantumvitas.project.model.Project.open(project_root)` | Load `project.qv.yml`, structures, and workflow references. | `proj = Project.open(Path("~/projects/si_demo"))` |
+| `quantumvitas.project.model.Project.open(project_root)` | Load `project.qv.yml`, structures, and calculation references. | `proj = Project.open(Path("~/projects/si_demo"))` |
 | `Project.get_structure(structure_id)` | Fetch a registered structure reference (path + metadata). | `si_ref = proj.get_structure("si")` |
-| `Project.get_workflow(workflow_id)` | Resolve a workflow entry from `project.qv.yml`. | `si_dos = proj.get_workflow("si_dos")` |
-| `quantumvitas.workflow.workflow.Workflow.from_yaml(path, project)` | Load a workflow from an explicit YAML file (outside registry). | `wf = Workflow.from_yaml(Path("workflows/custom/workflow.yaml"), proj)` |
+| `Project.get_calculation(calculation_id)` | Resolve a calculation entry from `project.qv.yml`. | `si_dos = proj.get_calculation("si_dos")` |
+| `quantumvitas.calculation.calculation.Calculation.from_yaml(path, project)` | Load a calculation from an explicit YAML file (outside registry). | `wf = Calculation.from_yaml(Path("calculations/custom/calculation.yaml"), proj)` |
 
-### Workflow execution & verification
+### Calculation execution & verification
 
 | Symbol | Description | Example |
 | --- | --- | --- |
-| `quantumvitas.workflow.runner.WorkflowRunner(registry)` | Runtime coordinator that schedules steps through registered engines. | `runner = WorkflowRunner(create_default_registry())` |
-| `WorkflowRunner.run(workflow)` | Execute all steps in order, returning a `WorkflowResult`. | `result = runner.run(wf); print(result.status)` |
-| `quantumvitas.workflow.verification.verify_step_result(step_result, reference_file, category)` | Compare a QE run against a reference (energy, Fermi level, PH frequencies). | `ok, msg = verify_step_result(step_result, ref, "pw_scf")` |
+| `quantumvitas.calculation.runner.CalculationRunner(registry)` | Runtime coordinator that schedules steps through registered engines. | `runner = CalculationRunner(create_default_registry())` |
+| `CalculationRunner.run(calculation)` | Execute all steps in order, returning a `CalculationResult`. | `result = runner.run(wf); print(result.status)` |
+| `quantumvitas.calculation.verification.verify_step_result(step_result, reference_file, category)` | Compare a QE run against a reference (energy, Fermi level, PH frequencies). | `ok, msg = verify_step_result(step_result, ref, "pw_scf")` |
 
 ### Structure & step specifications
 
 | Symbol | Description | Example |
 | --- | --- | --- |
-| `quantumvitas.workflow.structure_steps.StructureStepSpec.from_yaml(path)` | Parse a `*.step.yaml` spec (structure pointer + overrides). | `spec = StructureStepSpec.from_yaml(Path("steps/scf.step.yaml"))` |
+| `quantumvitas.calculation.structure_steps.StructureStepSpec.from_yaml(path)` | Parse a `*.step.yaml` spec (structure pointer + overrides). | `spec = StructureStepSpec.from_yaml(Path("steps/scf.step.yaml"))` |
 | `generate_qe_input_from_structure(structure, step_type, parameter_overrides=None)` | Build a QE input from a `pymatgen.Structure`. | `qe_input = generate_qe_input_from_structure(structure, "scf")` |
 | `generate_qe_input_from_spec(structure, spec, extra_overrides=None)` | Combine a stored spec + structure into a QE input while applying overrides. | `qe_input, applied = generate_qe_input_from_spec(structure, spec)` |
 | `materialize_step_spec(structure, spec, project_root)` | Write the generated QE input to disk with correct `outdir`/`pseudo_dir`. | `input_path, overrides = materialize_step_spec(structure, spec, project_root)` |
@@ -300,17 +300,17 @@ result = QVService.run_workflow(project_root, "my-workflow", strict=True)
 
 | Symbol | Description | Example |
 | --- | --- | --- |
-| `quantumvitas.workflow.importers.build_step_spec_from_qe_input(input_path, output_dir)` | Convert a QE `.in` into a `StructureStepSpec` + structure JSON. | `spec_path = build_step_spec_from_qe_input(Path("si.scf.in"), Path("steps"))` |
-| `quantumvitas.workflow.importers.build_workflow_from_qe_inputs(inputs, project_root, workflow_id)` | Turn a list of QE inputs into a workflow folder with `workflow.yaml`. | `build_workflow_from_qe_inputs(sorted(raw_inputs), proj_root, "si_dos")` |
+| `quantumvitas.calculation.importers.build_step_spec_from_qe_input(input_path, output_dir)` | Convert a QE `.in` into a `StructureStepSpec` + structure JSON. | `spec_path = build_step_spec_from_qe_input(Path("si.scf.in"), Path("steps"))` |
+| `quantumvitas.calculation.importers.build_calculation_from_qe_inputs(inputs, project_root, calculation_id)` | Turn a list of QE inputs into a calculation folder with `calculation.yaml`. | `build_calculation_from_qe_inputs(sorted(raw_inputs), proj_root, "si_dos")` |
 
 ### Direct step execution helpers
 
 | Symbol | Description | Example |
 | --- | --- | --- |
-| `quantumvitas.workflow.input_runner.run_input_step(engine, input_file, working_dir, project_root, step_type=None, parameter_overrides=None)` | Low-level helper that prepares the QE input, runs it, and returns `StepResult` + `PreparedInputStep`. | `result, prepared = run_input_step(engine.backend, Path("pw_scf.in"), Path("temp/run"), project_root)` |
-| `quantumvitas.workflow.geometry.read_geometry_from_input(path)` | Extract alat, cell matrix, and atomic positions from a QE input. | `geom_in = read_geometry_from_input(Path("pw_scf.in"))` |
-| `quantumvitas.workflow.geometry.read_geometry_from_output(path)` | Same as above but from QE output. | `geom_out = read_geometry_from_output(Path("pw_scf.out"))` |
-| `quantumvitas.workflow.geometry.compare_geometries(geom1, geom2, tolerance=1e-6)` | Numerical comparison helper for geometry regression tests. | `ok, diff = compare_geometries(geom_in, geom_out)` |
+| `quantumvitas.calculation.input_runner.run_input_step(engine, input_file, working_dir, project_root, step_type=None, parameter_overrides=None)` | Low-level helper that prepares the QE input, runs it, and returns `StepResult` + `PreparedInputStep`. | `result, prepared = run_input_step(engine.backend, Path("pw_scf.in"), Path("temp/run"), project_root)` |
+| `quantumvitas.calculation.geometry.read_geometry_from_input(path)` | Extract alat, cell matrix, and atomic positions from a QE input. | `geom_in = read_geometry_from_input(Path("pw_scf.in"))` |
+| `quantumvitas.calculation.geometry.read_geometry_from_output(path)` | Same as above but from QE output. | `geom_out = read_geometry_from_output(Path("pw_scf.out"))` |
+| `quantumvitas.calculation.geometry.compare_geometries(geom1, geom2, tolerance=1e-6)` | Numerical comparison helper for geometry regression tests. | `ok, diff = compare_geometries(geom_in, geom_out)` |
 
 ### Analysis functions
 
@@ -335,8 +335,8 @@ result = QVService.run_workflow(project_root, "my-workflow", strict=True)
 | `quantumvitas.analysis.kpath.generate_kpath(structure, n_points=50)` | Generate high-symmetry k-path using pymatgen. | `kpath = generate_kpath(structure, n_points=30)` |
 | `KPathResult.to_qe_kpoints_crystal_b()` | Convert k-path to QE K_POINTS crystal_b format. | `qe_kpoints = kpath.to_qe_kpoints_crystal_b()` |
 
-All higher-level APIs (CLI, workflow runner, importers) are layered on top of
-these calls. If you need to automate a custom workflow, prefer these entry
+All higher-level APIs (CLI, calculation runner, importers) are layered on top of
+these calls. If you need to automate a custom calculation, prefer these entry
 points instead of reaching into internal modules.
 
 ## Architecture Note

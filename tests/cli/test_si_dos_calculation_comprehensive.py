@@ -1,7 +1,7 @@
 """
-Comprehensive test for Si DOS workflow.
+Comprehensive test for Si DOS calculation.
 
-This test creates a full project with a DOS workflow:
+This test creates a full project with a DOS calculation:
 - SCF calculation (pw.x calculation='scf', K_POINTS automatic)
 - NSCF calculation (pw.x calculation='nscf', K_POINTS automatic denser)
 - DOS calculation (dos.x)
@@ -44,7 +44,7 @@ def run_qv(args: list[str], cwd: Path, check: bool = True) -> subprocess.Complet
 @pytest.fixture(scope="module")
 def test_project_dir(project_root_path: Path) -> Path:
     """Create a temporary project directory for the test in temp/ folder."""
-    test_dir = project_root_path / "temp" / "test_si_dos_workflow"
+    test_dir = project_root_path / "temp" / "test_si_dos_calculation"
     if test_dir.exists():
         shutil.rmtree(test_dir)
     test_dir.mkdir(parents=True, exist_ok=True)
@@ -109,31 +109,31 @@ K_POINTS (automatic)
     return project_dir
 
 
-class TestSiDosWorkflow:
-    """Test DOS workflow: SCF -> NSCF -> DOS -> Analysis."""
+class TestSiDosCalculation:
+    """Test DOS calculation: SCF -> NSCF -> DOS -> Analysis."""
     
     @pytest.fixture(scope="class")
-    def workflow_dir(self, project_with_structure: Path) -> Path:
-        """Create workflow."""
+    def calculation_dir(self, project_with_structure: Path) -> Path:
+        """Create calculation."""
         project_dir = project_with_structure
         
-        run_qv(["init", "workflow", "si_dos", "--structure", "si"], cwd=project_dir)
+        run_qv(["init", "calculation", "si_dos", "--structure", "si"], cwd=project_dir)
         
-        workflow_dir = project_dir / "workflows" / "si_dos"
-        assert workflow_dir.exists()
+        calculation_dir = project_dir / "calculations" / "si_dos"
+        assert calculation_dir.exists()
         
-        return workflow_dir
+        return calculation_dir
     
     @pytest.fixture(scope="class")
-    def workflow_with_steps(self, project_with_structure: Path, workflow_dir: Path) -> Path:
-        """Create all steps for the DOS workflow."""
+    def calculation_with_steps(self, project_with_structure: Path, calculation_dir: Path) -> Path:
+        """Create all steps for the DOS calculation."""
         project_dir = project_with_structure
         
         # Step 1: SCF (calculation='scf', K_POINTS automatic 8x8x8)
         run_qv([
             "init", "step", "scf",
             "--structure", "si",
-            "--workflow", "si_dos",
+            "--calculation", "si_dos",
             "--CONTROL.calculation", "scf",
             "--CONTROL.outdir", "./outdir",
             "--CONTROL.prefix", "si",
@@ -149,7 +149,7 @@ class TestSiDosWorkflow:
         run_qv([
             "init", "step", "nscf",
             "--structure", "si",
-            "--workflow", "si_dos",
+            "--calculation", "si_dos",
             "--CONTROL.calculation", "nscf",
             "--CONTROL.outdir", "./outdir",
             "--CONTROL.prefix", "si",
@@ -166,7 +166,7 @@ class TestSiDosWorkflow:
         run_qv([
             "init", "step", "dos",
             "--structure", "si",
-            "--workflow", "si_dos",
+            "--calculation", "si_dos",
             "--DOS.emax", "16.0",
             "--DOS.emin", "-9.0",
             "--DOS.fildos", "si.dos.dat",
@@ -174,29 +174,29 @@ class TestSiDosWorkflow:
             "--DOS.prefix", "si",
         ], cwd=project_dir)
         
-        return workflow_dir
+        return calculation_dir
     
-    def test_run_workflow_and_analyze(
+    def test_run_calculation_and_analyze(
         self,
         project_with_structure: Path,
-        workflow_with_steps: Path,
+        calculation_with_steps: Path,
     ) -> None:
-        """Run the complete DOS workflow and analyze DOS (end-to-end test)."""
+        """Run the complete DOS calculation and analyze DOS (end-to-end test)."""
         project_dir = project_with_structure
-        workflow_dir = workflow_with_steps
-        raw_dir = workflow_dir / "raw"
+        calculation_dir = calculation_with_steps
+        raw_dir = calculation_dir / "raw"
         
-        # Run the workflow once
+        # Run the calculation once
         result = run_qv(
-            ["run", "workflow", "si_dos", "--verbose"],
+            ["run", "calculation", "si_dos", "--verbose"],
             cwd=project_dir,
             check=False,
         )
         
-        # Check if workflow completed successfully
+        # Check if calculation completed successfully
         if result.returncode != 0 or "status:" not in result.stdout.lower():
             pytest.fail(
-                "DOS workflow failed:\n"
+                "DOS calculation failed:\n"
                 f"STDOUT:\n{result.stdout}\n\n"
                 f"STDERR:\n{result.stderr}"
             )
@@ -207,7 +207,7 @@ class TestSiDosWorkflow:
             raw_files = sorted(p.name for p in raw_dir.glob("*")) if raw_dir.exists() else []
             crash_files = sorted(p.name for p in raw_dir.glob("CRASH*")) if raw_dir.exists() else []
             pytest.fail(
-                "DOS output not found after running workflow:\n"
+                "DOS output not found after running calculation:\n"
                 f"Expected: {dos_file}\n"
                 f"Files in raw/: {raw_files}\n"
                 f"CRASH files: {crash_files}"
@@ -240,7 +240,7 @@ class TestSiDosWorkflow:
             )
         
         # Check plot was created in results folder
-        results_dir = workflow_dir / "results"
+        results_dir = calculation_dir / "results"
         plot_files = list(results_dir.glob("dos*.png"))
         assert len(plot_files) > 0, f"No DOS plot found in {results_dir}"
         

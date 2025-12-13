@@ -1,7 +1,7 @@
 """
-Daemon-based test for Si band structure workflow.
+Daemon-based test for Si band structure calculation.
 
-This test achieves the same goal as test_si_bands_workflow_comprehensive.py 
+This test achieves the same goal as test_si_bands_calculation_comprehensive.py 
 but uses the daemon and JobManager instead of CLI subprocess calls.
 
 Key differences from CLI test:
@@ -27,7 +27,7 @@ from quantumvitas.daemon.server import QVDaemon, RPCRequest
 from quantumvitas.daemon.jobs import JobManager, JobStatus
 
 # Test data directory
-TEST_DATA_DIR = Path(__file__).parent.parent / "data" / "workflow_bands"
+TEST_DATA_DIR = Path(__file__).parent.parent / "data" / "calculation_bands"
 
 # Mark all tests as requiring QE
 pytestmark = pytest.mark.qe_core
@@ -182,23 +182,23 @@ class TestDaemonProjectOperations:
         assert json_str
 
 
-class TestDaemonWorkflowExecution:
-    """Test workflow execution through daemon JobManager."""
+class TestDaemonCalculationExecution:
+    """Test calculation execution through daemon JobManager."""
     
     @pytest.fixture(scope="class")
-    def workflow_with_steps(self, daemon: QVDaemon, project_with_structure: Path) -> Path:
-        """Create workflow with steps using QVService (not CLI)."""
+    def calculation_with_steps(self, daemon: QVDaemon, project_with_structure: Path) -> Path:
+        """Create calculation with steps using QVService (not CLI)."""
         project_dir = project_with_structure
         
-        # Create workflow
-        QVService.init_workflow(project_dir, "bands_daemon", structure_selector="si")
+        # Create calculation
+        QVService.init_calculation(project_dir, "bands_daemon", structure_selector="si")
         
-        workflow_dir = project_dir / "workflows" / "bands_daemon"
+        calculation_dir = project_dir / "calculations" / "bands_daemon"
         
         # Create SCF step
         QVService.init_step(
             project_root=project_dir,
-            workflow_selector="bands_daemon",
+            calculation_selector="bands_daemon",
             step_type="scf",
             name="scf",
             structure_selector="si",
@@ -207,7 +207,7 @@ class TestDaemonWorkflowExecution:
         # Configure SCF step
         QVService.configure_step(
             project_root=project_dir,
-            workflow_selector="bands_daemon",
+            calculation_selector="bands_daemon",
             step_selector="scf",
             parameters={
                 "CONTROL": {
@@ -238,7 +238,7 @@ class TestDaemonWorkflowExecution:
         # Create NSCF step
         QVService.init_step(
             project_root=project_dir,
-            workflow_selector="bands_daemon",
+            calculation_selector="bands_daemon",
             step_type="nscf",
             name="nscf",
             structure_selector="si",
@@ -247,7 +247,7 @@ class TestDaemonWorkflowExecution:
         # Configure NSCF step
         QVService.configure_step(
             project_root=project_dir,
-            workflow_selector="bands_daemon",
+            calculation_selector="bands_daemon",
             step_selector="nscf",
             parameters={
                 "CONTROL": {
@@ -279,7 +279,7 @@ class TestDaemonWorkflowExecution:
         # Create bands calculation step (pw.x with calculation='bands')
         QVService.init_step(
             project_root=project_dir,
-            workflow_selector="bands_daemon",
+            calculation_selector="bands_daemon",
             step_type="bands_pw",
             name="bands",
             structure_selector="si",
@@ -297,7 +297,7 @@ class TestDaemonWorkflowExecution:
         
         QVService.configure_step(
             project_root=project_dir,
-            workflow_selector="bands_daemon",
+            calculation_selector="bands_daemon",
             step_selector="bands",
             parameters={
                 "CONTROL": {
@@ -328,7 +328,7 @@ class TestDaemonWorkflowExecution:
         # Create bands.x post-processing step
         QVService.init_step(
             project_root=project_dir,
-            workflow_selector="bands_daemon",
+            calculation_selector="bands_daemon",
             step_type="bands",
             name="bandspp",
             structure_selector="si",
@@ -336,7 +336,7 @@ class TestDaemonWorkflowExecution:
         
         QVService.configure_step(
             project_root=project_dir,
-            workflow_selector="bands_daemon",
+            calculation_selector="bands_daemon",
             step_selector="bandspp",
             parameters={
                 "BANDS": {
@@ -347,27 +347,27 @@ class TestDaemonWorkflowExecution:
             },
         )
         
-        return workflow_dir
+        return calculation_dir
     
-    def test_list_workflows(self, daemon: QVDaemon, project_with_structure: Path, workflow_with_steps: Path):
-        """Test listing workflows via daemon."""
-        response = send_request(daemon, "list_workflows", {
+    def test_list_calculations(self, daemon: QVDaemon, project_with_structure: Path, calculation_with_steps: Path):
+        """Test listing calculations via daemon."""
+        response = send_request(daemon, "list_calculations", {
             "project_root": str(project_with_structure),
         })
         
         assert response["count"] >= 1
         
-        workflow_names = [w["name"] for w in response["workflows"]]
-        assert "bands_daemon" in workflow_names
+        calculation_names = [w["name"] for w in response["calculations"]]
+        assert "bands_daemon" in calculation_names
     
-    def test_run_workflow_via_job_manager(self, daemon: QVDaemon, project_with_structure: Path, workflow_with_steps: Path):
-        """Test running workflow via daemon JobManager."""
+    def test_run_calculation_via_job_manager(self, daemon: QVDaemon, project_with_structure: Path, calculation_with_steps: Path):
+        """Test running calculation via daemon JobManager."""
         project_dir = project_with_structure
         
-        # Submit workflow job
-        response = send_request(daemon, "run_workflow", {
+        # Submit calculation job
+        response = send_request(daemon, "run_calculation", {
             "project_root": str(project_dir),
-            "workflow": "bands_daemon",
+            "calculation": "bands_daemon",
         })
         
         job_id = response["job_id"]
@@ -382,7 +382,7 @@ class TestDaemonWorkflowExecution:
             f"Job ended with unexpected status: {final_status['status']}"
         
         if final_status["status"] == "failed":
-            pytest.skip(f"Workflow failed: {final_status.get('error', 'Unknown error')}")
+            pytest.skip(f"Calculation failed: {final_status.get('error', 'Unknown error')}")
     
     def test_job_list(self, daemon: QVDaemon):
         """Test listing jobs via daemon."""
@@ -392,22 +392,22 @@ class TestDaemonWorkflowExecution:
         assert "count" in response
         assert response["count"] >= 0
     
-    def test_get_band_structure_data(self, daemon: QVDaemon, project_with_structure: Path, workflow_with_steps: Path):
-        """Test getting band structure data via daemon after workflow completes."""
+    def test_get_band_structure_data(self, daemon: QVDaemon, project_with_structure: Path, calculation_with_steps: Path):
+        """Test getting band structure data via daemon after calculation completes."""
         project_dir = project_with_structure
-        workflow_dir = workflow_with_steps
+        calculation_dir = calculation_with_steps
         
         # Check if bands data exists
-        raw_dir = workflow_dir / "raw"
+        raw_dir = calculation_dir / "raw"
         bands_gnu = raw_dir / "si.bands.dat.gnu"
         
         if not bands_gnu.exists():
-            pytest.skip("Band structure data not found - workflow may have failed")
+            pytest.skip("Band structure data not found - calculation may have failed")
         
         # Get band structure data via daemon
         response = send_request(daemon, "get_band_structure_data", {
             "project_root": str(project_dir),
-            "workflow": "bands_daemon",
+            "calculation": "bands_daemon",
         })
         
         assert response["n_bands"] > 0
@@ -420,7 +420,7 @@ class TestDaemonWorkflowExecution:
         json_str = json.dumps(response)
         assert json_str
     
-    def test_analyze_bands_and_generate_plot(self, daemon: QVDaemon, project_with_structure: Path, workflow_with_steps: Path):
+    def test_analyze_bands_and_generate_plot(self, daemon: QVDaemon, project_with_structure: Path, calculation_with_steps: Path):
         """
         Test analyzing bands and generating a PNG plot via QVService.
         
@@ -428,13 +428,13 @@ class TestDaemonWorkflowExecution:
         qv analyze band <file> --plot --format png --symmetry <file> --scf <file>
         """
         project_dir = project_with_structure
-        workflow_dir = workflow_with_steps
-        raw_dir = workflow_dir / "raw"
+        calculation_dir = calculation_with_steps
+        raw_dir = calculation_dir / "raw"
         
         # Check if bands data exists
         bands_gnu = raw_dir / "si.bands.dat.gnu"
         if not bands_gnu.exists():
-            pytest.skip("Band structure data not found - workflow may have failed")
+            pytest.skip("Band structure data not found - calculation may have failed")
         
         # Find the bands.x output for symmetry points
         symmetry_file = None
@@ -460,7 +460,7 @@ class TestDaemonWorkflowExecution:
         result = QVService.analyze_band(
             project_root=project_dir,
             bands_file=bands_gnu,
-            workflow_selector="bands_daemon",
+            calculation_selector="bands_daemon",
             symmetry_file=symmetry_file,
             scf_file=scf_file,
             plot=True,
@@ -482,7 +482,7 @@ class TestDaemonWorkflowExecution:
         assert plot_path.stat().st_size > 0, "Plot file should not be empty"
         
         # Verify plot is in results directory
-        results_dir = workflow_dir / "results"
+        results_dir = calculation_dir / "results"
         assert plot_path.parent == results_dir, f"Plot should be in {results_dir}, got {plot_path.parent}"
         
         # Check JSON serializability of result

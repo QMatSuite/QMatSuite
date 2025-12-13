@@ -2,15 +2,15 @@
 
 ## 已完成迁移的文件
 
-### 1. `tests/integration/test_si_dos_workflow.py`
+### 1. `tests/integration/test_si_dos_calculation.py`
 - ✅ `test_run_scf_calculation` - 使用 `run_and_verify_step_with_assert()`
 - ✅ `test_run_nscf_calculation` - 使用 `run_and_verify_step_with_assert()`
-- ✅ `test_run_full_workflow` - SCF 和 NSCF 步骤使用新系统
+- ✅ `test_run_full_calculation` - SCF 和 NSCF 步骤使用新系统
 
-### 2. `tests/integration/test_si_bands_workflow.py`
+### 2. `tests/integration/test_si_bands_calculation.py`
 - ✅ `test_run_scf_calculation` - 使用 `run_and_verify_step_with_assert()`
 - ✅ `test_run_nscf_calculation` - 使用 `run_and_verify_step_with_assert()`
-- ✅ `test_run_full_workflow` - SCF、NSCF 和 Bands 步骤使用新系统
+- ✅ `test_run_full_calculation` - SCF、NSCF 和 Bands 步骤使用新系统
 
 ### 3. `tests/integration/test_pw_quick_tests_ci.py`
 - ✅ `test_pw_quick_execution` - 使用 `run_and_verify_step_with_assert()`
@@ -59,7 +59,7 @@ step_result = run_and_verify_step_with_assert(
 ## 测试状态
 
 所有迁移的测试都已通过验证：
-- ✅ `test_si_dos_workflow.py::test_run_scf_calculation` - PASSED
-- ✅ `test_si_dos_workflow.py::test_run_nscf_calculation` - PASSED
+- ✅ `test_si_dos_calculation.py::test_run_scf_calculation` - PASSED
+- ✅ `test_si_dos_calculation.py::test_run_nscf_calculation` - PASSED
 - ✅ `test_pw_quick_tests_ci.py::test_pw_quick_execution` - 已更新
 

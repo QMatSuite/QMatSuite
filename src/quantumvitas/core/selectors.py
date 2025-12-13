@@ -1,8 +1,8 @@
 """
-Centralized selector extraction and matching for workflows, structures, and steps.
+Centralized selector extraction and matching for calculations, structures, and steps.
 
 This module provides consistent helpers for:
-- Extracting selectors from project.qv.yml entries and workflow.yaml entries
+- Extracting selectors from project.qv.yml entries and calculation.yaml entries
 - Matching human-friendly selectors (slug, name, type) to actual resources (ULIDs)
 - Resolving selectors to resources via the registry
 
@@ -29,12 +29,12 @@ from quantumvitas.core.resolution import (
 # Selector extraction from entries
 # ---------------------------------------------------------------------------
 
-def extract_workflow_selector_from_entry(entry: dict) -> Optional[str]:
+def extract_calculation_selector_from_entry(entry: dict) -> Optional[str]:
     """
-    Extract a workflow selector from a project.qv.yml entry.
+    Extract a calculation selector from a project.qv.yml entry.
     
     Priority order:
-    1. workflow_id (ID-only model)
+    1. calculation_id (ID-only model)
     2. meta.id (ULID)
     3. meta.slug (slug)
     4. id (legacy)
@@ -44,11 +44,11 @@ def extract_workflow_selector_from_entry(entry: dict) -> Optional[str]:
         Selector string (ULID, slug, or name) or None if no valid selector found
         
     Example:
-        entry = {"workflow_id": "01KC38MFJZ7RF3SB7SHVYDQ4J8"}
-        selector = extract_workflow_selector_from_entry(entry)  # Returns ULID
+        entry = {"calculation_id": "01KC38MFJZ7RF3SB7SHVYDQ4J8"}
+        selector = extract_calculation_selector_from_entry(entry)  # Returns ULID
     """
     return (
-        entry.get("workflow_id") or
+        entry.get("calculation_id") or
         (entry.get("meta") or {}).get("id") or
         (entry.get("meta") or {}).get("slug") or
         entry.get("id") or
@@ -81,7 +81,7 @@ def extract_structure_selector_from_entry(entry: dict) -> Optional[str]:
 
 def extract_step_selector_from_entry(entry: dict) -> Optional[str]:
     """
-    Extract a step selector from a workflow.yaml steps entry.
+    Extract a step selector from a calculation.yaml steps entry.
     
     Priority order:
     1. step_id (DAG + ID-only model - ULID)
@@ -105,16 +105,16 @@ def extract_step_selector_from_entry(entry: dict) -> Optional[str]:
 def match_step_selector(
     *,
     project_root: Path,
-    workflow_dir: Path,
+    calculation_dir: Path,
     steps: list[dict],
     selector: str,
     index: Optional[ResourceIndex] = None,
     config: Optional[dict] = None,
 ) -> dict:
     """
-    Match a human-friendly step selector to a step entry in a workflow's steps list.
+    Match a human-friendly step selector to a step entry in a calculation's steps list.
     
-    Given a workflow's steps list and a selector (ULID / slug / name / step_type / index),
+    Given a calculation's steps list and a selector (ULID / slug / name / step_type / index),
     return the matching step entry dict.
     
     Matching priority:
@@ -123,13 +123,13 @@ def match_step_selector(
        - meta.slug
        - meta.name
        - step_type (from step spec)
-    3. step["type"] (from workflow.yaml entry) - legacy/fallback
+    3. step["type"] (from calculation.yaml entry) - legacy/fallback
     4. Numeric string → 1-based index into steps list
     
     Args:
         project_root: Project root path
-        workflow_dir: Workflow directory path
-        steps: List of step entry dicts from workflow.yaml
+        calculation_dir: Calculation directory path
+        steps: List of step entry dicts from calculation.yaml
         selector: Human selector (ULID, slug, name, step_type, or index)
         index: Optional ResourceIndex (built if None)
         config: Optional project config (loaded if None)
@@ -142,7 +142,7 @@ def match_step_selector(
         AmbiguousSelectorError: If selector matches multiple steps
     """
     if not steps:
-        raise SelectorNotFoundError(f"No steps found in workflow")
+        raise SelectorNotFoundError(f"No steps found in calculation")
     
     selector = selector.strip()
     
@@ -155,8 +155,8 @@ def match_step_selector(
         from quantumvitas.core.project_utils import load_project_config
         config = load_project_config(project_root)
     
-    # Get workflow slug for require_step
-    workflow_slug = workflow_dir.name
+    # Get calculation slug for require_step
+    calculation_slug = calculation_dir.name
     
     # Strategy 1: ULID match (exact match on step_id)
     if _is_ulid_like(selector):
@@ -164,7 +164,7 @@ def match_step_selector(
             step_id_ulid = extract_step_selector_from_entry(step_entry)
             if step_id_ulid == selector:
                 return step_entry
-        raise SelectorNotFoundError(f"Step with ULID '{selector}' not found in workflow")
+        raise SelectorNotFoundError(f"Step with ULID '{selector}' not found in calculation")
     
     # Strategy 2: Numeric index (1-based)
     if selector.isdigit():
@@ -173,7 +173,7 @@ def match_step_selector(
             return steps[idx]
         raise SelectorNotFoundError(
             f"Step index '{selector}' out of range. "
-            f"Workflow has {len(steps)} step(s) (use 1-{len(steps)})"
+            f"Calculation has {len(steps)} step(s) (use 1-{len(steps)})"
         )
     
     # Strategy 3: Resolve via registry and match by slug/name/type
@@ -188,7 +188,7 @@ def match_step_selector(
         try:
             step_resolved = require_step(
                 project_root,
-                workflow_slug,
+                calculation_slug,
                 step_id_ulid,
                 config=config,
                 index=index,
@@ -206,7 +206,7 @@ def match_step_selector(
             
             # Check if selector matches step_type (from step spec)
             try:
-                from quantumvitas.workflow.structure_steps import StructureStepSpec
+                from quantumvitas.calculation.structure_steps import StructureStepSpec
                 spec = StructureStepSpec.from_yaml(step_resolved.absolute_path)
                 if spec.step_type and spec.step_type.lower() == selector.lower():
                     matches.append((step_entry, step_resolved, "step_type"))
@@ -218,8 +218,8 @@ def match_step_selector(
             # Resolution failed - continue to next strategy
             pass
         
-        # Strategy 4: Match by type from workflow.yaml entry (for CLI convenience)
-        # This is OK for CLI as long as the workflow is already in DAG + ULID format
+        # Strategy 4: Match by type from calculation.yaml entry (for CLI convenience)
+        # This is OK for CLI as long as the calculation is already in DAG + ULID format
         step_type = step_entry.get("type")
         if step_type and step_type.lower() == selector.lower():
             matches.append((step_entry, None, "type"))
@@ -234,7 +234,7 @@ def match_step_selector(
                 try:
                     step_resolved = require_step(
                         project_root,
-                        workflow_slug,
+                        calculation_slug,
                         step_id_ulid,
                         config=config,
                         index=index,
@@ -253,7 +253,7 @@ def match_step_selector(
                         available.append(step_id_ulid[:8] + "...")
         
         raise SelectorNotFoundError(
-            f"Step '{selector}' not found in workflow. "
+            f"Step '{selector}' not found in calculation. "
             f"Available: {', '.join(sorted(set(available)))}"
         )
     
@@ -288,24 +288,24 @@ def _is_ulid_like(s: str) -> bool:
 # Convenience helpers for common patterns
 # ---------------------------------------------------------------------------
 
-def get_workflow_selector_from_entry_or_raise(entry: dict, context: str = "workflow") -> str:
+def get_calculation_selector_from_entry_or_raise(entry: dict, context: str = "calculation") -> str:
     """
-    Extract workflow selector from entry, raising error if not found.
+    Extract calculation selector from entry, raising error if not found.
     
     Args:
-        entry: Workflow entry dict
-        context: Context string for error message (e.g., "workflow", "parent workflow")
+        entry: Calculation entry dict
+        context: Context string for error message (e.g., "calculation", "parent calculation")
         
     Returns:
-        Workflow selector string
+        Calculation selector string
         
     Raises:
         ValueError: If no valid selector found (indicates corrupt entry)
     """
-    selector = extract_workflow_selector_from_entry(entry)
+    selector = extract_calculation_selector_from_entry(entry)
     if not selector:
         raise ValueError(
-            f"Invalid {context} entry: missing workflow_id, id, or name. "
+            f"Invalid {context} entry: missing calculation_id, id, or name. "
             f"This may indicate a corrupted project.qv.yml. Entry: {entry}"
         )
     return selector
@@ -339,20 +339,20 @@ def get_step_selector_from_entry_or_raise(entry: dict, context: str = "step") ->
     Extract step selector from entry, raising error if not found.
     
     Args:
-        entry: Step entry dict from workflow.yaml
+        entry: Step entry dict from calculation.yaml
         context: Context string for error message
         
     Returns:
         Step selector string (ULID)
         
     Raises:
-        ValueError: If no valid selector found (indicates corrupt workflow.yaml)
+        ValueError: If no valid selector found (indicates corrupt calculation.yaml)
     """
     selector = extract_step_selector_from_entry(entry)
     if not selector:
         raise ValueError(
             f"Invalid {context} entry: missing step_id or id. "
-            f"This may indicate a corrupted workflow.yaml. Entry: {entry}"
+            f"This may indicate a corrupted calculation.yaml. Entry: {entry}"
         )
     return selector
 

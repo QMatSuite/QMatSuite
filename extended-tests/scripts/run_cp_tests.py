@@ -100,7 +100,7 @@ def main():
     print(f"Running {len(categories_to_run)} cp test categories...")
     print("=" * 60)
     
-    # CP tests directly use cp.x (no workflow)
+    # CP tests directly use cp.x (no calculation)
     executable_map = {
         "default": "cp.x"
     }

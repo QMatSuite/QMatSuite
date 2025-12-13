@@ -26,23 +26,23 @@ class TestGetProjectSummary:
         assert "slug" in summary
         assert summary["path"] == str(project_root)
         assert summary["n_structures"] == 0
-        assert summary["n_workflows"] == 0
+        assert summary["n_calculations"] == 0
         assert isinstance(summary["structure_names"], list)
-        assert isinstance(summary["workflow_names"], list)
+        assert isinstance(summary["calculation_names"], list)
     
     def test_counts_resources(self, tmp_path):
         """Test that resource counts are accurate."""
         project_root = QVService.init_project(tmp_path / "test_project")
         
-        # Create some workflows
-        QVService.init_workflow(project_root, "workflow1")
-        QVService.init_workflow(project_root, "workflow2")
+        # Create some calculations
+        QVService.init_calculation(project_root, "calculation1")
+        QVService.init_calculation(project_root, "calculation2")
         
         summary = QVService.get_project_summary(project_root)
         
-        assert summary["n_workflows"] == 2
-        assert "workflow1" in summary["workflow_names"]
-        assert "workflow2" in summary["workflow_names"]
+        assert summary["n_calculations"] == 2
+        assert "calculation1" in summary["calculation_names"]
+        assert "calculation2" in summary["calculation_names"]
 
 
 class TestListStructuresData:
@@ -82,27 +82,27 @@ class TestListStructuresData:
         assert "lattice_params" in entry
 
 
-class TestListWorkflowsData:
-    """Tests for QVService.list_workflows_data()."""
+class TestListCalculationsData:
+    """Tests for QVService.list_calculations_data()."""
     
     def test_returns_list(self, tmp_path):
-        """Test that list_workflows_data returns a list."""
+        """Test that list_calculations_data returns a list."""
         project_root = QVService.init_project(tmp_path / "test_project")
         
-        workflows = QVService.list_workflows_data(project_root)
+        calculations = QVService.list_calculations_data(project_root)
         
-        assert isinstance(workflows, list)
-        assert len(workflows) == 0
+        assert isinstance(calculations, list)
+        assert len(calculations) == 0
     
-    def test_workflow_entry_schema(self, tmp_path):
-        """Test that workflow entries have expected fields."""
+    def test_calculation_entry_schema(self, tmp_path):
+        """Test that calculation entries have expected fields."""
         project_root = QVService.init_project(tmp_path / "test_project")
-        QVService.init_workflow(project_root, "test-workflow")
+        QVService.init_calculation(project_root, "test-calculation")
         
-        workflows = QVService.list_workflows_data(project_root)
+        calculations = QVService.list_calculations_data(project_root)
         
-        assert len(workflows) == 1
-        entry = workflows[0]
+        assert len(calculations) == 1
+        entry = calculations[0]
         
         # Required fields
         assert "id" in entry
@@ -111,7 +111,7 @@ class TestListWorkflowsData:
         assert "path" in entry
         assert "absolute_path" in entry
         
-        # Workflow-specific fields
+        # Calculation-specific fields
         assert "mode" in entry
         assert "n_steps" in entry
         assert "steps" in entry
@@ -205,14 +205,14 @@ class TestJSONSerializability:
         json_str = json.dumps(structures)
         assert json_str
     
-    def test_workflows_list_serializable(self, tmp_path):
-        """Test that workflows list is JSON-serializable."""
+    def test_calculations_list_serializable(self, tmp_path):
+        """Test that calculations list is JSON-serializable."""
         import json
         project_root = QVService.init_project(tmp_path / "test_project")
         
-        workflows = QVService.list_workflows_data(project_root)
+        calculations = QVService.list_calculations_data(project_root)
         
-        json_str = json.dumps(workflows)
+        json_str = json.dumps(calculations)
         assert json_str
     
     def test_structure_vis_serializable(self, tmp_path, sample_structure_file):

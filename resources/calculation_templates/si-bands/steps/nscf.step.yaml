@@ -2,11 +2,11 @@ meta:
   id: 01KBSIBANDSNSCFSTEP00001
   name: nscf
   slug: nscf
-  path: workflows/si-bands/steps/nscf.step.yaml
+  path: calculations/si-bands/steps/nscf.step.yaml
   kind: step
 structure: si
 step_type: nscf
-parent_workflow_id: 01KBSIBANDSWORKFLOW00001
+parent_calculation_id: 01KBSIBANDSCALCULATION00001
 parameters:
   CONTROL:
     calculation: nscf

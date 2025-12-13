@@ -1,5 +1,5 @@
 """
-Workflow analysis utilities (DOS, bands, energy summaries, structure visualization).
+Calculation analysis utilities (DOS, bands, energy summaries, structure visualization).
 
 This module provides:
 - Parsers for QE output files (SCF, DOS, Bands)
@@ -10,7 +10,7 @@ This module provides:
 - JSON artifact management for GUI integration
 """
 
-from .workflow_analysis import analyze_workflow
+from .calculation_analysis import analyze_calculation
 from .artifacts import (
     AnalysisType,
     AnalysisStatus,
@@ -67,8 +67,8 @@ from .structure_viz import (
 )
 
 __all__ = [
-    # Workflow analysis
-    "analyze_workflow",
+    # Calculation analysis
+    "analyze_calculation",
     # Analysis artifacts
     "AnalysisType",
     "AnalysisStatus",

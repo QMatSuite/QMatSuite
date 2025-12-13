@@ -1,0 +1,16 @@
+meta:
+  id: 01KC10S2CGYQ2FBB2B6PGD5SC7
+  name: graphene bands
+  slug: graphene-bands
+  path: calculations/graphene-bands
+  kind: calculation
+structure: C
+mode: normal
+working_dir: raw
+steps:
+- id: scf
+  step_file: steps/scf.step.yaml
+- id: bands_pw
+  step_file: steps/bands_pw.step.yaml
+- id: bands
+  step_file: steps/bands.step.yaml

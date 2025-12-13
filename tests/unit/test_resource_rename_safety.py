@@ -1,7 +1,7 @@
 """
 Unit tests for resource rename safety with ID-based references.
 
-Tests verify that renaming a resource (workflow, structure, step) only updates
+Tests verify that renaming a resource (calculation, structure, step) only updates
 its own meta block, and all cross-references (by ID) remain valid.
 """
 
@@ -12,16 +12,16 @@ import pytest
 import yaml
 
 from quantumvitas.api import QVService
-from quantumvitas.core.models import load_workflow, load_structure_model
+from quantumvitas.core.models import load_calculation, load_structure_model
 from quantumvitas.core.resolution import build_resource_index
-from quantumvitas.workflow.structure_steps import StructureStepSpec
+from quantumvitas.calculation.structure_steps import StructureStepSpec
 
 
 class TestResourceRenameSafety:
     """Test that resource renames don't break ID-based cross-references."""
     
-    def test_workflow_rename_preserves_structure_reference(self, tmp_path: Path):
-        """Test that renaming a workflow preserves structure_id reference."""
+    def test_calculation_rename_preserves_structure_reference(self, tmp_path: Path):
+        """Test that renaming a calculation preserves structure_id reference."""
         project_root = tmp_path / "test_project"
         QVService.init_project(project_root, name="Test Project")
         
@@ -47,33 +47,33 @@ class TestResourceRenameSafety:
         config['structures'].append({'id': struct_meta['id']})
         save_project_config(project_root, config)
         
-        # Create workflow with structure
-        workflow = QVService.init_workflow(project_root, "Test Workflow", structure_selector="Si")
-        original_workflow_id = workflow.meta.id
+        # Create calculation with structure
+        calculation = QVService.init_calculation(project_root, "Test Calculation", structure_selector="Si")
+        original_calculation_id = calculation.meta.id
         original_structure_id = struct_meta['id']
         
-        # Verify workflow has structure_id
-        workflow_yaml = project_root / workflow.meta.path / "workflow.yaml"
-        workflow_data = yaml.safe_load(workflow_yaml.read_text())
-        assert workflow_data["structure_id"] == original_structure_id
+        # Verify calculation has structure_id
+        calculation_yaml = project_root / calculation.meta.path / "calculation.yaml"
+        calculation_data = yaml.safe_load(calculation_yaml.read_text())
+        assert calculation_data["structure_id"] == original_structure_id
         
-        # Rename workflow
-        QVService.configure_workflow(project_root, workflow.meta.slug, new_name="Renamed Workflow")
+        # Rename calculation
+        QVService.configure_calculation(project_root, calculation.meta.slug, new_name="Renamed Calculation")
         
-        # Reload workflow (may have moved if slug changed)
-        from quantumvitas.core.resolution import resolve_workflow
+        # Reload calculation (may have moved if slug changed)
+        from quantumvitas.core.resolution import resolve_calculation
         try:
-            renamed_workflow = resolve_workflow(project_root, "Renamed Workflow")
+            renamed_calculation = resolve_calculation(project_root, "Renamed Calculation")
         except Exception:
             # If rename changed slug, try resolving by original slug or ID
-            renamed_workflow = resolve_workflow(project_root, original_workflow_id)
-        renamed_workflow_yaml = project_root / renamed_workflow.meta.path / "workflow.yaml"
-        renamed_workflow_data = yaml.safe_load(renamed_workflow_yaml.read_text())
+            renamed_calculation = resolve_calculation(project_root, original_calculation_id)
+        renamed_calculation_yaml = project_root / renamed_calculation.meta.path / "calculation.yaml"
+        renamed_calculation_data = yaml.safe_load(renamed_calculation_yaml.read_text())
         
         # Verify structure_id is unchanged (key invariant: ID-based references persist)
-        assert renamed_workflow_data["structure_id"] == original_structure_id
-        assert renamed_workflow_data["meta"]["id"] == original_workflow_id  # ID unchanged
-        # Name may or may not be updated in workflow.yaml depending on implementation
+        assert renamed_calculation_data["structure_id"] == original_structure_id
+        assert renamed_calculation_data["meta"]["id"] == original_calculation_id  # ID unchanged
+        # Name may or may not be updated in calculation.yaml depending on implementation
         # The key point is that structure_id reference is preserved
         
         # Verify structure reference still resolves
@@ -81,8 +81,8 @@ class TestResourceRenameSafety:
         resolved_structure = resolve_structure(project_root, original_structure_id)
         assert resolved_structure.meta.id == original_structure_id
     
-    def test_structure_rename_preserves_workflow_reference(self, tmp_path: Path):
-        """Test that renaming a structure preserves workflow structure_id reference."""
+    def test_structure_rename_preserves_calculation_reference(self, tmp_path: Path):
+        """Test that renaming a structure preserves calculation structure_id reference."""
         project_root = tmp_path / "test_project"
         QVService.init_project(project_root, name="Test Project")
         
@@ -108,23 +108,23 @@ class TestResourceRenameSafety:
         config['structures'].append({'id': struct_meta['id']})
         save_project_config(project_root, config)
         
-        # Create workflow with structure
-        workflow = QVService.init_workflow(project_root, "Test Workflow", structure_selector="Si")
+        # Create calculation with structure
+        calculation = QVService.init_calculation(project_root, "Test Calculation", structure_selector="Si")
         original_structure_id = struct_meta['id']
         
-        # Verify workflow has structure_id
-        workflow_yaml = project_root / workflow.meta.path / "workflow.yaml"
-        workflow_data = yaml.safe_load(workflow_yaml.read_text())
-        assert workflow_data["structure_id"] == original_structure_id
+        # Verify calculation has structure_id
+        calculation_yaml = project_root / calculation.meta.path / "calculation.yaml"
+        calculation_data = yaml.safe_load(calculation_yaml.read_text())
+        assert calculation_data["structure_id"] == original_structure_id
         
         # Rename structure
         QVService.configure_structure(project_root, "Si", new_name="Silicon")
         
-        # Reload workflow
-        workflow_data = yaml.safe_load(workflow_yaml.read_text())
+        # Reload calculation
+        calculation_data = yaml.safe_load(calculation_yaml.read_text())
         
         # Verify structure_id is unchanged
-        assert workflow_data["structure_id"] == original_structure_id
+        assert calculation_data["structure_id"] == original_structure_id
         
         # Verify structure reference still resolves
         from quantumvitas.core.resolution import resolve_structure, build_resource_index
@@ -135,12 +135,12 @@ class TestResourceRenameSafety:
         # The name in the resolved structure should reflect the rename
         assert resolved_structure.meta.id == original_structure_id  # ID unchanged
     
-    def test_step_rename_preserves_workflow_reference(self, tmp_path: Path):
-        """Test that renaming a step preserves parent_workflow_id reference."""
+    def test_step_rename_preserves_calculation_reference(self, tmp_path: Path):
+        """Test that renaming a step preserves parent_calculation_id reference."""
         project_root = tmp_path / "test_project"
         QVService.init_project(project_root, name="Test Project")
         
-        # Create structure and workflow
+        # Create structure and calculation
         from quantumvitas.io.structure_io import write_structure
         from pymatgen.core import Structure, Lattice
         from quantumvitas.core.resources import generate_resource_id
@@ -161,36 +161,36 @@ class TestResourceRenameSafety:
         config['structures'].append({'id': struct_meta['id']})
         save_project_config(project_root, config)
         
-        workflow = QVService.init_workflow(project_root, "Test Workflow", structure_selector="Si")
-        original_workflow_id = workflow.meta.id
+        calculation = QVService.init_calculation(project_root, "Test Calculation", structure_selector="Si")
+        original_calculation_id = calculation.meta.id
         
         # Create step
-        step = QVService.add_step_to_workflow(project_root, workflow.meta.slug, "scf")
-        step_file = project_root / workflow.meta.path / "steps" / "scf.step.yaml"
+        step = QVService.add_step_to_calculation(project_root, calculation.meta.slug, "scf")
+        step_file = project_root / calculation.meta.path / "steps" / "scf.step.yaml"
         step_data = yaml.safe_load(step_file.read_text())
         original_step_id = step_data["meta"]["id"]
-        # DAG model: Step YAML should NOT contain parent_workflow_id
-        # Verify step YAML does not contain parent_workflow_id
-        assert "parent_workflow_id" not in step_data, "Step YAML should not contain parent_workflow_id (DAG model)"
+        # DAG model: Step YAML should NOT contain parent_calculation_id
+        # Verify step YAML does not contain parent_calculation_id
+        assert "parent_calculation_id" not in step_data, "Step YAML should not contain parent_calculation_id (DAG model)"
         
-        # Rename workflow
-        QVService.configure_workflow(project_root, workflow.meta.slug, new_name="Renamed Workflow")
+        # Rename calculation
+        QVService.configure_calculation(project_root, calculation.meta.slug, new_name="Renamed Calculation")
         
-        # Reload step (workflow directory may have moved if slug changed)
-        from quantumvitas.core.resolution import resolve_workflow
-        renamed_workflow = resolve_workflow(project_root, "Renamed Workflow")
-        # Step file path is relative to workflow directory
-        step_file = project_root / renamed_workflow.meta.path / "steps" / "scf.step.yaml"
+        # Reload step (calculation directory may have moved if slug changed)
+        from quantumvitas.core.resolution import resolve_calculation
+        renamed_calculation = resolve_calculation(project_root, "Renamed Calculation")
+        # Step file path is relative to calculation directory
+        step_file = project_root / renamed_calculation.meta.path / "steps" / "scf.step.yaml"
         if step_file.exists():
             step_data = yaml.safe_load(step_file.read_text())
-            # DAG model: Step YAML should NOT contain parent_workflow_id
-            # Verify step YAML does not contain parent_workflow_id
-            assert "parent_workflow_id" not in step_data, "Step YAML should not contain parent_workflow_id (DAG model)"
+            # DAG model: Step YAML should NOT contain parent_calculation_id
+            # Verify step YAML does not contain parent_calculation_id
+            assert "parent_calculation_id" not in step_data, "Step YAML should not contain parent_calculation_id (DAG model)"
         
-        # Verify step reference in workflow is unchanged
-        workflow_yaml = project_root / renamed_workflow.meta.path / "workflow.yaml"
-        workflow_data = yaml.safe_load(workflow_yaml.read_text())
-        step_entries = workflow_data.get("steps", [])
+        # Verify step reference in calculation is unchanged
+        calculation_yaml = project_root / renamed_calculation.meta.path / "calculation.yaml"
+        calculation_data = yaml.safe_load(calculation_yaml.read_text())
+        step_entries = calculation_data.get("steps", [])
         assert len(step_entries) > 0
         # Step entry should have step_id (ULID)
         assert step_entries[0].get("step_id") == original_step_id or step_entries[0].get("id") == "scf"
@@ -199,14 +199,14 @@ class TestResourceRenameSafety:
 class TestResourceIndexAfterRename:
     """Test that ResourceIndex correctly reflects renames."""
     
-    def test_resource_index_reflects_workflow_rename(self, tmp_path: Path):
-        """Test that ResourceIndex reflects workflow rename."""
+    def test_resource_index_reflects_calculation_rename(self, tmp_path: Path):
+        """Test that ResourceIndex reflects calculation rename."""
         project_root = tmp_path / "test_project"
         QVService.init_project(project_root, name="Test Project")
         
-        # Create workflow
-        workflow = QVService.init_workflow(project_root, "Original Name")
-        original_id = workflow.meta.id
+        # Create calculation
+        calculation = QVService.init_calculation(project_root, "Original Name")
+        original_id = calculation.meta.id
         
         # Build index
         index = build_resource_index(project_root)
@@ -214,25 +214,25 @@ class TestResourceIndexAfterRename:
         assert index.by_id[original_id].name == "Original Name"
         assert "original-name" in index.by_slug
         
-        # Rename workflow
-        QVService.configure_workflow(project_root, "original-name", new_name="New Name")
+        # Rename calculation
+        QVService.configure_calculation(project_root, "original-name", new_name="New Name")
         
         # Rebuild index (ResourceIndex reads from filesystem, so it reflects renames)
         index = build_resource_index(project_root)
         
         # Verify ID unchanged, name/slug updated
         assert original_id in index.by_id
-        # ResourceIndex reads from workflow.yaml, which should have updated name
-        workflow_meta = index.by_id[original_id]
-        assert workflow_meta.id == original_id  # ID unchanged
-        # Name should be updated in workflow.yaml (and thus in index)
-        assert workflow_meta.name == "New Name" or workflow_meta.name == "Original Name"  # May take a moment to propagate
+        # ResourceIndex reads from calculation.yaml, which should have updated name
+        calculation_meta = index.by_id[original_id]
+        assert calculation_meta.id == original_id  # ID unchanged
+        # Name should be updated in calculation.yaml (and thus in index)
+        assert calculation_meta.name == "New Name" or calculation_meta.name == "Original Name"  # May take a moment to propagate
         # New slug should be in index
         assert "new-name" in index.by_slug or "original-name" in index.by_slug  # Either old or new slug
         
         # Verify resolution still works by ID
-        from quantumvitas.core.resolution import resolve_workflow
-        resolved = resolve_workflow(project_root, original_id, index=index)
+        from quantumvitas.core.resolution import resolve_calculation
+        resolved = resolve_calculation(project_root, original_id, index=index)
         assert resolved.meta.id == original_id
 
 
@@ -294,8 +294,8 @@ class TestResourceRenameEdgeCases:
         assert struct_a_file.exists(), "Structure A file should still exist"
         assert struct_b_file.exists(), "Structure B file should still exist"
     
-    def test_rename_workflow_across_directories_updates_all_references(self, tmp_path: Path):
-        """Test that moving a workflow to a different directory and renaming updates all references."""
+    def test_rename_calculation_across_directories_updates_all_references(self, tmp_path: Path):
+        """Test that moving a calculation to a different directory and renaming updates all references."""
         project_root = tmp_path / "test_project"
         QVService.init_project(project_root, name="Test Project")
         
@@ -320,66 +320,66 @@ class TestResourceRenameEdgeCases:
         config['structures'].append({'id': struct_meta['id']})
         save_project_config(project_root, config)
         
-        # Create workflow in workflows/ directory
-        workflow = QVService.init_workflow(project_root, "Original Workflow", structure_selector="Si")
-        original_workflow_id = workflow.meta.id
-        original_path = workflow.meta.path
+        # Create calculation in calculations/ directory
+        calculation = QVService.init_calculation(project_root, "Original Calculation", structure_selector="Si")
+        original_calculation_id = calculation.meta.id
+        original_path = calculation.meta.path
         
         # Verify original path
-        assert original_path.startswith("workflows/"), "Workflow should be in workflows/ directory"
+        assert original_path.startswith("calculations/"), "Calculation should be in calculations/ directory"
         
-        # Rename workflow (which may change slug and thus path)
-        QVService.configure_workflow(project_root, workflow.meta.slug, new_name="Renamed Workflow")
+        # Rename calculation (which may change slug and thus path)
+        QVService.configure_calculation(project_root, calculation.meta.slug, new_name="Renamed Calculation")
         
         # Reload project config to verify path was updated
         config_after = load_project_config(project_root)
-        workflows_after = config_after.get("workflows", [])
+        calculations_after = config_after.get("calculations", [])
         
-        # Find workflow entry by ID (ID-only model: entry may have id or workflow_id field)
-        workflow_entry = None
-        for w in workflows_after:
-            entry_id = w.get("id") or w.get("workflow_id") or (w.get("meta") or {}).get("id")
-            if entry_id == original_workflow_id:
-                workflow_entry = w
+        # Find calculation entry by ID (ID-only model: entry may have id or calculation_id field)
+        calculation_entry = None
+        for w in calculations_after:
+            entry_id = w.get("id") or w.get("calculation_id") or (w.get("meta") or {}).get("id")
+            if entry_id == original_calculation_id:
+                calculation_entry = w
                 break
         
-        assert workflow_entry is not None, \
-            f"Workflow entry should exist. Found workflows: {workflows_after}, looking for ID: {original_workflow_id}"
+        assert calculation_entry is not None, \
+            f"Calculation entry should exist. Found calculations: {calculations_after}, looking for ID: {original_calculation_id}"
         
-        # Verify workflow ID is unchanged
-        entry_id = workflow_entry.get("id") or workflow_entry.get("workflow_id") or (workflow_entry.get("meta") or {}).get("id")
-        assert entry_id == original_workflow_id, "Workflow ID should be unchanged"
+        # Verify calculation ID is unchanged
+        entry_id = calculation_entry.get("id") or calculation_entry.get("calculation_id") or (calculation_entry.get("meta") or {}).get("id")
+        assert entry_id == original_calculation_id, "Calculation ID should be unchanged"
         
         # Verify new path (may have changed if slug changed)
-        new_path = workflow_entry.get("path") or (workflow_entry.get("meta") or {}).get("path")
-        assert new_path is not None, "Workflow should have a path"
+        new_path = calculation_entry.get("path") or (calculation_entry.get("meta") or {}).get("path")
+        assert new_path is not None, "Calculation should have a path"
         
-        # Verify workflow.yaml exists at new location
+        # Verify calculation.yaml exists at new location
         # The path in the entry might be relative or absolute, resolve it
-        workflow_dir = (project_root / new_path).resolve() if not Path(new_path).is_absolute() else Path(new_path)
-        workflow_yaml = workflow_dir / "workflow.yaml"
+        calculation_dir = (project_root / new_path).resolve() if not Path(new_path).is_absolute() else Path(new_path)
+        calculation_yaml = calculation_dir / "calculation.yaml"
         
-        # If workflow.yaml doesn't exist at new_path, try to find it by resolving via registry
-        if not workflow_yaml.exists():
-            from quantumvitas.core.resolution import build_resource_index, resolve_workflow
+        # If calculation.yaml doesn't exist at new_path, try to find it by resolving via registry
+        if not calculation_yaml.exists():
+            from quantumvitas.core.resolution import build_resource_index, resolve_calculation
             index = build_resource_index(project_root)
             try:
-                workflow_resolved = resolve_workflow(project_root, original_workflow_id, index=index)
-                workflow_yaml = project_root / workflow_resolved.meta.path / "workflow.yaml"
+                calculation_resolved = resolve_calculation(project_root, original_calculation_id, index=index)
+                calculation_yaml = project_root / calculation_resolved.meta.path / "calculation.yaml"
             except Exception:
                 pass
         
-        assert workflow_yaml.exists(), \
-            f"workflow.yaml should exist. Tried: {workflow_dir / 'workflow.yaml'}. " \
-            f"Workflow entry: {workflow_entry}"
+        assert calculation_yaml.exists(), \
+            f"calculation.yaml should exist. Tried: {calculation_dir / 'calculation.yaml'}. " \
+            f"Calculation entry: {calculation_entry}"
         
-        # Verify workflow.yaml has correct structure_id reference
+        # Verify calculation.yaml has correct structure_id reference
         import yaml
-        workflow_data = yaml.safe_load(workflow_yaml.read_text())
-        assert workflow_data.get("structure_id") == struct_meta['id'], \
-            "Workflow should still reference the same structure_id"
+        calculation_data = yaml.safe_load(calculation_yaml.read_text())
+        assert calculation_data.get("structure_id") == struct_meta['id'], \
+            "Calculation should still reference the same structure_id"
         
-        # Verify that workflow.yaml exists and has correct structure_id
+        # Verify that calculation.yaml exists and has correct structure_id
         # (The directory move behavior depends on whether slug changed, which is implementation detail)
         # The key invariant is that structure_id reference is preserved
     
@@ -388,54 +388,54 @@ class TestResourceRenameEdgeCases:
         project_root = tmp_path / "test_project"
         QVService.init_project(project_root, name="Test Project")
         
-        # Create workflow
-        workflow = QVService.init_workflow(project_root, "Workflow A")
-        original_workflow_id = workflow.meta.id
+        # Create calculation
+        calculation = QVService.init_calculation(project_root, "Calculation A")
+        original_calculation_id = calculation.meta.id
         
         # Rename A → B
-        QVService.configure_workflow(project_root, workflow.meta.slug, new_name="Workflow B")
+        QVService.configure_calculation(project_root, calculation.meta.slug, new_name="Calculation B")
         
         # Rename B → C (resolve by ID to get current slug)
-        from quantumvitas.core.resolution import build_resource_index, resolve_workflow
+        from quantumvitas.core.resolution import build_resource_index, resolve_calculation
         index = build_resource_index(project_root)
-        workflow_b = resolve_workflow(project_root, original_workflow_id, index=index)
-        QVService.configure_workflow(project_root, workflow_b.meta.slug, new_name="Workflow C")
+        calculation_b = resolve_calculation(project_root, original_calculation_id, index=index)
+        QVService.configure_calculation(project_root, calculation_b.meta.slug, new_name="Calculation C")
         
         # Verify ID is unchanged through all renames
         index_final = build_resource_index(project_root)
-        workflow_c = resolve_workflow(project_root, original_workflow_id, index=index_final)
-        assert workflow_c.meta.id == original_workflow_id, \
-            "Workflow ID should remain stable through multiple renames"
+        calculation_c = resolve_calculation(project_root, original_calculation_id, index=index_final)
+        assert calculation_c.meta.id == original_calculation_id, \
+            "Calculation ID should remain stable through multiple renames"
         
-        # Verify name is updated (check workflow.yaml)
-        from quantumvitas.core.models import load_workflow
-        workflow_model = load_workflow(workflow_c.absolute_path, project_root)
-        workflow_name = workflow_model.meta.name
+        # Verify name is updated (check calculation.yaml)
+        from quantumvitas.core.models import load_calculation
+        calculation_model = load_calculation(calculation_c.absolute_path, project_root)
+        calculation_name = calculation_model.meta.name
         
-        # After second rename, name should be "Workflow C"
-        # Note: If the rename didn't update workflow.yaml, the name might still be "Workflow A"
+        # After second rename, name should be "Calculation C"
+        # Note: If the rename didn't update calculation.yaml, the name might still be "Calculation A"
         # The key invariant is that ID-based resolution still works
         # For this test, we primarily verify ID stability, not name update (which is tested elsewhere)
-        assert workflow_c.meta.id == original_workflow_id, \
-            "Workflow ID should remain stable through multiple renames (primary invariant)"
+        assert calculation_c.meta.id == original_calculation_id, \
+            "Calculation ID should remain stable through multiple renames (primary invariant)"
         
         # Verify no stale references to intermediate names
         # Check that resolution by ID works, but resolution by old slug/name doesn't
         try:
-            # Try to resolve by old name "Workflow A" - should fail or return different workflow
-            resolved_by_old_name = resolve_workflow(project_root, "Workflow A", index=index_final)
-            # If it resolves, it should be a different workflow (shouldn't happen)
-            assert resolved_by_old_name.meta.id != original_workflow_id, \
-                "Old name should not resolve to the same workflow"
+            # Try to resolve by old name "Calculation A" - should fail or return different calculation
+            resolved_by_old_name = resolve_calculation(project_root, "Calculation A", index=index_final)
+            # If it resolves, it should be a different calculation (shouldn't happen)
+            assert resolved_by_old_name.meta.id != original_calculation_id, \
+                "Old name should not resolve to the same calculation"
         except Exception:
             # Expected: old name should not resolve
             pass
         
         # Verify resolution by stable ID still works (key invariant)
-        resolved_by_id = resolve_workflow(project_root, original_workflow_id, index=index_final)
-        assert resolved_by_id.meta.id == original_workflow_id, \
+        resolved_by_id = resolve_calculation(project_root, original_calculation_id, index=index_final)
+        assert resolved_by_id.meta.id == original_calculation_id, \
             "Resolution by stable ID should work after multiple renames"
         
-        # The name may or may not be updated in workflow.yaml (implementation detail),
+        # The name may or may not be updated in calculation.yaml (implementation detail),
         # but ID-based resolution must work, which is the primary guarantee
 

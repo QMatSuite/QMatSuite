@@ -1,7 +1,7 @@
 """
-Test DAG + ID-only constitution for workflow.yaml files.
+Test DAG + ID-only constitution for calculation.yaml files.
 
-This test ensures that workflow.yaml files only persist structure_id (ULID)
+This test ensures that calculation.yaml files only persist structure_id (ULID)
 and do NOT persist structure_name or structure selector fields.
 """
 import json
@@ -10,28 +10,28 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.core.models import WorkflowModel, ResourceMeta, save_workflow, load_workflow
+from quantumvitas.core.models import CalculationModel, ResourceMeta, save_calculation, load_calculation
 from quantumvitas.core.resources import generate_resource_id
 from quantumvitas.io.structure_io import STRUCTURE_META_KEY, STRUCTURE_DATA_KEY
 
 
-def test_workflow_yaml_only_persists_structure_id(tmp_path):
-    """Test that workflow.yaml only contains structure_id, not structure_name or structure."""
-    wf_dir = tmp_path / "workflows" / "test-workflow"
-    wf_dir.mkdir(parents=True)
+def test_calculation_yaml_only_persists_structure_id(tmp_path):
+    """Test that calculation.yaml only contains structure_id, not structure_name or structure."""
+    calc_dir = tmp_path / "calculations" / "test-calculation"
+    calc_dir.mkdir(parents=True)
     
     structure_id = generate_resource_id()
     structure_name = "Test Structure"
     structure_selector = "test-structure"
     
-    # Create workflow model with structure_id only (DAG + ULID model)
-    model = WorkflowModel(
+    # Create calculation model with structure_id only (DAG + ULID model)
+    model = CalculationModel(
         meta=ResourceMeta(
             id=generate_resource_id(),
-            name="Test Workflow",
-            slug="test-workflow",
-            path="workflows/test-workflow",
-            kind="workflow",
+            name="Test Calculation",
+            slug="test-calculation",
+            path="calculations/test-calculation",
+            kind="calculation",
         ),
         structure_id=structure_id,
         structure_name=structure_name,  # In-memory only (cosmetic)
@@ -40,45 +40,45 @@ def test_workflow_yaml_only_persists_structure_id(tmp_path):
         steps=[],
     )
     
-    # Save workflow.yaml
-    save_workflow(model, wf_dir)
+    # Save calculation.yaml
+    save_calculation(model, calc_dir)
     
     # Load and verify on-disk YAML
-    yaml_path = wf_dir / "workflow.yaml"
+    yaml_path = calc_dir / "calculation.yaml"
     assert yaml_path.exists()
     
     on_disk = yaml.safe_load(yaml_path.read_text())
     
     # DAG + ID-only constitution: only structure_id is persisted
-    assert "structure_id" in on_disk, "workflow.yaml must contain structure_id"
+    assert "structure_id" in on_disk, "calculation.yaml must contain structure_id"
     assert on_disk["structure_id"] == structure_id
     
     # These fields must NOT be persisted
-    assert "structure_name" not in on_disk, "workflow.yaml must NOT contain structure_name"
-    assert "structure" not in on_disk, "workflow.yaml must NOT contain structure selector"
+    assert "structure_name" not in on_disk, "calculation.yaml must NOT contain structure_name"
+    assert "structure" not in on_disk, "calculation.yaml must NOT contain structure selector"
     
     # Verify we can still load the model (structure_name/structure are in-memory only)
-    loaded = load_workflow(wf_dir, tmp_path)
+    loaded = load_calculation(calc_dir, tmp_path)
     assert loaded.structure_id == structure_id
     # structure_name and structure may be None after loading (not persisted)
     # but that's OK - they're in-memory convenience fields
 
 
-def test_workflow_roundtrip_strips_legacy_fields(tmp_path):
-    """Test that loading and saving a workflow strips legacy fields."""
-    wf_dir = tmp_path / "workflows" / "roundtrip"
-    wf_dir.mkdir(parents=True)
+def test_calculation_roundtrip_strips_legacy_fields(tmp_path):
+    """Test that loading and saving a calculation strips legacy fields."""
+    calc_dir = tmp_path / "calculations" / "roundtrip"
+    calc_dir.mkdir(parents=True)
     
     structure_id = generate_resource_id()
     
-    # Create workflow.yaml with legacy fields (simulating old format)
+    # Create calculation.yaml with legacy fields (simulating old format)
     legacy_yaml = {
         "meta": {
             "id": generate_resource_id(),
             "name": "Roundtrip Test",
             "slug": "roundtrip-test",
-            "path": "workflows/roundtrip",
-            "kind": "workflow",
+            "path": "calculations/roundtrip",
+            "kind": "calculation",
         },
         "structure_id": structure_id,
         "structure_name": "Legacy Structure Name",  # Should be stripped
@@ -88,15 +88,15 @@ def test_workflow_roundtrip_strips_legacy_fields(tmp_path):
         "steps": [],
     }
     
-    yaml_path = wf_dir / "workflow.yaml"
+    yaml_path = calc_dir / "calculation.yaml"
     yaml_path.write_text(yaml.safe_dump(legacy_yaml))
     
-    # Load workflow
-    model = load_workflow(wf_dir, tmp_path)
+    # Load calculation
+    model = load_calculation(calc_dir, tmp_path)
     assert model.structure_id == structure_id
     
-    # Save workflow (should strip legacy fields)
-    save_workflow(model, wf_dir)
+    # Save calculation (should strip legacy fields)
+    save_calculation(model, calc_dir)
     
     # Verify legacy fields are gone
     on_disk = yaml.safe_load(yaml_path.read_text())
@@ -105,12 +105,12 @@ def test_workflow_roundtrip_strips_legacy_fields(tmp_path):
     assert "structure" not in on_disk, "Legacy structure selector should be stripped"
 
 
-def test_workflow_legacy_selector_raises_error(tmp_path):
+def test_calculation_legacy_selector_raises_error(tmp_path):
     """Test that legacy structure selector (without structure_id) raises LegacyProjectError."""
     from quantumvitas.core.exceptions import LegacyProjectError
     
-    wf_dir = tmp_path / "workflows" / "legacy"
-    wf_dir.mkdir(parents=True)
+    calc_dir = tmp_path / "calculations" / "legacy"
+    calc_dir.mkdir(parents=True)
     
     # Create a structure in the project
     project_root = tmp_path
@@ -145,18 +145,18 @@ def test_workflow_legacy_selector_raises_error(tmp_path):
             "file": "structures/test-structure.json",
             "format": "json",
         }],
-        "workflows": [],
+        "calculations": [],
     }
     (project_root / "project.qv.yml").write_text(yaml.safe_dump(project_config))
     
-    # Create workflow.yaml with legacy structure selector (no structure_id)
+    # Create calculation.yaml with legacy structure selector (no structure_id)
     legacy_yaml = {
         "meta": {
             "id": generate_resource_id(),
             "name": "Legacy Test",
             "slug": "legacy-test",
-            "path": "workflows/legacy-test",
-            "kind": "workflow",
+            "path": "calculations/legacy-test",
+            "kind": "calculation",
         },
         "structure": "test-structure",  # Legacy selector without structure_id
         "mode": "normal",
@@ -164,11 +164,11 @@ def test_workflow_legacy_selector_raises_error(tmp_path):
         "steps": [],
     }
     
-    yaml_path = wf_dir / "workflow.yaml"
+    yaml_path = calc_dir / "calculation.yaml"
     yaml_path.write_text(yaml.safe_dump(legacy_yaml))
     
-    # Load workflow should raise LegacyProjectError (no auto-migration)
+    # Load calculation should raise LegacyProjectError (no auto-migration)
     with pytest.raises(LegacyProjectError) as exc_info:
-        load_workflow(wf_dir, project_root)
+        load_calculation(calc_dir, project_root)
     
     assert "structure" in str(exc_info.value).lower() or "legacy" in str(exc_info.value).lower()

@@ -4,8 +4,8 @@
 
 ### 1. step1 然后 test step1 + step2 然后 test step2...
 **实现方式**:
-- `test_si_dos_workflow.py`: 使用 `run_and_verify_step_with_assert`，每个步骤立即验证 ✅
-- `test_si_bands_workflow.py`: 使用 `run_and_verify_step_with_assert`，每个步骤立即验证 ✅
+- `test_si_dos_calculation.py`: 使用 `run_and_verify_step_with_assert`，每个步骤立即验证 ✅
+- `test_si_bands_calculation.py`: 使用 `run_and_verify_step_with_assert`，每个步骤立即验证 ✅
 - `test_ph_quick_tests.py`: 使用 `run_test_category`，每个步骤立即验证（已修复：失败时停止）✅
 
 ### 2. 所有 pseudo 指向一个文件夹，先检查有没有，没有再下载
@@ -19,12 +19,12 @@
 
 ### 3. 所有 step 逻辑在 src 里面
 **实现位置**:
-- `src/quantumvitas/core/engines/qe_workflow.py`: 
-  - `QEWorkflowRunner.run_step()`: 执行单个步骤 ✅
-  - `QEWorkflowRunner.run_workflow()`: 执行工作流 ✅
+- `src/quantumvitas/core/engines/qe_calculation.py`: 
+  - `QECalculationRunner.run_step()`: 执行单个步骤 ✅
+  - `QECalculationRunner.run_calculation()`: 执行计算 ✅
 - `src/quantumvitas/core/engines/qe.py`: 
   - `detect_step_type()`: 检测步骤类型 ✅
-  - `run_step()`: 执行步骤（调用 workflow_runner）✅
+  - `run_step()`: 执行步骤（调用 calculation_runner）✅
 
 ### 4. test 逻辑中心化在 tests/core 里面
 **实现位置**:
@@ -43,20 +43,20 @@
 **实现位置**:
 - `tests/core/qe_step_runner.py::set_outdir_to_temp`: 设置为 `temp/outdir` ✅
 - `extended-tests/utils/qe_module_base.py::run_module_test`: 也使用 `set_outdir_to_temp` ✅
-- `src/quantumvitas/core/engines/qe_workflow.py::run_step`: 使用统一的 outdir ✅
+- `src/quantumvitas/core/engines/qe_calculation.py::run_step`: 使用统一的 outdir ✅
 
 ### 6. 顺序看 jobconfig
 **实现位置**:
 - `tests/core/qe_test_utils.py::parse_jobconfig`: 解析 jobconfig 文件 ✅
-- `test_si_dos_workflow.py`: 从 jobconfig 读取 `4_Si_DOS` 顺序 ✅
-- `test_si_bands_workflow.py`: 从 jobconfig 读取 `7_Si_bandStructure` 顺序 ✅
+- `test_si_dos_calculation.py`: 从 jobconfig 读取 `4_Si_DOS` 顺序 ✅
+- `test_si_bands_calculation.py`: 从 jobconfig 读取 `7_Si_bandStructure` 顺序 ✅
 - `test_ph_quick_tests.py`: 从 jobconfig 读取 `ph_1d`, `ph_2d` 顺序 ✅
 
 ## 📋 文件组织
 
 ### src/ (Step 逻辑)
-- `src/quantumvitas/core/engines/qe_workflow.py`: Step 执行逻辑
-- `src/quantumvitas/core/engines/qe.py`: QE 引擎，调用 workflow runner
+- `src/quantumvitas/core/engines/qe_calculation.py`: Step 执行逻辑
+- `src/quantumvitas/core/engines/qe.py`: QE 引擎，调用 calculation runner
 - `src/quantumvitas/core/engines/qe_pseudopotentials.py`: 伪势管理
 
 ### tests/core/ (Test 逻辑)
@@ -73,9 +73,9 @@
 
 ```
 for each step in jobconfig:
-    1. run step (src/quantumvitas/core/engines/qe_workflow.py)
+    1. run step (src/quantumvitas/core/engines/qe_calculation.py)
     2. verify step (tests/core/qe_step_verification.py)
-    3. if failed: stop workflow
+    3. if failed: stop calculation
     4. continue to next step
 ```
 

@@ -7,16 +7,16 @@ project:
     path: .
     kind: project
   structures_dir: structures
-  workflows_dir: workflows
-workflows:
+  calculations_dir: calculations
+calculations:
 - name: graphene bands
-  path: workflows/graphene-bands
+  path: calculations/graphene-bands
   meta:
     id: 01KC10S2CGYQ2FBB2B6PGD5SC7
     name: graphene bands
     slug: graphene-bands
-    path: workflows/graphene-bands
-    kind: workflow
+    path: calculations/graphene-bands
+    kind: calculation
 structures:
 - name: C
   file: structures/c.json

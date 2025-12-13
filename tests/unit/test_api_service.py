@@ -21,7 +21,7 @@ class TestQVServiceProject:
         assert result == project_dir
         assert (project_dir / "project.qv.yml").exists()
         assert (project_dir / "structures").is_dir()
-        assert (project_dir / "workflows").is_dir()
+        assert (project_dir / "calculations").is_dir()
         
         config = yaml.safe_load((project_dir / "project.qv.yml").read_text())
         assert config["project"]["name"] == "My Project"
@@ -57,7 +57,7 @@ class TestQVServiceProject:
             QVService.init_project(nested_dir, name="Nested Project")
     
     def test_init_project_prevents_creating_in_project_subdir(self, tmp_path):
-        """Test that init_project prevents creating in structures/workflows subdirectories."""
+        """Test that init_project prevents creating in structures/calculations subdirectories."""
         # Create a project
         project_dir = tmp_path / "project"
         QVService.init_project(project_dir, name="Test Project")
@@ -168,8 +168,8 @@ class TestQVServiceStructure:
             QVService.get_structure(project_dir, "silicon")
 
 
-class TestQVServiceWorkflow:
-    """Test QVService workflow operations."""
+class TestQVServiceCalculation:
+    """Test QVService calculation operations."""
     
     @pytest.fixture
     def project(self, tmp_path):
@@ -178,18 +178,18 @@ class TestQVServiceWorkflow:
         QVService.init_project(project_dir)
         return project_dir
     
-    def test_init_workflow(self, project):
-        """Create a new workflow."""
-        result = QVService.init_workflow(project, "My Workflow")
+    def test_init_calculation(self, project):
+        """Create a new calculation."""
+        result = QVService.init_calculation(project, "My Calculation")
         
-        assert result.name == "My Workflow"
-        assert result.slug == "my-workflow"
+        assert result.name == "My Calculation"
+        assert result.slug == "my-calculation"
         assert result.absolute_path.is_dir()
-        assert (result.absolute_path / "workflow.yaml").exists()
+        assert (result.absolute_path / "calculation.yaml").exists()
         assert (result.absolute_path / "steps").is_dir()
     
-    def test_init_workflow_with_structure(self, project, tmp_path):
-        """Create workflow with structure reference."""
+    def test_init_calculation_with_structure(self, project, tmp_path):
+        """Create calculation with structure reference."""
         # Import a structure first (must have at least one site)
         source = tmp_path / "si.json"
         source.write_text("""{
@@ -200,34 +200,34 @@ class TestQVServiceWorkflow:
         }""")
         QVService.import_structure(project, source, name="Silicon")
         
-        result = QVService.init_workflow(project, "SCF Calc", structure_selector="silicon")
+        result = QVService.init_calculation(project, "SCF Calc", structure_selector="silicon")
         
-        wf_yaml = yaml.safe_load((result.absolute_path / "workflow.yaml").read_text())
-        # With ID-only references, workflow.yaml stores structure_id (ULID), not structure selector
+        wf_yaml = yaml.safe_load((result.absolute_path / "calculation.yaml").read_text())
+        # With ID-only references, calculation.yaml stores structure_id (ULID), not structure selector
         assert wf_yaml.get("structure_id") is not None
         # DAG + ID-only model: structure_name is NOT written to YAML (cosmetic only)
         assert "structure_name" not in wf_yaml
     
-    def test_list_workflows(self, project):
-        """List workflows."""
-        QVService.init_workflow(project, "Workflow 1")
-        QVService.init_workflow(project, "Workflow 2")
+    def test_list_calculations(self, project):
+        """List calculations."""
+        QVService.init_calculation(project, "Calculation 1")
+        QVService.init_calculation(project, "Calculation 2")
         
-        results = QVService.list_workflows(project)
+        results = QVService.list_calculations(project)
         names = {r.name for r in results}
         
-        assert "Workflow 1" in names
-        assert "Workflow 2" in names
+        assert "Calculation 1" in names
+        assert "Calculation 2" in names
     
-    def test_get_workflow(self, project):
-        """Get workflow by selector."""
-        QVService.init_workflow(project, "My Workflow")
+    def test_get_calculation(self, project):
+        """Get calculation by selector."""
+        QVService.init_calculation(project, "My Calculation")
         
-        result = QVService.get_workflow(project, "my-workflow")
-        assert result.name == "My Workflow"
+        result = QVService.get_calculation(project, "my-calculation")
+        assert result.name == "My Calculation"
     
-    def test_configure_workflow_structure(self, project, tmp_path):
-        """Configure workflow structure."""
+    def test_configure_calculation_structure(self, project, tmp_path):
+        """Configure calculation structure."""
         # Import structures (must have at least one site)
         source = tmp_path / "si.json"
         source.write_text("""{
@@ -247,32 +247,32 @@ class TestQVServiceWorkflow:
         }""")
         QVService.import_structure(project, source2, name="Graphene")
         
-        QVService.init_workflow(project, "Calc", structure_selector="silicon")
-        QVService.configure_workflow(project, "calc", new_structure="graphene")
+        QVService.init_calculation(project, "Calc", structure_selector="silicon")
+        QVService.configure_calculation(project, "calc", new_structure="graphene")
         
-        wf = QVService.get_workflow(project, "calc")
-        wf_yaml = yaml.safe_load((wf.absolute_path / "workflow.yaml").read_text())
-        # With ID-only references, workflow.yaml stores structure_id (ULID), not structure selector
+        wf = QVService.get_calculation(project, "calc")
+        wf_yaml = yaml.safe_load((wf.absolute_path / "calculation.yaml").read_text())
+        # With ID-only references, calculation.yaml stores structure_id (ULID), not structure selector
         assert wf_yaml.get("structure_id") is not None
         # Verify structure was changed: structure_id should be different from silicon's ID
         # (We can't easily check exact ID, but structure_id being set confirms the change)
-        # Note: structure_name may not be updated by configure_workflow, so we only check structure_id
+        # Note: structure_name may not be updated by configure_calculation, so we only check structure_id
     
-    def test_delete_workflow(self, project):
-        """Delete a workflow."""
-        QVService.init_workflow(project, "To Delete")
-        QVService.delete_workflow(project, "to-delete")
+    def test_delete_calculation(self, project):
+        """Delete a calculation."""
+        QVService.init_calculation(project, "To Delete")
+        QVService.delete_calculation(project, "to-delete")
         
         with pytest.raises(SelectorNotFoundError):
-            QVService.get_workflow(project, "to-delete")
+            QVService.get_calculation(project, "to-delete")
 
 
 class TestQVServiceStep:
     """Test QVService step operations."""
     
     @pytest.fixture
-    def project_with_workflow(self, tmp_path):
-        """Create a project with a workflow."""
+    def project_with_calculation(self, tmp_path):
+        """Create a project with a calculation."""
         project_dir = tmp_path / "proj"
         QVService.init_project(project_dir)
         
@@ -286,64 +286,64 @@ class TestQVServiceStep:
         }""")
         QVService.import_structure(project_dir, source, name="Silicon")
         
-        QVService.init_workflow(project_dir, "Test Workflow", structure_selector="silicon")
+        QVService.init_calculation(project_dir, "Test Calculation", structure_selector="silicon")
         
         return project_dir
     
-    def test_init_step(self, project_with_workflow):
+    def test_init_step(self, project_with_calculation):
         """Create a new step."""
         result = QVService.init_step(
-            project_with_workflow,
-            "test-workflow",
+            project_with_calculation,
+            "test-calculation",
             step_type="scf",
         )
         
         assert result.absolute_path.exists()
         assert result.absolute_path.suffix == ".yaml"
     
-    def test_init_step_inherits_structure(self, project_with_workflow):
-        """Step inherits structure from workflow when not specified."""
+    def test_init_step_inherits_structure(self, project_with_calculation):
+        """Step inherits structure from calculation when not specified."""
         result = QVService.init_step(
-            project_with_workflow,
-            "test-workflow",
+            project_with_calculation,
+            "test-calculation",
             step_type="nscf",
         )
         
         step_data = yaml.safe_load(result.absolute_path.read_text())
-        # DAG model: Step YAML should NOT contain structure_id (inherits from workflow)
+        # DAG model: Step YAML should NOT contain structure_id (inherits from calculation)
         assert "structure_id" not in step_data, "Step YAML should not contain structure_id (DAG model)"
         
-        # Verify workflow has structure_id set and it points to the silicon structure
-        # Read workflow.yaml directly to avoid materializing steps (which requires pseudos)
-        from quantumvitas.core.resolution import build_resource_index, require_structure, resolve_workflow
+        # Verify calculation has structure_id set and it points to the silicon structure
+        # Read calculation.yaml directly to avoid materializing steps (which requires pseudos)
+        from quantumvitas.core.resolution import build_resource_index, require_structure, resolve_calculation
         
-        index = build_resource_index(project_with_workflow)
-        workflow_resolved = resolve_workflow(project_with_workflow, "test-workflow", index=index)
+        index = build_resource_index(project_with_calculation)
+        calculation_resolved = resolve_calculation(project_with_calculation, "test-calculation", index=index)
         
-        # Read workflow.yaml directly to check structure_id without materializing steps
-        workflow_yaml = workflow_resolved.absolute_path / "workflow.yaml"
-        workflow_data = yaml.safe_load(workflow_yaml.read_text())
-        structure_id = workflow_data.get("structure_id")
+        # Read calculation.yaml directly to check structure_id without materializing steps
+        calculation_yaml = calculation_resolved.absolute_path / "calculation.yaml"
+        calculation_data = yaml.safe_load(calculation_yaml.read_text())
+        structure_id = calculation_data.get("structure_id")
         
-        assert structure_id is not None, "Workflow should have structure_id set"
-        structure_resolved = require_structure(project_with_workflow, structure_id, index=index)
+        assert structure_id is not None, "Calculation should have structure_id set"
+        structure_resolved = require_structure(project_with_calculation, structure_id, index=index)
         assert structure_resolved.meta.name.lower() == "silicon" or structure_resolved.meta.slug == "silicon"
     
-    def test_list_steps(self, project_with_workflow):
-        """List steps in a workflow."""
-        QVService.init_step(project_with_workflow, "test-workflow", "scf")
-        QVService.init_step(project_with_workflow, "test-workflow", "nscf")
+    def test_list_steps(self, project_with_calculation):
+        """List steps in a calculation."""
+        QVService.init_step(project_with_calculation, "test-calculation", "scf")
+        QVService.init_step(project_with_calculation, "test-calculation", "nscf")
         
-        results = QVService.list_steps(project_with_workflow, "test-workflow")
+        results = QVService.list_steps(project_with_calculation, "test-calculation")
         
         assert len(results) >= 2
     
-    def test_delete_step(self, project_with_workflow):
+    def test_delete_step(self, project_with_calculation):
         """Delete a step."""
-        QVService.init_step(project_with_workflow, "test-workflow", "scf")
-        QVService.delete_step(project_with_workflow, "test-workflow", "scf")
+        QVService.init_step(project_with_calculation, "test-calculation", "scf")
+        QVService.delete_step(project_with_calculation, "test-calculation", "scf")
         
-        results = QVService.list_steps(project_with_workflow, "test-workflow")
+        results = QVService.list_steps(project_with_calculation, "test-calculation")
         step_types = [yaml.safe_load(r.absolute_path.read_text()).get("step_type") for r in results]
         
         assert "scf" not in step_types

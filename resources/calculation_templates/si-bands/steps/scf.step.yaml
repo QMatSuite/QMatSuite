@@ -2,11 +2,11 @@ meta:
   id: 01KBSIBANDSSCFSTEP00001
   name: scf
   slug: scf
-  path: workflows/si-bands/steps/scf.step.yaml
+  path: calculations/si-bands/steps/scf.step.yaml
   kind: step
 structure: si
 step_type: scf
-parent_workflow_id: 01KBSIBANDSWORKFLOW00001
+parent_calculation_id: 01KBSIBANDSCALCULATION00001
 parameters:
   CONTROL:
     calculation: scf

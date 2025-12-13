@@ -303,7 +303,7 @@ def compare_with_benchmark(
     return True, "JOB DONE"
 
 
-def run_test_category_workflow(
+def run_test_category_calculation(
     category: str,
     test_files: List[Tuple[str, str]],
     test_suite_dir: Path,
@@ -347,12 +347,12 @@ def run_test_category_workflow(
     if max_tests:
         test_files = test_files[:max_tests]
     
-    # Check if this is a workflow test (multiple sequential tests)
-    is_workflow = len(test_files) > 1 and any(args for _, args in test_files)
+    # Check if this is a calculation test (multiple sequential tests)
+    is_calculation = len(test_files) > 1 and any(args for _, args in test_files)
     
-    # For workflow tests, use a single working directory for all tests
-    if is_workflow:
-        working_dir = Path(tempfile.mkdtemp(prefix=f"qe_workflow_{category}_"))
+    # For calculation tests, use a single working directory for all tests
+    if is_calculation:
+        working_dir = Path(tempfile.mkdtemp(prefix=f"qe_calculation_{category}_"))
     else:
         working_dir = None
     
@@ -370,8 +370,8 @@ def run_test_category_workflow(
                 })
                 continue
             
-            # For non-workflow tests, create a new working directory for each test
-            if not is_workflow:
+            # For non-calculation tests, create a new working directory for each test
+            if not is_calculation:
                 working_dir = Path(tempfile.mkdtemp(prefix=f"qe_test_{category}_{i}_"))
             
             # Check for reference output file
@@ -430,12 +430,12 @@ def run_test_category_workflow(
             
             results.append(result)
             
-            # For workflow tests, stop on first failure
-            if is_workflow and not result.get("success", False):
+            # For calculation tests, stop on first failure
+            if is_calculation and not result.get("success", False):
                 break
             
-            # Clean up non-workflow working directories
-            if not is_workflow and working_dir.exists():
+            # Clean up non-calculation working directories
+            if not is_calculation and working_dir.exists():
                 import shutil
                 try:
                     shutil.rmtree(working_dir)
@@ -451,8 +451,8 @@ def run_test_category_workflow(
             "time_taken": 0
         })
     
-    # Clean up workflow working directory
-    if is_workflow and working_dir and working_dir.exists():
+    # Clean up calculation working directory
+    if is_calculation and working_dir and working_dir.exists():
         import shutil
         try:
             shutil.rmtree(working_dir)

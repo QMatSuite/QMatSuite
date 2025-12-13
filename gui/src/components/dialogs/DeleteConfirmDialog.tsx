@@ -9,7 +9,7 @@ import './DeleteConfirmDialog.css';
 interface DeleteConfirmDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  /** Type of resource being deleted (e.g., "Structure" or "Workflow") */
+  /** Type of resource being deleted (e.g., "Structure" or "Calculation") */
   resourceType: string;
   /** Name of the resource being deleted */
   resourceName: string;
@@ -135,7 +135,7 @@ export function DeleteConfirmDialog({
               checked={forceDelete}
               onChange={(e) => setForceDelete(e.target.checked)}
             />
-            <span>Delete anyway (may break dependent workflows)</span>
+            <span>Delete anyway (may break dependent calculations)</span>
           </label>
         )}
         

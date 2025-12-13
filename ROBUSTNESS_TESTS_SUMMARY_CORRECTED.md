@@ -8,11 +8,11 @@
 ### 新增/修改的测试
 
 #### 1. 工作流失败处理 (`tests/daemon/test_gui_job_and_step_flows.py`)
-- `test_workflow_stops_after_step_failure`: 验证多步工作流中，中间步骤失败后，后续步骤被标记为 `SKIPPED`，工作流状态为 `FAILED`。
+- `test_calculation_stops_after_step_failure`: 验证多步工作流中，中间步骤失败后，后续步骤被标记为 `SKIPPED`，工作流状态为 `FAILED`。
 
 #### 2. 资源重命名边界情况 (`tests/unit/test_resource_rename_safety.py`)
 - `test_rename_structure_slug_conflict_is_rejected`: 重命名结构时，若新 slug 与现有结构冲突，操作被拒绝，项目元数据保持不变。
-- `test_rename_workflow_across_directories_updates_all_references`: 跨目录重命名工作流时，所有引用（project.qv.yml、workflow.yaml）正确更新。
+- `test_rename_calculation_across_directories_updates_all_references`: 跨目录重命名工作流时，所有引用（project.qv.yml、calculation.yaml）正确更新。
 - `test_multiple_consecutive_renames_keep_selector_stable`: 多次连续重命名后，基于稳定 ID/ULID 的选择器仍能正确解析。
 
 #### 3. 快照边界情况 (`tests/unit/test_project_snapshot.py`)
@@ -26,7 +26,7 @@
 
 ### 实现更改
 
-1. **工作流运行器** (`src/quantumvitas/workflow/runner.py`):
+1. **工作流运行器** (`src/quantumvitas/calculation/runner.py`):
    - 添加 `SKIPPED` 状态到 `StepStatus` 枚举
    - 更新运行器：当步骤失败时，后续步骤被标记为 `SKIPPED` 而非跳过
 
@@ -34,7 +34,7 @@
    - 在 strict 模式下，当伪势文件缺失时，抛出 `FileNotFoundError`，错误信息包含缺失元素、文件名和搜索路径
 
 3. **资源重命名** (`src/quantumvitas/core/project_utils.py`):
-   - 已实现 slug 冲突检查（`apply_structure_rename` 和 `apply_workflow_rename`）
+   - 已实现 slug 冲突检查（`apply_structure_rename` 和 `apply_calculation_rename`）
    - 测试验证了这些行为
 
 ### 测试结果

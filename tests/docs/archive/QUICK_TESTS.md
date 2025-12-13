@@ -32,7 +32,7 @@ Quick tests run automatically in GitHub Actions:
 - ✅ On pull requests
 - ✅ Daily schedule
 
-See `.github/workflows/tests.yml`.
+See `.github/calculations/tests.yml`.
 
 ## Requirements
 

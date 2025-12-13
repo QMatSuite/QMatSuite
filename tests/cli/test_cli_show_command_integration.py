@@ -10,7 +10,7 @@ from quantumvitas.cli.main import app
 from quantumvitas.core.resources import slugify
 from quantumvitas.core.engines.base import EngineConfig
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.qe_workflow import StepResult
+from quantumvitas.core.engines.qe_calculation import StepResult
 from tests.core.qe_step_verification import verify_step_result
 from tests.core.test_data import load_test_cases
 
@@ -102,7 +102,7 @@ def test_cli_show_command_executes_against_references(
     for case in cases:
         input_path = case.input_path
         structure_name = f"struct_{input_path.stem}"
-        workflow_name = f"wf_{input_path.stem}"
+        calculation_name = f"wf_{input_path.stem}"
 
         result = runner.invoke(
             app,
@@ -124,8 +124,8 @@ def test_cli_show_command_executes_against_references(
             app,
             [
                 "init",
-                "workflow",
-                workflow_name,
+                "calculation",
+                calculation_name,
                 "--structure",
                 structure_name,
                 "--project",
@@ -133,7 +133,7 @@ def test_cli_show_command_executes_against_references(
             ],
             catch_exceptions=False,
         )
-        assert result.exit_code == 0, f"init workflow failed: {result.stdout}"
+        assert result.exit_code == 0, f"init calculation failed: {result.stdout}"
 
         show_output = runner.invoke(
             app, ["show-command", str(input_path)], catch_exceptions=False
@@ -147,27 +147,27 @@ def test_cli_show_command_executes_against_references(
         )
         init_args = shlex.split(init_line)[1:]
         # Now show-command doesn't include --structure, so we add it explicitly
-        # along with --workflow and --project
+        # along with --calculation and --project
         init_args.extend([
             "--structure", structure_name,
-            "--workflow", workflow_name,
+            "--calculation", calculation_name,
             "--project", str(project_root)
         ])
         init_result = runner.invoke(app, init_args, catch_exceptions=False)
         assert init_result.exit_code == 0, init_result.stdout
 
-        workflow_slug = slugify(workflow_name)
-        workflow_dir = project_root / "workflows" / workflow_slug
-        workflow_yaml = yaml.safe_load((workflow_dir / "workflow.yaml").read_text())
-        last_step = workflow_yaml["steps"][-1]
+        calculation_slug = slugify(calculation_name)
+        calculation_dir = project_root / "calculations" / calculation_slug
+        calculation_yaml = yaml.safe_load((calculation_dir / "calculation.yaml").read_text())
+        last_step = calculation_yaml["steps"][-1]
         # With ID-only model, resolve step file via step_id
         from quantumvitas.core.resolution import resolve_step, build_resource_index
         from quantumvitas.core.project_utils import load_project_config
         config = load_project_config(project_root)
         index = build_resource_index(project_root)
         step_id = last_step.get("step_id") or last_step.get("id")
-        workflow_slug = workflow_dir.name
-        step_resolved = resolve_step(project_root, workflow_slug, step_id, config=config, index=index)
+        calculation_slug = calculation_dir.name
+        step_resolved = resolve_step(project_root, calculation_slug, step_id, config=config, index=index)
         step_spec_path = step_resolved.absolute_path
 
         workdir = runs_root / input_path.stem

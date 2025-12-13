@@ -1,0 +1,34 @@
+meta:
+  id: 01KC3901JEVJJ7S8G3E7Z9K2RZ
+  name: scf
+  slug: scf
+  path: calculations/si-bands/steps/scf.step.yaml
+  kind: step
+step_type: scf
+parameters:
+  CONTROL:
+    calculation: scf
+    outdir: ./outdir
+    prefix: si
+    pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+    restart_mode: from_scratch
+  ELECTRONS:
+    conv_thr: 1.0e-08
+  SYSTEM:
+    ecutrho: 320
+    ecutwfc: 40
+    nbnd: 8
+cards:
+  K_POINTS:
+    option: automatic
+    data:
+    - - 8
+      - 8
+      - 8
+      - 0
+      - 0
+      - 0
+species_overrides:
+  Si:
+    mass: 28.0855
+    pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF

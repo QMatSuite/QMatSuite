@@ -38,8 +38,8 @@
   - test_run_nscf_calculation: PASSED
     ✓ Fermi energy 对比通过 (tolerance: 0.01 Ry)
     
-  - test_run_full_workflow: PASSED
-    ✓ 完整 SCF -> NSCF -> DOS workflow 通过
+  - test_run_full_calculation: PASSED
+    ✓ 完整 SCF -> NSCF -> DOS calculation 通过
 
 ================================================================================
 重要说明

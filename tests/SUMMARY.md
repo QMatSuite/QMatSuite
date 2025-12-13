@@ -26,7 +26,7 @@
 
 ### 3. GitHub Actions
 
-✅ `.github/workflows/tests.yml`
+✅ `.github/calculations/tests.yml`
 - Quick tests: 自动运行（push, PR, schedule）
 - Extended tests: 手动触发或定时运行
 
@@ -61,7 +61,7 @@
 │   └── analyze_results.py # 结果分析
 │
 ├── pytest.ini             # Pytest 配置
-└── .github/workflows/     # CI 配置
+└── .github/calculations/     # CI 配置
     └── tests.yml
 ```
 

@@ -2,11 +2,11 @@ meta:
   id: 01KBSIBANDSBANDSTEP00001
   name: bands
   slug: bands
-  path: workflows/si-bands/steps/bands.step.yaml
+  path: calculations/si-bands/steps/bands.step.yaml
   kind: step
 structure: si
 step_type: bands_pw
-parent_workflow_id: 01KBSIBANDSWORKFLOW00001
+parent_calculation_id: 01KBSIBANDSCALCULATION00001
 parameters:
   CONTROL:
     calculation: bands

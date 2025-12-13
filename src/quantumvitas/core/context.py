@@ -2,7 +2,7 @@
 PWD context helper for QuantumVITAS CLI.
 
 Provides find_path_context_from_pwd() which scans upward from the current
-directory to find the project root and any enclosing workflow/step context.
+directory to find the project root and any enclosing calculation/step context.
 
 This module is the ONLY place that uses Path.cwd() for resource discovery.
 The API layer and resolution layer never use cwd directly.
@@ -17,7 +17,7 @@ from typing import List, Literal, Optional
 import yaml
 
 
-ContextNodeKind = Literal["project", "workflow", "step", "structure", "other"]
+ContextNodeKind = Literal["project", "calculation", "step", "structure", "other"]
 
 
 @dataclass(slots=True)
@@ -26,7 +26,7 @@ class ContextNode:
     A node in the path context chain.
     
     Represents one level of the directory hierarchy that has semantic meaning
-    (project root, workflow directory, step file, etc.).
+    (project root, calculation directory, step file, etc.).
     """
     kind: ContextNodeKind
     directory: Path
@@ -43,16 +43,16 @@ class PathContext:
     Result of find_path_context_from_pwd().
     
     Contains the project root and an ordered list of context nodes from
-    project → workflow → step (as applicable based on cwd location).
+    project → calculation → step (as applicable based on cwd location).
     """
     project_root: Path
     nodes: List[ContextNode] = field(default_factory=list)
     
     @property
-    def workflow_node(self) -> Optional[ContextNode]:
-        """Get the workflow node if we're inside a workflow."""
+    def calculation_node(self) -> Optional[ContextNode]:
+        """Get the calculation node if we're inside a calculation."""
         for node in self.nodes:
-            if node.kind == "workflow":
+            if node.kind == "calculation":
                 return node
         return None
     
@@ -65,29 +65,29 @@ class PathContext:
         return None
     
     @property
-    def workflow_selector(self) -> Optional[str]:
+    def calculation_selector(self) -> Optional[str]:
         """
-        Get workflow selector if inside a workflow.
+        Get calculation selector if inside a calculation.
         
         .. deprecated:: 2025-12-XX
-            This property reads the selector from workflow.yaml, which may be stale after renames.
-            For CLI auto-detection, use `find_enclosing_workflow()` from `core/project_utils.py` instead,
+            This property reads the selector from calculation.yaml, which may be stale after renames.
+            For CLI auto-detection, use `find_enclosing_calculation()` from `core/project_utils.py` instead,
             which uses directory path matching against project.qv.yml (the source of truth).
             
-            This property is kept for backward compatibility but should not be used for workflow resolution.
+            This property is kept for backward compatibility but should not be used for calculation resolution.
         """
-        node = self.workflow_node
+        node = self.calculation_node
         return node.selector if node else None
     
     @property
-    def workflow_directory(self) -> Optional[Path]:
-        """Get workflow directory if inside a workflow."""
-        node = self.workflow_node
+    def calculation_directory(self) -> Optional[Path]:
+        """Get calculation directory if inside a calculation."""
+        node = self.calculation_node
         return node.directory if node else None
     
-    def is_inside_workflow(self) -> bool:
-        """Check if cwd is inside a workflow directory."""
-        return self.workflow_node is not None
+    def is_inside_calculation(self) -> bool:
+        """Check if cwd is inside a calculation directory."""
+        return self.calculation_node is not None
     
     def is_inside_project(self) -> bool:
         """Check if a project was found."""
@@ -108,7 +108,7 @@ def find_path_context_from_pwd(
     
     This function walks up the directory tree looking for project.qv.yml.
     Once found, it examines the path from project root to start directory
-    to identify any enclosing workflow or step context.
+    to identify any enclosing calculation or step context.
     
     Args:
         start: Starting directory (defaults to cwd)
@@ -194,16 +194,16 @@ def _build_context_chain(project_root: Path, start_path: Path) -> List[ContextNo
         # Start is not inside project (shouldn't happen if project_root was found)
         return nodes
     
-    # Check if inside workflows directory
-    if _is_inside_directory(start_path, project_root / "workflows"):
-        workflow_node = _find_workflow_context(project_root, start_path)
-        if workflow_node:
-            nodes.append(workflow_node)
+    # Check if inside calculations directory
+    if _is_inside_directory(start_path, project_root / "calculations"):
+        calculation_node = _find_calculation_context(project_root, start_path)
+        if calculation_node:
+            nodes.append(calculation_node)
             
             # Check if inside steps directory
-            steps_dir = workflow_node.directory / "steps"
+            steps_dir = calculation_node.directory / "steps"
             if _is_inside_directory(start_path, steps_dir):
-                step_node = _find_step_context(workflow_node.directory, start_path)
+                step_node = _find_step_context(calculation_node.directory, start_path)
                 if step_node:
                     nodes.append(step_node)
     
@@ -236,42 +236,42 @@ def _extract_project_name(yaml_path: Path) -> str:
         return yaml_path.parent.name
 
 
-def _find_workflow_context(project_root: Path, start_path: Path) -> Optional[ContextNode]:
-    """Find the workflow context if start is inside a workflow."""
-    workflows_dir = project_root / "workflows"
+def _find_calculation_context(project_root: Path, start_path: Path) -> Optional[ContextNode]:
+    """Find the calculation context if start is inside a calculation."""
+    calculations_dir = project_root / "calculations"
     
-    # Get path relative to workflows dir
+    # Get path relative to calculations dir
     try:
-        rel_to_workflows = start_path.relative_to(workflows_dir)
+        rel_to_calculations = start_path.relative_to(calculations_dir)
     except ValueError:
         return None
     
-    # First part of the relative path is the workflow directory name
-    parts = rel_to_workflows.parts
+    # First part of the relative path is the calculation directory name
+    parts = rel_to_calculations.parts
     if not parts:
-        # We're at workflows/ directory itself
+        # We're at calculations/ directory itself
         return None
     
-    workflow_dir_name = parts[0]
-    workflow_dir = workflows_dir / workflow_dir_name
+    calculation_dir_name = parts[0]
+    calculation_dir = calculations_dir / calculation_dir_name
     
-    if not workflow_dir.is_dir():
+    if not calculation_dir.is_dir():
         return None
     
-    # Look for workflow.yaml
-    workflow_yaml = workflow_dir / "workflow.yaml"
-    selector = _extract_workflow_selector(workflow_yaml, workflow_dir_name)
+    # Look for calculation.yaml
+    calculation_yaml = calculation_dir / "calculation.yaml"
+    selector = _extract_calculation_selector(calculation_yaml, calculation_dir_name)
     
     return ContextNode(
-        kind="workflow",
-        directory=workflow_dir,
-        yaml_path=workflow_yaml if workflow_yaml.exists() else None,
+        kind="calculation",
+        directory=calculation_dir,
+        yaml_path=calculation_yaml if calculation_yaml.exists() else None,
         selector=selector,
     )
 
 
-def _extract_workflow_selector(yaml_path: Path, fallback: str) -> str:
-    """Extract workflow slug/name from workflow.yaml."""
+def _extract_calculation_selector(yaml_path: Path, fallback: str) -> str:
+    """Extract calculation slug/name from calculation.yaml."""
     if not yaml_path.exists():
         return fallback
     
@@ -283,9 +283,9 @@ def _extract_workflow_selector(yaml_path: Path, fallback: str) -> str:
         return fallback
 
 
-def _find_step_context(workflow_dir: Path, start_path: Path) -> Optional[ContextNode]:
+def _find_step_context(calculation_dir: Path, start_path: Path) -> Optional[ContextNode]:
     """Find step context if start is at or inside steps directory."""
-    steps_dir = workflow_dir / "steps"
+    steps_dir = calculation_dir / "steps"
     
     try:
         rel_to_steps = start_path.relative_to(steps_dir)
@@ -372,20 +372,20 @@ def get_project_root_from_pwd(start: Optional[Path] = None, max_depth: int = 20)
     return ctx.project_root
 
 
-def get_workflow_from_pwd(start: Optional[Path] = None) -> Optional[str]:
+def get_calculation_from_pwd(start: Optional[Path] = None) -> Optional[str]:
     """
-    Get workflow selector if cwd is inside a workflow, None otherwise.
+    Get calculation selector if cwd is inside a calculation, None otherwise.
     
     .. deprecated:: 2025-12-XX
-        This function uses `PathContext.workflow_selector`, which reads from workflow.yaml
-        and may be stale after renames. Use `find_enclosing_workflow()` from `core/project_utils.py`
+        This function uses `PathContext.calculation_selector`, which reads from calculation.yaml
+        and may be stale after renames. Use `find_enclosing_calculation()` from `core/project_utils.py`
         instead, which uses directory path matching against project.qv.yml.
         
-        This function is kept for backward compatibility but should not be used for workflow resolution.
+        This function is kept for backward compatibility but should not be used for calculation resolution.
     """
     try:
         ctx = find_path_context_from_pwd(start)
-        return ctx.workflow_selector
+        return ctx.calculation_selector
     except ContextNotFoundError:
         return None
 

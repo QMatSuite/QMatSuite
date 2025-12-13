@@ -15,7 +15,7 @@ QuantumVITAS uses a two-tier testing structure:
 - **CI**: Run automatically on every push/PR (after QE compilation)
 - **Duration**: ~44 seconds (all tests)
 - **Location**: `gui/tests/e2e/`
-- **Requires**: QE installation (for workflow run tests)
+- **Requires**: QE installation (for calculation run tests)
 
 ### 3. Extended Tests (`extended-tests/`)
 - **Purpose**: Comprehensive tests based on full QE official test-suite
@@ -91,11 +91,11 @@ python3 extended-tests/analyze_results.py results.json
 **GUI E2E tests** run automatically:
 - ✅ On push to `v2-python` branch (always, no conditional skipping)
 - ✅ On pull requests targeting `v2-python`
-- ✅ After QE compilation completes (QE required for workflow tests)
+- ✅ After QE compilation completes (QE required for calculation tests)
 - ✅ On both Linux and macOS
 
 **Extended tests**:
-- ⏸️ Manual workflow dispatch only
+- ⏸️ Manual calculation dispatch only
 - ⏸️ Optional schedule
 - ❌ NOT on every push/PR
 
@@ -118,7 +118,7 @@ See `.github/workflows/tests.yml` for details.
 ├── tests/                    # Quick tests (CI)
 │   ├── unit/               # Unit tests (no QE)
 │   ├── integration/        # QE engine integration
-│   ├── cli/                # CLI-driven QE workflows
+│   ├── cli/                # CLI-driven QE calculations
 │   ├── core/               # Test framework
 │   └── conftest.py         # Pytest config
 │
@@ -126,8 +126,8 @@ See `.github/workflows/tests.yml` for details.
 │   ├── fixtures/           # Unified Electron fixture
 │   ├── helpers/            # Launch helpers (electron.ts, electron_cdp.ts)
 │   ├── welcome.spec.ts     # Welcome screen tests
-│   ├── demo_workflow.spec.ts # Demo project tests
-│   └── demo_workflow_run.spec.ts # Full workflow execution test
+│   ├── demo_calculation.spec.ts # Demo project tests
+│   └── demo_calculation_run.spec.ts # Full calculation execution test
 │
 ├── extended-tests/         # Extended tests (developer)
 │   ├── suites/            # Test suites
@@ -139,21 +139,21 @@ See `.github/workflows/tests.yml` for details.
 └── pytest.ini             # Pytest configuration
 ```
 
-## Workflow Reference Outputs
+## Calculation Reference Outputs
 
-Core/CLI integration tests exercise real QE workflows. Reference `.out` files for
-strict verification live alongside each workflow under
-`workflows/<workflow_id>/reference/`. The runner automatically compares QE
+Core/CLI integration tests exercise real QE calculations. Reference `.out` files for
+strict verification live alongside each calculation under
+`calculations/<calculation_id>/reference/`. The runner automatically compares QE
 results against those references when you invoke:
 
-- `pytest -m qe_core` (engine-level workflows)
-- `pytest -m qe_cli` (Typer CLI workflows)
-- `qv run-workflow <wf> --strict`
+- `pytest -m qe_core` (engine-level calculations)
+- `pytest -m qe_cli` (Typer CLI calculations)
+- `qv run-calculation <wf> --strict`
 
-When regenerating reference data, run the workflow once locally, copy the
-resulting `.out` files into `reference/`, and commit them alongside the workflow
+When regenerating reference data, run the calculation once locally, copy the
+resulting `.out` files into `reference/`, and commit them alongside the calculation
 YAML. Quick tests never auto-generate references—they simply read whatever is in
-`workflows/<id>/reference/`.
+`calculations/<id>/reference/`.
 
 ## Adding New Tests
 

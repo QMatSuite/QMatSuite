@@ -5,7 +5,7 @@
  * A. From-scratch creation uses QV defaults (outdir, restart_mode, conv_thr, etc.)
  * B. Import from QE input preserves original parameters (no defaults injected)
  * 
- * **This spec does NOT run any workflows.** It only tests:
+ * **This spec does NOT run any calculations.** It only tests:
  * - Step default parameters visible in step detail panels
  * - Step YAML file contents (defaults vs imported parameters)
  * - UI elements for step creation/import buttons
@@ -75,14 +75,14 @@ test.describe('E2E: Step Parameter Defaults', () => {
     await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 10000 });
     
     // Navigate to Workflows view
-    await navigateToView(appPage, 'workflows');
-    await expect(appPage.getByTestId('qv-workflows-view')).toBeVisible({ timeout: 10000 });
+    await navigateToView(appPage, 'calculations');
+    await expect(appPage.getByTestId('qv-calculations-view')).toBeVisible({ timeout: 10000 });
     
-    // Select the workflow
-    const workflowRows = appPage.getByTestId('qv-workflow-row');
+    // Select the calculation
+    const workflowRows = appPage.getByTestId('qv-calculation-row');
     await expect(workflowRows).toHaveCount(1);
     await workflowRows.first().click();
-    await expect(appPage.getByTestId('qv-workflow-detail')).toBeVisible({ timeout: 10000 });
+    await expect(appPage.getByTestId('qv-calculation-detail')).toBeVisible({ timeout: 10000 });
     
     // Add a new SCF step via GUI (from-scratch, should use defaults)
     await appPage.getByTestId('qv-add-step-btn').click();
@@ -97,8 +97,8 @@ test.describe('E2E: Step Parameter Defaults', () => {
     // Click Add Step button
     await appPage.locator('.add-step-actions .add-step-btn--confirm').click();
     
-    // Wait for step to be added and workflow to refresh
-    // CRITICAL: Wait for the new step to appear in the workflow steps list before clicking it.
+    // Wait for step to be added and calculation to refresh
+    // CRITICAL: Wait for the new step to appear in the calculation steps list before clicking it.
     // This prevents race conditions where get_step_detail is called before the step is
     // available in the ResourceIndex. We wait for a step row with type 'scf' to appear.
     await expect(appPage.getByTestId('qv-steps-list')).toBeVisible({ timeout: 10000 });
@@ -208,14 +208,14 @@ test.describe('E2E: Step Parameter Defaults', () => {
     await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 10000 });
     
     // Navigate to Workflows view
-    await navigateToView(appPage, 'workflows');
-    await expect(appPage.getByTestId('qv-workflows-view')).toBeVisible({ timeout: 10000 });
+    await navigateToView(appPage, 'calculations');
+    await expect(appPage.getByTestId('qv-calculations-view')).toBeVisible({ timeout: 10000 });
     
-    // Select the workflow
-    const workflowRows = appPage.getByTestId('qv-workflow-row');
+    // Select the calculation
+    const workflowRows = appPage.getByTestId('qv-calculation-row');
     await expect(workflowRows).toHaveCount(1);
     await workflowRows.first().click();
-    await expect(appPage.getByTestId('qv-workflow-detail')).toBeVisible({ timeout: 10000 });
+    await expect(appPage.getByTestId('qv-calculation-detail')).toBeVisible({ timeout: 10000 });
     
     // Verify import button exists and has correct tooltip
     const importBtn = appPage.getByTestId('qv-import-step-btn');

@@ -1,7 +1,7 @@
 # quantumvitas
 # name = "quantumvitas"
 # version = "1.0.1"
-# description = "Python rewrite of QuantumVITAS - an open-source GUI & workflow engine for Quantum ESPRESSO and related codes."
+# description = "Python rewrite of QuantumVITAS - an open-source GUI & calculation engine for Quantum ESPRESSO and related codes."
 
 numpy
 scipy

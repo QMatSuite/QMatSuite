@@ -2,18 +2,18 @@
 Non-GUI tests for GUI backend paths (daemon endpoints).
 
 This module tests the exact same daemon endpoints that the GUI uses:
-- Job submission (run_workflow)
+- Job submission (run_calculation)
 - Job listing (list_jobs with project_root filter)
 - Step detail retrieval (get_step_detail)
 
 These tests simulate what the GUI does but in pure Python, ensuring:
-- DAG + ID-only model is respected (workflow.structure_id ULID, step.step_id ULID)
-- Selectors work correctly (workflow slug, step ULID)
+- DAG + ID-only model is respected (calculation.structure_id ULID, step.step_id ULID)
+- Selectors work correctly (calculation slug, step ULID)
 - Path normalization is consistent (project_root matching)
 
 Key invariants:
-- Workflow YAML: structure_id (ULID), steps with step_id (ULID)
-- Step YAML: NO structure_id, NO parent_workflow_id
+- Calculation YAML: structure_id (ULID), steps with step_id (ULID)
+- Step YAML: NO structure_id, NO parent_calculation_id
 - Job filtering: project_root must match exactly (normalized paths)
 """
 
@@ -28,7 +28,7 @@ import pytest
 from quantumvitas.api import QVService
 from quantumvitas.daemon.server import QVDaemon, RPCRequest
 from quantumvitas.daemon.jobs import JobManager, JobStatus
-from quantumvitas.core.resolution import build_resource_index, require_workflow, require_step
+from quantumvitas.core.resolution import build_resource_index, require_calculation, require_step
 
 
 def send_request(daemon: QVDaemon, request_type: str, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -47,7 +47,7 @@ def send_request(daemon: QVDaemon, request_type: str, payload: Dict[str, Any]) -
 
 @pytest.fixture
 def temp_project(tmp_path: Path) -> Path:
-    """Create a temporary project with a simple workflow."""
+    """Create a temporary project with a simple calculation."""
     project_dir = tmp_path / "test_gui_flows"
     project_dir.mkdir()
     
@@ -55,7 +55,7 @@ def temp_project(tmp_path: Path) -> Path:
     QVService.init_project(project_dir, name="test_gui_flows")
     
     # Import a structure (using test data if available)
-    test_data = Path(__file__).parent.parent / "data" / "workflow_bands"
+    test_data = Path(__file__).parent.parent / "data" / "calculation_bands"
     if test_data.exists():
         scf_in = test_data / "si.0_scf.in"
         if scf_in.exists():
@@ -72,18 +72,18 @@ def temp_project(tmp_path: Path) -> Path:
         # Skip if no test data
         pytest.skip("Test data not available")
     
-    # Create a workflow with one SCF step
-    workflow_result = QVService.init_workflow(
+    # Create a calculation with one SCF step
+    calculation_result = QVService.init_calculation(
         project_root=project_dir,
-        name="test_workflow",
+        name="test_calculation",
         structure_selector=structure_id,
     )
-    workflow_id = workflow_result.meta.id
+    calculation_id = calculation_result.meta.id
     
     # Add a simple SCF step
-    step_result = QVService.add_step_to_workflow(
+    step_result = QVService.add_step_to_calculation(
         project_root=project_dir,
-        workflow_selector=workflow_id,
+        calculation_selector=calculation_id,
         step_type="scf",
     )
     
@@ -101,28 +101,28 @@ class TestJobSubmissionAndListing:
     
     def test_submit_job_and_list_jobs(self, temp_project: Path, daemon: QVDaemon):
         """
-        Test that submitting a workflow job and listing jobs works.
+        Test that submitting a calculation job and listing jobs works.
         
         This simulates:
-        1. GUI calls run_workflow with workflow.slug
+        1. GUI calls run_calculation with calculation.slug
         2. GUI calls list_jobs with project_root filter
         3. Job should appear in the list
         """
-        # Get workflow slug (GUI uses slug, not ULID)
+        # Get calculation slug (GUI uses slug, not ULID)
         index = build_resource_index(temp_project)
-        # Filter workflows by checking meta.kind
-        workflows = [meta for meta in index.by_id.values() if meta.kind == "workflow"]
-        assert len(workflows) > 0, "No workflows found"
-        workflow = workflows[0]
-        workflow_slug = workflow.slug
+        # Filter calculations by checking meta.kind
+        calculations = [meta for meta in index.by_id.values() if meta.kind == "calculation"]
+        assert len(calculations) > 0, "No calculations found"
+        calculation = calculations[0]
+        calculation_slug = calculation.slug
         
         # Normalize project_root (GUI sends string, daemon normalizes to Path)
         project_root_str = str(temp_project.resolve())
         
-        # Submit job (GUI path: uses workflow.slug)
-        submit_response = send_request(daemon, "run_workflow", {
+        # Submit job (GUI path: uses calculation.slug)
+        submit_response = send_request(daemon, "run_calculation", {
             "project_root": project_root_str,
-            "workflow": workflow_slug,
+            "calculation": calculation_slug,
             "strict": False,
             "verbose": False,
         })
@@ -149,8 +149,8 @@ class TestJobSubmissionAndListing:
         job = next(j for j in jobs if j["id"] == job_id)
         assert job["project_root"] == project_root_str, \
             f"Job project_root mismatch: {job['project_root']} != {project_root_str}"
-        assert job["job_type"] == "run_workflow"
-        assert job["target_name"] == workflow_slug
+        assert job["job_type"] == "run_calculation"
+        assert job["target_name"] == calculation_slug
     
     def test_job_list_path_normalization(self, temp_project: Path, daemon: QVDaemon):
         """
@@ -163,18 +163,18 @@ class TestJobSubmissionAndListing:
         
         All should match the same job.
         """
-        # Get workflow
+        # Get calculation
         index = build_resource_index(temp_project)
-        workflows = [meta for meta in index.by_id.values() if meta.kind == "workflow"]
-        assert len(workflows) > 0
-        workflow_slug = workflows[0].slug
+        calculations = [meta for meta in index.by_id.values() if meta.kind == "calculation"]
+        assert len(calculations) > 0
+        calculation_slug = calculations[0].slug
         
         project_root_abs = str(temp_project.resolve())
         
         # Submit job
-        submit_response = send_request(daemon, "run_workflow", {
+        submit_response = send_request(daemon, "run_calculation", {
             "project_root": project_root_abs,
-            "workflow": workflow_slug,
+            "calculation": calculation_slug,
         })
         job_id = submit_response["job_id"]
         
@@ -202,21 +202,21 @@ class TestStepDetailRetrieval:
         Test that step detail can be retrieved using step ULID.
         
         GUI path:
-        1. Workflow list shows steps with step.id (ULID)
-        2. Clicking step calls get_step_detail with workflow.slug and step.id
+        1. Calculation list shows steps with step.id (ULID)
+        2. Clicking step calls get_step_detail with calculation.slug and step.id
         3. Should return step details
         """
-        # Get workflow and step info
+        # Get calculation and step info
         index = build_resource_index(temp_project)
-        workflows = [meta for meta in index.by_id.values() if meta.kind == "workflow"]
-        assert len(workflows) > 0
-        workflow = workflows[0]
-        workflow_slug = workflow.slug
+        calculations = [meta for meta in index.by_id.values() if meta.kind == "calculation"]
+        assert len(calculations) > 0
+        calculation = calculations[0]
+        calculation_slug = calculation.slug
         
-        # Get step ULID from workflow
-        workflow_resolved = require_workflow(temp_project, workflow_slug, index=index)
-        from quantumvitas.core.models import load_workflow
-        wf_model = load_workflow(workflow_resolved.absolute_path, temp_project)
+        # Get step ULID from calculation
+        calculation_resolved = require_calculation(temp_project, calculation_slug, index=index)
+        from quantumvitas.core.models import load_calculation
+        wf_model = load_calculation(calculation_resolved.absolute_path, temp_project)
         assert len(wf_model.steps) > 0
         step_entry = wf_model.steps[0]
         step_id_ulid = step_entry.step_id
@@ -225,10 +225,10 @@ class TestStepDetailRetrieval:
         
         project_root_str = str(temp_project.resolve())
         
-        # Get step detail (GUI path: workflow.slug + step.id ULID)
+        # Get step detail (GUI path: calculation.slug + step.id ULID)
         detail_response = send_request(daemon, "get_step_detail", {
             "project_root": project_root_str,
-            "workflow": workflow_slug,
+            "calculation": calculation_slug,
             "step": step_id_ulid,
         })
         
@@ -238,40 +238,40 @@ class TestStepDetailRetrieval:
         assert "parameters" in detail_response
         assert "cards" in detail_response
     
-    def test_get_step_detail_requires_ulid_from_workflow_yaml(self, temp_project: Path, daemon: QVDaemon):
+    def test_get_step_detail_requires_ulid_from_calculation_yaml(self, temp_project: Path, daemon: QVDaemon):
         """
-        Test that get_step_detail requires step_selector to be a ULID that exists in workflow.yaml.
+        Test that get_step_detail requires step_selector to be a ULID that exists in calculation.yaml.
         
-        GUI path is now ULID-only: step_selector MUST be a ULID from workflow.yaml's steps array.
+        GUI path is now ULID-only: step_selector MUST be a ULID from calculation.yaml's steps array.
         Slug/name fallback is no longer supported for GUI path (legacy selector support dropped).
         """
-        # Get workflow
+        # Get calculation
         index = build_resource_index(temp_project)
-        workflows = [meta for meta in index.by_id.values() if meta.kind == "workflow"]
-        assert len(workflows) > 0
-        workflow_slug = workflows[0].slug
+        calculations = [meta for meta in index.by_id.values() if meta.kind == "calculation"]
+        assert len(calculations) > 0
+        calculation_slug = calculations[0].slug
         
         # Get step via registry to find its slug
-        workflow_resolved = require_workflow(temp_project, workflow_slug, index=index)
-        from quantumvitas.core.models import load_workflow
-        wf_model = load_workflow(workflow_resolved.absolute_path, temp_project)
+        calculation_resolved = require_calculation(temp_project, calculation_slug, index=index)
+        from quantumvitas.core.models import load_calculation
+        wf_model = load_calculation(calculation_resolved.absolute_path, temp_project)
         step_entry = wf_model.steps[0]
         step_id_ulid = step_entry.step_id
         
         # Resolve step to get its slug
-        step_resolved = require_step(temp_project, workflow_slug, step_id_ulid)
+        step_resolved = require_step(temp_project, calculation_slug, step_id_ulid)
         step_slug = step_resolved.meta.slug
         
         project_root_str = str(temp_project.resolve())
         
         # Try to get step detail using slug instead of ULID - should FAIL
-        # GUI path now requires ULID from workflow.yaml
+        # GUI path now requires ULID from calculation.yaml
         response = daemon.handle_request(RPCRequest(
             id="test",
             type="get_step_detail",
             payload={
                 "project_root": project_root_str,
-                "workflow": workflow_slug,
+                "calculation": calculation_slug,
                 "step": step_slug,  # Using slug, not ULID
             },
         ))
@@ -286,18 +286,18 @@ class TestStepDetailRetrieval:
 class TestDAGInvariants:
     """Test that DAG + ID-only invariants are maintained."""
     
-    def test_workflow_has_structure_id_ulid(self, temp_project: Path):
-        """Verify workflow.yaml has structure_id (ULID), not structure selector."""
-        from quantumvitas.core.models import load_workflow
+    def test_calculation_has_structure_id_ulid(self, temp_project: Path):
+        """Verify calculation.yaml has structure_id (ULID), not structure selector."""
+        from quantumvitas.core.models import load_calculation
         index = build_resource_index(temp_project)
-        workflows = [meta for meta in index.by_id.values() if meta.kind == "workflow"]
-        workflow = workflows[0]
-        workflow_resolved = require_workflow(temp_project, workflow.slug, index=index)
+        calculations = [meta for meta in index.by_id.values() if meta.kind == "calculation"]
+        calculation = calculations[0]
+        calculation_resolved = require_calculation(temp_project, calculation.slug, index=index)
         
-        wf_model = load_workflow(workflow_resolved.absolute_path, temp_project)
+        wf_model = load_calculation(calculation_resolved.absolute_path, temp_project)
         
         # Should have structure_id (ULID)
-        assert wf_model.structure_id, "Workflow should have structure_id"
+        assert wf_model.structure_id, "Calculation should have structure_id"
         assert len(wf_model.structure_id) == 26, \
             f"structure_id should be ULID (26 chars), got: {wf_model.structure_id}"
         
@@ -305,21 +305,21 @@ class TestDAGInvariants:
         # The to_dict() should not write it
     
     def test_step_yaml_no_structure_id(self, temp_project: Path):
-        """Verify step YAML does NOT contain structure_id or parent_workflow_id."""
-        from quantumvitas.workflow.structure_steps import StructureStepSpec
+        """Verify step YAML does NOT contain structure_id or parent_calculation_id."""
+        from quantumvitas.calculation.structure_steps import StructureStepSpec
         index = build_resource_index(temp_project)
-        workflows = [meta for meta in index.by_id.values() if meta.kind == "workflow"]
-        assert len(workflows) > 0
-        workflow = workflows[0]
-        workflow_resolved = require_workflow(temp_project, workflow.slug, index=index)
+        calculations = [meta for meta in index.by_id.values() if meta.kind == "calculation"]
+        assert len(calculations) > 0
+        calculation = calculations[0]
+        calculation_resolved = require_calculation(temp_project, calculation.slug, index=index)
         
-        from quantumvitas.core.models import load_workflow
-        wf_model = load_workflow(workflow_resolved.absolute_path, temp_project)
+        from quantumvitas.core.models import load_calculation
+        wf_model = load_calculation(calculation_resolved.absolute_path, temp_project)
         step_entry = wf_model.steps[0]
         step_id_ulid = step_entry.step_id
         
         # Resolve step file
-        step_resolved = require_step(temp_project, workflow.slug, step_id_ulid)
+        step_resolved = require_step(temp_project, calculation.slug, step_id_ulid)
         
         # Load step spec
         spec = StructureStepSpec.from_yaml(step_resolved.absolute_path)
@@ -328,8 +328,8 @@ class TestDAGInvariants:
         step_dict = spec.to_dict()
         assert "structure_id" not in step_dict, \
             "Step YAML should NOT contain structure_id (DAG invariant)"
-        assert "parent_workflow_id" not in step_dict, \
-            "Step YAML should NOT contain parent_workflow_id (DAG invariant)"
+        assert "parent_calculation_id" not in step_dict, \
+            "Step YAML should NOT contain parent_calculation_id (DAG invariant)"
         assert "structure" not in step_dict or step_dict["structure"] == "", \
             "Step YAML should NOT contain structure selector (DAG invariant)"
 
@@ -339,37 +339,37 @@ class TestStepCreationRaceCondition:
     
     def test_immediate_get_step_detail_after_add_step(self, temp_project: Path, daemon: QVDaemon):
         """
-        Test that get_step_detail succeeds immediately after add_step_to_workflow.
+        Test that get_step_detail succeeds immediately after add_step_to_calculation.
         
         This test verifies that the ResourceIndex is properly refreshed after step creation,
         preventing "Step not found" errors when the GUI immediately tries to fetch step detail.
         
         RACE CONDITION SCENARIO:
-        1. GUI calls add_step_to_workflow RPC
-        2. Daemon creates step file and updates workflow.yaml
+        1. GUI calls add_step_to_calculation RPC
+        2. Daemon creates step file and updates calculation.yaml
         3. GUI immediately calls get_step_detail with the returned step_id
         4. ResourceIndex should be refreshed by daemon, so get_step_detail should succeed
         """
         project_root = str(temp_project.resolve())
         
-        # Get the workflow slug from the project
+        # Get the calculation slug from the project
         index = build_resource_index(temp_project)
-        workflows = [meta for meta in index.by_id.values() if meta.kind == "workflow"]
-        assert len(workflows) > 0, "Project should have at least one workflow"
-        workflow_slug = workflows[0].slug
+        calculations = [meta for meta in index.by_id.values() if meta.kind == "calculation"]
+        assert len(calculations) > 0, "Project should have at least one calculation"
+        calculation_slug = calculations[0].slug
         
         # Add a new step via daemon RPC (simulating GUI action)
-        add_result = send_request(daemon, "add_step_to_workflow", {
+        add_result = send_request(daemon, "add_step_to_calculation", {
             "project_root": project_root,
-            "workflow": workflow_slug,
+            "calculation": calculation_slug,
             "step_type": "nscf",
             "step_name": "nscf",
         })
         
         # Verify the step was added
-        assert "steps" in add_result, "add_step_to_workflow should return steps list"
+        assert "steps" in add_result, "add_step_to_calculation should return steps list"
         steps = add_result["steps"]
-        assert len(steps) > 0, "Step should be added to workflow"
+        assert len(steps) > 0, "Step should be added to calculation"
         
         # Find the newly added step (should be the last one with type 'nscf')
         new_step = None
@@ -389,7 +389,7 @@ class TestStepCreationRaceCondition:
         # without raising ResourceNotFoundError.
         step_detail = send_request(daemon, "get_step_detail", {
             "project_root": project_root,
-            "workflow": workflow_slug,
+            "calculation": calculation_slug,
             "step": new_step_id,
         })
         
@@ -402,10 +402,10 @@ class TestStepCreationRaceCondition:
         # The step should be found even though it was just created
         
         # CRITICAL: Verify the step YAML file was actually created on disk
-        # This ensures add_step_to_workflow creates the file, not just the workflow entry
-        from quantumvitas.core.models import load_workflow
-        workflow_resolved = require_workflow(temp_project, workflow_slug, index=build_resource_index(temp_project))
-        wf_model = load_workflow(workflow_resolved.absolute_path / "workflow.yaml", temp_project)
+        # This ensures add_step_to_calculation creates the file, not just the calculation entry
+        from quantumvitas.core.models import load_calculation
+        calculation_resolved = require_calculation(temp_project, calculation_slug, index=build_resource_index(temp_project))
+        wf_model = load_calculation(calculation_resolved.absolute_path / "calculation.yaml", temp_project)
         
         # Find the step entry we just created
         new_step_entry = None
@@ -414,45 +414,45 @@ class TestStepCreationRaceCondition:
                 new_step_entry = step
                 break
         
-        assert new_step_entry is not None, f"Step entry with id {new_step_id} should be in workflow.yaml"
+        assert new_step_entry is not None, f"Step entry with id {new_step_id} should be in calculation.yaml"
         
         # Resolve the step to get its file path
-        step_resolved = require_step(temp_project, workflow_slug, new_step_id)
+        step_resolved = require_step(temp_project, calculation_slug, new_step_id)
         step_file_path = step_resolved.absolute_path
         
         # Verify the step file exists on disk
         assert step_file_path.exists(), \
             f"Step YAML file should exist at {step_file_path}. " \
-            f"The workflow entry exists but the step file is missing (ghost step bug)."
+            f"The calculation entry exists but the step file is missing (ghost step bug)."
         
         # Verify the file is readable and contains valid YAML
         import yaml
         step_data = yaml.safe_load(step_file_path.read_text())
         assert step_data is not None, "Step file should contain valid YAML"
         assert "meta" in step_data, "Step file should have meta block"
-        assert step_data["meta"]["id"] == new_step_id, "Step file meta.id should match workflow entry step_id"
+        assert step_data["meta"]["id"] == new_step_id, "Step file meta.id should match calculation entry step_id"
         
-        # Verify DAG invariants: step file should NOT contain structure_id or parent_workflow_id
+        # Verify DAG invariants: step file should NOT contain structure_id or parent_calculation_id
         assert "structure_id" not in step_data, "Step YAML should NOT contain structure_id (DAG invariant)"
-        assert "parent_workflow_id" not in step_data, "Step YAML should NOT contain parent_workflow_id (DAG invariant)"
+        assert "parent_calculation_id" not in step_data, "Step YAML should NOT contain parent_calculation_id (DAG invariant)"
 
 
 class TestStepDeletion:
     """Test step deletion via daemon RPC."""
     
-    def test_delete_step_via_daemon_removes_from_workflow_yaml(self, temp_project: Path, daemon: QVDaemon):
-        """Test that delete_step removes the step entry from workflow.yaml."""
-        # Get workflow and step info
+    def test_delete_step_via_daemon_removes_from_calculation_yaml(self, temp_project: Path, daemon: QVDaemon):
+        """Test that delete_step removes the step entry from calculation.yaml."""
+        # Get calculation and step info
         index = build_resource_index(temp_project)
-        workflows = [meta for meta in index.by_id.values() if meta.kind == "workflow"]
-        assert len(workflows) > 0
-        workflow = workflows[0]
-        workflow_slug = workflow.slug
+        calculations = [meta for meta in index.by_id.values() if meta.kind == "calculation"]
+        assert len(calculations) > 0
+        calculation = calculations[0]
+        calculation_slug = calculation.slug
         
-        # Get step ULID from workflow
-        workflow_resolved = require_workflow(temp_project, workflow_slug, index=index)
-        from quantumvitas.core.models import load_workflow
-        wf_model = load_workflow(workflow_resolved.absolute_path, temp_project)
+        # Get step ULID from calculation
+        calculation_resolved = require_calculation(temp_project, calculation_slug, index=index)
+        from quantumvitas.core.models import load_calculation
+        wf_model = load_calculation(calculation_resolved.absolute_path, temp_project)
         assert len(wf_model.steps) > 0
         step_entry = wf_model.steps[0]
         step_id_ulid = step_entry.step_id
@@ -463,36 +463,36 @@ class TestStepDeletion:
         # Delete step via daemon
         result = send_request(daemon, "delete_step", {
             "project_root": project_root_str,
-            "workflow": workflow_slug,
+            "calculation": calculation_slug,
             "step": step_id_ulid,
         })
         
         assert result.get("status") == "deleted"
         
-        # Reload workflow.yaml and verify step is removed
-        wf_model_after = load_workflow(workflow_resolved.absolute_path, temp_project)
+        # Reload calculation.yaml and verify step is removed
+        wf_model_after = load_calculation(calculation_resolved.absolute_path, temp_project)
         assert len(wf_model_after.steps) == initial_step_count - 1
         assert not any(s.step_id == step_id_ulid for s in wf_model_after.steps), \
-            f"Step {step_id_ulid} should be removed from workflow.yaml"
+            f"Step {step_id_ulid} should be removed from calculation.yaml"
     
     def test_delete_step_via_daemon_moves_step_file_to_trash(self, temp_project: Path, daemon: QVDaemon):
         """Test that delete_step moves the step file to the trash directory."""
-        # Get workflow and step info
+        # Get calculation and step info
         index = build_resource_index(temp_project)
-        workflows = [meta for meta in index.by_id.values() if meta.kind == "workflow"]
-        assert len(workflows) > 0
-        workflow = workflows[0]
-        workflow_slug = workflow.slug
+        calculations = [meta for meta in index.by_id.values() if meta.kind == "calculation"]
+        assert len(calculations) > 0
+        calculation = calculations[0]
+        calculation_slug = calculation.slug
         
         # Get step ULID and file path
-        workflow_resolved = require_workflow(temp_project, workflow_slug, index=index)
-        from quantumvitas.core.models import load_workflow
-        wf_model = load_workflow(workflow_resolved.absolute_path, temp_project)
+        calculation_resolved = require_calculation(temp_project, calculation_slug, index=index)
+        from quantumvitas.core.models import load_calculation
+        wf_model = load_calculation(calculation_resolved.absolute_path, temp_project)
         assert len(wf_model.steps) > 0
         step_entry = wf_model.steps[0]
         step_id_ulid = step_entry.step_id
         
-        step_resolved = require_step(temp_project, workflow_slug, step_id_ulid, index=index)
+        step_resolved = require_step(temp_project, calculation_slug, step_id_ulid, index=index)
         original_step_path = step_resolved.absolute_path
         
         assert original_step_path.exists(), "Step file should exist before deletion"
@@ -503,7 +503,7 @@ class TestStepDeletion:
         # Delete step via daemon
         result = send_request(daemon, "delete_step", {
             "project_root": project_root_str,
-            "workflow": workflow_slug,
+            "calculation": calculation_slug,
             "step": step_id_ulid,
         })
         
@@ -526,25 +526,25 @@ class TestStepDeletion:
             f"Trash file {trash_file.name} should start with original name {original_step_path.name}"
     
     def test_delete_step_via_daemon_allows_missing_step_file(self, temp_project: Path, daemon: QVDaemon):
-        """Test that delete_step handles ghost steps (entry in workflow.yaml but no file) gracefully."""
-        # Get workflow and step info
+        """Test that delete_step handles ghost steps (entry in calculation.yaml but no file) gracefully."""
+        # Get calculation and step info
         index = build_resource_index(temp_project)
-        workflows = [meta for meta in index.by_id.values() if meta.kind == "workflow"]
-        assert len(workflows) > 0
-        workflow = workflows[0]
-        workflow_slug = workflow.slug
+        calculations = [meta for meta in index.by_id.values() if meta.kind == "calculation"]
+        assert len(calculations) > 0
+        calculation = calculations[0]
+        calculation_slug = calculation.slug
         
-        # Get step ULID from workflow
-        workflow_resolved = require_workflow(temp_project, workflow_slug, index=index)
-        from quantumvitas.core.models import load_workflow
-        wf_model = load_workflow(workflow_resolved.absolute_path, temp_project)
+        # Get step ULID from calculation
+        calculation_resolved = require_calculation(temp_project, calculation_slug, index=index)
+        from quantumvitas.core.models import load_calculation
+        wf_model = load_calculation(calculation_resolved.absolute_path, temp_project)
         assert len(wf_model.steps) > 0
         step_entry = wf_model.steps[0]
         step_id_ulid = step_entry.step_id
         initial_step_count = len(wf_model.steps)
         
         # Manually delete the step file to simulate a ghost step
-        step_resolved = require_step(temp_project, workflow_slug, step_id_ulid, index=index)
+        step_resolved = require_step(temp_project, calculation_slug, step_id_ulid, index=index)
         step_file_path = step_resolved.absolute_path
         if step_file_path.exists():
             step_file_path.unlink()
@@ -554,25 +554,25 @@ class TestStepDeletion:
         # Delete step via daemon - should succeed even though file is missing
         result = send_request(daemon, "delete_step", {
             "project_root": project_root_str,
-            "workflow": workflow_slug,
+            "calculation": calculation_slug,
             "step": step_id_ulid,
         })
         
         assert result.get("status") == "deleted"
         
-        # Verify step entry is removed from workflow.yaml
-        wf_model_after = load_workflow(workflow_resolved.absolute_path, temp_project)
+        # Verify step entry is removed from calculation.yaml
+        wf_model_after = load_calculation(calculation_resolved.absolute_path, temp_project)
         assert len(wf_model_after.steps) == initial_step_count - 1
         assert not any(s.step_id == step_id_ulid for s in wf_model_after.steps), \
-            f"Step {step_id_ulid} should be removed from workflow.yaml even if file was missing"
+            f"Step {step_id_ulid} should be removed from calculation.yaml even if file was missing"
     
     def test_delete_step_via_daemon_invalid_ulid_raises_resource_not_found(self, temp_project: Path, daemon: QVDaemon):
         """Test that delete_step with invalid ULID raises resource_not_found error."""
-        # Get workflow
+        # Get calculation
         index = build_resource_index(temp_project)
-        workflows = [meta for meta in index.by_id.values() if meta.kind == "workflow"]
-        assert len(workflows) > 0
-        workflow_slug = workflows[0].slug
+        calculations = [meta for meta in index.by_id.values() if meta.kind == "calculation"]
+        assert len(calculations) > 0
+        calculation_slug = calculations[0].slug
         
         # Use a random ULID that doesn't exist
         import ulid as ulid_module
@@ -586,7 +586,7 @@ class TestStepDeletion:
             type="delete_step",
             payload={
                 "project_root": project_root_str,
-                "workflow": workflow_slug,
+                "calculation": calculation_slug,
                 "step": fake_step_id,
             },
         ))
@@ -601,48 +601,48 @@ class TestStepDeletion:
             assert response.error.get("kind") == "step"
 
 
-class TestWorkflowFailureHandling:
-    """Test that multi-step workflows stop after a step failure."""
+class TestCalculationFailureHandling:
+    """Test that multi-step calculations stop after a step failure."""
     
-    def test_workflow_stops_after_step_failure(self, temp_project: Path, daemon: QVDaemon, monkeypatch):
+    def test_calculation_stops_after_step_failure(self, temp_project: Path, daemon: QVDaemon, monkeypatch):
         """
-        Test that when a multi-step workflow runs and a middle step fails,
+        Test that when a multi-step calculation runs and a middle step fails,
         later dependent steps are not executed and are marked as SKIPPED.
         
         Scenario:
-        - Workflow chain: scf → nscf → projwfc
+        - Calculation chain: scf → nscf → projwfc
         - Simulate that nscf step fails
-        - Expected: scf succeeds, nscf fails, projwfc is SKIPPED, workflow is FAILED
+        - Expected: scf succeeds, nscf fails, projwfc is SKIPPED, calculation is FAILED
         """
-        # Create a workflow with multiple steps
+        # Create a calculation with multiple steps
         project_root_str = str(temp_project.resolve())
         
-        # Get workflow
+        # Get calculation
         index = build_resource_index(temp_project)
-        workflows = [meta for meta in index.by_id.values() if meta.kind == "workflow"]
-        assert len(workflows) > 0
-        workflow_slug = workflows[0].slug
+        calculations = [meta for meta in index.by_id.values() if meta.kind == "calculation"]
+        assert len(calculations) > 0
+        calculation_slug = calculations[0].slug
         
-        # Add additional steps to create a multi-step workflow
+        # Add additional steps to create a multi-step calculation
         # Add nscf step
-        send_request(daemon, "add_step_to_workflow", {
+        send_request(daemon, "add_step_to_calculation", {
             "project_root": project_root_str,
-            "workflow": workflow_slug,
+            "calculation": calculation_slug,
             "step_type": "nscf",
         })
         
         # Add projwfc step
-        send_request(daemon, "add_step_to_workflow", {
+        send_request(daemon, "add_step_to_calculation", {
             "project_root": project_root_str,
-            "workflow": workflow_slug,
+            "calculation": calculation_slug,
             "step_type": "projwfc",
         })
         
-        # Verify workflow has 3 steps now
-        workflow_resolved = require_workflow(temp_project, workflow_slug, index=index)
-        from quantumvitas.core.models import load_workflow
-        wf_model = load_workflow(workflow_resolved.absolute_path, temp_project)
-        assert len(wf_model.steps) >= 3, "Workflow should have at least 3 steps"
+        # Verify calculation has 3 steps now
+        calculation_resolved = require_calculation(temp_project, calculation_slug, index=index)
+        from quantumvitas.core.models import load_calculation
+        wf_model = load_calculation(calculation_resolved.absolute_path, temp_project)
+        assert len(wf_model.steps) >= 3, "Calculation should have at least 3 steps"
         
         # Get step IDs
         step_ids = [s.step_id for s in wf_model.steps]
@@ -650,38 +650,38 @@ class TestWorkflowFailureHandling:
         nscf_step_id = step_ids[1]
         projwfc_step_id = step_ids[2]
         
-        # Mock the workflow runner to simulate nscf failure
-        from quantumvitas.workflow.runner import WorkflowRunner
-        from quantumvitas.workflow.types import StepStatus, StepType
-        from quantumvitas.workflow.results import WorkflowResult, StepResultSummary
+        # Mock the calculation runner to simulate nscf failure
+        from quantumvitas.calculation.runner import CalculationRunner
+        from quantumvitas.calculation.types import StepStatus, StepType
+        from quantumvitas.calculation.results import CalculationResult, StepResultSummary
         from datetime import datetime, timezone
         
-        original_run = WorkflowRunner.run
+        original_run = CalculationRunner.run
         
-        def mock_run_with_failure(self, workflow):
+        def mock_run_with_failure(self, calculation):
             """Mock runner that simulates nscf step failure."""
-            from quantumvitas.workflow.types import StepMode
+            from quantumvitas.calculation.types import StepMode
             started = datetime.now(timezone.utc)
             step_summaries = []
-            workflow_failed = False
+            calculation_failed = False
             
-            # Get step IDs from workflow model (ULIDs from workflow.yaml)
-            from quantumvitas.core.models import load_workflow
-            wf_model = load_workflow(workflow.dir / "workflow.yaml", workflow.project.root)
+            # Get step IDs from calculation model (ULIDs from calculation.yaml)
+            from quantumvitas.core.models import load_calculation
+            wf_model = load_calculation(calculation.dir / "calculation.yaml", calculation.project.root)
             step_ulids = [s.step_id for s in wf_model.steps]
             
-            for i, step in enumerate(workflow.steps):
-                # Use ULID from workflow.yaml, not step.id (which is slug)
+            for i, step in enumerate(calculation.steps):
+                # Use ULID from calculation.yaml, not step.id (which is slug)
                 step_id = step_ulids[i] if i < len(step_ulids) else step.id
                 step_type = step.step_type or StepType.CUSTOM
                 
                 # If a previous step failed, mark remaining steps as SKIPPED
-                if workflow_failed:
+                if calculation_failed:
                     summary = StepResultSummary(
                         step_id=step_id,
                         step_type=step_type,
                         status=StepStatus.SKIPPED,
-                        working_dir=workflow.raw_dir,
+                        working_dir=calculation.raw_dir,
                         input_file=step.input_file if hasattr(step, 'input_file') else Path(),
                         output_file=Path(),
                         reference_file=step.reference_output,
@@ -700,7 +700,7 @@ class TestWorkflowFailureHandling:
                 elif i == 1:
                     step_status = StepStatus.FAILED
                     message = "NSCF calculation failed"
-                    workflow_failed = True
+                    calculation_failed = True
                 # Third step (projwfc) should be skipped
                 else:
                     step_status = StepStatus.SKIPPED
@@ -710,7 +710,7 @@ class TestWorkflowFailureHandling:
                     step_id=step_id,
                     step_type=step_type,
                     status=step_status,
-                    working_dir=workflow.raw_dir,
+                    working_dir=calculation.raw_dir,
                     input_file=step.input_file if hasattr(step, 'input_file') else Path(),
                     output_file=Path() if step_status == StepStatus.SKIPPED else Path("/tmp/fake.out"),
                     reference_file=step.reference_output,
@@ -720,23 +720,23 @@ class TestWorkflowFailureHandling:
                 step_summaries.append(summary)
                 
                 if step_status != StepStatus.SUCCESS:
-                    workflow_failed = True
-                    if workflow.mode == StepMode.STRICT:
+                    calculation_failed = True
+                    if calculation.mode == StepMode.STRICT:
                         break
             
             finished = datetime.now(timezone.utc)
-            workflow_status = StepStatus.FAILED if workflow_failed else StepStatus.SUCCESS
-            return WorkflowResult(
-                workflow_id=workflow.id,
-                mode=workflow.mode,
+            calculation_status = StepStatus.FAILED if calculation_failed else StepStatus.SUCCESS
+            return CalculationResult(
+                calculation_id=calculation.id,
+                mode=calculation.mode,
                 steps=step_summaries,
-                status=workflow_status,
+                status=calculation_status,
                 started_at=started,
                 finished_at=finished,
             )
         
         # Patch the runner
-        monkeypatch.setattr(WorkflowRunner, "run", mock_run_with_failure)
+        monkeypatch.setattr(CalculationRunner, "run", mock_run_with_failure)
         
         # Mock pseudopotential resolution to avoid pseudo requirements
         def fake_ensure_qe_pseudos(*args, **kwargs):
@@ -752,10 +752,10 @@ class TestWorkflowFailureHandling:
         
         monkeypatch.setattr("quantumvitas.core.pseudo.ensure_qe_pseudos", fake_ensure_qe_pseudos)
         
-        # Run workflow via daemon
-        submit_response = send_request(daemon, "run_workflow", {
+        # Run calculation via daemon
+        submit_response = send_request(daemon, "run_calculation", {
             "project_root": project_root_str,
-            "workflow": workflow_slug,
+            "calculation": calculation_slug,
             "strict": True,  # Use strict mode to ensure failure stops execution
             "verbose": False,
         })
@@ -779,13 +779,13 @@ class TestWorkflowFailureHandling:
         assert job.status.value in ("completed", "failed"), \
             f"Job should be completed or failed, got {job.status.value}. Job: {job.to_dict() if job else None}"
         
-        # Get workflow result from job
+        # Get calculation result from job
         result = job.result
         assert result is not None, \
             f"Job should have a result. Job status: {job.status.value}, error: {job.error}"
         
-        # Verify workflow status is FAILED
-        assert result["status"] == "failed", f"Workflow should be FAILED, got {result['status']}"
+        # Verify calculation status is FAILED
+        assert result["status"] == "failed", f"Calculation should be FAILED, got {result['status']}"
         
         # Verify step statuses
         steps = result["steps"]

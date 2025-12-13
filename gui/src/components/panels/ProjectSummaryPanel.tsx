@@ -21,7 +21,7 @@ interface ProjectSummaryPanelProps {
   onOpenRecentProject?: (path: string) => void;
   onRemoveRecentProject?: (path: string) => void;
   onNavigateToStructure?: (name: string) => void;
-  onNavigateToWorkflow?: (name: string) => void;
+  onNavigateToCalculation?: (name: string) => void;
   onCloseProject?: () => void;
   onProjectCreated?: (projectRoot: string, recommendedAnalysis?: string | null) => void;
 }
@@ -39,7 +39,7 @@ export function ProjectSummaryPanel({
   onOpenRecentProject,
   onRemoveRecentProject,
   onNavigateToStructure,
-  onNavigateToWorkflow,
+  onNavigateToCalculation,
   onCloseProject,
   onProjectCreated,
 }: ProjectSummaryPanelProps) {
@@ -66,7 +66,7 @@ export function ProjectSummaryPanel({
   
   if (error) {
     // Check if this is a legacy project error (contains migration command)
-    const isLegacyError = error.includes('legacy workflow format') || error.includes('migrate it using');
+    const isLegacyError = error.includes('legacy calculation format') || error.includes('migrate it using');
     
     return (
       <div className="project-summary-panel project-summary-panel--error">
@@ -103,7 +103,7 @@ export function ProjectSummaryPanel({
           <div className="welcome-icon">⚛️</div>
           <h2 className="welcome-title" data-testid="qv-welcome-title">Welcome to QuantumVITAS</h2>
           <p className="welcome-subtitle">
-            Manage Quantum ESPRESSO workflows with ease
+            Manage Quantum ESPRESSO calculations with ease
           </p>
           
           <div className="welcome-actions">
@@ -257,26 +257,26 @@ export function ProjectSummaryPanel({
           </div>
           
           <div className="summary-card summary-card--clickable">
-            <div className="summary-card__value">{summary.n_workflows}</div>
-            <div className="summary-card__label">Workflows</div>
+            <div className="summary-card__value">{summary.n_calculations}</div>
+            <div className="summary-card__label">Calculations</div>
             <div className="summary-card__list">
-              {summary.workflow_names.length === 0 ? (
-                <span className="summary-empty">No workflows yet</span>
+              {summary.calculation_names.length === 0 ? (
+                <span className="summary-empty">No calculations yet</span>
               ) : (
                 <>
-                  {summary.workflow_names.slice(0, 5).map(name => (
+                  {summary.calculation_names.slice(0, 5).map(name => (
                     <button 
                       key={name} 
                       className="summary-tag summary-tag--clickable"
-                      onClick={() => onNavigateToWorkflow?.(name)}
-                      title={`Open workflow: ${name}`}
+                      onClick={() => onNavigateToCalculation?.(name)}
+                      title={`Open calculation: ${name}`}
                     >
                       {name}
                     </button>
                   ))}
-                  {summary.workflow_names.length > 5 && (
+                  {summary.calculation_names.length > 5 && (
                     <span className="summary-tag summary-tag--more">
-                      +{summary.workflow_names.length - 5} more
+                      +{summary.calculation_names.length - 5} more
                     </span>
                   )}
                 </>
@@ -320,11 +320,11 @@ export function ProjectSummaryPanel({
             </button>
             <button 
               className="quick-action-btn"
-              onClick={() => onNavigateToWorkflow?.('')}
-              title="View all workflows"
+              onClick={() => onNavigateToCalculation?.('')}
+              title="View all calculations"
             >
               <span className="quick-action-btn__icon">📊</span>
-              <span>View Workflows</span>
+              <span>View Calculations</span>
             </button>
           </div>
         </div>

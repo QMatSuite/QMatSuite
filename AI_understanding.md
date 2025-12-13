@@ -7,13 +7,13 @@
 
 ## 1. Project Overview
 
-QuantumVITAS is a workflow engine and GUI layer for **Quantum ESPRESSO (QE)** ab-initio simulations.
+QuantumVITAS is a calculation engine and GUI layer for **Quantum ESPRESSO (QE)** ab-initio simulations.
 The Python v2 rewrite (in `v2-python` branch) replaces the original Java GUI with a modern
 Python implementation featuring:
 
 - **Typer CLI** (`qv` command) for all operations
-- **Workflow engine** for multi-step QE calculations
-- **Project model** for organizing structures, workflows, and steps
+- **Calculation engine** for multi-step QE calculations
+- **Project model** for organizing structures, calculations, and steps
 - **Automatic QE detection** across platforms
 
 ### Key Directories
@@ -25,7 +25,7 @@ src/quantumvitas/
 ├── core/
 │   ├── engines/         # QE engine, installation detection, pseudopotentials
 │   ├── resources.py     # ResourceMeta model (ULID, slug, name, path)
-│   ├── models.py        # Dataclass models with load/save (WorkflowModel, etc.)
+│   ├── models.py        # Dataclass models with load/save (CalculationModel, etc.)
 │   ├── resolution.py    # Centralized selector→resource resolution
 │   ├── context.py       # PWD context helper for CLI (max_depth=20)
 │   ├── project_utils.py # Extracted helpers for project/config manipulation
@@ -36,7 +36,7 @@ src/quantumvitas/
 │   ├── model.py         # QEInput, QENamelist, QECard, etc.
 │   └── structure_io.py  # pymatgen-based structure I/O
 ├── project/             # Project model (project.qv.yml)
-├── workflow/            # Workflow execution, steps, verification
+├── calculation/            # Calculation execution, steps, verification
 ├── analysis/            # Post-processing (energy, bands, DOS)
 ├── engine/              # High-level engine registry
 └── data/                # QE parameter metadata JSON
@@ -48,7 +48,7 @@ src/quantumvitas/
 
 ### 2.1 Resource Model
 
-All resources (projects, workflows, structures, steps) share a common metadata model:
+All resources (projects, calculations, structures, steps) share a common metadata model:
 
 ```python
 @dataclass
@@ -57,7 +57,7 @@ class ResourceMeta:
     name: str     # Human-readable name
     slug: str     # URL-safe identifier (auto-generated from name)
     path: Path    # Filesystem path (relative to project root)
-    kind: str     # "project" | "workflow" | "structure" | "step"
+    kind: str     # "project" | "calculation" | "structure" | "step"
 ```
 
 **Key principles**:
@@ -74,9 +74,9 @@ A QuantumVITAS project is a directory containing:
 project/
 ├── project.qv.yml       # Project metadata and registry
 ├── structures/          # Structure JSON files (pymatgen format)
-├── workflows/
-│   └── <workflow-slug>/
-│       ├── workflow.yaml    # Workflow definition with structure reference
+├── calculations/
+│   └── <calculation-slug>/
+│       ├── calculation.yaml    # Calculation definition with structure reference
 │       ├── steps/           # Step YAML specifications
 │       ├── raw/             # Working directory for QE execution
 │       └── reference/       # Reference outputs for verification
@@ -84,16 +84,16 @@ project/
 └── trash/               # Soft-deleted resources
 ```
 
-### 2.3 Workflow and Step YAML Structure
+### 2.3 Calculation and Step YAML Structure
 
-**workflow.yaml** (ID-only cross-references):
+**calculation.yaml** (ID-only cross-references):
 ```yaml
 meta:
   id: 01JXYZ123ABC456DEF789GHI  # ULID
   name: si-dos
   slug: si-dos
-  path: workflows/si-dos
-  kind: workflow
+  path: calculations/si-dos
+  kind: calculation
 mode: normal
 structure_id: 01SABC123...        # Structure reference (ULID only)
 structure_name: Si               # Optional display name (cosmetic)
@@ -113,9 +113,9 @@ meta:
   slug: scf
   path: scf.step.yaml
   kind: step
-# DAG + ID-only model: NO structure_id or parent_workflow_id in step YAML
-# Structure is inherited from workflow.structure_id
-# Parent workflow is implicit from file location (workflows/<slug>/steps/<step>.step.yaml)
+# DAG + ID-only model: NO structure_id or parent_calculation_id in step YAML
+# Structure is inherited from calculation.structure_id
+# Parent calculation is implicit from file location (calculations/<slug>/steps/<step>.step.yaml)
 step_type: scf
 parameters:
   CONTROL:
@@ -145,10 +145,10 @@ QEInput
 
 **Roundtrip parsing**: `QEInputParser.parse_file()` → modify → `QEInputGenerator.write_file()`
 
-### 2.5 Workflow Execution
+### 2.5 Calculation Execution
 
 ```
-WorkflowRunner.run(workflow)
+CalculationRunner.run(calculation)
     └── for each step:
         └── engine.run_step(step, working_dir)
             └── subprocess: pw.x < input.in > output.out
@@ -215,35 +215,35 @@ The CLI uses Typer with sub-apps. All commands support `--project PATH` for expl
 qv
 ├── init
 │   ├── project [--path PATH] [--name NAME] [--snapshot SNAPSHOT]
-│   ├── workflow <name> [--structure STRUCT] [--parent WF] [--template TEMPLATE]
-│   └── step <type> [--structure STRUCT] [--workflow WF] [overrides...]
+│   ├── calculation <name> [--structure STRUCT] [--parent WF] [--template TEMPLATE]
+│   └── step <type> [--structure STRUCT] [--calculation WF] [overrides...]
 ├── import-structure <file> [--name NAME]
 ├── list [--verbose]
 ├── configure (PREFERRED for renaming)
-│   ├── step <step-id|path> [--name NAME] [--workflow WF] [--remove] [overrides...]
-│   ├── workflow [<selector>] [--name NAME] [--structure STRUCT] [--reorder s1,s2,...]
+│   ├── step <step-id|path> [--name NAME] [--calculation WF] [--remove] [overrides...]
+│   ├── calculation [<selector>] [--name NAME] [--structure STRUCT] [--reorder s1,s2,...]
 │   └── structure <selector> [--name NAME]
 ├── rename (DEPRECATED - use configure --name instead)
 │   ├── project [--name NAME] [--slug SLUG] [--path PATH]
-│   ├── workflow <selector> [--name NAME]
-│   ├── step <workflow> <step-id> [--id NEW_ID]
+│   ├── calculation <selector> [--name NAME]
+│   ├── step <calculation> <step-id> [--id NEW_ID]
 │   └── structure <selector> [--name NAME]
 ├── delete
 │   ├── project [<selector>]
-│   ├── workflow [<selector>] [--force] [--cascade]
-│   ├── step <step-id> [--workflow WF]
+│   ├── calculation [<selector>] [--force] [--cascade]
+│   ├── step <step-id> [--calculation WF]
 │   ├── structure <selector> [--force] [--cascade]
 │   └── trash [--parent]
 ├── run
 │   ├── step <input.in|step.yaml> [--workdir PATH] [overrides...]
-│   ├── workflow [<selector>] [--strict] [--verbose]
+│   ├── calculation [<selector>] [--strict] [--verbose]
 │   ├── structure <selector> [--type TYPE] [overrides...]
 │   └── (auto-dispatch if target given without subcommand)
 ├── detect-qe [--path PATH]
 ├── show-command <input.in>  # Auto-detects module type (pw.x, bands.x, etc.)
 ├── get-command <input.in>   # alias for show-command
 ├── analyze
-│   ├── band [<file>] [--workflow WF] [--symmetry FILE] [--scf FILE] [--plot]
+│   ├── band [<file>] [--calculation WF] [--symmetry FILE] [--scf FILE] [--plot]
 │   ├── dos <file> [--scf FILE] [--plot] [--energy-range MIN,MAX]
 │   ├── energy <file> [--plot]  # SCF convergence analysis
 │   ├── scf <file> [--plot]     # alias for energy
@@ -260,11 +260,11 @@ Resources can be identified by:
 
 **Auto-detection from current directory**:
 - `find_project_root()`: Walks up to find `project.qv.yml`
-- `find_enclosing_workflow()`: Detects if pwd is inside a workflow (uses directory path matching)
-- `PathContext` (`core/context.py`): Scans upward to find project/workflow/step context
-- Used by `qv run workflow`, `qv init step`, `qv analyze band`, etc.
+- `find_enclosing_calculation()`: Detects if pwd is inside a calculation (uses directory path matching)
+- `PathContext` (`core/context.py`): Scans upward to find project/calculation/step context
+- Used by `qv run calculation`, `qv init step`, `qv analyze band`, etc.
 
-**Important**: For workflow auto-detection, prefer `find_enclosing_workflow()` over `PathContext.workflow_selector` because it uses directory paths (more reliable after renames). See section 26.4 for details.
+**Important**: For calculation auto-detection, prefer `find_enclosing_calculation()` over `PathContext.calculation_selector` because it uses directory paths (more reliable after renames). See section 26.4 for details.
 
 Key utility: `resolve_resource()` in `core/project_utils.py`
 
@@ -289,7 +289,7 @@ CLI supports QE parameter overrides with special syntax:
 ```
 INTENDED ARCHITECTURE:
     CLI (main.py) → api.py (QVService) → core/* modules
-                                       → workflow/*
+                                       → calculation/*
                                        → analysis/*
 
 CURRENT STATE (Partial):
@@ -321,29 +321,29 @@ CURRENT STATE (Partial):
 
 ## 5. Recent Implementations (2025-11-30)
 
-### 5.1 Configure Workflow Command
+### 5.1 Configure Calculation Command
 
-`qv configure workflow` now supports:
+`qv configure calculation` now supports:
 
 ```bash
-# Change structure for workflow and all its steps
-qv configure workflow --structure new_structure
+# Change structure for calculation and all its steps
+qv configure calculation --structure new_structure
 
-# Reorder steps in workflow
-qv configure workflow --reorder scf,nscf,dos
+# Reorder steps in calculation
+qv configure calculation --reorder scf,nscf,dos
 
 # Both at once
-qv configure workflow si_dos --structure si --reorder scf,nscf
+qv configure calculation si_dos --structure si --reorder scf,nscf
 ```
 
 When `--structure` is used, the command:
 1. Validates the new structure exists
-2. Updates `workflow.yaml` 
+2. Updates `calculation.yaml` 
 3. Iterates through all step YAML files and updates their `structure` field
 
-### 5.2 Parent Workflow ID in Steps
+### 5.2 Parent Calculation ID in Steps
 
-Steps now have an optional `parent_workflow_id` field linking them to their parent workflow:
+Steps now have an optional `parent_calculation_id` field linking them to their parent calculation:
 
 ```python
 @dataclass
@@ -354,7 +354,7 @@ class StructureStepSpec:
     parameters: Dict[str, Dict[str, Any]]
     cards: Dict[str, Dict[str, Any]]
     species_overrides: Dict[str, Dict[str, Any]]
-    parent_workflow_id: Optional[str] = None  # NEW
+    parent_calculation_id: Optional[str] = None  # NEW
 ```
 
 This enables:
@@ -373,23 +373,23 @@ This enables:
 # With explicit structure
 qv init step scf --structure si
 
-# Inside workflow directory (structure inherited)
-cd project/workflows/si-dos
+# Inside calculation directory (structure inherited)
+cd project/calculations/si-dos
 qv init step nscf
-# Output: "Using structure 'si' from parent workflow"
+# Output: "Using structure 'si' from parent calculation"
 
-# Outside workflow without structure = ERROR
+# Outside calculation without structure = ERROR
 qv init step scf  # Error: Structure required
 ```
 
 ### 5.5 Structure Validation on Step Run
 
-When running a step that has `parent_workflow_id`:
+When running a step that has `parent_calculation_id`:
 
 ```python
 def _validate_step_structure_consistency(spec, spec_path, project_root):
-    # Loads parent workflow, checks structure field
-    # Shows warning if step.structure != workflow.structure
+    # Loads parent calculation, checks structure field
+    # Shows warning if step.structure != calculation.structure
 ```
 
 This is a warning only (doesn't block execution) to maintain compatibility with standalone steps.
@@ -454,7 +454,7 @@ QuantumVITAS distinguishes two distinct scenarios for step creation, each with d
 
 **Behavior:**
 - Step spec parameters and cards include QV's in-code default parameters
-- Defaults are defined in `workflow/step_defaults.py` per step type
+- Defaults are defined in `calculation/step_defaults.py` per step type
 - Common defaults include:
   - `CONTROL.outdir = "./outdir"`
   - `CONTROL.restart_mode = "from_scratch"`
@@ -473,7 +473,7 @@ qv init step scf --structure si
 
 **Sources:**
 - `qv init step <type> --no-defaults` (with parameters extracted from QE input)
-- `show-command` → `qv init step` workflow (suggests `--no-defaults`)
+- `show-command` → `qv init step` calculation (suggests `--no-defaults`)
 - Future GUI "Import QE Input" flow
 
 **Behavior:**
@@ -492,16 +492,16 @@ qv show-command si_scf.in
 **Implementation Details:**
 - `init_step_command` in `cli/main.py` accepts `--no-defaults` flag
 - When `--no-defaults` is set, `apply_defaults=False` in parameter merging
-- `build_step_spec_from_qe_input()` in `workflow/importers.py` accepts `apply_defaults` parameter (defaults to `False` for import scenarios)
+- `build_step_spec_from_qe_input()` in `calculation/importers.py` accepts `apply_defaults` parameter (defaults to `False` for import scenarios)
 - `reset_step_params()` always uses `apply_defaults=True` (Scenario A)
 
 **GUI Wiring:**
-- **GUI "Add Step"** (`WorkflowDetailPanel.handleAddStep`):
-  - Calls RPC `add_step_to_workflow` → `QVService.add_step_to_workflow` → `init_step`
+- **GUI "Add Step"** (`CalculationDetailPanel.handleAddStep`):
+  - Calls RPC `add_step_to_calculation` → `QVService.add_step_to_calculation` → `init_step`
   - Uses `apply_defaults=True` (Scenario A: from-scratch with QV defaults)
   - Steps created this way include `outdir`, `restart_mode`, `conv_thr`, etc.
   
-- **GUI "Import QE Input"** (`WorkflowDetailPanel.handleImportStep`):
+- **GUI "Import QE Input"** (`CalculationDetailPanel.handleImportStep`):
   - Calls RPC `import_step_from_qe_input` → `QVService.import_step_from_qe_input`
   - Uses `apply_defaults=False` (Scenario B: preserve original parameters)
   - Steps imported this way only contain parameters from the original QE input file
@@ -568,8 +568,8 @@ Total:               85 tests PASS
 Small bundled test cases in `tests/data/`:
 - `pw_single_tests/` - Single-point SCF tests
 - `pw_scf/` - Basic SCF tests
-- `4_Si_DOS/` - Si DOS workflow
-- `7_Si_bandStructure/` - Si bands workflow
+- `4_Si_DOS/` - Si DOS calculation
+- `7_Si_bandStructure/` - Si bands calculation
 
 **Analysis test data** in `tests/data/analysis_*/`:
 - `analysis_scf/` - SCF output files
@@ -619,14 +619,14 @@ python -m pytest tests/cli/       # CLI tests (needs QE)
 | `core/project_utils.py` | Resource resolution, config helpers | ~920 |
 | `core/engines/qe_installation.py` | QE detection logic | ~470 |
 | `core/engines/qe.py` | QE engine implementation | ~550 |
-| `core/engines/qe_workflow.py` | Step/workflow execution | ~320 |
-| `workflow/structure_steps.py` | StructureStepSpec model, post-processing input generation | ~450 |
+| `core/engines/qe_calculation.py` | Step/calculation execution | ~320 |
+| `calculation/structure_steps.py` | StructureStepSpec model, post-processing input generation | ~450 |
 | `core/templates.py` | Template copying utilities | ~350 |
-| `workflow/input_runner.py` | Input preparation and execution | ~540 |
+| `calculation/input_runner.py` | Input preparation and execution | ~540 |
 | `io/parser/qe_parser.py` | QE input parsing | ~420 |
 | `io/model.py` | QE data structures | ~230 |
-| `workflow/runner.py` | Workflow orchestration | ~95 |
-| `project/model.py` | Project/Workflow models | ~260 |
+| `calculation/runner.py` | Calculation orchestration | ~95 |
+| `project/model.py` | Project/Calculation models | ~260 |
 
 ---
 
@@ -647,8 +647,8 @@ python -m pytest tests/cli/       # CLI tests (needs QE)
 ### 8.3 YAML Files
 
 - `project.qv.yml` - Project metadata
-- `workflow.yaml` - Workflow definition (includes `structure_id` ULID reference)
-- `*.step.yaml` - Step specifications (DAG model: NO `parent_workflow_id` or `structure_id` - these are inherited from workflow)
+- `calculation.yaml` - Calculation definition (includes `structure_id` ULID reference)
+- `*.step.yaml` - Step specifications (DAG model: NO `parent_calculation_id` or `structure_id` - these are inherited from calculation)
 
 ### 8.4 Structure Storage
 
@@ -685,8 +685,8 @@ Structures are stored as pymatgen JSON with embedded metadata:
 
 ### 9.3 Structure Consistency
 
-Workflows reference a single structure in `workflow.yaml`. Steps also have a `structure` field.
-When changing a workflow's structure, use `qv configure workflow --structure` which updates all steps.
+Workflows reference a single structure in `calculation.yaml`. Steps also have a `structure` field.
+When changing a calculation's structure, use `qv configure calculation --structure` which updates all steps.
 
 ### 9.4 QE Input Quirks
 
@@ -695,7 +695,7 @@ When changing a workflow's structure, use `qv configure workflow --structure` wh
 - Some namelists are optional (e.g., `&IONS` only for relaxation)
 - K_POINTS can be `automatic`, `gamma`, `crystal`, `tpiba`, etc.
 
-### 9.5 Workflow Verification
+### 9.5 Calculation Verification
 
 The verification logic checks:
 1. "JOB DONE" in output (basic success)
@@ -716,12 +716,12 @@ When adding new functionality, follow this pattern:
    def new_feature(project_root: Path, selector: str, **kwargs) -> Result:
        """Implement the core logic here."""
        # 1. Resolve resources
-       resource = resolve_workflow(project_root, selector)
+       resource = resolve_calculation(project_root, selector)
        # 2. Load models
-       model = load_workflow(resource.absolute_path, project_root)
+       model = load_calculation(resource.absolute_path, project_root)
        # 3. Perform operation
        # 4. Save models
-       save_workflow(model, resource.absolute_path)
+       save_calculation(model, resource.absolute_path)
        return result
    ```
 
@@ -748,11 +748,11 @@ When adding new functionality, follow this pattern:
 ### Reading Order
 
 1. `core/resources.py` - ResourceMeta pattern
-2. `core/models.py` - Dataclass models with load/save (WorkflowModel, ProjectModel)
+2. `core/models.py` - Dataclass models with load/save (CalculationModel, ProjectModel)
 3. `core/resolution.py` - Centralized selector→resource resolution
 4. `core/context.py` - PWD context helper for CLI
 5. `api.py` - QVService stable interface
-6. `workflow/structure_steps.py` - StructureStepSpec (step YAML model)
+6. `calculation/structure_steps.py` - StructureStepSpec (step YAML model)
 7. `io/model.py` - QE input structure
 8. `cli/main.py` - CLI commands (large file, use semantic search)
 
@@ -768,9 +768,9 @@ When adding new functionality, follow this pattern:
 | Add/modify resource models | `core/models.py` |
 | Modify QE detection | `core/engines/qe_installation.py` |
 | Add QE module support | `io/parser/qe_parser.py`, `core/engines/qe.py` |
-| Change step spec format | `workflow/structure_steps.py` |
-| Change workflow execution | `workflow/runner.py`, `core/engines/qe_workflow.py` |
-| Modify verification | `workflow/verification.py` |
+| Change step spec format | `calculation/structure_steps.py` |
+| Change calculation execution | `calculation/runner.py`, `core/engines/qe_calculation.py` |
+| Modify verification | `calculation/verification.py` |
 | Add template support | `core/templates.py` |
 
 ### Development Environment
@@ -824,8 +824,8 @@ The GUI is implemented as an Electron desktop application with React/TypeScript 
 |---------|---------------|
 | Resizable daemon logs panel | DebugPanel with drag handle |
 | Resizable list panels | ResizablePane component |
-| Drag-and-drop step reordering | Native HTML5 DnD in WorkflowDetailPanel |
-| Add step to workflow | add_step_to_workflow in QVService + daemon handler |
+| Drag-and-drop step reordering | Native HTML5 DnD in CalculationDetailPanel |
+| Add step to calculation | add_step_to_calculation in QVService + daemon handler |
 | Supercell visualization | Controls in StructureViewer3D, params to get_structure_vis |
 | Boundary atom repetition | repeat_boundary param in structure visualization |
 | Context-aware element legend | Filter legend to only present elements |
@@ -836,8 +836,8 @@ The GUI is implemented as an Electron desktop application with React/TypeScript 
 |---------|---------------|
 | Theme switching (dark/light) | CSS variables with `[data-theme="light"]` selector, Settings panel toggle |
 | Reveal in Finder/Explorer | `shell.showItemInFolder()` IPC handler, `window.qv.revealPath()` API |
-| Automatic analysis selection | `detectAnalysisType()` based on workflow's last step type |
-| Automatic analysis loading | Settings toggle, auto-loads when workflow selected (if enabled) |
+| Automatic analysis selection | `detectAnalysisType()` based on calculation's last step type |
+| Automatic analysis loading | Settings toggle, auto-loads when calculation selected (if enabled) |
 | Band structure ylim control | Energy range inputs update YAxis domain dynamically |
 
 ### 11.3 Daemon Methods for GUI
@@ -848,16 +848,16 @@ Key methods exposed via JSON-RPC:
 # Project operations
 "get_project_summary" → QVService.get_project_summary
 "list_structures" → QVService.list_structures_data
-"list_workflows" → QVService.list_workflows_data
+"list_calculations" → QVService.list_calculations_data
 
 # CRUD operations
 "create_project" → QVService.init_project
 "import_structure" → QVService.import_structure
-"create_workflow" → QVService.init_workflow
-"add_step_to_workflow" → QVService.add_step_to_workflow (NEW)
-"reorder_workflow_steps" → QVService.reorder_workflow_steps
+"create_calculation" → QVService.init_calculation
+"add_step_to_calculation" → QVService.add_step_to_calculation (NEW)
+"reorder_calculation_steps" → QVService.reorder_calculation_steps
 "delete_structure" → QVService.delete_structure
-"delete_workflow" → QVService.delete_workflow
+"delete_calculation" → QVService.delete_calculation
 
 # Visualization data (pure data, no matplotlib)
 "get_structure_vis" → QVService.get_structure_visualization_data
@@ -866,7 +866,7 @@ Key methods exposed via JSON-RPC:
 "get_band_structure_data" → QVService.get_band_structure_data
 
 # Job management
-"run_workflow" → JobManager.submit(QVService.run_workflow)
+"run_calculation" → JobManager.submit(QVService.run_calculation)
 "run_step" → JobManager.submit(QVService.run_step)
 "list_jobs" → JobManager.list_jobs
 "cancel_job" → JobManager.cancel_job
@@ -885,9 +885,9 @@ gui/src/components/
 ├── panels/
 │   ├── DebugPanel.tsx           # Resizable daemon logs
 │   ├── StructureViewer3D.tsx    # 3D view with supercell controls, camera state preservation
-│   ├── WorkflowListPanel.tsx    # With drag-and-drop reorder + add step
+│   ├── CalculationListPanel.tsx    # With drag-and-drop reorder + add step
 │   ├── AnalysisPanel.tsx        # Recharts-based SCF/DOS/bands plots
-│   │                             # - Auto-detects analysis type from workflow
+│   │                             # - Auto-detects analysis type from calculation
 │   │                             # - Energy range controls for band plots
 │   │                             # - Automatic loading when enabled
 │   ├── SettingsPanel.tsx        # QE detection + theme + auto-analysis settings
@@ -931,17 +931,17 @@ Implemented from `temporary_ai_prompts` (lines 372-379):
 |------|---------------|
 | **Post-processing step support** | DOS/bands/projwfc steps now generate correct input format (just &DOS, &BANDS, etc. namelists) instead of pw.x format |
 | **`--snapshot` for `qv init project`** | Create project from snapshot YAML file (e.g., `qv init project --snapshot demo.yml`) |
-| **`--template` for `qv init workflow`** | Copy workflow template with steps from resources/workflow_templates/ (e.g., `qv init workflow my-dos --template si-dos`) |
+| **`--template` for `qv init calculation`** | Copy calculation template with steps from resources/calculation_templates/ (e.g., `qv init calculation my-dos --template si-dos`) |
 | **`qv init step`** | Creates step with in-code default parameters based on step type (no template option) |
 | **`qv import-structure` accepts .json** | Can now import QV-format JSON files with embedded metadata |
 | **`qv show-command` simplified** | No longer includes `--structure <structure-id>` placeholder; shows helpful explanation instead |
-| **Structure inheritance in `qv init step`** | When using `--workflow`, inherits structure from that workflow (not just from enclosing directory) |
-| **ULID consistency in templates** | When copying templates, workflow ULIDs in project.qv.yml match step parent_workflow_id |
+| **Structure inheritance in `qv init step`** | When using `--calculation`, inherits structure from that calculation (not just from enclosing directory) |
+| **ULID consistency in templates** | When copying templates, calculation ULIDs in project.qv.yml match step parent_calculation_id |
 | **QE registry isolation** | Added autouse fixture to reset QE home registry between tests |
 
 **New file**: `src/quantumvitas/core/templates.py` - Template management utilities
 
-**New test file**: `tests/cli/test_template_workflow.py` - Tests for template copying and ULID consistency
+**New test file**: `tests/cli/test_template_calculation.py` - Tests for template copying and ULID consistency
 
 **Resources Layout** (new organization):
 
@@ -949,9 +949,9 @@ Implemented from `temporary_ai_prompts` (lines 372-379):
 resources/
 ├── demo_projects/          # Complete project snapshots (.yml)
 │   └── si_bands_demo.yml  # Demo project snapshot (used by GUI "Create Demo Project")
-├── workflow_templates/     # Reusable workflow recipes (public API)
-│   ├── si-bands/          # Si band structure workflow
-│   └── si-dos/            # Si DOS workflow
+├── calculation_templates/     # Reusable calculation recipes (public API)
+│   ├── si-bands/          # Si band structure calculation
+│   └── si-dos/            # Si DOS calculation
 └── structure_library/      # Reusable structures (pymatgen JSON, public API)
     └── si.json            # Si bulk structure
 ```
@@ -959,16 +959,16 @@ resources/
 **Key design principles**:
 - **Public API** (GUI, high-level features): Uses `resources/` directories
   - Demo projects: `resources/demo_projects/*.yml` (project snapshots)
-  - Workflow templates: `resources/workflow_templates/` (for GUI listing and `list_workflow_templates()`)
+  - Calculation templates: `resources/calculation_templates/` (for GUI listing and `list_calculation_templates()`)
   - Structure library: `resources/structure_library/` (for `import_structure_from_template()`)
 - **Step defaults**: Step parameters use in-code defaults (no template files)
-  - Default parameters defined in `workflow/step_defaults.py`
+  - Default parameters defined in `calculation/step_defaults.py`
   - `qv init step` creates steps with default parameters based on step type
   - `reset_step_params` resets to in-code defaults
 
 **Key implementation details**:
-- When creating workflow from template, CLI generates the workflow ULID first and passes it to `copy_workflow_template` so steps get the correct `parent_workflow_id`
-- When copying project template, old workflow ULIDs from project.qv.yml are mapped to new ULIDs for consistency
+- When creating calculation from template, CLI generates the calculation ULID first and passes it to `copy_calculation_template` so steps get the correct `parent_calculation_id`
+- When copying project template, old calculation ULIDs from project.qv.yml are mapped to new ULIDs for consistency
 - Demo project creation (`create_demo_project`) uses snapshots from `resources/demo_projects/` instead of templates
 - Demo snapshots are generated from test projects using `scripts/generate_demo_snapshots.py`
 - If test example projects change, rerun `python scripts/generate_demo_snapshots.py` to regenerate the demo snapshot files
@@ -979,11 +979,11 @@ Implemented from `temporary_ai_prompts` (lines 344-365):
 
 | Item | Implementation |
 |------|---------------|
-| `qv configure workflow --reorder` | Reorders steps in workflow.yaml |
-| `qv configure workflow --structure` | Changes structure, updates all step YAMLs |
-| DAG model: step.yaml | Step YAML contains only step-local config (no `parent_workflow_id` or `structure_id`) |
-| Structure optional in `qv init step` | Inherits from parent workflow if inside one |
-| Structure validation on run step | Warning if step structure differs from workflow |
+| `qv configure calculation --reorder` | Reorders steps in calculation.yaml |
+| `qv configure calculation --structure` | Changes structure, updates all step YAMLs |
+| DAG model: step.yaml | Step YAML contains only step-local config (no `parent_calculation_id` or `structure_id`) |
+| Structure optional in `qv init step` | Inherits from parent calculation if inside one |
+| Structure validation on run step | Warning if step structure differs from calculation |
 | Reduced input file output | Only one file when running from step spec |
 | `qv configure structure` | Basic renaming support |
 
@@ -1005,19 +1005,19 @@ Implemented the unified resource resolution architecture from `temporary_ai_prom
 
 1. **Resolution Layer** (`core/resolution.py`):
    - `resolve_structure(project_root, selector)` - Resolve structure by ULID/slug/name/path
-   - `resolve_workflow(project_root, selector)` - Resolve workflow by ULID/slug/name/path
-   - `resolve_step(project_root, workflow_selector, step_selector)` - Resolve step within workflow
+   - `resolve_calculation(project_root, selector)` - Resolve calculation by ULID/slug/name/path
+   - `resolve_step(project_root, calculation_selector, step_selector)` - Resolve step within calculation
    - Resolution order: path → ULID → slug → name (case-insensitive)
    - Never uses `Path.cwd()`
 
 2. **Context Layer** (`core/context.py`):
-   - `find_path_context_from_pwd()` - Scans upward to find project/workflow context
-   - Returns `PathContext` with `project_root` and `nodes` (project→workflow→step chain)
+   - `find_path_context_from_pwd()` - Scans upward to find project/calculation context
+   - Returns `PathContext` with `project_root` and `nodes` (project→calculation→step chain)
    - **Only place that uses `Path.cwd()`** for resource discovery
    - Used by CLI for auto-detection
 
 3. **Models Layer** (`core/models.py`):
-   - Dataclass models for all resources: `WorkflowModel`, `ProjectModel`, `StructureModel`
+   - Dataclass models for all resources: `CalculationModel`, `ProjectModel`, `StructureModel`
    - `load_*` / `save_*` functions for YAML/JSON I/O
    - All models have complete meta: `id`, `name`, `slug`, `path`, `kind`
    - Business logic works with objects, not raw dicts
@@ -1055,27 +1055,27 @@ class ResolvedResource:
 @dataclass
 class PathContext:
     project_root: Path
-    nodes: List[ContextNode]  # [project, workflow?, step?]
+    nodes: List[ContextNode]  # [project, calculation?, step?]
     
     # Convenience properties:
-    workflow_selector: Optional[str]
-    workflow_directory: Optional[Path]
-    is_inside_workflow() -> bool
+    calculation_selector: Optional[str]
+    calculation_directory: Optional[Path]
+    is_inside_calculation() -> bool
 
 @dataclass
-class WorkflowModel:
+class CalculationModel:
     meta: ResourceMeta      # Complete metadata
     structure: Optional[str]  # Structure selector
-    steps: List[WorkflowStepEntry]
+    steps: List[CalculationStepEntry]
     mode: str = "normal"
     working_dir: str = "raw"
 ```
 
 **Model I/O functions**:
 ```python
-# Workflow
-model = load_workflow(path, project_root)
-save_workflow(model, path)
+# Calculation
+model = load_calculation(path, project_root)
+save_calculation(model, path)
 
 # Project  
 model = load_project(path)
@@ -1300,7 +1300,7 @@ Tests verify:
 | File | Change |
 |------|--------|
 | `analysis/energy.py` | Key `"fermi_energy_ry"` → `"fermi_energy_ev"` |
-| `workflow/verification.py` | Uses `metrics.get("fermi_energy_ev")` |
+| `calculation/verification.py` | Uses `metrics.get("fermi_energy_ev")` |
 | `analysis/dos.py` | Uses `step.metrics.get("fermi_energy_ev")` |
 | `analysis/bands.py` | Uses `step.metrics.get("fermi_energy_ev")` |
 
@@ -1326,7 +1326,7 @@ calculation = module.value if module != QEModule.UNKNOWN else "scf"
 Example output for `si.bands.pp.in`:
 ```
 Step type: bands
-Suggested: qv init step bands --workflow <workflow>
+Suggested: qv init step bands --calculation <calculation>
 ```
 
 #### `qv configure --name` (Preferred) and `qv rename` (Deprecated)
@@ -1336,22 +1336,22 @@ Suggested: qv init step bands --workflow <workflow>
 ```bash
 # Preferred syntax
 qv configure structure si --name "Silicon bulk"
-qv configure workflow si-dos --name "Si DOS v2"
-qv configure step scf --workflow si-dos --name "SCF high-precision"
+qv configure calculation si-dos --name "Si DOS v2"
+qv configure step scf --calculation si-dos --name "SCF high-precision"
 
 # Deprecated (shows warning, still works)
 qv rename structure si --name "Silicon bulk"
 ```
 
 **Implementation**:
-- Added `--name` option to `configure_structure_command`, `configure_workflow_command`, `configure_step_command`
+- Added `--name` option to `configure_structure_command`, `configure_calculation_command`, `configure_step_command`
 - `qv rename *` commands now emit deprecation warning via `typer.secho(..., fg=typer.colors.YELLOW)`
 
 ### 14.3 Resource Metadata Updates
 
-#### Workflow YAML Structure
+#### Calculation YAML Structure
 
-**workflow.yaml** now includes full `meta` section:
+**calculation.yaml** now includes full `meta` section:
 
 ```yaml
 # New format (preferred)
@@ -1359,8 +1359,8 @@ meta:
   id: 01JXYZ123ABC456DEF789GHI
   name: si-dos
   slug: si-dos
-  path: workflows/si-dos
-  kind: workflow
+  path: calculations/si-dos
+  kind: calculation
 mode: normal
 structure: si
 working_dir: raw
@@ -1375,7 +1375,7 @@ Previously was:
 # Old format (still supported for reading)
 id: si-dos
 mode: normal
-workflow:
+calculation:
   working_dir: raw
   structure: si
 steps: ...
@@ -1383,7 +1383,7 @@ steps: ...
 
 #### Templates Updated
 
-Templates in `/templates/workflow/` updated to use new format with `meta` section.
+Templates in `/templates/calculation/` updated to use new format with `meta` section.
 
 ### 14.4 Pseudopotential Handling
 
@@ -1432,7 +1432,7 @@ CLI (main.py) → api.py (QVService) → core/* modules
 
 #### Post-Processing Step Inputs (Verified)
 
-`bands.x` and other post-processing steps correctly omit `&control` namelist. Implementation in `workflow/structure_steps.py:_generate_postprocessing_input()`:
+`bands.x` and other post-processing steps correctly omit `&control` namelist. Implementation in `calculation/structure_steps.py:_generate_postprocessing_input()`:
 
 ```python
 # POST_PROCESSING_STEP_TYPES = {"dos", "bands", "projwfc", ...}
@@ -1484,20 +1484,20 @@ qv analyze band si.bands.dat.gnu --symmetry si.bands.out --scf si.nscf.out --plo
 | `src/quantumvitas/analysis/parsers.py` | K-point coordinate conversion and crystal labeling |
 | `src/quantumvitas/analysis/bands.py` | Pass pw_output_file for k-point conversion |
 | `src/quantumvitas/cli/main.py` | Pass scf_file to parse_bands_gnu for k-point conversion |
-| `tests/integration/test_si_bands_workflow_comprehensive.py` | Copy only Si pseudopotentials, fix file patterns |
+| `tests/integration/test_si_bands_calculation_comprehensive.py` | Copy only Si pseudopotentials, fix file patterns |
 | `AI_understanding.md` | API architecture guidelines, new feature pattern |
 
 ### 14.10 Auto-Detection in `qv analyze band`
 
-**New feature**: The `qv analyze band` command can now auto-locate files from workflow context.
+**New feature**: The `qv analyze band` command can now auto-locate files from calculation context.
 
 **Usage patterns**:
 ```bash
-# Explicit workflow selector
-qv analyze band --workflow si-bands --plot
+# Explicit calculation selector
+qv analyze band --calculation si-bands --plot
 
-# Auto-detect from pwd (if inside workflow)
-cd project/workflows/si-bands/raw
+# Auto-detect from pwd (if inside calculation)
+cd project/calculations/si-bands/raw
 qv analyze band --plot
 
 # Auto-detect from pwd (searches current directory)
@@ -1507,15 +1507,15 @@ qv analyze band --plot
 qv analyze band si.bands.dat.gnu --symmetry si.bands.out --scf si.nscf.out --plot
 ```
 
-**New module**: `workflow/naming.py` provides centralized file naming conventions:
-- `WorkflowFileNaming` class - input/output extensions for step types
+**New module**: `calculation/naming.py` provides centralized file naming conventions:
+- `CalculationFileNaming` class - input/output extensions for step types
 - `BandAnalysisFiles` dataclass - container for band analysis files
 - `find_band_analysis_files()` - auto-locate files in a directory
 
 **Implementation uses**:
-- `core/context.py:find_path_context_from_pwd()` - detect enclosing workflow
-- `core/project_utils.py:find_workflow_entry()` - resolve workflow selector
-- `workflow/naming.py` - centralized file patterns
+- `core/context.py:find_path_context_from_pwd()` - detect enclosing calculation
+- `core/project_utils.py:find_calculation_entry()` - resolve calculation selector
+- `calculation/naming.py` - centralized file patterns
 
 ### 14.11 3D Structure Visualization (`qv analyze structure`)
 
@@ -1568,12 +1568,12 @@ qv analyze structure /path/to/structure.cif --output vis.png
 | `src/quantumvitas/analysis/energy.py` | Fix `fermi_energy_ev` key |
 | `src/quantumvitas/analysis/dos.py` | Use `fermi_energy_ev` key |
 | `src/quantumvitas/analysis/bands.py` | Use `fermi_energy_ev` key, prefer NSCF for Fermi |
-| `src/quantumvitas/workflow/verification.py` | Use `fermi_energy_ev` key |
+| `src/quantumvitas/calculation/verification.py` | Use `fermi_energy_ev` key |
 | `src/quantumvitas/core/engines/qe_pseudopotentials.py` | Pseudopotential priority and copying |
-| `src/quantumvitas/workflow/input_runner.py` | Simplified input file naming |
-| `src/quantumvitas/workflow/workflow.py` | Better input file extensions (.bands.in, .dos.in) |
-| `src/quantumvitas/cli/main.py` | Module detection, configure --name, rename deprecation, workflow meta |
-| `templates/workflow/si-dos/workflow.yaml` | Updated to new meta format |
+| `src/quantumvitas/calculation/input_runner.py` | Simplified input file naming |
+| `src/quantumvitas/calculation/calculation.py` | Better input file extensions (.bands.in, .dos.in) |
+| `src/quantumvitas/cli/main.py` | Module detection, configure --name, rename deprecation, calculation meta |
+| `templates/calculation/si-dos/calculation.yaml` | Updated to new meta format |
 | `docs/CLI_API_REFERENCE.md` | Comprehensive update |
 
 ### 14.13 Files Modified in Session 2 (Bond Detection Fix)
@@ -1604,7 +1604,7 @@ qv analyze structure /path/to/structure.cif --output vis.png
    - `QVService.analyze_band()` - Band structure analysis
    - `QVService.analyze_dos()` - DOS analysis
    - `QVService.analyze_scf()` - SCF convergence analysis
-   - `QVService._detect_workflow_results_dir()` - Helper for auto-detecting output directory
+   - `QVService._detect_calculation_results_dir()` - Helper for auto-detecting output directory
 
 2. **Updated CLI commands** (`cli/main.py`):
    - `qv analyze band` - Thin wrapper calling `QVService.analyze_band()`
@@ -1641,7 +1641,7 @@ class QVService:
         
         # Resolve resources
         if project_root:
-            resource = resolve_workflow(project_root, selector)
+            resource = resolve_calculation(project_root, selector)
         
         # Do actual work
         result = do_work(...)
@@ -1695,14 +1695,14 @@ def feature_command(
 
 | File | Changes |
 |------|---------|
-| `src/quantumvitas/api.py` | Added `analyze_scf()`, `analyze_dos()`, `analyze_band()`, `_detect_workflow_results_dir()` |
+| `src/quantumvitas/api.py` | Added `analyze_scf()`, `analyze_dos()`, `analyze_band()`, `_detect_calculation_results_dir()` |
 | `src/quantumvitas/cli/main.py` | Refactored analyze commands to use QVService, deprecated `analyze output` |
 
 ### 15.5 Test Results
 
 All 263 tests pass, including the previously failing:
-- `test_si_bands_workflow_comprehensive.py::TestSiBandsWorkflowManualKpath::test_analyze_bands`
-- `test_si_bands_workflow_comprehensive.py::TestSiBandsWorkflowAutoKpath::test_analyze_bands`
+- `test_si_bands_calculation_comprehensive.py::TestSiBandsWorkflowManualKpath::test_analyze_bands`
+- `test_si_bands_calculation_comprehensive.py::TestSiBandsWorkflowAutoKpath::test_analyze_bands`
 
 ---
 
@@ -1720,7 +1720,7 @@ Electron GUI (future)
        ↓ method calls
    QVService (api.py)
        ↓ 
-   core/*, workflow/*, analysis/*
+   core/*, calculation/*, analysis/*
 ```
 
 **Location**: `src/quantumvitas/daemon/`
@@ -1758,7 +1758,7 @@ Electron GUI (future)
 **Resource listing**:
 - `get_project_summary` → Project name, ID, resource counts
 - `list_structures` → List of structure metadata
-- `list_workflows` → List of workflow metadata with steps
+- `list_calculations` → List of calculation metadata with steps
 
 **Pure data (no matplotlib)**:
 - `get_structure_vis` → Atoms, bonds, lattice for 3D rendering
@@ -1767,7 +1767,7 @@ Electron GUI (future)
 - `get_band_structure_data` → Band energies and k-distances
 
 **Job management**:
-- `run_workflow` → Submit workflow execution, returns `{job_id}`
+- `run_calculation` → Submit calculation execution, returns `{job_id}`
 - `run_step` → Submit single step, returns `{job_id}`
 - `get_job_status` → Check job status, result, or error
 - `list_jobs` → List all jobs (filterable by status/type)
@@ -1781,19 +1781,19 @@ New methods in `QVService` return pure JSON-serializable data (no matplotlib obj
 # Project/resource summary
 QVService.get_project_summary(project_root) -> dict
 QVService.list_structures_data(project_root) -> list[dict]
-QVService.list_workflows_data(project_root) -> list[dict]
+QVService.list_calculations_data(project_root) -> list[dict]
 
 # Pure visualization data
 QVService.get_structure_vis_data(project_root, selector, supercell, repeat_boundary) -> dict
 # Returns: atoms (coords, element, color, radius), bonds, lattice matrix
 
-QVService.get_scf_convergence_data(project_root, workflow, step) -> dict
+QVService.get_scf_convergence_data(project_root, calculation, step) -> dict
 # Returns: iterations, energies, converged status
 
-QVService.get_dos_data(project_root, workflow, step) -> dict
+QVService.get_dos_data(project_root, calculation, step) -> dict
 # Returns: energies[], dos[], fermi_energy
 
-QVService.get_band_structure_data(project_root, workflow, step) -> dict
+QVService.get_band_structure_data(project_root, calculation, step) -> dict
 # Returns: k_distances[], energies[bands][kpoints], high_symmetry_points
 ```
 
@@ -1803,17 +1803,17 @@ QVService.get_band_structure_data(project_root, workflow, step) -> dict
 
 **Allowed paths**:
 ```
-GUI (React/Electron) → Electron main → Daemon RPC → QVService → core/workflow/analysis
+GUI (React/Electron) → Electron main → Daemon RPC → QVService → core/calculation/analysis
 ```
 
 **Forbidden paths**:
-- ❌ GUI → core/workflow/analysis (direct Python imports)
-- ❌ Daemon handlers → core/workflow/analysis (bypassing QVService)
+- ❌ GUI → core/calculation/analysis (direct Python imports)
+- ❌ Daemon handlers → core/calculation/analysis (bypassing QVService)
 - ❌ GUI → daemon internals (must use typed RPC protocol)
 
 **Exceptions** (documented):
 - `find_project_root` handler uses `quantumvitas.core.context` directly (utility function, not business logic)
-- `list_workflow_templates` handler uses `quantumvitas.core.templates` directly (read-only listing, no state mutation)
+- `list_calculation_templates` handler uses `quantumvitas.core.templates` directly (read-only listing, no state mutation)
 
 **Enforcement**:
 - GUI TypeScript code must only use `window.qv.*` RPC calls (typed in `gui/src/types/qv.ts`)
@@ -1826,7 +1826,7 @@ GUI (React/Electron) → Electron main → Daemon RPC → QVService → core/wor
 - All QE-invoking operations go through `JobManager`
 - `ThreadPoolExecutor(max_workers=1)` ensures sequential QE execution
 - Daemon main loop remains responsive and non-blocking
-- Job results/status live in memory; project/workflow data lives on disk
+- Job results/status live in memory; project/calculation data lives on disk
 
 ```python
 from quantumvitas.daemon.jobs import JobManager, JobStatus
@@ -1835,11 +1835,11 @@ manager = JobManager(max_workers=1)
 
 # Submit job
 job_id = manager.submit(
-    job_type="run_workflow",
-    func=QVService.run_workflow,
-    params={"workflow": "si-dos"},
+    job_type="run_calculation",
+    func=QVService.run_calculation,
+    params={"calculation": "si-dos"},
     project_root=project_root,
-    workflow_selector="si-dos",
+    calculation_selector="si-dos",
 )
 
 # Check status
@@ -1878,7 +1878,7 @@ daemon.run()
 → {"id": "2", "type": "get_project_summary", "payload": {"project_root": "/path/to/project"}}
 ← {"id": "2", "ok": true, "data": {"name": "my-project", "n_workflows": 3, ...}}
 
-→ {"id": "3", "type": "run_workflow", "payload": {"project_root": "/path", "workflow": "si-dos"}}
+→ {"id": "3", "type": "run_calculation", "payload": {"project_root": "/path", "calculation": "si-dos"}}
 ← {"id": "3", "ok": true, "data": {"job_id": "abc-123", "status": "pending"}}
 
 → {"id": "4", "type": "get_job_status", "payload": {"job_id": "abc-123"}}
@@ -1906,7 +1906,7 @@ The daemon implementation follows these rules:
 | `src/quantumvitas/daemon/jobs.py` | `JobManager`, `Job`, `JobStatus` |
 | `tests/unit/test_daemon.py` | Unit tests for daemon and job manager |
 | `tests/unit/test_qvservice_gui.py` | Unit tests for GUI-ready QVService methods |
-| `tests/daemon/test_si_bands_workflow_daemon.py` | Integration tests using daemon/JobManager |
+| `tests/daemon/test_si_bands_calculation_daemon.py` | Integration tests using daemon/JobManager |
 | `docs/DAEMON_API_REFERENCE.md` | Complete daemon API documentation |
 
 ### 16.9 Self-Audit Results (2025-12-05)
@@ -2005,7 +2005,7 @@ Run with: `pytest tests/unit/ -v`
 | `test_analysis_plotting.py` | Band structure/DOS plot generation |
 | `test_api_service.py` | QVService core methods (create, list, run) |
 | `test_context.py` | cwd-based auto-detection in CLI context |
-| `test_models.py` | Core models (Workflow, Step, Structure) |
+| `test_models.py` | Core models (Calculation, Step, Structure) |
 | `test_parameter_overrides.py` | Parameter merging and override logic |
 | `test_project_and_cli.py` | Project model and CLI arg parsing |
 | `test_qe_executable_detection.py` | QE installation detection (PATH, env vars, shell configs) |
@@ -2017,8 +2017,8 @@ Run with: `pytest tests/unit/ -v`
 | `test_structure_roundtrip.py` | Structure serialization roundtrip |
 | `test_structure_steps.py` | Structure step generation |
 | `test_structure_viz.py` | Structure visualization data extraction |
-| `test_workflow_importers.py` | Workflow import from QE input files |
-| `test_workflow_inputs.py` | Workflow input generation |
+| `test_workflow_importers.py` | Calculation import from QE input files |
+| `test_workflow_inputs.py` | Calculation input generation |
 
 #### **Daemon Tests (`tests/daemon/`)** — Requires QE
 
@@ -2026,10 +2026,10 @@ Run with: `pytest tests/daemon/ -v -s`
 
 | File | Purpose |
 |------|---------|
-| `test_si_bands_workflow_daemon.py` | Full Si band structure via daemon + JobManager |
+| `test_si_bands_calculation_daemon.py` | Full Si band structure via daemon + JobManager |
 
 **What it tests:**
-- Project/workflow/step creation via `QVService` (not CLI)
+- Project/calculation/step creation via `QVService` (not CLI)
 - Job submission via `JobManager.submit()`
 - Polling job status until completion
 - Band structure data retrieval via `QVService.get_band_structure_data()`
@@ -2041,13 +2041,13 @@ Run with: `pytest tests/cli/ -v -s`
 
 | File | Purpose |
 |------|---------|
-| `test_si_bands_workflow_comprehensive.py` | Full Si band structure via CLI commands |
+| `test_si_bands_calculation_comprehensive.py` | Full Si band structure via CLI commands |
 | `test_si_dos_workflow_cli.py` | Full Si DOS calculation via CLI |
 | `test_cli_show_command_integration.py` | `qv show` command variants |
-| `test_template_workflow.py` | Template copying and ULID consistency |
+| `test_template_calculation.py` | Template copying and ULID consistency |
 
-**What `test_si_bands_workflow_comprehensive.py` tests:**
-- `qv project create`, `qv structure import`, `qv workflow create`
+**What `test_si_bands_calculation_comprehensive.py` tests:**
+- `qv project create`, `qv structure import`, `qv calculation create`
 - `qv step init`, `qv step configure`, `qv run`
 - Both manual k-path and auto k-path modes
 - `qv analyze band` with PNG output
@@ -2058,8 +2058,8 @@ Run with: `pytest tests/integration/ -v`
 
 | File | Purpose |
 |------|---------|
-| `test_si_bands_workflow.py` | Simple Si bands workflow (programmatic) |
-| `test_si_dos_workflow.py` | Simple Si DOS workflow (programmatic) |
+| `test_si_bands_calculation.py` | Simple Si bands calculation (programmatic) |
+| `test_si_dos_workflow.py` | Simple Si DOS calculation (programmatic) |
 | `test_qe_engine.py` | QuantumEspressoEngine direct invocation |
 | `test_qe_executable_integration.py` | QE executable discovery integration |
 | `test_pw_step_specs.py` | pw.x step parameter verification |
@@ -2095,12 +2095,12 @@ Reference data for tests:
 
 | Directory | Contents |
 |-----------|----------|
-| `4_Si_DOS/` | Silicon DOS workflow inputs and reference outputs |
-| `7_Si_bandStructure/` | Silicon band structure workflow reference |
+| `4_Si_DOS/` | Silicon DOS calculation inputs and reference outputs |
+| `7_Si_bandStructure/` | Silicon band structure calculation reference |
 | `analysis_bands/` | Band structure parsing test data |
 | `analysis_dos/` | DOS parsing test data |
 | `analysis_scf/` | SCF convergence parsing test data |
-| `workflow_bands/` | Band workflow test inputs |
+| `calculation_bands/` | Band calculation test inputs |
 | `pw_scf_ibrav/` | SCF inputs for all ibrav values |
 | `pw_single_tests/` | Single pw.x test cases |
 | `ph_1d/`, `ph_2d/` | Phonon calculation test cases |
@@ -2178,7 +2178,7 @@ gui/
 │   │   │   ├── DebugPanel.tsx       # Daemon logs + ping tool
 │   │   │   ├── ProjectSummaryPanel.tsx  # Welcome + project view
 │   │   │   ├── StructureListPanel.tsx   # Structure list + detail
-│   │   │   ├── WorkflowListPanel.tsx    # Workflow list + detail
+│   │   │   ├── CalculationListPanel.tsx    # Calculation list + detail
 │   │   │   ├── StructureViewer3D.tsx    # 3D ball-and-stick viewer
 │   │   │   ├── AnalysisPanel.tsx        # SCF/DOS/Bands charts
 │   │   │   └── DaemonErrorBanner.tsx    # Startup error display
@@ -2211,25 +2211,25 @@ export interface QVCommandMap {
   // Project/Resource listing
   get_project_summary: { payload: { project_root: string }; result: ProjectSummary };
   list_structures: { payload: { project_root: string }; result: { structures: StructureInfo[]; count: number } };
-  list_workflows: { payload: { project_root: string }; result: { workflows: WorkflowInfo[]; count: number } };
+  list_calculations: { payload: { project_root: string }; result: { calculations: CalculationInfo[]; count: number } };
   
   // Project creation
   create_project: { payload: { target_dir: string; name?: string; template?: string }; result: { project_root: string; name: string; id: string } };
   import_structure: { payload: { project_root: string; source_file: string; name?: string }; result: { structure_id: string; name: string; slug: string; formula: string; n_atoms: number } };
   
-  // Workflow creation
-  list_workflow_templates: { payload: {}; result: { templates: WorkflowTemplateInfo[]; count: number } };
-  create_workflow: { payload: { project_root: string; name: string; structure?: string; template?: string }; result: { workflow_id: string; name: string; slug: string; n_steps: number } };
+  // Calculation creation
+  list_calculation_templates: { payload: {}; result: { templates: CalculationTemplateInfo[]; count: number } };
+  create_calculation: { payload: { project_root: string; name: string; structure?: string; template?: string }; result: { calculation_id: string; name: string; slug: string; n_steps: number } };
   
   // Visualization data
   get_structure_vis: { payload: { project_root: string; selector: string; supercell?: [number, number, number]; repeat_boundary?: boolean }; result: StructureVisData };
-  get_scf_convergence: { payload: { project_root: string; workflow: string; step: string }; result: ScfConvergenceData };
-  get_dos_data: { payload: { project_root: string; workflow: string; step?: string }; result: DosData };
-  get_band_structure_data: { payload: { project_root: string; workflow: string; step?: string }; result: BandStructureData };
+  get_scf_convergence: { payload: { project_root: string; calculation: string; step: string }; result: ScfConvergenceData };
+  get_dos_data: { payload: { project_root: string; calculation: string; step?: string }; result: DosData };
+  get_band_structure_data: { payload: { project_root: string; calculation: string; step?: string }; result: BandStructureData };
   
   // Job management
-  run_workflow: { payload: { project_root: string; workflow: string; strict?: boolean; verbose?: boolean }; result: JobSubmitResult };
-  run_step: { payload: { project_root: string; workflow: string; step: string; verbose?: boolean }; result: JobSubmitResult };
+  run_calculation: { payload: { project_root: string; calculation: string; strict?: boolean; verbose?: boolean }; result: JobSubmitResult };
+  run_step: { payload: { project_root: string; calculation: string; step: string; verbose?: boolean }; result: JobSubmitResult };
   get_job_status: { payload: { job_id: string }; result: JobInfo };
   list_jobs: { payload: { status?: JobStatus; job_type?: string }; result: { jobs: JobInfo[]; count: number } };
   cancel_job: { payload: { job_id: string }; result: { job_id: string; cancelled: boolean } };
@@ -2272,8 +2272,8 @@ Shutdown:
 | `StructureListPanel` | Clickable list of structures with lattice info |
 | `StructureDetailPanel` | Full structure details (lattice params, path) |
 | `StructureViewer3D` | 3D ball-and-stick viewer (react-three-fiber) |
-| `WorkflowListPanel` | Workflow list with steps, structure, mode |
-| `WorkflowDetailPanel` | Workflow details with step list, run button |
+| `CalculationListPanel` | Calculation list with steps, structure, mode |
+| `CalculationDetailPanel` | Calculation details with step list, run button |
 | `AnalysisPanel` | Container with SCF/DOS/Bands chart selection |
 | `ScfConvergenceChart` | Energy vs iteration, accuracy vs iteration |
 | `DosChart` | DOS and iDOS vs energy |
@@ -2290,7 +2290,7 @@ Shutdown:
 | `Modal` | Base modal/dialog component |
 | `CreateProjectDialog` | Create new QV project (target dir, name) |
 | `ImportStructureDialog` | Import CIF/XSF/etc. structure file |
-| `CreateWorkflowDialog` | Create workflow from template |
+| `CreateWorkflowDialog` | Create calculation from template |
 
 **View Routing:**
 
@@ -2298,8 +2298,8 @@ The `Sidebar` has view tabs: Summary, Structures, Workflows, Analysis, Debug.
 
 **Auto-fetch behavior:**
 - Switching to Structures view auto-fetches structures list
-- Switching to Workflows view auto-fetches workflows list
-- Switching to Analysis view auto-fetches workflows for selection
+- Switching to Workflows view auto-fetches calculations list
+- Switching to Analysis view auto-fetches calculations for selection
 
 **Empty states:**
 - No project loaded → Welcome card with "Browse & Load" and "Create Project" CTAs
@@ -2443,7 +2443,7 @@ New methods:
 | Command | Change |
 |---------|--------|
 | `list_jobs` | Now returns `JobSummary[]` (lighter), supports `project_root` filter |
-| `run_workflow` | Returns `target_name` in response |
+| `run_calculation` | Returns `target_name` in response |
 | `run_step` | Returns `target_name` in response |
 
 **GUI Components Added**:
@@ -2478,10 +2478,10 @@ const { job, logs, cancelJob, refresh } = useJobDetail({
 - Running jobs badge with count + pulse animation
 - `jobCounts` prop for live status
 
-**Workflow Run Button Integration**:
+**Calculation Run Button Integration**:
 
-When clicking "Run Workflow":
-1. Calls `job.submit_run_workflow` RPC
+When clicking "Run Calculation":
+1. Calls `job.submit_run_calculation` RPC
 2. Shows toast notification with job ID
 3. Updates job counts immediately
 4. "View Jobs" button links to Jobs view
@@ -2537,18 +2537,18 @@ The goal is to enable non-expert users to perform all core QV operations entirel
 |-------------|------------|-----------|
 | `qv init project` | Create Project dialog | `CreateProjectDialog` |
 | `qv import-structure` | Import Structure dialog | `ImportStructureDialog` |
-| `qv init workflow` | Create Workflow dialog | `CreateWorkflowDialog` |
+| `qv init calculation` | Create Calculation dialog | `CreateWorkflowDialog` |
 | `qv list structures` | Structures view | `StructureListPanel` |
-| `qv list workflows` | Workflows view | `WorkflowListPanel` |
-| `qv run workflow` | Run Workflow button | `WorkflowDetailPanel` |
+| `qv list calculations` | Workflows view | `CalculationListPanel` |
+| `qv run calculation` | Run Calculation button | `CalculationDetailPanel` |
 | `qv analyze scf` | SCF Convergence chart | `AnalysisPanel` |
 | `qv analyze dos` | DOS chart | `AnalysisPanel` |
 | `qv analyze bands` | Band Structure chart | `AnalysisPanel` |
 | `qv detect-qe` | Settings panel | `SettingsPanel` |
 | `qv rename structure` | Rename dialog | `RenameDialog` |
-| `qv rename workflow` | Rename dialog | `RenameDialog` |
+| `qv rename calculation` | Rename dialog | `RenameDialog` |
 | `qv delete structure` | Delete confirmation | `DeleteConfirmDialog` |
-| `qv delete workflow` | Delete confirmation | `DeleteConfirmDialog` |
+| `qv delete calculation` | Delete confirmation | `DeleteConfirmDialog` |
 | `qv run step` | Run Step button | `StepDetailPanel` |
 | `qv show-command step` | Step detail view | `StepDetailPanel` |
 
@@ -2572,11 +2572,11 @@ Shows QE detection status, Python/daemon version, and provides:
 | Command | Purpose |
 |---------|---------|
 | `rename_structure` | Rename a structure |
-| `rename_workflow` | Rename a workflow |
+| `rename_calculation` | Rename a calculation |
 | `can_delete_structure` | Check if structure can be deleted (dependency check) |
-| `can_delete_workflow` | Check if workflow can be deleted |
+| `can_delete_calculation` | Check if calculation can be deleted |
 | `delete_structure` | Delete structure (with force option) |
-| `delete_workflow` | Delete workflow |
+| `delete_calculation` | Delete calculation |
 
 **New Dialog Components**:
 
@@ -2618,27 +2618,27 @@ Shows detailed step information with:
 
 **UI Implementation** (`StepDetailPanel`):
 - "Common Parameters" section with editable form fields
-- Edit/Cancel/Apply/Reset workflow
+- Edit/Cancel/Apply/Reset calculation
 - Parameter descriptions and units displayed
 - Disabled state when not editing
 
-### 17.15 Workflow Configuration (2025-12-06)
+### 17.15 Calculation Configuration (2025-12-06)
 
 **Reorder Steps**:
-- In `WorkflowDetailPanel`: ↑/↓ buttons for each step
-- RPC: `reorder_workflow_steps` - takes new step order array
-- Updates `workflow.yaml` step list
+- In `CalculationDetailPanel`: ↑/↓ buttons for each step
+- RPC: `reorder_calculation_steps` - takes new step order array
+- Updates `calculation.yaml` step list
 
 **Change Structure**:
-- Structure dropdown in workflow detail view
-- RPC: `change_workflow_structure` - updates workflow and all steps
+- Structure dropdown in calculation detail view
+- RPC: `change_calculation_structure` - updates calculation and all steps
 - Returns list of updated steps and any warnings
 
 ### 17.16 Jobs ↔ Analysis Integration (2025-12-06)
 
 **View Analysis Button**:
-- Appears in `JobDetailPanel` for completed workflow jobs
-- Clicking switches to Analysis view with workflow pre-selected
+- Appears in `JobDetailPanel` for completed calculation jobs
+- Clicking switches to Analysis view with calculation pre-selected
 - Handler: `handleViewAnalysisFromJob(workflowSlug)`
 
 ### 17.17 Pre-flight Checks (2025-12-06)
@@ -2662,7 +2662,7 @@ Shows detailed step information with:
 **Demo Project Creation**:
 - **Single Entry Point**: "Browse Demo Gallery" button in welcome screen is the only entry point for demo projects
 - Demo projects are stored as snapshots in `resources/demo_projects/*.yml`
-- Default demo is `si_bands_demo` (Silicon band structure workflow)
+- Default demo is `si_bands_demo` (Silicon band structure calculation)
 - Available demos: `si_bands_demo`, `si_dos_demo`
 - Demo snapshots are generated from test projects using `scripts/generate_demo_snapshots.py`
 - If test example projects change, rerun `python scripts/generate_demo_snapshots.py` to regenerate snapshots
@@ -2707,8 +2707,8 @@ Shows detailed step information with:
   - "Workspace: /path/to/parent · Current project: project-name"
 - Workspace is derived as the parent directory of `project_root`
 - Displayed in small text below the panel header for clarity
-- Creates Si project with ready-to-run workflow
-- RPC: `create_demo_project` - creates project, imports Si structure, adds workflow
+- Creates Si project with ready-to-run calculation
+- RPC: `create_demo_project` - creates project, imports Si structure, adds calculation
 
 **Recent Projects**:
 - Stored in localStorage (`qv-recent-projects`)
@@ -2734,17 +2734,17 @@ Shows detailed step information with:
 
 ### 17.20 End-to-End User Flow (2025-12-06)
 
-The GUI now supports the complete user workflow without CLI:
+The GUI now supports the complete user calculation without CLI:
 
 1. **Start App** → Welcome screen with options
-2. **Create Demo Project** → One-click Si project with workflow
+2. **Create Demo Project** → One-click Si project with calculation
 3. **Or Create/Open Project** → Manual project setup
 4. **Import Structure** → CIF/XSF file import dialog
-5. **Create Workflow** → Template-based workflow creation
-6. **Configure Workflow** → Change structure, reorder steps
+5. **Create Calculation** → Template-based calculation creation
+6. **Configure Calculation** → Change structure, reorder steps
 7. **Edit Parameters** → Adjust ecutwfc, smearing, etc.
 8. **Pre-flight Check** → Automatic validation before run
-9. **Run Workflow** → Submit job to daemon
+9. **Run Calculation** → Submit job to daemon
 10. **Monitor Jobs** → Live status and log streaming
 11. **View Analysis** → One-click from completed job to SCF/DOS/Bands charts
 
@@ -2824,8 +2824,8 @@ Split view layouts:
 | Fix | Details |
 |-----|---------|
 | `run_step` engine error | Changed `engine.backend` to pass `QuantumEspressoEngine` directly to `run_input_step` |
-| Workflow resolution | Updated `Project.get_workflow_ref` to search by `slug` in addition to `id` and `name` |
-| si-dos workflow display | Added missing `type` field to all steps in `templates/workflow/si-dos/workflow.yaml` |
+| Calculation resolution | Updated `Project.get_calculation_ref` to search by `slug` in addition to `id` and `name` |
+| si-dos calculation display | Added missing `type` field to all steps in `templates/calculation/si-dos/calculation.yaml` |
 | Boundary atoms | Fixed `generate_boundary_atoms` usage to correctly iterate over `BoundaryAtom` objects |
 
 ### GUI Improvements
@@ -2834,7 +2834,7 @@ Split view layouts:
 |---------|---------------|
 | Summary panel refresh | Fixed `handleCreateProjectSuccess` to load project directly instead of via setTimeout (avoiding stale closures) |
 | 3D viewer camera state | Added `structureId` tracking to `CameraController` - camera only resets on structure change, not supercell/boundary changes |
-| Workflow/step separator | Created `VerticalResizablePane` component for draggable height separation |
+| Calculation/step separator | Created `VerticalResizablePane` component for draggable height separation |
 | Log persistence | Logs saved to `.qv-daemon.log` in project directory with `setProject`/`readLogs` IPC methods |
 
 ### New Components
@@ -2849,8 +2849,8 @@ gui/src/components/layout/
 
 **Backend**:
 - `src/quantumvitas/api.py` - Fixed `run_step`, boundary atoms
-- `src/quantumvitas/project/model.py` - Added slug search to `get_workflow_ref`
-- `templates/workflow/si-dos/workflow.yaml` - Added step types
+- `src/quantumvitas/project/model.py` - Added slug search to `get_calculation_ref`
+- `templates/calculation/si-dos/calculation.yaml` - Added step types
 
 **Frontend**:
 - `gui/src/App.tsx` - Project loading, resizable panes, camera state
@@ -2869,8 +2869,8 @@ gui/src/components/layout/
 |---------|---------------|-------|
 | Theme switching | CSS variables with `[data-theme="light"]` selector, Settings panel toggle, localStorage persistence | `gui/src/index.css`, `gui/src/components/panels/SettingsPanel.tsx`, `gui/src/App.tsx` |
 | Reveal in Finder/Explorer | `shell.showItemInFolder()` IPC handler, `window.qv.revealPath()` API | `gui/electron/main.ts`, `gui/electron/preload.ts` |
-| Automatic analysis selection | `detectAnalysisType()` function checks workflow's last step type (dos → DOS, bands → Bands, else → SCF) | `gui/src/components/panels/AnalysisPanel.tsx` |
-| Automatic analysis loading | Settings toggle in Settings → Analysis, auto-loads when workflow selected if enabled (default: true) | `gui/src/components/panels/SettingsPanel.tsx`, `gui/src/components/panels/AnalysisPanel.tsx`, `gui/src/App.tsx` |
+| Automatic analysis selection | `detectAnalysisType()` function checks calculation's last step type (dos → DOS, bands → Bands, else → SCF) | `gui/src/components/panels/AnalysisPanel.tsx` |
+| Automatic analysis loading | Settings toggle in Settings → Analysis, auto-loads when calculation selected if enabled (default: true) | `gui/src/components/panels/SettingsPanel.tsx`, `gui/src/components/panels/AnalysisPanel.tsx`, `gui/src/App.tsx` |
 | Band structure ylim control | Energy range inputs update YAxis `domain` prop dynamically | `gui/src/components/panels/AnalysisPanel.tsx` (BandsChart component) |
 
 ### Implementation Details
@@ -2889,7 +2889,7 @@ gui/src/components/layout/
 **Analysis Auto-Selection:**
 - Checks last step's `type` field
 - Maps: `dos` → DOS, `bands`/`bands_pw` → Bands, otherwise → SCF
-- Also checks if workflow has any DOS/bands steps as fallback
+- Also checks if calculation has any DOS/bands steps as fallback
 
 **Settings Panel:**
 - New sections: Appearance (theme toggle), Analysis (auto-analysis toggle)
@@ -2914,7 +2914,7 @@ gui/src/components/layout/
 | Fix | Details |
 |-----|---------|
 | Log clearing on show/hide | Changed `DebugPanel` to use CSS hiding (`height: 0`) instead of returning `null` when hidden - preserves log state |
-| "Workflow not found" error | Fixed `preflight_check` in `api.py` - was catching ALL exceptions and reporting "Workflow not found" even for unrelated errors |
+| "Calculation not found" error | Fixed `preflight_check` in `api.py` - was catching ALL exceptions and reporting "Calculation not found" even for unrelated errors |
 | bands_pw editable params | Added `bands_pw` to `EDITABLE_PARAMS` in `StepDetailPanel.tsx` with ecutwfc, ecutrho, nbnd, conv_thr |
 
 ### UX Improvements
@@ -2976,7 +2976,7 @@ def _handle_find_project_root(self, payload: Dict[str, Any]) -> Dict[str, Any]:
 
 | Fix | Details |
 |-----|---------|
-| Demo workflow step display | Fixed step resolution order in `core/resolution.py` - now checks `meta.name`/`meta.slug` before `step_type` |
+| Demo calculation step display | Fixed step resolution order in `core/resolution.py` - now checks `meta.name`/`meta.slug` before `step_type` |
 | CreateProjectDialog CSS missing | Created `gui/src/components/dialogs/CreateProjectDialog.css` |
 | Sidebar syntax error | Fixed missing `>` on opening `<div>` tag in `Sidebar.tsx` |
 
@@ -2987,7 +2987,7 @@ Added "Reveal in Finder" buttons to all resource panels:
 | Panel | Implementation |
 |-------|---------------|
 | `StepDetailPanel` | File Location section with path and Reveal button |
-| `WorkflowDetailPanel` | Updated existing File Location section |
+| `CalculationDetailPanel` | Updated existing File Location section |
 | `StructureDetailPanel` | Updated existing File Location section |
 | `ProjectSummaryPanel` | Project path with Reveal button |
 
@@ -3021,8 +3021,8 @@ This fixes the bug where clicking "bands" step returned "bands-pp" because "band
 - `gui/src/components/layout/StatusBar.css` - Path display styles
 - `gui/src/components/panels/StepDetailPanel.tsx` - File location with Reveal button
 - `gui/src/components/panels/StepDetailPanel.css` - File location styles
-- `gui/src/components/panels/WorkflowListPanel.tsx` - Reveal in Finder for workflow
-- `gui/src/components/panels/WorkflowListPanel.css` - File location styles
+- `gui/src/components/panels/CalculationListPanel.tsx` - Reveal in Finder for calculation
+- `gui/src/components/panels/CalculationListPanel.css` - File location styles
 - `gui/src/components/panels/StructureListPanel.tsx` - Reveal in Finder for structure
 - `gui/src/components/panels/StructureListPanel.css` - File location styles
 - `gui/src/components/panels/ProjectSummaryPanel.tsx` - Reveal in Finder for project
@@ -3122,8 +3122,8 @@ const browser = await chromium.connectOverCDP(wsUrl);
 
 **Test files** (all use the unified fixture):
 - `tests/e2e/welcome.spec.ts` - Welcome screen tests
-- `tests/e2e/demo_workflow.spec.ts` - Demo project creation and workflow step verification
-- `tests/e2e/demo_workflow_run.spec.ts` - Full workflow execution with status tracking and analysis verification (combined test)
+- `tests/e2e/demo_workflow.spec.ts` - Demo project creation and calculation step verification
+- `tests/e2e/demo_workflow_run.spec.ts` - Full calculation execution with status tracking and analysis verification (combined test)
 
 ### 22.6 Duplicate Test ID Detection
 
@@ -3139,7 +3139,7 @@ The `electronTest` fixture automatically checks for duplicate `data-testid` valu
   - `qv-welcome-btn-open-project` (Welcome screen)
   - `qv-sidebar-btn-open-project` (Sidebar)
   - `qv-demo-card-si-bands-demo` (Demo Gallery)
-  - `qv-step-row-{stepId}` (Workflow steps - includes step ID for uniqueness)
+  - `qv-step-row-{stepId}` (Calculation steps - includes step ID for uniqueness)
 - **Never reuse the same test ID** for different UI elements, even in different views
 - **For list items**, include a unique identifier (e.g., item ID, index, or slug) in the test ID
 
@@ -3269,7 +3269,7 @@ The fixture automatically:
 
 ### 22.7 CI Configuration
 
-The GitHub Actions workflow (`.github/workflows/tests.yml`) runs E2E tests **on every push** to the `v2-python` branch, **after QE compilation** is complete. The tests run on both Linux and macOS:
+The GitHub Actions workflow (`.github/calculations/tests.yml`) runs E2E tests **on every push** to the `v2-python` branch, **after QE compilation** is complete. The tests run on both Linux and macOS:
 
 ```yaml
 # E2E tests run as part of the tests-with-qe job, after:
@@ -3315,9 +3315,9 @@ All UI components use `data-testid` attributes for reliable test selection:
 | Component | Test IDs |
 |-----------|----------|
 | Welcome screen | `qv-welcome-title`, `qv-btn-open-project`, `qv-btn-create-new-project`, `qv-btn-create-demo-project` |
-| Navigation | `qv-nav-{home,structures,workflows,jobs,analysis,settings,debug}` |
+| Navigation | `qv-nav-{home,structures,calculations,jobs,analysis,settings,debug}` |
 | Project summary | `qv-home-project`, `qv-project-path`, `qv-btn-project-reveal` |
-| Workflows | `qv-workflows-view`, `qv-workflow-row`, `qv-workflow-detail`, `qv-btn-run-workflow` |
+| Workflows | `qv-calculations-view`, `qv-calculation-row`, `qv-calculation-detail`, `qv-btn-run-calculation` |
 | Steps | `qv-steps-list`, `qv-step-row`, `qv-step-detail`, `qv-step-id`, `qv-step-file-path` |
 | Jobs | `qv-jobs-view`, `qv-job-row`, `qv-job-status`, `qv-job-detail` |
 | Analysis | `qv-analysis-view`, `qv-analysis-bands-chart`, `qv-analysis-fermi`, `qv-analysis-kpath` |
@@ -3352,8 +3352,8 @@ All UI components use `data-testid` attributes for reliable test selection:
 ### 22.10 Test Performance
 
 - **Welcome test**: ~3.1 seconds
-- **Demo workflow tests**: ~5.2 seconds each (2 tests)
-- **Full workflow run test**: ~30 seconds (includes QE execution, status tracking, and analysis verification)
+- **Demo calculation tests**: ~5.2 seconds each (2 tests)
+- **Full calculation run test**: ~30 seconds (includes QE execution, status tracking, and analysis verification)
 
 **Total E2E test suite**: ~44 seconds (all 4 tests)
 
@@ -3362,7 +3362,7 @@ All tests properly clean up Electron processes after completion. Tests run seria
 ### 22.11 Known Limitations
 
 1. **macOS requires CDP workaround**: Native `_electron.launch()` doesn't work on macOS due to Playwright bug
-2. **QE required for workflow tests**: `demo_workflow_run.spec.ts` requires QE to be installed (tests fail if QE is not available)
+2. **QE required for calculation tests**: `demo_workflow_run.spec.ts` requires QE to be installed (tests fail if QE is not available)
 3. **Test isolation**: Each test creates a unique project directory in `temp/e2e_projects/`
 4. **Serial execution**: Tests run serially (not in parallel) to ensure only one Electron instance exists at a time
 5. **Test project cleanup**: `temp/e2e_projects/` is cleared before each test but left after tests for inspection
@@ -3379,8 +3379,8 @@ gui/tests/e2e/
 │   ├── paths.ts              # Path utilities (creates projects in temp/e2e_projects/)
 │   └── index.ts              # Exports
 ├── welcome.spec.ts           # Welcome screen tests (unified - works on all platforms)
-├── demo_workflow.spec.ts     # Demo workflow tests (unified - works on all platforms)
-└── demo_workflow_run.spec.ts # Full workflow run test (unified - combines status tracking and analysis verification)
+├── demo_workflow.spec.ts     # Demo calculation tests (unified - works on all platforms)
+└── demo_workflow_run.spec.ts # Full calculation run test (unified - combines status tracking and analysis verification)
 ```
 
 **Note**: All test files use the unified `electronTest` fixture. There are no platform-specific test files anymore.
@@ -3407,7 +3407,7 @@ All E2E-generated projects are created in `temp/e2e_projects/` (relative to repo
 The project snapshot format allows exporting a complete QuantumVITAS project into a single YAML file and recreating it elsewhere. This is useful for:
 - **Project templates**: Create reusable project definitions
 - **Version control**: Track project structure without binary files
-- **Sharing**: Distribute demo projects or workflows
+- **Sharing**: Distribute demo projects or calculations
 - **Demo projects**: Pre-configured projects with reference analysis data
 
 **Important**: Snapshots are **templates**, not bit-for-bit backups. When materializing a snapshot, all ULIDs are regenerated to create a fresh ID universe.
@@ -3439,13 +3439,13 @@ structures:
       @class: "Structure"
       lattice: { ... }
       sites: [ ... ]
-workflows:
+calculations:
   - meta:
-      id: "<workflow_ulid>"
+      id: "<calculation_ulid>"
       name: "Si bands+dos"
       slug: "si-bands-dos"
-      kind: "workflow"
-      path: "workflows/si-bands-dos/workflow.yaml"
+      kind: "calculation"
+      path: "calculations/si-bands-dos/calculation.yaml"
     mode: "normal"
     structure: "si-bulk"   # Structure reference (slug/name)
     working_dir: "raw"
@@ -3455,13 +3455,13 @@ workflows:
           name: "scf"
           slug: "scf"
           kind: "step"
-          path: "workflows/si-bands-dos/steps/scf.step.yaml"
+          path: "calculations/si-bands-dos/steps/scf.step.yaml"
         step_type: "scf"
         parameters: { ... }
         cards: { ... }
-        # Note: structure_id and parent_workflow_id are NOT in step YAML
-        # Structure is inherited from workflow.structure_id
-        # Parent workflow is implicit from file location
+        # Note: structure_id and parent_calculation_id are NOT in step YAML
+        # Structure is inherited from calculation.structure_id
+        # Parent calculation is implicit from file location
         species_overrides:
           Si:
             mass: 28.08
@@ -3477,23 +3477,23 @@ pseudo:
 - **Version**: Currently `1` (for future schema evolution)
 - **Project**: Project metadata and settings
 - **Structures**: Full structure data (pymatgen JSON) with metadata
-- **Workflows**: Complete workflow definitions with all steps
+- **Workflows**: Complete calculation definitions with all steps
 - **Pseudo**: Pseudopotential filenames only (content NOT embedded)
 
 ### 23.3 Snapshot Semantics (Option B: Template with Fresh IDs)
 
 **Export behavior** (`export_project_to_snapshot`):
 - Preserves all `id` and `*_id` fields as recorded in the original project
-- Exports complete resource graph with all cross-references (`structure_id` in workflows, `step_id` in workflow steps)
-- Note: Step YAML files do NOT contain `parent_workflow_id` or `structure_id` in the DAG model - these are only in snapshot's internal data structures for graph reconstruction
+- Exports complete resource graph with all cross-references (`structure_id` in calculations, `step_id` in calculation steps)
+- Note: Step YAML files do NOT contain `parent_calculation_id` or `structure_id` in the DAG model - these are only in snapshot's internal data structures for graph reconstruction
 - Snapshot contains the full graph structure with original ULIDs
 
 **Materialize behavior** (`materialize_project_from_snapshot`):
-- **Always regenerates new ULIDs** for all resources (project, workflows, structures, steps)
+- **Always regenerates new ULIDs** for all resources (project, calculations, structures, steps)
 - Builds an internal mapping (`old_id → new_id`) during materialization
 - Rewrites all `*_id` cross-references using the mapping to maintain graph structure
 - Snapshot IDs are used **only as a template graph** - they do not survive materialization
-- Names, slugs, and logical relationships (which workflow uses which structure/steps) are preserved
+- Names, slugs, and logical relationships (which calculation uses which structure/steps) are preserved
 
 **Key implications**:
 - ✅ Multiple projects from the same snapshot are independent and have distinct ULIDs
@@ -3573,9 +3573,9 @@ new_project_root = QVService.create_project_from_snapshot(
 - `materialize_project_from_snapshot()`: Creates new project from snapshot with ULID remapping
 
 **Key implementation notes**:
-- Uses existing model loaders (`load_project`, `load_workflow`, `load_structure_model`)
+- Uses existing model loaders (`load_project`, `load_calculation`, `load_structure_model`)
 - Handles both `__qv_meta__` wrapper and direct structure dict formats
-- Rewrites `parent_workflow_id` references during materialization
+- Rewrites `parent_calculation_id` references during materialization
 - Creates directory structure but not pseudopotential files
 
 ### 23.7 Roundtrip Guarantees
@@ -3585,12 +3585,12 @@ After `export → import` roundtrip, the following are guaranteed:
 ✅ **Preserved**:
 - Project name, slug, settings
 - Structure data (composition, sites, lattice parameters)
-- Workflow structure (mode, working_dir, structure reference)
+- Calculation structure (mode, working_dir, structure reference)
 - Step specifications (step_type, parameters, cards, species_overrides)
-- Logical relationships (workflow→structure, workflow→steps, step→workflow)
+- Logical relationships (calculation→structure, calculation→steps, step→calculation)
 
 ❌ **Changed**:
-- All ULIDs (project, workflows, structures, steps)
+- All ULIDs (project, calculations, structures, steps)
 - Filesystem paths (relative to new project root)
 
 ⚠️ **Not included**:
@@ -3628,13 +3628,13 @@ This design ensures:
 
 ### 24.2 JSON Artifact Locations
 
-Analysis JSON files are stored in a dedicated directory per workflow:
+Analysis JSON files are stored in a dedicated directory per calculation:
 
 ```
 <project_root>/
-└── workflows/
-    └── <workflow-slug>/
-        ├── workflow.yaml
+└── calculations/
+    └── <calculation-slug>/
+        ├── calculation.yaml
         ├── raw/                    # QE output files
         │   ├── scf.out
         │   ├── bands.dat.gnu
@@ -3697,28 +3697,28 @@ Analysis JSON files are stored in a dedicated directory per workflow:
 from quantumvitas.analysis.artifacts import AnalysisArtifacts
 
 # Get expected path for an artifact
-path = AnalysisArtifacts.get_artifact_path(project_root, workflow_slug, "bands")
+path = AnalysisArtifacts.get_artifact_path(project_root, calculation_slug, "bands")
 
 # Write analysis data to JSON
-AnalysisArtifacts.write_artifact(project_root, workflow_slug, "bands", band_data)
+AnalysisArtifacts.write_artifact(project_root, calculation_slug, "bands", band_data)
 
 # Read analysis data from JSON (returns None if missing)
-band_data = AnalysisArtifacts.read_artifact(project_root, workflow_slug, "bands", BandStructureData)
+band_data = AnalysisArtifacts.read_artifact(project_root, calculation_slug, "bands", BandStructureData)
 
-# Clear all artifacts for a workflow (called on re-run)
-AnalysisArtifacts.clear_artifacts(project_root, workflow_slug)
+# Clear all artifacts for a calculation (called on re-run)
+AnalysisArtifacts.clear_artifacts(project_root, calculation_slug)
 ```
 
-### 24.5 Backend API: ensure_workflow_analysis
+### 24.5 Backend API: ensure_calculation_analysis
 
-**Method**: `QVService.ensure_workflow_analysis()`
+**Method**: `QVService.ensure_calculation_analysis()`
 
 ```python
 from quantumvitas.api import QVService, AnalysisStatus
 
-status = QVService.ensure_workflow_analysis(
+status = QVService.ensure_calculation_analysis(
     project_root=project_root,
-    workflow_selector="si-bands",
+    calculation_selector="si-bands",
     analysis_type="bands",  # "scf" | "dos" | "bands"
     force=False,            # True to re-parse even if JSON exists
     step_selector="scf",    # Required for SCF analysis
@@ -3742,11 +3742,11 @@ status = QVService.ensure_workflow_analysis(
 **Daemon**: `src/quantumvitas/daemon/server.py`
 
 ```python
-# RPC command: "ensure_workflow_analysis"
+# RPC command: "ensure_calculation_analysis"
 # Payload:
 {
   "project_root": "/path/to/project",
-  "workflow_selector": "si-bands",
+  "calculation_selector": "si-bands",
   "analysis_type": "bands",
   "force": false,
   "step_selector": null  # Only needed for SCF
@@ -3756,7 +3756,7 @@ status = QVService.ensure_workflow_analysis(
 {
   "ok": true,
   "message": "Bands analysis artifact created",
-  "artifact_path": "/path/to/project/workflows/si-bands/analysis/bands.json",
+  "artifact_path": "/path/to/project/calculations/si-bands/analysis/bands.json",
   "data_available": true,
   "error_code": null
 }
@@ -3776,10 +3776,10 @@ interface AnalysisStatus {
 }
 
 // In QVCommandMap:
-ensure_workflow_analysis: {
+ensure_calculation_analysis: {
   payload: {
     project_root: string;
-    workflow_selector: string;
+    calculation_selector: string;
     analysis_type: 'scf' | 'dos' | 'bands';
     force?: boolean;
     step_selector?: string;
@@ -3799,13 +3799,13 @@ This ensures backward compatibility while gaining caching benefits.
 
 ### 24.9 Cache Invalidation
 
-**When workflow is run** (`QVService.run_workflow`):
+**When calculation is run** (`QVService.run_calculation`):
 - `AnalysisArtifacts.clear_artifacts()` is called at the start
-- Deletes all JSON files in `<workflow>/analysis/`
+- Deletes all JSON files in `<calculation>/analysis/`
 - Ensures old analysis data doesn't persist after re-run
 
 **Manual invalidation**:
-- Call `ensure_workflow_analysis(force=True)` to re-parse
+- Call `ensure_calculation_analysis(force=True)` to re-parse
 - "Run Analysis" button in GUI does this
 
 ### 24.10 GUI Automatic Analysis Behavior
@@ -3817,14 +3817,14 @@ This ensures backward compatibility while gaining caching benefits.
 **AnalysisPanel States**:
 | State | Condition | Display |
 |-------|-----------|---------|
-| `idle` | No workflow selected | "Select a workflow" placeholder |
+| `idle` | No calculation selected | "Select a calculation" placeholder |
 | `analyzing` | RPC in progress | Loading spinner + "Analyzing {type}..." |
 | `ready` | Data loaded | Chart renders |
 | `error` | Analysis failed | Error message + "Retry" button |
 
 **Flow when entering Analysis view**:
-1. If `automaticAnalysis === true` and workflow selected:
-   - Call `ensure_workflow_analysis(force=false)`
+1. If `automaticAnalysis === true` and calculation selected:
+   - Call `ensure_calculation_analysis(force=false)`
    - Show "Analyzing..." state
    - On success, call `get_*_data` and render chart
 2. If `automaticAnalysis === false`:
@@ -3832,7 +3832,7 @@ This ensures backward compatibility while gaining caching benefits.
    - User must click "Run Analysis" button
 
 **"Run Analysis" button**:
-- Calls `ensure_workflow_analysis(force=true)` (re-parse)
+- Calls `ensure_calculation_analysis(force=true)` (re-parse)
 - Then calls `get_*_data` to refresh chart
 
 ### 24.11 Unit Tests
@@ -3843,11 +3843,11 @@ Tests cover:
 - `AnalysisArtifacts.get_artifact_path()` - correct path convention
 - `write_artifact()` / `read_artifact()` - roundtrip serialization
 - `clear_artifacts()` - deletion behavior
-- `ensure_workflow_analysis()` for scf/dos/bands
+- `ensure_calculation_analysis()` for scf/dos/bands
 - `force=False` behavior (no re-parse if JSON exists)
 - `force=True` behavior (always re-parse)
 - Integration with `get_*_data` (artifact-first loading)
-- Cache invalidation on `run_workflow`
+- Cache invalidation on `run_calculation`
 
 ### 24.12 E2E Tests
 
@@ -3857,7 +3857,7 @@ Test case: "automatic analysis loads charts without manual click"
 
 1. Enable `autoAnalysis` in Settings
 2. Create demo project (si_bands_demo)
-3. Run workflow and wait for completion
+3. Run calculation and wait for completion
 4. Navigate to Analysis view
 5. Assert: "Analyzing..." loading state appears
 6. Assert: Bands chart renders automatically
@@ -3917,7 +3917,7 @@ from quantumvitas.api import QVService
 
 result = QVService.get_reference_analysis(
     project_root=project_root,
-    workflow_selector="si-bands",
+    calculation_selector="si-bands",
     analysis_type="bands",  # or "dos", "scf"
 )
 
@@ -3933,8 +3933,8 @@ result = QVService.get_reference_analysis(
 2. If reference data exists:
    - Bands: Reference curves shown as dashed gray lines behind current (solid) bands
    - Toggle in header to show/hide reference (not yet user-controllable)
-3. If only reference data exists (workflow not run):
-   - Shows reference chart with notice: "Showing reference results from the demo. Run the workflow to generate your own data."
+3. If only reference data exists (calculation not run):
+   - Shows reference chart with notice: "Showing reference results from the demo. Run the calculation to generate your own data."
 
 **Unit Tests**: `tests/unit/test_analysis_artifacts.py::TestGetReferenceAnalysis`
 
@@ -3965,12 +3965,12 @@ These buttons work from any view, not just Home. They're styled as compact text 
 
 **Key distinction**:
 - **SCF analysis** is **step-based** - you analyze SCF convergence for a specific SCF step
-- **DOS/Bands analysis** is **workflow-level** - combines data from multiple steps
+- **DOS/Bands analysis** is **calculation-level** - combines data from multiple steps
 
 **Changes**:
 - SCF tab shows a step selector dropdown that **only lists SCF-type steps** (scf, relax, vc-relax, nscf)
 - First SCF step is auto-selected when entering SCF view
-- DOS/Bands tabs **do not show a step selector** - analysis is workflow-level
+- DOS/Bands tabs **do not show a step selector** - analysis is calculation-level
 - State machine fixes prevent UI from "locking" onto wrong analysis type
 
 **Code Location**: `gui/src/components/panels/AnalysisPanel.tsx`
@@ -4034,60 +4034,60 @@ The sidebar changes maintain backward compatibility with existing E2E tests:
 
 ---
 
-## 26. CLI Workflow Detection and Rename Fixes (2025-12-XX)
+## 26. CLI Calculation Detection and Rename Fixes (2025-12-XX)
 
 ### 26.1 Overview
 
-This section documents critical fixes to CLI workflow detection and rename operations that ensure commands work correctly when run from inside workflow directories, especially after renames.
+This section documents critical fixes to CLI calculation detection and rename operations that ensure commands work correctly when run from inside calculation directories, especially after renames.
 
-### 26.2 Fix: `qv init step` Workflow Auto-Detection
+### 26.2 Fix: `qv init step` Calculation Auto-Detection
 
-**Problem**: The `qv init step scf` command from inside a workflow directory was not reliably detecting the enclosing workflow and inheriting its structure.
+**Problem**: The `qv init step scf` command from inside a calculation directory was not reliably detecting the enclosing calculation and inheriting its structure.
 
 **Root Causes**:
 1. Used `_detect_enclosing_workflow()` instead of `PathContext` from `core/context.py`
-2. Structure was read from `workflow_data.get("workflow", {}).get("structure")` instead of top-level `workflow_data.get("structure")` (new format)
-3. No clear error message when run from project root without `--workflow`
+2. Structure was read from `calculation_data.get("calculation", {}).get("structure")` instead of top-level `calculation_data.get("structure")` (new format)
+3. No clear error message when run from project root without `--calculation`
 
 **Solution** (`src/quantumvitas/cli/main.py`, lines ~867-930):
 
-1. **Use PathContext for workflow detection**:
+1. **Use PathContext for calculation detection**:
    ```python
-   # Try to detect enclosing workflow from cwd using PathContext
+   # Try to detect enclosing calculation from cwd using PathContext
    try:
        ctx = find_path_context_from_pwd()
-       if ctx.is_inside_workflow():
-           workflow_selector = ctx.workflow_selector
-           if workflow_selector:
+       if ctx.is_inside_calculation():
+           calculation_selector = ctx.calculation_selector
+           if calculation_selector:
                config = load_project_config(project_root)
-               workflow_entry = find_workflow_entry(config, workflow_selector, project_root)
+               calculation_entry = find_calculation_entry(config, calculation_selector, project_root)
    except ContextNotFoundError:
        pass
    ```
 
 2. **Fix structure reading**:
    ```python
-   # Structure is at top level in workflow.yaml (new format), or under workflow key (legacy)
-   workflow_structure = workflow_data.get("structure") or workflow_data.get("workflow", {}).get("structure")
+   # Structure is at top level in calculation.yaml (new format), or under calculation key (legacy)
+   calculation_structure = calculation_data.get("structure") or calculation_data.get("calculation", {}).get("structure")
    ```
 
 3. **Clear error at project root**:
    ```python
-   if not workflow_entry and project_root:
+   if not calculation_entry and project_root:
        try:
            ctx = find_path_context_from_pwd()
-           if ctx.project_root == Path.cwd().resolve() and not ctx.is_inside_workflow():
+           if ctx.project_root == Path.cwd().resolve() and not ctx.is_inside_calculation():
                raise typer.BadParameter(
-                   "You are at project root. Please specify --workflow <workflow> or run from inside a workflow directory."
+                   "You are at project root. Please specify --calculation <calculation> or run from inside a calculation directory."
                )
        except ContextNotFoundError:
            pass
    ```
 
 **Behavior**:
-- ✅ From inside workflow directory: Auto-detects workflow and inherits structure
-- ✅ From project root without `--workflow`: Fails with clear error message
-- ✅ Step gets correct `parent_workflow_id` and structure from workflow
+- ✅ From inside calculation directory: Auto-detects calculation and inherits structure
+- ✅ From project root without `--calculation`: Fails with clear error message
+- ✅ Step gets correct `parent_calculation_id` and structure from calculation
 
 **Test**: `tests/cli/test_graphene_workflow_setup.py` - Verifies the exact sequence from manual instructions.
 
@@ -4097,32 +4097,32 @@ This section documents critical fixes to CLI workflow detection and rename opera
 
 ### 27.1 Overview
 
-This section documents the refactoring to use **ID-only cross-references** between resources, eliminating duplication and out-of-sync problems (e.g., workflow renamed but step still stores stale workflow slug/name).
+This section documents the refactoring to use **ID-only cross-references** between resources, eliminating duplication and out-of-sync problems (e.g., calculation renamed but step still stores stale calculation slug/name).
 
 ### 27.2 Current Cross-Resource References (Before Refactor)
 
-**Workflow → Structure**:
-- **File**: `workflow.yaml` (via `WorkflowModel`)
+**Calculation → Structure**:
+- **File**: `calculation.yaml` (via `CalculationModel`)
 - **Field**: `structure: Optional[str]` (selector: name/slug/path)
 - **Current**: Selector-based (e.g., `structure: "si"` or `structure: "C"`)
 - **Location**: `src/quantumvitas/core/models.py` line 75
 
-**Step → Workflow**:
+**Step → Calculation**:
 - **File**: `*.step.yaml` (via `StructureStepSpec`)
-- **Field**: `parent_workflow_id: Optional[str]`
+- **Field**: `parent_calculation_id: Optional[str]`
 - **Current**: ✅ Already ID-based (ULID)
-- **Location**: `src/quantumvitas/workflow/structure_steps.py` line 47
+- **Location**: `src/quantumvitas/calculation/structure_steps.py` line 47
 
 **Step → Structure**:
 - **File**: `*.step.yaml` (via `StructureStepSpec`)
 - **Field**: `structure: str`
 - **Current**: Selector-based (e.g., `structure: "si"`)
-- **Location**: `src/quantumvitas/workflow/structure_steps.py` line 41
+- **Location**: `src/quantumvitas/calculation/structure_steps.py` line 41
 
 **Snapshots**:
 - **File**: `resources/demo_projects/*.yml` and `ProjectSnapshot`
-- **Fields**: Workflows have `structure: <selector>`, steps have `structure: <selector>` and `parent_workflow_id: <id>`
-- **Current**: Mixed (workflow ID-based, structure selector-based)
+- **Fields**: Workflows have `structure: <selector>`, steps have `structure: <selector>` and `parent_calculation_id: <id>`
+- **Current**: Mixed (calculation ID-based, structure selector-based)
 - **Location**: `src/quantumvitas/project/snapshot.py` line 378
 
 ### 27.3 New Reference Contract
@@ -4131,14 +4131,14 @@ This section documents the refactoring to use **ID-only cross-references** betwe
 
 **Users still select resources by name/slug/path** in CLI/GUI. All resolution of references is internal: `selector → id → resource`.
 
-**Workflow YAML**:
+**Calculation YAML**:
 ```yaml
 meta:
   id: 01JXYZ123ABC456DEF789GHI
   name: si-dos
   slug: si-dos
-  path: workflows/si-dos
-  kind: workflow
+  path: calculations/si-dos
+  kind: calculation
 structure_id: 01JABC123DEF456GHI789JKL  # Canonical reference (ULID)
 structure_name: "Si"                    # Optional, cosmetic for UI only
 mode: normal
@@ -4153,7 +4153,7 @@ meta:
   slug: scf
   path: scf.step.yaml
   kind: step
-parent_workflow_id: 01JXYZ123ABC456DEF789GHI  # Canonical link to workflow (ULID)
+parent_calculation_id: 01JXYZ123ABC456DEF789GHI  # Canonical link to calculation (ULID)
 structure_id: 01JABC123DEF456GHI789JKL          # Canonical link to structure (ULID)
 step_type: scf
 parameters: {...}
@@ -4166,8 +4166,8 @@ parameters: {...}
 
 ### 27.4 Implementation Details
 
-**Workflow → Structure**:
-- `WorkflowModel` has `structure_id: Optional[str]` and `structure_name: Optional[str] = None`
+**Calculation → Structure**:
+- `CalculationModel` has `structure_id: Optional[str]` and `structure_name: Optional[str] = None`
 - On load: If `structure_id` present, use it. Else, if `structure` (selector) present, resolve via `resolve_structure()` and fill `structure_id`
 - On save: Write only `structure_id` (and optional `structure_name` for UI)
 
@@ -4176,26 +4176,26 @@ parameters: {...}
 - On load: If `structure_id` present, use it. Else, resolve `structure` selector and fill `structure_id`
 - On save: Write only `structure_id` (keep `structure` for backwards compat if needed)
 
-**Step → Workflow**:
-- Already uses `parent_workflow_id: Optional[str]` ✅
+**Step → Calculation**:
+- Already uses `parent_calculation_id: Optional[str]` ✅
 - No changes needed
 
 **Resolution Flow**:
 1. User provides selector (name/slug/path) via CLI/GUI
-2. `QVService` resolves selector → resource via `resolve_structure()` / `resolve_workflow()`
+2. `QVService` resolves selector → resource via `resolve_structure()` / `resolve_calculation()`
 3. Extract `resource.meta.id` and store in `*_id` field
 4. When loading, use `*_id` to resolve back to resource via registry lookup
 
 ### 27.5 Concrete Examples
 
-**New Workflow YAML Format**:
+**New Calculation YAML Format**:
 ```yaml
 meta:
   id: 01JXYZ123ABC456DEF789GHI
   name: si-dos
   slug: si-dos
-  path: workflows/si-dos
-  kind: workflow
+  path: calculations/si-dos
+  kind: calculation
 structure_id: 01JABC123DEF456GHI789JKL  # Canonical reference (ULID)
 structure_name: "Si"                    # Optional, cosmetic for UI only
 structure: si                            # Legacy selector (backwards compat, not authoritative)
@@ -4212,7 +4212,7 @@ meta:
   slug: scf
   path: scf.step.yaml
   kind: step
-parent_workflow_id: 01JXYZ123ABC456DEF789GHI  # Canonical link to workflow (ULID)
+parent_calculation_id: 01JXYZ123ABC456DEF789GHI  # Canonical link to calculation (ULID)
 structure_id: 01JABC123DEF456GHI789JKL          # Canonical link to structure (ULID)
 structure: si                                 # Legacy selector (backwards compat)
 step_type: scf
@@ -4221,26 +4221,26 @@ parameters: {...}
 
 **Legacy Format (Still Supported)**:
 ```yaml
-# workflow.yaml (legacy)
+# calculation.yaml (legacy)
 meta:
   id: 01JXYZ123ABC456DEF789GHI
   name: si-dos
   slug: si-dos
-  path: workflows/si-dos
-  kind: workflow
+  path: calculations/si-dos
+  kind: calculation
 structure: si  # Selector only (no structure_id)
 mode: normal
 working_dir: raw
 ```
 
-When loading a legacy workflow with `load_workflow(path, project_root)`, the structure selector is automatically resolved to `structure_id` if the structure exists in the project.
+When loading a legacy calculation with `load_calculation(path, project_root)`, the structure selector is automatically resolved to `structure_id` if the structure exists in the project.
 
 ### 27.6 How CLI/GUI Still Use Selectors
 
 **User-facing operations** (CLI/GUI) continue to use selectors (name/slug/path):
-- `qv init workflow --structure si` (uses selector)
+- `qv init calculation --structure si` (uses selector)
 - `qv init step --structure C` (uses selector)
-- GUI workflow creation: user selects structure by name
+- GUI calculation creation: user selects structure by name
 
 **Internal resolution flow**:
 1. User provides selector → `QVService` receives selector
@@ -4248,18 +4248,18 @@ When loading a legacy workflow with `load_workflow(path, project_root)`, the str
 3. Extract `resource.meta.id` → store in `structure_id` field
 4. When loading, use `structure_id` to resolve back to resource via registry lookup
 
-**Example: Creating a workflow**:
+**Example: Creating a calculation**:
 ```python
-# User: qv init workflow --structure si
+# User: qv init calculation --structure si
 structure_selector = "si"  # From CLI
 
 # QVService resolves selector to structure
 resolved = resolve_structure(project_root, structure_selector)
 structure_id = resolved.meta.id  # e.g., "01JABC123DEF456GHI789JKL"
 
-# Create workflow with structure_id
-workflow_model = WorkflowModel(
-    meta=workflow_meta,
+# Create calculation with structure_id
+calculation_model = CalculationModel(
+    meta=calculation_meta,
     structure_id=structure_id,      # Canonical reference
     structure_name=resolved.meta.name,  # Display name
     structure=structure_selector,    # Legacy field for backwards compat
@@ -4270,24 +4270,24 @@ workflow_model = WorkflowModel(
 
 **Before (selector-based)**:
 - Rename structure "Si" → "Silicon"
-- All workflows with `structure: "si"` break (selector no longer matches)
-- Must manually update all workflow.yaml files
+- All calculations with `structure: "si"` break (selector no longer matches)
+- Must manually update all calculation.yaml files
 
 **After (ID-based)**:
 - Rename structure "Si" → "Silicon"
 - Structure's `meta.id` remains unchanged (ULID is immutable)
-- All workflows with `structure_id: "01JABC..."` still work
+- All calculations with `structure_id: "01JABC..."` still work
 - Only `structure_name` field needs update (cosmetic, optional)
-- No need to touch workflow.yaml or step.yaml files
+- No need to touch calculation.yaml or step.yaml files
 
 **Example**:
 ```python
 # Structure renamed from "Si" to "Silicon"
-# Old workflow.yaml:
+# Old calculation.yaml:
 structure_id: 01JABC123DEF456GHI789JKL  # Still valid!
 structure_name: "Si"  # Outdated, but not critical
 
-# After reloading workflow (auto-updates structure_name):
+# After reloading calculation (auto-updates structure_name):
 structure_id: 01JABC123DEF456GHI789JKL  # Still valid!
 structure_name: "Silicon"  # Updated from registry
 ```
@@ -4303,15 +4303,15 @@ structure_name: "Silicon"  # Updated from registry
 ### 27.9 Implementation Files
 
 **Core Models**:
-- `src/quantumvitas/core/models.py`: `WorkflowModel` with `structure_id`/`structure_name` fields
-- `src/quantumvitas/workflow/structure_steps.py`: `StructureStepSpec` with `structure_id` field
+- `src/quantumvitas/core/models.py`: `CalculationModel` with `structure_id`/`structure_name` fields
+- `src/quantumvitas/calculation/structure_steps.py`: `StructureStepSpec` with `structure_id` field
 
 **Resolution**:
 - `src/quantumvitas/core/resolution.py`: `resolve_structure()` converts selector → `ResolvedResource` with `meta.id`
-- `src/quantumvitas/core/models.py`: `load_workflow()` auto-resolves legacy `structure` selector to `structure_id`
+- `src/quantumvitas/core/models.py`: `load_calculation()` auto-resolves legacy `structure` selector to `structure_id`
 
 **Service Layer**:
-- `src/quantumvitas/api.py`: `QVService.init_workflow()`, `QVService.init_step()`, etc. resolve selectors to IDs
+- `src/quantumvitas/api.py`: `QVService.init_calculation()`, `QVService.init_step()`, etc. resolve selectors to IDs
 
 **Snapshots**:
 - `src/quantumvitas/project/snapshot.py`: Exports `structure_id`, materializes with ID mapping
@@ -4327,8 +4327,8 @@ structure_name: "Silicon"  # Updated from registry
 
 **Every resource file is self-describing:**
 - `project.qv.yml` (project)
-- `workflows/<slug>/workflow.yaml` (workflow)
-- `workflows/<slug>/steps/*.step.yaml` (step)
+- `calculations/<slug>/calculation.yaml` (calculation)
+- `calculations/<slug>/steps/*.step.yaml` (step)
 - `structures/*.json` (structure)
 
 Each has a `meta` block with:
@@ -4338,14 +4338,14 @@ meta:
   name: <str>         # Only appears here for this resource
   slug: <str>         # Only appears here for this resource
   path: <relative>    # Path from project root
-  kind: project|workflow|structure|step
+  kind: project|calculation|structure|step
 ```
 
 **Cross-resource references store ONLY the id, never name/slug/path:**
 
-**workflow.yaml:**
+**calculation.yaml:**
 ```yaml
-meta: {... kind: workflow}
+meta: {... kind: calculation}
 structure_id: 01S...           # Structure reference (ULID only)
 steps:
   - step_id: 01T...            # Step reference (ULID only)
@@ -4355,7 +4355,7 @@ steps:
 ***.step.yaml:**
 ```yaml
 meta: {... kind: step}
-parent_workflow_id: 01H...     # Workflow reference (ULID only)
+parent_calculation_id: 01H...     # Calculation reference (ULID only)
 structure_id: 01S...           # Structure reference (ULID only)
 ```
 
@@ -4364,7 +4364,7 @@ structure_id: 01S...           # Structure reference (ULID only)
 meta: {... kind: project}
 structures:
   - id: 01S...                 # Only ID, no name/slug/path
-workflows:
+calculations:
   - id: 01H...                 # Only ID, no name/slug/path
 ```
 
@@ -4374,35 +4374,35 @@ workflows:
 
 The registry stores only:
 - The project's own meta (with name/slug/path, because it's "self")
-- Top-level id lists / id mappings (project → structure ids, workflow ids, etc.)
+- Top-level id lists / id mappings (project → structure ids, calculation ids, etc.)
 - Project-level settings (origin, analysis options, etc.)
 
-It must **not** contain copies of workflow/structure/step name/slug/path.
+It must **not** contain copies of calculation/structure/step name/slug/path.
 
 **Allowed:**
 ```yaml
-workflows:
+calculations:
   - id: 01H...
 structures:
   - id: 01S...
-workflow_structure:
+calculation_structure:
   01H...: 01S...
 ```
 
 **Not allowed:**
 ```yaml
-workflows:
+calculations:
   - id: 01H...
     name: graphene bands      # ❌ Not allowed anymore
     slug: graphene-bands      # ❌
-    path: workflows/...       # ❌
+    path: calculations/...       # ❌
 ```
 
 ### 28.3 ResourceIndex as the Canonical Selector Resolver
 
 ### 28.1 Overview
 
-The `ResourceIndex` is the authoritative source for selector → ID resolution. It is built by scanning resource files (workflow.yaml, *.step.yaml, *.json) and reading their meta blocks, not from project.qv.yml entries.
+The `ResourceIndex` is the authoritative source for selector → ID resolution. It is built by scanning resource files (calculation.yaml, *.step.yaml, *.json) and reading their meta blocks, not from project.qv.yml entries.
 
 ### 28.2 ResourceIndex Structure
 
@@ -4418,8 +4418,8 @@ class ResourceIndex:
 ### 28.3 Building the Index
 
 `build_resource_index(project_root: Path) -> ResourceIndex`:
-- Scans `workflows/**/workflow.yaml` → reads meta, indexes by id/slug/path/name
-- Scans `workflows/**/steps/*.step.yaml` → reads meta, indexes by id/slug/path/name
+- Scans `calculations/**/calculation.yaml` → reads meta, indexes by id/slug/path/name
+- Scans `calculations/**/steps/*.step.yaml` → reads meta, indexes by id/slug/path/name
 - Scans `structures/*.json` → reads `__qv_meta__` or `meta`, indexes by id/slug/path/name
 
 **Key principle**: Resource files are self-describing. Their meta blocks are the source of truth for name/slug/path. project.qv.yml only stores IDs for relationships.
@@ -4438,7 +4438,7 @@ class ResourceIndex:
 
 ### 28.5 Usage in Resolution Functions
 
-`resolve_structure()` and `resolve_workflow()` now:
+`resolve_structure()` and `resolve_calculation()` now:
 - Accept optional `index: ResourceIndex` parameter
 - Build index if not provided
 - Try ResourceIndex resolution first
@@ -4463,11 +4463,11 @@ resolved = resolve_structure(project_root, "si")
 
 ---
 
-### 26.3 Fix: Workflow Rename Bug
+### 26.3 Fix: Calculation Rename Bug
 
-**Problem**: `qv configure workflow --name "graph"` failed with `FileNotFoundError` after renaming because the code tried to read/write `workflow.yaml` at the old location after the directory was moved.
+**Problem**: `qv configure calculation --name "graph"` failed with `FileNotFoundError` after renaming because the code tried to read/write `calculation.yaml` at the old location after the directory was moved.
 
-**Root Cause**: `apply_workflow_rename()` can move the workflow directory if the slug changes (e.g., "graphene bands" → "graph" changes slug from "graphene-bands" to "graph"), but the CLI code captured `workflow_dir` and `workflow_yaml` paths before the rename.
+**Root Cause**: `apply_calculation_rename()` can move the calculation directory if the slug changes (e.g., "graphene bands" → "graph" changes slug from "graphene-bands" to "graph"), but the CLI code captured `calculation_dir` and `calculation_yaml` paths before the rename.
 
 **Solution** (`src/quantumvitas/cli/main.py`, lines ~2179-2197):
 
@@ -4475,80 +4475,80 @@ resolved = resolve_structure(project_root, "si")
 # Handle name change (rename)
 if name:
     # Store old path to detect if directory was moved
-    old_workflow_dir = workflow_dir
-    old_workflow_yaml = workflow_yaml
+    old_workflow_dir = calculation_dir
+    old_workflow_yaml = calculation_yaml
     
-    apply_workflow_rename(...)
+    apply_calculation_rename(...)
     save_project_config(project_root, config)
     
-    # Re-resolve workflow directory in case it was moved
-    workflow_dir = workflow_directory(project_root, workflow_entry)
-    workflow_yaml = workflow_dir / "workflow.yaml"
+    # Re-resolve calculation directory in case it was moved
+    calculation_dir = calculation_directory(project_root, calculation_entry)
+    calculation_yaml = calculation_dir / "calculation.yaml"
     
-    # Re-read workflow.yaml if directory was moved
-    if workflow_dir != old_workflow_dir:
-        if not workflow_yaml.exists():
-            raise typer.BadParameter(f"workflow.yaml not found at {workflow_yaml} after rename")
-        workflow_data = yaml.safe_load(workflow_yaml.read_text()) or {}
+    # Re-read calculation.yaml if directory was moved
+    if calculation_dir != old_workflow_dir:
+        if not calculation_yaml.exists():
+            raise typer.BadParameter(f"calculation.yaml not found at {calculation_yaml} after rename")
+        calculation_data = yaml.safe_load(calculation_yaml.read_text()) or {}
     
-    # Update meta in workflow.yaml
-    if "meta" in workflow_data:
-        workflow_data["meta"]["name"] = name
-        new_slug = (workflow_entry.get("meta") or {}).get("slug") or slugify(name)
-        workflow_data["meta"]["slug"] = new_slug
+    # Update meta in calculation.yaml
+    if "meta" in calculation_data:
+        calculation_data["meta"]["name"] = name
+        new_slug = (calculation_entry.get("meta") or {}).get("slug") or slugify(name)
+        calculation_data["meta"]["slug"] = new_slug
 ```
 
 **Behavior**:
 - ✅ Rename works whether slug changes or stays the same
-- ✅ `workflow.yaml` is updated at the correct location (new directory if moved)
-- ✅ Project config and workflow.yaml stay in sync
+- ✅ `calculation.yaml` is updated at the correct location (new directory if moved)
+- ✅ Project config and calculation.yaml stay in sync
 
-### 26.4 Fix: `qv analyze band` Workflow Detection
+### 26.4 Fix: `qv analyze band` Calculation Detection
 
-**Problem**: `qv analyze band` from inside a workflow directory failed with "Workflow not found: graphene-bands" because `PathContext` extracted the selector from `workflow.yaml`, which might be stale after a rename.
+**Problem**: `qv analyze band` from inside a calculation directory failed with "Calculation not found: graphene-bands" because `PathContext` extracted the selector from `calculation.yaml`, which might be stale after a rename.
 
-**Root Cause**: `PathContext.workflow_selector` reads from `workflow.yaml` meta, but after a rename, the selector might not match what's in `project.qv.yml` (the source of truth for `resolve_workflow`).
+**Root Cause**: `PathContext.calculation_selector` reads from `calculation.yaml` meta, but after a rename, the selector might not match what's in `project.qv.yml` (the source of truth for `resolve_calculation`).
 
 **Solution** (`src/quantumvitas/cli/main.py`, lines ~3002-3024):
 
 ```python
-# Only auto-detect workflow if no input file provided
-if input_file is None and ctx.is_inside_workflow():
-    # Use find_enclosing_workflow to get the actual entry from project config
-    # This is more reliable than using the selector from workflow.yaml
+# Only auto-detect calculation if no input file provided
+if input_file is None and ctx.is_inside_calculation():
+    # Use find_enclosing_calculation to get the actual entry from project config
+    # This is more reliable than using the selector from calculation.yaml
     # (which might be stale after a rename)
     config = load_project_config(project_root)
-    wf_entry = find_enclosing_workflow(project_root, config)
+    wf_entry = find_enclosing_calculation(project_root, config)
     if wf_entry:
         # Use the slug or name from the entry (which is authoritative)
-        workflow_selector = (wf_entry.get("meta") or {}).get("slug") or wf_entry.get("name")
-        if workflow_selector:
-            typer.echo(f"Detected workflow: {workflow_selector}")
+        calculation_selector = (wf_entry.get("meta") or {}).get("slug") or wf_entry.get("name")
+        if calculation_selector:
+            typer.echo(f"Detected calculation: {calculation_selector}")
 ```
 
 **Why This Works**:
-- `find_enclosing_workflow()` matches the current directory path against entries in `project.qv.yml`
-- Uses directory path, not selector from `workflow.yaml`, so it works after renames
+- `find_enclosing_calculation()` matches the current directory path against entries in `project.qv.yml`
+- Uses directory path, not selector from `calculation.yaml`, so it works after renames
 - Selector comes from the authoritative entry in `project.qv.yml`
 
 **Behavior**:
-- ✅ Works from inside workflow directory, even after rename
-- ✅ Uses authoritative selector from project config, not stale workflow.yaml
+- ✅ Works from inside calculation directory, even after rename
+- ✅ Uses authoritative selector from project config, not stale calculation.yaml
 
 ### 26.5 Key Principles
 
-1. **Use `find_enclosing_workflow()` for auto-detection**: More reliable than selectors from `workflow.yaml` because it uses directory paths
-2. **Re-resolve paths after rename operations**: Always re-resolve workflow directory and re-read files after `apply_workflow_rename()`
-3. **Read structure from top-level first**: Check `workflow_data.get("structure")` before legacy `workflow_data.get("workflow", {}).get("structure")`
-4. **Clear error messages**: When at project root without `--workflow`, provide explicit guidance
+1. **Use `find_enclosing_calculation()` for auto-detection**: More reliable than selectors from `calculation.yaml` because it uses directory paths
+2. **Re-resolve paths after rename operations**: Always re-resolve calculation directory and re-read files after `apply_calculation_rename()`
+3. **Read structure from top-level first**: Check `calculation_data.get("structure")` before legacy `calculation_data.get("calculation", {}).get("structure")`
+4. **Clear error messages**: When at project root without `--calculation`, provide explicit guidance
 
 ### 26.6 Files Modified
 
 | File | Changes |
 |------|---------|
 | `src/quantumvitas/cli/main.py` | Fixed `init_step_command` to use `PathContext`, fixed structure reading, added clear error at project root |
-| `src/quantumvitas/cli/main.py` | Fixed `configure_workflow_command` to re-resolve paths after rename |
-| `src/quantumvitas/cli/main.py` | Fixed `analyze_band_command` to use `find_enclosing_workflow` instead of `PathContext.workflow_selector` |
+| `src/quantumvitas/cli/main.py` | Fixed `configure_calculation_command` to re-resolve paths after rename |
+| `src/quantumvitas/cli/main.py` | Fixed `analyze_band_command` to use `find_enclosing_calculation` instead of `PathContext.calculation_selector` |
 | `tests/cli/test_graphene_workflow_setup.py` | New test verifying exact CLI sequence from manual instructions |
 
 ### 26.7 Test Coverage

@@ -6,7 +6,7 @@ meta:
   kind: step
 structure: si
 step_type: scf
-parent_workflow_id: 01KB9JA6JSMH7XFZ1AK917TV6J
+parent_calculation_id: 01KB9JA6JSMH7XFZ1AK917TV6J
 parameters:
   CONTROL:
     calculation: scf

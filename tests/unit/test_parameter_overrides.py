@@ -1,7 +1,7 @@
 import pytest
 
 from quantumvitas.io import QEInput, QENamelist
-from quantumvitas.workflow.input_runner import (
+from quantumvitas.calculation.input_runner import (
     ParameterOverride,
     _apply_parameter_overrides,
 )

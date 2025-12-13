@@ -6,21 +6,21 @@ QMatSuite uses a pytest-based test suite with 412 tests organized by subsystem. 
 
 | Area / Subsystem | Key Test Locations | Notes |
 |------------------|-------------------|-------|
-| **Core models & DAG** | `tests/unit/test_models.py`, `tests/unit/test_project_and_cli.py`, `tests/unit/test_workflow_dag_constitution.py` | Project/workflow/step schemas, ULID validation, DAG structure |
+| **Core models & DAG** | `tests/unit/test_models.py`, `tests/unit/test_project_and_cli.py`, `tests/unit/test_calculation_dag_constitution.py` | Project/calculation/step schemas, ULID validation, DAG structure |
 | **CLI commands** | `tests/cli/` | `qv init`, `qv run`, `qv configure`, `qv analyze`, error handling |
 | **Daemon / RPC** | `tests/daemon/` | JSON-RPC endpoints for GUI, job management, step operations |
-| **QE workflows** | `tests/integration/test_si_*.py`, `tests/cli/test_si_*_workflow_*.py` | Full workflow execution (requires QE installation) |
+| **QE calculations** | `tests/integration/test_si_*.py`, `tests/cli/test_si_*_workflow_*.py` | Full calculation execution (requires QE installation) |
 | **Analysis & plotting** | `tests/unit/test_analysis_*.py` | SCF/DOS/bands output parsing, plotting, artifacts |
 | **Structure I/O** | `tests/unit/test_structure_*.py`, `tests/examples/test_structure_io_examples.py` | Structure import/export, format conversion, roundtrip |
 | **Resource resolution** | `tests/unit/test_resolution.py` | Selector resolution (ULID, slug, path, name) |
 | **Legacy migration** | `tests/unit/test_legacy_migration.py` | Legacy project format detection and migration |
 | **QE engine** | `tests/integration/test_qe_engine.py`, `tests/integration/test_qe_executable_*.py` | QE input generation, executable detection (requires QE) |
-| **API service** | `tests/unit/test_api_service*.py` | `QVService` API methods for project/workflow/step operations |
+| **API service** | `tests/unit/test_api_service*.py` | `QVService` API methods for project/calculation/step operations |
 
 ### What to Run When You Change Things
 
-- **Core project/workflow/step models** (`quantumvitas.core.models`, `quantumvitas.project.model`)
-  - `pytest tests/unit/test_models.py tests/unit/test_project_and_cli.py tests/unit/test_workflow_dag_constitution.py`
+- **Core project/calculation/step models** (`quantumvitas.core.models`, `quantumvitas.project.model`)
+  - `pytest tests/unit/test_models.py tests/unit/test_project_and_cli.py tests/unit/test_calculation_dag_constitution.py`
 
 - **CLI behavior** (`quantumvitas.cli.main`)
   - `pytest tests/cli/` (some tests require QE installation)
@@ -28,7 +28,7 @@ QMatSuite uses a pytest-based test suite with 412 tests organized by subsystem. 
 - **Daemon / RPC / backend** (`quantumvitas.daemon.server`, `quantumvitas.api.QVService`)
   - `pytest tests/daemon/ tests/unit/test_daemon.py tests/unit/test_qvservice_gui.py`
 
-- **QE workflows** (workflow execution, QE integration)
+- **QE calculations** (calculation execution, QE integration)
   - `pytest tests/integration/test_si_*.py` (requires QE installation)
   - `pytest tests/cli/test_si_*_workflow_*.py` (requires QE installation)
 
@@ -46,7 +46,7 @@ QMatSuite uses a pytest-based test suite with 412 tests organized by subsystem. 
 
 ### QE-backed Integration Tests
 
-**QE-backed integration tests** are test modules that actually run Quantum ESPRESSO executables (pw.x, bands.x, dos.x, etc.) via the `qv` CLI. These tests are slower than unit tests because they execute full QE workflows, but they provide end-to-end validation of the entire system.
+**QE-backed integration tests** are test modules that actually run Quantum ESPRESSO executables (pw.x, bands.x, dos.x, etc.) via the `qv` CLI. These tests are slower than unit tests because they execute full QE calculations, but they provide end-to-end validation of the entire system.
 
 #### QE-backed vs Pure Unit Tests
 
@@ -58,21 +58,21 @@ QMatSuite uses a pytest-based test suite with 412 tests organized by subsystem. 
 - Run in CI without QE installation
 
 **QE-backed integration tests** (slower, require QE):
-- Execute complete workflows via `qv run workflow ...` or `WorkflowRunner.run()`
+- Execute complete calculations via `qv run calculation ...` or `CalculationRunner.run()`
 - Spawn QE executables (pw.x, bands.x, dos.x, ph.x, etc.)
 - Require QE installation and pseudopotentials
-- Located in `tests/cli/` (CLI execution) or `tests/integration/` (WorkflowRunner/engine execution)
+- Located in `tests/cli/` (CLI execution) or `tests/integration/` (CalculationRunner/engine execution)
 - Marked with `@pytest.mark.qe_core` or `@pytest.mark.qe_cli`
 
 #### The "One QE-running Test Per File" Convention
 
 Each QE-backed test module must have exactly **one** QE-running test function that:
-- Runs the full workflow (`qv run workflow ...`)
+- Runs the full calculation (`qv run calculation ...`)
 - Performs all post-processing checks (`qv analyze ...`)
 - Verifies outputs and plots
 
 All other tests in the same module must be pure unit tests (no QE execution). This convention ensures:
-- Each workflow is tested once end-to-end
+- Each calculation is tested once end-to-end
 - Tests are predictable and not dependent on execution order
 - Fast unit tests can run without QE installation
 
@@ -90,16 +90,16 @@ pytest -m qe_core
 pytest -m qe_cli
 ```
 
-**Run specific QE-backed workflow test:**
+**Run specific QE-backed calculation test:**
 ```bash
-# CLI-based workflows
-pytest tests/cli/test_si_dos_workflow_comprehensive.py
+# CLI-based calculations
+pytest tests/cli/test_si_dos_calculation_comprehensive.py
 pytest tests/cli/test_si_bands_manual_workflow_cli.py
 pytest tests/cli/test_si_bands_auto_workflow_cli.py
 
-# WorkflowRunner-based workflows
-pytest tests/integration/test_si_dos_workflow.py
-pytest tests/integration/test_si_bands_workflow.py
+# CalculationRunner-based calculations
+pytest tests/integration/test_si_dos_calculation.py
+pytest tests/integration/test_si_bands_calculation.py
 
 # Step execution tests
 pytest tests/integration/test_pw_quick_tests_ci.py
@@ -115,12 +115,12 @@ pytest tests/integration/test_ph_quick_tests.py
 
 #### Adding New QE-backed Tests
 
-When adding a new QE-backed workflow test:
-1. Create a new test module (or reuse an existing one if it's the same workflow)
-2. Put all QE-running logic into a **single** integration test function (e.g., `test_run_workflow_and_analyze`)
+When adding a new QE-backed calculation test:
+1. Create a new test module (or reuse an existing one if it's the same calculation)
+2. Put all QE-running logic into a **single** integration test function (e.g., `test_run_calculation_and_analyze`)
 3. Any other checks should either be:
    - Folded into that single function, OR
-   - Split into pure unit tests (no `qv run workflow` calls)
+   - Split into pure unit tests (no `qv run calculation` calls)
 
 This ensures compliance with the "one QE-running test per file" convention.
 
