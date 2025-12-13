@@ -34,17 +34,17 @@ from quantumvitas.core.resolution import (
     SelectorNotFoundError,
     resolve_project,
     resolve_structure,
-    resolve_workflow,
+    resolve_calculation,
     resolve_step,
     require_structure,
-    require_workflow,
+    require_calculation,
     require_step,
     list_structures,
-    list_workflows,
+    list_calculations,
     list_steps,
 )
 from quantumvitas.core.selectors import (
-    extract_workflow_selector_from_entry,
+    extract_calculation_selector_from_entry,
     extract_structure_selector_from_entry,
     extract_step_selector_from_entry,
 )
@@ -56,20 +56,20 @@ from quantumvitas.core.project_utils import (
     save_project_config,
     collect_slugs,
     ensure_structure_entry_defaults,
-    ensure_workflow_entry_defaults,
+    ensure_calculation_entry_defaults,
     find_structure_entry,
-    find_workflow_entry,
-    workflow_directory,
+    find_calculation_entry,
+    calculation_directory,
     move_to_trash,
     apply_structure_rename,
-    apply_workflow_rename,
-    delete_workflow_entry,
-    workflows_using_structure,
-    workflows_depending_on,
+    apply_calculation_rename,
+    delete_calculation_entry,
+    calculations_using_structure,
+    calculations_depending_on,
 )
 
 if TYPE_CHECKING:
-    from quantumvitas.workflow.structure_steps import StructureStepSpec
+    from quantumvitas.calculation.structure_steps import StructureStepSpec
     from quantumvitas.core.resolution import ResourceIndex
 
 
@@ -82,7 +82,7 @@ class QVService:
     """
     Service layer for QuantumVITAS operations.
     
-    Provides clean methods for managing projects, workflows, steps, and structures.
+    Provides clean methods for managing projects, calculations, steps, and structures.
     All methods receive project_root explicitly and use selectors for resources.
     """
     
@@ -139,14 +139,14 @@ class QVService:
                 },
             },
             "structures": [],
-            "workflows": [],
+            "calculations": [],
         }
         
         save_project_config(target_dir, config)
         
         # Create standard directories
         (target_dir / "structures").mkdir(exist_ok=True)
-        (target_dir / "workflows").mkdir(exist_ok=True)
+        (target_dir / "calculations").mkdir(exist_ok=True)
         (target_dir / "pseudo").mkdir(exist_ok=True)
         (target_dir / "trash").mkdir(exist_ok=True)
         
@@ -399,16 +399,16 @@ class QVService:
         resolved = require_structure(project_root, selector, config=config, index=registry)
         structure_id = resolved.meta.id
         
-        # Get entry for workflow dependency checking
+        # Get entry for calculation dependency checking
         entry = find_structure_entry(config, selector, project_root)
         
-        # Check for workflows using this structure
+        # Check for calculations using this structure
         if not force:
-            using_workflows = workflows_using_structure(project_root, config, entry)
-            if using_workflows:
-                names = ", ".join(w.get("name", "?") for w in using_workflows)
+            using_calculations = calculations_using_structure(project_root, config, entry)
+            if using_calculations:
+                names = ", ".join(w.get("name", "?") for w in using_calculations)
                 raise QVServiceError(
-                    f"Structure is used by workflows: {names}. Use force to delete anyway."
+                    f"Structure is used by calculations: {names}. Use force to delete anyway."
                 )
         
         # Move file to trash
@@ -444,11 +444,11 @@ class QVService:
         return require_structure(project_root, selector)
     
     # -------------------------------------------------------------------------
-    # Workflow operations
+    # Calculation operations
     # -------------------------------------------------------------------------
     
     @staticmethod
-    def init_workflow(
+    def init_calculation(
         project_root: Path,
         name: str,
         structure_selector: Optional[str] = None,
@@ -458,49 +458,49 @@ class QVService:
         config: Optional[dict] = None,
     ) -> ResolvedResource:
         """
-        Create a new workflow.
+        Create a new calculation.
         
         Args:
             project_root: Project root path
-            name: Workflow name
-            structure_selector: Optional structure selector for workflow
+            name: Calculation name
+            structure_selector: Optional structure selector for calculation
             template: Optional template name
             
         Returns:
-            ResolvedResource for the new workflow
+            ResolvedResource for the new calculation
         """
         config = load_project_config(project_root)
-        workflows = config.setdefault("workflows", [])
-        existing_slugs = collect_slugs(workflows, project_root=project_root)
+        calculations = config.setdefault("calculations", [])
+        existing_slugs = collect_slugs(calculations, project_root=project_root)
         
         final_name, final_slug = generate_unique_name_and_slug(
-            kind="workflow",
+            kind="calculation",
             preferred_name=name,
             existing_slugs=existing_slugs,
         )
         
-        workflow_id = generate_resource_id()
-        workflow_path = f"workflows/{final_slug}"
-        workflow_dir = project_root / workflow_path
+        calculation_id = generate_resource_id()
+        calculation_path = f"calculations/{final_slug}"
+        calculation_dir = project_root / calculation_path
         
         if template:
-            from quantumvitas.core.templates import copy_workflow_template
-            workflow_dir, _, new_ulid = copy_workflow_template(
+            from quantumvitas.core.templates import copy_calculation_template
+            calculation_dir, _, new_ulid = copy_calculation_template(
                 template,
-                workflow_dir,
+                calculation_dir,
                 project_root,
                 new_name=final_name,
                 structure=structure_selector,
-                workflow_ulid=workflow_id,
+                calculation_ulid=calculation_id,
             )
-            workflow_id = new_ulid
+            calculation_id = new_ulid
         else:
-            from quantumvitas.core.models import WorkflowModel, save_workflow
+            from quantumvitas.core.models import CalculationModel, save_calculation
             
-            workflow_dir.mkdir(parents=True, exist_ok=True)
-            (workflow_dir / "steps").mkdir(exist_ok=True)
-            (workflow_dir / "raw").mkdir(exist_ok=True)
-            (workflow_dir / "reference").mkdir(exist_ok=True)
+            calculation_dir.mkdir(parents=True, exist_ok=True)
+            (calculation_dir / "steps").mkdir(exist_ok=True)
+            (calculation_dir / "raw").mkdir(exist_ok=True)
+            (calculation_dir / "reference").mkdir(exist_ok=True)
             
             # Resolve structure selector to structure_id
             structure_id = None
@@ -510,40 +510,40 @@ class QVService:
                 structure_id = resolved_structure.meta.id
                 structure_name = resolved_structure.meta.name
             
-            # Create workflow using model
-            workflow_meta = ResourceMeta(
-                id=workflow_id,
+            # Create calculation using model
+            calculation_meta = ResourceMeta(
+                id=calculation_id,
                 name=final_name,
                 slug=final_slug,
-                path=workflow_path,
-                kind="workflow",
+                path=calculation_path,
+                kind="calculation",
             )
-            workflow_model = WorkflowModel(
-                meta=workflow_meta,
+            calculation_model = CalculationModel(
+                meta=calculation_meta,
                 structure_id=structure_id,
                 structure_name=structure_name,
             )
-            save_workflow(workflow_model, workflow_dir)
+            save_calculation(calculation_model, calculation_dir)
         
-        # Add to project config (DAG + ID-only: only workflow_id, no meta duplication)
+        # Add to project config (DAG + ID-only: only calculation_id, no meta duplication)
         entry = {
-            "workflow_id": workflow_id,  # ID-only reference (ULID)
+            "calculation_id": calculation_id,  # ID-only reference (ULID)
         }
-        workflows.append(entry)
+        calculations.append(entry)
         save_project_config(project_root, config)
         
         # Update registry in-place if index is provided (do NOT rebuild)
-        # Note: This requires the workflow to be resolved to get its meta
-        resolved = require_workflow(project_root, final_slug, config=config, index=index)
+        # Note: This requires the calculation to be resolved to get its meta
+        resolved = require_calculation(project_root, final_slug, config=config, index=index)
         if index is not None:
-            from quantumvitas.core.resolution import update_registry_add_workflow
-            workflow_yaml_path = resolved.absolute_path / "workflow.yaml" if resolved.absolute_path.is_dir() else resolved.absolute_path
-            update_registry_add_workflow(index, resolved.meta, workflow_yaml_path)
+            from quantumvitas.core.resolution import update_registry_add_calculation
+            calculation_yaml_path = resolved.absolute_path / "calculation.yaml" if resolved.absolute_path.is_dir() else resolved.absolute_path
+            update_registry_add_calculation(index, resolved.meta, calculation_yaml_path)
         
         return resolved
     
     @staticmethod
-    def configure_workflow(
+    def configure_calculation(
         project_root: Path,
         selector: str,
         new_name: Optional[str] = None,
@@ -551,20 +551,20 @@ class QVService:
         new_step_order: Optional[List[str]] = None,
     ) -> None:
         """
-        Configure a workflow.
+        Configure a calculation.
         
         Args:
             project_root: Project root path
-            selector: Workflow selector
+            selector: Calculation selector
             new_name: Optional new name
             new_structure: Optional new structure selector
             new_step_order: Optional new step order (list of step ids)
         """
         config = load_project_config(project_root)
-        entry = find_workflow_entry(config, selector, project_root)
+        entry = find_calculation_entry(config, selector, project_root)
         
         if new_name:
-            apply_workflow_rename(
+            apply_calculation_rename(
                 project_root=project_root,
                 config=config,
                 entry=entry,
@@ -573,14 +573,14 @@ class QVService:
                 new_path=None,
             )
         
-        # Update workflow.yaml if needed
-        workflow_dir = workflow_directory(project_root, entry)
-        workflow_yaml_path = workflow_dir / "workflow.yaml"
+        # Update calculation.yaml if needed
+        calculation_dir = calculation_directory(project_root, entry)
+        calculation_yaml_path = calculation_dir / "calculation.yaml"
         
-        if workflow_yaml_path.exists() and (new_structure or new_step_order):
-            from quantumvitas.core.models import load_workflow, save_workflow, WorkflowStepEntry
+        if calculation_yaml_path.exists() and (new_structure or new_step_order):
+            from quantumvitas.core.models import load_calculation, save_calculation, CalculationStepEntry
             
-            model = load_workflow(workflow_dir, project_root)
+            model = load_calculation(calculation_dir, project_root)
             
             if new_structure:
                 model.structure = new_structure
@@ -593,12 +593,12 @@ class QVService:
                         new_steps.append(step_map[step_id])
                 model.steps = new_steps
             
-            save_workflow(model, workflow_dir)
+            save_calculation(model, calculation_dir)
         
         save_project_config(project_root, config)
     
     @staticmethod
-    def delete_workflow(
+    def delete_calculation(
         project_root: Path,
         selector: str,
         force: bool = False,
@@ -607,26 +607,26 @@ class QVService:
         index: Optional["ResourceIndex"] = None,
         config: Optional[dict] = None,
     ) -> None:
-        """Delete a workflow (move to trash)."""
+        """Delete a calculation (move to trash)."""
         if config is None:
             config = load_project_config(project_root)
         
-        entry = find_workflow_entry(config, selector, project_root)
-        workflow_id = extract_workflow_selector_from_entry(entry)
+        entry = find_calculation_entry(config, selector, project_root)
+        calculation_id = extract_calculation_selector_from_entry(entry)
         trash = project_root / "trash"
         
-        # If cascade=True, we need to collect all workflow IDs that will be deleted
-        workflow_ids_to_remove = [workflow_id] if workflow_id else []
+        # If cascade=True, we need to collect all calculation IDs that will be deleted
+        calculation_ids_to_remove = [calculation_id] if calculation_id else []
         if cascade and index is not None:
-            # Find dependent workflows
-            from quantumvitas.core.project_utils import workflows_depending_on
-            dependents = workflows_depending_on(config, entry)
+            # Find dependent calculations
+            from quantumvitas.core.project_utils import calculations_depending_on
+            dependents = calculations_depending_on(config, entry)
             for dep in dependents:
-                dep_id = extract_workflow_selector_from_entry(dep)
+                dep_id = extract_calculation_selector_from_entry(dep)
                 if dep_id:
-                    workflow_ids_to_remove.append(dep_id)
+                    calculation_ids_to_remove.append(dep_id)
         
-        delete_workflow_entry(
+        delete_calculation_entry(
             project_root=project_root,
             config=config,
             entry=entry,
@@ -637,22 +637,22 @@ class QVService:
         
         save_project_config(project_root, config)
         
-        # Update registry in-place (remove workflows, do NOT rebuild)
+        # Update registry in-place (remove calculations, do NOT rebuild)
         if index is not None:
-            from quantumvitas.core.resolution import update_registry_remove_workflow
-            for wf_id in workflow_ids_to_remove:
+            from quantumvitas.core.resolution import update_registry_remove_calculation
+            for wf_id in calculation_ids_to_remove:
                 if wf_id:
-                    update_registry_remove_workflow(index, wf_id)
+                    update_registry_remove_calculation(index, wf_id)
     
     @staticmethod
-    def list_workflows(project_root: Path) -> List[ResolvedResource]:
-        """List all workflows in a project."""
-        return list_workflows(project_root)
+    def list_calculations(project_root: Path) -> List[ResolvedResource]:
+        """List all calculations in a project."""
+        return list_calculations(project_root)
     
     @staticmethod
-    def get_workflow(project_root: Path, selector: str) -> ResolvedResource:
-        """Get a workflow by selector."""
-        return resolve_workflow(project_root, selector)
+    def get_calculation(project_root: Path, selector: str) -> ResolvedResource:
+        """Get a calculation by selector."""
+        return resolve_calculation(project_root, selector)
     
     # -------------------------------------------------------------------------
     # Step operations
@@ -661,32 +661,32 @@ class QVService:
     @staticmethod
     def init_step(
         project_root: Path,
-        workflow_selector: str,
+        calculation_selector: str,
         step_type: str,
         name: Optional[str] = None,
         structure_selector: Optional[str] = None,
     ) -> ResolvedResource:
         """
-        Create a new step in a workflow.
+        Create a new step in a calculation.
         
         Args:
             project_root: Project root path
-            workflow_selector: Parent workflow selector
+            calculation_selector: Parent calculation selector
             step_type: Step type (scf, nscf, dos, bands, etc.)
             name: Optional step name (defaults to step_type)
-            structure_selector: Optional structure (defaults to workflow's structure)
+            structure_selector: Optional structure (defaults to calculation's structure)
             
         Returns:
             ResolvedResource for the new step
         """
-        from quantumvitas.workflow.structure_steps import StructureStepSpec
-        from quantumvitas.workflow.step_defaults import get_default_step_params
-        from quantumvitas.core.models import WorkflowModel
+        from quantumvitas.calculation.structure_steps import StructureStepSpec
+        from quantumvitas.calculation.step_defaults import get_default_step_params
+        from quantumvitas.core.models import CalculationModel
         import yaml
         
-        workflow = resolve_workflow(project_root, workflow_selector)
-        workflow_dir = workflow.absolute_path
-        steps_dir = workflow_dir / "steps"
+        calculation = resolve_calculation(project_root, calculation_selector)
+        calculation_dir = calculation.absolute_path
+        steps_dir = calculation_dir / "steps"
         steps_dir.mkdir(exist_ok=True)
         
         step_name = name or step_type
@@ -702,12 +702,12 @@ class QVService:
         
         step_yaml_path = steps_dir / f"{base_name}.step.yaml"
         
-        # Determine structure from workflow if not specified
-        from quantumvitas.core.models import load_workflow, save_workflow, WorkflowStepEntry
+        # Determine structure from calculation if not specified
+        from quantumvitas.core.models import load_calculation, save_calculation, CalculationStepEntry
         
-        workflow_yaml_path = workflow_dir / "workflow.yaml"
-        if workflow_yaml_path.exists():
-            wf_model = load_workflow(workflow_dir, project_root)
+        calculation_yaml_path = calculation_dir / "calculation.yaml"
+        if calculation_yaml_path.exists():
+            wf_model = load_calculation(calculation_dir, project_root)
             if structure_selector is None:
                 # Use structure_id if available, else fall back to legacy structure selector
                 if wf_model.structure_id:
@@ -717,9 +717,9 @@ class QVService:
                 else:
                     structure_selector = wf_model.structure
         else:
-            # Create workflow model if it doesn't exist
-            wf_model = WorkflowModel(
-                meta=workflow.meta,
+            # Create calculation model if it doesn't exist
+            wf_model = CalculationModel(
+                meta=calculation.meta,
                 structure=structure_selector,
             )
         
@@ -740,8 +740,8 @@ class QVService:
             structure_id = resolved_structure.meta.id
         
         # DAG + ID-only model: Step YAML contains ONLY step-local configuration.
-        # NO structure_id (inherits from workflow.structure_id at execution time).
-        # NO parent_workflow_id (parent is implicit from step file location).
+        # NO structure_id (inherits from calculation.structure_id at execution time).
+        # NO parent_calculation_id (parent is implicit from step file location).
         spec = StructureStepSpec(
             meta=ResourceMeta(
                 id=step_id,
@@ -751,8 +751,8 @@ class QVService:
                 kind="step",
             ),
             step_type=step_type,
-            # Do NOT set structure_id (inherits from workflow)
-            # Do NOT set parent_workflow_id (parent is implicit)
+            # Do NOT set structure_id (inherits from calculation)
+            # Do NOT set parent_calculation_id (parent is implicit)
             structure="",  # Empty legacy field (not written to YAML)
             parameters=defaults.get("parameters", {}),
             cards=defaults.get("cards", {}),
@@ -760,25 +760,25 @@ class QVService:
         )
         step_yaml_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
         
-        # Add step to workflow model using step_id (ULID) from step spec meta
-        wf_model.steps.append(WorkflowStepEntry(
+        # Add step to calculation model using step_id (ULID) from step spec meta
+        wf_model.steps.append(CalculationStepEntry(
             step_id=spec.meta.id,  # Use ULID from step spec meta (canonical reference)
             type=step_type,
             # step_file is NOT stored - step location resolved via registry using step_id
         ))
-        save_workflow(wf_model, workflow_dir)
+        save_calculation(wf_model, calculation_dir)
         
-        return require_step(project_root, workflow_selector, step_slug)
+        return require_step(project_root, calculation_selector, step_slug)
     
     @staticmethod
     def configure_step(
         project_root: Path,
-        workflow_selector: str,
+        calculation_selector: str,
         step_selector: str,
         **kwargs: Any,
     ) -> None:
         """Configure a step's parameters."""
-        step = require_step(project_root, workflow_selector, step_selector)
+        step = require_step(project_root, calculation_selector, step_selector)
         step_path = step.absolute_path
         
         data = yaml.safe_load(step_path.read_text()) or {}
@@ -796,21 +796,21 @@ class QVService:
     @staticmethod
     def delete_step(
         project_root: Path,
-        workflow_selector: str,
+        calculation_selector: str,
         step_selector: str,
     ) -> None:
         """Delete a step (move to trash)."""
-        workflow = require_workflow(project_root, workflow_selector)
-        step = require_step(project_root, workflow_selector, step_selector)
+        calculation = require_calculation(project_root, calculation_selector)
+        step = require_step(project_root, calculation_selector, step_selector)
         
         # Move file to trash
         trash = project_root / "trash"
         move_to_trash(step.absolute_path, trash)
         
-        # Remove from workflow.yaml
-        workflow_yaml_path = workflow.absolute_path / "workflow.yaml"
-        if workflow_yaml_path.exists():
-            wf_data = yaml.safe_load(workflow_yaml_path.read_text()) or {}
+        # Remove from calculation.yaml
+        calculation_yaml_path = calculation.absolute_path / "calculation.yaml"
+        if calculation_yaml_path.exists():
+            wf_data = yaml.safe_load(calculation_yaml_path.read_text()) or {}
             steps = wf_data.get("steps", [])
             wf_data["steps"] = [
                 s for s in steps 
@@ -819,89 +819,89 @@ class QVService:
             # Do not write structure_name or structure selector (DAG + ID-only model: only structure_id is written)
             wf_data.pop("structure_name", None)
             wf_data.pop("structure", None)
-            if "workflow" in wf_data:
-                wf_data["workflow"].pop("structure_name", None)
-                wf_data["workflow"].pop("structure", None)
-            workflow_yaml_path.write_text(yaml.safe_dump(wf_data, sort_keys=False))
+            if "calculation" in wf_data:
+                wf_data["calculation"].pop("structure_name", None)
+                wf_data["calculation"].pop("structure", None)
+            calculation_yaml_path.write_text(yaml.safe_dump(wf_data, sort_keys=False))
     
     @staticmethod
-    def delete_step_from_workflow(
+    def delete_step_from_calculation(
         project_root: Path,
-        workflow_selector: str,
+        calculation_selector: str,
         step_selector: str,
         *,
         index: Optional["ResourceIndex"] = None,
         config: Optional[dict] = None,
     ) -> None:
         """
-        Delete a step from a workflow in the DAG + ID-only model.
+        Delete a step from a calculation in the DAG + ID-only model.
         
-        CRITICAL: Uses workflow.yaml's steps array as the ONLY source of truth.
-        - workflow_selector: slug or ULID for the workflow
+        CRITICAL: Uses calculation.yaml's steps array as the ONLY source of truth.
+        - calculation_selector: slug or ULID for the calculation
         - step_selector: ULID for the step (no slug/name/index matching here in the GUI path)
-        - Removes step entry from workflow.yaml's steps array
+        - Removes step entry from calculation.yaml's steps array
         - Moves the step YAML file into the project's trash folder (with timestamped/unique name),
           using the same helper used by CLI delete commands.
-        - If the step YAML file is already missing (ghost step), still remove from workflow.yaml
+        - If the step YAML file is already missing (ghost step), still remove from calculation.yaml
           and do NOT treat it as an error.
         
         Args:
             project_root: Project root path
-            workflow_selector: Workflow selector (slug or ULID)
-            step_selector: Step selector (ULID from workflow.yaml)
+            calculation_selector: Calculation selector (slug or ULID)
+            step_selector: Step selector (ULID from calculation.yaml)
             index: Optional ResourceIndex (avoids rebuilding if provided)
             config: Optional project config (avoids reloading if provided)
         
         Raises:
-            ResourceNotFoundError: If workflow or step not found in workflow.yaml
+            ResourceNotFoundError: If calculation or step not found in calculation.yaml
         """
-        from quantumvitas.core.resolution import ResourceNotFoundError, require_workflow, require_step
-        from quantumvitas.core.models import load_workflow, save_workflow
+        from quantumvitas.core.resolution import ResourceNotFoundError, require_calculation, require_step
+        from quantumvitas.core.models import load_calculation, save_calculation
         from quantumvitas.core.project_utils import load_project_config
         from quantumvitas.core.resolution import make_structure_selector_resolver
         
         project_root = Path(project_root).resolve()
         
-        # Resolve workflow
-        workflow_resolved = require_workflow(project_root, workflow_selector, config=config, index=index)
+        # Resolve calculation
+        calculation_resolved = require_calculation(project_root, calculation_selector, config=config, index=index)
         
-        # Determine workflow directory and YAML path
-        if workflow_resolved.absolute_path.name == "workflow.yaml":
-            workflow_dir = workflow_resolved.absolute_path.parent
-            workflow_yaml_path = workflow_resolved.absolute_path
+        # Determine calculation directory and YAML path
+        if calculation_resolved.absolute_path.name == "calculation.yaml":
+            calculation_dir = calculation_resolved.absolute_path.parent
+            calculation_yaml_path = calculation_resolved.absolute_path
         else:
-            workflow_dir = workflow_resolved.absolute_path
-            workflow_yaml_path = workflow_dir / "workflow.yaml"
+            calculation_dir = calculation_resolved.absolute_path
+            calculation_yaml_path = calculation_dir / "calculation.yaml"
         
-        # Load workflow model to get canonical steps list
+        # Load calculation model to get canonical steps list
         if config is None:
             config = load_project_config(project_root)
         resolver = make_structure_selector_resolver(project_root, config=config)
-        wf_model = load_workflow(workflow_yaml_path, project_root=project_root, resolve_structure_selector=resolver)
+        wf_model = load_calculation(calculation_yaml_path, project_root=project_root, resolve_structure_selector=resolver)
         
-        # CRITICAL: Verify step_selector exists in workflow.yaml's steps array
-        # This ensures the step belongs to this workflow's DAG
+        # CRITICAL: Verify step_selector exists in calculation.yaml's steps array
+        # This ensures the step belongs to this calculation's DAG
         step_id = step_selector
         entry = next((e for e in wf_model.steps if e.step_id == step_id), None)
         if entry is None:
-            # Step not in this workflow's DAG
+            # Step not in this calculation's DAG
             raise ResourceNotFoundError(
                 kind="step",
                 selector=step_selector,
                 id=step_selector,
                 project_root=project_root,
-                message=f"Step '{step_selector}' not found in workflow '{wf_model.meta.name or wf_model.meta.slug or workflow_selector}'. "
-                        f"The step must be listed in workflow.yaml's steps array.",
+                message=f"Step '{step_selector}' not found in calculation '{wf_model.meta.name or wf_model.meta.slug or calculation_selector}'. "
+                        f"The step must be listed in calculation.yaml's steps array.",
             )
         
-        # Remove the step entry from workflow model
+        # Remove the step entry from calculation model
         wf_model.steps = [s for s in wf_model.steps if s.step_id != step_id]
         
-        # Save updated workflow.yaml
-        save_workflow(wf_model, workflow_yaml_path)
+        # Save updated calculation.yaml
+        save_calculation(wf_model, calculation_yaml_path)
         
         # Try to resolve and move step file to trash (handle ghost steps gracefully)
-        # For ghost steps, require_step may fail, but we've already removed the entry from workflow.yaml
+        # For ghost steps, require_step may fail, but we've already removed the entry from calculation.yaml
         # We try to resolve the step file path directly from the ResourceIndex to avoid require_step validation
         trash_dir = (project_root / "trash").resolve()
         step_file_moved = False
@@ -923,50 +923,50 @@ class QVService:
                         if step_path is None:
                             step_path = (project_root / meta.path).resolve()
                         
-                        # Check if file exists and is within the workflow directory
-                        if step_path.exists() and step_path.is_relative_to(workflow_dir):
+                        # Check if file exists and is within the calculation directory
+                        if step_path.exists() and step_path.is_relative_to(calculation_dir):
                             move_to_trash(step_path, trash_dir)
                             step_file_moved = True
         except Exception:
             # If index lookup fails, try require_step as fallback
             try:
-                step_resolved = require_step(project_root, workflow_selector, step_id, config=config, index=index)
+                step_resolved = require_step(project_root, calculation_selector, step_id, config=config, index=index)
                 if step_resolved.absolute_path.exists():
                     move_to_trash(step_resolved.absolute_path, trash_dir)
                     step_file_moved = True
             except (ResourceNotFoundError, SelectorNotFoundError):
-                # Step file is missing (ghost step) - this is OK, we've already removed it from workflow.yaml
+                # Step file is missing (ghost step) - this is OK, we've already removed it from calculation.yaml
                 import logging
                 logger = logging.getLogger(__name__)
                 logger.debug(
                     f"Step file for '{step_id}' not found (ghost step). "
-                    f"Step entry has been removed from workflow.yaml."
+                    f"Step entry has been removed from calculation.yaml."
                 )
         
         # If we couldn't move the file, it's a ghost step - that's fine, entry is already removed
     
     @staticmethod
-    def list_steps(project_root: Path, workflow_selector: str) -> List[ResolvedResource]:
-        """List all steps in a workflow."""
-        return list_steps(project_root, workflow_selector)
+    def list_steps(project_root: Path, calculation_selector: str) -> List[ResolvedResource]:
+        """List all steps in a calculation."""
+        return list_steps(project_root, calculation_selector)
     
     @staticmethod
     def get_step(
         project_root: Path,
-        workflow_selector: str,
+        calculation_selector: str,
         step_selector: str,
     ) -> ResolvedResource:
         """Get a step by selector."""
-        return require_step(project_root, workflow_selector, step_selector)
+        return require_step(project_root, calculation_selector, step_selector)
     
     # -------------------------------------------------------------------------
     # Run operations
     # -------------------------------------------------------------------------
     
     @staticmethod
-    def run_workflow(
+    def run_calculation(
         project_root: Path,
-        workflow_selector: str,
+        calculation_selector: str,
         strict: bool = False,
         verbose: bool = False,
         *,
@@ -974,14 +974,14 @@ class QVService:
         config: Optional[dict] = None,
     ) -> Dict[str, Any]:
         """
-        Run all steps in a workflow.
+        Run all steps in a calculation.
         
         This method clears any existing analysis artifacts before running
         to ensure fresh analysis on completion.
         
         Args:
             project_root: Project root path
-            workflow_selector: Workflow selector
+            calculation_selector: Calculation selector
             strict: If True, fail on first error
             verbose: If True, print detailed output
             
@@ -989,8 +989,8 @@ class QVService:
             Dict with run results
         """
         from quantumvitas.project.model import Project
-        from quantumvitas.workflow.workflow import Workflow
-        from quantumvitas.workflow.runner import WorkflowRunner
+        from quantumvitas.calculation.calculation import Calculation
+        from quantumvitas.calculation.runner import CalculationRunner
         from quantumvitas.engine.registry import create_default_registry
         from quantumvitas.analysis.artifacts import clear_analysis_artifacts
         
@@ -1004,29 +1004,29 @@ class QVService:
         if index is None:
             index = build_resource_index(project_root)
         
-        # Resolve workflow via registry
-        workflow_resolved = require_workflow(project_root, workflow_selector, config=config, index=index)
+        # Resolve calculation via registry
+        calculation_resolved = require_calculation(project_root, calculation_selector, config=config, index=index)
         
-        # Load workflow to check structure_id (canonical source in DAG model)
+        # Load calculation to check structure_id (canonical source in DAG model)
         project = Project.open(project_root)
-        workflow = Workflow.from_yaml(workflow_resolved.absolute_path, project)
+        calculation = Calculation.from_yaml(calculation_resolved.absolute_path, project)
         
-        if not workflow.structure_id:
+        if not calculation.structure_id:
             raise QVServiceError(
-                f"Workflow '{workflow_selector}' has no structure. Please set a structure for the workflow first."
+                f"Calculation '{calculation_selector}' has no structure. Please set a structure for the calculation first."
             )
         
         # Clear analysis artifacts before running (cache invalidation)
         # This ensures fresh analysis is generated after the run completes
-        workflow_dir = workflow.dir
-        if workflow_dir and workflow_dir.exists():
-            clear_analysis_artifacts(workflow_dir)
+        calculation_dir = calculation.dir
+        if calculation_dir and calculation_dir.exists():
+            clear_analysis_artifacts(calculation_dir)
         
-        # WorkflowRunner expects an EngineRegistry with engines registered
+        # CalculationRunner expects an EngineRegistry with engines registered
         registry = create_default_registry()
-        runner = WorkflowRunner(registry)
+        runner = CalculationRunner(registry)
         
-        results = runner.run(workflow)
+        results = runner.run(calculation)
         
         # Runner is the source of truth for io_dir - it returns the actual I/O directory used
         # Do NOT construct paths here; use what the runner provides
@@ -1037,11 +1037,11 @@ class QVService:
         if io_dir:
             import logging
             logger = logging.getLogger(__name__)
-            logger.info(f"[INFO] run_workflow io_dir={io_dir}")
+            logger.info(f"[INFO] run_calculation io_dir={io_dir}")
         
-        # Convert WorkflowResult to dict for JSON serialization
+        # Convert CalculationResult to dict for JSON serialization
         return {
-            "workflow": workflow_selector,
+            "calculation": calculation_selector,
             "status": results.status.value,
             "n_steps": len(results.steps),
             "steps": [
@@ -1060,7 +1060,7 @@ class QVService:
     @staticmethod
     def run_step(
         project_root: Path,
-        workflow_selector: str,
+        calculation_selector: str,
         step_selector: str,
         verbose: bool = False,
         *,
@@ -1071,13 +1071,13 @@ class QVService:
         Run a single step in project mode.
         
         This method uses registry-based resolution and respects the DAG + ID-only model:
-        - Structure comes from workflow.structure_id (canonical)
+        - Structure comes from calculation.structure_id (canonical)
         - Step is resolved via registry using step_id
         - No bare step file execution in project mode
         
         Args:
             project_root: Project root path
-            workflow_selector: Workflow selector (name, slug, path, or ULID)
+            calculation_selector: Calculation selector (name, slug, path, or ULID)
             step_selector: Step selector (name, slug, ULID, or step_type)
             verbose: If True, print detailed output
             
@@ -1085,8 +1085,8 @@ class QVService:
             Dict with run results
         """
         from quantumvitas.project.model import Project
-        from quantumvitas.workflow.workflow import Workflow
-        from quantumvitas.workflow.input_runner import run_input_step
+        from quantumvitas.calculation.calculation import Calculation
+        from quantumvitas.calculation.input_runner import run_input_step
         from quantumvitas.core.engines.base import EngineConfig
         from quantumvitas.core.engines.qe import QuantumEspressoEngine
         from quantumvitas.io import read_structure
@@ -1094,7 +1094,7 @@ class QVService:
         project_root = Path(project_root).resolve()
         
         # Use registry-based resolution
-        from quantumvitas.core.resolution import build_resource_index, require_workflow, require_step
+        from quantumvitas.core.resolution import build_resource_index, require_calculation, require_step
         from quantumvitas.core.project_utils import load_project_config
         
         if config is None:
@@ -1103,43 +1103,43 @@ class QVService:
         if index is None:
             index = build_resource_index(project_root)
         
-        # Resolve workflow and step via registry
-        workflow_resolved = require_workflow(project_root, workflow_selector, config=config, index=index)
-        step_resolved = require_step(project_root, workflow_selector, step_selector, config=config, index=index)
+        # Resolve calculation and step via registry
+        calculation_resolved = require_calculation(project_root, calculation_selector, config=config, index=index)
+        step_resolved = require_step(project_root, calculation_selector, step_selector, config=config, index=index)
         
-        # Load workflow to get structure_id (canonical source)
+        # Load calculation to get structure_id (canonical source)
         project = Project.open(project_root)
-        workflow = Workflow.from_yaml(workflow_resolved.absolute_path, project)
+        calculation = Calculation.from_yaml(calculation_resolved.absolute_path, project)
         
-        # Structure comes from workflow.structure_id (DAG model)
-        if not workflow.structure_id:
+        # Structure comes from calculation.structure_id (DAG model)
+        if not calculation.structure_id:
             raise QVServiceError(
-                f"Workflow '{workflow_selector}' has no structure. Please set a structure for the workflow first."
+                f"Calculation '{calculation_selector}' has no structure. Please set a structure for the calculation first."
             )
         
-        structure_resolved = require_structure(project_root, workflow.structure_id, config=config, index=index)
+        structure_resolved = require_structure(project_root, calculation.structure_id, config=config, index=index)
         structure = read_structure(structure_resolved.absolute_path)
         
         # Load step spec (for step_type and other step-local config)
-        from quantumvitas.workflow.structure_steps import StructureStepSpec
+        from quantumvitas.calculation.structure_steps import StructureStepSpec
         from quantumvitas.core.resolution import make_structure_selector_resolver
         resolver = make_structure_selector_resolver(project_root, config=config)
         spec = StructureStepSpec.from_yaml(step_resolved.absolute_path, resolve_structure_selector=resolver)
         
         # Generate QE input from structure + step spec
-        from quantumvitas.workflow.structure_steps import generate_qe_input_from_spec
+        from quantumvitas.calculation.structure_steps import generate_qe_input_from_spec
         from quantumvitas.io.generator import QEInputGenerator
         
         qe_input, _ = generate_qe_input_from_spec(structure, spec)
         
-        # Write input file to workflow's raw directory
-        workdir = workflow_resolved.absolute_path / "raw"
+        # Write input file to calculation's raw directory
+        workdir = calculation_resolved.absolute_path / "raw"
         workdir.mkdir(parents=True, exist_ok=True)
         
         # Use human-readable naming based on step_type (not ULID)
         # If multiple steps of same type exist, they will be numbered (e.g., "scf-1.in", "scf-2.in")
-        from quantumvitas.workflow.naming import WorkflowFileNaming
-        input_name = spec.input_name or WorkflowFileNaming.input_filename(
+        from quantumvitas.calculation.naming import CalculationFileNaming
+        input_name = spec.input_name or CalculationFileNaming.input_filename(
             spec.step_type or "scf",
             working_dir=workdir,
         )
@@ -1277,8 +1277,8 @@ class QVService:
         
         # Determine output directory
         if output_dir is None and project_root:
-            # Try to detect workflow context from file location
-            output_dir = QVService._detect_workflow_results_dir(project_root, scf_file)
+            # Try to detect calculation context from file location
+            output_dir = QVService._detect_calculation_results_dir(project_root, scf_file)
         
         # Generate plot if requested
         plot_path = None
@@ -1358,7 +1358,7 @@ class QVService:
         
         # Determine output directory
         if output_dir is None and project_root:
-            output_dir = QVService._detect_workflow_results_dir(project_root, dos_file)
+            output_dir = QVService._detect_calculation_results_dir(project_root, dos_file)
         
         # Generate plot if requested
         plot_path = None
@@ -1393,7 +1393,7 @@ class QVService:
     def analyze_band(
         project_root: Optional[Path],
         bands_file: Optional[Path] = None,
-        workflow_selector: Optional[str] = None,
+        calculation_selector: Optional[str] = None,
         symmetry_file: Optional[Path] = None,
         scf_file: Optional[Path] = None,
         fermi_energy: Optional[float] = None,
@@ -1408,8 +1408,8 @@ class QVService:
         
         Args:
             project_root: Project root path (can be None for standalone analysis)
-            bands_file: Path to bands.dat.gnu file (auto-detected if workflow provided)
-            workflow_selector: Workflow selector to auto-locate files
+            bands_file: Path to bands.dat.gnu file (auto-detected if calculation provided)
+            calculation_selector: Calculation selector to auto-locate files
             symmetry_file: Path to bands.x output with high-symmetry points
             scf_file: Path to pw.x output (NSCF/SCF) for Fermi energy and reciprocal lattice
             fermi_energy: Override Fermi energy in eV
@@ -1424,24 +1424,24 @@ class QVService:
         """
         from quantumvitas.analysis.parsers import parse_bands_gnu, parse_scf_output
         from quantumvitas.analysis.plotting import plot_bands, save_figure
-        from quantumvitas.workflow.naming import find_band_analysis_files, find_workflow_raw_dir, find_workflow_results_dir
+        from quantumvitas.calculation.naming import find_band_analysis_files, find_calculation_raw_dir, find_calculation_results_dir
         
-        workflow_dir: Optional[Path] = None
+        calculation_dir: Optional[Path] = None
         
-        # Resolve workflow if selector provided
-        if workflow_selector and project_root:
+        # Resolve calculation if selector provided
+        if calculation_selector and project_root:
             try:
-                workflow = resolve_workflow(project_root, workflow_selector)
-                workflow_dir = workflow.absolute_path
+                calculation = resolve_calculation(project_root, calculation_selector)
+                calculation_dir = calculation.absolute_path
             except (SelectorNotFoundError, AmbiguousSelectorError) as e:
-                raise QVServiceError(f"Workflow not found: {workflow_selector}") from e
+                raise QVServiceError(f"Calculation not found: {calculation_selector}") from e
         
-        # Auto-locate files from workflow if available
+        # Auto-locate files from calculation if available
         search_dir: Optional[Path] = None
-        if workflow_dir:
-            search_dir = find_workflow_raw_dir(workflow_dir)
+        if calculation_dir:
+            search_dir = find_calculation_raw_dir(calculation_dir)
             if output_dir is None:
-                output_dir = find_workflow_results_dir(workflow_dir)
+                output_dir = find_calculation_results_dir(calculation_dir)
         elif bands_file:
             search_dir = Path(bands_file).resolve().parent
         
@@ -1461,7 +1461,7 @@ class QVService:
         # Validate bands file
         if bands_file is None:
             raise QVServiceError(
-                "No bands.dat.gnu file found. Provide bands_file argument or use workflow_selector."
+                "No bands.dat.gnu file found. Provide bands_file argument or use calculation_selector."
             )
         
         bands_file = Path(bands_file).resolve()
@@ -1487,7 +1487,7 @@ class QVService:
         
         # Determine output directory if still None
         if output_dir is None and project_root:
-            output_dir = QVService._detect_workflow_results_dir(project_root, bands_file)
+            output_dir = QVService._detect_calculation_results_dir(project_root, bands_file)
         
         # Generate plot if requested
         plot_path = None
@@ -1520,29 +1520,29 @@ class QVService:
         }
     
     @staticmethod
-    def _detect_workflow_results_dir(
+    def _detect_calculation_results_dir(
         project_root: Path, 
         file_path: Path,
         *,
         index: Optional["ResourceIndex"] = None,
     ) -> Optional[Path]:
         """
-        Detect the workflow results directory from a file's location.
+        Detect the calculation results directory from a file's location.
         
-        Uses ResourceIndex to resolve workflow paths in the DAG + ID-only model.
+        Uses ResourceIndex to resolve calculation paths in the DAG + ID-only model.
         
         Args:
             project_root: Project root path
-            file_path: Path to a file within the workflow
+            file_path: Path to a file within the calculation
             
         Returns:
-            Path to results directory, or None if not in a workflow
+            Path to results directory, or None if not in a calculation
         """
         try:
             file_path = file_path.resolve()
             project_root = project_root.resolve()
             
-            # Use ResourceIndex to find all workflows (DAG + ID-only model)
+            # Use ResourceIndex to find all calculations (DAG + ID-only model)
             # NOTE: This is a read operation that needs the registry. If index is not provided,
             # we build it here (project load scenario). In daemon context, index should be provided.
             from quantumvitas.core.resolution import build_resource_index
@@ -1551,36 +1551,36 @@ class QVService:
             if index is None:
                 index = build_resource_index(project_root)
             
-            # Check if file is within any workflow directory
-            # ResourceIndex stores workflows in by_id, need to check meta.kind
-            for workflow_id, workflow_meta in index.by_id.items():
-                kind_str = workflow_meta.kind.value if hasattr(workflow_meta.kind, 'value') else str(workflow_meta.kind)
-                if kind_str != "workflow":
+            # Check if file is within any calculation directory
+            # ResourceIndex stores calculations in by_id, need to check meta.kind
+            for calculation_id, calculation_meta in index.by_id.items():
+                kind_str = calculation_meta.kind.value if hasattr(calculation_meta.kind, 'value') else str(calculation_meta.kind)
+                if kind_str != "calculation":
                     continue
                 
-                # Find the workflow directory from the workflow.yaml path
-                workflow_path = None
+                # Find the calculation directory from the calculation.yaml path
+                calculation_path = None
                 for path, resource_id in index.by_path.items():
-                    if resource_id == workflow_id:
-                        workflow_path = path
+                    if resource_id == calculation_id:
+                        calculation_path = path
                         break
                 
-                if workflow_path:
-                    if workflow_path.is_file() and workflow_path.name == "workflow.yaml":
-                        # workflow.yaml path - get parent directory
-                        workflow_dir = workflow_path.parent
+                if calculation_path:
+                    if calculation_path.is_file() and calculation_path.name == "calculation.yaml":
+                        # calculation.yaml path - get parent directory
+                        calculation_dir = calculation_path.parent
                     else:
                         # Directory path
-                        workflow_dir = workflow_path
+                        calculation_dir = calculation_path
                     
-                    if file_path.is_relative_to(workflow_dir):
-                        results_dir = workflow_dir / "results"
+                    if file_path.is_relative_to(calculation_dir):
+                        results_dir = calculation_dir / "results"
                         results_dir.mkdir(parents=True, exist_ok=True)
                         return results_dir
             
             # Fallback: try legacy path-based lookup (for backwards compatibility)
             config = load_project_config(project_root)
-            for wf_entry in config.get("workflows", []):
+            for wf_entry in config.get("calculations", []):
                 wf_path = wf_entry.get("path") or (wf_entry.get("meta") or {}).get("path")
                 if wf_path:
                     wf_dir = (project_root / wf_path).resolve()
@@ -1609,7 +1609,7 @@ class QVService:
             project_root: Project root path
             
         Returns:
-            Dict with project name, id, structure count, workflow count, etc.
+            Dict with project name, id, structure count, calculation count, etc.
         """
         project_root = Path(project_root).resolve()
         config = load_project_config(project_root)
@@ -1617,11 +1617,11 @@ class QVService:
         project_info = config.get("project", {})
         meta = project_info.get("meta", {})
         structures = config.get("structures", [])
-        workflows = config.get("workflows", [])
+        calculations = config.get("calculations", [])
         
-        # Use registry to resolve structure/workflow names (ID-only model)
-        # Structures and workflows in config only have IDs, need to resolve via registry
-        from quantumvitas.core.resolution import list_structures, list_workflows
+        # Use registry to resolve structure/calculation names (ID-only model)
+        # Structures and calculations in config only have IDs, need to resolve via registry
+        from quantumvitas.core.resolution import list_structures, list_calculations
         
         structure_names = []
         try:
@@ -1634,15 +1634,15 @@ class QVService:
                 for s in structures
             ]
         
-        workflow_names = []
+        calculation_names = []
         try:
-            resolved_workflows = list_workflows(project_root)
-            workflow_names = [res.meta.name for res in resolved_workflows]
+            resolved_calculations = list_calculations(project_root)
+            calculation_names = [res.meta.name for res in resolved_calculations]
         except Exception:
-            # Fallback: try to get names from workflow entries if they have meta
-            workflow_names = [
+            # Fallback: try to get names from calculation entries if they have meta
+            calculation_names = [
                 w.get("meta", {}).get("name") or w.get("name", "?")
-                for w in workflows
+                for w in calculations
             ]
         
         return {
@@ -1651,9 +1651,9 @@ class QVService:
             "slug": meta.get("slug"),
             "path": str(project_root),
             "n_structures": len(structures),
-            "n_workflows": len(workflows),
+            "n_calculations": len(calculations),
             "structure_names": structure_names,
-            "workflow_names": workflow_names,
+            "calculation_names": calculation_names,
         }
     
     @staticmethod
@@ -1708,31 +1708,31 @@ class QVService:
         return result
     
     @staticmethod
-    def list_workflows_data(
+    def list_calculations_data(
         project_root: Path,
     ) -> List[Dict[str, Any]]:
         """
-        List all workflows as JSON-serializable dicts.
+        List all calculations as JSON-serializable dicts.
         
-        Uses Project.open() and Workflow.from_yaml() to ensure legacy workflows
+        Uses Project.open() and Calculation.from_yaml() to ensure legacy calculations
         are automatically migrated to the ID-only model.
         
         Args:
             project_root: Project root path
             
         Returns:
-            List of dicts, each with workflow metadata and step info
+            List of dicts, each with calculation metadata and step info
         """
         project_root = Path(project_root).resolve()
         
-        # Use Project.open() to get workflow references
+        # Use Project.open() to get calculation references
         # Project.open() builds its own index internally (keeps it self-contained)
         from quantumvitas.project.model import Project
         try:
             project = Project.open(project_root)
         except Exception as e:
             # If project can't be opened, fall back to basic listing
-            resolved_list = list_workflows(project_root)
+            resolved_list = list_calculations(project_root)
             return [
                 {
                     "id": res.meta.id,
@@ -1748,36 +1748,36 @@ class QVService:
             ]
         
         result = []
-        for workflow_ref in project.workflows.values():
+        for calculation_ref in project.calculations.values():
             entry = {
-                "id": workflow_ref.meta.id,
-                "name": workflow_ref.meta.name,
-                "slug": workflow_ref.meta.slug,
-                "path": workflow_ref.meta.path,
-                "absolute_path": str(workflow_ref.absolute_path),
-                "mode": "normal",  # Default mode (will be overridden if workflow loads successfully)
-                "n_steps": 0,  # Default (will be overridden if workflow loads successfully)
-                "steps": [],  # Default (will be overridden if workflow loads successfully)
+                "id": calculation_ref.meta.id,
+                "name": calculation_ref.meta.name,
+                "slug": calculation_ref.meta.slug,
+                "path": calculation_ref.meta.path,
+                "absolute_path": str(calculation_ref.absolute_path),
+                "mode": "normal",  # Default mode (will be overridden if calculation loads successfully)
+                "n_steps": 0,  # Default (will be overridden if calculation loads successfully)
+                "steps": [],  # Default (will be overridden if calculation loads successfully)
             }
             
-            # Try to load workflow with migration support (inspection mode)
-            # This uses Workflow.from_yaml() which handles legacy step entries
+            # Try to load calculation with migration support (inspection mode)
+            # This uses Calculation.from_yaml() which handles legacy step entries
             try:
-                from quantumvitas.workflow.workflow import Workflow
-                if workflow_ref.absolute_path.exists():
-                    workflow = Workflow.from_yaml(workflow_ref.absolute_path, project, materialize_steps=False)
+                from quantumvitas.calculation.calculation import Calculation
+                if calculation_ref.absolute_path.exists():
+                    calculation = Calculation.from_yaml(calculation_ref.absolute_path, project, materialize_steps=False)
                     
                     # Extract structure info
-                    if workflow.structure:
-                        entry["structure"] = workflow.structure.meta.name if hasattr(workflow.structure, 'meta') else str(workflow.structure)
-                        entry["structure_id"] = workflow.structure.meta.id if hasattr(workflow.structure, 'meta') else None
+                    if calculation.structure:
+                        entry["structure"] = calculation.structure.meta.name if hasattr(calculation.structure, 'meta') else str(calculation.structure)
+                        entry["structure_id"] = calculation.structure.meta.id if hasattr(calculation.structure, 'meta') else None
                     else:
                         entry["structure"] = None
                         entry["structure_id"] = None
                     
                     # Ensure mode is always present (default to "normal" if not set)
-                    entry["mode"] = workflow.mode.value if hasattr(workflow.mode, 'value') else (str(workflow.mode) if workflow.mode else "normal")
-                    entry["n_steps"] = len(workflow.steps)
+                    entry["mode"] = calculation.mode.value if hasattr(calculation.mode, 'value') else (str(calculation.mode) if calculation.mode else "normal")
+                    entry["n_steps"] = len(calculation.steps)
                     
                     # Extract step info from actual Step objects (which have ULID meta.id)
                     entry["steps"] = [
@@ -1787,15 +1787,15 @@ class QVService:
                             "type": step.step_type.value if hasattr(step.step_type, 'value') else str(step.step_type),
                             # step_file is NOT included - step location resolved via registry
                         }
-                        for step in workflow.steps
+                        for step in calculation.steps
                     ]
             except Exception as e:
-                # If workflow loading fails, still return basic metadata
+                # If calculation loading fails, still return basic metadata
                 # but log the error for debugging
                 import logging
                 logger = logging.getLogger(__name__)
-                logger.warning(f"Failed to load workflow details for {workflow_ref.meta.name}: {e}")
-                # Workflow details are optional, but mode/n_steps/steps are already set to defaults above
+                logger.warning(f"Failed to load calculation details for {calculation_ref.meta.name}: {e}")
+                # Calculation details are optional, but mode/n_steps/steps are already set to defaults above
             
             result.append(entry)
         
@@ -1929,24 +1929,24 @@ class QVService:
         }
     
     @staticmethod
-    def ensure_workflow_analysis(
+    def ensure_calculation_analysis(
         project_root: Path,
-        workflow_selector: str,
+        calculation_selector: str,
         analysis_type: str,
         step_selector: Optional[str] = None,
         force: bool = False,
     ) -> Dict[str, Any]:
         """
-        Ensure analysis artifacts exist for a workflow.
+        Ensure analysis artifacts exist for a calculation.
         
         If JSON artifact exists and force=False, returns cached status.
         Otherwise, parses QE outputs and writes JSON artifact.
         
-        The artifact is written to: <workflow>/analysis/<type>.json
+        The artifact is written to: <calculation>/analysis/<type>.json
         
         Args:
             project_root: Project root path
-            workflow_selector: Workflow selector
+            calculation_selector: Calculation selector
             analysis_type: Type of analysis ("scf", "dos", "bands")
             step_selector: Optional step selector (used for SCF step identification)
             force: Force re-parse even if artifact exists
@@ -1961,12 +1961,12 @@ class QVService:
                 summary: dict | None - Quick summary data
         """
         from quantumvitas.analysis.artifacts import ensure_analysis_artifact
-        from quantumvitas.workflow.naming import find_workflow_raw_dir
+        from quantumvitas.calculation.naming import find_calculation_raw_dir
         
         project_root = Path(project_root).resolve()
-        workflow = require_workflow(project_root, workflow_selector)
-        workflow_dir = workflow.absolute_path
-        raw_dir = find_workflow_raw_dir(workflow_dir)
+        calculation = require_calculation(project_root, calculation_selector)
+        calculation_dir = calculation.absolute_path
+        raw_dir = find_calculation_raw_dir(calculation_dir)
         
         if not raw_dir.exists():
             return {
@@ -1974,14 +1974,14 @@ class QVService:
                 "analysis_type": analysis_type,
                 "artifact_path": None,
                 "parsed_fresh": False,
-                "error": f"Workflow raw directory not found: {raw_dir}. The workflow may not have been run yet.",
+                "error": f"Calculation raw directory not found: {raw_dir}. The calculation may not have been run yet.",
                 "summary": None,
             }
         
         # Delegate to the artifacts module
         status = ensure_analysis_artifact(
             analysis_type=analysis_type,
-            workflow_dir=workflow_dir,
+            calculation_dir=calculation_dir,
             raw_dir=raw_dir,
             step_selector=step_selector,
             force=force,
@@ -1992,18 +1992,18 @@ class QVService:
     @staticmethod
     def get_scf_convergence_data(
         project_root: Path,
-        workflow_selector: str,
+        calculation_selector: str,
         step_selector: str,
     ) -> Dict[str, Any]:
         """
-        Get SCF convergence data for a specific step in a workflow.
+        Get SCF convergence data for a specific step in a calculation.
         
-        First attempts to load from JSON artifact (<workflow>/analysis/scf.json).
+        First attempts to load from JSON artifact (<calculation>/analysis/scf.json).
         If artifact doesn't exist, parses QE output directly and writes artifact.
         
         Args:
             project_root: Project root path
-            workflow_selector: Workflow selector
+            calculation_selector: Calculation selector
             step_selector: Step selector
             
         Returns:
@@ -2011,25 +2011,25 @@ class QVService:
         """
         from quantumvitas.analysis.artifacts import read_artifact, ensure_analysis_artifact, AnalysisType
         from quantumvitas.analysis.parsers import parse_scf_output
-        from quantumvitas.workflow.naming import find_workflow_raw_dir
+        from quantumvitas.calculation.naming import find_calculation_raw_dir
         
         project_root = Path(project_root).resolve()
-        workflow = require_workflow(project_root, workflow_selector)
-        workflow_dir = workflow.absolute_path
-        raw_dir = find_workflow_raw_dir(workflow_dir)
+        calculation = require_calculation(project_root, calculation_selector)
+        calculation_dir = calculation.absolute_path
+        raw_dir = find_calculation_raw_dir(calculation_dir)
         
         if not raw_dir.exists():
             raise QVServiceError(
-                f"Workflow raw directory not found: {raw_dir}\n"
-                f"The workflow may not have been run yet."
+                f"Calculation raw directory not found: {raw_dir}\n"
+                f"The calculation may not have been run yet."
             )
         
         # Try to load from artifact first
-        cached = read_artifact(workflow_dir, AnalysisType.SCF)
+        cached = read_artifact(calculation_dir, AnalysisType.SCF)
         if cached:
             # Return cached data (already in correct format)
             return {
-                "workflow": workflow_selector,
+                "calculation": calculation_selector,
                 "step": step_selector,
                 "output_file": cached.get("source_file", ""),
                 "converged": cached.get("converged", False),
@@ -2047,7 +2047,7 @@ class QVService:
         # No artifact - parse and create one
         status = ensure_analysis_artifact(
             analysis_type=AnalysisType.SCF,
-            workflow_dir=workflow_dir,
+            calculation_dir=calculation_dir,
             raw_dir=raw_dir,
             step_selector=step_selector,
             force=False,
@@ -2057,12 +2057,12 @@ class QVService:
             raise QVServiceError(status.error or "Failed to parse SCF output")
         
         # Now read the freshly created artifact
-        cached = read_artifact(workflow_dir, AnalysisType.SCF)
+        cached = read_artifact(calculation_dir, AnalysisType.SCF)
         if not cached:
             raise QVServiceError("Failed to read SCF artifact after creation")
         
         return {
-            "workflow": workflow_selector,
+            "calculation": calculation_selector,
             "step": step_selector,
             "output_file": cached.get("source_file", ""),
             "converged": cached.get("converged", False),
@@ -2080,42 +2080,42 @@ class QVService:
     @staticmethod
     def get_dos_data(
         project_root: Path,
-        workflow_selector: str,
+        calculation_selector: str,
         step_selector: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Get DOS data for plotting in GUI.
         
-        First attempts to load from JSON artifact (<workflow>/analysis/dos.json).
+        First attempts to load from JSON artifact (<calculation>/analysis/dos.json).
         If artifact doesn't exist, parses QE output directly and writes artifact.
         
         Args:
             project_root: Project root path
-            workflow_selector: Workflow selector
+            calculation_selector: Calculation selector
             step_selector: Optional step selector (if None, searches for dos files)
             
         Returns:
             Dict with DOS data arrays and Fermi energy
         """
         from quantumvitas.analysis.artifacts import read_artifact, ensure_analysis_artifact, AnalysisType
-        from quantumvitas.workflow.naming import find_workflow_raw_dir
+        from quantumvitas.calculation.naming import find_calculation_raw_dir
         
         project_root = Path(project_root).resolve()
-        workflow = require_workflow(project_root, workflow_selector)
-        workflow_dir = workflow.absolute_path
-        raw_dir = find_workflow_raw_dir(workflow_dir)
+        calculation = require_calculation(project_root, calculation_selector)
+        calculation_dir = calculation.absolute_path
+        raw_dir = find_calculation_raw_dir(calculation_dir)
         
         if not raw_dir.exists():
             raise QVServiceError(
-                f"Workflow raw directory not found: {raw_dir}\n"
-                f"The workflow may not have been run yet."
+                f"Calculation raw directory not found: {raw_dir}\n"
+                f"The calculation may not have been run yet."
             )
         
         # Try to load from artifact first
-        cached = read_artifact(workflow_dir, AnalysisType.DOS)
+        cached = read_artifact(calculation_dir, AnalysisType.DOS)
         if cached:
             return {
-                "workflow": workflow_selector,
+                "calculation": calculation_selector,
                 "step": step_selector,
                 "data_file": cached.get("source_file", ""),
                 "n_points": cached.get("n_points", 0),
@@ -2130,7 +2130,7 @@ class QVService:
         # No artifact - parse and create one
         status = ensure_analysis_artifact(
             analysis_type=AnalysisType.DOS,
-            workflow_dir=workflow_dir,
+            calculation_dir=calculation_dir,
             raw_dir=raw_dir,
             step_selector=step_selector,
             force=False,
@@ -2140,12 +2140,12 @@ class QVService:
             raise QVServiceError(status.error or "Failed to parse DOS data")
         
         # Now read the freshly created artifact
-        cached = read_artifact(workflow_dir, AnalysisType.DOS)
+        cached = read_artifact(calculation_dir, AnalysisType.DOS)
         if not cached:
             raise QVServiceError("Failed to read DOS artifact after creation")
         
         return {
-            "workflow": workflow_selector,
+            "calculation": calculation_selector,
             "step": step_selector,
             "data_file": cached.get("source_file", ""),
             "n_points": cached.get("n_points", 0),
@@ -2160,42 +2160,42 @@ class QVService:
     @staticmethod
     def get_band_structure_data(
         project_root: Path,
-        workflow_selector: str,
+        calculation_selector: str,
         step_selector: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Get band structure data for plotting in GUI.
         
-        First attempts to load from JSON artifact (<workflow>/analysis/bands.json).
+        First attempts to load from JSON artifact (<calculation>/analysis/bands.json).
         If artifact doesn't exist, parses QE output directly and writes artifact.
         
         Args:
             project_root: Project root path
-            workflow_selector: Workflow selector
+            calculation_selector: Calculation selector
             step_selector: Optional step selector
             
         Returns:
             Dict with band energies, k-distances, high-symmetry points, and Fermi energy
         """
         from quantumvitas.analysis.artifacts import read_artifact, ensure_analysis_artifact, AnalysisType
-        from quantumvitas.workflow.naming import find_workflow_raw_dir
+        from quantumvitas.calculation.naming import find_calculation_raw_dir
         
         project_root = Path(project_root).resolve()
-        workflow = require_workflow(project_root, workflow_selector)
-        workflow_dir = workflow.absolute_path
-        raw_dir = find_workflow_raw_dir(workflow_dir)
+        calculation = require_calculation(project_root, calculation_selector)
+        calculation_dir = calculation.absolute_path
+        raw_dir = find_calculation_raw_dir(calculation_dir)
         
         if not raw_dir.exists():
             raise QVServiceError(
-                f"Workflow raw directory not found: {raw_dir}\n"
-                f"The workflow may not have been run yet."
+                f"Calculation raw directory not found: {raw_dir}\n"
+                f"The calculation may not have been run yet."
             )
         
         # Try to load from artifact first
-        cached = read_artifact(workflow_dir, AnalysisType.BANDS)
+        cached = read_artifact(calculation_dir, AnalysisType.BANDS)
         if cached:
             return {
-                "workflow": workflow_selector,
+                "calculation": calculation_selector,
                 "step": step_selector,
                 "data_file": cached.get("source_file", ""),
                 "n_bands": cached.get("n_bands", 0),
@@ -2210,7 +2210,7 @@ class QVService:
         # No artifact - parse and create one
         status = ensure_analysis_artifact(
             analysis_type=AnalysisType.BANDS,
-            workflow_dir=workflow_dir,
+            calculation_dir=calculation_dir,
             raw_dir=raw_dir,
             step_selector=step_selector,
             force=False,
@@ -2220,12 +2220,12 @@ class QVService:
             raise QVServiceError(status.error or "Failed to parse band structure data")
         
         # Now read the freshly created artifact
-        cached = read_artifact(workflow_dir, AnalysisType.BANDS)
+        cached = read_artifact(calculation_dir, AnalysisType.BANDS)
         if not cached:
             raise QVServiceError("Failed to read bands artifact after creation")
         
         return {
-            "workflow": workflow_selector,
+            "calculation": calculation_selector,
             "step": step_selector,
             "data_file": cached.get("source_file", ""),
             "n_bands": cached.get("n_bands", 0),
@@ -2240,7 +2240,7 @@ class QVService:
     @staticmethod
     def get_reference_analysis(
         project_root: Path,
-        workflow_selector: str,
+        calculation_selector: str,
         analysis_type: Literal["scf", "dos", "bands"],
     ) -> Optional[Dict[str, Any]]:
         """
@@ -2252,7 +2252,7 @@ class QVService:
         
         Args:
             project_root: Project root path
-            workflow_selector: Workflow selector (used to match against demo workflow)
+            calculation_selector: Calculation selector (used to match against demo calculation)
             analysis_type: Type of analysis ("scf", "dos", "bands")
             
         Returns:
@@ -2268,7 +2268,7 @@ class QVService:
         
         # Check if project has demo origin
         # NOTE: Demo recognition uses origin.kind == "demo" and origin.demo_id (stable identifier),
-        # NOT project/workflow ULIDs. This allows reference analysis to work even though
+        # NOT project/calculation ULIDs. This allows reference analysis to work even though
         # materialized projects have fresh ULIDs that differ from the snapshot.
         project_settings = config.get("project", {}).get("settings", {})
         origin = project_settings.get("origin", {})
@@ -2282,7 +2282,7 @@ class QVService:
         
         # Get reference_artifacts mapping
         # NOTE: Reference lookup uses origin.reference_artifacts or snapshot.meta.reference_artifacts,
-        # NOT project/workflow ULIDs. The artifact filenames are stable identifiers.
+        # NOT project/calculation ULIDs. The artifact filenames are stable identifiers.
         reference_artifacts = origin.get("reference_artifacts", {})
         
         # If no reference_artifacts in project settings, try to load from snapshot meta
@@ -2320,7 +2320,7 @@ class QVService:
             # Return in format compatible with get_*_data methods
             if analysis_type == "scf":
                 return {
-                    "workflow": workflow_selector,
+                    "calculation": calculation_selector,
                     "step": None,
                     "output_file": str(reference_path),
                     "converged": data.get("converged"),
@@ -2338,7 +2338,7 @@ class QVService:
                 }
             elif analysis_type == "dos":
                 return {
-                    "workflow": workflow_selector,
+                    "calculation": calculation_selector,
                     "step": None,
                     "data_file": str(reference_path),
                     "n_points": data.get("n_points", len(data.get("energies_ev", []))),
@@ -2353,7 +2353,7 @@ class QVService:
                 }
             elif analysis_type == "bands":
                 return {
-                    "workflow": workflow_selector,
+                    "calculation": calculation_selector,
                     "step": None,
                     "data_file": str(reference_path),
                     "n_bands": data.get("n_bands", 0),
@@ -2525,26 +2525,26 @@ class QVService:
         Check if a structure can be safely deleted.
         
         Returns:
-            Dict with can_delete and list of workflows using this structure
+            Dict with can_delete and list of calculations using this structure
         """
         config = load_project_config(project_root)
         entry = find_structure_entry(config, selector, project_root)
         
-        using_workflows = workflows_using_structure(project_root, config, entry)
-        workflow_names = [w.get("name", "?") for w in using_workflows]
+        using_calculations = calculations_using_structure(project_root, config, entry)
+        calculation_names = [w.get("name", "?") for w in using_calculations]
         
         return {
-            "can_delete": len(using_workflows) == 0,
-            "using_workflows": workflow_names,
+            "can_delete": len(using_calculations) == 0,
+            "using_calculations": calculation_names,
             "structure_name": (entry.get("meta") or {}).get("name") or entry.get("name"),
         }
     
     # -------------------------------------------------------------------------
-    # Workflow CRUD Operations (Phase 3 - GUI Parity)
+    # Calculation CRUD Operations (Phase 3 - GUI Parity)
     # -------------------------------------------------------------------------
     
     @staticmethod
-    def rename_workflow(
+    def rename_calculation(
         project_root: Path,
         selector: str,
         new_name: str,
@@ -2553,32 +2553,32 @@ class QVService:
         config: Optional[dict] = None,
     ) -> Dict[str, Any]:
         """
-        Rename a workflow.
+        Rename a calculation.
         
         Args:
             project_root: Project root path
-            selector: Workflow selector
-            new_name: New name for the workflow
+            selector: Calculation selector
+            new_name: New name for the calculation
             index: Optional ResourceIndex to update in-place
             config: Optional project config
             
         Returns:
             Dict with old_name, new_name, new_slug
         """
-        resolved = resolve_workflow(project_root, selector, config=config, index=index)
+        resolved = resolve_calculation(project_root, selector, config=config, index=index)
         old_name = resolved.meta.name
-        workflow_id = resolved.meta.id
-        # Get workflow.yaml path (not directory)
-        old_workflow_yaml = resolved.absolute_path / "workflow.yaml" if resolved.absolute_path.is_dir() else resolved.absolute_path
+        calculation_id = resolved.meta.id
+        # Get calculation.yaml path (not directory)
+        old_calculation_yaml = resolved.absolute_path / "calculation.yaml" if resolved.absolute_path.is_dir() else resolved.absolute_path
         
         # Get config entry to see what will be updated
         if config is None:
             config = load_project_config(project_root)
-        entry = find_workflow_entry(config, selector, project_root)
+        entry = find_calculation_entry(config, selector, project_root)
         old_entry_meta = (entry.get("meta") or {}).copy()
         old_entry_path = entry.get("path") or old_entry_meta.get("path")
         
-        QVService.configure_workflow(
+        QVService.configure_calculation(
             project_root=project_root,
             selector=selector,
             new_name=new_name,
@@ -2586,25 +2586,25 @@ class QVService:
         
         # Update registry in-place (do NOT rebuild)
         if index is not None:
-            from quantumvitas.core.resolution import update_registry_rename_workflow
+            from quantumvitas.core.resolution import update_registry_rename_calculation
             from quantumvitas.core.resources import ResourceMeta
-            # Get updated metadata from entry (apply_workflow_rename updated it)
+            # Get updated metadata from entry (apply_calculation_rename updated it)
             new_entry_meta = entry.get("meta") or {}
             new_path_str = entry.get("path") or new_entry_meta.get("path")
-            new_workflow_dir = (project_root / new_path_str).resolve() if new_path_str else old_workflow_yaml.parent
-            new_workflow_yaml = new_workflow_dir / "workflow.yaml"
+            new_calculation_dir = (project_root / new_path_str).resolve() if new_path_str else old_calculation_yaml.parent
+            new_calculation_yaml = new_calculation_dir / "calculation.yaml"
             
             # Construct new ResourceMeta from updated entry
             # Ensure ID is preserved (it should be in the entry or we use the old one)
-            new_entry_meta["id"] = new_entry_meta.get("id") or workflow_id
+            new_entry_meta["id"] = new_entry_meta.get("id") or calculation_id
             new_meta = ResourceMeta.from_dict(
                 new_entry_meta,
-                kind="workflow",
+                kind="calculation",
                 default_name=new_entry_meta.get("name", new_name),
-                default_path=new_path_str or str(new_workflow_dir.relative_to(project_root)),
+                default_path=new_path_str or str(new_calculation_dir.relative_to(project_root)),
             )
             
-            update_registry_rename_workflow(index, workflow_id, new_meta, old_workflow_yaml, new_workflow_yaml)
+            update_registry_rename_calculation(index, calculation_id, new_meta, old_calculation_yaml, new_calculation_yaml)
         
         return {
             "success": True,
@@ -2614,25 +2614,25 @@ class QVService:
         }
     
     @staticmethod
-    def can_delete_workflow(
+    def can_delete_calculation(
         project_root: Path,
         selector: str,
     ) -> Dict[str, Any]:
         """
-        Check if a workflow can be safely deleted.
+        Check if a calculation can be safely deleted.
         
         Returns:
-            Dict with workflow name and dependent workflows (if any)
+            Dict with calculation name and dependent calculations (if any)
         """
         config = load_project_config(project_root)
-        entry = find_workflow_entry(config, selector, project_root)
+        entry = find_calculation_entry(config, selector, project_root)
         
-        dependent_workflows = workflows_depending_on(config, entry)
-        dep_names = [w.get("name", "?") for w in dependent_workflows]
+        dependent_calculations = calculations_depending_on(config, entry)
+        dep_names = [w.get("name", "?") for w in dependent_calculations]
         
         return {
-            "workflow_name": (entry.get("meta") or {}).get("name") or entry.get("name"),
-            "dependent_workflows": dep_names,
+            "calculation_name": (entry.get("meta") or {}).get("name") or entry.get("name"),
+            "dependent_calculations": dep_names,
             "has_dependencies": len(dep_names) > 0,
         }
     
@@ -2643,7 +2643,7 @@ class QVService:
     @staticmethod
     def get_step_detail(
         project_root: Path,
-        workflow_selector: str,
+        calculation_selector: str,
         step_selector: str,
         index: Optional["ResourceIndex"] = None,
         config: Optional[dict] = None,
@@ -2651,13 +2651,13 @@ class QVService:
         """
         Get detailed information about a step.
         
-        CRITICAL: For GUI path, step_selector MUST be a ULID that exists in workflow.yaml's steps array.
-        We verify this BEFORE resolving via ResourceIndex to ensure the step belongs to this workflow.
+        CRITICAL: For GUI path, step_selector MUST be a ULID that exists in calculation.yaml's steps array.
+        We verify this BEFORE resolving via ResourceIndex to ensure the step belongs to this calculation.
         
         Args:
             project_root: Project root path
-            workflow_selector: Workflow selector
-            step_selector: Step selector (for GUI: must be ULID from workflow.yaml)
+            calculation_selector: Calculation selector
+            step_selector: Step selector (for GUI: must be ULID from calculation.yaml)
             index: Optional ResourceIndex (avoids rebuilding if provided)
             config: Optional project config (avoids reloading if provided)
             
@@ -2665,53 +2665,53 @@ class QVService:
             Dict with step metadata, parameters, cards, etc.
             
         Raises:
-            ResourceNotFoundError: If step_selector is not in workflow.yaml's steps array
+            ResourceNotFoundError: If step_selector is not in calculation.yaml's steps array
         """
-        from quantumvitas.workflow.structure_steps import StructureStepSpec
-        from quantumvitas.core.resolution import ResourceNotFoundError, resolve_workflow
-        from quantumvitas.core.models import load_workflow
+        from quantumvitas.calculation.structure_steps import StructureStepSpec
+        from quantumvitas.core.resolution import ResourceNotFoundError, resolve_calculation
+        from quantumvitas.core.models import load_calculation
         from quantumvitas.core.project_utils import load_project_config
         from quantumvitas.core.resolution import make_structure_selector_resolver
         
         project_root = Path(project_root).resolve()
         
-        # Resolve workflow first
-        workflow_resolved = resolve_workflow(project_root, workflow_selector, config=config, index=index)
+        # Resolve calculation first
+        calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)
         
-        # Determine workflow directory and YAML path
-        if workflow_resolved.absolute_path.name == "workflow.yaml":
-            workflow_dir = workflow_resolved.absolute_path.parent
-            workflow_yaml_path = workflow_resolved.absolute_path
+        # Determine calculation directory and YAML path
+        if calculation_resolved.absolute_path.name == "calculation.yaml":
+            calculation_dir = calculation_resolved.absolute_path.parent
+            calculation_yaml_path = calculation_resolved.absolute_path
         else:
-            workflow_dir = workflow_resolved.absolute_path
-            workflow_yaml_path = workflow_dir / "workflow.yaml"
+            calculation_dir = calculation_resolved.absolute_path
+            calculation_yaml_path = calculation_dir / "calculation.yaml"
         
-        # Load workflow model to get canonical steps list
+        # Load calculation model to get canonical steps list
         if config is None:
             config = load_project_config(project_root)
         resolver = make_structure_selector_resolver(project_root, config=config)
-        wf_model = load_workflow(workflow_yaml_path, project_root=project_root, resolve_structure_selector=resolver)
+        wf_model = load_calculation(calculation_yaml_path, project_root=project_root, resolve_structure_selector=resolver)
         
-        # CRITICAL: Verify step_selector exists in workflow.yaml's steps array
-        # This ensures the step belongs to this workflow's DAG
+        # CRITICAL: Verify step_selector exists in calculation.yaml's steps array
+        # This ensures the step belongs to this calculation's DAG
         step_id = step_selector
         entry = next((e for e in wf_model.steps if e.step_id == step_id), None)
         if entry is None:
-            # Step not in this workflow's DAG
+            # Step not in this calculation's DAG
             raise ResourceNotFoundError(
                 kind="step",
                 selector=step_selector,
                 id=step_selector,
                 project_root=project_root,
-                message=f"Step '{step_selector}' not found in workflow '{wf_model.meta.name or wf_model.meta.slug or workflow_selector}'. "
-                        f"The step must be listed in workflow.yaml's steps array.",
+                message=f"Step '{step_selector}' not found in calculation '{wf_model.meta.name or wf_model.meta.slug or calculation_selector}'. "
+                        f"The step must be listed in calculation.yaml's steps array.",
             )
         
-        # Now that we know the step belongs to this workflow, resolve it via ResourceIndex
-        step = resolve_step(project_root, workflow_selector, step_id, config=config, index=index)
+        # Now that we know the step belongs to this calculation, resolve it via ResourceIndex
+        step = resolve_step(project_root, calculation_selector, step_id, config=config, index=index)
         
         # CRITICAL: Verify the step file actually exists on disk.
-        # If workflow.yaml has a step entry but the step file is missing (ghost step),
+        # If calculation.yaml has a step entry but the step file is missing (ghost step),
         # this will raise FileNotFoundError which we convert to a clear error.
         if not step.absolute_path.exists():
             from quantumvitas.core.resolution import ResourceNotFoundError
@@ -2720,12 +2720,12 @@ class QVService:
                 selector=step_selector,
                 id=step.meta.id if step.meta else None,
                 project_root=project_root,
-                message=f"Step '{step_selector[:8]}...{step_selector[-6:]}' is listed in workflow '{wf_model.meta.name or wf_model.meta.slug or workflow_selector}', "
+                message=f"Step '{step_selector[:8]}...{step_selector[-6:]}' is listed in calculation '{wf_model.meta.name or wf_model.meta.slug or calculation_selector}', "
                         f"but the expected step YAML file '{step.absolute_path}' "
                         f"does not exist. Registry and filesystem are out of sync. Try refreshing the project registry.",
             )
             error.details = {
-                "workflow_path": str(workflow_yaml_path),
+                "calculation_path": str(calculation_yaml_path),
                 "expected_step_path": str(step.absolute_path),
                 "reason": "step_file_missing",
             }
@@ -2742,12 +2742,12 @@ class QVService:
                 selector=step_selector,
                 id=step.meta.id if step.meta else None,
                 project_root=project_root,
-                message=f"Step '{step_selector[:8] if len(step_selector) > 14 else step_selector}...{step_selector[-6:] if len(step_selector) > 6 else step_selector}' is listed in workflow '{wf_model.meta.name or wf_model.meta.slug or workflow_selector}', "
+                message=f"Step '{step_selector[:8] if len(step_selector) > 14 else step_selector}...{step_selector[-6:] if len(step_selector) > 6 else step_selector}' is listed in calculation '{wf_model.meta.name or wf_model.meta.slug or calculation_selector}', "
                         f"but the expected step YAML file '{step.absolute_path}' "
                         f"does not exist. Registry and filesystem are out of sync. Try refreshing the project registry.",
             )
             error.details = {
-                "workflow_path": str(workflow_yaml_path),
+                "calculation_path": str(calculation_yaml_path),
                 "expected_step_path": str(step.absolute_path),
                 "reason": "step_file_missing",
             }
@@ -2761,7 +2761,7 @@ class QVService:
             "absolute_path": str(step.absolute_path),
             "step_type": spec.step_type,
             "structure": spec.structure,
-            "parent_workflow_id": spec.parent_workflow_id,
+            "parent_calculation_id": spec.parent_calculation_id,
             "parameters": spec.parameters,
             "cards": spec.cards,
             "species_overrides": spec.species_overrides,
@@ -2770,7 +2770,7 @@ class QVService:
     @staticmethod
     def update_step_params(
         project_root: Path,
-        workflow_selector: str,
+        calculation_selector: str,
         step_selector: str,
         parameters: Dict[str, Dict[str, Any]],
         cards: Optional[Dict[str, Dict[str, Any]]] = None,
@@ -2785,7 +2785,7 @@ class QVService:
         
         Args:
             project_root: Project root path
-            workflow_selector: Workflow selector
+            calculation_selector: Calculation selector
             step_selector: Step selector
             parameters: Dict of namelist -> {param: value} to update
             cards: Optional dict of card updates (e.g., K_POINTS)
@@ -2795,9 +2795,9 @@ class QVService:
         Returns:
             Updated step detail dict
         """
-        from quantumvitas.workflow.structure_steps import StructureStepSpec
+        from quantumvitas.calculation.structure_steps import StructureStepSpec
         
-        step = resolve_step(project_root, workflow_selector, step_selector, config=config, index=index)
+        step = resolve_step(project_root, calculation_selector, step_selector, config=config, index=index)
         # Load step spec (DAG + ULID model: structure_id is already in spec)
         from quantumvitas.core.resolution import make_structure_selector_resolver
         from quantumvitas.core.project_utils import load_project_config
@@ -2848,7 +2848,7 @@ class QVService:
         # Return the updated step detail (pass cached index/config to avoid rebuilding)
         return QVService.get_step_detail(
             project_root=project_root,
-            workflow_selector=workflow_selector,
+            calculation_selector=calculation_selector,
             step_selector=step_selector,
             index=index,
             config=config,
@@ -2857,29 +2857,29 @@ class QVService:
     @staticmethod
     def import_step_from_qe_input(
         project_root: Path,
-        workflow_selector: str,
+        calculation_selector: str,
         input_file: Path,
         step_name: Optional[str] = None,
         index: Optional["ResourceIndex"] = None,
         config: Optional[dict] = None,
     ) -> Dict[str, Any]:
         """
-        Import a QE input file as a step in a workflow (preserves original parameters).
+        Import a QE input file as a step in a calculation (preserves original parameters).
         
         This uses apply_defaults=False to preserve the original QE input parameters
         without injecting QV defaults (outdir, restart_mode, conv_thr, etc.).
         
         Args:
             project_root: Project root path
-            workflow_selector: Workflow selector (name, slug, or id)
+            calculation_selector: Calculation selector (name, slug, or id)
             input_file: Path to QE input file (.in)
             step_name: Optional name for the new step (defaults to input file stem)
             
         Returns:
-            Updated workflow info with the new step
+            Updated calculation info with the new step
         """
-        from quantumvitas.workflow.importers import build_step_spec_from_qe_input
-        from quantumvitas.core.models import load_workflow, save_workflow, WorkflowStepEntry
+        from quantumvitas.calculation.importers import build_step_spec_from_qe_input
+        from quantumvitas.core.models import load_calculation, save_calculation, CalculationStepEntry
         import yaml
         
         project_root = Path(project_root).resolve()
@@ -2888,17 +2888,17 @@ class QVService:
         if not input_file.exists():
             raise QVServiceError(f"QE input file not found: {input_file}")
         
-        # Resolve workflow (use cached index if provided)
+        # Resolve calculation (use cached index if provided)
         from quantumvitas.core.project_utils import load_project_config
         if config is None:
             config = load_project_config(project_root)
-        workflow = resolve_workflow(project_root, workflow_selector, config=config, index=index)
-        workflow_dir = workflow.absolute_path
-        steps_dir = workflow_dir / "steps"
+        calculation = resolve_calculation(project_root, calculation_selector, config=config, index=index)
+        calculation_dir = calculation.absolute_path
+        steps_dir = calculation_dir / "steps"
         steps_dir.mkdir(exist_ok=True)
         
-        # Load workflow model
-        wf_model = load_workflow(workflow_dir, project_root)
+        # Load calculation model
+        wf_model = load_calculation(calculation_dir, project_root)
         
         # Determine step name
         step_name = step_name or input_file.stem
@@ -2965,17 +2965,17 @@ class QVService:
         spec_path = import_result.spec_path
         spec_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
         
-        # Add step to workflow model using step_id (ULID) from step spec meta
-        rel_step_path = spec_path.relative_to(workflow_dir)
+        # Add step to calculation model using step_id (ULID) from step spec meta
+        rel_step_path = spec_path.relative_to(calculation_dir)
         # step_file is NOT stored - step location resolved via registry using step_id
-        wf_model.steps.append(WorkflowStepEntry(
+        wf_model.steps.append(CalculationStepEntry(
             step_id=spec.meta.id,  # Use ULID from step spec meta (canonical reference)
             type=spec.step_type,
             # step_file is NOT stored - step location resolved via registry using step_id
         ))
-        save_workflow(wf_model, workflow_dir)
+        save_calculation(wf_model, calculation_dir)
         
-        # Update workflow structure if not set (use structure_id, canonical reference)
+        # Update calculation structure if not set (use structure_id, canonical reference)
         if not wf_model.structure_id:
             wf_model.structure_id = structure_id_value
             # Also set structure_name for display
@@ -2986,7 +2986,7 @@ class QVService:
                     wf_model.structure_name = resolved.meta.name
                 except Exception:
                     pass  # If resolution fails, structure_name stays None
-            save_workflow(wf_model, workflow_dir)
+            save_calculation(wf_model, calculation_dir)
         
         # Update registry in-place (add step, do NOT rebuild)
         if index is not None:
@@ -3007,9 +3007,9 @@ class QVService:
                     pass  # If we can't add structure to registry, continue (it will be picked up on next refresh)
         
         # Pass cached index to avoid rebuilding ResourceIndex
-        return QVService.get_workflow_detail(
+        return QVService.get_calculation_detail(
             project_root=project_root,
-            workflow_selector=workflow_selector,
+            calculation_selector=calculation_selector,
             index=index,
             config=config,
         )
@@ -3017,7 +3017,7 @@ class QVService:
     @staticmethod
     def reset_step_params(
         project_root: Path,
-        workflow_selector: str,
+        calculation_selector: str,
         step_selector: str,
         index: Optional["ResourceIndex"] = None,
         config: Optional[dict] = None,
@@ -3027,7 +3027,7 @@ class QVService:
         
         Args:
             project_root: Project root path
-            workflow_selector: Workflow selector
+            calculation_selector: Calculation selector
             step_selector: Step selector
             index: Optional ResourceIndex (avoids rebuilding if provided)
             config: Optional project config (avoids reloading if provided)
@@ -3035,11 +3035,11 @@ class QVService:
         Returns:
             Updated step detail dict
         """
-        from quantumvitas.workflow.structure_steps import StructureStepSpec
-        from quantumvitas.workflow.step_defaults import get_default_step_params
+        from quantumvitas.calculation.structure_steps import StructureStepSpec
+        from quantumvitas.calculation.step_defaults import get_default_step_params
         import yaml
         
-        step = resolve_step(project_root, workflow_selector, step_selector, config=config, index=index)
+        step = resolve_step(project_root, calculation_selector, step_selector, config=config, index=index)
         # Load step spec (DAG + ULID model: structure_id is already in spec)
         from quantumvitas.core.resolution import make_structure_selector_resolver
         from quantumvitas.core.project_utils import load_project_config
@@ -3051,7 +3051,7 @@ class QVService:
         # Get defaults for this step type
         defaults = get_default_step_params(spec.step_type)
         
-        # Reset parameters and cards to defaults, keep meta/structure/parent_workflow_id
+        # Reset parameters and cards to defaults, keep meta/structure/parent_calculation_id
         spec.parameters = defaults.get("parameters", {})
         spec.cards = defaults.get("cards", {})
         spec.species_overrides = defaults.get("species_overrides", {})
@@ -3062,43 +3062,43 @@ class QVService:
         # Return the updated step detail (pass cached index/config to avoid rebuilding)
         return QVService.get_step_detail(
             project_root=project_root,
-            workflow_selector=workflow_selector,
+            calculation_selector=calculation_selector,
             step_selector=step_selector,
             index=index,
             config=config,
         )
     
     # -------------------------------------------------------------------------
-    # Workflow Configuration (Phase 4 - Reorder, Change Structure)
+    # Calculation Configuration (Phase 4 - Reorder, Change Structure)
     # -------------------------------------------------------------------------
     
     @staticmethod
-    def reorder_workflow_steps(
+    def reorder_calculation_steps(
         project_root: Path,
-        workflow_selector: str,
+        calculation_selector: str,
         new_order: List[str],
         index: Optional["ResourceIndex"] = None,
         config: Optional[dict] = None,
     ) -> Dict[str, Any]:
         """
-        Reorder workflow steps.
+        Reorder calculation steps.
         
         Args:
             project_root: Project root path
-            workflow_selector: Workflow selector
+            calculation_selector: Calculation selector
             new_order: List of step IDs/slugs in the new order
             
         Returns:
-            Updated workflow info
+            Updated calculation info
         """
-        from quantumvitas.core.models import load_workflow
+        from quantumvitas.core.models import load_calculation
         from quantumvitas.core.project_utils import load_project_config
         
         if config is None:
             config = load_project_config(project_root)
-        workflow = resolve_workflow(project_root, workflow_selector, config=config, index=index)
-        wf_path = workflow.absolute_path / "workflow.yaml"
-        wf_model = load_workflow(wf_path)
+        calculation = resolve_calculation(project_root, calculation_selector, config=config, index=index)
+        wf_path = calculation.absolute_path / "calculation.yaml"
+        wf_model = load_calculation(wf_path)
         
         # Validate all step IDs exist
         existing_ids = {s.step_id for s in wf_model.steps}
@@ -3122,7 +3122,7 @@ class QVService:
                     reordered.append(step)
                     seen.add(step.step_id)
             else:
-                raise QVServiceError(f"Step '{selector}' not found in workflow")
+                raise QVServiceError(f"Step '{selector}' not found in calculation")
         
         # Ensure all steps are accounted for
         if len(reordered) != len(wf_model.steps):
@@ -3131,57 +3131,57 @@ class QVService:
         
         # Update the model
         wf_model.steps = reordered
-        from quantumvitas.core.models import save_workflow
-        save_workflow(wf_model, wf_path)
+        from quantumvitas.core.models import save_calculation
+        save_calculation(wf_model, wf_path)
         
-        # Return updated workflow info (pass cached index to avoid rebuilding)
-        return QVService.get_workflow_detail(
+        # Return updated calculation info (pass cached index to avoid rebuilding)
+        return QVService.get_calculation_detail(
             project_root,
-            workflow_selector,
+            calculation_selector,
             index=index,
             config=config,
         )
     
     @staticmethod
-    def add_step_to_workflow(
+    def add_step_to_calculation(
         project_root: Path,
-        workflow_selector: str,
+        calculation_selector: str,
         step_type: str,
         step_name: str = None,
         index: Optional["ResourceIndex"] = None,
         config: Optional[dict] = None,
     ) -> Dict[str, Any]:
         """
-        Add a new step to a workflow.
+        Add a new step to a calculation.
         
         Args:
             project_root: Project root path
-            workflow_selector: Workflow selector (name, slug, or id)
+            calculation_selector: Calculation selector (name, slug, or id)
             step_type: Type of step (scf, nscf, relax, bands, dos, etc.)
             step_name: Name for the new step (defaults to step_type)
             
         Returns:
-            Updated workflow info with the new step
+            Updated calculation info with the new step
         """
-        from quantumvitas.core.models import WorkflowModel, WorkflowStepEntry
-        from quantumvitas.workflow.structure_steps import StructureStepSpec
+        from quantumvitas.core.models import CalculationModel, CalculationStepEntry
+        from quantumvitas.calculation.structure_steps import StructureStepSpec
         import ulid as ulid_module
-        from quantumvitas.core.models import load_workflow
+        from quantumvitas.core.models import load_calculation
         
-        # Resolve workflow via registry (for consistent resolution)
-        from quantumvitas.core.resolution import build_resource_index, require_workflow
+        # Resolve calculation via registry (for consistent resolution)
+        from quantumvitas.core.resolution import build_resource_index, require_calculation
         from quantumvitas.core.project_utils import load_project_config
         
         if config is None:
             config = load_project_config(project_root)
         if index is None:
             index = build_resource_index(project_root)
-        workflow = require_workflow(project_root, workflow_selector, config=config, index=index)
-        wf_path = workflow.absolute_path / "workflow.yaml"
-        # Load workflow model; legacy 'structure' selectors (if present) are normalized to structure_id via the registry
+        calculation = require_calculation(project_root, calculation_selector, config=config, index=index)
+        wf_path = calculation.absolute_path / "calculation.yaml"
+        # Load calculation model; legacy 'structure' selectors (if present) are normalized to structure_id via the registry
         from quantumvitas.core.resolution import make_structure_selector_resolver
         resolver = make_structure_selector_resolver(project_root, config=config)
-        wf_model = load_workflow(wf_path, project_root=project_root, resolve_structure_selector=resolver)
+        wf_model = load_calculation(wf_path, project_root=project_root, resolve_structure_selector=resolver)
         
         # Determine step name
         if not step_name:
@@ -3206,7 +3206,7 @@ class QVService:
         step_file = f"steps/{slug}.step.yaml"
         
         # Get default parameters for this step type (from-scratch mode uses defaults)
-        from quantumvitas.workflow.step_defaults import get_default_step_params
+        from quantumvitas.calculation.step_defaults import get_default_step_params
         from quantumvitas.core.models import ResourceMeta
         
         defaults = get_default_step_params(step_type)
@@ -3214,7 +3214,7 @@ class QVService:
         default_cards = defaults.get("cards", {})
         default_species = defaults.get("species_overrides", {})
         
-        # Resolve structure from workflow to structure_id
+        # Resolve structure from calculation to structure_id
         from quantumvitas.core.project_utils import load_project_config
         from quantumvitas.core.resolution import _is_path_like
         if config is None:
@@ -3289,32 +3289,32 @@ class QVService:
             # If we still don't have structure_id, we cannot create the step spec
             if not structure_id:
                 raise ValueError(
-                    f"Workflow '{workflow_selector}' has no structure or structure cannot be resolved. "
-                    "Please set a structure for the workflow first and ensure it is registered in the project."
+                    f"Calculation '{calculation_selector}' has no structure or structure cannot be resolved. "
+                    "Please set a structure for the calculation first and ensure it is registered in the project."
                 )
         
-        # Step initialization: inherit structure_id from workflow if step doesn't have one
-        # workflow.structure_id is canonical and must never be cleared by adding steps
+        # Step initialization: inherit structure_id from calculation if step doesn't have one
+        # calculation.structure_id is canonical and must never be cleared by adding steps
         if not structure_id and wf_model.structure_id:
-            # Inherit from workflow (copy the canonical ID, not a move)
+            # Inherit from calculation (copy the canonical ID, not a move)
             structure_id = wf_model.structure_id
         
         # DAG + ID-only model: Step YAML contains ONLY step-local configuration.
-        # NO structure_id (inherits from workflow.structure_id at execution time).
-        # NO parent_workflow_id (parent is implicit from step file location).
-        # Structure is resolved via workflow.structure_id when the step is executed.
+        # NO structure_id (inherits from calculation.structure_id at execution time).
+        # NO parent_calculation_id (parent is implicit from step file location).
+        # Structure is resolved via calculation.structure_id when the step is executed.
         step_meta = ResourceMeta(
             id=str(ulid_module.new()),  # Actual ULID for the step spec
             name=step_name,
             slug=slug,
-            path=f"workflows/{wf_model.meta.slug}/{step_file}",
+            path=f"calculations/{wf_model.meta.slug}/{step_file}",
             kind="step",
         )
         step_spec = StructureStepSpec(
             meta=step_meta,
             step_type=step_type,
-            # Do NOT set structure_id (inherits from workflow at execution time)
-            # Do NOT set parent_workflow_id (parent is implicit)
+            # Do NOT set structure_id (inherits from calculation at execution time)
+            # Do NOT set parent_calculation_id (parent is implicit)
             structure="",  # Empty legacy field (not written to YAML)
             parameters=default_params,
             cards=default_cards,
@@ -3322,15 +3322,15 @@ class QVService:
         )
         
         # Write step file
-        # CRITICAL: Ensure workflow.absolute_path is the workflow directory, not workflow.yaml
-        # Based on resolution.py line 637, workflow.absolute_path should be the directory
+        # CRITICAL: Ensure calculation.absolute_path is the calculation directory, not calculation.yaml
+        # Based on resolution.py line 637, calculation.absolute_path should be the directory
         # But we verify this to avoid bugs where it might be the file
-        if workflow.absolute_path.name == "workflow.yaml":
-            workflow_dir = workflow.absolute_path.parent
+        if calculation.absolute_path.name == "calculation.yaml":
+            calculation_dir = calculation.absolute_path.parent
         else:
-            workflow_dir = workflow.absolute_path
+            calculation_dir = calculation.absolute_path
         
-        steps_dir = workflow_dir / "steps"
+        steps_dir = calculation_dir / "steps"
         steps_dir.mkdir(parents=True, exist_ok=True)
         step_yaml_filename = f"{slug}.step.yaml"
         step_file_path = steps_dir / step_yaml_filename
@@ -3348,29 +3348,29 @@ class QVService:
                 f"Directory exists: {steps_dir.exists()}, writable: {steps_dir.is_dir()}"
             )
         
-        # Create step entry for workflow.yaml using step_id (ULID) from step spec meta
+        # Create step entry for calculation.yaml using step_id (ULID) from step spec meta
         # step_file is NOT stored - step location resolved via registry using step_id
-        new_step = WorkflowStepEntry(
+        new_step = CalculationStepEntry(
             step_id=step_spec.meta.id,  # Use ULID from step spec meta (canonical reference)
             type=step_type,
             # step_file is NOT stored - step location resolved via registry using step_id
         )
         
-        # Add step to workflow
-        # CRITICAL: workflow.structure_id is canonical and must NEVER be cleared by adding steps
-        # It remains set for the lifetime of the workflow
-        from quantumvitas.core.models import save_workflow
+        # Add step to calculation
+        # CRITICAL: calculation.structure_id is canonical and must NEVER be cleared by adding steps
+        # It remains set for the lifetime of the calculation
+        from quantumvitas.core.models import save_calculation
         wf_model.steps.append(new_step)
-        # Ensure workflow.structure_id is preserved (never cleared)
-        assert wf_model.structure_id is not None, "Workflow structure_id must not be cleared when adding steps"
-        save_workflow(wf_model, wf_path)
+        # Ensure calculation.structure_id is preserved (never cleared)
+        assert wf_model.structure_id is not None, "Calculation structure_id must not be cleared when adding steps"
+        save_calculation(wf_model, wf_path)
         
         # Update registry in-place (do NOT rebuild)
         if index is not None:
             from quantumvitas.core.resolution import update_registry_add_step
             update_registry_add_step(index, step_meta, step_file_path)
         
-        # Return updated workflow info without materializing steps (avoids pseudo requirements)
+        # Return updated calculation info without materializing steps (avoids pseudo requirements)
         # This is sufficient for tests and most use cases
         return {
             "id": wf_model.meta.id,
@@ -3389,30 +3389,30 @@ class QVService:
         }
     
     @staticmethod
-    def change_workflow_structure(
+    def change_calculation_structure(
         project_root: Path,
-        workflow_selector: str,
+        calculation_selector: str,
         new_structure: str,
         update_steps: bool = True,
         index: Optional["ResourceIndex"] = None,
         config: Optional[dict] = None,
     ) -> Dict[str, Any]:
         """
-        Change the structure associated with a workflow.
+        Change the structure associated with a calculation.
         
         Args:
             project_root: Project root path
-            workflow_selector: Workflow selector
+            calculation_selector: Calculation selector
             new_structure: New structure selector
             update_steps: Whether to also update all steps' structure field
             index: Optional ResourceIndex (avoids rebuilding if provided)
             config: Optional project config (avoids reloading if provided)
             
         Returns:
-            Updated workflow info with any warnings
+            Updated calculation info with any warnings
         """
-        from quantumvitas.core.models import WorkflowModel
-        from quantumvitas.workflow.structure_steps import StructureStepSpec
+        from quantumvitas.core.models import CalculationModel
+        from quantumvitas.calculation.structure_steps import StructureStepSpec
         
         # Validate that new_structure is not accidentally project_root (common bug)
         project_root_str = str(project_root.resolve())
@@ -3425,17 +3425,17 @@ class QVService:
         # Validate structure exists
         resolved_structure = resolve_structure(project_root, new_structure, config=config, index=index)
         
-        from quantumvitas.core.models import load_workflow, save_workflow
+        from quantumvitas.core.models import load_calculation, save_calculation
         from quantumvitas.core.resolution import make_structure_selector_resolver
         from quantumvitas.core.project_utils import load_project_config
         if config is None:
             config = load_project_config(project_root)
-        workflow = resolve_workflow(project_root, workflow_selector, config=config, index=index)
-        wf_path = workflow.absolute_path / "workflow.yaml"
-        # Load workflow model; legacy 'structure' selectors (if present) are normalized to structure_id via the registry
+        calculation = resolve_calculation(project_root, calculation_selector, config=config, index=index)
+        wf_path = calculation.absolute_path / "calculation.yaml"
+        # Load calculation model; legacy 'structure' selectors (if present) are normalized to structure_id via the registry
         config = load_project_config(project_root)
         resolver = make_structure_selector_resolver(project_root, config=config)
-        wf_model = load_workflow(wf_path, project_root=project_root, resolve_structure_selector=resolver)
+        wf_model = load_calculation(wf_path, project_root=project_root, resolve_structure_selector=resolver)
         
         old_structure = wf_model.structure_name or wf_model.structure
         # Update structure_id (canonical reference)
@@ -3443,14 +3443,14 @@ class QVService:
         wf_model.structure_name = resolved_structure.meta.name
         # Keep structure for backwards compat (but it's not authoritative)
         wf_model.structure = resolved_structure.meta.slug
-        save_workflow(wf_model, wf_path)
+        save_calculation(wf_model, wf_path)
         
         warnings = []
         updated_steps = []
         
         if update_steps:
             # Update all step files
-            steps_dir = workflow.absolute_path / "steps"
+            steps_dir = calculation.absolute_path / "steps"
             if steps_dir.exists():
                 # Create resolver for structure selector resolution (if needed)
                 from quantumvitas.core.resolution import make_structure_selector_resolver
@@ -3480,9 +3480,9 @@ class QVService:
                         warnings.append(f"Failed to update step {step_file.name}: {e}")
         
         # Pass cached index and config to avoid rebuilding ResourceIndex
-        result = QVService.get_workflow_detail(
+        result = QVService.get_calculation_detail(
             project_root,
-            workflow_selector,
+            calculation_selector,
             index=index,
             config=config,
         )
@@ -3493,17 +3493,17 @@ class QVService:
         return result
     
     @staticmethod
-    def get_workflow_detail(
+    def get_calculation_detail(
         project_root: Path,
-        workflow_selector: str,
+        calculation_selector: str,
         index: Optional["ResourceIndex"] = None,
         config: Optional[dict] = None,
     ) -> Dict[str, Any]:
         """
-        Get detailed workflow information for GUI display.
+        Get detailed calculation information for GUI display.
         
-        CRITICAL: Uses workflow.yaml's steps array as the ONLY source of truth for:
-        - Which steps belong to the workflow
+        CRITICAL: Uses calculation.yaml's steps array as the ONLY source of truth for:
+        - Which steps belong to the calculation
         - The order of steps
         - The ULID (step_id) used as the canonical identifier
         
@@ -3511,60 +3511,60 @@ class QVService:
         
         Args:
             project_root: Project root path
-            workflow_selector: Workflow selector
+            calculation_selector: Calculation selector
             index: Optional ResourceIndex (avoids rebuilding if provided)
             config: Optional project config (avoids reloading if provided)
             
         Returns:
-            Dict with workflow details including steps (in workflow.yaml order)
+            Dict with calculation details including steps (in calculation.yaml order)
         """
-        from quantumvitas.core.resolution import ResourceNotFoundError, resolve_workflow
-        from quantumvitas.core.models import load_workflow
+        from quantumvitas.core.resolution import ResourceNotFoundError, resolve_calculation
+        from quantumvitas.core.models import load_calculation
         from quantumvitas.core.project_utils import load_project_config
-        from quantumvitas.workflow.structure_steps import StructureStepSpec
+        from quantumvitas.calculation.structure_steps import StructureStepSpec
         from quantumvitas.core.resolution import make_structure_selector_resolver
         
         project_root = Path(project_root).resolve()
         
-        # Resolve workflow to get the reference (handles name/slug/id selectors)
+        # Resolve calculation to get the reference (handles name/slug/id selectors)
         try:
-            workflow_resolved = resolve_workflow(project_root, workflow_selector, config=config, index=index)
+            calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)
         except Exception as e:
             raise ResourceNotFoundError(
-                kind="workflow",
-                selector=workflow_selector,
+                kind="calculation",
+                selector=calculation_selector,
                 id=None,
                 project_root=project_root,
             ) from e
         
-        # Determine workflow directory
-        # workflow_resolved.absolute_path may be the directory or workflow.yaml file
-        if workflow_resolved.absolute_path.name == "workflow.yaml":
-            workflow_dir = workflow_resolved.absolute_path.parent
-            workflow_yaml_path = workflow_resolved.absolute_path
+        # Determine calculation directory
+        # calculation_resolved.absolute_path may be the directory or calculation.yaml file
+        if calculation_resolved.absolute_path.name == "calculation.yaml":
+            calculation_dir = calculation_resolved.absolute_path.parent
+            calculation_yaml_path = calculation_resolved.absolute_path
         else:
-            workflow_dir = workflow_resolved.absolute_path
-            workflow_yaml_path = workflow_dir / "workflow.yaml"
+            calculation_dir = calculation_resolved.absolute_path
+            calculation_yaml_path = calculation_dir / "calculation.yaml"
         
-        # Load workflow model directly from YAML (this is the canonical source)
-        if not workflow_yaml_path.exists():
+        # Load calculation model directly from YAML (this is the canonical source)
+        if not calculation_yaml_path.exists():
             raise ResourceNotFoundError(
-                kind="workflow",
-                selector=workflow_selector,
-                id=workflow_resolved.meta.id,
+                kind="calculation",
+                selector=calculation_selector,
+                id=calculation_resolved.meta.id,
                 project_root=project_root,
-                message=f"Workflow YAML not found: {workflow_yaml_path}",
+                message=f"Calculation YAML not found: {calculation_yaml_path}",
             )
         
         # Load config if not provided
         if config is None:
             config = load_project_config(project_root)
         
-        # Create resolver for structure selectors (needed for load_workflow)
+        # Create resolver for structure selectors (needed for load_calculation)
         resolver = make_structure_selector_resolver(project_root, config=config)
         
-        # Load workflow model - this gives us the canonical steps list from workflow.yaml
-        wf_model = load_workflow(workflow_yaml_path, project_root=project_root, resolve_structure_selector=resolver)
+        # Load calculation model - this gives us the canonical steps list from calculation.yaml
+        wf_model = load_calculation(calculation_yaml_path, project_root=project_root, resolve_structure_selector=resolver)
         
         # Extract structure info from model
         structure_name = None
@@ -3582,7 +3582,7 @@ class QVService:
         # This is the ONLY source of truth for step identity and order
         step_summaries = []
         for idx, entry in enumerate(wf_model.steps):
-            step_id = entry.step_id  # ULID from workflow.yaml (canonical)
+            step_id = entry.step_id  # ULID from calculation.yaml (canonical)
             
             # Use ResourceIndex ONLY to resolve path/meta, NOT for ordering or selector guessing
             step_resolved = None
@@ -3591,11 +3591,11 @@ class QVService:
             
             if index is not None:
                 try:
-                    # Resolve step using the ULID from workflow.yaml
+                    # Resolve step using the ULID from calculation.yaml
                     from quantumvitas.core.resolution import resolve_step
                     step_resolved = resolve_step(
                         project_root,
-                        workflow_selector=workflow_resolved.meta.id or workflow_resolved.meta.slug,
+                        calculation_selector=calculation_resolved.meta.id or calculation_resolved.meta.slug,
                         step_selector=step_id,
                         config=config,
                         index=index,
@@ -3614,14 +3614,14 @@ class QVService:
                     # Step cannot be resolved or file doesn't exist (ghost step)
                     missing = True
             
-            # Build summary dict - id MUST be step_id from workflow.yaml
+            # Build summary dict - id MUST be step_id from calculation.yaml
             if step_spec and step_resolved:
                 meta = step_resolved.meta or (step_spec.meta if hasattr(step_spec, 'meta') else None)
                 step_type = step_spec.step_type if hasattr(step_spec, 'step_type') else None
-                step_file = str(step_resolved.absolute_path.relative_to(workflow_dir)) if step_resolved.absolute_path.is_relative_to(workflow_dir) else str(step_resolved.absolute_path)
+                step_file = str(step_resolved.absolute_path.relative_to(calculation_dir)) if step_resolved.absolute_path.is_relative_to(calculation_dir) else str(step_resolved.absolute_path)
                 
                 step_summaries.append({
-                    "id": step_id,  # Canonical ULID from workflow.yaml
+                    "id": step_id,  # Canonical ULID from calculation.yaml
                     "slug": meta.slug if meta else None,
                     "name": meta.name if meta else None,
                     "type": str(step_type) if step_type else None,
@@ -3629,9 +3629,9 @@ class QVService:
                     "missing": False,
                 })
             else:
-                # Step entry exists in workflow.yaml but file is missing (ghost step)
+                # Step entry exists in calculation.yaml but file is missing (ghost step)
                 step_summaries.append({
-                    "id": step_id,  # Still the same ULID from workflow.yaml
+                    "id": step_id,  # Still the same ULID from calculation.yaml
                     "slug": None,
                     "name": None,
                     "type": entry.type if hasattr(entry, 'type') else None,
@@ -3640,11 +3640,11 @@ class QVService:
                 })
         
         return {
-            "id": workflow_resolved.meta.id,
-            "name": workflow_resolved.meta.name,
-            "slug": workflow_resolved.meta.slug,
-            "path": workflow_resolved.meta.path,
-            "absolute_path": str(workflow_dir),
+            "id": calculation_resolved.meta.id,
+            "name": calculation_resolved.meta.name,
+            "slug": calculation_resolved.meta.slug,
+            "path": calculation_resolved.meta.path,
+            "absolute_path": str(calculation_dir),
             "structure": structure_name,
             "structure_id": structure_id,
             "mode": wf_model.mode,
@@ -3659,18 +3659,18 @@ class QVService:
     @staticmethod
     def preflight_check(
         project_root: Path,
-        workflow_selector: Optional[str] = None,
+        calculation_selector: Optional[str] = None,
         step_selector: Optional[str] = None,
         index: Optional["ResourceIndex"] = None,
         config: Optional[dict] = None,
     ) -> Dict[str, Any]:
         """
-        Perform pre-flight checks before running a workflow or step.
+        Perform pre-flight checks before running a calculation or step.
         
         Args:
             project_root: Project root path
-            workflow_selector: Optional workflow selector
-            step_selector: Optional step selector (requires workflow_selector)
+            calculation_selector: Optional calculation selector
+            step_selector: Optional step selector (requires calculation_selector)
             
         Returns:
             Dict with check results: {
@@ -3716,23 +3716,23 @@ class QVService:
             checks.append({"name": "Project Path", "ok": False, "message": "Project path does not exist"})
             errors.append(f"Project path does not exist: {project_path}")
         
-        # Check 3: Workflow exists
-        workflow = None
-        if workflow_selector:
+        # Check 3: Calculation exists
+        calculation = None
+        if calculation_selector:
             try:
-                workflow = resolve_workflow(project_root, workflow_selector, config=config, index=index)
-                checks.append({"name": "Workflow", "ok": True, "message": f"Workflow found: {workflow.meta.name}"})
+                calculation = resolve_calculation(project_root, calculation_selector, config=config, index=index)
+                checks.append({"name": "Calculation", "ok": True, "message": f"Calculation found: {calculation.meta.name}"})
             except Exception as e:
-                checks.append({"name": "Workflow", "ok": False, "message": str(e)})
-                errors.append(f"Workflow not found: {workflow_selector}")
+                checks.append({"name": "Calculation", "ok": False, "message": str(e)})
+                errors.append(f"Calculation not found: {calculation_selector}")
         
-        # Only continue with workflow-dependent checks if workflow was found
-        if workflow:
+        # Only continue with calculation-dependent checks if calculation was found
+        if calculation:
             # Check 4: Structure exists
             try:
-                from quantumvitas.core.models import load_workflow
-                wf_path = workflow.absolute_path / "workflow.yaml"
-                wf_model = load_workflow(wf_path)
+                from quantumvitas.core.models import load_calculation
+                wf_path = calculation.absolute_path / "calculation.yaml"
+                wf_model = load_calculation(wf_path)
                 
                 # DAG + ID-only model: check structure_id (ULID)
                 structure_id = wf_model.structure_id
@@ -3748,13 +3748,13 @@ class QVService:
                         checks.append({"name": "Structure", "ok": True, "message": f"Structure found: {structure.meta.name}"})
                     except Exception as e:
                         checks.append({"name": "Structure", "ok": False, "message": f"Structure with ID '{structure_id}' not found: {e}"})
-                        errors.append(f"Workflow references missing structure (ID: {structure_id})")
+                        errors.append(f"Calculation references missing structure (ID: {structure_id})")
                 else:
-                    # No structure_id - this is OK (workflow may not need a structure)
+                    # No structure_id - this is OK (calculation may not need a structure)
                     checks.append({"name": "Structure", "ok": True, "message": "No structure referenced"})
             except Exception as e:
-                checks.append({"name": "Workflow Config", "ok": False, "message": f"Failed to parse workflow.yaml: {e}"})
-                errors.append(f"Workflow configuration error: {e}")
+                checks.append({"name": "Calculation Config", "ok": False, "message": f"Failed to parse calculation.yaml: {e}"})
+                errors.append(f"Calculation configuration error: {e}")
             
             # Check 5: Pseudo directory
             pseudo_dir = project_path / "pseudo"
@@ -3765,7 +3765,7 @@ class QVService:
                 warnings.append("No pseudopotential files in pseudo/ directory - QE may fail")
             
             # Check 6: Working directory writable
-            raw_dir = workflow.absolute_path / "raw"
+            raw_dir = calculation.absolute_path / "raw"
             if not raw_dir.exists():
                 try:
                     raw_dir.mkdir(parents=True)
@@ -3794,10 +3794,10 @@ class QVService:
         demo_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Create a demo Si project with a ready-to-run workflow.
+        Create a demo Si project with a ready-to-run calculation.
         
         Creates a project from a snapshot in resources/demo_projects/.
-        Default demo is si_bands_demo (Silicon band structure workflow).
+        Default demo is si_bands_demo (Silicon band structure calculation).
         
         Args:
             target_dir: Directory to create the project in
@@ -3879,12 +3879,12 @@ class QVService:
                 f"Demo project was created but project.qv.yml is missing: {project_config_path}"
             )
         
-        # Verify at least one structure or workflow exists
+        # Verify at least one structure or calculation exists
         structures_dir = project_root / "structures"
-        workflows_dir = project_root / "workflows"
-        if not structures_dir.exists() and not workflows_dir.exists():
+        calculations_dir = project_root / "calculations"
+        if not structures_dir.exists() and not calculations_dir.exists():
             raise QVServiceError(
-                f"Demo project was created but no structures or workflows found in {project_root}"
+                f"Demo project was created but no structures or calculations found in {project_root}"
             )
         
         # Store demo origin info in project settings
@@ -3911,9 +3911,9 @@ class QVService:
         # Get project summary
         project_summary = QVService.get_project_summary(project_root)
         
-        # Extract structure and workflow info from snapshot
+        # Extract structure and calculation info from snapshot
         structure_info = None
-        workflow_info = None
+        calculation_info = None
         
         if snapshot.structures:
             struct_meta = snapshot.structures[0].get("meta", {})
@@ -3922,9 +3922,9 @@ class QVService:
                 "name": struct_meta.get("name"),
             }
         
-        if snapshot.workflows:
-            wf_meta = snapshot.workflows[0].get("meta", {})
-            workflow_info = {
+        if snapshot.calculations:
+            wf_meta = snapshot.calculations[0].get("meta", {})
+            calculation_info = {
                 "id": wf_meta.get("id"),
                 "name": wf_meta.get("name"),
             }
@@ -3934,8 +3934,8 @@ class QVService:
             "project_id": project_summary.get("id"),
             "project_name": project_summary.get("name"),
             "structure": structure_info,
-            "workflow": workflow_info,
-            "ready_to_run": len(snapshot.workflows) > 0,
+            "calculation": calculation_info,
+            "ready_to_run": len(snapshot.calculations) > 0,
         }
     
     @staticmethod
@@ -3971,7 +3971,7 @@ class QVService:
                 "name": "Si DOS",
                 "title": "Silicon density of states",
                 "subtitle": "SCF → NSCF → DOS",
-                "description": "Silicon density of states calculation with SCF, NSCF, and DOS steps. Demonstrates DOS analysis workflow.",
+                "description": "Silicon density of states calculation with SCF, NSCF, and DOS steps. Demonstrates DOS analysis calculation.",
                 "recommended_use": "Density of states analysis",
                 "recommended_analysis": "dos",
                 "tags": ["dos", "Si", "PW", "tutorial"],

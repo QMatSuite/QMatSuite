@@ -2,7 +2,7 @@
 
 ## Overview
 
-Standalone mode allows running Quantum ESPRESSO input files without a project context. It is a pure QE helper that operates on raw input files and does NOT create or depend on project/workflow/step resources in the DAG.
+Standalone mode allows running Quantum ESPRESSO input files without a project context. It is a pure QE helper that operates on raw input files and does NOT create or depend on project/calculation/step resources in the DAG.
 
 ## Behavior
 
@@ -42,7 +42,7 @@ workdir/
 
 ## Implementation
 
-- Module: `src/quantumvitas/workflow/standalone.py`
+- Module: `src/quantumvitas/calculation/standalone.py`
 - Function: `run_standalone_step(ctx: StandaloneStepContext)`
 - Always uses `QEInputParser` and `QEInputGenerator` - no pass-through mode
 
@@ -51,7 +51,7 @@ workdir/
 Standalone execution is conceptually separate from the DAG:
 - Does NOT create Step resources
 - Does NOT interact with project registry
-- Does NOT require workflow or structure resources
+- Does NOT require calculation or structure resources
 - Operates purely on QE input files in a specified working directory
 
-For project-based execution, use `qv run step` without `--standalone` to execute steps within a workflow context.
+For project-based execution, use `qv run step` without `--standalone` to execute steps within a calculation context.

@@ -70,9 +70,9 @@ class StructureRef:
 
 
 @dataclass(slots=True)
-class WorkflowRef:
+class CalculationRef:
     """
-    Reference to a workflow folder (which is also the workflow workdir).
+    Reference to a calculation folder (which is also the calculation workdir).
     """
 
     meta: ResourceMeta
@@ -100,14 +100,14 @@ class WorkflowRef:
 @dataclass(slots=True)
 class Project:
     """
-    Container for structures, workflows, pseudo potentials, and settings.
+    Container for structures, calculations, pseudo potentials, and settings.
     """
 
     root: Path
     meta: ResourceMeta
     settings: ProjectSettings = field(default_factory=ProjectSettings)
     structures: Dict[str, StructureRef] = field(default_factory=dict)
-    workflows: Dict[str, WorkflowRef] = field(default_factory=dict)
+    calculations: Dict[str, CalculationRef] = field(default_factory=dict)
 
     @classmethod
     def open(cls, project_root: Path | str) -> "Project":
@@ -137,8 +137,8 @@ class Project:
         project.structures = cls._load_structures(
             root, data.get("structures", []), project_section.get("structures_dir", "structures")
         )
-        project.workflows = cls._load_workflows(
-            root, data.get("workflows", []), project_section.get("workflows_dir", "workflows")
+        project.calculations = cls._load_calculations(
+            root, data.get("calculations", []), project_section.get("calculations_dir", "calculations")
         )
         return project
 
@@ -243,28 +243,28 @@ class Project:
         return structures
 
     @staticmethod
-    def _load_workflows(
+    def _load_calculations(
         root: Path, entries: list[dict], default_dir: str
-    ) -> Dict[str, WorkflowRef]:
+    ) -> Dict[str, CalculationRef]:
         """
-        Load workflows from project entries using ID-based resolution.
+        Load calculations from project entries using ID-based resolution.
         
         Resolution strategy (in order):
-        1. Try registry-based resolution by workflow_id (preferred for ID-only model)
+        1. Try registry-based resolution by calculation_id (preferred for ID-only model)
         2. Fall back to entry["path"] if available (legacy support)
-        3. Fall back to scanning workflows/*/workflow.yaml by meta.id
-        4. Raise error if workflow directory cannot be found
+        3. Fall back to scanning calculations/*/calculation.yaml by meta.id
+        4. Raise error if calculation directory cannot be found
         
         Args:
             root: Project root path
-            entries: Workflow entries from project.qv.yml
-            default_dir: Default workflows directory name
+            entries: Calculation entries from project.qv.yml
+            default_dir: Default calculations directory name
         """
-        from quantumvitas.core.resolution import build_resource_index, require_workflow, ResourceNotFoundError
+        from quantumvitas.core.resolution import build_resource_index, require_calculation, ResourceNotFoundError
         from quantumvitas.core.resources import ResourceMeta
         
-        workflows: Dict[str, WorkflowRef] = {}
-        workflows_dir = root / default_dir.rstrip('/')
+        calculations: Dict[str, CalculationRef] = {}
+        calculations_dir = root / default_dir.rstrip('/')
         
         # Build index for this project only
         try:
@@ -273,157 +273,157 @@ class Project:
             registry = None
         
         for entry in entries:
-            workflow_id = entry.get("workflow_id") or entry.get("id")
-            if not workflow_id:
+            calculation_id = entry.get("calculation_id") or entry.get("id")
+            if not calculation_id:
                 # Skip entries without ID (should not happen in ID-only model)
                 continue
             
-            workflow_dir = None
-            workflow_yaml_path = None
-            workflow_meta = None
+            calculation_dir = None
+            calculation_yaml_path = None
+            calculation_meta = None
             
             # Strategy 1: Try registry-based resolution (preferred for ID-only model)
             if registry:
                 try:
-                    resolved = require_workflow(root, workflow_id, index=registry)
-                    # resolved.absolute_path points to workflow.yaml, so get parent directory
-                    if resolved.absolute_path.name == "workflow.yaml":
-                        workflow_dir = resolved.absolute_path.parent
+                    resolved = require_calculation(root, calculation_id, index=registry)
+                    # resolved.absolute_path points to calculation.yaml, so get parent directory
+                    if resolved.absolute_path.name == "calculation.yaml":
+                        calculation_dir = resolved.absolute_path.parent
                     else:
-                        workflow_dir = resolved.absolute_path
-                    workflow_yaml_path = workflow_dir / "workflow.yaml"
-                    workflow_meta = resolved.meta
+                        calculation_dir = resolved.absolute_path
+                    calculation_yaml_path = calculation_dir / "calculation.yaml"
+                    calculation_meta = resolved.meta
                     # Prefer name from entry (project.qv.yml) over registry if entry has a human-readable name
                     entry_name = entry.get("name") or (entry.get("meta") or {}).get("name")
-                    if entry_name and entry_name != workflow_meta.slug:
+                    if entry_name and entry_name != calculation_meta.slug:
                         # Entry has a human-readable name - use it instead of registry name
-                        workflow_meta = ResourceMeta(
-                            id=workflow_meta.id,
+                        calculation_meta = ResourceMeta(
+                            id=calculation_meta.id,
                             name=entry_name,
-                            slug=workflow_meta.slug,
-                            path=workflow_meta.path,
-                            kind=workflow_meta.kind,
+                            slug=calculation_meta.slug,
+                            path=calculation_meta.path,
+                            kind=calculation_meta.kind,
                         )
                 except (ResourceNotFoundError, Exception):
                     # Registry resolution failed, try fallback strategies
                     pass
             
             # Strategy 2: Fall back to entry["path"] if available (legacy support)
-            if workflow_dir is None:
+            if calculation_dir is None:
                 entry_path = entry.get("path") or (entry.get("meta") or {}).get("path")
                 if entry_path:
                     candidate_dir = (root / entry_path).resolve()
-                    candidate_yaml = candidate_dir / "workflow.yaml"
+                    candidate_yaml = candidate_dir / "calculation.yaml"
                     if candidate_yaml.exists():
                         try:
                             import yaml
                             wf_data = yaml.safe_load(candidate_yaml.read_text()) or {}
                             wf_meta_dict = wf_data.get("meta") or {}
                             # Verify the ID matches
-                            if wf_meta_dict.get("id") == workflow_id:
-                                workflow_dir = candidate_dir
-                                workflow_yaml_path = candidate_yaml
-                                # Prefer name from entry (project.qv.yml) over workflow.yaml if entry has a human-readable name
+                            if wf_meta_dict.get("id") == calculation_id:
+                                calculation_dir = candidate_dir
+                                calculation_yaml_path = candidate_yaml
+                                # Prefer name from entry (project.qv.yml) over calculation.yaml if entry has a human-readable name
                                 entry_name = entry.get("name") or (entry.get("meta") or {}).get("name")
-                                default_name = entry_name if entry_name and entry_name != wf_meta_dict.get("slug") else wf_meta_dict.get("name", "Workflow")
-                                workflow_meta = ResourceMeta.from_dict(
+                                default_name = entry_name if entry_name and entry_name != wf_meta_dict.get("slug") else wf_meta_dict.get("name", "Calculation")
+                                calculation_meta = ResourceMeta.from_dict(
                                     wf_meta_dict,
-                                    kind="workflow",
+                                    kind="calculation",
                                     default_name=default_name,
                                     default_path=entry_path,
                                 )
                                 # Override with entry name if it's different from slug (preserves human-readable names)
-                                if entry_name and entry_name != workflow_meta.slug:
-                                    workflow_meta.name = entry_name
+                                if entry_name and entry_name != calculation_meta.slug:
+                                    calculation_meta.name = entry_name
                                 break
                         except Exception:
                             continue
             
-            # Strategy 3: Scan workflows/*/workflow.yaml by meta.id (last resort)
-            if workflow_dir is None and workflows_dir.exists():
-                for wf_dir in workflows_dir.iterdir():
+            # Strategy 3: Scan calculations/*/calculation.yaml by meta.id (last resort)
+            if calculation_dir is None and calculations_dir.exists():
+                for wf_dir in calculations_dir.iterdir():
                     if not wf_dir.is_dir():
                         continue
-                    wf_yaml = wf_dir / "workflow.yaml"
+                    wf_yaml = wf_dir / "calculation.yaml"
                     if wf_yaml.exists():
                         try:
                             import yaml
                             wf_data = yaml.safe_load(wf_yaml.read_text()) or {}
                             wf_meta_dict = wf_data.get("meta") or {}
-                            if wf_meta_dict.get("id") == workflow_id:
-                                workflow_dir = wf_dir
-                                workflow_yaml_path = wf_yaml
-                                # Prefer name from entry (project.qv.yml) over workflow.yaml if entry has a human-readable name
+                            if wf_meta_dict.get("id") == calculation_id:
+                                calculation_dir = wf_dir
+                                calculation_yaml_path = wf_yaml
+                                # Prefer name from entry (project.qv.yml) over calculation.yaml if entry has a human-readable name
                                 entry_name = entry.get("name") or (entry.get("meta") or {}).get("name")
-                                default_name = entry_name if entry_name and entry_name != wf_meta_dict.get("slug") else wf_meta_dict.get("name", "Workflow")
-                                workflow_meta = ResourceMeta.from_dict(
+                                default_name = entry_name if entry_name and entry_name != wf_meta_dict.get("slug") else wf_meta_dict.get("name", "Calculation")
+                                calculation_meta = ResourceMeta.from_dict(
                                     wf_meta_dict,
-                                    kind="workflow",
+                                    kind="calculation",
                                     default_name=default_name,
                                     default_path=wf_meta_dict.get("path") or f"{default_dir.rstrip('/')}/{wf_dir.name}",
                                 )
                                 # Override with entry name if it's different from slug (preserves human-readable names)
-                                if entry_name and entry_name != workflow_meta.slug:
-                                    workflow_meta.name = entry_name
+                                if entry_name and entry_name != calculation_meta.slug:
+                                    calculation_meta.name = entry_name
                                 break
                         except Exception:
                             continue
             
             # Strategy 4: If still not found, raise clear error
-            if workflow_dir is None or workflow_yaml_path is None or not workflow_yaml_path.exists():
+            if calculation_dir is None or calculation_yaml_path is None or not calculation_yaml_path.exists():
                 raise FileNotFoundError(
-                    f"Could not locate workflow directory for id '{workflow_id}' under {workflows_dir}. "
-                    "Please ensure the workflow.yaml file exists and contains the correct meta.id."
+                    f"Could not locate calculation directory for id '{calculation_id}' under {calculations_dir}. "
+                    "Please ensure the calculation.yaml file exists and contains the correct meta.id."
                 )
             
-            # Ensure workflow_meta is set (should have been set by one of the strategies above)
-            if workflow_meta is None:
+            # Ensure calculation_meta is set (should have been set by one of the strategies above)
+            if calculation_meta is None:
                 # Fallback: construct from entry (should not happen if strategies above worked)
-                default_name = entry.get("name") or "workflow"
+                default_name = entry.get("name") or "calculation"
                 default_path = entry.get("path") or f"{default_dir.rstrip('/')}/{default_name}"
-                workflow_meta = _entry_to_meta(
+                calculation_meta = _entry_to_meta(
                     entry=entry,
                     root=root,
-                    kind="workflow",
+                    kind="calculation",
                     default_path=default_path,
                     default_name=default_name,
                 )
-                # Try to load from workflow.yaml to get canonical name/slug
+                # Try to load from calculation.yaml to get canonical name/slug
                 # But prefer name from entry (project.qv.yml) if it exists and is different from slug
                 try:
                     import yaml
-                    wf_data = yaml.safe_load(workflow_yaml_path.read_text()) or {}
+                    wf_data = yaml.safe_load(calculation_yaml_path.read_text()) or {}
                     wf_meta = wf_data.get("meta") or {}
-                    # Prefer name from entry (project.qv.yml) over workflow.yaml if entry has a human-readable name
+                    # Prefer name from entry (project.qv.yml) over calculation.yaml if entry has a human-readable name
                     entry_name = entry.get("name") or (entry.get("meta") or {}).get("name")
-                    if entry_name and entry_name != workflow_meta.slug:
-                        # Entry has a human-readable name - use it instead of workflow.yaml name
-                        workflow_meta.name = entry_name
+                    if entry_name and entry_name != calculation_meta.slug:
+                        # Entry has a human-readable name - use it instead of calculation.yaml name
+                        calculation_meta.name = entry_name
                     elif wf_meta.get("name"):
-                        workflow_meta.name = wf_meta["name"]
+                        calculation_meta.name = wf_meta["name"]
                     if wf_meta.get("slug"):
-                        workflow_meta.slug = wf_meta["slug"]
+                        calculation_meta.slug = wf_meta["slug"]
                     if wf_meta.get("path"):
-                        workflow_meta.path = wf_meta["path"]
+                        calculation_meta.path = wf_meta["path"]
                 except Exception:
                     pass  # Use defaults from entry
             
-            # Create WorkflowRef
-            ref = WorkflowRef(
-                meta=workflow_meta,
-                absolute_path=workflow_dir.resolve(),
+            # Create CalculationRef
+            ref = CalculationRef(
+                meta=calculation_meta,
+                absolute_path=calculation_dir.resolve(),
             )
-            workflows[ref.slug] = ref
+            calculations[ref.slug] = ref
         
-        return workflows
+        return calculations
 
     @property
     def structures_dir(self) -> Path:
         return self.root / "structures"
 
     @property
-    def workflows_dir(self) -> Path:
-        return self.root / "workflows"
+    def calculations_dir(self) -> Path:
+        return self.root / "calculations"
 
     @property
     def pseudo_dir(self) -> Path:
@@ -446,29 +446,29 @@ class Project:
                 return ref
         raise KeyError(f"Unknown structure '{structure_id}'")
 
-    def list_workflows(self) -> list[str]:
-        return [ref.meta.name for ref in self.workflows.values()]
+    def list_calculations(self) -> list[str]:
+        return [ref.meta.name for ref in self.calculations.values()]
 
-    def get_workflow_ref(self, workflow_id: str) -> WorkflowRef:
-        if workflow_id in self.workflows:
-            return self.workflows[workflow_id]
-        for ref in self.workflows.values():
-            if ref.meta.id == workflow_id or ref.meta.name == workflow_id or ref.meta.slug == workflow_id:
+    def get_calculation_ref(self, calculation_id: str) -> CalculationRef:
+        if calculation_id in self.calculations:
+            return self.calculations[calculation_id]
+        for ref in self.calculations.values():
+            if ref.meta.id == calculation_id or ref.meta.name == calculation_id or ref.meta.slug == calculation_id:
                 return ref
-        raise KeyError(f"Unknown workflow '{workflow_id}'")
+        raise KeyError(f"Unknown calculation '{calculation_id}'")
 
-    def get_workflow(self, workflow_id: str):
+    def get_calculation(self, calculation_id: str):
         """
-        Load and return a workflow instance for inspection.
+        Load and return a calculation instance for inspection.
         
-        This method loads workflows in inspection mode (materialize_steps=False),
+        This method loads calculations in inspection mode (materialize_steps=False),
         which does not require pseudopotentials or step materialization.
-        For execution, use run_workflow or run_step APIs instead.
+        For execution, use run_calculation or run_step APIs instead.
         """
-        from quantumvitas.workflow.workflow import Workflow
+        from quantumvitas.calculation.calculation import Calculation
 
-        ref = self.get_workflow_ref(workflow_id)
-        return Workflow.from_yaml(ref.resolve_path(self.root), self, materialize_steps=False)
+        ref = self.get_calculation_ref(calculation_id)
+        return Calculation.from_yaml(ref.resolve_path(self.root), self, materialize_steps=False)
 
     def structure_ref(self, name: str) -> StructureRef:
         """

@@ -1,5 +1,5 @@
 """
-Unit tests for workflow input files and jobconfig ordering.
+Unit tests for calculation input files and jobconfig ordering.
 """
 
 from pathlib import Path

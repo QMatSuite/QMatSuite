@@ -6,12 +6,12 @@
 **实现状态**: ✅ 完全符合
 
 **实现方式**:
-- `test_si_dos_workflow.py`: 
+- `test_si_dos_calculation.py`: 
   - Step1 (SCF) -> `run_and_verify_step_with_assert` -> 验证 ✅
   - Step2 (NSCF) -> `run_and_verify_step_with_assert` -> 验证 ✅
   - Step3 (DOS) -> 执行并验证 ✅
   
-- `test_si_bands_workflow.py`: 
+- `test_si_bands_calculation.py`: 
   - Step1 (SCF) -> `run_and_verify_step_with_assert` -> 验证 ✅
   - Step2 (NSCF) -> `run_and_verify_step_with_assert` -> 验证 ✅
   - Step3 (Bands) -> `run_and_verify_step_with_assert` -> 验证 ✅
@@ -45,16 +45,16 @@
 **实现状态**: ✅ 完全符合
 
 **实现位置**:
-- `src/quantumvitas/core/engines/qe_workflow.py`: 
-  - `QEWorkflowRunner.run_step()`: 执行单个步骤 ✅
-  - `QEWorkflowRunner.run_workflow()`: 执行工作流 ✅
+- `src/quantumvitas/core/engines/qe_calculation.py`: 
+  - `QECalculationRunner.run_step()`: 执行单个步骤 ✅
+  - `QECalculationRunner.run_calculation()`: 执行计算 ✅
   
 - `src/quantumvitas/core/engines/qe.py`: 
   - `detect_step_type()`: 检测步骤类型 ✅
-  - `run_step()`: 执行步骤（调用 workflow_runner）✅
+  - `run_step()`: 执行步骤（调用 calculation_runner）✅
 
 **文件列表**:
-- ✅ `src/quantumvitas/core/engines/qe_workflow.py`
+- ✅ `src/quantumvitas/core/engines/qe_calculation.py`
 - ✅ `src/quantumvitas/core/engines/qe.py`
 
 ### 4. test 逻辑中心化在 tests/core 里面
@@ -101,10 +101,10 @@
 - `tests/core/qe_test_utils.py::parse_jobconfig`: 
   - 解析 jobconfig 文件 ✅
   
-- `test_si_dos_workflow.py`: 
+- `test_si_dos_calculation.py`: 
   - 从 jobconfig 读取 `4_Si_DOS` 顺序 ✅
   
-- `test_si_bands_workflow.py`: 
+- `test_si_bands_calculation.py`: 
   - 从 jobconfig 读取 `7_Si_bandStructure` 顺序 ✅
   
 - `test_ph_quick_tests.py`: 
@@ -131,7 +131,7 @@ inputs_args = ('si.0_scf.in', '1'), ('si.1_nscf.in', '1'), ('si.2_bands.in', '1'
 
 ```
 src/quantumvitas/core/engines/
-├── qe_workflow.py          # Step 执行逻辑 (run_step, run_workflow)
+├── qe_calculation.py          # Step 执行逻辑 (run_step, run_calculation)
 ├── qe.py                   # QE 引擎 (detect_step_type, run_step)
 └── qe_pseudopotentials.py  # 伪势管理 (ensure_pseudopotentials)
 
@@ -141,8 +141,8 @@ tests/core/
 └── qe_test_utils.py        # 测试工具函数 (parse_jobconfig)
 
 tests/integration/
-├── test_si_dos_workflow.py    # 使用 run_and_verify_step_with_assert
-├── test_si_bands_workflow.py   # 使用 run_and_verify_step_with_assert
+├── test_si_dos_calculation.py    # 使用 run_and_verify_step_with_assert
+├── test_si_bands_calculation.py   # 使用 run_and_verify_step_with_assert
 └── test_ph_quick_tests.py     # 使用 run_test_category
 ```
 
@@ -151,7 +151,7 @@ tests/integration/
 ```
 1. 从 jobconfig 读取工作流顺序
 2. 对每个步骤：
-   a. 运行步骤 (src/quantumvitas/core/engines/qe_workflow.py::run_step)
+   a. 运行步骤 (src/quantumvitas/core/engines/qe_calculation.py::run_step)
    b. 验证步骤 (tests/core/qe_step_verification.py::verify_step_result)
    c. 如果失败：停止工作流
    d. 如果成功：继续下一个步骤

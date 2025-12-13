@@ -324,7 +324,7 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
             <div className="settings-option__info">
               <span className="settings-option__label">Automatic Analysis</span>
               <span className="settings-option__description">
-                Automatically load analysis when selecting a workflow
+                Automatically load analysis when selecting a calculation
               </span>
             </div>
             <div className="settings-option__control">

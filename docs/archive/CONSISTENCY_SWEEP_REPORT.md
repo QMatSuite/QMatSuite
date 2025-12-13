@@ -14,49 +14,49 @@
 
 ## 1. Cross-Resource References Audit
 
-### ✅ Project → Workflow/Structure (project.qv.yml)
+### ✅ Project → Calculation/Structure (project.qv.yml)
 
 **Status**: ✅ **Clean**
 
 **Evidence**:
 - `StructureEntry.to_dict()` (models.py:316-326): Only writes `{"id": self.meta.id}` - no name/slug/path
-- `WorkflowEntry.to_dict()` (models.py:416-425): Only writes `{"id": self.meta.id}` - no name/slug/path
-- `ProjectModel.to_dict()` (models.py:529-539): Uses `StructureEntry.to_dict()` and `WorkflowEntry.to_dict()`
+- `CalculationEntry.to_dict()` (models.py:416-425): Only writes `{"id": self.meta.id}` - no name/slug/path
+- `ProjectModel.to_dict()` (models.py:529-539): Uses `StructureEntry.to_dict()` and `CalculationEntry.to_dict()`
 
 **Verification**: ✅ Confirmed ID-only in serialization
 
 ---
 
-### ✅ Workflow → Structure (workflow.yaml)
+### ✅ Calculation → Structure (calculation.yaml)
 
 **Status**: ✅ **Clean**
 
 **Evidence**:
-- `WorkflowModel.to_dict()` (models.py:130-151): Only writes `structure_id` (ULID), optionally `structure_name` (cosmetic)
+- `CalculationModel.to_dict()` (models.py:130-151): Only writes `structure_id` (ULID), optionally `structure_name` (cosmetic)
 - Line 150: Comment explicitly states "Do not write structure selector (legacy field - not authoritative)"
 
 **Verification**: ✅ Confirmed ID-only in serialization
 
 ---
 
-### ✅ Workflow → Step (workflow.yaml)
+### ✅ Calculation → Step (calculation.yaml)
 
 **Status**: ✅ **Clean**
 
 **Evidence**:
-- `WorkflowStepEntry.to_dict()` (models.py:52-72): Only writes `step_id` (ULID), not `id` (slug)
+- `CalculationStepEntry.to_dict()` (models.py:52-72): Only writes `step_id` (ULID), not `id` (slug)
 - Line 60: Comment states "Writes step_id (ULID) as canonical reference"
 
 **Verification**: ✅ Confirmed ID-only in serialization
 
 ---
 
-### ✅ Step → Workflow/Structure (*.step.yaml)
+### ✅ Step → Calculation/Structure (*.step.yaml)
 
 **Status**: ✅ **Clean**
 
 **Evidence**:
-- `StructureStepSpec.to_dict()` (structure_steps.py:126-156): Only writes `structure_id` and `parent_workflow_id` (ULIDs)
+- `StructureStepSpec.to_dict()` (structure_steps.py:126-156): Only writes `structure_id` and `parent_calculation_id` (ULIDs)
 - Line 134: Comment explicitly states "Does not write structure selector (legacy field - not authoritative)"
 
 **Verification**: ✅ Confirmed ID-only in serialization
@@ -69,14 +69,14 @@
 
 **Issues Found**:
 
-1. **api.py:2698** - `change_workflow_structure`:
+1. **api.py:2698** - `change_calculation_structure`:
    ```python
    wf_model.structure = resolved_structure.meta.slug  # Sets selector
    ```
    - **Impact**: Low - `to_dict()` doesn't write `structure`, only `structure_id`
    - **Fix**: Remove this line (structure is only for backwards compat loading)
 
-2. **api.py:2713** - `change_workflow_structure` (update steps):
+2. **api.py:2713** - `change_calculation_structure` (update steps):
    ```python
    spec.structure = structure.meta.slug  # Sets selector
    ```
@@ -97,14 +97,14 @@
    - **Impact**: Low - Variable name is misleading, but value is correct
    - **Fix**: Set `wf_model.structure_id = existing_structure` instead
 
-5. **api.py:534** - `configure_workflow`:
+5. **api.py:534** - `configure_calculation`:
    ```python
    model.structure = new_structure  # new_structure is a selector
    ```
    - **Impact**: Low - `to_dict()` doesn't write `structure`
    - **Fix**: Should resolve selector to ID and set `model.structure_id` instead
 
-6. **cli/main.py:2249** - `configure_workflow` (update steps):
+6. **cli/main.py:2249** - `configure_calculation` (update steps):
    ```python
    spec.structure = structure  # structure is a selector
    ```
@@ -122,12 +122,12 @@
 **Status**: ✅ **Mostly Clean**
 
 **Evidence**:
-- CLI uses `find_workflow_entry()` and `find_structure_entry()` which internally use ResourceIndex (project_utils.py:152-227)
-- `find_*_entry()` functions use `resolve_workflow()` / `resolve_structure()` when ResourceIndex is available
+- CLI uses `find_calculation_entry()` and `find_structure_entry()` which internally use ResourceIndex (project_utils.py:152-227)
+- `find_*_entry()` functions use `resolve_calculation()` / `resolve_structure()` when ResourceIndex is available
 - CLI commands that need resolution:
   - `init_step_command`: Uses `_resolve_structure_reference()` → `find_structure_entry()` → ResourceIndex
-  - `configure_workflow_command`: Uses `find_workflow_entry()` → ResourceIndex
-  - `analyze_*_command`: Uses `find_workflow_entry()` → ResourceIndex
+  - `configure_calculation_command`: Uses `find_calculation_entry()` → ResourceIndex
+  - `analyze_*_command`: Uses `find_calculation_entry()` → ResourceIndex
 
 **Verification**: ✅ CLI resolution goes through ResourceIndex
 
@@ -143,9 +143,9 @@
 
 **Evidence**:
 - `QVService.get_structure()` (api.py:392): Uses `resolve_structure(project_root, selector)`
-- `QVService.get_workflow()` (api.py:550): Uses `resolve_workflow(project_root, selector)`
-- `QVService.init_workflow()` (api.py:456): Uses `resolve_structure()` to get `structure_id`
-- `QVService.add_step_to_workflow()` (api.py:2320): Uses `resolve_structure()` to get `structure_id`
+- `QVService.get_calculation()` (api.py:550): Uses `resolve_calculation(project_root, selector)`
+- `QVService.init_calculation()` (api.py:456): Uses `resolve_structure()` to get `structure_id`
+- `QVService.add_step_to_calculation()` (api.py:2320): Uses `resolve_structure()` to get `structure_id`
 - All `resolve_*` functions use ResourceIndex (resolution.py:323-477)
 
 **Verification**: ✅ QVService methods use ResourceIndex via resolve_* helpers
@@ -160,7 +160,7 @@
 
 **Evidence**:
 
-1. **WorkflowModel.from_dict()** (models.py:153-287):
+1. **CalculationModel.from_dict()** (models.py:153-287):
    - Accepts legacy `structure` selector
    - Resolves to `structure_id` if `project_root` provided (line 258-280)
    - Keeps `structure` in memory for backwards compat
@@ -170,19 +170,19 @@
    - Accepts new `structure_id` (canonical)
    - Keeps both in memory for backwards compat
 
-3. **WorkflowStepEntry.from_dict()** (models.py:74-95):
+3. **CalculationStepEntry.from_dict()** (models.py:74-95):
    - Accepts legacy `id` (slug)
    - Accepts new `step_id` (ULID)
-   - `load_workflow()` resolves `step_id` from step files if missing (models.py:200-218)
+   - `load_calculation()` resolves `step_id` from step files if missing (models.py:200-218)
 
 4. **StructureEntry.from_dict()** (models.py:328-408):
    - Accepts legacy format with name/slug/path
    - Loads meta from structure file if ID provided
    - Falls back to legacy format if needed
 
-5. **WorkflowEntry.from_dict()** (models.py:427-503):
+5. **CalculationEntry.from_dict()** (models.py:427-503):
    - Accepts legacy format with name/slug/path
-   - Loads meta from workflow.yaml if ID provided
+   - Loads meta from calculation.yaml if ID provided
    - Falls back to legacy format if needed
 
 **Verification**: ✅ All legacy formats are normalized to ID-only model on load
@@ -198,8 +198,8 @@
 **Evidence**:
 - `export_project_to_snapshot()` (snapshot.py:97-209):
   - Exports `meta.id` for all resources
-  - Exports `structure_id` (ULID) for workflow → structure references
-  - Exports `parent_workflow_id` (ULID) for step → workflow references
+  - Exports `structure_id` (ULID) for calculation → structure references
+  - Exports `parent_calculation_id` (ULID) for step → calculation references
   - Exports `structure_id` (ULID) for step → structure references
 
 - `materialize_project_from_snapshot()` (snapshot.py:212-541):
@@ -274,9 +274,9 @@
 ### ✅ All Cross-Resource References Are ID-Only
 
 **Confirmed**:
-- ✅ `project.qv.yml` → workflows/structures: ID-only
-- ✅ `workflow.yaml` → structure/steps: ID-only
-- ✅ `*.step.yaml` → workflow/structure: ID-only
+- ✅ `project.qv.yml` → calculations/structures: ID-only
+- ✅ `calculation.yaml` → structure/steps: ID-only
+- ✅ `*.step.yaml` → calculation/structure: ID-only
 - ✅ Snapshots: ID-only references
 - ✅ Serialization (`to_dict()`): ID-only
 - ✅ ResourceIndex: Used for selector → ID resolution

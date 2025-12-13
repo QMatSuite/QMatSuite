@@ -315,12 +315,12 @@ class TestQVDaemonHandlers:
         assert "count" in response.data
         assert response.data["count"] == 0
     
-    def test_list_workflows_handler(self, tmp_path):
-        """Test list_workflows handler."""
+    def test_list_calculations_handler(self, tmp_path):
+        """Test list_calculations handler."""
         from quantumvitas.api import QVService
         
         project_root = QVService.init_project(tmp_path / "test_proj")
-        QVService.init_workflow(project_root, "wf1")
+        QVService.init_calculation(project_root, "wf1")
         
         stdin = StringIO("")
         stdout = StringIO()
@@ -328,7 +328,7 @@ class TestQVDaemonHandlers:
         
         response = daemon.handle_request(RPCRequest(
             id="1",
-            type="list_workflows",
+            type="list_calculations",
             payload={"project_root": str(project_root)},
         ))
         
@@ -354,12 +354,12 @@ class TestQVDaemonHandlers:
         assert not response.ok
         assert "selector" in response.error["message"]
     
-    def test_run_workflow_returns_job_id(self, tmp_path):
-        """Test that run_workflow returns a job ID."""
+    def test_run_calculation_returns_job_id(self, tmp_path):
+        """Test that run_calculation returns a job ID."""
         from quantumvitas.api import QVService
         
         project_root = QVService.init_project(tmp_path / "test_proj")
-        QVService.init_workflow(project_root, "test-wf")
+        QVService.init_calculation(project_root, "test-wf")
         
         stdin = StringIO("")
         stdout = StringIO()
@@ -367,10 +367,10 @@ class TestQVDaemonHandlers:
         
         response = daemon.handle_request(RPCRequest(
             id="1",
-            type="run_workflow",
+            type="run_calculation",
             payload={
                 "project_root": str(project_root),
-                "workflow": "test-wf",
+                "calculation": "test-wf",
             },
         ))
         
@@ -385,7 +385,7 @@ class TestQVDaemonHandlers:
         from quantumvitas.api import QVService
         
         project_root = QVService.init_project(tmp_path / "test_proj")
-        QVService.init_workflow(project_root, "test-wf")
+        QVService.init_calculation(project_root, "test-wf")
         
         stdin = StringIO("")
         stdout = StringIO()
@@ -394,10 +394,10 @@ class TestQVDaemonHandlers:
         # Submit a job
         submit_response = daemon.handle_request(RPCRequest(
             id="1",
-            type="run_workflow",
+            type="run_calculation",
             payload={
                 "project_root": str(project_root),
-                "workflow": "test-wf",
+                "calculation": "test-wf",
             },
         ))
         job_id = submit_response.data["job_id"]
@@ -411,7 +411,7 @@ class TestQVDaemonHandlers:
         
         assert status_response.ok
         assert status_response.data["id"] == job_id
-        assert status_response.data["job_type"] == "run_workflow"
+        assert status_response.data["job_type"] == "run_calculation"
         
         daemon.job_manager.shutdown()
 

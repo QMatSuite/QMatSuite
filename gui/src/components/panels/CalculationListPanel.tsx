@@ -1,30 +1,30 @@
 /**
- * WorkflowListPanel - Displays a list of workflows in a project
+ * CalculationListPanel - Displays a list of calculations in a project
  */
 
 import { useState, useCallback, useMemo } from 'react';
-import type { WorkflowInfo } from '../../types/qv';
-import './WorkflowListPanel.css';
+import type { CalculationInfo } from '../../types/qv';
+import './CalculationListPanel.css';
 
-interface WorkflowListPanelProps {
-  workflows: WorkflowInfo[] | null;
+interface CalculationListPanelProps {
+  calculations: CalculationInfo[] | null;
   isLoading?: boolean;
   selectedId?: string | null;
-  onSelect?: (workflow: WorkflowInfo) => void;
-  onRename?: (workflow: WorkflowInfo) => void;
-  onDelete?: (workflow: WorkflowInfo) => void;
+  onSelect?: (calculation: CalculationInfo) => void;
+  onRename?: (calculation: CalculationInfo) => void;
+  onDelete?: (calculation: CalculationInfo) => void;
   onRefreshProjectRegistry?: () => void;
 }
 
-export function WorkflowListPanel({ 
-  workflows, 
+export function CalculationListPanel({ 
+  calculations, 
   isLoading, 
   selectedId,
   onSelect,
   onRename,
   onDelete,
   onRefreshProjectRegistry,
-}: WorkflowListPanelProps) {
+}: CalculationListPanelProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   
   const handleRefresh = useCallback(async () => {
@@ -38,43 +38,43 @@ export function WorkflowListPanel({
   }, [onRefreshProjectRegistry]);
   if (isLoading) {
     return (
-      <div className="workflow-list-panel workflow-list-panel--loading">
+      <div className="calculation-list-panel calculation-list-panel--loading">
         <div className="loading-spinner" />
-        <p>Loading workflows...</p>
+        <p>Loading calculations...</p>
       </div>
     );
   }
   
-  if (!workflows) {
+  if (!calculations) {
     return (
-      <div className="workflow-list-panel workflow-list-panel--empty">
+      <div className="calculation-list-panel calculation-list-panel--empty">
         <div className="panel-placeholder">
           <span className="panel-icon">📊</span>
-          <h3>No Workflows Loaded</h3>
-          <p>Click "List Workflows" to view workflows in this project.</p>
+          <h3>No Calculations Loaded</h3>
+          <p>Click "List Calculations" to view calculations in this project.</p>
         </div>
       </div>
     );
   }
   
-  if (workflows.length === 0) {
+  if (calculations.length === 0) {
     return (
-      <div className="workflow-list-panel workflow-list-panel--empty">
+      <div className="calculation-list-panel calculation-list-panel--empty">
         <div className="panel-placeholder">
           <span className="panel-icon">📊</span>
-          <h3>No Workflows Found</h3>
-          <p>This project doesn't have any workflows yet.</p>
+          <h3>No Calculations Found</h3>
+          <p>This project doesn't have any calculations yet.</p>
         </div>
       </div>
     );
   }
   
   return (
-    <div className="workflow-list-panel" data-testid="qv-workflows-view">
+    <div className="calculation-list-panel" data-testid="qv-calculations-view">
       <div className="panel-header">
         <h2 className="panel-title">
           <span className="panel-icon">📊</span>
-          Workflows
+          Calculations
         </h2>
         <div className="panel-header__actions">
           {onRefreshProjectRegistry && (
@@ -87,43 +87,43 @@ export function WorkflowListPanel({
               {isRefreshing ? '⟳' : '🔄'} Refresh
             </button>
           )}
-          <span className="panel-count">{workflows.length} total</span>
+          <span className="panel-count">{calculations.length} total</span>
         </div>
       </div>
       
-      <div className="workflow-list" data-testid="qv-workflows-list">
-        {workflows.map((workflow) => (
+      <div className="calculation-list" data-testid="qv-calculations-list">
+        {calculations.map((calculation) => (
           <div
-            key={workflow.id}
-            className={`workflow-item ${selectedId === workflow.id ? 'workflow-item--selected' : ''}`}
-            data-testid="qv-workflow-row"
-            data-workflow-slug={workflow.slug}
+            key={calculation.id}
+            className={`calculation-item ${selectedId === calculation.id ? 'calculation-item--selected' : ''}`}
+            data-testid="qv-calculation-row"
+            data-calculation-slug={calculation.slug}
           >
             <button
-              className="workflow-item__content"
-              onClick={() => onSelect?.(workflow)}
+              className="calculation-item__content"
+              onClick={() => onSelect?.(calculation)}
             >
-              <div className="workflow-item__main">
-                <div className="workflow-item__name">{workflow.name}</div>
-                <div className="workflow-item__structure">
-                  Structure: <code>{workflow.structure || 'none'}</code>
+              <div className="calculation-item__main">
+                <div className="calculation-item__name">{calculation.name}</div>
+                <div className="calculation-item__structure">
+                  Structure: <code>{calculation.structure || 'none'}</code>
                 </div>
               </div>
               
-              <div className="workflow-item__details">
-                <div className="workflow-item__stat">
-                  <span className="stat-value">{workflow.n_steps}</span>
+              <div className="calculation-item__details">
+                <div className="calculation-item__stat">
+                  <span className="stat-value">{calculation.n_steps}</span>
                   <span className="stat-label">steps</span>
                 </div>
-                <div className="workflow-item__mode">
-                  <span className={`mode-badge mode-badge--${workflow.mode}`}>
-                    {workflow.mode}
+                <div className="calculation-item__mode">
+                  <span className={`mode-badge mode-badge--${calculation.mode}`}>
+                    {calculation.mode}
                   </span>
                 </div>
               </div>
               
-              <div className="workflow-item__steps">
-                {workflow.steps.map((step, idx) => (
+              <div className="calculation-item__steps">
+                {calculation.steps.map((step, idx) => (
                   <span key={step.id} className="step-chip">
                     {idx > 0 && <span className="step-arrow">→</span>}
                     <span className="step-type">{step.type}</span>
@@ -131,21 +131,21 @@ export function WorkflowListPanel({
                 ))}
               </div>
               
-              <div className="workflow-item__path">
-                <code>{workflow.path}</code>
+              <div className="calculation-item__path">
+                <code>{calculation.path}</code>
               </div>
             </button>
             
             {(onRename || onDelete) && (
-              <div className="workflow-item__actions">
+              <div className="calculation-item__actions">
                 {onRename && (
                   <button
                     className="item-action-btn"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onRename(workflow);
+                      onRename(calculation);
                     }}
-                    title="Rename workflow"
+                    title="Rename calculation"
                   >
                     ✏️
                   </button>
@@ -155,9 +155,9 @@ export function WorkflowListPanel({
                     className="item-action-btn item-action-btn--danger"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onDelete(workflow);
+                      onDelete(calculation);
                     }}
-                    title="Delete workflow"
+                    title="Delete calculation"
                   >
                     🗑️
                   </button>
@@ -172,45 +172,45 @@ export function WorkflowListPanel({
 }
 
 // =============================================================================
-// Workflow Detail View
+// Calculation Detail View
 // =============================================================================
 
-import type { StructureInfo, WorkflowDetailResult } from '../../types/qv';
+import type { StructureInfo, CalculationDetailResult } from '../../types/qv';
 import { normalizeProjectRoot } from '../../utils/pathUtils';
 
-interface WorkflowDetailPanelProps {
-  workflowSummary: WorkflowInfo | null;  // Summary from list_workflows (for high-level fields)
-  workflowDetail: WorkflowDetailResult | null;  // Detail from get_workflow_detail (canonical steps array)
+interface CalculationDetailPanelProps {
+  calculationSummary: CalculationInfo | null;  // Summary from list_calculations (for high-level fields)
+  calculationDetail: CalculationDetailResult | null;  // Detail from get_calculation_detail (canonical steps array)
   projectRoot: string;
   structures?: StructureInfo[];
   onClose?: () => void;
-  onRunWorkflow?: (workflow: WorkflowInfo) => void;
+  onRunCalculation?: (calculation: CalculationInfo) => void;
   onSelectStep?: (stepId: string) => void;
   onDeleteStep?: (stepId: string) => void;  // Callback when step is deleted
   onGoToJobs?: () => void;
-  onWorkflowUpdated?: () => void;
-  onWorkflowDetailUpdated?: (detail: WorkflowDetailResult) => void;  // Callback to update workflowDetail directly
+  onCalculationUpdated?: () => void;
+  onCalculationDetailUpdated?: (detail: CalculationDetailResult) => void;  // Callback to update calculationDetail directly
 }
 
-export function WorkflowDetailPanel({ 
-  workflowSummary,
-  workflowDetail,
+export function CalculationDetailPanel({ 
+  calculationSummary,
+  calculationDetail,
   projectRoot,
   structures,
   onClose,
-  onRunWorkflow,
+  onRunCalculation,
   onSelectStep,
   onDeleteStep,
   onGoToJobs,
-  onWorkflowUpdated,
-  onWorkflowDetailUpdated,
-}: WorkflowDetailPanelProps) {
-  // IMPORTANT: When workflowDetail is available, we MUST use its steps array
-  // as the canonical source of step order, since it is built from workflow.yaml.
+  onCalculationUpdated,
+  onCalculationDetailUpdated,
+}: CalculationDetailPanelProps) {
+  // IMPORTANT: When calculationDetail is available, we MUST use its steps array
+  // as the canonical source of step order, since it is built from calculation.yaml.
   // Fall back to summary only if detail is still loading.
-  const workflowForSteps = workflowDetail ?? workflowSummary;
-  // Both WorkflowInfo and WorkflowDetailResult have compatible fields (id, name, slug, structure, mode, n_steps)
-  const workflow = workflowForSteps as WorkflowInfo | null;
+  const calculationForSteps = calculationDetail ?? calculationSummary;
+  // Both CalculationInfo and CalculationDetailResult have compatible fields (id, name, slug, structure, mode, n_steps)
+  const calculation = calculationForSteps as CalculationInfo | null;
   const [isReordering, setIsReordering] = useState(false);
   const [stepOrder, setStepOrder] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -230,11 +230,11 @@ export function WorkflowDetailPanel({
   
   // Handle deleting a step
   const handleDeleteStep = useCallback(async (stepId: string, stepType: string) => {
-    if (!window.qv || !workflowForSteps || isDeletingStep) return;
+    if (!window.qv || !calculationForSteps || isDeletingStep) return;
     
     // Show confirmation dialog
     const confirmed = window.confirm(
-      `Delete step "${stepType}" (${stepId.substring(0, 8)}...) from workflow "${workflowForSteps.name}"?\n\n` +
+      `Delete step "${stepType}" (${stepId.substring(0, 8)}...) from calculation "${calculationForSteps.name}"?\n\n` +
       `This will move the step file to the project's trash folder. It cannot be undone from the GUI.`
     );
     
@@ -251,8 +251,8 @@ export function WorkflowDetailPanel({
       
       const response = await window.qv.request('delete_step', {
         project_root: normalizedProjectRoot,
-        workflow: workflowForSteps.slug,
-        step: stepId, // ULID from workflow.yaml
+        calculation: calculationForSteps.slug,
+        step: stepId, // ULID from calculation.yaml
       });
       
       if (response.ok) {
@@ -261,21 +261,21 @@ export function WorkflowDetailPanel({
         if (onDeleteStep) {
           onDeleteStep(stepId);
         }
-        // Refresh workflow detail to show updated steps list
-        await onWorkflowUpdated?.();
+        // Refresh calculation detail to show updated steps list
+        await onCalculationUpdated?.();
       } else {
         setError(response.error?.message || 'Failed to delete step');
-        // Still refresh workflow detail to avoid stale entries
-        await onWorkflowUpdated?.();
+        // Still refresh calculation detail to avoid stale entries
+        await onCalculationUpdated?.();
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error');
-      // Still refresh workflow detail to avoid stale entries
-      await onWorkflowUpdated?.();
+      // Still refresh calculation detail to avoid stale entries
+      await onCalculationUpdated?.();
     } finally {
       setIsDeletingStep(false);
     }
-  }, [workflowForSteps, projectRoot, isDeletingStep, onDeleteStep, onWorkflowUpdated]);
+  }, [calculationForSteps, projectRoot, isDeletingStep, onDeleteStep, onCalculationUpdated]);
   
   // Handle showing add step form
   const handleShowAddStep = useCallback(() => {
@@ -287,7 +287,7 @@ export function WorkflowDetailPanel({
   
   // Handle adding a new step
   const handleAddStep = useCallback(async () => {
-    if (!window.qv || !workflowForSteps || !newStepType) return;
+    if (!window.qv || !calculationForSteps || !newStepType) return;
     
     setIsAddingStep(true);
     setError(null);
@@ -295,9 +295,9 @@ export function WorkflowDetailPanel({
     try {
       const stepName = newStepName.trim() || newStepType;
       
-      const response = await window.qv.request<WorkflowDetailResult>('add_step_to_workflow', {
+      const response = await window.qv.request<CalculationDetailResult>('add_step_to_calculation', {
         project_root: projectRoot,
-        workflow: workflowForSteps.slug,
+        calculation: calculationForSteps.slug,
         step_type: newStepType,
         step_name: stepName,
       });
@@ -306,13 +306,13 @@ export function WorkflowDetailPanel({
         setShowAddStep(false);
         setNewStepType('');
         setNewStepName('');
-        // CRITICAL: Wait for workflow detail to refresh before allowing step selection.
-        // This ensures the new step is available in the workflow.steps list before
+        // CRITICAL: Wait for calculation detail to refresh before allowing step selection.
+        // This ensures the new step is available in the calculation.steps list before
         // the user can click it, preventing "Step not found" errors from race conditions.
-        // The onWorkflowUpdated callback will trigger a refetch of workflow detail.
-        // We also update the local workflow prop optimistically with the returned data
+        // The onCalculationUpdated callback will trigger a refetch of calculation detail.
+        // We also update the local calculation prop optimistically with the returned data
         // to ensure the new step appears immediately in the UI.
-        await onWorkflowUpdated?.();
+        await onCalculationUpdated?.();
       } else {
         setError(response.error?.message || 'Failed to add step');
       }
@@ -321,11 +321,11 @@ export function WorkflowDetailPanel({
     } finally {
       setIsAddingStep(false);
     }
-  }, [workflow, projectRoot, newStepType, newStepName, onWorkflowUpdated]);
+  }, [calculation, projectRoot, newStepType, newStepName, onCalculationUpdated]);
   
   // Handle importing QE input as step
   const handleImportStep = useCallback(async () => {
-    if (!window.qv || !workflowForSteps) return;
+    if (!window.qv || !calculationForSteps) return;
     
     // Use window.qv.openFile to pick file
     const inputFile = await window.qv.openFile({
@@ -344,14 +344,14 @@ export function WorkflowDetailPanel({
     setError(null);
     
     try {
-      const response = await window.qv.request<WorkflowDetailResult>('import_step_from_qe_input', {
+      const response = await window.qv.request<CalculationDetailResult>('import_step_from_qe_input', {
         project_root: projectRoot,
-        workflow: workflowForSteps.slug,
+        calculation: calculationForSteps.slug,
         input_file: inputFile,
       });
       
       if (response.ok) {
-        onWorkflowUpdated?.();
+        onCalculationUpdated?.();
       } else {
         setError(response.error?.message || 'Failed to import step');
       }
@@ -360,7 +360,7 @@ export function WorkflowDetailPanel({
     } finally {
       setIsImportingStep(false);
     }
-  }, [workflow, projectRoot, onWorkflowUpdated]);
+  }, [calculation, projectRoot, onCalculationUpdated]);
   
   // Drag-and-drop state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -436,11 +436,11 @@ export function WorkflowDetailPanel({
   
   // Start reorder mode
   const handleStartReorder = useCallback(() => {
-    if (!workflow) return;
-    setStepOrder(workflow.steps.map(s => s.id));
+    if (!calculation) return;
+    setStepOrder(calculation.steps.map(s => s.id));
     setIsReordering(true);
     setError(null);
-  }, [workflow]);
+  }, [calculation]);
   
   // Cancel reorder
   const handleCancelReorder = useCallback(() => {
@@ -450,30 +450,30 @@ export function WorkflowDetailPanel({
   
   // Save reorder
   const handleSaveReorder = useCallback(async () => {
-    if (!window.qv || !workflowForSteps) return;
+    if (!window.qv || !calculationForSteps) return;
     
     setIsSaving(true);
     setError(null);
     
     try {
       // new_order must be array of step ULIDs (from step.id) in the desired order
-      const response = await window.qv.request<WorkflowDetailResult>('reorder_workflow_steps', {
+      const response = await window.qv.request<CalculationDetailResult>('reorder_calculation_steps', {
         project_root: projectRoot,
-        workflow: workflowForSteps.slug, // workflow selector: slug
+        calculation: calculationForSteps.slug, // calculation selector: slug
         new_order: stepOrder, // array of step ULIDs (from step.id)
       });
       
       if (response.ok) {
         setIsReordering(false);
         setStepOrder([]);
-        // CRITICAL: Use the returned workflow detail to update UI immediately
-        // This ensures the UI reflects the new step order from workflow.yaml
-        // The response.data contains the WorkflowDetailResult with updated step order
-        if (response.data && onWorkflowDetailUpdated) {
-          onWorkflowDetailUpdated(response.data);
+        // CRITICAL: Use the returned calculation detail to update UI immediately
+        // This ensures the UI reflects the new step order from calculation.yaml
+        // The response.data contains the CalculationDetailResult with updated step order
+        if (response.data && onCalculationDetailUpdated) {
+          onCalculationDetailUpdated(response.data);
         }
         // Also call the general update callback for any other side effects
-        onWorkflowUpdated?.();
+        onCalculationUpdated?.();
       } else {
         setError(response.error?.message || 'Failed to reorder steps');
       }
@@ -482,25 +482,25 @@ export function WorkflowDetailPanel({
     } finally {
       setIsSaving(false);
     }
-  }, [workflow, projectRoot, stepOrder, onWorkflowUpdated]);
+  }, [calculation, projectRoot, stepOrder, onCalculationUpdated]);
   
   // Handle structure change
   const handleStructureChange = useCallback(async (newStructure: string) => {
-    if (!window.qv || !workflowForSteps) return;
+    if (!window.qv || !calculationForSteps) return;
     
     setIsSaving(true);
     setError(null);
     
     try {
-      const response = await window.qv.request<WorkflowDetailResult>('change_workflow_structure', {
+      const response = await window.qv.request<CalculationDetailResult>('change_calculation_structure', {
         project_root: projectRoot,
-        workflow: workflowForSteps.slug,
+        calculation: calculationForSteps.slug,
         new_structure: newStructure,
         update_steps: true,
       });
       
       if (response.ok) {
-        onWorkflowUpdated?.();
+        onCalculationUpdated?.();
       } else {
         setError(response.error?.message || 'Failed to change structure');
       }
@@ -509,15 +509,15 @@ export function WorkflowDetailPanel({
     } finally {
       setIsSaving(false);
     }
-  }, [workflowForSteps, projectRoot, onWorkflowUpdated]);
+  }, [calculationForSteps, projectRoot, onCalculationUpdated]);
   
-  if (!workflowForSteps) {
+  if (!calculationForSteps) {
     // Show loading state if we have summary but detail is still loading
-    if (workflowSummary && !workflowDetail) {
+    if (calculationSummary && !calculationDetail) {
       return (
-        <div className="workflow-detail-panel" data-testid="qv-workflow-detail">
+        <div className="calculation-detail-panel" data-testid="qv-calculation-detail">
           <div className="panel-header">
-            <h2 className="panel-title">Loading workflow details...</h2>
+            <h2 className="panel-title">Loading calculation details...</h2>
           </div>
         </div>
       );
@@ -525,11 +525,11 @@ export function WorkflowDetailPanel({
     return null;
   }
   
-  // CRITICAL: Use workflowDetail.steps if available (canonical from workflow.yaml),
-  // otherwise fall back to workflowSummary.steps (may have wrong order, but better than nothing)
-  // The steps array from get_workflow_detail is the canonical source of step order and IDs.
+  // CRITICAL: Use calculationDetail.steps if available (canonical from calculation.yaml),
+  // otherwise fall back to calculationSummary.steps (may have wrong order, but better than nothing)
+  // The steps array from get_calculation_detail is the canonical source of step order and IDs.
   // Each step.id is a ULID (26 chars) that must be used as the step selector for RPC calls.
-  const baseSteps = workflowDetail?.steps ?? workflowSummary?.steps ?? [];
+  const baseSteps = calculationDetail?.steps ?? calculationSummary?.steps ?? [];
   
   // When reordering, reorder baseSteps according to stepOrder
   const displaySteps = useMemo(() => {
@@ -542,11 +542,11 @@ export function WorkflowDetailPanel({
     return stepOrder.map(id => stepMap.get(id)).filter((s): s is NonNullable<typeof s> => s !== undefined);
   }, [isReordering, stepOrder, baseSteps]);
   
-  // INSTRUMENTATION: Log steps to verify order matches workflow.yaml
-  console.log('[WorkflowDetailPanel] displaySteps', {
-    workflowSlug: workflowForSteps.slug,
-    hasDetail: !!workflowDetail,
-    hasSummary: !!workflowSummary,
+  // INSTRUMENTATION: Log steps to verify order matches calculation.yaml
+  console.log('[CalculationDetailPanel] displaySteps', {
+    calculationSlug: calculationForSteps.slug,
+    hasDetail: !!calculationDetail,
+    hasSummary: !!calculationSummary,
     stepCount: displaySteps.length,
     steps: displaySteps.map((s, i) => ({
       index: i,
@@ -556,36 +556,36 @@ export function WorkflowDetailPanel({
     })),
   });
   
-  // Early return if no workflow data
-  if (!workflow) {
+  // Early return if no calculation data
+  if (!calculation) {
     return (
-      <div className="workflow-detail-panel">
+      <div className="calculation-detail-panel">
         <div className="panel-placeholder">
           <span className="panel-icon">📊</span>
-          <h3>No Workflow Selected</h3>
-          <p>Select a workflow to view its details.</p>
+          <h3>No Calculation Selected</h3>
+          <p>Select a calculation to view its details.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="workflow-detail-panel" data-testid="qv-workflow-detail">
+    <div className="calculation-detail-panel" data-testid="qv-calculation-detail">
       <div className="panel-header">
         <h2 className="panel-title">
           <span className="panel-icon">📊</span>
-          {workflow.name}
+          {calculation.name}
         </h2>
         <div className="panel-header-actions">
-          {onRunWorkflow && (
+          {onRunCalculation && (
             <button 
               className="panel-header-btn panel-header-btn--primary"
-              onClick={() => onRunWorkflow(workflow)}
+              onClick={() => onRunCalculation(calculation)}
               disabled={isReordering || isSaving}
-              title="Run all steps in this workflow"
-              data-testid="qv-btn-run-workflow"
+              title="Run all steps in this calculation"
+              data-testid="qv-btn-run-calculation"
             >
-              ▶️ Run Workflow
+              ▶️ Run Calculation
             </button>
           )}
           {onClose && (
@@ -613,10 +613,10 @@ export function WorkflowDetailPanel({
                 <select
                   className="structure-selector"
                   value={
-                    // Match workflow.structure (name) to structure slug for dropdown value
+                    // Match calculation.structure (name) to structure slug for dropdown value
                     // Backend returns structure name, but dropdown uses slug as value
-                    workflow.structure 
-                      ? (structures.find(s => s.name === workflow.structure)?.slug || '')
+                    calculation.structure 
+                      ? (structures.find(s => s.name === calculation.structure)?.slug || '')
                       : ''
                   }
                   onChange={(e) => handleStructureChange(e.target.value)}
@@ -628,22 +628,22 @@ export function WorkflowDetailPanel({
                   ))}
                 </select>
               ) : (
-                <code className="detail-value">{workflow.structure || 'None'}</code>
+                <code className="detail-value">{calculation.structure || 'None'}</code>
               )}
             </div>
             <div className="detail-item">
               <span className="detail-label">Mode</span>
-              <span className={`detail-value mode-badge mode-badge--${workflow.mode}`}>
-                {workflow.mode}
+              <span className={`detail-value mode-badge mode-badge--${calculation.mode}`}>
+                {calculation.mode}
               </span>
             </div>
             <div className="detail-item">
               <span className="detail-label">Steps</span>
-              <span className="detail-value">{workflow.n_steps}</span>
+              <span className="detail-value">{calculation.n_steps}</span>
             </div>
             <div className="detail-item">
               <span className="detail-label">ID</span>
-              <code className="detail-value detail-value--id">{workflow.id}</code>
+              <code className="detail-value detail-value--id">{calculation.id}</code>
             </div>
           </div>
         </div>
@@ -657,7 +657,7 @@ export function WorkflowDetailPanel({
                   <button 
                     className="section-action-btn section-action-btn--add"
                     onClick={handleShowAddStep}
-                    title="Add a new step to this workflow"
+                    title="Add a new step to this calculation"
                     data-testid="qv-add-step-btn"
                   >
                     ➕ Add Step
@@ -674,7 +674,7 @@ export function WorkflowDetailPanel({
                   <button 
                     className="section-action-btn"
                     onClick={handleStartReorder}
-                    disabled={workflow.n_steps < 2}
+                    disabled={calculation.n_steps < 2}
                     title="Reorder steps"
                   >
                     ↕️ Reorder
@@ -815,11 +815,11 @@ export function WorkflowDetailPanel({
                   className="step-item"
                   onClick={() => {
                     if (!isReordering) {
-                      // CRITICAL: step.id is ULID from backend (get_workflow_detail returns step.id from workflow.yaml)
+                      // CRITICAL: step.id is ULID from backend (get_calculation_detail returns step.id from calculation.yaml)
                       // This is the ONLY correct selector for get_step_detail RPC
                       // We MUST use step.id directly, NOT derived from index or any other source
-                      console.log('[WorkflowDetailPanel] step clicked', {
-                        workflowSlug: workflowForSteps.slug,
+                      console.log('[CalculationDetailPanel] step clicked', {
+                        calculationSlug: calculationForSteps.slug,
                         stepIndex: idx,
                         stepId: step.id,
                         stepType: step.type,
@@ -862,12 +862,12 @@ export function WorkflowDetailPanel({
         <div className="detail-section">
           <h3>File Location</h3>
           <div className="file-location">
-            <code className="file-location__path" title={workflow.absolute_path}>
-              {workflow.absolute_path}
+            <code className="file-location__path" title={calculation.absolute_path}>
+              {calculation.absolute_path}
             </code>
             <button 
               className="file-location__reveal-btn"
-              onClick={() => window.qv?.revealPath?.(workflow.absolute_path)}
+              onClick={() => window.qv?.revealPath?.(calculation.absolute_path)}
               title="Reveal in Finder"
             >
               📂 Reveal

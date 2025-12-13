@@ -1,5 +1,5 @@
 """
-Utilities for loading/saving project metadata and workflows.
+Utilities for loading/saving project metadata and calculations.
 """
 
 from __future__ import annotations
@@ -11,13 +11,13 @@ from typing import Iterable
 import yaml
 
 from quantumvitas.core.resources import ensure_relative_path, meta_from_name
-from .model import Project, ProjectSettings, WorkflowRef
+from .model import Project, ProjectSettings, CalculationRef
 
 
 @dataclass(slots=True)
 class ProjectStorage:
     """
-    Responsible for persisting project-level files (settings, workflows).
+    Responsible for persisting project-level files (settings, calculations).
     """
 
     project: Project
@@ -32,26 +32,26 @@ class ProjectStorage:
         self.project.settings_file.parent.mkdir(parents=True, exist_ok=True)
         self.project.settings_file.write_text(yaml.safe_dump(settings.data))
 
-    def list_workflows(self) -> Iterable[WorkflowRef]:
-        workflows_dir = self.project.workflows_dir
-        if not workflows_dir.exists():
+    def list_calculations(self) -> Iterable[CalculationRef]:
+        calculations_dir = self.project.calculations_dir
+        if not calculations_dir.exists():
             return []
-        refs: list[WorkflowRef] = []
-        for path in workflows_dir.iterdir():
+        refs: list[CalculationRef] = []
+        for path in calculations_dir.iterdir():
             if not path.is_dir():
                 continue
             meta = meta_from_name(
-                "workflow",
+                "calculation",
                 name=path.name,
                 path=ensure_relative_path(path, base=self.project.root),
             )
-            refs.append(WorkflowRef(meta=meta, absolute_path=path.resolve()))
+            refs.append(CalculationRef(meta=meta, absolute_path=path.resolve()))
         return refs
 
     def ensure_directories(self) -> None:
         """
         Create the canonical project sub-directories if they do not exist.
         """
-        for subdir in ["structures", "workflows", "pseudo"]:
+        for subdir in ["structures", "calculations", "pseudo"]:
             (self.project.root / subdir).mkdir(parents=True, exist_ok=True)
 

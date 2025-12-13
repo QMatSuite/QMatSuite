@@ -14,7 +14,7 @@ from typer.testing import CliRunner
 
 from quantumvitas.cli.main import app
 from quantumvitas.io import QEInputParser
-from quantumvitas.workflow.structure_steps import StructureStepSpec, generate_qe_input_from_spec
+from quantumvitas.calculation.structure_steps import StructureStepSpec, generate_qe_input_from_spec
 from quantumvitas.io import read_structure
 
 
@@ -65,12 +65,12 @@ class TestStepDefaultsFromScratch:
         )
         assert result.exit_code == 0, result.stdout
         
-        # Create workflow
+        # Create calculation
         result = runner.invoke(
             app,
             [
                 "init",
-                "workflow",
+                "calculation",
                 "test_wf",
                 "--structure",
                 "si",
@@ -89,7 +89,7 @@ class TestStepDefaultsFromScratch:
                 "scf",
                 "--structure",
                 "si",
-                "--workflow",
+                "--calculation",
                 "test_wf",
                 "--project",
                 str(project_root),
@@ -99,9 +99,9 @@ class TestStepDefaultsFromScratch:
         
         # Load the step spec
         from quantumvitas.core.resources import slugify
-        workflow_slug = slugify("test_wf")
-        workflow_dir = project_root / "workflows" / workflow_slug
-        step_spec_path = workflow_dir / "steps" / "scf.step.yaml"
+        calculation_slug = slugify("test_wf")
+        calculation_dir = project_root / "calculations" / calculation_slug
+        step_spec_path = calculation_dir / "steps" / "scf.step.yaml"
         assert step_spec_path.exists(), "Step spec should be created"
         
         spec = StructureStepSpec.from_yaml(step_spec_path)
@@ -153,7 +153,7 @@ class TestStepDefaultsImportFromInput:
         # Use the first test case
         input_path = cases[0].input_path
         structure_name = f"struct_{input_path.stem}"
-        workflow_name = f"wf_{input_path.stem}"
+        calculation_name = f"wf_{input_path.stem}"
         
         # Import structure
         result = runner.invoke(
@@ -169,13 +169,13 @@ class TestStepDefaultsImportFromInput:
         )
         assert result.exit_code == 0, result.stdout
         
-        # Create workflow
+        # Create calculation
         result = runner.invoke(
             app,
             [
                 "init",
-                "workflow",
-                workflow_name,
+                "calculation",
+                calculation_name,
                 "--structure",
                 structure_name,
                 "--project",
@@ -200,10 +200,10 @@ class TestStepDefaultsImportFromInput:
         )
         init_args = shlex.split(init_line)[1:]
         
-        # Add required workflow/structure/project args
+        # Add required calculation/structure/project args
         init_args.extend([
             "--structure", structure_name,
-            "--workflow", workflow_name,
+            "--calculation", calculation_name,
             "--project", str(project_root)
         ])
         
@@ -217,15 +217,15 @@ class TestStepDefaultsImportFromInput:
         # Load the step spec
         from quantumvitas.core.resources import slugify
         from quantumvitas.core.resolution import require_step
-        workflow_slug = slugify(workflow_name)
-        workflow_dir = project_root / "workflows" / workflow_slug
-        workflow_yaml = yaml.safe_load((workflow_dir / "workflow.yaml").read_text())
-        last_step = workflow_yaml["steps"][-1]
+        calculation_slug = slugify(calculation_name)
+        calculation_dir = project_root / "calculations" / calculation_slug
+        calculation_yaml = yaml.safe_load((calculation_dir / "calculation.yaml").read_text())
+        last_step = calculation_yaml["steps"][-1]
         # ID-only model: use step_id (ULID) to resolve step file
         step_id = last_step.get("step_id") or last_step.get("id")
         assert step_id, "Step entry should have step_id"
         # Resolve step to get its file path
-        step_resolved = require_step(project_root, workflow_slug, step_id)
+        step_resolved = require_step(project_root, calculation_slug, step_id)
         step_spec_path = step_resolved.absolute_path
         
         spec = StructureStepSpec.from_yaml(step_spec_path)

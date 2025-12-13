@@ -55,19 +55,19 @@ class TestDemoSnapshotRestore:
             structure_files = list(structures_dir.glob("*.json"))
             assert len(structure_files) > 0, f"At least one structure file should exist in {structures_dir}"
             
-            # Verify workflows directory exists and has files
-            workflows_dir = project_root / "workflows"
-            assert workflows_dir.exists(), f"workflows directory should exist: {workflows_dir}"
-            workflow_dirs = [d for d in workflows_dir.iterdir() if d.is_dir()]
-            assert len(workflow_dirs) > 0, f"At least one workflow directory should exist in {workflows_dir}"
+            # Verify calculations directory exists and has files
+            calculations_dir = project_root / "calculations"
+            assert calculations_dir.exists(), f"calculations directory should exist: {calculations_dir}"
+            calculation_dirs = [d for d in calculations_dir.iterdir() if d.is_dir()]
+            assert len(calculation_dirs) > 0, f"At least one calculation directory should exist in {calculations_dir}"
             
-            # Verify at least one workflow has a workflow.yaml
-            workflow_yamls = list(workflows_dir.glob("*/workflow.yaml"))
-            assert len(workflow_yamls) > 0, f"At least one workflow.yaml should exist in {workflows_dir}"
+            # Verify at least one calculation has a calculation.yaml
+            calculation_yamls = list(calculations_dir.glob("*/calculation.yaml"))
+            assert len(calculation_yamls) > 0, f"At least one calculation.yaml should exist in {calculations_dir}"
             
-            # Verify at least one workflow has step files
-            step_files = list(workflows_dir.glob("*/steps/*.step.yaml"))
-            assert len(step_files) > 0, f"At least one step file should exist in {workflows_dir}"
+            # Verify at least one calculation has step files
+            step_files = list(calculations_dir.glob("*/steps/*.step.yaml"))
+            assert len(step_files) > 0, f"At least one step file should exist in {calculations_dir}"
     
     def test_si_dos_demo_restore(self):
         """Test that si_dos_demo snapshot can be restored correctly."""
@@ -102,9 +102,9 @@ class TestDemoSnapshotRestore:
             structures_dir = project_root / "structures"
             assert structures_dir.exists(), f"structures directory should exist: {structures_dir}"
             
-            # Verify workflows directory exists
-            workflows_dir = project_root / "workflows"
-            assert workflows_dir.exists(), f"workflows directory should exist: {workflows_dir}"
+            # Verify calculations directory exists
+            calculations_dir = project_root / "calculations"
+            assert calculations_dir.exists(), f"calculations directory should exist: {calculations_dir}"
     
     def test_create_demo_project_via_api(self):
         """Test creating demo project via QVService.create_demo_project."""
@@ -130,17 +130,17 @@ class TestDemoSnapshotRestore:
             structure_files = list(structures_dir.glob("*.json"))
             assert len(structure_files) > 0, f"At least one structure file should exist"
             
-            # Verify workflows directory exists and has files
-            workflows_dir = project_root / "workflows"
-            assert workflows_dir.exists(), f"workflows directory should exist: {workflows_dir}"
-            workflow_yamls = list(workflows_dir.glob("*/workflow.yaml"))
-            assert len(workflow_yamls) > 0, f"At least one workflow.yaml should exist"
+            # Verify calculations directory exists and has files
+            calculations_dir = project_root / "calculations"
+            assert calculations_dir.exists(), f"calculations directory should exist: {calculations_dir}"
+            calculation_yamls = list(calculations_dir.glob("*/calculation.yaml"))
+            assert len(calculation_yamls) > 0, f"At least one calculation.yaml should exist"
             
             # Verify project can be opened by QVService
             summary = QVService.get_project_summary(project_root)
             assert summary is not None, "Project summary should be available"
             assert summary["n_structures"] > 0, "Project should have at least one structure"
-            assert summary["n_workflows"] > 0, "Project should have at least one workflow"
+            assert summary["n_calculations"] > 0, "Project should have at least one calculation"
     
     def test_create_demo_project_with_invalid_demo_id(self):
         """Test that creating demo project with invalid demo_id raises error."""

@@ -1,7 +1,7 @@
 """
-Test for Si band structure workflow with auto-generated k-path.
+Test for Si band structure calculation with auto-generated k-path.
 
-This test creates a project with an auto k-path band structure workflow:
+This test creates a project with an auto k-path band structure calculation:
 - SCF calculation (pw.x calculation='scf', K_POINTS automatic)
 - NSCF calculation (pw.x calculation='nscf', K_POINTS automatic denser)
 - Bands calculation (pw.x calculation='bands', K_POINTS crystal_b auto-generated)
@@ -82,8 +82,8 @@ K_POINTS (automatic)
 
 @pytest.fixture(scope="module")
 def test_project_dir(project_root_path: Path) -> Path:
-    """Create a temporary project directory for AUTO k-path workflow tests."""
-    test_dir = project_root_path / "temp" / "test_si_bands_workflow_auto"
+    """Create a temporary project directory for AUTO k-path calculation tests."""
+    test_dir = project_root_path / "temp" / "test_si_bands_calculation_auto"
     if test_dir.exists():
         shutil.rmtree(test_dir)
     test_dir.mkdir(parents=True, exist_ok=True)
@@ -92,7 +92,7 @@ def test_project_dir(project_root_path: Path) -> Path:
 
 @pytest.fixture(scope="module")
 def project_with_structure(test_project_dir: Path, project_root_path: Path) -> Path:
-    """Initialize project and import Si structure for AUTO workflow tests."""
+    """Initialize project and import Si structure for AUTO calculation tests."""
     # Create QE input file in test_project_dir
     scf_in = test_project_dir / "si.0_scf.in"
     scf_in.write_text(QE_INPUT_CONTENT)
@@ -120,31 +120,31 @@ def project_with_structure(test_project_dir: Path, project_root_path: Path) -> P
 
 
 @pytest.mark.skipif(not HAS_PYMATGEN, reason="pymatgen required for auto-kpath tests")
-class TestSiBandsWorkflowAutoKpath:
-    """Test band structure workflow with auto-generated k-path."""
+class TestSiBandsCalculationAutoKpath:
+    """Test band structure calculation with auto-generated k-path."""
     
     @pytest.fixture(scope="class")
-    def workflow_dir(self, project_with_structure: Path) -> Path:
-        """Create workflow with auto k-path."""
+    def calculation_dir(self, project_with_structure: Path) -> Path:
+        """Create calculation with auto k-path."""
         project_dir = project_with_structure
         
-        run_qv(["init", "workflow", "bands_auto", "--structure", "si"], cwd=project_dir)
+        run_qv(["init", "calculation", "bands_auto", "--structure", "si"], cwd=project_dir)
         
-        workflow_dir = project_dir / "workflows" / "bands_auto"
-        assert workflow_dir.exists()
+        calculation_dir = project_dir / "calculations" / "bands_auto"
+        assert calculation_dir.exists()
         
-        return workflow_dir
+        return calculation_dir
     
     @pytest.fixture(scope="class")
-    def workflow_with_steps(self, project_with_structure: Path, workflow_dir: Path) -> Path:
-        """Create all steps for the auto k-path workflow."""
+    def calculation_with_steps(self, project_with_structure: Path, calculation_dir: Path) -> Path:
+        """Create all steps for the auto k-path calculation."""
         project_dir = project_with_structure
         
         # Step 1: SCF (same as manual)
         run_qv([
             "init", "step", "scf",
             "--structure", "si",
-            "--workflow", "bands_auto",
+            "--calculation", "bands_auto",
             "--CONTROL.prefix", "si",
             "--CONTROL.outdir", "./outdir",
             "--SYSTEM.ecutwfc", "40",
@@ -159,7 +159,7 @@ class TestSiBandsWorkflowAutoKpath:
         run_qv([
             "init", "step", "nscf",
             "--structure", "si",
-            "--workflow", "bands_auto",
+            "--calculation", "bands_auto",
             "--CONTROL.prefix", "si",
             "--CONTROL.outdir", "./outdir",
             "--SYSTEM.ecutwfc", "40",
@@ -176,7 +176,7 @@ class TestSiBandsWorkflowAutoKpath:
         run_qv([
             "init", "step", "bands_pw",
             "--structure", "si",
-            "--workflow", "bands_auto",
+            "--calculation", "bands_auto",
             "--name", "bands",
             "--auto-kpath",
             "--kpath-points", "20",
@@ -190,7 +190,7 @@ class TestSiBandsWorkflowAutoKpath:
         ], cwd=project_dir)
         
         # Verify kpath_metadata was stored
-        step_file = workflow_dir / "steps" / "bands.step.yaml"
+        step_file = calculation_dir / "steps" / "bands.step.yaml"
         with open(step_file) as f:
             step_data = yaml.safe_load(f)
         assert "kpath_metadata" in step_data, "Auto k-path metadata not stored"
@@ -201,36 +201,36 @@ class TestSiBandsWorkflowAutoKpath:
         run_qv([
             "init", "step", "bands",
             "--structure", "si",
-            "--workflow", "bands_auto",
+            "--calculation", "bands_auto",
             "--name", "bandspp",
             "--BANDS.prefix", "si",
             "--BANDS.outdir", "./outdir",
             "--BANDS.filband", "si.bands.dat",
         ], cwd=project_dir)
         
-        return workflow_dir
+        return calculation_dir
     
-    def test_run_workflow_and_analyze_auto(
+    def test_run_calculation_and_analyze_auto(
         self,
         project_with_structure: Path,
-        workflow_with_steps: Path,
+        calculation_with_steps: Path,
     ) -> None:
-        """Run the complete auto k-path workflow and analyze bands (end-to-end test)."""
+        """Run the complete auto k-path calculation and analyze bands (end-to-end test)."""
         project_dir = project_with_structure
-        workflow_dir = workflow_with_steps
-        raw_dir = workflow_dir / "raw"
+        calculation_dir = calculation_with_steps
+        raw_dir = calculation_dir / "raw"
         
-        # Run the workflow once
+        # Run the calculation once
         result = run_qv(
-            ["run", "workflow", "bands_auto", "--verbose"],
+            ["run", "calculation", "bands_auto", "--verbose"],
             cwd=project_dir,
             check=False,
         )
         
-        # Check if workflow completed successfully
+        # Check if calculation completed successfully
         if result.returncode != 0 or "status:" not in result.stdout.lower():
             pytest.fail(
-                "Auto k-path workflow failed:\n"
+                "Auto k-path calculation failed:\n"
                 f"STDOUT:\n{result.stdout}\n\n"
                 f"STDERR:\n{result.stderr}"
             )
@@ -262,7 +262,7 @@ class TestSiBandsWorkflowAutoKpath:
                 bands_out_files = list(raw_dir.glob("*bands*.out")) if raw_dir.exists() else []
                 crash_files = sorted(p.name for p in raw_dir.glob("CRASH*")) if raw_dir.exists() else []
                 error_msg = (
-                    f"Bands output (.gnu file) not found after running auto k-path workflow.\n"
+                    f"Bands output (.gnu file) not found after running auto k-path calculation.\n"
                     f"Expected: {raw_dir / 'si.bands.dat.gnu'}\n"
                     f"Files in raw/: {raw_files}\n"
                 )
@@ -272,7 +272,7 @@ class TestSiBandsWorkflowAutoKpath:
                     error_msg += f"Bands.x output files found: {[f.name for f in bands_out_files]}\n"
                 if crash_files:
                     error_msg += f"CRASH files found (bands.x may have failed): {[f.name for f in crash_files]}\n"
-                error_msg += "Workflow may have failed at bands.x step or output has different name."
+                error_msg += "Calculation may have failed at bands.x step or output has different name."
                 pytest.fail(error_msg)
         
         # Find the bands.x output for symmetry points
@@ -313,13 +313,13 @@ class TestSiBandsWorkflowAutoKpath:
             )
         
         # Verify plot was created in results folder
-        results_dir = workflow_dir / "results"
+        results_dir = calculation_dir / "results"
         plot_files = list(results_dir.glob("bands*.png"))
         assert plot_files, f"No band plot found in {results_dir}"
     
-    def test_auto_kpath_step_config(self, workflow_with_steps: Path):
+    def test_auto_kpath_step_config(self, calculation_with_steps: Path):
         """Verify auto k-path step configuration (no QE execution)."""
-        step_file = workflow_with_steps / "steps" / "bands.step.yaml"
+        step_file = calculation_with_steps / "steps" / "bands.step.yaml"
         assert step_file.exists(), f"Step file not found: {step_file}"
         
         with open(step_file) as f:

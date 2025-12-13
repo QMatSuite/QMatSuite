@@ -10,7 +10,7 @@
 **Option A** (desired behavior):
 - Snapshots are backup/demo artifacts, not templates
 - Snapshots store real ULIDs and reuse them on restore
-- Snapshot contains `meta.id` for all resources (project/structure/workflow/step)
+- Snapshot contains `meta.id` for all resources (project/structure/calculation/step)
 - All cross-references inside snapshot are by `*_id` only (no name/slug/path)
 - When materializing a snapshot, **keep the same ULIDs exactly** (do not regenerate)
 - IDs only need to be unique within a project, not globally
@@ -26,15 +26,15 @@
 **Location**: `src/quantumvitas/project/snapshot.py:97-209`
 
 **Current behavior**: ✅ **Already matches Option A**
-- Exports `meta.id` for all resources (project, structures, workflows, steps)
+- Exports `meta.id` for all resources (project, structures, calculations, steps)
 - Exports `structure_id` and `step_id` for cross-references (ID-only)
 - Preserves all ULIDs in snapshot YAML
 
 **Evidence**:
 - Line 117: `"meta": project_model.meta.to_dict()` - includes `id`
 - Line 138: `"meta": struct_entry.meta.to_dict()` - includes `id`
-- Line 155: `workflow_meta_dict = workflow_entry.meta.to_dict()` - includes `id`
-- Line 167: `workflow_dict["structure_id"] = workflow_model.structure_id` - ID-only reference
+- Line 155: `calculation_meta_dict = calculation_entry.meta.to_dict()` - includes `id`
+- Line 167: `calculation_dict["structure_id"] = calculation_model.structure_id` - ID-only reference
 - Line 186: `step_dict = step_spec.to_dict()` - includes `meta.id` and `structure_id`
 
 **Demo snapshot example** (`resources/demo_projects/si_bands_demo.yml`):
@@ -45,7 +45,7 @@ project:
 structures:
 - meta:
     id: 01KBH0RFSSZ1G305C8PS5F1WHC  # Real ULID preserved
-workflows:
+calculations:
 - meta:
     id: 01KBH0S...  # Real ULID preserved
   structure_id: 01KBH0RFSSZ1G305C8PS5F1WHC  # ID-only reference
@@ -63,10 +63,10 @@ workflows:
 **Evidence of ID regeneration**:
 - Line 263: `new_project_id = generate_resource_id()` - regenerates project ID
 - Line 274: `new_struct_id = generate_resource_id()` - regenerates structure IDs
-- Line 286: `new_workflow_id = generate_resource_id()` - regenerates workflow IDs
+- Line 286: `new_calculation_id = generate_resource_id()` - regenerates calculation IDs
 - Line 296: `new_step_id = generate_resource_id()` - regenerates step IDs
 - Line 325: `new_struct_id = id_mapping.get(old_struct_id, generate_resource_id())` - fallback regeneration
-- Line 368: `new_workflow_id = id_mapping.get(old_workflow_id, generate_resource_id())` - fallback regeneration
+- Line 368: `new_calculation_id = id_mapping.get(old_calculation_id, generate_resource_id())` - fallback regeneration
 - Line 442: `new_step_id = id_mapping.get(old_step_id, generate_resource_id())` - fallback regeneration
 
 **Docstring contradiction** (line 48-49 in `ProjectSnapshot` class):
@@ -87,14 +87,14 @@ Generates new ULIDs for all resources and rewrites references to maintain consis
 ### ✅ Cross-References in Snapshot
 
 **Current behavior**: ✅ **Already matches Option A**
-- Snapshots use `structure_id` (ULID) for workflow → structure references
-- Snapshots use `step_id` (ULID) for workflow → step references (via step meta.id)
-- Snapshots use `parent_workflow_id` (ULID) for step → workflow references
+- Snapshots use `structure_id` (ULID) for calculation → structure references
+- Snapshots use `step_id` (ULID) for calculation → step references (via step meta.id)
+- Snapshots use `parent_calculation_id` (ULID) for step → calculation references
 - No name/slug/path stored as cross-references (only in resource's own meta)
 
 **Evidence**:
-- Line 167-171: `workflow_dict["structure_id"] = workflow_model.structure_id`
-- Line 186: `step_dict = step_spec.to_dict()` - includes `parent_workflow_id` and `structure_id`
+- Line 167-171: `calculation_dict["structure_id"] = calculation_model.structure_id`
+- Line 186: `step_dict = step_spec.to_dict()` - includes `parent_calculation_id` and `structure_id`
 
 ### ✅ Demo Project Creation Path
 
@@ -145,7 +145,7 @@ Generates new ULIDs for all resources and rewrites references to maintain consis
 ```python
 # ULIDs should be different
 assert original_project.meta.id != new_project.meta.id
-assert original_workflow.meta.id != new_workflow.meta.id
+assert original_calculation.meta.id != new_calculation.meta.id
 ```
 
 **Impact**: 
@@ -182,11 +182,11 @@ ULIDs are preserved for reference but will be regenerated when materializing the
 - **Remove** lines 257-297 (id_mapping construction and ID regeneration)
 - **Change** line 263: `new_project_id = old_project_id` (keep snapshot ID)
 - **Change** line 274: `new_struct_id = old_struct_id` (keep snapshot ID)
-- **Change** line 286: `new_workflow_id = old_workflow_id` (keep snapshot ID)
+- **Change** line 286: `new_calculation_id = old_calculation_id` (keep snapshot ID)
 - **Change** line 296: `new_step_id = old_step_id` (keep snapshot ID)
 - **Remove** all `id_mapping.get(old_id, generate_resource_id())` fallbacks
 - **Update** all references to use snapshot IDs directly (no mapping needed)
-- **Update** structure_id and parent_workflow_id references to use snapshot IDs directly
+- **Update** structure_id and parent_calculation_id references to use snapshot IDs directly
 
 **Lines to modify**:
 - Lines 257-297: Remove id_mapping construction
@@ -194,14 +194,14 @@ ULIDs are preserved for reference but will be regenerated when materializing the
 - Line 325: `new_struct_id = id_mapping.get(...)` → `new_struct_id = old_struct_id`
 - Line 333: `"id": new_struct_id` → `"id": old_struct_id`
 - Line 348: `id=new_struct_id` → `id=old_struct_id`
-- Line 368: `new_workflow_id = id_mapping.get(...)` → `new_workflow_id = old_workflow_id`
-- Line 422: `id=new_workflow_id` → `id=old_workflow_id`
-- Line 428: `structure_id=workflow_structure_id` → `structure_id=old_workflow_structure_id` (from snapshot)
+- Line 368: `new_calculation_id = id_mapping.get(...)` → `new_calculation_id = old_calculation_id`
+- Line 422: `id=new_calculation_id` → `id=old_calculation_id`
+- Line 428: `structure_id=calculation_structure_id` → `structure_id=old_calculation_structure_id` (from snapshot)
 - Line 442: `new_step_id = id_mapping.get(...)` → `new_step_id = old_step_id`
 - Line 447: `"id": new_step_id` → `"id": old_step_id`
-- Line 455: `step_spec_dict["parent_workflow_id"] = new_workflow_id` → `step_spec_dict["parent_workflow_id"] = old_workflow_id`
+- Line 455: `step_spec_dict["parent_calculation_id"] = new_calculation_id` → `step_spec_dict["parent_calculation_id"] = old_calculation_id`
 - Line 465: `step_spec_dict["structure_id"] = new_structure_id` → `step_spec_dict["structure_id"] = old_structure_id` (from snapshot)
-- Line 521: `id=new_workflow_id` → `id=old_workflow_id`
+- Line 521: `id=new_calculation_id` → `id=old_calculation_id`
 
 **Simplification**: Since we're keeping IDs, we don't need the `id_mapping` dictionary at all. All references can use snapshot IDs directly.
 
@@ -237,7 +237,7 @@ ULIDs are preserved for reference but will be regenerated when materializing the
   ```python
   # ULIDs should be preserved (Option A)
   assert original_project.meta.id == new_project.meta.id
-  assert original_workflow.meta.id == new_workflow.meta.id
+  assert original_calculation.meta.id == new_calculation.meta.id
   ```
 
   OR if we want to keep the test flexible for future "fresh IDs" option:
@@ -245,14 +245,14 @@ ULIDs are preserved for reference but will be regenerated when materializing the
   # ULIDs are preserved by default (Option A)
   # Note: Future --fresh-ids option will regenerate IDs
   assert original_project.meta.id == new_project.meta.id
-  assert original_workflow.meta.id == new_workflow.meta.id
+  assert original_calculation.meta.id == new_calculation.meta.id
   ```
 
 #### 4. Verify Cross-Reference Resolution
 
 **No changes needed** - current code already:
 - Uses `structure_id` (ULID) from snapshot
-- Uses `parent_workflow_id` (ULID) from snapshot
+- Uses `parent_calculation_id` (ULID) from snapshot
 - Maps these correctly during materialization (just need to keep IDs instead of regenerating)
 
 ---
@@ -289,7 +289,7 @@ ULIDs are preserved for reference but will be regenerated when materializing the
 
 **No changes needed**.
 
-### ✅ Structure/Workflow/Step Name Changes
+### ✅ Structure/Calculation/Step Name Changes
 
 **Finding**: ✅ **Handled correctly**
 - Names/slugs are derived from snapshot meta

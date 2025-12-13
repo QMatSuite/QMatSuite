@@ -8,8 +8,8 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from quantumvitas.workflow.results import WorkflowResult
-from quantumvitas.workflow.workflow import Workflow
+from quantumvitas.calculation.results import CalculationResult
+from quantumvitas.calculation.calculation import Calculation
 from .parsers import parse_scf_output, SCFResult
 
 
@@ -77,8 +77,8 @@ def analyze_scf_detailed(output_file: Path | str) -> SCFResult:
     return parse_scf_output(output_path)
 
 
-def summarize_workflow_energies(
-    workflow: Workflow, result: WorkflowResult, results_dir: Path
+def summarize_calculation_energies(
+    calculation: Calculation, result: CalculationResult, results_dir: Path
 ) -> None:
     """
     Extract total energy / Fermi energy metrics from each step result.

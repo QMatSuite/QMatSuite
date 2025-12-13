@@ -76,7 +76,7 @@ def main():
     
     print(f"  ✓ Created {target_path}")
     print(f"    - {len(snapshot.structures)} structure(s)")
-    print(f"    - {len(snapshot.workflows)} workflow(s)")
+    print(f"    - {len(snapshot.calculations)} calculation(s)")
     if snapshot.pseudo:
         print(f"    - {len(snapshot.pseudo.get('files', []))} pseudo file(s)")
     if snapshot.meta:

@@ -3,7 +3,7 @@
 ## 测试配置
 - **NPROCS**: 4
 - **修复内容**: 
-  - Workflow 逻辑修复（不再复制 .save 目录）
+  - Calculation 逻辑修复（不再复制 .save 目录）
   - Bidirectional 转换修复（科学计数法解析、浮点数规范化）
   - 添加 Q2R 和 MATDYN 模块支持
 
@@ -17,12 +17,12 @@
 
 ## 结论
 
-修复 workflow 和 bidirectional 转换后，NPROCS=4 的通过率与修复前相同（11.2%），没有提升。
+修复 calculation 和 bidirectional 转换后，NPROCS=4 的通过率与修复前相同（11.2%），没有提升。
 
 这说明：
 1. ✅ **Bidirectional 转换已修复**: 所有失败类别的文件都能正确进行 parse → generate → parse
-2. ✅ **Workflow 逻辑已修复**: 不再错误地复制 .save 目录
-3. ⚠️ **主要问题仍然是 MPI_ABORT**: 大部分失败由 MPI 配置问题导致，而非 workflow 或 parsing 问题
+2. ✅ **Calculation 逻辑已修复**: 不再错误地复制 .save 目录
+3. ⚠️ **主要问题仍然是 MPI_ABORT**: 大部分失败由 MPI 配置问题导致，而非 calculation 或 parsing 问题
 
 ## 100% 通过的类别
 
@@ -39,6 +39,6 @@
 ## 建议
 
 1. **MPI 配置问题**: 需要进一步调查 MPI_ABORT 的根本原因
-2. **Workflow 文件依赖**: 虽然 workflow 逻辑已修复，但文件依赖关系（前一步的输出文件名）可能需要更仔细的处理
+2. **Calculation 文件依赖**: 虽然 calculation 逻辑已修复，但文件依赖关系（前一步的输出文件名）可能需要更仔细的处理
 3. **成功的测试**: 3 个类别（9 个测试）在 NPROCS=4 下稳定通过，证明 ph.x 模块本身工作正常
 

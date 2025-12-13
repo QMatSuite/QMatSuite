@@ -61,8 +61,8 @@ Comprehensive test coverage:
 
 - **Integration Tests** (`tests/integration/test_qe_engine.py`):
   - Engine integration
-  - Real-world workflow scenarios
-  - File modification workflows
+  - Real-world calculation scenarios
+  - File modification calculations
 
 - **Real Example Tests**:
   - Tests using actual QE tutorial examples

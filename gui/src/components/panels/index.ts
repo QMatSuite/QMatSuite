@@ -4,7 +4,7 @@ export { QEParameterBrowserPanel } from './QEParameterBrowserPanel';
 export { ProjectSummaryPanel } from './ProjectSummaryPanel';
 export { DemoGalleryPanel } from './DemoGalleryPanel';
 export { StructureListPanel, StructureDetailPanel } from './StructureListPanel';
-export { WorkflowListPanel, WorkflowDetailPanel } from './WorkflowListPanel';
+export { CalculationListPanel, CalculationDetailPanel } from './CalculationListPanel';
 export { StepDetailPanel } from './StepDetailPanel';
 export { StructureViewer3D } from './StructureViewer3D';
 export { AnalysisPanel, ScfConvergenceChart, DosChart, BandsChart } from './AnalysisPanel';

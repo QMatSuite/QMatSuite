@@ -10,11 +10,11 @@ from typer.testing import CliRunner
 from quantumvitas.project.model import Project
 from quantumvitas.cli.main import app, _parse_override_args
 from quantumvitas.core.resources import slugify
-from quantumvitas.workflow.input_runner import PreparedInputStep
-from quantumvitas.workflow.geometry import read_geometry_from_input, compare_geometries
-from quantumvitas.core.engines.qe_workflow import StepResult
+from quantumvitas.calculation.input_runner import PreparedInputStep
+from quantumvitas.calculation.geometry import read_geometry_from_input, compare_geometries
+from quantumvitas.core.engines.qe_calculation import StepResult
 from quantumvitas.io import QEInputParser, read_structure
-from quantumvitas.workflow.types import StepMode
+from quantumvitas.calculation.types import StepMode
 from tests.core.test_data import load_test_cases
 
 
@@ -36,12 +36,12 @@ def sample_project(tmp_path: Path) -> Path:
     structure_meta = meta_from_name("structure", name="si", path="structures/si.json")
     structure_meta.id = structure_id
     
-    # Generate workflow ULID (ID-only model)
-    workflow_ulid = generate_resource_id()
+    # Generate calculation ULID (ID-only model)
+    calculation_ulid = generate_resource_id()
     
     project_config = {
         "project": {"name": "sample"},
-        "workflows": [{"id": workflow_ulid, "path": "workflows/wf"}],  # Use ULID, not human-readable name
+        "calculations": [{"id": calculation_ulid, "path": "calculations/wf"}],  # Use ULID, not human-readable name
         "structures": [
             {
                 "id": structure_id,
@@ -77,52 +77,52 @@ def sample_project(tmp_path: Path) -> Path:
     import json
     (project_root / "structures" / "si.json").write_text(json.dumps(structure_json, indent=2))
     
-    workflow_dir = project_root / "workflows" / "wf"
-    (workflow_dir / "raw").mkdir(parents=True)
-    (workflow_dir / "steps").mkdir(parents=True)
+    calculation_dir = project_root / "calculations" / "wf"
+    (calculation_dir / "raw").mkdir(parents=True)
+    (calculation_dir / "steps").mkdir(parents=True)
     
     # Create a minimal step file (DAG model: no structure_id in step YAML)
     step_id = generate_resource_id()
-    step_file = workflow_dir / "steps" / "scf.step.yaml"
-    step_meta = meta_from_name("step", name="scf", path=f"workflows/wf/steps/scf.step.yaml")
+    step_file = calculation_dir / "steps" / "scf.step.yaml"
+    step_meta = meta_from_name("step", name="scf", path=f"calculations/wf/steps/scf.step.yaml")
     step_meta.id = step_id
     _write_yaml(
         step_file,
         {
             "meta": step_meta.to_dict(),
             "step_type": "scf",
-            # DAG model: structure_id is NOT in step YAML (inherits from workflow)
+            # DAG model: structure_id is NOT in step YAML (inherits from calculation)
         },
     )
     
     _write_yaml(
-        workflow_dir / "workflow.yaml",
+        calculation_dir / "calculation.yaml",
         {
             "meta": {
-                "id": workflow_ulid,
+                "id": calculation_ulid,
                 "name": "wf",
                 "slug": "wf",
-                "path": "workflows/wf",
-                "kind": "workflow",
+                "path": "calculations/wf",
+                "kind": "calculation",
             },
-            "workflow": {"working_dir": "raw"},
-            "structure_id": structure_id,  # Workflow-level structure reference (ULID)
+            "calculation": {"working_dir": "raw"},
+            "structure_id": structure_id,  # Calculation-level structure reference (ULID)
             "steps": [{"step_id": step_id, "input": "raw/scf.in"}],  # Use step_id (ULID), not id (name)
         },
     )
-    (workflow_dir / "raw" / "scf.in").write_text("&control\n calculation='scf'\n/")
+    (calculation_dir / "raw" / "scf.in").write_text("&control\n calculation='scf'\n/")
     return project_root
 
 
 def test_project_open(sample_project: Path):
     project = Project.open(sample_project)
-    # In ID-only model, list_workflows returns names from workflow refs
-    workflows = project.list_workflows()
-    assert len(workflows) == 1
-    # Workflows are stored by their ULID slug in self.workflows
-    # Get the first workflow ref and verify its path (absolute_path is the workflow directory)
-    workflow_ref = list(project.workflows.values())[0]
-    assert workflow_ref.absolute_path == (sample_project / "workflows" / "wf")
+    # In ID-only model, list_calculations returns names from calculation refs
+    calculations = project.list_calculations()
+    assert len(calculations) == 1
+    # Calculations are stored by their ULID slug in self.calculations
+    # Get the first calculation ref and verify its path (absolute_path is the calculation directory)
+    calculation_ref = list(project.calculations.values())[0]
+    assert calculation_ref.absolute_path == (sample_project / "calculations" / "wf")
     # Check structures similarly
     structures = project.list_structures()
     assert len(structures) == 1
@@ -137,9 +137,9 @@ def test_cli_init(tmp_path: Path):
     assert result.exit_code == 0, result.stdout
     project_file = dest / "project.qv.yml"
     assert project_file.exists()
-    workflows_dir = dest / "workflows"
-    assert workflows_dir.exists()
-    assert not any(workflows_dir.iterdir())
+    calculations_dir = dest / "calculations"
+    assert calculations_dir.exists()
+    assert not any(calculations_dir.iterdir())
 
 
 def test_cli_init_auto_creates_project_dir():
@@ -238,7 +238,7 @@ def test_cli_list(sample_project: Path):
     assert result.exit_code == 0
     assert "Project: sample" in result.stdout
     assert "Structures:" in result.stdout
-    assert "Workflows:" in result.stdout
+    assert "Calculations:" in result.stdout
 
 
 def test_cli_rename_structure(sample_project: Path):
@@ -268,19 +268,19 @@ def test_cli_rename_structure(sample_project: Path):
     assert (sample_project / dest_path).exists()
 
 
-def test_cli_rename_workflow(sample_project: Path):
+def test_cli_rename_calculation(sample_project: Path):
     runner = CliRunner()
-    new_path = "workflows/wf_new"
+    new_path = "calculations/wf_new"
     result = runner.invoke(
         app,
         [
             "rename",
-            "workflow",
+            "calculation",
             "wf",
             "--project",
             str(sample_project),
             "--name",
-            "Workflow new",
+            "Calculation new",
             "--path",
             new_path,
         ],
@@ -288,10 +288,10 @@ def test_cli_rename_workflow(sample_project: Path):
     assert result.exit_code == 0, result.stdout
 
     config = yaml.safe_load((sample_project / "project.qv.yml").read_text())
-    entry = config["workflows"][0]
-    assert entry["name"] == "Workflow new"
+    entry = config["calculations"][0]
+    assert entry["name"] == "Calculation new"
     assert entry["path"] == new_path
-    assert entry["meta"]["slug"].startswith("workflow-new")
+    assert entry["meta"]["slug"].startswith("calculation-new")
     assert (sample_project / new_path).exists()
 
 
@@ -333,7 +333,7 @@ def test_cli_delete_structure(tmp_path: Path):
     assert all(entry["name"] != "si" for entry in data["structures"])
 
 
-def test_cli_delete_workflow(tmp_path: Path):
+def test_cli_delete_calculation(tmp_path: Path):
     runner = CliRunner()
     project_root = tmp_path / "proj"
     runner.invoke(app, ["init", "project", "--path", str(project_root)])
@@ -356,7 +356,7 @@ def test_cli_delete_workflow(tmp_path: Path):
         app,
         [
             "init",
-            "workflow",
+            "calculation",
             "wf1",
             "--project",
             str(project_root),
@@ -364,14 +364,14 @@ def test_cli_delete_workflow(tmp_path: Path):
             "si",
         ],
     )
-    wf_dir = project_root / "workflows" / "wf1"
+    wf_dir = project_root / "calculations" / "wf1"
     assert wf_dir.exists()
 
     result = runner.invoke(
         app,
         [
             "delete",
-            "workflow",
+            "calculation",
             "wf1",
             "--project",
             str(project_root),
@@ -380,11 +380,11 @@ def test_cli_delete_workflow(tmp_path: Path):
     assert result.exit_code == 0, result.stdout
     assert not wf_dir.exists()
     data = yaml.safe_load((project_root / "project.qv.yml").read_text())
-    assert all(entry["name"] != "wf1" for entry in data["workflows"])
+    assert all(entry["name"] != "wf1" for entry in data["calculations"])
 
 
-def test_cli_run_workflow_strict_option(sample_project: Path, monkeypatch):
-    """Test that --strict flag sets workflow mode to STRICT."""
+def test_cli_run_calculation_strict_option(sample_project: Path, monkeypatch):
+    """Test that --strict flag sets calculation mode to STRICT."""
     runner = CliRunner()
     captured = {}
 
@@ -406,12 +406,12 @@ def test_cli_run_workflow_strict_option(sample_project: Path, monkeypatch):
             self.status = DummyStatus("success")
             self.steps = [DummyStep()]
 
-    def fake_run(self, workflow):
-        captured["mode"] = workflow.mode
+    def fake_run(self, calculation):
+        captured["mode"] = calculation.mode
         return DummyResult()
 
-    # Mock WorkflowRunner.run to avoid actual QE execution
-    monkeypatch.setattr("quantumvitas.workflow.runner.WorkflowRunner.run", fake_run)
+    # Mock CalculationRunner.run to avoid actual QE execution
+    monkeypatch.setattr("quantumvitas.calculation.runner.CalculationRunner.run", fake_run)
     
     # Mock pseudopotential resolution to avoid pseudo requirements
     def fake_ensure_qe_pseudos(*args, **kwargs):
@@ -431,7 +431,7 @@ def test_cli_run_workflow_strict_option(sample_project: Path, monkeypatch):
         app,
         [
             "run",
-            "workflow",
+            "calculation",
             "wf",
             "--project",
             str(sample_project),
@@ -442,14 +442,14 @@ def test_cli_run_workflow_strict_option(sample_project: Path, monkeypatch):
 
     assert result.exit_code == 0, result.stdout
     assert captured["mode"] == StepMode.STRICT
-    assert "Workflow wf status" in result.stdout
+    assert "Calculation wf status" in result.stdout
 def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
     runner = CliRunner()
     project_root = tmp_path / "proj"
     project_root.mkdir()
     # Create minimal project file
     (project_root / "project.qv.yml").write_text(
-        yaml.safe_dump({"project": {"name": "proj"}, "structures": [], "workflows": []})
+        yaml.safe_dump({"project": {"name": "proj"}, "structures": [], "calculations": []})
     )
     (project_root / "structures").mkdir()
 
@@ -470,38 +470,38 @@ def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
     )
     assert result.exit_code == 0
 
-    # Create a workflow with the structure
+    # Create a calculation with the structure
     from quantumvitas.core.resources import generate_resource_id, meta_from_name
-    workflow_id = generate_resource_id()
-    workflow_dir = project_root / "workflows" / "test_workflow"
-    workflow_dir.mkdir(parents=True)
-    (workflow_dir / "steps").mkdir()
+    calculation_id = generate_resource_id()
+    calculation_dir = project_root / "calculations" / "test_calculation"
+    calculation_dir.mkdir(parents=True)
+    (calculation_dir / "steps").mkdir()
     
     # Get structure_id from registry
     from quantumvitas.core.resolution import build_resource_index, require_structure
     index = build_resource_index(project_root)
     struct_resolved = require_structure(project_root, "si", index=index)
     
-    # Create workflow.yaml with structure_id
-    workflow_meta = meta_from_name("workflow", name="test_workflow", path="workflows/test_workflow")
-    workflow_meta.id = workflow_id
-    workflow_yaml_data = {
-        "meta": workflow_meta.to_dict(),
+    # Create calculation.yaml with structure_id
+    calculation_meta = meta_from_name("calculation", name="test_calculation", path="calculations/test_calculation")
+    calculation_meta.id = calculation_id
+    calculation_yaml_data = {
+        "meta": calculation_meta.to_dict(),
         "structure_id": struct_resolved.meta.id,
         "steps": [],
     }
-    (workflow_dir / "workflow.yaml").write_text(yaml.safe_dump(workflow_yaml_data))
+    (calculation_dir / "calculation.yaml").write_text(yaml.safe_dump(calculation_yaml_data))
     
     # Update project config
     config = yaml.safe_load((project_root / "project.qv.yml").read_text())
-    config["workflows"] = [{"id": workflow_id}]
+    config["calculations"] = [{"id": calculation_id}]
     (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
 
-    # Step file in workflow directory (DAG model: no structure_id in step YAML)
-    step_file = workflow_dir / "steps" / "scf.step.yaml"
+    # Step file in calculation directory (DAG model: no structure_id in step YAML)
+    step_file = calculation_dir / "steps" / "scf.step.yaml"
     from quantumvitas.core.resources import generate_resource_id, meta_from_name
     step_id = generate_resource_id()
-    step_meta = meta_from_name("step", name="scf", path="workflows/test_workflow/steps/scf.step.yaml")
+    step_meta = meta_from_name("step", name="scf", path="calculations/test_calculation/steps/scf.step.yaml")
     step_meta.id = step_id
     yaml.safe_dump(
         {
@@ -520,9 +520,9 @@ def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
         step_file.open("w"),
     )
     
-    # Update workflow.yaml to include step
-    workflow_yaml_data["steps"] = [{"step_id": step_id}]
-    (workflow_dir / "workflow.yaml").write_text(yaml.safe_dump(workflow_yaml_data))
+    # Update calculation.yaml to include step
+    calculation_yaml_data["steps"] = [{"step_id": step_id}]
+    (calculation_dir / "calculation.yaml").write_text(yaml.safe_dump(calculation_yaml_data))
 
     captured = {}
 
@@ -561,9 +561,9 @@ def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
         )
 
     # Mock the actual run_input_step function that QVService uses
-    monkeypatch.setattr("quantumvitas.workflow.input_runner.run_input_step", fake_run_input_step)
+    monkeypatch.setattr("quantumvitas.calculation.input_runner.run_input_step", fake_run_input_step)
 
-    # Use new CLI pattern: --workflow + --step (deprecated bare step path still works but requires workflow context)
+    # Use new CLI pattern: --calculation + --step (deprecated bare step path still works but requires calculation context)
     result = runner.invoke(
         app,
         [
@@ -571,8 +571,8 @@ def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
             "step",
             "--project",
             str(project_root),
-            "--workflow",
-            "test_workflow",
+            "--calculation",
+            "test_calculation",
             "--step",
             "scf",
         ],
@@ -588,7 +588,7 @@ def test_cli_run_step_accepts_step_yaml(tmp_path: Path, monkeypatch):
     project_root = tmp_path / "proj"
     project_root.mkdir()
     (project_root / "project.qv.yml").write_text(
-        yaml.safe_dump({"project": {"name": "proj"}, "structures": [], "workflows": []})
+        yaml.safe_dump({"project": {"name": "proj"}, "structures": [], "calculations": []})
     )
     (project_root / "structures").mkdir()
 
@@ -607,37 +607,37 @@ def test_cli_run_step_accepts_step_yaml(tmp_path: Path, monkeypatch):
         ],
     )
 
-    # Create a workflow with the structure
+    # Create a calculation with the structure
     from quantumvitas.core.resources import generate_resource_id, meta_from_name
-    workflow_id = generate_resource_id()
-    workflow_dir = project_root / "workflows" / "test_workflow"
-    workflow_dir.mkdir(parents=True)
-    (workflow_dir / "steps").mkdir()
+    calculation_id = generate_resource_id()
+    calculation_dir = project_root / "calculations" / "test_calculation"
+    calculation_dir.mkdir(parents=True)
+    (calculation_dir / "steps").mkdir()
     
     # Get structure_id from registry
     from quantumvitas.core.resolution import build_resource_index, require_structure
     index = build_resource_index(project_root)
     struct_resolved = require_structure(project_root, "si", index=index)
     
-    # Create workflow.yaml with structure_id
-    workflow_meta = meta_from_name("workflow", name="test_workflow", path="workflows/test_workflow")
-    workflow_meta.id = workflow_id
-    workflow_yaml_data = {
-        "meta": workflow_meta.to_dict(),
+    # Create calculation.yaml with structure_id
+    calculation_meta = meta_from_name("calculation", name="test_calculation", path="calculations/test_calculation")
+    calculation_meta.id = calculation_id
+    calculation_yaml_data = {
+        "meta": calculation_meta.to_dict(),
         "structure_id": struct_resolved.meta.id,
         "steps": [],
     }
-    (workflow_dir / "workflow.yaml").write_text(yaml.safe_dump(workflow_yaml_data))
+    (calculation_dir / "calculation.yaml").write_text(yaml.safe_dump(calculation_yaml_data))
     
     # Update project config
     config = yaml.safe_load((project_root / "project.qv.yml").read_text())
-    config["workflows"] = [{"id": workflow_id}]
+    config["calculations"] = [{"id": calculation_id}]
     (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
 
-    # Step file in workflow directory (DAG model: no structure_id in step YAML)
-    step_file = workflow_dir / "steps" / "scf.step.yaml"
+    # Step file in calculation directory (DAG model: no structure_id in step YAML)
+    step_file = calculation_dir / "steps" / "scf.step.yaml"
     step_id = generate_resource_id()
-    step_meta = meta_from_name("step", name="scf", path="workflows/test_workflow/steps/scf.step.yaml")
+    step_meta = meta_from_name("step", name="scf", path="calculations/test_calculation/steps/scf.step.yaml")
     step_meta.id = step_id
     yaml.safe_dump(
         {
@@ -653,9 +653,9 @@ def test_cli_run_step_accepts_step_yaml(tmp_path: Path, monkeypatch):
         step_file.open("w"),
     )
     
-    # Update workflow.yaml to include step
-    workflow_yaml_data["steps"] = [{"step_id": step_id}]
-    (workflow_dir / "workflow.yaml").write_text(yaml.safe_dump(workflow_yaml_data))
+    # Update calculation.yaml to include step
+    calculation_yaml_data["steps"] = [{"step_id": step_id}]
+    (calculation_dir / "calculation.yaml").write_text(yaml.safe_dump(calculation_yaml_data))
 
     captured = {}
 
@@ -692,9 +692,9 @@ def test_cli_run_step_accepts_step_yaml(tmp_path: Path, monkeypatch):
         )
 
     # Mock the actual run_input_step function that QVService uses
-    monkeypatch.setattr("quantumvitas.workflow.input_runner.run_input_step", fake_run_input_step)
+    monkeypatch.setattr("quantumvitas.calculation.input_runner.run_input_step", fake_run_input_step)
 
-    # Use new CLI pattern: --workflow + --step (deprecated bare step path still works but requires workflow context)
+    # Use new CLI pattern: --calculation + --step (deprecated bare step path still works but requires calculation context)
     result = runner.invoke(
         app,
         [
@@ -702,8 +702,8 @@ def test_cli_run_step_accepts_step_yaml(tmp_path: Path, monkeypatch):
             "step",
             "--project",
             str(project_root),
-            "--workflow",
-            "test_workflow",
+            "--calculation",
+            "test_calculation",
             "--step",
             "scf",
         ],
@@ -716,7 +716,7 @@ def test_cli_run_step_accepts_step_yaml(tmp_path: Path, monkeypatch):
 
 def test_cli_step_create_and_insert(sample_project: Path):
     runner = CliRunner()
-    steps_dir = sample_project / "workflows" / "wf" / "steps"
+    steps_dir = sample_project / "calculations" / "wf" / "steps"
     result = runner.invoke(
         app,
         [
@@ -727,7 +727,7 @@ def test_cli_step_create_and_insert(sample_project: Path):
             "si",
             "--project",
             str(sample_project),
-            "--workflow",
+            "--calculation",
             "wf",
             "--name",
             "nscf",
@@ -743,10 +743,10 @@ def test_cli_step_create_and_insert(sample_project: Path):
     spec_path = steps_dir / "nscf.step.yaml"
     assert spec_path.exists()
     spec_data = yaml.safe_load(spec_path.read_text())
-    # DAG + ID-only model: Step YAML must NOT contain structure_id or parent_workflow_id
-    # Structure is resolved via workflow.structure_id at runtime
-    assert "structure_id" not in spec_data, "Step YAML should NOT contain structure_id (DAG model: inherits from workflow)"
-    assert "parent_workflow_id" not in spec_data, "Step YAML should NOT contain parent_workflow_id (DAG model: parent is implicit)"
+    # DAG + ID-only model: Step YAML must NOT contain structure_id or parent_calculation_id
+    # Structure is resolved via calculation.structure_id at runtime
+    assert "structure_id" not in spec_data, "Step YAML should NOT contain structure_id (DAG model: inherits from calculation)"
+    assert "parent_calculation_id" not in spec_data, "Step YAML should NOT contain parent_calculation_id (DAG model: parent is implicit)"
     assert "structure" not in spec_data, "Step YAML should NOT contain structure selector (DAG model)"
     assert spec_data["parameters"]["SYSTEM"]["ecutwfc"] == 60
     assert spec_data["cards"]["K_POINTS"]["option"] == "automatic"
@@ -757,10 +757,10 @@ def test_cli_step_create_and_insert(sample_project: Path):
         == "Si.pbe-n-rrkjus_psl.1.0.0.UPF"
     )
 
-    workflow_yaml = sample_project / "workflows" / "wf" / "workflow.yaml"
-    workflow_data = yaml.safe_load(workflow_yaml.read_text())
+    calculation_yaml = sample_project / "calculations" / "wf" / "calculation.yaml"
+    calculation_data = yaml.safe_load(calculation_yaml.read_text())
     # With ID-only model, we use step_id (ULID), not id (legacy slug)
-    assert any(step.get("step_id") is not None for step in workflow_data["steps"])
+    assert any(step.get("step_id") is not None for step in calculation_data["steps"])
 
 
 def test_cli_step_set_param(tmp_path: Path):
@@ -861,7 +861,7 @@ def test_cli_show_command(tmp_path: Path):
     assert "qv init step" in result.stdout
     assert "configure step" in result.stdout
     # Check for helpful explanation instead of --structure placeholder
-    assert "inside a workflow directory" in result.stdout or "--structure" in result.stdout
+    assert "inside a calculation directory" in result.stdout or "--structure" in result.stdout
 
 
 def test_cli_show_command_import_preserves_original_parameters(
@@ -914,13 +914,13 @@ def test_cli_show_command_import_preserves_original_parameters(
         )
 
     # Mock the actual run_input_step function that QVService uses
-    monkeypatch.setattr("quantumvitas.workflow.input_runner.run_input_step", fake_run_input_step)
+    monkeypatch.setattr("quantumvitas.calculation.input_runner.run_input_step", fake_run_input_step)
 
     geometry_skipped = []
     for case in cases:
         input_path = case.input_path
         structure_name = f"struct_{input_path.stem}"
-        workflow_name = f"wf_{input_path.stem}"
+        calculation_name = f"wf_{input_path.stem}"
 
         result = runner.invoke(
             app,
@@ -941,8 +941,8 @@ def test_cli_show_command_import_preserves_original_parameters(
             app,
             [
                 "init",
-                "workflow",
-                workflow_name,
+                "calculation",
+                calculation_name,
                 "--structure",
                 structure_name,
                 "--project",
@@ -951,7 +951,7 @@ def test_cli_show_command_import_preserves_original_parameters(
         )
         assert (
             result.exit_code == 0
-        ), f"init workflow failed for {workflow_name}: {result.stdout}"
+        ), f"init calculation failed for {calculation_name}: {result.stdout}"
 
         show_output = runner.invoke(app, ["show-command", str(input_path)])
         assert show_output.exit_code == 0, show_output.stdout
@@ -964,30 +964,30 @@ def test_cli_show_command_import_preserves_original_parameters(
         # Verify --no-defaults is included (for import scenario)
         assert "--no-defaults" in init_args, "show-command should include --no-defaults for import"
         # Now show-command doesn't include --structure, so we add it explicitly
-        # along with --workflow and --project
+        # along with --calculation and --project
         init_args.extend([
             "--structure", structure_name,
-            "--workflow", workflow_name,
+            "--calculation", calculation_name,
             "--project", str(project_root)
         ])
         init_result = runner.invoke(app, init_args)
         assert init_result.exit_code == 0, init_result.stdout
 
-        workflow_slug = slugify(workflow_name)
-        workflow_dir = project_root / "workflows" / workflow_slug
-        workflow_yaml = yaml.safe_load((workflow_dir / "workflow.yaml").read_text())
+        calculation_slug = slugify(calculation_name)
+        calculation_dir = project_root / "calculations" / calculation_slug
+        calculation_yaml = yaml.safe_load((calculation_dir / "calculation.yaml").read_text())
         # Verify DAG + ID-only constitution: only structure_id is persisted
-        assert "structure_id" in workflow_yaml, "workflow.yaml should contain structure_id"
-        assert "structure_name" not in workflow_yaml, "workflow.yaml should NOT contain structure_name"
-        assert "structure" not in workflow_yaml, "workflow.yaml should NOT contain structure selector"
-        last_step = workflow_yaml["steps"][-1]
+        assert "structure_id" in calculation_yaml, "calculation.yaml should contain structure_id"
+        assert "structure_name" not in calculation_yaml, "calculation.yaml should NOT contain structure_name"
+        assert "structure" not in calculation_yaml, "calculation.yaml should NOT contain structure selector"
+        last_step = calculation_yaml["steps"][-1]
         # With ID-only model, resolve step file via step_id
         from quantumvitas.core.resolution import resolve_step, build_resource_index
         from quantumvitas.core.project_utils import load_project_config
         config = load_project_config(project_root)
         index = build_resource_index(project_root)
         step_id = last_step.get("step_id") or last_step.get("id")
-        step_resolved = resolve_step(project_root, workflow_slug, step_id, config=config, index=index)
+        step_resolved = resolve_step(project_root, calculation_slug, step_id, config=config, index=index)
         step_spec_path = step_resolved.absolute_path
 
         captured_runs.clear()
@@ -1057,7 +1057,7 @@ def test_cli_get_command_alias(tmp_path: Path):
     assert result.exit_code == 0
     assert "qv init step" in result.stdout
     # Check for helpful explanation instead of --structure placeholder
-    assert "inside a workflow directory" in result.stdout or "--structure" in result.stdout
+    assert "inside a calculation directory" in result.stdout or "--structure" in result.stdout
 
 
 def test_cli_delete_structure(tmp_path: Path):
@@ -1093,7 +1093,7 @@ def test_cli_delete_structure(tmp_path: Path):
     assert len(data.get("structures", [])) == 0, "Structure should be deleted from project.qv.yml"
 
 
-def test_cli_delete_workflow(tmp_path: Path):
+def test_cli_delete_calculation(tmp_path: Path):
     runner = CliRunner()
     project_root = tmp_path / "proj"
     runner.invoke(app, ["init", "project", "--path", str(project_root)])
@@ -1115,7 +1115,7 @@ def test_cli_delete_workflow(tmp_path: Path):
         app,
         [
             "init",
-            "workflow",
+            "calculation",
             "wf1",
             "--project",
             str(project_root),
@@ -1124,19 +1124,19 @@ def test_cli_delete_workflow(tmp_path: Path):
         ],
     )
     assert result.exit_code == 0, result.stdout
-    wf_dir = project_root / "workflows" / "wf1"
+    wf_dir = project_root / "calculations" / "wf1"
     assert wf_dir.exists()
 
     result = runner.invoke(
         app,
-        ["delete", "workflow", "wf1", "--project", str(project_root)],
+        ["delete", "calculation", "wf1", "--project", str(project_root)],
     )
     assert result.exit_code == 0, result.stdout
     assert not wf_dir.exists()
     data = yaml.safe_load((project_root / "project.qv.yml").read_text())
-    # In ID-only model, workflow entries only have workflow_id, not name
-    # Verify workflow was deleted by checking workflows list is empty
-    workflows = data.get("workflows", [])
-    assert len(workflows) == 0, "Workflow should be deleted from project.qv.yml"
+    # In ID-only model, calculation entries only have calculation_id, not name
+    # Verify calculation was deleted by checking calculations list is empty
+    calculations = data.get("calculations", [])
+    assert len(calculations) == 0, "Calculation should be deleted from project.qv.yml"
 
 

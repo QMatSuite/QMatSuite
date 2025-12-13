@@ -96,7 +96,7 @@
 src/quantumvitas/core/engines/
 ├── qe_input.py          # 已有：解析和生成
 ├── qe_pseudopotentials.py  # 新建：赝势管理
-├── qe_workflow.py       # 已有：workflow 执行
+├── qe_calculation.py       # 已有：calculation 执行
 └── qe.py                # 已有：QE 引擎
 
 tests/core/

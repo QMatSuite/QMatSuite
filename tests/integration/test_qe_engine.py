@@ -129,6 +129,6 @@ ATOMIC_SPECIES
         assert system.get('ecutwfc') == 50.0
 
 
-# TestRealWorldWorkflow class moved to extended-tests/suites/tutorial_examples/test_qe_engine_workflow.py
+# TestRealWorldCalculation class moved to extended-tests/suites/tutorial_examples/test_qe_engine_calculation.py
 # These tests require downloading tutorial examples and are now in extended-tests/
 

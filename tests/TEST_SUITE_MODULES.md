@@ -6,7 +6,7 @@ This directory contains test scripts for different Quantum ESPRESSO modules, fol
 
 Each module has its own test script that:
 1. Reads `jobconfig` to get test order and files
-2. Runs tests in the specified order (supporting workflow tests with multiple steps)
+2. Runs tests in the specified order (supporting calculation tests with multiple steps)
 3. Compares output with benchmark files to determine pass/fail
 4. Reports results in a format similar to `testcode.py`
 
@@ -42,7 +42,7 @@ Tests for `pw.x` (Plane-Wave Self-Consistent Field calculations)
 Tests for `ph.x` (Phonon calculations)
 - **Executables**: `pw.x` (step 1), `ph.x` (step 2), `q2r.x`, `matdyn.x`, etc.
 - **Categories**: `ph_base`, `ph_metal`, `ph_U_metal_us`, etc.
-- **Workflow**: Most ph tests require running `pw.x` first, then `ph.x`
+- **Calculation**: Most ph tests require running `pw.x` first, then `ph.x`
 - **Usage**:
   ```bash
   python3 tests/run_ph_tests.py --category ph_base
@@ -53,7 +53,7 @@ Tests for `ph.x` (Phonon calculations)
 Tests for `pp.x` (Post-processing)
 - **Executables**: `pw.x` (step 1), `pp.x` or `ppacf.x` (step 2)
 - **Categories**: `pp_base`, etc.
-- **Workflow**: Requires `pw.x` SCF calculation first
+- **Calculation**: Requires `pw.x` SCF calculation first
 - **Usage**:
   ```bash
   python3 tests/run_pp_tests.py --category pp_base
@@ -72,7 +72,7 @@ Tests for `cp.x` (Car-Parrinello Molecular Dynamics)
 Tests for `hp.x` (Hubbard U parameter calculations)
 - **Executables**: `pw.x` (step 1,2), `hp.x` (step 3,4)
 - **Categories**: `hp_*`
-- **Workflow**: Requires `pw.x` SCF calculation first
+- **Calculation**: Requires `pw.x` SCF calculation first
 - **Usage**:
   ```bash
   python3 tests/run_hp_tests.py
@@ -82,7 +82,7 @@ Tests for `hp.x` (Hubbard U parameter calculations)
 Tests for TDDFPT (Time-Dependent Density Functional Perturbation Theory)
 - **Executables**: `pw.x`, `turbo_lanczos.x`, `turbo_spectrum.x`, `turbo_eels.x`, `turbo_magnon.x`
 - **Categories**: `tddfpt_CH4`, `tddfpt_eels-si`, etc.
-- **Workflow**: Complex multi-step workflows
+- **Calculation**: Complex multi-step calculations
 - **Usage**:
   ```bash
   python3 tests/run_tddfpt_tests.py --category tddfpt_CH4
@@ -106,10 +106,10 @@ Provides common functionality for all module tests:
 
 - `parse_jobconfig()`: Parse jobconfig file for a specific module prefix
 - `run_module_test()`: Run a single QE module test
-- `run_test_category()`: Run all tests in a category (supports workflow tests)
+- `run_test_category()`: Run all tests in a category (supports calculation tests)
 - `compare_with_benchmark()`: Compare test output with benchmark files
 
-## Workflow Tests
+## Calculation Tests
 
 Many QE modules require sequential calculations where intermediate files must be preserved:
 
@@ -119,7 +119,7 @@ Many QE modules require sequential calculations where intermediate files must be
 4. **tddfpt tests**: `pw.x` → `turbo_lanczos.x` → `turbo_spectrum.x`
 
 The test framework automatically:
-- Uses a shared working directory for workflow tests
+- Uses a shared working directory for calculation tests
 - Preserves intermediate files (`.save/`, charge density, etc.)
 - Runs steps in the correct order
 - Compares final results with benchmarks
@@ -170,13 +170,13 @@ These scripts are designed to work with the official QE test-suite structure:
 - Read from `jobconfig` file (same format as `testcode.py`)
 - Use the same test ordering and file structure
 - Compare with benchmark files in the same format
-- Support the same workflow patterns
+- Support the same calculation patterns
 
 #### `run_kcw_tests.py`
 Tests for `kcw.x` (Koopmans-compliant Wannier functions)
 - **Executables**: `pw.x`, `wannier90.x`, `pw2wannier90.x`, `kcw.x`
 - **Categories**: `kcw_*`
-- **Workflow**: Complex multi-step: pw.x → wannier90.x -pp → pw2wannier90.x → wannier90.x → kcw.x
+- **Calculation**: Complex multi-step: pw.x → wannier90.x -pp → pw2wannier90.x → wannier90.x → kcw.x
 - **Usage**:
   ```bash
   python3 tests/run_kcw_tests.py
@@ -186,7 +186,7 @@ Tests for `kcw.x` (Koopmans-compliant Wannier functions)
 Tests for `epw.x` (Electron-phonon coupling)
 - **Executables**: `pw.x`, `ph.x`, `epw.x`, `q2r.x`, `matdyn.x`, `postahc.x`, `nscf2supercond.x`
 - **Categories**: `epw_base`, `epw_metal`, `epw_super`, etc.
-- **Workflow**: Very complex multi-step workflows
+- **Calculation**: Very complex multi-step calculations
 - **Usage**:
   ```bash
   python3 tests/run_epw_tests.py --category epw_base

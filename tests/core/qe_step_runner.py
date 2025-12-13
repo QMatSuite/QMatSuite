@@ -10,8 +10,8 @@ from typing import Optional, Tuple
 import time
 
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.qe_workflow import StepResult
-from quantumvitas.workflow.input_runner import (
+from quantumvitas.core.engines.qe_calculation import StepResult
+from quantumvitas.calculation.input_runner import (
     prepare_input_step,
     run_prepared_step,
     detect_project_root,
@@ -172,7 +172,7 @@ def run_and_verify_step_with_assert(
     )
     
     if not success:
-        # Enhanced error reporting for easier debugging of CI/workflow failures
+        # Enhanced error reporting for easier debugging of CI/calculation failures
         details = [
             f"Step index: {step_index}",
             f"Step type (inferred): {step_result.step_type}",

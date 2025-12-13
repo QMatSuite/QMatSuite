@@ -31,7 +31,7 @@ Please set QE_BIN_DIR or install QE at the default location.
 **原因**: 
 ```
 Required QE executables not found. Missing executables: pw.x, ph.x in QE bin directory. 
-These are required for PH workflow tests.
+These are required for PH calculation tests.
 ```
 
 **解决方案**: 

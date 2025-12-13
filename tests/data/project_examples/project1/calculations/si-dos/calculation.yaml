@@ -1,0 +1,16 @@
+meta:
+  id: 01KC38MFJZ7RF3SB7SHVYDQ4J8
+  name: Si dos
+  slug: si-dos
+  path: calculations/si-dos
+  kind: calculation
+structure_id: 01KC38MBGSS8MX3Z4ETZMXZZY4
+mode: normal
+working_dir: raw
+steps:
+- step_id: 01KC38NVA0NES3T6YG7DK8DP82
+  type: scf
+- step_id: 01KC38P68GFY8CSNGKWZJRZ50E
+  type: nscf
+- step_id: 01KC38PGMYFABDDE5T6CA8A2J8
+  type: dos

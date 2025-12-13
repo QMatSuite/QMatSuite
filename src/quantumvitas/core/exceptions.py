@@ -12,7 +12,7 @@ class LegacyProjectError(Exception):
     """
     Raised when a legacy QuantumVITAS project is detected.
     
-    Legacy projects use pre-DAG workflow layouts (e.g., structure/step_file fields
+    Legacy projects use pre-DAG calculation layouts (e.g., structure/step_file fields
     instead of structure_id/step_id ULIDs). These must be migrated using the
     migration script before they can be used with the current codebase.
     
@@ -25,7 +25,7 @@ class LegacyProjectError(Exception):
         if not message:
             message = (
                 f"Legacy QuantumVITAS project detected at {self.project_root}. "
-                f"This project uses pre-DAG workflow layout (structure/step_file fields). "
+                f"This project uses pre-DAG calculation layout (structure/step_file fields). "
                 f"Please run the migration script to upgrade it to the DAG + ULID model. "
                 f"See docs or run: python -m quantumvitas.legacy.migrate <project_root>"
             )

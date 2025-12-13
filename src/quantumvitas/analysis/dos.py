@@ -8,8 +8,8 @@ import json
 from pathlib import Path
 from typing import Optional
 
-from quantumvitas.workflow.results import WorkflowResult
-from quantumvitas.workflow.workflow import Workflow
+from quantumvitas.calculation.results import CalculationResult
+from quantumvitas.calculation.calculation import Calculation
 from .parsers import parse_dos_data, parse_scf_output, DOSData
 from .plotting import plot_dos, save_figure
 
@@ -86,18 +86,18 @@ def analyze_dos_file(
     return result
 
 
-def analyze_dos(workflow: Workflow, result: WorkflowResult, results_dir: Path) -> None:
+def analyze_dos(calculation: Calculation, result: CalculationResult, results_dir: Path) -> None:
     """
-    Locate DOS outputs in ``workflow.raw_dir`` and write processed artifacts.
+    Locate DOS outputs in ``calculation.raw_dir`` and write processed artifacts.
     
-    Looks for DOS .dat files in the workflow output directory and processes them.
+    Looks for DOS .dat files in the calculation output directory and processes them.
     """
     dos_steps = [step for step in result.steps if step.step_type.value.startswith("dos")]
     if not dos_steps:
         return
     
     # Look for DOS data files
-    raw_dir = workflow.raw_dir if hasattr(workflow, 'raw_dir') else results_dir
+    raw_dir = calculation.raw_dir if hasattr(calculation, 'raw_dir') else results_dir
     
     # Find Fermi energy from SCF/NSCF steps if available
     fermi_energy = None
@@ -118,7 +118,7 @@ def analyze_dos(workflow: Workflow, result: WorkflowResult, results_dir: Path) -
             raw_dir / f"{step_id}.dos.dat",
             raw_dir / f"{step_id}_dos.dat",
             raw_dir / "dos.dat",
-            raw_dir / f"{workflow.meta.slug}.dos.dat",
+            raw_dir / f"{calculation.meta.slug}.dos.dat",
         ]
         
         for dos_file in possible_dos_files:

@@ -19,17 +19,17 @@ Integration Tests (25 tests):
   ✅ test_pw_quick_tests_ci.py: 3 tests - All passed
   ✅ test_qe_engine.py: 3 tests - All passed
   ✅ test_qe_executable_integration.py: 3 tests - All passed
-  ✅ test_si_dos_workflow.py: 10 tests - All passed
+  ✅ test_si_dos_calculation.py: 10 tests - All passed
     - test_parse_scf_input: PASSED
     - test_parse_nscf_input: PASSED
     - test_parse_dos_input: PASSED
-    - test_workflow_prefix_consistency: PASSED
+    - test_calculation_prefix_consistency: PASSED
     - test_roundtrip_generation: PASSED
-    - test_workflow_sequence: PASSED
+    - test_calculation_sequence: PASSED
     - test_structure_consistency: PASSED
     - test_run_scf_calculation: PASSED (with QE execution)
     - test_run_nscf_calculation: PASSED (with QE execution + Fermi energy comparison)
-    - test_run_full_workflow: PASSED (SCF -> NSCF -> DOS with QE execution)
+    - test_run_full_calculation: PASSED (SCF -> NSCF -> DOS with QE execution)
 
 Unit Tests (25 tests):
   ✅ test_qe_executable_detection.py: 10 tests - All passed

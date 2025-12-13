@@ -1,7 +1,7 @@
 """
 QuantumVITAS - Quantum Visualization Interactive Toolkit for Ab-initio Simulations
 
-A modern Python-based GUI and workflow engine for Quantum ESPRESSO and related codes.
+A modern Python-based GUI and calculation engine for Quantum ESPRESSO and related codes.
 """
 
 from __future__ import annotations
@@ -41,18 +41,18 @@ def _make_dataclass_compat() -> None:
 _make_dataclass_compat()
 
 # Public API exports
-from .project.model import Project, ProjectSettings, StructureRef, WorkflowRef
-from .workflow.workflow import Workflow
-from .workflow.runner import WorkflowRunner
+from .project.model import Project, ProjectSettings, StructureRef, CalculationRef
+from .calculation.calculation import Calculation
+from .calculation.runner import CalculationRunner
 from .api import QVService, service
 
 __all__ = [
     "Project",
     "ProjectSettings",
     "StructureRef",
-    "WorkflowRef",
-    "Workflow",
-    "WorkflowRunner",
+    "CalculationRef",
+    "Calculation",
+    "CalculationRunner",
     "QVService",
     "service",
 ]

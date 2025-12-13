@@ -7,8 +7,8 @@ This script:
 2. Identifies files with conversion issues
 3. Reports detailed differences
 
-Workflow Note:
-  QE workflows run sequentially where:
+Calculation Note:
+  QE calculations run sequentially where:
   - pw.x (arg=1) generates .save directory (filename from prefix/outdir in input)
   - ph.x (arg=2) reads from .save (filename determined by pw.x input)
   - q2r.x (arg=3) reads dyn files (filename from ph.x input fildyn parameter)
@@ -152,7 +152,7 @@ def main():
     print("测试失败类别的 Bidirectional 转换")
     print("=" * 70)
     print()
-    print("Workflow 说明:")
+    print("Calculation 说明:")
     print("  - pw.x 生成 .save 目录 (文件名由 prefix/outdir 决定)")
     print("  - ph.x 读取 .save (文件名由 pw.x 输入决定)")
     print("  - q2r.x 读取 dyn 文件 (文件名由 ph.x 输入的 fildyn 参数决定)")

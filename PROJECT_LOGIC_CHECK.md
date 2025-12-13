@@ -6,8 +6,8 @@
 **状态**: 部分符合
 
 **符合的地方**:
-- `test_si_dos_workflow.py`: ✅ step1 -> test step1 -> step2 -> test step2
-- `test_si_bands_workflow.py`: ✅ step1 -> test step1 -> step2 -> test step2
+- `test_si_dos_calculation.py`: ✅ step1 -> test step1 -> step2 -> test step2
+- `test_si_bands_calculation.py`: ✅ step1 -> test step1 -> step2 -> test step2
 
 **需要修复的地方**:
 - `test_ph_quick_tests.py` 使用 `run_test_category`，它在循环中运行所有步骤，但每个步骤都会立即验证（通过 `run_module_test` 返回结果）
@@ -25,7 +25,7 @@
 **状态**: 符合
 
 **实现**:
-- `src/quantumvitas/core/engines/qe_workflow.py`: `run_step`, `run_workflow` ✅
+- `src/quantumvitas/core/engines/qe_calculation.py`: `run_step`, `run_calculation` ✅
 - `src/quantumvitas/core/engines/qe.py`: `detect_step_type`, `run_step` ✅
 
 ### 4. ✅ test 逻辑中心化在 tests/core 里面
@@ -47,6 +47,6 @@
 **状态**: 符合
 
 **实现**:
-- `test_si_dos_workflow.py`: 从 jobconfig 读取顺序 ✅
-- `test_si_bands_workflow.py`: 从 jobconfig 读取顺序 ✅
+- `test_si_dos_calculation.py`: 从 jobconfig 读取顺序 ✅
+- `test_si_bands_calculation.py`: 从 jobconfig 读取顺序 ✅
 - `test_ph_quick_tests.py`: 从 jobconfig 读取顺序 ✅

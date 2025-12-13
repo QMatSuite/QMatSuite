@@ -1,5 +1,5 @@
 """
-Engine layer for executing workflow steps.
+Engine layer for executing calculation steps.
 """
 
 from .base import Engine, EngineConfig, StepResult

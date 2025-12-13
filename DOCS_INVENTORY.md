@@ -25,10 +25,10 @@ This document provides a comprehensive inventory of all Markdown documentation f
 
 - **Path:** PROJECT_ARCHITECTURE.md
 - **Title:** QuantumVITAS Python Architecture (v2)
-- **Purpose:** High-level architectural overview of the Python v2 rewrite. Describes layered structure (io/, engine/, workflow/, project/, analysis/), key concepts (Resource model, project structure, workflow/step YAML), and testing approach.
+- **Purpose:** High-level architectural overview of the Python v2 rewrite. Describes layered structure (io/, engine/, calculation/, project/, analysis/), key concepts (Resource model, project structure, calculation/step YAML), and testing approach.
 - **Type:** architecture-spec
 - **Status:** canonical-current
-- **Mentions schema?:** Yes - describes workflow.yaml and step YAML structure, mentions `structure_id` (ULID) and `step_id` (ULID) in workflow.yaml, but also mentions `parent_workflow_id` in step YAML (which is outdated per DAG model)
+- **Mentions schema?:** Yes - describes calculation.yaml and step YAML structure, mentions `structure_id` (ULID) and `step_id` (ULID) in calculation.yaml, but also mentions `parent_workflow_id` in step YAML (which is outdated per DAG model)
 - **Mentions snapshots?:** No
 - **Mentions standalone QE?:** No
 - **Mentions tests/CI?:** Yes - brief mention of test organization
@@ -38,7 +38,7 @@ This document provides a comprehensive inventory of all Markdown documentation f
 
 - **Path:** SCHEMA_REFACTOR_PLAN.md
 - **Title:** Schema Refactor Plan: DAG + ID-only References
-- **Purpose:** Design document describing the target schema for DAG + ID-only model. Shows current schema (with duplication issues) vs target schema (ID-only references). Describes how project.qv.yml, workflow.yaml, and step YAML should be structured.
+- **Purpose:** Design document describing the target schema for DAG + ID-only model. Shows current schema (with duplication issues) vs target schema (ID-only references). Describes how project.qv.yml, calculation.yaml, and step YAML should be structured.
 - **Type:** schema-spec, refactor-plan
 - **Status:** partially-outdated (plan document, but refactor is largely complete)
 - **Mentions schema?:** Yes - explicitly describes current vs target schema, shows examples of ID-only references (`structure_id`, `step_id`), mentions removal of `parent_workflow_id` from step YAML
@@ -90,7 +90,7 @@ This document provides a comprehensive inventory of all Markdown documentation f
 
 - **Path:** CONSISTENCY_SWEEP_REPORT.md
 - **Title:** ID-Only Cross-Resource References: Consistency Sweep Report
-- **Purpose:** Verification report confirming that all cross-resource references use ID-only format per DAG + ID-only invariants. Audits project.qv.yml, workflow.yaml, step YAML, and snapshot format. Finds mostly clean with minor in-memory issues that don't affect YAML serialization.
+- **Purpose:** Verification report confirming that all cross-resource references use ID-only format per DAG + ID-only invariants. Audits project.qv.yml, calculation.yaml, step YAML, and snapshot format. Finds mostly clean with minor in-memory issues that don't affect YAML serialization.
 - **Type:** schema-spec, refactor-summary
 - **Status:** canonical-current
 - **Mentions schema?:** Yes - primary focus. Verifies ID-only references in all YAML files. Notes that step YAML should NOT contain `structure_id` or `parent_workflow_id` (DAG model). Confirms snapshots use ID-only references.
@@ -168,10 +168,10 @@ This document provides a comprehensive inventory of all Markdown documentation f
 
 - **Path:** AI_understanding.md
 - **Title:** AI Understanding of QuantumVITAS (Python v2)
-- **Purpose:** Comprehensive architectural knowledge base for AI assistants. Covers project overview, core concepts (Resource model, project structure, workflow/step YAML), CLI commands, daemon/GUI architecture, QE engine integration, analysis, snapshots, standalone mode, testing, and many implementation details. Very detailed (4500+ lines).
+- **Purpose:** Comprehensive architectural knowledge base for AI assistants. Covers project overview, core concepts (Resource model, project structure, calculation/step YAML), CLI commands, daemon/GUI architecture, QE engine integration, analysis, snapshots, standalone mode, testing, and many implementation details. Very detailed (4500+ lines).
 - **Type:** architecture-spec, meta/notes, api-reference, cli-usage, daemon-gui-contract, snapshot-doc, standalone-qe-doc, testing-overview
 - **Status:** canonical-current (actively maintained)
-- **Mentions schema?:** Yes - extensive coverage. Section 2.3 shows workflow.yaml and step YAML examples. Mentions `structure_id` (ULID) and `step_id` (ULID) in workflow.yaml. Also mentions `parent_workflow_id` in step YAML (section 2.3), but this is outdated per DAG model (should be removed). Section 23.1 shows snapshot schema with `structure_id` and `parent_workflow_id` in step data (outdated).
+- **Mentions schema?:** Yes - extensive coverage. Section 2.3 shows calculation.yaml and step YAML examples. Mentions `structure_id` (ULID) and `step_id` (ULID) in calculation.yaml. Also mentions `parent_workflow_id` in step YAML (section 2.3), but this is outdated per DAG model (should be removed). Section 23.1 shows snapshot schema with `structure_id` and `parent_workflow_id` in step data (outdated).
 - **Mentions snapshots?:** Yes - section 23 covers snapshots extensively. Section 23.3 explicitly documents "Option B: Template with Fresh IDs" - snapshots are templates, ULIDs are regenerated on materialization. This is the canonical documentation for current snapshot behavior.
 - **Mentions standalone QE?:** Yes - section on standalone mode. Describes standalone as working on raw input files without creating Step resources in the DAG. Mentions bidirectional vs pass-through mode.
 - **Mentions tests/CI?:** Yes - section 22 covers GUI E2E testing, section on test organization
@@ -194,7 +194,7 @@ This document provides a comprehensive inventory of all Markdown documentation f
 
 - **Path:** ROBUSTNESS_TESTS_SUMMARY_CORRECTED.md
 - **Title:** 稳健性测试总结（修正版）(Chinese)
-- **Purpose:** Corrected summary (in Chinese) of robustness tests added for workflow failure handling, resource renaming, snapshots, and pseudopotential resolution. Lists 9 new tests (corrected from 10) with descriptions of behavior guarantees.
+- **Purpose:** Corrected summary (in Chinese) of robustness tests added for calculation failure handling, resource renaming, snapshots, and pseudopotential resolution. Lists 9 new tests (corrected from 10) with descriptions of behavior guarantees.
 - **Type:** meta/notes, test-suite-doc
 - **Status:** canonical-current
 - **Mentions schema?:** No
@@ -229,7 +229,7 @@ This document provides a comprehensive inventory of all Markdown documentation f
 - **Purpose:** Complete reference for the JSON-RPC daemon interface used by the GUI. Documents request/response format, all available RPC methods (project operations, CRUD, visualization, job management), error handling, and protocol details.
 - **Type:** daemon-gui-contract, api-reference
 - **Status:** canonical-current
-- **Mentions schema?:** No explicit schema, but RPC methods work with DAG + ID-only model (workflow selectors use slug, step selectors use ULID)
+- **Mentions schema?:** No explicit schema, but RPC methods work with DAG + ID-only model (calculation selectors use slug, step selectors use ULID)
 - **Mentions snapshots?:** No
 - **Mentions standalone QE?:** No
 - **Mentions tests/CI?:** No
@@ -242,7 +242,7 @@ This document provides a comprehensive inventory of all Markdown documentation f
 - **Purpose:** Comprehensive documentation of the Electron + React + TypeScript GUI. Covers technology stack, architecture diagram, daemon communication, component structure, IPC handlers, state management, error handling, and UI/UX features.
 - **Type:** architecture-spec, daemon-gui-contract
 - **Status:** canonical-current
-- **Mentions schema?:** No explicit schema, but describes GUI's use of workflow slugs and step ULIDs
+- **Mentions schema?:** No explicit schema, but describes GUI's use of calculation slugs and step ULIDs
 - **Mentions snapshots?:** No
 - **Mentions standalone QE?:** No
 - **Mentions tests/CI?:** No
@@ -252,7 +252,7 @@ This document provides a comprehensive inventory of all Markdown documentation f
 
 - **Path:** docs/GUI_CLI_PARITY_PLAN.md
 - **Title:** GUI-CLI Feature Parity Plan
-- **Purpose:** Maps CLI capabilities to GUI features and defines implementation roadmap. Tables showing which CLI commands are implemented in GUI (✅ Done) vs missing (❌ Missing) with priorities. Covers project operations, structure operations, workflow operations, step operations, analysis, and job management.
+- **Purpose:** Maps CLI capabilities to GUI features and defines implementation roadmap. Tables showing which CLI commands are implemented in GUI (✅ Done) vs missing (❌ Missing) with priorities. Covers project operations, structure operations, calculation operations, step operations, analysis, and job management.
 - **Type:** refactor-plan, meta/notes
 - **Status:** partially-outdated (some features may have been implemented since writing)
 - **Mentions schema?:** No
@@ -265,10 +265,10 @@ This document provides a comprehensive inventory of all Markdown documentation f
 
 - **Path:** docs/GUI_DAEMON_API_MAPPING.md
 - **Title:** GUI → Daemon → Backend API Mapping
-- **Purpose:** Maps GUI components to daemon endpoints and backend functions, ensuring consistency with DAG + ID-only model. Documents job submission/listing flow, step detail retrieval flow, path normalization fixes, and selector usage (workflow.slug, step ULID).
+- **Purpose:** Maps GUI components to daemon endpoints and backend functions, ensuring consistency with DAG + ID-only model. Documents job submission/listing flow, step detail retrieval flow, path normalization fixes, and selector usage (calculation.slug, step ULID).
 - **Type:** daemon-gui-contract, api-reference
 - **Status:** canonical-current
-- **Mentions schema?:** Yes - explicitly documents that GUI uses workflow.slug (not ULID) for workflow selector and step.id (ULID) for step selector, per DAG + ID-only model
+- **Mentions schema?:** Yes - explicitly documents that GUI uses calculation.slug (not ULID) for calculation selector and step.id (ULID) for step selector, per DAG + ID-only model
 - **Mentions snapshots?:** No
 - **Mentions standalone QE?:** No
 - **Mentions tests/CI?:** No
@@ -278,7 +278,7 @@ This document provides a comprehensive inventory of all Markdown documentation f
 
 - **Path:** docs/STRUCTURE_AND_CLI_USAGE.md
 - **Title:** Structure I/O and CLI Usage Guide
-- **Purpose:** Detailed examples and usage patterns for QuantumVITAS structure handling and CLI commands. Covers structure I/O functions, CLI commands, parameter overrides, complete workflow examples, and API reference.
+- **Purpose:** Detailed examples and usage patterns for QuantumVITAS structure handling and CLI commands. Covers structure I/O functions, CLI commands, parameter overrides, complete calculation examples, and API reference.
 - **Type:** cli-usage, api-reference
 - **Status:** canonical-current
 - **Mentions schema?:** No explicit schema, but examples show DAG + ID-only model usage
@@ -1026,7 +1026,7 @@ This document provides a comprehensive inventory of all Markdown documentation f
 
 ## Major Inconsistencies
 
-1. **Step YAML schema:** Some docs (`AI_understanding.md` section 2.3, `PROJECT_ARCHITECTURE.md`) show step YAML with `parent_workflow_id` and `structure_id`, but the DAG model requires these fields to be removed from step YAML (structure comes from workflow, parent is implicit from location).
+1. **Step YAML schema:** Some docs (`AI_understanding.md` section 2.3, `PROJECT_ARCHITECTURE.md`) show step YAML with `parent_workflow_id` and `structure_id`, but the DAG model requires these fields to be removed from step YAML (structure comes from calculation, parent is implicit from location).
 
 2. **Snapshot semantics:** `SNAPSHOT_OPTION_A_AUDIT.md` describes Option A (preserve ULIDs) as desired, but all other docs (`AI_understanding.md` section 23.3, `SNAPSHOT_DOCS_UPDATE_SUMMARY.md`) describe Option B (regenerate ULIDs) as the current and intended behavior. The audit doc appears to be historical/aspirational.
 

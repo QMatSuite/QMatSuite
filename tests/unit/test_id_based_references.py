@@ -2,7 +2,7 @@
 Unit tests for ID-based cross-resource references.
 
 Tests verify that:
-- Workflows and steps use structure_id (ULID) as canonical references
+- Calculations and steps use structure_id (ULID) as canonical references
 - Legacy structure selectors (name/slug/path) are still supported
 - Resolution prefers structure_id over structure selector
 - Backwards compatibility is maintained
@@ -14,28 +14,28 @@ from pathlib import Path
 import pytest
 import yaml
 
-from quantumvitas.core.models import WorkflowModel, load_workflow, save_workflow
+from quantumvitas.core.models import CalculationModel, load_calculation, save_calculation
 from quantumvitas.core.resources import ResourceMeta, generate_resource_id
-from quantumvitas.workflow.structure_steps import StructureStepSpec
+from quantumvitas.calculation.structure_steps import StructureStepSpec
 
 
-class TestWorkflowModelStructureReferences:
-    """Test WorkflowModel structure_id vs structure selector."""
+class TestCalculationModelStructureReferences:
+    """Test CalculationModel structure_id vs structure selector."""
     
-    def test_workflow_model_with_structure_id(self):
-        """Test WorkflowModel with structure_id (new format)."""
+    def test_calculation_model_with_structure_id(self):
+        """Test CalculationModel with structure_id (new format)."""
         structure_id = generate_resource_id()
         structure_name = "Si"
         
         meta = ResourceMeta(
             id=generate_resource_id(),
-            name="Test Workflow",
-            slug="test-workflow",
-            path="workflows/test-workflow",
-            kind="workflow",
+            name="Test Calculation",
+            slug="test-calculation",
+            path="calculations/test-calculation",
+            kind="calculation",
         )
         
-        model = WorkflowModel(
+        model = CalculationModel(
             meta=meta,
             structure_id=structure_id,
             structure_name=structure_name,
@@ -53,16 +53,16 @@ class TestWorkflowModelStructureReferences:
         assert "structure_name" not in data  # structure_name is NOT written (DAG + ID-only model)
         assert "structure" not in data  # Legacy selector NOT written (ID-only model)
     
-    def test_workflow_model_from_dict_new_format(self):
-        """Test loading WorkflowModel from dict with structure_id."""
+    def test_calculation_model_from_dict_new_format(self):
+        """Test loading CalculationModel from dict with structure_id."""
         structure_id = generate_resource_id()
         data = {
             "meta": {
                 "id": generate_resource_id(),
-                "name": "Test Workflow",
-                "slug": "test-workflow",
-                "path": "workflows/test-workflow",
-                "kind": "workflow",
+                "name": "Test Calculation",
+                "slug": "test-calculation",
+                "path": "calculations/test-calculation",
+                "kind": "calculation",
             },
             "structure_id": structure_id,
             "structure_name": "Si",
@@ -71,22 +71,22 @@ class TestWorkflowModelStructureReferences:
             "steps": [],
         }
         
-        model = WorkflowModel.from_dict(data)
+        model = CalculationModel.from_dict(data)
         assert model.structure_id == structure_id
         assert model.structure_name == "Si"
         # structure field removed - no longer exists
     
-    def test_workflow_model_from_dict_legacy_format(self):
-        """Test loading WorkflowModel from dict with legacy structure selector raises LegacyProjectError."""
+    def test_calculation_model_from_dict_legacy_format(self):
+        """Test loading CalculationModel from dict with legacy structure selector raises LegacyProjectError."""
         from quantumvitas.core.exceptions import LegacyProjectError
         
         data = {
             "meta": {
                 "id": generate_resource_id(),
-                "name": "Test Workflow",
-                "slug": "test-workflow",
-                "path": "workflows/test-workflow",
-                "kind": "workflow",
+                "name": "Test Calculation",
+                "slug": "test-calculation",
+                "path": "calculations/test-calculation",
+                "kind": "calculation",
             },
             "structure": "si",  # Legacy selector without structure_id
             "mode": "normal",
@@ -96,12 +96,12 @@ class TestWorkflowModelStructureReferences:
         
         # Should raise LegacyProjectError for legacy format
         with pytest.raises(LegacyProjectError) as exc_info:
-            WorkflowModel.from_dict(data)
+            CalculationModel.from_dict(data)
         
         assert "structure" in str(exc_info.value).lower() or "legacy" in str(exc_info.value).lower()
     
-    def test_workflow_model_load_legacy_selector_raises_error(self, tmp_path):
-        """Test that load_workflow raises LegacyProjectError for legacy structure selector."""
+    def test_calculation_model_load_legacy_selector_raises_error(self, tmp_path):
+        """Test that load_calculation raises LegacyProjectError for legacy structure selector."""
         from quantumvitas.core.exceptions import LegacyProjectError
         
         project_root = tmp_path / "project"
@@ -127,21 +127,21 @@ class TestWorkflowModelStructureReferences:
                     },
                 }
             ],
-            "workflows": [],
+            "calculations": [],
         }
         (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
         
-        # Create workflow.yaml with legacy structure selector (no structure_id)
-        workflow_dir = project_root / "workflows" / "test-workflow"
-        workflow_dir.mkdir(parents=True)
-        workflow_yaml = workflow_dir / "workflow.yaml"
-        workflow_yaml.write_text(yaml.safe_dump({
+        # Create calculation.yaml with legacy structure selector (no structure_id)
+        calculation_dir = project_root / "calculations" / "test-calculation"
+        calculation_dir.mkdir(parents=True)
+        calculation_yaml = calculation_dir / "calculation.yaml"
+        calculation_yaml.write_text(yaml.safe_dump({
             "meta": {
                 "id": generate_resource_id(),
-                "name": "Test Workflow",
-                "slug": "test-workflow",
-                "path": "workflows/test-workflow",
-                "kind": "workflow",
+                "name": "Test Calculation",
+                "slug": "test-calculation",
+                "path": "calculations/test-calculation",
+                "kind": "calculation",
             },
             "structure": "si",  # Legacy selector without structure_id
             "mode": "normal",
@@ -149,9 +149,9 @@ class TestWorkflowModelStructureReferences:
             "steps": [],
         }))
         
-        # Load workflow - should raise LegacyProjectError
+        # Load calculation - should raise LegacyProjectError
         with pytest.raises(LegacyProjectError) as exc_info:
-            load_workflow(workflow_yaml, project_root)
+            load_calculation(calculation_yaml, project_root)
         
         assert "structure" in str(exc_info.value).lower() or "legacy" in str(exc_info.value).lower()
 
@@ -162,9 +162,9 @@ class TestStructureStepSpecStructureReferences:
     def test_step_spec_with_structure_id(self):
         """Test StructureStepSpec with structure_id (new format).
         
-        DAG + ID-only model: Step YAML must NOT contain structure_id or parent_workflow_id.
-        Structure is resolved via workflow.structure_id at runtime.
-        Parent workflow is implicit from step file location.
+        DAG + ID-only model: Step YAML must NOT contain structure_id or parent_calculation_id.
+        Structure is resolved via calculation.structure_id at runtime.
+        Parent calculation is implicit from step file location.
         """
         structure_id = generate_resource_id()
         
@@ -181,17 +181,17 @@ class TestStructureStepSpecStructureReferences:
             structure="si",  # Legacy selector for backwards compat (in memory only)
             structure_id=structure_id,  # In memory only (for backwards compat)
             step_type="scf",
-            parent_workflow_id=generate_resource_id(),  # In memory only (for backwards compat)
+            parent_calculation_id=generate_resource_id(),  # In memory only (for backwards compat)
         )
         
         # Verify structure_id is stored in memory (for backwards compat)
         assert spec.structure_id == structure_id
         assert spec.structure == "si"  # Legacy field preserved in memory
         
-        # Verify to_dict does NOT write structure_id or parent_workflow_id (DAG invariant)
+        # Verify to_dict does NOT write structure_id or parent_calculation_id (DAG invariant)
         data = spec.to_dict()
-        assert "structure_id" not in data, "Step YAML must NOT contain structure_id (DAG model: inherits from workflow)"
-        assert "parent_workflow_id" not in data, "Step YAML must NOT contain parent_workflow_id (DAG model: parent is implicit)"
+        assert "structure_id" not in data, "Step YAML must NOT contain structure_id (DAG model: inherits from calculation)"
+        assert "parent_calculation_id" not in data, "Step YAML must NOT contain parent_calculation_id (DAG model: parent is implicit)"
         assert "structure" not in data  # Legacy selector NOT written (DAG model)
     
     def test_step_spec_from_dict_new_format(self):
@@ -208,7 +208,7 @@ class TestStructureStepSpecStructureReferences:
             "structure_id": structure_id,
             "structure": "si",  # Still present for backwards compat
             "step_type": "scf",
-            "parent_workflow_id": generate_resource_id(),
+            "parent_calculation_id": generate_resource_id(),
         }
         
         spec = StructureStepSpec.from_dict(data)
@@ -227,7 +227,7 @@ class TestStructureStepSpecStructureReferences:
             },
             "structure": "si",  # Legacy selector only
             "step_type": "scf",
-            "parent_workflow_id": generate_resource_id(),
+            "parent_calculation_id": generate_resource_id(),
         }
         
         spec = StructureStepSpec.from_dict(data)
@@ -237,7 +237,7 @@ class TestStructureStepSpecStructureReferences:
     def test_step_spec_does_not_require_structure_or_structure_id(self):
         """Test that StructureStepSpec does NOT require structure or structure_id.
         
-        DAG + ID-only model: Steps inherit structure from workflow.structure_id.
+        DAG + ID-only model: Steps inherit structure from calculation.structure_id.
         Step YAML does not need to contain structure_id or structure selector.
         """
         data = {
@@ -251,7 +251,7 @@ class TestStructureStepSpecStructureReferences:
             "step_type": "scf",
         }
         
-        # Should NOT raise error - structure is resolved from workflow at runtime
+        # Should NOT raise error - structure is resolved from calculation at runtime
         spec = StructureStepSpec.from_dict(data)
         assert spec.structure_id is None
         assert spec.structure == ""  # Empty string default
@@ -260,22 +260,22 @@ class TestStructureStepSpecStructureReferences:
 class TestBackwardsCompatibility:
     """Test backwards compatibility with legacy format."""
     
-    def test_workflow_yaml_legacy_structure_selector_raises_error(self, tmp_path):
-        """Test that workflow.yaml with legacy structure selector raises LegacyProjectError."""
+    def test_calculation_yaml_legacy_structure_selector_raises_error(self, tmp_path):
+        """Test that calculation.yaml with legacy structure selector raises LegacyProjectError."""
         from quantumvitas.core.exceptions import LegacyProjectError
         
-        workflow_dir = tmp_path / "workflow"
-        workflow_dir.mkdir()
-        workflow_yaml = workflow_dir / "workflow.yaml"
+        calculation_dir = tmp_path / "calculation"
+        calculation_dir.mkdir()
+        calculation_yaml = calculation_dir / "calculation.yaml"
         
         # Write legacy format (structure selector only, no structure_id)
-        workflow_yaml.write_text(yaml.safe_dump({
+        calculation_yaml.write_text(yaml.safe_dump({
             "meta": {
                 "id": generate_resource_id(),
-                "name": "Test Workflow",
-                "slug": "test-workflow",
-                "path": "workflows/test-workflow",
-                "kind": "workflow",
+                "name": "Test Calculation",
+                "slug": "test-calculation",
+                "path": "calculations/test-calculation",
+                "kind": "calculation",
             },
             "structure": "si",  # Legacy selector without structure_id
             "mode": "normal",
@@ -285,7 +285,7 @@ class TestBackwardsCompatibility:
         
         # Should raise LegacyProjectError
         with pytest.raises(LegacyProjectError) as exc_info:
-            WorkflowModel.from_dict(yaml.safe_load(workflow_yaml.read_text()))
+            CalculationModel.from_dict(yaml.safe_load(calculation_yaml.read_text()))
         
         assert "structure" in str(exc_info.value).lower() or "legacy" in str(exc_info.value).lower()
     
@@ -304,7 +304,7 @@ class TestBackwardsCompatibility:
             },
             "structure": "si",
             "step_type": "scf",
-            "parent_workflow_id": generate_resource_id(),
+            "parent_calculation_id": generate_resource_id(),
         }))
         
         # Should load without error (legacy structure selector preserved in memory)
@@ -315,31 +315,31 @@ class TestBackwardsCompatibility:
         # When project_root is provided, structure selector should be resolved to structure_id
         # (This would require a project with a structure registered, so we test it separately)
     
-    def test_workflow_save_only_persists_structure_id(self, tmp_path):
-        """Test that saving workflow only persists structure_id, not structure selector."""
-        workflow_dir = tmp_path / "workflow"
-        workflow_dir.mkdir()
-        workflow_yaml = workflow_dir / "workflow.yaml"
+    def test_calculation_save_only_persists_structure_id(self, tmp_path):
+        """Test that saving calculation only persists structure_id, not structure selector."""
+        calculation_dir = tmp_path / "calculation"
+        calculation_dir.mkdir()
+        calculation_yaml = calculation_dir / "calculation.yaml"
         
         structure_id = generate_resource_id()
         meta = ResourceMeta(
             id=generate_resource_id(),
-            name="Test Workflow",
-            slug="test-workflow",
-            path="workflows/test-workflow",
-            kind="workflow",
+            name="Test Calculation",
+            slug="test-calculation",
+            path="calculations/test-calculation",
+            kind="calculation",
         )
         
-        model = WorkflowModel(
+        model = CalculationModel(
             meta=meta,
             structure_id=structure_id,
             structure_name="Si",
         )
         
-        save_workflow(model, workflow_yaml)
+        save_calculation(model, calculation_yaml)
         
         # Reload and verify only structure_id is persisted
-        data = yaml.safe_load(workflow_yaml.read_text())
+        data = yaml.safe_load(calculation_yaml.read_text())
         assert "structure_id" in data
         assert data["structure_id"] == structure_id
         assert "structure" not in data  # Legacy selector NOT written (ID-only model)
@@ -383,7 +383,7 @@ class TestStructureResolution:
                     "meta": meta.to_dict(),
                 }
             ],
-            "workflows": [],
+            "calculations": [],
         }
         (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
         
@@ -407,12 +407,12 @@ class TestStructureResolution:
         )
         
         # Resolve structure - should use structure_id
-        from quantumvitas.workflow.structure_steps import _resolve_structure_for_spec
+        from quantumvitas.calculation.structure_steps import _resolve_structure_for_spec
         
         resolved = _resolve_structure_for_spec(
             spec,
             tmp_path / "scf.step.yaml",
-            workflow_dir=None,
+            calculation_dir=None,
             project=project,
         )
         

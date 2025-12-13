@@ -37,13 +37,13 @@ from quantumvitas.io.structure_io import (
     structure_from_qe_input,
 )
 from quantumvitas.core.resources import meta_from_name
-from quantumvitas.workflow.structure_steps import (
+from quantumvitas.calculation.structure_steps import (
     generate_qe_input_from_structure,
     generate_qe_input_from_spec,
     overrides_from_step_spec,
     StructureStepSpec,
 )
-from quantumvitas.workflow.input_runner import ParameterOverride
+from quantumvitas.calculation.input_runner import ParameterOverride
 
 
 # Module-level fixtures for use across test classes

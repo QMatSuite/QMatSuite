@@ -1,7 +1,7 @@
 """
-Test for Si band structure workflow with manual k-path.
+Test for Si band structure calculation with manual k-path.
 
-This test creates a project with a manual k-path band structure workflow:
+This test creates a project with a manual k-path band structure calculation:
 - SCF calculation (pw.x calculation='scf', K_POINTS automatic)
 - NSCF calculation (pw.x calculation='nscf', K_POINTS automatic denser)
 - Bands calculation (pw.x calculation='bands', K_POINTS crystal_b k-path)
@@ -75,8 +75,8 @@ K_POINTS (automatic)
 
 @pytest.fixture(scope="module")
 def test_project_dir(project_root_path: Path) -> Path:
-    """Create a temporary project directory for MANUAL k-path workflow tests."""
-    test_dir = project_root_path / "temp" / "test_si_bands_workflow_manual"
+    """Create a temporary project directory for MANUAL k-path calculation tests."""
+    test_dir = project_root_path / "temp" / "test_si_bands_calculation_manual"
     if test_dir.exists():
         shutil.rmtree(test_dir)
     test_dir.mkdir(parents=True, exist_ok=True)
@@ -85,7 +85,7 @@ def test_project_dir(project_root_path: Path) -> Path:
 
 @pytest.fixture(scope="module")
 def project_with_structure(test_project_dir: Path, project_root_path: Path) -> Path:
-    """Initialize project and import Si structure for MANUAL workflow tests."""
+    """Initialize project and import Si structure for MANUAL calculation tests."""
     # Create QE input file in test_project_dir
     scf_in = test_project_dir / "si.0_scf.in"
     scf_in.write_text(QE_INPUT_CONTENT)
@@ -112,31 +112,31 @@ def project_with_structure(test_project_dir: Path, project_root_path: Path) -> P
     return project_dir
 
 
-class TestSiBandsWorkflowManualKpath:
-    """Test band structure workflow with manual k-path from original files."""
+class TestSiBandsCalculationManualKpath:
+    """Test band structure calculation with manual k-path from original files."""
     
     @pytest.fixture(scope="class")
-    def workflow_dir(self, project_with_structure: Path) -> Path:
-        """Create workflow with manual k-path."""
+    def calculation_dir(self, project_with_structure: Path) -> Path:
+        """Create calculation with manual k-path."""
         project_dir = project_with_structure
         
-        run_qv(["init", "workflow", "bands_manual", "--structure", "si"], cwd=project_dir)
+        run_qv(["init", "calculation", "bands_manual", "--structure", "si"], cwd=project_dir)
         
-        workflow_dir = project_dir / "workflows" / "bands_manual"
-        assert workflow_dir.exists()
+        calculation_dir = project_dir / "calculations" / "bands_manual"
+        assert calculation_dir.exists()
         
-        return workflow_dir
+        return calculation_dir
     
     @pytest.fixture(scope="class")
-    def workflow_with_steps(self, project_with_structure: Path, workflow_dir: Path) -> Path:
-        """Create all steps for the manual k-path workflow."""
+    def calculation_with_steps(self, project_with_structure: Path, calculation_dir: Path) -> Path:
+        """Create all steps for the manual k-path calculation."""
         project_dir = project_with_structure
         
         # Step 1: SCF (calculation='scf', K_POINTS automatic 8x8x8)
         run_qv([
             "init", "step", "scf",
             "--structure", "si",
-            "--workflow", "bands_manual",
+            "--calculation", "bands_manual",
             "--CONTROL.prefix", "si",
             "--CONTROL.outdir", "./outdir",
             "--SYSTEM.ecutwfc", "40",
@@ -151,7 +151,7 @@ class TestSiBandsWorkflowManualKpath:
         run_qv([
             "init", "step", "nscf",
             "--structure", "si",
-            "--workflow", "bands_manual",
+            "--calculation", "bands_manual",
             "--CONTROL.prefix", "si",
             "--CONTROL.outdir", "./outdir",
             "--SYSTEM.ecutwfc", "40",
@@ -178,7 +178,7 @@ class TestSiBandsWorkflowManualKpath:
         run_qv([
             "init", "step", "bands_pw",
             "--structure", "si",
-            "--workflow", "bands_manual",
+            "--calculation", "bands_manual",
             "--name", "bands",
             "--CONTROL.prefix", "si",
             "--CONTROL.outdir", "./outdir",
@@ -194,36 +194,36 @@ class TestSiBandsWorkflowManualKpath:
         run_qv([
             "init", "step", "bands",
             "--structure", "si",
-            "--workflow", "bands_manual",
+            "--calculation", "bands_manual",
             "--name", "bandspp",
             "--BANDS.prefix", "si",
             "--BANDS.outdir", "./outdir",
             "--BANDS.filband", "si.bands.dat",
         ], cwd=project_dir)
         
-        return workflow_dir
+        return calculation_dir
     
-    def test_run_workflow_and_analyze(
+    def test_run_calculation_and_analyze(
         self,
         project_with_structure: Path,
-        workflow_with_steps: Path,
+        calculation_with_steps: Path,
     ) -> None:
-        """Run the complete manual k-path workflow and analyze bands (end-to-end test)."""
+        """Run the complete manual k-path calculation and analyze bands (end-to-end test)."""
         project_dir = project_with_structure
-        workflow_dir = workflow_with_steps
-        raw_dir = workflow_dir / "raw"
+        calculation_dir = calculation_with_steps
+        raw_dir = calculation_dir / "raw"
         
-        # Run the workflow once
+        # Run the calculation once
         result = run_qv(
-            ["run", "workflow", "bands_manual", "--verbose"],
+            ["run", "calculation", "bands_manual", "--verbose"],
             cwd=project_dir,
             check=False,
         )
         
-        # Check if workflow completed successfully
+        # Check if calculation completed successfully
         if result.returncode != 0 or "status:" not in result.stdout.lower():
             pytest.fail(
-                "Manual k-path workflow failed:\n"
+                "Manual k-path calculation failed:\n"
                 f"STDOUT:\n{result.stdout}\n\n"
                 f"STDERR:\n{result.stderr}"
             )
@@ -234,7 +234,7 @@ class TestSiBandsWorkflowManualKpath:
             raw_files = sorted(p.name for p in raw_dir.glob("*")) if raw_dir.exists() else []
             crash_files = sorted(p.name for p in raw_dir.glob("CRASH*")) if raw_dir.exists() else []
             pytest.fail(
-                "Bands output not found after running manual k-path workflow:\n"
+                "Bands output not found after running manual k-path calculation:\n"
                 f"Expected: {bands_gnu}\n"
                 f"Files in raw/: {raw_files}\n"
                 f"CRASH files: {crash_files}"
@@ -278,13 +278,13 @@ class TestSiBandsWorkflowManualKpath:
             )
         
         # Verify plot was created in results folder
-        results_dir = workflow_dir / "results"
+        results_dir = calculation_dir / "results"
         plot_files = list(results_dir.glob("bands*.png"))
         assert plot_files, f"No band plot found in {results_dir}"
 
 
 # Unit tests that don't require QE
-class TestBandsWorkflowDataModels:
+class TestBandsCalculationDataModels:
     """Test the data models for band analysis (no QE required)."""
     
     pytestmark = pytest.mark.unit
@@ -292,7 +292,7 @@ class TestBandsWorkflowDataModels:
     @pytest.fixture(scope="class")
     def test_data_dir(self, project_root_path: Path):
         """Optional test data directory - tests skip if not available."""
-        test_data_dir = project_root_path / "tests" / "data" / "workflow_bands"
+        test_data_dir = project_root_path / "tests" / "data" / "calculation_bands"
         if not test_data_dir.exists():
             pytest.skip(f"Test data not found: {test_data_dir}")
         return test_data_dir

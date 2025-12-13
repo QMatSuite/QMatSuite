@@ -13,7 +13,7 @@ import re
 from pathlib import Path
 from typing import Optional, Tuple, Dict, Any
 
-from src.quantumvitas.core.engines.qe_workflow import StepResult
+from src.quantumvitas.core.engines.qe_calculation import StepResult
 from .thresholds import (
     get_energy_tolerance,
     get_fermi_energy_tolerance,

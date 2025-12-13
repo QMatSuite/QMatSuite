@@ -7,18 +7,18 @@ This document maps the GUI components to daemon endpoints and backend functions,
 ### Flow: GUI → Daemon → Backend
 
 1. **GUI**: `handleRunWorkflow()` in `App.tsx`
-   - Calls: `qv.call('run_workflow', { project_root: projectRoot, workflow: workflow.slug })`
-   - Uses: `workflow.slug` (not ULID) for workflow selector
+   - Calls: `qv.call('run_calculation', { project_root: projectRoot, calculation: calculation.slug })`
+   - Uses: `calculation.slug` (not ULID) for calculation selector
    - Uses: `projectRoot` (string from state)
 
-2. **Daemon**: `_handle_run_workflow()` in `server.py`
+2. **Daemon**: `_handle_run_calculation()` in `server.py`
    - Normalizes: `project_root` to `Path(project_root).resolve()`
    - Stores: `project_root_display=str(project_root.resolve())` in job
-   - Calls: `QVService.run_workflow()` with normalized paths
+   - Calls: `QVService.run_calculation()` with normalized paths
 
-3. **Backend**: `QVService.run_workflow()`
-   - Resolves workflow via registry using selector
-   - Executes workflow via `WorkflowRunner`
+3. **Backend**: `QVService.run_calculation()`
+   - Resolves calculation via registry using selector
+   - Executes calculation via `CalculationRunner`
 
 ### Job Listing
 
@@ -41,7 +41,7 @@ This document maps the GUI components to daemon endpoints and backend functions,
 
 **Solution**: 
 - Normalize `project_root` in `_handle_list_jobs()` before filtering
-- Normalize `project_root_display` in `_handle_run_workflow()` when storing job
+- Normalize `project_root_display` in `_handle_run_calculation()` when storing job
 - Normalize both sides in `JobManager.list_jobs()` for comparison
 
 ## Step Detail Retrieval
@@ -49,8 +49,8 @@ This document maps the GUI components to daemon endpoints and backend functions,
 ### Flow: GUI → Daemon → Backend
 
 1. **GUI**: `StepDetailPanel` component
-   - Calls: `get_step_detail` with `{ project_root, workflow: workflowSelector, step: stepSelector }`
-   - Uses: `workflowSelector = selectedWorkflow.slug` (from workflow list)
+   - Calls: `get_step_detail` with `{ project_root, calculation: workflowSelector, step: stepSelector }`
+   - Uses: `workflowSelector = selectedWorkflow.slug` (from calculation list)
    - Uses: `stepSelector = selectedStepId` (from `step.id` which is ULID)
 
 2. **Daemon**: `_handle_get_step_detail()` in `server.py`
@@ -72,15 +72,15 @@ This document maps the GUI components to daemon endpoints and backend functions,
 
 ## Selector Format Summary
 
-### Workflow Selectors
-- **GUI uses**: `workflow.slug` (e.g., "si-dos", "si-bands")
+### Calculation Selectors
+- **GUI uses**: `calculation.slug` (e.g., "si-dos", "si-bands")
 - **Backend accepts**: ULID, slug, name, or path
-- **Resolution**: Via `ResourceIndex` → `resolve_workflow()`
+- **Resolution**: Via `ResourceIndex` → `resolve_calculation()`
 
 ### Step Selectors
-- **GUI uses**: `step.id` (ULID, 26 chars) from `workflow.steps[]`
+- **GUI uses**: `step.id` (ULID, 26 chars) from `calculation.steps[]`
 - **Backend accepts**: ULID, slug, name, step_type, or path
-- **Resolution**: Via `ResourceIndex` → `resolve_step()` within workflow context
+- **Resolution**: Via `ResourceIndex` → `resolve_step()` within calculation context
 
 ### Project Root
 - **GUI sends**: String from state (may be relative or absolute)
@@ -89,15 +89,15 @@ This document maps the GUI components to daemon endpoints and backend functions,
 
 ## DAG + ID-only Invariants
 
-### Workflow YAML
+### Calculation YAML
 - Contains: `structure_id` (ULID)
 - Does NOT contain: `structure_name`, `structure` selector (cosmetic only)
 - Steps: `step_id` (ULID) references only
 
 ### Step YAML
 - Does NOT contain: `structure_id`, `parent_workflow_id`, `structure` selector
-- Structure: Inherited from `workflow.structure_id` at runtime
-- Workflow: Resolved via registry using `step_id` → workflow mapping
+- Structure: Inherited from `calculation.structure_id` at runtime
+- Calculation: Resolved via registry using `step_id` → calculation mapping
 
 ### Cross-Resource References
 - All references use ULIDs (26-char alphanumeric)

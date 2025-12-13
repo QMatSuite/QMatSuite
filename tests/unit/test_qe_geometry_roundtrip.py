@@ -2,12 +2,12 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.workflow.geometry import (
+from quantumvitas.calculation.geometry import (
     read_geometry_from_input,
     read_geometry_from_output,
     compare_geometries,
 )
-from quantumvitas.workflow import build_step_spec_from_qe_input, materialize_step_spec
+from quantumvitas.calculation import build_step_spec_from_qe_input, materialize_step_spec
 
 
 pytestmark = pytest.mark.quick
@@ -57,7 +57,7 @@ def test_pw_scf_ibrav_geometry_roundtrip(ci_test_data_dir: Path, tmp_path: Path)
         generated_input, _ = materialize_step_spec(
             step_spec.spec_path,
             output_dir=raw_dir,
-            workflow_dir=working_dir,
+            calculation_dir=working_dir,
             project_root=project_root,
         )
 

@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from quantumvitas.core.exceptions import LegacyProjectError
-from quantumvitas.core.models import load_workflow, load_project
+from quantumvitas.core.models import load_calculation, load_project
 from quantumvitas.legacy.migrate import migrate_legacy_project
 
 
@@ -44,23 +44,23 @@ def test_migrate_legacy_project_minimal(tmp_path):
     }
     structure_file.write_text(json.dumps(structure_data, indent=2))
     
-    # Create workflows directory
-    workflows_dir = project_root / "workflows"
-    workflows_dir.mkdir()
-    workflow_dir = workflows_dir / "si_flow"
-    workflow_dir.mkdir()
-    steps_dir = workflow_dir / "steps"
+    # Create calculations directory
+    calculations_dir = project_root / "calculations"
+    calculations_dir.mkdir()
+    calculation_dir = calculations_dir / "si_flow"
+    calculation_dir.mkdir()
+    steps_dir = calculation_dir / "steps"
     steps_dir.mkdir()
     
-    # Create legacy workflow.yaml with structure selector (no structure_id)
-    workflow_ulid = generate_resource_id()
-    legacy_workflow = {
+    # Create legacy calculation.yaml with structure selector (no structure_id)
+    calculation_ulid = generate_resource_id()
+    legacy_calculation = {
         "meta": {
-            "id": workflow_ulid,
+            "id": calculation_ulid,
             "name": "Si Flow",
             "slug": "si-flow",
-            "path": "workflows/si_flow",
-            "kind": "workflow",
+            "path": "calculations/si_flow",
+            "kind": "calculation",
         },
         "structure": "si",  # Legacy selector, no structure_id
         "steps": [
@@ -71,8 +71,8 @@ def test_migrate_legacy_project_minimal(tmp_path):
             },
         ],
     }
-    workflow_yaml = workflow_dir / "workflow.yaml"
-    workflow_yaml.write_text(yaml.safe_dump(legacy_workflow, sort_keys=False))
+    calculation_yaml = calculation_dir / "calculation.yaml"
+    calculation_yaml.write_text(yaml.safe_dump(legacy_calculation, sort_keys=False))
     
     # Create a minimal step file (legacy format)
     step_file = steps_dir / "si_scf.step.yaml"
@@ -82,7 +82,7 @@ def test_migrate_legacy_project_minimal(tmp_path):
             "id": step_ulid,
             "name": "si_scf",
             "slug": "si-scf",
-            "path": "workflows/si_flow/steps/si_scf.step.yaml",
+            "path": "calculations/si_flow/steps/si_scf.step.yaml",
             "kind": "step",
         },
         "step_type": "scf",
@@ -111,10 +111,10 @@ def test_migrate_legacy_project_minimal(tmp_path):
                 },
             },
         ],
-        "workflows": [
+        "calculations": [
             {
                 "name": "Si Flow",
-                "path": "workflows/si_flow",
+                "path": "calculations/si_flow",
             },
         ],
     }
@@ -123,37 +123,37 @@ def test_migrate_legacy_project_minimal(tmp_path):
     
     # Before migration: loading should raise LegacyProjectError
     with pytest.raises(LegacyProjectError):
-        load_workflow(workflow_dir, project_root)
+        load_calculation(calculation_dir, project_root)
     
     # Run migration
     migrate_legacy_project(project_root)
     
     # After migration: loading should succeed
-    workflow_model = load_workflow(workflow_dir, project_root)
+    calculation_model = load_calculation(calculation_dir, project_root)
     
-    # Verify migrated workflow has structure_id (ULID)
-    assert workflow_model.structure_id is not None
-    assert len(workflow_model.structure_id) == 26
-    assert workflow_model.structure_id.startswith("01")
-    assert workflow_model.structure_id == structure_id
+    # Verify migrated calculation has structure_id (ULID)
+    assert calculation_model.structure_id is not None
+    assert len(calculation_model.structure_id) == 26
+    assert calculation_model.structure_id.startswith("01")
+    assert calculation_model.structure_id == structure_id
     
     # Verify steps have step_id (ULID)
-    assert len(workflow_model.steps) == 1
-    step_entry = workflow_model.steps[0]
+    assert len(calculation_model.steps) == 1
+    step_entry = calculation_model.steps[0]
     assert step_entry.step_id is not None
     assert len(step_entry.step_id) == 26
     assert step_entry.step_id.startswith("01")
     # Should match the ULID from the step file
     assert step_entry.step_id == step_ulid
     
-    # Verify workflow.yaml no longer has legacy fields
-    workflow_data = yaml.safe_load(workflow_yaml.read_text())
-    assert "structure_id" in workflow_data
-    assert "structure" not in workflow_data
-    assert "structure_name" not in workflow_data
+    # Verify calculation.yaml no longer has legacy fields
+    calculation_data = yaml.safe_load(calculation_yaml.read_text())
+    assert "structure_id" in calculation_data
+    assert "structure" not in calculation_data
+    assert "structure_name" not in calculation_data
     
     # Verify step entry no longer has legacy fields
-    step_entry_dict = workflow_data["steps"][0]
+    step_entry_dict = calculation_data["steps"][0]
     assert "step_id" in step_entry_dict
     assert "step_file" not in step_entry_dict
     assert "id" not in step_entry_dict
@@ -166,4 +166,4 @@ def test_migrate_legacy_project_minimal(tmp_path):
     # Verify project can be loaded without LegacyProjectError
     project = load_project(project_root)
     assert project is not None
-    assert len(project.workflows) == 1
+    assert len(project.calculations) == 1

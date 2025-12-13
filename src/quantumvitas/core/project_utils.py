@@ -1,5 +1,5 @@
 """
-Project configuration helpers for managing structures, workflows, and steps.
+Project configuration helpers for managing structures, calculations, and steps.
 
 These utilities operate on the raw project config dict loaded from project.qv.yml.
 They are used by both CLI and programmatic APIs.
@@ -22,13 +22,13 @@ from quantumvitas.core.resources import (
     slugify,
 )
 from quantumvitas.core.selectors import (
-    extract_workflow_selector_from_entry,
+    extract_calculation_selector_from_entry,
     extract_structure_selector_from_entry,
     extract_step_selector_from_entry,
 )
 
 if TYPE_CHECKING:
-    from quantumvitas.workflow.structure_steps import StructureStepSpec
+    from quantumvitas.calculation.structure_steps import StructureStepSpec
 
 
 class ProjectConfigError(ValueError):
@@ -37,7 +37,7 @@ class ProjectConfigError(ValueError):
 
 
 class ResourceNotFoundError(ProjectConfigError):
-    """Raised when a structure or workflow is not found."""
+    """Raised when a structure or calculation is not found."""
     pass
 
 
@@ -67,9 +67,9 @@ def save_project_config(project_root: Path, data: dict) -> None:
 
 def collect_slugs(entries: list[dict], *, exclude: Optional[dict] = None, project_root: Optional[Path] = None) -> list[str]:
     """
-    Collect all slugs from a list of structure or workflow entries.
+    Collect all slugs from a list of structure or calculation entries.
     
-    In ID-only model, entries may only have structure_id/workflow_id (ULID).
+    In ID-only model, entries may only have structure_id/calculation_id (ULID).
     If project_root is provided, resolves slugs from registry.
     Otherwise, falls back to legacy entry format (meta/name fields).
     """
@@ -83,8 +83,8 @@ def collect_slugs(entries: list[dict], *, exclude: Optional[dict] = None, projec
             for entry in entries:
                 if exclude is not None and entry is exclude:
                     continue
-                # Try to get resource ID (structure_id, workflow_id, or id)
-                resource_id = entry.get("structure_id") or entry.get("workflow_id") or entry.get("id")
+                # Try to get resource ID (structure_id, calculation_id, or id)
+                resource_id = entry.get("structure_id") or entry.get("calculation_id") or entry.get("id")
                 if resource_id and resource_id in index.by_id:
                     meta = index.by_id[resource_id]
                     if meta.slug:
@@ -161,17 +161,17 @@ def ensure_structure_entry_defaults(entry: dict) -> None:
         meta.setdefault("path", f"structures/{slug_candidate}.json")
 
 
-def ensure_workflow_entry_defaults(entry: dict) -> None:
-    """Ensure a workflow entry has all required default fields."""
+def ensure_calculation_entry_defaults(entry: dict) -> None:
+    """Ensure a calculation entry has all required default fields."""
     meta = entry.setdefault("meta", {})
     if not meta.get("id"):
         meta["id"] = generate_resource_id()
-    name_candidate = entry.get("name") or meta.get("name") or entry.get("id") or "Workflow"
+    name_candidate = entry.get("name") or meta.get("name") or entry.get("id") or "Calculation"
     meta.setdefault("name", name_candidate)
     entry.setdefault("name", meta["name"])
     slug_candidate = meta.get("slug") or slugify(meta["name"])
     meta["slug"] = slug_candidate
-    path_value = entry.get("path") or meta.get("path") or f"workflows/{slug_candidate}"
+    path_value = entry.get("path") or meta.get("path") or f"calculations/{slug_candidate}"
     entry.setdefault("path", path_value)
     meta.setdefault("path", path_value)
 
@@ -247,35 +247,35 @@ def find_structure_entry(
     raise ResourceNotFoundError(f"Structure '{identifier}' not found.")
 
 
-def find_workflow_entry(
+def find_calculation_entry(
     config: dict, identifier: str, project_root: Optional[Path] = None
 ) -> dict:
     """
-    Find a workflow entry by name, slug, or directory path.
+    Find a calculation entry by name, slug, or directory path.
     
-    DEPRECATED: Prefer using resolve_workflow() with ResourceIndex for new code.
+    DEPRECATED: Prefer using resolve_calculation() with ResourceIndex for new code.
     This function is kept for backwards compatibility.
     
     Raises:
-        ResourceNotFoundError: If the workflow is not found.
+        ResourceNotFoundError: If the calculation is not found.
     """
     # Try to use ResourceIndex if project_root is available
     if project_root:
         try:
-            from quantumvitas.core.resolution import build_resource_index, resolve_workflow
+            from quantumvitas.core.resolution import build_resource_index, resolve_calculation
             index = build_resource_index(project_root)
-            resolved = resolve_workflow(project_root, identifier, config, index=index)
+            resolved = resolve_calculation(project_root, identifier, config, index=index)
             # Convert ResolvedResource back to entry dict format for backwards compat
-            workflow_id = resolved.meta.id
+            calculation_id = resolved.meta.id
             # Find entry by ID using centralized selector extraction
-            entries = config.setdefault("workflows", [])
+            entries = config.setdefault("calculations", [])
             for entry in entries:
-                entry_id = extract_workflow_selector_from_entry(entry)
-                if entry_id == workflow_id:
+                entry_id = extract_calculation_selector_from_entry(entry)
+                if entry_id == calculation_id:
                     return entry
             # If not found in config, create minimal entry from resolved resource
             return {
-                "id": workflow_id,
+                "id": calculation_id,
                 "meta": resolved.meta.to_dict(),
             }
         except Exception:
@@ -283,9 +283,9 @@ def find_workflow_entry(
             pass
     
     # Legacy resolution (for backwards compatibility)
-    entries = config.setdefault("workflows", [])
+    entries = config.setdefault("calculations", [])
     for entry in entries:
-        ensure_workflow_entry_defaults(entry)
+        ensure_calculation_entry_defaults(entry)
         if entry_matches(entry, identifier):
             return entry
     if project_root:
@@ -310,15 +310,15 @@ def find_workflow_entry(
                 wf_rel = entry.get("path") or (entry.get("meta") or {}).get("path")
                 if wf_rel and Path(wf_rel).as_posix() == rel:
                     return entry
-    raise ResourceNotFoundError(f"Workflow '{identifier}' not found.")
+    raise ResourceNotFoundError(f"Calculation '{identifier}' not found.")
 
 
-def workflow_directory(project_root: Path, entry: dict) -> Path:
+def calculation_directory(project_root: Path, entry: dict) -> Path:
     """
-    Get the absolute path to a workflow directory.
+    Get the absolute path to a calculation directory.
     
-    In ID-only model, entry may only have workflow_id/id, not path.
-    Uses registry to resolve workflow directory if path is missing.
+    In ID-only model, entry may only have calculation_id/id, not path.
+    Uses registry to resolve calculation directory if path is missing.
     
     After renames, the entry path is updated immediately, so we check it first.
     If the path doesn't exist, we fall back to registry resolution.
@@ -335,36 +335,36 @@ def workflow_directory(project_root: Path, entry: dict) -> Path:
         # (might be a stale path or registry needs to be checked)
     
     # ID-only model: resolve via registry
-    workflow_id = entry.get("workflow_id") or entry.get("id") or (entry.get("meta") or {}).get("id")
-    if workflow_id:
+    calculation_id = entry.get("calculation_id") or entry.get("id") or (entry.get("meta") or {}).get("id")
+    if calculation_id:
         try:
-            from quantumvitas.core.resolution import build_resource_index, require_workflow
+            from quantumvitas.core.resolution import build_resource_index, require_calculation
             index = build_resource_index(project_root)
-            resolved = require_workflow(project_root, workflow_id, index=index)
-            # resolved.absolute_path points to workflow.yaml, so get parent directory
-            if resolved.absolute_path.name == "workflow.yaml":
-                workflow_dir = resolved.absolute_path.parent
+            resolved = require_calculation(project_root, calculation_id, index=index)
+            # resolved.absolute_path points to calculation.yaml, so get parent directory
+            if resolved.absolute_path.name == "calculation.yaml":
+                calculation_dir = resolved.absolute_path.parent
             else:
-                workflow_dir = resolved.absolute_path
+                calculation_dir = resolved.absolute_path
             # Verify the directory exists
-            if workflow_dir.exists() and workflow_dir.is_dir():
-                return workflow_dir
+            if calculation_dir.exists() and calculation_dir.is_dir():
+                return calculation_dir
         except Exception:
             pass
     
     # Fallback: try to construct from slug
     slug = (entry.get("meta") or {}).get("slug") or entry.get("slug")
     if slug:
-        candidate = (project_root / "workflows" / slug).resolve()
+        candidate = (project_root / "calculations" / slug).resolve()
         if candidate.exists() and candidate.is_dir():
             return candidate
     
     # Last resort: error with helpful message
     rel_path_str = entry.get("path") or (entry.get("meta") or {}).get("path")
     raise ProjectConfigError(
-        f"Workflow entry is missing a path and cannot be resolved via registry. "
+        f"Calculation entry is missing a path and cannot be resolved via registry. "
         f"Entry path: {rel_path_str}, project_root: {project_root}, "
-        f"workflow_id: {entry.get('workflow_id') or entry.get('id') or (entry.get('meta') or {}).get('id')}"
+        f"calculation_id: {entry.get('calculation_id') or entry.get('id') or (entry.get('meta') or {}).get('id')}"
     )
 
 
@@ -396,13 +396,13 @@ def find_project_root(start: Optional[Path] = None) -> Path:
     )
 
 
-def find_enclosing_workflow(
+def find_enclosing_calculation(
     project_root: Path, 
     config: dict, 
     start: Optional[Path] = None
 ) -> Optional[dict]:
     """
-    Find workflow entry that encloses the current directory.
+    Find calculation entry that encloses the current directory.
     
     Args:
         project_root: Project root path
@@ -410,7 +410,7 @@ def find_enclosing_workflow(
         start: Starting directory (defaults to cwd)
         
     Returns:
-        Workflow entry dict if found, None otherwise
+        Calculation entry dict if found, None otherwise
     """
     current = Path(start or Path.cwd()).resolve()
     
@@ -420,26 +420,26 @@ def find_enclosing_workflow(
     except ValueError:
         return None
     
-    workflows = config.get("workflows", [])
+    calculations = config.get("calculations", [])
     
     # Try registry-based resolution first (ID-only model)
     try:
-        from quantumvitas.core.resolution import build_resource_index, require_workflow
+        from quantumvitas.core.resolution import build_resource_index, require_calculation
         index = build_resource_index(project_root)
         
-        for entry in workflows:
-            workflow_id = entry.get("workflow_id") or entry.get("id") or (entry.get("meta") or {}).get("id")
-            if not workflow_id:
+        for entry in calculations:
+            calculation_id = entry.get("calculation_id") or entry.get("id") or (entry.get("meta") or {}).get("id")
+            if not calculation_id:
                 continue
             try:
-                resolved = require_workflow(project_root, workflow_id, index=index)
-                # resolved.absolute_path points to workflow.yaml, so get parent directory
-                workflow_dir = resolved.absolute_path.parent if resolved.absolute_path.name == "workflow.yaml" else resolved.absolute_path
-                # Check if current dir is workflow dir or inside it
-                if current == workflow_dir:
+                resolved = require_calculation(project_root, calculation_id, index=index)
+                # resolved.absolute_path points to calculation.yaml, so get parent directory
+                calculation_dir = resolved.absolute_path.parent if resolved.absolute_path.name == "calculation.yaml" else resolved.absolute_path
+                # Check if current dir is calculation dir or inside it
+                if current == calculation_dir:
                     return entry
                 try:
-                    current.relative_to(workflow_dir)
+                    current.relative_to(calculation_dir)
                     return entry
                 except ValueError:
                     continue
@@ -450,55 +450,55 @@ def find_enclosing_workflow(
         pass
     
     # Fallback: path-based resolution (legacy format)
-    for entry in workflows:
-        ensure_workflow_entry_defaults(entry)
+    for entry in calculations:
+        ensure_calculation_entry_defaults(entry)
         rel_path = entry.get("path") or (entry.get("meta") or {}).get("path")
         if not rel_path:
             continue
-        workflow_dir = (project_root / rel_path).resolve()
-        # Check if current dir is workflow dir or inside it
-        if current == workflow_dir:
+        calculation_dir = (project_root / rel_path).resolve()
+        # Check if current dir is calculation dir or inside it
+        if current == calculation_dir:
             return entry
         try:
-            current.relative_to(workflow_dir)
+            current.relative_to(calculation_dir)
             return entry
         except ValueError:
             continue
     return None
 
 
-def find_step_in_workflow(
-    workflow_dir: Path, 
+def find_step_in_calculation(
+    calculation_dir: Path, 
     step_identifier: str
 ) -> Optional[Path]:
     """
-    Find a step YAML file in a workflow by id, name, or path.
+    Find a step YAML file in a calculation by id, name, or path.
     
     Args:
-        workflow_dir: Path to workflow directory
+        calculation_dir: Path to calculation directory
         step_identifier: Step id, name, or path to .step.yaml
         
     Returns:
         Path to step YAML if found, None otherwise
     """
-    steps_dir = workflow_dir / "steps"
+    steps_dir = calculation_dir / "steps"
     
     # Check if it's a direct path
     if step_identifier.endswith(".yaml") or step_identifier.endswith(".yml"):
         candidates = [
             Path(step_identifier),
-            workflow_dir / step_identifier,
+            calculation_dir / step_identifier,
             steps_dir / step_identifier,
         ]
         for candidate in candidates:
             if candidate.exists():
                 return candidate.resolve()
     
-    # Search by step id in workflow.yaml and step files
-    workflow_yaml = workflow_dir / "workflow.yaml"
-    if workflow_yaml.exists():
+    # Search by step id in calculation.yaml and step files
+    calculation_yaml = calculation_dir / "calculation.yaml"
+    if calculation_yaml.exists():
         try:
-            wf_data = yaml.safe_load(workflow_yaml.read_text()) or {}
+            wf_data = yaml.safe_load(calculation_yaml.read_text()) or {}
             for step in wf_data.get("steps", []):
                 step_id = step.get("id", "")
                 if step_id.lower() == step_identifier.lower():
@@ -542,7 +542,7 @@ class ResourceContext:
     project_root: Path
     config: dict
     entry: Optional[dict] = None  # The found resource entry
-    parent_entry: Optional[dict] = None  # Parent resource (workflow for step)
+    parent_entry: Optional[dict] = None  # Parent resource (calculation for step)
     resource_path: Optional[Path] = None  # Resolved absolute path
 
 
@@ -570,7 +570,7 @@ def resolve_resource(
     
     Resolution strategy:
     1. Find project root (from project_path or walking up from cwd)
-    2. For resources needing a parent (step needs workflow):
+    2. For resources needing a parent (step needs calculation):
        - If parent_identifier given, find parent first
        - Else auto-detect parent from cwd
     3. Find the resource:
@@ -579,9 +579,9 @@ def resolve_resource(
        - By name/slug: search within parent scope
     
     Args:
-        resource_type: "project", "structure", "workflow", or "step"
-        identifier: Resource id/name/slug/path (optional for workflow/step if inside one)
-        parent_identifier: Parent resource id/name/slug/path (for step: the workflow)
+        resource_type: "project", "structure", "calculation", or "step"
+        identifier: Resource id/name/slug/path (optional for calculation/step if inside one)
+        parent_identifier: Parent resource id/name/slug/path (for step: the calculation)
         project_path: Explicit project path
         cwd: Starting directory for auto-detection (defaults to Path.cwd())
         
@@ -625,8 +625,8 @@ def resolve_resource(
             resource_path=(project_root / file_path) if file_path else None,
         )
     
-    # Step 4: Handle workflow (parent is always project)
-    if resource_type == "workflow":
+    # Step 4: Handle calculation (parent is always project)
+    if resource_type == "calculation":
         if identifier:
             # Check if it's a direct path first
             if _is_path_like(identifier):
@@ -635,9 +635,9 @@ def resolve_resource(
                     candidate = project_root / identifier
                 if candidate.exists():
                     # Find matching entry in config
-                    for entry in config.get("workflows", []):
-                        ensure_workflow_entry_defaults(entry)
-                        wf_dir = workflow_directory(project_root, entry)
+                    for entry in config.get("calculations", []):
+                        ensure_calculation_entry_defaults(entry)
+                        wf_dir = calculation_directory(project_root, entry)
                         if wf_dir == candidate.resolve():
                             return ResourceContext(
                                 project_root=project_root,
@@ -646,64 +646,64 @@ def resolve_resource(
                                 resource_path=wf_dir,
                             )
             # Search by id/name/slug
-            entry = find_workflow_entry(config, identifier, project_root)
+            entry = find_calculation_entry(config, identifier, project_root)
             return ResourceContext(
                 project_root=project_root,
                 config=config,
                 entry=entry,
-                resource_path=workflow_directory(project_root, entry),
+                resource_path=calculation_directory(project_root, entry),
             )
         else:
-            # Auto-find enclosing workflow from cwd
-            entry = find_enclosing_workflow(project_root, config, start)
+            # Auto-find enclosing calculation from cwd
+            entry = find_enclosing_calculation(project_root, config, start)
             if entry:
                 return ResourceContext(
                     project_root=project_root,
                     config=config,
                     entry=entry,
-                    resource_path=workflow_directory(project_root, entry),
+                    resource_path=calculation_directory(project_root, entry),
                 )
             raise ResourceNotFoundError(
-                "No workflow specified and not inside a workflow directory."
+                "No calculation specified and not inside a calculation directory."
             )
     
-    # Step 5: Handle step (parent is workflow)
+    # Step 5: Handle step (parent is calculation)
     if resource_type == "step":
-        # First, find the parent workflow
-        workflow_entry = None
-        workflow_dir = None
+        # First, find the parent calculation
+        calculation_entry = None
+        calculation_dir = None
         
         if parent_identifier:
-            # User specified workflow explicitly
-            workflow_entry = find_workflow_entry(config, parent_identifier, project_root)
-            workflow_dir = workflow_directory(project_root, workflow_entry)
+            # User specified calculation explicitly
+            calculation_entry = find_calculation_entry(config, parent_identifier, project_root)
+            calculation_dir = calculation_directory(project_root, calculation_entry)
         else:
-            # Try to auto-detect enclosing workflow from cwd
-            workflow_entry = find_enclosing_workflow(project_root, config, start)
-            if workflow_entry:
-                workflow_dir = workflow_directory(project_root, workflow_entry)
+            # Try to auto-detect enclosing calculation from cwd
+            calculation_entry = find_enclosing_calculation(project_root, config, start)
+            if calculation_entry:
+                calculation_dir = calculation_directory(project_root, calculation_entry)
         
-        if not workflow_entry:
+        if not calculation_entry:
             raise ResourceNotFoundError(
-                "Could not determine workflow. Specify --workflow or run inside a workflow directory."
+                "Could not determine calculation. Specify --calculation or run inside a calculation directory."
             )
         
         if not identifier:
             raise ResourceNotFoundError("Step identifier required.")
         
-        # Find the step within the workflow
-        step_path = find_step_in_workflow(workflow_dir, identifier)
+        # Find the step within the calculation
+        step_path = find_step_in_calculation(calculation_dir, identifier)
         if step_path:
             return ResourceContext(
                 project_root=project_root,
                 config=config,
                 entry={"id": identifier, "path": str(step_path)},
-                parent_entry=workflow_entry,
+                parent_entry=calculation_entry,
                 resource_path=step_path,
             )
         
         raise ResourceNotFoundError(
-            f"Step '{identifier}' not found in workflow '{entry_display_name(workflow_entry)}'."
+            f"Step '{identifier}' not found in calculation '{entry_display_name(calculation_entry)}'."
         )
     
     raise ValueError(f"Unknown resource type: {resource_type}")
@@ -772,20 +772,20 @@ def spec_uses_structure(
     return False
 
 
-def workflows_using_structure(
+def calculations_using_structure(
     project_root: Path, config: dict, entry: dict
 ) -> list[dict]:
-    """Find all workflows that reference a given structure."""
-    from quantumvitas.workflow.structure_steps import StructureStepSpec
+    """Find all calculations that reference a given structure."""
+    from quantumvitas.calculation.structure_steps import StructureStepSpec
     
     aliases, resolved_path = structure_reference_tokens(entry, project_root)
     matches: list[dict] = []
-    for workflow_entry in list(config.get("workflows", [])):
-        workflow_path = workflow_entry.get("path") or (workflow_entry.get("meta") or {}).get("path")
-        if not workflow_path:
+    for calculation_entry in list(config.get("calculations", [])):
+        calculation_path = calculation_entry.get("path") or (calculation_entry.get("meta") or {}).get("path")
+        if not calculation_path:
             continue
-        workflow_dir = (project_root / workflow_path).resolve()
-        steps_dir = workflow_dir / "steps"
+        calculation_dir = (project_root / calculation_path).resolve()
+        steps_dir = calculation_dir / "steps"
         if not steps_dir.exists():
             continue
         for spec_path in steps_dir.rglob("*.step.yaml"):
@@ -794,18 +794,18 @@ def workflows_using_structure(
             except Exception:
                 continue
             if spec_uses_structure(spec, spec_path, aliases, resolved_path):
-                matches.append(workflow_entry)
+                matches.append(calculation_entry)
                 break
     return matches
 
 
 # ---------------------------------------------------------------------------
-# Workflow dependencies
+# Calculation dependencies
 # ---------------------------------------------------------------------------
 
 
-def workflow_identifiers(entry: dict) -> set[str]:
-    """Get all identifiers (name, slug, id) for a workflow entry."""
+def calculation_identifiers(entry: dict) -> set[str]:
+    """Get all identifiers (name, slug, id) for a calculation entry."""
     meta = entry.get("meta") or {}
     identifiers = {
         entry.get("name"),
@@ -816,18 +816,18 @@ def workflow_identifiers(entry: dict) -> set[str]:
     return {str(value) for value in identifiers if value}
 
 
-def workflows_depending_on(config: dict, target_entry: dict) -> list[dict]:
-    """Find all workflows that depend on the given workflow as a parent."""
-    identifiers = workflow_identifiers(target_entry)
+def calculations_depending_on(config: dict, target_entry: dict) -> list[dict]:
+    """Find all calculations that depend on the given calculation as a parent."""
+    identifiers = calculation_identifiers(target_entry)
     matches: list[dict] = []
-    for workflow_entry in config.get("workflows", []):
-        if workflow_entry is target_entry:
+    for calculation_entry in config.get("calculations", []):
+        if calculation_entry is target_entry:
             continue
-        meta = workflow_entry.get("meta") or {}
+        meta = calculation_entry.get("meta") or {}
         parents = meta.get("parents") or []
         for parent in parents:
             if str(parent) in identifiers:
-                matches.append(workflow_entry)
+                matches.append(calculation_entry)
                 break
     return matches
 
@@ -1009,7 +1009,7 @@ def apply_structure_rename(
                 logger.warning(f"Could not update structure file meta: {e}")
 
 
-def apply_workflow_rename(
+def apply_calculation_rename(
     *,
     project_root: Path,
     config: dict,
@@ -1019,16 +1019,16 @@ def apply_workflow_rename(
     new_path: Optional[Path],
 ) -> None:
     """
-    Apply a rename operation to a workflow entry.
+    Apply a rename operation to a calculation entry.
     
     Updates the entry in-place and moves the directory if needed.
     
     Raises:
         ProjectConfigError: If the operation fails.
     """
-    workflows = config.setdefault("workflows", [])
+    calculations = config.setdefault("calculations", [])
     meta = entry.setdefault("meta", {})
-    existing_slugs = collect_slugs(workflows, exclude=entry, project_root=project_root)
+    existing_slugs = collect_slugs(calculations, exclude=entry, project_root=project_root)
     previous_slug = meta.get("slug")
     slug_changed = False
     previous_path = entry.get("path") or meta.get("path")
@@ -1038,13 +1038,13 @@ def apply_workflow_rename(
             slug_candidate = slugify(new_slug)
             if slug_candidate in existing_slugs:
                 raise ProjectConfigError(
-                    f"Slug '{new_slug}' conflicts with an existing workflow."
+                    f"Slug '{new_slug}' conflicts with an existing calculation."
                 )
             name_candidate = new_name or entry.get("name") or meta.get("name") or slug_candidate
         else:
             preferred = new_name or entry.get("name") or meta.get("name")
             name_candidate, slug_candidate = generate_unique_name_and_slug(
-                kind="workflow",
+                kind="calculation",
                 preferred_name=preferred,
                 existing_slugs=existing_slugs,
             )
@@ -1052,17 +1052,17 @@ def apply_workflow_rename(
         meta["name"] = name_candidate
         meta["slug"] = slug_candidate
         if not entry.get("path"):
-            entry["path"] = f"workflows/{slug_candidate}"
+            entry["path"] = f"calculations/{slug_candidate}"
         slug_changed = slug_candidate != previous_slug
 
     if new_path is not None:
         relative = ensure_relative_path(new_path, base=project_root)
         old_path = entry.get("path") or meta.get("path")
         if not old_path:
-            raise ProjectConfigError("Workflow entry is missing a path.")
+            raise ProjectConfigError("Calculation entry is missing a path.")
         old_abs = (project_root / old_path).resolve()
         if not old_abs.exists():
-            raise ProjectConfigError(f"Workflow directory '{old_path}' does not exist.")
+            raise ProjectConfigError(f"Calculation directory '{old_path}' does not exist.")
         new_abs = (project_root / relative).resolve()
         if new_abs.exists():
             raise ProjectConfigError(f"Destination '{relative}' already exists.")
@@ -1079,7 +1079,7 @@ def apply_workflow_rename(
             new_abs = (project_root / new_rel).resolve()
             if new_abs.exists():
                 raise ProjectConfigError(
-                    f"Cannot rename workflow directory to '{new_rel}': destination exists."
+                    f"Cannot rename calculation directory to '{new_rel}': destination exists."
                 )
             new_abs.parent.mkdir(parents=True, exist_ok=True)
             old_abs.rename(new_abs)
@@ -1087,12 +1087,12 @@ def apply_workflow_rename(
             entry["path"] = rel_str
             meta["path"] = rel_str
             
-            # Update workflow.yaml meta block to reflect new name/slug/path
-            workflow_yaml_path = new_abs / "workflow.yaml"
-            if workflow_yaml_path.exists():
+            # Update calculation.yaml meta block to reflect new name/slug/path
+            calculation_yaml_path = new_abs / "calculation.yaml"
+            if calculation_yaml_path.exists():
                 try:
                     import yaml
-                    wf_data = yaml.safe_load(workflow_yaml_path.read_text()) or {}
+                    wf_data = yaml.safe_load(calculation_yaml_path.read_text()) or {}
                     wf_meta = wf_data.setdefault("meta", {})
                     wf_meta["name"] = name_candidate
                     wf_meta["slug"] = slug_candidate
@@ -1100,10 +1100,10 @@ def apply_workflow_rename(
                     # Remove legacy structure_name and structure fields before writing (DAG + ID-only constitution)
                     wf_data.pop("structure_name", None)
                     wf_data.pop("structure", None)
-                    if "workflow" in wf_data:
-                        wf_data["workflow"].pop("structure_name", None)
-                        wf_data["workflow"].pop("structure", None)
-                    workflow_yaml_path.write_text(yaml.safe_dump(wf_data, sort_keys=False))
+                    if "calculation" in wf_data:
+                        wf_data["calculation"].pop("structure_name", None)
+                        wf_data["calculation"].pop("structure", None)
+                    calculation_yaml_path.write_text(yaml.safe_dump(wf_data, sort_keys=False))
                 except Exception:
                     pass  # If update fails, continue (config is still updated)
 
@@ -1113,7 +1113,7 @@ def apply_workflow_rename(
 # ---------------------------------------------------------------------------
 
 
-def delete_workflow_entry(
+def delete_calculation_entry(
     *,
     project_root: Path,
     config: dict,
@@ -1124,32 +1124,32 @@ def delete_workflow_entry(
     visited: Optional[set[str]] = None,
 ) -> None:
     """
-    Delete a workflow entry, moving its directory to trash.
+    Delete a calculation entry, moving its directory to trash.
     
     Args:
         project_root: Path to the project root.
         config: The project configuration dict.
-        entry: The workflow entry to delete.
+        entry: The calculation entry to delete.
         trash_dir: Directory to move deleted files to.
-        force: If True, delete even if other workflows depend on this one.
-        cascade: If True, also delete workflows that depend on this one.
-        visited: Set of already-visited workflow identifiers (for recursion).
+        force: If True, delete even if other calculations depend on this one.
+        cascade: If True, also delete calculations that depend on this one.
+        visited: Set of already-visited calculation identifiers (for recursion).
     
     Raises:
-        ProjectConfigError: If the workflow is required by others and neither force nor cascade is set.
+        ProjectConfigError: If the calculation is required by others and neither force nor cascade is set.
     """
-    identifiers = workflow_identifiers(entry)
+    identifiers = calculation_identifiers(entry)
     if visited is None:
         visited = set()
     if identifiers & visited:
         return
     visited.update(identifiers)
 
-    dependents = workflows_depending_on(config, entry)
+    dependents = calculations_depending_on(config, entry)
     if dependents:
         if cascade:
             for dependent in list(dependents):
-                delete_workflow_entry(
+                delete_calculation_entry(
                     project_root=project_root,
                     config=config,
                     entry=dependent,
@@ -1161,42 +1161,42 @@ def delete_workflow_entry(
         elif not force:
             names = ", ".join(entry_display_name(dep) for dep in dependents)
             raise ProjectConfigError(
-                f"Workflow '{entry_display_name(entry)}' is required by: {names}. "
+                f"Calculation '{entry_display_name(entry)}' is required by: {names}. "
                 "Use force to remove it anyway or cascade to delete dependents."
             )
 
-    # Resolve workflow directory - try path first, then resolve via registry
-    workflow_dir = None
+    # Resolve calculation directory - try path first, then resolve via registry
+    calculation_dir = None
     rel_path = entry.get("path") or (entry.get("meta") or {}).get("path")
     if rel_path:
-        workflow_dir = (project_root / rel_path).resolve()
+        calculation_dir = (project_root / rel_path).resolve()
     else:
         # ID-only model: resolve via registry
-        workflow_id = extract_workflow_selector_from_entry(entry)
-        if workflow_id:
+        calculation_id = extract_calculation_selector_from_entry(entry)
+        if calculation_id:
             try:
-                from quantumvitas.core.resolution import build_resource_index, require_workflow
+                from quantumvitas.core.resolution import build_resource_index, require_calculation
                 index = build_resource_index(project_root)
-                resolved = require_workflow(project_root, workflow_id, index=index)
-                workflow_dir = resolved.absolute_path.parent if resolved.absolute_path.name == "workflow.yaml" else resolved.absolute_path
+                resolved = require_calculation(project_root, calculation_id, index=index)
+                calculation_dir = resolved.absolute_path.parent if resolved.absolute_path.name == "calculation.yaml" else resolved.absolute_path
             except Exception:
-                pass  # If resolution fails, workflow_dir stays None
+                pass  # If resolution fails, calculation_dir stays None
     
-    if workflow_dir and workflow_dir.exists():
-        move_to_trash(workflow_dir, trash_dir)
+    if calculation_dir and calculation_dir.exists():
+        move_to_trash(calculation_dir, trash_dir)
 
-    # Remove from config by workflow_id (ID-only model)
+    # Remove from config by calculation_id (ID-only model)
     # entry from resolve_resource might be a new dict, so match by ID
-    workflow_id = extract_workflow_selector_from_entry(entry)
-    workflows = config.setdefault("workflows", [])
-    if workflow_id:
-        # Remove by matching workflow_id
-        workflows[:] = [
-            e for e in workflows
-            if (e.get("workflow_id") or e.get("id") or (e.get("meta") or {}).get("id")) != workflow_id
+    calculation_id = extract_calculation_selector_from_entry(entry)
+    calculations = config.setdefault("calculations", [])
+    if calculation_id:
+        # Remove by matching calculation_id
+        calculations[:] = [
+            e for e in calculations
+            if (e.get("calculation_id") or e.get("id") or (e.get("meta") or {}).get("id")) != calculation_id
         ]
     else:
         # Fallback: try to remove by object identity
-        if entry in workflows:
-            workflows.remove(entry)
+        if entry in calculations:
+            calculations.remove(entry)
 

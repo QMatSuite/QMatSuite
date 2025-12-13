@@ -159,7 +159,7 @@ export function DemoGalleryPanel({
         ) : (
           <>
             <div className="demo-gallery-panel__description">
-              <p>Choose a demo project to get started. Each demo includes a complete workflow with example calculations.</p>
+              <p>Choose a demo project to get started. Each demo includes a complete calculation with example calculations.</p>
             </div>
             
             {createError && (

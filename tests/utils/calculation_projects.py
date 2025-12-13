@@ -1,5 +1,5 @@
 """
-Helpers for scaffolding temporary workflow projects inside tests.
+Helpers for scaffolding temporary calculation projects inside tests.
 """
 
 from __future__ import annotations
@@ -10,19 +10,19 @@ import yaml
 from typing import Sequence, Dict, Any
 
 
-def create_workflow_project(
+def create_calculation_project(
     project_root: Path,
-    workflow_id: str,
+    calculation_id: str,
     steps: Sequence[Dict[str, Any]],
     source_dir: Path,
     pseudo_src: Path,
 ) -> Path:
     """
-    Create a minimal project layout under ``project_root`` with a single workflow.
+    Create a minimal project layout under ``project_root`` with a single calculation.
 
     Args:
         project_root: Destination directory (will be created/overwritten).
-        workflow_id: Name of the workflow folder/id.
+        calculation_id: Name of the calculation folder/id.
         input_files: Iterable of QE input filenames to copy into ``raw/``.
         reference_files: Mapping of step ids -> reference filename in ``reference/``.
         source_dir: Directory containing the source ``.in`` and reference files.
@@ -34,9 +34,9 @@ def create_workflow_project(
 
     if project_root.exists():
         shutil.rmtree(project_root)
-    workflow_dir = project_root / "workflows" / workflow_id
-    raw_dir = workflow_dir / "raw"
-    reference_dir = workflow_dir / "reference"
+    calculation_dir = project_root / "calculations" / calculation_id
+    raw_dir = calculation_dir / "raw"
+    reference_dir = calculation_dir / "reference"
     raw_dir.mkdir(parents=True, exist_ok=True)
     reference_dir.mkdir(parents=True, exist_ok=True)
 
@@ -93,12 +93,12 @@ def create_workflow_project(
         }
         (structures_dir / "test_structure.json").write_text(json.dumps(structure_json, indent=2))
     
-    # Generate workflow ULID (ID-only model)
-    workflow_ulid = generate_resource_id()
+    # Generate calculation ULID (ID-only model)
+    calculation_ulid = generate_resource_id()
     
     project_config = {
         "project": {"name": project_root.name},
-        "workflows": [{"id": workflow_ulid, "path": f"workflows/{workflow_id}"}],  # Use ULID, not human-readable name
+        "calculations": [{"id": calculation_ulid, "path": f"calculations/{calculation_id}"}],  # Use ULID, not human-readable name
         "structures": [
             {
                 "id": structure_id,
@@ -115,8 +115,8 @@ def create_workflow_project(
     # Create step files with proper meta (ID-only model)
     from quantumvitas.core.resources import generate_resource_id, meta_from_name
     from quantumvitas.io.parser.qe_parser import QEInputParser
-    from quantumvitas.workflow.importers import _build_step_spec_from_qe_input_data
-    steps_dir = workflow_dir / "steps"
+    from quantumvitas.calculation.importers import _build_step_spec_from_qe_input_data
+    steps_dir = calculation_dir / "steps"
     steps_dir.mkdir(parents=True, exist_ok=True)
     
     step_entries = []
@@ -124,7 +124,7 @@ def create_workflow_project(
         step_id = step["id"]
         step_ulid = generate_resource_id()
         step_file = steps_dir / f"{step_id}.step.yaml"
-        step_meta = meta_from_name("step", name=step_id, path=f"workflows/{workflow_id}/steps/{step_id}.step.yaml")
+        step_meta = meta_from_name("step", name=step_id, path=f"calculations/{calculation_id}/steps/{step_id}.step.yaml")
         step_meta.id = step_ulid
         
         # Parse the reference input file to extract QE parameters
@@ -142,7 +142,7 @@ def create_workflow_project(
                 # If parsing fails, fall back to minimal spec
                 print(f"Warning: Failed to parse {input_file}: {e}")
         
-        # DAG model: Step YAML should NOT contain structure_id (inherits from workflow)
+        # DAG model: Step YAML should NOT contain structure_id (inherits from calculation)
         step_spec = {
             "meta": step_meta.to_dict(),
             "step_type": step_id,  # Use step id as step_type (scf, nscf, dos, etc.)
@@ -165,21 +165,21 @@ def create_workflow_project(
             step_entry["reference"] = f"reference/{step['reference']}"
         step_entries.append(step_entry)
     
-    workflow_config = {
+    calculation_config = {
         "meta": {
-            "id": workflow_ulid,
-            "name": workflow_id,  # Human-readable name
-            "slug": workflow_id,
-            "path": f"workflows/{workflow_id}",
-            "kind": "workflow",
+            "id": calculation_ulid,
+            "name": calculation_id,  # Human-readable name
+            "slug": calculation_id,
+            "path": f"calculations/{calculation_id}",
+            "kind": "calculation",
         },
         "mode": "strict",
-        "workflow": {"working_dir": "raw"},
-        "structure_id": structure_id,  # Workflow-level structure reference (ULID)
+        "calculation": {"working_dir": "raw"},
+        "structure_id": structure_id,  # Calculation-level structure reference (ULID)
         "steps": step_entries,
     }
-    (workflow_dir / "workflow.yaml").write_text(
-        yaml.safe_dump(workflow_config, sort_keys=False)
+    (calculation_dir / "calculation.yaml").write_text(
+        yaml.safe_dump(calculation_config, sort_keys=False)
     )
 
     return project_root

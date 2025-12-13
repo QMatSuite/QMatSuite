@@ -114,7 +114,7 @@ cd gui
 npm run build:e2e
 npm run test:e2e
 # Or run specific tests:
-npx playwright test tests/e2e/welcome.spec.ts --project=electron
+npx playwright test tests/e2e/demo_gallery.spec.ts --project=electron
 
 # On macOS (uses CDP workaround):
 cd gui

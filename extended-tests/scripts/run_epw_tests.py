@@ -2,7 +2,7 @@
 """
 Run epw tests in the same style as the official QE test suite.
 
-EPW (Electron-phonon coupling) tests require complex workflows:
+EPW (Electron-phonon coupling) tests require complex calculations:
 - arg=0,1: pw.x (SCF calculation)
 - arg=2: ph.x (phonon calculation)
 - arg=3: epw.x

@@ -1,5 +1,5 @@
 /**
- * RenameDialog - Dialog for renaming structures or workflows
+ * RenameDialog - Dialog for renaming structures or calculations
  */
 
 import { useState, useCallback, useEffect } from 'react';

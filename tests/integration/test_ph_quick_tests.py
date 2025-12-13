@@ -1,7 +1,7 @@
 """
 Quick integration tests for PH module.
 
-These tests run selected PH workflows using local CI test data.
+These tests run selected PH calculations using local CI test data.
 They assume `quantumvitas` is importable (e.g. via `pip install -e .` or
 `PYTHONPATH=src`).
 """
@@ -60,12 +60,12 @@ def test_data_dir() -> Path:
 
 
 class TestPHQuickTests:
-    """Quick PH tests (pw.x -> ph.x -> q2r.x -> matdyn.x workflows)."""
+    """Quick PH tests (pw.x -> ph.x -> q2r.x -> matdyn.x calculations)."""
 
     @pytest.mark.parametrize("test_info", PH_CI_TESTS)
     def test_ph_quick(self, test_info, qe_engine, test_data_dir):
         """
-        Run a quick PH workflow using local CI test data.
+        Run a quick PH calculation using local CI test data.
 
         Step logic and executable selection are handled centrally by
         `run_and_verify_step_with_assert`, which auto-detects the step type

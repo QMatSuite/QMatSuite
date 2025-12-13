@@ -1,0 +1,18 @@
+meta:
+  id: 01KC38ZHBGWW0T1W9BV7ASEP2Z
+  name: Si bands
+  slug: si-bands
+  path: calculations/si-bands
+  kind: calculation
+structure_id: 01KC38ZCMZZQ8DAA61A6SC8X23
+mode: normal
+working_dir: raw
+steps:
+- step_id: 01KC3901JEVJJ7S8G3E7Z9K2RZ
+  type: scf
+- step_id: 01KC39AWHWQ5EQSNFQADAA2AGP
+  type: nscf
+- step_id: 01KC39C21NREKW2YVZJY8E40RN
+  type: bands_pw
+- step_id: 01KC39BB6NNP4AF070GWPKK0J0
+  type: bands

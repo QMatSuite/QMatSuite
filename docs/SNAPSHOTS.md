@@ -9,16 +9,16 @@ Snapshots in QuantumVITAS are **templates**, not bit-for-bit backups. When a sna
 ### Export (`export_project_to_snapshot`)
 
 - Preserves all `id` and `*_id` fields as recorded in the original project
-- Exports complete resource graph with all cross-references (`structure_id` in workflows, `step_id` in workflow steps)
+- Exports complete resource graph with all cross-references (`structure_id` in calculations, `step_id` in calculation steps)
 - Snapshot contains the full graph structure with original ULIDs
 
 ### Materialize (`materialize_project_from_snapshot`)
 
-- **Always regenerates new ULIDs** for all resources (project, workflows, structures, steps)
+- **Always regenerates new ULIDs** for all resources (project, calculations, structures, steps)
 - Builds an internal mapping (`old_id → new_id`) during materialization
 - Rewrites all `*_id` cross-references using the mapping to maintain graph structure
 - Snapshot IDs are used **only as a template graph** - they do not survive materialization
-- Names, slugs, and logical relationships (which workflow uses which structure/steps) are preserved
+- Names, slugs, and logical relationships (which calculation uses which structure/steps) are preserved
 
 ## Key Implications
 

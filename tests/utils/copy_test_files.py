@@ -49,7 +49,7 @@ def is_step_type(input_file: Path, step_type: str) -> bool:
         sys.path.insert(0, str(project_root / "src"))
         
         from quantumvitas.io import QEInputParser, QEModule
-        from quantumvitas.core.engines.qe_workflow import QEWorkflowRunner
+        from quantumvitas.core.engines.qe_calculation import QECalculationRunner
         
         qe_input = QEInputParser.parse_file(input_file)
         module = qe_input.detect_module()

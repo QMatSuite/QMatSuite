@@ -1,8 +1,8 @@
 """
-Unit tests for pseudopotential resolution in workflows.
+Unit tests for pseudopotential resolution in calculations.
 
 Tests that pseudopotentials are correctly extracted from existing input files
-and preserved in step specs when building workflows.
+and preserved in step specs when building calculations.
 """
 
 from pathlib import Path
@@ -11,8 +11,8 @@ import pytest
 
 from quantumvitas.io.parser.qe_parser import QEInputParser
 from quantumvitas.io.model import QECardType
-from quantumvitas.workflow.structure_steps import StructureStepSpec
-from quantumvitas.workflow.workflow import _build_step_from_spec
+from quantumvitas.calculation.structure_steps import StructureStepSpec
+from quantumvitas.calculation.calculation import _build_step_from_spec
 from quantumvitas.core.resources import meta_from_name, generate_resource_id
 from quantumvitas.project.model import Project
 

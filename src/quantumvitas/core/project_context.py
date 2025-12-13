@@ -2,7 +2,7 @@
 Project context helpers for CLI and service layer.
 
 Provides ProjectContext and helpers for loading project context with registry,
-resolving workflows/steps from CLI arguments, and detecting current context from cwd.
+resolving calculations/steps from CLI arguments, and detecting current context from cwd.
 """
 
 from __future__ import annotations
@@ -13,9 +13,9 @@ from typing import Optional
 
 from quantumvitas.core.resolution import ResourceIndex, build_resource_index
 from quantumvitas.core.project_utils import find_project_root, load_project_config
-from quantumvitas.core.resolution import resolve_workflow, require_workflow, require_step
+from quantumvitas.core.resolution import resolve_calculation, require_calculation, require_step
 from quantumvitas.core.resolution import ResolvedResource, ResourceNotFoundError
-from quantumvitas.core.selectors import extract_workflow_selector_from_entry
+from quantumvitas.core.selectors import extract_calculation_selector_from_entry
 
 
 @dataclass
@@ -24,12 +24,12 @@ class ProjectContext:
     Project context with registry for resource resolution.
     
     This is the canonical way to work with a project in CLI and service layer.
-    It combines project_root, registry, and optional current workflow/step context.
+    It combines project_root, registry, and optional current calculation/step context.
     """
     project_root: Path
     registry: ResourceIndex
     config: dict
-    current_workflow_id: Optional[str] = None
+    current_calculation_id: Optional[str] = None
     current_step_id: Optional[str] = None
     
     @classmethod
@@ -73,26 +73,26 @@ class ProjectContext:
         config = load_project_config(project_root)
         registry = build_resource_index(project_root)
         
-        # Try to detect current workflow/step from cwd
-        current_workflow_id = None
+        # Try to detect current calculation/step from cwd
+        current_calculation_id = None
         current_step_id = None
         
         try:
             rel_path = cwd.resolve().relative_to(project_root)
-            # Check if inside workflows directory
-            if str(rel_path).startswith("workflows/"):
+            # Check if inside calculations directory
+            if str(rel_path).startswith("calculations/"):
                 parts = rel_path.parts
                 if len(parts) >= 2:
-                    workflow_dir_name = parts[1]
-                    workflow_dir = project_root / "workflows" / workflow_dir_name
-                    if workflow_dir.exists():
-                        workflow_yaml = workflow_dir / "workflow.yaml"
-                        if workflow_yaml.exists():
+                    calculation_dir_name = parts[1]
+                    calculation_dir = project_root / "calculations" / calculation_dir_name
+                    if calculation_dir.exists():
+                        calculation_yaml = calculation_dir / "calculation.yaml"
+                        if calculation_yaml.exists():
                             import yaml
                             try:
-                                wf_data = yaml.safe_load(workflow_yaml.read_text()) or {}
+                                wf_data = yaml.safe_load(calculation_yaml.read_text()) or {}
                                 wf_meta = wf_data.get("meta") or {}
-                                current_workflow_id = wf_meta.get("id")
+                                current_calculation_id = wf_meta.get("id")
                                 
                                 # Check if inside steps directory
                                 if len(parts) >= 3 and parts[2] == "steps":
@@ -102,12 +102,12 @@ class ProjectContext:
                                             step_id = step_file_name.replace(".step.yaml", "")
                                             # Try to resolve step to get its ULID
                                             try:
-                                                # require_step takes workflow_selector (string), not workflow_id
-                                                # We need to find the workflow slug/name from the directory
-                                                workflow_slug = workflow_dir_name
+                                                # require_step takes calculation_selector (string), not calculation_id
+                                                # We need to find the calculation slug/name from the directory
+                                                calculation_slug = calculation_dir_name
                                                 step_resolved = require_step(
                                                     project_root,
-                                                    workflow_slug,
+                                                    calculation_slug,
                                                     step_id,
                                                     config=config,
                                                 )
@@ -115,7 +115,7 @@ class ProjectContext:
                                             except Exception:
                                                 pass  # Step not found, that's OK
                             except Exception:
-                                pass  # Failed to parse workflow.yaml, that's OK
+                                pass  # Failed to parse calculation.yaml, that's OK
         except (ValueError, Exception):
             pass  # Not inside project or failed to detect, that's OK
         
@@ -123,96 +123,96 @@ class ProjectContext:
             project_root=project_root,
             registry=registry,
             config=config,
-            current_workflow_id=current_workflow_id,
+            current_calculation_id=current_calculation_id,
             current_step_id=current_step_id,
         )
 
 
-def resolve_workflow_for_cli(
+def resolve_calculation_for_cli(
     ctx: ProjectContext,
-    workflow_option: Optional[str] = None,
+    calculation_option: Optional[str] = None,
 ) -> ResolvedResource:
     """
-    Resolve workflow for CLI command.
+    Resolve calculation for CLI command.
     
     Resolution order:
-    1. If workflow_option provided:
+    1. If calculation_option provided:
        - If ULID (26 chars starting with "01") → resolve by ID
        - If path-like → resolve by path
        - Otherwise → resolve by selector (slug/name)
-    2. If no workflow_option:
-       - If ctx.current_workflow_id → use that
-       - If project has exactly one workflow → use that
+    2. If no calculation_option:
+       - If ctx.current_calculation_id → use that
+       - If project has exactly one calculation → use that
        - Otherwise → raise error
     
     Args:
         ctx: ProjectContext
-        workflow_option: Optional workflow selector/ID/path
+        calculation_option: Optional calculation selector/ID/path
         
     Returns:
-        ResolvedResource for the workflow
+        ResolvedResource for the calculation
         
     Raises:
-        ResourceNotFoundError: If workflow not found or ambiguous
+        ResourceNotFoundError: If calculation not found or ambiguous
     """
-    if workflow_option:
+    if calculation_option:
         # Check if it's a ULID
-        workflow_option = workflow_option.strip()
-        if len(workflow_option) == 26 and workflow_option.startswith("01"):
+        calculation_option = calculation_option.strip()
+        if len(calculation_option) == 26 and calculation_option.startswith("01"):
             # Treat as ULID
-            return require_workflow(
+            return require_calculation(
                 ctx.project_root,
-                workflow_option,
+                calculation_option,
                 config=ctx.config,
                 index=ctx.registry,
             )
         
         # Check if it's a path
-        if "/" in workflow_option or workflow_option.startswith("workflows/"):
+        if "/" in calculation_option or calculation_option.startswith("calculations/"):
             # Try to resolve by path
-            for workflow_id, meta in ctx.registry.by_id.items():
-                if meta.kind == "workflow":
-                    if meta.path == workflow_option or meta.path.endswith(f"/{workflow_option}"):
-                        return require_workflow(
+            for calculation_id, meta in ctx.registry.by_id.items():
+                if meta.kind == "calculation":
+                    if meta.path == calculation_option or meta.path.endswith(f"/{calculation_option}"):
+                        return require_calculation(
                             ctx.project_root,
-                            workflow_id,
+                            calculation_id,
                             config=ctx.config,
                             index=ctx.registry,
                         )
         
         # Treat as selector (slug/name)
-        return require_workflow(
+        return require_calculation(
             ctx.project_root,
-            workflow_option,
+            calculation_option,
             config=ctx.config,
             index=ctx.registry,
         )
     
-    # No workflow_option provided - try auto-detection
-    if ctx.current_workflow_id:
-        return require_workflow(
+    # No calculation_option provided - try auto-detection
+    if ctx.current_calculation_id:
+        return require_calculation(
             ctx.project_root,
-            ctx.current_workflow_id,
+            ctx.current_calculation_id,
             config=ctx.config,
             index=ctx.registry,
         )
     
-    # Check if project has exactly one workflow
-    workflows = ctx.config.get("workflows", [])
-    if len(workflows) == 1:
+    # Check if project has exactly one calculation
+    calculations = ctx.config.get("calculations", [])
+    if len(calculations) == 1:
         # Use centralized selector extraction - single selector, single resolution pattern
-        workflow_id = extract_workflow_selector_from_entry(workflows[0])
-        if workflow_id:
-            return require_workflow(
+        calculation_id = extract_calculation_selector_from_entry(calculations[0])
+        if calculation_id:
+            return require_calculation(
                 ctx.project_root,
-                workflow_id,
+                calculation_id,
                 config=ctx.config,
                 index=ctx.registry,
             )
     
-    # Ambiguous - need explicit workflow
+    # Ambiguous - need explicit calculation
     raise ResourceNotFoundError(
-        kind="workflow",
+        kind="calculation",
         selector=None,
         project_root=ctx.project_root,
     )
@@ -220,7 +220,7 @@ def resolve_workflow_for_cli(
 
 def resolve_step_for_cli(
     ctx: ProjectContext,
-    workflow_resolved: ResolvedResource,
+    calculation_resolved: ResolvedResource,
     step_option: Optional[str] = None,
 ) -> ResolvedResource:
     """
@@ -232,12 +232,12 @@ def resolve_step_for_cli(
        - Otherwise → resolve by selector (slug/name/type)
     2. If no step_option:
        - If ctx.current_step_id → use that
-       - If workflow has exactly one step → use that
+       - If calculation has exactly one step → use that
        - Otherwise → raise error
     
     Args:
         ctx: ProjectContext
-        workflow_resolved: Resolved workflow resource
+        calculation_resolved: Resolved calculation resource
         step_option: Optional step selector/ID
         
     Returns:
@@ -246,19 +246,19 @@ def resolve_step_for_cli(
     Raises:
         ResourceNotFoundError: If step not found or ambiguous
     """
-    workflow_id = workflow_resolved.meta.id
+    calculation_id = calculation_resolved.meta.id
     
     if step_option:
         step_option = step_option.strip()
-        # require_step takes workflow_selector (string), not workflow_id
-        # Use workflow's slug or name as selector
-        workflow_selector = workflow_resolved.meta.slug or workflow_resolved.meta.name or workflow_id
+        # require_step takes calculation_selector (string), not calculation_id
+        # Use calculation's slug or name as selector
+        calculation_selector = calculation_resolved.meta.slug or calculation_resolved.meta.name or calculation_id
         
         # Check if it's a ULID
         if len(step_option) == 26 and step_option.startswith("01"):
             return require_step(
                 ctx.project_root,
-                workflow_selector,
+                calculation_selector,
                 step_option,
                 config=ctx.config,
             )
@@ -266,36 +266,36 @@ def resolve_step_for_cli(
         # Treat as selector
         return require_step(
             ctx.project_root,
-            workflow_selector,
+            calculation_selector,
             step_option,
             config=ctx.config,
         )
     
     # No step_option provided - try auto-detection
     if ctx.current_step_id:
-        workflow_selector = workflow_resolved.meta.slug or workflow_resolved.meta.name or workflow_id
+        calculation_selector = calculation_resolved.meta.slug or calculation_resolved.meta.name or calculation_id
         return require_step(
             ctx.project_root,
-            workflow_selector,
+            calculation_selector,
             ctx.current_step_id,
             config=ctx.config,
         )
     
-    # Check if workflow has exactly one step
+    # Check if calculation has exactly one step
     from quantumvitas.project.model import Project
-    from quantumvitas.workflow.workflow import Workflow
+    from quantumvitas.calculation.calculation import Calculation
     
     project = Project.open(ctx.project_root)
-    # Use workflow selector (slug/name) to get workflow, not workflow_id
-    workflow_selector = workflow_resolved.meta.slug or workflow_resolved.meta.name or workflow_id
+    # Use calculation selector (slug/name) to get calculation, not calculation_id
+    calculation_selector = calculation_resolved.meta.slug or calculation_resolved.meta.name or calculation_id
     # Use inspection mode (no step materialization) for context resolution
-    workflow = Workflow.from_yaml(workflow_resolved.absolute_path, project, materialize_steps=False)
+    calculation = Calculation.from_yaml(calculation_resolved.absolute_path, project, materialize_steps=False)
     
-    if len(workflow.steps) == 1:
+    if len(calculation.steps) == 1:
         return require_step(
             ctx.project_root,
-            workflow_selector,
-            workflow.steps[0].meta.id,
+            calculation_selector,
+            calculation.steps[0].meta.id,
             config=ctx.config,
         )
     

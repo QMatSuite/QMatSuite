@@ -32,7 +32,7 @@ from quantumvitas.core.resolution import (
     RegistryOutOfSyncError,
     SelectorNotFoundError,
     build_resource_index,
-    resolve_workflow,
+    resolve_calculation,
     resolve_step,
     ResourceIndex,
 )
@@ -209,7 +209,7 @@ class QVDaemon:
             # Project/resource listing
             "get_project_summary": self._handle_get_project_summary,
             "list_structures": self._handle_list_structures,
-            "list_workflows": self._handle_list_workflows,
+            "list_calculations": self._handle_list_calculations,
             "find_project_root": self._handle_find_project_root,
             "rebuild_project_registry": self._handle_rebuild_project_registry,
             
@@ -222,24 +222,24 @@ class QVDaemon:
             "delete_structure": self._handle_delete_structure,
             "can_delete_structure": self._handle_can_delete_structure,
             
-            # Workflow creation and management
-            "list_workflow_templates": self._handle_list_workflow_templates,
-            "create_workflow": self._handle_create_workflow,
-            "rename_workflow": self._handle_rename_workflow,
-            "delete_workflow": self._handle_delete_workflow,
-            "can_delete_workflow": self._handle_can_delete_workflow,
+            # Calculation creation and management
+            "list_calculation_templates": self._handle_list_calculation_templates,
+            "create_calculation": self._handle_create_calculation,
+            "rename_calculation": self._handle_rename_calculation,
+            "delete_calculation": self._handle_delete_calculation,
+            "can_delete_calculation": self._handle_can_delete_calculation,
             
             # Step operations
             "get_step_detail": self._handle_get_step_detail,
             "update_step_params": self._handle_update_step_params,
             "reset_step_params": self._handle_reset_step_params,
             
-            # Workflow configuration
-            "get_workflow_detail": self._handle_get_workflow_detail,
-            "reorder_workflow_steps": self._handle_reorder_workflow_steps,
-            "add_step_to_workflow": self._handle_add_step_to_workflow,
+            # Calculation configuration
+            "get_calculation_detail": self._handle_get_calculation_detail,
+            "reorder_calculation_steps": self._handle_reorder_calculation_steps,
+            "add_step_to_calculation": self._handle_add_step_to_calculation,
             "import_step_from_qe_input": self._handle_import_step_from_qe_input,
-            "change_workflow_structure": self._handle_change_workflow_structure,
+            "change_calculation_structure": self._handle_change_calculation_structure,
             "delete_step": self._handle_delete_step,
             
             # Pre-flight checks
@@ -250,7 +250,7 @@ class QVDaemon:
             "list_demo_projects": self._handle_list_demo_projects,
             
             # Analysis (ensure artifacts exist, parse if needed)
-            "ensure_workflow_analysis": self._handle_ensure_workflow_analysis,
+            "ensure_calculation_analysis": self._handle_ensure_calculation_analysis,
             
             # Visualization data (pure data, no matplotlib)
             "get_structure_vis": self._handle_get_structure_vis,
@@ -260,7 +260,7 @@ class QVDaemon:
             "get_reference_analysis": self._handle_get_reference_analysis,
             
             # Job management
-            "run_workflow": self._handle_run_workflow,
+            "run_calculation": self._handle_run_calculation,
             "run_step": self._handle_run_step,
             "get_job_status": self._handle_get_job_status,
             "get_job_logs": self._handle_get_job_logs,
@@ -457,7 +457,7 @@ class QVDaemon:
                 error={
                     "code": "legacy_project",
                     "message": (
-                        f"This project uses a legacy workflow format (structure selector / step_file / non-ULID step IDs). "
+                        f"This project uses a legacy calculation format (structure selector / step_file / non-ULID step IDs). "
                         f"Please migrate it using: {migration_command}"
                     ),
                     "details": {
@@ -475,7 +475,7 @@ class QVDaemon:
                 "id": e.id,
                 "message": str(e),
             }
-            # Include details if present (workflow_path, expected_step_path, reason, etc.)
+            # Include details if present (calculation_path, expected_step_path, reason, etc.)
             if hasattr(e, 'details') and e.details:
                 error_dict["details"] = e.details
             return RPCResponse(
@@ -1111,19 +1111,19 @@ class QVDaemon:
         structures = QVService.list_structures_data(project_root)
         return {"structures": structures, "count": len(structures)}
     
-    def _handle_list_workflows(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_list_calculations(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
-        List workflows in project.
+        List calculations in project.
         
         Payload:
             project_root: str - Path to project root
         """
         project_root = self._require_path(payload, "project_root")
         
-        # list_workflows_data uses Project.open() which builds its own index internally
+        # list_calculations_data uses Project.open() which builds its own index internally
         # This keeps Project.open() self-contained and avoids index mismatches
-        workflows = QVService.list_workflows_data(project_root)
-        return {"workflows": workflows, "count": len(workflows)}
+        calculations = QVService.list_calculations_data(project_root)
+        return {"calculations": calculations, "count": len(calculations)}
     
     def _handle_find_project_root(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -1281,7 +1281,7 @@ class QVDaemon:
         Payload:
             project_root: str - Path to project root
             selector: str - Structure selector
-            force: bool - Force delete even if used by workflows
+            force: bool - Force delete even if used by calculations
         """
         project_root = self._require_path(payload, "project_root")
         selector = self._require_str(payload, "selector")
@@ -1307,16 +1307,16 @@ class QVDaemon:
         }
     
     # -------------------------------------------------------------------------
-    # Workflow creation handlers
+    # Calculation creation handlers
     # -------------------------------------------------------------------------
     
-    def _handle_list_workflow_templates(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_list_calculation_templates(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
-        List available workflow templates.
+        List available calculation templates.
         """
-        from quantumvitas.core.templates import list_workflow_templates
+        from quantumvitas.core.templates import list_calculation_templates
         
-        templates = list_workflow_templates()
+        templates = list_calculation_templates()
         
         return {
             "templates": [
@@ -1332,13 +1332,13 @@ class QVDaemon:
             "count": len(templates),
         }
     
-    def _handle_create_workflow(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_create_calculation(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Create a new workflow.
+        Create a new calculation.
         
         Payload:
             project_root: str - Path to project root
-            name: str - Workflow name
+            name: str - Calculation name
             structure: str - Optional structure selector
             template: str - Optional template name
         """
@@ -1349,7 +1349,7 @@ class QVDaemon:
         
         # Pass cached index and config for in-place registry updates
         cache = self.state.get_cache(project_root)
-        result = QVService.init_workflow(
+        result = QVService.init_calculation(
             project_root=project_root,
             name=name,
             structure_selector=structure,
@@ -1358,28 +1358,28 @@ class QVDaemon:
             config=cache.config,
         )
         
-        # Get workflow details
-        workflows = QVService.list_workflows_data(project_root)
-        new_wf = next((w for w in workflows if w.get("id") == result.meta.id), None)
+        # Get calculation details
+        calculations = QVService.list_calculations_data(project_root)
+        new_wf = next((w for w in calculations if w.get("id") == result.meta.id), None)
         
         return {
-            "workflow_id": result.meta.id,
+            "calculation_id": result.meta.id,
             "name": result.meta.name,
             "slug": result.meta.slug,
             "n_steps": new_wf.get("n_steps", 0) if new_wf else 0,
         }
     
     # -------------------------------------------------------------------------
-    # Workflow management handlers
+    # Calculation management handlers
     # -------------------------------------------------------------------------
     
-    def _handle_rename_workflow(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_rename_calculation(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Rename a workflow.
+        Rename a calculation.
         
         Payload:
             project_root: str - Path to project root
-            selector: str - Workflow selector
+            selector: str - Calculation selector
             new_name: str - New name
         """
         project_root = self._require_path(payload, "project_root")
@@ -1388,7 +1388,7 @@ class QVDaemon:
         
         # Pass cached index and config for in-place registry updates
         cache = self.state.get_cache(project_root)
-        result = QVService.rename_workflow(
+        result = QVService.rename_calculation(
             project_root=project_root,
             selector=selector,
             new_name=new_name,
@@ -1398,40 +1398,40 @@ class QVDaemon:
         
         return result
     
-    def _handle_can_delete_workflow(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_can_delete_calculation(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Check if workflow can be deleted.
+        Check if calculation can be deleted.
         
         Payload:
             project_root: str - Path to project root
-            selector: str - Workflow selector
+            selector: str - Calculation selector
         """
         project_root = self._require_path(payload, "project_root")
         selector = self._require_str(payload, "selector")
         
-        return QVService.can_delete_workflow(
+        return QVService.can_delete_calculation(
             project_root=project_root,
             selector=selector,
         )
     
-    def _handle_delete_workflow(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_delete_calculation(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Delete a workflow.
+        Delete a calculation.
         
         Payload:
             project_root: str - Path to project root
-            selector: str - Workflow selector
+            selector: str - Calculation selector
             force: bool - Force delete
         """
         project_root = self._require_path(payload, "project_root")
         selector = self._require_str(payload, "selector")
         force = payload.get("force", False)
         
-        # Get workflow name before deletion for response
-        check = QVService.can_delete_workflow(project_root, selector)
-        workflow_name = check.get("workflow_name", selector)
+        # Get calculation name before deletion for response
+        check = QVService.can_delete_calculation(project_root, selector)
+        calculation_name = check.get("calculation_name", selector)
         
-        QVService.delete_workflow(
+        QVService.delete_calculation(
             project_root=project_root,
             selector=selector,
             force=force,
@@ -1442,7 +1442,7 @@ class QVDaemon:
         
         return {
             "success": True,
-            "name": workflow_name,
+            "name": calculation_name,
         }
     
     # -------------------------------------------------------------------------
@@ -1454,14 +1454,14 @@ class QVDaemon:
         Get step detail.
         
         GUI → Daemon → Backend API mapping:
-        - GUI: StepDetailPanel calls 'get_step_detail' with workflow.slug and step.id (ULID)
+        - GUI: StepDetailPanel calls 'get_step_detail' with calculation.slug and step.id (ULID)
         - Daemon: _handle_get_step_detail() resolves selectors via registry
         - Backend: QVService.get_step_detail() returns step metadata and parameters
         
         Payload:
             project_root: str - Path to project root
-            workflow: str - Workflow selector (GUI uses workflow.slug)
-            step: str - Step selector (GUI uses step.id ULID from workflow.steps[])
+            calculation: str - Calculation selector (GUI uses calculation.slug)
+            step: str - Step selector (GUI uses step.id ULID from calculation.steps[])
         
         Returns:
             Step detail dict with id, name, slug, step_type, parameters, etc.
@@ -1473,11 +1473,11 @@ class QVDaemon:
             - The RPC always resolves (never hangs) - either with data or with an error
         """
         project_root = self._require_path(payload, "project_root")
-        workflow = self._require_str(payload, "workflow")
+        calculation = self._require_str(payload, "calculation")
         step = self._require_str(payload, "step")
         
         # Resolve with fallback to ensure cache is up-to-date
-        self._resolve_step_with_fallback(project_root, workflow, step)
+        self._resolve_step_with_fallback(project_root, calculation, step)
         
         # Pass cached index and config to QVService to avoid rebuilding ResourceIndex
         # This eliminates the ~20s delay from duplicate index building
@@ -1489,7 +1489,7 @@ class QVDaemon:
         # The RPC always resolves (never hangs) - either with data or with an error.
         return QVService.get_step_detail(
             project_root=project_root,
-            workflow_selector=workflow,
+            calculation_selector=calculation,
             step_selector=step,
             index=cache.index,
             config=cache.config,
@@ -1501,25 +1501,25 @@ class QVDaemon:
         
         Payload:
             project_root: str - Path to project root
-            workflow: str - Workflow selector
+            calculation: str - Calculation selector
             step: str - Step selector
             parameters: Dict[str, Dict[str, Any]] - Namelist parameters to update
             cards: Optional[Dict] - Card data to update
         """
         project_root = self._require_path(payload, "project_root")
-        workflow = self._require_str(payload, "workflow")
+        calculation = self._require_str(payload, "calculation")
         step = self._require_str(payload, "step")
         parameters = payload.get("parameters", {})
         cards = payload.get("cards")
         
         # Resolve with fallback to ensure cache is up-to-date
-        self._resolve_step_with_fallback(project_root, workflow, step)
+        self._resolve_step_with_fallback(project_root, calculation, step)
         
         # Pass cached index and config to avoid rebuilding ResourceIndex
         cache = self.state.get_cache(project_root)
         result = QVService.update_step_params(
             project_root=project_root,
-            workflow_selector=workflow,
+            calculation_selector=calculation,
             step_selector=step,
             parameters=parameters,
             cards=cards,
@@ -1537,21 +1537,21 @@ class QVDaemon:
         
         Payload:
             project_root: str - Path to project root
-            workflow: str - Workflow selector
+            calculation: str - Calculation selector
             step: str - Step selector
         """
         project_root = self._require_path(payload, "project_root")
-        workflow = self._require_str(payload, "workflow")
+        calculation = self._require_str(payload, "calculation")
         step = self._require_str(payload, "step")
         
         # Resolve with fallback to ensure cache is up-to-date
-        self._resolve_step_with_fallback(project_root, workflow, step)
+        self._resolve_step_with_fallback(project_root, calculation, step)
         
         # Pass cached index and config to avoid rebuilding ResourceIndex
         cache = self.state.get_cache(project_root)
         result = QVService.reset_step_params(
             project_root=project_root,
-            workflow_selector=workflow,
+            calculation_selector=calculation,
             step_selector=step,
             index=cache.index,
             config=cache.config,
@@ -1562,139 +1562,139 @@ class QVDaemon:
         return result
     
     # -------------------------------------------------------------------------
-    # Workflow configuration handlers
+    # Calculation configuration handlers
     # -------------------------------------------------------------------------
     
     def _handle_delete_step(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Delete a step from a workflow.
+        Delete a step from a calculation.
         
         Payload:
             project_root: str - Path to project root
-            workflow: str - Workflow selector (slug or ULID)
-            step: str - Step selector (ULID from workflow.yaml)
+            calculation: str - Calculation selector (slug or ULID)
+            step: str - Step selector (ULID from calculation.yaml)
         
         Returns:
             Dict with status: "deleted"
         
         Raises:
-            ResourceNotFoundError: If workflow or step not found in workflow.yaml
+            ResourceNotFoundError: If calculation or step not found in calculation.yaml
         """
         project_root = self._require_path(payload, "project_root")
-        workflow = self._require_str(payload, "workflow")
+        calculation = self._require_str(payload, "calculation")
         step = self._require_str(payload, "step")
         
-        # For delete operations, we only need to resolve the workflow (not the step)
-        # because delete_step_from_workflow handles ghost steps gracefully
-        # Resolve workflow with fallback to ensure cache is up-to-date
-        self._resolve_workflow_with_fallback(project_root, workflow)
+        # For delete operations, we only need to resolve the calculation (not the step)
+        # because delete_step_from_calculation handles ghost steps gracefully
+        # Resolve calculation with fallback to ensure cache is up-to-date
+        self._resolve_calculation_with_fallback(project_root, calculation)
         
         # Pass cached index and config to QVService to avoid rebuilding ResourceIndex
         cache = self.state.get_cache(project_root)
         
-        # Delete the step (moves file to trash and removes from workflow.yaml)
+        # Delete the step (moves file to trash and removes from calculation.yaml)
         # This will handle ghost steps (missing files) gracefully
-        QVService.delete_step_from_workflow(
+        QVService.delete_step_from_calculation(
             project_root=project_root,
-            workflow_selector=workflow,
+            calculation_selector=calculation,
             step_selector=step,
             index=cache.index,
             config=cache.config,
         )
         
-        # Registry updated in-place by QVService.delete_step_from_workflow (no rebuild needed)
+        # Registry updated in-place by QVService.delete_step_from_calculation (no rebuild needed)
         
         return {
             "status": "deleted",
         }
     
-    def _handle_get_workflow_detail(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_get_calculation_detail(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Get detailed workflow information.
+        Get detailed calculation information.
         
         Payload:
             project_root: str - Path to project root
-            workflow: str - Workflow selector
+            calculation: str - Calculation selector
         """
         project_root = self._require_path(payload, "project_root")
-        workflow = self._require_str(payload, "workflow")
+        calculation = self._require_str(payload, "calculation")
         
         # Resolve with fallback to ensure cache is up-to-date
-        self._resolve_workflow_with_fallback(project_root, workflow)
+        self._resolve_calculation_with_fallback(project_root, calculation)
         
         # Pass cached index and config to QVService to avoid rebuilding ResourceIndex
         # This eliminates the ~20s delay from duplicate index building
         cache = self.state.get_cache(project_root)
-        return QVService.get_workflow_detail(
+        return QVService.get_calculation_detail(
             project_root=project_root,
-            workflow_selector=workflow,
+            calculation_selector=calculation,
             index=cache.index,
             config=cache.config,
         )
     
-    def _handle_reorder_workflow_steps(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_reorder_calculation_steps(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Reorder workflow steps.
+        Reorder calculation steps.
         
         Payload:
             project_root: str - Path to project root
-            workflow: str - Workflow selector
+            calculation: str - Calculation selector
             new_order: List[str] - Step IDs/slugs in new order
         """
         project_root = self._require_path(payload, "project_root")
-        workflow = self._require_str(payload, "workflow")
+        calculation = self._require_str(payload, "calculation")
         new_order = payload.get("new_order", [])
         
         if not isinstance(new_order, list):
             raise ValueError("new_order must be a list of step selectors")
         
         # Resolve with fallback to ensure cache is up-to-date
-        self._resolve_workflow_with_fallback(project_root, workflow)
+        self._resolve_calculation_with_fallback(project_root, calculation)
         
         # Pass cached index and config to avoid rebuilding ResourceIndex
         cache = self.state.get_cache(project_root)
-        result = QVService.reorder_workflow_steps(
+        result = QVService.reorder_calculation_steps(
             project_root=project_root,
-            workflow_selector=workflow,
+            calculation_selector=calculation,
             new_order=new_order,
             index=cache.index,
             config=cache.config,
         )
         
-        # Reorder doesn't change registry (only changes step order in workflow.yaml)
+        # Reorder doesn't change registry (only changes step order in calculation.yaml)
         
         return result
     
-    def _handle_add_step_to_workflow(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_add_step_to_calculation(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Add a new step to a workflow (from scratch, uses QV defaults).
+        Add a new step to a calculation (from scratch, uses QV defaults).
         
         Payload:
             project_root: str - Path to project root
-            workflow: str - Workflow selector (name, slug, or id)
+            calculation: str - Calculation selector (name, slug, or id)
             step_type: str - Type of step (scf, nscf, relax, bands, dos, etc.)
             step_name: str - Name for the new step (optional, defaults to step_type)
         """
         project_root = self._require_path(payload, "project_root")
-        workflow = self._require_str(payload, "workflow")
+        calculation = self._require_str(payload, "calculation")
         step_type = self._require_str(payload, "step_type")
         step_name = payload.get("step_name", step_type)
         
         # Resolve with fallback to ensure cache is up-to-date
-        self._resolve_workflow_with_fallback(project_root, workflow)
+        self._resolve_calculation_with_fallback(project_root, calculation)
         
         # Pass cached index and config to avoid rebuilding ResourceIndex
         cache = self.state.get_cache(project_root)
-        result = QVService.add_step_to_workflow(
+        result = QVService.add_step_to_calculation(
             project_root=project_root,
-            workflow_selector=workflow,
+            calculation_selector=calculation,
             step_type=step_type,
             step_name=step_name,
             index=cache.index,
             config=cache.config,
         )
         
-        # Registry updated in-place by QVService.add_step_to_workflow (no rebuild needed)
+        # Registry updated in-place by QVService.add_step_to_calculation (no rebuild needed)
         
         return result
     
@@ -1704,23 +1704,23 @@ class QVDaemon:
         
         Payload:
             project_root: str - Path to project root
-            workflow: str - Workflow selector (name, slug, or id)
+            calculation: str - Calculation selector (name, slug, or id)
             input_file: str - Path to QE input file (.in)
             step_name: str - Optional name for the new step (defaults to input file stem)
         """
         project_root = self._require_path(payload, "project_root")
-        workflow = self._require_str(payload, "workflow")
+        calculation = self._require_str(payload, "calculation")
         input_file = self._require_path(payload, "input_file")
         step_name = payload.get("step_name")
         
         # Resolve with fallback to ensure cache is up-to-date
-        self._resolve_workflow_with_fallback(project_root, workflow)
+        self._resolve_calculation_with_fallback(project_root, calculation)
         
         # Pass cached index and config to avoid rebuilding ResourceIndex
         cache = self.state.get_cache(project_root)
         result = QVService.import_step_from_qe_input(
             project_root=project_root,
-            workflow_selector=workflow,
+            calculation_selector=calculation,
             input_file=input_file,
             step_name=step_name,
             index=cache.index,
@@ -1731,36 +1731,36 @@ class QVDaemon:
         
         return result
     
-    def _handle_change_workflow_structure(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_change_calculation_structure(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Change workflow structure.
+        Change calculation structure.
         
         Payload:
             project_root: str - Path to project root
-            workflow: str - Workflow selector
+            calculation: str - Calculation selector
             new_structure: str - New structure selector
             update_steps: bool - Whether to update step structure fields (default True)
         """
         project_root = self._require_path(payload, "project_root")
-        workflow = self._require_str(payload, "workflow")
+        calculation = self._require_str(payload, "calculation")
         new_structure = self._require_str(payload, "new_structure")
         update_steps = payload.get("update_steps", True)
         
         # Resolve with fallback to ensure cache is up-to-date
-        self._resolve_workflow_with_fallback(project_root, workflow)
+        self._resolve_calculation_with_fallback(project_root, calculation)
         
         # Pass cached index and config to avoid rebuilding ResourceIndex
         cache = self.state.get_cache(project_root)
-        result = QVService.change_workflow_structure(
+        result = QVService.change_calculation_structure(
             project_root=project_root,
-            workflow_selector=workflow,
+            calculation_selector=calculation,
             new_structure=new_structure,
             update_steps=update_steps,
             index=cache.index,
             config=cache.config,
         )
         
-        # Reorder doesn't change registry (only changes step order in workflow.yaml)
+        # Reorder doesn't change registry (only changes step order in calculation.yaml)
         
         return result
     
@@ -1774,24 +1774,24 @@ class QVDaemon:
         
         Payload:
             project_root: str - Path to project root
-            workflow: Optional[str] - Workflow selector
+            calculation: Optional[str] - Calculation selector
             step: Optional[str] - Step selector
         """
         project_root = self._require_path(payload, "project_root")
-        workflow = payload.get("workflow")
+        calculation = payload.get("calculation")
         step = payload.get("step")
         
         # Resolve with fallback if selectors provided
-        if workflow:
-            self._resolve_workflow_with_fallback(project_root, workflow)
-        if workflow and step:
-            self._resolve_step_with_fallback(project_root, workflow, step)
+        if calculation:
+            self._resolve_calculation_with_fallback(project_root, calculation)
+        if calculation and step:
+            self._resolve_step_with_fallback(project_root, calculation, step)
         
         # Pass cached index and config to avoid rebuilding ResourceIndex
         cache = self.state.get_cache(project_root)
         return QVService.preflight_check(
             project_root=project_root,
-            workflow_selector=workflow,
+            calculation_selector=calculation,
             step_selector=step,
             index=cache.index,
             config=cache.config,
@@ -1856,13 +1856,13 @@ class QVDaemon:
     # Analysis handlers
     # -------------------------------------------------------------------------
     
-    def _handle_ensure_workflow_analysis(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_ensure_calculation_analysis(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Ensure analysis artifacts exist for a workflow.
+        Ensure analysis artifacts exist for a calculation.
         
         Payload:
             project_root: str - Path to project root
-            workflow: str - Workflow selector
+            calculation: str - Calculation selector
             analysis_type: str - Type of analysis ("scf", "dos", "bands")
             step: str - Optional step selector (for SCF)
             force: bool - Force re-parse even if artifact exists (default false)
@@ -1876,19 +1876,19 @@ class QVDaemon:
             summary: dict | null - Quick summary data
         """
         project_root = self._require_path(payload, "project_root")
-        workflow = self._require_str(payload, "workflow")
+        calculation = self._require_str(payload, "calculation")
         analysis_type = self._require_str(payload, "analysis_type")
         step = payload.get("step")
         force = payload.get("force", False)
         
         # Resolve with fallback to ensure cache is up-to-date
-        self._resolve_workflow_with_fallback(project_root, workflow)
+        self._resolve_calculation_with_fallback(project_root, calculation)
         if step:
-            self._resolve_step_with_fallback(project_root, workflow, step)
+            self._resolve_step_with_fallback(project_root, calculation, step)
         
-        return QVService.ensure_workflow_analysis(
+        return QVService.ensure_calculation_analysis(
             project_root=project_root,
-            workflow_selector=workflow,
+            calculation_selector=calculation,
             analysis_type=analysis_type,
             step_selector=step,
             force=force,
@@ -1926,19 +1926,19 @@ class QVDaemon:
         
         Payload:
             project_root: str - Path to project root
-            workflow: str - Workflow selector
+            calculation: str - Calculation selector
             step: str - Step selector
         """
         project_root = self._require_path(payload, "project_root")
-        workflow = self._require_str(payload, "workflow")
+        calculation = self._require_str(payload, "calculation")
         step = self._require_str(payload, "step")
         
         # Resolve with fallback to ensure cache is up-to-date
-        self._resolve_step_with_fallback(project_root, workflow, step)
+        self._resolve_step_with_fallback(project_root, calculation, step)
         
         return QVService.get_scf_convergence_data(
             project_root=project_root,
-            workflow_selector=workflow,
+            calculation_selector=calculation,
             step_selector=step,
         )
     
@@ -1948,21 +1948,21 @@ class QVDaemon:
         
         Payload:
             project_root: str - Path to project root
-            workflow: str - Workflow selector
+            calculation: str - Calculation selector
             step: str - Optional step selector
         """
         project_root = self._require_path(payload, "project_root")
-        workflow = self._require_str(payload, "workflow")
+        calculation = self._require_str(payload, "calculation")
         step = payload.get("step")
         
         # Resolve with fallback to ensure cache is up-to-date
-        self._resolve_workflow_with_fallback(project_root, workflow)
+        self._resolve_calculation_with_fallback(project_root, calculation)
         if step:
-            self._resolve_step_with_fallback(project_root, workflow, step)
+            self._resolve_step_with_fallback(project_root, calculation, step)
         
         return QVService.get_dos_data(
             project_root=project_root,
-            workflow_selector=workflow,
+            calculation_selector=calculation,
             step_selector=step,
         )
     
@@ -1972,21 +1972,21 @@ class QVDaemon:
         
         Payload:
             project_root: str - Path to project root
-            workflow: str - Workflow selector
+            calculation: str - Calculation selector
             step: str - Optional step selector
         """
         project_root = self._require_path(payload, "project_root")
-        workflow = self._require_str(payload, "workflow")
+        calculation = self._require_str(payload, "calculation")
         step = payload.get("step")
         
         # Resolve with fallback to ensure cache is up-to-date
-        self._resolve_workflow_with_fallback(project_root, workflow)
+        self._resolve_calculation_with_fallback(project_root, calculation)
         if step:
-            self._resolve_step_with_fallback(project_root, workflow, step)
+            self._resolve_step_with_fallback(project_root, calculation, step)
         
         return QVService.get_band_structure_data(
             project_root=project_root,
-            workflow_selector=workflow,
+            calculation_selector=calculation,
             step_selector=step,
         )
     
@@ -1999,7 +1999,7 @@ class QVDaemon:
         
         Payload:
             project_root: str - Path to project root
-            workflow: str - Workflow selector
+            calculation: str - Calculation selector
             analysis_type: str - Analysis type ("scf", "dos", "bands")
             
         Returns:
@@ -2007,18 +2007,18 @@ class QVDaemon:
             or no reference data exists for the requested type.
         """
         project_root = self._require_path(payload, "project_root")
-        workflow = self._require_str(payload, "workflow")
+        calculation = self._require_str(payload, "calculation")
         analysis_type = self._require_str(payload, "analysis_type")
         
         if analysis_type not in ("scf", "dos", "bands"):
             raise ValueError(f"Invalid analysis_type: {analysis_type}. Must be one of: scf, dos, bands")
         
         # Resolve with fallback to ensure cache is up-to-date
-        self._resolve_workflow_with_fallback(project_root, workflow)
+        self._resolve_calculation_with_fallback(project_root, calculation)
         
         result = QVService.get_reference_analysis(
             project_root=project_root,
-            workflow_selector=workflow,
+            calculation_selector=calculation,
             analysis_type=analysis_type,  # type: ignore
         )
         
@@ -2029,46 +2029,46 @@ class QVDaemon:
     # Job management handlers
     # -------------------------------------------------------------------------
     
-    def _handle_run_workflow(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_run_calculation(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Submit a workflow run job.
+        Submit a calculation run job.
         
         GUI → Daemon → Backend API mapping:
-        - GUI: handleRunWorkflow() calls 'run_workflow' with workflow.slug
-        - Daemon: _handle_run_workflow() normalizes project_root and submits job
-        - Backend: QVService.run_workflow() executes the workflow
+        - GUI: handleRunCalculation() calls 'run_calculation' with calculation.slug
+        - Daemon: _handle_run_calculation() normalizes project_root and submits job
+        - Backend: QVService.run_calculation() executes the calculation
         
         Payload:
             project_root: str - Path to project root (normalized to absolute)
-            workflow: str - Workflow selector (GUI uses workflow.slug)
+            calculation: str - Calculation selector (GUI uses calculation.slug)
             strict: bool - Optional strict mode (default false)
             verbose: bool - Optional verbose mode (default false)
             
         Returns:
             job_id: str - ID of submitted job
             status: str - Initial status ("pending")
-            target_name: str - Workflow name for display
+            target_name: str - Calculation name for display
         """
         project_root = self._require_path(payload, "project_root")
-        workflow = self._require_str(payload, "workflow")
+        calculation = self._require_str(payload, "calculation")
         strict = payload.get("strict", False)
         verbose = payload.get("verbose", False)
         
         # Resolve with fallback to ensure cache is up-to-date before submitting job
-        workflow_resolved = self._resolve_workflow_with_fallback(project_root, workflow)
+        calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation)
         
         # Pass cached index and config to avoid rebuilding ResourceIndex
         cache = self.state.get_cache(project_root)
         
-        # Load workflow to get initial steps list and io_dir (for step progress visualization and I/O directory display)
+        # Load calculation to get initial steps list and io_dir (for step progress visualization and I/O directory display)
         initial_steps = []
         initial_io_dir = None
         try:
-            from quantumvitas.core.models import load_workflow
-            from quantumvitas.workflow.runner import compute_io_dir_from_workflow_model
-            workflow_path = workflow_resolved.absolute_path / "workflow.yaml" if workflow_resolved.absolute_path.is_dir() else workflow_resolved.absolute_path
-            if workflow_path.exists():
-                wf_model = load_workflow(workflow_path, project_root=project_root)
+            from quantumvitas.core.models import load_calculation
+            from quantumvitas.calculation.runner import compute_io_dir_from_calculation_model
+            calculation_path = calculation_resolved.absolute_path / "calculation.yaml" if calculation_resolved.absolute_path.is_dir() else calculation_resolved.absolute_path
+            if calculation_path.exists():
+                wf_model = load_calculation(calculation_path, project_root=project_root)
                 # Initialize steps with pending status
                 initial_steps = [
                     {
@@ -2082,36 +2082,36 @@ class QVDaemon:
                 ]
                 # Compute planned_io_dir using the same logic the runner uses (single source of truth)
                 # This ensures pending jobs show the correct io_dir that will match the runner's final io_dir
-                workflow_dir = workflow_resolved.absolute_path if workflow_resolved.absolute_path.is_dir() else workflow_resolved.absolute_path.parent
-                planned_io_dir = compute_io_dir_from_workflow_model(workflow_dir, wf_model.working_dir)
+                calculation_dir = calculation_resolved.absolute_path if calculation_resolved.absolute_path.is_dir() else calculation_resolved.absolute_path.parent
+                planned_io_dir = compute_io_dir_from_calculation_model(calculation_dir, wf_model.working_dir)
                 initial_io_dir = str(planned_io_dir)
         except Exception:
-            # If we can't load workflow, just use empty steps and no io_dir
+            # If we can't load calculation, just use empty steps and no io_dir
             pass
         
         # Submit job with target info for display
         job_id = self.job_manager.submit(
-            job_type="run_workflow",
-            func=QVService.run_workflow,
+            job_type="run_calculation",
+            func=QVService.run_calculation,
             params={
                 "project_root": str(project_root),
-                "workflow": workflow,
+                "calculation": calculation,
                 "strict": strict,
             },
-            target_name=workflow,
+            target_name=calculation,
             project_root_display=str(project_root.resolve()),  # Normalize to absolute path
             initial_steps=initial_steps,  # Initialize steps at job creation
             initial_io_dir=initial_io_dir,  # Initialize io_dir at job creation (so it shows immediately)
-            # kwargs for QVService.run_workflow
+            # kwargs for QVService.run_calculation
             project_root=project_root,
-            workflow_selector=workflow,
+            calculation_selector=calculation,
             strict=strict,
             verbose=verbose,
             index=cache.index,
             config=cache.config,
         )
         
-        return {"job_id": job_id, "status": "pending", "target_name": workflow}
+        return {"job_id": job_id, "status": "pending", "target_name": calculation}
     
     def _handle_run_step(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -2119,7 +2119,7 @@ class QVDaemon:
         
         Payload:
             project_root: str - Path to project root
-            workflow: str - Workflow selector
+            calculation: str - Calculation selector
             step: str - Step selector
             verbose: bool - Optional verbose mode (default false)
             
@@ -2129,25 +2129,25 @@ class QVDaemon:
             target_name: str - Step name for display
         """
         project_root = self._require_path(payload, "project_root")
-        workflow = self._require_str(payload, "workflow")
+        calculation = self._require_str(payload, "calculation")
         step = self._require_str(payload, "step")
         verbose = payload.get("verbose", False)
         
         # Resolve with fallback to ensure cache is up-to-date before submitting job
-        self._resolve_step_with_fallback(project_root, workflow, step)
+        self._resolve_step_with_fallback(project_root, calculation, step)
         
-        target_name = f"{workflow}/{step}"
+        target_name = f"{calculation}/{step}"
         
         # Compute planned_io_dir using the same logic the runner uses (single source of truth)
         initial_io_dir = None
         try:
-            from quantumvitas.core.models import load_workflow
-            from quantumvitas.workflow.runner import compute_io_dir_from_workflow_model
-            workflow_path = workflow_resolved.absolute_path / "workflow.yaml" if workflow_resolved.absolute_path.is_dir() else workflow_resolved.absolute_path
-            if workflow_path.exists():
-                wf_model = load_workflow(workflow_path, project_root=project_root)
-                workflow_dir = workflow_resolved.absolute_path if workflow_resolved.absolute_path.is_dir() else workflow_resolved.absolute_path.parent
-                planned_io_dir = compute_io_dir_from_workflow_model(workflow_dir, wf_model.working_dir)
+            from quantumvitas.core.models import load_calculation
+            from quantumvitas.calculation.runner import compute_io_dir_from_calculation_model
+            calculation_path = calculation_resolved.absolute_path / "calculation.yaml" if calculation_resolved.absolute_path.is_dir() else calculation_resolved.absolute_path
+            if calculation_path.exists():
+                wf_model = load_calculation(calculation_path, project_root=project_root)
+                calculation_dir = calculation_resolved.absolute_path if calculation_resolved.absolute_path.is_dir() else calculation_resolved.absolute_path.parent
+                planned_io_dir = compute_io_dir_from_calculation_model(calculation_dir, wf_model.working_dir)
                 initial_io_dir = str(planned_io_dir)
         except Exception:
             pass
@@ -2158,7 +2158,7 @@ class QVDaemon:
             func=QVService.run_step,
             params={
                 "project_root": str(project_root),
-                "workflow": workflow,
+                "calculation": calculation,
                 "step": step,
             },
             target_name=target_name,
@@ -2166,7 +2166,7 @@ class QVDaemon:
             initial_io_dir=initial_io_dir,  # Initialize io_dir at job creation (so it shows immediately)
             # kwargs for QVService.run_step
             project_root=project_root,
-            workflow_selector=workflow,
+            calculation_selector=calculation,
             step_selector=step,
             verbose=verbose,
         )
@@ -2280,9 +2280,9 @@ class QVDaemon:
     # Resolution helpers with cache fallback
     # -------------------------------------------------------------------------
     
-    def _resolve_workflow_with_fallback(self, project_root: Path, selector: str):
+    def _resolve_calculation_with_fallback(self, project_root: Path, selector: str):
         """
-        Resolve workflow using cached index.
+        Resolve calculation using cached index.
         
         NOTE: This helper NO LONGER auto-rebuilds on cache miss. The registry
         is only rebuilt in two cases:
@@ -2296,17 +2296,17 @@ class QVDaemon:
         
         Args:
             project_root: Path to project root
-            selector: Workflow selector (name, slug, id, or path)
+            selector: Calculation selector (name, slug, id, or path)
             
         Returns:
-            ResolvedResource for the workflow
+            ResolvedResource for the calculation
             
         Raises:
-            SelectorNotFoundError: If workflow not found
+            SelectorNotFoundError: If calculation not found
         """
         # Use cached index (no auto-rebuild on miss)
         cache = self.state.get_cache(project_root)
-        return resolve_workflow(
+        return resolve_calculation(
             project_root,
             selector,
             index=cache.index,
@@ -2316,7 +2316,7 @@ class QVDaemon:
     def _resolve_step_with_fallback(
         self,
         project_root: Path,
-        workflow_selector: str,
+        calculation_selector: str,
         step_selector: str,
     ):
         """
@@ -2334,7 +2334,7 @@ class QVDaemon:
         
         Args:
             project_root: Path to project root
-            workflow_selector: Workflow selector (name, slug, id, or path)
+            calculation_selector: Calculation selector (name, slug, id, or path)
             step_selector: Step selector (name, slug, id, or path)
             
         Returns:
@@ -2347,7 +2347,7 @@ class QVDaemon:
         cache = self.state.get_cache(project_root)
         return resolve_step(
             project_root,
-            workflow_selector,
+            calculation_selector,
             step_selector,
             index=cache.index,
             config=cache.config,
@@ -2373,15 +2373,15 @@ class QVDaemon:
                 "project_root": "<normalized>",
                 "index_stats": {
                     "structures": <count>,
-                    "workflows": <count>,
+                    "calculations": <count>,
                     "steps": <count>
                 },
                 "dag_diff": {
                     "structures_added": [...],
                     "structures_removed": [...],
-                    "workflows_added": [...],
-                    "workflows_removed": [...],
-                    "workflows_changed": [...]
+                    "calculations_added": [...],
+                    "calculations_removed": [...],
+                    "calculations_changed": [...]
                 }
             }
         """
@@ -2432,14 +2432,14 @@ class QVDaemon:
         
         # Compute index stats
         structures = [r for r in index.by_id.values() if r.kind == "structure"]
-        workflows = [r for r in index.by_id.values() if r.kind == "workflow"]
+        calculations = [r for r in index.by_id.values() if r.kind == "calculation"]
         steps = [r for r in index.by_id.values() if r.kind == "step"]
         
         return {
             "project_root": str(project_root),
             "index_stats": {
                 "structures": len(structures),
-                "workflows": len(workflows),
+                "calculations": len(calculations),
                 "steps": len(steps),
             },
             "dag_diff": dag_diff,
@@ -2501,8 +2501,8 @@ class QVDaemon:
         Returns:
             {
                 "structures": { structure_id: { "slug": ..., "name": ... } },
-                "workflows": {
-                    workflow_id: {
+                "calculations": {
+                    calculation_id: {
                         "slug": ...,
                         "name": ...,
                         "steps": [step_id1, step_id2, ...]   # in order
@@ -2511,14 +2511,14 @@ class QVDaemon:
                 }
             }
         """
-        from quantumvitas.core.models import load_workflow
+        from quantumvitas.core.models import load_calculation
         
         if index is None:
-            return {"structures": {}, "workflows": {}}
+            return {"structures": {}, "calculations": {}}
         
         snapshot: Dict[str, Any] = {
             "structures": {},
-            "workflows": {},
+            "calculations": {},
         }
         
         # Collect all structures
@@ -2529,30 +2529,30 @@ class QVDaemon:
                     "name": meta.name,
                 }
         
-        # Collect all workflows with their step lists
+        # Collect all calculations with their step lists
         for resource_id, meta in index.by_id.items():
-            if meta.kind == "workflow":
-                # Find workflow.yaml path from index
-                workflow_path = None
+            if meta.kind == "calculation":
+                # Find calculation.yaml path from index
+                calculation_path = None
                 for path, path_id in index.by_path.items():
-                    if path_id == resource_id and path.name == "workflow.yaml":
-                        workflow_path = path
+                    if path_id == resource_id and path.name == "calculation.yaml":
+                        calculation_path = path
                         break
                 
-                if workflow_path and workflow_path.exists():
+                if calculation_path and calculation_path.exists():
                     try:
-                        # Determine project root (workflows/workflow_name/workflow.yaml -> project_root)
-                        project_root = workflow_path.parent.parent.parent
-                        # Load workflow model to get steps
-                        wf_model = load_workflow(workflow_path, project_root=project_root)
+                        # Determine project root (calculations/calculation_name/calculation.yaml -> project_root)
+                        project_root = calculation_path.parent.parent.parent
+                        # Load calculation model to get steps
+                        wf_model = load_calculation(calculation_path, project_root=project_root)
                         step_ids = [entry.step_id for entry in wf_model.steps if entry.step_id]
                     except Exception:
-                        # If we can't load the workflow, just use empty steps
+                        # If we can't load the calculation, just use empty steps
                         step_ids = []
                 else:
                     step_ids = []
                 
-                snapshot["workflows"][resource_id] = {
+                snapshot["calculations"][resource_id] = {
                     "slug": meta.slug,
                     "name": meta.name,
                     "steps": step_ids,
@@ -2572,12 +2572,12 @@ class QVDaemon:
             {
                 "structures_added": [ { "id": ..., "slug": ..., "suffix": ... }, ... ],
                 "structures_removed": [ ... ],
-                "workflows_added": [ { "id": ..., "slug": ..., "suffix": ... }, ... ],
-                "workflows_removed": [ ... ],
-                "workflows_changed": [
+                "calculations_added": [ { "id": ..., "slug": ..., "suffix": ... }, ... ],
+                "calculations_removed": [ ... ],
+                "calculations_changed": [
                     {
-                        "workflow_id": ...,
-                        "workflow_slug": ...,
+                        "calculation_id": ...,
+                        "calculation_slug": ...,
                         "suffix": ...,
                         "steps_added": [ { "id": ..., "suffix": ... }, ... ],
                         "steps_removed": [ { "id": ..., "suffix": ... }, ... ],
@@ -2593,15 +2593,15 @@ class QVDaemon:
         diff: Dict[str, Any] = {
             "structures_added": [],
             "structures_removed": [],
-            "workflows_added": [],
-            "workflows_removed": [],
-            "workflows_changed": [],
+            "calculations_added": [],
+            "calculations_removed": [],
+            "calculations_changed": [],
         }
         
         old_structures = old.get("structures", {})
         new_structures = new.get("structures", {})
-        old_workflows = old.get("workflows", {})
-        new_workflows = new.get("workflows", {})
+        old_calculations = old.get("calculations", {})
+        new_calculations = new.get("calculations", {})
         
         # Structures added
         for struct_id in new_structures:
@@ -2623,40 +2623,40 @@ class QVDaemon:
                     "suffix": _ulid_suffix(struct_id),
                 })
         
-        # Workflows added
-        for wf_id in new_workflows:
-            if wf_id not in old_workflows:
-                diff["workflows_added"].append({
+        # Calculations added
+        for wf_id in new_calculations:
+            if wf_id not in old_calculations:
+                diff["calculations_added"].append({
                     "id": wf_id,
-                    "slug": new_workflows[wf_id]["slug"],
-                    "name": new_workflows[wf_id]["name"],
+                    "slug": new_calculations[wf_id]["slug"],
+                    "name": new_calculations[wf_id]["name"],
                     "suffix": _ulid_suffix(wf_id),
                 })
         
-        # Workflows removed
-        for wf_id in old_workflows:
-            if wf_id not in new_workflows:
-                diff["workflows_removed"].append({
+        # Calculations removed
+        for wf_id in old_calculations:
+            if wf_id not in new_calculations:
+                diff["calculations_removed"].append({
                     "id": wf_id,
-                    "slug": old_workflows[wf_id]["slug"],
-                    "name": old_workflows[wf_id]["name"],
+                    "slug": old_calculations[wf_id]["slug"],
+                    "name": old_calculations[wf_id]["name"],
                     "suffix": _ulid_suffix(wf_id),
                 })
         
-        # Workflows changed (step lists differ)
-        for wf_id in old_workflows:
-            if wf_id in new_workflows:
-                old_steps = old_workflows[wf_id].get("steps", [])
-                new_steps = new_workflows[wf_id].get("steps", [])
+        # Calculations changed (step lists differ)
+        for wf_id in old_calculations:
+            if wf_id in new_calculations:
+                old_steps = old_calculations[wf_id].get("steps", [])
+                new_steps = new_calculations[wf_id].get("steps", [])
                 
                 steps_added = [s for s in new_steps if s not in old_steps]
                 steps_removed = [s for s in old_steps if s not in new_steps]
                 
                 if steps_added or steps_removed:
-                    diff["workflows_changed"].append({
-                        "workflow_id": wf_id,
-                        "workflow_slug": new_workflows[wf_id]["slug"],
-                        "workflow_name": new_workflows[wf_id]["name"],
+                    diff["calculations_changed"].append({
+                        "calculation_id": wf_id,
+                        "calculation_slug": new_calculations[wf_id]["slug"],
+                        "calculation_name": new_calculations[wf_id]["name"],
                         "suffix": _ulid_suffix(wf_id),
                         "steps_added": [{"id": s, "suffix": _ulid_suffix(s)} for s in steps_added],
                         "steps_removed": [{"id": s, "suffix": _ulid_suffix(s)} for s in steps_removed],

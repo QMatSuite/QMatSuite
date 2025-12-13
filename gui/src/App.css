@@ -126,25 +126,25 @@
 }
 
 /* Workflows View - Split Layout */
-.workflows-view {
+.calculations-view {
   display: flex;
   gap: var(--space-4);
   height: 100%;
   min-height: 500px;
 }
 
-.workflows-view__list {
+.calculations-view__list {
   overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
-.workflows-view__list > * {
+.calculations-view__list > * {
   flex: 1;
   overflow: hidden;
 }
 
-.workflows-view__detail {
+.calculations-view__detail {
   flex: 1;
   min-width: var(--panel-min-width);
   display: flex;
@@ -153,17 +153,17 @@
   overflow-y: auto;
 }
 
-/* When showing both workflow and step detail with resizable separation */
-.workflow-detail-resizable {
+/* When showing both calculation and step detail with resizable separation */
+.calculation-detail-resizable {
   overflow-y: auto;
 }
 
-.workflow-detail-resizable .workflow-detail-panel {
+.calculation-detail-resizable .calculation-detail-panel {
   height: 100%;
   overflow-y: auto;
 }
 
-.workflows-view__detail .step-detail-panel {
+.calculations-view__detail .step-detail-panel {
   flex: 1;
   min-height: 200px;
   overflow-y: auto;
@@ -171,12 +171,12 @@
 
 /* Fix list container heights */
 .structures-view__list,
-.workflows-view__list {
+.calculations-view__list {
   min-height: 0;
 }
 
 .structures-view__list > *:first-child,
-.workflows-view__list > *:first-child {
+.calculations-view__list > *:first-child {
   flex: 1;
   min-height: 0;
 }

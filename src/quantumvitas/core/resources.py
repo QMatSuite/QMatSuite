@@ -1,5 +1,5 @@
 """
-Shared resource metadata helpers used by projects, workflows, steps, and structures.
+Shared resource metadata helpers used by projects, calculations, steps, and structures.
 """
 
 from __future__ import annotations
@@ -26,12 +26,12 @@ def get_resources_dir() -> Path:
     """
     return RESOURCES_DIR
 
-ResourceKind = Literal["project", "workflow", "step", "structure"]
+ResourceKind = Literal["project", "calculation", "step", "structure"]
 
 _SLUG_INVALID_RE = re.compile(r"[^a-z0-9_]+")
 _DEFAULT_NAMES: dict[ResourceKind, str] = {
     "project": "Project",
-    "workflow": "Workflow",
+    "calculation": "Calculation",
     "step": "Step",
     "structure": "Structure",
 }

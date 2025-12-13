@@ -39,18 +39,18 @@ from quantumvitas.core.exceptions import LegacyProjectError
 from quantumvitas.core.resolution import (
     ResourceNotFoundError,
     RegistryOutOfSyncError,
-    require_workflow,
+    require_calculation,
     require_structure,
     require_step,
     AmbiguousSelectorError,
     SelectorNotFoundError,
 )
 from quantumvitas.core.selectors import (
-    extract_workflow_selector_from_entry,
+    extract_calculation_selector_from_entry,
     extract_structure_selector_from_entry,
     extract_step_selector_from_entry,
     match_step_selector,
-    get_workflow_selector_from_entry_or_raise,
+    get_calculation_selector_from_entry_or_raise,
     get_structure_selector_from_entry_or_raise,
     get_step_selector_from_entry_or_raise,
 )
@@ -64,22 +64,22 @@ from quantumvitas.core.project_utils import (
     entry_matches,
     entry_display_name,
     ensure_structure_entry_defaults,
-    ensure_workflow_entry_defaults,
+    ensure_calculation_entry_defaults,
     find_structure_entry,
-    find_workflow_entry,
-    workflow_directory,
+    find_calculation_entry,
+    calculation_directory,
     structure_reference_tokens,
     spec_uses_structure,
-    workflows_using_structure,
-    workflow_identifiers,
-    workflows_depending_on,
+    calculations_using_structure,
+    calculation_identifiers,
+    calculations_depending_on,
     move_to_trash,
     apply_structure_rename,
-    apply_workflow_rename,
-    delete_workflow_entry,
+    apply_calculation_rename,
+    delete_calculation_entry,
     find_project_root,
-    find_enclosing_workflow,
-    find_step_in_workflow,
+    find_enclosing_calculation,
+    find_step_in_calculation,
     find_resource_auto,
     resolve_resource,
 )
@@ -92,17 +92,17 @@ from quantumvitas.core.engines.base import EngineConfig
 from quantumvitas.core.engines.qe_installation import get_qe_home
 from quantumvitas.engine.registry import create_default_registry
 from quantumvitas.project.model import Project
-from quantumvitas.workflow.runner import WorkflowRunner
-from quantumvitas.workflow.workflow import Workflow
-from quantumvitas.workflow.types import StepMode, StepStatus
-from quantumvitas.workflow.input_runner import (
+from quantumvitas.calculation.runner import CalculationRunner
+from quantumvitas.calculation.calculation import Calculation
+from quantumvitas.calculation.types import StepMode, StepStatus
+from quantumvitas.calculation.input_runner import (
     ParameterOverride,
     apply_card_overrides_to_qe_input,
     apply_species_overrides_to_qe_input,
     detect_project_root,
     run_input_step,
 )
-from quantumvitas.workflow.structure_steps import (
+from quantumvitas.calculation.structure_steps import (
     StructureStepSpec,
     generate_qe_input_from_spec,
     generate_qe_input_from_structure,
@@ -177,7 +177,7 @@ def _handle_legacy_project_error(e: LegacyProjectError) -> None:
         err=True,
     )
     typer.secho(
-        f"\nThis project uses a legacy workflow format (structure selector / step_file / non-ULID step IDs).",
+        f"\nThis project uses a legacy calculation format (structure selector / step_file / non-ULID step IDs).",
         err=True,
     )
     typer.secho(
@@ -267,20 +267,20 @@ def _resolve_structure_reference(
     return identifier
 
 
-def _detect_enclosing_workflow(
-    project_root: Path, current_dir: Path, workflows: Sequence[dict]
+def _detect_enclosing_calculation(
+    project_root: Path, current_dir: Path, calculations: Sequence[dict]
 ) -> Optional[str]:
     try:
         current_dir.relative_to(project_root)
     except ValueError:
         return None
 
-    for entry in workflows:
+    for entry in calculations:
         rel_path = entry.get("path") or (entry.get("meta") or {}).get("path")
         if not rel_path:
             continue
-        workflow_dir = (project_root / rel_path).resolve()
-        if current_dir == workflow_dir or current_dir.is_relative_to(workflow_dir):
+        calculation_dir = (project_root / rel_path).resolve()
+        if current_dir == calculation_dir or current_dir.is_relative_to(calculation_dir):
             meta = entry.get("meta") or {}
             return meta.get("slug") or entry.get("name")
     return None
@@ -636,12 +636,12 @@ def init_project_command(
     ),
 ) -> None:
     """
-    Scaffold a new QuantumVITAS project skeleton (no workflows by default).
+    Scaffold a new QuantumVITAS project skeleton (no calculations by default).
     
     Use --snapshot to create a project from a snapshot YAML file (exported via qv save project).
     When using --snapshot, --path is treated as the parent directory where the new project will be created.
     
-    For demo projects with pre-populated workflows, use the GUI "Create Demo Project" button
+    For demo projects with pre-populated calculations, use the GUI "Create Demo Project" button
     or call create_demo_project via the API.
     """
     # Handle snapshot first
@@ -689,15 +689,15 @@ def init_project_command(
             "name": project_meta.name,
             "meta": project_meta.to_dict(),
             "structures_dir": "structures",
-            "workflows_dir": "workflows",
+            "calculations_dir": "calculations",
         },
-        "workflows": [],
+        "calculations": [],
         "structures": [],
         "settings": {},
     }
 
     (project_dir / "structures").mkdir(parents=True, exist_ok=True)
-    (project_dir / "workflows").mkdir(parents=True, exist_ok=True)
+    (project_dir / "calculations").mkdir(parents=True, exist_ok=True)
     (project_dir / "project.qv.yml").write_text(
         yaml.safe_dump(project_config, sort_keys=False)
     )
@@ -705,78 +705,78 @@ def init_project_command(
     typer.secho(f"Project created at {project_dir}", fg=typer.colors.GREEN)
 
 
-@init_app.command("workflow")
-def init_workflow_command(
-    workflow_id: str = typer.Argument(..., help="Workflow identifier to create"),
+@init_app.command("calculation")
+def init_calculation_command(
+    calculation_id: str = typer.Argument(..., help="Calculation identifier to create"),
     structure: Optional[str] = typer.Option(
         None, "--structure", help="Structure id registered in the project"
     ),
     parent: List[str] = typer.Option(
         [],
         "--parent",
-        help="Workflow ids/slugs that must finish before this workflow (metadata only).",
+        help="Calculation ids/slugs that must finish before this calculation (metadata only).",
     ),
     project: Optional[Path] = typer.Option(
         None, "--project", help="Project root (defaults to auto-detect)"
     ),
     template: Optional[str] = typer.Option(
-        None, "--template", help="Workflow template to use (e.g., 'si-dos')"
+        None, "--template", help="Calculation template to use (e.g., 'si-dos')"
     ),
 ) -> None:
     """
-    Scaffold a workflow folder with workflow.yaml and no pre-populated steps.
+    Scaffold a calculation folder with calculation.yaml and no pre-populated steps.
     
-    Use --template to copy from a predefined workflow template with example steps.
+    Use --template to copy from a predefined calculation template with example steps.
     If using a template, --structure is optional (template's structure is used).
     """
     from quantumvitas.core.templates import (
-        copy_workflow_template,
+        copy_calculation_template,
         copy_structure_template,
-        list_workflow_templates,
+        list_calculation_templates,
     )
 
     project_root = (project or _resolve_project_root()).resolve()
     config = load_project_config(project_root)
-    workflows_section = config.setdefault("workflows", [])
+    calculations_section = config.setdefault("calculations", [])
     existing_slugs = {
         (entry.get("meta") or {}).get("slug") or slugify(entry.get("name") or "")
-        for entry in workflows_section
+        for entry in calculations_section
     }
 
-    workflow_slug = slugify(workflow_id)
-    if workflow_slug in existing_slugs:
+    calculation_slug = slugify(calculation_id)
+    if calculation_slug in existing_slugs:
         raise typer.BadParameter(
-            f"Workflow '{workflow_id}' already exists. Use qv configure workflow to modify it."
+            f"Calculation '{calculation_id}' already exists. Use qv configure calculation to modify it."
         )
 
-    workflow_dir = (project_root / "workflows" / workflow_slug).resolve()
-    if workflow_dir.exists():
+    calculation_dir = (project_root / "calculations" / calculation_slug).resolve()
+    if calculation_dir.exists():
         raise typer.BadParameter(
-            f"Workflow directory '{workflow_dir}' already exists. Remove it or choose another name."
+            f"Calculation directory '{calculation_dir}' already exists. Remove it or choose another name."
         )
 
     if template:
-        available_templates = list_workflow_templates()
+        available_templates = list_calculation_templates()
         available = [t["name"] for t in available_templates]
         if template not in available:
             raise typer.BadParameter(
                 f"Template '{template}' not found. Available: {', '.join(available) or 'none'}"
             )
         
-        workflow_dir.mkdir(parents=True, exist_ok=True)
+        calculation_dir.mkdir(parents=True, exist_ok=True)
         
-        # Generate workflow meta first so we have the ULID
-        rel_path = ensure_relative_path(workflow_dir, base=project_root)
-        workflow_meta = meta_from_name("workflow", name=workflow_id, path=rel_path)
+        # Generate calculation meta first so we have the ULID
+        rel_path = ensure_relative_path(calculation_dir, base=project_root)
+        calculation_meta = meta_from_name("calculation", name=calculation_id, path=rel_path)
         
-        # Pass the ULID to template copier so steps get the correct parent_workflow_id
-        _, structures_needed, _ = copy_workflow_template(
+        # Pass the ULID to template copier so steps get the correct parent_calculation_id
+        _, structures_needed, _ = copy_calculation_template(
             template_name=template,
-            dest_dir=workflow_dir,
+            dest_dir=calculation_dir,
             project_root=project_root,
-            new_name=workflow_id,
+            new_name=calculation_id,
             structure=structure,
-            workflow_ulid=workflow_meta.id,
+            calculation_ulid=calculation_meta.id,
         )
         
         # Copy missing structures from templates
@@ -804,19 +804,19 @@ def init_workflow_command(
                         fg=typer.colors.YELLOW
                     )
         
-        workflow_meta_dict = workflow_meta.to_dict()
+        calculation_meta_dict = calculation_meta.to_dict()
         if parent:
-            workflow_meta_dict["parents"] = parent
+            calculation_meta_dict["parents"] = parent
 
-        # DAG + ID-only: only workflow_id, no meta duplication
-        workflows_section.append({
-            "workflow_id": workflow_meta.id,  # ID-only reference (ULID)
+        # DAG + ID-only: only calculation_id, no meta duplication
+        calculations_section.append({
+            "calculation_id": calculation_meta.id,  # ID-only reference (ULID)
         })
         save_project_config(project_root, config)
-        typer.secho(f"Workflow '{workflow_id}' created from template '{template}' at {workflow_dir}", fg=typer.colors.GREEN)
+        typer.secho(f"Calculation '{calculation_id}' created from template '{template}' at {calculation_dir}", fg=typer.colors.GREEN)
         return
 
-    # Non-template workflow creation requires --structure
+    # Non-template calculation creation requires --structure
     if not structure:
         raise typer.BadParameter(
             "--structure is required when not using --template"
@@ -828,39 +828,39 @@ def init_workflow_command(
     structure_id = resolved_structure.meta.id
     structure_name = resolved_structure.meta.name
 
-    raw_dir = workflow_dir / "raw"
-    steps_dir = workflow_dir / "steps"
+    raw_dir = calculation_dir / "raw"
+    steps_dir = calculation_dir / "steps"
     raw_dir.mkdir(parents=True, exist_ok=True)
     steps_dir.mkdir(parents=True, exist_ok=True)
 
-    # Generate workflow meta with ULID
-    rel_path = ensure_relative_path(workflow_dir, base=project_root)
-    workflow_meta = meta_from_name("workflow", name=workflow_id, path=str(rel_path))
+    # Generate calculation meta with ULID
+    rel_path = ensure_relative_path(calculation_dir, base=project_root)
+    calculation_meta = meta_from_name("calculation", name=calculation_id, path=str(rel_path))
     if parent:
-        workflow_meta_dict = workflow_meta.to_dict()
-        workflow_meta_dict["parents"] = parent
+        calculation_meta_dict = calculation_meta.to_dict()
+        calculation_meta_dict["parents"] = parent
     else:
-        workflow_meta_dict = workflow_meta.to_dict()
+        calculation_meta_dict = calculation_meta.to_dict()
 
-    # Write workflow.yaml with proper meta section (contains ULID)
+    # Write calculation.yaml with proper meta section (contains ULID)
     # DAG + ID-only model: use structure_id (ULID) as canonical reference
     # Do NOT write structure_name or structure selector (violates DAG + ID-only constitution)
-    workflow_payload = {
-        "meta": workflow_meta_dict,
+    calculation_payload = {
+        "meta": calculation_meta_dict,
         "structure_id": structure_id,  # Canonical reference (ULID only)
         "mode": "normal",
         "working_dir": "raw",
         "steps": [],
     }
-    (workflow_dir / "workflow.yaml").write_text(yaml.safe_dump(workflow_payload, sort_keys=False))
+    (calculation_dir / "calculation.yaml").write_text(yaml.safe_dump(calculation_payload, sort_keys=False))
 
-    # Add to project.qv.yml (DAG + ID-only: only workflow_id, no meta duplication)
-    workflows_section.append({
-        "workflow_id": workflow_meta.id,  # ID-only reference (ULID)
+    # Add to project.qv.yml (DAG + ID-only: only calculation_id, no meta duplication)
+    calculations_section.append({
+        "calculation_id": calculation_meta.id,  # ID-only reference (ULID)
     })
     save_project_config(project_root, config)
 
-    typer.secho(f"Workflow '{workflow_id}' created at {workflow_dir}", fg=typer.colors.GREEN)
+    typer.secho(f"Calculation '{calculation_id}' created at {calculation_dir}", fg=typer.colors.GREEN)
 
 
 
@@ -882,13 +882,13 @@ def init_step_command(
     ctx: typer.Context,
     step_type: str = typer.Argument(..., help="QE calculation type (scf, nscf, relax, dos, etc.)"),
     structure: Optional[str] = typer.Option(
-        None, "--structure", "-s", help="Structure id (optional if inside a workflow)"
+        None, "--structure", "-s", help="Structure id (optional if inside a calculation)"
     ),
     project: Optional[Path] = typer.Option(
         None, "--project", help="Project root (defaults to auto-detect)"
     ),
-    workflow: Optional[str] = typer.Option(
-        None, "--workflow", help="Workflow id/slug to attach this step to"
+    calculation: Optional[str] = typer.Option(
+        None, "--calculation", help="Calculation id/slug to attach this step to"
     ),
     name: Optional[str] = typer.Option(
         None,
@@ -898,7 +898,7 @@ def init_step_command(
     index: Optional[int] = typer.Option(
         None,
         "--index",
-        help="Insert position when attaching to a workflow (0-indexed, defaults to append).",
+        help="Insert position when attaching to a calculation (0-indexed, defaults to append).",
     ),
     auto_kpath: bool = typer.Option(
         False, "--auto-kpath", 
@@ -914,10 +914,10 @@ def init_step_command(
              "Useful when importing from an existing QE input file to preserve original parameters."
     ),
 ) -> None:
-    """Create a StructureStepSpec YAML file and optionally attach it to a workflow.
+    """Create a StructureStepSpec YAML file and optionally attach it to a calculation.
     
     Step type is required and must be a known QE calculation type.
-    Structure is optional if inside a workflow directory (inherits from workflow).
+    Structure is optional if inside a calculation directory (inherits from calculation).
     
     By default, step is created with QV's in-code default parameters (outdir, restart_mode, 
     conv_thr, etc.) merged with any explicitly provided parameters. Use --no-defaults to create
@@ -928,8 +928,8 @@ def init_step_command(
     
     Examples:
         qv init step scf --structure si                    # Uses defaults
-        qv init step nscf                                  # inside workflow, inherits structure, uses defaults
-        qv init step relax --structure si --workflow my_workflow
+        qv init step nscf                                  # inside calculation, inherits structure, uses defaults
+        qv init step relax --structure si --calculation my_calculation
         qv init step bands --structure si --auto-kpath
         qv init step scf --no-defaults --CONTROL.calculation=scf  # Import mode, no defaults
     """
@@ -953,38 +953,38 @@ def init_step_command(
         except typer.BadParameter:
             project_root = None
 
-    # Determine workflow: explicit --workflow, or auto-detect from cwd using PathContext
-    workflow_entry = None
-    workflow_dir: Optional[Path] = None
-    workflow_steps: list[dict] | None = None
-    workflow_data = None
+    # Determine calculation: explicit --calculation, or auto-detect from cwd using PathContext
+    calculation_entry = None
+    calculation_dir: Optional[Path] = None
+    calculation_steps: list[dict] | None = None
+    calculation_data = None
     existing_step_ids: list[str] = []
-    parent_workflow_id: Optional[str] = None
-    workflow_structure: Optional[str] = None
+    parent_calculation_id: Optional[str] = None
+    calculation_structure: Optional[str] = None
 
-    if workflow:
+    if calculation:
         if not project_root:
-            raise typer.BadParameter("Specify --project when using --workflow.")
+            raise typer.BadParameter("Specify --project when using --calculation.")
         config = load_project_config(project_root)
-        workflow_entry = find_workflow_entry(config, workflow, project_root)
+        calculation_entry = find_calculation_entry(config, calculation, project_root)
     elif project_root:
-        # Try to detect enclosing workflow from cwd using find_enclosing_workflow
-        # This is more reliable than PathContext.workflow_selector (which reads from workflow.yaml)
+        # Try to detect enclosing calculation from cwd using find_enclosing_calculation
+        # This is more reliable than PathContext.calculation_selector (which reads from calculation.yaml)
         try:
             config = load_project_config(project_root)
-            workflow_entry = find_enclosing_workflow(project_root, config)
+            calculation_entry = find_enclosing_calculation(project_root, config)
         except Exception:
-            # Fall back to old method if find_enclosing_workflow fails
+            # Fall back to old method if find_enclosing_calculation fails
             config = load_project_config(project_root)
-            detected = _detect_enclosing_workflow(
-                project_root, Path.cwd().resolve(), config.get("workflows", [])
+            detected = _detect_enclosing_calculation(
+                project_root, Path.cwd().resolve(), config.get("calculations", [])
             )
             if detected:
-                workflow_entry = find_workflow_entry(config, detected, project_root)
+                calculation_entry = find_calculation_entry(config, detected, project_root)
     
-    # If we still don't have a workflow and we're at project root, fail with clear error
-    if not workflow_entry and project_root:
-        # Check if we're at project root (not inside a workflow)
+    # If we still don't have a calculation and we're at project root, fail with clear error
+    if not calculation_entry and project_root:
+        # Check if we're at project root (not inside a calculation)
         cwd_resolved = Path.cwd().resolve()
         project_root_resolved = project_root.resolve()
         is_at_project_root = False
@@ -992,82 +992,82 @@ def init_step_command(
         try:
             ctx = find_path_context_from_pwd()
             # Compare resolved paths to handle symlinks and path differences
-            if cwd_resolved == project_root_resolved and not ctx.is_inside_workflow():
+            if cwd_resolved == project_root_resolved and not ctx.is_inside_calculation():
                 is_at_project_root = True
         except ContextNotFoundError:
             # If we can't determine context but we have project_root, check if cwd matches project_root
             if cwd_resolved == project_root_resolved:
                 is_at_project_root = True
         
-        # CRITICAL: disallow init step at project root without explicit workflow
+        # CRITICAL: disallow init step at project root without explicit calculation
         if is_at_project_root:
             typer.echo(
                 "Cannot initialize a step at the project root; "
-                "please run this command inside a workflow directory "
-                "or specify --workflow explicitly."
+                "please run this command inside a calculation directory "
+                "or specify --calculation explicitly."
             )
             # The test inspects stdout, so we must echo to stdout, not stderr,
             # and then exit with a non-zero code.
             raise typer.Exit(code=1)
     
     if not project_root:
-        config = {"structures": [], "workflows": []}
-    elif not workflow_entry:
+        config = {"structures": [], "calculations": []}
+    elif not calculation_entry:
         config = load_project_config(project_root)
 
-    if workflow_entry and project_root:
-        workflow_dir = workflow_directory(project_root, workflow_entry)
-        workflow_yaml = workflow_dir / "workflow.yaml"
-        if not workflow_yaml.exists():
-            raise typer.BadParameter(f"workflow.yaml not found under {workflow_dir}")
-        workflow_data = yaml.safe_load(workflow_yaml.read_text()) or {}
-        workflow_steps = workflow_data.setdefault("steps", [])
+    if calculation_entry and project_root:
+        calculation_dir = calculation_directory(project_root, calculation_entry)
+        calculation_yaml = calculation_dir / "calculation.yaml"
+        if not calculation_yaml.exists():
+            raise typer.BadParameter(f"calculation.yaml not found under {calculation_dir}")
+        calculation_data = yaml.safe_load(calculation_yaml.read_text()) or {}
+        calculation_steps = calculation_data.setdefault("steps", [])
         existing_step_ids = [
             extract_step_selector_from_entry(step) 
-            for step in workflow_steps 
+            for step in calculation_steps 
             if extract_step_selector_from_entry(step)
         ]
         
-        # Get parent workflow id and structure
-        parent_workflow_id = extract_workflow_selector_from_entry(workflow_entry)
-        if not parent_workflow_id:
-            # Fallback to workflow.yaml meta.id
-            parent_workflow_id = workflow_data.get("meta", {}).get("id") or workflow_data.get("id")
+        # Get parent calculation id and structure
+        parent_calculation_id = extract_calculation_selector_from_entry(calculation_entry)
+        if not parent_calculation_id:
+            # Fallback to calculation.yaml meta.id
+            parent_calculation_id = calculation_data.get("meta", {}).get("id") or calculation_data.get("id")
         # Structure: prefer structure_id (canonical), fall back to structure selector (legacy)
-        workflow_structure_id = workflow_data.get("structure_id")
-        workflow_structure = workflow_data.get("structure") or workflow_data.get("workflow", {}).get("structure")
+        calculation_structure_id = calculation_data.get("structure_id")
+        calculation_structure = calculation_data.get("structure") or calculation_data.get("calculation", {}).get("structure")
     else:
-        workflow_structure_id = None
-        workflow_structure = None
+        calculation_structure_id = None
+        calculation_structure = None
 
-    # Resolve structure: use provided, or inherit from parent workflow
+    # Resolve structure: use provided, or inherit from parent calculation
     if structure:
         structure_value = _resolve_structure_reference(
             structure, project_root, config if project_root else None
         )
-    elif workflow_structure_id:
-        # Workflow has structure_id - resolve it to get the selector for display
+    elif calculation_structure_id:
+        # Calculation has structure_id - resolve it to get the selector for display
         try:
-            resolved = require_structure(project_root, workflow_structure_id, config if project_root else None)
+            resolved = require_structure(project_root, calculation_structure_id, config if project_root else None)
             structure_value = resolved.meta.slug or resolved.meta.name
-            typer.echo(f"Using structure '{structure_value}' from workflow")
+            typer.echo(f"Using structure '{structure_value}' from calculation")
         except ResourceNotFoundError as e:
-            raise typer.BadParameter(f"Workflow references structure_id '{workflow_structure_id}' which cannot be resolved: {e}") from e
-    elif workflow_structure:
-        structure_value = workflow_structure
-        typer.echo(f"Using structure '{structure_value}' from workflow")
+            raise typer.BadParameter(f"Calculation references structure_id '{calculation_structure_id}' which cannot be resolved: {e}") from e
+    elif calculation_structure:
+        structure_value = calculation_structure
+        typer.echo(f"Using structure '{structure_value}' from calculation")
     else:
         raise typer.BadParameter(
             "Structure required. Either:\n"
             "  - Provide --structure <name>\n"
-            "  - Run inside a workflow directory\n"
-            "  - Use --workflow to specify a workflow that has a structure"
+            "  - Run inside a calculation directory\n"
+            "  - Use --calculation to specify a calculation that has a structure"
         )
 
     step_display_name, step_slug = _derive_step_identity(name or step_type, existing_step_ids)
 
-    if workflow_dir is not None:
-        spec_path = (workflow_dir / "steps" / f"{step_slug}.step.yaml").resolve()
+    if calculation_dir is not None:
+        spec_path = (calculation_dir / "steps" / f"{step_slug}.step.yaml").resolve()
     else:
         spec_path = (Path.cwd() / f"{step_slug}.step.yaml").resolve()
 
@@ -1114,7 +1114,7 @@ def init_step_command(
             ) from exc
 
     # Get default parameters for this step type (if not in --no-defaults mode)
-    from quantumvitas.workflow.step_defaults import get_default_step_params
+    from quantumvitas.calculation.step_defaults import get_default_step_params
     
     apply_defaults = not no_defaults
     
@@ -1150,11 +1150,11 @@ def init_step_command(
         species.update(bundle.species_overrides)
     
     # Resolve structure selector to structure_id
-    # If workflow has structure_id, use that directly (canonical)
+    # If calculation has structure_id, use that directly (canonical)
     structure_id = None
-    if workflow_structure_id and project_root:
-        # Workflow already has structure_id - use it directly (canonical reference)
-        structure_id = workflow_structure_id
+    if calculation_structure_id and project_root:
+        # Calculation already has structure_id - use it directly (canonical reference)
+        structure_id = calculation_structure_id
     elif structure_value and project_root:
         # Resolve structure selector to structure_id
         try:
@@ -1172,42 +1172,42 @@ def init_step_command(
         parameters=params,
         cards=cards,
         species_overrides=species,
-        parent_workflow_id=parent_workflow_id,
+        parent_calculation_id=parent_calculation_id,
         kpath_metadata=kpath_result.to_dict() if kpath_result else None,
     )
     _write_step_spec(spec_path, spec, project_root=project_root)
 
-    if workflow_entry and workflow_steps is not None and workflow_data is not None:
-        assert workflow_dir is not None
-        rel_step_path = ensure_relative_path(spec_path, base=workflow_dir)
+    if calculation_entry and calculation_steps is not None and calculation_data is not None:
+        assert calculation_dir is not None
+        rel_step_path = ensure_relative_path(spec_path, base=calculation_dir)
         insertion_index = (
-            max(0, min(len(workflow_steps), index))
+            max(0, min(len(calculation_steps), index))
             if index is not None
-            else len(workflow_steps)
+            else len(calculation_steps)
         )
         # Use step_id (ULID) from step spec meta (canonical reference)
-        from quantumvitas.core.models import WorkflowStepEntry
+        from quantumvitas.core.models import CalculationStepEntry
         # rel_step_path is already a relative path string from ensure_relative_path
         # Create step entry with only step_id (ULID) - no step_file (resolved via registry)
-        step_entry = WorkflowStepEntry(
+        step_entry = CalculationStepEntry(
             step_id=spec.meta.id,  # Use ULID from step spec meta (canonical reference)
             type=step_type,
             # step_file is NOT stored - step location resolved via registry using step_id
         )
-        workflow_steps.insert(
+        calculation_steps.insert(
             insertion_index,
             step_entry.to_dict(),
         )
         # Remove legacy structure_name and structure fields before writing (DAG + ID-only constitution)
-        workflow_data.pop("structure_name", None)
-        workflow_data.pop("structure", None)
-        if "workflow" in workflow_data:
-            workflow_data["workflow"].pop("structure_name", None)
-            workflow_data["workflow"].pop("structure", None)
-        workflow_yaml = workflow_dir / "workflow.yaml"
-        workflow_yaml.write_text(yaml.safe_dump(workflow_data, sort_keys=False))
+        calculation_data.pop("structure_name", None)
+        calculation_data.pop("structure", None)
+        if "calculation" in calculation_data:
+            calculation_data["calculation"].pop("structure_name", None)
+            calculation_data["calculation"].pop("structure", None)
+        calculation_yaml = calculation_dir / "calculation.yaml"
+        calculation_yaml.write_text(yaml.safe_dump(calculation_data, sort_keys=False))
         typer.echo(
-            f"Workflow '{entry_display_name(workflow_entry)}' updated with step id '{step_slug}'."
+            f"Calculation '{entry_display_name(calculation_entry)}' updated with step id '{step_slug}'."
         )
 
     typer.echo(f"Step spec created at {spec_path}")
@@ -1230,7 +1230,7 @@ def save_project_command(
     """
     Export the current project to a snapshot YAML file.
     
-    The snapshot contains all project metadata, structures, workflows, and steps
+    The snapshot contains all project metadata, structures, calculations, and steps
     needed to recreate the project. Pseudopotential filenames are preserved
     but file contents are NOT embedded.
     
@@ -1388,10 +1388,10 @@ def detect_qe(
 def run_step_command(
     ctx: typer.Context,
     target: Optional[Path] = typer.Argument(
-        None, help="[DEPRECATED] Step spec (.yaml) or QE input (.in). Use --workflow + --step instead."
+        None, help="[DEPRECATED] Step spec (.yaml) or QE input (.in). Use --calculation + --step instead."
     ),
-    workflow: Optional[str] = typer.Option(
-        None, "--workflow", "-w", help="Workflow selector (name, slug, path, or ULID). Auto-detected from cwd if omitted."
+    calculation: Optional[str] = typer.Option(
+        None, "--calculation", "-w", help="Calculation selector (name, slug, path, or ULID). Auto-detected from cwd if omitted."
     ),
     step: Optional[str] = typer.Option(
         None, "--step", "-s", help="Step selector (name, slug, ULID, or step_type). Auto-detected from cwd if omitted."
@@ -1421,12 +1421,12 @@ def run_step_command(
     Two execution modes:
     
     1. Project mode (default):
-       - Requires: --project (or auto-detect) + --workflow + --step selectors
-       - Uses registry-based resolution: workflow → step → structure (via workflow.structure_id)
-       - Structure is resolved from workflow.structure_id (DAG model: workflow owns structure)
+       - Requires: --project (or auto-detect) + --calculation + --step selectors
+       - Uses registry-based resolution: calculation → step → structure (via calculation.structure_id)
+       - Structure is resolved from calculation.structure_id (DAG model: calculation owns structure)
        - Deprecated: bare step YAML file path (target argument)
-         - When provided, workflow is inferred from step path via registry
-         - Structure is still resolved from workflow.structure_id (not from step YAML)
+         - When provided, calculation is inferred from step path via registry
+         - Structure is still resolved from calculation.structure_id (not from step YAML)
     
     2. Standalone mode (--standalone):
        - Requires: --standalone + --input (QE input file)
@@ -1465,7 +1465,7 @@ def run_step_command(
         typer.echo("Warning: --bidirectional is only meaningful in standalone mode (which always does roundtrip). Ignoring flag.")
     
     # Load project context
-    from quantumvitas.core.project_context import ProjectContext, resolve_workflow_for_cli, resolve_step_for_cli
+    from quantumvitas.core.project_context import ProjectContext, resolve_calculation_for_cli, resolve_step_for_cli
     from quantumvitas.core.resolution import ResourceNotFoundError
     
     cwd = Path.cwd()
@@ -1479,34 +1479,34 @@ def run_step_command(
         ) from e
     
     # If target is provided (legacy support), try to resolve step from it
-    # This will also resolve the workflow from the step path
+    # This will also resolve the calculation from the step path
     if target:
         # Legacy: if target is a step YAML, try to resolve it via registry
         if target.suffix.lower() in {".yaml", ".yml"}:
             typer.echo(
                 "Warning: Using step YAML file directly is deprecated. "
-                "Use --workflow <selector> --step <selector> instead.",
+                "Use --calculation <selector> --step <selector> instead.",
                 err=True
             )
             # Try to find the step in the registry by path
             step_path = target.resolve()
             try:
                 rel_path = step_path.relative_to(ctx_obj.project_root)
-                # Extract workflow and step from path (e.g., workflows/wf/steps/scf.step.yaml)
-                if "workflows" in rel_path.parts and "steps" in rel_path.parts:
-                    # Find workflow slug from path
-                    workflows_idx = rel_path.parts.index("workflows")
-                    if workflows_idx + 1 < len(rel_path.parts):
-                        workflow_slug = rel_path.parts[workflows_idx + 1]
-                        # Resolve workflow from slug
-                        workflow_resolved = resolve_workflow_for_cli(ctx_obj, workflow_slug)
+                # Extract calculation and step from path (e.g., calculations/wf/steps/scf.step.yaml)
+                if "calculations" in rel_path.parts and "steps" in rel_path.parts:
+                    # Find calculation slug from path
+                    calculations_idx = rel_path.parts.index("calculations")
+                    if calculations_idx + 1 < len(rel_path.parts):
+                        calculation_slug = rel_path.parts[calculations_idx + 1]
+                        # Resolve calculation from slug
+                        calculation_resolved = resolve_calculation_for_cli(ctx_obj, calculation_slug)
                         # Extract step selector from filename
                         step_selector = step_path.stem.replace(".step", "")
-                        step_resolved = resolve_step_for_cli(ctx_obj, workflow_resolved, step_selector)
+                        step_resolved = resolve_step_for_cli(ctx_obj, calculation_resolved, step_selector)
                     else:
                         raise typer.BadParameter(
                             f"Step file {target} path is invalid. "
-                            "Please use --workflow <selector> --step <selector> instead."
+                            "Please use --calculation <selector> --step <selector> instead."
                         )
                 else:
                     # Try to find step in registry by absolute path
@@ -1518,53 +1518,53 @@ def run_step_command(
                         if path == step_path:
                             meta = registry.by_id.get(resource_id)
                             if meta and meta.kind == "step":
-                                # Find parent workflow from step path
+                                # Find parent calculation from step path
                                 step_rel = Path(path).relative_to(ctx_obj.project_root)
-                                if "workflows" in step_rel.parts and "steps" in step_rel.parts:
-                                    workflows_idx = step_rel.parts.index("workflows")
-                                    if workflows_idx + 1 < len(step_rel.parts):
-                                        workflow_slug = step_rel.parts[workflows_idx + 1]
-                                        workflow_resolved = resolve_workflow_for_cli(ctx_obj, workflow_slug)
-                                        step_resolved = resolve_step_for_cli(ctx_obj, workflow_resolved, meta.slug or meta.name or meta.id)
+                                if "calculations" in step_rel.parts and "steps" in step_rel.parts:
+                                    calculations_idx = step_rel.parts.index("calculations")
+                                    if calculations_idx + 1 < len(step_rel.parts):
+                                        calculation_slug = step_rel.parts[calculations_idx + 1]
+                                        calculation_resolved = resolve_calculation_for_cli(ctx_obj, calculation_slug)
+                                        step_resolved = resolve_step_for_cli(ctx_obj, calculation_resolved, meta.slug or meta.name or meta.id)
                                         step_found = True
                                         break
                     if not step_found:
                         raise typer.BadParameter(
-                            f"Step file {target} is not in a workflow steps directory. "
-                            "Please use --workflow <selector> --step <selector> instead."
+                            f"Step file {target} is not in a calculation steps directory. "
+                            "Please use --calculation <selector> --step <selector> instead."
                         )
             except (ValueError, ResourceNotFoundError) as e:
                 raise typer.BadParameter(
                     f"Cannot resolve step from {target}: {e}. "
-                    "Please use --workflow <selector> --step <selector> instead."
+                    "Please use --calculation <selector> --step <selector> instead."
                 ) from e
         else:
             # Target is a QE input file - not supported in project mode
             raise typer.BadParameter(
                 f"QE input file '{target}' cannot be used in project mode. "
-                "Use --workflow <selector> --step <selector> to run a step, "
+                "Use --calculation <selector> --step <selector> to run a step, "
                 "or use --standalone --input <file> for standalone execution."
             )
     else:
-        # No target - resolve workflow first, then step
+        # No target - resolve calculation first, then step
         try:
-            workflow_resolved = resolve_workflow_for_cli(ctx_obj, workflow)
+            calculation_resolved = resolve_calculation_for_cli(ctx_obj, calculation)
         except ResourceNotFoundError as e:
             raise typer.BadParameter(str(e)) from e
         
         # Use --step option or auto-detect
         try:
-            step_resolved = resolve_step_for_cli(ctx_obj, workflow_resolved, step)
+            step_resolved = resolve_step_for_cli(ctx_obj, calculation_resolved, step)
         except ResourceNotFoundError as e:
             raise typer.BadParameter(str(e)) from e
     
-    # Run step via QVService (registry-based, uses workflow.structure_id)
+    # Run step via QVService (registry-based, uses calculation.structure_id)
     from quantumvitas.api import QVService
     
     try:
         result = QVService.run_step(
             project_root=ctx_obj.project_root,
-            workflow_selector=workflow_resolved.meta.slug or workflow_resolved.meta.name or workflow_resolved.meta.id,
+            calculation_selector=calculation_resolved.meta.slug or calculation_resolved.meta.name or calculation_resolved.meta.id,
             step_selector=step_resolved.meta.slug or step_resolved.meta.name or step_resolved.meta.id,
         )
         
@@ -1597,7 +1597,7 @@ def _run_standalone_step(
         workdir: Working directory (defaults to current directory)
         engine_name: Engine name (defaults to "qe")
     """
-    from quantumvitas.workflow.standalone import StandaloneStepContext, run_standalone_step
+    from quantumvitas.calculation.standalone import StandaloneStepContext, run_standalone_step
     from quantumvitas.core.engines.base import EngineConfig
     from quantumvitas.core.engines.qe import QuantumEspressoEngine
     
@@ -1734,7 +1734,7 @@ def list_resources(
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show IDs"),
 ) -> None:
     """
-    Display project resources (structures/workflows) as a tree.
+    Display project resources (structures/calculations) as a tree.
     """
 
     project_root = project or _resolve_project_root()
@@ -1746,7 +1746,7 @@ def list_resources(
     typer.echo(f"Project: {proj.meta.name} [{proj.meta.slug}] ({proj.root})")
     if verbose:
         typer.echo(f"  id: {proj.meta.id}")
-    # Load config to check structure-workflow relationships
+    # Load config to check structure-calculation relationships
     config = load_project_config(project_root)
     
     typer.echo("\nStructures:")
@@ -1754,42 +1754,42 @@ def list_resources(
     if not structures:
         typer.echo("  (none)")
     for ref in structures:
-        # Find workflows using this structure
+        # Find calculations using this structure
         struct_entry = None
         for entry in config.get("structures", []):
             if entry_matches(entry, ref.meta.slug) or entry_matches(entry, ref.name):
                 struct_entry = entry
                 break
         
-        using_workflows = []
+        using_calculations = []
         if struct_entry:
-            using_wfs = workflows_using_structure(project_root, config, struct_entry)
-            using_workflows = [
+            using_wfs = calculations_using_structure(project_root, config, struct_entry)
+            using_calculations = [
                 (wf.get("meta") or {}).get("slug") or wf.get("name") 
                 for wf in using_wfs
             ]
         
         line = f"  - {ref.name} [{ref.meta.slug}] -> {ref.meta.path}"
-        if using_workflows:
-            line += f"  (used by: {', '.join(using_workflows)})"
+        if using_calculations:
+            line += f"  (used by: {', '.join(using_calculations)})"
         if verbose:
             line += f" (id: {ref.meta.id})"
         typer.echo(line)
 
-    typer.echo("\nWorkflows:")
-    workflows = sorted(proj.workflows.values(), key=lambda r: r.name)
-    if not workflows:
+    typer.echo("\nCalculations:")
+    calculations = sorted(proj.calculations.values(), key=lambda r: r.name)
+    if not calculations:
         typer.echo("  (none)")
-    for wf in workflows:
-        # Find structures used by this workflow
-        wf_structures = _find_workflow_structures(wf.absolute_path, proj)
+    for wf in calculations:
+        # Find structures used by this calculation
+        wf_structures = _find_calculation_structures(wf.absolute_path, proj)
         struct_info = f"  (structure: {', '.join(wf_structures)})" if wf_structures else ""
         
         line = f"  - {wf.name} [{wf.meta.slug}] -> {wf.meta.path}{struct_info}"
         if verbose:
             line += f" (id: {wf.meta.id})"
         typer.echo(line)
-        step_summaries = _workflow_step_summaries(wf.absolute_path)
+        step_summaries = _calculation_step_summaries(wf.absolute_path)
         if not step_summaries:
             typer.echo("    (no steps)")
             continue
@@ -1807,20 +1807,20 @@ def list_resources(
             typer.echo(step_line)
 
 
-def _find_workflow_structures(workflow_dir: Path, proj: Project) -> list[str]:
+def _find_calculation_structures(calculation_dir: Path, proj: Project) -> list[str]:
     """
-    Find all structures referenced by a workflow.
+    Find all structures referenced by a calculation.
     
-    In the new DAG model, structure is resolved via workflow.structure_id,
+    In the new DAG model, structure is resolved via calculation.structure_id,
     not from individual step files.
     """
     structures: set[str] = set()
     
-    # First, check workflow.yaml for structure_id (canonical reference)
-    workflow_yaml = workflow_dir / "workflow.yaml"
-    if workflow_yaml.exists():
+    # First, check calculation.yaml for structure_id (canonical reference)
+    calculation_yaml = calculation_dir / "calculation.yaml"
+    if calculation_yaml.exists():
         try:
-            data = yaml.safe_load(workflow_yaml.read_text()) or {}
+            data = yaml.safe_load(calculation_yaml.read_text()) or {}
             structure_id = data.get("structure_id")
             if structure_id:
                 # Resolve structure_id to structure name/slug
@@ -1832,9 +1832,9 @@ def _find_workflow_structures(workflow_dir: Path, proj: Project) -> list[str]:
             pass
     
     # Also check legacy structure field for backwards compatibility
-    if workflow_yaml.exists():
+    if calculation_yaml.exists():
         try:
-            data = yaml.safe_load(workflow_yaml.read_text()) or {}
+            data = yaml.safe_load(calculation_yaml.read_text()) or {}
             legacy_structure = data.get("structure")
             if legacy_structure:
                 structures.add(legacy_structure)
@@ -1844,31 +1844,31 @@ def _find_workflow_structures(workflow_dir: Path, proj: Project) -> list[str]:
     return sorted(structures)
 
 
-def _workflow_step_summaries(workflow_dir: Path) -> list[tuple[str, Optional[str], Optional[ResourceMeta]]]:
+def _calculation_step_summaries(calculation_dir: Path) -> list[tuple[str, Optional[str], Optional[ResourceMeta]]]:
     """
-    Get step summaries for a workflow.
+    Get step summaries for a calculation.
     
     Returns list of (step_display_name, step_file, step_meta) tuples.
     step_display_name: from step's meta.name if available, otherwise step type or "(unnamed)"
     step_meta: ResourceMeta from step file (contains ULID)
     
     In the new DAG + ID-only model:
-    - Steps in workflow.yaml have step_id (ULID), not step_file
+    - Steps in calculation.yaml have step_id (ULID), not step_file
     - Step file location is resolved via ResourceIndex using step_id
     """
-    workflow_yaml = workflow_dir / "workflow.yaml"
-    if not workflow_yaml.exists():
+    calculation_yaml = calculation_dir / "calculation.yaml"
+    if not calculation_yaml.exists():
         return []
     try:
-        data = yaml.safe_load(workflow_yaml.read_text()) or {}
+        data = yaml.safe_load(calculation_yaml.read_text()) or {}
     except Exception:
         return []
     
     # Get project root to build ResourceIndex
-    project_root = workflow_dir.parent.parent  # workflows/<slug> -> workflows -> project_root
+    project_root = calculation_dir.parent.parent  # calculations/<slug> -> calculations -> project_root
     if not (project_root / "project.qv.yml").exists():
-        # Fallback: try parent of workflows dir
-        project_root = workflow_dir.parent
+        # Fallback: try parent of calculations dir
+        project_root = calculation_dir.parent
         if not (project_root / "project.qv.yml").exists():
             project_root = None
     
@@ -1883,9 +1883,9 @@ def _workflow_step_summaries(workflow_dir: Path) -> list[tuple[str, Optional[str
         except Exception:
             pass
     
-    # Get workflow selector for require_step
-    workflow_meta = data.get("meta", {})
-    workflow_slug = workflow_meta.get("slug") or workflow_dir.name
+    # Get calculation selector for require_step
+    calculation_meta = data.get("meta", {})
+    calculation_slug = calculation_meta.get("slug") or calculation_dir.name
     
     summaries: list[tuple[str, Optional[str], Optional[ResourceMeta]]] = []
     for step_entry in data.get("steps", []):
@@ -1904,11 +1904,11 @@ def _workflow_step_summaries(workflow_dir: Path) -> list[tuple[str, Optional[str
             try:
                 # Use resolve_step directly (it accepts index parameter)
                 from quantumvitas.core.resolution import resolve_step
-                step_resolved = resolve_step(project_root, workflow_slug, step_id_ulid, config=config, index=index)
+                step_resolved = resolve_step(project_root, calculation_slug, step_id_ulid, config=config, index=index)
                 if step_resolved and step_resolved.absolute_path:
-                    # Calculate relative path from workflow_dir
+                    # Calculate relative path from calculation_dir
                     try:
-                        rel_path = str(step_resolved.absolute_path.relative_to(workflow_dir))
+                        rel_path = str(step_resolved.absolute_path.relative_to(calculation_dir))
                     except ValueError:
                         # If not relative, use absolute path
                         rel_path = str(step_resolved.absolute_path)
@@ -1926,7 +1926,7 @@ def _workflow_step_summaries(workflow_dir: Path) -> list[tuple[str, Optional[str
                 step_display_name = f"(missing: {step_id_ulid[:8]}...)"
         elif legacy_step_file:
             # Legacy: use step_file if available
-            spec_path = (workflow_dir / legacy_step_file).resolve()
+            spec_path = (calculation_dir / legacy_step_file).resolve()
             if spec_path.exists():
                 try:
                     spec = StructureStepSpec.from_yaml(spec_path)
@@ -1989,35 +1989,35 @@ def rename_structure_command(
     typer.secho("Structure updated successfully.", fg=typer.colors.GREEN)
 
 
-@rename_app.command("workflow")
-def rename_workflow_command(
-    identifier: str = typer.Argument(..., help="Workflow name/slug/path"),
+@rename_app.command("calculation")
+def rename_calculation_command(
+    identifier: str = typer.Argument(..., help="Calculation name/slug/path"),
     project: Optional[Path] = typer.Option(
         None, "--project", help="Project root (defaults to auto-detect)"
     ),
-    name: Optional[str] = typer.Option(None, "--name", help="New workflow name"),
+    name: Optional[str] = typer.Option(None, "--name", help="New calculation name"),
     slug: Optional[str] = typer.Option(None, "--slug", help="Custom slug"),
     path: Optional[Path] = typer.Option(
-        None, "--path", help="New relative path for the workflow directory"
+        None, "--path", help="New relative path for the calculation directory"
     ),
 ) -> None:
     """
-    [DEPRECATED] Rename a workflow resource (updates name/slug/path).
+    [DEPRECATED] Rename a calculation resource (updates name/slug/path).
     
-    Use 'qv configure workflow' instead:
-        qv configure workflow <identifier> --name "New Name"
+    Use 'qv configure calculation' instead:
+        qv configure calculation <identifier> --name "New Name"
     """
     typer.secho(
-        "DEPRECATED: 'qv rename workflow' is deprecated. Use:\n"
-        f"  qv configure workflow {identifier} --name \"<new_name>\"\n",
+        "DEPRECATED: 'qv rename calculation' is deprecated. Use:\n"
+        f"  qv configure calculation {identifier} --name \"<new_name>\"\n",
         fg=typer.colors.YELLOW,
     )
 
     project_root = project or _resolve_project_root()
     config = load_project_config(project_root)
-    entry = find_workflow_entry(config, identifier, project_root)
+    entry = find_calculation_entry(config, identifier, project_root)
 
-    apply_workflow_rename(
+    apply_calculation_rename(
         project_root=project_root,
         config=config,
         entry=entry,
@@ -2027,7 +2027,7 @@ def rename_workflow_command(
     )
     save_project_config(project_root, config)
 
-    typer.secho("Workflow updated successfully.", fg=typer.colors.GREEN)
+    typer.secho("Calculation updated successfully.", fg=typer.colors.GREEN)
 
 
 @rename_app.command("project")
@@ -2098,37 +2098,37 @@ def rename_project_command(
 
 @rename_app.command("step")
 def rename_step_command(
-    workflow: str = typer.Argument(..., help="Workflow name/slug/path containing the step"),
-    step_id: str = typer.Argument(..., help="Existing step id within the workflow"),
+    calculation: str = typer.Argument(..., help="Calculation name/slug/path containing the step"),
+    step_id: str = typer.Argument(..., help="Existing step id within the calculation"),
     project: Optional[Path] = typer.Option(
         None, "--project", help="Project root (defaults to auto-detect)"
     ),
     new_id: Optional[str] = typer.Option(
-        None, "--id", help="New step id (must be unique within the workflow)"
+        None, "--id", help="New step id (must be unique within the calculation)"
     ),
     path: Optional[Path] = typer.Option(
         None,
         "--path",
-        help="Rename or relocate the step spec file (relative to the workflow directory unless absolute).",
+        help="Rename or relocate the step spec file (relative to the calculation directory unless absolute).",
     ),
 ) -> None:
     """
-    Rename a workflow step or move its spec file.
+    Rename a calculation step or move its spec file.
     """
 
     project_root = (project or _resolve_project_root()).resolve()
     config = load_project_config(project_root)
-    workflow_entry = find_workflow_entry(config, workflow, project_root)
-    workflow_path = workflow_entry.get("path") or (workflow_entry.get("meta") or {}).get("path")
-    if not workflow_path:
-        raise typer.BadParameter("Workflow entry is missing a path.")
+    calculation_entry = find_calculation_entry(config, calculation, project_root)
+    calculation_path = calculation_entry.get("path") or (calculation_entry.get("meta") or {}).get("path")
+    if not calculation_path:
+        raise typer.BadParameter("Calculation entry is missing a path.")
 
-    workflow_dir = (project_root / workflow_path).resolve()
-    workflow_yaml = workflow_dir / "workflow.yaml"
-    if not workflow_yaml.exists():
-        raise typer.BadParameter(f"workflow.yaml not found at {workflow_yaml}")
+    calculation_dir = (project_root / calculation_path).resolve()
+    calculation_yaml = calculation_dir / "calculation.yaml"
+    if not calculation_yaml.exists():
+        raise typer.BadParameter(f"calculation.yaml not found at {calculation_yaml}")
 
-    data = yaml.safe_load(workflow_yaml.read_text()) or {}
+    data = yaml.safe_load(calculation_yaml.read_text()) or {}
     steps: list[dict] = data.get("steps") or []
     
     # Find step by matching selector (ID-only model uses step_id)
@@ -2141,14 +2141,14 @@ def rename_step_command(
     
     if not target_step:
         raise typer.BadParameter(
-            f"Step '{step_id}' not found in workflow '{workflow_entry.get('name')}'."
+            f"Step '{step_id}' not found in calculation '{calculation_entry.get('name')}'."
         )
 
     if new_id:
         # Check for duplicate step_id
         if any(extract_step_selector_from_entry(step) == new_id for step in steps if step is not target_step):
             raise typer.BadParameter(
-                f"Step id '{new_id}' already exists in workflow '{workflow_entry.get('name')}'."
+                f"Step id '{new_id}' already exists in calculation '{calculation_entry.get('name')}'."
             )
         # Update step_id (ID-only model)
         target_step["step_id"] = new_id
@@ -2158,7 +2158,7 @@ def rename_step_command(
     source_rel = target_step.get("step_file")
     if not source_rel:
         raise typer.BadParameter("Step entry is missing its step_file.")
-    source_path = (workflow_dir / source_rel).resolve()
+    source_path = (calculation_dir / source_rel).resolve()
     if not source_path.exists():
         raise typer.BadParameter(f"Step file '{source_rel}' does not exist.")
     spec = StructureStepSpec.from_yaml(source_path)
@@ -2167,25 +2167,25 @@ def rename_step_command(
     if path is not None:
         destination_path = Path(path)
         if not destination_path.is_absolute():
-            destination_path = (workflow_dir / destination_path).resolve()
+            destination_path = (calculation_dir / destination_path).resolve()
         destination_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(source_path), str(destination_path))
-        target_step["step_file"] = ensure_relative_path(destination_path, base=workflow_dir)
+        target_step["step_file"] = ensure_relative_path(destination_path, base=calculation_dir)
     elif new_id:
         rel_source = Path(source_rel)
         new_filename = rel_source.with_name(f"{new_id}.step.yaml")
-        destination_path = (workflow_dir / new_filename).resolve()
+        destination_path = (calculation_dir / new_filename).resolve()
         if destination_path.exists():
             raise typer.BadParameter(
                 f"Step file '{new_filename}' already exists. Use --path to pick a custom filename."
             )
         destination_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(source_path), str(destination_path))
-        target_step["step_file"] = ensure_relative_path(destination_path, base=workflow_dir)
+        target_step["step_file"] = ensure_relative_path(destination_path, base=calculation_dir)
 
     step_file_rel = target_step.get("step_file")
     if step_file_rel:
-        spec_path = (workflow_dir / step_file_rel).resolve()
+        spec_path = (calculation_dir / step_file_rel).resolve()
         relative_project = ensure_relative_path(spec_path, base=project_root)
         spec.meta = spec.meta.with_updates(
             name=new_id or spec.meta.name,
@@ -2196,10 +2196,10 @@ def rename_step_command(
     # Remove legacy structure_name and structure fields before writing (DAG + ID-only constitution)
     data.pop("structure_name", None)
     data.pop("structure", None)
-    if "workflow" in data:
-        data["workflow"].pop("structure_name", None)
-        data["workflow"].pop("structure", None)
-    workflow_yaml.write_text(yaml.safe_dump(data, sort_keys=False))
+    if "calculation" in data:
+        data["calculation"].pop("structure_name", None)
+        data["calculation"].pop("structure", None)
+    calculation_yaml.write_text(yaml.safe_dump(data, sort_keys=False))
     typer.secho("Step updated successfully.", fg=typer.colors.GREEN)
 
 
@@ -2212,16 +2212,16 @@ def delete_structure_command(
     force: bool = typer.Option(
         False,
         "--force",
-        help="Delete even if workflows reference the structure (leaves broken references).",
+        help="Delete even if calculations reference the structure (leaves broken references).",
     ),
     cascade: bool = typer.Option(
         False,
         "--cascade",
-        help="Delete workflows referencing this structure before deleting the structure itself.",
+        help="Delete calculations referencing this structure before deleting the structure itself.",
     ),
 ) -> None:
     """
-    Remove a structure entry and move its file (and optionally dependent workflows) to trash.
+    Remove a structure entry and move its file (and optionally dependent calculations) to trash.
     """
 
     project_root = (project or _resolve_project_root()).resolve()
@@ -2229,11 +2229,11 @@ def delete_structure_command(
     entry = find_structure_entry(config, identifier, project_root)
     trash_dir = (project_root / "trash").resolve()
 
-    referencing = workflows_using_structure(project_root, config, entry)
+    referencing = calculations_using_structure(project_root, config, entry)
     if referencing:
         if cascade:
             for wf_entry in list(referencing):
-                delete_workflow_entry(
+                delete_calculation_entry(
                     project_root=project_root,
                     config=config,
                     entry=wf_entry,
@@ -2244,8 +2244,8 @@ def delete_structure_command(
         elif not force:
             names = ", ".join(entry_display_name(wf) for wf in referencing)
             raise typer.BadParameter(
-                f"Structure '{entry_display_name(entry)}' is used by workflows: {names}. "
-                "Use --force to remove anyway or --cascade to delete the workflows first."
+                f"Structure '{entry_display_name(entry)}' is used by calculations: {names}. "
+                "Use --force to remove anyway or --cascade to delete the calculations first."
             )
 
     # Resolve structure to get its ID before moving file to trash
@@ -2272,30 +2272,30 @@ def delete_structure_command(
     typer.secho(f"Structure '{entry_display_name(entry)}' moved to trash.", fg=typer.colors.GREEN)
 
 
-@delete_app.command("workflow")
-def delete_workflow_command(
+@delete_app.command("calculation")
+def delete_calculation_command(
     identifier: Optional[str] = typer.Argument(
-        None, help="Workflow id/name/slug/path (auto-detects from pwd if omitted)"
+        None, help="Calculation id/name/slug/path (auto-detects from pwd if omitted)"
     ),
     project: Optional[Path] = typer.Option(
         None, "--project", help="Project root (defaults to auto-detect)"
     ),
     force: bool = typer.Option(
-        False, "--force", help="Delete even if other workflows depend on this workflow."
+        False, "--force", help="Delete even if other calculations depend on this calculation."
     ),
     cascade: bool = typer.Option(
         False,
         "--cascade",
-        help="Delete dependent workflows that reference this workflow as a parent.",
+        help="Delete dependent calculations that reference this calculation as a parent.",
     ),
 ) -> None:
     """
-    Remove a workflow entry and move its directory to trash.
+    Remove a calculation entry and move its directory to trash.
     
-    If no identifier is given, auto-detects the enclosing workflow from pwd.
+    If no identifier is given, auto-detects the enclosing calculation from pwd.
     """
     try:
-        ctx = resolve_resource("workflow", identifier, project_path=project)
+        ctx = resolve_resource("calculation", identifier, project_path=project)
     except RegistryOutOfSyncError as exc:
         # Registry out of sync - provide clear user-facing message
         typer.secho(
@@ -2308,7 +2308,7 @@ def delete_workflow_command(
             typer.echo(f"\nExpected path: {exc.expected_path}")
         typer.echo(
             "\n💡 To fix this, refresh the project registry:\n"
-            "   - In the GUI: Click the 'Refresh' button in the Workflows or Structures panel\n"
+            "   - In the GUI: Click the 'Refresh' button in the Calculations or Structures panel\n"
             "   - Or reopen the project in the GUI (registry rebuilds on project load)"
         )
         raise typer.Exit(1)
@@ -2320,7 +2320,7 @@ def delete_workflow_command(
     entry = ctx.entry
     trash_dir = (project_root / "trash").resolve()
 
-    delete_workflow_entry(
+    delete_calculation_entry(
         project_root=project_root,
         config=config,
         entry=entry,
@@ -2329,23 +2329,23 @@ def delete_workflow_command(
         cascade=cascade,
     )
     save_project_config(project_root, config)
-    typer.secho(f"Workflow '{entry_display_name(entry)}' moved to trash.", fg=typer.colors.GREEN)
+    typer.secho(f"Calculation '{entry_display_name(entry)}' moved to trash.", fg=typer.colors.GREEN)
 
 
 @delete_app.command("step")
 def delete_step_command(
     step_id: str = typer.Argument(..., help="Step id to remove"),
-    workflow: Optional[str] = typer.Option(
-        None, "--workflow", help="Workflow id/name/slug/path (auto-detects from pwd if omitted)"
+    calculation: Optional[str] = typer.Option(
+        None, "--calculation", help="Calculation id/name/slug/path (auto-detects from pwd if omitted)"
     ),
     project: Optional[Path] = typer.Option(
         None, "--project", help="Project root (defaults to auto-detect)"
     ),
 ) -> None:
     """
-    Remove a workflow step and move its step spec file to trash.
+    Remove a calculation step and move its step spec file to trash.
     
-    The workflow is auto-detected from pwd if not specified with --workflow.
+    The calculation is auto-detected from pwd if not specified with --calculation.
     Step can be identified by ULID (step_id), step filename, or legacy slug.
     """
     # Determine project root
@@ -2359,44 +2359,44 @@ def delete_step_command(
     
     config = load_project_config(project_root)
     
-    # Determine workflow
-    workflow_selector: Optional[str] = workflow
-    if not workflow_selector:
+    # Determine calculation
+    calculation_selector: Optional[str] = calculation
+    if not calculation_selector:
         # Auto-detect from pwd
         try:
-            wf_entry = find_enclosing_workflow(project_root, config)
+            wf_entry = find_enclosing_calculation(project_root, config)
             if wf_entry:
                 # Use centralized selector extraction - single selector, single resolution pattern
-                workflow_selector = extract_workflow_selector_from_entry(wf_entry)
-                if not workflow_selector:
+                calculation_selector = extract_calculation_selector_from_entry(wf_entry)
+                if not calculation_selector:
                     raise typer.BadParameter(
-                        "Workflow entry found but no valid identifier. "
+                        "Calculation entry found but no valid identifier. "
                         "This may indicate a corrupted project.qv.yml."
                     )
         except Exception:
             pass
     
-    if not workflow_selector:
+    if not calculation_selector:
         raise typer.BadParameter(
-            "No workflow specified and not inside a workflow directory. "
-            "Specify --workflow <workflow> or run from inside a workflow directory."
+            "No calculation specified and not inside a calculation directory. "
+            "Specify --calculation <calculation> or run from inside a calculation directory."
         )
     
     # Use require_step to find the step (handles ULID, filename, legacy slug)
     try:
-        step_resolved = require_step(project_root, workflow_selector, step_id, config)
+        step_resolved = require_step(project_root, calculation_selector, step_id, config)
     except ResourceNotFoundError as e:
         raise typer.BadParameter(str(e)) from e
     
-    # Get workflow entry for display
-    workflow_entry = find_workflow_entry(config, workflow_selector, project_root)
-    workflow_dir = workflow_directory(project_root, workflow_entry)
-    workflow_yaml = workflow_dir / "workflow.yaml"
+    # Get calculation entry for display
+    calculation_entry = find_calculation_entry(config, calculation_selector, project_root)
+    calculation_dir = calculation_directory(project_root, calculation_entry)
+    calculation_yaml = calculation_dir / "calculation.yaml"
     
-    if not workflow_yaml.exists():
-        raise typer.BadParameter(f"workflow.yaml not found at {workflow_yaml}")
+    if not calculation_yaml.exists():
+        raise typer.BadParameter(f"calculation.yaml not found at {calculation_yaml}")
 
-    data = yaml.safe_load(workflow_yaml.read_text()) or {}
+    data = yaml.safe_load(calculation_yaml.read_text()) or {}
     steps: list[dict] = data.get("steps") or []
     
     # Find step by step_id (ULID) - this is the canonical reference
@@ -2410,12 +2410,12 @@ def delete_step_command(
             break
     
     if not target_step:
-        wf_name = entry_display_name(workflow_entry)
-        raise typer.BadParameter(f"Step '{step_id}' not found in workflow '{wf_name}'.")
+        wf_name = entry_display_name(calculation_entry)
+        raise typer.BadParameter(f"Step '{step_id}' not found in calculation '{wf_name}'.")
 
     trash_dir = (project_root / "trash").resolve()
     # In ID-only model, step_resolved.absolute_path is the canonical step file location
-    # (step entries in workflow.yaml only have step_id, not step_file)
+    # (step entries in calculation.yaml only have step_id, not step_file)
     spec_path = step_resolved.absolute_path
     if spec_path.exists():
         move_to_trash(spec_path, trash_dir)
@@ -2424,12 +2424,12 @@ def delete_step_command(
     # Remove legacy structure_name and structure fields before writing (DAG + ID-only constitution)
     data.pop("structure_name", None)
     data.pop("structure", None)
-    if "workflow" in data:
-        data["workflow"].pop("structure_name", None)
-        data["workflow"].pop("structure", None)
-    workflow_yaml.write_text(yaml.safe_dump(data, sort_keys=False))
+    if "calculation" in data:
+        data["calculation"].pop("structure_name", None)
+        data["calculation"].pop("structure", None)
+    calculation_yaml.write_text(yaml.safe_dump(data, sort_keys=False))
     typer.secho(
-        f"Step '{step_id}' removed from workflow '{entry_display_name(workflow_entry)}'.",
+        f"Step '{step_id}' removed from calculation '{entry_display_name(calculation_entry)}'.",
         fg=typer.colors.GREEN,
     )
 
@@ -2481,7 +2481,7 @@ def delete_project_command(
                 typer.echo(f"\nExpected path: {exc.expected_path}")
             typer.echo(
                 "\n💡 To fix this, refresh the project registry:\n"
-                "   - In the GUI: Click the 'Refresh' button in the Workflows or Structures panel\n"
+                "   - In the GUI: Click the 'Refresh' button in the Calculations or Structures panel\n"
                 "   - Or reopen the project in the GUI (registry rebuilds on project load)"
             )
             raise typer.Exit(1)
@@ -2550,8 +2550,8 @@ def configure_step_command(
     step_identifier: str = typer.Argument(
         ..., help="Step id, name, or path to .step.yaml"
     ),
-    workflow: Optional[str] = typer.Option(
-        None, "--workflow", help="Workflow id/name/slug/path (auto-detects from pwd)"
+    calculation: Optional[str] = typer.Option(
+        None, "--calculation", help="Calculation id/name/slug/path (auto-detects from pwd)"
     ),
     project: Optional[Path] = typer.Option(
         None, "--project", help="Project root (auto-detects from pwd)"
@@ -2566,8 +2566,8 @@ def configure_step_command(
     """
     Modify step settings: rename or change parameters.
     
-    Step can be specified by id, name, or path. If using id/name, the workflow
-    is auto-detected from pwd if not specified with --workflow.
+    Step can be specified by id, name, or path. If using id/name, the calculation
+    is auto-detected from pwd if not specified with --calculation.
     
     Examples:
         qv configure step scf --name "new_scf"
@@ -2579,8 +2579,8 @@ def configure_step_command(
 
     # Check if it's a direct path first
     step_file = Path(step_identifier)
-    workflow_yaml = None
-    workflow_dir = None
+    calculation_yaml = None
+    calculation_dir = None
     project_root_resolved = project
     
     if step_file.exists() and step_file.suffix in (".yaml", ".yml"):
@@ -2597,15 +2597,15 @@ def configure_step_command(
             ctx_res = resolve_resource(
                 "step",
                 identifier=step_identifier,
-                parent_identifier=workflow,
+                parent_identifier=calculation,
                 project_path=project,
             )
             step_file = ctx_res.resource_path
-            # Also get workflow directory for step renaming
+            # Also get calculation directory for step renaming
             if ctx_res.parent_entry:
                 project_root_resolved = ctx_res.project_root
-                workflow_dir = workflow_directory(project_root_resolved, ctx_res.parent_entry)
-                workflow_yaml = workflow_dir / "workflow.yaml"
+                calculation_dir = calculation_directory(project_root_resolved, ctx_res.parent_entry)
+                calculation_yaml = calculation_dir / "calculation.yaml"
         except RegistryOutOfSyncError as exc:
             # Registry out of sync - provide clear user-facing message
             typer.secho(
@@ -2618,7 +2618,7 @@ def configure_step_command(
                 typer.echo(f"\nExpected path: {exc.expected_path}")
             typer.echo(
                 "\n💡 To fix this, refresh the project registry:\n"
-                "   - In the GUI: Click the 'Refresh' button in the Workflows or Structures panel\n"
+                "   - In the GUI: Click the 'Refresh' button in the Calculations or Structures panel\n"
                 "   - Or reopen the project in the GUI (registry rebuilds on project load)"
             )
             raise typer.Exit(1)
@@ -2655,9 +2655,9 @@ def configure_step_command(
             kind="step",
         )
         
-        # Update workflow.yaml if we have it
-        if workflow_yaml and workflow_yaml.exists():
-            wf_data = yaml.safe_load(workflow_yaml.read_text()) or {}
+        # Update calculation.yaml if we have it
+        if calculation_yaml and calculation_yaml.exists():
+            wf_data = yaml.safe_load(calculation_yaml.read_text()) or {}
             for step_entry in wf_data.get("steps", []):
                 if step_entry.get("id") == step_identifier or step_entry.get("id") == old_name:
                     step_entry["id"] = new_slug
@@ -2665,10 +2665,10 @@ def configure_step_command(
             # Remove legacy structure_name and structure fields before writing (DAG + ID-only constitution)
             wf_data.pop("structure_name", None)
             wf_data.pop("structure", None)
-            if "workflow" in wf_data:
-                wf_data["workflow"].pop("structure_name", None)
-                wf_data["workflow"].pop("structure", None)
-            workflow_yaml.write_text(yaml.safe_dump(wf_data, sort_keys=False))
+            if "calculation" in wf_data:
+                wf_data["calculation"].pop("structure_name", None)
+                wf_data["calculation"].pop("structure", None)
+            calculation_yaml.write_text(yaml.safe_dump(wf_data, sort_keys=False))
         
         typer.secho(f"Step renamed from '{old_name}' to '{name}'", fg=typer.colors.GREEN)
         modified = True
@@ -2701,33 +2701,33 @@ def configure_project_placeholder() -> None:
     )
 
 
-@configure_app.command("workflow")
-def configure_workflow_command(
-    workflow_identifier: Optional[str] = typer.Argument(
-        None, help="Workflow id/name/slug/path (auto-detects from pwd if omitted)"
+@configure_app.command("calculation")
+def configure_calculation_command(
+    calculation_identifier: Optional[str] = typer.Argument(
+        None, help="Calculation id/name/slug/path (auto-detects from pwd if omitted)"
     ),
     project: Optional[Path] = typer.Option(
         None, "--project", help="Project root (auto-detects from pwd)"
     ),
     name: Optional[str] = typer.Option(
-        None, "--name", help="Rename the workflow to a new name"
+        None, "--name", help="Rename the calculation to a new name"
     ),
     structure: Optional[str] = typer.Option(
-        None, "--structure", help="Change the structure used by this workflow (updates all steps)"
+        None, "--structure", help="Change the structure used by this calculation (updates all steps)"
     ),
     reorder: Optional[str] = typer.Option(
         None, "--reorder", help="Reorder steps as comma-separated list of step ids (e.g., scf,nscf,dos)"
     ),
 ) -> None:
     """
-    Modify workflow settings: rename, change structure, or reorder steps.
+    Modify calculation settings: rename, change structure, or reorder steps.
     
-    Workflow can be specified by id/name/slug/path, or auto-detected from current directory.
+    Calculation can be specified by id/name/slug/path, or auto-detected from current directory.
     
     Examples:
-        qv configure workflow --name "New Name"
-        qv configure workflow --structure si
-        qv configure workflow --reorder scf,nscf,dos
+        qv configure calculation --name "New Name"
+        qv configure calculation --structure si
+        qv configure calculation --reorder scf,nscf,dos
     """
     # Find project root
     if project:
@@ -2740,100 +2740,100 @@ def configure_workflow_command(
     
     config = load_project_config(project_root)
     
-    # Resolve workflow
-    if workflow_identifier:
-        workflow_entry = find_workflow_entry(config, workflow_identifier, project_root)
+    # Resolve calculation
+    if calculation_identifier:
+        calculation_entry = find_calculation_entry(config, calculation_identifier, project_root)
     else:
-        workflow_entry = find_enclosing_workflow(project_root, config)
-        if not workflow_entry:
+        calculation_entry = find_enclosing_calculation(project_root, config)
+        if not calculation_entry:
             raise typer.BadParameter(
-                "No workflow specified and not inside a workflow directory. "
-                "Specify workflow id/name/slug/path or cd into a workflow folder."
+                "No calculation specified and not inside a calculation directory. "
+                "Specify calculation id/name/slug/path or cd into a calculation folder."
             )
     
-    workflow_dir = workflow_directory(project_root, workflow_entry)
-    workflow_yaml = workflow_dir / "workflow.yaml"
+    calculation_dir = calculation_directory(project_root, calculation_entry)
+    calculation_yaml = calculation_dir / "calculation.yaml"
     
-    if not workflow_yaml.exists():
-        raise typer.BadParameter(f"workflow.yaml not found at {workflow_yaml}")
+    if not calculation_yaml.exists():
+        raise typer.BadParameter(f"calculation.yaml not found at {calculation_yaml}")
     
-    workflow_data = yaml.safe_load(workflow_yaml.read_text()) or {}
+    calculation_data = yaml.safe_load(calculation_yaml.read_text()) or {}
     modified = False
     
     # Handle name change (rename)
     if name:
         # Store old path to detect if directory was moved
-        old_workflow_dir = workflow_dir
-        old_workflow_yaml = workflow_yaml
+        old_calculation_dir = calculation_dir
+        old_calculation_yaml = calculation_yaml
         
-        apply_workflow_rename(
+        apply_calculation_rename(
             project_root=project_root,
             config=config,
-            entry=workflow_entry,
+            entry=calculation_entry,
             new_name=name,
             new_slug=None,
             new_path=None,
         )
         save_project_config(project_root, config)
         
-        # Re-resolve workflow directory in case it was moved
+        # Re-resolve calculation directory in case it was moved
         # After rename, the entry might have updated path, so resolve via registry if needed
         try:
-            workflow_dir = workflow_directory(project_root, workflow_entry)
+            calculation_dir = calculation_directory(project_root, calculation_entry)
         except ProjectConfigError:
             # Entry might not have path yet - try to resolve via registry
-            from quantumvitas.core.resolution import build_resource_index, require_workflow
-            workflow_id = extract_workflow_selector_from_entry(workflow_entry)
-            if workflow_id:
+            from quantumvitas.core.resolution import build_resource_index, require_calculation
+            calculation_id = extract_calculation_selector_from_entry(calculation_entry)
+            if calculation_id:
                 index = build_resource_index(project_root)
-                resolved = require_workflow(project_root, workflow_id, index=index)
-                workflow_dir = resolved.absolute_path.parent if resolved.absolute_path.name == "workflow.yaml" else resolved.absolute_path
+                resolved = require_calculation(project_root, calculation_id, index=index)
+                calculation_dir = resolved.absolute_path.parent if resolved.absolute_path.name == "calculation.yaml" else resolved.absolute_path
             else:
-                raise typer.BadParameter(f"Could not resolve workflow directory after rename")
+                raise typer.BadParameter(f"Could not resolve calculation directory after rename")
         
-        workflow_yaml = workflow_dir / "workflow.yaml"
+        calculation_yaml = calculation_dir / "calculation.yaml"
         
-        # Re-read workflow.yaml if directory was moved
-        # Note: apply_workflow_rename should have moved the directory, so workflow.yaml should exist
+        # Re-read calculation.yaml if directory was moved
+        # Note: apply_calculation_rename should have moved the directory, so calculation.yaml should exist
         # But if it doesn't, try to reload from the new location
-        if workflow_dir != old_workflow_dir:
-            # Directory was moved - workflow.yaml should be at the new location
-            if not workflow_yaml.exists():
+        if calculation_dir != old_calculation_dir:
+            # Directory was moved - calculation.yaml should be at the new location
+            if not calculation_yaml.exists():
                 # Try to find it in the new directory
-                if workflow_dir.exists():
-                    # Directory exists but workflow.yaml doesn't - this shouldn't happen
+                if calculation_dir.exists():
+                    # Directory exists but calculation.yaml doesn't - this shouldn't happen
                     # but let's try to reload it anyway
                     raise typer.BadParameter(
-                        f"workflow.yaml not found at {workflow_yaml} after rename. "
-                        f"Directory was moved from {old_workflow_dir} to {workflow_dir}, "
-                        f"but workflow.yaml is missing."
+                        f"calculation.yaml not found at {calculation_yaml} after rename. "
+                        f"Directory was moved from {old_calculation_dir} to {calculation_dir}, "
+                        f"but calculation.yaml is missing."
                     )
                 else:
                     raise typer.BadParameter(
-                        f"Workflow directory not found at {workflow_dir} after rename. "
-                        f"Expected to be moved from {old_workflow_dir}."
+                        f"Calculation directory not found at {calculation_dir} after rename. "
+                        f"Expected to be moved from {old_calculation_dir}."
                     )
-            workflow_data = yaml.safe_load(workflow_yaml.read_text()) or {}
+            calculation_data = yaml.safe_load(calculation_yaml.read_text()) or {}
         
-        # Update meta in workflow.yaml
-        if "meta" in workflow_data:
-            workflow_data["meta"]["name"] = name
-            # Use the slug from the entry (which was updated by apply_workflow_rename)
-            new_slug = (workflow_entry.get("meta") or {}).get("slug") or slugify(name)
-            workflow_data["meta"]["slug"] = new_slug
+        # Update meta in calculation.yaml
+        if "meta" in calculation_data:
+            calculation_data["meta"]["name"] = name
+            # Use the slug from the entry (which was updated by apply_calculation_rename)
+            new_slug = (calculation_entry.get("meta") or {}).get("slug") or slugify(name)
+            calculation_data["meta"]["slug"] = new_slug
         
         modified = True
-        typer.secho(f"Workflow renamed to '{name}'", fg=typer.colors.GREEN)
+        typer.secho(f"Calculation renamed to '{name}'", fg=typer.colors.GREEN)
     
     # Handle structure change
     if structure:
         # Validate structure exists
         find_structure_entry(config, structure, project_root)
         
-        # Update workflow.yaml
-        workflow_section = workflow_data.setdefault("workflow", {})
-        old_structure = workflow_section.get("structure")
-        workflow_section["structure"] = structure
+        # Update calculation.yaml
+        calculation_section = calculation_data.setdefault("calculation", {})
+        old_structure = calculation_section.get("structure")
+        calculation_section["structure"] = structure
         modified = True
         
         # Update all step yaml files
@@ -2841,7 +2841,7 @@ def configure_workflow_command(
         from quantumvitas.core.resolution import resolve_structure, resolve_step, build_resource_index
         index = build_resource_index(project_root)
         
-        for step_entry in workflow_data.get("steps", []):
+        for step_entry in calculation_data.get("steps", []):
             # With ID-only model, resolve step file via step_id
             step_id = extract_step_selector_from_entry(step_entry)
             if not step_id:
@@ -2849,11 +2849,11 @@ def configure_workflow_command(
             
             try:
                 # Resolve step file path via step_id
-                # Use centralized selector extraction for workflow selector
-                workflow_selector = extract_workflow_selector_from_entry(workflow_entry)
-                if not workflow_selector:
+                # Use centralized selector extraction for calculation selector
+                calculation_selector = extract_calculation_selector_from_entry(calculation_entry)
+                if not calculation_selector:
                     continue  # Skip if no valid selector
-                step_resolved = resolve_step(project_root, workflow_selector, step_id, config=config, index=index)
+                step_resolved = resolve_step(project_root, calculation_selector, step_id, config=config, index=index)
                 step_path = step_resolved.absolute_path
                 
                 if not step_path.exists():
@@ -2885,7 +2885,7 @@ def configure_workflow_command(
         if not step_selectors:
             raise typer.BadParameter("--reorder requires a comma-separated list of step identifiers (slug, name, type, or ULID)")
         
-        current_steps = workflow_data.get("steps", [])
+        current_steps = calculation_data.get("steps", [])
         
         # Build index for step resolution
         from quantumvitas.core.resolution import build_resource_index
@@ -2899,7 +2899,7 @@ def configure_workflow_command(
             try:
                 step_entry = match_step_selector(
                     project_root=project_root,
-                    workflow_dir=workflow_dir,
+                    calculation_dir=calculation_dir,
                     steps=current_steps,
                     selector=selector,
                     index=index,
@@ -2926,11 +2926,11 @@ def configure_workflow_command(
         if seen_ulids != current_ulids:
             missing_ulids = current_ulids - seen_ulids
             missing_identifiers = []
-            workflow_slug = (workflow_entry.get("meta") or {}).get("slug") or workflow_entry.get("name") or workflow_dir.name
+            calculation_slug = (calculation_entry.get("meta") or {}).get("slug") or calculation_entry.get("name") or calculation_dir.name
             for missing_ulid in missing_ulids:
                 # Try to get a friendly identifier for the missing step
                 try:
-                    step_resolved = require_step(project_root, workflow_slug, missing_ulid, config=config, index=index)
+                    step_resolved = require_step(project_root, calculation_slug, missing_ulid, config=config, index=index)
                     missing_identifiers.append(step_resolved.meta.slug or step_resolved.meta.name or missing_ulid[:8])
                 except Exception:
                     missing_identifiers.append(missing_ulid[:8])
@@ -2939,20 +2939,20 @@ def configure_workflow_command(
             )
         
         # Reorder
-        workflow_data["steps"] = reordered_entries
+        calculation_data["steps"] = reordered_entries
         modified = True
         
         typer.secho(f"Steps reordered: {' -> '.join(step_selectors)}", fg=typer.colors.GREEN)
     
     if modified:
         # Remove legacy structure_name and structure fields before writing (DAG + ID-only constitution)
-        workflow_data.pop("structure_name", None)
-        workflow_data.pop("structure", None)
-        if "workflow" in workflow_data:
-            workflow_data["workflow"].pop("structure_name", None)
-            workflow_data["workflow"].pop("structure", None)
-        workflow_yaml.write_text(yaml.safe_dump(workflow_data, sort_keys=False))
-        typer.secho(f"Workflow updated: {workflow_yaml}", fg=typer.colors.GREEN)
+        calculation_data.pop("structure_name", None)
+        calculation_data.pop("structure", None)
+        if "calculation" in calculation_data:
+            calculation_data["calculation"].pop("structure_name", None)
+            calculation_data["calculation"].pop("structure", None)
+        calculation_yaml.write_text(yaml.safe_dump(calculation_data, sort_keys=False))
+        typer.secho(f"Calculation updated: {calculation_yaml}", fg=typer.colors.GREEN)
     else:
         typer.secho("No changes specified. Use --structure or --reorder.", fg=typer.colors.YELLOW)
 
@@ -2997,7 +2997,7 @@ def configure_structure_command(
             typer.echo(f"\nExpected path: {exc.expected_path}")
         typer.echo(
             "\n💡 To fix this, refresh the project registry:\n"
-            "   - In the GUI: Click the 'Refresh' button in the Workflows or Structures panel\n"
+            "   - In the GUI: Click the 'Refresh' button in the Calculations or Structures panel\n"
             "   - Or reopen the project in the GUI (registry rebuilds on project load)"
         )
         raise typer.Exit(1)
@@ -3122,7 +3122,7 @@ def show_command(input_file: Path = typer.Argument(..., help="QE input file to i
     if detected_module in MODULE_TO_STEP_TYPE:
         typer.echo("  (Post-processing step: no --structure needed)")
     else:
-        typer.echo("  (Run inside a workflow directory, or add --structure <name> --workflow <name>)")
+        typer.echo("  (Run inside a calculation directory, or add --structure <name> --calculation <name>)")
 
     modify_cmd = [
         "qv",
@@ -3154,16 +3154,16 @@ def get_command(input_file: Path = typer.Argument(..., help="QE input file to in
     show_command(input_file)
 
 
-@run_app.command("workflow")
-def run_workflow_command(
-    workflow: Optional[str] = typer.Argument(
-        None, help="Workflow name/slug/path (auto-detects from pwd if omitted)"
+@run_app.command("calculation")
+def run_calculation_command(
+    calculation: Optional[str] = typer.Argument(
+        None, help="Calculation name/slug/path (auto-detects from pwd if omitted)"
     ),
     project: Optional[Path] = typer.Option(
         None, "--project", help="Project root (defaults to auto-detect)"
     ),
     mode: Optional[str] = typer.Option(
-        None, "--mode", help="Override workflow mode (normal or strict)"
+        None, "--mode", help="Override calculation mode (normal or strict)"
     ),
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Print per-step summaries and metrics"
@@ -3173,10 +3173,10 @@ def run_workflow_command(
     ),
 ) -> None:
     """
-    Execute a workflow defined in project.qv.yml.
+    Execute a calculation defined in project.qv.yml.
     
-    If no workflow is specified, auto-detects from current directory
-    (must be inside a workflow folder).
+    If no calculation is specified, auto-detects from current directory
+    (must be inside a calculation folder).
     """
     # Find project root
     if project:
@@ -3190,38 +3190,38 @@ def run_workflow_command(
     proj = Project.open(project_root)
     config = load_project_config(project_root)
     
-    # Resolve workflow via registry (for consistent resolution)
-    from quantumvitas.core.resolution import build_resource_index, require_workflow
+    # Resolve calculation via registry (for consistent resolution)
+    from quantumvitas.core.resolution import build_resource_index, require_calculation
     
     registry = build_resource_index(project_root)
     
-    # Resolve workflow
-    if workflow:
-        # Accept either workflow id or direct path
-        workflow_path = Path(workflow)
-        if workflow_path.exists():
-            wf = Workflow.from_yaml(workflow_path, proj)
+    # Resolve calculation
+    if calculation:
+        # Accept either calculation id or direct path
+        calculation_path = Path(calculation)
+        if calculation_path.exists():
+            wf = Calculation.from_yaml(calculation_path, proj)
         else:
             # Use registry-based resolution
-            workflow_resolved = require_workflow(project_root, workflow, config=config, index=registry)
-            wf = Workflow.from_yaml(workflow_resolved.absolute_path, proj)
+            calculation_resolved = require_calculation(project_root, calculation, config=config, index=registry)
+            wf = Calculation.from_yaml(calculation_resolved.absolute_path, proj)
     else:
-        # Auto-detect enclosing workflow from pwd
-        wf_entry = find_enclosing_workflow(project_root, config)
+        # Auto-detect enclosing calculation from pwd
+        wf_entry = find_enclosing_calculation(project_root, config)
         if not wf_entry:
             raise typer.BadParameter(
-                "No workflow specified and not inside a workflow directory. "
-                "Specify workflow name/slug/path or cd into a workflow folder."
+                "No calculation specified and not inside a calculation directory. "
+                "Specify calculation name/slug/path or cd into a calculation folder."
             )
         # Use centralized selector extraction - single selector, single resolution pattern
-        wf_id = extract_workflow_selector_from_entry(wf_entry)
+        wf_id = extract_calculation_selector_from_entry(wf_entry)
         if not wf_id:
             raise typer.BadParameter(
-                "Workflow entry found but no valid identifier. "
+                "Calculation entry found but no valid identifier. "
                 "This may indicate a corrupted project.qv.yml."
             )
-        workflow_resolved = require_workflow(project_root, wf_id, config=config, index=registry)
-        wf = Workflow.from_yaml(workflow_resolved.absolute_path, proj)
+        calculation_resolved = require_calculation(project_root, wf_id, config=config, index=registry)
+        wf = Calculation.from_yaml(calculation_resolved.absolute_path, proj)
 
     if strict:
         wf.mode = StepMode.STRICT
@@ -3232,10 +3232,10 @@ def run_workflow_command(
             raise typer.BadParameter("Mode must be 'normal' or 'strict'.") from exc
 
     registry = create_default_registry()
-    runner = WorkflowRunner(registry)
+    runner = CalculationRunner(registry)
     result = runner.run(wf)
 
-    typer.echo(f"Workflow {wf.id} status: StepStatus.{result.status.name}")
+    typer.echo(f"Calculation {wf.id} status: StepStatus.{result.status.name}")
     if verbose:
         for step in result.steps:
             line = f"- {step.step_id}: {step.status.value}"
@@ -3249,14 +3249,14 @@ def run_workflow_command(
                     typer.echo(f"    {key}: {value}")
 
 
-@app.command("run-workflow")
-def legacy_run_workflow_command(
-    workflow: str = typer.Argument(..., help="Workflow name/slug/path"),
+@app.command("run-calculation")
+def legacy_run_calculation_command(
+    calculation: str = typer.Argument(..., help="Calculation name/slug/path"),
     project: Optional[Path] = typer.Option(
         None, "--project", help="Project root (defaults to auto-detect)"
     ),
     mode: Optional[str] = typer.Option(
-        None, "--mode", help="Override workflow mode (normal or strict)"
+        None, "--mode", help="Override calculation mode (normal or strict)"
     ),
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Print per-step summaries and metrics"
@@ -3266,15 +3266,15 @@ def legacy_run_workflow_command(
     ),
 ) -> None:
     """
-    Deprecated alias for ``qv run workflow``.
+    Deprecated alias for ``qv run calculation``.
     """
 
     typer.secho(
-        "`qv run-workflow` is deprecated; use `qv run workflow` instead.",
+        "`qv run-calculation` is deprecated; use `qv run calculation` instead.",
         fg=typer.colors.YELLOW,
     )
-    run_workflow_command(
-        workflow=workflow,
+    run_calculation_command(
+        calculation=calculation,
         project=project,
         mode=mode,
         strict=strict,
@@ -3292,12 +3292,12 @@ def run_auto_dispatch(
         None, "--workdir", help="Working directory override for step/structure runs"
     ),
     mode: Optional[str] = typer.Option(
-        None, "--mode", help="Workflow mode override (normal/strict)"
+        None, "--mode", help="Calculation mode override (normal/strict)"
     ),
     strict: bool = typer.Option(
-        False, "--strict", help="Force strict verification when running workflows"
+        False, "--strict", help="Force strict verification when running calculations"
     ),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose workflow output"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose calculation output"),
 ) -> None:
     if ctx.invoked_subcommand:
         return
@@ -3309,11 +3309,11 @@ def run_auto_dispatch(
     ctx.args = list(original_args)
     target_path = Path(target)
     if target_path.exists():
-        if target_path.is_dir() and (target_path / "workflow.yaml").exists():
+        if target_path.is_dir() and (target_path / "calculation.yaml").exists():
             ctx.args = list(original_args)
             ctx.invoke(
-                run_workflow_command,
-                workflow=str(target_path),
+                run_calculation_command,
+                calculation=str(target_path),
                 project=project,
                 mode=mode,
                 strict=strict,
@@ -3335,11 +3335,11 @@ def run_auto_dispatch(
     if project_root:
         config = load_project_config(project_root)
         try:
-            find_workflow_entry(config, target, project_root)
+            find_calculation_entry(config, target, project_root)
             ctx.args = list(original_args)
             ctx.invoke(
-                run_workflow_command,
-                workflow=target,
+                run_calculation_command,
+                calculation=target,
                 project=project,
                 mode=mode,
                 strict=strict,
@@ -3363,7 +3363,7 @@ def run_auto_dispatch(
 
     raise typer.BadParameter(
         f"Unable to determine how to run '{target}'. "
-        "Use 'qv run step|workflow|structure' for explicit control."
+        "Use 'qv run step|calculation|structure' for explicit control."
     )
 
 
@@ -3371,11 +3371,11 @@ def run_auto_dispatch(
 def analyze_output_command(
     kind: str = typer.Argument(..., help="energy, band, dos, or scf"),
     input_file: Optional[Path] = typer.Argument(
-        None, help="Output/data file to analyze (optional for 'band' if --workflow or inside workflow)"
+        None, help="Output/data file to analyze (optional for 'band' if --calculation or inside calculation)"
     ),
-    workflow: Optional[str] = typer.Option(
-        None, "--workflow", "-w",
-        help="Workflow selector to auto-locate files from its raw/ directory"
+    calculation: Optional[str] = typer.Option(
+        None, "--calculation", "-w",
+        help="Calculation selector to auto-locate files from its raw/ directory"
     ),
     symmetry_file: Optional[Path] = typer.Option(
         None, "--symmetry", "-s", 
@@ -3427,7 +3427,7 @@ def analyze_output_command(
         plot_scf_convergence, save_figure
     )
     from quantumvitas.core.context import find_path_context_from_pwd, ContextNotFoundError
-    from quantumvitas.workflow.naming import find_band_analysis_files, find_workflow_raw_dir, find_workflow_results_dir
+    from quantumvitas.calculation.naming import find_band_analysis_files, find_calculation_raw_dir, find_calculation_results_dir
     
     normalized = kind.lower()
     e_range = None
@@ -3439,52 +3439,52 @@ def analyze_output_command(
             raise typer.BadParameter("--energy-range must be like '-5,5'")
     
     # Auto-detection context for band analysis
-    workflow_dir: Optional[Path] = None
+    calculation_dir: Optional[Path] = None
     project_root: Optional[Path] = None
     
-    # Resolve workflow context
-    if workflow:
-        # Explicit --workflow option
+    # Resolve calculation context
+    if calculation:
+        # Explicit --calculation option
         try:
             project_root = Path(project).resolve() if project else find_project_root()
             config = load_project_config(project_root)
-            wf_entry = find_workflow_entry(config, workflow, project_root)
-            workflow_dir = workflow_directory(project_root, wf_entry)
-            typer.echo(f"Using workflow: {wf_entry.get('name', workflow)}")
+            wf_entry = find_calculation_entry(config, calculation, project_root)
+            calculation_dir = calculation_directory(project_root, wf_entry)
+            typer.echo(f"Using calculation: {wf_entry.get('name', calculation)}")
         except (ResourceNotFoundError, FileNotFoundError) as e:
-            raise typer.BadParameter(f"Workflow not found: {workflow}")
+            raise typer.BadParameter(f"Calculation not found: {calculation}")
     elif input_file is None and normalized == "band":
-        # Try to auto-detect workflow from pwd
+        # Try to auto-detect calculation from pwd
         try:
             ctx = find_path_context_from_pwd()
             project_root = ctx.project_root
-            if ctx.is_inside_workflow():
-                # Use find_enclosing_workflow for reliable detection (not PathContext.workflow_selector)
+            if ctx.is_inside_calculation():
+                # Use find_enclosing_calculation for reliable detection (not PathContext.calculation_selector)
                 config = load_project_config(project_root)
-                wf_entry = find_enclosing_workflow(project_root, config)
+                wf_entry = find_enclosing_calculation(project_root, config)
                 if wf_entry:
-                    workflow_dir = ctx.workflow_directory
+                    calculation_dir = ctx.calculation_directory
                     # Use centralized selector extraction for consistency
-                    workflow_selector = extract_workflow_selector_from_entry(wf_entry)
-                    if workflow_selector:
+                    calculation_selector = extract_calculation_selector_from_entry(wf_entry)
+                    if calculation_selector:
                         # For display, resolve to get user-friendly name
                         try:
-                            from quantumvitas.core.resolution import build_resource_index, require_workflow
+                            from quantumvitas.core.resolution import build_resource_index, require_calculation
                             index = build_resource_index(project_root)
-                            resolved = require_workflow(project_root, workflow_selector, config=config, index=index)
-                            workflow_name = resolved.meta.name or resolved.meta.slug or workflow_selector
+                            resolved = require_calculation(project_root, calculation_selector, config=config, index=index)
+                            calculation_name = resolved.meta.name or resolved.meta.slug or calculation_selector
                         except Exception:
-                            workflow_name = workflow_selector
-                        typer.echo(f"Detected workflow: {workflow_name}")
+                            calculation_name = calculation_selector
+                        typer.echo(f"Detected calculation: {calculation_name}")
         except ContextNotFoundError:
-            pass  # Not inside a project/workflow, will search pwd
+            pass  # Not inside a project/calculation, will search pwd
     
     # For band analysis, auto-locate files if not all provided
     if normalized == "band":
         search_dir: Optional[Path] = None
         
-        if workflow_dir:
-            search_dir = find_workflow_raw_dir(workflow_dir)
+        if calculation_dir:
+            search_dir = find_calculation_raw_dir(calculation_dir)
         elif input_file:
             # Use input file's directory as search dir
             search_dir = Path(input_file).resolve().parent
@@ -3503,7 +3503,7 @@ def analyze_output_command(
                 else:
                     raise typer.BadParameter(
                         "No bands.dat.gnu file found. "
-                        "Provide input_file argument or use --workflow to specify a workflow."
+                        "Provide input_file argument or use --calculation to specify a calculation."
                     )
             
             if symmetry_file is None and found_files.bands_pp_out:
@@ -3526,31 +3526,31 @@ def analyze_output_command(
         scf_result = parse_scf_output(scf_file)
         fermi_energy = scf_result.fermi_energy
     
-    # Determine output directory: explicit > workflow results > None
+    # Determine output directory: explicit > calculation results > None
     output_dir = Path(output) if output else None
-    if output_dir is None and workflow_dir:
-        output_dir = find_workflow_results_dir(workflow_dir)
+    if output_dir is None and calculation_dir:
+        output_dir = find_calculation_results_dir(calculation_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         typer.echo(f"Output directory: {output_dir}")
     elif output_dir is None:
-        # Try to detect workflow from input file location
+        # Try to detect calculation from input file location
         input_path = Path(input_file).resolve()
         try:
             proj_root = find_project_root(start=input_path.parent)
             config = load_project_config(proj_root)
-            # Check if input is inside a workflow directory
-            for wf_entry in config.get("workflows", []):
+            # Check if input is inside a calculation directory
+            for wf_entry in config.get("calculations", []):
                 wf_path = wf_entry.get("path") or (wf_entry.get("meta") or {}).get("path")
                 if wf_path:
                     wf_dir = (proj_root / wf_path).resolve()
                     if input_path.is_relative_to(wf_dir):
-                        # Found enclosing workflow - use its results folder
+                        # Found enclosing calculation - use its results folder
                         output_dir = wf_dir / "results"
                         output_dir.mkdir(parents=True, exist_ok=True)
                         typer.echo(f"Output directory: {output_dir}")
                         break
         except (ResourceNotFoundError, FileNotFoundError, ValueError):
-            pass  # Not in a project/workflow context, output_dir stays None
+            pass  # Not in a project/calculation context, output_dir stays None
     
     if output_dir:
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -3663,11 +3663,11 @@ def analyze_output_command(
 @analyze_app.command("band")
 def analyze_band_command(
     input_file: Optional[Path] = typer.Argument(
-        None, help="Band data file (.dat.gnu) - optional if --workflow specified or inside workflow"
+        None, help="Band data file (.dat.gnu) - optional if --calculation specified or inside calculation"
     ),
-    workflow: Optional[str] = typer.Option(
-        None, "--workflow", "-w",
-        help="Workflow selector to auto-locate files from its raw/ directory"
+    calculation: Optional[str] = typer.Option(
+        None, "--calculation", "-w",
+        help="Calculation selector to auto-locate files from its raw/ directory"
     ),
     symmetry_file: Optional[Path] = typer.Option(
         None, "--symmetry", "-s", 
@@ -3698,13 +3698,13 @@ def analyze_band_command(
     Analyze band structure data and generate plots.
     
     Parses QE bands.dat.gnu file and optionally creates a band structure plot.
-    Files can be auto-detected from workflow context.
+    Files can be auto-detected from calculation context.
     
     Examples:
         qv analyze band si.bands.dat.gnu --plot
-        qv analyze band --workflow si-bands --plot
+        qv analyze band --calculation si-bands --plot
         qv analyze band si.bands.dat.gnu --symmetry si.bands.out --scf si.nscf.out --plot
-        qv analyze band --plot  # auto-detect files from pwd or enclosing workflow
+        qv analyze band --plot  # auto-detect files from pwd or enclosing calculation
     """
     from quantumvitas.api import QVService, QVServiceError
     from quantumvitas.core.context import find_path_context_from_pwd, ContextNotFoundError
@@ -3718,9 +3718,9 @@ def analyze_band_command(
         except (ValueError, IndexError):
             raise typer.BadParameter("--energy-range must be like '-5,5'")
     
-    # Determine project root and workflow context
+    # Determine project root and calculation context
     project_root: Optional[Path] = None
-    workflow_selector: Optional[str] = workflow
+    calculation_selector: Optional[str] = calculation
     
     if project:
         project_root = Path(project).resolve()
@@ -3729,41 +3729,41 @@ def analyze_band_command(
         try:
             ctx = find_path_context_from_pwd()
             project_root = ctx.project_root
-            # Only auto-detect workflow if no input file provided
-            if input_file is None and ctx.is_inside_workflow():
-                # Use find_enclosing_workflow to get the actual entry from project config
-                # This is more reliable than using the selector from workflow.yaml
+            # Only auto-detect calculation if no input file provided
+            if input_file is None and ctx.is_inside_calculation():
+                # Use find_enclosing_calculation to get the actual entry from project config
+                # This is more reliable than using the selector from calculation.yaml
                 # (which might be stale after a rename)
                 config = load_project_config(project_root)
-                wf_entry = find_enclosing_workflow(project_root, config)
+                wf_entry = find_enclosing_calculation(project_root, config)
                 if wf_entry:
                     # Use centralized selector extraction - single selector, single resolution pattern
-                    workflow_selector = extract_workflow_selector_from_entry(wf_entry)
-                    if workflow_selector:
+                    calculation_selector = extract_calculation_selector_from_entry(wf_entry)
+                    if calculation_selector:
                         # For display, resolve to get user-friendly name
                         try:
-                            from quantumvitas.core.resolution import build_resource_index, require_workflow
+                            from quantumvitas.core.resolution import build_resource_index, require_calculation
                             index = build_resource_index(project_root)
-                            resolved = require_workflow(project_root, workflow_selector, config=config, index=index)
-                            display_name = resolved.meta.name or resolved.meta.slug or workflow_selector
-                            typer.echo(f"Detected workflow: {display_name}")
+                            resolved = require_calculation(project_root, calculation_selector, config=config, index=index)
+                            display_name = resolved.meta.name or resolved.meta.slug or calculation_selector
+                            typer.echo(f"Detected calculation: {display_name}")
                         except Exception:
-                            typer.echo(f"Detected workflow: {workflow_selector}")
+                            typer.echo(f"Detected calculation: {calculation_selector}")
         except ContextNotFoundError:
             pass  # Not inside a project
     
-    # If workflow specified but no project found, error
-    if workflow and project_root is None:
+    # If calculation specified but no project found, error
+    if calculation and project_root is None:
         raise typer.BadParameter(
-            "Cannot resolve --workflow without being in a project. Use --project to specify project root."
+            "Cannot resolve --calculation without being in a project. Use --project to specify project root."
         )
     
-    # Call QVService (will raise ResourceNotFoundError if workflow not found)
+    # Call QVService (will raise ResourceNotFoundError if calculation not found)
     try:
         result = QVService.analyze_band(
             project_root=project_root,
             bands_file=input_file,
-            workflow_selector=workflow_selector,
+            calculation_selector=calculation_selector,
             symmetry_file=symmetry_file,
             scf_file=scf_file,
             fermi_energy=fermi,
@@ -4254,7 +4254,7 @@ def _strip_structural_system_params(
     parameter_dict: dict[str, dict[str, Any]],
     qe_input: Optional[QEInput] = None,
 ) -> None:
-    from quantumvitas.workflow.importers import _needs_alat_preservation, _extract_alat_bohr
+    from quantumvitas.calculation.importers import _needs_alat_preservation, _extract_alat_bohr
     
     system = parameter_dict.get("SYSTEM")
     if not system:
@@ -4421,8 +4421,8 @@ def _execute_step_spec_path(
 ):
     spec = StructureStepSpec.from_yaml(spec_path)
     
-    # Validate structure consistency with parent workflow if present
-    if spec.parent_workflow_id and project_root:
+    # Validate structure consistency with parent calculation if present
+    if spec.parent_calculation_id and project_root:
         _validate_step_structure_consistency(spec, spec_path, project_root)
     
     return _execute_step_spec(
@@ -4441,7 +4441,7 @@ def _validate_step_structure_consistency(
     project_root: Path,
 ) -> None:
     """
-    Validate that the step's structure matches its parent workflow's structure.
+    Validate that the step's structure matches its parent calculation's structure.
     
     Raises typer.BadParameter if there's a mismatch.
     """
@@ -4450,37 +4450,37 @@ def _validate_step_structure_consistency(
     except Exception:
         return  # Can't validate without project config
     
-    # Find parent workflow by looking at the spec path (should be inside workflow dir)
-    # or by using the parent_workflow_id
-    parent_workflow_id = spec.parent_workflow_id
-    if not parent_workflow_id:
+    # Find parent calculation by looking at the spec path (should be inside calculation dir)
+    # or by using the parent_calculation_id
+    parent_calculation_id = spec.parent_calculation_id
+    if not parent_calculation_id:
         return
     
-    # Try to find the workflow entry
+    # Try to find the calculation entry
     try:
-        workflow_entry = find_workflow_entry(config, parent_workflow_id, project_root)
+        calculation_entry = find_calculation_entry(config, parent_calculation_id, project_root)
     except ResourceNotFoundError:
-        # Parent workflow not found in project, might be standalone
+        # Parent calculation not found in project, might be standalone
         return
     
-    workflow_dir = workflow_directory(project_root, workflow_entry)
-    workflow_yaml = workflow_dir / "workflow.yaml"
+    calculation_dir = calculation_directory(project_root, calculation_entry)
+    calculation_yaml = calculation_dir / "calculation.yaml"
     
-    if not workflow_yaml.exists():
+    if not calculation_yaml.exists():
         return
     
-    workflow_data = yaml.safe_load(workflow_yaml.read_text()) or {}
-    workflow_section = workflow_data.get("workflow", {})
-    workflow_structure = workflow_section.get("structure")
+    calculation_data = yaml.safe_load(calculation_yaml.read_text()) or {}
+    calculation_section = calculation_data.get("calculation", {})
+    calculation_structure = calculation_section.get("structure")
     
-    if not workflow_structure:
+    if not calculation_structure:
         return
     
     # Compare structures (by slug/name/id)
-    if spec.structure != workflow_structure:
+    if spec.structure != calculation_structure:
         typer.secho(
-            f"Warning: Step structure '{spec.structure}' differs from parent workflow structure "
-            f"'{workflow_structure}'. Using step's structure.",
+            f"Warning: Step structure '{spec.structure}' differs from parent calculation structure "
+            f"'{calculation_structure}'. Using step's structure.",
             fg=typer.colors.YELLOW
         )
 
@@ -4519,7 +4519,7 @@ def _execute_step_spec(
     if not structure_identifier:
         raise typer.BadParameter(
             f"Step spec at {spec_path} has no structure defined. "
-            "Please set a structure for the step or its parent workflow."
+            "Please set a structure for the step or its parent calculation."
         )
     
     structure, struct_name = _resolve_structure_input(project_root, structure_identifier)

@@ -17,7 +17,7 @@
 - **状态**: ✅ 已完成并导出到 `tests/core/__init__.py`
 
 ### 3. ✅ 已迁移的输入准备功能
-- `set_outdir_to_temp()` / `set_pseudo_dir_to_temp()` → `quantumvitas.workflow.input_runner`
+- `set_outdir_to_temp()` / `set_pseudo_dir_to_temp()` → `quantumvitas.calculation.input_runner`
 - `prepare_input_step()` / `run_prepared_step()` 供 CLI 与测试共享
 - `verify_qe_output()` - 已被 `tests/core/qe_step_verification.py::verify_step_result()` 替代
 
@@ -68,7 +68,7 @@ from tests.core import (
 src/quantumvitas/core/engines/
 ├── qe_input.py              # ✅ 已有：解析和生成
 ├── qe_pseudopotentials.py   # ✅ 新建：赝势管理
-├── qe_workflow.py           # ✅ 已有：workflow 执行
+├── qe_calculation.py           # ✅ 已有：calculation 执行
 └── qe.py                    # ✅ 已有：QE 引擎
 
 tests/core/
@@ -89,6 +89,6 @@ extended-tests/utils/
 
 ### 对于旧代码
 - 逐步迁移到新的导入方式
-- 使用 `run_and_verify_step_with_assert()` 运行 workflow；使用
+- 使用 `run_and_verify_step_with_assert()` 运行 calculation；使用
   `QEInputParser.roundtrip_file()` 进行快速 roundtrip 检查
 

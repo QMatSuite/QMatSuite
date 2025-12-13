@@ -1,0 +1,10 @@
+id: si-bands
+mode: normal
+calculation:
+  working_dir: raw
+  structure: si
+steps:
+- id: bands_pw
+  step_file: steps/bands_pw.step.yaml
+- id: bands2
+  step_file: steps/bands2.step.yaml

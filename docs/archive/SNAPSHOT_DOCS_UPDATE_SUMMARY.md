@@ -40,21 +40,21 @@
 **What it asserts**:
 
 1. **ID Regeneration**:
-   - Collects all IDs from snapshot (project, structures, workflows, steps)
+   - Collects all IDs from snapshot (project, structures, calculations, steps)
    - Collects all IDs from materialized project (via `build_resource_index`)
    - Asserts: **No intersection** between snapshot IDs and materialized IDs
    - Confirms all ULIDs are regenerated
 
 2. **Graph Structure Preservation**:
-   - **Counts**: Same number of structures, workflows, steps
-   - **Step types**: Each workflow has same number and types of steps
-   - **Cross-references**: All `structure_id`, `parent_workflow_id` references are valid
-   - **Graph pattern**: Same pattern of workflow→structure relationships
+   - **Counts**: Same number of structures, calculations, steps
+   - **Step types**: Each calculation has same number and types of steps
+   - **Cross-references**: All `structure_id`, `parent_calculation_id` references are valid
+   - **Graph pattern**: Same pattern of calculation→structure relationships
 
 3. **Cross-Reference Validity**:
    - All `structure_id` references point to existing structures
-   - All `parent_workflow_id` references point to existing workflows
-   - Step `parent_workflow_id` matches the workflow containing the step
+   - All `parent_calculation_id` references point to existing calculations
+   - Step `parent_calculation_id` matches the calculation containing the step
    - No broken links in the materialized project
 
 **Test Results**: ✅ **1 passed** (uses `project2_bands` fixture with multiple steps)
@@ -70,8 +70,8 @@
 - Added comment: "Reference analysis lookup uses origin.reference_artifacts or snapshot.meta.reference_artifacts, NOT project ULIDs"
 
 **Location 2**: `get_reference_analysis` (lines ~1868-1893)
-- Added comment: "Demo recognition uses origin.kind == 'demo' and origin.demo_id (stable identifier), NOT project/workflow ULIDs"
-- Added comment: "Reference lookup uses origin.reference_artifacts or snapshot.meta.reference_artifacts, NOT project/workflow ULIDs"
+- Added comment: "Demo recognition uses origin.kind == 'demo' and origin.demo_id (stable identifier), NOT project/calculation ULIDs"
+- Added comment: "Reference lookup uses origin.reference_artifacts or snapshot.meta.reference_artifacts, NOT project/calculation ULIDs"
 
 **Purpose**: Clarify that demo/reference features do NOT depend on preserving snapshot ULIDs
 
@@ -87,19 +87,19 @@
    - Uses `demo_id` (stable string identifier like "si_bands_demo") from snapshot meta
    - Stores `origin.kind = "demo"` and `origin.demo_id = demo_name` in project settings
    - Stores `origin.reference_artifacts` from snapshot meta
-   - **No use of project/workflow ULIDs for demo recognition**
+   - **No use of project/calculation ULIDs for demo recognition**
 
 2. **`get_reference_analysis`** (api.py:1840-1940):
    - Checks `origin.kind == "demo"` (not ULID-based)
    - Uses `origin.demo_id` to locate snapshot file (not ULID-based)
    - Uses `origin.reference_artifacts` or `snapshot.meta.reference_artifacts` to find artifact filenames
    - Loads reference JSON from `resources/demo_projects/{artifact_filename}`
-   - **No use of project/workflow ULIDs for reference lookup**
+   - **No use of project/calculation ULIDs for reference lookup**
 
 3. **Reference Artifact Lookup**:
    - Uses stable artifact filenames (e.g., "si_bands_demo.bands.json")
    - Filenames are stored in `snapshot.meta.reference_artifacts` mapping
-   - **Not tied to any project/workflow ULIDs**
+   - **Not tied to any project/calculation ULIDs**
 
 **Conclusion**: ✅ **Demo/reference logic is completely independent of snapshot ULIDs**. It uses stable identifiers (`demo_id`, artifact filenames) that survive materialization.
 
@@ -142,13 +142,13 @@ All tests confirm:
 **Asserts**:
 1. All materialized IDs are different from snapshot IDs (no intersection)
 2. Graph structure is preserved:
-   - Same counts of structures/workflows/steps
-   - Each workflow has same number and types of steps
-   - Same pattern of workflow→structure relationships
+   - Same counts of structures/calculations/steps
+   - Each calculation has same number and types of steps
+   - Same pattern of calculation→structure relationships
 3. All cross-references are valid:
    - `structure_id` references point to existing structures
-   - `parent_workflow_id` references point to existing workflows
-   - Step `parent_workflow_id` matches containing workflow
+   - `parent_calculation_id` references point to existing calculations
+   - Step `parent_calculation_id` matches containing calculation
    - No broken links
 
 ### Confirmation from Audit

@@ -68,13 +68,13 @@ structures:
       - 1.3773039781619372
       - 1.3773039781619374
       - 1.3773039781619374
-workflows:
+calculations:
 - meta:
     id: 01KC38ZHBGWW0T1W9BV7ASEP2Z
     name: Si bands
     slug: si-bands
-    path: workflows/si-bands
-    kind: workflow
+    path: calculations/si-bands
+    kind: calculation
   mode: normal
   working_dir: raw
   steps:
@@ -82,7 +82,7 @@ workflows:
       id: 01KC3901JEVJJ7S8G3E7Z9K2RZ
       name: scf
       slug: scf
-      path: workflows/si-bands/steps/scf.step.yaml
+      path: calculations/si-bands/steps/scf.step.yaml
       kind: step
     step_type: scf
     parameters:
@@ -116,7 +116,7 @@ workflows:
       id: 01KC39AWHWQ5EQSNFQADAA2AGP
       name: nscf
       slug: nscf
-      path: workflows/si-bands/steps/nscf.step.yaml
+      path: calculations/si-bands/steps/nscf.step.yaml
       kind: step
     step_type: nscf
     parameters:
@@ -151,7 +151,7 @@ workflows:
       id: 01KC39C21NREKW2YVZJY8E40RN
       name: bands_pw
       slug: bands_pw
-      path: workflows/si-bands/steps/bands_pw.step.yaml
+      path: calculations/si-bands/steps/bands_pw.step.yaml
       kind: step
     step_type: bands_pw
     parameters:
@@ -200,7 +200,7 @@ workflows:
       id: 01KC39BB6NNP4AF070GWPKK0J0
       name: bands
       slug: bands
-      path: workflows/si-bands/steps/bands.step.yaml
+      path: calculations/si-bands/steps/bands.step.yaml
       kind: step
     step_type: bands
     parameters:

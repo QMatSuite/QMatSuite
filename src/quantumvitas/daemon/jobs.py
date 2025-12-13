@@ -38,11 +38,11 @@ class Job:
     """
     Represents a background job.
     
-    Jobs are created when long-running operations (like workflow execution)
+    Jobs are created when long-running operations (like calculation execution)
     are submitted. They track status, start/end times, results, and errors.
     """
     id: str
-    job_type: str  # e.g., "run_workflow", "run_step"
+    job_type: str  # e.g., "run_calculation", "run_step"
     status: JobStatus = JobStatus.PENDING
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     started_at: Optional[datetime] = None
@@ -55,7 +55,7 @@ class Job:
     params: Dict[str, Any] = field(default_factory=dict)
     
     # Target info for display
-    target_name: Optional[str] = None  # e.g., workflow name, step name
+    target_name: Optional[str] = None  # e.g., calculation name, step name
     project_root: Optional[str] = None
     
     # Output file for log reading
@@ -116,7 +116,7 @@ class JobManager:
     of QE jobs (only one QE calculation runs at a time).
     
     The daemon main loop remains responsive while jobs execute in the background.
-    Job results/status live in memory; project/workflow data lives on disk.
+    Job results/status live in memory; project/calculation data lives on disk.
     """
     
     def __init__(self, max_workers: int = 1):
@@ -146,10 +146,10 @@ class JobManager:
         Submit a job for background execution.
         
         Args:
-            job_type: Type of job (e.g., "run_workflow")
+            job_type: Type of job (e.g., "run_calculation")
             func: Function to execute (should return Dict[str, Any])
             params: Parameters to store with job (for reference)
-            target_name: Human-readable target name (e.g., workflow name)
+            target_name: Human-readable target name (e.g., calculation name)
             project_root_display: Project root path (for display only)
             **kwargs: Arguments to pass to func
             
@@ -158,7 +158,7 @@ class JobManager:
         """
         job_id = str(uuid.uuid4())
         
-        # Initialize steps if provided (for workflow jobs, steps are known at creation time)
+        # Initialize steps if provided (for calculation jobs, steps are known at creation time)
         steps = initial_steps or []
         
         # Initialize io_dir if provided (so it shows immediately in UI, even before execution starts)

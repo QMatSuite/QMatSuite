@@ -11,7 +11,7 @@ This document lists the canonical documentation files that should be treated as 
 
 ### `docs/SCHEMA.md`
 - **Purpose**: Complete schema specification for DAG + ID-only model
-- **Covers**: Project/workflow/step/structure YAML formats, serialization behavior, backwards compatibility
+- **Covers**: Project/calculation/step/structure YAML formats, serialization behavior, backwards compatibility
 - **Tag**: `schema`
 
 ## Core Features
@@ -113,7 +113,7 @@ This document lists the canonical documentation files that should be treated as 
 
 ### `docs/STRUCTURE_AND_CLI_USAGE.md`
 - **Purpose**: Detailed examples and usage patterns for structure I/O and CLI
-- **Covers**: Structure I/O functions, CLI examples, complete workflows
+- **Covers**: Structure I/O functions, CLI examples, complete calculations
 - **Tag**: `cli`, `supporting`
 
 ## Archive

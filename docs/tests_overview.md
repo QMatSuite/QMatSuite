@@ -54,30 +54,30 @@ Tests are automatically marked based on location:
 
 ### QE-backed Integration Tests
 
-**QE-backed integration tests** are test modules that actually run Quantum ESPRESSO executables (pw.x, bands.x, dos.x, ph.x, etc.) either via the `qv` CLI or directly through the `WorkflowRunner` or engine API. These tests exercise complete workflows end-to-end and require a QE installation.
+**QE-backed integration tests** are test modules that actually run Quantum ESPRESSO executables (pw.x, bands.x, dos.x, ph.x, etc.) either via the `qv` CLI or directly through the `CalculationRunner` or engine API. These tests exercise complete calculations end-to-end and require a QE installation.
 
 **Convention: "One QE-running test per file"**
 
-Each QE-backed test module must have exactly **one** QE-running test function (the canonical integration test for that workflow). This test is responsible for:
-- Creating the project and workflow (via CLI or fixtures)
-- Running the workflow (`qv run workflow ...`)
+Each QE-backed test module must have exactly **one** QE-running test function (the canonical integration test for that calculation). This test is responsible for:
+- Creating the project and calculation (via CLI or fixtures)
+- Running the calculation (`qv run calculation ...`)
 - Verifying raw outputs (e.g., DOS/bands/SCF/NSCF outputs)
 - Running `qv analyze ...`
 - Checking plots and summary output
 
-Any additional tests in the same module must NOT spawn QE processes or call `qv run workflow`. They are pure unit tests that may:
+Any additional tests in the same module must NOT spawn QE processes or call `qv run calculation`. They are pure unit tests that may:
 - Inspect YAML configurations
 - Parse existing output files
 - Check metadata
 - Use pure Python utilities (parsers, plotters, k-path generators)
 
-| File path                                       | QE-running test function                    | Workflow description                |
+| File path                                       | QE-running test function                    | Calculation description                |
 |------------------------------------------------|---------------------------------------------|-------------------------------------|
-| `tests/cli/test_si_bands_manual_workflow_cli.py` | `test_run_workflow_and_analyze`             | Si band structure (manual k-path) via CLI   |
-| `tests/cli/test_si_bands_auto_workflow_cli.py`   | `test_run_workflow_and_analyze_auto`        | Si band structure (auto k-path) via CLI     |
-| `tests/cli/test_si_dos_workflow_comprehensive.py`| `test_run_workflow_and_analyze`             | Si DOS workflow (SCF → NSCF → DOS) via CLI  |
-| `tests/integration/test_si_bands_workflow.py`    | `test_run_full_workflow`                    | Si band structure workflow via WorkflowRunner |
-| `tests/integration/test_si_dos_workflow.py`      | `test_run_full_workflow`                    | Si DOS workflow (SCF → NSCF → DOS) via WorkflowRunner |
+| `tests/cli/test_si_bands_manual_workflow_cli.py` | `test_run_calculation_and_analyze`             | Si band structure (manual k-path) via CLI   |
+| `tests/cli/test_si_bands_auto_workflow_cli.py`   | `test_run_calculation_and_analyze_auto`        | Si band structure (auto k-path) via CLI     |
+| `tests/cli/test_si_dos_calculation_comprehensive.py`| `test_run_calculation_and_analyze`             | Si DOS calculation (SCF → NSCF → DOS) via CLI  |
+| `tests/integration/test_si_bands_calculation.py`    | `test_run_full_workflow`                    | Si band structure calculation via CalculationRunner |
+| `tests/integration/test_si_dos_calculation.py`      | `test_run_full_workflow`                    | Si DOS calculation (SCF → NSCF → DOS) via CalculationRunner |
 | `tests/integration/test_pw_quick_tests_ci.py`    | `test_pw_quick_execution`                   | PW module quick CI tests (various step types) |
 | `tests/integration/test_pw_step_specs.py`        | `test_pw_specs_generate_and_run`            | PW step specs generation and execution |
 | `tests/integration/test_pw_scf_ibrav_step_specs.py` | `test_pw_scf_ibrav_specs_generate_and_run` | PW SCF with various ibrav values |
@@ -88,7 +88,7 @@ For more details on QE-backed tests and how to run them, see the [Testing Guide]
 
 ### Subsystems Covered
 
-1. **Project & Workflow Models** - DAG + ULID architecture, schema validation
+1. **Project & Calculation Models** - DAG + ULID architecture, schema validation
 2. **CLI Commands** - All `qv` CLI commands (init, run, configure, analyze, etc.)
 3. **Daemon RPC** - JSON-RPC endpoints used by GUI
 4. **QE Engine Integration** - Quantum ESPRESSO execution, input generation, output parsing
@@ -97,7 +97,7 @@ For more details on QE-backed tests and how to run them, see the [Testing Guide]
 7. **Resource Resolution** - Selector resolution (ULID, slug, path)
 8. **Legacy Migration** - Legacy project format detection and migration
 9. **Step Defaults** - QE parameter defaults application
-10. **Workflow Execution** - Multi-step workflow runs, job management
+10. **Calculation Execution** - Multi-step calculation runs, job management
 
 ### Directory Structure
 
@@ -129,13 +129,13 @@ For more details on QE-backed tests and how to run them, see the [Testing Guide]
 
 | Test File | Main Area / Module | Key Responsibilities | Key Dependencies |
 |-----------|-------------------|---------------------|------------------|
-| `tests/unit/test_models.py` | Project/workflow DAG & schema | Load/save project/workflow models, ULID validation, legacy format detection | `tmp_path`, in-memory YAML data |
-| `tests/unit/test_project_and_cli.py` | Project model + CLI integration | Project operations, workflow creation, step creation, CLI roundtrips | `tmp_path`, `sample_project` fixture |
-| `tests/unit/test_api_service.py` | QVService API | Project init, structure import, workflow init, step creation | `tmp_path`, minimal project fixtures |
+| `tests/unit/test_models.py` | Project/calculation DAG & schema | Load/save project/calculation models, ULID validation, legacy format detection | `tmp_path`, in-memory YAML data |
+| `tests/unit/test_project_and_cli.py` | Project model + CLI integration | Project operations, calculation creation, step creation, CLI roundtrips | `tmp_path`, `sample_project` fixture |
+| `tests/unit/test_api_service.py` | QVService API | Project init, structure import, calculation init, step creation | `tmp_path`, minimal project fixtures |
 | `tests/unit/test_api_service_steps.py` | QVService step operations | Step creation, step detail retrieval, step updates | `tmp_path`, project fixtures |
 | `tests/unit/test_resolution.py` | Resource selector resolution | ULID/slug/path selector resolution, resource lookup | `tmp_path`, project fixtures |
 | `tests/unit/test_legacy_migration.py` | Legacy project migration | Legacy format detection, migration script validation | `tmp_path`, manually created legacy projects |
-| `tests/unit/test_workflow_dag_constitution.py` | Workflow DAG structure | DAG invariants, step ordering, structure inheritance | `tmp_path`, project fixtures |
+| `tests/unit/test_calculation_dag_constitution.py` | Calculation DAG structure | DAG invariants, step ordering, structure inheritance | `tmp_path`, project fixtures |
 | `tests/unit/test_id_based_references.py` | ID-only reference model | ULID-based references, no legacy fields | `tmp_path`, project fixtures |
 | `tests/unit/test_structure_io.py` | Structure I/O | Structure import/export, format conversion | `tmp_path`, test structure files |
 | `tests/unit/test_structure_roundtrip.py` | Structure roundtrip | Structure → QE input → structure conversion | `tmp_path`, `ci_test_data_dir` |
@@ -145,15 +145,15 @@ For more details on QE-backed tests and how to run them, see the [Testing Guide]
 | `tests/unit/test_qe_modules.py` | QE module parameters | QE module parameter loading, validation | `project_root_path` |
 | `tests/unit/test_step_defaults.py` | Step parameter defaults | QE parameter defaults application | `tmp_path`, step fixtures |
 | `tests/unit/test_parameter_overrides.py` | CLI parameter overrides | Parameter override parsing, application | `tmp_path` |
-| `tests/unit/test_workflow_importers.py` | Workflow import | Import workflows from QE input files | `tmp_path`, QE input files |
-| `tests/unit/test_workflow_inputs.py` | Workflow input generation | Input file generation from step specs | `tmp_path`, workflow fixtures |
+| `tests/unit/test_calculation_importers.py` | Calculation import | Import calculations from QE input files | `tmp_path`, QE input files |
+| `tests/unit/test_calculation_inputs.py` | Calculation input generation | Input file generation from step specs | `tmp_path`, calculation fixtures |
 | `tests/unit/test_structure_steps.py` | Structure step operations | Step creation with structure inheritance | `tmp_path`, project fixtures |
 | `tests/unit/test_analysis_parsers.py` | Analysis output parsing | SCF/DOS/bands output parsing | `tests/data/analysis_*` directories |
 | `tests/unit/test_analysis_plotting.py` | Analysis plotting | Band structure/DOS plotting | `tests/data/analysis_*`, matplotlib |
 | `tests/unit/test_analysis_artifacts.py` | Analysis artifacts | Artifact generation, file management | `tmp_path`, analysis data |
 | `tests/unit/test_structure_viz.py` | Structure visualization | 3D structure visualization data | `tmp_path`, structure fixtures |
 | `tests/unit/test_pseudopotential_resolution.py` | Pseudopotential resolution | PP file lookup, path resolution | `tmp_path`, pseudo directory fixtures |
-| `tests/unit/test_context.py` | Path context detection | Workflow/structure context from CWD | `tmp_path`, project fixtures |
+| `tests/unit/test_context.py` | Path context detection | Calculation/structure context from CWD | `tmp_path`, project fixtures |
 | `tests/unit/test_daemon.py` | Daemon core | Daemon initialization, RPC request handling | `tmp_path`, `QVDaemon` |
 | `tests/unit/test_qvservice_gui.py` | QVService GUI paths | GUI-specific API methods | `tmp_path`, project fixtures |
 | `tests/unit/test_project_snapshot.py` | Project snapshots | Snapshot creation, restoration | `tmp_path`, project fixtures |
@@ -161,24 +161,24 @@ For more details on QE-backed tests and how to run them, see the [Testing Guide]
 | `tests/unit/test_resource_rename_safety.py` | Resource renaming | Safe resource renaming, path updates | `tmp_path`, project fixtures |
 | `tests/unit/test_demo_snapshot_restore.py` | Demo project snapshots | Demo project snapshot/restore | `tmp_path`, demo project fixtures |
 | `tests/unit/test_ci_smoke.py` | CI smoke tests | Basic smoke tests for CI | `tmp_path` |
-| `tests/cli/test_graphene_workflow_setup.py` | CLI workflow setup | Complete workflow setup via CLI | `ci_test_data_dir`, `tmp_path`, `CliRunner` |
-| `tests/cli/test_si_dos_workflow_cli.py` | CLI DOS workflow | DOS workflow execution via CLI | `ci_test_data_dir`, QE installation |
-| `tests/cli/test_si_dos_workflow_comprehensive.py` | CLI DOS workflow comprehensive | Full DOS workflow with analysis | `project_root_path`, QE installation |
-| `tests/cli/test_si_bands_workflow_comprehensive.py` | CLI bands workflow comprehensive | Full bands workflow with manual/auto k-path | `project_root_path`, QE installation |
-| `tests/cli/test_template_workflow.py` | CLI workflow templates | Template-based workflow creation | `tmp_path`, `CliRunner` |
+| `tests/cli/test_graphene_workflow_setup.py` | CLI calculation setup | Complete calculation setup via CLI | `ci_test_data_dir`, `tmp_path`, `CliRunner` |
+| `tests/cli/test_si_dos_calculation_cli.py` | CLI DOS calculation | DOS calculation execution via CLI | `ci_test_data_dir`, QE installation |
+| `tests/cli/test_si_dos_calculation_comprehensive.py` | CLI DOS calculation comprehensive | Full DOS calculation with analysis | `project_root_path`, QE installation |
+| `tests/cli/test_si_bands_calculation_comprehensive.py` | CLI bands calculation comprehensive | Full bands calculation with manual/auto k-path | `project_root_path`, QE installation |
+| `tests/cli/test_template_workflow.py` | CLI calculation templates | Template-based calculation creation | `tmp_path`, `CliRunner` |
 | `tests/cli/test_cli_show_command_integration.py` | CLI show command | `qv show` command integration | `tests/data/project_examples`, `CliRunner` |
-| `tests/daemon/test_gui_workflow_detail.py` | Daemon workflow detail | `get_workflow_detail`, `change_workflow_structure` | `tmp_path`, `QVDaemon`, `QVService` |
+| `tests/daemon/test_gui_workflow_detail.py` | Daemon calculation detail | `get_calculation_detail`, `change_calculation_structure` | `tmp_path`, `QVDaemon`, `QVService` |
 | `tests/daemon/test_gui_job_and_step_flows.py` | Daemon job/step flows | Job submission, step detail, DAG invariants | `tmp_path`, `QVDaemon`, `QVService` |
-| `tests/daemon/test_si_bands_workflow_daemon.py` | Daemon bands workflow | Full bands workflow via daemon RPC | `project_root_path`, QE installation, `QVDaemon` |
-| `tests/integration/test_si_bands_workflow.py` | Integration bands workflow | SCF→NSCF→Bands workflow execution | `ci_test_data_dir`, QE installation, `create_workflow_project` |
-| `tests/integration/test_si_dos_workflow.py` | Integration DOS workflow | SCF→NSCF→DOS workflow execution | `ci_test_data_dir`, QE installation, `create_workflow_project` |
+| `tests/daemon/test_si_bands_calculation_daemon.py` | Daemon bands calculation | Full bands calculation via daemon RPC | `project_root_path`, QE installation, `QVDaemon` |
+| `tests/integration/test_si_bands_calculation.py` | Integration bands calculation | SCF→NSCF→Bands calculation execution | `ci_test_data_dir`, QE installation, `create_calculation_project` |
+| `tests/integration/test_si_dos_calculation.py` | Integration DOS calculation | SCF→NSCF→DOS calculation execution | `ci_test_data_dir`, QE installation, `create_calculation_project` |
 | `tests/integration/test_qe_engine.py` | QE engine integration | QE engine input generation, execution | `tmp_path`, QE installation |
 | `tests/integration/test_qe_executable_integration.py` | QE executable integration | QE executable detection, execution | QE installation, environment |
 | `tests/integration/test_pw_step_specs.py` | PW step specifications | Various PW step types, input generation | `ci_test_data_dir`, QE installation |
 | `tests/integration/test_pw_scf_ibrav_step_specs.py` | PW SCF ibrav specs | SCF with different ibrav values | `ci_test_data_dir/pw_scf_ibrav`, QE installation |
 | `tests/integration/test_pw_quick_tests_ci.py` | PW quick CI tests | Quick PW tests for CI | `ci_test_data_dir`, QE installation |
 | `tests/integration/test_ph_quick_tests.py` | PH quick tests | Phonon calculation tests | `ci_test_data_dir/ph_*`, QE installation |
-| `tests/integration/test_ci_validation.py` | CI validation | CI validation workflows | `ci_test_data_dir`, QE installation |
+| `tests/integration/test_ci_validation.py` | CI validation | CI validation calculations | `ci_test_data_dir`, QE installation |
 | `tests/examples/test_cli_usage_examples.py` | CLI usage examples | Example CLI command sequences | `tmp_path`, `CliRunner` |
 | `tests/examples/test_structure_io_examples.py` | Structure I/O examples | Example structure import/export | `tmp_path`, structure files |
 
@@ -229,7 +229,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
   - Daily schedule
 
 - **Extended tests** run:
-  - On manual workflow dispatch
+  - On manual calculation dispatch
   - On schedule (optional)
   - NOT on every push/PR
 
@@ -238,7 +238,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 ### `tests/unit/test_models.py`
 
 **Module / feature:**
-- Core data models: `WorkflowModel`, `WorkflowStepEntry`, `ProjectModel`, `StructureEntry`, `WorkflowEntry`, `StructureModel`
+- Core data models: `CalculationModel`, `CalculationStepEntry`, `ProjectModel`, `StructureEntry`, `CalculationEntry`, `StructureModel`
 - DAG + ULID model validation
 - Legacy format detection
 
@@ -260,16 +260,16 @@ See `extended-tests/README.md` for detailed extended test documentation.
   - `test_from_dict_valid_dag_entry` - Parse DAG format entry
   - `test_from_dict_legacy_format_raises_error` - Legacy format raises `LegacyProjectError`
 
-- `TestWorkflowModel` - Tests workflow model loading/saving
-  - `test_from_dict_minimal` - Parse minimal workflow
-  - `test_from_dict_with_steps` - Parse workflow with steps (DAG + ULID)
+- `TestWorkflowModel` - Tests calculation model loading/saving
+  - `test_from_dict_minimal` - Parse minimal calculation
+  - `test_from_dict_with_steps` - Parse calculation with steps (DAG + ULID)
   - `test_from_dict_legacy_structure_raises_error` - Legacy `structure` field raises error
   - `test_from_dict_legacy_step_file_raises_error` - Legacy `step_file` raises error
-  - `test_save_workflow_preserves_ulids` - Saving preserves ULIDs
+  - `test_save_calculation_preserves_ulids` - Saving preserves ULIDs
 
 - `TestProjectModel` - Tests project model operations
   - `test_load_project_minimal` - Load minimal project
-  - `test_load_project_with_resources` - Load project with structures/workflows
+  - `test_load_project_with_resources` - Load project with structures/calculations
   - `test_save_project_preserves_ulids` - Saving preserves ULIDs
 
 - `TestStructureEntry` - Tests structure entry serialization
@@ -283,16 +283,16 @@ See `extended-tests/README.md` for detailed extended test documentation.
 **Module / feature:**
 - Project model operations
 - CLI command integration
-- Workflow and step creation
+- Calculation and step creation
 
 **Related production code:**
 - `quantumvitas.project.model.Project`
 - `quantumvitas.cli.main`
-- `quantumvitas.workflow.input_runner.PreparedInputStep`
+- `quantumvitas.calculation.input_runner.PreparedInputStep`
 
 **Key dependencies:**
 - Fixtures:
-  - `sample_project` - Creates a temporary project with structure and workflow
+  - `sample_project` - Creates a temporary project with structure and calculation
   - `tmp_path` - Temporary directories
 - Data:
   - Uses `tests.core.test_data.load_test_cases` for test case data
@@ -300,7 +300,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 **Contained tests:**
 
 - Project loading/saving tests
-- Workflow creation tests
+- Calculation creation tests
 - Step creation tests
 - CLI roundtrip tests (create via CLI, verify via API)
 - Structure import tests
@@ -309,7 +309,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 ### `tests/unit/test_api_service.py`
 
 **Module / feature:**
-- `QVService` API methods for project, structure, workflow, and step operations
+- `QVService` API methods for project, structure, calculation, and step operations
 
 **Related production code:**
 - `quantumvitas.api.QVService`
@@ -333,12 +333,12 @@ See `extended-tests/README.md` for detailed extended test documentation.
   - `test_import_structure_duplicate_id_fails` - Duplicate ID detection
   - `test_list_structures` - List structures
 
-- `TestQVServiceWorkflow` - Workflow operations
-  - `test_init_workflow` - Initialize workflow
-  - `test_list_workflows` - List workflows
+- `TestQVServiceWorkflow` - Calculation operations
+  - `test_init_workflow` - Initialize calculation
+  - `test_list_calculations` - List calculations
 
 - `TestQVServiceStep` - Step operations
-  - `test_add_step_to_workflow` - Add step to workflow
+  - `test_add_step_to_calculation` - Add step to calculation
   - `test_get_step_detail` - Get step detail
 
 ### `tests/unit/test_api_service_steps.py`
@@ -351,7 +351,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 
 **Key dependencies:**
 - Fixtures:
-  - `project_with_workflow` - Project with a workflow and step
+  - `project_with_workflow` - Project with a calculation and step
 
 **Contained tests:**
 
@@ -371,8 +371,8 @@ See `extended-tests/README.md` for detailed extended test documentation.
 **Key dependencies:**
 - Fixtures:
   - `project_with_structures` - Project with multiple structures
-  - `project_with_workflows` - Project with multiple workflows
-  - `project_with_steps` - Project with workflow and steps
+  - `project_with_workflows` - Project with multiple calculations
+  - `project_with_steps` - Project with calculation and steps
   - `project_with_resources` - Project with all resource types
 
 **Contained tests:**
@@ -384,14 +384,14 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - `TestStructureResolution` - Structure resolution
   - Tests resolving structures by ULID, slug, path, name
 
-- `TestWorkflowResolution` - Workflow resolution
-  - Tests resolving workflows by ULID, slug, path, name
+- `TestWorkflowResolution` - Calculation resolution
+  - Tests resolving calculations by ULID, slug, path, name
 
 - `TestStepResolution` - Step resolution
   - Tests resolving steps by ULID, slug, path
 
 - `TestListResources` - Resource listing
-  - Tests listing structures, workflows, steps
+  - Tests listing structures, calculations, steps
 
 ### `tests/unit/test_legacy_migration.py`
 
@@ -400,7 +400,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 
 **Related production code:**
 - `quantumvitas.legacy.migrate.migrate_legacy_project`
-- `quantumvitas.core.models.load_workflow`, `load_project`
+- `quantumvitas.core.models.load_calculation`, `load_project`
 - `quantumvitas.core.exceptions.LegacyProjectError`
 
 **Key dependencies:**
@@ -419,27 +419,27 @@ See `extended-tests/README.md` for detailed extended test documentation.
     - `structure_id` (ULID) present after migration
     - `step_id` (ULID) present after migration
     - Legacy fields removed (`structure`, `step_file`, `id`)
-    - Project/workflow can be loaded after migration
+    - Project/calculation can be loaded after migration
 
-### `tests/unit/test_workflow_dag_constitution.py`
+### `tests/unit/test_calculation_dag_constitution.py`
 
 **Module / feature:**
-- Workflow DAG structure validation
+- Calculation DAG structure validation
 - Step ordering
 - Structure inheritance
 
 **Related production code:**
-- `quantumvitas.core.models.WorkflowModel`
-- `quantumvitas.workflow.workflow`
+- `quantumvitas.core.models.CalculationModel`
+- `quantumvitas.calculation.calculation`
 
 **Key dependencies:**
 - Fixtures:
   - `tmp_path` - Temporary project directories
-  - Project fixtures with workflows and steps
+  - Project fixtures with calculations and steps
 
 **Contained tests:**
 
-- DAG invariant tests (workflow has `structure_id`, steps don't have `structure_id`)
+- DAG invariant tests (calculation has `structure_id`, steps don't have `structure_id`)
 - Step ordering tests
 - Structure inheritance tests
 
@@ -490,7 +490,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 **Related production code:**
 - `quantumvitas.io.structure_io`
 - `quantumvitas.io.parser.qe_parser`
-- `quantumvitas.workflow.geometry`
+- `quantumvitas.calculation.geometry`
 
 **Key dependencies:**
 - Fixtures:
@@ -529,7 +529,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - QE geometry format conversion (ibrav, cell_parameters)
 
 **Related production code:**
-- `quantumvitas.workflow.geometry`
+- `quantumvitas.calculation.geometry`
 
 **Key dependencies:**
 - Fixtures:
@@ -585,7 +585,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - QE parameter defaults application
 
 **Related production code:**
-- `quantumvitas.workflow.step_defaults`
+- `quantumvitas.calculation.step_defaults`
 
 **Key dependencies:**
 - Fixtures:
@@ -615,13 +615,13 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Override parsing tests
 - Override application tests
 
-### `tests/unit/test_workflow_importers.py`
+### `tests/unit/test_calculation_importers.py`
 
 **Module / feature:**
-- Workflow import from QE input files
+- Calculation import from QE input files
 
 **Related production code:**
-- `quantumvitas.workflow.importers`
+- `quantumvitas.calculation.importers`
 
 **Key dependencies:**
 - Fixtures:
@@ -630,21 +630,21 @@ See `extended-tests/README.md` for detailed extended test documentation.
 
 **Contained tests:**
 
-- Workflow import tests
+- Calculation import tests
 - Step import tests
 
-### `tests/unit/test_workflow_inputs.py`
+### `tests/unit/test_calculation_inputs.py`
 
 **Module / feature:**
-- Workflow input file generation
+- Calculation input file generation
 
 **Related production code:**
-- `quantumvitas.workflow.input_runner`
+- `quantumvitas.calculation.input_runner`
 
 **Key dependencies:**
 - Fixtures:
   - `tmp_path` - Temporary directories
-  - `workflow_project` - Workflow project fixture
+  - `calculation_project` - Calculation project fixture
 
 **Contained tests:**
 
@@ -658,7 +658,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 
 **Related production code:**
 - `quantumvitas.api.QVService`
-- `quantumvitas.workflow.structure_steps`
+- `quantumvitas.calculation.structure_steps`
 
 **Key dependencies:**
 - Fixtures:
@@ -781,7 +781,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 ### `tests/unit/test_context.py`
 
 **Module / feature:**
-- Path context detection (workflow/structure from CWD)
+- Path context detection (calculation/structure from CWD)
 
 **Related production code:**
 - `quantumvitas.core.context`
@@ -794,7 +794,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 **Contained tests:**
 
 - Context detection tests
-- Workflow/structure resolution from CWD
+- Calculation/structure resolution from CWD
 
 ### `tests/unit/test_daemon.py`
 
@@ -924,7 +924,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 ### `tests/cli/test_graphene_workflow_setup.py`
 
 **Module / feature:**
-- Complete workflow setup via CLI commands
+- Complete calculation setup via CLI commands
 
 **Related production code:**
 - `quantumvitas.cli.main`
@@ -939,39 +939,39 @@ See `extended-tests/README.md` for detailed extended test documentation.
 
 **Contained tests:**
 
-- `test_graphene_workflow_setup` - Complete workflow setup sequence
-  - **What it tests:** End-to-end workflow setup: `qv init project` → `qv import-structure` → `qv init workflow` → `qv init step` → `qv configure workflow`
+- `test_graphene_workflow_setup` - Complete calculation setup sequence
+  - **What it tests:** End-to-end calculation setup: `qv init project` → `qv import-structure` → `qv init calculation` → `qv init step` → `qv configure calculation`
   - **Dependencies:** Uses `CliRunner.isolated_filesystem()` to simulate `cd` commands, requires `tests/data/13_graphene/graphene.2_scf.in`
 
 - `test_init_step_fails_at_project_root_without_workflow` - Error handling for invalid step init
-  - **What it tests:** `qv init step` at project root without `--workflow` fails with clear error message
+  - **What it tests:** `qv init step` at project root without `--calculation` fails with clear error message
   - **Dependencies:** Creates project via CLI, then tries to init step at project root
 
-### `tests/cli/test_si_dos_workflow_cli.py`
+### `tests/cli/test_si_dos_calculation_cli.py`
 
 **Module / feature:**
-- DOS workflow execution via CLI
+- DOS calculation execution via CLI
 
 **Related production code:**
 - `quantumvitas.cli.main`
 
 **Key dependencies:**
 - Data files:
-  - `tests/data/4_Si_DOS/` - DOS workflow test data
+  - `tests/data/4_Si_DOS/` - DOS calculation test data
 - Fixtures:
   - `ci_test_data_dir` - Test data directory
   - QE installation (required for execution)
 
 **Contained tests:**
 
-- `test_cli_run_workflow` - Run DOS workflow via CLI
-  - **What it tests:** Complete DOS workflow execution (SCF → NSCF → DOS) via CLI commands
+- `test_cli_run_calculation` - Run DOS calculation via CLI
+  - **What it tests:** Complete DOS calculation execution (SCF → NSCF → DOS) via CLI commands
   - **Dependencies:** Requires QE installation, uses `tests/data/4_Si_DOS/` test data
 
-### `tests/cli/test_si_dos_workflow_comprehensive.py`
+### `tests/cli/test_si_dos_calculation_comprehensive.py`
 
 **Module / feature:**
-- Comprehensive DOS workflow with analysis
+- Comprehensive DOS calculation with analysis
 
 **Related production code:**
 - `quantumvitas.cli.main`
@@ -986,15 +986,15 @@ See `extended-tests/README.md` for detailed extended test documentation.
 
 **Contained tests:**
 
-- `TestSiDosWorkflow` - Comprehensive DOS workflow tests
-  - `test_run_workflow` - Run complete DOS workflow
+- `TestSiDosWorkflow` - Comprehensive DOS calculation tests
+  - `test_run_calculation` - Run complete DOS calculation
   - `test_analyze_dos` - Analyze DOS and generate plot
-  - **Dependencies:** Creates project in `temp/test_si_dos_workflow`, requires QE installation
+  - **Dependencies:** Creates project in `temp/test_si_dos_calculation`, requires QE installation
 
-### `tests/cli/test_si_bands_workflow_comprehensive.py`
+### `tests/cli/test_si_bands_calculation_comprehensive.py`
 
 **Module / feature:**
-- Comprehensive bands workflow with manual and auto k-path
+- Comprehensive bands calculation with manual and auto k-path
 
 **Related production code:**
 - `quantumvitas.cli.main`
@@ -1009,12 +1009,12 @@ See `extended-tests/README.md` for detailed extended test documentation.
 
 **Contained tests:**
 
-- `TestSiBandsWorkflowManualKpath` - Manual k-path workflow
-  - `test_run_workflow` - Run bands workflow with manual k-path
+- `TestSiBandsWorkflowManualKpath` - Manual k-path calculation
+  - `test_run_calculation` - Run bands calculation with manual k-path
   - `test_analyze_bands` - Analyze bands and generate plot
 
-- `TestSiBandsWorkflowAutoKpath` - Auto k-path workflow
-  - `test_run_workflow` - Run bands workflow with auto-generated k-path
+- `TestSiBandsWorkflowAutoKpath` - Auto k-path calculation
+  - `test_run_calculation` - Run bands calculation with auto-generated k-path
   - `test_analyze_bands` - Analyze bands and generate plot
 
 - `TestCompareKpaths` - K-path comparison
@@ -1029,7 +1029,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 ### `tests/cli/test_template_workflow.py`
 
 **Module / feature:**
-- Template-based workflow creation
+- Template-based calculation creation
 
 **Related production code:**
 - `quantumvitas.cli.main`
@@ -1046,7 +1046,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - `test_template_project_structure` - Template project structure validation
 - `test_template_workflow_ulids_consistent` - ULID consistency in templates
 - `test_template_structure_copied` - Structure copying from template
-- `test_template_workflow_runs` - Template workflow execution
+- `test_template_workflow_runs` - Template calculation execution
 - `test_init_workflow_from_template_with_custom_structure` - Template with custom structure
 
 ### `tests/cli/test_cli_show_command_integration.py`
@@ -1073,7 +1073,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 ### `tests/daemon/test_gui_workflow_detail.py`
 
 **Module / feature:**
-- Daemon RPC endpoints for workflow detail and structure changes
+- Daemon RPC endpoints for calculation detail and structure changes
 
 **Related production code:**
 - `quantumvitas.daemon.server.QVDaemon`
@@ -1081,20 +1081,20 @@ See `extended-tests/README.md` for detailed extended test documentation.
 
 **Key dependencies:**
 - Fixtures:
-  - `temp_project` - Temporary project with workflow and steps
+  - `temp_project` - Temporary project with calculation and steps
   - `daemon` - `QVDaemon` instance
 - Data:
-  - Uses `tests/data/workflow_bands/si.0_scf.in` for structure import
+  - Uses `tests/data/calculation_bands/si.0_scf.in` for structure import
 
 **Contained tests:**
 
-- `TestGetWorkflowDetail` - Workflow detail retrieval
-  - `test_get_workflow_detail_has_steps` - Workflow detail includes steps
-  - `test_multi_step_workflow_ulid_only_selectors` - Multi-step workflow with ULID selectors
+- `TestGetWorkflowDetail` - Calculation detail retrieval
+  - `test_get_calculation_detail_has_steps` - Calculation detail includes steps
+  - `test_multi_step_workflow_ulid_only_selectors` - Multi-step calculation with ULID selectors
 
-- `TestChangeWorkflowStructure` - Workflow structure changes
-  - `test_change_workflow_structure_via_daemon` - Change workflow structure via RPC
-  - `test_change_workflow_structure_rejects_project_root_as_selector` - Reject invalid selectors
+- `TestChangeWorkflowStructure` - Calculation structure changes
+  - `test_change_calculation_structure_via_daemon` - Change calculation structure via RPC
+  - `test_change_calculation_structure_rejects_project_root_as_selector` - Reject invalid selectors
 
 ### `tests/daemon/test_gui_job_and_step_flows.py`
 
@@ -1108,10 +1108,10 @@ See `extended-tests/README.md` for detailed extended test documentation.
 
 **Key dependencies:**
 - Fixtures:
-  - `temp_project` - Temporary project with workflow and step
+  - `temp_project` - Temporary project with calculation and step
   - `daemon` - `QVDaemon` instance
 - Data:
-  - Uses `tests/data/workflow_bands/si.0_scf.in` for structure import
+  - Uses `tests/data/calculation_bands/si.0_scf.in` for structure import
 
 **Contained tests:**
 
@@ -1121,25 +1121,25 @@ See `extended-tests/README.md` for detailed extended test documentation.
 
 - `TestStepDetailRetrieval` - Step detail retrieval
   - `test_get_step_detail_with_ulid` - Get step detail with ULID selector
-  - `test_get_step_detail_requires_ulid_from_workflow_yaml` - ULID must come from workflow.yaml
+  - `test_get_step_detail_requires_ulid_from_workflow_yaml` - ULID must come from calculation.yaml
 
 - `TestDAGInvariants` - DAG model invariants
-  - `test_workflow_has_structure_id_ulid` - Workflow has `structure_id` (ULID)
+  - `test_calculation_has_structure_id_ulid` - Calculation has `structure_id` (ULID)
   - `test_step_yaml_no_structure_id` - Step YAML doesn't have `structure_id`
 
 - `TestStepCreationRaceCondition` - Race condition handling
   - `test_immediate_get_step_detail_after_add_step` - Get step detail immediately after creation
 
 - `TestStepDeletion` - Step deletion
-  - `test_delete_step_via_daemon_removes_from_workflow_yaml` - Deletion removes from workflow.yaml
+  - `test_delete_step_via_daemon_removes_from_workflow_yaml` - Deletion removes from calculation.yaml
   - `test_delete_step_via_daemon_moves_step_file_to_trash` - Deletion moves file to trash
   - `test_delete_step_via_daemon_allows_missing_step_file` - Deletion handles missing file
   - `test_delete_step_via_daemon_invalid_ulid_raises_resource_not_found` - Invalid ULID raises error
 
-### `tests/daemon/test_si_bands_workflow_daemon.py`
+### `tests/daemon/test_si_bands_calculation_daemon.py`
 
 **Module / feature:**
-- Full bands workflow execution via daemon RPC
+- Full bands calculation execution via daemon RPC
 
 **Related production code:**
 - `quantumvitas.daemon.server.QVDaemon`
@@ -1165,9 +1165,9 @@ See `extended-tests/README.md` for detailed extended test documentation.
   - `test_list_structures` - List structures
   - `test_get_structure_vis` - Get structure visualization data
 
-- `TestDaemonWorkflowExecution` - Workflow execution
-  - `test_list_workflows` - List workflows
-  - `test_run_workflow_via_job_manager` - Run workflow via job manager
+- `TestDaemonWorkflowExecution` - Calculation execution
+  - `test_list_calculations` - List calculations
+  - `test_run_calculation_via_job_manager` - Run calculation via job manager
   - `test_job_list` - List jobs
   - `test_get_band_structure_data` - Get band structure data
   - `test_analyze_bands_and_generate_plot` - Analyze bands and generate plot
@@ -1182,59 +1182,59 @@ See `extended-tests/README.md` for detailed extended test documentation.
   - `test_structures_list_serializable` - Structures list serialization
   - `test_structure_vis_serializable` - Structure visualization serialization
 
-### `tests/integration/test_si_bands_workflow.py`
+### `tests/integration/test_si_bands_calculation.py`
 
 **Module / feature:**
-- SCF → NSCF → Bands → bands.x workflow execution
+- SCF → NSCF → Bands → bands.x calculation execution
 
 **Related production code:**
 - `quantumvitas.project.model.Project`
-- `quantumvitas.workflow.runner.WorkflowRunner`
+- `quantumvitas.calculation.runner.CalculationRunner`
 - `quantumvitas.engine.registry`
 
 **Key dependencies:**
 - Data files:
-  - `tests/data/7_Si_bandStructure/` - Bands workflow test data
+  - `tests/data/7_Si_bandStructure/` - Bands calculation test data
 - Fixtures:
   - `ci_test_data_dir` - Test data directory
   - `si_bands_dir` - Si bands test data directory
-  - `si_bands_project` - Workflow project created via `create_workflow_project`
+  - `si_bands_project` - Calculation project created via `create_calculation_project`
   - QE installation (required)
   - Pseudopotentials from `pseudo/` directory
 
 **Contained tests:**
 
-- `TestSiBandsWorkflow` - Bands workflow execution
-  - `test_run_full_workflow` - Run complete bands workflow (SCF → NSCF → Bands → bands.x)
-  - **What it tests:** Full workflow execution with all steps succeeding
-  - **Dependencies:** Uses `create_workflow_project` helper to scaffold project from `tests/data/7_Si_bandStructure/`, requires QE installation
+- `TestSiBandsWorkflow` - Bands calculation execution
+  - `test_run_full_workflow` - Run complete bands calculation (SCF → NSCF → Bands → bands.x)
+  - **What it tests:** Full calculation execution with all steps succeeding
+  - **Dependencies:** Uses `create_calculation_project` helper to scaffold project from `tests/data/7_Si_bandStructure/`, requires QE installation
 
-### `tests/integration/test_si_dos_workflow.py`
+### `tests/integration/test_si_dos_calculation.py`
 
 **Module / feature:**
-- SCF → NSCF → DOS workflow execution
+- SCF → NSCF → DOS calculation execution
 
 **Related production code:**
 - `quantumvitas.project.model.Project`
-- `quantumvitas.workflow.runner.WorkflowRunner`
+- `quantumvitas.calculation.runner.CalculationRunner`
 - `quantumvitas.engine.registry`
 
 **Key dependencies:**
 - Data files:
-  - `tests/data/4_Si_DOS/` - DOS workflow test data
+  - `tests/data/4_Si_DOS/` - DOS calculation test data
 - Fixtures:
   - `ci_test_data_dir` - Test data directory
   - `si_dos_dir` - Si DOS test data directory
-  - `si_dos_project` - Workflow project created via `create_workflow_project`
+  - `si_dos_project` - Calculation project created via `create_calculation_project`
   - QE installation (required)
   - Pseudopotentials from `pseudo/` directory
 
 **Contained tests:**
 
-- `TestSiDosWorkflow` - DOS workflow execution
-  - `test_run_full_workflow` - Run complete DOS workflow (SCF → NSCF → DOS)
-  - **What it tests:** Full workflow execution with all steps succeeding
-  - **Dependencies:** Uses `create_workflow_project` helper to scaffold project from `tests/data/4_Si_DOS/`, requires QE installation
+- `TestSiDosWorkflow` - DOS calculation execution
+  - `test_run_full_workflow` - Run complete DOS calculation (SCF → NSCF → DOS)
+  - **What it tests:** Full calculation execution with all steps succeeding
+  - **Dependencies:** Uses `create_calculation_project` helper to scaffold project from `tests/data/4_Si_DOS/`, requires QE installation
 
 ### `tests/integration/test_qe_engine.py`
 
@@ -1281,7 +1281,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Various PW step types and input generation
 
 **Related production code:**
-- `quantumvitas.workflow.structure_steps`
+- `quantumvitas.calculation.structure_steps`
 - `quantumvitas.io.QEInputGenerator`
 
 **Key dependencies:**
@@ -1303,7 +1303,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - SCF with different ibrav values
 
 **Related production code:**
-- `quantumvitas.workflow.structure_steps`
+- `quantumvitas.calculation.structure_steps`
 - `quantumvitas.io.QEInputGenerator`
 
 **Key dependencies:**
@@ -1325,7 +1325,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Quick PW tests for CI
 
 **Related production code:**
-- `quantumvitas.workflow.runner.WorkflowRunner`
+- `quantumvitas.calculation.runner.CalculationRunner`
 
 **Key dependencies:**
 - Data files:
@@ -1345,7 +1345,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Phonon calculation tests
 
 **Related production code:**
-- `quantumvitas.workflow.runner.WorkflowRunner`
+- `quantumvitas.calculation.runner.CalculationRunner`
 
 **Key dependencies:**
 - Data files:
@@ -1362,10 +1362,10 @@ See `extended-tests/README.md` for detailed extended test documentation.
 ### `tests/integration/test_ci_validation.py`
 
 **Module / feature:**
-- CI validation workflows
+- CI validation calculations
 
 **Related production code:**
-- `quantumvitas.workflow.runner.WorkflowRunner`
+- `quantumvitas.calculation.runner.CalculationRunner`
 
 **Key dependencies:**
 - Data files:
@@ -1374,7 +1374,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 
 **Contained tests:**
 
-- CI validation workflow tests
+- CI validation calculation tests
 
 ### `tests/examples/test_cli_usage_examples.py`
 
@@ -1454,9 +1454,9 @@ See `extended-tests/README.md` for detailed extended test documentation.
 
 ### Helper Modules
 
-- **`tests/utils/workflow_projects.py`**
-  - `create_workflow_project()` - Scaffolds a temporary workflow project from test data
-  - Creates project structure, workflows, steps, and copies pseudopotentials
+- **`tests/utils/calculation_projects.py`**
+  - `create_calculation_project()` - Scaffolds a temporary calculation project from test data
+  - Creates project structure, calculations, steps, and copies pseudopotentials
   - Used by integration tests that need a complete project setup
 
 - **`tests/core/test_data.py`**
@@ -1479,7 +1479,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 
 ### Well-Covered Areas
 
-1. **Core Models** - Extensive coverage of project/workflow/step models, DAG structure, ULID validation
+1. **Core Models** - Extensive coverage of project/calculation/step models, DAG structure, ULID validation
 2. **Resource Resolution** - Comprehensive selector resolution tests (ULID, slug, path, name)
 3. **Legacy Migration** - End-to-end migration test
 4. **CLI Commands** - Good coverage of main CLI commands (init, run, configure, analyze)
@@ -1492,7 +1492,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 1. **GUI Frontend** - No direct GUI tests (GUI tests are in `gui/tests/` with Playwright)
 2. **Error Recovery** - Some error paths may not be fully covered
 3. **Concurrent Operations** - Limited testing of concurrent job execution
-4. **Large Projects** - Limited testing with large numbers of structures/workflows/steps
+4. **Large Projects** - Limited testing with large numbers of structures/calculations/steps
 5. **Network/Remote Operations** - No tests for remote file access or network operations
 6. **Performance** - No performance/load tests
 
@@ -1503,17 +1503,17 @@ See `extended-tests/README.md` for detailed extended test documentation.
 3. **Resource Renaming Edge Cases** - More edge cases for resource renaming (conflicts, circular references)
 4. **Snapshot Edge Cases** - More edge cases for snapshot creation/restoration
 5. **QE Module Parameter Validation** - More validation tests for QE module parameters
-6. **Workflow Template System** - More comprehensive template system tests
+6. **Calculation Template System** - More comprehensive template system tests
 7. **Analysis Plotting Edge Cases** - More edge cases for plotting (empty data, malformed data)
 8. **Pseudopotential Resolution Edge Cases** - More edge cases for PP resolution (missing files, invalid formats)
 
 ### Test Data Dependencies
 
 **Critical test data files:**
-- `tests/data/13_graphene/graphene.2_scf.in` - Used by graphene workflow setup test
-- `tests/data/4_Si_DOS/` - Used by DOS workflow tests
-- `tests/data/7_Si_bandStructure/` - Used by bands workflow tests
-- `tests/data/workflow_bands/` - Used by daemon workflow tests
+- `tests/data/13_graphene/graphene.2_scf.in` - Used by graphene calculation setup test
+- `tests/data/4_Si_DOS/` - Used by DOS calculation tests
+- `tests/data/7_Si_bandStructure/` - Used by bands calculation tests
+- `tests/data/calculation_bands/` - Used by daemon calculation tests
 - `tests/data/analysis_*` - Used by analysis parser/plotting tests
 - `tests/data/pw_single_tests/` - Used by PW step tests
 - `tests/data/pw_scf_ibrav/` - Used by ibrav tests
@@ -1541,7 +1541,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - **Unit tests** (`tests/unit/`) - Fast, no QE required, run in CI
 - **CLI tests** (`tests/cli/`) - May require QE, run via CLI commands
 - **Integration tests** (`tests/integration/`) - Require QE installation, run QE calculations
-- **Daemon tests** (`tests/daemon/`) - Test daemon RPC endpoints, may require QE for workflow execution
+- **Daemon tests** (`tests/daemon/`) - Test daemon RPC endpoints, may require QE for calculation execution
 - **Example tests** (`tests/examples/`) - Example usage patterns, typically fast
 
 Tests are automatically marked based on location and can be filtered using pytest markers:
