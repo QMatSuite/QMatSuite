@@ -79,3 +79,6 @@ Thumbs.db
 # Electron build artifacts (too large for GitHub)
 gui/release/
 gui/dist/
+gui/dist-electron/
+gui/test-results/
+gui/.vite/
