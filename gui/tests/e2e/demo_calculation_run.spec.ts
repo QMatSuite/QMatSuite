@@ -1,18 +1,19 @@
 /**
- * E2E Test 3: Run calculation → Jobs → Analysis
+ * E2E Test 3: Run calculation → Run & Logs → Analysis (within calculation)
  * 
  * **This is the ONLY spec file that actually RUNS QE calculations.**
  * All other specs only inspect UI state, metadata, and default parameters.
  * 
- * This spec tests the full calculation execution flow:
- * 1. Create a demo project
- * 2. Run the calculation (clicks "Run Calculation" button)
- * 3. Monitor job progress until completion (or failure)
- * 4. Verify computation-dependent results:
- *    - Jobs panel entries and statuses
- *    - Calculation status (StepStatus.SUCCESS)
- *    - Analysis outputs (band plots, DOS plots, Fermi energy, k-path)
- *    - Output file locations
+ * This spec tests the full per-calculation execution flow:
+ * 1. Create a demo project (e.g. "Si bands")
+ * 2. Navigate to Calculations view
+ * 3. Select a calculation in the "All Calculations" list
+ * 4. Verify Overview & Steps tab is active and overview panel is visible
+ * 5. Click "Run Calculation" button in Overview & Steps tab
+ * 6. Verify auto-switch to Run & Logs tab
+ * 7. Monitor job progress in the per-calculation Run & Logs tab until completion
+ * 8. Switch to Analysis tab for the same calculation
+ * 9. Verify analysis outputs (band plots, DOS plots, Fermi energy, k-path)
  * 
  * IMPORTANT: This test requires QE to be installed and available on PATH.
  * Do not skip this test on missing QE; failure means real problem.
@@ -24,7 +25,15 @@
  * To run locally:
  *   cd gui
  *   npm run build:e2e
- *   npx playwright test tests/e2e/demo_workflow_run.spec.ts --project=electron
+ *   npx playwright test tests/e2e/demo_calculation_run.spec.ts --project=electron
+ * 
+ * REFACTOR NOTES (Updated for new Calculations UI):
+ * - NO global "Analysis" page anymore - all analysis is per-calculation
+ * - NO global "Jobs" navigation in this test - focus on per-calculation Run & Logs tab
+ * - Running a calculation auto-switches to "Run & Logs" tab within the calculation
+ * - Analysis is accessed via Calculations → Analysis tab (scoped to selected calculation)
+ * - The test follows: Calculations → Overview & Steps → Run → Run & Logs → Analysis
+ * - NO dependency on qv-calculation-detail - uses tab-based panels instead
  */
 
 import { electronTest as test, expect, navigateToView, QE_JOB_TEST_TIMEOUT } from './fixtures/electronTest';
@@ -36,7 +45,7 @@ const SKIP_E2E = process.env.SKIP_ELECTRON_E2E === 'true';
 // Extended timeout for QE calculation execution (3 minutes)
 const QE_TIMEOUT = QE_JOB_TEST_TIMEOUT;
 
-test.describe('E2E Test 3: Run calculation → Jobs → Analysis', () => {
+test.describe('E2E Test 3: Run calculation → Run & Logs → Analysis (within calculation)', () => {
   test.skip(SKIP_E2E, 'Skipped when SKIP_ELECTRON_E2E=true');
   
   let projectDir: string;
@@ -66,30 +75,51 @@ test.describe('E2E Test 3: Run calculation → Jobs → Analysis', () => {
     // Verify project is loaded
     await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 10000 });
     
-    // === STEP 2: Navigate to Workflows and Run (ONCE) ===
+    // === PHASE 1: Select calculation and verify Overview ===
+    // Navigate to Calculations view
     await navigateToView(appPage, 'calculations');
     await expect(appPage.getByTestId('qv-calculations-view')).toBeVisible({ timeout: 10000 });
     
-    // Select the calculation
-    await appPage.getByTestId('qv-calculation-row').first().click();
-    await expect(appPage.getByTestId('qv-calculation-detail')).toBeVisible({ timeout: 10000 });
+    // Verify "All Calculations" list is visible
+    await expect(appPage.getByText('All Calculations')).toBeVisible();
     
-    // Click Run Calculation (this is the ONLY calculation execution in this entire test suite)
+    // Select the calculation from the list (e.g. "Si bands")
+    const calculationRow = appPage.getByTestId('qv-calculation-row').first();
+    await expect(calculationRow).toBeVisible({ timeout: 5000 });
+    await calculationRow.click();
+    
+    // Assert that Overview & Steps tab is selected
+    const overviewTab = appPage.getByTestId('qv-calc-tab-overview');
+    await expect(overviewTab).toBeVisible({ timeout: 5000 });
+    await expect(overviewTab).toHaveClass(/calculations-workspace-tab--active/);
+    
+    // Assert that the overview panel is visible
+    const overviewPanel = appPage.getByTestId('qv-calc-overview-panel');
+    await expect(overviewPanel).toBeVisible({ timeout: 5000 });
+    
+    // === PHASE 2: Run calculation and verify Run & Logs ===
+    // In the Overview & Steps tab, click the "Run Calculation" button
     const runButton = appPage.getByTestId('qv-btn-run-calculation');
     await expect(runButton).toBeVisible();
     await expect(runButton).toBeEnabled();
     await runButton.click();
     
-    // === STEP 3: Navigate to Jobs and Monitor Status Transitions ===
-    await navigateToView(appPage, 'jobs');
-    await expect(appPage.getByTestId('qv-jobs-view')).toBeVisible({ timeout: 10000 });
+    // Assert that the UI automatically switches to the Run & Logs tab
+    const runLogsTab = appPage.getByTestId('qv-calc-tab-run');
+    await expect(runLogsTab).toBeVisible({ timeout: 5000 });
+    await expect(runLogsTab).toHaveClass(/calculations-workspace-tab--active/, { timeout: 5000 });
     
-    // Wait for job to appear in the list
-    await expect(appPage.getByTestId('qv-job-row')).toBeVisible({ timeout: 30000 });
+    // Assert that the per-calculation run logs panel is visible
+    const runLogsPanel = appPage.getByTestId('qv-calc-run-logs-panel');
+    await expect(runLogsPanel).toBeVisible({ timeout: 10000 });
     
-    // Get the status badge - should initially be "running" or "pending"
-    const statusBadge = appPage.getByTestId('qv-job-status').first();
-    await expect(statusBadge).toBeVisible();
+    // Wait for job summary to appear
+    const jobSummary = runLogsPanel.getByTestId('qv-calc-job-summary');
+    await expect(jobSummary).toBeVisible({ timeout: 30000 });
+    
+    // Get the status badge - it's in the header of the Run & Logs panel
+    const statusBadge = runLogsPanel.getByTestId('qv-job-status');
+    await expect(statusBadge).toBeVisible({ timeout: 5000 });
     
     // Check initial status (should be running or pending)
     // Status may include emoji/icon, so extract just the text
@@ -156,25 +186,21 @@ test.describe('E2E Test 3: Run calculation → Jobs → Analysis', () => {
     
     // If job failed, capture error details and assert
     if (failed) {
-      // Click on the job to see error details
-      await appPage.getByTestId('qv-job-row').first().click();
-      await expect(appPage.getByTestId('qv-job-detail')).toBeVisible({ timeout: 5000 });
-      
-      // Wait for error section to be visible
+      // Error details should be visible in the Run & Logs tab
       await appPage.waitForTimeout(1000);
       
-      // Try to capture error text from the job detail panel
+      // Try to capture error text from the Run & Logs panel
       let errorText = 'Unknown error';
       try {
-        // Look for the error section with class 'job-detail-error'
-        const errorElement = appPage.locator('.job-detail-error');
+        // Look for the error section in the Run & Logs tab
+        const errorElement = runLogsPanel.locator('.calculation-run-tab__section--error');
         if (await errorElement.count() > 0) {
           errorText = await errorElement.textContent() || 'Error text not available';
         } else {
-          // Fallback: try to get any error message from the job detail
-          const errorSection = appPage.locator('.job-detail-section--error');
-          if (await errorSection.count() > 0) {
-            errorText = await errorSection.textContent() || 'Error section found but no text';
+          // Fallback: try to get error from job summary
+          const errorPre = runLogsPanel.locator('.calculation-run-tab__error');
+          if (await errorPre.count() > 0) {
+            errorText = await errorPre.textContent() || 'Error section found but no text';
           }
         }
       } catch (e) {
@@ -203,7 +229,7 @@ test.describe('E2E Test 3: Run calculation → Jobs → Analysis', () => {
     await appPage.waitForTimeout(1000);
     
     // Re-query the status badge to get the latest element (in case DOM was updated)
-    const finalStatusBadge = appPage.getByTestId('qv-job-status').first();
+    const finalStatusBadge = runLogsPanel.getByTestId('qv-job-status');
     const finalStatus = await finalStatusBadge.textContent();
     
     // Verify we actually got "completed" status (may include emoji/icon)
@@ -211,40 +237,31 @@ test.describe('E2E Test 3: Run calculation → Jobs → Analysis', () => {
     const cleanFinalStatus = finalStatusText.replace(/^[⚡▶⏸✓✗\s]+/, '').trim();
     expect(cleanFinalStatus).toContain('completed');
     
-    // === STEP 4: Verify Analysis Results (Manual Load) ===
-    await navigateToView(appPage, 'analysis');
-    await expect(appPage.getByTestId('qv-analysis-view')).toBeVisible({ timeout: 10000 });
+    // Verify logs are visible
+    const jobLogs = runLogsPanel.getByTestId('qv-calc-job-logs');
+    await expect(jobLogs).toBeVisible();
     
-    // Wait a bit for the analysis view to fully render and calculation to be selected
+    // === PHASE 3: Switch to Analysis tab for the same calculation ===
+    // After the job completes, click the Analysis tab
+    const analysisTab = appPage.getByTestId('qv-calc-tab-analysis');
+    await expect(analysisTab).toBeVisible({ timeout: 5000 });
+    await analysisTab.click();
+    
+    // Wait for Analysis tab to be active
+    await expect(analysisTab).toHaveClass(/calculations-workspace-tab--active/, { timeout: 5000 });
+    
+    // Assert that the per-calculation Analysis panel is visible
+    const analysisPanel = appPage.getByTestId('qv-calc-analysis-panel');
+    await expect(analysisPanel).toBeVisible({ timeout: 5000 });
+    
+    // Wait a bit for the analysis view to fully render
+    // The calculation should already be selected (from when we clicked it earlier)
     await appPage.waitForTimeout(2000);
     
-    // Verify a calculation is selected (should be auto-selected if only one exists)
-    const selectedWorkflow = appPage.locator('.calculation-option--selected');
-    await expect(selectedWorkflow).toBeVisible({ timeout: 5000 });
-    
-    // Click on Bands tab (the button with text containing "Bands")
-    const bandsTab = appPage.locator('.type-tab').filter({ hasText: /bands/i });
-    await expect(bandsTab).toBeVisible({ timeout: 5000 });
-    await bandsTab.click();
-    
-    // Wait for the tab click to register and UI to update
-    // The analysis type state needs to update, and the button needs to render
-    await appPage.waitForTimeout(1000);
-    
-    // Find and click the Load button - wait for it to be enabled
-    // Use test ID to avoid duplicate selector issue (there's also a Re-analyze button)
-    // Wait for the button to appear (it's rendered when analysisType is set)
-    const loadButton = appPage.getByTestId('qv-btn-load-bands');
-    await expect(loadButton).toBeVisible({ timeout: 10000 });
-    
-    // Wait for button to be enabled (not disabled)
-    await expect(loadButton).toBeEnabled({ timeout: 10000 });
-    
-    // Click the Load button
-    await loadButton.click();
-    
-    // Wait for bands chart to appear (this may take time to load data)
-    // The chart should appear after data is loaded
+    // CalculationAnalysisPanel auto-detects analysis type based on last step and auto-loads
+    // For Si bands demo, it should auto-select "bands" and load automatically
+    // Wait for bands chart to appear (auto-loading may take time)
+    // The chart should appear after data is automatically loaded
     await expect(appPage.getByTestId('qv-analysis-bands-chart')).toBeVisible({ timeout: 30000 });
     
     // Optionally check that the chart container has some child elements (e.g. band paths)
@@ -270,39 +287,5 @@ test.describe('E2E Test 3: Run calculation → Jobs → Analysis', () => {
     // Check for common special point labels
     const hasSpecialPoints = /[ΓXLWK]/.test(kpathText || '');
     expect(hasSpecialPoints).toBe(true);
-    
-    // === STEP 5: Verify Automatic Analysis Behavior ===
-    // Check Settings to verify auto-analysis is enabled (default)
-    await navigateToView(appPage, 'settings');
-    await appPage.waitForTimeout(1000);
-    
-    // Go back to Analysis view - with auto-analysis enabled, charts should load automatically
-    await navigateToView(appPage, 'analysis');
-    await expect(appPage.getByTestId('qv-analysis-view')).toBeVisible({ timeout: 10000 });
-    
-    // Wait for calculation to be selected
-    await expect(appPage.locator('.calculation-option--selected')).toBeVisible({ timeout: 5000 });
-    
-    // With automatic analysis enabled, the chart should appear without clicking Load
-    // The "Analyzing..." state should appear briefly, then the chart
-    // Give the automatic analysis time to run
-    await appPage.waitForTimeout(3000);
-    
-    // The bands chart should appear automatically (since demo is bands calculation)
-    // Note: This may show "Analyzing..." briefly first
-    await expect(appPage.getByTestId('qv-analysis-bands-chart')).toBeVisible({ timeout: 30000 });
-    
-    // Verify Fermi energy is displayed (automatic analysis should have loaded it)
-    const fermiElementAuto = appPage.getByTestId('qv-analysis-fermi');
-    await expect(fermiElementAuto).toBeVisible({ timeout: 5000 });
-    await expect(fermiElementAuto).not.toHaveText(/^\s*$/, { timeout: 5000 });
-    
-    // Verify k-path labels are visible (automatic analysis should have loaded them)
-    const kpathElementAuto = appPage.getByTestId('qv-analysis-kpath');
-    await expect(kpathElementAuto).toBeVisible({ timeout: 5000 });
-    const kpathTextAuto = await kpathElementAuto.textContent();
-    expect(kpathTextAuto).toBeTruthy();
-    expect(/[ΓXLWK]/.test(kpathTextAuto || '')).toBe(true);
   });
 });
-

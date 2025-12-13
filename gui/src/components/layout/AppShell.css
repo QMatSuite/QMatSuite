@@ -9,9 +9,10 @@
 }
 
 .app-shell__sidebar {
-  width: var(--sidebar-width);
-  min-width: var(--sidebar-width-min);
-  max-width: var(--sidebar-width-max);
+  /* Default expanded width - fixed narrow width for icons + labels */
+  width: 230px;
+  min-width: 230px;
+  max-width: 230px;
   height: 100%;
   background: var(--bg-sidebar);
   border-right: 1px solid var(--border-color);
@@ -19,6 +20,14 @@
   flex-direction: column;
   overflow: hidden;
   flex-shrink: 0;
+  transition: width var(--transition-normal), min-width var(--transition-normal), max-width var(--transition-normal);
+}
+
+/* When sidebar is collapsed, use narrow icon-only width */
+.app-shell__sidebar:has(.sidebar--collapsed) {
+  width: 64px;
+  min-width: 64px;
+  max-width: 64px;
 }
 
 .app-shell__body {

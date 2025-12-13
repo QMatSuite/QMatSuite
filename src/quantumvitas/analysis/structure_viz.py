@@ -22,12 +22,17 @@ matplotlib.use("Agg")  # Headless-safe backend
 import numpy as np
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Set
+from typing import Dict, List, Optional, Tuple, Set, Union
+from itertools import product
+import logging
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from pymatgen.core import Structure as PMGStructure
 from pymatgen.core.periodic_table import Element
+from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+
+logger = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -124,7 +129,114 @@ def get_element_radius(symbol: str) -> float:
 
 
 # =============================================================================
-# Bond detection
+# Wrapping and coordinate utilities
+# =============================================================================
+
+# Epsilon for boundary handling in fractional coordinates
+FRAC_EPS = 1e-9
+
+
+def wrap_fractional_coords(frac: np.ndarray, eps: float = FRAC_EPS) -> np.ndarray:
+    """
+    Wrap fractional coordinates into [0, 1) with epsilon handling.
+    
+    For a fractional coordinate f:
+    - f_wrapped = f - floor(f)
+    - If component is ~1.0 ( > 1 - eps ), set to 0.0
+    
+    Args:
+        frac: Fractional coordinates (can be 1D or 2D array)
+        eps: Epsilon for boundary detection
+        
+    Returns:
+        Wrapped fractional coordinates in [0, 1)
+    """
+    frac = np.asarray(frac)
+    was_1d = frac.ndim == 1
+    if was_1d:
+        frac = frac.reshape(1, -1)
+    
+    # Wrap: f - floor(f)
+    wrapped = frac - np.floor(frac)
+    
+    # Handle components near 1.0: set to 0.0
+    wrapped[wrapped > 1.0 - eps] = 0.0
+    
+    if was_1d:
+        wrapped = wrapped.reshape(-1)
+    
+    return wrapped
+
+
+def wrap_cartesian_coords(
+    coords: np.ndarray,
+    lattice,
+    eps: float = FRAC_EPS,
+) -> np.ndarray:
+    """
+    Wrap Cartesian coordinates into the unit cell.
+    
+    Converts to fractional, wraps, then back to Cartesian.
+    
+    Args:
+        coords: Cartesian coordinates (can be 1D or 2D array)
+        lattice: pymatgen Lattice object
+        eps: Epsilon for boundary detection
+        
+    Returns:
+        Wrapped Cartesian coordinates
+    """
+    coords = np.asarray(coords)
+    was_1d = coords.ndim == 1
+    if was_1d:
+        coords = coords.reshape(1, -1)
+    
+    # Convert to fractional
+    frac = np.array([lattice.get_fractional_coords(c) for c in coords])
+    
+    # Wrap
+    frac_wrapped = wrap_fractional_coords(frac, eps)
+    
+    # Convert back to Cartesian
+    cart_wrapped = np.array([lattice.get_cartesian_coords(f) for f in frac_wrapped])
+    
+    if was_1d:
+        cart_wrapped = cart_wrapped.reshape(-1)
+    
+    return cart_wrapped
+
+
+# =============================================================================
+# Utility functions
+# =============================================================================
+
+def _normalize_supercell(value: Any) -> Tuple[int, int, int]:
+    """
+    Normalize supercell input to tuple of three integers.
+    
+    Accepts:
+    - Tuple[int, int, int]: returned as-is
+    - int: converted to (n, n, n)
+    - List[int]: converted to tuple
+    
+    Args:
+        value: Supercell specification
+        
+    Returns:
+        Tuple of (a, b, c) scaling factors
+    """
+    if isinstance(value, int):
+        return (value, value, value)
+    elif isinstance(value, (tuple, list)):
+        if len(value) != 3:
+            raise ValueError(f"Supercell must be 3 elements, got {len(value)}")
+        return tuple(int(v) for v in value)
+    else:
+        raise TypeError(f"Supercell must be int or tuple/list of 3 ints, got {type(value)}")
+
+
+# =============================================================================
+# Bond detection - SINGLE SOURCE OF TRUTH
 # =============================================================================
 
 @dataclass
@@ -137,89 +249,294 @@ class Bond:
     distance: float
 
 
-def _is_coord_in_cell(
-    coord: np.ndarray,
-    lattice,
-    tolerance: float = 0.1,
-) -> bool:
-    """Check if Cartesian coordinate is within the cell (with tolerance)."""
-    frac = lattice.get_fractional_coords(coord)
-    return all(-tolerance <= f <= 1.0 + tolerance for f in frac)
+def build_bonds(
+    atoms_cart: np.ndarray,
+    species: List[str],
+    radii_map: Dict[str, float],
+    *,
+    max_factor: float = 1.2,
+    tolerance: float = 0.3,
+    max_cutoff: float = 3.5,
+    neighbor_shell: Optional[int] = None,
+    lattice_matrix: Optional[np.ndarray] = None,
+) -> List[Bond]:
+    """
+    SINGLE SOURCE OF TRUTH for bond construction.
+    
+    Builds bonds for any atom set in Cartesian coordinates using radii-based
+    distance threshold. Works for primitive, supercell, conventional, or box modes.
+    
+    Bond criterion: distance < (r_i + r_j) * max_factor + tolerance
+    
+    When lattice_matrix is provided, uses PBC-aware minimum-image convention
+    to find bonds across periodic boundaries. This is essential for supercells
+    where atoms at edges need to bond to neighbors in adjacent images.
+    
+    **PBC-aware bond detection**: When `lattice_matrix` is provided, bond distances
+    are computed using minimum-image convention (fractional wrapping to [-0.5, 0.5)).
+    This ensures correct connectivity in periodic structures. Invalid or near-singular
+    lattice matrices fall back to non-periodic detection with a warning.
+    
+    **Performance**: For non-periodic mode, uses KD-tree (O(N log N)). For PBC mode,
+    uses brute force with minimum-image (O(N²)) which is correct and fast enough
+    for typical structure sizes (N < 1000). Both modes use a precomputed global
+    cutoff to reduce candidate pairs.
+    
+    Args:
+        atoms_cart: Array of shape (N, 3) with Cartesian coordinates
+        species: List of N element symbols
+        radii_map: Dictionary mapping element symbols to radii
+        max_factor: Multiplier for sum of radii (default 1.2)
+        tolerance: Extra tolerance in Å (default 0.3)
+        max_cutoff: Maximum distance to consider in Å (default 3.5)
+        neighbor_shell: Optional number of neighbor shells to consider
+            (if None, uses distance-based cutoff)
+        lattice_matrix: Optional 3x3 lattice matrix for PBC-aware distance calculation.
+            Must be invertible and well-conditioned. If None or invalid, uses Euclidean
+            distance (non-periodic). Invalid matrices trigger a warning and fallback.
+        
+    Returns:
+        List of Bond objects with idx1 < idx2 (no duplicates)
+        
+    Note:
+        **Semantics**: This function handles bond detection. Boundary atom display
+        (boundary repeat) is separate and does not affect bond detection results.
+    """
+    atoms_cart = np.asarray(atoms_cart)
+    n_atoms = len(atoms_cart)
+    
+    if n_atoms == 0:
+        return []
+    
+    bonds: List[Bond] = []
+    seen_bonds: Set[Tuple[int, int]] = set()
+    
+    # Compute inverse lattice matrix if PBC is enabled
+    # Validate and handle invalid/near-singular matrices gracefully
+    A = None
+    A_inv = None
+    if lattice_matrix is not None:
+        A = np.asarray(lattice_matrix)
+        if A.shape != (3, 3):
+            logger.warning(
+                f"lattice_matrix must be 3x3, got shape {A.shape}. "
+                f"Falling back to non-periodic bond detection."
+            )
+            A = None
+        else:
+            try:
+                # Check condition number to detect near-singular matrices
+                cond = np.linalg.cond(A)
+                if cond > 1e12:  # Very ill-conditioned
+                    logger.warning(
+                        f"lattice_matrix is near-singular (condition number {cond:.2e}). "
+                        f"Falling back to non-periodic bond detection."
+                    )
+                    A = None
+                else:
+                    A_inv = np.linalg.inv(A)
+            except np.linalg.LinAlgError:
+                logger.warning(
+                    "lattice_matrix is singular and cannot be inverted. "
+                    "Falling back to non-periodic bond detection."
+                )
+                A = None
+    
+    # Precompute global maximum cutoff for candidate filtering
+    # This helps reduce the number of pairs we need to check
+    max_radius = max(radii_map.values()) if radii_map else 1.0
+    global_max_cutoff = 2 * max_radius * max_factor + tolerance
+    global_max_cutoff = min(global_max_cutoff, max_cutoff)  # Cap at user-specified max
+    
+    # Build KD-tree for efficient neighbor search
+    # For PBC mode, we can still use KD-tree in Cartesian space for initial filtering,
+    # then apply minimum-image distance only to candidates
+    use_tree = True
+    tree = None
+    try:
+        from scipy.spatial import cKDTree
+        tree = cKDTree(atoms_cart)
+    except ImportError:
+        # Fallback to brute force if scipy not available
+        logger.warning("scipy not available, using brute-force bond detection")
+        use_tree = False
+    
+    for i in range(n_atoms):
+        coord_i = atoms_cart[i]
+        elem_i = species[i]
+        radius_i = radii_map.get(elem_i, 1.0)
+        
+        # Find neighbor candidates
+        neighbors = []
+        if use_tree and tree is not None:
+            # Use KD-tree for initial candidate search
+            # Query with global_max_cutoff to get all potential neighbors
+            # This reduces O(N²) to O(N log N) for candidate finding
+            if A_inv is None:
+                # Non-periodic: use KD-tree directly
+                distances, indices = tree.query(
+                    coord_i, 
+                    k=min(n_atoms, 50), 
+                    distance_upper_bound=global_max_cutoff
+                )
+                # Filter out self and invalid results
+                neighbors = [(idx, dist) for idx, dist in zip(indices, distances) 
+                            if idx < n_atoms and dist <= global_max_cutoff and idx != i]
+            else:
+                # PBC mode: For small structures, brute force is fast enough.
+                # For larger structures, we could use KD-tree with a conservative radius,
+                # but for correctness and simplicity, use brute force with minimum-image.
+                # The KD-tree optimization can miss neighbors that are close via PBC
+                # but far in Cartesian space.
+                for j in range(n_atoms):
+                    if j == i:
+                        continue
+                    # Compute minimum-image distance
+                    frac_i = A_inv @ coord_i
+                    frac_j = A_inv @ atoms_cart[j]
+                    delta_frac = frac_j - frac_i
+                    delta_frac = delta_frac - np.round(delta_frac)
+                    # Epsilon guard for numerical stability
+                    EPS_WRAP = 1e-10
+                    delta_frac = np.where(
+                        np.abs(np.abs(delta_frac) - 0.5) < EPS_WRAP,
+                        np.sign(delta_frac) * 0.5,
+                        delta_frac
+                    )
+                    delta_cart = A @ delta_frac
+                    dist = np.linalg.norm(delta_cart)
+                    if dist <= global_max_cutoff:
+                        neighbors.append((j, dist))
+        else:
+            # Brute force fallback
+            for j in range(n_atoms):
+                if i == j:
+                    continue
+                
+                if A_inv is not None:
+                    # PBC-aware: use minimum-image convention
+                    frac_i = A_inv @ coord_i
+                    frac_j = A_inv @ atoms_cart[j]
+                    delta_frac = frac_j - frac_i
+                    delta_frac = delta_frac - np.round(delta_frac)
+                    # Epsilon guard for numerical stability
+                    EPS_WRAP = 1e-10
+                    delta_frac = np.where(
+                        np.abs(np.abs(delta_frac) - 0.5) < EPS_WRAP,
+                        np.sign(delta_frac) * 0.5,
+                        delta_frac
+                    )
+                    delta_cart = A @ delta_frac
+                    dist = np.linalg.norm(delta_cart)
+                else:
+                    # Non-periodic: Euclidean distance
+                    dist = np.linalg.norm(atoms_cart[j] - coord_i)
+                
+                if dist <= global_max_cutoff:
+                    neighbors.append((j, dist))
+        
+        for j, dist in neighbors:
+            if i >= j:  # Only consider i < j to avoid duplicates
+                continue
+            
+            elem_j = species[j]
+            radius_j = radii_map.get(elem_j, 1.0)
+            
+            # Bond criterion
+            max_bond_dist = (radius_i + radius_j) * max_factor + tolerance
+            
+            if dist <= max_bond_dist:
+                # Check if we've seen this bond
+                bond_key = (i, j)
+                if bond_key not in seen_bonds:
+                    seen_bonds.add(bond_key)
+                    # For PBC bonds, use the minimum-image coordinates
+                    if A_inv is not None:
+                        frac_i = A_inv @ coord_i
+                        frac_j = A_inv @ atoms_cart[j]
+                        delta_frac = frac_j - frac_i
+                        delta_frac = delta_frac - np.round(delta_frac)
+                        # Apply same epsilon guard for coordinate computation
+                        EPS_WRAP = 1e-10
+                        delta_frac = np.where(
+                            np.abs(np.abs(delta_frac) - 0.5) < EPS_WRAP,
+                            np.sign(delta_frac) * 0.5,
+                            delta_frac
+                        )
+                        coord_j_min_image = coord_i + (A @ delta_frac)
+                    else:
+                        coord_j_min_image = atoms_cart[j].copy()
+                    
+                    bonds.append(Bond(
+                        idx1=i,
+                        idx2=j,
+                        coord1=coord_i.copy(),
+                        coord2=coord_j_min_image,
+                        distance=float(dist),
+                    ))
+    
+    return bonds
 
 
+# Legacy function for backward compatibility
 def detect_bonds(
     structure: PMGStructure,
     tolerance: float = 0.3,
     max_cutoff: float = 3.5,
-    include_periodic_images: bool = True,
+    include_periodic_images: bool = True,  # DEPRECATED: No longer affects bond detection
 ) -> List[Bond]:
     """
-    Detect bonds in a structure based on covalent radii.
+    Detect bonds in a structure based on covalent radii (legacy function).
     
-    A bond is detected between atoms i and j if:
-        distance(i, j) < R_i + R_j + tolerance
+    This function is kept for backward compatibility but now uses build_bonds
+    internally. For new code, use build_bonds directly.
+    
+    .. deprecated:: 
+        The `include_periodic_images` parameter is deprecated and no longer affects
+        bond detection results. Bond detection always uses PBC-aware minimum-image
+        convention for periodic structures. The parameter is kept for backward
+        compatibility only.
     
     Args:
         structure: pymatgen Structure object
         tolerance: Extra tolerance for bond detection (Å)
         max_cutoff: Maximum distance to consider (Å)
-        include_periodic_images: If True, include bonds to periodic images
-            outside the cell. If False, only include bonds where the neighbor
-            is within the cell boundaries.
+        include_periodic_images: DEPRECATED - No longer affects bond detection.
+            Bond detection always uses PBC-aware minimum-image convention.
+            This parameter is kept for backward compatibility only.
         
     Returns:
         List of Bond objects
+        
+    Note:
+        **Semantics clarification:**
+        - **PBC bond detection**: Always used for periodic structures via minimum-image
+          convention. This ensures correct connectivity (e.g., 32 bonds in Si 2×2×2 supercell).
+        - **Boundary repeat** (display): Controls whether boundary atoms/images are displayed
+          for visualization. This is separate from bond detection and does not affect
+          bond counts or connectivity.
     """
-    bonds: List[Bond] = []
-    # Track seen bonds by rounded endpoint coordinates to avoid duplicates
-    seen_bonds: Set[Tuple[Tuple[float, ...], Tuple[float, ...]]] = set()
+    # Extract atoms and species
+    atoms_cart = np.array([site.coords for site in structure])
+    species = [site.specie.symbol for site in structure]
     
-    n_sites = len(structure)
-    lattice = structure.lattice
+    # Build radii map
+    radii_map = {sym: get_element_radius(sym) for sym in set(species)}
     
-    for i in range(n_sites):
-        site_i = structure[i]
-        elem_i = site_i.specie.symbol
-        radius_i = get_element_radius(elem_i)
-        coord_i = np.array(site_i.coords)
-        
-        # Get neighbors within max_cutoff (includes periodic images)
-        neighbors = structure.get_neighbors(site_i, r=max_cutoff)
-        
-        for neighbor in neighbors:
-            coord_j = np.array(neighbor.coords)  # Actual neighbor position (may be periodic image)
-            
-            # Skip if neighbor is outside cell and we don't want periodic images
-            if not include_periodic_images:
-                if not _is_coord_in_cell(coord_j, lattice):
-                    continue
-            
-            elem_j = neighbor.specie.symbol
-            radius_j = get_element_radius(elem_j)
-            
-            # Check bond criterion
-            max_bond_dist = radius_i + radius_j + tolerance
-            
-            if neighbor.nn_distance <= max_bond_dist:
-                # Create a canonical key for this bond based on coordinates
-                # Round to 3 decimal places to handle floating point precision
-                c1_rounded = tuple(np.round(coord_i, 3))
-                c2_rounded = tuple(np.round(coord_j, 3))
-                
-                # Order canonically to avoid A-B and B-A duplicates
-                bond_key = (min(c1_rounded, c2_rounded), max(c1_rounded, c2_rounded))
-                
-                if bond_key not in seen_bonds:
-                    seen_bonds.add(bond_key)
-                    bonds.append(Bond(
-                        idx1=i,
-                        idx2=neighbor.index,
-                        coord1=coord_i,
-                        coord2=coord_j,
-                        distance=neighbor.nn_distance,
-                    ))
+    # Get lattice matrix for PBC-aware bond detection
+    # PBC is ALWAYS used for bond detection (minimum-image convention)
+    # The include_periodic_images parameter is deprecated and ignored
+    lattice_matrix = structure.lattice.matrix
     
-    return bonds
+    # Use single-source-of-truth function with PBC-aware distance
+    return build_bonds(
+        atoms_cart,
+        species,
+        radii_map,
+        tolerance=tolerance,
+        max_cutoff=max_cutoff,
+        lattice_matrix=lattice_matrix,  # Always use PBC for correct bond detection
+    )
 
 
 # =============================================================================
@@ -305,24 +622,402 @@ def generate_boundary_atoms(
 
 def make_supercell(
     structure: PMGStructure,
-    scaling: Tuple[int, int, int],
+    scaling: Union[int, Tuple[int, int, int]],
 ) -> PMGStructure:
     """
     Create a supercell of the structure.
     
     Args:
         structure: Original pymatgen Structure
-        scaling: Tuple of (a, b, c) scaling factors
+        scaling: Tuple of (a, b, c) scaling factors, or int for (n, n, n)
         
     Returns:
         New Structure object representing the supercell
     """
+    scaling = _normalize_supercell(scaling)
     if scaling == (1, 1, 1):
         return structure.copy()
     
     supercell = structure.copy()
     supercell.make_supercell(scaling)
     return supercell
+
+
+# =============================================================================
+# Conventional cell
+# =============================================================================
+
+def get_conventional_cell(
+    structure: PMGStructure,
+) -> PMGStructure:
+    """
+    Get the conventional/standard cell using pymatgen's SpacegroupAnalyzer.
+    
+    Args:
+        structure: Original pymatgen Structure
+        
+    Returns:
+        Conventional standard structure
+        
+    Raises:
+        ValueError: If symmetry analysis fails
+    """
+    try:
+        analyzer = SpacegroupAnalyzer(structure)
+        conventional = analyzer.get_conventional_standard_structure()
+        return conventional
+    except Exception as e:
+        logger.warning(f"Failed to get conventional cell: {e}. Using original structure.")
+        return structure.copy()
+
+
+# =============================================================================
+# Box enumeration (Method 2: solve k-range intervals)
+# =============================================================================
+
+@dataclass
+class DisplayAtom:
+    """An atom in the display set with stable ID."""
+    stable_id: str  # Stable identifier (e.g., "atom_0_trans_1_2_3")
+    element: str
+    cart_coords: np.ndarray
+    frac_coords: np.ndarray
+    original_idx: int  # Index in original structure
+    translation: Tuple[int, int, int]  # Translation (i, j, k)
+
+
+def enumerate_atoms_in_aabb(
+    structure: PMGStructure,
+    box_bounds: Tuple[float, float, float, float, float, float],
+    *,
+    eps: float = 1e-6,
+) -> List[DisplayAtom]:
+    """
+    Enumerate all atoms inside an axis-aligned bounding box (AABB).
+    
+    Uses Method 2: solve k-range intervals to avoid generating huge supercells.
+    
+    For each basis atom r0 = A * f (where A is lattice matrix, f is fractional):
+    - Find integer translations n=(i,j,k) such that:
+      r = r0 + i*a + j*b + k*c lies inside [xmin,xmax]×[ymin,ymax]×[zmin,zmax]
+    
+    Algorithm:
+    1) Compute tight bounds for i,j,k by mapping box corners through A^{-1}
+    2) For each (i,j), derive k-interval constraints from x,y,z inequalities
+    3) Intersect the three k-intervals and convert to integer k range
+    4) For k in that range, compute r and accept if inside box (with eps)
+    
+    Args:
+        structure: pymatgen Structure object
+        box_bounds: (xmin, xmax, ymin, ymax, zmin, zmax) in Cartesian coordinates
+        eps: Epsilon for boundary inclusion
+        
+    Returns:
+        List of DisplayAtom objects with stable IDs
+    """
+    xmin, xmax, ymin, ymax, zmin, zmax = box_bounds
+    
+    # Validate bounds
+    if xmax < xmin or ymax < ymin or zmax < zmin:
+        return []
+    
+    lattice = structure.lattice
+    A = lattice.matrix  # 3x3 matrix [a, b, c] as rows
+    A_inv = np.linalg.inv(A)  # Inverse for fractional conversion
+    
+    display_atoms: List[DisplayAtom] = []
+    
+    # Get 8 box corners
+    box_corners = np.array([
+        [xmin, ymin, zmin],
+        [xmax, ymin, zmin],
+        [xmin, ymax, zmin],
+        [xmin, ymin, zmax],
+        [xmax, ymax, zmin],
+        [xmax, ymin, zmax],
+        [xmin, ymax, zmax],
+        [xmax, ymax, zmax],
+    ])
+    
+    # For each basis atom
+    for orig_idx, site in enumerate(structure):
+        r0 = np.array(site.coords)  # Original position
+        f0 = np.array(site.frac_coords)  # Original fractional
+        symbol = site.specie.symbol
+        
+        # Step 1: Compute tight bounds for i, j, k
+        # Map box corners through A^{-1} relative to r0
+        i_bounds = []
+        j_bounds = []
+        k_bounds = []
+        
+        for corner in box_corners:
+            # Convert (corner - r0) to fractional coordinates
+            delta = corner - r0
+            n_frac = A_inv @ delta
+            
+            i_bounds.append(n_frac[0])
+            j_bounds.append(n_frac[1])
+            k_bounds.append(n_frac[2])
+        
+        i_min = int(np.floor(min(i_bounds))) - 1
+        i_max = int(np.ceil(max(i_bounds))) + 1
+        j_min = int(np.floor(min(j_bounds))) - 1
+        j_max = int(np.ceil(max(j_bounds))) + 1
+        
+        # Step 2: For each (i, j), solve for k-interval
+        for i in range(i_min, i_max + 1):
+            for j in range(j_min, j_max + 1):
+                # Compute r_ij = r0 + i*a + j*b
+                r_ij = r0 + i * A[0] + j * A[1]
+                
+                # For each axis (x, y, z), derive k constraint
+                # r = r_ij + k * c
+                # For axis t: tmin <= r_ij[t] + k * c[t] <= tmax
+                k_intervals = []
+                
+                for axis_idx, (tmin, tmax) in enumerate([(xmin, xmax), (ymin, ymax), (zmin, zmax)]):
+                    c_t = A[2, axis_idx]  # c vector component along this axis
+                    r_ij_t = r_ij[axis_idx]
+                    
+                    if abs(c_t) < eps:
+                        # c_t ~ 0: constraint becomes feasibility check
+                        if not (tmin - eps <= r_ij_t <= tmax + eps):
+                            k_intervals = None  # Infeasible
+                            break
+                        # No constraint on k from this axis
+                        continue
+                    
+                    # Solve: tmin <= r_ij_t + k * c_t <= tmax
+                    # k >= (tmin - r_ij_t) / c_t  and  k <= (tmax - r_ij_t) / c_t
+                    if c_t > 0:
+                        k_lower = (tmin - r_ij_t) / c_t
+                        k_upper = (tmax - r_ij_t) / c_t
+                    else:
+                        # c_t < 0: inequalities flip
+                        k_lower = (tmax - r_ij_t) / c_t
+                        k_upper = (tmin - r_ij_t) / c_t
+                    
+                    k_intervals.append((k_lower, k_upper))
+                
+                if k_intervals is None:
+                    continue  # Infeasible for this (i, j)
+                
+                # Step 3: Intersect k-intervals
+                if not k_intervals:
+                    # All axes had c_t ~ 0, check if r_ij is in box
+                    if (xmin - eps <= r_ij[0] <= xmax + eps and
+                        ymin - eps <= r_ij[1] <= ymax + eps and
+                        zmin - eps <= r_ij[2] <= zmax + eps):
+                        k = 0
+                        r = r_ij
+                        stable_id = f"atom_{orig_idx}_trans_{i}_{j}_{k}"
+                        f_new = f0 + np.array([i, j, k])
+                        display_atoms.append(DisplayAtom(
+                            stable_id=stable_id,
+                            element=symbol,
+                            cart_coords=r,
+                            frac_coords=f_new,
+                            original_idx=orig_idx,
+                            translation=(i, j, k),
+                        ))
+                    continue
+                
+                # Intersect intervals
+                k_lower = max(interval[0] for interval in k_intervals)
+                k_upper = min(interval[1] for interval in k_intervals)
+                
+                if k_lower > k_upper + eps:
+                    continue  # No solution
+                
+                # Step 4: Convert to integer k range
+                k_min = int(np.floor(k_lower - eps))
+                k_max = int(np.ceil(k_upper + eps))
+                
+                for k in range(k_min, k_max + 1):
+                    r = r_ij + k * A[2]
+                    
+                    # Final check: is r inside box?
+                    if (xmin - eps <= r[0] <= xmax + eps and
+                        ymin - eps <= r[1] <= ymax + eps and
+                        zmin - eps <= r[2] <= zmax + eps):
+                        stable_id = f"atom_{orig_idx}_trans_{i}_{j}_{k}"
+                        f_new = f0 + np.array([i, j, k])
+                        display_atoms.append(DisplayAtom(
+                            stable_id=stable_id,
+                            element=symbol,
+                            cart_coords=r,
+                            frac_coords=f_new,
+                            original_idx=orig_idx,
+                            translation=(i, j, k),
+                        ))
+    
+    return display_atoms
+
+
+# =============================================================================
+# Display atom building (unified for all modes)
+# =============================================================================
+
+@dataclass
+class DisplayModeParams:
+    """Parameters for different display modes."""
+    mode: str  # "primitive", "supercell", "conventional", "box"
+    supercell: Optional[Tuple[int, int, int]] = None
+    box_bounds: Optional[Tuple[float, float, float, float, float, float]] = None
+    repeat_boundary: bool = False
+
+
+def build_display_atoms(
+    structure: PMGStructure,
+    params: DisplayModeParams,
+    *,
+    wrap_coords: bool = True,
+) -> Tuple[List[DisplayAtom], PMGStructure]:
+    """
+    Build display atoms for any display mode.
+    
+    This is the unified function that all modes use to generate atoms.
+    
+    Args:
+        structure: Original pymatgen Structure
+        params: DisplayModeParams specifying mode and parameters
+        wrap_coords: If True, wrap all coordinates into display cell
+        
+    Returns:
+        Tuple of (list of DisplayAtom objects, display structure)
+    """
+    display_atoms: List[DisplayAtom] = []
+    display_structure: PMGStructure
+    
+    if params.mode == "primitive":
+        # Primitive cell (wrapped)
+        display_structure = structure.copy()
+        if wrap_coords:
+            # Wrap all atoms into [0,1) fractional
+            for site in display_structure:
+                frac = wrap_fractional_coords(site.frac_coords)
+                site.frac_coords = frac
+        
+        for idx, site in enumerate(display_structure):
+            display_atoms.append(DisplayAtom(
+                stable_id=f"atom_{idx}",
+                element=site.specie.symbol,
+                cart_coords=np.array(site.coords),
+                frac_coords=np.array(site.frac_coords),
+                original_idx=idx,
+                translation=(0, 0, 0),
+            ))
+        
+        if params.repeat_boundary:
+            boundary_atoms = generate_boundary_atoms(display_structure)
+            for ba in boundary_atoms:
+                display_atoms.append(DisplayAtom(
+                    stable_id=f"boundary_{ba.original_idx}_{ba.frac_coords}",
+                    element=ba.symbol,
+                    cart_coords=ba.coords,
+                    frac_coords=ba.frac_coords,
+                    original_idx=ba.original_idx,
+                    translation=(0, 0, 0),  # Boundary atoms are already shifted
+                ))
+    
+    elif params.mode == "supercell":
+        # Supercell mode
+        if params.supercell is None:
+            params.supercell = (1, 1, 1)
+        display_structure = make_supercell(structure, params.supercell)
+        
+        if wrap_coords:
+            # Wrap all atoms
+            for site in display_structure:
+                frac = wrap_fractional_coords(site.frac_coords)
+                site.frac_coords = frac
+        
+        for idx, site in enumerate(display_structure):
+            display_atoms.append(DisplayAtom(
+                stable_id=f"atom_{idx}",
+                element=site.specie.symbol,
+                cart_coords=np.array(site.coords),
+                frac_coords=np.array(site.frac_coords),
+                original_idx=idx % len(structure),  # Map back to original
+                translation=(0, 0, 0),  # Supercell expansion handled by pymatgen
+            ))
+        
+        if params.repeat_boundary:
+            boundary_atoms = generate_boundary_atoms(display_structure)
+            for ba in boundary_atoms:
+                display_atoms.append(DisplayAtom(
+                    stable_id=f"boundary_{ba.original_idx}_{ba.frac_coords}",
+                    element=ba.symbol,
+                    cart_coords=ba.coords,
+                    frac_coords=ba.frac_coords,
+                    original_idx=ba.original_idx,
+                    translation=(0, 0, 0),
+                ))
+    
+    elif params.mode == "conventional":
+        # Conventional cell mode
+        try:
+            display_structure = get_conventional_cell(structure)
+        except Exception:
+            logger.warning("Failed to get conventional cell, using original")
+            display_structure = structure.copy()
+        
+        if wrap_coords:
+            for site in display_structure:
+                frac = wrap_fractional_coords(site.frac_coords)
+                site.frac_coords = frac
+        
+        for idx, site in enumerate(display_structure):
+            display_atoms.append(DisplayAtom(
+                stable_id=f"conv_atom_{idx}",
+                element=site.specie.symbol,
+                cart_coords=np.array(site.coords),
+                frac_coords=np.array(site.frac_coords),
+                original_idx=idx,
+                translation=(0, 0, 0),
+            ))
+        
+        if params.repeat_boundary:
+            boundary_atoms = generate_boundary_atoms(display_structure)
+            for ba in boundary_atoms:
+                display_atoms.append(DisplayAtom(
+                    stable_id=f"conv_boundary_{ba.original_idx}_{ba.frac_coords}",
+                    element=ba.symbol,
+                    cart_coords=ba.coords,
+                    frac_coords=ba.frac_coords,
+                    original_idx=ba.original_idx,
+                    translation=(0, 0, 0),
+                ))
+    
+    elif params.mode == "box":
+        # Box mode (uses original structure for enumeration)
+        # IMPORTANT: Box mode is non-periodic, so repeat_boundary is ignored
+        if params.box_bounds is None:
+            raise ValueError("box_bounds required for box mode")
+        
+        display_atoms_list = enumerate_atoms_in_aabb(structure, params.box_bounds)
+        display_atoms = display_atoms_list
+        
+        # Debug logging
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(
+                f"Box mode: n_atoms={len(display_atoms)}, "
+                f"box_bounds={params.box_bounds}, "
+                f"repeat_boundary={params.repeat_boundary} (ignored)"
+            )
+        
+        # Create a minimal structure for display (just for lattice info)
+        display_structure = structure.copy()
+        # Remove all sites, we'll use display_atoms instead
+        display_structure.remove_sites(range(len(display_structure)))
+        for da in display_atoms:
+            display_structure.append(da.element, da.cart_coords)
+    
+    else:
+        raise ValueError(f"Unknown display mode: {params.mode}")
+    
+    return display_atoms, display_structure
 
 
 # =============================================================================
@@ -366,8 +1061,9 @@ def plot_structure_3d(
     if options is None:
         options = StructurePlotOptions()
     
-    # Create supercell if requested
-    plot_structure = make_supercell(structure, options.supercell)
+    # Normalize supercell and create supercell if requested
+    supercell_scaling = _normalize_supercell(options.supercell)
+    plot_structure = make_supercell(structure, supercell_scaling)
     
     # Create figure if needed
     if ax is None:
@@ -388,8 +1084,9 @@ def plot_structure_3d(
         for ba in boundary_atoms:
             atoms_to_plot.append((ba.coords, ba.symbol, ba.original_idx))
     
-    # Detect bonds
-    # Only include bonds to periodic images if we're showing boundary atoms
+    # Detect bonds using PBC-aware minimum-image convention
+    # Note: repeat_boundary only affects boundary atom display, not bond detection.
+    # Bond detection always uses PBC-aware minimum-image convention for periodic structures.
     bonds = detect_bonds(plot_structure, include_periodic_images=options.repeat_boundary)
     
     # Plot atoms (balls)
@@ -545,7 +1242,7 @@ class StructureVisualizationResult:
 def visualize_structure(
     structure: PMGStructure,
     output_path: Optional[Path] = None,
-    supercell: Tuple[int, int, int] = (1, 1, 1),
+    supercell: Union[int, Tuple[int, int, int]] = (1, 1, 1),
     repeat_boundary: bool = False,
     show: bool = False,
     plot_format: str = "png",
@@ -568,8 +1265,11 @@ def visualize_structure(
     Returns:
         StructureVisualizationResult with metadata
     """
+    # Normalize supercell input
+    supercell_normalized = _normalize_supercell(supercell)
+    
     options = StructurePlotOptions(
-        supercell=supercell,
+        supercell=supercell_normalized,
         repeat_boundary=repeat_boundary,
         **{k: v for k, v in kwargs.items() if hasattr(StructurePlotOptions, k)},
     )
@@ -578,7 +1278,7 @@ def visualize_structure(
     fig, ax = plot_structure_3d(structure, options)
     
     # Create supercell for counting (must match what plot_structure_3d does)
-    plot_structure = make_supercell(structure, supercell)
+    plot_structure = make_supercell(structure, supercell_normalized)
     bonds = detect_bonds(plot_structure, include_periodic_images=repeat_boundary)
     
     # Count atoms (including boundary if applicable)
@@ -590,7 +1290,7 @@ def visualize_structure(
     result = StructureVisualizationResult(
         n_atoms=n_atoms,
         n_bonds=len(bonds),
-        supercell=supercell,
+        supercell=supercell_normalized,
         repeat_boundary=repeat_boundary,
     )
     

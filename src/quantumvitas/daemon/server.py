@@ -1907,17 +1907,25 @@ class QVDaemon:
             selector: str - Structure selector
             supercell: [int, int, int] - Optional supercell (default [1,1,1])
             repeat_boundary: bool - Optional (default false)
+            display_mode: str - Optional display mode: "primitive", "supercell", "conventional", "box" (default "primitive")
+            box_bounds: [float, float, float, float, float, float] - Optional for box mode: [xmin, xmax, ymin, ymax, zmin, zmax]
         """
         project_root = self._require_path(payload, "project_root")
         selector = self._require_str(payload, "selector")
         supercell = tuple(payload.get("supercell", [1, 1, 1]))
         repeat_boundary = payload.get("repeat_boundary", False)
+        display_mode = payload.get("display_mode", "primitive")
+        box_bounds = payload.get("box_bounds")
+        if box_bounds is not None:
+            box_bounds = tuple(box_bounds)
         
         return QVService.get_structure_vis_data(
             project_root=project_root,
             selector=selector,
             supercell=supercell,
             repeat_boundary=repeat_boundary,
+            display_mode=display_mode,
+            box_bounds=box_bounds,
         )
     
     def _handle_get_scf_convergence(self, payload: Dict[str, Any]) -> Dict[str, Any]:

@@ -27,9 +27,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-4) var(--space-5);
+  padding: var(--space-3) var(--space-4); /* Reduced for narrower panes */
   border-bottom: 1px solid var(--border-subtle);
   background: var(--bg-secondary);
+  flex-shrink: 0; /* Prevent header from shrinking */
 }
 
 .calculation-list-panel .panel-title {
@@ -48,24 +49,37 @@
   gap: var(--space-3);
 }
 
-.calculation-list-panel .panel-refresh-btn {
-  padding: var(--space-1) var(--space-3);
-  font-size: var(--text-xs);
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
+/* Ghost Icon Button (for Refresh) */
+.qv-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: none;
+  padding: 0;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-fast);
 }
 
-.calculation-list-panel .panel-refresh-btn:hover:not(:disabled) {
-  background: var(--bg-hover);
-  border-color: var(--border-hover);
+.qv-icon-button--ghost {
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
 }
 
-.calculation-list-panel .panel-refresh-btn:disabled {
-  opacity: 0.6;
+.qv-icon-button--ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+.qv-icon-button--ghost:active:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.qv-icon-button--ghost:disabled {
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
@@ -84,10 +98,11 @@
   min-height: 0; /* Critical for flex scrolling */
   overflow-y: auto;
   overflow-x: hidden;
-  padding: var(--space-3);
+  padding: var(--space-2); /* Reduced from space-3 for narrower panes */
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  box-sizing: border-box;
 }
 
 /* Calculation Item */
@@ -98,6 +113,10 @@
   border-radius: var(--radius-lg);
   background: var(--bg-primary);
   transition: all var(--transition-fast);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0; /* Allow flex item to shrink below content size */
+  box-sizing: border-box; /* Include border/padding in width */
 }
 
 .calculation-item:hover {
@@ -117,68 +136,143 @@
   flex-direction: column;
   gap: var(--space-2);
   width: 100%;
-  padding: var(--space-4);
+  min-width: 0; /* Allow flex item to shrink below content size */
+  padding: var(--space-3); /* Reduced from space-4 for narrower panes */
   background: transparent;
   border: none;
   cursor: pointer;
   text-align: left;
+  box-sizing: border-box; /* Ensure padding is included in width */
 }
 
-/* Action buttons container */
+/* Header row with title and actions */
+.calculation-item__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0; /* Allow header to shrink */
+}
+
+.calculation-item__name {
+  flex: 1 1 auto;
+  min-width: 0; /* Critical for text truncation */
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap; /* Truncate with ellipsis instead of wrapping */
+}
+
+/* Action buttons container - now in header */
 .calculation-item__actions {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: var(--space-2);
-  border-left: 1px solid var(--border-subtle);
+  flex-direction: row;
+  gap: var(--space-1);
+  flex-shrink: 0; /* Don't shrink actions */
   opacity: 0;
-  transition: opacity var(--transition-fast);
+  transition: opacity 120ms ease-out;
 }
 
 .calculation-item:hover .calculation-item__actions {
   opacity: 1;
 }
 
-.calculation-item__action {
+.calculation-item__action-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
+  min-width: 24px; /* Fixed width */
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-tertiary);
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   cursor: pointer;
   transition: all var(--transition-fast);
+  padding: 0;
 }
 
-.calculation-item__action:hover {
+.calculation-item__action-btn:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
 }
 
-.calculation-item__action--danger:hover {
+.calculation-item__action-btn--danger:hover {
   background: var(--color-error-bg);
   color: var(--color-error);
 }
 
-/* Header Row */
-.calculation-item__header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
+/* Header Row - legacy styles removed, now handled by .calculation-item__header above */
 .calculation-item__icon {
   font-size: var(--text-lg);
 }
 
-.calculation-item__name {
-  font-size: var(--text-sm);
-  font-weight: var(--font-semibold);
-  color: var(--text-primary);
+.calculation-item__structure {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.calculation-item__structure code {
+  font-size: inherit;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.calculation-item__details {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.calculation-item__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  align-items: center;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.step-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.step-arrow {
+  color: var(--text-muted);
+  margin: 0 var(--space-1);
+}
+
+.step-type {
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.calculation-item__path {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+.calculation-item__path code {
+  font-size: inherit;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .calculation-item__badge {
@@ -241,6 +335,20 @@
   background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-card) 100%);
 }
 
+.calculation-detail-panel .panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.qv-calc-header-title-group {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0; /* Allow title group to shrink */
+}
+
 .calculation-detail-panel .panel-title {
   display: flex;
   align-items: center;
@@ -249,12 +357,126 @@
   font-size: var(--text-base);
   font-weight: var(--font-semibold);
   color: var(--text-primary);
+  min-width: 0; /* Allow title to truncate if needed */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qv-calc-header-subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  line-height: 1.2;
+}
+
+.calculation-detail-panel .panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0; /* Prevent actions from shrinking */
 }
 
 .calculation-detail-panel .header-actions {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+}
+
+/* Primary Button Styles (for Run Calculation) */
+.qv-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px; /* Pill shape */
+  border: none;
+  cursor: pointer;
+  font-weight: var(--font-medium);
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.qv-button--primary {
+  background: var(--color-primary);
+  color: var(--text-on-primary);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+
+.qv-button--primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.qv-button--primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+
+.qv-button--large {
+  padding: 0.55rem 1.4rem;
+  font-size: 0.9rem;
+  font-weight: var(--font-semibold);
+}
+
+.qv-button-icon-left {
+  margin-right: 0.4rem;
+  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+.qv-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Tab Navigation */
+.calculation-detail-tabs {
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+}
+
+.calculation-detail-tab {
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.calculation-detail-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.calculation-detail-tab--active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  background: var(--bg-card);
+}
+
+.calculation-detail-tab-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tab-placeholder {
+  padding: var(--space-8);
+  text-align: center;
+  color: var(--text-muted);
 }
 
 .run-button {
@@ -287,6 +509,11 @@
   flex: 1;
   padding: var(--space-4) var(--space-5);
   overflow-y: auto;
+}
+
+/* When inside a scroll container, remove internal scroll */
+.calculation-overview-tab__scroll-container .calculation-detail-panel .panel-content {
+  overflow-y: visible;
 }
 
 /* Section Headers */

@@ -2,6 +2,13 @@
  * ResizablePane - A container with a draggable resize handle
  * 
  * Allows users to resize the pane by dragging the right edge, similar to VS Code's sidebar.
+ * 
+ * Width Behavior:
+ * - Width is set via inline style: `width: ${width}px` (pixels)
+ * - Uses `flexShrink: 0` to prevent flex container from shrinking it below the set width
+ * - Width is clamped between minWidth and maxWidth props during drag
+ * - Saved width is persisted to localStorage using storageKey
+ * - The component respects the provided minWidth/maxWidth props; no internal hardcoded minimums
  */
 
 import { useState, useCallback, useRef, useEffect, ReactNode } from 'react';

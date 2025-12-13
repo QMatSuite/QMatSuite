@@ -9,6 +9,7 @@
  * - Step default parameters visible in step detail panels
  * - Step YAML file contents (defaults vs imported parameters)
  * - UI elements for step creation/import buttons
+ * - Step Focus mode for viewing step details
  * 
  * All assertions are based on step definitions and YAML files, not computation outputs.
  * 
@@ -16,6 +17,12 @@
  *   cd gui
  *   npm run build:e2e
  *   npx playwright test tests/e2e/step_defaults.spec.ts --project=electron
+ * 
+ * REFACTOR NOTES (Updated for new Calculations UI):
+ * - StepDetailPanel is now only visible in Step Focus mode (when a step is selected)
+ * - To view step details, must click a step to enter Step Focus mode
+ * - Step Focus mode shows compact step list on left, StepDetailPanel on right
+ * - Can exit Step Focus mode by clicking "Back to overview" button
  */
 
 import { electronTest as test, expect, navigateToView } from './fixtures/electronTest';
@@ -74,28 +81,34 @@ test.describe('E2E: Step Parameter Defaults', () => {
     // Verify project is loaded
     await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 10000 });
     
-    // Navigate to Workflows view
+    // Navigate to Calculations view
     await navigateToView(appPage, 'calculations');
     await expect(appPage.getByTestId('qv-calculations-view')).toBeVisible({ timeout: 10000 });
     
+    // Verify Overview & Steps tab is active
+    await expect(appPage.getByTestId('qv-calc-tab-overview')).toBeVisible();
+    
     // Select the calculation
-    const workflowRows = appPage.getByTestId('qv-calculation-row');
-    await expect(workflowRows).toHaveCount(1);
-    await workflowRows.first().click();
+    const calculationRows = appPage.getByTestId('qv-calculation-row');
+    await expect(calculationRows).toHaveCount(1);
+    await calculationRows.first().click();
     await expect(appPage.getByTestId('qv-calculation-detail')).toBeVisible({ timeout: 10000 });
+    
+    // Verify we're in Overview mode
+    await expect(appPage.getByTestId('qv-calc-overview-tab')).toBeVisible();
     
     // Add a new SCF step via GUI (from-scratch, should use defaults)
     await appPage.getByTestId('qv-add-step-btn').click();
     
     // Wait for add step form
-    await expect(appPage.locator('.add-step-form')).toBeVisible({ timeout: 5000 });
+    await expect(appPage.getByTestId('qv-add-step-form')).toBeVisible({ timeout: 5000 });
     
     // Select step type
     const stepTypeSelect = appPage.locator('.add-step-form select').first();
     await stepTypeSelect.selectOption('scf');
     
     // Click Add Step button
-    await appPage.locator('.add-step-actions .add-step-btn--confirm').click();
+    await appPage.getByTestId('qv-confirm-add-step').click();
     
     // Wait for step to be added and calculation to refresh
     // CRITICAL: Wait for the new step to appear in the calculation steps list before clicking it.
@@ -103,13 +116,8 @@ test.describe('E2E: Step Parameter Defaults', () => {
     // available in the ResourceIndex. We wait for a step row with type 'scf' to appear.
     await expect(appPage.getByTestId('qv-steps-list')).toBeVisible({ timeout: 10000 });
     
-    // Wait for the new scf step to appear in the list (it should be the last one)
-    // Look for a step row with type 'scf' that appears after the add step form is hidden
-    const stepsList = appPage.getByTestId('qv-steps-list');
-    await expect(stepsList).toBeVisible({ timeout: 10000 });
-    
     // Wait for the add step form to disappear (indicating the step was added)
-    await expect(appPage.locator('.add-step-form')).not.toBeVisible({ timeout: 10000 });
+    await expect(appPage.getByTestId('qv-add-step-form')).not.toBeVisible({ timeout: 10000 });
     
     // Wait for a new step row with type 'scf' to appear
     // We'll look for step rows and find one with 'scf' type badge
@@ -129,10 +137,14 @@ test.describe('E2E: Step Parameter Defaults', () => {
     const stepButton = scfStepRow.locator('button.step-item');
     await expect(stepButton).toBeEnabled({ timeout: 5000 });
     
-    // Click the step button to open step detail
+    // Click the step button to open step detail (enters Step Focus mode)
     await stepButton.click({ timeout: 5000 });
     
-    // Wait for step detail panel
+    // Wait for Step Focus mode to activate
+    await expect(appPage.getByTestId('qv-calc-overview-tab-focus')).toBeVisible({ timeout: 10000 });
+    await expect(appPage.getByTestId('qv-compact-step-list')).toBeVisible({ timeout: 5000 });
+    
+    // Wait for step detail panel (in Step Focus mode, it's on the right)
     const stepDetailPanel = appPage.getByTestId('qv-step-detail');
     await expect(stepDetailPanel).toBeVisible({ timeout: 10000 });
     
@@ -207,14 +219,14 @@ test.describe('E2E: Step Parameter Defaults', () => {
     // Verify project is loaded
     await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 10000 });
     
-    // Navigate to Workflows view
+    // Navigate to Calculations view
     await navigateToView(appPage, 'calculations');
     await expect(appPage.getByTestId('qv-calculations-view')).toBeVisible({ timeout: 10000 });
     
     // Select the calculation
-    const workflowRows = appPage.getByTestId('qv-calculation-row');
-    await expect(workflowRows).toHaveCount(1);
-    await workflowRows.first().click();
+    const calculationRows = appPage.getByTestId('qv-calculation-row');
+    await expect(calculationRows).toHaveCount(1);
+    await calculationRows.first().click();
     await expect(appPage.getByTestId('qv-calculation-detail')).toBeVisible({ timeout: 10000 });
     
     // Verify import button exists and has correct tooltip
@@ -246,4 +258,3 @@ test.describe('E2E: Step Parameter Defaults', () => {
     // checked by the electronTest fixture after the test completes
   });
 });
-

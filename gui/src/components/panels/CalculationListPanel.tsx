@@ -74,17 +74,18 @@ export function CalculationListPanel({
       <div className="panel-header">
         <h2 className="panel-title">
           <span className="panel-icon">📊</span>
-          Calculations
+          All Calculations
         </h2>
         <div className="panel-header__actions">
           {onRefreshProjectRegistry && (
             <button
-              className="panel-refresh-btn"
+              className="qv-icon-button qv-icon-button--ghost"
               onClick={handleRefresh}
               disabled={isRefreshing}
-              title="Refresh project registry"
+              aria-label="Refresh"
+              title="Refresh"
             >
-              {isRefreshing ? '⟳' : '🔄'} Refresh
+              {isRefreshing ? '⟳' : '🔄'}
             </button>
           )}
           <span className="panel-count">{calculations.length} total</span>
@@ -103,11 +104,41 @@ export function CalculationListPanel({
               className="calculation-item__content"
               onClick={() => onSelect?.(calculation)}
             >
-              <div className="calculation-item__main">
+              {/* Header row with title and actions */}
+              <div className="calculation-item__header">
                 <div className="calculation-item__name">{calculation.name}</div>
-                <div className="calculation-item__structure">
-                  Structure: <code>{calculation.structure || 'none'}</code>
-                </div>
+                {(onRename || onDelete) && (
+                  <div className="calculation-item__actions">
+                    {onRename && (
+                      <button
+                        className="calculation-item__action-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRename(calculation);
+                        }}
+                        title="Rename calculation"
+                      >
+                        ✏️
+                      </button>
+                    )}
+                    {onDelete && (
+                      <button
+                        className="calculation-item__action-btn calculation-item__action-btn--danger"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(calculation);
+                        }}
+                        title="Delete calculation"
+                      >
+                        🗑️
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              <div className="calculation-item__structure">
+                Structure: <code>{calculation.structure || 'none'}</code>
               </div>
               
               <div className="calculation-item__details">
@@ -135,35 +166,6 @@ export function CalculationListPanel({
                 <code>{calculation.path}</code>
               </div>
             </button>
-            
-            {(onRename || onDelete) && (
-              <div className="calculation-item__actions">
-                {onRename && (
-                  <button
-                    className="item-action-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onRename(calculation);
-                    }}
-                    title="Rename calculation"
-                  >
-                    ✏️
-                  </button>
-                )}
-                {onDelete && (
-                  <button
-                    className="item-action-btn item-action-btn--danger"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete(calculation);
-                    }}
-                    title="Delete calculation"
-                  >
-                    🗑️
-                  </button>
-                )}
-              </div>
-            )}
           </div>
         ))}
       </div>
@@ -190,6 +192,7 @@ interface CalculationDetailPanelProps {
   onGoToJobs?: () => void;
   onCalculationUpdated?: () => void;
   onCalculationDetailUpdated?: (detail: CalculationDetailResult) => void;  // Callback to update calculationDetail directly
+  isFocusMode?: boolean;  // If true, hide large buttons (they're shown in compact step list instead)
 }
 
 export function CalculationDetailPanel({ 
@@ -201,9 +204,10 @@ export function CalculationDetailPanel({
   onRunCalculation,
   onSelectStep,
   onDeleteStep,
-  onGoToJobs,
+  onGoToJobs: _onGoToJobs,
   onCalculationUpdated,
   onCalculationDetailUpdated,
+  isFocusMode = false,
 }: CalculationDetailPanelProps) {
   // IMPORTANT: When calculationDetail is available, we MUST use its steps array
   // as the canonical source of step order, since it is built from calculation.yaml.
@@ -211,6 +215,7 @@ export function CalculationDetailPanel({
   const calculationForSteps = calculationDetail ?? calculationSummary;
   // Both CalculationInfo and CalculationDetailResult have compatible fields (id, name, slug, structure, mode, n_steps)
   const calculation = calculationForSteps as CalculationInfo | null;
+  
   const [isReordering, setIsReordering] = useState(false);
   const [stepOrder, setStepOrder] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -511,6 +516,26 @@ export function CalculationDetailPanel({
     }
   }, [calculationForSteps, projectRoot, onCalculationUpdated]);
   
+  // CRITICAL: Use calculationDetail.steps if available (canonical from calculation.yaml),
+  // otherwise fall back to calculationSummary.steps (may have wrong order, but better than nothing)
+  // The steps array from get_calculation_detail is the canonical source of step order and IDs.
+  // Each step.id is a ULID (26 chars) that must be used as the step selector for RPC calls.
+  const baseSteps = calculationDetail?.steps ?? calculationSummary?.steps ?? [];
+  
+  // When reordering, reorder baseSteps according to stepOrder
+  // NOTE: This useMemo must be called unconditionally (before any early returns)
+  // to satisfy React hooks rules
+  const displaySteps = useMemo(() => {
+    if (!isReordering || stepOrder.length === 0 || stepOrder.length !== baseSteps.length) {
+      return baseSteps;
+    }
+    // Create a map of step ID to step object
+    const stepMap = new Map(baseSteps.map(s => [s.id, s]));
+    // Reorder according to stepOrder
+    return stepOrder.map(id => stepMap.get(id)).filter((s): s is NonNullable<typeof s> => s !== undefined);
+  }, [isReordering, stepOrder, baseSteps]);
+  
+  // Early returns AFTER all hooks have been called
   if (!calculationForSteps) {
     // Show loading state if we have summary but detail is still loading
     if (calculationSummary && !calculationDetail) {
@@ -525,22 +550,18 @@ export function CalculationDetailPanel({
     return null;
   }
   
-  // CRITICAL: Use calculationDetail.steps if available (canonical from calculation.yaml),
-  // otherwise fall back to calculationSummary.steps (may have wrong order, but better than nothing)
-  // The steps array from get_calculation_detail is the canonical source of step order and IDs.
-  // Each step.id is a ULID (26 chars) that must be used as the step selector for RPC calls.
-  const baseSteps = calculationDetail?.steps ?? calculationSummary?.steps ?? [];
-  
-  // When reordering, reorder baseSteps according to stepOrder
-  const displaySteps = useMemo(() => {
-    if (!isReordering || stepOrder.length === 0 || stepOrder.length !== baseSteps.length) {
-      return baseSteps;
-    }
-    // Create a map of step ID to step object
-    const stepMap = new Map(baseSteps.map(s => [s.id, s]));
-    // Reorder according to stepOrder
-    return stepOrder.map(id => stepMap.get(id)).filter((s): s is NonNullable<typeof s> => s !== undefined);
-  }, [isReordering, stepOrder, baseSteps]);
+  // Early return if no calculation data
+  if (!calculation) {
+    return (
+      <div className="calculation-detail-panel">
+        <div className="panel-placeholder">
+          <span className="panel-icon">📊</span>
+          <h3>No Calculation Selected</h3>
+          <p>Select a calculation to view its details.</p>
+        </div>
+      </div>
+    );
+  }
   
   // INSTRUMENTATION: Log steps to verify order matches calculation.yaml
   console.log('[CalculationDetailPanel] displaySteps', {
@@ -555,37 +576,28 @@ export function CalculationDetailPanel({
       idLength: s.id?.length ?? 0,
     })),
   });
-  
-  // Early return if no calculation data
-  if (!calculation) {
-    return (
-      <div className="calculation-detail-panel">
-        <div className="panel-placeholder">
-          <span className="panel-icon">📊</span>
-          <h3>No Calculation Selected</h3>
-          <p>Select a calculation to view its details.</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="calculation-detail-panel" data-testid="qv-calculation-detail">
       <div className="panel-header">
-        <h2 className="panel-title">
-          <span className="panel-icon">📊</span>
-          {calculation.name}
-        </h2>
+        <div className="qv-calc-header-title-group">
+          <h2 className="panel-title">
+            <span className="panel-icon">📊</span>
+            {calculation.name}
+          </h2>
+          <div className="qv-calc-header-subtitle">Calculation</div>
+        </div>
         <div className="panel-header-actions">
           {onRunCalculation && (
             <button 
-              className="panel-header-btn panel-header-btn--primary"
+              className="qv-button qv-button--primary qv-button--large"
               onClick={() => onRunCalculation(calculation)}
               disabled={isReordering || isSaving}
               title="Run all steps in this calculation"
               data-testid="qv-btn-run-calculation"
             >
-              ▶️ Run Calculation
+              <span className="qv-button-icon-left">▶️</span>
+              <span>Run Calculation</span>
             </button>
           )}
           {onClose && (
@@ -651,54 +663,57 @@ export function CalculationDetailPanel({
         <div className="detail-section">
           <div className="section-header-row">
             <h3>Calculation Steps</h3>
-            <div className="section-actions">
-              {!isReordering ? (
-                <>
-                  <button 
-                    className="section-action-btn section-action-btn--add"
-                    onClick={handleShowAddStep}
-                    title="Add a new step to this calculation"
-                    data-testid="qv-add-step-btn"
-                  >
-                    ➕ Add Step
-                  </button>
-                  <button 
-                    className="section-action-btn"
-                    onClick={handleImportStep}
-                    disabled={isImportingStep}
-                    title="Import QE input file as step (preserves original parameters)"
-                    data-testid="qv-import-step-btn"
-                  >
-                    {isImportingStep ? 'Importing...' : '📥 Import QE Input'}
-                  </button>
-                  <button 
-                    className="section-action-btn"
-                    onClick={handleStartReorder}
-                    disabled={calculation.n_steps < 2}
-                    title="Reorder steps"
-                  >
-                    ↕️ Reorder
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button 
-                    className="section-action-btn section-action-btn--secondary"
-                    onClick={handleCancelReorder}
-                    disabled={isSaving}
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    className="section-action-btn section-action-btn--primary"
-                    onClick={handleSaveReorder}
-                    disabled={isSaving}
-                  >
-                    {isSaving ? 'Saving...' : 'Save Order'}
-                  </button>
-                </>
-              )}
-            </div>
+            {/* Hide large buttons in focus mode (they're shown in compact step list) */}
+            {!isFocusMode && (
+              <div className="section-actions">
+                {!isReordering ? (
+                  <>
+                    <button 
+                      className="section-action-btn section-action-btn--add"
+                      onClick={handleShowAddStep}
+                      title="Add a new step to this calculation"
+                      data-testid="qv-add-step-btn"
+                    >
+                      ➕ Add Step
+                    </button>
+                    <button 
+                      className="section-action-btn"
+                      onClick={handleImportStep}
+                      disabled={isImportingStep}
+                      title="Import QE input file as step (preserves original parameters)"
+                      data-testid="qv-import-step-btn"
+                    >
+                      {isImportingStep ? 'Importing...' : '📥 Import QE Input'}
+                    </button>
+                    <button 
+                      className="section-action-btn"
+                      onClick={handleStartReorder}
+                      disabled={calculation.n_steps < 2}
+                      title="Reorder steps"
+                    >
+                      ↕️ Reorder
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button 
+                      className="section-action-btn section-action-btn--secondary"
+                      onClick={handleCancelReorder}
+                      disabled={isSaving}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      className="section-action-btn section-action-btn--primary"
+                      onClick={handleSaveReorder}
+                      disabled={isSaving}
+                    >
+                      {isSaving ? 'Saving...' : 'Save Order'}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
           </div>
           
           {/* Add Step Form - positioned right after the Add Step button for better UX */}
@@ -857,34 +872,26 @@ export function CalculationDetailPanel({
               </div>
             ))}
           </div>
-        </div>
-        
-        <div className="detail-section">
-          <h3>File Location</h3>
-          <div className="file-location">
-            <code className="file-location__path" title={calculation.absolute_path}>
-              {calculation.absolute_path}
-            </code>
-            <button 
-              className="file-location__reveal-btn"
-              onClick={() => window.qv?.revealPath?.(calculation.absolute_path)}
-              title="Reveal in Finder"
-            >
-              📂 Reveal
-            </button>
-          </div>
-        </div>
-        
-        <div className="detail-actions">
-          {onGoToJobs && (
-            <button 
-              className="action-button action-button--secondary"
-              onClick={onGoToJobs}
-            >
-              📋 View Jobs
-            </button>
-          )}
-        </div>
+            </div>
+            
+            {/* Hide reveal button in focus mode (it's shown in StepDetailPanel footer) */}
+            {!isFocusMode && (
+              <div className="detail-section">
+                <h3>File Location</h3>
+                <div className="file-location">
+                  <code className="file-location__path" title={calculation.absolute_path}>
+                    {calculation.absolute_path}
+                  </code>
+                  <button 
+                    className="file-location__reveal-btn"
+                    onClick={() => window.qv?.revealPath?.(calculation.absolute_path)}
+                    title="Reveal in Finder"
+                  >
+                    📂 Reveal
+                  </button>
+                </div>
+              </div>
+            )}
       </div>
     </div>
   );
