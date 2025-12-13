@@ -710,8 +710,22 @@ function App() {
               response.error.message || 
               'Registry is out of sync. Click "Refresh" in the Workflows panel to rebuild the project registry.'
             );
+          } else if (response.error?.code === 'resource_not_found' && response.error?.kind === 'workflow') {
+            // Workflow not found - this can happen right after creation if registry hasn't synced yet
+            // Don't show error immediately, wait a bit and retry
+            console.warn('[App] Workflow not found, will retry after delay', { workflowSlug: workflow.slug });
+            setTimeout(async () => {
+              // Retry once after a short delay
+              const retryResponse = await qv.call('get_workflow_detail', {
+                project_root: normalizedRoot,
+                workflow: workflow.slug ?? workflow.id,
+              });
+              if (retryResponse.ok && retryResponse.data) {
+                setSelectedWorkflowDetail(retryResponse.data as WorkflowDetailResult);
+              }
+            }, 500);
           }
-          setSelectedWorkflowDetail(null);
+          // Don't set detail to null immediately - keep summary visible while retrying
         }
       } catch (err) {
         console.error('[App] get_workflow_detail exception', err);
@@ -738,19 +752,50 @@ function App() {
     // 3. No structure is currently selected
     // 4. We haven't auto-selected yet (one-time per mount)
     if (currentView === 'structures' && structures && structures.length > 0 && !selectedStructure && !didAutoSelectStructureRef.current) {
-      setSelectedStructure(structures[0]);
+      // Use the structure from the list to ensure ID consistency
+      const firstStructure = structures[0];
+      setSelectedStructure(firstStructure);
       didAutoSelectStructureRef.current = true;
     }
     
     // If selected structure disappeared from list, fall back to first element
-    if (selectedStructure && structures && !structures.find(s => s.id === selectedStructure.id)) {
-      if (structures.length > 0) {
-        setSelectedStructure(structures[0]);
-      } else {
-        setSelectedStructure(null);
+    // Also sync selectedStructure with list if ID matches but object reference differs
+    if (selectedStructure && structures) {
+      const foundInList = structures.find(s => s.id === selectedStructure.id);
+      if (!foundInList) {
+        // Structure disappeared, fall back to first
+        if (structures.length > 0) {
+          setSelectedStructure(structures[0]);
+        } else {
+          setSelectedStructure(null);
+        }
+      } else if (foundInList !== selectedStructure) {
+        // Structure exists but object reference differs - sync to ensure consistency
+        setSelectedStructure(foundInList);
       }
     }
   }, [currentView, structures, selectedStructure]);
+  
+  // Load 3D view when selectedStructure changes in structures view
+  // This ensures 3D view loads for both auto-selected and manually selected structures
+  useEffect(() => {
+    if (currentView === 'structures' && selectedStructure && projectRoot && qv) {
+      // Check if we already have data for this structure ID
+      // Compare by ID to avoid unnecessary reloads
+      const currentStructureId = structureVisData?.structure_id;
+      const needsLoad = !currentStructureId || currentStructureId !== selectedStructure.id;
+      
+      if (needsLoad) {
+        // Load 3D view data - this will update structureVisData when complete
+        loadStructureVis(selectedStructure, currentSupercell, currentRepeatBoundary).catch(err => {
+          console.error('[App] Failed to load structure 3D view', err);
+        });
+      }
+    } else if (currentView !== 'structures' && structureVisData) {
+      // Clear 3D data when leaving structures view
+      setStructureVisData(null);
+    }
+  }, [currentView, selectedStructure?.id, projectRoot, qv, structureVisData?.structure_id, currentSupercell, currentRepeatBoundary, loadStructureVis]);
   
   // Auto-select first workflow when entering workflows view (mirror JobsPanel pattern)
   useEffect(() => {
@@ -780,30 +825,32 @@ function App() {
   
   const handleCreateWorkflowSuccess = useCallback(async (workflowId: string) => {
     // Refresh workflows list and summary
-    const workflowsList = await fetchWorkflows();
     await refreshSummary();
+    const workflowsList = await fetchWorkflows();
     
-    // CRITICAL: fetchWorkflows now returns the workflows list directly, so we can use it immediately
+    // CRITICAL: Wait for workflows list to update before selecting
     // Find the newly created workflow by ID from the fresh list
-    const newWf = workflowsList?.find(w => w.id === workflowId);
-      if (newWf) {
-      // Select the workflow immediately - this will trigger get_workflow_detail
-        handleSelectWorkflow(newWf);
-    } else {
-      // If not found in the fresh list, the workflow might not be in the registry yet
-      // Try to select by ID directly (backend should handle this)
-      console.warn('[App] Created workflow not found in fresh list, trying direct selection', { workflowId });
-      // Fallback: try to find it in the state after a short delay (in case state update is pending)
-      setTimeout(() => {
-        const retryWf = workflows?.find(w => w.id === workflowId);
-        if (retryWf) {
-          handleSelectWorkflow(retryWf);
-        } else {
-          console.error('[App] Created workflow not found after refresh', { workflowId });
-        }
-      }, 200);
+    let newWf = workflowsList?.find(w => w.id === workflowId);
+    
+    // If not found immediately, wait a bit for registry to update (max 3 retries)
+    if (!newWf) {
+      for (let i = 0; i < 3; i++) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        const retryList = await fetchWorkflows();
+        newWf = retryList?.find(w => w.id === workflowId);
+        if (newWf) break;
+      }
     }
-  }, [fetchWorkflows, refreshSummary, workflows, handleSelectWorkflow]);
+    
+    if (newWf) {
+      // Select the workflow - this will trigger get_workflow_detail
+      // The workflow is now in the list, so get_workflow_detail should succeed
+      handleSelectWorkflow(newWf);
+    } else {
+      console.error('[App] Created workflow not found after refresh', { workflowId });
+      // Don't show error - workflow might still be syncing, user can manually select it
+    }
+  }, [fetchWorkflows, refreshSummary, handleSelectWorkflow]);
   
   const handleRunWorkflow = useCallback(async (workflow: WorkflowInfo) => {
     // Perform preflight checks first
