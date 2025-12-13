@@ -137,11 +137,9 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-}
-
-.calculations-view__list > * {
-  flex: 1;
-  overflow: hidden;
+  /* No min-width constraint - width is controlled by ResizablePane */
+  flex: 0 0 auto; /* Don't grow or shrink, use ResizablePane width */
+  min-width: 0; /* Allow to shrink if needed */
 }
 
 .calculations-view__detail {
@@ -149,24 +147,65 @@
   min-width: var(--panel-min-width);
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  overflow-y: auto;
+  overflow: hidden;
 }
 
-/* When showing both calculation and step detail with resizable separation */
-.calculation-detail-resizable {
-  overflow-y: auto;
-}
-
-.calculation-detail-resizable .calculation-detail-panel {
-  height: 100%;
-  overflow-y: auto;
-}
-
-.calculations-view__detail .step-detail-panel {
+.calculations-view__step-detail {
   flex: 1;
-  min-height: 200px;
-  overflow-y: auto;
+  min-width: var(--panel-min-width);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Calculations Workspace (right 3/4 area with top-level tabs) */
+.calculations-view__workspace {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.calculations-workspace-tabs {
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+}
+
+.calculations-workspace-tab {
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.calculations-workspace-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.calculations-workspace-tab--active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  background: var(--bg-card);
+}
+
+.calculations-workspace-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 /* Fix list container heights */

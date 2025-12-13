@@ -1,0 +1,315 @@
+/* CalculationRunTab Styles */
+
+/* Status Badge (reused from JobsPanel pattern) */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-badge--small {
+  padding: 2px var(--space-2);
+  font-size: 10px;
+}
+
+.status-badge--pending {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.status-badge--running {
+  background: var(--color-primary-alpha);
+  color: var(--color-primary-light);
+}
+
+.status-badge--completed {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.status-badge--failed {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+.status-badge--cancelled {
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+}
+
+.calculation-run-tab {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.calculation-run-tab--loading,
+.calculation-run-tab--empty,
+.calculation-run-tab--error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.calculation-run-tab__empty-content {
+  max-width: 400px;
+}
+
+.calculation-run-tab__empty-icon {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: var(--space-4);
+}
+
+.calculation-run-tab__hint {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-top: var(--space-2);
+}
+
+.calculation-run-tab__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+}
+
+.calculation-run-tab__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.calculation-run-tab__title h3 {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.calculation-run-tab__job-id {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+
+.calculation-run-tab__refresh {
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: var(--text-base);
+  transition: color var(--transition-fast);
+}
+
+.calculation-run-tab__refresh:hover {
+  color: var(--text-primary);
+}
+
+.calculation-run-tab__content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4);
+}
+
+.calculation-run-tab__section {
+  margin-bottom: var(--space-4);
+}
+
+.calculation-run-tab__section h4 {
+  margin: 0 0 var(--space-2) 0;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.calculation-run-tab__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2);
+}
+
+.calculation-run-tab__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.calculation-run-tab__label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.calculation-run-tab__value {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+
+.calculation-run-tab__steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.calculation-run-tab__step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+}
+
+.calculation-run-tab__step--running {
+  border-color: var(--color-primary);
+  background: var(--bg-secondary);
+}
+
+.calculation-run-tab__step--completed {
+  border-color: var(--color-success);
+}
+
+.calculation-run-tab__step--failed {
+  border-color: var(--color-error);
+}
+
+.calculation-run-tab__step-icon {
+  font-size: var(--text-base);
+}
+
+.calculation-run-tab__step-type {
+  flex: 1;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+}
+
+.calculation-run-tab__step-status {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+
+.calculation-run-tab__path {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.calculation-run-tab__path code {
+  flex: 1;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calculation-run-tab__section--error {
+  background: var(--bg-error);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+}
+
+.calculation-run-tab__error {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-error);
+  white-space: pre-wrap;
+}
+
+.calculation-run-tab__section--logs {
+  display: flex;
+  flex-direction: column;
+  min-height: 300px;
+}
+
+.calculation-run-tab__logs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+
+.calculation-run-tab__logs-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.calculation-run-tab__logs {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  min-height: 200px;
+}
+
+.calculation-run-tab__log-line {
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.calculation-run-tab__logs-empty {
+  padding: var(--space-4);
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.calculation-run-tab__hint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-4);
+}
+
+.calculation-run-tab__actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.calculation-run-tab__cancel {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-error);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-error);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.calculation-run-tab__cancel:hover {
+  background: var(--color-error);
+  color: var(--text-on-primary);
+}
+

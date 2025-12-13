@@ -1,0 +1,284 @@
+/* CalculationRunPanel Styles */
+
+.calculation-run-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.calculation-run-panel--loading,
+.calculation-run-panel--empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.calculation-run-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+}
+
+.calculation-run-panel__header h3 {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.calculation-run-panel__error {
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-error);
+  color: var(--text-on-primary);
+  font-size: var(--text-xs);
+}
+
+.calculation-run-panel__content {
+  flex: 1;
+  display: flex;
+  gap: var(--space-4);
+  overflow: hidden;
+  padding: var(--space-4);
+}
+
+.calculation-run-panel__job-list {
+  flex: 0 0 280px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.calculation-run-panel__empty {
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.calculation-run-panel__hint {
+  font-size: var(--text-xs);
+  margin-top: var(--space-2);
+}
+
+.calculation-run-panel__job-item {
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.calculation-run-panel__job-item:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+}
+
+.calculation-run-panel__job-item--selected {
+  background: var(--bg-secondary);
+  border-color: var(--color-primary);
+}
+
+.calculation-run-panel__job-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+
+.calculation-run-panel__job-id {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.calculation-run-panel__job-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.calculation-run-panel__job-type {
+  font-weight: var(--font-medium);
+}
+
+.calculation-job-detail {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+}
+
+.calculation-job-detail__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+}
+
+.calculation-job-detail__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.calculation-job-detail__content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4);
+}
+
+.calculation-job-detail__section {
+  margin-bottom: var(--space-4);
+}
+
+.calculation-job-detail__section h4 {
+  margin: 0 0 var(--space-2) 0;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.calculation-job-detail__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2);
+}
+
+.calculation-job-detail__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.calculation-job-detail__label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.calculation-job-detail__value {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+
+.calculation-job-detail__path {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.calculation-job-detail__path code {
+  flex: 1;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calculation-job-detail__section--error {
+  background: var(--bg-error);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+}
+
+.calculation-job-detail__error {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-error);
+  white-space: pre-wrap;
+}
+
+.calculation-job-detail__section--logs {
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
+}
+
+.calculation-job-detail__logs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+
+.calculation-job-detail__logs-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.calculation-job-detail__logs {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+.calculation-job-detail__log-line {
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.calculation-job-detail__logs-empty {
+  padding: var(--space-4);
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.calculation-job-detail__actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.calculation-job-detail__cancel {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-error);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-error);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.calculation-job-detail__cancel:hover {
+  background: var(--color-error);
+  color: var(--text-on-primary);
+}
+
+.refresh-btn {
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: var(--text-base);
+  transition: color var(--transition-fast);
+}
+
+.refresh-btn:hover {
+  color: var(--text-primary);
+}
+

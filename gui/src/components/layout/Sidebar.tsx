@@ -15,7 +15,7 @@ import type { QVClient } from '../../hooks/useQVClient';
 import type { DaemonStatus, JobCounts } from '../../types/qv';
 import './Sidebar.css';
 
-export type ViewType = 'home' | 'structures' | 'calculations' | 'jobs' | 'analysis' | 'resources' | 'settings';
+export type ViewType = 'home' | 'structures' | 'calculations' | 'jobs' | 'resources' | 'settings';
 
 interface SidebarProps {
   qv: QVClient;
@@ -52,6 +52,8 @@ export function Sidebar({
   const activeJobsCount = runningCount + pendingCount;
   
   // Collapsed state (persisted in localStorage)
+  // collapsed: narrow icon-only strip (~64px), main content expands to fill remaining width
+  // expanded: fixed narrow width (~230px) with icons + labels, Project Root truncated if needed
   const [isCollapsed, setIsCollapsed] = useState(() => {
     try {
       return localStorage.getItem('qv-sidebar-collapsed') === 'true';
@@ -248,16 +250,6 @@ export function Sidebar({
                 {activeJobsCount}
               </span>
             )}
-          </button>
-          <button
-            className={`sidebar__tab ${currentView === 'analysis' ? 'active' : ''}`}
-            onClick={() => onViewChange('analysis')}
-            disabled={!projectLoaded}
-            title={projectLoaded ? 'Analyze SCF convergence, DOS, and band structures' : 'Load a project first'}
-            data-testid="qv-nav-analysis"
-          >
-            <span className="sidebar__tab-icon">📈</span>
-            {!isCollapsed && 'Analysis'}
           </button>
           <button
             className={`sidebar__tab ${currentView === 'resources' ? 'active' : ''}`}

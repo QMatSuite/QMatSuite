@@ -11,12 +11,14 @@ All functions:
 
 from __future__ import annotations
 
+import dataclasses
 import shutil
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Sequence, Tuple, TYPE_CHECKING
 
+import numpy as np
 import yaml
 
 from quantumvitas.core.resources import (
@@ -71,6 +73,60 @@ from quantumvitas.core.project_utils import (
 if TYPE_CHECKING:
     from quantumvitas.calculation.structure_steps import StructureStepSpec
     from quantumvitas.core.resolution import ResourceIndex
+
+
+# =============================================================================
+# JSON Serialization Helper
+# =============================================================================
+
+def to_jsonable(x: Any) -> Any:
+    """
+    Recursively convert objects to JSON-serializable types.
+    
+    Converts:
+    - np.ndarray → list
+    - np.integer → int
+    - np.floating → float
+    - Path → str
+    - dataclasses → dict (then recursively convert)
+    - dict/list/tuple → recursively convert values
+    
+    This is the single source of truth for JSON conversion at API boundaries.
+    
+    Args:
+        x: Any object to convert
+        
+    Returns:
+        JSON-serializable equivalent
+    """
+    # Handle numpy arrays
+    if isinstance(x, np.ndarray):
+        return x.tolist()
+    
+    # Handle numpy scalars
+    if isinstance(x, (np.integer,)):
+        return int(x)
+    if isinstance(x, (np.floating,)):
+        return float(x)
+    
+    # Handle Path objects
+    if isinstance(x, Path):
+        return str(x)
+    
+    # Handle dataclasses
+    if dataclasses.is_dataclass(x) and not isinstance(x, type):
+        return to_jsonable(dataclasses.asdict(x))
+    
+    # Handle dicts
+    if isinstance(x, dict):
+        return {k: to_jsonable(v) for k, v in x.items()}
+    
+    # Handle lists and tuples
+    if isinstance(x, (list, tuple)):
+        return [to_jsonable(v) for v in x]
+    
+    # Return primitives unchanged
+    return x
 
 
 class QVServiceError(Exception):
@@ -1807,6 +1863,8 @@ class QVService:
         selector: str,
         supercell: Tuple[int, int, int] = (1, 1, 1),
         repeat_boundary: bool = False,
+        display_mode: str = "primitive",
+        box_bounds: Optional[Tuple[float, float, float, float, float, float]] = None,
     ) -> Dict[str, Any]:
         """
         Get pure visualization data for a structure (no matplotlib).
@@ -1820,20 +1878,27 @@ class QVService:
         Args:
             project_root: Project root path
             selector: Structure selector (name/slug/path)
-            supercell: Tuple of (a, b, c) supercell scaling factors
+            supercell: Tuple of (a, b, c) supercell scaling factors (for supercell mode)
             repeat_boundary: If True, include periodic images at boundaries
+            display_mode: One of "primitive", "supercell", "conventional", "box"
+            box_bounds: For box mode: (xmin, xmax, ymin, ymax, zmin, zmax)
             
         Returns:
             Dict with all visualization data (JSON-serializable)
         """
         from quantumvitas.io import read_structure
         from quantumvitas.analysis.structure_viz import (
-            detect_bonds,
-            generate_boundary_atoms,
+            build_bonds,
+            build_display_atoms,
+            DisplayModeParams,
             get_element_color,
             get_element_radius,
             ELEMENT_COLORS,
         )
+        import numpy as np
+        import logging
+        
+        logger = logging.getLogger(__name__)
         
         project_root = Path(project_root).resolve()
         
@@ -1843,56 +1908,113 @@ class QVService:
             raise QVServiceError(f"Structure file not found: {resolved.absolute_path}")
         
         # Load structure
-        structure = read_structure(resolved.absolute_path)
+        original_structure = read_structure(resolved.absolute_path)
         
-        # Apply supercell if needed
-        if supercell != (1, 1, 1):
-            structure = structure.copy()
-            structure.make_supercell(supercell)
+        # Normalize supercell input
+        from quantumvitas.analysis.structure_viz import _normalize_supercell
+        supercell_normalized = _normalize_supercell(supercell)
         
-        # Get lattice info
-        lattice = structure.lattice
-        lattice_matrix = lattice.matrix.tolist()
+        # Determine effective display mode and supercell
+        # If supercell != (1,1,1) and mode is primitive, apply supercell expansion
+        # (backward compatibility: supercell parameter should always expand structure)
+        effective_mode = display_mode
+        effective_supercell = None
+        if display_mode == "supercell":
+            effective_supercell = supercell_normalized
+        elif display_mode != "box" and supercell_normalized != (1, 1, 1):
+            # Apply supercell expansion for primitive/conventional modes when supercell is specified
+            effective_supercell = supercell_normalized
+            # If mode was primitive and supercell is specified, treat as supercell mode
+            if display_mode == "primitive":
+                effective_mode = "supercell"
         
-        # Collect atoms
+        # For box mode, ALWAYS ignore repeat_boundary from client (enforce False)
+        # This is the single source of truth: Box mode is non-periodic
+        if effective_mode == "box":
+            effective_repeat_boundary = False
+            if repeat_boundary:
+                logger.debug(
+                    f"Box mode: ignoring client boundaryRepeat={repeat_boundary}, "
+                    f"enforcing False (non-periodic)"
+                )
+        else:
+            effective_repeat_boundary = repeat_boundary
+        
+        # Build display mode params
+        params = DisplayModeParams(
+            mode=effective_mode,
+            supercell=effective_supercell,
+            box_bounds=box_bounds if effective_mode == "box" else None,
+            repeat_boundary=effective_repeat_boundary,
+        )
+        
+        # Debug logging (dev mode)
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(
+                f"get_structure_vis_data: mode={display_mode}, "
+                f"client_repeat_boundary={repeat_boundary}, "
+                f"effective_repeat_boundary={effective_repeat_boundary}, "
+                f"box_bounds={box_bounds}"
+            )
+        
+        # Build display atoms using unified function
+        display_atoms_list, display_structure = build_display_atoms(
+            original_structure,
+            params,
+            wrap_coords=True,  # Always wrap coordinates
+        )
+        
+        # Get lattice info from display structure
+        lattice = display_structure.lattice
+        # Note: lattice_matrix will be set later for bond building, then converted to JSON
+        
+        # Convert DisplayAtom objects to dict format
         atoms = []
-        for i, site in enumerate(structure):
-            symbol = site.specie.symbol
-            atoms.append({
-                "index": i,
-                "element": symbol,
-                "cart_coords": [float(c) for c in site.coords],
-                "frac_coords": [float(f) for f in site.frac_coords],
-                "color": get_element_color(symbol),
-                "radius": get_element_radius(symbol),
-            })
-        
-        # Generate boundary atoms if requested
         boundary_atoms = []
-        if repeat_boundary:
-            try:
-                boundary_atom_list = generate_boundary_atoms(structure)
-                for boundary_atom in boundary_atom_list:
-                    frac = lattice.get_fractional_coords(boundary_atom.coords)
-                    boundary_atoms.append({
-                        "element": boundary_atom.symbol,
-                        "cart_coords": [float(c) for c in boundary_atom.coords],
-                        "frac_coords": [float(f) for f in frac],
-                        "color": get_element_color(boundary_atom.symbol),
-                        "radius": get_element_radius(boundary_atom.symbol),
-                        "is_boundary": True,
-                    })
-            except Exception:
-                pass  # Boundary atoms are optional
+        for da in display_atoms_list:
+            atom_dict = {
+                "index": da.original_idx,
+                "element": da.element,
+                "cart_coords": [float(c) for c in da.cart_coords],
+                "frac_coords": [float(f) for f in da.frac_coords],
+                "color": get_element_color(da.element),
+                "radius": get_element_radius(da.element),
+            }
+            if "boundary" in da.stable_id:
+                atom_dict["is_boundary"] = True
+                boundary_atoms.append(atom_dict)
+            else:
+                atoms.append(atom_dict)
         
-        # Detect bonds
+        # Build bonds using single-source-of-truth function
+        # IMPORTANT: For box mode, bonds are computed non-periodically (no PBC)
+        # For other modes, use PBC-aware minimum-image convention
         bonds = []
         try:
-            detected_bonds = detect_bonds(
-                structure,
+            # Extract atoms and species for bond building
+            atoms_cart = np.array([da.cart_coords for da in display_atoms_list])
+            species = [da.element for da in display_atoms_list]
+            
+            # Build radii map
+            radii_map = {sym: get_element_radius(sym) for sym in set(species)}
+            
+            # Get lattice matrix for PBC-aware bond detection (except box mode)
+            # Note: This is used for bond building only; for JSON output we use lattice.matrix
+            lattice_matrix_for_bonds = None
+            if display_mode != "box":
+                lattice_matrix_for_bonds = display_structure.lattice.matrix
+            
+            # Use single-source-of-truth bond function
+            detected_bonds = build_bonds(
+                atoms_cart,
+                species,
+                radii_map,
+                max_factor=1.2,
                 tolerance=0.3,
-                include_periodic_images=repeat_boundary,
+                max_cutoff=3.5,
+                lattice_matrix=lattice_matrix_for_bonds,  # PBC-aware for periodic modes
             )
+            
             for bond in detected_bonds:
                 bonds.append({
                     "idx1": int(bond.idx1),
@@ -1901,32 +2023,47 @@ class QVService:
                     "coord2": [float(c) for c in bond.coord2],
                     "distance": float(bond.distance),
                 })
-        except Exception:
+            
+            # Debug logging
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug(
+                    f"Bond building: mode={display_mode}, "
+                    f"n_atoms={len(display_atoms_list)}, "
+                    f"n_bonds={len(bonds)}"
+                )
+        except Exception as e:
+            logger.warning(f"Failed to build bonds: {e}")
             pass  # Bonds are optional
         
-        return {
+        # Build result dict (may contain numpy arrays and other non-JSON types)
+        result = {
             "structure_id": resolved.meta.id,
             "structure_name": resolved.meta.name,
-            "formula": structure.composition.reduced_formula,
-            "n_atoms": len(structure),
+            "formula": original_structure.composition.reduced_formula,
+            "n_atoms": len(atoms),
             "n_boundary_atoms": len(boundary_atoms),
             "n_bonds": len(bonds),
-            "supercell": list(supercell),
+            "supercell": list(supercell_normalized),
+            "display_mode": effective_mode,
             "lattice": {
-                "matrix": lattice_matrix,
-                "a": float(lattice.a),
-                "b": float(lattice.b),
-                "c": float(lattice.c),
-                "alpha": float(lattice.alpha),
-                "beta": float(lattice.beta),
-                "gamma": float(lattice.gamma),
-                "volume": float(lattice.volume),
+                "matrix": lattice.matrix,  # Will be converted to list by to_jsonable
+                "a": lattice.a,
+                "b": lattice.b,
+                "c": lattice.c,
+                "alpha": lattice.alpha,
+                "beta": lattice.beta,
+                "gamma": lattice.gamma,
+                "volume": lattice.volume,
             },
             "atoms": atoms,
             "boundary_atoms": boundary_atoms,
             "bonds": bonds,
             "element_colors": ELEMENT_COLORS,
         }
+        
+        # Convert entire result to JSON-serializable types at API boundary
+        # This is the single source of truth for JSON conversion
+        return to_jsonable(result)
     
     @staticmethod
     def ensure_calculation_analysis(
