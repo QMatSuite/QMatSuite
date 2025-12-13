@@ -94,6 +94,10 @@ function App() {
   const [selectedWorkflowDetail, setSelectedWorkflowDetail] = useState<WorkflowDetailResult | null>(null);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   
+  // Auto-select refs for Structures and Workflows (mirror JobsPanel pattern)
+  const didAutoSelectStructureRef = useRef(false);
+  const didAutoSelectWorkflowRef = useRef(false);
+  
   // Legacy alias for backwards compatibility (will be removed)
   const selectedWorkflow = selectedWorkflowDetail || selectedWorkflowSummary;
   const [structureVisData, setStructureVisData] = useState<StructureVisData | null>(null);
@@ -123,6 +127,7 @@ function App() {
   const [isDeleting, setIsDeleting] = useState(false);
   
   // Job counts for sidebar badge (get from useJobs hook)
+  // Poll at slower rate since JobsPanel (when open) polls more frequently
   const { counts: jobCounts } = useJobs({ autoStart: true, pollInterval: 5000 });
   
   // Toast/notification state for job submissions
@@ -471,7 +476,10 @@ function App() {
     try {
       const response = await qv.listWorkflows(projectRoot);
       if (response.ok && response.data) {
-        setWorkflows(response.data.workflows);
+        const workflowsList = response.data.workflows;
+        setWorkflows(workflowsList);
+        // Return the workflows list so callers can use it immediately
+        return workflowsList;
       } else {
         // Check for registry_out_of_sync error
         if (response.error?.code === 'registry_out_of_sync') {
@@ -480,6 +488,7 @@ function App() {
             'Registry is out of sync. Click "Refresh" in the Workflows panel to rebuild the project registry.'
           );
         }
+        return null;
       }
     } finally {
       setIsLoadingWorkflows(false);
@@ -613,6 +622,8 @@ function App() {
   
   const handleSelectStructure = useCallback(async (structure: StructureInfo) => {
     setSelectedStructure(structure);
+    // Mark that user has manually selected (prevent auto-select override)
+    didAutoSelectStructureRef.current = true;
     setCurrentSupercell([1, 1, 1]);
     setCurrentRepeatBoundary(false);
     await loadStructureVis(structure, [1, 1, 1], false);
@@ -658,6 +669,8 @@ function App() {
     // CRITICAL: Clear detail and step selection when switching workflows
     // We will fetch the detail separately, which has the canonical steps array from workflow.yaml
     setSelectedWorkflowSummary(workflow);
+    // Mark that user has manually selected (prevent auto-select override)
+    didAutoSelectWorkflowRef.current = true;
     setSelectedWorkflowDetail(null);
     setSelectedStepId(null);
     
@@ -707,17 +720,88 @@ function App() {
     })();
   }, [projectRoot, qv]);
   
+  // Reset auto-select flags when switching views or project changes
+  useEffect(() => {
+    if (currentView !== 'structures') {
+      didAutoSelectStructureRef.current = false;
+    }
+    if (currentView !== 'workflows') {
+      didAutoSelectWorkflowRef.current = false;
+    }
+  }, [currentView]);
+  
+  // Auto-select first structure when entering structures view (mirror JobsPanel pattern)
+  useEffect(() => {
+    // Only auto-select if:
+    // 1. We're in structures view
+    // 2. Structures list is non-empty
+    // 3. No structure is currently selected
+    // 4. We haven't auto-selected yet (one-time per mount)
+    if (currentView === 'structures' && structures && structures.length > 0 && !selectedStructure && !didAutoSelectStructureRef.current) {
+      setSelectedStructure(structures[0]);
+      didAutoSelectStructureRef.current = true;
+    }
+    
+    // If selected structure disappeared from list, fall back to first element
+    if (selectedStructure && structures && !structures.find(s => s.id === selectedStructure.id)) {
+      if (structures.length > 0) {
+        setSelectedStructure(structures[0]);
+      } else {
+        setSelectedStructure(null);
+      }
+    }
+  }, [currentView, structures, selectedStructure]);
+  
+  // Auto-select first workflow when entering workflows view (mirror JobsPanel pattern)
+  useEffect(() => {
+    // Only auto-select if:
+    // 1. We're in workflows view
+    // 2. Workflows list is non-empty
+    // 3. No workflow is currently selected
+    // 4. We haven't auto-selected yet (one-time per mount)
+    if (currentView === 'workflows' && workflows && workflows.length > 0 && !selectedWorkflowSummary && !didAutoSelectWorkflowRef.current) {
+      const firstWorkflow = workflows[0];
+      didAutoSelectWorkflowRef.current = true;
+      // Use handleSelectWorkflow to set state and trigger detail fetch
+      handleSelectWorkflow(firstWorkflow);
+    }
+    
+    // If selected workflow disappeared from list, fall back to first element
+    if (selectedWorkflowSummary && workflows && !workflows.find(w => w.id === selectedWorkflowSummary.id)) {
+      if (workflows.length > 0) {
+        const firstWorkflow = workflows[0];
+        handleSelectWorkflow(firstWorkflow);
+      } else {
+        setSelectedWorkflowSummary(null);
+        setSelectedWorkflowDetail(null);
+      }
+    }
+  }, [currentView, workflows, selectedWorkflowSummary, handleSelectWorkflow]);
+  
   const handleCreateWorkflowSuccess = useCallback(async (workflowId: string) => {
     // Refresh workflows list and summary
-    await fetchWorkflows();
+    const workflowsList = await fetchWorkflows();
     await refreshSummary();
     
-    // Select the newly created workflow
-    if (workflows) {
-      const newWf = workflows.find(w => w.id === workflowId);
+    // CRITICAL: fetchWorkflows now returns the workflows list directly, so we can use it immediately
+    // Find the newly created workflow by ID from the fresh list
+    const newWf = workflowsList?.find(w => w.id === workflowId);
       if (newWf) {
+      // Select the workflow immediately - this will trigger get_workflow_detail
         handleSelectWorkflow(newWf);
-      }
+    } else {
+      // If not found in the fresh list, the workflow might not be in the registry yet
+      // Try to select by ID directly (backend should handle this)
+      console.warn('[App] Created workflow not found in fresh list, trying direct selection', { workflowId });
+      // Fallback: try to find it in the state after a short delay (in case state update is pending)
+      setTimeout(() => {
+        const retryWf = workflows?.find(w => w.id === workflowId);
+        if (retryWf) {
+          handleSelectWorkflow(retryWf);
+        } else {
+          console.error('[App] Created workflow not found after refresh', { workflowId });
+        }
+      }, 200);
     }
   }, [fetchWorkflows, refreshSummary, workflows, handleSelectWorkflow]);
   
