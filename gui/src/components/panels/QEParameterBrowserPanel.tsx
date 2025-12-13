@@ -71,7 +71,7 @@ export function QEParameterBrowserPanel() {
   const [globalSearchError, setGlobalSearchError] = useState<string | null>(null);
   const [isSearchPopoverOpen, setIsSearchPopoverOpen] = useState(false);
   const searchInputGroupRef = useRef<HTMLDivElement>(null);
-
+  
   // Sorting control
   type SortMode = 'original' | 'asc' | 'desc';
   const [moduleSort, setModuleSort] = useState<SortMode>('original');
@@ -120,7 +120,7 @@ export function QEParameterBrowserPanel() {
     startWidths: Record<ParamColumnKey, number>;
   } | null;
   const resizeStateRef = useRef<ColumnResizeState>(null);
-
+  
   // Ref to track pending parameter selection after navigation from global search
   
   // Click outside handler for Popover
@@ -167,7 +167,7 @@ export function QEParameterBrowserPanel() {
     const { autoLoadParameters = false, module: moduleOverride } = options;
     
     console.debug('[QEParamBrowser] handleSectionChange', { newSection, autoLoadParameters });
-    
+        
     // Use module from options, or fall back to current selectedModule from ref
     // This allows us to avoid selectedModule in the dependency array
     const moduleToUse = moduleOverride || selectedModuleRef.current;
@@ -206,9 +206,9 @@ export function QEParameterBrowserPanel() {
       if (!response.ok) {
         setParametersError(response.error?.message ?? 'Failed to load parameters');
         setParameters([]);
-        return;
-      }
-
+          return;
+        }
+        
       if (response.data?.parameters) {
         const params = response.data.parameters;
         setParameters(params);
@@ -224,17 +224,17 @@ export function QEParameterBrowserPanel() {
           console.debug('[QEParamBrowser] selecting pending parameter after load', { paramKey });
           setSelectedParamKey(paramKey);
           pendingParamKeyRef.current = null;
-        }
-      } else {
+          }
+        } else {
         setParametersError('No parameters data in response');
         setParameters([]);
-      }
+        }
     } catch (err: unknown) {
       setParametersError(normalizeError(err));
       setParameters([]);
-    } finally {
+      } finally {
       setParametersLoading(false);
-    }
+        }
   }, [qv]); // Only depend on qv, not selectedModule
 
   // Event-driven: handle module selection
@@ -249,7 +249,7 @@ export function QEParameterBrowserPanel() {
     console.debug('[QEParamBrowser] handleModuleChange', { newModule, autoSelectSection });
     
     setSelectedModule(newModule);
-    setSelectedSection(null);
+      setSelectedSection(null);
     setSections([]);
     setParameters([]);
     setSectionsError(null);
@@ -260,12 +260,12 @@ export function QEParameterBrowserPanel() {
     if (!newModule) {
       return;
     }
-
+    
     // Load sections when user selects module
     try {
       setSectionsLoading(true);
       setSectionsError(null);
-      
+    
       console.debug('[QEParamBrowser] list_qe_parameter_metadata', {
         operation: 'list_sections',
         module: newModule,
@@ -279,9 +279,9 @@ export function QEParameterBrowserPanel() {
       if (!response.ok) {
         setSectionsError(response.error?.message ?? 'Failed to load sections');
         setSections([]);
-        return;
-      }
-
+      return;
+    }
+    
       if (response.data?.sections) {
         const sectionList = response.data.sections;
         setSections(sectionList);
@@ -306,7 +306,7 @@ export function QEParameterBrowserPanel() {
       setSectionsLoading(false);
     }
   }, [qv, handleSectionChange]);
-
+        
   // Exactly one effect: load modules on mount
   useEffect(() => {
     console.debug('[QEParamBrowser] modules effect triggered');
@@ -333,7 +333,7 @@ export function QEParameterBrowserPanel() {
           setModules([]);
           return;
         }
-
+        
         const moduleList = response.data?.modules ?? [];
         setModules(moduleList);
         
@@ -343,7 +343,7 @@ export function QEParameterBrowserPanel() {
             pathAbs: response.data.metadata_path_abs ?? null,
             schemaVersion: response.data.schema_version ?? null,
           });
-        }
+          }
 
         // Auto-select first module ONCE if none is selected
         if (moduleList.length > 0) {
@@ -366,8 +366,8 @@ export function QEParameterBrowserPanel() {
       cancelled = true;
     };
   }, [qv, handleModuleChange]); // qv is stable; handleModuleChange is stable due to useCallback
-
-
+    
+  
   // Clear stale global results when searchTerm changes (user typing without new search)
   useEffect(() => {
     if (lastGlobalSearchTerm !== null && searchTerm !== lastGlobalSearchTerm) {
@@ -390,7 +390,7 @@ export function QEParameterBrowserPanel() {
       setGlobalSearchError(null);
       return;
     }
-
+    
     console.debug('[QEParamBrowser] handleGlobalSearch', { query });
     setIsGlobalSearching(true);
     setGlobalSearchError(null);
@@ -428,7 +428,7 @@ export function QEParameterBrowserPanel() {
       setIsGlobalSearching(false);
     }
   }, [qv, searchTerm]);
-
+    
   // Rank global search results: prioritize name matches over other field matches
   const rankedResults = useMemo(() => {
     if (!globalResults || globalResults.length === 0) return [];
@@ -511,7 +511,7 @@ export function QEParameterBrowserPanel() {
         paramKey,
         selectedModule: result.module,
         selectedSection: result.section,
-      });
+        });
     }
     
     // Set pending selection - it will be applied when parameters are loaded
@@ -551,8 +551,8 @@ export function QEParameterBrowserPanel() {
       if (!res.ok) {
         setModulesError(res.error?.message ?? 'Failed to load modules after reload');
         setModules([]);
-        return;
-      }
+          return;
+        }
       modulesToUse = res.data?.modules ?? [];
       
       // Update metadata info from response
@@ -568,7 +568,7 @@ export function QEParameterBrowserPanel() {
       setModules(modulesToUse);
       const first = modulesToUse[0];
       await handleModuleChange(first.id, { autoSelectSection: true });
-    } else {
+        } else {
       setModules([]);
     }
   }, [qv, handleModuleChange]);
@@ -588,7 +588,7 @@ export function QEParameterBrowserPanel() {
 
       if (!response.ok) {
         throw new Error(response.error?.message ?? 'Failed to reload QE metadata');
-      }
+        }
 
       // Update metadata info from reload response
       if (response.data) {
@@ -596,7 +596,7 @@ export function QEParameterBrowserPanel() {
           pathAbs: response.data.metadata_path_abs ?? null,
           schemaVersion: response.data.schema_version ?? null,
         });
-      }
+        }
 
       // After reload, refresh modules using our existing load logic
       if (response.data?.modules) {
@@ -611,7 +611,7 @@ export function QEParameterBrowserPanel() {
       setGlobalSearchError(
         err instanceof Error ? err.message : 'Failed to reload QE metadata'
       );
-    } finally {
+      } finally {
       setIsReloading(false);
     }
   }, [qv, loadModulesAfterReload]);
@@ -658,7 +658,7 @@ export function QEParameterBrowserPanel() {
         return sections;
     }
   }, [sections, sectionSort]);
-
+  
   // Debug logging for selection changes (development only)
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
@@ -771,7 +771,7 @@ export function QEParameterBrowserPanel() {
   const renderSortIndicator = useCallback((column: ParamSortState['column']) => {
     if (paramSort.column !== column || paramSort.direction === 'none') {
       return null;
-    }
+      }
     return (
       <span className="qv-sort-indicator">
         {paramSort.direction === 'asc' ? '▲' : '▼'}
@@ -872,14 +872,14 @@ export function QEParameterBrowserPanel() {
           const diff = min - right;
           right = min;
           left -= diff;
-        }
+      }
 
         const newWidths = {
           ...prev,
           [leftKey]: left,
           [rightKey]: right,
         };
-
+  
         // Normalize to sum to 100% (prevent drift)
         const sum = Object.values(newWidths).reduce((a, b) => a + b, 0);
         if (Math.abs(sum - 100) > 0.01) {
@@ -965,12 +965,12 @@ export function QEParameterBrowserPanel() {
   // Aggregate error for display
   const displayError = globalSearchError || parametersError || sectionsError || modulesError;
   // const isLoading = modulesLoading || sectionsLoading || parametersLoading || isGlobalSearching;
-
+  
   return (
     <div className="qe-parameter-browser">
       <div className="qe-parameter-browser__header">
         <div className="qe-parameter-browser__header-top">
-          <h2 className="qe-parameter-browser__title">QE Parameter Browser</h2>
+        <h2 className="qe-parameter-browser__title">QE Parameter Browser</h2>
           <button
             type="button"
             className="qv-param-reload-button"
@@ -983,8 +983,8 @@ export function QEParameterBrowserPanel() {
         </div>
         <div className="qe-parameter-browser__subtitle" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <p style={{ flex: 1, margin: 0 }}>
-            Browse Quantum ESPRESSO input parameters with rich metadata.
-          </p>
+          Browse Quantum ESPRESSO input parameters with rich metadata.
+        </p>
           {metadataInfo.pathAbs && (
             <span
               className="qe-parameter-browser__metadata-info"
@@ -1103,9 +1103,9 @@ export function QEParameterBrowserPanel() {
                     });
                   }
                   return (
-                    <option key={section.id} value={section.id}>
+                  <option key={section.id} value={section.id}>
                       {sectionLabel} ({section.kind})
-                    </option>
+                  </option>
                   );
                 })}
               </select>
@@ -1347,48 +1347,48 @@ export function QEParameterBrowserPanel() {
                           onClick={() => handleParamRowClick(rowKey)}
                         >
                           <td className="qv-param-cell qv-param-col-name">
-                            <strong>{param.name}</strong>
-                            {param.indexing && (
-                              <span className="qe-parameter-browser__array-badge">
-                                Array [{param.indexing.index_name} = {param.indexing.start || '?'}
-                                {param.indexing.end ? `…${param.indexing.end}` : ''}]
-                              </span>
-                            )}
-                          </td>
+                          <strong>{param.name}</strong>
+                          {param.indexing && (
+                            <span className="qe-parameter-browser__array-badge">
+                              Array [{param.indexing.index_name} = {param.indexing.start || '?'}
+                              {param.indexing.end ? `…${param.indexing.end}` : ''}]
+                            </span>
+                          )}
+                        </td>
                           <td className="qv-param-cell qv-param-col-type" title={param.type || 'UNKNOWN'}>
-                            <code>{param.type || 'UNKNOWN'}</code>
-                          </td>
+                          <code>{param.type || 'UNKNOWN'}</code>
+                        </td>
                           <td className="qv-param-cell qv-param-col-default" title={defaultText}>
-                            {param.default !== null && param.default !== undefined
-                              ? <code>{String(param.default)}</code>
-                              : <span className="qe-parameter-browser__param-empty">—</span>
-                            }
-                          </td>
+                          {param.default !== null && param.default !== undefined
+                            ? <code>{String(param.default)}</code>
+                            : <span className="qe-parameter-browser__param-empty">—</span>
+                          }
+                        </td>
                           <td className="qv-param-cell qv-param-col-enum" title={enumText}>
-                            {param.enum && param.enum.length > 0 ? (
-                              <div className="qe-parameter-browser__enum-values">
+                          {param.enum && param.enum.length > 0 ? (
+                            <div className="qe-parameter-browser__enum-values">
                                  {param.enum.slice(0, 3).map((val: string, j: number) => (
-                                  <span key={j} className="qe-parameter-browser__enum-tag">
-                                    {String(val)}
-                                  </span>
-                                ))}
-                                {param.enum.length > 3 && (
-                                  <span className="qe-parameter-browser__enum-more">
-                                    +{param.enum.length - 3} more
-                                  </span>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="qe-parameter-browser__param-empty">—</span>
-                            )}
-                          </td>
+                                <span key={j} className="qe-parameter-browser__enum-tag">
+                                  {String(val)}
+                                </span>
+                              ))}
+                              {param.enum.length > 3 && (
+                                <span className="qe-parameter-browser__enum-more">
+                                  +{param.enum.length - 3} more
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="qe-parameter-browser__param-empty">—</span>
+                          )}
+                        </td>
                           <td className="qv-param-cell qv-param-col-description" title={descriptionText}>
-                            {param.description
+                          {param.description
                               ? <span>{param.description}</span>
-                              : <span className="qe-parameter-browser__param-empty">—</span>
-                            }
-                          </td>
-                        </tr>
+                            : <span className="qe-parameter-browser__param-empty">—</span>
+                          }
+                        </td>
+                      </tr>
                       );
                     })}
                   </tbody>

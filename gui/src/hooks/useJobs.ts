@@ -56,15 +56,41 @@ export function useJobs(options: UseJobsOptions = {}): UseJobsResult {
   const [error, setError] = useState<string | null>(null);
   const [isPolling, setIsPolling] = useState(autoStart);
   
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  
+  // Refs for stable polling without dependencies on jobs state
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const jobsRef = useRef<JobSummary[]>([]);
+  const inFlightRef = useRef(false);
+  const isPollingRef = useRef(autoStart);
   const isInitialLoadRef = useRef(true);
   
-  const fetchJobs = useCallback(async (isPolling = false) => {
+  // Keep refs in sync with state
+  useEffect(() => {
+    jobsRef.current = jobs;
+  }, [jobs]);
+  
+  useEffect(() => {
+    isPollingRef.current = isPolling;
+  }, [isPolling]);
+  
+  const fetchJobs = useCallback(async (isPollingCall = false) => {
     if (!window.qv) return;
     
+    // Prevent re-entrant calls
+    if (inFlightRef.current) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[useJobs] poll skipped; inFlight=true');
+      }
+      return;
+    }
+    
+    inFlightRef.current = true;
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[useJobs] poll start');
+    }
+    
     // Only set loading state on initial load, not on polling updates
-    if (isInitialLoadRef.current || !isPolling) {
+    if (isInitialLoadRef.current || !isPollingCall) {
       setIsLoading(true);
     }
     setError(null);
@@ -108,6 +134,7 @@ export function useJobs(options: UseJobsOptions = {}): UseJobsResult {
       isInitialLoadRef.current = false;
     } finally {
       setIsLoading(false);
+      inFlightRef.current = false;
     }
   }, [projectRoot, status, limit]);
   
@@ -117,32 +144,102 @@ export function useJobs(options: UseJobsOptions = {}): UseJobsResult {
   
   const stopPolling = useCallback(() => {
     setIsPolling(false);
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
   }, []);
+  
+  // Store latest pollInterval in ref to avoid recreating scheduleNextPoll
+  const pollIntervalRef = useRef(pollInterval);
+  useEffect(() => {
+    pollIntervalRef.current = pollInterval;
+  }, [pollInterval]);
+  
+  // Store fetchJobs in ref so scheduleNextPoll can call it without dependency
+  const fetchJobsRef = useRef(fetchJobs);
+  useEffect(() => {
+    fetchJobsRef.current = fetchJobs;
+  }, [fetchJobs]);
+  
+  // Polling scheduler using chained setTimeout (not setInterval)
+  // This ensures the next poll is scheduled only after the current one completes
+  const scheduleNextPoll = useCallback(() => {
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    
+    // Don't schedule if polling is disabled
+    if (!isPollingRef.current) {
+      return;
+    }
+    
+    // Determine effective interval based on current jobs state (read from ref, not state)
+    const hasRunningJobs = jobsRef.current.some(j => j.status === 'running' || j.status === 'pending');
+    const currentPollInterval = pollIntervalRef.current;
+    const effectivePollInterval = hasRunningJobs ? Math.min(currentPollInterval, 2000) : currentPollInterval;
+    
+    // Ensure interval is valid (not 0, NaN, or negative)
+    const delay = Math.max(effectivePollInterval, 100);
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[useJobs] poll end; next in ${delay}ms; hasRunning=${hasRunningJobs}; inFlight=${inFlightRef.current}`);
+    }
+    
+    // Schedule next poll
+    timeoutRef.current = setTimeout(() => {
+      timeoutRef.current = null;
+      if (isPollingRef.current) {
+        fetchJobsRef.current(true).then(() => {
+          scheduleNextPoll();
+        }).catch(() => {
+          // On error, still schedule next poll
+          scheduleNextPoll();
+        });
+      }
+    }, delay);
+  }, []); // No dependencies - uses refs for all values
   
   // Initial fetch and polling setup
   useEffect(() => {
     // Reset initial load flag when projectRoot changes
     isInitialLoadRef.current = true;
     
-    // Initial fetch
-    fetchJobs(false);
-    
-    // Setup polling if enabled
-    if (isPolling) {
-      intervalRef.current = setInterval(() => fetchJobs(true), pollInterval);
+    // Clear any existing polling
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
     
+    // Initial fetch
+    fetchJobs(false).then(() => {
+      // Start polling after initial fetch completes
+      if (isPolling) {
+        scheduleNextPoll();
+      }
+    });
+    
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
       }
     };
-  }, [isPolling, pollInterval, fetchJobs, projectRoot]);
+  }, [isPolling, projectRoot, status, limit, fetchJobs, scheduleNextPoll]);
+  
+  // Handle polling state changes (when isPolling toggles)
+  useEffect(() => {
+    if (isPolling && !timeoutRef.current) {
+      // Polling was just enabled, start scheduling
+      scheduleNextPoll();
+    } else if (!isPolling && timeoutRef.current) {
+      // Polling was just disabled, stop scheduling
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, [isPolling, scheduleNextPoll]);
   
   return {
     jobs,

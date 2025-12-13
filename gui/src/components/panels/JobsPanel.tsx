@@ -432,7 +432,7 @@ export function JobsPanel({ projectRoot, onViewAnalysis }: JobsPanelProps) {
   const didAutoSelectRef = useRef(false);
   const { jobs, counts, isLoading, error, refresh, isPolling, startPolling, stopPolling } = useJobs({
     projectRoot,
-    pollInterval: 3000,
+    pollInterval: 3000, // Base interval; hook will use 2s when jobs are running
     autoStart: true,
     limit: 50,
   });
