@@ -15,7 +15,7 @@ import type { QVClient } from '../../hooks/useQVClient';
 import type { DaemonStatus, JobCounts } from '../../types/qv';
 import './Sidebar.css';
 
-export type ViewType = 'home' | 'structures' | 'workflows' | 'jobs' | 'analysis' | 'resources' | 'settings';
+export type ViewType = 'home' | 'structures' | 'calculations' | 'jobs' | 'analysis' | 'resources' | 'settings';
 
 interface SidebarProps {
   qv: QVClient;
@@ -226,14 +226,14 @@ export function Sidebar({
             {!isCollapsed && 'Structures'}
           </button>
           <button
-            className={`sidebar__tab ${currentView === 'workflows' ? 'active' : ''}`}
-            onClick={() => onViewChange('workflows')}
+            className={`sidebar__tab ${currentView === 'calculations' ? 'active' : ''}`}
+            onClick={() => onViewChange('calculations')}
             disabled={!projectLoaded}
-            title={projectLoaded ? 'Configure and run QE workflows' : 'Load a project first'}
-            data-testid="qv-nav-workflows"
+            title={projectLoaded ? 'Configure and run QE calculations' : 'Load a project first'}
+            data-testid="qv-nav-calculations"
           >
             <span className="sidebar__tab-icon">📊</span>
-            {!isCollapsed && 'Workflows'}
+            {!isCollapsed && 'Calculations'}
           </button>
           <button
             className={`sidebar__tab ${currentView === 'jobs' ? 'active' : ''}`}

@@ -16,7 +16,7 @@ from .qe_installation import QEInstallation
 from quantumvitas.io import (
     QEInputParser, QEInputGenerator, QEInput, QENamelist, QECard, QECardType, QEModule
 )
-from .qe_workflow import QEWorkflowRunner, StepResult, WorkflowResult
+from .qe_calculation import QECalculationRunner, StepResult, CalculationResult
 
 
 class QuantumEspressoEngine(Engine):
@@ -117,8 +117,8 @@ class QuantumEspressoEngine(Engine):
         self.qe_bin_dir = self._installation.bin_dir or Path()
         self._detected_executables = {}  # Cache for detected executables
         
-        # Workflow runner for step/workflow execution
-        self.workflow_runner = QEWorkflowRunner(self)
+        # Calculation runner for step/calculation execution
+        self.calculation_runner = QECalculationRunner(self)
     
     @property
     def installation(self) -> QEInstallation:
@@ -462,7 +462,7 @@ class QuantumEspressoEngine(Engine):
         """
         Detect step type from input file.
         
-        This is a convenience method that delegates to the workflow runner.
+        This is a convenience method that delegates to the calculation runner.
         
         Args:
             input_file: Path to QE input file
@@ -470,7 +470,7 @@ class QuantumEspressoEngine(Engine):
         Returns:
             Step type string (e.g., "scf", "nscf", "dos", "bands", "ph", etc.)
         """
-        return self.workflow_runner.detect_step_type(input_file)
+        return self.calculation_runner.detect_step_type(input_file)
     
     def run_step(
         self,
@@ -483,7 +483,7 @@ class QuantumEspressoEngine(Engine):
         """
         Run a single QE calculation step.
         
-        This is a convenience method that delegates to the workflow runner.
+        This is a convenience method that delegates to the calculation runner.
         
         Args:
             input_file: Path to QE input file
@@ -495,7 +495,7 @@ class QuantumEspressoEngine(Engine):
         Returns:
             StepResult with execution results
         """
-        return self.workflow_runner.run_step(
+        return self.calculation_runner.run_step(
             input_file=input_file,
             working_dir=working_dir,
             step_type=step_type,
@@ -503,30 +503,30 @@ class QuantumEspressoEngine(Engine):
             environment=environment
         )
     
-    def run_workflow(
+    def run_calculation(
         self,
         steps: List[Tuple[Path, Optional[str]]],
         working_dir: Path,
         timeout: Optional[float] = None,
         environment: Optional[Dict[str, str]] = None,
         stop_on_error: bool = True
-    ) -> WorkflowResult:
+    ) -> CalculationResult:
         """
-        Run a workflow of multiple QE calculation steps sequentially.
+        Run a calculation of multiple QE calculation steps sequentially.
         
-        This is a convenience method that delegates to the workflow runner.
+        This is a convenience method that delegates to the calculation runner.
         
         Args:
             steps: List of (input_file, step_type) tuples. step_type can be None for auto-detection.
             working_dir: Working directory for execution
             timeout: Optional timeout per step (in seconds)
             environment: Optional environment variables dict
-            stop_on_error: If True, stop workflow on first error
+            stop_on_error: If True, stop calculation on first error
             
         Returns:
-            WorkflowResult with all step results
+            CalculationResult with all step results
         """
-        return self.workflow_runner.run_workflow(
+        return self.calculation_runner.run_calculation(
             steps=steps,
             working_dir=working_dir,
             timeout=timeout,

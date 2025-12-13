@@ -5,7 +5,7 @@
  * - Sidebar for navigation and actions
  * - Main panel with structured views
  * - Auto-fetching data on view change
- * - Dialogs for project/structure/workflow creation
+ * - Dialogs for project/structure/calculation creation
  * - Jobs panel for managing QE runs
  */
 
@@ -20,8 +20,8 @@ import {
   ProjectSummaryPanel, 
   StructureListPanel,
   StructureDetailPanel,
-  WorkflowListPanel,
-  WorkflowDetailPanel,
+  CalculationListPanel,
+  CalculationDetailPanel,
   StepDetailPanel,
   StructureViewer3D,
   AnalysisPanel,
@@ -29,7 +29,7 @@ import {
   DaemonErrorBanner,
   CreateProjectDialog,
   ImportStructureDialog,
-  CreateWorkflowDialog,
+  CreateCalculationDialog,
   RenameDialog,
   DeleteConfirmDialog,
   JobsPanel,
@@ -43,8 +43,8 @@ import { useJobs } from './hooks/useJobs';
 import type { 
   ProjectSummary, 
   StructureInfo, 
-  WorkflowInfo,
-  WorkflowDetailResult,
+  CalculationInfo,
+  CalculationDetailResult,
   StructureVisData,
   ScfConvergenceData,
   DosData,
@@ -85,21 +85,21 @@ function App() {
   
   // Data state
   const [structures, setStructures] = useState<StructureInfo[] | null>(null);
-  const [workflows, setWorkflows] = useState<WorkflowInfo[] | null>(null);
+  const [calculations, setCalculations] = useState<CalculationInfo[] | null>(null);
   const [selectedStructure, setSelectedStructure] = useState<StructureInfo | null>(null);
   
-  // CRITICAL: Separate workflow summary (from list_workflows) from workflow detail (from get_workflow_detail)
-  // The detail's steps array is the canonical source of truth (built from workflow.yaml)
-  const [selectedWorkflowSummary, setSelectedWorkflowSummary] = useState<WorkflowInfo | null>(null);
-  const [selectedWorkflowDetail, setSelectedWorkflowDetail] = useState<WorkflowDetailResult | null>(null);
+  // CRITICAL: Separate calculation summary (from list_calculations) from calculation detail (from get_calculation_detail)
+  // The detail's steps array is the canonical source of truth (built from calculation.yaml)
+  const [selectedCalculationSummary, setSelectedCalculationSummary] = useState<CalculationInfo | null>(null);
+  const [selectedCalculationDetail, setSelectedCalculationDetail] = useState<CalculationDetailResult | null>(null);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   
-  // Auto-select refs for Structures and Workflows (mirror JobsPanel pattern)
+  // Auto-select refs for Structures and Calculations (mirror JobsPanel pattern)
   const didAutoSelectStructureRef = useRef(false);
-  const didAutoSelectWorkflowRef = useRef(false);
+  const didAutoSelectCalculationRef = useRef(false);
   
   // Legacy alias for backwards compatibility (will be removed)
-  const selectedWorkflow = selectedWorkflowDetail || selectedWorkflowSummary;
+  const selectedCalculation = selectedCalculationDetail || selectedCalculationSummary;
   const [structureVisData, setStructureVisData] = useState<StructureVisData | null>(null);
   
   // Debug state
@@ -109,20 +109,20 @@ function App() {
   // Loading states
   const [isLoadingProject, setIsLoadingProject] = useState(false);
   const [isLoadingStructures, setIsLoadingStructures] = useState(false);
-  const [isLoadingWorkflows, setIsLoadingWorkflows] = useState(false);
+  const [isLoadingCalculations, setIsLoadingCalculations] = useState(false);
   const [isLoading3D, setIsLoading3D] = useState(false);
   
   // Dialog states
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [showCreateDemoProject, setShowCreateDemoProject] = useState(false);
   const [showImportStructure, setShowImportStructure] = useState(false);
-  const [showCreateWorkflow, setShowCreateWorkflow] = useState(false);
+  const [showCreateCalculation, setShowCreateCalculation] = useState(false);
   
   // Rename/delete dialog states
   const [renameStructure, setRenameStructure] = useState<StructureInfo | null>(null);
   const [deleteStructure, setDeleteStructure] = useState<StructureInfo | null>(null);
-  const [renameWorkflow, setRenameWorkflow] = useState<WorkflowInfo | null>(null);
-  const [deleteWorkflow, setDeleteWorkflow] = useState<WorkflowInfo | null>(null);
+  const [renameCalculation, setRenameCalculation] = useState<CalculationInfo | null>(null);
+  const [deleteCalculation, setDeleteCalculation] = useState<CalculationInfo | null>(null);
   const [isRenaming, setIsRenaming] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   
@@ -226,9 +226,9 @@ function App() {
   
   // Open a recent project
   const handleOpenRecentProject = useCallback(async (path: string) => {
-    // Clear selected workflow and step when opening a new project (fixes stale step selection)
-    setSelectedWorkflowSummary(null);
-    setSelectedWorkflowDetail(null);
+    // Clear selected calculation and step when opening a new project (fixes stale step selection)
+    setSelectedCalculationSummary(null);
+    setSelectedCalculationDetail(null);
     setSelectedStepId(null);
     setSelectedStructure(null);
     
@@ -247,7 +247,7 @@ function App() {
       setProjectLoaded(true);
       setProjectError(null);
       setStructures(null);
-      setWorkflows(null);
+      setCalculations(null);
       addToRecentProjects(path);
       
       // Set project path for log file storage
@@ -274,9 +274,9 @@ function App() {
     
     if (directResponse.ok && directResponse.data) {
       // Selected directory is a valid project
-      // Clear selected workflow and step when opening a new project (fixes stale step selection)
-      setSelectedWorkflowSummary(null);
-      setSelectedWorkflowDetail(null);
+      // Clear selected calculation and step when opening a new project (fixes stale step selection)
+      setSelectedCalculationSummary(null);
+      setSelectedCalculationDetail(null);
       setSelectedStepId(null);
       setSelectedStructure(null);
       
@@ -285,7 +285,7 @@ function App() {
       setProjectSummary(directResponse.data);
       setProjectLoaded(true);
       setStructures(null);
-      setWorkflows(null);
+      setCalculations(null);
       addToRecentProjects(selectedPath);
       window.qv?.setProject?.(selectedPath);
       setIsLoadingProject(false);
@@ -299,9 +299,9 @@ function App() {
       // Found a project in parent directory
       projectPath = findResponse.data.project_root;
       
-      // Clear selected workflow and step when opening a new project (fixes stale step selection)
-      setSelectedWorkflowSummary(null);
-      setSelectedWorkflowDetail(null);
+      // Clear selected calculation and step when opening a new project (fixes stale step selection)
+      setSelectedCalculationSummary(null);
+      setSelectedCalculationDetail(null);
       setSelectedStepId(null);
       setSelectedStructure(null);
       
@@ -314,7 +314,7 @@ function App() {
         setProjectSummary(parentResponse.data);
         setProjectLoaded(true);
         setStructures(null);
-        setWorkflows(null);
+        setCalculations(null);
         addToRecentProjects(projectPath);
         window.qv?.setProject?.(projectPath);
         setIsLoadingProject(false);
@@ -346,7 +346,7 @@ function App() {
           setProjectSummary(loadResponse.data);
           setProjectLoaded(true);
           setStructures(null);
-          setWorkflows(null);
+          setCalculations(null);
           addToRecentProjects(selectedPath);
           showNotification('Project created successfully!', 'success');
           window.qv?.setProject?.(selectedPath);
@@ -355,7 +355,7 @@ function App() {
         if (loadResponse.error?.code === 'legacy_project') {
           const migrationCmd = loadResponse.error?.details?.hint || loadResponse.error?.message || '';
           setProjectError(
-            `This project uses a legacy workflow format. Please migrate it using:\n${migrationCmd}`
+            `This project uses a legacy calculation format. Please migrate it using:\n${migrationCmd}`
           );
         } else {
           setProjectError(loadResponse.error?.message || 'Failed to load created project');
@@ -367,7 +367,7 @@ function App() {
         if (createResponse.error?.code === 'legacy_project') {
           const migrationCmd = createResponse.error?.details?.hint || createResponse.error?.message || '';
           setProjectError(
-            `This project uses a legacy workflow format. Please migrate it using:\n${migrationCmd}`
+            `This project uses a legacy calculation format. Please migrate it using:\n${migrationCmd}`
           );
         } else {
           setProjectError(createResponse.error?.message || 'Failed to create project');
@@ -381,9 +381,9 @@ function App() {
   }, [qv, addToRecentProjects, showNotification]);
   
   const handleCreateProjectSuccess = useCallback(async (newProjectRoot: string, recommendedAnalysis?: string | null) => {
-    // Clear selected workflow and step when opening a new project (fixes stale step selection)
-    setSelectedWorkflowSummary(null);
-    setSelectedWorkflowDetail(null);
+    // Clear selected calculation and step when opening a new project (fixes stale step selection)
+    setSelectedCalculationSummary(null);
+    setSelectedCalculationDetail(null);
     setSelectedStepId(null);
     setSelectedStructure(null);
     
@@ -404,10 +404,10 @@ function App() {
       setProjectLoaded(true);
       setProjectError(null);
       setStructures(null);
-      setWorkflows(null);
+      setCalculations(null);
       setSelectedStructure(null);
-      setSelectedWorkflowSummary(null);
-      setSelectedWorkflowDetail(null);
+      setSelectedCalculationSummary(null);
+      setSelectedCalculationDetail(null);
       addToRecentProjects(newProjectRoot);
       
       // Set project path for log file storage
@@ -429,7 +429,7 @@ function App() {
   // Data Fetching
   // ==========================================================================
   
-  // Refresh project summary (after adding/deleting structures/workflows)
+  // Refresh project summary (after adding/deleting structures/calculations)
   const refreshSummary = useCallback(async () => {
     if (!projectRoot || !projectLoaded) return;
     
@@ -465,33 +465,33 @@ function App() {
     }
   }, [qv, projectRoot, projectLoaded]);
   
-  const fetchWorkflows = useCallback(async () => {
+  const fetchCalculations = useCallback(async () => {
     if (!projectRoot || !projectLoaded) {
-      console.log('[App] fetchWorkflows skipped', { projectRoot: !!projectRoot, projectLoaded });
+      console.log('[App] fetchCalculations skipped', { projectRoot: !!projectRoot, projectLoaded });
       return;
     }
     
-    console.log('[App] fetchWorkflows called', { projectRoot: projectRoot.substring(projectRoot.lastIndexOf('/') + 1), projectLoaded });
-    setIsLoadingWorkflows(true);
+    console.log('[App] fetchCalculations called', { projectRoot: projectRoot.substring(projectRoot.lastIndexOf('/') + 1), projectLoaded });
+    setIsLoadingCalculations(true);
     try {
-      const response = await qv.listWorkflows(projectRoot);
+      const response = await qv.listCalculations(projectRoot);
       if (response.ok && response.data) {
-        const workflowsList = response.data.workflows;
-        setWorkflows(workflowsList);
-        // Return the workflows list so callers can use it immediately
-        return workflowsList;
+        const calculationsList = response.data.calculations;
+        setCalculations(calculationsList);
+        // Return the calculations list so callers can use it immediately
+        return calculationsList;
       } else {
         // Check for registry_out_of_sync error
         if (response.error?.code === 'registry_out_of_sync') {
           setProjectError(
             response.error.message || 
-            'Registry is out of sync. Click "Refresh" in the Workflows panel to rebuild the project registry.'
+            'Registry is out of sync. Click "Refresh" in the Calculations panel to rebuild the project registry.'
           );
         }
         return null;
       }
     } finally {
-      setIsLoadingWorkflows(false);
+      setIsLoadingCalculations(false);
     }
   }, [qv, projectRoot, projectLoaded]);
   
@@ -521,9 +521,9 @@ function App() {
         const hasChanges = 
           diff.structures_added.length > 0 ||
           diff.structures_removed.length > 0 ||
-          diff.workflows_added.length > 0 ||
-          diff.workflows_removed.length > 0 ||
-          diff.workflows_changed.length > 0;
+          diff.calculations_added.length > 0 ||
+          diff.calculations_removed.length > 0 ||
+          diff.calculations_changed.length > 0;
         
         let message = 'Registry refreshed. ';
         if (!hasChanges) {
@@ -535,12 +535,12 @@ function App() {
             parts.push(`Structures: +${diff.structures_added.length}, -${diff.structures_removed.length}`);
           }
           
-          if (diff.workflows_added.length > 0 || diff.workflows_removed.length > 0) {
-            parts.push(`Workflows: +${diff.workflows_added.length}, -${diff.workflows_removed.length}`);
+          if (diff.calculations_added.length > 0 || diff.calculations_removed.length > 0) {
+            parts.push(`Calculations: +${diff.calculations_added.length}, -${diff.calculations_removed.length}`);
           }
           
-          if (diff.workflows_changed.length > 0) {
-            for (const wf of diff.workflows_changed) {
+          if (diff.calculations_changed.length > 0) {
+            for (const wf of diff.calculations_changed) {
               const stepChanges: string[] = [];
               if (wf.steps_added.length > 0) {
                 stepChanges.push(`+${wf.steps_added.length} step${wf.steps_added.length > 1 ? 's' : ''} (${wf.steps_added.map((s: { id: string; suffix: string }) => `…${s.suffix}`).join(', ')})`);
@@ -549,7 +549,7 @@ function App() {
                 stepChanges.push(`-${wf.steps_removed.length} step${wf.steps_removed.length > 1 ? 's' : ''} (${wf.steps_removed.map((s: { id: string; suffix: string }) => `…${s.suffix}`).join(', ')})`);
               }
               if (stepChanges.length > 0) {
-                parts.push(`Workflow '${wf.workflow_name}': ${stepChanges.join(', ')}`);
+                parts.push(`Calculation '${wf.calculation_name}': ${stepChanges.join(', ')}`);
               }
             }
           }
@@ -560,9 +560,9 @@ function App() {
         // Show notification (you can replace this with a toast system if you have one)
         console.log('[App]', message);
         
-        // After registry is rebuilt, reload workflows / structures once
+        // After registry is rebuilt, reload calculations / structures once
         await fetchStructures();
-        await fetchWorkflows();
+        await fetchCalculations();
       } else {
         console.error('[App] Failed to refresh project registry', response.error);
         if (response.error?.code === 'project_not_found') {
@@ -574,22 +574,22 @@ function App() {
       console.error('[App] Failed to refresh project registry', err);
       setProjectError(err.message || 'Failed to refresh project registry');
     }
-  }, [projectRoot, qv, fetchStructures, fetchWorkflows]);
+  }, [projectRoot, qv, fetchStructures, fetchCalculations]);
   
   // Auto-fetch data when switching views
   useEffect(() => {
-    console.log('[App] view change effect triggered', { currentView, hasStructures: !!structures, hasWorkflows: !!workflows, projectLoaded });
+    console.log('[App] view change effect triggered', { currentView, hasStructures: !!structures, hasCalculations: !!calculations, projectLoaded });
     if (!projectLoaded) return;
     
     if (currentView === 'structures' && !structures) {
       fetchStructures();
-    } else if (currentView === 'workflows' && !workflows) {
-      fetchWorkflows();
-    } else if (currentView === 'analysis' && !workflows) {
-      fetchWorkflows();
+    } else if (currentView === 'calculations' && !calculations) {
+      fetchCalculations();
+    } else if (currentView === 'analysis' && !calculations) {
+      fetchCalculations();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentView, projectLoaded]); // Intentionally exclude structures/workflows/fetchStructures/fetchWorkflows to prevent loops
+  }, [currentView, projectLoaded]); // Intentionally exclude structures/calculations/fetchStructures/fetchCalculations to prevent loops
   
   // ==========================================================================
   // Structure Handling
@@ -656,22 +656,22 @@ function App() {
   }, [fetchStructures, refreshSummary, structures, handleSelectStructure]);
   
   // ==========================================================================
-  // Workflow Handling
+  // Calculation Handling
   // ==========================================================================
   
-  const handleSelectWorkflow = useCallback((workflow: WorkflowInfo) => {
-    console.log('[App] handleSelectWorkflow called', {
-      workflowSlug: workflow.slug,
-      workflowId: workflow.id,
-      stepCount: workflow.steps?.length ?? 0,
+  const handleSelectCalculation = useCallback((calculation: CalculationInfo) => {
+    console.log('[App] handleSelectCalculation called', {
+      calculationSlug: calculation.slug,
+      calculationId: calculation.id,
+      stepCount: calculation.steps?.length ?? 0,
     });
     
-    // CRITICAL: Clear detail and step selection when switching workflows
-    // We will fetch the detail separately, which has the canonical steps array from workflow.yaml
-    setSelectedWorkflowSummary(workflow);
+    // CRITICAL: Clear detail and step selection when switching calculations
+    // We will fetch the detail separately, which has the canonical steps array from calculation.yaml
+    setSelectedCalculationSummary(calculation);
     // Mark that user has manually selected (prevent auto-select override)
-    didAutoSelectWorkflowRef.current = true;
-    setSelectedWorkflowDetail(null);
+    didAutoSelectCalculationRef.current = true;
+    setSelectedCalculationDetail(null);
     setSelectedStepId(null);
     
     // Fire and forget async detail fetch
@@ -683,53 +683,53 @@ function App() {
         const normalizedRoot = normalizeProjectRoot(projectRoot);
         if (!normalizedRoot) return;
         
-        console.log('[App] fetching workflow detail', {
-          workflowSlug: workflow.slug,
-          workflowId: workflow.id,
+        console.log('[App] fetching calculation detail', {
+          calculationSlug: calculation.slug,
+          calculationId: calculation.id,
         });
         
-        const response = await qv.call('get_workflow_detail', {
+        const response = await qv.call('get_calculation_detail', {
           project_root: normalizedRoot,
-          workflow: workflow.slug ?? workflow.id,
+          calculation: calculation.slug ?? calculation.id,
         });
         
         if (response.ok && response.data) {
-          const detail = response.data as WorkflowDetailResult;
-          console.log('[App] got workflow detail', {
-            workflowSlug: detail.slug,
+          const detail = response.data as CalculationDetailResult;
+          console.log('[App] got calculation detail', {
+            calculationSlug: detail.slug,
             stepCount: detail.steps?.length ?? 0,
             stepIds: detail.steps?.map(s => s.id) ?? [],
             stepOrder: detail.steps?.map((s, i) => ({ index: i, id: s.id, type: s.type })) ?? [],
           });
-          setSelectedWorkflowDetail(detail);
+          setSelectedCalculationDetail(detail);
         } else {
-          console.error('[App] get_workflow_detail error', response.error);
+          console.error('[App] get_calculation_detail error', response.error);
           // Check for registry_out_of_sync error
           if (response.error?.code === 'registry_out_of_sync') {
             setProjectError(
               response.error.message || 
-              'Registry is out of sync. Click "Refresh" in the Workflows panel to rebuild the project registry.'
+              'Registry is out of sync. Click "Refresh" in the Calculations panel to rebuild the project registry.'
             );
-          } else if (response.error?.code === 'resource_not_found' && response.error?.kind === 'workflow') {
-            // Workflow not found - this can happen right after creation if registry hasn't synced yet
+          } else if (response.error?.code === 'resource_not_found' && response.error?.kind === 'calculation') {
+            // Calculation not found - this can happen right after creation if registry hasn't synced yet
             // Don't show error immediately, wait a bit and retry
-            console.warn('[App] Workflow not found, will retry after delay', { workflowSlug: workflow.slug });
+            console.warn('[App] Calculation not found, will retry after delay', { calculationSlug: calculation.slug });
             setTimeout(async () => {
               // Retry once after a short delay
-              const retryResponse = await qv.call('get_workflow_detail', {
+              const retryResponse = await qv.call('get_calculation_detail', {
                 project_root: normalizedRoot,
-                workflow: workflow.slug ?? workflow.id,
+                calculation: calculation.slug ?? calculation.id,
               });
               if (retryResponse.ok && retryResponse.data) {
-                setSelectedWorkflowDetail(retryResponse.data as WorkflowDetailResult);
+                setSelectedCalculationDetail(retryResponse.data as CalculationDetailResult);
               }
             }, 500);
           }
           // Don't set detail to null immediately - keep summary visible while retrying
         }
       } catch (err) {
-        console.error('[App] get_workflow_detail exception', err);
-        setSelectedWorkflowDetail(null);
+        console.error('[App] get_calculation_detail exception', err);
+        setSelectedCalculationDetail(null);
       }
     })();
   }, [projectRoot, qv]);
@@ -739,8 +739,8 @@ function App() {
     if (currentView !== 'structures') {
       didAutoSelectStructureRef.current = false;
     }
-    if (currentView !== 'workflows') {
-      didAutoSelectWorkflowRef.current = false;
+    if (currentView !== 'calculations') {
+      didAutoSelectCalculationRef.current = false;
     }
   }, [currentView]);
   
@@ -797,66 +797,66 @@ function App() {
     }
   }, [currentView, selectedStructure?.id, projectRoot, qv, structureVisData?.structure_id, currentSupercell, currentRepeatBoundary, loadStructureVis]);
   
-  // Auto-select first workflow when entering workflows view (mirror JobsPanel pattern)
+  // Auto-select first calculation when entering calculations view (mirror JobsPanel pattern)
   useEffect(() => {
     // Only auto-select if:
-    // 1. We're in workflows view
-    // 2. Workflows list is non-empty
-    // 3. No workflow is currently selected
+    // 1. We're in calculations view
+    // 2. Calculations list is non-empty
+    // 3. No calculation is currently selected
     // 4. We haven't auto-selected yet (one-time per mount)
-    if (currentView === 'workflows' && workflows && workflows.length > 0 && !selectedWorkflowSummary && !didAutoSelectWorkflowRef.current) {
-      const firstWorkflow = workflows[0];
-      didAutoSelectWorkflowRef.current = true;
-      // Use handleSelectWorkflow to set state and trigger detail fetch
-      handleSelectWorkflow(firstWorkflow);
+    if (currentView === 'calculations' && calculations && calculations.length > 0 && !selectedCalculationSummary && !didAutoSelectCalculationRef.current) {
+      const firstCalculation = calculations[0];
+      didAutoSelectCalculationRef.current = true;
+      // Use handleSelectCalculation to set state and trigger detail fetch
+      handleSelectCalculation(firstCalculation);
     }
     
-    // If selected workflow disappeared from list, fall back to first element
-    if (selectedWorkflowSummary && workflows && !workflows.find(w => w.id === selectedWorkflowSummary.id)) {
-      if (workflows.length > 0) {
-        const firstWorkflow = workflows[0];
-        handleSelectWorkflow(firstWorkflow);
+    // If selected calculation disappeared from list, fall back to first element
+    if (selectedCalculationSummary && calculations && !calculations.find(w => w.id === selectedCalculationSummary.id)) {
+      if (calculations.length > 0) {
+        const firstCalculation = calculations[0];
+        handleSelectCalculation(firstCalculation);
       } else {
-        setSelectedWorkflowSummary(null);
-        setSelectedWorkflowDetail(null);
+        setSelectedCalculationSummary(null);
+        setSelectedCalculationDetail(null);
       }
     }
-  }, [currentView, workflows, selectedWorkflowSummary, handleSelectWorkflow]);
+  }, [currentView, calculations, selectedCalculationSummary, handleSelectCalculation]);
   
-  const handleCreateWorkflowSuccess = useCallback(async (workflowId: string) => {
-    // Refresh workflows list and summary
+  const handleCreateCalculationSuccess = useCallback(async (calculationId: string) => {
+    // Refresh calculations list and summary
     await refreshSummary();
-    const workflowsList = await fetchWorkflows();
+    const calculationsList = await fetchCalculations();
     
-    // CRITICAL: Wait for workflows list to update before selecting
-    // Find the newly created workflow by ID from the fresh list
-    let newWf = workflowsList?.find(w => w.id === workflowId);
+    // CRITICAL: Wait for calculations list to update before selecting
+    // Find the newly created calculation by ID from the fresh list
+    let newWf = calculationsList?.find(w => w.id === calculationId);
     
     // If not found immediately, wait a bit for registry to update (max 3 retries)
     if (!newWf) {
       for (let i = 0; i < 3; i++) {
         await new Promise(resolve => setTimeout(resolve, 100));
-        const retryList = await fetchWorkflows();
-        newWf = retryList?.find(w => w.id === workflowId);
+        const retryList = await fetchCalculations();
+        newWf = retryList?.find(w => w.id === calculationId);
         if (newWf) break;
       }
     }
     
     if (newWf) {
-      // Select the workflow - this will trigger get_workflow_detail
-      // The workflow is now in the list, so get_workflow_detail should succeed
-      handleSelectWorkflow(newWf);
+      // Select the calculation - this will trigger get_calculation_detail
+      // The calculation is now in the list, so get_calculation_detail should succeed
+      handleSelectCalculation(newWf);
     } else {
-      console.error('[App] Created workflow not found after refresh', { workflowId });
-      // Don't show error - workflow might still be syncing, user can manually select it
+      console.error('[App] Created calculation not found after refresh', { calculationId });
+      // Don't show error - calculation might still be syncing, user can manually select it
     }
-  }, [fetchWorkflows, refreshSummary, handleSelectWorkflow]);
+  }, [fetchCalculations, refreshSummary, handleSelectCalculation]);
   
-  const handleRunWorkflow = useCallback(async (workflow: WorkflowInfo) => {
+  const handleRunCalculation = useCallback(async (calculation: CalculationInfo) => {
     // Perform preflight checks first
     const preflightResponse = await qv.call('preflight_check', {
       project_root: projectRoot,
-      workflow: workflow.slug,
+      calculation: calculation.slug,
     });
     
     if (preflightResponse.ok && preflightResponse.data) {
@@ -865,7 +865,7 @@ function App() {
       if (!preflight.ok) {
         // Show preflight errors
         const errorMsg = preflight.errors.join('; ') || 'Pre-flight check failed';
-        showNotification(`Cannot run workflow: ${errorMsg}`, 'error');
+        showNotification(`Cannot run calculation: ${errorMsg}`, 'error');
         return;
       }
       
@@ -883,13 +883,13 @@ function App() {
       return;
     }
     
-    // Submit the workflow run
-    // Backend contract: { project_root: string (normalized absolute), workflow: string (slug), strict?: bool, verbose?: bool }
-    // GUI sends: workflow.slug (from selectedWorkflow.slug)
+    // Submit the calculation run
+    // Backend contract: { project_root: string (normalized absolute), calculation: string (slug), strict?: bool, verbose?: bool }
+    // GUI sends: calculation.slug (from selectedCalculation.slug)
     // See tests/daemon/test_gui_job_and_step_flows.py for RPC contract details
-    const response = await qv.call('run_workflow', {
+    const response = await qv.call('run_calculation', {
       project_root: normalizedProjectRoot,
-      workflow: workflow.slug, // Backend expects workflow selector (slug)
+      calculation: calculation.slug, // Backend expects calculation selector (slug)
     });
     
     if (response.ok && response.data) {
@@ -910,21 +910,21 @@ function App() {
   }, []);
   
   // Handle "View Analysis" from Jobs panel
-  const handleViewAnalysisFromJob = useCallback(async (workflowSlug: string) => {
+  const handleViewAnalysisFromJob = useCallback(async (calculationSlug: string) => {
     // Switch to analysis view
     setCurrentView('analysis');
     
-    // If workflows aren't loaded, fetch them first
-    if (!workflows) {
-      await fetchWorkflows();
+    // If calculations aren't loaded, fetch them first
+    if (!calculations) {
+      await fetchCalculations();
     }
     
-    // Try to find and select the workflow
-    const wf = workflows?.find(w => w.slug === workflowSlug || w.name === workflowSlug);
+    // Try to find and select the calculation
+    const wf = calculations?.find(w => w.slug === calculationSlug || w.name === calculationSlug);
     if (wf) {
-      handleSelectWorkflow(wf);
+      handleSelectCalculation(wf);
     }
-  }, [workflows, fetchWorkflows]);
+  }, [calculations, fetchCalculations]);
   
   const handleSelectStep = useCallback((stepId: string) => {
     console.log('[App] handleSelectStep called with:', stepId);
@@ -937,21 +937,21 @@ function App() {
     if (selectedStepId === stepId) {
       setSelectedStepId(null);
     }
-    // Refresh workflow detail to show updated steps list
-    if (selectedWorkflowSummary) {
+    // Refresh calculation detail to show updated steps list
+    if (selectedCalculationSummary) {
       const normalizedRoot = normalizeProjectRoot(projectRoot);
       if (normalizedRoot && window.qv) {
-        const response = await qv.call('get_workflow_detail', {
+        const response = await qv.call('get_calculation_detail', {
           project_root: normalizedRoot,
-          workflow: selectedWorkflowSummary.slug,
+          calculation: selectedCalculationSummary.slug,
         });
         if (response.ok && response.data) {
-          const updatedDetail = response.data as WorkflowDetailResult;
-          setSelectedWorkflowDetail(updatedDetail);
+          const updatedDetail = response.data as CalculationDetailResult;
+          setSelectedCalculationDetail(updatedDetail);
         }
       }
     }
-  }, [selectedStepId, selectedWorkflowSummary, projectRoot, qv]);
+  }, [selectedStepId, selectedCalculationSummary, projectRoot, qv]);
   
   const handleRunStepSuccess = useCallback((result: JobSubmitResult) => {
     const shortId = result.job_id.slice(0, 8);
@@ -1017,27 +1017,27 @@ function App() {
   }, [qv, projectRoot, deleteStructure, fetchStructures, refreshSummary, selectedStructure, showNotification]);
   
   // ==========================================================================
-  // Workflow Rename/Delete
+  // Calculation Rename/Delete
   // ==========================================================================
   
-  const handleRenameWorkflow = useCallback(async (newName: string): Promise<boolean> => {
-    if (!renameWorkflow) return false;
+  const handleRenameCalculation = useCallback(async (newName: string): Promise<boolean> => {
+    if (!renameCalculation) return false;
     
     setIsRenaming(true);
-    const response = await qv.call('rename_workflow', {
+    const response = await qv.call('rename_calculation', {
       project_root: projectRoot,
-      selector: renameWorkflow.slug,
+      selector: renameCalculation.slug,
       new_name: newName,
     });
     setIsRenaming(false);
     
     if (response.ok) {
-      showNotification(`Renamed workflow to "${newName}"`, 'success');
-      await fetchWorkflows();
-      // Update selected workflow if it was the one being renamed
-      if (selectedWorkflow?.id === renameWorkflow.id) {
-        setSelectedWorkflowSummary(null);
-        setSelectedWorkflowDetail(null);
+      showNotification(`Renamed calculation to "${newName}"`, 'success');
+      await fetchCalculations();
+      // Update selected calculation if it was the one being renamed
+      if (selectedCalculation?.id === renameCalculation.id) {
+        setSelectedCalculationSummary(null);
+        setSelectedCalculationDetail(null);
         setSelectedStepId(null);
       }
       return true;
@@ -1045,27 +1045,27 @@ function App() {
       showNotification(`Failed to rename: ${response.error?.message || 'Unknown error'}`, 'error');
       return false;
     }
-  }, [qv, projectRoot, renameWorkflow, fetchWorkflows, selectedWorkflow, showNotification]);
+  }, [qv, projectRoot, renameCalculation, fetchCalculations, selectedCalculation, showNotification]);
   
-  const handleDeleteWorkflow = useCallback(async (force: boolean): Promise<boolean> => {
-    if (!deleteWorkflow) return false;
+  const handleDeleteCalculation = useCallback(async (force: boolean): Promise<boolean> => {
+    if (!deleteCalculation) return false;
     
     setIsDeleting(true);
-    const response = await qv.call('delete_workflow', {
+    const response = await qv.call('delete_calculation', {
       project_root: projectRoot,
-      selector: deleteWorkflow.slug,
+      selector: deleteCalculation.slug,
       force: force,
     });
     setIsDeleting(false);
     
     if (response.ok) {
-      showNotification(`Deleted workflow "${deleteWorkflow.name}"`, 'success');
-      await fetchWorkflows();
+      showNotification(`Deleted calculation "${deleteCalculation.name}"`, 'success');
+      await fetchCalculations();
       await refreshSummary();
-      // Clear selection if the deleted workflow was selected
-      if (selectedWorkflow?.id === deleteWorkflow.id) {
-        setSelectedWorkflowSummary(null);
-        setSelectedWorkflowDetail(null);
+      // Clear selection if the deleted calculation was selected
+      if (selectedCalculation?.id === deleteCalculation.id) {
+        setSelectedCalculationSummary(null);
+        setSelectedCalculationDetail(null);
         setSelectedStepId(null);
       }
       return true;
@@ -1073,33 +1073,33 @@ function App() {
       showNotification(`Failed to delete: ${response.error?.message || 'Unknown error'}`, 'error');
       return false;
     }
-  }, [qv, projectRoot, deleteWorkflow, fetchWorkflows, refreshSummary, selectedWorkflow, showNotification]);
+  }, [qv, projectRoot, deleteCalculation, fetchCalculations, refreshSummary, selectedCalculation, showNotification]);
   
   // ==========================================================================
   // Analysis Data Loading
   // ==========================================================================
   
-  const handleLoadScf = useCallback(async (workflow: WorkflowInfo, step: string): Promise<ScfConvergenceData | null> => {
+  const handleLoadScf = useCallback(async (calculation: CalculationInfo, step: string): Promise<ScfConvergenceData | null> => {
     const response = await qv.call('get_scf_convergence', {
       project_root: projectRoot,
-      workflow: workflow.slug,
+      calculation: calculation.slug,
       step: step,
     });
     return response.ok ? response.data as ScfConvergenceData : null;
   }, [qv, projectRoot]);
   
-  const handleLoadDos = useCallback(async (workflow: WorkflowInfo): Promise<DosData | null> => {
+  const handleLoadDos = useCallback(async (calculation: CalculationInfo): Promise<DosData | null> => {
     const response = await qv.call('get_dos_data', {
       project_root: projectRoot,
-      workflow: workflow.slug,
+      calculation: calculation.slug,
     });
     return response.ok ? response.data as DosData : null;
   }, [qv, projectRoot]);
   
-  const handleLoadBands = useCallback(async (workflow: WorkflowInfo): Promise<BandStructureData | null> => {
+  const handleLoadBands = useCallback(async (calculation: CalculationInfo): Promise<BandStructureData | null> => {
     const response = await qv.call('get_band_structure_data', {
       project_root: projectRoot,
-      workflow: workflow.slug,
+      calculation: calculation.slug,
     });
     return response.ok ? response.data as BandStructureData : null;
   }, [qv, projectRoot]);
@@ -1154,33 +1154,33 @@ function App() {
     }
   }, [structures, handleSelectStructure, qv, projectRoot]);
   
-  // Navigate to a specific workflow
-  const handleNavigateToWorkflow = useCallback(async (workflowName: string) => {
-    setCurrentView('workflows');
+  // Navigate to a specific calculation
+  const handleNavigateToCalculation = useCallback(async (calculationName: string) => {
+    setCurrentView('calculations');
     
-    // If no specific workflow requested, just switch view
-    if (!workflowName) return;
+    // If no specific calculation requested, just switch view
+    if (!calculationName) return;
     
-    // After switching view, try to select the workflow
-    // First ensure workflows are loaded
-    let currentWorkflows = workflows;
-    if (!currentWorkflows) {
-      setIsLoadingWorkflows(true);
-      const response = await qv.listWorkflows(projectRoot);
-      setIsLoadingWorkflows(false);
+    // After switching view, try to select the calculation
+    // First ensure calculations are loaded
+    let currentCalculations = calculations;
+    if (!currentCalculations) {
+      setIsLoadingCalculations(true);
+      const response = await qv.listCalculations(projectRoot);
+      setIsLoadingCalculations(false);
       if (response.ok && response.data) {
-        currentWorkflows = response.data.workflows;
-        setWorkflows(currentWorkflows);
+        currentCalculations = response.data.calculations;
+        setCalculations(currentCalculations);
       }
     }
     
-    if (currentWorkflows) {
-      const wf = currentWorkflows.find(w => w.name === workflowName || w.slug === workflowName);
+    if (currentCalculations) {
+      const wf = currentCalculations.find(w => w.name === calculationName || w.slug === calculationName);
       if (wf) {
-        handleSelectWorkflow(wf);
+        handleSelectCalculation(wf);
       }
     }
-  }, [workflows, handleSelectWorkflow, qv, projectRoot]);
+  }, [calculations, handleSelectCalculation, qv, projectRoot]);
   
   // Close the current project
   const handleCloseProject = useCallback(() => {
@@ -1190,10 +1190,10 @@ function App() {
     setProjectLoaded(false);
     setProjectError(null);
     setStructures(null);
-    setWorkflows(null);
+    setCalculations(null);
     setSelectedStructure(null);
-    setSelectedWorkflowSummary(null);
-    setSelectedWorkflowDetail(null);
+    setSelectedCalculationSummary(null);
+    setSelectedCalculationDetail(null);
     setSelectedStepId(null); // Clear step selection
     setStructureVisData(null);
     localStorage.removeItem('qv-project-root');
@@ -1217,7 +1217,7 @@ function App() {
             onOpenRecentProject={handleOpenRecentProject}
             onRemoveRecentProject={removeFromRecentProjects}
             onNavigateToStructure={handleNavigateToStructure}
-            onNavigateToWorkflow={handleNavigateToWorkflow}
+            onNavigateToCalculation={handleNavigateToCalculation}
             onCloseProject={handleCloseProject}
             onProjectCreated={handleCreateProjectSuccess}
           />
@@ -1275,103 +1275,103 @@ function App() {
           </div>
         );
         
-      case 'workflows':
+      case 'calculations':
         if (!projectLoaded) return renderNoProjectMessage();
         return (
-          <div className="workflows-view">
+          <div className="calculations-view">
             <ResizablePane
               defaultWidth={420}
               minWidth={320}
               maxWidth={600}
-              storageKey="qv-workflows-list-width"
-              className="workflows-view__list"
+              storageKey="qv-calculations-list-width"
+              className="calculations-view__list"
             >
-              <WorkflowListPanel
+              <CalculationListPanel
                 onRefreshProjectRegistry={handleRefreshProjectRegistry}
-                workflows={workflows}
-                isLoading={isLoadingWorkflows}
-                selectedId={selectedWorkflow?.id}
-                onSelect={handleSelectWorkflow}
-                onRename={setRenameWorkflow}
-                onDelete={setDeleteWorkflow}
+                calculations={calculations}
+                isLoading={isLoadingCalculations}
+                selectedId={selectedCalculation?.id}
+                onSelect={handleSelectCalculation}
+                onRename={setRenameCalculation}
+                onDelete={setDeleteCalculation}
               />
               <button 
                 className="view-action-btn"
-                onClick={() => setShowCreateWorkflow(true)}
+                onClick={() => setShowCreateCalculation(true)}
               >
-                ➕ New Workflow
+                ➕ New Calculation
               </button>
             </ResizablePane>
-            {selectedWorkflow && (
-              <div className="workflows-view__detail">
+            {selectedCalculation && (
+              <div className="calculations-view__detail">
                 {selectedStepId ? (
                   <>
                     <VerticalResizablePane
                       defaultHeight={350}
                       minHeight={200}
                       maxHeight={500}
-                      storageKey="qv-workflow-detail-height"
-                      className="workflow-detail-resizable"
+                      storageKey="qv-calculation-detail-height"
+                      className="calculation-detail-resizable"
                     >
-                      <WorkflowDetailPanel
-                        workflowSummary={selectedWorkflowSummary}
-                        workflowDetail={selectedWorkflowDetail}
+                      <CalculationDetailPanel
+                        calculationSummary={selectedCalculationSummary}
+                        calculationDetail={selectedCalculationDetail}
                         projectRoot={projectRoot}
                         structures={structures || undefined}
                         onClose={() => {
-                          setSelectedWorkflowSummary(null);
-                          setSelectedWorkflowDetail(null);
+                          setSelectedCalculationSummary(null);
+                          setSelectedCalculationDetail(null);
                           setSelectedStepId(null);
                         }}
-                        onRunWorkflow={handleRunWorkflow}
+                        onRunCalculation={handleRunCalculation}
                         onSelectStep={handleSelectStep}
                         onDeleteStep={handleDeleteStep}
                         onGoToJobs={handleGoToJobs}
-                        onWorkflowUpdated={async () => {
-                          // CRITICAL: After adding a step, refresh workflow detail to show the new step
+                        onCalculationUpdated={async () => {
+                          // CRITICAL: After adding a step, refresh calculation detail to show the new step
                           // This ensures the step list updates immediately without needing to reopen the project
-                          console.log('[App] onWorkflowUpdated: refreshing workflow detail after step creation');
+                          console.log('[App] onCalculationUpdated: refreshing calculation detail after step creation');
                           
-                          // Refresh workflows list to get updated step counts
-                          await fetchWorkflows();
+                          // Refresh calculations list to get updated step counts
+                          await fetchCalculations();
                           
-                          // Also refresh the selected workflow detail if it exists
-                          // This updates selectedWorkflowDetail.steps with the new step entry
-                          if (selectedWorkflowSummary) {
-                            const response = await qv.call('get_workflow_detail', {
+                          // Also refresh the selected calculation detail if it exists
+                          // This updates selectedCalculationDetail.steps with the new step entry
+                          if (selectedCalculationSummary) {
+                            const response = await qv.call('get_calculation_detail', {
                               project_root: projectRoot,
-                              workflow: selectedWorkflowSummary.slug,
+                              calculation: selectedCalculationSummary.slug,
                             });
                             if (response.ok && response.data) {
-                              // Update selectedWorkflowDetail with fresh data including new steps
-                              const updatedDetail = response.data as WorkflowDetailResult;
-                              console.log('[App] Workflow detail refreshed', {
-                                workflowSlug: updatedDetail.slug,
+                              // Update selectedCalculationDetail with fresh data including new steps
+                              const updatedDetail = response.data as CalculationDetailResult;
+                              console.log('[App] Calculation detail refreshed', {
+                                calculationSlug: updatedDetail.slug,
                                 stepCount: updatedDetail.steps.length,
                                 stepIds: updatedDetail.steps.map(s => s.id),
                                 stepOrder: updatedDetail.steps.map((s, i) => ({ index: i, id: s.id, type: s.type })),
                               });
-                              setSelectedWorkflowDetail(updatedDetail);
+                              setSelectedCalculationDetail(updatedDetail);
                             } else {
-                              console.error('[App] Failed to refresh workflow detail', response.error);
+                              console.error('[App] Failed to refresh calculation detail', response.error);
                             }
                           }
                         }}
-                        onWorkflowDetailUpdated={(detail) => {
-                          // CRITICAL: Directly update workflowDetail from reorder_workflow_steps response
+                        onCalculationDetailUpdated={(detail) => {
+                          // CRITICAL: Directly update calculationDetail from reorder_calculation_steps response
                           // This ensures UI reflects the new step order immediately without re-fetching
-                          console.log('[App] Workflow detail updated from reorder', {
-                            workflowSlug: detail.slug,
+                          console.log('[App] Calculation detail updated from reorder', {
+                            calculationSlug: detail.slug,
                             stepCount: detail.steps.length,
                             stepOrder: detail.steps.map((s, i) => ({ index: i, id: s.id, type: s.type })),
                           });
-                          setSelectedWorkflowDetail(detail);
+                          setSelectedCalculationDetail(detail);
                         }}
                       />
                     </VerticalResizablePane>
                     <StepDetailPanel
                       projectRoot={projectRoot}
-                      selectedWorkflow={selectedWorkflowDetail}
+                      selectedCalculation={selectedCalculationDetail}
                       selectedStepId={selectedStepId}
                       onClose={() => setSelectedStepId(null)}
                       onRunStep={handleRunStepSuccess}
@@ -1379,30 +1379,30 @@ function App() {
                     />
                   </>
                 ) : (
-                  <WorkflowDetailPanel
-                    workflowSummary={selectedWorkflowSummary}
-                    workflowDetail={selectedWorkflowDetail}
+                  <CalculationDetailPanel
+                    calculationSummary={selectedCalculationSummary}
+                    calculationDetail={selectedCalculationDetail}
                     projectRoot={projectRoot}
                     structures={structures || undefined}
                     onClose={() => {
-                      setSelectedWorkflowSummary(null);
-                      setSelectedWorkflowDetail(null);
+                      setSelectedCalculationSummary(null);
+                      setSelectedCalculationDetail(null);
                       setSelectedStepId(null);
                     }}
-                    onRunWorkflow={handleRunWorkflow}
+                    onRunCalculation={handleRunCalculation}
                     onSelectStep={handleSelectStep}
                     onDeleteStep={handleDeleteStep}
                     onGoToJobs={handleGoToJobs}
-                    onWorkflowUpdated={fetchWorkflows}
-                    onWorkflowDetailUpdated={(detail) => {
-                      // CRITICAL: Directly update workflowDetail from reorder_workflow_steps response
+                    onCalculationUpdated={fetchCalculations}
+                    onCalculationDetailUpdated={(detail) => {
+                      // CRITICAL: Directly update calculationDetail from reorder_calculation_steps response
                       // This ensures UI reflects the new step order immediately without re-fetching
-                      console.log('[App] Workflow detail updated from reorder', {
-                        workflowSlug: detail.slug,
+                      console.log('[App] Calculation detail updated from reorder', {
+                        calculationSlug: detail.slug,
                         stepCount: detail.steps.length,
                         stepOrder: detail.steps.map((s, i) => ({ index: i, id: s.id, type: s.type })),
                       });
-                      setSelectedWorkflowDetail(detail);
+                      setSelectedCalculationDetail(detail);
                     }}
                   />
                 )}
@@ -1423,10 +1423,10 @@ function App() {
         if (!projectLoaded) return renderNoProjectMessage();
         return (
           <AnalysisPanel
-            workflows={workflows}
-            selectedWorkflow={selectedWorkflowSummary}
+            calculations={calculations}
+            selectedCalculation={selectedCalculationSummary}
             projectRoot={projectRoot}
-            onSelectWorkflow={handleSelectWorkflow}
+            onSelectCalculation={handleSelectCalculation}
             onLoadScf={handleLoadScf}
             onLoadDos={handleLoadDos}
             onLoadBands={handleLoadBands}
@@ -1503,7 +1503,7 @@ function App() {
             <h2 className="app-header__title">
               {currentView === 'home' && 'Home'}
               {currentView === 'structures' && 'Structures'}
-              {currentView === 'workflows' && 'Workflows'}
+              {currentView === 'calculations' && 'Calculations'}
               {currentView === 'jobs' && 'Jobs'}
               {currentView === 'analysis' && 'Analysis'}
               {currentView === 'resources' && 'Resources'}
@@ -1554,12 +1554,12 @@ function App() {
         onSuccess={handleImportStructureSuccess}
       />
       
-      <CreateWorkflowDialog
-        isOpen={showCreateWorkflow}
+      <CreateCalculationDialog
+        isOpen={showCreateCalculation}
         projectRoot={projectRoot}
         structures={structures || []}
-        onClose={() => setShowCreateWorkflow(false)}
-        onSuccess={handleCreateWorkflowSuccess}
+        onClose={() => setShowCreateCalculation(false)}
+        onSuccess={handleCreateCalculationSuccess}
       />
       
       {/* Rename Dialogs */}
@@ -1573,11 +1573,11 @@ function App() {
       />
       
       <RenameDialog
-        isOpen={!!renameWorkflow}
-        onClose={() => setRenameWorkflow(null)}
-        currentName={renameWorkflow?.name || ''}
-        title="Rename Workflow"
-        onRename={handleRenameWorkflow}
+        isOpen={!!renameCalculation}
+        onClose={() => setRenameCalculation(null)}
+        currentName={renameCalculation?.name || ''}
+        title="Rename Calculation"
+        onRename={handleRenameCalculation}
         isLoading={isRenaming}
       />
       
@@ -1587,19 +1587,19 @@ function App() {
         onClose={() => setDeleteStructure(null)}
         resourceName={deleteStructure?.name || ''}
         resourceType="Structure"
-        warningMessage="This structure may be used by one or more workflows."
+        warningMessage="This structure may be used by one or more calculations."
         onConfirm={handleDeleteStructure}
         isLoading={isDeleting}
         forceDeleteOption={true}
       />
       
       <DeleteConfirmDialog
-        isOpen={!!deleteWorkflow}
-        onClose={() => setDeleteWorkflow(null)}
-        resourceName={deleteWorkflow?.name || ''}
-        resourceType="Workflow"
-        warningMessage="This will permanently delete the workflow and all its step files."
-        onConfirm={handleDeleteWorkflow}
+        isOpen={!!deleteCalculation}
+        onClose={() => setDeleteCalculation(null)}
+        resourceName={deleteCalculation?.name || ''}
+        resourceType="Calculation"
+        warningMessage="This will permanently delete the calculation and all its step files."
+        onConfirm={handleDeleteCalculation}
         isLoading={isDeleting}
         forceDeleteOption={false}
       />

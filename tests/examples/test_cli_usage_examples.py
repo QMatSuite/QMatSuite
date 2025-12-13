@@ -26,7 +26,7 @@ def sample_project(tmp_path):
     # Create project.qv.yml
     project_config = {
         "project": {"name": "test_project"},
-        "workflows": [],
+        "calculations": [],
         "structures": [],
     }
     (project_root / "project.qv.yml").write_text(
@@ -198,8 +198,8 @@ class TestRunStructureCommand:
 
         # Mock QE execution to avoid requiring actual QE binaries
         def mock_run_input_step(*args, **kwargs):
-            from quantumvitas.core.engines.qe_workflow import StepResult
-            from quantumvitas.workflow.input_runner import PreparedInputStep
+            from quantumvitas.core.engines.qe_calculation import StepResult
+            from quantumvitas.calculation.input_runner import PreparedInputStep
 
             working_dir = kwargs.get("working_dir", Path("temp"))
             return (
@@ -408,14 +408,14 @@ class TestParameterOverrideParsing:
         assert bundle.species_overrides["Si"]["mass"] == 28.0855
 
 
-class TestCompleteWorkflowExample:
-    """Complete workflow example combining multiple commands."""
+class TestCompleteCalculationExample:
+    """Complete calculation example combining multiple commands."""
 
-    def test_complete_workflow_import_and_run(self, sample_project):
+    def test_complete_calculation_import_and_run(self, sample_project):
         """
-        Example: Complete workflow from structure import to calculation.
+        Example: Complete calculation from structure import to calculation.
 
-        This demonstrates a typical user workflow:
+        This demonstrates a typical user calculation:
         1. Import structure from external file
         2. Run calculation with parameters
         """

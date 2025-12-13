@@ -1,7 +1,7 @@
 """
-Test SCF -> NSCF -> Bands -> bands.x workflow using 7_Si_bandStructure tutorial example.
+Test SCF -> NSCF -> Bands -> bands.x calculation using 7_Si_bandStructure tutorial example.
 
-This test validates the complete workflow:
+This test validates the complete calculation:
 1. SCF calculation
 2. NSCF calculation (reads from SCF .save)
 3. Bands calculation (reads from NSCF .save)
@@ -13,9 +13,9 @@ from pathlib import Path
 
 from quantumvitas.engine.registry import create_default_registry
 from quantumvitas.project.model import Project
-from quantumvitas.workflow.runner import WorkflowRunner
-from quantumvitas.workflow.types import StepStatus
-from tests.utils.workflow_projects import create_workflow_project
+from quantumvitas.calculation.runner import CalculationRunner
+from quantumvitas.calculation.types import StepStatus
+from tests.utils.calculation_projects import create_calculation_project
 
 pytestmark = pytest.mark.qe_core
 
@@ -34,26 +34,26 @@ def si_bands_project(project_root_path: Path, si_bands_dir: Path) -> Path:
         {"id": "bands_pw", "input": "si.2_bands.in", "reference": "si.2_bands.out"},
         {"id": "bands", "input": "si.3_bands.pp.in", "reference": "si.3_bands.pp.out"},
     ]
-    destination = project_root_path / "temp" / "test_outputs" / "workflow_si_bands"
-    return create_workflow_project(
+    destination = project_root_path / "temp" / "test_outputs" / "calculation_si_bands"
+    return create_calculation_project(
         project_root=destination,
-        workflow_id="si_bands",
+        calculation_id="si_bands",
         steps=steps,
         source_dir=si_bands_dir,
         pseudo_src=project_root_path / "pseudo",
     )
 
 
-class TestSiBandsWorkflow:
-    """Test suite for SCF -> NSCF -> Bands -> bands.x workflow."""
+class TestSiBandsCalculation:
+    """Test suite for SCF -> NSCF -> Bands -> bands.x calculation."""
 
-    def test_run_full_workflow(self, si_bands_project: Path):
+    def test_run_full_calculation(self, si_bands_project: Path):
         project = Project.open(si_bands_project)
-        workflow = project.get_workflow("si_bands")
+        calculation = project.get_calculation("si_bands")
 
         registry = create_default_registry()
-        runner = WorkflowRunner(registry)
-        result = runner.run(workflow)
+        runner = CalculationRunner(registry)
+        result = runner.run(calculation)
 
         assert result.status == StepStatus.SUCCESS
         for summary in result.steps:

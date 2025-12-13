@@ -271,7 +271,7 @@ class TestRealWorldExamples:
 
     def test_import_structure_and_generate_input(self, tmp_path, sample_si_structure):
         """
-        Example: Complete workflow of importing structure and generating QE input.
+        Example: Complete calculation of importing structure and generating QE input.
 
         This mimics what `qv import-structure` and `qv run-structure` do internally.
         """

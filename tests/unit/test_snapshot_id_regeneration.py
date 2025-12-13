@@ -12,14 +12,14 @@ from pathlib import Path
 import pytest
 import yaml
 
-from quantumvitas.core.models import load_project, load_workflow
+from quantumvitas.core.models import load_project, load_calculation
 from quantumvitas.core.resolution import build_resource_index
 from quantumvitas.project.snapshot import (
     ProjectSnapshot,
     export_project_to_snapshot,
     materialize_project_from_snapshot,
 )
-from quantumvitas.workflow.structure_steps import StructureStepSpec
+from quantumvitas.calculation.structure_steps import StructureStepSpec
 
 
 @pytest.fixture
@@ -33,7 +33,7 @@ def temp_dir():
 
 @pytest.fixture
 def project2_bands_path() -> Path:
-    """Path to project2_bands example (bands workflows with multiple steps)."""
+    """Path to project2_bands example (bands calculations with multiple steps)."""
     return Path(__file__).parent.parent / "data" / "project_examples" / "project2_bands"
 
 
@@ -65,14 +65,14 @@ class TestSnapshotIDRegeneration:
             if struct_meta.get("id"):
                 snapshot_ids.add(struct_meta["id"])
         
-        # Workflow IDs
-        for workflow_data in snapshot.workflows:
-            workflow_meta = workflow_data.get("meta", {})
-            if workflow_meta.get("id"):
-                snapshot_ids.add(workflow_meta["id"])
+        # Calculation IDs
+        for calculation_data in snapshot.calculations:
+            calculation_meta = calculation_data.get("meta", {})
+            if calculation_meta.get("id"):
+                snapshot_ids.add(calculation_meta["id"])
             
             # Step IDs
-            for step_data in workflow_data.get("steps", []):
+            for step_data in calculation_data.get("steps", []):
                 step_meta = step_data.get("meta", {})
                 if step_meta.get("id"):
                     snapshot_ids.add(step_meta["id"])
@@ -107,25 +107,25 @@ class TestSnapshotIDRegeneration:
             f"materialized has {len(new_project.structures)}"
         )
         
-        assert len(new_project.workflows) == len(snapshot.workflows), (
-            f"Workflow count mismatch: snapshot has {len(snapshot.workflows)}, "
-            f"materialized has {len(new_project.workflows)}"
+        assert len(new_project.calculations) == len(snapshot.calculations), (
+            f"Calculation count mismatch: snapshot has {len(snapshot.calculations)}, "
+            f"materialized has {len(new_project.calculations)}"
         )
         
-        # Assert: Each workflow has the same number and types of steps
-        for i, workflow_data in enumerate(snapshot.workflows):
-            snapshot_steps = workflow_data.get("steps", [])
+        # Assert: Each calculation has the same number and types of steps
+        for i, calculation_data in enumerate(snapshot.calculations):
+            snapshot_steps = calculation_data.get("steps", [])
             snapshot_step_types = [s.get("step_type") for s in snapshot_steps]
             
-            new_workflow_entry = new_project.workflows[i]
-            new_workflow = load_workflow(
-                new_project_root / new_workflow_entry.meta.path / "workflow.yaml",
+            new_calculation_entry = new_project.calculations[i]
+            new_calculation = load_calculation(
+                new_project_root / new_calculation_entry.meta.path / "calculation.yaml",
                 new_project_root,
             )
             
-            assert len(new_workflow.steps) == len(snapshot_steps), (
-                f"Workflow {i} step count mismatch: snapshot has {len(snapshot_steps)}, "
-                f"materialized has {len(new_workflow.steps)}"
+            assert len(new_calculation.steps) == len(snapshot_steps), (
+                f"Calculation {i} step count mismatch: snapshot has {len(snapshot_steps)}, "
+                f"materialized has {len(new_calculation.steps)}"
             )
             
             # Check step types match (order may differ, so use sets)
@@ -133,7 +133,7 @@ class TestSnapshotIDRegeneration:
             # (materialized_index is already built earlier in the test at line 90)
             
             new_step_types = []
-            for step_entry in new_workflow.steps:
+            for step_entry in new_calculation.steps:
                 if step_entry.step_id:
                     # Resolve step file via registry using step_id
                     step_meta = materialized_index.by_id.get(step_entry.step_id)
@@ -144,43 +144,43 @@ class TestSnapshotIDRegeneration:
                             new_step_types.append(step_spec.step_type)
             
             assert set(new_step_types) == set(snapshot_step_types), (
-                f"Workflow {i} step types mismatch: snapshot has {set(snapshot_step_types)}, "
+                f"Calculation {i} step types mismatch: snapshot has {set(snapshot_step_types)}, "
                 f"materialized has {set(new_step_types)}"
             )
         
         # Assert: All cross-references are valid (no broken links)
-        # Check workflow → structure references
-        for workflow_entry in new_project.workflows:
-            workflow = load_workflow(
-                new_project_root / workflow_entry.meta.path / "workflow.yaml",
+        # Check calculation → structure references
+        for calculation_entry in new_project.calculations:
+            calculation = load_calculation(
+                new_project_root / calculation_entry.meta.path / "calculation.yaml",
                 new_project_root,
             )
             
-            if workflow.structure_id:
+            if calculation.structure_id:
                 # Structure ID should exist in materialized project
-                assert workflow.structure_id in materialized_index.by_id, (
-                    f"Workflow {workflow.meta.name} references structure_id {workflow.structure_id} "
+                assert calculation.structure_id in materialized_index.by_id, (
+                    f"Calculation {calculation.meta.name} references structure_id {calculation.structure_id} "
                     f"which does not exist in materialized project"
                 )
-                structure_meta = materialized_index.by_id[workflow.structure_id]
+                structure_meta = materialized_index.by_id[calculation.structure_id]
                 assert structure_meta.kind == "structure", (
-                    f"Workflow references {workflow.structure_id} but it's not a structure "
+                    f"Calculation references {calculation.structure_id} but it's not a structure "
                     f"(kind: {structure_meta.kind})"
                 )
             
-            # Check step → workflow references
+            # Check step → calculation references
             # Use materialized_index to resolve step files via step_id
-            for step_entry in workflow.steps:
+            for step_entry in calculation.steps:
                 if step_entry.step_id:
                     # Resolve step file via registry using step_id
                     step_meta = materialized_index.by_id.get(step_entry.step_id)
                     if step_meta and step_meta.kind == "step":
                         step_path = new_project_root / step_meta.path
                         if step_path.exists():
-                            # DAG model: Step YAML should NOT contain structure_id or parent_workflow_id
+                            # DAG model: Step YAML should NOT contain structure_id or parent_calculation_id
                             step_yaml_text = step_path.read_text()
-                            assert "parent_workflow_id:" not in step_yaml_text, (
-                                f"Step {step_meta.name} YAML should not contain parent_workflow_id (DAG model)"
+                            assert "parent_calculation_id:" not in step_yaml_text, (
+                                f"Step {step_meta.name} YAML should not contain parent_calculation_id (DAG model)"
                             )
                             assert "structure_id:" not in step_yaml_text, (
                                 f"Step {step_meta.name} YAML should not contain structure_id (DAG model)"
@@ -189,46 +189,46 @@ class TestSnapshotIDRegeneration:
                             # Load spec for other validations
                             step_spec = StructureStepSpec.from_yaml(step_path)
                         
-                        # Step structure is resolved via workflow.structure_id at runtime
-                        # Verify workflow has structure_id set
-                        assert workflow.structure_id is not None, (
-                            f"Workflow {workflow.meta.name} should have structure_id set"
+                        # Step structure is resolved via calculation.structure_id at runtime
+                        # Verify calculation has structure_id set
+                        assert calculation.structure_id is not None, (
+                            f"Calculation {calculation.meta.name} should have structure_id set"
                         )
                         # Verify structure exists in index
-                        if workflow.structure_id:
-                            assert workflow.structure_id in materialized_index.by_id, (
-                                f"Workflow {workflow.meta.name} references structure_id "
-                                f"{workflow.structure_id} which does not exist"
+                        if calculation.structure_id:
+                            assert calculation.structure_id in materialized_index.by_id, (
+                                f"Calculation {calculation.meta.name} references structure_id "
+                                f"{calculation.structure_id} which does not exist"
                             )
-                            structure_meta = materialized_index.by_id[workflow.structure_id]
+                            structure_meta = materialized_index.by_id[calculation.structure_id]
                             assert structure_meta.kind == "structure", (
-                                f"Workflow references {workflow.structure_id} but it's not a structure"
+                                f"Calculation references {calculation.structure_id} but it's not a structure"
                             )
-                            # DAG model: Step structure is resolved via workflow.structure_id
+                            # DAG model: Step structure is resolved via calculation.structure_id
                             # No need to check step_spec.structure_id as it's not persisted in YAML
         
         # Assert: Graph structure matches snapshot pattern
-        # In snapshot, each workflow has structure_id pointing to a structure
+        # In snapshot, each calculation has structure_id pointing to a structure
         # In materialized project, same pattern should exist
-        snapshot_workflow_structure_ids = set()
-        for workflow_data in snapshot.workflows:
-            structure_id = workflow_data.get("structure_id")
+        snapshot_calculation_structure_ids = set()
+        for calculation_data in snapshot.calculations:
+            structure_id = calculation_data.get("structure_id")
             if structure_id:
-                snapshot_workflow_structure_ids.add(structure_id)
+                snapshot_calculation_structure_ids.add(structure_id)
         
-        materialized_workflow_structure_ids = set()
-        for workflow_entry in new_project.workflows:
-            workflow = load_workflow(
-                new_project_root / workflow_entry.meta.path / "workflow.yaml",
+        materialized_calculation_structure_ids = set()
+        for calculation_entry in new_project.calculations:
+            calculation = load_calculation(
+                new_project_root / calculation_entry.meta.path / "calculation.yaml",
                 new_project_root,
             )
-            if workflow.structure_id:
-                materialized_workflow_structure_ids.add(workflow.structure_id)
+            if calculation.structure_id:
+                materialized_calculation_structure_ids.add(calculation.structure_id)
         
-        # Number of workflows with structure references should match
-        assert len(materialized_workflow_structure_ids) == len(snapshot_workflow_structure_ids), (
-            f"Number of workflows with structure references mismatch: "
-            f"snapshot has {len(snapshot_workflow_structure_ids)}, "
-            f"materialized has {len(materialized_workflow_structure_ids)}"
+        # Number of calculations with structure references should match
+        assert len(materialized_calculation_structure_ids) == len(snapshot_calculation_structure_ids), (
+            f"Number of calculations with structure references mismatch: "
+            f"snapshot has {len(snapshot_calculation_structure_ids)}, "
+            f"materialized has {len(materialized_calculation_structure_ids)}"
         )
 

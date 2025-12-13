@@ -7,24 +7,24 @@ project:
     path: .
     kind: project
   structures_dir: structures
-  workflows_dir: workflows
-workflows:
+  calculations_dir: calculations
+calculations:
 - name: Si bands
-  path: workflows/si-bands
+  path: calculations/si-bands
   meta:
     id: 01KBH0RGF179RD73PNKD0N8GNS
     name: Si bands
     slug: si-bands
-    path: workflows/si-bands
-    kind: workflow
+    path: calculations/si-bands
+    kind: calculation
 - name: Si bands auto k
-  path: workflows/si-bands-auto-k
+  path: calculations/si-bands-auto-k
   meta:
     id: 01KBH5KYPE659SWXHXQP1BXX16
     name: Si bands auto k
     slug: si-bands-auto-k
-    path: workflows/si-bands-auto-k
-    kind: workflow
+    path: calculations/si-bands-auto-k
+    kind: calculation
 structures:
 - name: Si
   file: structures/si.json

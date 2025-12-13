@@ -1,16 +1,16 @@
 /**
- * E2E Test 3: Run workflow → Jobs → Analysis
+ * E2E Test 3: Run calculation → Jobs → Analysis
  * 
- * **This is the ONLY spec file that actually RUNS QE workflows.**
+ * **This is the ONLY spec file that actually RUNS QE calculations.**
  * All other specs only inspect UI state, metadata, and default parameters.
  * 
- * This spec tests the full workflow execution flow:
+ * This spec tests the full calculation execution flow:
  * 1. Create a demo project
- * 2. Run the workflow (clicks "Run Workflow" button)
+ * 2. Run the calculation (clicks "Run Calculation" button)
  * 3. Monitor job progress until completion (or failure)
  * 4. Verify computation-dependent results:
  *    - Jobs panel entries and statuses
- *    - Workflow status (StepStatus.SUCCESS)
+ *    - Calculation status (StepStatus.SUCCESS)
  *    - Analysis outputs (band plots, DOS plots, Fermi energy, k-path)
  *    - Output file locations
  * 
@@ -33,10 +33,10 @@ import { createUniqueProjectDir, cleanupProjectDir, clearE2EProjectsRoot, create
 // Skip if explicitly requested via environment variable
 const SKIP_E2E = process.env.SKIP_ELECTRON_E2E === 'true';
 
-// Extended timeout for QE workflow execution (3 minutes)
+// Extended timeout for QE calculation execution (3 minutes)
 const QE_TIMEOUT = QE_JOB_TEST_TIMEOUT;
 
-test.describe('E2E Test 3: Run workflow → Jobs → Analysis', () => {
+test.describe('E2E Test 3: Run calculation → Jobs → Analysis', () => {
   test.skip(SKIP_E2E, 'Skipped when SKIP_ELECTRON_E2E=true');
   
   let projectDir: string;
@@ -51,7 +51,7 @@ test.describe('E2E Test 3: Run workflow → Jobs → Analysis', () => {
   
   // Don't clean up after tests - leave projects for inspection
   
-  test('run workflow once and verify all computation-dependent behavior', async ({ appPage }, testInfo) => {
+  test('run calculation once and verify all computation-dependent behavior', async ({ appPage }, testInfo) => {
     // Override timeout to 3 minutes for QE job execution
     testInfo.setTimeout(QE_JOB_TEST_TIMEOUT);
     
@@ -67,15 +67,15 @@ test.describe('E2E Test 3: Run workflow → Jobs → Analysis', () => {
     await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 10000 });
     
     // === STEP 2: Navigate to Workflows and Run (ONCE) ===
-    await navigateToView(appPage, 'workflows');
-    await expect(appPage.getByTestId('qv-workflows-view')).toBeVisible({ timeout: 10000 });
+    await navigateToView(appPage, 'calculations');
+    await expect(appPage.getByTestId('qv-calculations-view')).toBeVisible({ timeout: 10000 });
     
-    // Select the workflow
-    await appPage.getByTestId('qv-workflow-row').first().click();
-    await expect(appPage.getByTestId('qv-workflow-detail')).toBeVisible({ timeout: 10000 });
+    // Select the calculation
+    await appPage.getByTestId('qv-calculation-row').first().click();
+    await expect(appPage.getByTestId('qv-calculation-detail')).toBeVisible({ timeout: 10000 });
     
-    // Click Run Workflow (this is the ONLY workflow execution in this entire test suite)
-    const runButton = appPage.getByTestId('qv-btn-run-workflow');
+    // Click Run Calculation (this is the ONLY calculation execution in this entire test suite)
+    const runButton = appPage.getByTestId('qv-btn-run-calculation');
     await expect(runButton).toBeVisible();
     await expect(runButton).toBeEnabled();
     await runButton.click();
@@ -183,7 +183,7 @@ test.describe('E2E Test 3: Run workflow → Jobs → Analysis', () => {
       }
       
       // Assert with the actual error message
-      throw new Error(`Workflow job failed with error: ${errorText}`);
+      throw new Error(`Calculation job failed with error: ${errorText}`);
     }
     
     // If job didn't complete or fail, throw timeout error
@@ -215,11 +215,11 @@ test.describe('E2E Test 3: Run workflow → Jobs → Analysis', () => {
     await navigateToView(appPage, 'analysis');
     await expect(appPage.getByTestId('qv-analysis-view')).toBeVisible({ timeout: 10000 });
     
-    // Wait a bit for the analysis view to fully render and workflow to be selected
+    // Wait a bit for the analysis view to fully render and calculation to be selected
     await appPage.waitForTimeout(2000);
     
-    // Verify a workflow is selected (should be auto-selected if only one exists)
-    const selectedWorkflow = appPage.locator('.workflow-option--selected');
+    // Verify a calculation is selected (should be auto-selected if only one exists)
+    const selectedWorkflow = appPage.locator('.calculation-option--selected');
     await expect(selectedWorkflow).toBeVisible({ timeout: 5000 });
     
     // Click on Bands tab (the button with text containing "Bands")
@@ -264,7 +264,7 @@ test.describe('E2E Test 3: Run workflow → Jobs → Analysis', () => {
     await expect(kpathElement).not.toHaveText(/^\s*$/, { timeout: 5000 });
     
     // K-path should contain some special point labels (Γ, X, L, W, K, etc.)
-    // The demo Si workflow typically has a path like Γ → X → W → L → Γ
+    // The demo Si calculation typically has a path like Γ → X → W → L → Γ
     const kpathText = await kpathElement.textContent();
     expect(kpathText).toBeTruthy();
     // Check for common special point labels
@@ -280,15 +280,15 @@ test.describe('E2E Test 3: Run workflow → Jobs → Analysis', () => {
     await navigateToView(appPage, 'analysis');
     await expect(appPage.getByTestId('qv-analysis-view')).toBeVisible({ timeout: 10000 });
     
-    // Wait for workflow to be selected
-    await expect(appPage.locator('.workflow-option--selected')).toBeVisible({ timeout: 5000 });
+    // Wait for calculation to be selected
+    await expect(appPage.locator('.calculation-option--selected')).toBeVisible({ timeout: 5000 });
     
     // With automatic analysis enabled, the chart should appear without clicking Load
     // The "Analyzing..." state should appear briefly, then the chart
     // Give the automatic analysis time to run
     await appPage.waitForTimeout(3000);
     
-    // The bands chart should appear automatically (since demo is bands workflow)
+    // The bands chart should appear automatically (since demo is bands calculation)
     // Note: This may show "Analyzing..." briefly first
     await expect(appPage.getByTestId('qv-analysis-bands-chart')).toBeVisible({ timeout: 30000 });
     

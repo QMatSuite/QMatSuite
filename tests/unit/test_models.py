@@ -6,35 +6,35 @@ from pathlib import Path
 import yaml
 
 from quantumvitas.core.models import (
-    WorkflowModel,
-    WorkflowStepEntry,
+    CalculationModel,
+    CalculationStepEntry,
     ProjectModel,
     StructureEntry,
-    WorkflowEntry,
+    CalculationEntry,
     StructureModel,
-    load_workflow,
-    save_workflow,
+    load_calculation,
+    save_calculation,
     load_project,
     save_project,
     load_structure_model,
     save_structure_model,
-    ensure_workflow_meta,
+    ensure_calculation_meta,
 )
 from quantumvitas.core.resources import ResourceMeta
 
 
-class TestWorkflowStepEntry:
-    """Test WorkflowStepEntry dataclass."""
+class TestCalculationStepEntry:
+    """Test CalculationStepEntry dataclass."""
     
     def test_to_dict_minimal(self):
         """Minimal entry only has step_id (ULID)."""
-        entry = WorkflowStepEntry(step_id="01TESTSTEPID123456789")
+        entry = CalculationStepEntry(step_id="01TESTSTEPID123456789")
         d = entry.to_dict()
         assert d == {"step_id": "01TESTSTEPID123456789"}
     
     def test_to_dict_full(self):
         """Full entry has all fields (ID-only model)."""
-        entry = WorkflowStepEntry(
+        entry = CalculationStepEntry(
             step_id="01TESTSTEPID123456789",
             type="scf",
             reference="reference/scf.out",
@@ -54,7 +54,7 @@ class TestWorkflowStepEntry:
         
         step_ulid = generate_resource_id()
         data = {"step_id": step_ulid, "type": "nscf", "input": "raw/nscf.in"}
-        entry = WorkflowStepEntry.from_dict(data, project_root=Path.cwd())
+        entry = CalculationStepEntry.from_dict(data, project_root=Path.cwd())
         assert entry.step_id == step_ulid
         assert entry.type == "nscf"
         assert entry.input == "raw/nscf.in"
@@ -66,18 +66,18 @@ class TestWorkflowStepEntry:
         # Legacy format: has "id" but no "step_id" ULID
         data = {"id": "nscf", "type": "nscf", "file": "raw/nscf.in"}
         with pytest.raises(LegacyProjectError) as exc_info:
-            WorkflowStepEntry.from_dict(data, project_root=Path.cwd())
+            CalculationStepEntry.from_dict(data, project_root=Path.cwd())
         
         assert "step_id" in str(exc_info.value).lower() or "legacy" in str(exc_info.value).lower()
 
 
-class TestWorkflowModel:
-    """Test WorkflowModel dataclass."""
+class TestCalculationModel:
+    """Test CalculationModel dataclass."""
     
     def test_from_dict_minimal(self):
-        """Parse minimal workflow dict."""
+        """Parse minimal calculation dict."""
         data = {"meta": {"id": "01ABCDEFGHIJKLMNOPQRSTUV", "name": "Test"}}
-        model = WorkflowModel.from_dict(data, default_name="Test", default_path="workflows/test")
+        model = CalculationModel.from_dict(data, default_name="Test", default_path="calculations/test")
         
         assert model.meta.id == "01ABCDEFGHIJKLMNOPQRSTUV"
         assert model.meta.name == "Test"
@@ -85,7 +85,7 @@ class TestWorkflowModel:
         assert model.steps == []
     
     def test_from_dict_with_steps(self):
-        """Parse workflow with steps (DAG + ULID model)."""
+        """Parse calculation with steps (DAG + ULID model)."""
         from quantumvitas.core.resources import generate_resource_id
         
         structure_ulid = generate_resource_id()
@@ -100,7 +100,7 @@ class TestWorkflowModel:
                 {"step_id": step2_ulid, "type": "nscf"},
             ],
         }
-        model = WorkflowModel.from_dict(data, default_name="DOS Calc", default_path="workflows/dos-calc")
+        model = CalculationModel.from_dict(data, default_name="DOS Calc", default_path="calculations/dos-calc")
         
         assert model.structure_id == structure_ulid
         assert len(model.steps) == 2
@@ -113,14 +113,14 @@ class TestWorkflowModel:
         
         data = {
             "id": "si-dos",
-            "workflow": {
+            "calculation": {
                 "structure": "si",  # Legacy selector without structure_id
                 "working_dir": "raw",
             },
             "steps": [],
         }
         with pytest.raises(LegacyProjectError):
-            WorkflowModel.from_dict(data, default_name="si-dos", default_path="workflows/si-dos")
+            CalculationModel.from_dict(data, default_name="si-dos", default_path="calculations/si-dos")
     
     def test_to_dict_roundtrip(self):
         """Convert to dict and back (ID-only model)."""
@@ -128,21 +128,21 @@ class TestWorkflowModel:
         
         step_ulid = generate_resource_id()
         meta = ResourceMeta(
-            id="01WORKFLOW_ID_HERE______",
-            name="My Workflow",
-            slug="my-workflow",
-            path="workflows/my-workflow",
-            kind="workflow",
+            id="01CALCULATION_ID_HERE______",
+            name="My Calculation",
+            slug="my-calculation",
+            path="calculations/my-calculation",
+            kind="calculation",
         )
-        model = WorkflowModel(
+        model = CalculationModel(
             meta=meta,
             structure_id="01STRUCTURE_ID_HERE_____",
             structure_name="Graphene",
-            steps=[WorkflowStepEntry(step_id=step_ulid, type="scf")],
+            steps=[CalculationStepEntry(step_id=step_ulid, type="scf")],
         )
         
         d = model.to_dict()
-        assert d["meta"]["id"] == "01WORKFLOW_ID_HERE______"
+        assert d["meta"]["id"] == "01CALCULATION_ID_HERE______"
         assert d["structure_id"] == "01STRUCTURE_ID_HERE_____"
         # DAG + ID-only model: structure_name is NOT written to YAML (cosmetic only)
         assert "structure_name" not in d
@@ -151,104 +151,104 @@ class TestWorkflowModel:
         assert len(d["steps"]) == 1
         
         # Roundtrip
-        model2 = WorkflowModel.from_dict(d, default_name="fallback", default_path="workflows/fallback")
+        model2 = CalculationModel.from_dict(d, default_name="fallback", default_path="calculations/fallback")
         assert model2.meta.id == model.meta.id
         assert model2.structure_id == model.structure_id
         # structure_name is not persisted, so it will be None after roundtrip
         # (it's cosmetic only, structure_id is the canonical reference)
 
 
-class TestWorkflowIO:
-    """Test load_workflow and save_workflow functions."""
+class TestCalculationIO:
+    """Test load_calculation and save_calculation functions."""
     
     @pytest.fixture
-    def workflow_dir(self, tmp_path):
-        """Create a workflow directory with DAG + ULID format."""
+    def calculation_dir(self, tmp_path):
+        """Create a calculation directory with DAG + ULID format."""
         from quantumvitas.core.resources import generate_resource_id
         
-        wf_dir = tmp_path / "workflows" / "test-workflow"
+        wf_dir = tmp_path / "calculations" / "test-calculation"
         wf_dir.mkdir(parents=True)
         (wf_dir / "steps").mkdir()
         
         structure_id = generate_resource_id()
         step_ulid = generate_resource_id()
         
-        workflow_yaml = {
+        calculation_yaml = {
             "meta": {
-                "id": "01WORKFLOW_TEST_________",
-                "name": "Test Workflow",
-                "slug": "test-workflow",
-                "path": "workflows/test-workflow",
-                "kind": "workflow",
+                "id": "01CALCULATION_TEST_________",
+                "name": "Test Calculation",
+                "slug": "test-calculation",
+                "path": "calculations/test-calculation",
+                "kind": "calculation",
             },
             "structure_id": structure_id,  # DAG + ULID format
             "steps": [
                 {"step_id": step_ulid, "type": "scf"},  # DAG + ULID format
             ],
         }
-        (wf_dir / "workflow.yaml").write_text(yaml.safe_dump(workflow_yaml))
+        (wf_dir / "calculation.yaml").write_text(yaml.safe_dump(calculation_yaml))
         
         return wf_dir, tmp_path
     
-    def test_load_workflow(self, workflow_dir):
-        """Load workflow from directory."""
+    def test_load_calculation(self, calculation_dir):
+        """Load calculation from directory."""
         from quantumvitas.core.resources import generate_resource_id
         
-        wf_dir, project_root = workflow_dir
-        model = load_workflow(wf_dir, project_root)
+        wf_dir, project_root = calculation_dir
+        model = load_calculation(wf_dir, project_root)
         
-        assert model.meta.id == "01WORKFLOW_TEST_________"
-        assert model.meta.name == "Test Workflow"
+        assert model.meta.id == "01CALCULATION_TEST_________"
+        assert model.meta.name == "Test Calculation"
         assert model.structure_id is not None  # Should have structure_id from YAML
         assert len(model.steps) == 1
         assert model.steps[0].step_id is not None  # Should have step_id ULID
         assert len(model.steps[0].step_id) == 26  # ULID length
     
-    def test_load_workflow_from_yaml_path(self, workflow_dir):
-        """Load workflow from yaml file path."""
-        wf_dir, project_root = workflow_dir
-        model = load_workflow(wf_dir / "workflow.yaml", project_root)
+    def test_load_calculation_from_yaml_path(self, calculation_dir):
+        """Load calculation from yaml file path."""
+        wf_dir, project_root = calculation_dir
+        model = load_calculation(wf_dir / "calculation.yaml", project_root)
         
-        assert model.meta.name == "Test Workflow"
+        assert model.meta.name == "Test Calculation"
         assert model.structure_id is not None  # Should have structure_id from YAML
         assert len(model.steps) == 1
         assert model.steps[0].step_id is not None  # Should have step_id ULID
     
-    def test_save_workflow(self, tmp_path):
-        """Save workflow creates yaml file (ID-only model)."""
-        wf_dir = tmp_path / "workflows" / "new-workflow"
+    def test_save_calculation(self, tmp_path):
+        """Save calculation creates yaml file (ID-only model)."""
+        wf_dir = tmp_path / "calculations" / "new-calculation"
         wf_dir.mkdir(parents=True)
         
         meta = ResourceMeta(
-            id="01NEW_WORKFLOW__________",
-            name="New Workflow",
-            slug="new-workflow",
-            path="workflows/new-workflow",
-            kind="workflow",
+            id="01NEW_CALCULATION_______",
+            name="New Calculation",
+            slug="new-calculation",
+            path="calculations/new-calculation",
+            kind="calculation",
         )
-        model = WorkflowModel(
+        model = CalculationModel(
             meta=meta,
             structure_id="01STRUCTURE_ID_HERE_____",
             structure_name="Graphene",
         )
         
-        save_workflow(model, wf_dir)
+        save_calculation(model, wf_dir)
         
-        yaml_path = wf_dir / "workflow.yaml"
+        yaml_path = wf_dir / "calculation.yaml"
         assert yaml_path.exists()
         
         loaded = yaml.safe_load(yaml_path.read_text())
-        assert loaded["meta"]["id"] == "01NEW_WORKFLOW__________"
+        assert loaded["meta"]["id"] == "01NEW_CALCULATION_______"
         assert loaded["structure_id"] == "01STRUCTURE_ID_HERE_____"
         # DAG + ID-only constitution: structure_name and structure selector are NOT persisted
-        assert "structure_name" not in loaded, "structure_name should not be written to workflow.yaml"
-        assert "structure" not in loaded, "structure selector should not be written to workflow.yaml"
+        assert "structure_name" not in loaded, "structure_name should not be written to calculation.yaml"
+        assert "structure" not in loaded, "structure selector should not be written to calculation.yaml"
     
     def test_roundtrip(self, tmp_path):
         """Save and load produces equivalent model."""
         from quantumvitas.core.resources import generate_resource_id
         
-        wf_dir = tmp_path / "workflows" / "roundtrip"
+        wf_dir = tmp_path / "calculations" / "roundtrip"
         wf_dir.mkdir(parents=True)
         
         step1_ulid = generate_resource_id()
@@ -258,23 +258,23 @@ class TestWorkflowIO:
             id="01ROUNDTRIP_ID__________",
             name="Roundtrip Test",
             slug="roundtrip-test",
-            path="workflows/roundtrip",
-            kind="workflow",
+            path="calculations/roundtrip",
+            kind="calculation",
         )
-        original = WorkflowModel(
+        original = CalculationModel(
             meta=meta,
             structure_id="01STRUCTURE_ID_HERE_____",
             structure_name="Silicon",
             mode="normal",
             working_dir="raw",
             steps=[
-                WorkflowStepEntry(step_id=step1_ulid, type="scf"),
-                WorkflowStepEntry(step_id=step2_ulid, type="nscf"),
+                CalculationStepEntry(step_id=step1_ulid, type="scf"),
+                CalculationStepEntry(step_id=step2_ulid, type="nscf"),
             ],
         )
         
-        save_workflow(original, wf_dir)
-        loaded = load_workflow(wf_dir, tmp_path)
+        save_calculation(original, wf_dir)
+        loaded = load_calculation(wf_dir, tmp_path)
         
         assert loaded.meta.id == original.meta.id
         assert loaded.meta.name == original.meta.name
@@ -284,11 +284,11 @@ class TestWorkflowIO:
         assert len(loaded.steps) == len(original.steps)
         
         # Verify on-disk YAML only contains structure_id (DAG + ID-only constitution)
-        yaml_path = wf_dir / "workflow.yaml"
+        yaml_path = wf_dir / "calculation.yaml"
         on_disk = yaml.safe_load(yaml_path.read_text())
         assert "structure_id" in on_disk
-        assert "structure_name" not in on_disk, "structure_name should not be persisted to workflow.yaml"
-        assert "structure" not in on_disk, "structure selector should not be persisted to workflow.yaml"
+        assert "structure_name" not in on_disk, "structure_name should not be persisted to calculation.yaml"
+        assert "structure" not in on_disk, "structure selector should not be persisted to calculation.yaml"
 
 
 class TestProjectModel:
@@ -301,10 +301,10 @@ class TestProjectModel:
         
         assert model.name == "My Project"
         assert model.structures == []
-        assert model.workflows == []
+        assert model.calculations == []
     
     def test_from_dict_with_resources(self):
-        """Parse project with structures and workflows."""
+        """Parse project with structures and calculations."""
         data = {
             "project": {
                 "name": "Full Project",
@@ -313,8 +313,8 @@ class TestProjectModel:
             "structures": [
                 {"name": "Silicon", "file": "structures/si.json"},
             ],
-            "workflows": [
-                {"name": "DOS Calc", "path": "workflows/dos"},
+            "calculations": [
+                {"name": "DOS Calc", "path": "calculations/dos"},
             ],
         }
         model = ProjectModel.from_dict(data, root=Path("/test"))
@@ -322,8 +322,8 @@ class TestProjectModel:
         assert len(model.structures) == 1
         assert model.structures[0].meta.name == "Silicon"
         
-        assert len(model.workflows) == 1
-        assert model.workflows[0].meta.name == "DOS Calc"
+        assert len(model.calculations) == 1
+        assert model.calculations[0].meta.name == "DOS Calc"
     
     def test_get_structure_by_selector(self):
         """Find structure by various selectors."""
@@ -336,7 +336,7 @@ class TestProjectModel:
                     "meta": {"id": "01SILICON_ID_HERE_______", "slug": "silicon"},
                 },
             ],
-            "workflows": [],
+            "calculations": [],
         }
         model = ProjectModel.from_dict(data, root=Path("/test"))
         
@@ -374,8 +374,8 @@ class TestProjectIO:
             "structures": [
                 {"name": "Silicon", "file": "structures/si.json"},
             ],
-            "workflows": [
-                {"name": "DOS", "path": "workflows/dos"},
+            "calculations": [
+                {"name": "DOS", "path": "calculations/dos"},
             ],
         }
         (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
@@ -389,7 +389,7 @@ class TestProjectIO:
         assert model.meta.id == "01PROJECT_TEST__________"
         assert model.name == "Test Project"
         assert len(model.structures) == 1
-        assert len(model.workflows) == 1
+        assert len(model.calculations) == 1
     
     def test_save_project(self, tmp_path):
         """Save project creates yaml file."""
@@ -461,51 +461,51 @@ class TestStructureModel:
         assert d["@module"] == "test"
 
 
-class TestEnsureWorkflowMeta:
-    """Test ensure_workflow_meta function."""
+class TestEnsureCalculationMeta:
+    """Test ensure_calculation_meta function."""
     
-    def test_creates_meta_for_new_workflow(self, tmp_path):
-        """Creates meta and workflow.yaml for new workflow."""
+    def test_creates_meta_for_new_calculation(self, tmp_path):
+        """Creates meta and calculation.yaml for new calculation."""
         project_root = tmp_path / "project"
         project_root.mkdir()
-        workflow_dir = project_root / "workflows" / "new-workflow"
-        workflow_dir.mkdir(parents=True)
+        calculation_dir = project_root / "calculations" / "new-calculation"
+        calculation_dir.mkdir(parents=True)
         
-        meta = ensure_workflow_meta(workflow_dir, project_root, name="New Workflow")
+        meta = ensure_calculation_meta(calculation_dir, project_root, name="New Calculation")
         
         assert len(meta.id) == 26  # ULID length
-        assert meta.name == "New Workflow"
-        assert meta.slug == "new-workflow"
-        assert (workflow_dir / "workflow.yaml").exists()
+        assert meta.name == "New Calculation"
+        assert meta.slug == "new-calculation"
+        assert (calculation_dir / "calculation.yaml").exists()
     
     def test_preserves_existing_meta(self, tmp_path):
-        """Preserves meta from existing workflow.yaml (DAG + ULID format)."""
+        """Preserves meta from existing calculation.yaml (DAG + ULID format)."""
         from quantumvitas.core.resources import generate_resource_id
         
         project_root = tmp_path / "project"
         project_root.mkdir()
-        workflow_dir = project_root / "workflows" / "existing"
-        workflow_dir.mkdir(parents=True)
+        calculation_dir = project_root / "calculations" / "existing"
+        calculation_dir.mkdir(parents=True)
         
-        workflow_ulid = generate_resource_id()
+        calculation_ulid = generate_resource_id()
         structure_ulid = generate_resource_id()
         
-        # Create existing workflow.yaml with DAG + ULID format
+        # Create existing calculation.yaml with DAG + ULID format
         existing_yaml = {
             "meta": {
-                "id": workflow_ulid,  # Valid 26-char ULID
-                "name": "Existing Workflow",
+                "id": calculation_ulid,  # Valid 26-char ULID
+                "name": "Existing Calculation",
                 "slug": "existing",
-                "path": "workflows/existing",
-                "kind": "workflow",
+                "path": "calculations/existing",
+                "kind": "calculation",
             },
             "structure_id": structure_ulid,  # DAG + ULID format
             "steps": [],  # Empty steps list
         }
-        (workflow_dir / "workflow.yaml").write_text(yaml.safe_dump(existing_yaml))
+        (calculation_dir / "calculation.yaml").write_text(yaml.safe_dump(existing_yaml))
         
-        meta = ensure_workflow_meta(workflow_dir, project_root)
+        meta = ensure_calculation_meta(calculation_dir, project_root)
         
-        assert meta.id == workflow_ulid
-        assert meta.name == "Existing Workflow"
+        assert meta.id == calculation_ulid
+        assert meta.name == "Existing Calculation"
 

@@ -11,7 +11,7 @@ from quantumvitas.core.context import (
     PathContext,
     find_path_context_from_pwd,
     get_project_root_from_pwd,
-    get_workflow_from_pwd,
+    get_calculation_from_pwd,
 )
 
 
@@ -19,26 +19,26 @@ class TestPathContext:
     """Test PathContext dataclass methods."""
     
     def test_empty_context(self):
-        """Empty context has no workflow/step."""
+        """Empty context has no calculation/step."""
         ctx = PathContext(project_root=Path("/test"))
-        assert ctx.workflow_node is None
+        assert ctx.calculation_node is None
         assert ctx.step_node is None
-        assert ctx.workflow_selector is None
+        assert ctx.calculation_selector is None
         assert ctx.is_inside_project()
-        assert not ctx.is_inside_workflow()
+        assert not ctx.is_inside_calculation()
     
-    def test_context_with_workflow(self):
-        """Context with workflow node."""
+    def test_context_with_calculation(self):
+        """Context with calculation node."""
         ctx = PathContext(
             project_root=Path("/test"),
             nodes=[
                 ContextNode(kind="project", directory=Path("/test")),
-                ContextNode(kind="workflow", directory=Path("/test/workflows/my-wf"), selector="my-wf"),
+                ContextNode(kind="calculation", directory=Path("/test/calculations/my-wf"), selector="my-wf"),
             ],
         )
-        assert ctx.is_inside_workflow()
-        assert ctx.workflow_selector == "my-wf"
-        assert ctx.workflow_directory == Path("/test/workflows/my-wf")
+        assert ctx.is_inside_calculation()
+        assert ctx.calculation_selector == "my-wf"
+        assert ctx.calculation_directory == Path("/test/calculations/my-wf")
 
 
 class TestFindPathContext:
@@ -56,20 +56,20 @@ class TestFindPathContext:
                 "name": "My Project",
                 "meta": {"slug": "my-project"},
             },
-            "workflows": [
-                {"name": "Test Workflow", "path": "workflows/test-wf", "meta": {"slug": "test-wf"}},
+            "calculations": [
+                {"name": "Test Calculation", "path": "calculations/test-wf", "meta": {"slug": "test-wf"}},
             ],
             "structures": [],
         }
         (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
         
-        # Create workflow
-        workflow_dir = project_root / "workflows" / "test-wf"
-        workflow_dir.mkdir(parents=True)
-        (workflow_dir / "steps").mkdir()
+        # Create calculation
+        calculation_dir = project_root / "calculations" / "test-wf"
+        calculation_dir.mkdir(parents=True)
+        (calculation_dir / "steps").mkdir()
         
-        wf_yaml = {"meta": {"slug": "test-wf", "name": "Test Workflow"}}
-        (workflow_dir / "workflow.yaml").write_text(yaml.safe_dump(wf_yaml))
+        wf_yaml = {"meta": {"slug": "test-wf", "name": "Test Calculation"}}
+        (calculation_dir / "calculation.yaml").write_text(yaml.safe_dump(wf_yaml))
         
         return project_root
     
@@ -77,34 +77,34 @@ class TestFindPathContext:
         """Find context from project root."""
         ctx = find_path_context_from_pwd(project_tree)
         assert ctx.project_root == project_tree
-        assert not ctx.is_inside_workflow()
+        assert not ctx.is_inside_calculation()
     
-    def test_find_from_workflow_dir(self, project_tree):
-        """Find context from workflow directory."""
-        workflow_dir = project_tree / "workflows" / "test-wf"
-        ctx = find_path_context_from_pwd(workflow_dir)
+    def test_find_from_calculation_dir(self, project_tree):
+        """Find context from calculation directory."""
+        calculation_dir = project_tree / "calculations" / "test-wf"
+        ctx = find_path_context_from_pwd(calculation_dir)
         
         assert ctx.project_root == project_tree
-        assert ctx.is_inside_workflow()
-        assert ctx.workflow_selector == "test-wf"
+        assert ctx.is_inside_calculation()
+        assert ctx.calculation_selector == "test-wf"
     
     def test_find_from_steps_dir(self, project_tree):
         """Find context from steps directory."""
-        steps_dir = project_tree / "workflows" / "test-wf" / "steps"
+        steps_dir = project_tree / "calculations" / "test-wf" / "steps"
         ctx = find_path_context_from_pwd(steps_dir)
         
         assert ctx.project_root == project_tree
-        assert ctx.is_inside_workflow()
-        assert ctx.workflow_selector == "test-wf"
+        assert ctx.is_inside_calculation()
+        assert ctx.calculation_selector == "test-wf"
     
     def test_find_from_subdirectory(self, project_tree):
         """Find context from nested subdirectory."""
-        nested = project_tree / "workflows" / "test-wf" / "raw" / "subdir"
+        nested = project_tree / "calculations" / "test-wf" / "raw" / "subdir"
         nested.mkdir(parents=True)
         
         ctx = find_path_context_from_pwd(nested)
         assert ctx.project_root == project_tree
-        assert ctx.is_inside_workflow()
+        assert ctx.is_inside_calculation()
     
     def test_not_found_raises(self, tmp_path):
         """Raise ContextNotFoundError when no project found."""
@@ -123,7 +123,7 @@ class TestFindPathContext:
             deep.mkdir()
         
         # Put project.qv.yml at root
-        config = {"project": {"name": "Deep"}, "structures": [], "workflows": []}
+        config = {"project": {"name": "Deep"}, "structures": [], "calculations": []}
         (tmp_path / "project.qv.yml").write_text(yaml.safe_dump(config))
         
         # With max_depth=3, should not find project from level4
@@ -145,18 +145,18 @@ class TestConvenienceFunctions:
         project_root = tmp_path / "proj"
         project_root.mkdir()
         
-        workflow_dir = project_root / "workflows" / "my-workflow"
-        workflow_dir.mkdir(parents=True)
+        calculation_dir = project_root / "calculations" / "my-calculation"
+        calculation_dir.mkdir(parents=True)
         
         config = {
             "project": {"name": "Proj"},
-            "workflows": [{"name": "My Workflow", "path": "workflows/my-workflow", "meta": {"slug": "my-workflow"}}],
+            "calculations": [{"name": "My Calculation", "path": "calculations/my-calculation", "meta": {"slug": "my-calculation"}}],
             "structures": [],
         }
         (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
         
-        wf_yaml = {"meta": {"slug": "my-workflow"}}
-        (workflow_dir / "workflow.yaml").write_text(yaml.safe_dump(wf_yaml))
+        wf_yaml = {"meta": {"slug": "my-calculation"}}
+        (calculation_dir / "calculation.yaml").write_text(yaml.safe_dump(wf_yaml))
         
         return project_root
     
@@ -165,14 +165,14 @@ class TestConvenienceFunctions:
         root = get_project_root_from_pwd(simple_project)
         assert root == simple_project
     
-    def test_get_workflow_from_pwd_inside_workflow(self, simple_project):
-        """get_workflow_from_pwd returns selector when inside workflow."""
-        workflow_dir = simple_project / "workflows" / "my-workflow"
-        selector = get_workflow_from_pwd(workflow_dir)
-        assert selector == "my-workflow"
+    def test_get_calculation_from_pwd_inside_calculation(self, simple_project):
+        """get_calculation_from_pwd returns selector when inside calculation."""
+        calculation_dir = simple_project / "calculations" / "my-calculation"
+        selector = get_calculation_from_pwd(calculation_dir)
+        assert selector == "my-calculation"
     
-    def test_get_workflow_from_pwd_outside_workflow(self, simple_project):
-        """get_workflow_from_pwd returns None when outside workflow."""
-        selector = get_workflow_from_pwd(simple_project)
+    def test_get_calculation_from_pwd_outside_calculation(self, simple_project):
+        """get_calculation_from_pwd returns None when outside calculation."""
+        selector = get_calculation_from_pwd(simple_project)
         assert selector is None
 

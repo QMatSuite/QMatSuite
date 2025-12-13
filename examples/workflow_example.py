@@ -1,9 +1,9 @@
 """
-Example: Using QE Engine's step and workflow execution.
+Example: Using QE Engine's step and calculation execution.
 
-This demonstrates the generalized step/workflow system where:
+This demonstrates the generalized step/calculation system where:
 - Steps are basic execution units (scf, nscf, dos, bands, etc.)
-- Workflows combine multiple steps sequentially
+- Calculations combine multiple steps sequentially
 - Step type is auto-detected from input file
 - Each step maps to a QE executable (.x file)
 """
@@ -37,12 +37,12 @@ if result.success:
 else:
     print(f"Step failed: {result.error}")
 
-# Example 3: Run a workflow (SCF -> NSCF -> DOS)
+# Example 3: Run a calculation (SCF -> NSCF -> DOS)
 scf_file = Path("path/to/si.1_scf.in")
 nscf_file = Path("path/to/si.2_nscf.in")
 dos_file = Path("path/to/si.3_dos.in")
 
-workflow_result = engine.run_workflow(
+calculation_result = engine.run_calculation(
     steps=[
         (scf_file, None),    # Auto-detect step type
         (nscf_file, None),  # Auto-detect step type
@@ -53,10 +53,10 @@ workflow_result = engine.run_workflow(
     stop_on_error=True
 )
 
-if workflow_result.success:
-    print(f"Workflow completed successfully in {workflow_result.total_time:.2f}s")
-    for i, step_result in enumerate(workflow_result.steps):
+if calculation_result.success:
+    print(f"Calculation completed successfully in {calculation_result.total_time:.2f}s")
+    for i, step_result in enumerate(calculation_result.steps):
         print(f"  Step {i+1} ({step_result.step_type}): {step_result.execution_time:.2f}s")
 else:
-    print(f"Workflow failed: {workflow_result.error}")
+    print(f"Calculation failed: {calculation_result.error}")
 

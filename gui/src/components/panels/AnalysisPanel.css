@@ -67,8 +67,8 @@
   color: var(--color-primary-light);
 }
 
-/* Workflow Selection */
-.workflow-select {
+/* Calculation Selection */
+.calculation-select {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -76,7 +76,7 @@
   overflow-y: auto;
 }
 
-.workflow-option {
+.calculation-option {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -89,27 +89,27 @@
   text-align: left;
 }
 
-.workflow-option:hover {
+.calculation-option:hover {
   background: var(--bg-button);
 }
 
-.workflow-option--selected {
+.calculation-option--selected {
   background: var(--color-primary-alpha);
   border-color: var(--color-primary);
 }
 
-.workflow-name {
+.calculation-name {
   font-size: 0.85rem;
   font-weight: 500;
   color: var(--text-primary);
 }
 
-.workflow-steps {
+.calculation-steps {
   font-size: 0.7rem;
   color: var(--text-muted);
 }
 
-.no-workflows {
+.no-calculations {
   font-size: 0.8rem;
   color: var(--text-muted);
   padding: 8px;

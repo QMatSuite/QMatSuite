@@ -140,7 +140,7 @@ Get high-level project information.
   "n_structures": 2,
   "n_workflows": 3,
   "structure_names": ["si", "ge"],
-  "workflow_names": ["scf", "dos", "bands"]
+  "calculation_names": ["scf", "dos", "bands"]
 }
 ```
 
@@ -183,9 +183,9 @@ List all structures in a project.
 }
 ```
 
-#### `list_workflows`
+#### `list_calculations`
 
-List all workflows in a project.
+List all calculations in a project.
 
 **Payload**:
 ```json
@@ -198,13 +198,13 @@ List all workflows in a project.
 ```json
 {
   "count": 1,
-  "workflows": [
+  "calculations": [
     {
       "id": "01ABC...",
       "name": "si-dos",
       "slug": "si-dos",
-      "path": "workflows/si-dos",
-      "absolute_path": "/path/to/project/workflows/si-dos",
+      "path": "calculations/si-dos",
+      "absolute_path": "/path/to/project/calculations/si-dos",
       "structure": "si",
       "mode": "normal",
       "n_steps": 3,
@@ -297,7 +297,7 @@ Get SCF convergence data for plotting.
 ```json
 {
   "project_root": "/path/to/project",
-  "workflow": "si-scf",
+  "calculation": "si-scf",
   "step": "scf"
 }
 ```
@@ -305,7 +305,7 @@ Get SCF convergence data for plotting.
 **Response**:
 ```json
 {
-  "workflow": "si-scf",
+  "calculation": "si-scf",
   "step": "scf",
   "output_file": "/path/to/raw/si.scf.out",
   "converged": true,
@@ -332,7 +332,7 @@ Get DOS data for plotting.
 ```json
 {
   "project_root": "/path/to/project",
-  "workflow": "si-dos",
+  "calculation": "si-dos",
   "step": "dos"
 }
 ```
@@ -340,7 +340,7 @@ Get DOS data for plotting.
 **Response**:
 ```json
 {
-  "workflow": "si-dos",
+  "calculation": "si-dos",
   "step": "dos",
   "data_file": "/path/to/raw/si.dos.dat",
   "n_points": 1001,
@@ -361,7 +361,7 @@ Get band structure data for plotting.
 ```json
 {
   "project_root": "/path/to/project",
-  "workflow": "si-bands",
+  "calculation": "si-bands",
   "step": "bands"
 }
 ```
@@ -369,7 +369,7 @@ Get band structure data for plotting.
 **Response**:
 ```json
 {
-  "workflow": "si-bands",
+  "calculation": "si-bands",
   "step": "bands",
   "data_file": "/path/to/raw/si.bands.dat.gnu",
   "n_bands": 8,
@@ -392,17 +392,17 @@ Get band structure data for plotting.
 
 ### Job Management Commands
 
-Long-running operations (workflow/step execution) are submitted as background jobs.
+Long-running operations (calculation/step execution) are submitted as background jobs.
 
-#### `run_workflow`
+#### `run_calculation`
 
-Submit a workflow for background execution.
+Submit a calculation for background execution.
 
 **Payload**:
 ```json
 {
   "project_root": "/path/to/project",
-  "workflow": "si-bands",
+  "calculation": "si-bands",
   "strict": false,
   "verbose": false
 }
@@ -411,7 +411,7 @@ Submit a workflow for background execution.
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `project_root` | string | Yes | Path to project |
-| `workflow` | string | Yes | Workflow selector |
+| `calculation` | string | Yes | Calculation selector |
 | `strict` | bool | No | Fail on first error (default: false) |
 | `verbose` | bool | No | Verbose output (default: false) |
 
@@ -431,7 +431,7 @@ Submit a single step for background execution.
 ```json
 {
   "project_root": "/path/to/project",
-  "workflow": "si-bands",
+  "calculation": "si-bands",
   "step": "scf",
   "verbose": false
 }
@@ -460,22 +460,22 @@ Get the current status of a job.
 ```json
 {
   "id": "abc-123-def",
-  "job_type": "run_workflow",
+  "job_type": "run_calculation",
   "status": "completed",
   "created_at": "2025-12-05T10:00:00+00:00",
   "started_at": "2025-12-05T10:00:01+00:00",
   "completed_at": "2025-12-05T10:05:30+00:00",
   "result": {
-    "workflow": "si-bands",
+    "calculation": "si-bands",
     "steps": 4,
     "results": [...]
   },
   "error": null,
   "params": {
     "project_root": "/path/to/project",
-    "workflow": "si-bands"
+    "calculation": "si-bands"
   },
-  "io_dir": "/path/to/project/workflows/si-bands/raw",
+  "io_dir": "/path/to/project/calculations/si-bands/raw",
   "steps": [
     {
       "step_id": "01TXYZ789...",
@@ -490,7 +490,7 @@ Get the current status of a job.
 
 **Fields**:
 - `io_dir`: Absolute path to the I/O directory (the actual directory used by the runner to write QE input/output and artifacts). Available immediately when the job is created (pending state), computed using the same logic as the runner (single source of truth via `compute_io_dir_from_workflow_model()`).
-- `steps`: Array of step progress information (available for workflow jobs, initialized at job creation with pending status, updated during execution).
+- `steps`: Array of step progress information (available for calculation jobs, initialized at job creation with pending status, updated during execution).
 
 **Job Status Values**:
 
@@ -510,7 +510,7 @@ List all jobs, optionally filtered.
 ```json
 {
   "status": "running",
-  "job_type": "run_workflow"
+  "job_type": "run_calculation"
 }
 ```
 
@@ -524,8 +524,8 @@ List all jobs, optionally filtered.
 {
   "count": 2,
   "jobs": [
-    {"id": "abc-123", "job_type": "run_workflow", "status": "running", ...},
-    {"id": "def-456", "job_type": "run_workflow", "status": "pending", ...}
+    {"id": "abc-123", "job_type": "run_calculation", "status": "running", ...},
+    {"id": "def-456", "job_type": "run_calculation", "status": "pending", ...}
   ]
 }
 ```
@@ -562,7 +562,7 @@ Attempt to cancel a job.
 → {"id": "2", "type": "get_project_summary", "payload": {"project_root": "/home/user/si_project"}}
 ← {"id": "2", "ok": true, "data": {"name": "si_project", "n_workflows": 2, ...}}
 
-→ {"id": "3", "type": "run_workflow", "payload": {"project_root": "/home/user/si_project", "workflow": "bands"}}
+→ {"id": "3", "type": "run_calculation", "payload": {"project_root": "/home/user/si_project", "calculation": "bands"}}
 ← {"id": "3", "ok": true, "data": {"job_id": "abc-123", "status": "pending"}}
 
 → {"id": "4", "type": "get_job_status", "payload": {"job_id": "abc-123"}}
@@ -571,7 +571,7 @@ Attempt to cancel a job.
 → {"id": "5", "type": "get_job_status", "payload": {"job_id": "abc-123"}}
 ← {"id": "5", "ok": true, "data": {"id": "abc-123", "status": "completed", "result": {...}}}
 
-→ {"id": "6", "type": "get_band_structure_data", "payload": {"project_root": "/home/user/si_project", "workflow": "bands"}}
+→ {"id": "6", "type": "get_band_structure_data", "payload": {"project_root": "/home/user/si_project", "calculation": "bands"}}
 ← {"id": "6", "ok": true, "data": {"n_bands": 8, "energies_ev": [...], ...}}
 
 → {"id": "7", "type": "shutdown", "payload": {}}
@@ -651,9 +651,9 @@ manager = JobManager(max_workers=1)
 
 # Submit job
 job_id = manager.submit(
-    job_type="run_workflow",
+    job_type="run_calculation",
     func=my_function,
-    params={"workflow": "si-bands"},
+    params={"calculation": "si-bands"},
     project_root=project_root,
 )
 

@@ -1,5 +1,5 @@
 > **Status (2025)**: The original Java GUI is now in *maintenance / deprecated* mode.
-> I am working on a full Python rewrite (v2) with a modern workflow engine,
+> I am working on a full Python rewrite (v2) with a modern calculation engine,
 > cross-platform GUI (PySide6), and easier integration with Quantum ESPRESSO,
 > Wannier90, LAMMPS and online materials databases.
 >
@@ -67,14 +67,14 @@ qv init my_project
 qv detect-qe
 
 # Run a QE input *or* step YAML in isolation (auto working dir + overrides)
-qv run step workflows/si_dos/raw/si.1_scf.in --ecutwfc=60 --SYSTEM.degauss=0.01
-qv run step workflows/si_dos/steps/nscf_1.step.yaml --workdir temp/nscf
+qv run step calculations/si_dos/raw/si.1_scf.in --ecutwfc=60 --SYSTEM.degauss=0.01
+qv run step calculations/si_dos/steps/nscf_1.step.yaml --workdir temp/nscf
 
-# Import, rename, or delete structures/workflows registered in project.qv.yml
+# Import, rename, or delete structures/calculations registered in project.qv.yml
 qv import-structure path/to/si.cif --id si_bulk
 qv rename structure si_bulk --name "Si DOS" --path structures/si_dos.json
 qv delete structure si_bulk
-qv delete workflow si_dos --cascade
+qv delete calculation si_dos --cascade
 
 # Generate & run QE input directly from stored structures + overrides
 qv run structure si_bulk --ecutwfc=60 --SYSTEM.degauss=0.01
@@ -82,16 +82,16 @@ qv run structure si_bulk --ecutwfc=60 --SYSTEM.degauss=0.01
 # Author and edit step specs (YAML) with CLI helpers
 qv init step scf --structure si --SYSTEM.ecutwfc=60
 qv init step bands --structure si --auto-kpath  # Auto-generate k-path
-qv configure step workflows/si_dos/steps/nscf_1.step.yaml --remove --SYSTEM.tprnfor
+qv configure step calculations/si_dos/steps/nscf_1.step.yaml --remove --SYSTEM.tprnfor
 
-# Execute workflows (id, slug, or explicit path); --strict enforces references
-qv run workflow si_dos --strict -v
+# Execute calculations (id, slug, or explicit path); --strict enforces references
+qv run calculation si_dos --strict -v
 
 # Inspect overrides suggested by an existing QE input
-qv get-command workflows/si_dos/raw/si.1_scf.in
+qv get-command calculations/si_dos/raw/si.1_scf.in
 
 # Lightweight analysis (energy / band / dos summaries) and metadata
-qv analyze scf workflows/si_dos/raw/si.1_scf.out
+qv analyze scf calculations/si_dos/raw/si.1_scf.out
 qv analyze dos si.dos.dat --plot --energy-range -5,5
 qv analyze band si.bands.dat.gnu --symmetry si.bands.pp.out --plot
 
@@ -106,18 +106,18 @@ Overrides now cover namelists, cards, and species rows:
 - `--CARD.K_POINTS.rows.row1=0,0,1` edits individual mesh rows; combine with `--remove` via `qv configure step`.
 - `--SPECIES.Si.mass=28.0855` / `--SPECIES.Si.pseudopot=Si.pbe-n-rrkjus_psl.1.0.0.UPF` keep pseudopotentials consistent.
 
-Need a pre-populated layout? `qv init` exposes a `--template` flag (reserved for future bundles). By default it always creates a clean skeleton so you can wire structures and workflows manually.
+Need a pre-populated layout? `qv init` exposes a `--template` flag (reserved for future bundles). By default it always creates a clean skeleton so you can wire structures and calculations manually.
 
-`qv run workflow` automatically locates `project.qv.yml` (walking up from the
-current directory). Each workflow owns an I/O directory (default `raw/`, configurable via `working_dir` in workflow.yaml) where all QE input/output
+`qv run calculation` automatically locates `project.qv.yml` (walking up from the
+current directory). Each calculation owns an I/O directory (default `raw/`, configurable via `working_dir` in calculation.yaml) where all QE input/output
 data lives, so restart files persist between steps. Reference outputs belong in
-`workflows/<id>/reference/`, and strict workflows compare against the files
-named in `workflow.yaml`:
+`calculations/<id>/reference/`, and strict calculations compare against the files
+named in `calculation.yaml`:
 
 ```yaml
 id: si_dos
 mode: strict
-workflow:
+calculation:
   working_dir: raw  # I/O directory name (default: "raw")
 steps:
   - id: scf
@@ -155,7 +155,7 @@ The quick suite is split into three markers:
 
 ```bash
 pytest -m unit    # parser/project tests (no QE binaries)
-pytest -m qe_core # QE integration via run_and_verify_step/workflow runner
+pytest -m qe_core # QE integration via run_and_verify_step/calculation runner
 pytest -m qe_cli  # QE integration driven through the Typer CLI
 ```
 
@@ -167,21 +167,21 @@ QMatSuite uses a pytest-based test suite with 412 tests organized by subsystem. 
 
 | Area / Subsystem | Key Test Locations | Notes |
 |------------------|-------------------|-------|
-| **Core models & DAG** | `tests/unit/test_models.py`, `tests/unit/test_project_and_cli.py`, `tests/unit/test_workflow_dag_constitution.py` | Project/workflow/step schemas, ULID validation, DAG structure |
+| **Core models & DAG** | `tests/unit/test_models.py`, `tests/unit/test_project_and_cli.py`, `tests/unit/test_calculation_dag_constitution.py` | Project/calculation/step schemas, ULID validation, DAG structure |
 | **CLI commands** | `tests/cli/` | `qv init`, `qv run`, `qv configure`, `qv analyze`, error handling |
 | **Daemon / RPC** | `tests/daemon/` | JSON-RPC endpoints for GUI, job management, step operations |
-| **QE workflows** | `tests/integration/test_si_*.py`, `tests/cli/test_si_*_workflow_*.py` | Full workflow execution (requires QE installation) |
+| **QE calculations** | `tests/integration/test_si_*.py`, `tests/cli/test_si_*_calculation_*.py` | Full calculation execution (requires QE installation) |
 | **Analysis & plotting** | `tests/unit/test_analysis_*.py` | SCF/DOS/bands output parsing, plotting, artifacts |
 | **Structure I/O** | `tests/unit/test_structure_*.py`, `tests/examples/test_structure_io_examples.py` | Structure import/export, format conversion, roundtrip |
 | **Resource resolution** | `tests/unit/test_resolution.py` | Selector resolution (ULID, slug, path, name) |
 | **Legacy migration** | `tests/unit/test_legacy_migration.py` | Legacy project format detection and migration |
 | **QE engine** | `tests/integration/test_qe_engine.py`, `tests/integration/test_qe_executable_*.py` | QE input generation, executable detection (requires QE) |
-| **API service** | `tests/unit/test_api_service*.py` | `QVService` API methods for project/workflow/step operations |
+| **API service** | `tests/unit/test_api_service*.py` | `QVService` API methods for project/calculation/step operations |
 
 **What to Run When You Change Things:**
 
-- **Core project/workflow/step models** (`quantumvitas.core.models`, `quantumvitas.project.model`)
-  - `pytest tests/unit/test_models.py tests/unit/test_project_and_cli.py tests/unit/test_workflow_dag_constitution.py`
+- **Core project/calculation/step models** (`quantumvitas.core.models`, `quantumvitas.project.model`)
+  - `pytest tests/unit/test_models.py tests/unit/test_project_and_cli.py tests/unit/test_calculation_dag_constitution.py`
 
 - **CLI behavior** (`quantumvitas.cli.main`)
   - `pytest tests/cli/` (some tests require QE installation)
@@ -189,9 +189,9 @@ QMatSuite uses a pytest-based test suite with 412 tests organized by subsystem. 
 - **Daemon / RPC / backend** (`quantumvitas.daemon.server`, `quantumvitas.api.QVService`)
   - `pytest tests/daemon/ tests/unit/test_daemon.py tests/unit/test_qvservice_gui.py`
 
-- **QE workflows** (workflow execution, QE integration)
+- **QE calculations** (calculation execution, QE integration)
   - `pytest tests/integration/test_si_*.py` (requires QE installation)
-  - `pytest tests/cli/test_si_*_workflow_*.py` (requires QE installation)
+  - `pytest tests/cli/test_si_*_calculation_*.py` (requires QE installation)
 
 - **Analysis / parsing / plotting** (`quantumvitas.analysis.*`)
   - `pytest tests/unit/test_analysis_*.py`
@@ -252,7 +252,7 @@ structure file), converts them into a QE input via
 
 `qv run step` loads a declarative step YAML (structure id/path, calculation
 type, parameters) and generates the QE input via the same helper functions. This
-is useful for scripting repeatable QE steps outside full workflows.
+is useful for scripting repeatable QE steps outside full calculations.
 
 ### QE Input Roundtrip Helper
 

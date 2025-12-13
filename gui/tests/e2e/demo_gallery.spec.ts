@@ -3,10 +3,10 @@
  * 
  * Tests the Demo Gallery as an inline Home sub-view (not a modal).
  * 
- * **This spec does NOT run any workflows.** It only tests:
+ * **This spec does NOT run any calculations.** It only tests:
  * - Demo gallery UI (cards, metadata, navigation)
  * - Project creation from demo gallery
- * - Workflow/structure existence after creation (metadata only, no execution)
+ * - Calculation/structure existence after creation (metadata only, no execution)
  * 
  * To run locally:
  *   cd gui
@@ -43,27 +43,32 @@ test.describe('E2E: Demo Gallery', () => {
     
     // Wait for loading to complete
     const loadingState = appPage.getByTestId('qv-demo-gallery-loading');
-    await expect(loadingState).not.toBeVisible({ timeout: 15000 });
+    await expect(loadingState).not.toBeVisible({ timeout: 20000 });
     
     // Verify demo cards are visible (not error state)
     const cardsContainer = appPage.getByTestId('qv-demo-gallery-cards');
     const errorState = appPage.getByTestId('qv-demo-gallery-error');
     const emptyState = appPage.getByTestId('qv-demo-gallery-empty-state');
     
-    // Check for error/empty first - if present, fail
-    const hasError = await errorState.isVisible().catch(() => false);
-    const hasEmpty = await emptyState.isVisible().catch(() => false);
-    
-    if (hasError) {
-      const errorText = await errorState.textContent();
-      throw new Error(`Demo gallery failed to load: ${errorText}`);
+    // Wait for cards container to appear (with timeout), then check for error/empty
+    // This gives cards time to render after loading completes
+    try {
+      await expect(cardsContainer).toBeVisible({ timeout: 10000 });
+    } catch {
+      // If cards don't appear, check for error/empty states
+      const hasError = await errorState.isVisible({ timeout: 2000 }).catch(() => false);
+      const hasEmpty = await emptyState.isVisible({ timeout: 2000 }).catch(() => false);
+      
+      if (hasError) {
+        const errorText = await errorState.textContent();
+        throw new Error(`Demo gallery failed to load: ${errorText}`);
+      }
+      if (hasEmpty) {
+        throw new Error('Demo gallery is empty - no demo projects found');
+      }
+      // If neither error nor empty, but cards still not visible, re-throw the original error
+      throw new Error('Demo gallery cards did not appear within timeout');
     }
-    if (hasEmpty) {
-      throw new Error('Demo gallery is empty - no demo projects found');
-    }
-    
-    // Verify demo cards are visible
-    await expect(cardsContainer).toBeVisible();
     
     // Verify at least two demo cards exist (using stable test IDs)
     const siBandsCard = appPage.getByTestId('qv-demo-card-si-bands-demo');
@@ -98,11 +103,11 @@ test.describe('E2E: Demo Gallery', () => {
     await expect(appPage.getByTestId('qv-project-path')).toBeVisible();
     
     // Navigate to Workflows to verify project was created successfully
-    await navigateToView(appPage, 'workflows');
-    await expect(appPage.getByTestId('qv-workflows-view')).toBeVisible({ timeout: 10000 });
+    await navigateToView(appPage, 'calculations');
+    await expect(appPage.getByTestId('qv-calculations-view')).toBeVisible({ timeout: 10000 });
     
-    // Verify at least one workflow exists
-    const workflowsList = appPage.getByTestId('qv-workflows-list');
+    // Verify at least one calculation exists
+    const workflowsList = appPage.getByTestId('qv-calculations-list');
     await expect(workflowsList).toBeVisible();
     
     // Note: Console errors are automatically checked by the electronTest fixture

@@ -23,8 +23,8 @@ from typing import Dict, Any, Optional
 from quantumvitas.core.resources import generate_resource_id, meta_from_name, slugify
 from quantumvitas.core.project_utils import load_project_config, save_project_config
 from quantumvitas.core.resolution import build_resource_index, resolve_structure
-from quantumvitas.core.models import load_workflow, save_workflow, WorkflowModel, WorkflowStepEntry
-from quantumvitas.workflow.structure_steps import StructureStepSpec
+from quantumvitas.core.models import load_calculation, save_calculation, CalculationModel, CalculationStepEntry
+from quantumvitas.calculation.structure_steps import StructureStepSpec
 
 
 def migrate_legacy_project(project_root: Path) -> None:
@@ -34,9 +34,9 @@ def migrate_legacy_project(project_root: Path) -> None:
     This function is intended for manual one-shot use by the developer.
     
     Migration steps:
-    1. Backup original project.qv.yml and workflow.yaml files
+    1. Backup original project.qv.yml and calculation.yaml files
     2. Ensure all structures have ULID meta.id
-    3. For each workflow:
+    3. For each calculation:
        - Ensure meta.id is a ULID
        - Ensure meta.slug exists
        - Convert structure selector to structure_id (ULID)
@@ -113,47 +113,47 @@ def migrate_legacy_project(project_root: Path) -> None:
         except Exception as e:
             print(f"  Warning: Could not migrate structure {struct_file}: {e}")
     
-    # Step 4: Migrate workflows
-    workflows = config.get("workflows", [])
-    workflows_dir = project_root / "workflows"
+    # Step 4: Migrate calculations
+    calculations = config.get("calculations", [])
+    calculations_dir = project_root / "calculations"
     
-    for workflow_entry in workflows:
-        workflow_path = workflow_entry.get("path")
-        if not workflow_path:
+    for calculation_entry in calculations:
+        calculation_path = calculation_entry.get("path")
+        if not calculation_path:
             continue
         
-        workflow_dir = (project_root / workflow_path).resolve()
-        workflow_yaml = workflow_dir / "workflow.yaml"
+        calculation_dir = (project_root / calculation_path).resolve()
+        calculation_yaml = calculation_dir / "calculation.yaml"
         
-        if not workflow_yaml.exists():
-            print(f"  Warning: workflow.yaml not found at {workflow_yaml}")
+        if not calculation_yaml.exists():
+            print(f"  Warning: calculation.yaml not found at {calculation_yaml}")
             continue
         
-        # Backup workflow.yaml
-        shutil.copy2(workflow_yaml, backup_dir / f"{workflow_dir.name}_workflow.yaml")
+        # Backup calculation.yaml
+        shutil.copy2(calculation_yaml, backup_dir / f"{calculation_dir.name}_calculation.yaml")
         
-        print(f"  Migrating workflow: {workflow_dir.name}")
+        print(f"  Migrating calculation: {calculation_dir.name}")
         
-        # Load workflow YAML
+        # Load calculation YAML
         try:
-            wf_data = yaml.safe_load(workflow_yaml.read_text()) or {}
+            wf_data = yaml.safe_load(calculation_yaml.read_text()) or {}
         except Exception as e:
-            print(f"    Error loading workflow.yaml: {e}")
+            print(f"    Error loading calculation.yaml: {e}")
             continue
         
-        # Ensure workflow meta has ULID
+        # Ensure calculation meta has ULID
         wf_meta = wf_data.get("meta", {})
         if not wf_meta.get("id"):
             wf_meta["id"] = generate_resource_id()
-            wf_meta.setdefault("name", workflow_dir.name)
+            wf_meta.setdefault("name", calculation_dir.name)
             wf_meta.setdefault("slug", slugify(wf_meta["name"]))
-            wf_meta.setdefault("kind", "workflow")
-            wf_meta.setdefault("path", workflow_path)
+            wf_meta.setdefault("kind", "calculation")
+            wf_meta.setdefault("path", calculation_path)
             wf_data["meta"] = wf_meta
-            print(f"    Added ULID to workflow meta")
+            print(f"    Added ULID to calculation meta")
         
         # Convert structure selector to structure_id
-        legacy_structure = wf_data.get("structure") or wf_data.get("workflow", {}).get("structure")
+        legacy_structure = wf_data.get("structure") or wf_data.get("calculation", {}).get("structure")
         if legacy_structure and not wf_data.get("structure_id"):
             try:
                 # Resolve structure to get ULID
@@ -168,14 +168,14 @@ def migrate_legacy_project(project_root: Path) -> None:
         
         # Remove legacy structure fields
         wf_data.pop("structure", None)
-        if "workflow" in wf_data:
-            wf_data["workflow"].pop("structure", None)
-            wf_data["workflow"].pop("structure_name", None)
+        if "calculation" in wf_data:
+            wf_data["calculation"].pop("structure", None)
+            wf_data["calculation"].pop("structure_name", None)
         wf_data.pop("structure_name", None)
         
         # Migrate steps
         steps = wf_data.get("steps", [])
-        steps_dir = workflow_dir / "steps"
+        steps_dir = calculation_dir / "steps"
         steps_dir.mkdir(exist_ok=True)
         
         for i, step_entry in enumerate(steps):
@@ -190,7 +190,7 @@ def migrate_legacy_project(project_root: Path) -> None:
                 step_file_path = None
                 
                 if legacy_step_file:
-                    step_file_path = (workflow_dir / legacy_step_file).resolve()
+                    step_file_path = (calculation_dir / legacy_step_file).resolve()
                 elif legacy_id:
                     # Try legacy_id as filename
                     candidate = steps_dir / f"{legacy_id}.step.yaml"
@@ -219,7 +219,7 @@ def migrate_legacy_project(project_root: Path) -> None:
                     step_meta = meta_from_name(
                         "step",
                         name=step_name,
-                        path=f"{workflow_path}/steps/{step_filename}",
+                        path=f"{calculation_path}/steps/{step_filename}",
                     )
                     step_meta.id = step_id_ulid
                     
@@ -236,13 +236,13 @@ def migrate_legacy_project(project_root: Path) -> None:
             step_entry.pop("step_file", None)
             step_entry.pop("id", None)  # Remove legacy id field
         
-        # Remove legacy fields from workflow data
+        # Remove legacy fields from calculation data
         wf_data.pop("structure", None)
         wf_data.pop("structure_name", None)
         
-        # Write migrated workflow.yaml
-        workflow_yaml.write_text(yaml.safe_dump(wf_data, sort_keys=False))
-        print(f"    Saved migrated workflow.yaml")
+        # Write migrated calculation.yaml
+        calculation_yaml.write_text(yaml.safe_dump(wf_data, sort_keys=False))
+        print(f"    Saved migrated calculation.yaml")
     
     # Step 5: Save migrated project config
     save_project_config(project_root, config)

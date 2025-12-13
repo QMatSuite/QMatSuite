@@ -28,7 +28,7 @@ from quantumvitas.core.engines.base import EngineConfig
 from quantumvitas.io import QEInputParser, QEInputGenerator
 
 # Pseudopotential resolution is handled by ensure_qe_pseudos (already migrated in this file)
-from quantumvitas.workflow.input_runner import set_outdir_to_temp, set_pseudo_dir_to_temp
+from quantumvitas.calculation.input_runner import set_outdir_to_temp, set_pseudo_dir_to_temp
 from tests.core import run_command_with_timeout, TimeoutError
 from tests.core.qe_test_utils import compare_with_benchmark
 
@@ -172,17 +172,17 @@ def compare_with_benchmark(
     output_energy = extract_energy(output_content, is_nscf)
     benchmark_energy = extract_energy(benchmark_content, is_nscf)
     
-    # For workflow tests (especially nscf/dos steps), energy might not be available
+    # For calculation tests (especially nscf/dos steps), energy might not be available
     # If JOB DONE is present, that's sufficient for success
     if output_energy is None:
         if "JOB DONE" in output_content:
-            # For workflow steps without energy, JOB DONE is sufficient
+            # For calculation steps without energy, JOB DONE is sufficient
             if benchmark_energy is None:
                 energy_type = "Fermi energy" if is_nscf else "energy"
                 return True, f"JOB DONE (no {energy_type}, no benchmark)"
             else:
                 # If benchmark has energy but output doesn't, this might be a problem
-                # But for workflow steps, we'll accept JOB DONE
+                # But for calculation steps, we'll accept JOB DONE
                 energy_type = "Fermi energy" if is_nscf else "energy"
                 return True, f"JOB DONE (no {energy_type} in output, but benchmark has {energy_type})"
         else:
@@ -213,7 +213,7 @@ def run_test_category(
     """
     Run all tests in a category.
     
-    For workflow tests (multiple sequential tests), all tests run in the same
+    For calculation tests (multiple sequential tests), all tests run in the same
     working directory to preserve intermediate files.
     
     Args:
@@ -234,10 +234,10 @@ def run_test_category(
     if max_tests:
         test_files = test_files[:max_tests]
     
-    # Check if this is a workflow test (multiple sequential tests with args)
+    # Check if this is a calculation test (multiple sequential tests with args)
     is_workflow = len(test_files) > 1 and any(args for _, args in test_files)
     
-    # For workflow tests, use a single working directory for all tests
+    # For calculation tests, use a single working directory for all tests
     # This preserves intermediate files (wavefunctions, charge density, etc.)
     if is_workflow:
         working_dir = Path(tempfile.mkdtemp(prefix=f"qe_workflow_{category}_"))
@@ -472,7 +472,7 @@ def run_test_category(
                 }
             
             # Compare with benchmark if available
-            # For workflow tests, benchmark filename includes step number
+            # For calculation tests, benchmark filename includes step number
             if args:
                 benchmark_file = category_dir / f"benchmark.out.git.inp={input_file}.args={args}"
             else:
@@ -543,7 +543,7 @@ def run_test_category(
             
             results.append(result)
             
-            # For workflow tests, if a step fails, we might not be able to continue
+            # For calculation tests, if a step fails, we might not be able to continue
             # But we'll try to continue anyway to see all errors
     
     except Exception as e:
@@ -567,7 +567,7 @@ def run_test_category(
                 # Log but don't fail if cleanup fails
                 print(f"Warning: Failed to clean up temp/outdir: {e}")
     
-    # For workflow tests, the final result is the last step
+    # For calculation tests, the final result is the last step
     # Only mark as success if all steps succeeded
     if is_workflow and len(results) > 0:
         all_steps_success = all(r.get("run_success", False) for r in results)
@@ -684,7 +684,7 @@ def main():
             test_files = [(f.name, '') for f in sorted(category_dir.glob("*.in")) 
                          if not f.name.startswith("benchmark")]
             print(f"Note: No inputs_args in jobconfig, found {len(test_files)} .in files")
-    # Use run_test_category to properly handle workflow tests
+    # Use run_test_category to properly handle calculation tests
     all_results = run_test_category(
         category=args.category,
         test_files=test_files,

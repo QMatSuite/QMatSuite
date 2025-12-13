@@ -2,8 +2,8 @@ export PYTHONSRC="/Users/up/quantumVITAS"
 qv init project --name project1
 cd project1
 qv import-structure $PYTHONSRC/tests/data/4_Si_DOS/si.1_scf.in
-qv init workflow "Si dos" --structure si
-cd workflows/Si-dos
+qv init calculation "Si dos" --structure si
+cd calculations/Si-dos
 qv init step scf
 qv show-command $PYTHONSRC/tests/data/4_Si_DOS/si.1_scf.in
 
@@ -20,7 +20,7 @@ qv init step nscf --CONTROL.calculation=nscf --CONTROL.outdir=./outdir --CONTROL
 qv show-command $PYTHONSRC/tests/data/4_Si_DOS/si.3_dos.in
 qv init step dos --DOS.emax=16.0 --DOS.emin=-9.0 --DOS.fildos=si.dos.dat --DOS.outdir=./outdir/ --DOS.prefix=si
 
-qv run workflow
+qv run calculation
 
 qv analyze dos raw/si.dos.dat --scf nscf.out --plot
 
@@ -30,30 +30,30 @@ qv analyze dos raw/si.dos.dat --scf nscf.out --plot
 qv init project --name project1
 cd project1
 qv import-structure $PYTHONSRC/tests/integration/ci_test_data/4_Si_DOS/si.1_scf.in
-qv init workflow "Si dos" --structure si
-cd workflows/Si-dos
+qv init calculation "Si dos" --structure si
+cd calculations/Si-dos
 qv init step scf --CONTROL.calculation=scf --CONTROL.outdir=./outdir --CONTROL.prefix=si --CONTROL.pseudo_dir=/home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos --CONTROL.restart_mode=from_scratch --ELECTRONS.conv_thr=1e-08 --SYSTEM.ecutwfc=50 '--CARD.K_POINTS={"option":"automatic","data":[["8","8","8","0","0","0"]]}' --SPECIES.Si.mass=28.0855 --SPECIES.Si.pseudopot=Si.pbe-n-rrkjus_psl.1.0.0.UPF
 qv init step nscf --CONTROL.calculation=nscf --CONTROL.outdir=./outdir --CONTROL.prefix=si --CONTROL.pseudo_dir=/home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos --CONTROL.restart_mode=from_scratch --ELECTRONS.conv_thr=1e-08 --SYSTEM.ecutwfc=50 --SYSTEM.occupations=tetrahedra '--CARD.K_POINTS={"option":"automatic","data":[["12","12","12","0","0","0"]]}' --SPECIES.Si.mass=28.0855 --SPECIES.Si.pseudopot=Si.pbe-n-rrkjus_psl.1.0.0.UPF
 qv init step dos --DOS.emax=16.0 --DOS.emin=-9.0 --DOS.fildos=si.dos.dat --DOS.outdir=./outdir/ --DOS.prefix=si
-qv run workflow
+qv run calculation
 qv analyze dos raw/si.dos.dat --scf si.nscf.out --plot
 
-# ------------------------ band structure workflow ------------------------
+# ------------------------ band structure calculation ------------------------
 
 export PYTHONSRC="/Users/hh7465/Code/quantumVITAS"
 qv init project --name project2_bands
 cd project2_bands
 qv import-structure $PYTHONSRC/tests/data/7_Si_bandStructure/si.0_scf.in
 
-qv init workflow "Si bands" --structure si
-# qv init workflow "Si bands auto k" --structure si
-cd workflows/si-bands
+qv init calculation "Si bands" --structure si
+# qv init calculation "Si bands auto k" --structure si
+cd calculations/si-bands
 qv init step scf
 qv show-command $PYTHONSRC/tests/data/7_Si_bandStructure/si.0_scf.in
 qv configure step scf --CONTROL.calculation=scf --CONTROL.outdir=./outdir --CONTROL.prefix=si --CONTROL.pseudo_dir=/home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos --CONTROL.restart_mode=from_scratch --ELECTRONS.conv_thr=1e-08 --SYSTEM.ecutrho=320 --SYSTEM.ecutwfc=40 --SYSTEM.nbnd=8 '--CARD.K_POINTS={"option":"automatic","data":[["8","8","8","0","0","0"]]}' --SPECIES.Si.mass=28.0855 --SPECIES.Si.pseudopot=Si.pbe-n-rrkjus_psl.1.0.0.UPF
 
 qv init step nscf
-qv delete step nscf  #--workflow si-bands # (ran from project root)
+qv delete step nscf  #--calculation si-bands # (ran from project root)
 qv show-command $PYTHONSRC/tests/data/7_Si_bandStructure/si.1_nscf.in
 qv init step nscf --CONTROL.calculation=nscf --CONTROL.outdir=./outdir --CONTROL.prefix=si --CONTROL.pseudo_dir=/home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos --CONTROL.restart_mode=from_scratch --ELECTRONS.conv_thr=1e-08 --SYSTEM.ecutrho=320 --SYSTEM.ecutwfc=40 --SYSTEM.nbnd=8 --SYSTEM.occupations=tetrahedra '--CARD.K_POINTS={"option":"automatic","data":[["12","12","12","0","0","0"]]}' --SPECIES.Si.mass=28.0855 --SPECIES.Si.pseudopot=Si.pbe-n-rrkjus_psl.1.0.0.UPF
 
@@ -66,26 +66,26 @@ qv init step bands_pw --CONTROL.calculation=bands --CONTROL.outdir=./outdir --CO
 # autopath
 # qv init step bands_pw --auto-kpath --kpath-points=20 --CONTROL.calculation=bands --CONTROL.outdir=./outdir --CONTROL.prefix=si --CONTROL.pseudo_dir=/home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos --CONTROL.restart_mode=from_scratch --ELECTRONS.conv_thr=1e-08 --SYSTEM.ecutrho=320 --SYSTEM.ecutwfc=40 --SYSTEM.nbnd=8  --SPECIES.Si.mass=28.0855 --SPECIES.Si.pseudopot=Si.pbe-n-rrkjus_psl.1.0.0.UPF
 
-cat ../workflow.yaml
-qv configure workflow --reorder scf,nscf,bands_pw,bands
+cat ../calculation.yaml
+qv configure calculation --reorder scf,nscf,bands_pw,bands
 
-qv run workflow
+qv run calculation
 
 qv analyze band ./raw/si.bands.dat.gnu --plot --format png --symmetry ./raw/bands.bands.out --scf ./raw/nscf.out
 
 
-# ------------------------ graphene workflow ------------------------
+# ------------------------ graphene calculation ------------------------
 # export PYTHONSRC="/Users/up/quantumVITAS"
 qv init project --name project3_graphene_bands
 cd project3_graphene_bands
 qv import-structure $PYTHONSRC/tests/data/13_graphene/graphene.2_scf.in
 
-qv init workflow "graphene bands" --structure C
-cd workflows/graphene-bands
+qv init calculation "graphene bands" --structure C
+cd calculations/graphene-bands
 qv init step scf
 qv analyze band
 
-qv configure workflow --name "graph"
+qv configure calculation --name "graph"
 
 qv show-command $PYTHONSRC/tests/data/13_graphene/graphene.2_scf.in
 qv show-command $PYTHONSRC/tests/data/13_graphene/graphene.3_bands.in
@@ -95,6 +95,6 @@ qv init step scf --no-defaults --CONTROL.calculation=scf --CONTROL.outdir=./outd
 qv init step bands_pw --no-defaults --CONTROL.calculation=bands --CONTROL.outdir=./outdir --CONTROL.prefix=graphene --CONTROL.pseudo_dir=/home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos --CONTROL.restart_mode=from_scratch --ELECTRONS.conv_thr=1e-10 --ELECTRONS.mixing_beta=0.3 --SYSTEM.degauss=0.0001 --SYSTEM.ecutrho=400.0 --SYSTEM.ecutwfc=40.0 --SYSTEM.occupations=smearing --SYSTEM.smearing=marzari-vanderbilt '--CARD.K_POINTS={"option":"crystal_b","data":[[4],["0.0000000000","0.000000000","0.000000000","30"],["-0.333333333","0.666666667","0.000000000","30"],["0.000000000","0.500000000","0.000000000","30"],["0.0000000000","0.000000000","0.000000000","30"]]}' --SPECIES.C.mass=12.0107 --SPECIES.C.pseudopot=C.pbe-n-kjpaw_psl.1.0.0.UPF
 qv init step bands --no-defaults --BANDS.filband=graphene.bands.dat --BANDS.outdir=./outdir --BANDS.prefix=graphene
 
-qv run workflow
+qv run calculation
 qv analyze band ../raw/graphene.bands.dat.gnu --plot --format png --symmetry ../raw/bands.bands.out --scf ../raw/scf.out
 

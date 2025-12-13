@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "quantumvitas"
 version = "1.0.1"
-description = "Python rewrite of QuantumVITAS - a workflow engine and GUI layer for Quantum ESPRESSO and related codes."
+description = "Python rewrite of QuantumVITAS - a calculation engine and GUI layer for Quantum ESPRESSO and related codes."
 readme = "README.md"
 license = { text = "GPL-3.0-or-later" }
 authors = [{ name = "QuantumVITAS Developers" }]

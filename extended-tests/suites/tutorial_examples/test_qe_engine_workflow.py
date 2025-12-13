@@ -17,8 +17,8 @@ from quantumvitas.io import (
 )
 
 
-class TestRealWorldWorkflow:
-    """Test real-world workflow scenarios with tutorial examples."""
+class TestRealWorldCalculation:
+    """Test real-world calculation scenarios with tutorial examples."""
     
     @pytest.fixture
     def examples_dir(self):
@@ -33,7 +33,7 @@ class TestRealWorldWorkflow:
         return examples_path
     
     def test_workflow_scf_to_nscf(self, examples_dir, tmp_path):
-        """Test workflow: SCF -> NSCF -> DOS using 4_Si_DOS examples."""
+        """Test calculation: SCF -> NSCF -> DOS using 4_Si_DOS examples."""
         dos_dir = examples_dir / "4_Si_DOS"
         
         # Step 1: Parse si.1_scf.in (SCF calculation)
@@ -56,7 +56,7 @@ class TestRealWorldWorkflow:
         assert nscf_control is not None
         assert nscf_control.get('calculation') == 'nscf'
         
-        # Verify NSCF uses same prefix as SCF (workflow dependency)
+        # Verify NSCF uses same prefix as SCF (calculation dependency)
         scf_prefix = scf_control.get('prefix')
         nscf_prefix = nscf_control.get('prefix')
         assert scf_prefix == nscf_prefix, "NSCF should use same prefix as SCF"
@@ -71,7 +71,7 @@ class TestRealWorldWorkflow:
         dos_namelist = dos_input.get_namelist('dos')
         assert dos_namelist is not None, "DOS input should have &DOS namelist"
         
-        # Verify DOS uses same prefix (workflow dependency)
+        # Verify DOS uses same prefix (calculation dependency)
         dos_prefix = dos_namelist.get('prefix')
         assert dos_prefix == scf_prefix, "DOS should use same prefix as SCF/NSCF"
         

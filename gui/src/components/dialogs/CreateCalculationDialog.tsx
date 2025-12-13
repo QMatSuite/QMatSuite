@@ -1,33 +1,33 @@
 /**
- * CreateWorkflowDialog - Dialog for creating a new workflow from template
+ * CreateCalculationDialog - Dialog for creating a new calculation from template
  */
 
 import { useState, useCallback, useEffect } from 'react';
 import { Modal } from './Modal';
 import { useQVClient } from '../../hooks/useQVClient';
-import type { StructureInfo, WorkflowTemplateInfo } from '../../types/qv';
+import type { StructureInfo, CalculationTemplateInfo } from '../../types/qv';
 
-interface CreateWorkflowDialogProps {
+interface CreateCalculationDialogProps {
   isOpen: boolean;
   projectRoot: string;
   structures: StructureInfo[];
   onClose: () => void;
-  onSuccess: (workflowId: string) => void;
+  onSuccess: (calculationId: string) => void;
 }
 
-export function CreateWorkflowDialog({ 
+export function CreateCalculationDialog({ 
   isOpen,
   projectRoot,
   structures,
   onClose, 
   onSuccess,
-}: CreateWorkflowDialogProps) {
+}: CreateCalculationDialogProps) {
   const qv = useQVClient();
   
-  const [workflowName, setWorkflowName] = useState('');
+  const [calculationName, setCalculationName] = useState('');
   const [selectedStructure, setSelectedStructure] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('');
-  const [templates, setTemplates] = useState<WorkflowTemplateInfo[]>([]);
+  const [templates, setTemplates] = useState<CalculationTemplateInfo[]>([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +41,7 @@ export function CreateWorkflowDialog({
   
   const loadTemplates = useCallback(async () => {
     setIsLoadingTemplates(true);
-    const response = await qv.call('list_workflow_templates', {});
+    const response = await qv.call('list_calculation_templates', {});
     setIsLoadingTemplates(false);
     
     if (response.ok && response.data) {
@@ -50,8 +50,8 @@ export function CreateWorkflowDialog({
   }, [qv]);
   
   const handleCreate = useCallback(async () => {
-    if (!workflowName.trim()) {
-      setError('Please enter a workflow name');
+    if (!calculationName.trim()) {
+      setError('Please enter a calculation name');
       return;
     }
     
@@ -63,9 +63,9 @@ export function CreateWorkflowDialog({
     setIsCreating(true);
     setError(null);
     
-    const response = await qv.call('create_workflow', {
+    const response = await qv.call('create_calculation', {
       project_root: projectRoot,
-      name: workflowName,
+      name: calculationName,
       structure: selectedStructure || undefined,
       template: selectedTemplate || undefined,
     });
@@ -73,15 +73,15 @@ export function CreateWorkflowDialog({
     setIsCreating(false);
     
     if (response.ok && response.data) {
-      onSuccess(response.data.workflow_id);
+      onSuccess(response.data.calculation_id);
       handleClose();
     } else {
-      setError(response.error?.message || 'Failed to create workflow');
+      setError(response.error?.message || 'Failed to create calculation');
     }
-  }, [qv, projectRoot, workflowName, selectedStructure, selectedTemplate, onSuccess]);
+  }, [qv, projectRoot, calculationName, selectedStructure, selectedTemplate, onSuccess]);
   
   const handleClose = useCallback(() => {
-    setWorkflowName('');
+    setCalculationName('');
     setSelectedStructure('');
     setSelectedTemplate('');
     setError(null);
@@ -91,16 +91,16 @@ export function CreateWorkflowDialog({
   // Auto-generate name when template is selected
   const handleTemplateChange = useCallback((templateName: string) => {
     setSelectedTemplate(templateName);
-    if (templateName && !workflowName) {
-      setWorkflowName(templateName);
+    if (templateName && !calculationName) {
+      setCalculationName(templateName);
     }
-  }, [workflowName]);
+  }, [calculationName]);
   
   return (
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Create New Workflow"
+      title="Create New Calculation"
       size="medium"
       footer={
         <>
@@ -110,9 +110,9 @@ export function CreateWorkflowDialog({
           <button 
             className={`btn btn--primary ${isCreating ? 'btn--loading' : ''}`}
             onClick={handleCreate}
-            disabled={isCreating || !workflowName.trim()}
+            disabled={isCreating || !calculationName.trim()}
           >
-            Create Workflow
+            Create Calculation
           </button>
         </>
       }
@@ -120,13 +120,13 @@ export function CreateWorkflowDialog({
       <div className="modal-form">
         <div className="form-group">
           <label className="form-label form-label--required">
-            Workflow Name
+            Calculation Name
           </label>
           <input
             type="text"
             className="form-input"
-            value={workflowName}
-            onChange={(e) => setWorkflowName(e.target.value)}
+            value={calculationName}
+            onChange={(e) => setCalculationName(e.target.value)}
             placeholder="si-dos"
           />
         </div>
@@ -148,7 +148,7 @@ export function CreateWorkflowDialog({
             ))}
           </select>
           <span className="form-hint">
-            Select a structure for this workflow
+            Select a structure for this calculation
           </span>
         </div>
         
@@ -164,7 +164,7 @@ export function CreateWorkflowDialog({
               value={selectedTemplate}
               onChange={(e) => handleTemplateChange(e.target.value)}
             >
-              <option value="">— Empty workflow —</option>
+              <option value="">— Empty calculation —</option>
               {templates.map((t) => (
                 <option key={t.name} value={t.name}>
                   {t.name} ({t.step_types.join(' → ')})

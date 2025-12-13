@@ -1,0 +1,49 @@
+meta:
+  id: 01KC39C21NREKW2YVZJY8E40RN
+  name: bands_pw
+  slug: bands_pw
+  path: calculations/si-bands/steps/bands_pw.step.yaml
+  kind: step
+step_type: bands_pw
+parameters:
+  CONTROL:
+    calculation: bands
+    outdir: ./outdir
+    prefix: si
+    pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+    restart_mode: from_scratch
+  ELECTRONS:
+    conv_thr: 1.0e-08
+  SYSTEM:
+    ecutrho: 320
+    ecutwfc: 40
+    nbnd: 8
+cards:
+  K_POINTS:
+    option: crystal_b
+    data:
+    - - 5
+    - - 0.0
+      - 0.5
+      - 0.0
+      - 20
+    - - 0.0
+      - 0.0
+      - 0.0
+      - 30
+    - - -0.5
+      - 0.0
+      - -0.5
+      - 10
+    - - -0.375
+      - 0.25
+      - -0.375
+      - 30
+    - - 0.0
+      - 0.0
+      - 0.0
+      - 20
+species_overrides:
+  Si:
+    mass: 28.0855
+    pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF

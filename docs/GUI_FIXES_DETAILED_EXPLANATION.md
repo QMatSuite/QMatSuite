@@ -6,7 +6,7 @@ This document explains in detail the three fixes implemented for the QuantumVITA
 
 ---
 
-## Fix 1: Auto-Select First Item Behavior (Structures & Workflows)
+## Fix 1: Auto-Select First Item Behavior (Structures & Calculations)
 
 ### What Changed
 
@@ -34,7 +34,7 @@ This document explains in detail the three fixes implemented for the QuantumVITA
    didAutoSelectWorkflowRef.current = true;
    ```
    - **Added**: Mark manual selection to prevent auto-select override
-   - **Dependency**: Called when user clicks a workflow in the list
+   - **Dependency**: Called when user clicks a calculation in the list
    - **Effect**: Prevents auto-select effect from overriding user choice
 
 ### Logic Flow
@@ -61,25 +61,25 @@ selectedStructure state change triggers:
   - loadStructureVis() called (via handleSelectStructure dependency)
 ```
 
-**Workflows Panel Auto-Select:**
+**Calculations Panel Auto-Select:**
 
 ```
-User navigates to 'workflows' view
+User navigates to 'calculations' view
   ↓
-useEffect (currentView === 'workflows') triggers
+useEffect (currentView === 'calculations') triggers
   ↓
-fetchWorkflows() called (if workflows === null)
+fetchWorkflows() called (if calculations === null)
   ↓
-workflows state updated with list
+calculations state updated with list
   ↓
 Auto-select effect (NEW - needs to be added):
-  - Checks: currentView === 'workflows' && workflows.length > 0 && !selectedWorkflowSummary && !didAutoSelectWorkflowRef.current
-  - Action: handleSelectWorkflow(workflows[0])
+  - Checks: currentView === 'calculations' && calculations.length > 0 && !selectedWorkflowSummary && !didAutoSelectWorkflowRef.current
+  - Action: handleSelectWorkflow(calculations[0])
   - Sets: didAutoSelectWorkflowRef.current = true
   ↓
 handleSelectWorkflow() triggers:
-  - setSelectedWorkflowSummary(workflow)
-  - Async get_workflow_detail RPC call
+  - setSelectedWorkflowSummary(calculation)
+  - Async get_calculation_detail RPC call
   - setSelectedWorkflowDetail(detail) when response arrives
 ```
 
@@ -92,9 +92,9 @@ handleSelectWorkflow() triggers:
 - `didAutoSelectStructureRef` (from useRef, line 98)
 - `setSelectedStructure` (from useState setter)
 
-**Workflow Auto-Select Dependencies:**
+**Calculation Auto-Select Dependencies:**
 - `currentView` (from useState, line 74)
-- `workflows` (from useState, line 88)
+- `calculations` (from useState, line 88)
 - `selectedWorkflowSummary` (from useState, line 93)
 - `didAutoSelectWorkflowRef` (from useRef, line 99)
 - `handleSelectWorkflow` (from useCallback, line 661)
@@ -115,7 +115,7 @@ useEffect(() => {
   if (currentView !== 'structures') {
     didAutoSelectStructureRef.current = false;
   }
-  if (currentView !== 'workflows') {
+  if (currentView !== 'calculations') {
     didAutoSelectWorkflowRef.current = false;
   }
 }, [currentView]);
@@ -138,31 +138,31 @@ useEffect(() => {
   }
 }, [currentView, structures, selectedStructure]);
 
-// Auto-select first workflow
+// Auto-select first calculation
 useEffect(() => {
-  if (currentView === 'workflows' && workflows && workflows.length > 0 && 
+  if (currentView === 'calculations' && calculations && calculations.length > 0 && 
       !selectedWorkflowSummary && !didAutoSelectWorkflowRef.current) {
-    const firstWorkflow = workflows[0];
+    const firstWorkflow = calculations[0];
     didAutoSelectWorkflowRef.current = true;
     handleSelectWorkflow(firstWorkflow);
   }
   
-  // Fallback if selected workflow disappeared
-  if (selectedWorkflowSummary && workflows && 
-      !workflows.find(w => w.id === selectedWorkflowSummary.id)) {
-    if (workflows.length > 0) {
-      handleSelectWorkflow(workflows[0]);
+  // Fallback if selected calculation disappeared
+  if (selectedWorkflowSummary && calculations && 
+      !calculations.find(w => w.id === selectedWorkflowSummary.id)) {
+    if (calculations.length > 0) {
+      handleSelectWorkflow(calculations[0]);
     } else {
       setSelectedWorkflowSummary(null);
       setSelectedWorkflowDetail(null);
     }
   }
-}, [currentView, workflows, selectedWorkflowSummary, handleSelectWorkflow]);
+}, [currentView, calculations, selectedWorkflowSummary, handleSelectWorkflow]);
 ```
 
 ---
 
-## Fix 2: Workflow Creation Error Fix
+## Fix 2: Calculation Creation Error Fix
 
 ### What Changed
 
@@ -176,7 +176,7 @@ useEffect(() => {
      setWorkflows(workflowsList);
    }, [dependencies]);
    
-   // AFTER: Returns workflows list
+   // AFTER: Returns calculations list
    const fetchWorkflows = useCallback(async () => {
      // ... fetch logic ...
      setWorkflows(workflowsList);
@@ -184,7 +184,7 @@ useEffect(() => {
    }, [dependencies]);
    ```
    - **Purpose**: Allow callers to use the fresh list immediately without waiting for state update
-   - **Return type**: `Promise<WorkflowInfo[] | null>`
+   - **Return type**: `Promise<CalculationInfo[] | null>`
 
 2. **Modified `handleCreateWorkflowSuccess` (lines 722-745)**
    ```typescript
@@ -193,9 +193,9 @@ useEffect(() => {
      await fetchWorkflows();  // State update is async
      await refreshSummary();
      
-     // workflows state might not be updated yet!
-     if (workflows) {  // ← Uses stale state
-       const newWf = workflows.find(w => w.id === workflowId);
+     // calculations state might not be updated yet!
+     if (calculations) {  // ← Uses stale state
+       const newWf = calculations.find(w => w.id === workflowId);
        if (newWf) {
          handleSelectWorkflow(newWf);
        }
@@ -214,7 +214,7 @@ useEffect(() => {
      } else {
        // Fallback with timeout (handles edge case)
        setTimeout(() => {
-         const retryWf = workflows?.find(w => w.id === workflowId);
+         const retryWf = calculations?.find(w => w.id === workflowId);
          if (retryWf) {
            handleSelectWorkflow(retryWf);
          }
@@ -225,49 +225,49 @@ useEffect(() => {
 
 ### Logic Flow
 
-**Workflow Creation Flow (BEFORE - Buggy):**
+**Calculation Creation Flow (BEFORE - Buggy):**
 
 ```
-User clicks "Create Workflow"
+User clicks "Create Calculation"
   ↓
-CreateWorkflowDialog calls create_workflow RPC
+CreateWorkflowDialog calls create_calculation RPC
   ↓
-Backend creates workflow, returns { workflow_id, name, slug, n_steps }
+Backend creates calculation, returns { calculation_id, name, slug, n_steps }
   ↓
 onSuccess(workflowId) called
   ↓
 handleCreateWorkflowSuccess(workflowId):
   1. await fetchWorkflows()  ← Starts async state update
   2. await refreshSummary()
-  3. Check workflows state  ← State might not be updated yet!
-  4. workflows.find() returns undefined
+  3. Check calculations state  ← State might not be updated yet!
+  4. calculations.find() returns undefined
   5. handleSelectWorkflow() not called
   ↓
 User sees empty detail panel
   ↓
-handleSelectWorkflow() eventually called (if workflows state updates)
+handleSelectWorkflow() eventually called (if calculations state updates)
   ↓
-get_workflow_detail RPC called with workflow.slug
+get_calculation_detail RPC called with calculation.slug
   ↓
-ERROR: "Workflow not found - selector: 'ss'" 
-  ← Race condition: workflow exists but not in registry yet
+ERROR: "Calculation not found - selector: 'ss'" 
+  ← Race condition: calculation exists but not in registry yet
 ```
 
-**Workflow Creation Flow (AFTER - Fixed):**
+**Calculation Creation Flow (AFTER - Fixed):**
 
 ```
-User clicks "Create Workflow"
+User clicks "Create Calculation"
   ↓
-CreateWorkflowDialog calls create_workflow RPC
+CreateWorkflowDialog calls create_calculation RPC
   ↓
-Backend creates workflow, returns { workflow_id, name, slug, n_steps }
+Backend creates calculation, returns { calculation_id, name, slug, n_steps }
   ↓
 onSuccess(workflowId) called
   ↓
 handleCreateWorkflowSuccess(workflowId):
   1. const workflowsList = await fetchWorkflows()
-     - RPC: list_workflows
-     - Backend returns fresh list (includes new workflow)
+     - RPC: list_calculations
+     - Backend returns fresh list (includes new calculation)
      - setWorkflows(workflowsList) ← State update (async, but we have the list)
      - return workflowsList  ← Return immediately
   2. await refreshSummary()
@@ -276,10 +276,10 @@ handleCreateWorkflowSuccess(workflowId):
   ↓
 handleSelectWorkflow(newWf):
   1. setSelectedWorkflowSummary(newWf)
-  2. Async get_workflow_detail RPC with newWf.slug
+  2. Async get_calculation_detail RPC with newWf.slug
   3. setSelectedWorkflowDetail(detail) when response arrives
   ↓
-User sees workflow detail immediately (no error)
+User sees calculation detail immediately (no error)
 ```
 
 ### Dependencies
@@ -288,35 +288,35 @@ User sees workflow detail immediately (no error)
 - `qv` (from `useQVClient()` hook, line 161)
 - `projectRoot` (from useState, line 60)
 - `projectLoaded` (from useState, line 82)
-- **Returns**: `Promise<WorkflowInfo[] | null>`
+- **Returns**: `Promise<CalculationInfo[] | null>`
 
 **`handleCreateWorkflowSuccess` Dependencies:**
 - `fetchWorkflows` (from useCallback, line 467)
 - `refreshSummary` (from useCallback, line 428)
-- `workflows` (from useState, line 88) - only used in fallback
+- `calculations` (from useState, line 88) - only used in fallback
 - `handleSelectWorkflow` (from useCallback, line 661)
-- **Input**: `workflowId: string` (from `create_workflow` RPC response)
+- **Input**: `workflowId: string` (from `create_calculation` RPC response)
 
 **Why the Fix Works:**
 - `fetchWorkflows()` now returns the list directly, avoiding React state update delay
 - `handleCreateWorkflowSuccess` uses the returned list immediately
-- `handleSelectWorkflow` is called with the correct workflow object before `get_workflow_detail` runs
+- `handleSelectWorkflow` is called with the correct calculation object before `get_calculation_detail` runs
 - Fallback timeout handles edge cases where registry hasn't fully updated
 
 ### Error Root Cause
 
-**The "Workflow not found - selector: 'ss'" error occurred because:**
+**The "Calculation not found - selector: 'ss'" error occurred because:**
 
-1. **Timing Issue**: `fetchWorkflows()` updates state asynchronously. When `handleCreateWorkflowSuccess` checked `workflows` state immediately after `await fetchWorkflows()`, React hadn't applied the state update yet.
+1. **Timing Issue**: `fetchWorkflows()` updates state asynchronously. When `handleCreateWorkflowSuccess` checked `calculations` state immediately after `await fetchWorkflows()`, React hadn't applied the state update yet.
 
-2. **Selector Mismatch**: Even if the workflow was found, `handleSelectWorkflow` might have been called with a workflow object that had a different `slug` than what the backend expected, or the registry wasn't fully rebuilt yet.
+2. **Selector Mismatch**: Even if the calculation was found, `handleSelectWorkflow` might have been called with a calculation object that had a different `slug` than what the backend expected, or the registry wasn't fully rebuilt yet.
 
-3. **Race Condition**: The workflow existed in the filesystem, but the `ResourceIndex` (registry) might not have been updated yet, causing `get_workflow_detail` to fail with "selector not found".
+3. **Race Condition**: The calculation existed in the filesystem, but the `ResourceIndex` (registry) might not have been updated yet, causing `get_calculation_detail` to fail with "selector not found".
 
 **The fix eliminates the race condition by:**
 - Using the returned list directly (no state update delay)
-- Ensuring `handleSelectWorkflow` is called with the correct workflow object
-- The workflow object has the correct `slug` from the fresh `list_workflows` response
+- Ensuring `handleSelectWorkflow` is called with the correct calculation object
+- The calculation object has the correct `slug` from the fresh `list_calculations` response
 
 ---
 
@@ -457,20 +457,20 @@ App.tsx (Global State)
   ├─ structures (StructureInfo[])
   │   └─→ Used by: StructureListPanel, auto-select effect
   │
-  ├─ workflows (WorkflowInfo[])
-  │   └─→ Used by: WorkflowListPanel, auto-select effect, handleCreateWorkflowSuccess
+  ├─ calculations (CalculationInfo[])
+  │   └─→ Used by: CalculationListPanel, auto-select effect, handleCreateWorkflowSuccess
   │
   ├─ selectedStructure (StructureInfo | null)
   │   └─→ Used by: StructureDetailPanel, StructureViewer3D
   │   └─→ Set by: handleSelectStructure, auto-select effect
   │
-  ├─ selectedWorkflowSummary (WorkflowInfo | null)
-  │   └─→ Used by: WorkflowDetailPanel, auto-select effect
+  ├─ selectedWorkflowSummary (CalculationInfo | null)
+  │   └─→ Used by: CalculationDetailPanel, auto-select effect
   │   └─→ Set by: handleSelectWorkflow, auto-select effect
   │
-  └─ selectedWorkflowDetail (WorkflowDetailResult | null)
-      └─→ Used by: WorkflowDetailPanel, StepDetailPanel
-      └─→ Set by: handleSelectWorkflow (async get_workflow_detail)
+  └─ selectedWorkflowDetail (CalculationDetailResult | null)
+      └─→ Used by: CalculationDetailPanel, StepDetailPanel
+      └─→ Set by: handleSelectWorkflow (async get_calculation_detail)
 
 JobsPanel.tsx (Local State)
   ├─ selectedJobId (string | null)
@@ -493,10 +493,10 @@ JobsPanel.tsx (Local State)
 - `list_structures` → `fetchStructures()` → `setStructures()`
 - `get_structure_vis` → `loadStructureVis()` → `setStructureVisData()`
 
-**Workflow Panel:**
-- `list_workflows` → `fetchWorkflows()` → `setWorkflows()` + **returns list**
-- `get_workflow_detail` → `handleSelectWorkflow()` → `setSelectedWorkflowDetail()`
-- `create_workflow` → `handleCreateWorkflowSuccess()` → `fetchWorkflows()` → `handleSelectWorkflow()`
+**Calculation Panel:**
+- `list_calculations` → `fetchWorkflows()` → `setWorkflows()` + **returns list**
+- `get_calculation_detail` → `handleSelectWorkflow()` → `setSelectedWorkflowDetail()`
+- `create_calculation` → `handleCreateWorkflowSuccess()` → `fetchWorkflows()` → `handleSelectWorkflow()`
 
 **Jobs Panel:**
 - `list_jobs` → `fetchJobs()` → `setJobs()` (includes `job.steps`)
@@ -545,9 +545,9 @@ JobsPanel.tsx (Local State)
 ### Testing Checklist
 
 - [ ] Structures panel auto-selects first structure on entry
-- [ ] Workflows panel auto-selects first workflow on entry
+- [ ] Calculations panel auto-selects first calculation on entry
 - [ ] User selection is preserved when navigating away/back
-- [ ] Creating a workflow immediately shows detail (no error)
+- [ ] Creating a calculation immediately shows detail (no error)
 - [ ] Jobs stepper updates live as steps complete
 - [ ] Polling switches to 2s when jobs are running
 - [ ] Polling switches back to 3s when jobs finish

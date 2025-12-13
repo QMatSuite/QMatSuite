@@ -2,7 +2,7 @@
 Project snapshot format for exporting and importing complete projects.
 
 A snapshot is a single YAML file that contains all project metadata, structures,
-workflows, and step specifications needed to recreate a project. Pseudopotential
+calculations, and step specifications needed to recreate a project. Pseudopotential
 filenames are preserved but file contents are NOT embedded.
 """
 
@@ -18,13 +18,13 @@ import yaml
 from quantumvitas.core.models import (
     ProjectModel,
     StructureModel,
-    WorkflowModel,
+    CalculationModel,
     load_project,
     load_structure_model,
-    load_workflow,
+    load_calculation,
     save_project,
     save_structure_model,
-    save_workflow,
+    save_calculation,
 )
 from quantumvitas.core.resources import (
     ResourceMeta,
@@ -32,7 +32,7 @@ from quantumvitas.core.resources import (
     generate_resource_id,
     slugify,
 )
-from quantumvitas.workflow.structure_steps import StructureStepSpec
+from quantumvitas.calculation.structure_steps import StructureStepSpec
 
 # Structure file format constants
 STRUCTURE_META_KEY = "__qv_meta__"
@@ -44,7 +44,7 @@ class ProjectSnapshot:
     """
     Snapshot of a complete QuantumVITAS project.
     
-    Contains all metadata, structures, workflows, and steps needed to
+    Contains all metadata, structures, calculations, and steps needed to
     recreate the project. ULIDs are preserved for reference but will be
     regenerated when materializing the project.
     
@@ -59,7 +59,7 @@ class ProjectSnapshot:
     version: int = 1
     project: Dict[str, Any] = field(default_factory=dict)
     structures: List[Dict[str, Any]] = field(default_factory=list)
-    workflows: List[Dict[str, Any]] = field(default_factory=list)
+    calculations: List[Dict[str, Any]] = field(default_factory=list)
     pseudo: Optional[Dict[str, Any]] = None
     extra: Optional[Dict[str, Any]] = None
     meta: Optional[Dict[str, Any]] = None
@@ -70,7 +70,7 @@ class ProjectSnapshot:
             "version": self.version,
             "project": self.project,
             "structures": self.structures,
-            "workflows": self.workflows,
+            "calculations": self.calculations,
         }
         if self.pseudo:
             result["pseudo"] = self.pseudo
@@ -85,7 +85,7 @@ class ProjectSnapshot:
         """
         Create ProjectSnapshot from dictionary.
         
-        Supports both old format (project/structures/workflows at top level)
+        Supports both old format (project/structures/calculations at top level)
         and new minimal format (snapshot_meta + files list).
         """
         # Check for new minimal format (snapshot_meta + files)
@@ -93,12 +93,12 @@ class ProjectSnapshot:
             # New minimal format: convert files list to old format structure
             return cls._from_minimal_format(data)
         
-        # Old format: project/structures/workflows at top level
+        # Old format: project/structures/calculations at top level
         return cls(
             version=data.get("version", 1),
             project=data.get("project", {}),
             structures=data.get("structures", []),
-            workflows=data.get("workflows", []),
+            calculations=data.get("calculations", []),
             pseudo=data.get("pseudo"),
             extra=data.get("extra"),
             meta=data.get("meta"),
@@ -154,32 +154,32 @@ class ProjectSnapshot:
                 except Exception:
                     pass  # Skip malformed structure files
         
-        # Parse workflows
-        workflows_data = []
+        # Parse calculations
+        calculations_data = []
         for file_path, content in file_map.items():
-            if file_path.endswith("/workflow.yaml"):
+            if file_path.endswith("/calculation.yaml"):
                 try:
-                    workflow_data = yaml.safe_load(content) or {}
+                    calculation_data = yaml.safe_load(content) or {}
                     # Extract steps from step files
-                    workflow_dir = file_path.rsplit("/", 1)[0]
+                    calculation_dir = file_path.rsplit("/", 1)[0]
                     steps_data = []
                     for step_path, step_content in file_map.items():
-                        if step_path.startswith(workflow_dir + "/steps/") and step_path.endswith(".step.yaml"):
+                        if step_path.startswith(calculation_dir + "/steps/") and step_path.endswith(".step.yaml"):
                             try:
                                 step_data = yaml.safe_load(step_content) or {}
                                 steps_data.append(step_data)
                             except Exception:
                                 pass
-                    workflow_data["steps"] = steps_data
-                    workflows_data.append(workflow_data)
+                    calculation_data["steps"] = steps_data
+                    calculations_data.append(calculation_data)
                 except Exception:
-                    pass  # Skip malformed workflow files
+                    pass  # Skip malformed calculation files
         
         return cls(
             version=snapshot_meta.get("version", 1),
             project=project_data,
             structures=structures_data,
-            workflows=workflows_data,
+            calculations=calculations_data,
             pseudo=None,  # Pseudo files not embedded in minimal format
             extra=None,
             meta=snapshot_meta,  # Use snapshot_meta as meta
@@ -190,7 +190,7 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
     """
     Export a project directory to a ProjectSnapshot.
     
-    Reads project.qv.yml, all structures, workflows, and step specs
+    Reads project.qv.yml, all structures, calculations, and step specs
     and packages them into a single snapshot object.
     
     Args:
@@ -233,10 +233,10 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
                 "data": structure_data,
             })
     
-    # Export workflows and their steps
-    # Use Project.open() and Workflow.from_yaml() to load workflows (DAG + ULID model only)
+    # Export calculations and their steps
+    # Use Project.open() and Calculation.from_yaml() to load calculations (DAG + ULID model only)
     from quantumvitas.project.model import Project
-    from quantumvitas.workflow.workflow import Workflow
+    from quantumvitas.calculation.calculation import Calculation
     from quantumvitas.core.project_utils import load_project_config
     
     try:
@@ -245,77 +245,77 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
         # Fall back to basic loading if Project.open() fails
         project = None
     
-    # Load raw config to check for legacy name fields in workflow entries
+    # Load raw config to check for legacy name fields in calculation entries
     raw_config = load_project_config(project_root)
-    # Build mapping from workflow ID to raw entry (handle workflow_id, id, and meta.id keys)
-    raw_workflow_entries = {}
-    for entry in raw_config.get("workflows", []):
-        wf_id = entry.get("workflow_id") or entry.get("id") or (entry.get("meta") or {}).get("id")
+    # Build mapping from calculation ID to raw entry (handle calculation_id, id, and meta.id keys)
+    raw_calculation_entries = {}
+    for entry in raw_config.get("calculations", []):
+        wf_id = entry.get("calculation_id") or entry.get("id") or (entry.get("meta") or {}).get("id")
         if wf_id:
-            raw_workflow_entries[wf_id] = entry
+            raw_calculation_entries[wf_id] = entry
     
-    workflows_data = []
-    for workflow_entry in project_model.workflows:
-        workflow_path = project_root / workflow_entry.meta.path / "workflow.yaml"
-        if not workflow_path.exists():
+    calculations_data = []
+    for calculation_entry in project_model.calculations:
+        calculation_path = project_root / calculation_entry.meta.path / "calculation.yaml"
+        if not calculation_path.exists():
             continue
         
-        workflow_dir = workflow_path.parent
+        calculation_dir = calculation_path.parent
         
-        # Try to load via Workflow.from_yaml (with migration support) if project is available
+        # Try to load via Calculation.from_yaml (with migration support) if project is available
         # Use inspection mode for snapshot export (no step materialization needed)
         if project:
             try:
-                workflow = Workflow.from_yaml(workflow_dir, project, materialize_steps=False)
-                # Extract workflow model data from the Workflow object
-                workflow_model = load_workflow(workflow_path, project_root)
-                # But use the actual Step objects from Workflow for step export
-                workflow_steps = workflow.steps
+                calculation = Calculation.from_yaml(calculation_dir, project, materialize_steps=False)
+                # Extract calculation model data from the Calculation object
+                calculation_model = load_calculation(calculation_path, project_root)
+                # But use the actual Step objects from Calculation for step export
+                calculation_steps = calculation.steps
             except Exception:
-                # Fall back to basic load_workflow if Workflow.from_yaml fails
-                workflow_model = load_workflow(workflow_path, project_root)
-                workflow_steps = None
+                # Fall back to basic load_calculation if Calculation.from_yaml fails
+                calculation_model = load_calculation(calculation_path, project_root)
+                calculation_steps = None
         else:
             # Fall back to basic loading
-            workflow_model = load_workflow(workflow_path, project_root)
-            workflow_steps = None
+            calculation_model = load_calculation(calculation_path, project_root)
+            calculation_steps = None
         
-        # Export workflow metadata
+        # Export calculation metadata
         # Prefer name from raw project.qv.yml entry (legacy format) as it may have the correct human-readable name
-        # workflow.yaml might have name=slug if it was created with old format
-        # Use workflow_model.meta for other fields (slug, path) as workflow.yaml is the source of truth for those
-        workflow_meta_dict = workflow_model.meta.to_dict()
+        # calculation.yaml might have name=slug if it was created with old format
+        # Use calculation_model.meta for other fields (slug, path) as calculation.yaml is the source of truth for those
+        calculation_meta_dict = calculation_model.meta.to_dict()
         # Check raw project.qv.yml entry for legacy name field
-        # Try both workflow_entry.meta.id and workflow_model.meta.id as keys
-        raw_entry = raw_workflow_entries.get(workflow_entry.meta.id) or raw_workflow_entries.get(workflow_model.meta.id)
+        # Try both calculation_entry.meta.id and calculation_model.meta.id as keys
+        raw_entry = raw_calculation_entries.get(calculation_entry.meta.id) or raw_calculation_entries.get(calculation_model.meta.id)
         legacy_name = None
         if raw_entry:
             # Check for legacy 'name' field at top level or in meta
             legacy_name = raw_entry.get("name") or (raw_entry.get("meta") or {}).get("name")
-        # Also check workflow_entry.meta.name directly (might be set from registry)
+        # Also check calculation_entry.meta.name directly (might be set from registry)
         if not legacy_name:
-            legacy_name = workflow_entry.meta.name
+            legacy_name = calculation_entry.meta.name
         # Override name with legacy name if it exists and is different from slug (preserves human-readable names)
-        if legacy_name and legacy_name != workflow_model.meta.slug and legacy_name != workflow_model.meta.name:
-            workflow_meta_dict["name"] = legacy_name
-        # Preserve the workflow ID from workflow_entry if it's different (shouldn't happen, but be safe)
-        if workflow_entry.meta.id and workflow_entry.meta.id != workflow_model.meta.id:
-            workflow_meta_dict["id"] = workflow_entry.meta.id
+        if legacy_name and legacy_name != calculation_model.meta.slug and legacy_name != calculation_model.meta.name:
+            calculation_meta_dict["name"] = legacy_name
+        # Preserve the calculation ID from calculation_entry if it's different (shouldn't happen, but be safe)
+        if calculation_entry.meta.id and calculation_entry.meta.id != calculation_model.meta.id:
+            calculation_meta_dict["id"] = calculation_entry.meta.id
         
-        workflow_dict = {
-            "meta": workflow_meta_dict,
-            "mode": workflow_model.mode,
-            "working_dir": workflow_model.working_dir,
+        calculation_dict = {
+            "meta": calculation_meta_dict,
+            "mode": calculation_model.mode,
+            "working_dir": calculation_model.working_dir,
             "steps": [],
         }
         # Export structure_id (canonical reference - ID only)
         # Do NOT export structure_name or structure selector (violates DAG + ID-only constitution)
-        if workflow_model.structure_id:
-            workflow_dict["structure_id"] = workflow_model.structure_id
+        if calculation_model.structure_id:
+            calculation_dict["structure_id"] = calculation_model.structure_id
         
         # Export each step
         # Strategy: Scan step files directly and export them, matching by ID when possible
-        # This handles cases where workflow.yaml step_id doesn't match step file meta.id
+        # This handles cases where calculation.yaml step_id doesn't match step file meta.id
         # Create resolver for legacy structure selector normalization
         from quantumvitas.core.resolution import make_structure_selector_resolver
         from quantumvitas.core.project_utils import load_project_config
@@ -325,9 +325,9 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
         except Exception:
             resolver = None
         
-        # Export steps in the order specified in workflow.yaml
-        # Use workflow_model.steps to get the correct order (from workflow.yaml)
-        steps_dir = workflow_dir / "steps"
+        # Export steps in the order specified in calculation.yaml
+        # Use calculation_model.steps to get the correct order (from calculation.yaml)
+        steps_dir = calculation_dir / "steps"
         exported_step_ids = set()
         
         # Build a map of step_id -> step_file_path for quick lookup
@@ -343,9 +343,9 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
                     # Skip step files that can't be loaded
                     continue
         
-        # Export steps in the order from workflow.yaml
-        # Use workflow_model.steps which preserves the order from workflow.yaml
-        for step_entry in workflow_model.steps:
+        # Export steps in the order from calculation.yaml
+        # Use calculation_model.steps which preserves the order from calculation.yaml
+        for step_entry in calculation_model.steps:
             step_id = step_entry.step_id  # DAG + ULID model: only step_id (ULID) is used
             if not step_id:
                 continue
@@ -366,13 +366,13 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
                 
                 # Export step data (ID-only model: structure_id, no structure selector)
                 step_dict = step_spec.to_dict()
-                workflow_dict["steps"].append(step_dict)
+                calculation_dict["steps"].append(step_dict)
                 exported_step_ids.add(step_id)
             except Exception:
                 # Skip step files that can't be loaded
                 continue
         
-        workflows_data.append(workflow_dict)
+        calculations_data.append(calculation_dict)
     
     # Export pseudo file list (filenames only, no content)
     pseudo_data = None
@@ -389,7 +389,7 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
         version=1,
         project=project_data,
         structures=structures_data,
-        workflows=workflows_data,
+        calculations=calculations_data,
         pseudo=pseudo_data,
     )
 
@@ -460,21 +460,21 @@ def materialize_project_from_snapshot(
             id_mapping[old_struct_id] = new_struct_id
             structure_slug_to_new_id[struct_slug] = new_struct_id
     
-    # Map workflow IDs
-    workflow_slug_to_new_id: Dict[str, str] = {}
-    for workflow_data in snapshot.workflows:
-        workflow_meta = workflow_data.get("meta", {})
-        old_workflow_id = workflow_meta.get("id")
-        workflow_slug = workflow_meta.get("slug") or slugify(workflow_meta.get("name", "workflow"))
+    # Map calculation IDs
+    calculation_slug_to_new_id: Dict[str, str] = {}
+    for calculation_data in snapshot.calculations:
+        calculation_meta = calculation_data.get("meta", {})
+        old_calculation_id = calculation_meta.get("id")
+        calculation_slug = calculation_meta.get("slug") or slugify(calculation_meta.get("name", "calculation"))
         
-        if old_workflow_id:
-            new_workflow_id = generate_resource_id()
-            id_mapping[old_workflow_id] = new_workflow_id
-            workflow_slug_to_new_id[workflow_slug] = new_workflow_id
+        if old_calculation_id:
+            new_calculation_id = generate_resource_id()
+            id_mapping[old_calculation_id] = new_calculation_id
+            calculation_slug_to_new_id[calculation_slug] = new_calculation_id
     
     # Map step IDs
-    for workflow_data in snapshot.workflows:
-        for step_data in workflow_data.get("steps", []):
+    for calculation_data in snapshot.calculations:
+        for step_data in calculation_data.get("steps", []):
             step_meta = step_data.get("meta", {})
             old_step_id = step_meta.get("id")
             if old_step_id:
@@ -494,7 +494,7 @@ def materialize_project_from_snapshot(
         meta=new_project_meta,
         root=project_dir,
         structures=[],
-        workflows=[],
+        calculations=[],
         settings=snapshot.project.get("settings", {}),
     )
     
@@ -541,51 +541,51 @@ def materialize_project_from_snapshot(
         )
         project_model.structures.append(struct_entry)
     
-    # Create workflows and steps
-    workflows_dir = project_dir / "workflows"
-    workflows_dir.mkdir(exist_ok=True)
+    # Create calculations and steps
+    calculations_dir = project_dir / "calculations"
+    calculations_dir.mkdir(exist_ok=True)
     
-    for workflow_data in snapshot.workflows:
-        workflow_meta = workflow_data.get("meta", {})
-        workflow_name = workflow_meta.get("name") or workflow_meta.get("slug") or "workflow"
-        workflow_slug = workflow_meta.get("slug") or slugify(workflow_name)
-        old_workflow_id = workflow_meta.get("id")
-        new_workflow_id = id_mapping.get(old_workflow_id, generate_resource_id())
+    for calculation_data in snapshot.calculations:
+        calculation_meta = calculation_data.get("meta", {})
+        calculation_name = calculation_meta.get("name") or calculation_meta.get("slug") or "calculation"
+        calculation_slug = calculation_meta.get("slug") or slugify(calculation_name)
+        old_calculation_id = calculation_meta.get("id")
+        new_calculation_id = id_mapping.get(old_calculation_id, generate_resource_id())
         
-        # Create workflow directory
-        workflow_path = workflows_dir / workflow_slug
-        workflow_path.mkdir(exist_ok=True)
-        steps_dir = workflow_path / "steps"
+        # Create calculation directory
+        calculation_path = calculations_dir / calculation_slug
+        calculation_path.mkdir(exist_ok=True)
+        steps_dir = calculation_path / "steps"
         steps_dir.mkdir(exist_ok=True)
-        (workflow_path / "raw").mkdir(exist_ok=True)
+        (calculation_path / "raw").mkdir(exist_ok=True)
         
         # Resolve structure reference from snapshot
         # New format: structure_id (canonical)
-        workflow_structure_id = workflow_data.get("structure_id")
-        workflow_structure_name = workflow_data.get("structure_name")
+        calculation_structure_id = calculation_data.get("structure_id")
+        calculation_structure_name = calculation_data.get("structure_name")
         # Legacy format: structure selector
-        workflow_structure_selector = workflow_data.get("structure")
+        calculation_structure_selector = calculation_data.get("structure")
         
         # If structure_id is present, map it to the new structure ID
-        if workflow_structure_id:
+        if calculation_structure_id:
             # Find the structure in the snapshot by old ID
             structure_found = False
             for struct_data in snapshot.structures:
                 struct_meta = struct_data.get("meta", {})
-                if struct_meta.get("id") == workflow_structure_id:
+                if struct_meta.get("id") == calculation_structure_id:
                     # Map to new structure ID
-                    new_structure_id = id_mapping.get(workflow_structure_id)
+                    new_structure_id = id_mapping.get(calculation_structure_id)
                     if new_structure_id:
-                        workflow_structure_id = new_structure_id
-                        workflow_structure_name = struct_meta.get("name")
+                        calculation_structure_id = new_structure_id
+                        calculation_structure_name = struct_meta.get("name")
                     structure_found = True
                     break
             if not structure_found:
                 # Structure ID not found in snapshot - this shouldn't happen, but handle gracefully
-                workflow_structure_id = None
+                calculation_structure_id = None
         
         # If only structure selector is present, try to resolve it to structure_id
-        elif workflow_structure_selector:
+        elif calculation_structure_selector:
             # Try to find structure by slug/name in the snapshot
             for struct_data in snapshot.structures:
                 struct_meta = struct_data.get("meta", {})
@@ -593,34 +593,34 @@ def materialize_project_from_snapshot(
                 struct_name = struct_meta.get("name", "")
                 old_struct_id = struct_meta.get("id")
                 
-                if (struct_slug == workflow_structure_selector or 
-                    struct_name.lower() == workflow_structure_selector.lower()):
+                if (struct_slug == calculation_structure_selector or 
+                    struct_name.lower() == calculation_structure_selector.lower()):
                     # Found matching structure - use its new ID
                     if old_struct_id:
-                        workflow_structure_id = id_mapping.get(old_struct_id)
-                        workflow_structure_name = struct_name
+                        calculation_structure_id = id_mapping.get(old_struct_id)
+                        calculation_structure_name = struct_name
                     break
         
-        # Create workflow.yaml
-        workflow_model = WorkflowModel(
+        # Create calculation.yaml
+        calculation_model = CalculationModel(
             meta=ResourceMeta(
-                id=new_workflow_id,
-                name=workflow_name,
-                slug=workflow_slug,
-                path=f"workflows/{workflow_slug}",
-                kind="workflow",
+                id=new_calculation_id,
+                name=calculation_name,
+                slug=calculation_slug,
+                path=f"calculations/{calculation_slug}",
+                kind="calculation",
             ),
-            structure_id=workflow_structure_id,
+            structure_id=calculation_structure_id,
             # structure_name and structure are in-memory only (not persisted to YAML)
-            structure_name=workflow_structure_name,
+            structure_name=calculation_structure_name,
             # structure selector field removed - use structure_id (ULID) only
-            mode=workflow_data.get("mode", "normal"),
-            working_dir=workflow_data.get("working_dir", "raw"),
+            mode=calculation_data.get("mode", "normal"),
+            working_dir=calculation_data.get("working_dir", "raw"),
             steps=[],
         )
         
         # Create step files
-        for step_data in workflow_data.get("steps", []):
+        for step_data in calculation_data.get("steps", []):
             step_meta = step_data.get("meta", {})
             step_name = step_meta.get("name", step_data.get("step_type", "step"))
             step_slug = step_meta.get("slug") or slugify(step_name)
@@ -628,14 +628,14 @@ def materialize_project_from_snapshot(
             new_step_id = id_mapping.get(old_step_id, generate_resource_id())
             
             # Create step spec with new IDs
-            # DAG + ID-only model: Step YAML must NOT contain structure_id or parent_workflow_id
-            # Structure is resolved via workflow.structure_id at runtime
-            # Parent workflow is implicit from step file location
+            # DAG + ID-only model: Step YAML must NOT contain structure_id or parent_calculation_id
+            # Structure is resolved via calculation.structure_id at runtime
+            # Parent calculation is implicit from step file location
             step_spec_dict = dict(step_data)
             
-            # Remove structure_id and parent_workflow_id from dict (DAG invariant)
+            # Remove structure_id and parent_calculation_id from dict (DAG invariant)
             step_spec_dict.pop("structure_id", None)
-            step_spec_dict.pop("parent_workflow_id", None)
+            step_spec_dict.pop("parent_calculation_id", None)
             step_spec_dict.pop("structure", None)  # Also remove legacy structure selector
             
             # Update meta with new IDs
@@ -643,44 +643,44 @@ def materialize_project_from_snapshot(
                 "id": new_step_id,
                 "name": step_name,
                 "slug": step_slug,
-                "path": f"workflows/{workflow_slug}/steps/{step_slug}.step.yaml",
+                "path": f"calculations/{calculation_slug}/steps/{step_slug}.step.yaml",
                 "kind": "step",
             }
             
             # Create StructureStepSpec object to ensure proper serialization
-            # This will strip any remaining structure_id/parent_workflow_id via to_dict()
-            from quantumvitas.workflow.structure_steps import StructureStepSpec
+            # This will strip any remaining structure_id/parent_calculation_id via to_dict()
+            from quantumvitas.calculation.structure_steps import StructureStepSpec
             step_spec = StructureStepSpec.from_dict(step_spec_dict)
             
             # Write step file using to_dict() which enforces DAG invariants
             step_file = steps_dir / f"{step_slug}.step.yaml"
             step_file.write_text(yaml.safe_dump(step_spec.to_dict(), sort_keys=False))
             
-            # Add to workflow steps list using step_id (ULID) from step meta
-            from quantumvitas.core.models import WorkflowStepEntry
+            # Add to calculation steps list using step_id (ULID) from step meta
+            from quantumvitas.core.models import CalculationStepEntry
             step_meta = step_spec_dict.get("meta", {})
             step_id = step_meta.get("id") or step_spec_dict.get("id")
-            workflow_model.steps.append(WorkflowStepEntry(
+            calculation_model.steps.append(CalculationStepEntry(
                 step_id=step_id,  # Use ULID from step meta (canonical reference)
                 type=step_data.get("step_type"),
                 # step_file is NOT stored - step location resolved via registry using step_id
             ))
         
-        # Save workflow.yaml
-        save_workflow(workflow_model, workflow_path / "workflow.yaml")
+        # Save calculation.yaml
+        save_calculation(calculation_model, calculation_path / "calculation.yaml")
         
         # Add to project model
-        from quantumvitas.core.models import WorkflowEntry
-        workflow_entry = WorkflowEntry(
+        from quantumvitas.core.models import CalculationEntry
+        calculation_entry = CalculationEntry(
             meta=ResourceMeta(
-                id=new_workflow_id,
-                name=workflow_name,
-                slug=workflow_slug,
-                path=f"workflows/{workflow_slug}",
-                kind="workflow",
+                id=new_calculation_id,
+                name=calculation_name,
+                slug=calculation_slug,
+                path=f"calculations/{calculation_slug}",
+                kind="calculation",
             ),
         )
-        project_model.workflows.append(workflow_entry)
+        project_model.calculations.append(calculation_entry)
     
     # Save project.qv.yml
     save_project(project_model, project_dir)

@@ -1,10 +1,10 @@
 /**
- * E2E Test 2: Create Demo Project → Workflow & Steps UI
+ * E2E Test 2: Create Demo Project → Calculation & Steps UI
  * 
- * Tests creating a demo project and verifying workflow/step UI consistency.
+ * Tests creating a demo project and verifying calculation/step UI consistency.
  * 
- * **This spec does NOT run any workflows.** It only tests:
- * - Workflow list rendering
+ * **This spec does NOT run any calculations.** It only tests:
+ * - Calculation list rendering
  * - Step list order (DAG / ULID-based)
  * - Step detail panel UI (file paths, step IDs, metadata)
  * - Step file existence and YAML structure
@@ -29,7 +29,7 @@ import { createUniqueProjectDir, cleanupProjectDir, clearE2EProjectsRoot, getRep
 // Skip if explicitly requested via environment variable
 const SKIP_E2E = process.env.SKIP_ELECTRON_E2E === 'true';
 
-test.describe('E2E Test 2: Create Demo Project → Workflow & Steps', () => {
+test.describe('E2E Test 2: Create Demo Project → Calculation & Steps', () => {
   test.skip(SKIP_E2E, 'Skipped when SKIP_ELECTRON_E2E=true');
   
   let projectDir: string;
@@ -44,7 +44,7 @@ test.describe('E2E Test 2: Create Demo Project → Workflow & Steps', () => {
   
   // Don't clean up after tests - leave projects for inspection
   
-  test('create demo project and verify workflow steps', async ({ appPage }, testInfo) => {
+  test('create demo project and verify calculation steps', async ({ appPage }, testInfo) => {
     // Project creation can take time, increase timeout to 60 seconds
     testInfo.setTimeout(60 * 1000);
     
@@ -60,23 +60,23 @@ test.describe('E2E Test 2: Create Demo Project → Workflow & Steps', () => {
     await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 10000 });
       
       // Navigate to Workflows view
-      await navigateToView(appPage, 'workflows');
+      await navigateToView(appPage, 'calculations');
       
-      // Wait for workflows view to be visible
-      await expect(appPage.getByTestId('qv-workflows-view')).toBeVisible({ timeout: 10000 });
+      // Wait for calculations view to be visible
+      await expect(appPage.getByTestId('qv-calculations-view')).toBeVisible({ timeout: 10000 });
       
-      // Verify there is exactly one workflow row
-      const workflowRows = appPage.getByTestId('qv-workflow-row');
+      // Verify there is exactly one calculation row
+      const workflowRows = appPage.getByTestId('qv-calculation-row');
       await expect(workflowRows).toHaveCount(1);
       
-      // Click on the workflow row to select it
+      // Click on the calculation row to select it
       await workflowRows.first().click();
       
-      // Wait for workflow detail panel
-      await expect(appPage.getByTestId('qv-workflow-detail')).toBeVisible({ timeout: 10000 });
+      // Wait for calculation detail panel
+      await expect(appPage.getByTestId('qv-calculation-detail')).toBeVisible({ timeout: 10000 });
       
-      // Verify "Run Workflow" button is visible (but we do NOT click it - no workflow execution in this spec)
-      await expect(appPage.getByTestId('qv-btn-run-workflow')).toBeVisible();
+      // Verify "Run Calculation" button is visible (but we do NOT click it - no calculation execution in this spec)
+      await expect(appPage.getByTestId('qv-btn-run-calculation')).toBeVisible();
       
       // Get all step rows
       // Step rows now have unique test IDs (qv-step-row-{stepId})
@@ -167,8 +167,8 @@ test.describe('E2E Test 2: Create Demo Project → Workflow & Steps', () => {
         }
         
         // Close step detail to go back
-        // Click workflow detail panel header to deselect step
-        await appPage.getByTestId('qv-workflow-detail').locator('.panel-header').click();
+        // Click calculation detail panel header to deselect step
+        await appPage.getByTestId('qv-calculation-detail').locator('.panel-header').click();
         await appPage.waitForTimeout(200);
       }
   });
@@ -188,12 +188,12 @@ test.describe('E2E Test 2: Create Demo Project → Workflow & Steps', () => {
     await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 10000 });
       
       // Navigate to Workflows
-      await navigateToView(appPage, 'workflows');
-      await expect(appPage.getByTestId('qv-workflows-view')).toBeVisible({ timeout: 10000 });
+      await navigateToView(appPage, 'calculations');
+      await expect(appPage.getByTestId('qv-calculations-view')).toBeVisible({ timeout: 10000 });
       
-      // Select the workflow
-      await appPage.getByTestId('qv-workflow-row').first().click();
-      await expect(appPage.getByTestId('qv-workflow-detail')).toBeVisible({ timeout: 10000 });
+      // Select the calculation
+      await appPage.getByTestId('qv-calculation-row').first().click();
+      await expect(appPage.getByTestId('qv-calculation-detail')).toBeVisible({ timeout: 10000 });
       
       // Track which files we've seen for each step
       const stepFiles: Map<string, string> = new Map();
@@ -221,7 +221,7 @@ test.describe('E2E Test 2: Create Demo Project → Workflow & Steps', () => {
         }
         
         // Go back by clicking elsewhere
-        await appPage.getByTestId('qv-workflow-detail').locator('.panel-header').click();
+        await appPage.getByTestId('qv-calculation-detail').locator('.panel-header').click();
         await appPage.waitForTimeout(200);
       }
       

@@ -1,0 +1,14 @@
+meta:
+  id: 01KC10WZWSAWG2PGW8PWMR943P
+  name: bands
+  slug: bands
+  path: calculations/graphene-bands/steps/bands.step.yaml
+  kind: step
+step_type: bands
+structure: C
+parent_calculation_id: 01KC10S2CGYQ2FBB2B6PGD5SC7
+parameters:
+  BANDS:
+    filband: graphene.bands.dat
+    outdir: ./outdir
+    prefix: graphene

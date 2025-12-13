@@ -7,7 +7,7 @@ This document provides detailed examples and usage patterns for QuantumVITAS str
 1. [Structure I/O Functions](#structure-io-functions)
 2. [CLI Commands](#cli-commands)
 3. [Parameter Overrides](#parameter-overrides)
-4. [Complete Workflow Examples](#complete-workflow-examples)
+4. [Complete Calculation Examples](#complete-calculation-examples)
 5. [API Reference](#api-reference)
 
 ---
@@ -268,10 +268,10 @@ parameters:
 **Usage:**
 
 ```bash
-qv run step workflows/si_scf_step.yaml
+qv run step calculations/si_scf_step.yaml
 
 # CLI overrides take precedence over YAML values
-qv run step workflows/si_scf_step.yaml --SYSTEM.ecutwfc=70
+qv run step calculations/si_scf_step.yaml --SYSTEM.ecutwfc=70
 ```
 
 **What it does:**
@@ -334,19 +334,19 @@ qv run step si.scf.in \
 
 ---
 
-## Step & Workflow Import Helpers
+## Step & Calculation Import Helpers
 
-To migrate existing QE inputs into the structured workflow layout, leverage
-`quantumvitas.workflow.importers`:
+To migrate existing QE inputs into the structured calculation layout, leverage
+`quantumvitas.calculation.importers`:
 
 - `build_step_spec_from_qe_input(input_file, destination_dir, ...)`  
   Parses a QE input, stores the extracted structure as JSON, captures
   namelists/cards, and emits a `*.step.yaml` ready for `qv run step`.
-- `build_workflow_from_qe_inputs(files, workflow_dir, ...)`  
+- `build_calculation_from_qe_inputs(files, calculation_dir, ...)`  
   Processes multiple QE inputs in order, copies the originals under
   `raw/original_inputs/`, writes per-step YAML files, and generates
-  `workflow.yaml` that references those specs. Structures can be referenced by
-  absolute/relative path (self-contained workflows) or by structure id for
+  `calculation.yaml` that references those specs. Structures can be referenced by
+  absolute/relative path (self-contained calculations) or by structure id for
   project-integrated setups.
 
 ---
@@ -459,7 +459,7 @@ in tests) so QE never downloads to scattered locations.
 
 ---
 
-## Complete Workflow Examples
+## Complete Calculation Examples
 
 ### Example 1: Import Structure and Run SCF
 
@@ -510,7 +510,7 @@ from quantumvitas.io import (
     qe_input_from_structure,
     QEInputGenerator,
 )
-from quantumvitas.workflow.input_runner import (
+from quantumvitas.calculation.input_runner import (
     run_input_step,
     ParameterOverride,
 )
@@ -526,7 +526,7 @@ write_structure(structure, Path("structures/si.json"), format="json")
 qe_input = qe_input_from_structure(structure)
 
 # Apply parameter overrides programmatically
-from quantumvitas.workflow.input_runner import _apply_parameter_overrides
+from quantumvitas.calculation.input_runner import _apply_parameter_overrides
 overrides = [
     ParameterOverride(name="ecutwfc", value=60, section=None),
     ParameterOverride(name="ecutrho", value=240, section=None),
@@ -609,7 +609,7 @@ Dataclass for parameter overrides.
 **Example:**
 
 ```python
-from quantumvitas.workflow.input_runner import ParameterOverride
+from quantumvitas.calculation.input_runner import ParameterOverride
 
 override = ParameterOverride(name="ecutwfc", value=60, section="SYSTEM")
 ```

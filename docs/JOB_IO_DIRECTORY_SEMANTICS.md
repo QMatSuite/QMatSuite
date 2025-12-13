@@ -19,17 +19,17 @@ QuantumVITAS uses a unified `io_dir` field to represent the I/O directory for jo
 The runner layer provides a helper function that is the **single source of truth** for computing I/O directory paths:
 
 ```python
-from quantumvitas.workflow.runner import compute_io_dir_from_workflow_model
+from quantumvitas.calculation.runner import compute_io_dir_from_workflow_model
 
-# Compute I/O directory from workflow model
-io_dir = compute_io_dir_from_workflow_model(workflow_dir, working_dir_name)
+# Compute I/O directory from calculation model
+io_dir = compute_io_dir_from_workflow_model(calculation_dir, working_dir_name)
 ```
 
-**Location**: `src/quantumvitas/workflow/runner.py`
+**Location**: `src/quantumvitas/calculation/runner.py`
 
 **Parameters**:
-- `workflow_dir`: Path to the workflow directory (containing workflow.yaml)
-- `working_dir_name`: Name of the working directory subdirectory (from `workflow.working_dir` in workflow.yaml). If `None`, defaults to `"raw"` (the convention for local runner).
+- `calculation_dir`: Path to the calculation directory (containing calculation.yaml)
+- `working_dir_name`: Name of the working directory subdirectory (from `calculation.working_dir` in calculation.yaml). If `None`, defaults to `"raw"` (the convention for local runner).
 
 **Returns**: Absolute `Path` to the I/O directory.
 
@@ -41,10 +41,10 @@ The daemon server uses `compute_io_dir_from_workflow_model()` to compute `planne
 
 **Location**: `src/quantumvitas/daemon/server.py`
 
-- `_handle_run_workflow`: Computes `planned_io_dir` using the helper function
+- `_handle_run_calculation`: Computes `planned_io_dir` using the helper function
 - `_handle_run_step`: Same approach
 
-**No hardcoded paths**: The server does NOT construct paths like `workflow_dir / "raw"` directly. It always uses the runner-layer helper.
+**No hardcoded paths**: The server does NOT construct paths like `calculation_dir / "raw"` directly. It always uses the runner-layer helper.
 
 ### Job Model
 
@@ -62,7 +62,7 @@ The daemon server uses `compute_io_dir_from_workflow_model()` to compute `planne
 
 **Location**: `src/quantumvitas/api.py`
 
-- `run_workflow`: Returns `io_dir` from `WorkflowResult` (runner-provided)
+- `run_calculation`: Returns `io_dir` from `CalculationResult` (runner-provided)
 - `run_step`: Returns `io_dir` (the actual directory used)
 
 **Critical**: These functions do NOT construct paths. They pass through the `io_dir` provided by the runner.
@@ -82,7 +82,7 @@ The daemon server uses `compute_io_dir_from_workflow_model()` to compute `planne
 ## Data Flow
 
 ```
-Workflow Model (workflow.yaml)
+Calculation Model (calculation.yaml)
   ↓
   working_dir: "raw" (default) or custom name
   ↓
@@ -91,8 +91,8 @@ compute_io_dir_from_workflow_model() [SINGLE SOURCE OF TRUTH]
   ├─> Server: planned_io_dir (for pending jobs)
   │   └─> job.io_dir (显示在 UI 中)
   │
-  └─> Runner: workflow.raw_dir (for execution)
-      └─> WorkflowResult.io_dir
+  └─> Runner: calculation.raw_dir (for execution)
+      └─> CalculationResult.io_dir
           └─> execute_job: final_io_dir
               └─> 比较 planned vs final
                   └─> 如果不同，警告并更新为 final
@@ -115,7 +115,7 @@ During the migration from `work_dir`/`working_dir` to `io_dir`:
 
 ## Related Files
 
-- `src/quantumvitas/workflow/runner.py`: `compute_io_dir_from_workflow_model()` helper
+- `src/quantumvitas/calculation/runner.py`: `compute_io_dir_from_workflow_model()` helper
 - `src/quantumvitas/daemon/server.py`: Uses helper to compute `planned_io_dir`
 - `src/quantumvitas/daemon/jobs.py`: Job model with `io_dir` field
 - `src/quantumvitas/api.py`: Returns `io_dir` from runner results

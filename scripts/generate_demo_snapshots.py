@@ -3,7 +3,7 @@
 Generate demo project snapshots from test example projects.
 
 This script exports test projects to snapshot YAML files in resources/demo_projects/.
-It also extracts reference JSON artifacts (SCF, DOS, bands) from workflow results.
+It also extracts reference JSON artifacts (SCF, DOS, bands) from calculation results.
 
 Run this when test example projects are updated to regenerate the demo snapshots.
 
@@ -26,33 +26,33 @@ from quantumvitas.project.snapshot import export_project_to_snapshot
 import yaml
 
 
-def find_workflow_dirs(project_path: Path) -> list[Path]:
-    """Find all workflow directories in a project."""
-    workflows_dir = project_path / "workflows"
+def find_calculation_dirs(project_path: Path) -> list[Path]:
+    """Find all calculation directories in a project."""
+    workflows_dir = project_path / "calculations"
     if not workflows_dir.exists():
         return []
     
-    workflow_dirs = []
+    calculation_dirs = []
     for item in workflows_dir.iterdir():
-        if item.is_dir() and (item / "workflow.yaml").exists():
-            workflow_dirs.append(item)
+        if item.is_dir() and (item / "calculation.yaml").exists():
+            calculation_dirs.append(item)
     
-    return workflow_dirs
+    return calculation_dirs
 
 
 def extract_reference_artifacts(
-    workflow_dir: Path,
+    calculation_dir: Path,
     demo_id: str,
     target_dir: Path,
 ) -> dict[str, str]:
     """
-    Extract reference JSON artifacts from workflow results directory.
+    Extract reference JSON artifacts from calculation results directory.
     
     Returns:
         Dict mapping analysis_type -> artifact_filename
     """
     reference_artifacts = {}
-    results_dir = workflow_dir / "results"
+    results_dir = calculation_dir / "results"
     
     if not results_dir.exists():
         return reference_artifacts
@@ -73,9 +73,9 @@ def extract_reference_artifacts(
             reference_artifacts[analysis_type] = target_name
             print(f"  ✓ Extracted {analysis_type} artifact: {target_name}")
     
-    # Extract SCF data from workflow steps
+    # Extract SCF data from calculation steps
     # Look for SCF step output and parse it
-    raw_dir = workflow_dir / "raw"
+    raw_dir = calculation_dir / "raw"
     if raw_dir.exists():
         # Find SCF output file (usually scf.out or similar)
         scf_outputs = list(raw_dir.glob("*scf*.out"))
@@ -143,13 +143,13 @@ def main():
         # Export project to snapshot
         snapshot = export_project_to_snapshot(source_path)
         
-        # Extract reference artifacts from workflow results
-        workflow_dirs = find_workflow_dirs(source_path)
+        # Extract reference artifacts from calculation results
+        calculation_dirs = find_calculation_dirs(source_path)
         reference_artifacts = {}
-        if workflow_dirs:
-            # Use the first workflow (should be the main one)
+        if calculation_dirs:
+            # Use the first calculation (should be the main one)
             reference_artifacts = extract_reference_artifacts(
-                workflow_dirs[0],
+                calculation_dirs[0],
                 demo_id,
                 target_dir,
             )
@@ -191,7 +191,7 @@ def main():
         
         print(f"  ✓ Created {target_path.name}")
         print(f"    - {len(snapshot.structures)} structure(s)")
-        print(f"    - {len(snapshot.workflows)} workflow(s)")
+        print(f"    - {len(snapshot.calculations)} calculation(s)")
         if snapshot.pseudo:
             print(f"    - {len(snapshot.pseudo.get('files', []))} pseudo file(s)")
         if reference_artifacts:

@@ -24,19 +24,19 @@
 | `qv delete structure` | ❌ Missing | P1 | Delete with cascade warning |
 | Structure 3D viewer | ✅ Done | - | StructureViewer3D |
 
-### 1.3 Workflow Operations
+### 1.3 Calculation Operations
 
 | CLI Command | GUI Status | Priority | Implementation Notes |
 |-------------|------------|----------|---------------------|
-| `qv init workflow` | ✅ Done | - | CreateWorkflowDialog |
-| `qv init workflow --template` | ✅ Done | - | Template selector |
-| `qv list` (workflows) | ✅ Done | - | WorkflowListPanel |
-| `qv run workflow` | ✅ Done | - | WorkflowDetailPanel → Run |
-| `qv configure workflow --name` | ❌ Missing | P1 | Rename context menu |
-| `qv configure workflow --structure` | ❌ Missing | P2 | Structure dropdown |
-| `qv configure workflow --reorder` | ❌ Missing | P2 | Step drag-and-drop |
-| `qv delete workflow` | ❌ Missing | P1 | Delete with cascade warning |
-| Duplicate workflow | ❌ Missing | P3 | Clone with new name |
+| `qv init calculation` | ✅ Done | - | CreateWorkflowDialog |
+| `qv init calculation --template` | ✅ Done | - | Template selector |
+| `qv list` (calculations) | ✅ Done | - | CalculationListPanel |
+| `qv run calculation` | ✅ Done | - | CalculationDetailPanel → Run |
+| `qv configure calculation --name` | ❌ Missing | P1 | Rename context menu |
+| `qv configure calculation --structure` | ❌ Missing | P2 | Structure dropdown |
+| `qv configure calculation --reorder` | ❌ Missing | P2 | Step drag-and-drop |
+| `qv delete calculation` | ❌ Missing | P1 | Delete with cascade warning |
+| Duplicate calculation | ❌ Missing | P3 | Clone with new name |
 
 ### 1.4 Step Operations
 
@@ -46,7 +46,7 @@
 | `qv run step` | ❌ Missing | P1 | StepDetailPanel → Run |
 | Step detail view | ❌ Missing | P1 | StepDetailPanel |
 | `qv configure step` (params) | ❌ Missing | P2 | Parameter form |
-| `qv delete step` | ❌ Missing | P2 | Delete with workflow update |
+| `qv delete step` | ❌ Missing | P2 | Delete with calculation update |
 
 ### 1.5 Analysis Operations
 
@@ -94,10 +94,10 @@ These features are essential for basic usability:
 2. **Structure Rename/Delete**
    - Context menu on structure list item
    - Rename dialog
-   - Delete with confirmation (warns about workflows)
+   - Delete with confirmation (warns about calculations)
 
-3. **Workflow Rename/Delete**
-   - Context menu on workflow list item
+3. **Calculation Rename/Delete**
+   - Context menu on calculation list item
    - Rename dialog
    - Delete with cascade warning
 
@@ -108,13 +108,13 @@ These features are essential for basic usability:
 
 ### P2 - Nice to Have
 
-1. **Add Step to Workflow**
+1. **Add Step to Calculation**
    - Dialog with step type dropdown
    - Template selector
-   - Structure selector (defaults to workflow's)
+   - Structure selector (defaults to calculation's)
 
-2. **Change Workflow Structure**
-   - Dropdown in workflow detail
+2. **Change Calculation Structure**
+   - Dropdown in calculation detail
 
 3. **Reorder Steps**
    - Up/down buttons or simple drag
@@ -125,7 +125,7 @@ These features are essential for basic usability:
 
 5. **Analysis → Jobs Integration**
    - "View in Analysis" from completed job
-   - Auto-populate workflow selection
+   - Auto-populate calculation selection
 
 ### P3 - Later/Expert Features
 
@@ -134,7 +134,7 @@ These features are essential for basic usability:
 3. Parameter reference (`qv params`)
 4. Step templates browser
 5. Advanced parameter editing
-6. Import workflow from QE input files
+6. Import calculation from QE input files
 
 ---
 
@@ -160,30 +160,30 @@ rename_structure: {
 };
 delete_structure: {
   payload: { project_root: string; selector: string; force?: boolean };
-  result: { success: boolean; name: string; using_workflows?: string[] };
+  result: { success: boolean; name: string; using_calculations?: string[] };
 };
 
-// Workflow management
-rename_workflow: {
+// Calculation management
+rename_calculation: {
   payload: { project_root: string; selector: string; new_name: string };
   result: { success: boolean; old_name: string; new_name: string };
 };
-delete_workflow: {
+delete_calculation: {
   payload: { project_root: string; selector: string; force?: boolean };
   result: { success: boolean; name: string };
 };
 
 // Step operations
 get_step_detail: {
-  payload: { project_root: string; workflow: string; step: string };
+  payload: { project_root: string; calculation: string; step: string };
   result: StepDetailData;
 };
 create_step: {
-  payload: { project_root: string; workflow: string; step_type: string; template?: string };
+  payload: { project_root: string; calculation: string; step_type: string; template?: string };
   result: { step_id: string; name: string; type: string };
 };
 delete_step: {
-  payload: { project_root: string; workflow: string; step: string };
+  payload: { project_root: string; calculation: string; step: string };
   result: { success: boolean };
 };
 ```
@@ -195,19 +195,19 @@ components/
 ├── panels/
 │   ├── SettingsPanel.tsx      # QE detection, env info
 │   ├── StepDetailPanel.tsx    # Step parameters display
-│   └── StepListPanel.tsx      # Steps within workflow
+│   └── StepListPanel.tsx      # Steps within calculation
 ├── dialogs/
 │   ├── RenameDialog.tsx       # Generic rename dialog
 │   ├── DeleteConfirmDialog.tsx # Confirm delete with warnings
-│   └── CreateStepDialog.tsx   # Add step to workflow
+│   └── CreateStepDialog.tsx   # Add step to calculation
 └── ui/
     └── ContextMenu.tsx        # Right-click context menus
 ```
 
 ### 3.3 Component Architecture Changes
 
-1. **WorkflowDetailPanel** should show expandable step list
-2. **StepDetailPanel** as child/accordion within workflow detail
+1. **CalculationDetailPanel** should show expandable step list
+2. **StepDetailPanel** as child/accordion within calculation detail
 3. **ContextMenu** component for rename/delete actions
 4. **SettingsPanel** as new view in sidebar
 
@@ -231,18 +231,18 @@ components/
 4. Add context menu to StructureListPanel
 5. Handle cascade warnings for delete
 
-### Phase 3: Workflow CRUD (Day 2)
+### Phase 3: Calculation CRUD (Day 2)
 
-1. Add `rename_workflow` and `delete_workflow` to QVService
+1. Add `rename_calculation` and `delete_calculation` to QVService
 2. Add daemon handlers
-3. Add context menu to WorkflowListPanel
+3. Add context menu to CalculationListPanel
 4. Wire up dialogs
 
 ### Phase 4: Step Operations (Day 2-3)
 
 1. Add `get_step_detail` and `run_step` to daemon
 2. Create StepDetailPanel
-3. Expand workflow detail to show steps
+3. Expand calculation detail to show steps
 4. Add "Run Step" button
 
 ### Phase 5: Polish (Day 3)
@@ -262,12 +262,12 @@ A user should be able to:
 2. ✅ Understand if QE is properly configured (new)
 3. ✅ Create a new project
 4. ✅ Import a structure file
-5. ✅ Create a workflow from template
-6. ⬜ Add/remove steps from workflow (new)
-7. ✅ Run a workflow
+5. ✅ Create a calculation from template
+6. ⬜ Add/remove steps from calculation (new)
+7. ✅ Run a calculation
 8. ✅ Monitor job progress
 9. ✅ View analysis results
-10. ⬜ Rename/delete structures and workflows (new)
+10. ⬜ Rename/delete structures and calculations (new)
 
 ---
 

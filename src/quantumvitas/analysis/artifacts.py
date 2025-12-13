@@ -2,7 +2,7 @@
 Analysis artifacts module.
 
 Manages JSON artifacts for analysis data (SCF, DOS, bands).
-Convention: <workflow_dir>/analysis/<type>.json
+Convention: <calculation_dir>/analysis/<type>.json
 
 The JSON artifacts serve as:
 1. Cache for expensive parsing operations
@@ -40,7 +40,7 @@ class AnalysisType(str, Enum):
 
 @dataclass
 class AnalysisStatus:
-    """Result of ensure_workflow_analysis operation."""
+    """Result of ensure_calculation_analysis operation."""
     ok: bool
     analysis_type: str
     artifact_path: Optional[str] = None
@@ -60,32 +60,32 @@ class AnalysisStatus:
         }
 
 
-def get_analysis_dir(workflow_dir: Path) -> Path:
+def get_analysis_dir(calculation_dir: Path) -> Path:
     """
-    Get the analysis artifacts directory for a workflow.
+    Get the analysis artifacts directory for a calculation.
     
-    Convention: <workflow_dir>/analysis/
+    Convention: <calculation_dir>/analysis/
     
     Args:
-        workflow_dir: Path to workflow directory
+        calculation_dir: Path to calculation directory
         
     Returns:
         Path to analysis directory (may not exist yet)
     """
-    return workflow_dir / "analysis"
+    return calculation_dir / "analysis"
 
 
 def get_artifact_path(
-    workflow_dir: Path,
+    calculation_dir: Path,
     analysis_type: Union[AnalysisType, str],
 ) -> Path:
     """
     Get the path for an analysis artifact.
     
-    Convention: <workflow_dir>/analysis/<type>.json
+    Convention: <calculation_dir>/analysis/<type>.json
     
     Args:
-        workflow_dir: Path to workflow directory
+        calculation_dir: Path to calculation directory
         analysis_type: Type of analysis (scf, dos, bands)
         
     Returns:
@@ -94,32 +94,32 @@ def get_artifact_path(
     if isinstance(analysis_type, str):
         analysis_type = AnalysisType(analysis_type.lower())
     
-    return get_analysis_dir(workflow_dir) / f"{analysis_type.value}.json"
+    return get_analysis_dir(calculation_dir) / f"{analysis_type.value}.json"
 
 
 def artifact_exists(
-    workflow_dir: Path,
+    calculation_dir: Path,
     analysis_type: Union[AnalysisType, str],
 ) -> bool:
     """Check if an analysis artifact exists."""
-    return get_artifact_path(workflow_dir, analysis_type).exists()
+    return get_artifact_path(calculation_dir, analysis_type).exists()
 
 
 def read_artifact(
-    workflow_dir: Path,
+    calculation_dir: Path,
     analysis_type: Union[AnalysisType, str],
 ) -> Optional[Dict[str, Any]]:
     """
     Read an analysis artifact from disk.
     
     Args:
-        workflow_dir: Path to workflow directory
+        calculation_dir: Path to calculation directory
         analysis_type: Type of analysis
         
     Returns:
         Parsed JSON data, or None if not found
     """
-    path = get_artifact_path(workflow_dir, analysis_type)
+    path = get_artifact_path(calculation_dir, analysis_type)
     if not path.exists():
         return None
     
@@ -130,7 +130,7 @@ def read_artifact(
 
 
 def write_artifact(
-    workflow_dir: Path,
+    calculation_dir: Path,
     analysis_type: Union[AnalysisType, str],
     data: Dict[str, Any],
 ) -> Path:
@@ -138,17 +138,17 @@ def write_artifact(
     Write an analysis artifact to disk.
     
     Args:
-        workflow_dir: Path to workflow directory
+        calculation_dir: Path to calculation directory
         analysis_type: Type of analysis
         data: Data to write (must be JSON-serializable)
         
     Returns:
         Path to written artifact
     """
-    analysis_dir = get_analysis_dir(workflow_dir)
+    analysis_dir = get_analysis_dir(calculation_dir)
     analysis_dir.mkdir(parents=True, exist_ok=True)
     
-    path = get_artifact_path(workflow_dir, analysis_type)
+    path = get_artifact_path(calculation_dir, analysis_type)
     
     # Add metadata
     data["_artifact_meta"] = {
@@ -162,45 +162,45 @@ def write_artifact(
 
 
 def delete_artifact(
-    workflow_dir: Path,
+    calculation_dir: Path,
     analysis_type: Union[AnalysisType, str],
 ) -> bool:
     """
     Delete an analysis artifact.
     
     Args:
-        workflow_dir: Path to workflow directory
+        calculation_dir: Path to calculation directory
         analysis_type: Type of analysis
         
     Returns:
         True if deleted, False if didn't exist
     """
-    path = get_artifact_path(workflow_dir, analysis_type)
+    path = get_artifact_path(calculation_dir, analysis_type)
     if path.exists():
         path.unlink()
         return True
     return False
 
 
-def clear_analysis_artifacts(workflow_dir: Path) -> int:
+def clear_analysis_artifacts(calculation_dir: Path) -> int:
     """
-    Clear all analysis artifacts for a workflow.
+    Clear all analysis artifacts for a calculation.
     
-    Used when a workflow is re-run to invalidate cached analysis.
+    Used when a calculation is re-run to invalidate cached analysis.
     
     Args:
-        workflow_dir: Path to workflow directory
+        calculation_dir: Path to calculation directory
         
     Returns:
         Number of artifacts deleted
     """
-    analysis_dir = get_analysis_dir(workflow_dir)
+    analysis_dir = get_analysis_dir(calculation_dir)
     if not analysis_dir.exists():
         return 0
     
     deleted = 0
     for analysis_type in AnalysisType:
-        if delete_artifact(workflow_dir, analysis_type):
+        if delete_artifact(calculation_dir, analysis_type):
             deleted += 1
     
     return deleted
@@ -220,7 +220,7 @@ def get_required_files_for_analysis(
     
     Args:
         analysis_type: Type of analysis
-        raw_dir: Workflow raw directory
+        raw_dir: Calculation raw directory
         step_selector: Optional step selector for SCF
         
     Returns:
@@ -290,7 +290,7 @@ def get_required_files_for_analysis(
 # =============================================================================
 
 def parse_and_write_scf_artifact(
-    workflow_dir: Path,
+    calculation_dir: Path,
     raw_dir: Path,
     step_selector: Optional[str] = None,
     force: bool = False,
@@ -299,7 +299,7 @@ def parse_and_write_scf_artifact(
     Parse SCF output and write artifact.
     
     Args:
-        workflow_dir: Workflow directory
+        calculation_dir: Calculation directory
         raw_dir: Raw directory with QE outputs
         step_selector: Optional step selector
         force: Force re-parse even if artifact exists
@@ -307,11 +307,11 @@ def parse_and_write_scf_artifact(
     Returns:
         AnalysisStatus with result
     """
-    artifact_path = get_artifact_path(workflow_dir, AnalysisType.SCF)
+    artifact_path = get_artifact_path(calculation_dir, AnalysisType.SCF)
     
     # Check for existing artifact
     if not force and artifact_path.exists():
-        existing = read_artifact(workflow_dir, AnalysisType.SCF)
+        existing = read_artifact(calculation_dir, AnalysisType.SCF)
         if existing:
             return AnalysisStatus(
                 ok=True,
@@ -342,11 +342,11 @@ def parse_and_write_scf_artifact(
         
         # Convert to dict and add metadata
         data = scf_result.to_dict()
-        data["workflow_dir"] = str(workflow_dir)
+        data["calculation_dir"] = str(calculation_dir)
         data["source_file"] = str(scf_output)
         
         # Write artifact
-        write_artifact(workflow_dir, AnalysisType.SCF, data)
+        write_artifact(calculation_dir, AnalysisType.SCF, data)
         
         return AnalysisStatus(
             ok=True,
@@ -369,7 +369,7 @@ def parse_and_write_scf_artifact(
 
 
 def parse_and_write_dos_artifact(
-    workflow_dir: Path,
+    calculation_dir: Path,
     raw_dir: Path,
     step_selector: Optional[str] = None,
     force: bool = False,
@@ -378,7 +378,7 @@ def parse_and_write_dos_artifact(
     Parse DOS data and write artifact.
     
     Args:
-        workflow_dir: Workflow directory
+        calculation_dir: Calculation directory
         raw_dir: Raw directory with QE outputs
         step_selector: Optional step selector
         force: Force re-parse even if artifact exists
@@ -386,11 +386,11 @@ def parse_and_write_dos_artifact(
     Returns:
         AnalysisStatus with result
     """
-    artifact_path = get_artifact_path(workflow_dir, AnalysisType.DOS)
+    artifact_path = get_artifact_path(calculation_dir, AnalysisType.DOS)
     
     # Check for existing artifact
     if not force and artifact_path.exists():
-        existing = read_artifact(workflow_dir, AnalysisType.DOS)
+        existing = read_artifact(calculation_dir, AnalysisType.DOS)
         if existing:
             return AnalysisStatus(
                 ok=True,
@@ -433,11 +433,11 @@ def parse_and_write_dos_artifact(
         
         # Convert to dict and add metadata
         data = dos_data.to_dict()
-        data["workflow_dir"] = str(workflow_dir)
+        data["calculation_dir"] = str(calculation_dir)
         data["source_file"] = str(dos_file)
         
         # Write artifact
-        write_artifact(workflow_dir, AnalysisType.DOS, data)
+        write_artifact(calculation_dir, AnalysisType.DOS, data)
         
         return AnalysisStatus(
             ok=True,
@@ -459,7 +459,7 @@ def parse_and_write_dos_artifact(
 
 
 def parse_and_write_bands_artifact(
-    workflow_dir: Path,
+    calculation_dir: Path,
     raw_dir: Path,
     step_selector: Optional[str] = None,
     force: bool = False,
@@ -468,7 +468,7 @@ def parse_and_write_bands_artifact(
     Parse band structure data and write artifact.
     
     Args:
-        workflow_dir: Workflow directory
+        calculation_dir: Calculation directory
         raw_dir: Raw directory with QE outputs
         step_selector: Optional step selector
         force: Force re-parse even if artifact exists
@@ -476,11 +476,11 @@ def parse_and_write_bands_artifact(
     Returns:
         AnalysisStatus with result
     """
-    artifact_path = get_artifact_path(workflow_dir, AnalysisType.BANDS)
+    artifact_path = get_artifact_path(calculation_dir, AnalysisType.BANDS)
     
     # Check for existing artifact
     if not force and artifact_path.exists():
-        existing = read_artifact(workflow_dir, AnalysisType.BANDS)
+        existing = read_artifact(calculation_dir, AnalysisType.BANDS)
         if existing:
             return AnalysisStatus(
                 ok=True,
@@ -539,11 +539,11 @@ def parse_and_write_bands_artifact(
         
         # Convert to dict and add metadata
         data = band_data.to_dict()
-        data["workflow_dir"] = str(workflow_dir)
+        data["calculation_dir"] = str(calculation_dir)
         data["source_file"] = str(bands_file)
         
         # Write artifact
-        write_artifact(workflow_dir, AnalysisType.BANDS, data)
+        write_artifact(calculation_dir, AnalysisType.BANDS, data)
         
         return AnalysisStatus(
             ok=True,
@@ -567,7 +567,7 @@ def parse_and_write_bands_artifact(
 
 def ensure_analysis_artifact(
     analysis_type: Union[AnalysisType, str],
-    workflow_dir: Path,
+    calculation_dir: Path,
     raw_dir: Path,
     step_selector: Optional[str] = None,
     force: bool = False,
@@ -579,7 +579,7 @@ def ensure_analysis_artifact(
     
     Args:
         analysis_type: Type of analysis (scf, dos, bands)
-        workflow_dir: Workflow directory
+        calculation_dir: Calculation directory
         raw_dir: Raw directory with QE outputs
         step_selector: Optional step selector (for SCF)
         force: Force re-parse even if artifact exists
@@ -591,11 +591,11 @@ def ensure_analysis_artifact(
         analysis_type = AnalysisType(analysis_type.lower())
     
     if analysis_type == AnalysisType.SCF:
-        return parse_and_write_scf_artifact(workflow_dir, raw_dir, step_selector, force)
+        return parse_and_write_scf_artifact(calculation_dir, raw_dir, step_selector, force)
     elif analysis_type == AnalysisType.DOS:
-        return parse_and_write_dos_artifact(workflow_dir, raw_dir, step_selector, force)
+        return parse_and_write_dos_artifact(calculation_dir, raw_dir, step_selector, force)
     elif analysis_type == AnalysisType.BANDS:
-        return parse_and_write_bands_artifact(workflow_dir, raw_dir, step_selector, force)
+        return parse_and_write_bands_artifact(calculation_dir, raw_dir, step_selector, force)
     else:
         return AnalysisStatus(
             ok=False,

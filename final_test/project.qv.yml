@@ -7,7 +7,7 @@ project:
     path: .
     kind: project
   structures_dir: structures
-  workflows_dir: workflows
-workflows: []
+  calculations_dir: calculations
+calculations: []
 structures: []
 settings: {}

@@ -8,8 +8,8 @@ import json
 from pathlib import Path
 from typing import List, Optional
 
-from quantumvitas.workflow.results import WorkflowResult
-from quantumvitas.workflow.workflow import Workflow
+from quantumvitas.calculation.results import CalculationResult
+from quantumvitas.calculation.calculation import Calculation
 from .parsers import (
     parse_bands_gnu,
     parse_scf_output,
@@ -123,11 +123,11 @@ def analyze_bands_file(
     return result
 
 
-def analyze_bands(workflow: Workflow, result: WorkflowResult, results_dir: Path) -> None:
+def analyze_bands(calculation: Calculation, result: CalculationResult, results_dir: Path) -> None:
     """
     Locate band structure outputs and generate plots.
     
-    Looks for bands.dat.gnu and bands.x output files in the workflow directory.
+    Looks for bands.dat.gnu and bands.x output files in the calculation directory.
     Uses SCF/NSCF output for:
     1. Fermi energy (NSCF preferred for accuracy)
     2. Reciprocal lattice vectors (for proper k-point labeling)
@@ -138,7 +138,7 @@ def analyze_bands(workflow: Workflow, result: WorkflowResult, results_dir: Path)
     if not band_steps:
         return
     
-    raw_dir = workflow.raw_dir if hasattr(workflow, 'raw_dir') else results_dir
+    raw_dir = calculation.raw_dir if hasattr(calculation, 'raw_dir') else results_dir
     
     # Find Fermi energy and output file from SCF/NSCF steps
     # Priority: nscf > scf (nscf uses denser k-grid for more accurate Fermi energy)

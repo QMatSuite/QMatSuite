@@ -7,9 +7,9 @@ project:
     path: .
     kind: project
   structures_dir: structures
-  workflows_dir: workflows
-workflows:
-- workflow_id: 01KC38MFJZ7RF3SB7SHVYDQ4J8
+  calculations_dir: calculations
+calculations:
+- calculation_id: 01KC38MFJZ7RF3SB7SHVYDQ4J8
 structures:
 - structure_id: 01KC38MBGSS8MX3Z4ETZMXZZY4
 settings: {}

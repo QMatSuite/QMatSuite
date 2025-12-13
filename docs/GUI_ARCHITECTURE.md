@@ -98,10 +98,10 @@ gui/
 │   │   │   ├── DebugPanel.tsx   # Daemon logs + DebugView
 │   │   │   ├── ProjectSummaryPanel.tsx   # Welcome + project view
 │   │   │   ├── StructureListPanel.tsx    # Structure list + detail
-│   │   │   ├── WorkflowListPanel.tsx     # Workflow list + detail
+│   │   │   ├── CalculationListPanel.tsx     # Calculation list + detail
 │   │   │   ├── StructureViewer3D.tsx     # 3D ball-and-stick viewer
 │   │   │   ├── AnalysisPanel.tsx         # SCF/DOS/Bands charts with auto-selection
-│   │   │                              # - Auto-detects analysis type from workflow
+│   │   │                              # - Auto-detects analysis type from calculation
 │   │   │                              # - Energy range controls for band plots
 │   │   │                              # - Automatic loading when enabled
 │   │   │   ├── JobsPanel.tsx             # Job list + detail + logs
@@ -111,7 +111,7 @@ gui/
 │   │       ├── Modal.tsx                 # Base modal component
 │   │       ├── CreateProjectDialog.tsx   # New project creation
 │   │       ├── ImportStructureDialog.tsx # Structure import
-│   │       └── CreateWorkflowDialog.tsx  # Workflow from template
+│   │       └── CreateWorkflowDialog.tsx  # Calculation from template
 │   │
 │   ├── hooks/
 │   │   ├── index.ts
@@ -154,8 +154,8 @@ gui/
 │  │  ─ Tabs ─    │  │                   │ List     │ Detail + 3D    │  │   │
 │  │  Summary     │  │                   │ Panel    │ Viewer         │  │   │
 │  │  Structures  │  │                   └──────────┴────────────────┘  │   │
-│  │  Workflows   │  │                                                   │   │
-│  │  Jobs [2]    │  │  View: Workflows  ┌──────────┬────────────────┐  │   │
+│  │  Calculations   │  │                                                   │   │
+│  │  Jobs [2]    │  │  View: Calculations  ┌──────────┬────────────────┐  │   │
 │  │  Analysis    │  │                   │ List     │ Detail         │  │   │
 │  │  Debug       │  │                   │ Panel    │ + Run button   │  │   │
 │  └──────────────┘  │                   └──────────┴────────────────┘  │   │
@@ -210,21 +210,21 @@ qv.call('command_name', payload)  // Returns Promise<QVResponse<ResultType>>
 
 // Visualization data
 qv.call('get_structure_vis', { project_root, selector, supercell?, repeat_boundary? })
-qv.call('get_scf_convergence', { project_root, workflow, step })
-qv.call('get_dos_data', { project_root, workflow, step? })
-qv.call('get_band_structure_data', { project_root, workflow, step? })
+qv.call('get_scf_convergence', { project_root, calculation, step })
+qv.call('get_dos_data', { project_root, calculation, step? })
+qv.call('get_band_structure_data', { project_root, calculation, step? })
 
 // Project creation
 qv.call('create_project', { target_dir, name?, template? })
 qv.call('import_structure', { project_root, source_file, name? })
 
-// Workflow creation
-qv.call('list_workflow_templates', {})
-qv.call('create_workflow', { project_root, name, structure?, template? })
+// Calculation creation
+qv.call('list_calculation_templates', {})
+qv.call('create_calculation', { project_root, name, structure?, template? })
 
 // Jobs
-qv.call('run_workflow', { project_root, workflow, strict?, verbose? })
-qv.call('run_step', { project_root, workflow, step, verbose? })
+qv.call('run_calculation', { project_root, calculation, strict?, verbose? })
+qv.call('run_step', { project_root, calculation, step, verbose? })
 qv.call('get_job_status', { job_id })
 qv.call('get_job_logs', { job_id, tail_lines?, offset? })
 qv.call('list_jobs', { status?, job_type?, project_root?, limit? })
@@ -700,7 +700,7 @@ CSS-only tooltips using `data-tooltip` attribute:
 ### Implemented ✓
 
 - [x] Project browser (open, create, load, recent projects)
-- [x] Demo project creation (one-click Si workflow)
+- [x] Demo project creation (one-click Si calculation)
 - [x] 3D structure viewer (react-three-fiber + Three.js)
   - Ball-and-stick rendering
   - Orbit controls
@@ -711,11 +711,11 @@ CSS-only tooltips using `data-tooltip` attribute:
   - Boundary atom repetition
   - Context-aware element legend (only shows present elements)
 - [x] Structure import (CIF, XSF, QE input, etc.)
-- [x] Workflow management (list, detail, run)
-- [x] Workflow creation from templates
-- [x] Workflow editing (reorder steps, change structure)
+- [x] Calculation management (list, detail, run)
+- [x] Calculation creation from templates
+- [x] Calculation editing (reorder steps, change structure)
 - [x] Step parameter editing (ecutwfc, smearing, etc.)
-- [x] Add step to workflow (with type selection)
+- [x] Add step to calculation (with type selection)
 - [x] Pre-flight checks before job submission
 - [x] Analysis plots (Recharts)
   - SCF convergence (energy + accuracy)
@@ -738,11 +738,11 @@ CSS-only tooltips using `data-tooltip` attribute:
 - [x] Comprehensive design system
 - [x] Resizable panels
   - Daemon logs panel (draggable height)
-  - Structures/Workflows list panels (draggable width)
-  - Workflow/Step detail separator (draggable)
+  - Structures/Calculations list panels (draggable width)
+  - Calculation/Step detail separator (draggable)
   - ResizablePane and VerticalResizablePane components
 - [x] Drag-and-drop step reordering
-- [x] Summary panel auto-refresh on structure/workflow changes
+- [x] Summary panel auto-refresh on structure/calculation changes
 - [x] 3D viewer camera state preservation (zoom/rotation remembered during supercell changes)
 - [x] Log file persistence
   - Logs saved to `.qv-daemon.log` in project directory
@@ -758,13 +758,13 @@ CSS-only tooltips using `data-tooltip` attribute:
   - `window.qv.revealPath(path)` API
   - Works on macOS (Finder), Windows (Explorer), Linux
 - [x] Automatic analysis selection
-  - Auto-detects analysis type based on workflow's last step
+  - Auto-detects analysis type based on calculation's last step
   - DOS step → DOS analysis
   - Bands step → Bands analysis
   - Otherwise → SCF analysis
 - [x] Automatic analysis loading
   - Setting in Settings → Analysis section
-  - When enabled, automatically loads analysis when selecting workflow
+  - When enabled, automatically loads analysis when selecting calculation
   - Default: enabled
 - [x] Band structure plot controls
   - Energy range inputs update ylim dynamically
@@ -773,7 +773,7 @@ CSS-only tooltips using `data-tooltip` attribute:
 ### Planned
 
 - [ ] Real-time log streaming (websocket or SSE)
-- [ ] Workflow builder UI (visual graph)
+- [ ] Calculation builder UI (visual graph)
 - [ ] Multiple project tabs
 - [ ] Keyboard shortcuts
 - [ ] Load previous logs on project open

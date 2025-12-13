@@ -12,13 +12,13 @@
 |----------|-----------|---------|------|-------------|-----------|
 | `'home'` | `ProjectSummaryPanel` / `DemoGalleryPanel` | `gui/src/components/panels/ProjectSummaryPanel.tsx` (1-200) | 项目概览、快速操作、Demo展示 | mount时：`get_project_summary` (如果projectRoot存在) | 单列布局，卡片式项目信息 |
 | `'structures'` | `StructureListPanel` + `StructureDetailPanel` + `StructureViewer3D` | `gui/src/components/panels/StructureListPanel.tsx` (1-271)<br>`gui/src/components/panels/StructureDetailPanel.tsx`<br>`gui/src/components/panels/StructureViewer3D.tsx` | 结构列表、详情、3D可视化 | `currentView === 'structures'` 时：`fetchStructures()` → `list_structures` | 左列表 + 右详情/3D（ResizablePane） |
-| `'workflows'` | `WorkflowListPanel` + `WorkflowDetailPanel` + `StepDetailPanel` | `gui/src/components/panels/WorkflowListPanel.tsx` (1-893)<br>`gui/src/components/panels/WorkflowDetailPanel.tsx`<br>`gui/src/components/panels/StepDetailPanel.tsx` | 工作流列表、详情、步骤编辑 | `currentView === 'workflows'` 时：`fetchWorkflows()` → `list_workflows`<br>选择workflow时：`get_workflow_detail` | 左列表 + 右详情（可垂直分割显示步骤详情） |
+| `'calculations'` | `CalculationListPanel` + `CalculationDetailPanel` + `StepDetailPanel` | `gui/src/components/panels/CalculationListPanel.tsx` (1-893)<br>`gui/src/components/panels/CalculationDetailPanel.tsx`<br>`gui/src/components/panels/StepDetailPanel.tsx` | 工作流列表、详情、步骤编辑 | `currentView === 'calculations'` 时：`fetchWorkflows()` → `list_calculations`<br>选择workflow时：`get_calculation_detail` | 左列表 + 右详情（可垂直分割显示步骤详情） |
 | `'jobs'` | `JobsPanel` | `gui/src/components/panels/JobsPanel.tsx` (1-600) | 任务队列、详情、日志 | mount时：`useJobs({ autoStart: true, pollInterval: 5000 })` → `list_jobs` + `job_counts` (轮询)<br>选择job时：`useJobDetail({ jobId })` → `get_job_status` + `get_job_logs` (轮询) | 左列表 + 右详情（日志、io_dir、步骤进度） |
 | `'analysis'` | `AnalysisPanel` | `gui/src/components/panels/AnalysisPanel.tsx` | SCF收敛、DOS、能带分析 | 手动触发：`load_scf_convergence` / `load_dos` / `load_bands` | 图表展示区域 |
 | `'resources'` | `QEParameterBrowserPanel` | `gui/src/components/panels/QEParameterBrowserPanel.tsx` (1-1401) | QE参数元数据浏览、搜索 | mount时：`list_qe_parameter_metadata({ operation: 'list_modules' })`<br>选择module时：`list_sections`<br>选择section时：`list_parameters`<br>全局搜索：`search` (Enter/按钮触发) | 顶部filters row (Module/Section + Search) + 参数表格 + Popover搜索结果 |
 | `'settings'` | `SettingsPanel` | `gui/src/components/panels/SettingsPanel.tsx` (1-578) | QE检测、环境信息、主题、诊断 | mount时：`get_env_info` + `detect_qe`<br>展开Diagnostics时：`get_qe_parameter_metadata_debug_info` | 单列滚动布局，Diagnostics折叠区域 |
 
-**Sidebar定义**：`gui/src/components/layout/Sidebar.tsx` (18行) - `ViewType = 'home' | 'structures' | 'workflows' | 'jobs' | 'analysis' | 'resources' | 'settings'`
+**Sidebar定义**：`gui/src/components/layout/Sidebar.tsx` (18行) - `ViewType = 'home' | 'structures' | 'calculations' | 'jobs' | 'analysis' | 'resources' | 'settings'`
 
 ---
 
@@ -53,13 +53,13 @@ const [currentView, setCurrentView] = useState<ViewType>('home');
 
 #### `selectedWorkflowSummary` + `selectedWorkflowDetail`
 - **定义**：`gui/src/App.tsx` (93-94行)
-  - `selectedWorkflowSummary: WorkflowInfo | null`
-  - `selectedWorkflowDetail: WorkflowDetailResult | null`
-- **设置**：`handleSelectWorkflow()` (App.tsx 540行) → `setSelectedWorkflowSummary()` + `get_workflow_detail` → `setSelectedWorkflowDetail()`
+  - `selectedWorkflowSummary: CalculationInfo | null`
+  - `selectedWorkflowDetail: CalculationDetailResult | null`
+- **设置**：`handleSelectWorkflow()` (App.tsx 540行) → `setSelectedWorkflowSummary()` + `get_calculation_detail` → `setSelectedWorkflowDetail()`
 - **依赖链**：
   - `selectedWorkflowSummary` 改变 → `handleSelectStep()` 可能触发 (App.tsx 823行)
   - `selectedWorkflowDetail` 改变 → `StepDetailPanel` 更新 (App.tsx 1241-1248行)
-- **风险**：`selectedWorkflowDetail` 更新可能触发重复的 `get_workflow_detail`（已通过 `onWorkflowDetailUpdated` 回调优化，App.tsx 1229-1238行）
+- **风险**：`selectedWorkflowDetail` 更新可能触发重复的 `get_calculation_detail`（已通过 `onWorkflowDetailUpdated` 回调优化，App.tsx 1229-1238行）
 
 #### `selectedJobId`
 - **定义**：`gui/src/components/panels/JobsPanel.tsx` (431行) - `useState<string | null>(null)`
@@ -92,9 +92,9 @@ const [currentView, setCurrentView] = useState<ViewType>('home');
    - `useJobDetail` hook (JobsPanel.tsx 455行) 每2秒轮询 `get_job_status` + `get_job_logs`
    - **状态**：正常，轮询是预期行为
 
-2. **Workflow detail更新**：
-   - `handleSelectWorkflow()` → `get_workflow_detail` (App.tsx 540行)
-   - `onWorkflowUpdated()` → `get_workflow_detail` (App.tsx 1199-1228行)
+2. **Calculation detail更新**：
+   - `handleSelectWorkflow()` → `get_calculation_detail` (App.tsx 540行)
+   - `onWorkflowUpdated()` → `get_calculation_detail` (App.tsx 1199-1228行)
    - **已优化**：`onWorkflowDetailUpdated` 直接更新state，避免重复fetch (App.tsx 1229-1238行)
 
 3. **QE metadata reload**：
@@ -158,19 +158,19 @@ const [currentView, setCurrentView] = useState<ViewType>('home');
 
 ---
 
-### WorkflowListPanel / StructureListPanel
+### CalculationListPanel / StructureListPanel
 
 | Command | 触发条件 | 频率 | 返回数据用途 | 缓存 |
 |---------|---------|------|-------------|------|
-| `list_workflows` | `currentView === 'workflows'` 时 (fetchWorkflows) | 一次性 | 左侧workflow列表 | 无（App.tsx state） |
+| `list_calculations` | `currentView === 'calculations'` 时 (fetchWorkflows) | 一次性 | 左侧workflow列表 | 无（App.tsx state） |
 | `list_structures` | `currentView === 'structures'` 时 (fetchStructures) | 一次性 | 左侧structure列表 | 无（App.tsx state） |
-| `get_workflow_detail` | `selectedWorkflowSummary` 改变 | 事件驱动 | 右侧workflow详情 | 无（App.tsx state） |
+| `get_calculation_detail` | `selectedWorkflowSummary` 改变 | 事件驱动 | 右侧workflow详情 | 无（App.tsx state） |
 | `rebuild_project_registry` | 用户点击"Refresh"按钮 | 事件驱动 | 重建registry，然后刷新列表 | 后端ResourceIndex cache |
 
 **文件位置**：`gui/src/App.tsx`
 - fetchWorkflows：463-487行
 - fetchStructures：437-461行
-- get_workflow_detail：540-560行
+- get_calculation_detail：540-560行
 
 ---
 
@@ -209,7 +209,7 @@ const [currentView, setCurrentView] = useState<ViewType>('home');
 - **位置**：`gui/src/components/panels/JobsPanel.tsx` (295-315行) - Job detail panel
 - **显示**：`io_dir` 路径 + "Reveal in Finder"按钮
 - **数据源**：`get_job_status` 响应中的 `io_dir` 字段
-- **单一真相来源**：后端 `compute_io_dir_from_workflow_model()` (`src/quantumvitas/workflow/runner.py` 18-42行)
+- **单一真相来源**：后端 `compute_io_dir_from_workflow_model()` (`src/quantumvitas/calculation/runner.py` 18-42行)
 
 ---
 
@@ -225,10 +225,10 @@ const [currentView, setCurrentView] = useState<ViewType>('home');
    - **缺失**：GUI无入口查看cache命中率、invalidation事件
    - **数据源**：后端daemon state
 
-3. **Workflow execution trace**
-   - **现状**：`WorkflowResult` 包含 `steps` 数组，但无详细execution trace
+3. **Calculation execution trace**
+   - **现状**：`CalculationResult` 包含 `steps` 数组，但无详细execution trace
    - **缺失**：GUI无入口查看step执行顺序、依赖关系、失败原因
-   - **数据源**：后端 `WorkflowRunner.run()` (`src/quantumvitas/workflow/runner.py`)
+   - **数据源**：后端 `CalculationRunner.run()` (`src/quantumvitas/calculation/runner.py`)
 
 4. **QE metadata schema migration history**
    - **现状**：有legacy v0/v1/v2 JSON文件，但无迁移历史记录
@@ -247,7 +247,7 @@ const [currentView, setCurrentView] = useState<ViewType>('home');
 | Debug信息 | 单一真相来源 | 文件路径 |
 |-----------|-------------|---------|
 | QE metadata load state | 后端 `QE_METADATA_LOAD_STATE` | `src/quantumvitas/data/qe_metadata.py` (31-36行) |
-| Job io_dir | 后端 `compute_io_dir_from_workflow_model()` | `src/quantumvitas/workflow/runner.py` (18-42行) |
+| Job io_dir | 后端 `compute_io_dir_from_workflow_model()` | `src/quantumvitas/calculation/runner.py` (18-42行) |
 | Daemon status | Electron main process | `gui/electron/main.ts` (daemonStatus对象) |
 | ResourceIndex cache | 后端 `DaemonState.project_caches` | `src/quantumvitas/daemon/server.py` (94-100行) |
 
@@ -316,8 +316,8 @@ const [currentView, setCurrentView] = useState<ViewType>('home');
    - 搜索icon按钮：需要检查 `cursor: pointer` (QEParameterBrowserPanel.tsx 570-580行)
    - Popover关闭按钮：需要检查 (QEParameterBrowserPanel.tsx 650-660行)
 
-2. **WorkflowListPanel**：
-   - Reorder按钮：有 `title` 但可能缺少 `cursor: pointer` (WorkflowListPanel.tsx 789-810行)
+2. **CalculationListPanel**：
+   - Reorder按钮：有 `title` 但可能缺少 `cursor: pointer` (CalculationListPanel.tsx 789-810行)
 
 3. **SettingsPanel**：
    - Theme切换按钮：需要检查 (SettingsPanel.tsx 296-308行)
@@ -331,7 +331,7 @@ const [currentView, setCurrentView] = useState<ViewType>('home');
 
 **当前状态**：
 - **JobsPanel**：大部分按钮有 `title` 属性 (JobsPanel.tsx 77, 94, 178, 303, 310, 354行)
-- **WorkflowListPanel**：reorder按钮有 `title` (WorkflowListPanel.tsx 789, 797, 808行)
+- **CalculationListPanel**：reorder按钮有 `title` (CalculationListPanel.tsx 789, 797, 808行)
 - **QEParameterBrowserPanel**：搜索按钮有 `title="Search all modules"` (QEParameterBrowserPanel.tsx 570行)
 
 **缺失**：
@@ -375,7 +375,7 @@ const [currentView, setCurrentView] = useState<ViewType>('home');
 ---
 
 ### 4. 增强Job io_dir显示（添加计算来源提示）
-- **改动点**：在JobsPanel的io_dir显示旁添加tooltip，说明"Computed from workflow.working_dir (default: raw)"
+- **改动点**：在JobsPanel的io_dir显示旁添加tooltip，说明"Computed from calculation.working_dir (default: raw)"
 - **涉及文件**：
   - `gui/src/components/panels/JobsPanel.tsx` (295-315行)
 - **收益**：帮助用户理解io_dir来源，便于debug路径问题

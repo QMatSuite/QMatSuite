@@ -22,7 +22,7 @@ import type {
   ScfConvergenceData, 
   DosData, 
   BandStructureData,
-  WorkflowInfo,
+  CalculationInfo,
   AnalysisStatus,
 } from '../../types/qv';
 import './AnalysisPanel.css';
@@ -38,13 +38,13 @@ type AnalysisTypeUI = 'scf' | 'dos' | 'bands';
 type AnalysisState = 'idle' | 'analyzing' | 'ready' | 'error';
 
 interface AnalysisPanelProps {
-  workflows: WorkflowInfo[] | null;
-  selectedWorkflow: WorkflowInfo | null;
+  calculations: CalculationInfo[] | null;
+  selectedCalculation: CalculationInfo | null;
   projectRoot: string;
-  onSelectWorkflow: (workflow: WorkflowInfo) => void;
-  onLoadScf: (workflow: WorkflowInfo, step: string) => Promise<ScfConvergenceData | null>;
-  onLoadDos: (workflow: WorkflowInfo) => Promise<DosData | null>;
-  onLoadBands: (workflow: WorkflowInfo) => Promise<BandStructureData | null>;
+  onSelectCalculation: (calculation: CalculationInfo) => void;
+  onLoadScf: (calculation: CalculationInfo, step: string) => Promise<ScfConvergenceData | null>;
+  onLoadDos: (calculation: CalculationInfo) => Promise<DosData | null>;
+  onLoadBands: (calculation: CalculationInfo) => Promise<BandStructureData | null>;
   autoAnalysis?: boolean;
 }
 
@@ -85,7 +85,7 @@ export function ScfConvergenceChart({ data, isLoading }: ScfChartProps) {
         <div className="chart-placeholder">
           <span className="chart-icon">📉</span>
           <h3>No SCF Data</h3>
-          <p>Select a workflow and SCF step to view convergence.</p>
+          <p>Select a calculation and SCF step to view convergence.</p>
         </div>
       </div>
     );
@@ -229,7 +229,7 @@ export function DosChart({ data, isLoading }: DosChartProps) {
         <div className="chart-placeholder">
           <span className="chart-icon">📊</span>
           <h3>No DOS Data</h3>
-          <p>Select a workflow with DOS calculation to view density of states.</p>
+          <p>Select a calculation with DOS calculation to view density of states.</p>
         </div>
       </div>
     );
@@ -572,7 +572,7 @@ export function BandsChart({ data, referenceData, showReference = true, isLoadin
         <div className="chart-placeholder">
           <span className="chart-icon">📈</span>
           <h3>No Band Structure Data</h3>
-          <p>Select a workflow with band calculation to view band structure.</p>
+          <p>Select a calculation with band calculation to view band structure.</p>
         </div>
       </div>
     );
@@ -608,7 +608,7 @@ export function BandsChart({ data, referenceData, showReference = true, isLoadin
       {hasReferenceOnly && (
         <div className="reference-notice">
           <span className="notice-icon">ℹ️</span>
-          Showing reference results from the demo. Run the workflow to generate your own data.
+          Showing reference results from the demo. Run the calculation to generate your own data.
         </div>
       )}
       
@@ -775,10 +775,10 @@ export function BandsChart({ data, referenceData, showReference = true, isLoadin
 // =============================================================================
 
 export function AnalysisPanel({
-  workflows,
-  selectedWorkflow,
+  calculations,
+  selectedCalculation,
   projectRoot,
-  onSelectWorkflow,
+  onSelectCalculation,
   onLoadScf,
   onLoadDos,
   onLoadBands,
@@ -806,21 +806,21 @@ export function AnalysisPanel({
   const [analysisState, setAnalysisState] = useState<AnalysisState>('idle');
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   
-  // Track last auto-loaded workflow to prevent infinite loops
+  // Track last auto-loaded calculation to prevent infinite loops
   const lastAutoLoadedRef = useRef<string | null>(null);
   
   // Track analysis type changes to trigger reload
   const lastAnalysisTypeRef = useRef<AnalysisTypeUI>(analysisType);
   
-  // Helper: Get only SCF-type steps from workflow
+  // Helper: Get only SCF-type steps from calculation
   const scfSteps = useMemo(() => {
-    if (!selectedWorkflow?.steps) return [];
-    return selectedWorkflow.steps.filter(step => {
+    if (!selectedCalculation?.steps) return [];
+    return selectedCalculation.steps.filter(step => {
       const t = step.type?.toLowerCase() || '';
       // Include scf, relax, vc-relax, etc. (pw.x based calculations with SCF data)
       return t === 'scf' || t === 'relax' || t === 'vc-relax' || t === 'nscf';
     });
-  }, [selectedWorkflow]);
+  }, [selectedCalculation]);
   
   // Update analysis type when defaultAnalysis changes (e.g., from demo project)
   useEffect(() => {
@@ -834,7 +834,7 @@ export function AnalysisPanel({
   
   // Ensure analysis artifacts exist before loading data
   const ensureAnalysis = useCallback(async (
-    workflow: WorkflowInfo, 
+    calculation: CalculationInfo, 
     type: AnalysisTypeUI,
     force: boolean = false
   ): Promise<boolean> => {
@@ -844,9 +844,9 @@ export function AnalysisPanel({
     setAnalysisError(null);
     
     try {
-      const response = await window.qv.request<AnalysisStatus>('ensure_workflow_analysis', {
+      const response = await window.qv.request<AnalysisStatus>('ensure_calculation_analysis', {
         project_root: projectRoot,
-        workflow: workflow.slug,
+        calculation: calculation.slug,
         analysis_type: type,
         force,
       });
@@ -868,12 +868,12 @@ export function AnalysisPanel({
     }
   }, [projectRoot]);
   
-  // Auto-detect best analysis type based on workflow's last step
-  const detectAnalysisType = useCallback((workflow: WorkflowInfo): AnalysisTypeUI => {
-    if (!workflow.steps || workflow.steps.length === 0) return 'scf';
+  // Auto-detect best analysis type based on calculation's last step
+  const detectAnalysisType = useCallback((calculation: CalculationInfo): AnalysisTypeUI => {
+    if (!calculation.steps || calculation.steps.length === 0) return 'scf';
     
     // Check last step type
-    const lastStep = workflow.steps[workflow.steps.length - 1];
+    const lastStep = calculation.steps[calculation.steps.length - 1];
     const stepType = lastStep.type?.toLowerCase() || '';
     
     if (stepType === 'dos' || stepType.includes('dos')) {
@@ -882,9 +882,9 @@ export function AnalysisPanel({
       return 'bands';
     }
     
-    // Also check if workflow has dos or bands steps at all
-    const hasDoStep = workflow.steps.some(s => s.type?.toLowerCase() === 'dos');
-    const hasBandsStep = workflow.steps.some(s => 
+    // Also check if calculation has dos or bands steps at all
+    const hasDoStep = calculation.steps.some(s => s.type?.toLowerCase() === 'dos');
+    const hasBandsStep = calculation.steps.some(s => 
       s.type?.toLowerCase() === 'bands' || s.type?.toLowerCase() === 'bands_pw'
     );
     
@@ -895,13 +895,13 @@ export function AnalysisPanel({
   }, []);
   
   // Fetch reference analysis data for demo projects
-  const fetchReferenceData = useCallback(async (workflow: WorkflowInfo, type: AnalysisTypeUI) => {
+  const fetchReferenceData = useCallback(async (calculation: CalculationInfo, type: AnalysisTypeUI) => {
     if (!window.qv || !projectRoot) return null;
     
     try {
       const response = await window.qv.request<{ data: ScfConvergenceData | DosData | BandStructureData | null; has_reference: boolean }>('get_reference_analysis', {
         project_root: projectRoot,
-        workflow: workflow.slug,
+        calculation: calculation.slug,
         analysis_type: type,
       });
       
@@ -915,15 +915,15 @@ export function AnalysisPanel({
   }, [projectRoot]);
   
   const handleLoadAnalysis = useCallback(async (type?: AnalysisTypeUI, force: boolean = false) => {
-    if (!selectedWorkflow) return;
+    if (!selectedCalculation) return;
     
     const typeToLoad = type || analysisType;
     setIsLoading(true);
     setAnalysisError(null);
     
     try {
-      // Fetch reference data (doesn't require workflow to be run)
-      const refData = await fetchReferenceData(selectedWorkflow, typeToLoad);
+      // Fetch reference data (doesn't require calculation to be run)
+      const refData = await fetchReferenceData(selectedCalculation, typeToLoad);
       if (typeToLoad === 'scf') {
         setRefScfData(refData as ScfConvergenceData | null);
       } else if (typeToLoad === 'dos') {
@@ -933,7 +933,7 @@ export function AnalysisPanel({
       }
       
       // Try to ensure analysis artifacts exist
-      const analysisReady = await ensureAnalysis(selectedWorkflow, typeToLoad, force);
+      const analysisReady = await ensureAnalysis(selectedCalculation, typeToLoad, force);
       
       if (!analysisReady) {
         // If analysis failed but we have reference data, show reference only
@@ -947,13 +947,13 @@ export function AnalysisPanel({
       
       // Now load the current analysis data
       if (typeToLoad === 'scf') {
-        const data = await onLoadScf(selectedWorkflow, selectedStep);
+        const data = await onLoadScf(selectedCalculation, selectedStep);
         setScfData(data);
       } else if (typeToLoad === 'dos') {
-        const data = await onLoadDos(selectedWorkflow);
+        const data = await onLoadDos(selectedCalculation);
         setDosData(data);
       } else if (typeToLoad === 'bands') {
-        const data = await onLoadBands(selectedWorkflow);
+        const data = await onLoadBands(selectedCalculation);
         setBandsData(data);
       }
       
@@ -965,9 +965,9 @@ export function AnalysisPanel({
     } finally {
       setIsLoading(false);
     }
-  }, [selectedWorkflow, analysisType, selectedStep, onLoadScf, onLoadDos, onLoadBands, ensureAnalysis, fetchReferenceData]);
+  }, [selectedCalculation, analysisType, selectedStep, onLoadScf, onLoadDos, onLoadBands, ensureAnalysis, fetchReferenceData]);
   
-  // Auto-select first SCF step when entering SCF view or workflow changes
+  // Auto-select first SCF step when entering SCF view or calculation changes
   useEffect(() => {
     if (analysisType === 'scf' && scfSteps.length > 0) {
       // Auto-select first SCF step if current selection is invalid
@@ -980,7 +980,7 @@ export function AnalysisPanel({
   
   // Handle analysis type changes - reload data when type changes
   useEffect(() => {
-    if (lastAnalysisTypeRef.current !== analysisType && selectedWorkflow && autoAnalysis) {
+    if (lastAnalysisTypeRef.current !== analysisType && selectedCalculation && autoAnalysis) {
       lastAnalysisTypeRef.current = analysisType;
       // Clear data for the new type
       if (analysisType === 'scf') {
@@ -993,16 +993,16 @@ export function AnalysisPanel({
       // Load the new analysis type
       handleLoadAnalysis(analysisType);
     }
-  }, [analysisType, selectedWorkflow, autoAnalysis, handleLoadAnalysis]);
+  }, [analysisType, selectedCalculation, autoAnalysis, handleLoadAnalysis]);
   
-  // Auto-select analysis type and load when workflow changes
+  // Auto-select analysis type and load when calculation changes
   useEffect(() => {
-    if (selectedWorkflow && autoAnalysis) {
-      // Only auto-load if we haven't already loaded for this workflow
-      if (lastAutoLoadedRef.current !== selectedWorkflow.id) {
-        const detectedType = detectAnalysisType(selectedWorkflow);
+    if (selectedCalculation && autoAnalysis) {
+      // Only auto-load if we haven't already loaded for this calculation
+      if (lastAutoLoadedRef.current !== selectedCalculation.id) {
+        const detectedType = detectAnalysisType(selectedCalculation);
         setAnalysisType(detectedType);
-        lastAutoLoadedRef.current = selectedWorkflow.id;
+        lastAutoLoadedRef.current = selectedCalculation.id;
         lastAnalysisTypeRef.current = detectedType;
         
         // Reset previous data
@@ -1014,13 +1014,13 @@ export function AnalysisPanel({
         // Load the detected analysis type via the new pipeline
         handleLoadAnalysis(detectedType);
       }
-    } else if (!selectedWorkflow) {
-      // Reset when no workflow is selected
+    } else if (!selectedCalculation) {
+      // Reset when no calculation is selected
       lastAutoLoadedRef.current = null;
       setAnalysisState('idle');
       setAnalysisError(null);
     }
-  }, [selectedWorkflow, autoAnalysis, detectAnalysisType, handleLoadAnalysis]);
+  }, [selectedCalculation, autoAnalysis, detectAnalysisType, handleLoadAnalysis]);
   
   return (
     <div className="analysis-panel" data-testid="qv-analysis-view">
@@ -1051,26 +1051,26 @@ export function AnalysisPanel({
         </div>
         
         <div className="sidebar-section">
-          <h3 className="sidebar-title">Workflow</h3>
-          {workflows && workflows.length > 0 ? (
-            <div className="workflow-select">
-              {workflows.map((wf) => (
+          <h3 className="sidebar-title">Calculation</h3>
+          {calculations && calculations.length > 0 ? (
+            <div className="calculation-select">
+              {calculations.map((wf) => (
                 <button
                   key={wf.id}
-                  className={`workflow-option ${selectedWorkflow?.id === wf.id ? 'workflow-option--selected' : ''}`}
-                  onClick={() => onSelectWorkflow(wf)}
+                  className={`calculation-option ${selectedCalculation?.id === wf.id ? 'calculation-option--selected' : ''}`}
+                  onClick={() => onSelectCalculation(wf)}
                 >
-                  <span className="workflow-name">{wf.name}</span>
-                  <span className="workflow-steps">{wf.n_steps} steps</span>
+                  <span className="calculation-name">{wf.name}</span>
+                  <span className="calculation-steps">{wf.n_steps} steps</span>
                 </button>
               ))}
             </div>
           ) : (
-            <p className="no-workflows">No workflows loaded</p>
+            <p className="no-calculations">No calculations loaded</p>
           )}
         </div>
         
-        {selectedWorkflow && analysisType === 'scf' && scfSteps.length > 0 && (
+        {selectedCalculation && analysisType === 'scf' && scfSteps.length > 0 && (
           <div className="sidebar-section">
             <h3 className="sidebar-title">SCF Step</h3>
             <select 
@@ -1089,16 +1089,16 @@ export function AnalysisPanel({
             </span>
           </div>
         )}
-        {selectedWorkflow && analysisType === 'scf' && scfSteps.length === 0 && (
+        {selectedCalculation && analysisType === 'scf' && scfSteps.length === 0 && (
           <div className="sidebar-section">
-            <p className="no-scf-steps">No SCF steps in this workflow</p>
+            <p className="no-scf-steps">No SCF steps in this calculation</p>
           </div>
         )}
         
         <button
           className="load-button"
           onClick={() => handleLoadAnalysis()}
-          disabled={!selectedWorkflow || isLoading || analysisState === 'analyzing'}
+          disabled={!selectedCalculation || isLoading || analysisState === 'analyzing'}
           data-testid={`qv-btn-load-${analysisType}`}
         >
           {isLoading || analysisState === 'analyzing' ? 'Analyzing...' : `Load ${analysisType.toUpperCase()}`}
@@ -1142,7 +1142,7 @@ export function AnalysisPanel({
         {analysisState === 'analyzing' && (
           <div className="chart-container chart-container--loading">
             <div className="loading-spinner" />
-            <p>Analyzing workflow outputs...</p>
+            <p>Analyzing calculation outputs...</p>
             <p className="analysis-hint">Parsing QE output files and generating analysis data</p>
           </div>
         )}
