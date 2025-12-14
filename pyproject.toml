@@ -20,6 +20,8 @@ dependencies = [
     "beautifulsoup4>=4.12",
     "pymatgen>=2024.0.0",
     "ulid-py>=1.1",
+    "msgpack>=1.0.0",
+    "requests>=2.25.0",
 ]
 
 [project.optional-dependencies]
