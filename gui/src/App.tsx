@@ -676,7 +676,7 @@ function App() {
     // IMPORTANT: Do NOT mutate currentRepeatBoundary state - preserve user preference
     const effectiveBoundaryRepeat = mode === 'box' ? false : currentRepeatBoundary;
     
-    // Update state and trigger compute
+    // Update state and trigger compute IMMEDIATELY (especially for Box mode)
     setCurrentDisplayMode(mode);
     
     // Debug logging (dev mode)
@@ -690,7 +690,9 @@ function App() {
       });
     }
     
-    await loadStructureVis(selectedStructure, currentSupercell, effectiveBoundaryRepeat, mode, bounds);
+    // CRITICAL: Always trigger recompute when switching modes, especially Box mode
+    // Use the initialized bounds if we just set them
+    await loadStructureVis(selectedStructure, currentSupercell, effectiveBoundaryRepeat, mode, bounds || currentBoxBounds);
   }, [selectedStructure, currentSupercell, currentRepeatBoundary, currentBoxBounds, loadStructureVis, structureVisData]);
   
   const handleBoxBoundsChange = useCallback(async (bounds: [number, number, number, number, number, number] | null) => {
@@ -803,18 +805,22 @@ function App() {
     }
   }, [currentView]);
   
-  // Auto-select first structure when entering structures view (mirror JobsPanel pattern)
-  useEffect(() => {
-    // Only auto-select if:
-    // 1. We're in structures view
-    // 2. Structures list is non-empty
-    // 3. No structure is currently selected
-    // 4. We haven't auto-selected yet (one-time per mount)
+    // Auto-select first structure when entering structures view (mirror JobsPanel pattern)
+    useEffect(() => {
+      // Only auto-select if:
+      // 1. We're in structures view
+      // 2. Structures list is non-empty
+      // 3. No structure is currently selected
+      // 4. We haven't auto-selected yet (one-time per mount)
     if (currentView === 'structures' && structures && structures.length > 0 && !selectedStructure && !didAutoSelectStructureRef.current) {
       // Use the structure from the list to ensure ID consistency
       const firstStructure = structures[0];
-      setSelectedStructure(firstStructure);
       didAutoSelectStructureRef.current = true;
+      // Set selection and immediately load 3D view (same as manual selection)
+      setSelectedStructure(firstStructure);
+      loadStructureVis(firstStructure, currentSupercell, currentRepeatBoundary, currentDisplayMode, currentBoxBounds).catch(err => {
+        console.error('[App] Failed to load structure 3D view on auto-select', err);
+      });
     }
     
     // If selected structure disappeared from list, fall back to first element
@@ -883,11 +889,20 @@ function App() {
   }, [currentView, calculations, selectedCalculationSummary, handleSelectCalculation]);
   
   const handleCreateCalculationSuccess = useCallback(async (calculationId: string) => {
+    // CRITICAL: Rebuild registry FIRST to ensure the new calculation is indexed
+    const rebuildResponse = await qv.call('rebuild_project_registry', {
+      project_root: projectRoot,
+    });
+    
+    if (!rebuildResponse.ok) {
+      console.error('[App] Failed to rebuild registry after calculation creation', rebuildResponse.error);
+      // Continue anyway - might still work
+    }
+    
     // Refresh calculations list and summary
     await refreshSummary();
     const calculationsList = await fetchCalculations();
     
-    // CRITICAL: Wait for calculations list to update before selecting
     // Find the newly created calculation by ID from the fresh list
     let newWf = calculationsList?.find(w => w.id === calculationId);
     
@@ -909,7 +924,7 @@ function App() {
       console.error('[App] Created calculation not found after refresh', { calculationId });
       // Don't show error - calculation might still be syncing, user can manually select it
     }
-  }, [fetchCalculations, refreshSummary, handleSelectCalculation]);
+  }, [qv, projectRoot, fetchCalculations, refreshSummary, handleSelectCalculation]);
   
   const handleRunCalculation = useCallback(async (calculation: CalculationInfo) => {
     // Perform preflight checks first

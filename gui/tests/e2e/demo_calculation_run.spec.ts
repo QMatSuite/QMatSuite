@@ -80,8 +80,8 @@ test.describe('E2E Test 3: Run calculation → Run & Logs → Analysis (within c
     await navigateToView(appPage, 'calculations');
     await expect(appPage.getByTestId('qv-calculations-view')).toBeVisible({ timeout: 10000 });
     
-    // Verify "All Calculations" list is visible
-    await expect(appPage.getByText('All Calculations')).toBeVisible();
+    // Verify "All Calculations" list is visible (use heading role to avoid strict mode violation)
+    await expect(appPage.getByRole('heading', { name: /All Calculations/i })).toBeVisible();
     
     // Select the calculation from the list (e.g. "Si bands")
     const calculationRow = appPage.getByTestId('qv-calculation-row').first();
