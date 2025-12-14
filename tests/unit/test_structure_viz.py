@@ -21,7 +21,10 @@ from quantumvitas.analysis.structure_viz import (
     build_bonds_bruteforce,
     build_bonds_cell_list,
     canonicalize_frac,
+    snap_frac_near_integers,
     FRAC_SNAP_EPS,
+    build_display_atoms,
+    DisplayModeParams,
 )
 
 
@@ -190,6 +193,78 @@ class TestCanonicalizeFrac:
         result = canonicalize_frac(np.array([1.5, 2.3, 0.5]))
         expected = np.array([0.5, 0.3, 0.5])
         np.testing.assert_array_almost_equal(result, expected, decimal=10)
+    
+    def test_snap_frac_near_integers_no_wrap(self):
+        """Test that snap_frac_near_integers does not wrap values."""
+        # Values outside [0,1) should remain outside after snapping
+        result = snap_frac_near_integers(np.array([1.5, -0.3, 2.0 + 1e-8]))
+        # Should snap near-integer values but not wrap
+        assert result[0] == pytest.approx(1.5, abs=1e-6)  # 1.5 stays 1.5
+        assert result[1] == pytest.approx(-0.3, abs=1e-6)  # -0.3 stays -0.3
+        assert result[2] == pytest.approx(2.0, abs=1e-6)  # 2.0 + tiny → 2.0
+    
+    def test_boundary_atoms_remain_outside_cell(self, si_diamond_structure):
+        """Test that boundary-repeat atoms are not wrapped back into the primitive cell.
+        
+        This regression test ensures that boundary atoms created by integer shifts
+        remain outside the unit cell, preventing missing bonds near edges.
+        """
+        # Build display atoms for primitive mode with boundary repeat
+        params = DisplayModeParams(
+            mode="primitive",
+            repeat_boundary=True,
+        )
+        display_atoms, display_structure = build_display_atoms(si_diamond_structure, params, wrap_coords=True)
+        
+        # Get the primitive cell's Cartesian bounding box
+        lattice = display_structure.lattice
+        # Compute AABB from lattice vectors
+        # For a general lattice, we need to consider all corners of the unit cell
+        # Simplest: use the lattice's Cartesian bounds
+        basis_atoms_cart = np.array([site.coords for site in display_structure])
+        
+        # Compute AABB of basis atoms (inside cell)
+        x_min = basis_atoms_cart[:, 0].min()
+        x_max = basis_atoms_cart[:, 0].max()
+        y_min = basis_atoms_cart[:, 1].min()
+        y_max = basis_atoms_cart[:, 1].max()
+        z_min = basis_atoms_cart[:, 2].min()
+        z_max = basis_atoms_cart[:, 2].max()
+        
+        # Expand AABB slightly to account for atoms at boundaries
+        # (boundary atoms should be clearly outside this expanded box)
+        margin = 0.1  # 0.1 Å margin
+        x_min -= margin
+        x_max += margin
+        y_min -= margin
+        y_max += margin
+        z_min -= margin
+        z_max += margin
+        
+        # Check that at least one boundary atom is outside the AABB
+        boundary_atom_outside = False
+        for atom in display_atoms:
+            # Skip basis atoms (they should be inside)
+            if atom.stable_id.startswith("atom_"):
+                continue
+            
+            # This is a boundary atom - check if it's outside the AABB
+            x, y, z = atom.cart_coords
+            outside = (
+                x < x_min or x > x_max or
+                y < y_min or y > y_max or
+                z < z_min or z > z_max
+            )
+            
+            if outside:
+                boundary_atom_outside = True
+                break
+        
+        assert boundary_atom_outside, (
+            f"All boundary atoms are inside the expanded AABB! "
+            f"This indicates boundary atoms were incorrectly wrapped back into the cell. "
+            f"AABB: x=[{x_min:.3f}, {x_max:.3f}], y=[{y_min:.3f}, {y_max:.3f}], z=[{z_min:.3f}, {z_max:.3f}]"
+        )
 
 
 @pytest.fixture
