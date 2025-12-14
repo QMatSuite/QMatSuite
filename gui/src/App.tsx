@@ -83,6 +83,14 @@ function App() {
   const [calculations, setCalculations] = useState<CalculationInfo[] | null>(null);
   const [selectedStructure, setSelectedStructure] = useState<StructureInfo | null>(null);
   
+  // Online import mode state
+  const [leftMode, setLeftMode] = useState<'project' | 'import'>('project');
+  const [returnProjectSelectionId, setReturnProjectSelectionId] = useState<string | null>(null);
+  const [onlineSessionId, setOnlineSessionId] = useState<string | null>(null);
+  const [onlineCandidates, setOnlineCandidates] = useState<any[]>([]);
+  const [selectedOnlineCandidateId, setSelectedOnlineCandidateId] = useState<string | null>(null);
+  const [onlineCandidateData, setOnlineCandidateData] = useState<any>(null);
+  
   // CRITICAL: Separate calculation summary (from list_calculations) from calculation detail (from get_calculation_detail)
   // The detail's steps array is the canonical source of truth (built from calculation.yaml)
   const [selectedCalculationSummary, setSelectedCalculationSummary] = useState<CalculationInfo | null>(null);
@@ -634,6 +642,105 @@ function App() {
     setCurrentBoxBounds(null);
     await loadStructureVis(structure, [1, 1, 1], true, 'primitive', null);
   }, [loadStructureVis]);
+  
+  // Online import mode handlers
+  const handleEnterImportMode = useCallback(() => {
+    // Save current selection
+    setReturnProjectSelectionId(selectedStructure?.id || null);
+    setLeftMode('import');
+  }, [selectedStructure]);
+  
+  const handleExitImportMode = useCallback(async () => {
+    setLeftMode('project');
+    setOnlineSessionId(null);
+    setOnlineCandidates([]);
+    setSelectedOnlineCandidateId(null);
+    setOnlineCandidateData(null);
+    
+    // Restore previous project selection
+    if (returnProjectSelectionId && structures) {
+      const structureToRestore = structures.find(s => s.id === returnProjectSelectionId);
+      if (structureToRestore) {
+        await handleSelectStructure(structureToRestore);
+      }
+    }
+    setReturnProjectSelectionId(null);
+  }, [returnProjectSelectionId, structures, handleSelectStructure]);
+  
+  const handleSelectOnlineCandidate = useCallback(async (sessionId: string, candidateId: string) => {
+    if (!projectRoot) return;
+    
+    setSelectedOnlineCandidateId(candidateId);
+    setOnlineSessionId(sessionId);
+    
+    try {
+      const response = await qv.call('structure_get_online_candidate', {
+        project_root: projectRoot,
+        session_id: sessionId,
+        candidate_id: candidateId,
+      });
+      
+      if (response.ok && response.data) {
+        setOnlineCandidateData(response.data);
+        // Convert to StructureVisData format for viewer
+        if (response.data.structure_vis) {
+          const visData: StructureVisData = {
+            atoms: response.data.structure_vis.atoms.map((atom: any, idx: number) => ({
+              index: idx,
+              element: atom.symbol,
+              cart_coords: atom.position,
+              frac_coords: atom.position, // Will be computed if needed
+              color: atom.color,
+              radius: atom.radius,
+            })),
+            bonds: response.data.structure_vis.bonds.map((bond: any) => ({
+              idx1: bond.atom1,
+              idx2: bond.atom2,
+              coord1: response.data.structure_vis.atoms[bond.atom1]?.position || [0, 0, 0],
+              coord2: response.data.structure_vis.atoms[bond.atom2]?.position || [0, 0, 0],
+              distance: bond.distance,
+            })),
+            lattice: response.data.structure_vis.lattice,
+          };
+          setStructureVisData(visData);
+          setIsLoading3D(false);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load online candidate:', e);
+    }
+  }, [projectRoot, qv]);
+  
+  const handleImportOnlineCandidate = useCallback(async () => {
+    if (!projectRoot || !onlineSessionId || !selectedOnlineCandidateId) return;
+    
+    try {
+      const response = await qv.call('structure_import_online_candidate', {
+        project_root: projectRoot,
+        session_id: onlineSessionId,
+        candidate_id: selectedOnlineCandidateId,
+      });
+      
+      if (response.ok && response.data) {
+        // Refresh structures list
+        await fetchStructures();
+        
+        // Find and select the newly imported structure
+        const newStructures = await qv.call('list_structures', { project_root: projectRoot });
+        if (newStructures.ok && newStructures.data) {
+          const newStructure = newStructures.data.find((s: StructureInfo) => s.id === response.data.new_structure_id);
+          if (newStructure) {
+            await handleSelectStructure(newStructure);
+          }
+        }
+        
+        // Exit import mode
+        await handleExitImportMode();
+      }
+    } catch (e) {
+      console.error('Failed to import online candidate:', e);
+    }
+  }, [projectRoot, onlineSessionId, selectedOnlineCandidateId, qv, handleExitImportMode, handleSelectStructure]);
   
   const handleSupercellChange = useCallback(async (supercell: [number, number, number]) => {
     if (!selectedStructure) return;
@@ -1291,42 +1398,105 @@ function App() {
                 onRefreshProjectRegistry={handleRefreshProjectRegistry}
                 structures={structures}
                 isLoading={isLoadingStructures}
-                selectedId={selectedStructure?.id}
-                onSelect={handleSelectStructure}
+                selectedId={leftMode === 'project' ? selectedStructure?.id : null}
+                onSelect={leftMode === 'project' ? handleSelectStructure : undefined}
                 onRename={setRenameStructure}
                 onDelete={setDeleteStructure}
+                projectRoot={projectRoot}
+                leftMode={leftMode}
+                onEnterImportMode={handleEnterImportMode}
+                onExitImportMode={handleExitImportMode}
+                onSelectOnlineCandidate={handleSelectOnlineCandidate}
+                selectedOnlineCandidateId={selectedOnlineCandidateId}
+                onlineSessionId={onlineSessionId}
+                onlineCandidates={onlineCandidates}
               />
-              <button 
-                className="view-action-btn"
-                onClick={() => setShowImportStructure(true)}
-              >
-                ➕ Import Structure
-              </button>
+              {leftMode === 'project' && (
+                <button 
+                  className="view-action-btn"
+                  onClick={() => setShowImportStructure(true)}
+                >
+                  ➕ Import Structure
+                </button>
+              )}
             </ResizablePane>
-            {selectedStructure && (
+            {(leftMode === 'import' ? onlineCandidateData : selectedStructure) && (
               <div className="structures-view__detail">
-                <StructureDetailPanel
-                  structure={selectedStructure}
-                  onClose={() => {
-                    setSelectedStructure(null);
-                    setStructureVisData(null);
-                  }}
-                />
-                <div className="structures-view__3d">
-                  <StructureViewer3D
-                    data={structureVisData}
-                    isLoading={isLoading3D}
-                    showBonds={true}
-                    showUnitCell={true}
-                    structureId={selectedStructure?.id}
-                    onSupercellChange={handleSupercellChange}
-                    onRepeatBoundaryChange={handleRepeatBoundaryChange}
-                    onDisplayModeChange={handleDisplayModeChange}
-                    onBoxBoundsChange={handleBoxBoundsChange}
-                    currentDisplayMode={currentDisplayMode}
-                    currentBoxBounds={currentBoxBounds}
-                  />
-                </div>
+                {leftMode === 'import' ? (
+                  <>
+                    <StructureDetailPanel
+                      structure={onlineCandidateData ? {
+                        id: selectedOnlineCandidateId || '',
+                        name: onlineCandidateData.formula || 'Online Structure',
+                        slug: '',
+                        path: '',
+                        absolute_path: '',
+                        formula: onlineCandidateData.formula || '',
+                        n_atoms: onlineCandidateData.n_atoms || 0,
+                        n_species: onlineCandidateData.n_species || 0,
+                        lattice_params: {
+                          a: onlineCandidateData.structure_vis?.lattice?.parameters?.a || 0,
+                          b: onlineCandidateData.structure_vis?.lattice?.parameters?.b || 0,
+                          c: onlineCandidateData.structure_vis?.lattice?.parameters?.c || 0,
+                          alpha: onlineCandidateData.structure_vis?.lattice?.parameters?.alpha || 90,
+                          beta: onlineCandidateData.structure_vis?.lattice?.parameters?.beta || 90,
+                          gamma: onlineCandidateData.structure_vis?.lattice?.parameters?.gamma || 90,
+                        },
+                      } : null}
+                      onClose={undefined}
+                    />
+                    <div className="structures-view__3d">
+                      <StructureViewer3D
+                        data={structureVisData}
+                        isLoading={isLoading3D}
+                        showBonds={true}
+                        showUnitCell={true}
+                        structureId={selectedOnlineCandidateId}
+                      />
+                    </div>
+                    <div className="structures-view__import-actions" style={{ padding: '15px', display: 'flex', gap: '10px', borderTop: '1px solid #ddd' }}>
+                      <button
+                        className="qv-button qv-button--primary"
+                        onClick={handleImportOnlineCandidate}
+                        style={{ flex: 1, padding: '10px 20px', fontSize: '14px', fontWeight: '500' }}
+                      >
+                        Import
+                      </button>
+                      <button
+                        className="qv-button qv-button--secondary"
+                        onClick={handleExitImportMode}
+                        style={{ flex: 1, padding: '10px 20px', fontSize: '14px', fontWeight: '500' }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <StructureDetailPanel
+                      structure={selectedStructure}
+                      onClose={() => {
+                        setSelectedStructure(null);
+                        setStructureVisData(null);
+                      }}
+                    />
+                    <div className="structures-view__3d">
+                      <StructureViewer3D
+                        data={structureVisData}
+                        isLoading={isLoading3D}
+                        showBonds={true}
+                        showUnitCell={true}
+                        structureId={selectedStructure?.id}
+                        onSupercellChange={handleSupercellChange}
+                        onRepeatBoundaryChange={handleRepeatBoundaryChange}
+                        onDisplayModeChange={handleDisplayModeChange}
+                        onBoxBoundsChange={handleBoxBoundsChange}
+                        currentDisplayMode={currentDisplayMode}
+                        currentBoxBounds={currentBoxBounds}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>

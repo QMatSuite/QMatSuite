@@ -20,6 +20,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 import traceback
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -216,6 +217,11 @@ class QVDaemon:
             # Project creation and management
             "create_project": self._handle_create_project,
             "import_structure": self._handle_import_structure,
+            
+            # Online structure search
+            "structure_search_online": self._handle_structure_search_online,
+            "structure_get_online_candidate": self._handle_structure_get_online_candidate,
+            "structure_import_online_candidate": self._handle_structure_import_online_candidate,
             
             # Structure management
             "rename_structure": self._handle_rename_structure,
@@ -1227,6 +1233,307 @@ class QVDaemon:
             "slug": result.meta.slug,
             "formula": new_struct.get("formula", "?") if new_struct else "?",
             "n_atoms": new_struct.get("n_atoms", 0) if new_struct else 0,
+        }
+    
+    def _handle_structure_search_online(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Search online structures (OPTIMADE + COD).
+        
+        Payload:
+            query: str - Chemical formula (e.g., "Si", "MoS2")
+            max_results: int - Maximum number of results (default: 10)
+        """
+        from quantumvitas.io.online_cache import OnlineStructureCache, CandidateSummary
+        from quantumvitas.io.online_search import search_online_structures
+        import uuid
+        import json
+        
+        query = self._require_str(payload, "query")
+        max_results = payload.get("max_results", 10)
+        
+        # Generate session ID
+        session_id = str(uuid.uuid4())
+        
+        # Search online (returns optimade_base for 2-step fetch)
+        source_summary, candidates, structures, optimade_base = search_online_structures(query, max_results=max_results)
+        
+        # Cache results
+        project_root = self._require_path(payload, "project_root")
+        cache_dir = project_root / "structures" / "cache"
+        cache = OnlineStructureCache(cache_dir)
+        
+        # Store optimade_base in source_summary if available
+        source_summary_with_base = source_summary
+        if optimade_base:
+            source_summary_with_base = f"{source_summary}|base={optimade_base}"
+        
+        cache.create_session(session_id, query, source_summary_with_base)
+        
+        # Cache candidates and structures (structures may be None for OPTIMADE)
+        for rank, (candidate, structure) in enumerate(zip(candidates, structures)):
+            if structure is not None:
+                # COD entry - cache structure now
+                cache.add_candidate(session_id, candidate, structure, rank)
+            else:
+                # OPTIMADE entry - store metadata only, structure fetched later
+                # Store optimade_base in candidate metadata
+                cache.add_candidate_metadata_only(session_id, candidate, rank, optimade_base)
+        
+        # Convert candidates to dict for JSON serialization
+        candidates_dict = [
+            {
+                "candidate_id": c.candidate_id,
+                "label": c.label,
+                "source": c.source,
+                "source_id": c.source_id,
+                "nsites": c.nsites,
+                "spacegroup": c.spacegroup,
+                "flags": c.flags,
+                "score": c.score,
+            }
+            for c in candidates
+        ]
+        
+        return {
+            "session_id": session_id,
+            "candidates": candidates_dict,
+        }
+    
+    def _handle_structure_get_online_candidate(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get structure data for an online candidate (from cache or fetch from OPTIMADE).
+        
+        Payload:
+            project_root: str - Path to project root
+            session_id: str - Session ID from search
+            candidate_id: str - Candidate ID
+        """
+        from quantumvitas.io.online_cache import OnlineStructureCache
+        from quantumvitas.io.online_search import fetch_structure_from_optimade, score_candidate
+        from quantumvitas.analysis.structure_viz import (
+            build_display_atoms,
+            build_bonds,
+            get_element_color,
+            get_element_radius,
+            DisplayModeParams,
+        )
+        from quantumvitas.io.structure_io import write_structure
+        import tempfile
+        import numpy as np
+        
+        project_root = self._require_path(payload, "project_root")
+        session_id = self._require_str(payload, "session_id")
+        candidate_id = self._require_str(payload, "candidate_id")
+        
+        # Load from cache
+        cache_dir = project_root / "structures" / "cache"
+        cache = OnlineStructureCache(cache_dir)
+        
+        structure = cache.get_structure(session_id, candidate_id)
+        
+        # If not in cache, try fetching from OPTIMADE (2-step approach)
+        if structure is None:
+            # Get candidate metadata to find optimade_base
+            candidates = cache.get_candidates(session_id)
+            candidate = next((c for c in candidates if c.candidate_id == candidate_id), None)
+            
+            if candidate and candidate.source == "optimade":
+                # Get optimade_base from metadata
+                metadata = cache.get_candidate_metadata(session_id, candidate_id)
+                optimade_base = metadata.get("optimade_base") if metadata else None
+                
+                if optimade_base and candidate.source_id:
+                    # Fetch structure from OPTIMADE
+                    structure = fetch_structure_from_optimade(optimade_base, candidate.source_id)
+                    
+                    if structure:
+                        # Score and update candidate
+                        from quantumvitas.io.online_search import reduce_formula, score_candidate
+                        # Get query from session
+                        session_info = cache.get_session_info(session_id)
+                        query = session_info.query if session_info else ""
+                        query_reduced = reduce_formula(query) if query else ""
+                        score, flags = score_candidate(structure, "optimade", query_reduced, {})
+                        candidate.score = score
+                        candidate.flags = flags
+                        candidate.nsites = len(structure)
+                        
+                        # Cache the fetched structure
+                        # Find rank
+                        rank = next((i for i, c in enumerate(candidates) if c.candidate_id == candidate_id), 0)
+                        cache.add_candidate(session_id, candidate, structure, rank)
+        
+        if structure is None:
+            raise ValueError(f"Candidate {candidate_id} not found in cache and could not be fetched")
+        
+        # Build visualization data directly (similar to get_structure_vis_data)
+        params = DisplayModeParams(
+            mode="primitive",
+            supercell=None,
+            box_bounds=None,
+            repeat_boundary=False,
+        )
+        
+        display_atoms = build_display_atoms(structure, params)
+        bonds = build_bonds(display_atoms, structure.lattice)
+        
+        # Convert to JSON-serializable format
+        atoms_data = [
+            {
+                "position": atom.coords.tolist(),
+                "symbol": atom.symbol,
+                "color": get_element_color(atom.symbol),
+                "radius": get_element_radius(atom.symbol),
+            }
+            for atom in display_atoms
+        ]
+        
+        bonds_data = [
+            {
+                "atom1": bond.idx1,
+                "atom2": bond.idx2,
+                "distance": float(bond.distance),
+            }
+            for bond in bonds
+        ]
+        
+        # Lattice parameters
+        lattice_params = {
+            "a": float(structure.lattice.a),
+            "b": float(structure.lattice.b),
+            "c": float(structure.lattice.c),
+            "alpha": float(structure.lattice.alpha),
+            "beta": float(structure.lattice.beta),
+            "gamma": float(structure.lattice.gamma),
+            "volume": float(structure.lattice.volume),
+        }
+        
+        vis_data = {
+            "atoms": atoms_data,
+            "bonds": bonds_data,
+            "lattice": {
+                "vectors": structure.lattice.matrix.tolist(),
+                "parameters": lattice_params,
+            },
+        }
+        
+        # Also return structure JSON for detail panel
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as tmp:
+            tmp_path = Path(tmp.name)
+            write_structure(structure, tmp_path)
+            structure_json = tmp_path.read_text()
+            tmp_path.unlink()
+        
+        return {
+            "structure_vis": vis_data,
+            "structure_json": structure_json,
+            "formula": structure.composition.formula,
+            "n_atoms": len(structure),
+            "n_species": len(structure.composition),
+        }
+    
+    def _handle_structure_import_online_candidate(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Import an online candidate structure into the project.
+        
+        Payload:
+            project_root: str - Path to project root
+            session_id: str - Session ID from search
+            candidate_id: str - Candidate ID
+            name: str - Optional structure name
+        """
+        from quantumvitas.io.online_cache import OnlineStructureCache
+        from quantumvitas.io.structure_io import write_structure
+        from quantumvitas.core.resources import meta_from_name, ensure_relative_path
+        from quantumvitas.core.project_utils import load_project_config, save_project_config
+        from quantumvitas.core.naming import generate_unique_name_and_slug, collect_slugs
+        import tempfile
+        
+        project_root = self._require_path(payload, "project_root")
+        session_id = self._require_str(payload, "session_id")
+        candidate_id = self._require_str(payload, "candidate_id")
+        name = payload.get("name")
+        
+        # Load structure from cache
+        cache_dir = project_root / "structures" / "cache"
+        cache = OnlineStructureCache(cache_dir)
+        
+        structure = cache.get_structure(session_id, candidate_id)
+        if structure is None:
+            raise ValueError(f"Candidate {candidate_id} not found in cache")
+        
+        # Get candidate info for default name
+        candidates_list = cache.get_candidates(session_id)
+        candidate = next((c for c in candidates_list if c.candidate_id == candidate_id), None)
+        default_name = candidate.label if candidate else structure.composition.reduced_formula
+        
+        # Canonicalize structure (wrap coords, stable species ordering)
+        from quantumvitas.analysis.structure_viz import canonicalize_structure_in_place
+        canonicalize_structure_in_place(structure)
+        
+        # Generate unique name and slug
+        config = load_project_config(project_root)
+        structures = config.setdefault("structures", [])
+        existing_slugs = collect_slugs(structures, project_root=project_root)
+        
+        structure_name = name or default_name
+        final_name, final_slug = generate_unique_name_and_slug(
+            kind="structure",
+            preferred_name=structure_name,
+            existing_slugs=existing_slugs,
+        )
+        
+        # Write structure file
+        dest_path = project_root / "structures" / f"{final_slug}.json"
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        meta = meta_from_name(
+            "structure",
+            name=final_name,
+            path=ensure_relative_path(dest_path, base=project_root),
+        )
+        
+        # Add provenance metadata
+        candidates_for_provenance = cache.get_candidates(session_id)
+        query_label = candidates_for_provenance[0].label if candidates_for_provenance else ""
+        provenance = {
+            "source": candidate.source if candidate else "unknown",
+            "source_id": candidate.source_id if candidate else "",
+            "query": query_label,
+            "fetched_at": int(time.time()),
+            "score": candidate.score if candidate else 0.0,
+            "flags": candidate.flags if candidate else [],
+        }
+        
+        # Store provenance in structure metadata (under extra field)
+        write_structure(structure, dest_path, metadata=meta)
+        
+        # Add provenance to structure JSON file
+        import json
+        structure_data = json.loads(dest_path.read_text())
+        if "extra" not in structure_data:
+            structure_data["extra"] = {}
+        structure_data["extra"]["online_provenance"] = provenance
+        dest_path.write_text(json.dumps(structure_data, indent=2))
+        
+        # Add to project config
+        entry = {
+            "structure_id": meta.id,
+        }
+        structures.append(entry)
+        save_project_config(project_root, config)
+        
+        # Update registry
+        cache_state = self.state.get_cache(project_root)
+        from quantumvitas.core.resolution import require_structure, update_registry_add_structure
+        resolved = require_structure(project_root, final_slug, config=config, index=cache_state.index)
+        if cache_state.index is not None:
+            update_registry_add_structure(cache_state.index, resolved.meta, dest_path)
+        
+        return {
+            "new_structure_id": meta.id,
+            "name": meta.name,
+            "slug": meta.slug,
         }
     
     # -------------------------------------------------------------------------
