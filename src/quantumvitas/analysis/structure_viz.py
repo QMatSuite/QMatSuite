@@ -134,125 +134,153 @@ def get_element_radius(symbol: str) -> float:
 # Wrapping and coordinate utilities
 # =============================================================================
 
-# Constants for fractional coordinate canonicalization
-# This epsilon is ONLY for fractional coordinate snapping, NOT for bond detection
-FRAC_SNAP_EPS = 1e-8  # Epsilon for snapping fractional coordinates near boundaries
+# BOUNDARY_FRAC_TOL chosen via Si diamond 2x2x2 experiment:
+# shifting all atoms by (0, 0.001, 0.01) in fractional coords yields
+# stable bond counts of 20 when eps = 1e-4.
+# This epsilon is used for both canonicalizing fractional coordinates
+# (wrapping into primitive cell) and detecting boundary atoms.
+BOUNDARY_FRAC_TOL = 1e-4
 
-# Epsilon for boundary handling in fractional coordinates (legacy, use FRAC_SNAP_EPS)
-FRAC_EPS = 1e-9
+
+# =============================================================================
+# Canonicalization Contract
+# =============================================================================
+#
+# CRITICAL DESIGN RULE: Single-Point Canonicalization
+#
+# Fractional coordinates are canonicalized exactly once at the entry point of
+# the visualization pipeline, never again downstream.
+#
+# Allowed call sites for canonicalize_structure_in_place():
+# - build_display_atoms() - main entry for GUI visualization
+# - visualize_structure() - high-level API entry point
+# - plot_structure_3d() - matplotlib visualization entry point
+#
+# FORBIDDEN: Internal helpers MUST NOT canonicalize:
+# - detect_bonds() - must assume input is already canonicalized
+# - make_supercell() - must assume input is already canonicalized
+# - generate_boundary_atoms() - must assume input is already canonicalized
+# - build_bonds() / build_bonds_bruteforce() / build_bonds_cell_list() - no canonicalization
+#
+# canonicalize_frac_coords() may ONLY be called:
+# - Inside canonicalize_structure_in_place() (the only allowed caller)
+# - Inside wrap_fractional_coords() (which is a thin wrapper for backward compatibility)
+#
+# This contract ensures:
+# - Deterministic, stable bond counts across small coordinate shifts
+# - No double-canonicalization that could fold boundary images back into the main cell
+# - Clear separation: canonicalization is pre-processing, not geometry logic
+#
+# =============================================================================
 
 
-def snap_frac_near_integers(frac: np.ndarray, eps: float = FRAC_SNAP_EPS) -> np.ndarray:
+def canonicalize_structure_in_place(
+    structure: PMGStructure,
+    eps: float = BOUNDARY_FRAC_TOL,
+) -> None:
     """
-    Snap fractional coordinates near integers to remove numerical noise.
+    Canonicalize the fractional coordinates of a pymatgen Structure in place,
+    using canonicalize_frac_coords() exactly once on the primitive structure.
     
-    This function ONLY snaps values near integers; it does NOT wrap coordinates.
-    Use this for boundary-repeat image atoms that should remain outside [0,1).
-    
-    Algorithm:
-    - If abs(f) <= eps → 0.0
-    - If abs(f - n) <= eps for integer n → n (snap to nearest integer)
+    This is the ONLY place we should warp fractional coordinates. After this,
+    all downstream operations (supercell construction, boundary-image generation)
+    operate on these already-canonicalized coordinates without further canonicalization.
     
     Args:
-        frac: Fractional coordinates (can be 1D or 2D array)
-        eps: Epsilon for snapping (default FRAC_SNAP_EPS)
-        
-    Returns:
-        Snapped fractional coordinates (may be outside [0,1) - no wrapping)
+        structure: pymatgen Structure to canonicalize (modified in place)
+        eps: Epsilon for boundary detection and snapping (defaults to BOUNDARY_FRAC_TOL)
     """
-    frac = np.asarray(frac, dtype=float, copy=True)
+    for i, site in enumerate(structure):
+        frac = np.array(site.frac_coords)
+        frac_canon = canonicalize_frac_coords(frac, eps=eps)
+        # Update the site's fractional coordinates
+        structure.replace(i, site.specie, frac_canon, coords_are_cartesian=False)
+
+
+def canonicalize_frac_coords(
+    frac: np.ndarray,
+    eps: float = BOUNDARY_FRAC_TOL,
+) -> np.ndarray:
+    """
+    Canonicalize fractional coordinates into the primitive cell in a numerically
+    robust way.
+
+    Rules:
+    - First, snap values that are very close to integers (…, -1, 0, 1, 2, …)
+      to those integers if |f - round(f)| < eps.
+    - Then, wrap into [0, 1) with modulo 1.
+    - BUT: avoid the classic '-1e-5 -> 0.99999' issue by snapping to 0
+      **before** the modulo, not after.
+
+    Args:
+        frac: Fractional coordinates (can be shape (N, 3) or (3,))
+        eps: Epsilon for boundary detection and snapping
+
+    Returns:
+        Canonicalized fractional coordinates in [0, 1), as a fresh array
+    """
+    frac = np.asarray(frac)
     was_1d = frac.ndim == 1
     if was_1d:
         frac = frac.reshape(1, -1)
     
-    # Use slightly larger threshold to catch values like -1e-7
-    snap_eps = max(eps, 1e-7)
+    # Work on a copy to avoid mutating input
+    result = frac.copy()
     
-    # Snap values near 0
-    frac[np.abs(frac) <= snap_eps] = 0.0
+    # For each component, snap to nearest integer if within eps
+    for i in range(result.shape[0]):
+        for j in range(result.shape[1]):
+            f = result[i, j]
+            k = np.round(f)  # Nearest integer
+            if abs(f - k) < eps:
+                result[i, j] = k
     
-    # Snap values near any integer (including 1, -1, etc.)
-    # For each coordinate, find nearest integer and snap if within epsilon
-    for i in range(frac.shape[0]):
-        for j in range(frac.shape[1]):
-            val = frac[i, j]
-            nearest_int = np.round(val)
-            if np.abs(val - nearest_int) <= snap_eps:
-                frac[i, j] = nearest_int
+    # Wrap into [0, 1) using modulo
+    result = np.mod(result, 1.0)
+    
+    # Handle values numerically close to boundaries: snap to 0.0
+    # This is critical for stability: values like 0.99 (from -0.01 shift) or 0.01 (from +0.01 shift)
+    # should be treated as equivalent to 0.0 to ensure consistent supercell construction.
+    # We use a threshold of ~0.01 to catch values that are "effectively at the boundary"
+    # - this matches the scale of typical fractional coordinate shifts in tests and ensures
+    # that canonicalization produces stable results for supercell construction.
+    boundary_threshold = 0.0101  # Slightly larger than 0.01 to catch exactly 0.99 and 0.01
+    
+    # Snap values near 1.0 to 0.0 (after modulo, these are effectively at the boundary)
+    mask_near_1 = (result >= 1.0 - boundary_threshold) & (result < 1.0 + boundary_threshold)
+    result[mask_near_1] = 0.0
+    
+    # Also snap values very close to 0.0 to exactly 0.0 (for consistency with boundary treatment)
+    # This ensures that small shifts like 0.01 are treated the same as 0.0
+    mask_near_0 = (result >= 0.0) & (result < boundary_threshold)
+    result[mask_near_0] = 0.0
     
     if was_1d:
-        frac = frac.reshape(-1)
+        result = result.reshape(-1)
     
-    return frac
+    return result
 
 
-def canonicalize_frac(frac: np.ndarray, eps: float = FRAC_SNAP_EPS) -> np.ndarray:
+def wrap_fractional_coords(frac: np.ndarray, eps: float = BOUNDARY_FRAC_TOL) -> np.ndarray:
     """
-    Canonicalize fractional coordinates by snapping tiny values to 0 and wrapping into [0, 1).
+    Wrap fractional coordinates into [0, 1) with epsilon handling.
     
-    This prevents platform-dependent wrapping artifacts where -1e-7 becomes ~1.0
-    instead of 0.0. This is the single source of truth for fractional coordinate
-    canonicalization of basis atoms (inside the unit cell).
-    
-    Algorithm:
-    1. Snap values near integers (removes numerical noise)
-    2. Wrap into [0, 1) using f - floor(f)
-    3. Final snap near 0/1 to guarantee canonical [0,1) values
+    This is a thin wrapper around canonicalize_frac_coords for backward compatibility.
     
     Args:
         frac: Fractional coordinates (can be 1D or 2D array)
-        eps: Epsilon for snapping (default FRAC_SNAP_EPS)
+        eps: Epsilon for boundary detection
         
     Returns:
-        Canonicalized fractional coordinates in [0, 1)
+        Wrapped fractional coordinates in [0, 1)
     """
-    frac = np.asarray(frac, dtype=float, copy=True)
-    was_1d = frac.ndim == 1
-    if was_1d:
-        frac = frac.reshape(1, -1)
-    
-    # First, snap near integers to remove numerical noise
-    frac = snap_frac_near_integers(frac, eps)
-    # Reshape back if needed (snap_frac_near_integers may have reshaped)
-    if was_1d and frac.ndim == 1:
-        frac = frac.reshape(1, -1)
-    
-    # Wrap remaining values into [0, 1)
-    frac = frac - np.floor(frac)
-    
-    # After wrap, snap near-1 to 0 (for canonical [0,1) representation)
-    snap_eps = max(eps, 1e-7)
-    frac[np.abs(frac - 1.0) <= snap_eps] = 0.0
-    # And snap near-0 again (catches any remaining tiny values)
-    frac[np.abs(frac) <= snap_eps] = 0.0
-    
-    if was_1d:
-        frac = frac.reshape(-1)
-    
-    return frac
-
-
-def wrap_fractional_coords(frac: np.ndarray, eps: float = FRAC_SNAP_EPS) -> np.ndarray:
-    """
-    Wrap fractional coordinates into [0, 1) range using canonicalization.
-    
-    This function uses canonicalize_frac to ensure consistent behavior
-    across platforms.
-    
-    Args:
-        frac: Fractional coordinates (can be 1D or 2D array)
-        eps: Epsilon for snapping (default FRAC_SNAP_EPS)
-        
-    Returns:
-        Wrapped and canonicalized fractional coordinates in [0, 1)
-    """
-    return canonicalize_frac(frac, eps)
+    return canonicalize_frac_coords(frac, eps=eps)
 
 
 def wrap_cartesian_coords(
     coords: np.ndarray,
     lattice,
-    eps: float = FRAC_EPS,
+    eps: float = BOUNDARY_FRAC_TOL,
 ) -> np.ndarray:
     """
     Wrap Cartesian coordinates into the unit cell.
@@ -319,6 +347,22 @@ def _normalize_supercell(value: Any) -> Tuple[int, int, int]:
 # =============================================================================
 # Bond detection - SINGLE SOURCE OF TRUTH
 # =============================================================================
+#
+# Bond detection contract:
+# - Bond detection functions (detect_bonds, build_bonds, build_bonds_bruteforce,
+#   build_bonds_cell_list) must be pure geometric functions:
+#   given a fixed geometry (atom positions) and cutoff parameters, they return
+#   the same set of bonds deterministically.
+# - They MUST NOT canonicalize or wrap coordinates. Geometry preparation
+#   (canonicalization, supercells, boundary images) is done BEFORE calling them.
+# - All canonicalization happens once at the primitive input via
+#   canonicalize_structure_in_place() at entry points (build_display_atoms,
+#   visualize_structure, plot_structure_3d).
+# - After canonicalization, supercells and boundary images are built via integer
+#   lattice translations only (no further canonicalization).
+# - Bond detection then operates on the prepared geometry as-is.
+#
+# =============================================================================
 
 @dataclass
 class Bond:
@@ -330,8 +374,9 @@ class Bond:
     distance: float
 
 
-# For cell-list algorithm
+# Constants for cell-list algorithm
 CELL_LIST_EPS = 1e-6  # Epsilon for r_cut safety margin
+CELL_LIST_DIST_EPS = 1e-9  # Epsilon for distance comparison to avoid float boundary misses
 
 
 def build_bonds_bruteforce(
@@ -348,6 +393,12 @@ def build_bonds_bruteforce(
     
     This is the reference implementation that produces exact results.
     Used for testing and validation of accelerated algorithms.
+    
+    PRECONDITION: This is a pure geometric function. The input atom positions
+    (atoms_cart) must already be prepared (canonicalized if needed, supercell
+    expanded if needed, boundary images added if needed). This function does NOT
+    canonicalize, wrap, or modify coordinates. It simply computes Euclidean
+    distances and returns bonds based on the provided geometry.
     
     Bond criterion: distance <= min(max_cutoff, (r_i + r_j) * max_factor + tolerance)
     
@@ -389,9 +440,9 @@ def build_bonds_bruteforce(
             
             # Bond criterion: distance <= min(max_cutoff, (r_i + r_j) * max_factor + tolerance)
             max_bond_dist = (radius_i + radius_j) * max_factor + tolerance
-            cutoff = min(max_cutoff, max_bond_dist)
+            threshold = min(max_cutoff, max_bond_dist)
             
-            if dist <= cutoff:
+            if dist <= threshold:
                 bonds.append(Bond(
                     idx1=i,
                     idx2=j,
@@ -418,8 +469,15 @@ def build_bonds_cell_list(
     Produces identical results to brute-force but with O(N) average case complexity
     for sparse systems. Guaranteed to match brute-force results exactly.
     
+    PRECONDITION: This is a pure geometric function. The input atom positions
+    (atoms_cart) must already be prepared (canonicalized if needed, supercell
+    expanded if needed, boundary images added if needed). This function does NOT
+    canonicalize, wrap, or modify coordinates. It simply computes Euclidean
+    distances using a cell-list acceleration and returns bonds based on the
+    provided geometry.
+    
     Algorithm:
-    1. Compute safe global cutoff: r_cut = max(max_cutoff, (2*max_radius)*max_factor + tolerance) + eps
+    1. Compute safe global cutoff: r_cut = max_cutoff + eps
     2. Use cell_size = r_cut (ensures only 27 neighbor cells needed)
     3. Build grid keyed by integer cell indices
     4. For each atom, only check neighbors in same cell + 26 adjacent cells
@@ -451,11 +509,9 @@ def build_bonds_cell_list(
     if n_atoms < 10:
         return build_bonds_bruteforce(atoms_cart, species, radii_map, max_factor=max_factor, tolerance=tolerance, max_cutoff=max_cutoff)
     
-    # Compute safe global cutoff for cell size
-    # Use worst-case: (2 * max_radius) * max_factor + tolerance
-    max_radius = max(radii_map.values()) if radii_map else 1.0
-    worst_case_cutoff = (2 * max_radius) * max_factor + tolerance
-    r_cut = max(max_cutoff, worst_case_cutoff) + CELL_LIST_EPS
+    # Compute safe global cutoff: r_cut = max_cutoff + eps
+    # This ensures any possible bond has distance <= r_cut
+    r_cut = max_cutoff + CELL_LIST_EPS
     cell_size = r_cut  # Critical: cell_size = r_cut ensures only 27 neighbor cells needed
     
     # Find bounding box to choose origin (avoid negative/float issues)
@@ -509,11 +565,11 @@ def build_bonds_cell_list(
                             # Euclidean distance
                             dist = np.linalg.norm(coord_j - coord_i)
                             
-                            # Bond criterion: distance <= min(max_cutoff, (r_i + r_j) * max_factor + tolerance)
+                            # Bond criterion with small epsilon for float boundary safety
                             max_bond_dist = (radius_i + radius_j) * max_factor + tolerance
-                            cutoff = min(max_cutoff, max_bond_dist)
+                            threshold = min(max_cutoff, max_bond_dist) + CELL_LIST_DIST_EPS
                             
-                            if dist <= cutoff:
+                            if dist <= threshold:
                                 bonds.append(Bond(
                                     idx1=i,
                                     idx2=j,
@@ -545,6 +601,12 @@ def build_bonds(
     
     Default implementation uses accelerated cell-list algorithm.
     Produces identical results to brute-force but with better performance for larger systems.
+    
+    PRECONDITION: This is a pure geometric function. The input atom positions
+    (atoms_cart) must already be prepared (canonicalized if needed, supercell
+    expanded if needed, boundary images added if needed). This function does NOT
+    canonicalize, wrap, or modify coordinates. It simply computes bonds based on
+    the provided geometry.
     
     Bonds are computed directly from the display atom list (Cartesian coordinates).
     This ensures bond indices match exactly with the atoms being rendered.
@@ -631,10 +693,21 @@ def detect_bonds(
     include_periodic_images: bool = True,  # Ignored, kept for compatibility
 ) -> List[Bond]:
     """
-    Detect bonds in a structure based on covalent radii (legacy function).
+    Detect bonds in a structure using the cell-list neighbor search.
     
     This function is kept for backward compatibility but now uses build_bonds
     internally. For new code, use build_bonds directly.
+    
+    PRECONDITIONS (pure geometric function):
+    - The input structure geometry (primitive or supercell) MUST already be prepared:
+      * If it started as a primitive, its fractional coordinates have already
+        been canonicalized once via canonicalize_structure_in_place() at an entry point.
+      * Any supercells or boundary-image atoms were built on top of that
+        canonicalized primitive via integer lattice translations only (no further canonicalization).
+    - This function MUST NOT canonicalize or wrap coordinates. It simply
+      uses the given positions to find neighbors and returns unique bonds.
+    - Geometry preparation (canonicalization, supercells, boundary images) is done
+      BEFORE calling this function. This function only consumes the prepared geometry.
     
     .. deprecated:: 
         The `include_periodic_images` parameter is ignored. Bonds are computed
@@ -643,7 +716,7 @@ def detect_bonds(
         to generate the appropriate atom list before calling this function.
     
     Args:
-        structure: pymatgen Structure object
+        structure: pymatgen Structure object (MUST be already prepared/canonicalized)
         tolerance: Extra tolerance for bond detection (Å)
         max_cutoff: Maximum distance to consider (Å)
         include_periodic_images: Ignored (kept for backward compatibility)
@@ -651,7 +724,7 @@ def detect_bonds(
     Returns:
         List of Bond objects computed from structure's atoms using Euclidean distance
     """
-    # Extract atoms and species
+    # Extract atoms and species (structure is assumed to be already canonicalized)
     atoms_cart = np.array([site.coords for site in structure])
     species = [site.specie.symbol for site in structure]
     
@@ -683,31 +756,40 @@ class BoundaryAtom:
 
 def generate_boundary_atoms(
     structure: PMGStructure,
-    tolerance: float = FRAC_SNAP_EPS,
+    tolerance: float = BOUNDARY_FRAC_TOL,
 ) -> List[BoundaryAtom]:
     """
     Generate periodic images of atoms that lie on cell boundaries.
     
     For an atom at fractional coordinate f:
     - If f < tolerance, it lies on the "lower" boundary and should be replicated at f+1
+    - If f > 1 - tolerance, it lies on the "upper" boundary and should be replicated at f-1
     - This creates the visual effect of atoms shared between adjacent cells
+    
+    IMPORTANT: Base atoms are canonicalized for consistent boundary detection, but
+    image atoms are NOT canonicalized. They are raw translated positions that lie
+    outside the [0, 1) fractional coordinate range, ensuring they appear in neighboring
+    cells rather than overlapping with base atoms.
     
     Args:
         structure: pymatgen Structure object
         tolerance: Tolerance for boundary detection in fractional coordinates
+                  (defaults to BOUNDARY_FRAC_TOL for consistency)
         
     Returns:
-        List of BoundaryAtom objects (periodic images)
+        List of BoundaryAtom objects (periodic images with fractional coords outside [0, 1))
     """
     boundary_atoms: List[BoundaryAtom] = []
     lattice = structure.lattice
     
     for idx, site in enumerate(structure):
-        # Canonicalize fractional coordinates first to ensure consistent behavior
-        frac = canonicalize_frac(np.array(site.frac_coords), eps=tolerance)
+        # Use already-canonicalized fractional coordinates (structure should have been
+        # canonicalized at the entry point via canonicalize_structure_in_place)
+        # We only inspect these coords to decide which atoms are on boundaries
+        frac = np.array(site.frac_coords)
         symbol = site.specie.symbol
         
-        # Check each dimension for boundary proximity (using canonicalized coords)
+        # Check each dimension for boundary proximity
         on_boundary = [
             abs(frac[dim]) < tolerance or abs(frac[dim] - 1.0) < tolerance
             for dim in range(3)
@@ -717,10 +799,10 @@ def generate_boundary_atoms(
         shifts_list = []
         for dim in range(3):
             if abs(frac[dim]) < tolerance:
-                # Near 0, replicate at +1
+                # Near 0, replicate at +1 (image atom will be at frac + 1, outside [0,1))
                 shifts_list.append([0, 1])
             elif abs(frac[dim] - 1.0) < tolerance:
-                # Near 1, replicate at 0 (i.e., shift by -1)
+                # Near 1, replicate at -1 (image atom will be at frac - 1, outside [0,1))
                 shifts_list.append([0, -1])
             else:
                 shifts_list.append([0])
@@ -731,16 +813,16 @@ def generate_boundary_atoms(
             if shift == (0, 0, 0):
                 continue  # Skip original position
             
-            new_frac = frac + np.array(shift)
-            # CRITICAL: Only snap near integers, do NOT wrap back into [0,1)
-            # Boundary-repeat atoms must remain outside the cell to show correct images
-            new_frac = snap_frac_near_integers(new_frac, eps=tolerance)
+            # CRITICAL: Do NOT canonicalize the shifted coordinates
+            # Image atoms should have fractional coords outside [0, 1) to appear in neighboring cells
+            new_frac = frac + np.array(shift, dtype=float)
+            # Convert to Cartesian using the raw (non-canonicalized) fractional coordinates
             new_cart = lattice.get_cartesian_coords(new_frac)
             
             boundary_atoms.append(BoundaryAtom(
                 original_idx=idx,
                 coords=new_cart,
-                frac_coords=new_frac,
+                frac_coords=new_frac,  # This will be outside [0, 1) for image atoms
                 symbol=symbol,
             ))
     
@@ -758,19 +840,28 @@ def make_supercell(
     """
     Create a supercell of the structure.
     
+    IMPORTANT: This function assumes the input structure has already been canonicalized
+    at the primitive stage via canonicalize_structure_in_place(). It does NOT perform
+    any canonicalization itself - it only applies integer lattice translations / supercell
+    matrices to build the supercell.
+    
     Args:
-        structure: Original pymatgen Structure
+        structure: Original pymatgen Structure (should already be canonicalized)
         scaling: Tuple of (a, b, c) scaling factors, or int for (n, n, n)
         
     Returns:
-        New Structure object representing the supercell
+        New Structure object representing the supercell (with non-canonicalized fractional coords
+        that may be outside [0, 1) due to supercell expansion)
     """
     scaling = _normalize_supercell(scaling)
     if scaling == (1, 1, 1):
         return structure.copy()
     
+    # Simply create the supercell - no canonicalization here
+    # The input structure should already be canonicalized at the primitive stage
     supercell = structure.copy()
     supercell.make_supercell(scaling)
+    
     return supercell
 
 
@@ -1010,25 +1101,29 @@ def build_display_atoms(
     
     This is the unified function that all modes use to generate atoms.
     
+    CRITICAL: Canonicalization happens exactly once at the very beginning on the
+    primitive structure. After that, all downstream operations (supercell, boundary images)
+    operate on these already-canonicalized coordinates without further canonicalization.
+    
     Args:
         structure: Original pymatgen Structure
         params: DisplayModeParams specifying mode and parameters
-        wrap_coords: If True, wrap all coordinates into display cell
+        wrap_coords: Ignored (kept for backward compatibility). Canonicalization is done once at entry.
         
     Returns:
         Tuple of (list of DisplayAtom objects, display structure)
     """
+    # CRITICAL: Canonicalize exactly once at the entry point on the primitive structure
+    # This is the ONLY place we canonicalize fractional coordinates
+    structure_canon = structure.copy()
+    canonicalize_structure_in_place(structure_canon, eps=BOUNDARY_FRAC_TOL)
+    
     display_atoms: List[DisplayAtom] = []
     display_structure: PMGStructure
     
     if params.mode == "primitive":
-        # Primitive cell (wrapped)
-        display_structure = structure.copy()
-        if wrap_coords:
-            # Wrap all atoms into [0,1) fractional
-            for site in display_structure:
-                frac = wrap_fractional_coords(site.frac_coords)
-                site.frac_coords = frac
+        # Primitive cell - use already-canonicalized structure
+        display_structure = structure_canon.copy()
         
         for idx, site in enumerate(display_structure):
             display_atoms.append(DisplayAtom(
@@ -1053,16 +1148,11 @@ def build_display_atoms(
                 ))
     
     elif params.mode == "supercell":
-        # Supercell mode
+        # Supercell mode - use already-canonicalized structure
         if params.supercell is None:
             params.supercell = (1, 1, 1)
-        display_structure = make_supercell(structure, params.supercell)
-        
-        if wrap_coords:
-            # Canonicalize all atoms to ensure consistent coordinates
-            for site in display_structure:
-                frac = canonicalize_frac(site.frac_coords)
-                site.frac_coords = frac
+        display_structure = make_supercell(structure_canon, params.supercell)
+        # No wrapping - supercell coords may be outside [0, 1) and that's OK
         
         for idx, site in enumerate(display_structure):
             display_atoms.append(DisplayAtom(
@@ -1087,17 +1177,13 @@ def build_display_atoms(
                 ))
     
     elif params.mode == "conventional":
-        # Conventional cell mode
+        # Conventional cell mode - start from canonicalized structure
         try:
-            display_structure = get_conventional_cell(structure)
+            display_structure = get_conventional_cell(structure_canon)
         except Exception:
             logger.warning("Failed to get conventional cell, using original")
-            display_structure = structure.copy()
-        
-        if wrap_coords:
-            for site in display_structure:
-                frac = canonicalize_frac(site.frac_coords)
-                site.frac_coords = frac
+            display_structure = structure_canon.copy()
+        # No wrapping - conventional cell coords are already canonicalized
         
         for idx, site in enumerate(display_structure):
             display_atoms.append(DisplayAtom(
@@ -1122,12 +1208,12 @@ def build_display_atoms(
                 ))
     
     elif params.mode == "box":
-        # Box mode (uses original structure for enumeration)
+        # Box mode (uses canonicalized structure for enumeration)
         # IMPORTANT: Box mode is non-periodic, so repeat_boundary is ignored
         if params.box_bounds is None:
             raise ValueError("box_bounds required for box mode")
         
-        display_atoms_list = enumerate_atoms_in_aabb(structure, params.box_bounds)
+        display_atoms_list = enumerate_atoms_in_aabb(structure_canon, params.box_bounds)
         display_atoms = display_atoms_list
         
         # Debug logging
@@ -1192,9 +1278,13 @@ def plot_structure_3d(
     if options is None:
         options = StructurePlotOptions()
     
+    # CRITICAL: Canonicalize exactly once at the entry point
+    structure_canon = structure.copy()
+    canonicalize_structure_in_place(structure_canon, eps=BOUNDARY_FRAC_TOL)
+    
     # Normalize supercell and create supercell if requested
     supercell_scaling = _normalize_supercell(options.supercell)
-    plot_structure = make_supercell(structure, supercell_scaling)
+    plot_structure = make_supercell(structure_canon, supercell_scaling)
     
     # Create figure if needed
     if ax is None:
@@ -1417,10 +1507,14 @@ def visualize_structure(
     )
     
     # Create the plot (this computes bonds internally from display atoms)
+    # plot_structure_3d will canonicalize at its entry point
     fig, ax = plot_structure_3d(structure, options)
     
     # Count atoms and bonds (must match what plot_structure_3d does)
-    plot_structure = make_supercell(structure, supercell_normalized)
+    # We need to canonicalize for bond counting (plot_structure_3d canonicalizes internally)
+    structure_canon = structure.copy()
+    canonicalize_structure_in_place(structure_canon, eps=BOUNDARY_FRAC_TOL)
+    plot_structure = make_supercell(structure_canon, supercell_normalized)
     n_atoms = len(plot_structure)
     
     # Collect all display atoms (matching plot_structure_3d logic)

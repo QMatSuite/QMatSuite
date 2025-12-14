@@ -173,6 +173,46 @@ class TestGetStructureVisData:
         # 2x2x2 supercell should have 8x the atoms
         assert vis_2x2x2["n_atoms"] == vis_1x1x1["n_atoms"] * 8
     
+    def test_boundary_repeat_adds_image_atoms(self, tmp_path, sample_structure_file):
+        """Test that boundary repeat generates image atoms for primitive cell."""
+        project_root = QVService.init_project(tmp_path / "test_project")
+        QVService.import_structure(project_root, sample_structure_file, name="si")
+        
+        vis_plain = QVService.get_structure_vis_data(
+            project_root, "si", 
+            supercell=(1, 1, 1), 
+            repeat_boundary=False,
+            display_mode="primitive"
+        )
+        vis_repeat = QVService.get_structure_vis_data(
+            project_root, "si", 
+            supercell=(1, 1, 1), 
+            repeat_boundary=True,
+            display_mode="primitive"
+        )
+        
+        # Base atom count should be unchanged
+        assert vis_plain["n_atoms"] == vis_repeat["n_atoms"], "Base atom count should not change with boundary repeat"
+        
+        # Boundary repeat should add image atoms
+        assert vis_plain.get("n_boundary_atoms", 0) == 0, "No boundary atoms when repeat_boundary=False"
+        assert vis_repeat.get("n_boundary_atoms", 0) > 0, (
+            f"Boundary repeat should add image atoms. Got n_boundary_atoms={vis_repeat.get('n_boundary_atoms', 0)}"
+        )
+        
+        # Check that boundary_atoms array is populated
+        assert "boundary_atoms" in vis_repeat, "Response should include boundary_atoms field"
+        assert len(vis_repeat["boundary_atoms"]) > 0, "boundary_atoms array should be non-empty"
+        
+        # Verify boundary atoms have different positions than base atoms
+        base_positions = {tuple(atom["cart_coords"]) for atom in vis_repeat["atoms"]}
+        boundary_positions = {tuple(atom["cart_coords"]) for atom in vis_repeat["boundary_atoms"]}
+        
+        # Boundary atoms should have different positions (they're in neighboring cells)
+        assert len(base_positions.intersection(boundary_positions)) == 0, (
+            "Boundary atoms should have different Cartesian positions than base atoms"
+        )
+    
     def test_not_found_raises_error(self, tmp_path):
         """Test that missing structure raises error."""
         project_root = QVService.init_project(tmp_path / "test_project")
