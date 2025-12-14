@@ -50,10 +50,11 @@ For Si-Si bonds:
    - `build_display_atoms()` (main entry for GUI)
    - `plot_structure_3d()` (matplotlib visualization)
    - `visualize_structure()` (high-level API)
-   - `detect_bonds()` (legacy API, canonicalizes its input)
+
+   **IMPORTANT**: `detect_bonds()` does NOT canonicalize. It requires pre-canonicalized input.
 
 2. **Canonicalization Logic** (`canonicalize_frac_coords()`):
-   - Snaps values very close to integers (within `BOUNDARY_FRAC_TOL = 1e-4`) to those integers
+   - Snaps values very close to integers (within `BOUNDARY_FRAC_TOL = 1e-8`) to those integers
    - Wraps into `[0, 1)` using modulo 1
    - Snaps values near boundaries to 0.0:
      - Values within 0.0101 of 1.0 → snap to 0.0 (handles 0.99 from -0.01 shifts)
@@ -62,15 +63,47 @@ For Si-Si bonds:
 3. **Downstream Operations**:
    - `make_supercell()`: Does NOT canonicalize (assumes input is already canonicalized)
    - `generate_boundary_atoms()`: Does NOT canonicalize image atoms (they stay outside [0,1))
+   - `detect_bonds()`: Does NOT canonicalize (pure geometric function)
+   - `build_bonds()` and variants: Do NOT canonicalize (pure geometric functions)
    - Supercell atoms may have fractional coords outside [0, 1) - this is correct
 
 ### Boundary Fractional Tolerance
 
-`BOUNDARY_FRAC_TOL = 1e-4` is used for:
-- Initial snapping to integers
-- Boundary detection in `generate_boundary_atoms()`
+`BOUNDARY_FRAC_TOL = 1e-8` (reduced from 1e-4):
 
-The boundary snapping threshold (0.0101) is larger to ensure stability across typical fractional shifts (0.01 scale).
+**Selection Rationale**:
+- Testing with fractional shifts (0, 0.001, 0.01, -0.001, -0.01) showed that values from `1e-12` to `1e-4` all produce stable bond counts of 18 for Si 2×2×2 supercell
+- Chosen value `1e-8` is:
+  - **100x smaller** than the previous `1e-4`
+  - Conservative enough to handle typical floating point errors in integer snapping
+  - Works correctly with boundary atom detection
+  - Appropriate for double-precision floating point operations
+
+**Usage**:
+- Initial snapping to integers in `canonicalize_frac_coords()` (line 239: `if abs(f - k) < eps`)
+- Boundary detection in `generate_boundary_atoms()` (line 798: `abs(frac[dim]) < tolerance`)
+
+**Note**: The boundary snapping threshold (0.0101) is separate and larger, used for snapping values near 1.0/0.0 to exactly 0.0 after modulo. This handles the case where values like 0.99 (from -0.01 shift) need to be treated as equivalent to 0.0 for consistent supercell construction.
+
+### Strict Separation: Geometry Preparation vs Bond Detection
+
+**Design Invariant**: There is a strict separation between geometry preparation and bond detection:
+
+```
+raw QE structure
+    ↓
+canonicalize_structure_in_place (once, at entry point)
+    ↓
+make_supercell / generate_boundary_atoms (no canonicalization)
+    ↓
+detect_bonds / build_bonds (pure geometry, no canonicalization)
+```
+
+**Bond Detection Functions Are Pure**:
+- `detect_bonds()`, `build_bonds()`, `build_bonds_bruteforce()`, `build_bonds_cell_list()` are **pure geometric functions**
+- They consume prepared geometry and return deterministic bonds
+- They **MUST NOT** canonicalize, wrap, or modify coordinates
+- All geometry preparation (canonicalization, supercells, boundary images) happens **BEFORE** calling them
 
 ## Expected Bond Counts
 

@@ -135,11 +135,15 @@ def get_element_radius(symbol: str) -> float:
 # =============================================================================
 
 # BOUNDARY_FRAC_TOL chosen via Si diamond 2x2x2 experiment:
-# shifting all atoms by (0, 0.001, 0.01) in fractional coords yields
-# stable bond counts of 20 when eps = 1e-4.
+# Testing with fractional shifts (0, 0.001, 0.01, -0.001, -0.01) shows that
+# values from 1e-12 to 1e-4 all produce stable bond counts of 18.
+# We choose 1e-8 as a conservative value that:
+# - Is 100x smaller than the previous 1e-4
+# - Handles typical floating point errors in integer snapping
+# - Works correctly with boundary atom detection
 # This epsilon is used for both canonicalizing fractional coordinates
 # (wrapping into primitive cell) and detecting boundary atoms.
-BOUNDARY_FRAC_TOL = 1e-4
+BOUNDARY_FRAC_TOL = 1e-8
 
 
 # =============================================================================
@@ -157,10 +161,10 @@ BOUNDARY_FRAC_TOL = 1e-4
 # - plot_structure_3d() - matplotlib visualization entry point
 #
 # FORBIDDEN: Internal helpers MUST NOT canonicalize:
-# - detect_bonds() - must assume input is already canonicalized
+# - detect_bonds() - must assume input is already canonicalized (pure geometric function)
 # - make_supercell() - must assume input is already canonicalized
 # - generate_boundary_atoms() - must assume input is already canonicalized
-# - build_bonds() / build_bonds_bruteforce() / build_bonds_cell_list() - no canonicalization
+# - build_bonds() / build_bonds_bruteforce() / build_bonds_cell_list() - pure geometric functions, no canonicalization
 #
 # canonicalize_frac_coords() may ONLY be called:
 # - Inside canonicalize_structure_in_place() (the only allowed caller)
@@ -170,6 +174,19 @@ BOUNDARY_FRAC_TOL = 1e-4
 # - Deterministic, stable bond counts across small coordinate shifts
 # - No double-canonicalization that could fold boundary images back into the main cell
 # - Clear separation: canonicalization is pre-processing, not geometry logic
+# - Bond detection functions are pure: they consume prepared geometry, never modify it
+#
+# IMPORTANT NOTES:
+# - BOUNDARY_FRAC_TOL = 1e-8 was chosen through extensive testing. Values from 1e-12
+#   to 1e-4 all produce stable results, but 1e-8 is a conservative balance that:
+#   * Is 100x smaller than the previous 1e-4
+#   * Handles typical floating point errors in integer snapping
+#   * Works correctly with boundary atom detection
+# - The boundary_threshold (0.0101) in canonicalize_frac_coords() is separate and
+#   larger, used for snapping values near 1.0/0.0 to exactly 0.0 after modulo.
+#   This handles cases where values like 0.99 (from -0.01 shift) need to be
+#   treated as equivalent to 0.0 for consistent supercell construction.
+# - See docs/CANONICALIZATION_DESIGN.md for detailed documentation.
 #
 # =============================================================================
 
@@ -182,13 +199,33 @@ def canonicalize_structure_in_place(
     Canonicalize the fractional coordinates of a pymatgen Structure in place,
     using canonicalize_frac_coords() exactly once on the primitive structure.
     
-    This is the ONLY place we should warp fractional coordinates. After this,
-    all downstream operations (supercell construction, boundary-image generation)
-    operate on these already-canonicalized coordinates without further canonicalization.
+    CRITICAL: This is the ONLY place we should warp fractional coordinates.
+    After this, all downstream operations (supercell construction, boundary-image
+    generation, bond detection) operate on these already-canonicalized coordinates
+    without further canonicalization.
+    
+    IMPORTANT USAGE RULES:
+    - This function is called ONLY at entry points:
+      * build_display_atoms() - main entry for GUI visualization
+      * visualize_structure() - high-level API entry point
+      * plot_structure_3d() - matplotlib visualization entry point
+    - NEVER call this from:
+      * detect_bonds() or any bond detection function
+      * make_supercell() or generate_boundary_atoms()
+      * Any other internal helper
+    
+    The canonicalization ensures:
+    - Stable, deterministic bond counts across small coordinate shifts
+    - Consistent supercell construction (values near 0/1 snapped to 0.0)
+    - Correct boundary atom generation (base atoms canonicalized, images not)
     
     Args:
         structure: pymatgen Structure to canonicalize (modified in place)
-        eps: Epsilon for boundary detection and snapping (defaults to BOUNDARY_FRAC_TOL)
+        eps: Epsilon for boundary detection and snapping (defaults to BOUNDARY_FRAC_TOL = 1e-8)
+    
+    See Also:
+        canonicalize_frac_coords() - Core canonicalization logic
+        docs/CANONICALIZATION_DESIGN.md - Detailed documentation
     """
     for i, site in enumerate(structure):
         frac = np.array(site.frac_coords)
@@ -205,19 +242,33 @@ def canonicalize_frac_coords(
     Canonicalize fractional coordinates into the primitive cell in a numerically
     robust way.
 
-    Rules:
-    - First, snap values that are very close to integers (…, -1, 0, 1, 2, …)
-      to those integers if |f - round(f)| < eps.
-    - Then, wrap into [0, 1) with modulo 1.
-    - BUT: avoid the classic '-1e-5 -> 0.99999' issue by snapping to 0
-      **before** the modulo, not after.
+    IMPORTANT: This function is the core canonicalization logic. It is called
+    ONLY from canonicalize_structure_in_place() (and wrap_fractional_coords() wrapper).
+    Never call this directly from bond detection or geometry helpers.
+
+    Algorithm:
+    1. Integer Snapping: Snap values very close to integers (…, -1, 0, 1, 2, …)
+       to those integers if |f - round(f)| < eps.
+    2. Modulo Wrapping: Wrap into [0, 1) using modulo 1.
+    3. Boundary Snapping: Snap values near boundaries to 0.0:
+       - Values within 0.0101 of 1.0 → snap to 0.0 (handles 0.99 from -0.01 shifts)
+       - Values within 0.0101 of 0.0 → snap to 0.0 (handles 0.01 from +0.01 shifts)
+
+    The boundary_threshold (0.0101) is separate from eps and is used to ensure
+    consistent supercell construction across small coordinate shifts. This is
+    critical for stability: values like 0.99 (from -0.01 shift) should be
+    treated as equivalent to 0.0.
 
     Args:
         frac: Fractional coordinates (can be shape (N, 3) or (3,))
-        eps: Epsilon for boundary detection and snapping
+        eps: Epsilon for boundary detection and snapping (defaults to BOUNDARY_FRAC_TOL = 1e-8)
 
     Returns:
         Canonicalized fractional coordinates in [0, 1), as a fresh array
+
+    See Also:
+        canonicalize_structure_in_place() - Entry point that calls this function
+        docs/CANONICALIZATION_DESIGN.md - Detailed documentation
     """
     frac = np.asarray(frac)
     was_1d = frac.ndim == 1

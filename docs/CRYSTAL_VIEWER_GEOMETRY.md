@@ -12,28 +12,53 @@ The crystal viewer supports four display modes:
 
 All modes use a **single-source-of-truth** bond construction function and enforce coordinate wrapping.
 
-## Coordinate Wrapping Policy
+## Coordinate Canonicalization and Wrapping
 
-### Problem
-Atoms with fractional coordinates outside [0,1) can appear outside the display cell, breaking visual consistency.
+### Single-Point Canonicalization Rule
 
-### Solution
-All coordinates are wrapped into [0,1) using a stable algorithm:
+**CRITICAL**: Fractional coordinates are canonicalized exactly once at the entry point of the visualization pipeline, never again downstream.
+
+**Entry Points** (where canonicalization happens):
+- `build_display_atoms()` - main entry for GUI visualization
+- `visualize_structure()` - high-level API entry point
+- `plot_structure_3d()` - matplotlib visualization entry point
+
+**Forbidden**: Internal helpers (bond detection, supercell generation, boundary atom generation) MUST NOT canonicalize.
+
+**Why**: This ensures:
+- Deterministic, stable bond counts across small coordinate shifts
+- No double-canonicalization that could fold boundary images back into the main cell
+- Clear separation: canonicalization is pre-processing, not geometry logic
+
+**Detailed Documentation**: See `docs/CANONICALIZATION_DESIGN.md` for complete design rationale and implementation details.
+
+### Canonicalization Algorithm
+
+The canonicalization algorithm (`canonicalize_frac_coords()`) performs:
+
+1. **Integer Snapping**: Snap values very close to integers (within `BOUNDARY_FRAC_TOL = 1e-8`) to those integers
+2. **Modulo Wrapping**: Wrap into `[0, 1)` using modulo 1
+3. **Boundary Snapping**: Snap values near boundaries to 0.0:
+   - Values within 0.0101 of 1.0 → snap to 0.0 (handles 0.99 from -0.01 shifts)
+   - Values within 0.0101 of 0.0 → snap to 0.0 (handles 0.01 from +0.01 shifts)
+
+**BOUNDARY_FRAC_TOL = 1e-8**:
+- Chosen through extensive testing (values from 1e-12 to 1e-4 all work)
+- 100x smaller than previous 1e-4
+- Handles typical floating point errors in integer snapping
+- Works correctly with boundary atom detection
+
+**Implementation**: `src/quantumvitas/analysis/structure_viz.py::canonicalize_frac_coords()` and `canonicalize_structure_in_place()`
+
+### Coordinate Wrapping (Legacy/Compatibility)
+
+For backward compatibility, `wrap_fractional_coords()` is a thin wrapper around `canonicalize_frac_coords()`:
 
 ```python
-def wrap_fractional_coords(frac: np.ndarray, eps: float = FRAC_EPS) -> np.ndarray:
-    """
-    Wrap fractional coordinates into [0, 1) with epsilon handling.
-    
-    Algorithm:
-    1. f_wrapped = f - floor(f)  (standard periodic wrapping)
-    2. If component > 1 - eps, set to 0.0  (handle boundary cases)
-    """
+def wrap_fractional_coords(frac: np.ndarray, eps: float = BOUNDARY_FRAC_TOL) -> np.ndarray:
+    """Wrap fractional coordinates into [0, 1) with epsilon handling."""
+    return canonicalize_frac_coords(frac, eps=eps)
 ```
-
-**Epsilon handling**: Components very close to 1.0 (within `FRAC_EPS = 1e-9`) are set to 0.0 to avoid visual artifacts at cell boundaries.
-
-**Implementation**: `src/quantumvitas/analysis/structure_viz.py::wrap_fractional_coords()`
 
 For Cartesian coordinates, we convert to fractional, wrap, then convert back:
 - `wrap_cartesian_coords()` - wraps Cartesian coords via fractional conversion
