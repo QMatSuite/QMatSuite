@@ -134,40 +134,77 @@ def get_element_radius(symbol: str) -> float:
 # Wrapping and coordinate utilities
 # =============================================================================
 
-# Epsilon for boundary handling in fractional coordinates
+# Constants for fractional coordinate canonicalization
+# This epsilon is ONLY for fractional coordinate snapping, NOT for bond detection
+FRAC_SNAP_EPS = 1e-8  # Epsilon for snapping fractional coordinates near boundaries
+
+# Epsilon for boundary handling in fractional coordinates (legacy, use FRAC_SNAP_EPS)
 FRAC_EPS = 1e-9
 
 
-def wrap_fractional_coords(frac: np.ndarray, eps: float = FRAC_EPS) -> np.ndarray:
+def canonicalize_frac(frac: np.ndarray, eps: float = FRAC_SNAP_EPS) -> np.ndarray:
     """
-    Wrap fractional coordinates into [0, 1) with epsilon handling.
+    Canonicalize fractional coordinates by snapping tiny values to 0.
     
-    For a fractional coordinate f:
-    - f_wrapped = f - floor(f)
-    - If component is ~1.0 ( > 1 - eps ), set to 0.0
+    This prevents platform-dependent wrapping artifacts where -1e-7 becomes ~1.0
+    instead of 0.0. This is the single source of truth for fractional coordinate
+    canonicalization.
+    
+    Algorithm:
+    1. Snap very small values to 0
+    2. Snap values very close to 1 to 0 (before wrapping)
+    3. Wrap into [0, 1)
+    4. Snap near-1 and near-0 again after wrapping
     
     Args:
         frac: Fractional coordinates (can be 1D or 2D array)
-        eps: Epsilon for boundary detection
+        eps: Epsilon for snapping (default FRAC_SNAP_EPS)
         
     Returns:
-        Wrapped fractional coordinates in [0, 1)
+        Canonicalized fractional coordinates in [0, 1)
     """
-    frac = np.asarray(frac)
+    frac = np.asarray(frac, dtype=float, copy=True)
     was_1d = frac.ndim == 1
     if was_1d:
         frac = frac.reshape(1, -1)
     
-    # Wrap: f - floor(f)
-    wrapped = frac - np.floor(frac)
+    # Snap very small absolute values to 0 (catches both positive and negative tiny values)
+    # Use slightly larger threshold to catch values like -1e-7 that would wrap to ~1.0
+    snap_eps = max(eps, 1e-7)  # Ensure we catch at least -1e-7
+    frac[np.abs(frac) <= snap_eps] = 0.0
+    # Snap values very close to 1 to 0 (before wrapping)
+    frac[np.abs(frac - 1.0) <= snap_eps] = 0.0
     
-    # Handle components near 1.0: set to 0.0
-    wrapped[wrapped > 1.0 - eps] = 0.0
+    # Wrap remaining values into [0, 1)
+    frac = frac - np.floor(frac)
+    
+    # After wrap, snap near-1 again (catches values that wrapped to ~1.0, like -1e-7 -> 0.9999999)
+    # Use same threshold to catch wrapped values
+    frac[np.abs(frac - 1.0) <= snap_eps] = 0.0
+    # And snap near-0 again (catches any remaining tiny values)
+    frac[np.abs(frac) <= snap_eps] = 0.0
     
     if was_1d:
-        wrapped = wrapped.reshape(-1)
+        frac = frac.reshape(-1)
     
-    return wrapped
+    return frac
+
+
+def wrap_fractional_coords(frac: np.ndarray, eps: float = FRAC_SNAP_EPS) -> np.ndarray:
+    """
+    Wrap fractional coordinates into [0, 1) range using canonicalization.
+    
+    This function uses canonicalize_frac to ensure consistent behavior
+    across platforms.
+    
+    Args:
+        frac: Fractional coordinates (can be 1D or 2D array)
+        eps: Epsilon for snapping (default FRAC_SNAP_EPS)
+        
+    Returns:
+        Wrapped and canonicalized fractional coordinates in [0, 1)
+    """
+    return canonicalize_frac(frac, eps)
 
 
 def wrap_cartesian_coords(
@@ -251,9 +288,6 @@ class Bond:
     distance: float
 
 
-# Constants for deterministic bond detection
-# Use squared distances to avoid sqrt() precision differences across platforms
-BOND_DIST_EPS = 1e-8  # Fixed epsilon for squared-distance comparisons (Å²)
 # For cell-list algorithm
 CELL_LIST_EPS = 1e-6  # Epsilon for r_cut safety margin
 
@@ -270,12 +304,10 @@ def build_bonds_bruteforce(
     """
     Gold standard brute-force O(N²) bond detection.
     
-    This is the reference implementation that produces exact, deterministic results.
+    This is the reference implementation that produces exact results.
     Used for testing and validation of accelerated algorithms.
     
-    Uses squared-distance comparisons with fixed epsilon for platform-independent determinism.
-    
-    Bond criterion: dist² <= (min(max_cutoff, (r_i + r_j) * max_factor + tolerance) + EPS)²
+    Bond criterion: distance <= min(max_cutoff, (r_i + r_j) * max_factor + tolerance)
     
     Args:
         atoms_cart: Array of shape (N, 3) with Cartesian coordinates (display atoms)
@@ -299,7 +331,7 @@ def build_bonds_bruteforce(
     
     bonds: List[Bond] = []
     
-    # Brute-force O(N²) distance check using squared distances for determinism
+    # Brute-force O(N²) distance check
     for i in range(n_atoms):
         coord_i = atoms_cart[i]
         elem_i = species[i]
@@ -310,19 +342,14 @@ def build_bonds_bruteforce(
             elem_j = species[j]
             radius_j = radii_map.get(elem_j, 1.0)
             
-            # Compute squared distance (avoids sqrt() precision differences)
-            delta = coord_j - coord_i
-            dist_sq = np.dot(delta, delta)
+            # Euclidean distance
+            dist = np.linalg.norm(coord_j - coord_i)
             
-            # Bond criterion: dist² <= (cutoff + EPS)²
-            # This ensures deterministic behavior across platforms
+            # Bond criterion: distance <= min(max_cutoff, (r_i + r_j) * max_factor + tolerance)
             max_bond_dist = (radius_i + radius_j) * max_factor + tolerance
             cutoff = min(max_cutoff, max_bond_dist)
-            cutoff_sq = (cutoff + BOND_DIST_EPS) ** 2
             
-            if dist_sq <= cutoff_sq:
-                # Compute actual distance for Bond object (only when bond is accepted)
-                dist = np.sqrt(dist_sq)
+            if dist <= cutoff:
                 bonds.append(Bond(
                     idx1=i,
                     idx2=j,
@@ -349,17 +376,14 @@ def build_bonds_cell_list(
     Produces identical results to brute-force but with O(N) average case complexity
     for sparse systems. Guaranteed to match brute-force results exactly.
     
-    Uses squared-distance comparisons with fixed epsilon for platform-independent determinism.
-    
     Algorithm:
     1. Compute safe global cutoff: r_cut = max(max_cutoff, (2*max_radius)*max_factor + tolerance) + eps
     2. Use cell_size = r_cut (ensures only 27 neighbor cells needed)
     3. Build grid keyed by integer cell indices
     4. For each atom, only check neighbors in same cell + 26 adjacent cells
     5. Use i<j discipline to avoid duplicates
-    6. Use squared-distance comparison: dist² <= (cutoff + EPS)²
     
-    Bond criterion: dist² <= (min(max_cutoff, (r_i + r_j) * max_factor + tolerance) + EPS)²
+    Bond criterion: distance <= min(max_cutoff, (r_i + r_j) * max_factor + tolerance)
     
     Args:
         atoms_cart: Array of shape (N, 3) with Cartesian coordinates (display atoms)
@@ -440,19 +464,14 @@ def build_bonds_cell_list(
                             elem_j = species[j]
                             radius_j = radii_map.get(elem_j, 1.0)
                             
-                            # Compute squared distance (avoids sqrt() precision differences)
-                            delta = coord_j - coord_i
-                            dist_sq = np.dot(delta, delta)
+                            # Euclidean distance
+                            dist = np.linalg.norm(coord_j - coord_i)
                             
-                            # Bond criterion: dist² <= (cutoff + EPS)²
-                            # This ensures deterministic behavior matching brute-force
+                            # Bond criterion: distance <= min(max_cutoff, (r_i + r_j) * max_factor + tolerance)
                             max_bond_dist = (radius_i + radius_j) * max_factor + tolerance
                             cutoff = min(max_cutoff, max_bond_dist)
-                            cutoff_sq = (cutoff + BOND_DIST_EPS) ** 2
                             
-                            if dist_sq <= cutoff_sq:
-                                # Compute actual distance for Bond object (only when bond is accepted)
-                                dist = np.sqrt(dist_sq)
+                            if dist <= cutoff:
                                 bonds.append(Bond(
                                     idx1=i,
                                     idx2=j,
@@ -622,7 +641,7 @@ class BoundaryAtom:
 
 def generate_boundary_atoms(
     structure: PMGStructure,
-    tolerance: float = 1e-6,
+    tolerance: float = FRAC_SNAP_EPS,
 ) -> List[BoundaryAtom]:
     """
     Generate periodic images of atoms that lie on cell boundaries.
@@ -642,10 +661,11 @@ def generate_boundary_atoms(
     lattice = structure.lattice
     
     for idx, site in enumerate(structure):
-        frac = np.array(site.frac_coords)
+        # Canonicalize fractional coordinates first to ensure consistent behavior
+        frac = canonicalize_frac(np.array(site.frac_coords), eps=tolerance)
         symbol = site.specie.symbol
         
-        # Check each dimension for boundary proximity
+        # Check each dimension for boundary proximity (using canonicalized coords)
         on_boundary = [
             abs(frac[dim]) < tolerance or abs(frac[dim] - 1.0) < tolerance
             for dim in range(3)
@@ -996,9 +1016,9 @@ def build_display_atoms(
         display_structure = make_supercell(structure, params.supercell)
         
         if wrap_coords:
-            # Wrap all atoms
+            # Canonicalize all atoms to ensure consistent coordinates
             for site in display_structure:
-                frac = wrap_fractional_coords(site.frac_coords)
+                frac = canonicalize_frac(site.frac_coords)
                 site.frac_coords = frac
         
         for idx, site in enumerate(display_structure):
@@ -1033,7 +1053,7 @@ def build_display_atoms(
         
         if wrap_coords:
             for site in display_structure:
-                frac = wrap_fractional_coords(site.frac_coords)
+                frac = canonicalize_frac(site.frac_coords)
                 site.frac_coords = frac
         
         for idx, site in enumerate(display_structure):
