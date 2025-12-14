@@ -22,9 +22,11 @@ matplotlib.use("Agg")  # Headless-safe backend
 import numpy as np
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Set, Union
+from typing import Any, Dict, List, Optional, Tuple, Set, Union
 from itertools import product
 import logging
+import os
+from collections import defaultdict
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -249,6 +251,203 @@ class Bond:
     distance: float
 
 
+# Constants for cell-list algorithm
+CELL_LIST_EPS = 1e-6  # Epsilon for r_cut safety margin
+CELL_LIST_DIST_EPS = 1e-9  # Epsilon for distance comparison to avoid float boundary misses
+
+
+def build_bonds_bruteforce(
+    atoms_cart: np.ndarray,
+    species: List[str],
+    radii_map: Dict[str, float],
+    *,
+    max_factor: float = 1.2,
+    tolerance: float = 0.3,
+    max_cutoff: float = 3.5,
+) -> List[Bond]:
+    """
+    Gold standard brute-force O(N²) bond detection.
+    
+    This is the reference implementation that produces exact results.
+    Used for testing and validation of accelerated algorithms.
+    
+    Bond criterion: distance <= min(max_cutoff, (r_i + r_j) * max_factor + tolerance)
+    
+    Args:
+        atoms_cart: Array of shape (N, 3) with Cartesian coordinates (display atoms)
+        species: List of N element symbols (matching display atoms)
+        radii_map: Dictionary mapping element symbols to radii
+        max_factor: Multiplier for sum of radii (default 1.2)
+        tolerance: Extra tolerance in Å (default 0.3)
+        max_cutoff: Maximum distance to consider in Å (default 3.5)
+        
+    Returns:
+        List of Bond objects with idx1 < idx2 (no duplicates, deterministic order)
+    """
+    atoms_cart = np.asarray(atoms_cart)
+    n_atoms = len(atoms_cart)
+    
+    if n_atoms == 0:
+        return []
+    
+    if len(species) != n_atoms:
+        raise ValueError(f"species list length ({len(species)}) must match atoms_cart length ({n_atoms})")
+    
+    bonds: List[Bond] = []
+    
+    # Brute-force O(N²) distance check
+    for i in range(n_atoms):
+        coord_i = atoms_cart[i]
+        elem_i = species[i]
+        radius_i = radii_map.get(elem_i, 1.0)
+        
+        for j in range(i + 1, n_atoms):  # j > i ensures no duplicates
+            coord_j = atoms_cart[j]
+            elem_j = species[j]
+            radius_j = radii_map.get(elem_j, 1.0)
+            
+            # Euclidean distance
+            dist = np.linalg.norm(coord_j - coord_i)
+            
+            # Bond criterion: distance <= min(max_cutoff, (r_i + r_j) * max_factor + tolerance)
+            max_bond_dist = (radius_i + radius_j) * max_factor + tolerance
+            threshold = min(max_cutoff, max_bond_dist)
+            
+            if dist <= threshold:
+                bonds.append(Bond(
+                    idx1=i,
+                    idx2=j,
+                    coord1=coord_i.copy(),
+                    coord2=coord_j.copy(),
+                    distance=float(dist),
+                ))
+    
+    return bonds
+
+
+def build_bonds_cell_list(
+    atoms_cart: np.ndarray,
+    species: List[str],
+    radii_map: Dict[str, float],
+    *,
+    max_factor: float = 1.2,
+    tolerance: float = 0.3,
+    max_cutoff: float = 3.5,
+) -> List[Bond]:
+    """
+    Accelerated cell-list (neighbor-grid) bond detection.
+    
+    Produces identical results to brute-force but with O(N) average case complexity
+    for sparse systems. Guaranteed to match brute-force results exactly.
+    
+    Algorithm:
+    1. Compute safe global cutoff: r_cut = max_cutoff + eps
+    2. Use cell_size = r_cut (ensures only 27 neighbor cells needed)
+    3. Build grid keyed by integer cell indices
+    4. For each atom, only check neighbors in same cell + 26 adjacent cells
+    5. Use i<j discipline to avoid duplicates
+    
+    Bond criterion: distance <= min(max_cutoff, (r_i + r_j) * max_factor + tolerance)
+    
+    Args:
+        atoms_cart: Array of shape (N, 3) with Cartesian coordinates (display atoms)
+        species: List of N element symbols (matching display atoms)
+        radii_map: Dictionary mapping element symbols to radii
+        max_factor: Multiplier for sum of radii (default 1.2)
+        tolerance: Extra tolerance in Å (default 0.3)
+        max_cutoff: Maximum distance to consider in Å (default 3.5)
+        
+    Returns:
+        List of Bond objects with idx1 < idx2 (no duplicates, deterministic order)
+    """
+    atoms_cart = np.asarray(atoms_cart)
+    n_atoms = len(atoms_cart)
+    
+    if n_atoms == 0:
+        return []
+    
+    if len(species) != n_atoms:
+        raise ValueError(f"species list length ({len(species)}) must match atoms_cart length ({n_atoms})")
+    
+    # For very small systems, brute-force is faster
+    if n_atoms < 10:
+        return build_bonds_bruteforce(atoms_cart, species, radii_map, max_factor=max_factor, tolerance=tolerance, max_cutoff=max_cutoff)
+    
+    # Compute safe global cutoff: r_cut = max_cutoff + eps
+    # This ensures any possible bond has distance <= r_cut
+    r_cut = max_cutoff + CELL_LIST_EPS
+    cell_size = r_cut  # Critical: cell_size = r_cut ensures only 27 neighbor cells needed
+    
+    # Find bounding box to choose origin (avoid negative/float issues)
+    xmin, ymin, zmin = atoms_cart.min(axis=0)
+    xmax, ymax, zmax = atoms_cart.max(axis=0)
+    
+    # Handle edge case: all atoms at same position
+    if xmax - xmin < 1e-10 and ymax - ymin < 1e-10 and zmax - zmin < 1e-10:
+        # Fall back to brute-force for degenerate case
+        return build_bonds_bruteforce(atoms_cart, species, radii_map, max_factor=max_factor, tolerance=tolerance, max_cutoff=max_cutoff)
+    
+    # Build cell grid: map (ix, iy, iz) -> list of atom indices
+    cell_grid: Dict[Tuple[int, int, int], List[int]] = defaultdict(list)
+    
+    for i in range(n_atoms):
+        x, y, z = atoms_cart[i]
+        # Compute cell indices using floor (handles negative correctly)
+        ix = int(np.floor((x - xmin) / cell_size))
+        iy = int(np.floor((y - ymin) / cell_size))
+        iz = int(np.floor((z - zmin) / cell_size))
+        cell_grid[(ix, iy, iz)].append(i)
+    
+    bonds: List[Bond] = []
+    
+    # For each cell, check atoms with neighbors in same cell + 26 adjacent cells
+    # Use i<j discipline to avoid duplicates
+    for (ix, iy, iz), atoms_in_cell in cell_grid.items():
+        # Check all 27 cells: current cell + 26 neighbors (3×3×3 grid)
+        for dix in [-1, 0, 1]:
+            for diy in [-1, 0, 1]:
+                for diz in [-1, 0, 1]:
+                    neighbor_cell = (ix + dix, iy + diy, iz + diz)
+                    neighbor_atoms = cell_grid.get(neighbor_cell, [])
+                    
+                    # For each atom in current cell
+                    for i in atoms_in_cell:
+                        coord_i = atoms_cart[i]
+                        elem_i = species[i]
+                        radius_i = radii_map.get(elem_i, 1.0)
+                        
+                        # Check against atoms in neighbor cell
+                        # Use i<j to avoid duplicates (ensures each pair checked exactly once)
+                        for j in neighbor_atoms:
+                            if i >= j:  # Skip self and already-checked pairs
+                                continue
+                            
+                            coord_j = atoms_cart[j]
+                            elem_j = species[j]
+                            radius_j = radii_map.get(elem_j, 1.0)
+                            
+                            # Euclidean distance
+                            dist = np.linalg.norm(coord_j - coord_i)
+                            
+                            # Bond criterion with small epsilon for float boundary safety
+                            max_bond_dist = (radius_i + radius_j) * max_factor + tolerance
+                            threshold = min(max_cutoff, max_bond_dist) + CELL_LIST_DIST_EPS
+                            
+                            if dist <= threshold:
+                                bonds.append(Bond(
+                                    idx1=i,
+                                    idx2=j,
+                                    coord1=coord_i.copy(),
+                                    coord2=coord_j.copy(),
+                                    distance=float(dist),
+                                ))
+    
+    # Sort bonds to ensure deterministic ordering (by idx1, then idx2)
+    bonds.sort(key=lambda b: (b.idx1, b.idx2))
+    
+    return bonds
+
+
 def build_bonds(
     atoms_cart: np.ndarray,
     species: List[str],
@@ -257,225 +456,91 @@ def build_bonds(
     max_factor: float = 1.2,
     tolerance: float = 0.3,
     max_cutoff: float = 3.5,
-    neighbor_shell: Optional[int] = None,
-    lattice_matrix: Optional[np.ndarray] = None,
+    neighbor_shell: Optional[int] = None,  # Ignored, kept for compatibility
+    lattice_matrix: Optional[np.ndarray] = None,  # Ignored, kept for compatibility
+    use_bruteforce: bool = False,  # Debug option to force brute-force
 ) -> List[Bond]:
     """
     SINGLE SOURCE OF TRUTH for bond construction.
     
-    Builds bonds for any atom set in Cartesian coordinates using radii-based
-    distance threshold. Works for primitive, supercell, conventional, or box modes.
+    Default implementation uses accelerated cell-list algorithm.
+    Produces identical results to brute-force but with better performance for larger systems.
     
-    Bond criterion: distance < (r_i + r_j) * max_factor + tolerance
+    Bonds are computed directly from the display atom list (Cartesian coordinates).
+    This ensures bond indices match exactly with the atoms being rendered.
     
-    When lattice_matrix is provided, uses PBC-aware minimum-image convention
-    to find bonds across periodic boundaries. This is essential for supercells
-    where atoms at edges need to bond to neighbors in adjacent images.
-    
-    **PBC-aware bond detection**: When `lattice_matrix` is provided, bond distances
-    are computed using minimum-image convention (fractional wrapping to [-0.5, 0.5)).
-    This ensures correct connectivity in periodic structures. Invalid or near-singular
-    lattice matrices fall back to non-periodic detection with a warning.
-    
-    **Performance**: For non-periodic mode, uses KD-tree (O(N log N)). For PBC mode,
-    uses brute force with minimum-image (O(N²)) which is correct and fast enough
-    for typical structure sizes (N < 1000). Both modes use a precomputed global
-    cutoff to reduce candidate pairs.
+    Bond criterion: distance <= min(max_cutoff, (r_i + r_j) * max_factor + tolerance)
     
     Args:
-        atoms_cart: Array of shape (N, 3) with Cartesian coordinates
-        species: List of N element symbols
+        atoms_cart: Array of shape (N, 3) with Cartesian coordinates (display atoms)
+        species: List of N element symbols (matching display atoms)
         radii_map: Dictionary mapping element symbols to radii
         max_factor: Multiplier for sum of radii (default 1.2)
         tolerance: Extra tolerance in Å (default 0.3)
         max_cutoff: Maximum distance to consider in Å (default 3.5)
-        neighbor_shell: Optional number of neighbor shells to consider
-            (if None, uses distance-based cutoff)
-        lattice_matrix: Optional 3x3 lattice matrix for PBC-aware distance calculation.
-            Must be invertible and well-conditioned. If None or invalid, uses Euclidean
-            distance (non-periodic). Invalid matrices trigger a warning and fallback.
+        neighbor_shell: Ignored (kept for backward compatibility)
+        lattice_matrix: Ignored (kept for backward compatibility)
+        use_bruteforce: If True, use brute-force algorithm (for debugging/testing)
         
     Returns:
-        List of Bond objects with idx1 < idx2 (no duplicates)
-        
-    Note:
-        **Semantics**: This function handles bond detection. Boundary atom display
-        (boundary repeat) is separate and does not affect bond detection results.
+        List of Bond objects with idx1 < idx2 (no duplicates, deterministic order)
     """
-    atoms_cart = np.asarray(atoms_cart)
-    n_atoms = len(atoms_cart)
+    # Check for debug validation flag
+    debug_validate = os.environ.get('QV_DEBUG_BONDS_VALIDATE', '0') == '1'
     
-    if n_atoms == 0:
-        return []
-    
-    bonds: List[Bond] = []
-    seen_bonds: Set[Tuple[int, int]] = set()
-    
-    # Compute inverse lattice matrix if PBC is enabled
-    # Validate and handle invalid/near-singular matrices gracefully
-    A = None
-    A_inv = None
-    if lattice_matrix is not None:
-        A = np.asarray(lattice_matrix)
-        if A.shape != (3, 3):
-            logger.warning(
-                f"lattice_matrix must be 3x3, got shape {A.shape}. "
-                f"Falling back to non-periodic bond detection."
+    if use_bruteforce or debug_validate:
+        bonds_brute = build_bonds_bruteforce(
+            atoms_cart, species, radii_map,
+            max_factor=max_factor, tolerance=tolerance, max_cutoff=max_cutoff
+        )
+        
+        if debug_validate:
+            # Cross-check with cell-list
+            bonds_cell = build_bonds_cell_list(
+                atoms_cart, species, radii_map,
+                max_factor=max_factor, tolerance=tolerance, max_cutoff=max_cutoff
             )
-            A = None
-        else:
-            try:
-                # Check condition number to detect near-singular matrices
-                cond = np.linalg.cond(A)
-                if cond > 1e12:  # Very ill-conditioned
-                    logger.warning(
-                        f"lattice_matrix is near-singular (condition number {cond:.2e}). "
-                        f"Falling back to non-periodic bond detection."
-                    )
-                    A = None
-                else:
-                    A_inv = np.linalg.inv(A)
-            except np.linalg.LinAlgError:
-                logger.warning(
-                    "lattice_matrix is singular and cannot be inverted. "
-                    "Falling back to non-periodic bond detection."
+            
+            # Compare bond sets (by index pairs)
+            pairs_brute = set((b.idx1, b.idx2) for b in bonds_brute)
+            pairs_cell = set((b.idx1, b.idx2) for b in bonds_cell)
+            
+            if pairs_brute != pairs_cell:
+                missing_in_cell = pairs_brute - pairs_cell
+                extra_in_cell = pairs_cell - pairs_brute
+                error_msg = (
+                    f"Bond validation failed: cell-list does not match brute-force!\n"
+                    f"Missing in cell-list: {missing_in_cell}\n"
+                    f"Extra in cell-list: {extra_in_cell}\n"
+                    f"Brute-force bonds: {len(bonds_brute)}, Cell-list bonds: {len(bonds_cell)}"
                 )
-                A = None
-    
-    # Precompute global maximum cutoff for candidate filtering
-    # This helps reduce the number of pairs we need to check
-    max_radius = max(radii_map.values()) if radii_map else 1.0
-    global_max_cutoff = 2 * max_radius * max_factor + tolerance
-    global_max_cutoff = min(global_max_cutoff, max_cutoff)  # Cap at user-specified max
-    
-    # Build KD-tree for efficient neighbor search
-    # For PBC mode, we can still use KD-tree in Cartesian space for initial filtering,
-    # then apply minimum-image distance only to candidates
-    use_tree = True
-    tree = None
-    try:
-        from scipy.spatial import cKDTree
-        tree = cKDTree(atoms_cart)
-    except ImportError:
-        # Fallback to brute force if scipy not available
-        logger.warning("scipy not available, using brute-force bond detection")
-        use_tree = False
-    
-    for i in range(n_atoms):
-        coord_i = atoms_cart[i]
-        elem_i = species[i]
-        radius_i = radii_map.get(elem_i, 1.0)
-        
-        # Find neighbor candidates
-        neighbors = []
-        if use_tree and tree is not None:
-            # Use KD-tree for initial candidate search
-            # Query with global_max_cutoff to get all potential neighbors
-            # This reduces O(N²) to O(N log N) for candidate finding
-            if A_inv is None:
-                # Non-periodic: use KD-tree directly
-                distances, indices = tree.query(
-                    coord_i, 
-                    k=min(n_atoms, 50), 
-                    distance_upper_bound=global_max_cutoff
-                )
-                # Filter out self and invalid results
-                neighbors = [(idx, dist) for idx, dist in zip(indices, distances) 
-                            if idx < n_atoms and dist <= global_max_cutoff and idx != i]
-            else:
-                # PBC mode: For small structures, brute force is fast enough.
-                # For larger structures, we could use KD-tree with a conservative radius,
-                # but for correctness and simplicity, use brute force with minimum-image.
-                # The KD-tree optimization can miss neighbors that are close via PBC
-                # but far in Cartesian space.
-                for j in range(n_atoms):
-                    if j == i:
-                        continue
-                    # Compute minimum-image distance
-                    frac_i = A_inv @ coord_i
-                    frac_j = A_inv @ atoms_cart[j]
-                    delta_frac = frac_j - frac_i
-                    delta_frac = delta_frac - np.round(delta_frac)
-                    # Epsilon guard for numerical stability
-                    EPS_WRAP = 1e-10
-                    delta_frac = np.where(
-                        np.abs(np.abs(delta_frac) - 0.5) < EPS_WRAP,
-                        np.sign(delta_frac) * 0.5,
-                        delta_frac
+                logger.error(error_msg)
+                raise AssertionError(error_msg)
+            
+            # Also check distances match (within tolerance)
+            dist_map_brute = {(b.idx1, b.idx2): b.distance for b in bonds_brute}
+            dist_map_cell = {(b.idx1, b.idx2): b.distance for b in bonds_cell}
+            
+            for pair in pairs_brute:
+                dist_brute = dist_map_brute[pair]
+                dist_cell = dist_map_cell[pair]
+                if abs(dist_brute - dist_cell) > 1e-6:
+                    error_msg = (
+                        f"Bond distance mismatch for pair {pair}: "
+                        f"brute-force={dist_brute}, cell-list={dist_cell}, diff={abs(dist_brute - dist_cell)}"
                     )
-                    delta_cart = A @ delta_frac
-                    dist = np.linalg.norm(delta_cart)
-                    if dist <= global_max_cutoff:
-                        neighbors.append((j, dist))
-        else:
-            # Brute force fallback
-            for j in range(n_atoms):
-                if i == j:
-                    continue
-                
-                if A_inv is not None:
-                    # PBC-aware: use minimum-image convention
-                    frac_i = A_inv @ coord_i
-                    frac_j = A_inv @ atoms_cart[j]
-                    delta_frac = frac_j - frac_i
-                    delta_frac = delta_frac - np.round(delta_frac)
-                    # Epsilon guard for numerical stability
-                    EPS_WRAP = 1e-10
-                    delta_frac = np.where(
-                        np.abs(np.abs(delta_frac) - 0.5) < EPS_WRAP,
-                        np.sign(delta_frac) * 0.5,
-                        delta_frac
-                    )
-                    delta_cart = A @ delta_frac
-                    dist = np.linalg.norm(delta_cart)
-                else:
-                    # Non-periodic: Euclidean distance
-                    dist = np.linalg.norm(atoms_cart[j] - coord_i)
-                
-                if dist <= global_max_cutoff:
-                    neighbors.append((j, dist))
+                    logger.error(error_msg)
+                    raise AssertionError(error_msg)
+            
+            logger.debug(f"Bond validation passed: {len(bonds_brute)} bonds match exactly")
         
-        for j, dist in neighbors:
-            if i >= j:  # Only consider i < j to avoid duplicates
-                continue
-            
-            elem_j = species[j]
-            radius_j = radii_map.get(elem_j, 1.0)
-            
-            # Bond criterion
-            max_bond_dist = (radius_i + radius_j) * max_factor + tolerance
-            
-            if dist <= max_bond_dist:
-                # Check if we've seen this bond
-                bond_key = (i, j)
-                if bond_key not in seen_bonds:
-                    seen_bonds.add(bond_key)
-                    # For PBC bonds, use the minimum-image coordinates
-                    if A_inv is not None:
-                        frac_i = A_inv @ coord_i
-                        frac_j = A_inv @ atoms_cart[j]
-                        delta_frac = frac_j - frac_i
-                        delta_frac = delta_frac - np.round(delta_frac)
-                        # Apply same epsilon guard for coordinate computation
-                        EPS_WRAP = 1e-10
-                        delta_frac = np.where(
-                            np.abs(np.abs(delta_frac) - 0.5) < EPS_WRAP,
-                            np.sign(delta_frac) * 0.5,
-                            delta_frac
-                        )
-                        coord_j_min_image = coord_i + (A @ delta_frac)
-                    else:
-                        coord_j_min_image = atoms_cart[j].copy()
-                    
-                    bonds.append(Bond(
-                        idx1=i,
-                        idx2=j,
-                        coord1=coord_i.copy(),
-                        coord2=coord_j_min_image,
-                        distance=float(dist),
-                    ))
+        return bonds_brute
     
-    return bonds
+    # Default: use cell-list algorithm
+    return build_bonds_cell_list(
+        atoms_cart, species, radii_map,
+        max_factor=max_factor, tolerance=tolerance, max_cutoff=max_cutoff
+    )
 
 
 # Legacy function for backward compatibility
@@ -483,7 +548,7 @@ def detect_bonds(
     structure: PMGStructure,
     tolerance: float = 0.3,
     max_cutoff: float = 3.5,
-    include_periodic_images: bool = True,  # DEPRECATED: No longer affects bond detection
+    include_periodic_images: bool = True,  # Ignored, kept for compatibility
 ) -> List[Bond]:
     """
     Detect bonds in a structure based on covalent radii (legacy function).
@@ -492,29 +557,19 @@ def detect_bonds(
     internally. For new code, use build_bonds directly.
     
     .. deprecated:: 
-        The `include_periodic_images` parameter is deprecated and no longer affects
-        bond detection results. Bond detection always uses PBC-aware minimum-image
-        convention for periodic structures. The parameter is kept for backward
-        compatibility only.
+        The `include_periodic_images` parameter is ignored. Bonds are computed
+        using simple Euclidean distance on the provided structure's atoms.
+        For periodic behavior, use display modes (supercell, boundary repeat)
+        to generate the appropriate atom list before calling this function.
     
     Args:
         structure: pymatgen Structure object
         tolerance: Extra tolerance for bond detection (Å)
         max_cutoff: Maximum distance to consider (Å)
-        include_periodic_images: DEPRECATED - No longer affects bond detection.
-            Bond detection always uses PBC-aware minimum-image convention.
-            This parameter is kept for backward compatibility only.
+        include_periodic_images: Ignored (kept for backward compatibility)
         
     Returns:
-        List of Bond objects
-        
-    Note:
-        **Semantics clarification:**
-        - **PBC bond detection**: Always used for periodic structures via minimum-image
-          convention. This ensures correct connectivity (e.g., 32 bonds in Si 2×2×2 supercell).
-        - **Boundary repeat** (display): Controls whether boundary atoms/images are displayed
-          for visualization. This is separate from bond detection and does not affect
-          bond counts or connectivity.
+        List of Bond objects computed from structure's atoms using Euclidean distance
     """
     # Extract atoms and species
     atoms_cart = np.array([site.coords for site in structure])
@@ -523,19 +578,13 @@ def detect_bonds(
     # Build radii map
     radii_map = {sym: get_element_radius(sym) for sym in set(species)}
     
-    # Get lattice matrix for PBC-aware bond detection
-    # PBC is ALWAYS used for bond detection (minimum-image convention)
-    # The include_periodic_images parameter is deprecated and ignored
-    lattice_matrix = structure.lattice.matrix
-    
-    # Use single-source-of-truth function with PBC-aware distance
+    # Use single-source-of-truth function (no PBC, simple Euclidean)
     return build_bonds(
         atoms_cart,
         species,
         radii_map,
         tolerance=tolerance,
         max_cutoff=max_cutoff,
-        lattice_matrix=lattice_matrix,  # Always use PBC for correct bond detection
     )
 
 
@@ -1072,7 +1121,7 @@ def plot_structure_3d(
     else:
         fig = ax.get_figure()
     
-    # Collect all atoms to plot
+    # Collect all atoms to plot (this is the exact list that will be rendered)
     atoms_to_plot: List[Tuple[np.ndarray, str, int]] = []  # (coords, symbol, original_idx)
     
     for idx, site in enumerate(plot_structure):
@@ -1084,10 +1133,21 @@ def plot_structure_3d(
         for ba in boundary_atoms:
             atoms_to_plot.append((ba.coords, ba.symbol, ba.original_idx))
     
-    # Detect bonds using PBC-aware minimum-image convention
-    # Note: repeat_boundary only affects boundary atom display, not bond detection.
-    # Bond detection always uses PBC-aware minimum-image convention for periodic structures.
-    bonds = detect_bonds(plot_structure, include_periodic_images=options.repeat_boundary)
+    # CRITICAL: Compute bonds from the exact same atom list that's being rendered
+    # This ensures bond indices match exactly with rendered atoms
+    atoms_cart = np.array([coords for coords, _, _ in atoms_to_plot])
+    species = [symbol for _, symbol, _ in atoms_to_plot]
+    radii_map = {sym: get_element_radius(sym) for sym in set(species)}
+    
+    # Use single-source-of-truth bond function (simple O(N²) Euclidean distance)
+    bonds = build_bonds(
+        atoms_cart,
+        species,
+        radii_map,
+        max_factor=1.2,
+        tolerance=0.3,
+        max_cutoff=3.5,
+    )
     
     # Plot atoms (balls)
     for coords, symbol, _ in atoms_to_plot:
@@ -1274,18 +1334,36 @@ def visualize_structure(
         **{k: v for k, v in kwargs.items() if hasattr(StructurePlotOptions, k)},
     )
     
-    # Create the plot
+    # Create the plot (this computes bonds internally from display atoms)
     fig, ax = plot_structure_3d(structure, options)
     
-    # Create supercell for counting (must match what plot_structure_3d does)
+    # Count atoms and bonds (must match what plot_structure_3d does)
     plot_structure = make_supercell(structure, supercell_normalized)
-    bonds = detect_bonds(plot_structure, include_periodic_images=repeat_boundary)
-    
-    # Count atoms (including boundary if applicable)
     n_atoms = len(plot_structure)
+    
+    # Collect all display atoms (matching plot_structure_3d logic)
+    atoms_to_count: List[Tuple[np.ndarray, str]] = []
+    for site in plot_structure:
+        atoms_to_count.append((np.array(site.coords), site.specie.symbol))
+    
     if repeat_boundary:
         boundary_atoms = generate_boundary_atoms(plot_structure)
+        for ba in boundary_atoms:
+            atoms_to_count.append((ba.coords, ba.symbol))
         n_atoms += len(boundary_atoms)
+    
+    # Compute bonds from display atoms (same as plot_structure_3d)
+    atoms_cart = np.array([coords for coords, _ in atoms_to_count])
+    species = [symbol for _, symbol in atoms_to_count]
+    radii_map = {sym: get_element_radius(sym) for sym in set(species)}
+    bonds = build_bonds(
+        atoms_cart,
+        species,
+        radii_map,
+        max_factor=1.2,
+        tolerance=0.3,
+        max_cutoff=3.5,
+    )
     
     result = StructureVisualizationResult(
         n_atoms=n_atoms,

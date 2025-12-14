@@ -581,6 +581,10 @@ export function CalculationDetailPanel({
     <div className="calculation-detail-panel" data-testid="qv-calculation-detail">
       <div className="panel-header">
         <div className="qv-calc-header-title-group">
+          {/* Breadcrumb: All Calculations → Selected Calculation */}
+          <div className="qv-calc-breadcrumb" style={{ fontSize: '0.85em', color: '#888', marginBottom: '4px' }}>
+            All Calculations → {calculation.name}
+          </div>
           <h2 className="panel-title">
             <span className="panel-icon">📊</span>
             {calculation.name}

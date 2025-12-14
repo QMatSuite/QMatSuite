@@ -1987,24 +1987,18 @@ class QVService:
                 atoms.append(atom_dict)
         
         # Build bonds using single-source-of-truth function
-        # IMPORTANT: For box mode, bonds are computed non-periodically (no PBC)
-        # For other modes, use PBC-aware minimum-image convention
+        # CRITICAL: Compute bonds on ALL display atoms (including boundary duplicates if present)
+        # This ensures bond indices match exactly with the atoms being rendered
         bonds = []
         try:
-            # Extract atoms and species for bond building
+            # Extract atoms and species for bond building (ALL display atoms)
             atoms_cart = np.array([da.cart_coords for da in display_atoms_list])
             species = [da.element for da in display_atoms_list]
             
             # Build radii map
             radii_map = {sym: get_element_radius(sym) for sym in set(species)}
             
-            # Get lattice matrix for PBC-aware bond detection (except box mode)
-            # Note: This is used for bond building only; for JSON output we use lattice.matrix
-            lattice_matrix_for_bonds = None
-            if display_mode != "box":
-                lattice_matrix_for_bonds = display_structure.lattice.matrix
-            
-            # Use single-source-of-truth bond function
+            # Use single-source-of-truth bond function (simple O(N²) Euclidean distance)
             detected_bonds = build_bonds(
                 atoms_cart,
                 species,
@@ -2012,7 +2006,6 @@ class QVService:
                 max_factor=1.2,
                 tolerance=0.3,
                 max_cutoff=3.5,
-                lattice_matrix=lattice_matrix_for_bonds,  # PBC-aware for periodic modes
             )
             
             for bond in detected_bonds:
