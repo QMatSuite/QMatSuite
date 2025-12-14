@@ -251,9 +251,11 @@ class Bond:
     distance: float
 
 
-# Constants for cell-list algorithm
+# Constants for deterministic bond detection
+# Use squared distances to avoid sqrt() precision differences across platforms
+BOND_DIST_EPS = 1e-8  # Fixed epsilon for squared-distance comparisons (Å²)
+# For cell-list algorithm
 CELL_LIST_EPS = 1e-6  # Epsilon for r_cut safety margin
-CELL_LIST_DIST_EPS = 1e-9  # Epsilon for distance comparison to avoid float boundary misses
 
 
 def build_bonds_bruteforce(
@@ -268,10 +270,12 @@ def build_bonds_bruteforce(
     """
     Gold standard brute-force O(N²) bond detection.
     
-    This is the reference implementation that produces exact results.
+    This is the reference implementation that produces exact, deterministic results.
     Used for testing and validation of accelerated algorithms.
     
-    Bond criterion: distance <= min(max_cutoff, (r_i + r_j) * max_factor + tolerance)
+    Uses squared-distance comparisons with fixed epsilon for platform-independent determinism.
+    
+    Bond criterion: dist² <= (min(max_cutoff, (r_i + r_j) * max_factor + tolerance) + EPS)²
     
     Args:
         atoms_cart: Array of shape (N, 3) with Cartesian coordinates (display atoms)
@@ -295,7 +299,7 @@ def build_bonds_bruteforce(
     
     bonds: List[Bond] = []
     
-    # Brute-force O(N²) distance check
+    # Brute-force O(N²) distance check using squared distances for determinism
     for i in range(n_atoms):
         coord_i = atoms_cart[i]
         elem_i = species[i]
@@ -306,14 +310,19 @@ def build_bonds_bruteforce(
             elem_j = species[j]
             radius_j = radii_map.get(elem_j, 1.0)
             
-            # Euclidean distance
-            dist = np.linalg.norm(coord_j - coord_i)
+            # Compute squared distance (avoids sqrt() precision differences)
+            delta = coord_j - coord_i
+            dist_sq = np.dot(delta, delta)
             
-            # Bond criterion: distance <= min(max_cutoff, (r_i + r_j) * max_factor + tolerance)
+            # Bond criterion: dist² <= (cutoff + EPS)²
+            # This ensures deterministic behavior across platforms
             max_bond_dist = (radius_i + radius_j) * max_factor + tolerance
-            threshold = min(max_cutoff, max_bond_dist)
+            cutoff = min(max_cutoff, max_bond_dist)
+            cutoff_sq = (cutoff + BOND_DIST_EPS) ** 2
             
-            if dist <= threshold:
+            if dist_sq <= cutoff_sq:
+                # Compute actual distance for Bond object (only when bond is accepted)
+                dist = np.sqrt(dist_sq)
                 bonds.append(Bond(
                     idx1=i,
                     idx2=j,
@@ -340,14 +349,17 @@ def build_bonds_cell_list(
     Produces identical results to brute-force but with O(N) average case complexity
     for sparse systems. Guaranteed to match brute-force results exactly.
     
+    Uses squared-distance comparisons with fixed epsilon for platform-independent determinism.
+    
     Algorithm:
-    1. Compute safe global cutoff: r_cut = max_cutoff + eps
+    1. Compute safe global cutoff: r_cut = max(max_cutoff, (2*max_radius)*max_factor + tolerance) + eps
     2. Use cell_size = r_cut (ensures only 27 neighbor cells needed)
     3. Build grid keyed by integer cell indices
     4. For each atom, only check neighbors in same cell + 26 adjacent cells
     5. Use i<j discipline to avoid duplicates
+    6. Use squared-distance comparison: dist² <= (cutoff + EPS)²
     
-    Bond criterion: distance <= min(max_cutoff, (r_i + r_j) * max_factor + tolerance)
+    Bond criterion: dist² <= (min(max_cutoff, (r_i + r_j) * max_factor + tolerance) + EPS)²
     
     Args:
         atoms_cart: Array of shape (N, 3) with Cartesian coordinates (display atoms)
@@ -373,9 +385,11 @@ def build_bonds_cell_list(
     if n_atoms < 10:
         return build_bonds_bruteforce(atoms_cart, species, radii_map, max_factor=max_factor, tolerance=tolerance, max_cutoff=max_cutoff)
     
-    # Compute safe global cutoff: r_cut = max_cutoff + eps
-    # This ensures any possible bond has distance <= r_cut
-    r_cut = max_cutoff + CELL_LIST_EPS
+    # Compute safe global cutoff for cell size
+    # Use worst-case: (2 * max_radius) * max_factor + tolerance
+    max_radius = max(radii_map.values()) if radii_map else 1.0
+    worst_case_cutoff = (2 * max_radius) * max_factor + tolerance
+    r_cut = max(max_cutoff, worst_case_cutoff) + CELL_LIST_EPS
     cell_size = r_cut  # Critical: cell_size = r_cut ensures only 27 neighbor cells needed
     
     # Find bounding box to choose origin (avoid negative/float issues)
@@ -426,14 +440,19 @@ def build_bonds_cell_list(
                             elem_j = species[j]
                             radius_j = radii_map.get(elem_j, 1.0)
                             
-                            # Euclidean distance
-                            dist = np.linalg.norm(coord_j - coord_i)
+                            # Compute squared distance (avoids sqrt() precision differences)
+                            delta = coord_j - coord_i
+                            dist_sq = np.dot(delta, delta)
                             
-                            # Bond criterion with small epsilon for float boundary safety
+                            # Bond criterion: dist² <= (cutoff + EPS)²
+                            # This ensures deterministic behavior matching brute-force
                             max_bond_dist = (radius_i + radius_j) * max_factor + tolerance
-                            threshold = min(max_cutoff, max_bond_dist) + CELL_LIST_DIST_EPS
+                            cutoff = min(max_cutoff, max_bond_dist)
+                            cutoff_sq = (cutoff + BOND_DIST_EPS) ** 2
                             
-                            if dist <= threshold:
+                            if dist_sq <= cutoff_sq:
+                                # Compute actual distance for Bond object (only when bond is accepted)
+                                dist = np.sqrt(dist_sq)
                                 bonds.append(Bond(
                                     idx1=i,
                                     idx2=j,
