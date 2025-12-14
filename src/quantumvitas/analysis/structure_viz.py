@@ -142,19 +142,62 @@ FRAC_SNAP_EPS = 1e-8  # Epsilon for snapping fractional coordinates near boundar
 FRAC_EPS = 1e-9
 
 
+def snap_frac_near_integers(frac: np.ndarray, eps: float = FRAC_SNAP_EPS) -> np.ndarray:
+    """
+    Snap fractional coordinates near integers to remove numerical noise.
+    
+    This function ONLY snaps values near integers; it does NOT wrap coordinates.
+    Use this for boundary-repeat image atoms that should remain outside [0,1).
+    
+    Algorithm:
+    - If abs(f) <= eps → 0.0
+    - If abs(f - n) <= eps for integer n → n (snap to nearest integer)
+    
+    Args:
+        frac: Fractional coordinates (can be 1D or 2D array)
+        eps: Epsilon for snapping (default FRAC_SNAP_EPS)
+        
+    Returns:
+        Snapped fractional coordinates (may be outside [0,1) - no wrapping)
+    """
+    frac = np.asarray(frac, dtype=float, copy=True)
+    was_1d = frac.ndim == 1
+    if was_1d:
+        frac = frac.reshape(1, -1)
+    
+    # Use slightly larger threshold to catch values like -1e-7
+    snap_eps = max(eps, 1e-7)
+    
+    # Snap values near 0
+    frac[np.abs(frac) <= snap_eps] = 0.0
+    
+    # Snap values near any integer (including 1, -1, etc.)
+    # For each coordinate, find nearest integer and snap if within epsilon
+    for i in range(frac.shape[0]):
+        for j in range(frac.shape[1]):
+            val = frac[i, j]
+            nearest_int = np.round(val)
+            if np.abs(val - nearest_int) <= snap_eps:
+                frac[i, j] = nearest_int
+    
+    if was_1d:
+        frac = frac.reshape(-1)
+    
+    return frac
+
+
 def canonicalize_frac(frac: np.ndarray, eps: float = FRAC_SNAP_EPS) -> np.ndarray:
     """
-    Canonicalize fractional coordinates by snapping tiny values to 0.
+    Canonicalize fractional coordinates by snapping tiny values to 0 and wrapping into [0, 1).
     
     This prevents platform-dependent wrapping artifacts where -1e-7 becomes ~1.0
     instead of 0.0. This is the single source of truth for fractional coordinate
-    canonicalization.
+    canonicalization of basis atoms (inside the unit cell).
     
     Algorithm:
-    1. Snap very small values to 0
-    2. Snap values very close to 1 to 0 (before wrapping)
-    3. Wrap into [0, 1)
-    4. Snap near-1 and near-0 again after wrapping
+    1. Snap values near integers (removes numerical noise)
+    2. Wrap into [0, 1) using f - floor(f)
+    3. Final snap near 0/1 to guarantee canonical [0,1) values
     
     Args:
         frac: Fractional coordinates (can be 1D or 2D array)
@@ -168,18 +211,17 @@ def canonicalize_frac(frac: np.ndarray, eps: float = FRAC_SNAP_EPS) -> np.ndarra
     if was_1d:
         frac = frac.reshape(1, -1)
     
-    # Snap very small absolute values to 0 (catches both positive and negative tiny values)
-    # Use slightly larger threshold to catch values like -1e-7 that would wrap to ~1.0
-    snap_eps = max(eps, 1e-7)  # Ensure we catch at least -1e-7
-    frac[np.abs(frac) <= snap_eps] = 0.0
-    # Snap values very close to 1 to 0 (before wrapping)
-    frac[np.abs(frac - 1.0) <= snap_eps] = 0.0
+    # First, snap near integers to remove numerical noise
+    frac = snap_frac_near_integers(frac, eps)
+    # Reshape back if needed (snap_frac_near_integers may have reshaped)
+    if was_1d and frac.ndim == 1:
+        frac = frac.reshape(1, -1)
     
     # Wrap remaining values into [0, 1)
     frac = frac - np.floor(frac)
     
-    # After wrap, snap near-1 again (catches values that wrapped to ~1.0, like -1e-7 -> 0.9999999)
-    # Use same threshold to catch wrapped values
+    # After wrap, snap near-1 to 0 (for canonical [0,1) representation)
+    snap_eps = max(eps, 1e-7)
     frac[np.abs(frac - 1.0) <= snap_eps] = 0.0
     # And snap near-0 again (catches any remaining tiny values)
     frac[np.abs(frac) <= snap_eps] = 0.0
@@ -690,8 +732,9 @@ def generate_boundary_atoms(
                 continue  # Skip original position
             
             new_frac = frac + np.array(shift)
-            # Keep within [0, 1] range for display
-            new_frac = np.mod(new_frac + tolerance, 1.0 + 2*tolerance) - tolerance
+            # CRITICAL: Only snap near integers, do NOT wrap back into [0,1)
+            # Boundary-repeat atoms must remain outside the cell to show correct images
+            new_frac = snap_frac_near_integers(new_frac, eps=tolerance)
             new_cart = lattice.get_cartesian_coords(new_frac)
             
             boundary_atoms.append(BoundaryAtom(
