@@ -77,6 +77,52 @@
   font-size: 0.7rem;
 }
 
+.debug-panel__filter-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  opacity: 0.7;
+  cursor: pointer;
+  user-select: none;
+  margin-left: auto;
+  padding-left: 12px;
+}
+
+.debug-panel__filter-toggle:hover {
+  opacity: 1;
+}
+
+.debug-panel__filter-toggle input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.debug-panel__copy-btn {
+  padding: 4px 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.debug-panel__copy-btn:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.debug-panel__copy-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .debug-panel__content {
   flex: 1;
   overflow: auto;

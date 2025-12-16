@@ -16,6 +16,29 @@ Functions are reusable from CLI, GUI, or notebooks.
 
 from __future__ import annotations
 
+# Public API exports - _build_bonds is internal-only
+__all__ = [
+    "visualize_structure",
+    "plot_structure_3d",
+    "detect_bonds",
+    "build_bonds",  # Public API
+    "generate_boundary_atoms",
+    "make_supercell",
+    "get_conventional_cell",
+    "canonicalize_structure_in_place",
+    "build_display_atoms",
+    "StructurePlotOptions",
+    "StructureVisualizationResult",
+    "Bond",
+    "BoundaryAtom",
+    "DisplayAtom",
+    "DisplayModeParams",
+    "get_element_color",
+    "get_element_radius",
+    "ELEMENT_COLORS",
+    "COVALENT_RADII",  # Legacy, deprecated
+]
+
 import matplotlib
 matplotlib.use("Agg")  # Headless-safe backend
 
@@ -33,6 +56,8 @@ from mpl_toolkits.mplot3d import Axes3D
 from pymatgen.core import Structure as PMGStructure
 from pymatgen.core.periodic_table import Element
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+
+from quantumvitas.analysis.atomic_radii import get_radii_map, get_element_radius as get_radii_element_radius
 
 logger = logging.getLogger(__name__)
 
@@ -89,45 +114,19 @@ def get_element_color(symbol: str) -> str:
     return ELEMENT_COLORS.get(symbol, ELEMENT_COLORS["_default"])
 
 
-# Covalent radii in Angstroms (from Cordero et al., Dalton Trans. 2008)
-# Used for bond detection
-COVALENT_RADII: Dict[str, float] = {
-    "H": 0.31, "He": 0.28,
-    "Li": 1.28, "Be": 0.96, "B": 0.84, "C": 0.76, "N": 0.71, "O": 0.66, "F": 0.57, "Ne": 0.58,
-    "Na": 1.66, "Mg": 1.41, "Al": 1.21, "Si": 1.11, "P": 1.07, "S": 1.05, "Cl": 1.02, "Ar": 1.06,
-    "K": 2.03, "Ca": 1.76, "Sc": 1.70, "Ti": 1.60, "V": 1.53, "Cr": 1.39, "Mn": 1.39, "Fe": 1.32,
-    "Co": 1.26, "Ni": 1.24, "Cu": 1.32, "Zn": 1.22, "Ga": 1.22, "Ge": 1.20, "As": 1.19, "Se": 1.20,
-    "Br": 1.20, "Kr": 1.16,
-    "Rb": 2.20, "Sr": 1.95, "Y": 1.90, "Zr": 1.75, "Nb": 1.64, "Mo": 1.54, "Tc": 1.47, "Ru": 1.46,
-    "Rh": 1.42, "Pd": 1.39, "Ag": 1.45, "Cd": 1.44, "In": 1.42, "Sn": 1.39, "Sb": 1.39, "Te": 1.38,
-    "I": 1.39, "Xe": 1.40,
-    "Cs": 2.44, "Ba": 2.15, "La": 2.07, "Ce": 2.04, "Pr": 2.03, "Nd": 2.01, "Pm": 1.99, "Sm": 1.98,
-    "Eu": 1.98, "Gd": 1.96, "Tb": 1.94, "Dy": 1.92, "Ho": 1.92, "Er": 1.89, "Tm": 1.90, "Yb": 1.87,
-    "Lu": 1.87, "Hf": 1.75, "Ta": 1.70, "W": 1.62, "Re": 1.51, "Os": 1.44, "Ir": 1.41, "Pt": 1.36,
-    "Au": 1.36, "Hg": 1.32, "Tl": 1.45, "Pb": 1.46, "Bi": 1.48, "Po": 1.40, "At": 1.50, "Rn": 1.50,
-    "Fr": 2.60, "Ra": 2.21, "Ac": 2.15, "Th": 2.06, "Pa": 2.00, "U": 1.96, "Np": 1.90, "Pu": 1.87,
-}
+# Legacy: Keep COVALENT_RADII for backward compatibility (deprecated, use atomic_radii module)
+# Imported from atomic_radii for compatibility
+from quantumvitas.analysis.atomic_radii import DEFAULT_COVALENT_RADII as COVALENT_RADII
 
 
 def get_element_radius(symbol: str) -> float:
     """
     Get covalent radius for an element in Angstroms.
     
-    Uses built-in covalent radii table, with fallback to pymatgen's atomic_radius.
+    DEPRECATED: Use quantumvitas.analysis.atomic_radii.get_element_radius() instead.
+    Kept for backward compatibility.
     """
-    # First check our built-in covalent radii table
-    if symbol in COVALENT_RADII:
-        return COVALENT_RADII[symbol]
-    
-    # Fallback to pymatgen's atomic_radius
-    try:
-        el = Element(symbol)
-        if hasattr(el, 'atomic_radius') and el.atomic_radius is not None:
-            return float(el.atomic_radius)
-    except (ValueError, KeyError, AttributeError):
-        pass
-    
-    return 1.0  # Default radius
+    return get_radii_element_radius(symbol, fallback_radius=1.0)
 
 
 # =============================================================================
@@ -635,7 +634,7 @@ def build_bonds_cell_list(
     return bonds
 
 
-def build_bonds(
+def _build_bonds(
     atoms_cart: np.ndarray,
     species: List[str],
     radii_map: Dict[str, float],
@@ -643,15 +642,13 @@ def build_bonds(
     max_factor: float = 1.2,
     tolerance: float = 0.3,
     max_cutoff: float = 3.5,
-    neighbor_shell: Optional[int] = None,  # Ignored, kept for compatibility
-    lattice_matrix: Optional[np.ndarray] = None,  # Ignored, kept for compatibility
     use_bruteforce: bool = False,  # Debug option to force brute-force
 ) -> List[Bond]:
     """
-    SINGLE SOURCE OF TRUTH for bond construction.
+    INTERNAL pure algorithm for bond construction.
     
-    Default implementation uses accelerated cell-list algorithm.
-    Produces identical results to brute-force but with better performance for larger systems.
+    This is the internal implementation that requires radii_map explicitly.
+    Do NOT call this directly from outside this module. Use build_bonds() instead.
     
     PRECONDITION: This is a pure geometric function. The input atom positions
     (atoms_cart) must already be prepared (canonicalized if needed, supercell
@@ -659,20 +656,15 @@ def build_bonds(
     canonicalize, wrap, or modify coordinates. It simply computes bonds based on
     the provided geometry.
     
-    Bonds are computed directly from the display atom list (Cartesian coordinates).
-    This ensures bond indices match exactly with the atoms being rendered.
-    
     Bond criterion: distance <= min(max_cutoff, (r_i + r_j) * max_factor + tolerance)
     
     Args:
         atoms_cart: Array of shape (N, 3) with Cartesian coordinates (display atoms)
         species: List of N element symbols (matching display atoms)
-        radii_map: Dictionary mapping element symbols to radii
+        radii_map: Dictionary mapping element symbols to radii (REQUIRED)
         max_factor: Multiplier for sum of radii (default 1.2)
         tolerance: Extra tolerance in Å (default 0.3)
         max_cutoff: Maximum distance to consider in Å (default 3.5)
-        neighbor_shell: Ignored (kept for backward compatibility)
-        lattice_matrix: Ignored (kept for backward compatibility)
         use_bruteforce: If True, use brute-force algorithm (for debugging/testing)
         
     Returns:
@@ -736,6 +728,139 @@ def build_bonds(
     )
 
 
+def build_bonds(
+    display_atoms: Union[List[Any], np.ndarray],
+    lattice: Optional[Any] = None,
+    *,
+    radii_policy: str = "covalent",
+    fallback_radius: float = 1.2,
+    max_factor: float = 1.2,
+    tolerance: float = 0.3,
+    max_cutoff: float = 3.5,
+    use_bruteforce: bool = False,
+    **kwargs,  # Ignore other kwargs for compatibility
+) -> List[Bond]:
+    """
+    PUBLIC API for bond construction - single source of truth.
+    
+    This is the ONLY function that should be called from outside this module.
+    It automatically resolves radii_map and applies fallback rules.
+    
+    Args:
+        display_atoms: List of DisplayAtom objects OR array of (N, 3) coordinates
+        lattice: Optional lattice (for compatibility, not used in bond calculation)
+        radii_policy: Radii policy (default: "covalent")
+        fallback_radius: Default radius for unknown elements in Angstroms (default: 1.2)
+        max_factor: Multiplier for sum of radii (default 1.2)
+        tolerance: Extra tolerance in Å (default 0.3)
+        max_cutoff: Maximum distance to consider in Å (default 3.5)
+        use_bruteforce: If True, use brute-force algorithm (for debugging/testing)
+        **kwargs: May contain 'species' if display_atoms is an array
+        
+    Returns:
+        List of Bond objects with idx1 < idx2 (no duplicates, deterministic order)
+        Returns empty list on any error (never raises)
+    """
+    try:
+        # Handle different input formats
+        if isinstance(display_atoms, np.ndarray):
+            # Array of coordinates - need species separately
+            if 'species' not in kwargs:
+                logger.warning("build_bonds: atoms_cart array provided but 'species' not found, returning empty bonds")
+                return []
+            atoms_cart = display_atoms
+            species = kwargs['species']
+        elif hasattr(display_atoms, '__iter__') and len(display_atoms) > 0:
+            # List of DisplayAtom objects (check for DisplayAtom attributes)
+            first = display_atoms[0]
+            if hasattr(first, 'cart_coords') and hasattr(first, 'element'):
+                # DisplayAtom objects
+                atoms_cart = np.array([atom.cart_coords for atom in display_atoms])
+                species = [atom.element for atom in display_atoms]
+            elif hasattr(first, 'coords') and hasattr(first, 'symbol'):
+                # Alternative DisplayAtom format
+                atoms_cart = np.array([atom.coords for atom in display_atoms])
+                species = [atom.symbol for atom in display_atoms]
+            else:
+                logger.warning(f"build_bonds: unrecognized display_atoms format, returning empty bonds")
+                return []
+        else:
+            logger.warning(f"build_bonds: empty or invalid display_atoms, returning empty bonds")
+            return []
+        
+        # Get base radii map
+        radii_map = get_radii_map(policy=radii_policy, fallback_radius=fallback_radius)
+        
+        # Build radii map for species with fallback
+        missing_elements = set()
+        final_radii_map = {}
+        for sym in set(species):
+            if sym in radii_map:
+                final_radii_map[sym] = radii_map[sym]
+            else:
+                final_radii_map[sym] = fallback_radius
+                if sym not in missing_elements:
+                    missing_elements.add(sym)
+                    logger.warning(f"Unknown element '{sym}' not in radii table, using fallback radius {fallback_radius} Å")
+        
+        # If radii_map is malformed or empty, return empty bonds
+        if not final_radii_map:
+            logger.warning("Empty radii_map, returning no bonds")
+            return []
+        
+        # Call internal function
+        return _build_bonds(
+            atoms_cart,
+            species,
+            final_radii_map,
+            max_factor=max_factor,
+            tolerance=tolerance,
+            max_cutoff=max_cutoff,
+            use_bruteforce=use_bruteforce,
+        )
+    except Exception as e:
+        logger.warning(f"Bond building failed: {e}, returning empty bonds")
+        return []
+
+
+def build_bonds_cartesian(
+    atoms_cart: np.ndarray,
+    species: List[str],
+    radii_map: Dict[str, float],
+    *,
+    max_factor: float = 1.2,
+    tolerance: float = 0.3,
+    max_cutoff: float = 3.5,
+    use_bruteforce: bool = False,
+) -> List[Bond]:
+    """
+    LEGACY function for unit tests - direct cartesian bond building.
+    
+    This function is provided for backward compatibility with unit tests that
+    call build_bonds with raw arrays (atoms_cart, species, radii_map).
+    
+    **DO NOT use this in production code.** Use build_bonds() with DisplayAtom
+    objects instead.
+    
+    Args:
+        atoms_cart: Array of shape (N, 3) with Cartesian coordinates
+        species: List of N element symbols
+        radii_map: Dictionary mapping element symbols to radii
+        max_factor: Multiplier for sum of radii (default 1.2)
+        tolerance: Extra tolerance in Å (default 0.3)
+        max_cutoff: Maximum distance to consider in Å (default 3.5)
+        use_bruteforce: If True, use brute-force algorithm (for debugging/testing)
+        
+    Returns:
+        List of Bond objects
+    """
+    return _build_bonds(
+        atoms_cart, species, radii_map,
+        max_factor=max_factor, tolerance=tolerance, max_cutoff=max_cutoff,
+        use_bruteforce=use_bruteforce
+    )
+
+
 # Legacy function for backward compatibility
 def detect_bonds(
     structure: PMGStructure,
@@ -779,14 +904,10 @@ def detect_bonds(
     atoms_cart = np.array([site.coords for site in structure])
     species = [site.specie.symbol for site in structure]
     
-    # Build radii map
-    radii_map = {sym: get_element_radius(sym) for sym in set(species)}
-    
-    # Use single-source-of-truth function (no PBC, simple Euclidean)
+    # Use public API (auto-resolves radii_map)
     return build_bonds(
         atoms_cart,
-        species,
-        radii_map,
+        species=species,
         tolerance=tolerance,
         max_cutoff=max_cutoff,
     )
@@ -1176,23 +1297,45 @@ def build_display_atoms(
         # Primitive cell - use already-canonicalized structure
         display_structure = structure_canon.copy()
         
+        # CRITICAL: Ensure cart_coords are computed from display_structure's lattice
+        # site.coords should already be correct, but we verify consistency
         for idx, site in enumerate(display_structure):
+            # Use site.coords (cartesian) which is computed from site.frac_coords using site's lattice
+            # This ensures consistency with the display_structure's lattice
+            cart_from_lattice = display_structure.lattice.get_cartesian_coords(site.frac_coords)
+            # Verify site.coords matches (should be identical, but this catches mismatches)
+            if not np.allclose(site.coords, cart_from_lattice, atol=1e-6):
+                logger.warning(
+                    f"Coordinate mismatch in primitive mode for atom {idx}: "
+                    f"site.coords={site.coords} vs computed={cart_from_lattice}"
+                )
+            
             display_atoms.append(DisplayAtom(
                 stable_id=f"atom_{idx}",
                 element=site.specie.symbol,
-                cart_coords=np.array(site.coords),
+                cart_coords=np.array(site.coords),  # Use site.coords (already correct for display_structure's lattice)
                 frac_coords=np.array(site.frac_coords),
                 original_idx=idx,
                 translation=(0, 0, 0),
             ))
         
         if params.repeat_boundary:
+            # CRITICAL: generate_boundary_atoms uses display_structure's lattice
+            # This ensures boundary atoms are in the same coordinate system as display atoms
             boundary_atoms = generate_boundary_atoms(display_structure)
             for ba in boundary_atoms:
+                # Verify boundary atom coords are consistent with display_structure's lattice
+                cart_from_lattice = display_structure.lattice.get_cartesian_coords(ba.frac_coords)
+                if not np.allclose(ba.coords, cart_from_lattice, atol=1e-6):
+                    logger.warning(
+                        f"Boundary atom coordinate mismatch for atom {ba.original_idx}: "
+                        f"ba.coords={ba.coords} vs computed={cart_from_lattice}"
+                    )
+                
                 display_atoms.append(DisplayAtom(
                     stable_id=f"boundary_{ba.original_idx}_{ba.frac_coords}",
                     element=ba.symbol,
-                    cart_coords=ba.coords,
+                    cart_coords=ba.coords,  # Already computed from display_structure's lattice
                     frac_coords=ba.frac_coords,
                     original_idx=ba.original_idx,
                     translation=(0, 0, 0),  # Boundary atoms are already shifted
@@ -1205,23 +1348,42 @@ def build_display_atoms(
         display_structure = make_supercell(structure_canon, params.supercell)
         # No wrapping - supercell coords may be outside [0, 1) and that's OK
         
+        # CRITICAL: After supercell expansion, the lattice has changed
+        # Ensure cart_coords are computed from the supercell's lattice
         for idx, site in enumerate(display_structure):
+            # Verify cart_coords are consistent with display_structure's lattice
+            cart_from_lattice = display_structure.lattice.get_cartesian_coords(site.frac_coords)
+            if not np.allclose(site.coords, cart_from_lattice, atol=1e-6):
+                logger.warning(
+                    f"Coordinate mismatch in supercell mode for atom {idx}: "
+                    f"site.coords={site.coords} vs computed={cart_from_lattice}"
+                )
+            
             display_atoms.append(DisplayAtom(
                 stable_id=f"atom_{idx}",
                 element=site.specie.symbol,
-                cart_coords=np.array(site.coords),
+                cart_coords=np.array(site.coords),  # Use site.coords (correct for supercell lattice)
                 frac_coords=np.array(site.frac_coords),
                 original_idx=idx % len(structure),  # Map back to original
                 translation=(0, 0, 0),  # Supercell expansion handled by pymatgen
             ))
         
         if params.repeat_boundary:
+            # CRITICAL: generate_boundary_atoms uses display_structure's lattice
             boundary_atoms = generate_boundary_atoms(display_structure)
             for ba in boundary_atoms:
+                # Verify boundary atom coords are consistent with display_structure's lattice
+                cart_from_lattice = display_structure.lattice.get_cartesian_coords(ba.frac_coords)
+                if not np.allclose(ba.coords, cart_from_lattice, atol=1e-6):
+                    logger.warning(
+                        f"Boundary atom coordinate mismatch in supercell mode for atom {ba.original_idx}: "
+                        f"ba.coords={ba.coords} vs computed={cart_from_lattice}"
+                    )
+                
                 display_atoms.append(DisplayAtom(
                     stable_id=f"boundary_{ba.original_idx}_{ba.frac_coords}",
                     element=ba.symbol,
-                    cart_coords=ba.coords,
+                    cart_coords=ba.coords,  # Already computed from display_structure's lattice
                     frac_coords=ba.frac_coords,
                     original_idx=ba.original_idx,
                     translation=(0, 0, 0),
@@ -1236,23 +1398,42 @@ def build_display_atoms(
             display_structure = structure_canon.copy()
         # No wrapping - conventional cell coords are already canonicalized
         
+        # CRITICAL: After conventional cell transformation, the lattice has changed
+        # Ensure cart_coords are computed from the conventional cell's lattice
         for idx, site in enumerate(display_structure):
+            # Verify cart_coords are consistent with display_structure's lattice
+            cart_from_lattice = display_structure.lattice.get_cartesian_coords(site.frac_coords)
+            if not np.allclose(site.coords, cart_from_lattice, atol=1e-6):
+                logger.warning(
+                    f"Coordinate mismatch in conventional mode for atom {idx}: "
+                    f"site.coords={site.coords} vs computed={cart_from_lattice}"
+                )
+            
             display_atoms.append(DisplayAtom(
                 stable_id=f"conv_atom_{idx}",
                 element=site.specie.symbol,
-                cart_coords=np.array(site.coords),
+                cart_coords=np.array(site.coords),  # Use site.coords (correct for conventional lattice)
                 frac_coords=np.array(site.frac_coords),
                 original_idx=idx,
                 translation=(0, 0, 0),
             ))
         
         if params.repeat_boundary:
+            # CRITICAL: generate_boundary_atoms uses display_structure's lattice
             boundary_atoms = generate_boundary_atoms(display_structure)
             for ba in boundary_atoms:
+                # Verify boundary atom coords are consistent with display_structure's lattice
+                cart_from_lattice = display_structure.lattice.get_cartesian_coords(ba.frac_coords)
+                if not np.allclose(ba.coords, cart_from_lattice, atol=1e-6):
+                    logger.warning(
+                        f"Boundary atom coordinate mismatch in conventional mode for atom {ba.original_idx}: "
+                        f"ba.coords={ba.coords} vs computed={cart_from_lattice}"
+                    )
+                
                 display_atoms.append(DisplayAtom(
                     stable_id=f"conv_boundary_{ba.original_idx}_{ba.frac_coords}",
                     element=ba.symbol,
-                    cart_coords=ba.coords,
+                    cart_coords=ba.coords,  # Already computed from display_structure's lattice
                     frac_coords=ba.frac_coords,
                     original_idx=ba.original_idx,
                     translation=(0, 0, 0),
@@ -1360,13 +1541,11 @@ def plot_structure_3d(
     # This ensures bond indices match exactly with rendered atoms
     atoms_cart = np.array([coords for coords, _, _ in atoms_to_plot])
     species = [symbol for _, symbol, _ in atoms_to_plot]
-    radii_map = {sym: get_element_radius(sym) for sym in set(species)}
     
-    # Use single-source-of-truth bond function (simple O(N²) Euclidean distance)
+    # Use public API (auto-resolves radii_map)
     bonds = build_bonds(
         atoms_cart,
-        species,
-        radii_map,
+        species=species,
         max_factor=1.2,
         tolerance=0.3,
         max_cutoff=3.5,
@@ -1582,11 +1761,11 @@ def visualize_structure(
     # Compute bonds from display atoms (same as plot_structure_3d)
     atoms_cart = np.array([coords for coords, _ in atoms_to_count])
     species = [symbol for _, symbol in atoms_to_count]
-    radii_map = {sym: get_element_radius(sym) for sym in set(species)}
+    
+    # Use public API (auto-resolves radii_map)
     bonds = build_bonds(
         atoms_cart,
-        species,
-        radii_map,
+        species=species,
         max_factor=1.2,
         tolerance=0.3,
         max_cutoff=3.5,
