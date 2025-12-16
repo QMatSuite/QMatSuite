@@ -461,3 +461,231 @@ class TestQVDaemonMainLoop:
         # Should have processed ping and shutdown, but not the third ping
         assert len(lines) == 2
 
+
+class TestQVDaemonLogging:
+    """Tests for QVDaemon logging behavior."""
+    
+    def test_polling_rpc_logs_at_debug(self):
+        """Test that polling RPC endpoints (job_counts, list_jobs) log at DEBUG level."""
+        stdin = StringIO("")
+        stdout = StringIO()
+        stderr = StringIO()
+        
+        daemon = QVDaemon(stdin=stdin, stdout=stdout, stderr=stderr)
+        
+        # Test job_counts
+        response = daemon.handle_request(RPCRequest(
+            id="test-1",
+            type="job_counts",
+            payload={},
+        ))
+        
+        assert response.ok
+        
+        # Check stderr output
+        stderr.seek(0)
+        stderr_content = stderr.read()
+        
+        # Should contain DEBUG level log for job_counts
+        # Note: Now includes [polling] tag for filtering
+        assert "[DEBUG]" in stderr_content
+        assert "[RPC]" in stderr_content
+        assert "[polling]" in stderr_content or "job_counts" in stderr_content
+        assert "took" in stderr_content
+    
+    def test_non_polling_rpc_logs_at_info(self):
+        """Test that non-polling RPC endpoints log at INFO level."""
+        stdin = StringIO("")
+        stdout = StringIO()
+        stderr = StringIO()
+        
+        daemon = QVDaemon(stdin=stdin, stdout=stdout, stderr=stderr)
+        
+        # Test ping (non-polling endpoint)
+        response = daemon.handle_request(RPCRequest(
+            id="test-1",
+            type="ping",
+            payload={},
+        ))
+        
+        assert response.ok
+        
+        # Check stderr output
+        stderr.seek(0)
+        stderr_content = stderr.read()
+        
+        # Should contain INFO level log for ping
+        assert "[INFO]" in stderr_content
+        assert "[RPC] ping" in stderr_content
+        assert "took" in stderr_content
+        # Should NOT contain DEBUG
+        assert "[DEBUG]" not in stderr_content
+    
+    def test_list_jobs_logs_at_debug(self):
+        """Test that list_jobs (polling endpoint) logs at DEBUG level."""
+        stdin = StringIO("")
+        stdout = StringIO()
+        stderr = StringIO()
+        
+        daemon = QVDaemon(stdin=stdin, stdout=stdout, stderr=stderr)
+        
+        # Test list_jobs
+        response = daemon.handle_request(RPCRequest(
+            id="test-1",
+            type="list_jobs",
+            payload={},
+        ))
+        
+        assert response.ok
+        
+        # Check stderr output
+        stderr.seek(0)
+        stderr_content = stderr.read()
+        
+        # Should contain DEBUG level log for list_jobs
+        # Note: Now includes [polling] tag for filtering
+        assert "[DEBUG]" in stderr_content
+        assert "[RPC]" in stderr_content
+        assert "[polling]" in stderr_content or "list_jobs" in stderr_content
+        assert "took" in stderr_content
+    
+    def test_set_log_level_to_debug(self):
+        """Test that set_log_level changes log level and affects subsequent RPC logs."""
+        stdin = StringIO("")
+        stdout = StringIO()
+        stderr = StringIO()
+        
+        daemon = QVDaemon(stdin=stdin, stdout=stdout, stderr=stderr)
+        
+        # First, verify default behavior (non-polling RPC logs at INFO)
+        response1 = daemon.handle_request(RPCRequest(
+            id="test-1",
+            type="ping",
+            payload={},
+        ))
+        assert response1.ok
+        
+        stderr.seek(0)
+        stderr_content_before = stderr.read()
+        assert "[INFO]" in stderr_content_before
+        assert "[DEBUG]" not in stderr_content_before
+        
+        # Set log level to DEBUG
+        response2 = daemon.handle_request(RPCRequest(
+            id="test-2",
+            type="set_log_level",
+            payload={"level": "DEBUG"},
+        ))
+        assert response2.ok
+        assert response2.data["level"] == "DEBUG"
+        
+        # Clear stderr for next check
+        stderr.seek(0)
+        stderr.truncate(0)
+        
+        # Now non-polling RPC should also log at DEBUG
+        response3 = daemon.handle_request(RPCRequest(
+            id="test-3",
+            type="ping",
+            payload={},
+        ))
+        assert response3.ok
+        
+        stderr.seek(0)
+        stderr_content_after = stderr.read()
+        # Should now contain DEBUG
+        assert "[DEBUG]" in stderr_content_after
+        assert "[RPC] ping" in stderr_content_after
+    
+    def test_set_log_level_to_info(self):
+        """Test that set_log_level can switch back to INFO."""
+        stdin = StringIO("")
+        stdout = StringIO()
+        stderr = StringIO()
+        
+        daemon = QVDaemon(stdin=stdin, stdout=stdout, stderr=stderr)
+        
+        # Set to DEBUG first
+        response1 = daemon.handle_request(RPCRequest(
+            id="test-1",
+            type="set_log_level",
+            payload={"level": "DEBUG"},
+        ))
+        assert response1.ok
+        
+        # Clear stderr
+        stderr.seek(0)
+        stderr.truncate(0)
+        
+        # Set back to INFO
+        response2 = daemon.handle_request(RPCRequest(
+            id="test-2",
+            type="set_log_level",
+            payload={"level": "INFO"},
+        ))
+        assert response2.ok
+        assert response2.data["level"] == "INFO"
+        
+        # Clear stderr
+        stderr.seek(0)
+        stderr.truncate(0)
+        
+        # Non-polling RPC should log at INFO again
+        response3 = daemon.handle_request(RPCRequest(
+            id="test-3",
+            type="ping",
+            payload={},
+        ))
+        assert response3.ok
+        
+        stderr.seek(0)
+        stderr_content = stderr.read()
+        # Should contain INFO, not DEBUG (for non-polling)
+        assert "[INFO]" in stderr_content
+        assert "[RPC] ping" in stderr_content
+    
+    def test_set_log_level_invalid_level(self):
+        """Test that set_log_level rejects invalid levels."""
+        stdin = StringIO("")
+        stdout = StringIO()
+        stderr = StringIO()
+        
+        daemon = QVDaemon(stdin=stdin, stdout=stdout, stderr=stderr)
+        
+        response = daemon.handle_request(RPCRequest(
+            id="test-1",
+            type="set_log_level",
+            payload={"level": "INVALID"},
+        ))
+        
+        assert not response.ok
+        assert response.error["code"] == "invalid_argument"
+        assert "Invalid log level" in response.error["message"]
+    
+    def test_rpc_log_level_for_helper(self):
+        """Test the _rpc_log_level_for helper method."""
+        stdin = StringIO("")
+        stdout = StringIO()
+        
+        daemon = QVDaemon(stdin=stdin, stdout=stdout)
+        
+        # Default: polling endpoints return DEBUG, others return INFO
+        assert daemon._rpc_log_level_for("job_counts") == "DEBUG"
+        assert daemon._rpc_log_level_for("list_jobs") == "DEBUG"
+        assert daemon._rpc_log_level_for("ping") == "INFO"
+        assert daemon._rpc_log_level_for("get_env_info") == "INFO"
+        
+        # When global level is DEBUG, all return DEBUG
+        daemon._rpc_log_level = "DEBUG"
+        assert daemon._rpc_log_level_for("job_counts") == "DEBUG"
+        assert daemon._rpc_log_level_for("list_jobs") == "DEBUG"
+        assert daemon._rpc_log_level_for("ping") == "DEBUG"
+        assert daemon._rpc_log_level_for("get_env_info") == "DEBUG"
+        
+        # When global level is INFO, polling returns DEBUG, others return INFO
+        daemon._rpc_log_level = "INFO"
+        assert daemon._rpc_log_level_for("job_counts") == "DEBUG"
+        assert daemon._rpc_log_level_for("list_jobs") == "DEBUG"
+        assert daemon._rpc_log_level_for("ping") == "INFO"
+        assert daemon._rpc_log_level_for("get_env_info") == "INFO"
+

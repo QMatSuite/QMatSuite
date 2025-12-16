@@ -328,7 +328,10 @@ def score_candidate(
     return score, flags
 
 
-def fetch_structure_from_optimade(base_url: str, entry_id: str) -> Optional[PMGStructure]:
+def fetch_structure_from_optimade(
+    base_url: str, 
+    entry_id: str
+) -> tuple[Optional[PMGStructure], Optional[Dict[str, Any]]]:
     """
     Fetch full structure from OPTIMADE entry by ID.
     
@@ -337,10 +340,12 @@ def fetch_structure_from_optimade(base_url: str, entry_id: str) -> Optional[PMGS
         entry_id: Structure entry ID
         
     Returns:
-        pymatgen Structure object or None if fetch fails
+        (structure, raw_data) tuple where:
+        - structure: pymatgen Structure object or None if fetch fails
+        - raw_data: Full OPTIMADE response data (for provenance) or None
     """
     if not REQUESTS_AVAILABLE:
-        return None
+        return None, None
     
     try:
         # Request full structure data including coordinates
@@ -354,7 +359,7 @@ def fetch_structure_from_optimade(base_url: str, entry_id: str) -> Optional[PMGS
         structure_data = data.get("data", {})
         
         if not structure_data:
-            return None
+            return None, None
         
         # OPTIMADE structure data is in data.attributes
         attrs = structure_data.get("attributes", {})
@@ -372,52 +377,346 @@ def fetch_structure_from_optimade(base_url: str, entry_id: str) -> Optional[PMGS
         if not species_at_sites or not cartesian_positions:
             return None
         
-        # Build species list for each site
-        site_species = []
-        for site_species_idx in species_at_sites:
-            if isinstance(site_species_idx, list):
-                # Multiple species per site (partial occupancy) - take first
-                site_species_idx = site_species_idx[0] if site_species_idx else 0
-            elif isinstance(site_species_idx, int):
-                pass  # Already an index
-            else:
-                site_species_idx = 0
-            
-            if site_species_idx < len(species_list):
-                species_info = species_list[site_species_idx]
-                # Extract chemical symbol
-                if isinstance(species_info, dict):
-                    chem_symbols = species_info.get("chemical_symbols", [])
-                    if chem_symbols:
-                        site_species.append(chem_symbols[0])
-                    else:
-                        site_species.append("X")
-                elif isinstance(species_info, str):
-                    site_species.append(species_info)
-                else:
-                    site_species.append("X")
-            else:
-                site_species.append("X")
+        # Validate lengths match
+        if len(species_at_sites) != len(cartesian_positions):
+            logger.error(
+                f"OPTIMADE structure mismatch: species_at_sites length ({len(species_at_sites)}) "
+                f"!= cartesian_site_positions length ({len(cartesian_positions)})"
+            )
+            return None
         
-        # Ensure we have the same number of species as positions
-        if len(site_species) != len(cartesian_positions):
-            logger.warning(f"Species count ({len(site_species)}) != positions count ({len(cartesian_positions)})")
-            # Pad or truncate to match
-            if len(site_species) < len(cartesian_positions):
-                site_species.extend(["X"] * (len(cartesian_positions) - len(site_species)))
+        # Build species list for each site
+        # species_at_sites can be:
+        # 1. List of element symbols directly: ["Mo", "S", "S"]
+        # 2. List of indices into species array: [0, 1, 1]
+        # 3. List of lists (partial occupancy): [[0], [1], [1]]
+        site_species = []
+        for i, site_species_data in enumerate(species_at_sites):
+            element_symbol = None
+            
+            # Handle list of lists (partial occupancy) - take first
+            if isinstance(site_species_data, list):
+                if len(site_species_data) == 0:
+                    element_symbol = "X"
+                else:
+                    site_species_data = site_species_data[0]  # Take first species
+            
+            # Check if it's a direct element symbol (string)
+            if isinstance(site_species_data, str):
+                element_symbol = site_species_data
+            # Check if it's an index (int) into species_list
+            elif isinstance(site_species_data, int):
+                if site_species_data < len(species_list):
+                    species_info = species_list[site_species_data]
+                    # Extract chemical symbol from species info
+                    if isinstance(species_info, dict):
+                        chem_symbols = species_info.get("chemical_symbols", [])
+                        if chem_symbols:
+                            element_symbol = chem_symbols[0]
+                        else:
+                            element_symbol = "X"
+                    elif isinstance(species_info, str):
+                        element_symbol = species_info
+                    else:
+                        element_symbol = "X"
+                else:
+                    element_symbol = "X"
             else:
-                site_species = site_species[:len(cartesian_positions)]
+                element_symbol = "X"
+            
+            if not element_symbol:
+                element_symbol = "X"
+            
+            site_species.append(element_symbol)
         
         # Build structure
         from pymatgen.core import Lattice
+        import numpy as np
+        
+        # Validate lattice is invertible
+        lattice_matrix = np.array(lattice_vectors)
+        if lattice_matrix.shape != (3, 3):
+            logger.error(f"OPTIMADE lattice_vectors must be 3x3, got shape {lattice_matrix.shape}")
+            return None, None
+        
+        # Check if lattice is invertible (determinant != 0)
+        det = np.linalg.det(lattice_matrix)
+        if abs(det) < 1e-10:
+            logger.error(f"OPTIMADE lattice_vectors matrix is singular (det={det}), cannot compute fractional coordinates")
+            return None, None
+        
         lattice = Lattice(lattice_vectors)
         structure = PMGStructure(lattice, site_species, cartesian_positions, coords_are_cartesian=True)
         
-        return structure
+        # Verify fractional coordinates are reasonable (most should be in [0,1) or close)
+        # This is a sanity check that the conversion worked correctly
+        frac_coords = structure.frac_coords
+        if len(frac_coords) > 0:
+            # Check that at least some coords are in reasonable range (not all wildly large)
+            frac_abs_max = np.abs(frac_coords).max()
+            if frac_abs_max > 100:
+                logger.warning(
+                    f"OPTIMADE fractional coordinates seem unreasonable (max abs={frac_abs_max:.2f}). "
+                    f"This may indicate a coordinate system mismatch."
+                )
+        
+        # Return structure and full raw data for provenance
+        return structure, data
         
     except Exception as e:
         logger.warning(f"Failed to fetch structure from OPTIMADE {base_url}/{entry_id}: {e}")
+        return None, None
+
+
+def _get_nested_value(obj: Any, path: str) -> Any:
+    """Get nested value by dot-separated path."""
+    if obj is None:
         return None
+    parts = path.split('.')
+    current = obj
+    for part in parts:
+        if current is None or not isinstance(current, dict):
+            return None
+        current = current.get(part)
+    return current
+
+
+def _get_first_available(obj: Any, keys: List[str]) -> Any:
+    """Get first available value from a list of keys (dot-separated paths)."""
+    if obj is None:
+        return None
+    for key in keys:
+        value = _get_nested_value(obj, key)
+        if value is not None and value != '':
+            return value
+    return None
+
+
+def resolve_overview_fields(
+    structure: PMGStructure,
+    provenance: Dict[str, Any],
+) -> Dict[str, Any]:
+    """
+    Resolve the Overview fields used by the GUI Details panel using the same priority rules.
+    
+    This mirrors the frontend mapping logic in StructureDetailPanel.tsx.
+    
+    Args:
+        structure: pymatgen Structure object
+        provenance: Provenance dict from extract_provenance()
+        
+    Returns:
+        Dict with keys:
+        - formula: str (resolved using priority)
+        - nsites: int (resolved using priority)
+        - species: List[str] (unique species symbols)
+        - spacegroup_international: str | None
+        - spacegroup_number: int | None
+        - bravais_lattice: str | None
+        - dimensionality: str | None (e.g., "3D")
+        - partial_occupancies: bool | None
+        - created: str | None
+        - modified: str | None
+        - optimade_id: str | None
+        - aiida_uuid: str | None
+        - provider: str | None
+        - database: str | None
+        - source_name: str | None
+        
+    Any missing optional fields are None. Result is JSON-safe.
+    """
+    result: Dict[str, Any] = {}
+    
+    # Formula priority: structure.composition.reduced_formula as baseline,
+    # but prefer provenance if available
+    formula = structure.composition.reduced_formula
+    prov_formula = _get_first_available(provenance, [
+        'extras.formula_hill',
+        'extras.formula_hill_compact',
+        'attributes.chemical_formula_reduced',
+        'attributes.chemical_formula_descriptive',
+    ])
+    if prov_formula:
+        formula = str(prov_formula)
+    result["formula"] = formula
+    
+    # nsites priority: provenance extras/attributes, fallback to structure
+    nsites = _get_first_available(provenance, [
+        'extras.number_of_sites',
+        'attributes.nsites',
+    ])
+    if nsites is None:
+        nsites = structure.num_sites
+    else:
+        nsites = int(nsites) if isinstance(nsites, (int, float, str)) else structure.num_sites
+    result["nsites"] = nsites
+    
+    # Species: from structure (unique)
+    species_set = set()
+    for site in structure:
+        species_set.add(str(site.specie))
+    result["species"] = sorted(list(species_set))
+    
+    # Space group: priority extras.spacegroup_international, then attributes fallbacks
+    spacegroup_symbol = _get_first_available(provenance, [
+        'extras.spacegroup_international',
+        'attributes.space_group_symbol',
+        'attributes.spacegroup_international',
+    ])
+    result["spacegroup_international"] = str(spacegroup_symbol) if spacegroup_symbol else None
+    
+    spacegroup_number = _get_first_available(provenance, [
+        'extras.spacegroup_number',
+        'attributes.space_group_number',
+    ])
+    if spacegroup_number is not None:
+        try:
+            result["spacegroup_number"] = int(spacegroup_number)
+        except (ValueError, TypeError):
+            result["spacegroup_number"] = None
+    else:
+        result["spacegroup_number"] = None
+    
+    # Bravais lattice
+    bravais = _get_first_available(provenance, [
+        'extras.bravais_lattice_extended',
+        'extras.bravais_lattice',
+    ])
+    result["bravais_lattice"] = str(bravais) if bravais else None
+    
+    # Dimensionality
+    dim = _get_first_available(provenance, [
+        'attributes.dimensionality',
+        'extras.dimensionality',
+    ])
+    if dim is not None:
+        result["dimensionality"] = f"{dim}D" if isinstance(dim, (int, float)) else str(dim)
+    else:
+        result["dimensionality"] = None
+    
+    # Partial occupancies
+    partial_occ = _get_first_available(provenance, ['extras.partial_occupancies'])
+    if partial_occ is not None:
+        if isinstance(partial_occ, bool):
+            result["partial_occupancies"] = partial_occ
+        elif isinstance(partial_occ, str):
+            result["partial_occupancies"] = partial_occ.lower() in ('true', 'yes', '1')
+        else:
+            result["partial_occupancies"] = bool(partial_occ)
+    else:
+        # Check structure_features for disorder
+        features = _get_first_available(provenance, ['attributes.structure_features'])
+        if isinstance(features, list):
+            has_disorder = any(
+                isinstance(f, str) and 'disorder' in f.lower()
+                for f in features
+            )
+            result["partial_occupancies"] = has_disorder if has_disorder else None
+        else:
+            result["partial_occupancies"] = None
+    
+    # Timestamps
+    result["created"] = provenance.get("created") or _get_nested_value(provenance, 'raw.ctime')
+    result["modified"] = provenance.get("modified") or _get_nested_value(provenance, 'raw.mtime')
+    
+    # Identifiers
+    result["optimade_id"] = provenance.get("optimade_id")
+    result["aiida_uuid"] = provenance.get("aiida_uuid") or _get_nested_value(provenance, 'raw.uuid') or _get_nested_value(provenance, 'attributes.uuid')
+    
+    # Source metadata
+    result["provider"] = provenance.get("provider")
+    result["database"] = provenance.get("database")
+    result["source_name"] = provenance.get("source_name")
+    
+    return result
+
+
+def extract_provenance(
+    *,
+    provider: str,
+    database: str,
+    base_url: str,
+    optimade_id: str,
+    attributes: Dict[str, Any],
+    raw: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Extract provenance metadata from OPTIMADE/AiiDA response.
+    
+    Returns JSON-safe provenance dict with keys used by Details panel.
+    This matches the field mapping rules used by the frontend Details panel.
+    
+    Args:
+        provider: Provider name (e.g., "main", "archive")
+        database: Database name (e.g., "mc3d-pbe-v1")
+        base_url: OPTIMADE base URL
+        optimade_id: Structure entry ID
+        attributes: OPTIMADE attributes dict (from data.attributes)
+        raw: Full OPTIMADE response (optional, for raw block)
+        
+    Returns:
+        Provenance dict with keys:
+        - source_name: str
+        - provider: str
+        - database: str
+        - base_url: str
+        - optimade_id: str
+        - aiida_uuid: str | None
+        - created: str | None
+        - modified: str | None
+        - owner: str | None
+        - node_type: str | None
+        - extras: dict (from attributes.extras)
+        - attributes: dict (full attributes)
+        - raw: dict | None (full raw response if provided)
+    """
+    # Extract provider info from raw response meta if available
+    provider_name = "Materials Cloud OPTIMADE"
+    # Use the provided provider parameter (from base URL parsing) as the primary source
+    # Only use raw meta.provider.prefix as fallback if provider parameter is not set
+    provider_prefix = provider
+    if raw and isinstance(raw, dict):
+        meta = raw.get("meta", {})
+        if isinstance(meta, dict):
+            provider_info = meta.get("provider")
+            if isinstance(provider_info, dict):
+                provider_name = provider_info.get("name", provider_name)
+                # Only use prefix from raw if provider parameter was not provided or is "unknown"
+                if not provider_prefix or provider_prefix == "unknown":
+                    provider_prefix = provider_info.get("prefix", provider_prefix)
+    
+    # Database should come from base_url parsing (already provided), but ensure it's correct
+    # If database is "unknown", try to extract from base_url
+    if database == "unknown" and base_url:
+        parts = base_url.rstrip("/").split("/")
+        if len(parts) >= 1:
+            # Extract database slug from URL (e.g., mc3d-pbe-v1 from .../main/mc3d-pbe-v1)
+            potential_db = parts[-1]
+            if potential_db and potential_db not in ["v1", "structures"]:
+                database = potential_db
+    
+    provenance = {
+        "source_name": provider_name,
+        "provider": provider_prefix,
+        "database": database,
+        "base_url": base_url,
+        "optimade_id": optimade_id,
+        "aiida_uuid": attributes.get("uuid") or None,
+        "created": attributes.get("ctime") or None,
+        "modified": attributes.get("mtime") or None,
+        "owner": attributes.get("owner") or None,
+        "node_type": attributes.get("node_type") or None,
+        "extras": attributes.get("extras") or {},
+        "attributes": attributes,  # Full OPTIMADE attributes
+    }
+    
+    if raw is not None:
+        provenance["raw"] = raw
+    
+    # Remove None values for JSON safety
+    provenance = {k: v for k, v in provenance.items() if v is not None}
+    
+    return provenance
 
 
 def search_online_structures(

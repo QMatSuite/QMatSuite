@@ -12,6 +12,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useQVClient, useQVLogs } from '../../hooks/useQVClient';
 import type { QEDetectionResult, EnvironmentInfo } from '../../types/qv';
+import { getVisibleLogLines, getVisibleLogText } from '../../utils/logFilter';
 import './SettingsPanel.css';
 
 export interface AppSettings {
@@ -37,6 +38,10 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [pingResult, setPingResult] = useState<string | null>(null);
   const [isPinging, setIsPinging] = useState(false);
+  const [daemonLogVerbosity, setDaemonLogVerbosity] = useState<'INFO' | 'DEBUG'>('INFO');
+  const [logVerbosityError, setLogVerbosityError] = useState<string | null>(null);
+  const [showPollingLogs, setShowPollingLogs] = useState(false);
+  const [copyButtonLabel, setCopyButtonLabel] = useState('Copy');
   const logs = useQVLogs(200);
   const logsScrollRef = useRef<HTMLDivElement>(null);
   
@@ -140,6 +145,65 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
     }
     setIsPinging(false);
   }, [qv]);
+  
+  const handleLogVerbosityChange = useCallback(async (level: 'INFO' | 'DEBUG') => {
+    if (!qv) return;
+    
+    const previousLevel = daemonLogVerbosity;
+    setDaemonLogVerbosity(level);
+    setLogVerbosityError(null);
+    
+    try {
+      const response = await qv.call('set_log_level', { level });
+      if (!response.ok) {
+        // Revert on failure
+        setDaemonLogVerbosity(previousLevel);
+        setLogVerbosityError(response.error?.message || 'Failed to set log level');
+      }
+    } catch (e) {
+      // Revert on error
+      setDaemonLogVerbosity(previousLevel);
+      setLogVerbosityError(e instanceof Error ? e.message : 'Failed to set log level');
+    }
+  }, [qv, daemonLogVerbosity]);
+  
+  const handleCopyLogs = useCallback(async () => {
+    const textToCopy = getVisibleLogText(logs, showPollingLogs);
+    
+    if (!textToCopy) {
+      return;
+    }
+    
+    try {
+      // Try modern clipboard API first
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(textToCopy);
+      } else {
+        // Fallback for older browsers/contexts
+        const textarea = document.createElement('textarea');
+        textarea.value = textToCopy;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        textarea.style.left = '-999999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      
+      // Show feedback
+      setCopyButtonLabel('Copied!');
+      setTimeout(() => {
+        setCopyButtonLabel('Copy');
+      }, 2000);
+    } catch (e) {
+      console.error('Failed to copy logs:', e);
+      // Could show error toast here if needed
+    }
+  }, [logs, showPollingLogs, getVisibleLogText]);
+  
+  // Compute visible logs for rendering
+  const visibleLogs = getVisibleLogLines(logs, showPollingLogs);
   
   if (isLoading) {
     return (
@@ -432,6 +496,37 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
                 </div>
               </div>
               
+              {/* Daemon Log Verbosity */}
+              <div className="diagnostics-subsection">
+                <h4 className="diagnostics-subsection__title">Daemon Log Verbosity</h4>
+                <div className="diagnostics-subsection__content">
+                  <div className="settings-option">
+                    <div className="settings-option__info">
+                      <span className="settings-option__label">Log Level</span>
+                      <span className="settings-option__description">
+                        Control daemon log verbosity. Debug shows polling RPC logs (job_counts, list_jobs).
+                      </span>
+                    </div>
+                    <div className="settings-option__control">
+                      <select
+                        className="settings-select"
+                        value={daemonLogVerbosity}
+                        onChange={(e) => handleLogVerbosityChange(e.target.value as 'INFO' | 'DEBUG')}
+                      >
+                        <option value="INFO">Info</option>
+                        <option value="DEBUG">Debug</option>
+                      </select>
+                    </div>
+                  </div>
+                  {logVerbosityError && (
+                    <div className="settings-error" style={{ marginTop: '8px' }}>
+                      <span className="error-icon">⚠️</span>
+                      <span className="error-text">{logVerbosityError}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
               {/* Daemon Status */}
               <div className="diagnostics-subsection">
                 <h4 className="diagnostics-subsection__title">Daemon Status</h4>
@@ -540,15 +635,35 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
               <div className="diagnostics-subsection">
                 <div className="diagnostics-subsection__header">
                   <h4 className="diagnostics-subsection__title">Daemon Logs</h4>
-                  <span className="diagnostics-logs-count">{logs.length} lines</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <button
+                      className="settings-btn settings-btn--sm"
+                      onClick={handleCopyLogs}
+                      disabled={visibleLogs.length === 0}
+                      title="Copy visible logs to clipboard"
+                      data-testid="qv-settings-daemon-logs-copy"
+                    >
+                      {copyButtonLabel}
+                    </button>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={showPollingLogs}
+                        onChange={(e) => setShowPollingLogs(e.target.checked)}
+                        style={{ cursor: 'pointer' }}
+                      />
+                      <span>Show polling logs</span>
+                    </label>
+                    <span className="diagnostics-logs-count">{visibleLogs.length} lines</span>
+                  </div>
                 </div>
                 <div className="diagnostics-logs-content" ref={logsScrollRef}>
-                  {logs.length === 0 ? (
+                  {visibleLogs.length === 0 ? (
                     <div className="diagnostics-logs-empty">
-                      No daemon output yet...
+                      {logs.length === 0 ? 'No daemon output yet...' : 'No logs match current filter'}
                     </div>
                   ) : (
-                    logs.map((log, i) => (
+                    visibleLogs.map((log, i) => (
                       <div key={i} className="diagnostics-log-line">
                         {log}
                       </div>

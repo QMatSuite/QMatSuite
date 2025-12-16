@@ -277,7 +277,9 @@ def test_primitive_si_with_repeat_boundary_shows_extra_atoms_and_bonds(si_diamon
     radii_map = {"Si": get_element_radius("Si")}
     
     # Compute bonds on all atoms (base + images)
-    bonds_with_repeat = build_bonds(
+    # Use legacy build_bonds_cartesian for unit tests (direct cartesian arrays)
+    from quantumvitas.analysis.structure_viz import build_bonds_cartesian
+    bonds_with_repeat = build_bonds_cartesian(
         all_atoms_cart, all_species, radii_map,
         max_factor=1.2, tolerance=0.3, max_cutoff=3.5
     )
@@ -632,7 +634,9 @@ class TestCellListBondDetection:
         radii_map = {sym: get_element_radius(sym) for sym in set(species)}
         
         # Default should use cell-list
-        bonds_default = build_bonds(
+        # Use legacy build_bonds_cartesian for unit tests
+        from quantumvitas.analysis.structure_viz import build_bonds_cartesian
+        bonds_default = build_bonds_cartesian(
             atoms_cart, species, radii_map,
             max_factor=1.2, tolerance=0.3, max_cutoff=3.5
         )
@@ -654,7 +658,9 @@ class TestCellListBondDetection:
         radii_map = {sym: get_element_radius(sym) for sym in set(species)}
         
         # Force brute-force
-        bonds_forced = build_bonds(
+        # Use legacy build_bonds_cartesian for unit tests
+        from quantumvitas.analysis.structure_viz import build_bonds_cartesian
+        bonds_forced = build_bonds_cartesian(
             atoms_cart, species, radii_map,
             max_factor=1.2, tolerance=0.3, max_cutoff=3.5,
             use_bruteforce=True

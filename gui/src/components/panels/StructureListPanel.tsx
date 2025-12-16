@@ -72,10 +72,10 @@ export function StructureListPanel({
   // Project Structures Panel (Panel A)
   const renderProjectPanel = () => {
     if (isImportMode) {
-      // Collapsed header-only in import mode
+      // Collapsed header-only in import mode (no body, height:0)
       const count = structures?.length || 0;
       return (
-        <div className="structure-list-panel structure-list-panel--collapsed">
+        <div className="structure-list-panel structure-list-panel--collapsed" style={{ height: 'auto', minHeight: '40px' }}>
           <button
             className="structure-list-panel__header-btn"
             onClick={handleExitImportMode}
@@ -84,6 +84,7 @@ export function StructureListPanel({
             <span className="structure-list-panel__header-icon">←</span>
             Project Structures ({count}) — click to return
           </button>
+          {/* No body content in import mode */}
         </div>
       );
     }

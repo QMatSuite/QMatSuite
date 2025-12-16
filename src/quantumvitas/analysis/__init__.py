@@ -58,6 +58,7 @@ from .structure_viz import (
     visualize_structure,
     plot_structure_3d,
     detect_bonds,
+    build_bonds,  # Public API
     generate_boundary_atoms,
     make_supercell,
     StructurePlotOptions,
@@ -111,6 +112,7 @@ __all__ = [
     "visualize_structure",
     "plot_structure_3d",
     "detect_bonds",
+    "build_bonds",  # Public API
     "generate_boundary_atoms",
     "make_supercell",
     "StructurePlotOptions",

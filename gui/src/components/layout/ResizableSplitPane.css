@@ -1,0 +1,55 @@
+/**
+ * ResizableSplitPane styles
+ */
+
+.resizable-split-pane {
+  display: grid;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.resizable-split-pane__top {
+  min-height: 0;
+  overflow: auto;
+  overflow-x: hidden;
+}
+
+.resizable-split-pane__divider {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--border-subtle);
+  transition: background-color 0.2s;
+  user-select: none;
+}
+
+.resizable-split-pane__divider:hover {
+  background-color: var(--border-primary);
+}
+
+.resizable-split-pane__divider--dragging {
+  background-color: var(--accent-primary);
+}
+
+.resizable-split-pane__divider-handle {
+  width: 40px;
+  height: 3px;
+  background-color: var(--text-tertiary);
+  border-radius: 2px;
+  opacity: 0.6;
+}
+
+.resizable-split-pane__divider:hover .resizable-split-pane__divider-handle,
+.resizable-split-pane__divider--dragging .resizable-split-pane__divider-handle {
+  opacity: 1;
+  background-color: var(--accent-primary);
+}
+
+.resizable-split-pane__bottom {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
