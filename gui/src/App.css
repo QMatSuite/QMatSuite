@@ -110,19 +110,86 @@
   flex: 0 0 auto;
 }
 
+.structures-view__detail--error,
+.structures-view__detail--loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  min-height: 400px;
+}
+
+.error-panel {
+  text-align: center;
+  max-width: 500px;
+}
+
+.error-panel h3 {
+  color: var(--color-error);
+  margin-bottom: var(--space-3);
+  font-size: var(--text-lg);
+}
+
+.error-panel p {
+  color: var(--text-secondary);
+  margin-bottom: var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.loading-panel {
+  text-align: center;
+}
+
+.loading-panel p {
+  color: var(--text-secondary);
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+}
+
 .structures-view__detail {
   flex: 1;
   min-width: var(--panel-min-width);
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: 0;
+  overflow: hidden;
+  min-height: 0; /* Critical for flex child scrolling */
+}
+
+.structures-view__detail-panel-wrapper {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.structures-view__3d-wrapper {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .structures-view__3d {
-  flex: 1;
-  min-height: 400px;
+  flex: 1 1 auto; /* Grow and shrink */
+  min-height: 0; /* Critical for flex child scrolling */
   border-radius: var(--radius-lg);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.structures-view__import-actions {
+  flex: 0 0 auto; /* Fixed height */
+  padding: var(--space-4);
+  display: flex;
+  gap: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
 }
 
 /* Workflows View - Split Layout */

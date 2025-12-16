@@ -84,6 +84,7 @@ export interface AtomVisData {
   frac_coords: [number, number, number];
   color: string;
   radius: number;
+  is_boundary?: boolean;  // P1-2: Flag to mark boundary atoms (new contract)
 }
 
 export interface BondVisData {
@@ -119,7 +120,72 @@ export interface StructureVisData {
   boundary_atoms: AtomVisData[];
   bonds: BondVisData[];
   element_colors: Record<string, string>;
+  perf?: {  // Optional performance metrics from backend
+    trace_id: string;
+    prep_ms: number;
+    bonds_ms: number;
+    ser_ms: number;
+    total_ms: number;
+    atoms: number;
+    bonds: number;
+    bytes: number;
+  };
 }
+
+// =============================================================================
+// Unified Structure Model (for both project and online)
+// =============================================================================
+
+export interface Provenance {
+  source_name: string;
+  provider?: string;
+  database?: string;
+  base_url?: string;
+  optimade_id?: string;
+  aiida_uuid?: string;
+  created?: string;
+  modified?: string;
+  owner?: string;
+  node_type?: string;
+  extras?: Record<string, any>;
+  attributes?: Record<string, any>;
+  raw?: Record<string, any>;
+  cod_id?: string;
+}
+
+export interface StructureModel {
+  id: string;  // project id or "online:<candidateId>"
+  name: string;
+  formula: string;
+  nsites: number;
+  species: string[];  // unique species symbols
+  lattice: number[][];  // 3x3 matrix
+  atoms: Array<{
+    element: string;
+    frac: [number, number, number];
+    cart?: [number, number, number];
+    index?: number;
+  }>;
+  bonds: Array<{
+    i: number;
+    j: number;
+    order?: number;
+    distance?: number;
+  }>;
+  // Viewer data (from StructureVisData)
+  vis?: StructureVisData;
+  // Provenance (for online structures)
+  provenance?: Provenance | null;
+  // Additional fields from existing payload
+  n_boundary_atoms?: number;
+  supercell?: [number, number, number];
+  display_mode?: 'primitive' | 'supercell' | 'conventional' | 'box';
+  element_colors?: Record<string, string>;
+}
+
+export type RightSelection =
+  | { kind: "project"; structureId: string }
+  | { kind: "online"; sessionId: string; candidateId: string };
 
 // =============================================================================
 // Data Types - Calculations
@@ -547,6 +613,7 @@ export interface QVCommandMap {
       repeat_boundary?: boolean;
       display_mode?: 'primitive' | 'supercell' | 'conventional' | 'box';
       box_bounds?: [number, number, number, number, number, number]; // [xmin, xmax, ymin, ymax, zmin, zmax]
+      trace_id?: string;
     };
     result: StructureVisData;
   };
@@ -651,6 +718,41 @@ export interface QVCommandMap {
   };
   
   // Structure import
+  // Online structure operations
+  structure_get_online_candidate: {
+    payload: {
+      project_root: string;
+      session_id: string;
+      candidate_id: string;
+      supercell?: [number, number, number];
+      repeat_boundary?: boolean;
+      display_mode?: 'primitive' | 'supercell' | 'conventional' | 'box';
+      box_bounds?: [number, number, number, number, number, number];
+      trace_id?: string;
+    };
+    result: {
+      structure_vis: StructureVisData;
+      formula: string;
+      provenance?: {
+        provider?: string;
+        database?: string;
+        entry_id?: string;
+        url?: string;
+        cod_id?: string;
+      };
+    };
+  };
+  structure_import_online_candidate: {
+    payload: {
+      project_root: string;
+      session_id: string;
+      candidate_id: string;
+    };
+    result: {
+      new_structure_id: string;
+      name: string;
+    };
+  };
   import_structure: {
     payload: {
       project_root: string;

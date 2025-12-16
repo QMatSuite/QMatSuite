@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useQVLogs, useQVClient } from '../../hooks/useQVClient';
 import type { QVResponse } from '../../types/qv';
+import { getVisibleLogLines, getVisibleLogText } from '../../utils/logFilter';
 import './DebugPanel.css';
 
 interface DebugPanelProps {
@@ -21,11 +22,51 @@ const DEFAULT_HEIGHT = 180;
  * Compact log footer panel with resizable height
  */
 export function DebugPanel({ isVisible = true }: DebugPanelProps) {
-  const logs = useQVLogs(200);
+  const allLogs = useQVLogs(200);
   const scrollRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState(DEFAULT_HEIGHT);
   const [isResizing, setIsResizing] = useState(false);
+  const [showPollingLogs, setShowPollingLogs] = useState(false);
+  const [copyButtonLabel, setCopyButtonLabel] = useState('Copy');
+  
+  // Filter logs using shared utility (single source of truth)
+  const logs = getVisibleLogLines(allLogs, showPollingLogs);
+  
+  // Copy handler
+  const handleCopyLogs = useCallback(async () => {
+    const textToCopy = getVisibleLogText(allLogs, showPollingLogs);
+    
+    if (!textToCopy) {
+      return;
+    }
+    
+    try {
+      // Try modern clipboard API first
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(textToCopy);
+      } else {
+        // Fallback for older browsers/contexts
+        const textarea = document.createElement('textarea');
+        textarea.value = textToCopy;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        textarea.style.left = '-999999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      
+      // Show feedback
+      setCopyButtonLabel('Copied!');
+      setTimeout(() => {
+        setCopyButtonLabel('Copy');
+      }, 2000);
+    } catch (e) {
+      console.error('Failed to copy logs:', e);
+    }
+  }, [allLogs, showPollingLogs]);
   
   // Auto-scroll to bottom on new logs
   useEffect(() => {
@@ -81,7 +122,26 @@ export function DebugPanel({ isVisible = true }: DebugPanelProps) {
       
       <div className="debug-panel__header">
         <span className="debug-panel__title">🔧 Daemon Logs</span>
-        <span className="debug-panel__count">{logs.length} lines</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: 'auto' }}>
+          <button
+            className="debug-panel__copy-btn"
+            onClick={handleCopyLogs}
+            disabled={logs.length === 0}
+            title="Copy visible logs to clipboard"
+            data-testid="qv-dock-daemon-logs-copy"
+          >
+            {copyButtonLabel}
+          </button>
+          <label className="debug-panel__filter-toggle" title="Show polling RPC logs (job_counts, list_jobs)">
+            <input
+              type="checkbox"
+              checked={showPollingLogs}
+              onChange={(e) => setShowPollingLogs(e.target.checked)}
+            />
+            <span>Show polling logs</span>
+          </label>
+          <span className="debug-panel__count">{logs.length} lines</span>
+        </div>
       </div>
       <div className="debug-panel__content" ref={scrollRef}>
         {logs.length === 0 ? (

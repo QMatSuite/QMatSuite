@@ -16,6 +16,7 @@ import {
   Sidebar,
   StatusBar,
   ResizablePane,
+  ResizableSplitPane,
   ProjectSummaryPanel, 
   StructureListPanel,
   StructureDetailPanel,
@@ -45,6 +46,9 @@ import type {
   CalculationInfo,
   CalculationDetailResult,
   StructureVisData,
+  StructureModel,
+  RightSelection,
+  Provenance,
   QVResponse,
   JobSubmitResult,
   PreflightCheckResult,
@@ -89,7 +93,8 @@ function App() {
   const [onlineSessionId, setOnlineSessionId] = useState<string | null>(null);
   const [onlineCandidates, setOnlineCandidates] = useState<any[]>([]);
   const [selectedOnlineCandidateId, setSelectedOnlineCandidateId] = useState<string | null>(null);
-  const [onlineCandidateData, setOnlineCandidateData] = useState<any>(null);
+  // DEPRECATED: onlineCandidateData - no longer used, kept for backward compatibility
+  // const [onlineCandidateData, setOnlineCandidateData] = useState<any>(null);
   
   // CRITICAL: Separate calculation summary (from list_calculations) from calculation detail (from get_calculation_detail)
   // The detail's steps array is the canonical source of truth (built from calculation.yaml)
@@ -598,11 +603,432 @@ function App() {
   // Structure Handling
   // ==========================================================================
   
-  // Current supercell and repeat_boundary settings
+  // Unified structure model state (replaces separate project/online states)
+  const [currentStructureModel, setCurrentStructureModel] = useState<StructureModel | null>(null);
+  const [rightSelection, setRightSelection] = useState<RightSelection | null>(null);
+  const [structureLoadError, setStructureLoadError] = useState<string | null>(null);
+  
+  // Viewer settings (shared for both project and online)
+  const [viewerSettings, setViewerSettings] = useState({
+    supercell: [1, 1, 1] as [number, number, number],
+    repeatBoundary: true,
+    displayMode: 'primitive' as 'primitive' | 'supercell' | 'conventional' | 'box',
+    boxBounds: null as [number, number, number, number, number, number] | null,
+    showBonds: true,
+    showUnitCell: true,
+    showLabels: false,
+    atomScale: 0.4,
+    bondScale: 1.0,
+  });
+  
+  // Saved viewer settings for project mode (restored on exit import)
+  const savedProjectViewerSettingsRef = useRef<typeof viewerSettings | null>(null);
+  
+  // Legacy state (kept for compatibility during refactor)
   const [currentSupercell, setCurrentSupercell] = useState<[number, number, number]>([1, 1, 1]);
   const [currentRepeatBoundary, setCurrentRepeatBoundary] = useState(true);
   const [currentDisplayMode, setCurrentDisplayMode] = useState<'primitive' | 'supercell' | 'conventional' | 'box'>('primitive');
   const [currentBoxBounds, setCurrentBoxBounds] = useState<[number, number, number, number, number, number] | null>(null);
+  
+  // Generate trace_id for performance logging
+  const generateTraceId = useCallback(() => {
+    return Date.now().toString(36).slice(-4) + Math.random().toString(36).slice(2, 6);
+  }, []);
+  
+  // Track current trace_id for viewer callback
+  const currentTraceIdRef = useRef<string | null>(null);
+  const viewerStartTimeRef = useRef<number | null>(null);
+  
+  // Load token to prevent race conditions - each load gets a unique token
+  const loadTokenRef = useRef(0);
+  
+  // Runtime validator for StructureModel
+  function validateStructureModel(m: any): { ok: true } | { ok: false; msg: string } {
+    if (!m) {
+      return { ok: false, msg: 'Model is null or undefined' };
+    }
+    if (!m.id || typeof m.id !== 'string') {
+      return { ok: false, msg: 'Missing or invalid id field' };
+    }
+    if (!m.lattice || !Array.isArray(m.lattice) || m.lattice.length !== 3) {
+      return { ok: false, msg: 'Missing or invalid lattice (must be 3x3 matrix)' };
+    }
+    for (const row of m.lattice) {
+      if (!Array.isArray(row) || row.length !== 3) {
+        return { ok: false, msg: 'Lattice must be 3x3 matrix' };
+      }
+      for (const val of row) {
+        if (typeof val !== 'number' || !isFinite(val)) {
+          return { ok: false, msg: 'Lattice contains non-numeric values' };
+        }
+      }
+    }
+    if (!m.atoms || !Array.isArray(m.atoms)) {
+      return { ok: false, msg: 'Missing or invalid atoms array' };
+    }
+    for (const atom of m.atoms) {
+      if (!atom.element || typeof atom.element !== 'string') {
+        return { ok: false, msg: 'Atom missing element field' };
+      }
+      if (!atom.frac || !Array.isArray(atom.frac) || atom.frac.length !== 3) {
+        return { ok: false, msg: 'Atom missing or invalid frac_coords' };
+      }
+    }
+    // bonds are optional, but if present must be valid
+    if (m.bonds && !Array.isArray(m.bonds)) {
+      return { ok: false, msg: 'bonds must be an array if present' };
+    }
+    return { ok: true };
+  }
+  
+  // Unified structure loader (project and online)
+  const loadStructureModel = useCallback(async (
+    selection: RightSelection,
+    viewerSettingsOverride?: Partial<typeof viewerSettings>
+  ): Promise<StructureModel> => {
+    if (!projectRoot || !qv) {
+      throw new Error('Project root or QV client not available');
+    }
+    
+    // Frontend timing: RPC start
+    const rpcStart = performance.now();
+    
+    const traceId = generateTraceId();
+    currentTraceIdRef.current = traceId;
+    
+    let visData: StructureVisData | null = null;
+    let provenance: Provenance | null = null;
+    let formula = '';
+    let nsites = 0;
+    // let nSpecies = 0;  // Unused, removed to fix lint warning
+    let rpcMs: number | null = null; // Declare in outer scope to avoid ReferenceError
+    
+    try {
+      if (selection.kind === 'project') {
+        // Project structure path
+        const structure = structures?.find(s => s.id === selection.structureId);
+        if (!structure) {
+          throw new Error(`Structure not found: ${selection.structureId}`);
+        }
+        
+        const settings = viewerSettingsOverride || viewerSettings;
+        const response = await qv.call('get_structure_vis', {
+          project_root: projectRoot,
+          selector: structure.slug,
+          supercell: settings.supercell,
+          repeat_boundary: settings.repeatBoundary,
+          display_mode: settings.displayMode,
+          box_bounds: settings.boxBounds ?? undefined,  // Convert null to undefined for type safety
+          trace_id: traceId,
+        });
+        
+        // Frontend timing: RPC end
+        const rpcEnd = performance.now();
+        rpcMs = rpcEnd - rpcStart;
+        
+        if (response.ok && response.data) {
+          try {
+            visData = response.data as StructureVisData;
+            formula = visData.formula || '';
+            nsites = visData.n_atoms || 0;
+            // nSpecies = structure.n_species;  // Unused, removed to fix lint warning
+            
+            // Get backend perf metrics if available
+            const perf = (response.data as any).perf;
+            const backendTotalMs = perf?.total_ms || 0;
+            
+            // Log structure load success (one line per load)
+            const kind = 'project';
+            const atomsCount = visData.atoms?.length || 0;
+            const bondsCount = visData.bonds?.length || 0;
+            const hasProvenance = !!(response.data as any).provenance;
+            console.log(
+              `[structure_vis] kind=${kind} structureId=${selection.structureId} ` +
+              `atoms=${atomsCount} bonds=${bondsCount} provenance=${hasProvenance}`
+            );
+            
+            // Frontend timing: Render start (setState triggers render)
+            const renderStart = performance.now();
+            
+            // Store render start time for onFirstFrame callback
+            viewerStartTimeRef.current = renderStart;
+            
+            // Log frontend timing (will be completed in onFirstFrame callback)
+            // Format: [ui] kind=project rpc=42ms render=180ms atoms=24 bonds=84 mode=supercell
+            const mode = settings.displayMode;
+            
+            // Note: render_ms will be logged in handleViewerFirstFrame
+            // Log timing immediately (do not store in model)
+            const rpcMsStr = rpcMs == null ? "n/a" : `${Math.round(rpcMs)}ms`;
+            console.log(
+              `[ui] kind=${kind} rpc=${rpcMsStr} backend=${Math.round(backendTotalMs)}ms ` +
+              `atoms=${atomsCount} bonds=${bondsCount} mode=${mode} (render pending)`
+            );
+          } catch (err) {
+            console.error('[structure_vis_parse_failed] project path', err, response.data);
+            throw err; // Re-throw to be caught by outer catch
+          }
+        } else {
+          const errorMsg = response.error || 'Unknown error';
+          throw new Error(`Backend error loading structure: ${errorMsg}`);
+        }
+      } else {
+        // Online candidate path
+        const settings = viewerSettingsOverride || viewerSettings;
+        const response = await qv.call('structure_get_online_candidate', {
+          project_root: projectRoot,
+          session_id: selection.sessionId,
+          candidate_id: selection.candidateId,
+          supercell: settings.supercell,
+          repeat_boundary: settings.repeatBoundary,
+          display_mode: settings.displayMode,
+          box_bounds: settings.boxBounds ?? undefined,  // Convert null to undefined for type safety
+          trace_id: traceId,
+        });
+        
+        // Frontend timing: RPC end
+        const rpcEnd = performance.now();
+        rpcMs = rpcEnd - rpcStart;
+        
+        if (response.ok && response.data) {
+          try {
+            const data = response.data as any;
+            formula = data.formula || '';
+            nsites = data.n_atoms || 0;
+            // nSpecies = data.n_species || 0;  // Unused, removed to fix lint warning
+            provenance = data.provenance || null;
+            
+            // Log structure load success (one line per load)
+            const kind = 'online';
+            const atomsCount = data.structure_vis?.atoms?.length || 0;
+            const bondsCount = data.structure_vis?.bonds?.length || 0;
+            const hasProvenance = !!provenance;
+            console.log(
+              `[structure_vis] kind=${kind} candidateId=${selection.candidateId} ` +
+              `atoms=${atomsCount} bonds=${bondsCount} provenance=${hasProvenance}`
+            );
+            
+            // Convert to StructureVisData format
+            if (data.structure_vis) {
+              // Use frac_coords from payload if available, otherwise compute from cart
+              const atoms = data.structure_vis.atoms.map((atom: any, idx: number) => {
+                // Backend should provide both cart_coords and frac_coords
+                const cart = atom.cart_coords || atom.position;
+                const frac = atom.frac_coords || atom.position; // Fallback to cart if missing (shouldn't happen)
+                
+                return {
+                  index: idx,
+                  element: atom.symbol,
+                  cart_coords: cart,
+                  frac_coords: frac,  // Use actual fractional coords from backend
+                  color: atom.color,
+                  radius: atom.radius,
+                };
+              });
+            
+              const boundary_atoms = (data.structure_vis.boundary_atoms || []).map((atom: any, idx: number) => {
+                const cart = atom.cart_coords || atom.position;
+                const frac = atom.frac_coords || atom.position;
+                
+                return {
+                  index: atoms.length + idx,
+                  element: atom.symbol,
+                  cart_coords: cart,
+                  frac_coords: frac,
+                  color: atom.color,
+                  radius: atom.radius,
+                };
+              });
+              
+              visData = {
+                structure_id: `online:${selection.candidateId}`,
+                structure_name: formula,
+                formula: formula,
+                n_atoms: atoms.length,
+                n_boundary_atoms: boundary_atoms.length,
+                n_bonds: data.structure_vis.bonds?.length || 0,
+                supercell: data.structure_vis.supercell || [1, 1, 1],
+                
+                // Get backend perf metrics if available (perf is optional in StructureVisData)
+                perf: data.structure_vis.perf,
+                display_mode: data.structure_vis.display_mode || 'primitive',
+                lattice: data.structure_vis.lattice,
+                atoms: atoms,
+                boundary_atoms: boundary_atoms,
+                bonds: (data.structure_vis.bonds || []).map((bond: any) => ({
+                  idx1: bond.idx1 ?? 0,
+                  idx2: bond.idx2 ?? 0,
+                  coord1: bond.coord1 || atoms[bond.idx1 ?? 0]?.cart_coords || [0, 0, 0],
+                  coord2: bond.coord2 || atoms[bond.idx2 ?? 0]?.cart_coords || [0, 0, 0],
+                  distance: bond.distance || 0,
+                })),
+                element_colors: {},
+              };
+              
+              // Get backend perf metrics if available
+              const perf = (data.structure_vis as any).perf;
+              const backendTotalMs = perf?.total_ms || 0;
+              
+              // Frontend timing: Render start (setState triggers render)
+              const renderStart = performance.now();
+              
+              // Store render start time for onFirstFrame callback
+              viewerStartTimeRef.current = renderStart;
+              
+              // Log frontend timing (will be completed in onFirstFrame callback)
+              // Format: [ui] kind=online rpc=42ms render=180ms atoms=24 bonds=84 mode=supercell
+              const kind = 'online';
+              const mode = settings.displayMode;
+              const atomsCount = atoms.length;
+              const bondsCount = data.structure_vis.bonds?.length || 0;
+              
+              // Note: render_ms will be logged in handleViewerFirstFrame
+              // Log timing immediately (do not store in model)
+              const rpcMsStr = rpcMs == null ? "n/a" : `${Math.round(rpcMs)}ms`;
+              console.log(
+                `[ui] kind=${kind} rpc=${rpcMsStr} backend=${Math.round(backendTotalMs)}ms ` +
+                `atoms=${atomsCount} bonds=${bondsCount} mode=${mode} (render pending)`
+              );
+            } else {
+              console.error('[structure_vis_parse_failed] online path - missing structure_vis', data);
+            }
+          } catch (err) {
+            console.error('[structure_vis_parse_failed] online path', err, response.data);
+            throw err; // Re-throw to be caught by outer catch
+          }
+        } else {
+          const errorMsg = response.error || 'Unknown error';
+          throw new Error(`Backend error loading online candidate: ${errorMsg}`);
+        }
+      }
+      
+      if (!visData) {
+        throw new Error('No visualization data received from backend');
+      }
+      
+      // rpcEnd and rpcMs already calculated above for both project and online paths
+      
+      try {
+        // Step 3: Species should be derived from primary atoms (non-boundary), never from boundary atoms
+        const speciesSet = new Set<string>();
+        const primaryAtoms = visData.atoms.filter((a: any) => !a.is_boundary);
+        // Use primary atoms for species, fallback to all atoms if no is_boundary flag
+        const sourceAtoms = primaryAtoms.length > 0 ? primaryAtoms : visData.atoms;
+        if (sourceAtoms && Array.isArray(sourceAtoms)) {
+          sourceAtoms.forEach((atom: any) => speciesSet.add(atom.element));
+        }
+        // Legacy fallback: if old payload has boundary_atoms but no is_boundary, use only canonical atoms
+        if (primaryAtoms.length === 0 && visData.boundary_atoms && Array.isArray(visData.boundary_atoms) && visData.boundary_atoms.length > 0) {
+          // Old payload: use only canonical atoms (not boundary_atoms) for species
+          if (visData.atoms && Array.isArray(visData.atoms)) {
+            visData.atoms.forEach((atom: any) => speciesSet.add(atom.element));
+          }
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('[App] Legacy payload: using all atoms for species (no is_boundary flag)');
+          }
+        }
+        const species = Array.from(speciesSet).sort();
+        
+        // Validate required fields - bonds are optional, but ensure defaults
+        if (!visData.lattice || !visData.lattice.matrix) {
+          throw new Error('Missing lattice data in response');
+        }
+        if (!visData.atoms || !Array.isArray(visData.atoms)) {
+          throw new Error('Missing or invalid atoms array in response');
+        }
+        // bonds are optional - use empty array if missing
+        if (visData.bonds && !Array.isArray(visData.bonds)) {
+          throw new Error('bonds must be an array if present');
+        }
+        
+        // Build StructureModel with defaults for optional fields
+        const model: StructureModel = {
+          id: selection.kind === 'project' ? selection.structureId : `online:${selection.candidateId}`,
+          name: visData.structure_name || formula,
+          formula: formula,
+          nsites: nsites,
+          species: species,
+          lattice: visData.lattice.matrix,
+          atoms: visData.atoms.map(atom => ({
+            element: atom.element,
+            frac: atom.frac_coords,
+            cart: atom.cart_coords,
+            index: atom.index,
+          })),
+          bonds: (visData.bonds || []).map(bond => ({
+            i: bond.idx1 ?? 0,
+            j: bond.idx2 ?? 0,
+            distance: bond.distance ?? 0,
+          })),
+          vis: visData,
+          provenance: provenance || null, // Explicitly set to null if missing
+          // P1-2: Calculate n_boundary_atoms from atoms.filter(a=>a.is_boundary)
+          n_boundary_atoms: visData.atoms.filter((a: any) => a.is_boundary === true).length || visData.n_boundary_atoms || 0,
+          supercell: visData.supercell || [1, 1, 1],
+          display_mode: visData.display_mode || 'primitive',
+          element_colors: visData.element_colors || {},
+        };
+        
+        // P1-2: Runtime assertion for development (only log on failure)
+        if (process.env.NODE_ENV === 'development') {
+          const selectionKey = selection.kind === 'project' 
+            ? `project:${selection.structureId}` 
+            : `online:${selection.sessionId}:${selection.candidateId}`;
+          const atomsLen = model.atoms.length;
+          const bondsLen = model.bonds.length;
+          const boundaryAtomsCount = visData.atoms.filter((a: any) => a.is_boundary === true).length;
+          const hasBoundaryAtoms = boundaryAtomsCount > 0;
+          const repeatBoundary = viewerSettingsOverride?.repeatBoundary ?? (selection.kind === 'project' ? currentRepeatBoundary : viewerSettings.repeatBoundary);
+          
+          // Assert: if repeat_boundary=true, must have boundary atoms
+          if (repeatBoundary && !hasBoundaryAtoms && visData.boundary_atoms?.length === 0) {
+            console.warn('[FRONTEND] P1-2 ASSERTION: repeat_boundary=true but no boundary atoms found in atoms array');
+          }
+          
+          // Assert: bonds must reference valid atom indices
+          if (bondsLen > 0) {
+            const maxBondIndex = Math.max(...model.bonds.map(b => Math.max(b.i, b.j)));
+            if (maxBondIndex >= atomsLen) {
+              const firstBondKeys = Object.keys(visData.bonds[0]);
+              const firstBond = visData.bonds[0];
+              const secondBond = visData.bonds[1] || null;
+              console.error(
+                `[FRONTEND] PAYLOAD_EVIDENCE selectionKey=${selectionKey} ` +
+                `atoms.length=${atomsLen} bonds.length=${bondsLen} ` +
+                `maxBondIndex=${maxBondIndex} maxBondIndex_valid=false ` +
+                `firstBondKeys=${JSON.stringify(firstBondKeys)} ` +
+                `firstBond=${JSON.stringify(firstBond)} secondBond=${JSON.stringify(secondBond)}`
+              );
+              console.error(`[FRONTEND] P1-2 ASSERTION FAILED: maxBondIndex=${maxBondIndex} >= atoms.length=${atomsLen}`);
+            }
+          }
+        }
+        
+        // Store perf data for viewer callback (do not store rpcMs - timing is logged immediately)
+        (model.vis as any).__traceId = traceId;
+        (model.vis as any).__backendTotalMs = (visData as any).perf?.total_ms || '?';
+        (model.vis as any).__atoms = (visData as any).perf?.atoms || nsites;
+        (model.vis as any).__bonds = (visData as any).perf?.bonds || visData.n_bonds;
+        if (selection.kind === 'online') {
+          (model.vis as any).__candidateId = selection.candidateId;
+        }
+        
+        // Validate the model before returning
+        const validation = validateStructureModel(model);
+        if (!validation.ok) {
+          throw new Error(`Invalid structure model: ${validation.msg}`);
+        }
+        
+        return model;
+      } catch (e) {
+        console.error('[structure_vis_parse_failed] model construction', e, { visData, selection });
+        throw e instanceof Error ? e : new Error(`Failed to construct structure model: ${String(e)}`);
+      }
+    } catch (e) {
+      console.error('[structure_vis_parse_failed] outer catch', e, { selection });
+      throw e instanceof Error ? e : new Error(`Failed to load structure: ${String(e)}`);
+    }
+  }, [qv, projectRoot, structures, viewerSettings, generateTraceId]);
   
   const loadStructureVis = useCallback(async (
     structure: StructureInfo, 
@@ -611,28 +1037,146 @@ function App() {
     displayMode: 'primitive' | 'supercell' | 'conventional' | 'box' = 'primitive',
     boxBounds: [number, number, number, number, number, number] | null = null
   ) => {
+    // Only load in project mode
+    if (leftMode !== 'project') {
+      return;
+    }
+    
     setIsLoading3D(true);
+    
+    // Generate trace_id
+    const traceId = generateTraceId();
+    currentTraceIdRef.current = traceId;
+    
+    // Measure RPC time
+    const rpcStart = performance.now();
     const payload: any = {
       project_root: projectRoot,
       selector: structure.slug,
       supercell: supercell,
       repeat_boundary: repeatBoundary,
       display_mode: displayMode,
+      trace_id: traceId,
     };
     if (boxBounds) {
       payload.box_bounds = boxBounds;
     }
     const response = await qv.call('get_structure_vis', payload);
+    const rpcEnd = performance.now();
+    const rpcMs = rpcEnd - rpcStart;
+    
+    // Check if we're still in project mode (prevent stale overwrites)
+    if (leftMode !== 'project') {
+      return;
+    }
+    
     setIsLoading3D(false);
     
     if (response.ok && response.data) {
-      setStructureVisData(response.data as StructureVisData);
+      const data = response.data as StructureVisData;
+      
+      // Double-check we're still in project mode before updating
+      if (leftMode === 'project') {
+        setStructureVisData(data);
+        
+        // Record viewer start time (when we commit data to viewer)
+        viewerStartTimeRef.current = performance.now();
+        
+        // Get backend perf metrics
+        const perf = (data as any).perf;
+        const backendTotalMs = perf?.total_ms || '?';
+        const atoms = perf?.atoms || data.n_atoms || 0;
+        const bonds = perf?.bonds || data.n_bonds || 0;
+        
+        // Log frontend perf when viewer renders first frame (handled by viewer callback)
+        // Store for viewer callback
+        (data as any).__traceId = traceId;
+        (data as any).__rpcMs = rpcMs;
+        (data as any).__backendTotalMs = backendTotalMs;
+        (data as any).__atoms = atoms;
+        (data as any).__bonds = bonds;
+      }
     } else {
-      setStructureVisData(null);
+      if (leftMode === 'project') {
+        setStructureVisData(null);
+      }
     }
-  }, [qv, projectRoot]);
+  }, [qv, projectRoot, generateTraceId, leftMode]);
+  
+  // Viewer first frame callback
+  const handleViewerFirstFrame = useCallback((traceId: string) => {
+    // Only log if this is still the current trace
+    if (traceId !== currentTraceIdRef.current) {
+      return;
+    }
+    
+    const viewerStart = viewerStartTimeRef.current;
+    if (viewerStart === null) {
+      return;
+    }
+    
+    const viewerEnd = performance.now();
+    const renderMs = viewerEnd - viewerStart;
+    
+    // Get perf data from structure data
+    const data = structureVisData as any;
+    if (!data) {
+      return;
+    }
+    
+    // Check trace ID matches (for both project and online)
+    if (data.__traceId !== traceId) {
+      return;
+    }
+    
+    // rpcMs may not be present if data came from loadStructureModel (timing logged immediately)
+    // Only read if present (legacy loadStructureVis still stores it)
+    const rpcMs = data.__rpcMs;
+    const backendTotalMs = data.__backendTotalMs || '?';
+    const atoms = data.__atoms || 0;
+    const bonds = data.__bonds || 0;
+    
+    // Determine source from data
+    const source = data.__candidateId ? 'online' : 'project';
+    const id = data.__candidateId || data.structure_id || 'unknown';
+    
+    // Emit frontend timing log (one line summary)
+    // Format: [ui] kind=project rpc=42ms render=180ms atoms=24 bonds=84 mode=supercell
+    const mode = (data.display_mode || 'primitive') as string;
+    const kind = source;
+    
+    // Safe string conversion for rpcMs (may be undefined)
+    const rpcMsStr = rpcMs == null ? "n/a" : `${Math.round(rpcMs)}ms`;
+    
+    console.log(
+      `[ui] kind=${kind} rpc=${rpcMsStr} render=${Math.round(renderMs)}ms ` +
+      `atoms=${atoms} bonds=${bonds} mode=${mode}`
+    );
+    
+    // Also emit detailed perf log (for compatibility)
+    const rpcMsDetail = rpcMs == null ? "n/a" : rpcMs.toFixed(1);
+    console.log(
+      `[PERF] structure_view trace=${traceId} rpc=${rpcMsDetail}ms backend=${backendTotalMs}ms render=${renderMs.toFixed(1)}ms atoms=${atoms} bonds=${bonds} source=${source} id=${id}`
+    );
+    
+    // Clear refs
+    viewerStartTimeRef.current = null;
+  }, [structureVisData]);
   
   const handleSelectStructure = useCallback(async (structure: StructureInfo) => {
+    // Only allow selection in project mode
+    if (leftMode !== 'project') {
+      return;
+    }
+    
+    const selectionKey = `project:${structure.id}`;
+    // P0: Always increment refresh token to force reload (refresh semantics)
+    setStructureRefreshToken(t => {
+      const newToken = t + 1;
+      console.log('[UI_CLICK]', { selectionKey, refreshToken: newToken, ts: Date.now() });
+      return newToken;
+    });
+    
     setSelectedStructure(structure);
     // Mark that user has manually selected (prevent auto-select override)
     didAutoSelectStructureRef.current = true;
@@ -640,76 +1184,90 @@ function App() {
     setCurrentRepeatBoundary(true);
     setCurrentDisplayMode('primitive');
     setCurrentBoxBounds(null);
-    await loadStructureVis(structure, [1, 1, 1], true, 'primitive', null);
-  }, [loadStructureVis]);
+    
+    // Log selection
+    console.log(`[PERF] selection mode=project source=project id=${structure.id}`);
+    
+    // CRITICAL: Do NOT call loadStructureModel here - only useEffect should call it
+    // This prevents double trigger while ensuring refresh on same selection
+  }, [leftMode]);
   
   // Online import mode handlers
   const handleEnterImportMode = useCallback(() => {
-    // Save current selection
+    // Save current selection and viewer settings
     setReturnProjectSelectionId(selectedStructure?.id || null);
+    savedProjectViewerSettingsRef.current = { ...viewerSettings };
+    
+    // Reset viewer settings to defaults for online preview
+    setViewerSettings({
+      supercell: [1, 1, 1],
+      repeatBoundary: true,
+      displayMode: 'primitive',
+      boxBounds: null,
+      showBonds: true,
+      showUnitCell: true,
+      showLabels: false,
+      atomScale: 0.4,
+      bondScale: 1.0,
+    });
+    
     setLeftMode('import');
-  }, [selectedStructure]);
+  }, [selectedStructure, viewerSettings]);
   
   const handleExitImportMode = useCallback(async () => {
-    setLeftMode('project');
+    // Clear online state first
     setOnlineSessionId(null);
     setOnlineCandidates([]);
     setSelectedOnlineCandidateId(null);
-    setOnlineCandidateData(null);
+    // setOnlineCandidateData(null);  // DEPRECATED: onlineCandidateData no longer used
+    currentOnlineCandidateIdRef.current = null;
+    setRightSelection(null);
+    setCurrentStructureModel(null);
+    
+    // Switch back to project mode
+    setLeftMode('project');
+    
+    // Restore saved viewer settings
+    if (savedProjectViewerSettingsRef.current) {
+      setViewerSettings(savedProjectViewerSettingsRef.current);
+      savedProjectViewerSettingsRef.current = null;
+    }
+    
+    // Clear viewer data - it will be reloaded by project useEffect
+    setStructureVisData(null);
+    setIsLoading3D(false);
     
     // Restore previous project selection
     if (returnProjectSelectionId && structures) {
       const structureToRestore = structures.find(s => s.id === returnProjectSelectionId);
       if (structureToRestore) {
-        await handleSelectStructure(structureToRestore);
+        setSelectedStructure(structureToRestore);
+        // The project useEffect will handle loading the vis data
       }
     }
     setReturnProjectSelectionId(null);
-  }, [returnProjectSelectionId, structures, handleSelectStructure]);
+  }, [returnProjectSelectionId, structures]);
   
-  const handleSelectOnlineCandidate = useCallback(async (sessionId: string, candidateId: string) => {
-    if (!projectRoot) return;
+  const handleSelectOnlineCandidate = useCallback((sessionId: string, candidateId: string) => {
+    const selectionKey = `online:${sessionId}:${candidateId}`;
+    // P0: Always increment refresh token to force reload (refresh semantics)
+    setStructureRefreshToken(t => {
+      const newToken = t + 1;
+      console.log('[UI_CLICK]', { selectionKey, refreshToken: newToken, ts: Date.now() });
+      return newToken;
+    });
     
+    // Immediately update selection state - the useEffect will handle fetching
+    // This ensures UI updates immediately and prevents stale data
     setSelectedOnlineCandidateId(candidateId);
     setOnlineSessionId(sessionId);
     
-    try {
-      const response = await qv.call('structure_get_online_candidate', {
-        project_root: projectRoot,
-        session_id: sessionId,
-        candidate_id: candidateId,
-      });
-      
-      if (response.ok && response.data) {
-        setOnlineCandidateData(response.data);
-        // Convert to StructureVisData format for viewer
-        if (response.data.structure_vis) {
-          const visData: StructureVisData = {
-            atoms: response.data.structure_vis.atoms.map((atom: any, idx: number) => ({
-              index: idx,
-              element: atom.symbol,
-              cart_coords: atom.position,
-              frac_coords: atom.position, // Will be computed if needed
-              color: atom.color,
-              radius: atom.radius,
-            })),
-            bonds: response.data.structure_vis.bonds.map((bond: any) => ({
-              idx1: bond.atom1,
-              idx2: bond.atom2,
-              coord1: response.data.structure_vis.atoms[bond.atom1]?.position || [0, 0, 0],
-              coord2: response.data.structure_vis.atoms[bond.atom2]?.position || [0, 0, 0],
-              distance: bond.distance,
-            })),
-            lattice: response.data.structure_vis.lattice,
-          };
-          setStructureVisData(visData);
-          setIsLoading3D(false);
-        }
-      }
-    } catch (e) {
-      console.error('Failed to load online candidate:', e);
-    }
-  }, [projectRoot, qv]);
+    // Clear current viewer data immediately to show loading state
+    setIsLoading3D(true);
+    setStructureVisData(null);
+    
+    // The useEffect hook will handle the actual fetching
+  }, []);
   
   const handleImportOnlineCandidate = useCallback(async () => {
     if (!projectRoot || !onlineSessionId || !selectedOnlineCandidateId) return;
@@ -728,7 +1286,9 @@ function App() {
         // Find and select the newly imported structure
         const newStructures = await qv.call('list_structures', { project_root: projectRoot });
         if (newStructures.ok && newStructures.data) {
-          const newStructure = newStructures.data.find((s: StructureInfo) => s.id === response.data.new_structure_id);
+          // list_structures returns { structures: StructureInfo[]; count: number }
+          const structuresList = newStructures.data.structures || [];
+          const newStructure = structuresList.find((s: StructureInfo) => s.id === (response.data as any).new_structure_id);
           if (newStructure) {
             await handleSelectStructure(newStructure);
           }
@@ -744,17 +1304,23 @@ function App() {
   
   const handleSupercellChange = useCallback(async (supercell: [number, number, number]) => {
     if (!selectedStructure) return;
+    const selectionKey = `project:${selectedStructure.id}`;
+    console.log('[LOAD_TRIGGER]', { reason: 'handleSupercellChange', selectionKey, ts: Date.now() });
     setCurrentSupercell(supercell);
+    // REMOVED: loadStructureVis - useEffect will handle reload when currentSupercell changes
+    // But wait - viewer settings change handlers in StructureViewer3D already call loadStructureModel directly
+    // So we should NOT trigger useEffect reload here. Keep legacy loadStructureVis for now but mark as deprecated.
     await loadStructureVis(selectedStructure, supercell, currentRepeatBoundary, currentDisplayMode, currentBoxBounds);
   }, [selectedStructure, currentRepeatBoundary, currentDisplayMode, currentBoxBounds, loadStructureVis]);
   
+  // DEPRECATED: handleRepeatBoundaryChange - viewer settings are now handled by StructureViewer3D handlers
   const handleRepeatBoundaryChange = useCallback(async (repeatBoundary: boolean) => {
     if (!selectedStructure) return;
-    // Ignore boundary repeat changes in box mode
     if (currentDisplayMode === 'box') {
       return;
     }
     setCurrentRepeatBoundary(repeatBoundary);
+    // Legacy: direct call (deprecated, should use viewer settings handlers)
     await loadStructureVis(selectedStructure, currentSupercell, repeatBoundary, currentDisplayMode, currentBoxBounds);
   }, [selectedStructure, currentSupercell, currentDisplayMode, currentBoxBounds, loadStructureVis]);
   
@@ -802,6 +1368,7 @@ function App() {
     await loadStructureVis(selectedStructure, currentSupercell, effectiveBoundaryRepeat, mode, bounds || currentBoxBounds);
   }, [selectedStructure, currentSupercell, currentRepeatBoundary, currentBoxBounds, loadStructureVis, structureVisData]);
   
+  // DEPRECATED: handleBoxBoundsChange - viewer settings are now handled by StructureViewer3D handlers
   const handleBoxBoundsChange = useCallback(async (bounds: [number, number, number, number, number, number] | null) => {
     if (!selectedStructure) return;
     setCurrentBoxBounds(bounds);
@@ -923,11 +1490,16 @@ function App() {
       // Use the structure from the list to ensure ID consistency
       const firstStructure = structures[0];
       didAutoSelectStructureRef.current = true;
+      console.log(`[App] Auto-selecting first structure: ${firstStructure.id}`);
       // Set selection and immediately load 3D view (same as manual selection)
       setSelectedStructure(firstStructure);
-      loadStructureVis(firstStructure, currentSupercell, currentRepeatBoundary, currentDisplayMode, currentBoxBounds).catch(err => {
-        console.error('[App] Failed to load structure 3D view on auto-select', err);
+      // Set rightSelection for consistency
+      setRightSelection({
+        kind: 'project',
+        structureId: firstStructure.id,
       });
+      // Note: The useEffect for project structure loading will handle the StructureModel loading
+      // No need to call legacy loadStructureVis - the unified loadStructureModel handles everything
     }
     
     // If selected structure disappeared from list, fall back to first element
@@ -948,26 +1520,267 @@ function App() {
     }
   }, [currentView, structures, selectedStructure]);
   
-  // Load 3D view when selectedStructure changes in structures view
-  // This ensures 3D view loads for both auto-selected and manually selected structures
+  // Loading state for structure model
+  const [isStructureLoading, setIsStructureLoading] = useState(false);
+  
+  // P0: Refresh token to force reload on same selection (refresh semantics)
+  const [structureRefreshToken, setStructureRefreshToken] = useState(0);
+  
+  // P0: Single source of truth for structure loading (PROJECT MODE ONLY)
+  // This is the ONLY place that calls loadStructureModel for project structures
+  // Dependencies include: selectionKey (via selectedStructure.id), refreshToken, and all viewer settings
   useEffect(() => {
+    // Guard: only run in project mode
+    if (leftMode !== 'project') {
+      return;
+    }
+    
     if (currentView === 'structures' && selectedStructure && projectRoot && qv) {
-      // Check if we already have data for this structure ID
-      // Compare by ID to avoid unnecessary reloads
-      const currentStructureId = structureVisData?.structure_id;
-      const needsLoad = !currentStructureId || currentStructureId !== selectedStructure.id;
+      const selectionKey = `project:${selectedStructure.id}`;
+      const refreshToken = structureRefreshToken;
       
-      if (needsLoad) {
-        // Load 3D view data - this will update structureVisData when complete
-        loadStructureVis(selectedStructure, currentSupercell, currentRepeatBoundary).catch(err => {
-          console.error('[App] Failed to load structure 3D view', err);
+      console.log('[LOAD_START]', { 
+        selectionKey, 
+        refreshToken, 
+        mode: currentDisplayMode,
+        sc: currentSupercell,
+        repeat: currentRepeatBoundary,
+        ts: Date.now() 
+      });
+      
+      // Generate load token for concurrent request handling
+      const token = ++loadTokenRef.current;
+      const selection: RightSelection = {
+        kind: 'project',
+        structureId: selectedStructure.id,
+      };
+        
+        // Set loading state and clear errors
+        setIsStructureLoading(true);
+        setStructureLoadError(null);
+        setRightSelection(selection);
+        
+        // Set timeout to prevent infinite loading (10 seconds)
+        const timeoutId = setTimeout(() => {
+          if (token === loadTokenRef.current) {
+            console.error('[App] Project structure load timeout after 10s');
+            setStructureLoadError('Failed to load structure: Request timed out after 10 seconds');
+            setIsStructureLoading(false);
+          }
+        }, 10000);
+        
+        loadStructureModel(selection, {
+          supercell: currentSupercell,
+          repeatBoundary: currentRepeatBoundary,
+          displayMode: currentDisplayMode,
+          boxBounds: currentBoxBounds,
+        }).then(model => {
+          // Clear timeout on success
+          clearTimeout(timeoutId);
+          // Check if this load is still current (prevent stale overwrite)
+          if (token !== loadTokenRef.current) {
+            console.log(`[loadStructureModel:discard] token=${token} current=${loadTokenRef.current} - stale response discarded`);
+            return;
+          }
+          
+          // Validate we're still in the right mode and selection
+          const currentLeftMode = leftMode;
+          const currentSelectedId = selectedStructure?.id;
+          
+          if (currentLeftMode === 'project' && selection.kind === 'project' && selection.structureId === currentSelectedId) {
+            const loadStartTime = viewerStartTimeRef.current || performance.now();
+            const rpcMs = performance.now() - loadStartTime;
+            const atomsCount = model.vis?.n_atoms || 0;
+            const bondsCount = model.vis?.n_bonds || 0;
+            console.log('[LOAD_DONE]', { 
+              selectionKey: `project:${currentSelectedId}`, 
+              refreshToken,
+              rpcMs: Math.round(rpcMs),
+              atoms: atomsCount,
+              bonds: bondsCount,
+              ts: Date.now()
+            });
+            
+            setCurrentStructureModel(model);
+            setRightSelection(selection);
+            setStructureLoadError(null);
+            setIsStructureLoading(false);
+            if (model.vis) {
+              setStructureVisData(model.vis);
+              viewerStartTimeRef.current = performance.now();
+            }
+          } else {
+            console.warn(`[App] Skipping model update: mode=${currentLeftMode} selectedId=${currentSelectedId} selectionId=${selection.structureId}`);
+            setIsStructureLoading(false);
+          }
+        }).catch(err => {
+          // Clear timeout on error
+          clearTimeout(timeoutId);
+          
+          // Check if this load is still current
+          if (token !== loadTokenRef.current) {
+            console.log(`[loadStructureModel:discard] token=${token} current=${loadTokenRef.current} - stale error discarded`);
+            return;
+          }
+          
+          console.error('[App] Failed to load structure model', err);
+          setStructureLoadError(`Failed to load structure: ${err instanceof Error ? err.message : String(err)}`);
+          setIsStructureLoading(false);
         });
-      }
+    } else if (currentView !== 'structures' && structureVisData) {
+      // Clear 3D data when leaving structures view
+      setStructureVisData(null);
+      setIsStructureLoading(false);
+    }
+  }, [
+    currentView, 
+    leftMode, 
+    selectedStructure?.id,  // selectionKey
+    structureRefreshToken,  // P0: refresh token forces reload on same selection
+    projectRoot, 
+    qv, 
+    loadStructureModel,
+    currentSupercell,  // P0: viewer settings must trigger reload
+    currentRepeatBoundary,
+    currentDisplayMode,
+    currentBoxBounds,
+  ]);
+  // P0: All viewer settings are dependencies - changing them MUST trigger reload
+  // Refresh token ensures same selection still triggers reload (refresh semantics)
+  
+  // Track current online candidate ID to prevent stale overwrites
+  const currentOnlineCandidateIdRef = useRef<string | null>(null);
+  
+  // Load 3D view when online candidate is selected (IMPORT MODE ONLY)
+  // Separate effect to handle online candidate fetching
+  useEffect(() => {
+    // Guard: only run in import mode
+    if (leftMode !== 'import') {
+      return;
+    }
+    
+    if (currentView === 'structures' && selectedOnlineCandidateId && onlineSessionId && projectRoot && qv) {
+      const selectionKey = `online:${onlineSessionId}:${selectedOnlineCandidateId}`;
+      const refreshToken = structureRefreshToken;
+      
+      console.log('[LOAD_START]', { 
+        selectionKey, 
+        refreshToken, 
+        mode: viewerSettings.displayMode || 'primitive',
+        sc: viewerSettings.supercell,
+        repeat: viewerSettings.repeatBoundary,
+        ts: Date.now() 
+      });
+      
+      // Generate load token for concurrent request handling
+      const token = ++loadTokenRef.current;
+      const capturedCandidateId = selectedOnlineCandidateId;
+      const selection: RightSelection = {
+        kind: 'online',
+        sessionId: onlineSessionId!,
+        candidateId: capturedCandidateId,
+      };
+        
+      // Set loading state and clear errors
+      setIsStructureLoading(true);
+      setStructureLoadError(null);
+      currentOnlineCandidateIdRef.current = capturedCandidateId;
+      setStructureVisData(null);
+      viewerStartTimeRef.current = performance.now();  // Track load start time
+      
+      // Set timeout to prevent infinite loading (10 seconds)
+      const timeoutId = setTimeout(() => {
+          if (token === loadTokenRef.current) {
+            console.error('[App] Online candidate load timeout after 10s');
+            setStructureLoadError('Failed to load structure: Request timed out after 10 seconds');
+            setIsStructureLoading(false);
+            setIsLoading3D(false);
+          }
+        }, 10000);
+        
+        loadStructureModel(selection, {
+          supercell: viewerSettings.supercell,
+          repeatBoundary: viewerSettings.repeatBoundary,
+          displayMode: viewerSettings.displayMode || 'primitive',
+          boxBounds: viewerSettings.boxBounds,
+          showBonds: true,
+          showUnitCell: true,
+          showLabels: false,
+          atomScale: 0.4,
+          bondScale: 1.0,
+        }).then(model => {
+          // Clear timeout on success
+          clearTimeout(timeoutId);
+          
+          // Check if this load is still current (prevent stale overwrite)
+          if (token !== loadTokenRef.current) {
+            console.log(`[loadStructureModel:discard] token=${token} current=${loadTokenRef.current} - stale response discarded`);
+            return;
+          }
+          
+          // Validate we're still in the right mode and selection
+          if (leftMode === 'import' && capturedCandidateId === currentOnlineCandidateIdRef.current) {
+            const rpcMs = performance.now() - (viewerStartTimeRef.current || performance.now());
+            const atomsCount = model.vis?.n_atoms || 0;
+            const bondsCount = model.vis?.n_bonds || 0;
+            console.log('[LOAD_DONE]', { 
+              selectionKey: `online:${onlineSessionId}:${capturedCandidateId}`, 
+              refreshToken,
+              rpcMs: Math.round(rpcMs),
+              atoms: atomsCount,
+              bonds: bondsCount,
+              ts: Date.now()
+            });
+            
+            setCurrentStructureModel(model);
+            setRightSelection(selection);
+            setStructureLoadError(null);
+            setIsStructureLoading(false);
+            setIsLoading3D(false);
+            if (model.vis) {
+              setStructureVisData(model.vis);
+              viewerStartTimeRef.current = performance.now();
+            }
+          } else {
+            console.warn(`[App] Skipping online model update: mode=${leftMode} candidateId=${capturedCandidateId}`);
+            setIsStructureLoading(false);
+            setIsLoading3D(false);
+          }
+        }).catch(err => {
+          // Clear timeout on error
+          clearTimeout(timeoutId);
+          
+          // Check if this load is still current
+          if (token !== loadTokenRef.current) {
+            console.log(`[loadStructureModel:discard] token=${token} current=${loadTokenRef.current} - stale error discarded`);
+            return;
+          }
+          
+          console.error('[App] Failed to load online candidate model', err);
+          setStructureLoadError(`Failed to load structure: ${err instanceof Error ? err.message : String(err)}`);
+          setIsStructureLoading(false);
+          setIsLoading3D(false);
+        });
     } else if (currentView !== 'structures' && structureVisData) {
       // Clear 3D data when leaving structures view
       setStructureVisData(null);
     }
-  }, [currentView, selectedStructure?.id, projectRoot, qv, structureVisData?.structure_id, currentSupercell, currentRepeatBoundary, loadStructureVis]);
+  }, [
+    currentView, 
+    leftMode, 
+    selectedOnlineCandidateId,  // selectionKey
+    onlineSessionId,
+    structureRefreshToken,  // P0: refresh token forces reload on same selection
+    projectRoot, 
+    qv, 
+    loadStructureModel,
+    viewerSettings.supercell,  // P0: viewer settings must trigger reload
+    viewerSettings.repeatBoundary,
+    viewerSettings.displayMode,
+    viewerSettings.boxBounds,
+  ]);
+  // P0: All viewer settings are dependencies - changing them MUST trigger reload
+  // Refresh token ensures same selection still triggers reload (refresh semantics)
   
   // Auto-select first calculation when entering calculations view (mirror JobsPanel pattern)
   useEffect(() => {
@@ -1420,85 +2233,213 @@ function App() {
                 </button>
               )}
             </ResizablePane>
-            {(leftMode === 'import' ? onlineCandidateData : selectedStructure) && (
+            {currentStructureModel ? (
               <div className="structures-view__detail">
-                {leftMode === 'import' ? (
-                  <>
-                    <StructureDetailPanel
-                      structure={onlineCandidateData ? {
-                        id: selectedOnlineCandidateId || '',
-                        name: onlineCandidateData.formula || 'Online Structure',
-                        slug: '',
-                        path: '',
-                        absolute_path: '',
-                        formula: onlineCandidateData.formula || '',
-                        n_atoms: onlineCandidateData.n_atoms || 0,
-                        n_species: onlineCandidateData.n_species || 0,
-                        lattice_params: {
-                          a: onlineCandidateData.structure_vis?.lattice?.parameters?.a || 0,
-                          b: onlineCandidateData.structure_vis?.lattice?.parameters?.b || 0,
-                          c: onlineCandidateData.structure_vis?.lattice?.parameters?.c || 0,
-                          alpha: onlineCandidateData.structure_vis?.lattice?.parameters?.alpha || 90,
-                          beta: onlineCandidateData.structure_vis?.lattice?.parameters?.beta || 90,
-                          gamma: onlineCandidateData.structure_vis?.lattice?.parameters?.gamma || 90,
-                        },
-                      } : null}
-                      onClose={undefined}
-                    />
-                    <div className="structures-view__3d">
-                      <StructureViewer3D
-                        data={structureVisData}
-                        isLoading={isLoading3D}
-                        showBonds={true}
-                        showUnitCell={true}
-                        structureId={selectedOnlineCandidateId}
+                <ResizableSplitPane
+                  storageKey="qv.structures.detailsHeightPx"
+                  defaultTopHeight={260}
+                  minTopHeight={180}
+                  minBottomHeight={360}
+                  top={
+                    <div className="structures-view__detail-panel-wrapper" data-testid="qv-structure-detail">
+                      <StructureDetailPanel
+                        model={currentStructureModel}
+                        onClose={leftMode === 'project' ? () => {
+                          setSelectedStructure(null);
+                          setStructureVisData(null);
+                          setCurrentStructureModel(null);
+                          setRightSelection(null);
+                          setStructureLoadError(null);
+                        } : undefined}
                       />
                     </div>
-                    <div className="structures-view__import-actions" style={{ padding: '15px', display: 'flex', gap: '10px', borderTop: '1px solid #ddd' }}>
-                      <button
-                        className="qv-button qv-button--primary"
-                        onClick={handleImportOnlineCandidate}
-                        style={{ flex: 1, padding: '10px 20px', fontSize: '14px', fontWeight: '500' }}
-                      >
-                        Import
-                      </button>
-                      <button
-                        className="qv-button qv-button--secondary"
-                        onClick={handleExitImportMode}
-                        style={{ flex: 1, padding: '10px 20px', fontSize: '14px', fontWeight: '500' }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <StructureDetailPanel
-                      structure={selectedStructure}
-                      onClose={() => {
-                        setSelectedStructure(null);
-                        setStructureVisData(null);
-                      }}
-                    />
-                    <div className="structures-view__3d">
+                  }
+                  bottom={
+                    <div className="structures-view__3d-wrapper" data-testid="qv-structure-viewer">
                       <StructureViewer3D
-                        data={structureVisData}
-                        isLoading={isLoading3D}
-                        showBonds={true}
-                        showUnitCell={true}
-                        structureId={selectedStructure?.id}
-                        onSupercellChange={handleSupercellChange}
-                        onRepeatBoundaryChange={handleRepeatBoundaryChange}
-                        onDisplayModeChange={handleDisplayModeChange}
-                        onBoxBoundsChange={handleBoxBoundsChange}
-                        currentDisplayMode={currentDisplayMode}
-                        currentBoxBounds={currentBoxBounds}
+                        data={currentStructureModel.vis || null}
+                        isLoading={isLoading3D || isStructureLoading}
+                        showBonds={viewerSettings.showBonds}
+                        showUnitCell={viewerSettings.showUnitCell}
+                        showLabels={viewerSettings.showLabels}
+                        atomScale={viewerSettings.atomScale}
+                        bondScale={viewerSettings.bondScale}
+                        structureId={currentStructureModel.id}
+                    onSupercellChange={(supercell) => {
+                      // P0: Only update state - useEffect will handle reload (prevents double trigger)
+                      setViewerSettings(prev => ({ ...prev, supercell }));
+                      if (leftMode === 'project') {
+                        setCurrentSupercell(supercell);
+                      }
+                      // useEffect watching currentSupercell/viewerSettings will trigger reload
+                    }}
+                    onRepeatBoundaryChange={(repeat) => {
+                      // P0: Only update state - useEffect will handle reload (prevents double trigger)
+                      setViewerSettings(prev => ({ ...prev, repeatBoundary: repeat }));
+                      if (leftMode === 'project') {
+                        setCurrentRepeatBoundary(repeat);
+                      }
+                      // useEffect watching currentRepeatBoundary/viewerSettings will trigger reload
+                    }}
+                    onDisplayModeChange={(mode) => {
+                      const selectionKey = rightSelection ? (rightSelection.kind === 'project' ? `project:${rightSelection.structureId}` : `online:${rightSelection.sessionId}:${rightSelection.candidateId}`) : 'none';
+                      console.log('[LOAD_TRIGGER]', { reason: 'onDisplayModeChange', selectionKey, ts: Date.now() });
+                      setViewerSettings(prev => ({ ...prev, displayMode: mode }));
+                      setCurrentDisplayMode(mode);
+                      // Reload structure with new display mode (both project and online)
+                      if (rightSelection) {
+                        const token = ++loadTokenRef.current;
+                        setIsStructureLoading(true);
+                        loadStructureModel(rightSelection, {
+                          ...viewerSettings,
+                          displayMode: mode,
+                        }).then(model => {
+                          if (token === loadTokenRef.current) {
+                            setCurrentStructureModel(model);
+                            setIsStructureLoading(false);
+                            if (model.vis) {
+                              setStructureVisData(model.vis);
+                              viewerStartTimeRef.current = performance.now();
+                            }
+                          }
+                        }).catch(err => {
+                          if (token === loadTokenRef.current) {
+                            console.error('[App] Failed to reload structure with new display mode', err);
+                            setStructureLoadError(`Failed to reload: ${err instanceof Error ? err.message : String(err)}`);
+                            setIsStructureLoading(false);
+                          }
+                        });
+                      }
+                    }}
+                        onBoxBoundsChange={(bounds) => {
+                          // P0: Only update state - useEffect will handle reload (prevents double trigger)
+                          setViewerSettings(prev => ({ ...prev, boxBounds: bounds }));
+                          if (leftMode === 'project') {
+                            setCurrentBoxBounds(bounds);
+                          }
+                          // useEffect watching currentBoxBounds/viewerSettings will trigger reload
+                        }}
+                        currentDisplayMode={viewerSettings.displayMode}
+                        currentBoxBounds={viewerSettings.boxBounds}
+                        onFirstFrame={handleViewerFirstFrame}
+                        traceId={currentTraceIdRef.current || undefined}
                       />
                     </div>
-                  </>
+                  }
+                />
+                {leftMode === 'import' && (
+                  <div className="structures-view__import-actions">
+                    <button
+                      className="qv-button qv-button--primary"
+                      onClick={handleImportOnlineCandidate}
+                      style={{ flex: 1, padding: '10px 20px', fontSize: '14px', fontWeight: '500' }}
+                    >
+                      Import
+                    </button>
+                    <button
+                      className="qv-button qv-button--secondary"
+                      onClick={handleExitImportMode}
+                      style={{ flex: 1, padding: '10px 20px', fontSize: '14px', fontWeight: '500' }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 )}
               </div>
-            )}
+            ) : structureLoadError ? (
+              <div className="structures-view__detail structures-view__detail--error">
+                <div className="error-panel">
+                  <h3>Failed to Load Structure</h3>
+                  {rightSelection && (
+                    <p style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>
+                      Selection: {rightSelection.kind === 'project' 
+                        ? `project:${rightSelection.structureId}` 
+                        : `online:${rightSelection.sessionId}:${rightSelection.candidateId}`}
+                    </p>
+                  )}
+                  <p>{structureLoadError}</p>
+                  <button 
+                    className="qv-button qv-button--secondary"
+                    onClick={() => {
+                      if (rightSelection) {
+                        const selectionKey = rightSelection.kind === 'project' ? `project:${rightSelection.structureId}` : `online:${rightSelection.sessionId}:${rightSelection.candidateId}`;
+                        console.log('[LOAD_TRIGGER]', { reason: 'retry-button', selectionKey, ts: Date.now() });
+                        // Retry loading with load token
+                        const token = ++loadTokenRef.current;
+                        const selection = rightSelection;
+                        setIsStructureLoading(true);
+                        setStructureLoadError(null);
+                        
+                        loadStructureModel(selection, {
+                          supercell: currentSupercell,
+                          repeatBoundary: currentRepeatBoundary,
+                          displayMode: currentDisplayMode,
+                          boxBounds: currentBoxBounds,
+                        }).then(model => {
+                          if (token === loadTokenRef.current) {
+                            setCurrentStructureModel(model);
+                            setStructureLoadError(null);
+                            setIsStructureLoading(false);
+                            if (model.vis) {
+                              setStructureVisData(model.vis);
+                              viewerStartTimeRef.current = performance.now();
+                            }
+                          }
+                        }).catch(err => {
+                          if (token === loadTokenRef.current) {
+                            console.error('[App] Retry failed', err);
+                            setStructureLoadError(`Failed to load structure: ${err instanceof Error ? err.message : String(err)}`);
+                            setIsStructureLoading(false);
+                          }
+                        });
+                      } else if (selectedStructure && leftMode === 'project') {
+                        // Fallback: retry with selectedStructure
+                        const token = ++loadTokenRef.current;
+                        const selection: RightSelection = {
+                          kind: 'project',
+                          structureId: selectedStructure.id,
+                        };
+                        setIsStructureLoading(true);
+                        setStructureLoadError(null);
+                        setRightSelection(selection);
+                        
+                        loadStructureModel(selection, {
+                          supercell: currentSupercell,
+                          repeatBoundary: currentRepeatBoundary,
+                          displayMode: currentDisplayMode,
+                          boxBounds: currentBoxBounds,
+                        }).then(model => {
+                          if (token === loadTokenRef.current) {
+                            setCurrentStructureModel(model);
+                            setStructureLoadError(null);
+                            setIsStructureLoading(false);
+                            if (model.vis) {
+                              setStructureVisData(model.vis);
+                              viewerStartTimeRef.current = performance.now();
+                            }
+                          }
+                        }).catch(err => {
+                          if (token === loadTokenRef.current) {
+                            console.error('[App] Retry failed', err);
+                            setStructureLoadError(`Failed to load structure: ${err instanceof Error ? err.message : String(err)}`);
+                            setIsStructureLoading(false);
+                          }
+                        });
+                      }
+                    }}
+                  >
+                    Retry
+                  </button>
+                </div>
+              </div>
+            ) : isStructureLoading || (selectedStructure && !currentStructureModel) ? (
+              <div className="structures-view__detail structures-view__detail--loading">
+                <div className="loading-panel">
+                  <div className="loading-spinner" />
+                  <p>Loading structure...</p>
+                </div>
+              </div>
+            ) : null}
           </div>
         );
         

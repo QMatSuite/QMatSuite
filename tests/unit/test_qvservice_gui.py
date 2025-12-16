@@ -191,26 +191,50 @@ class TestGetStructureVisData:
             display_mode="primitive"
         )
         
-        # Base atom count should be unchanged
-        assert vis_plain["n_atoms"] == vis_repeat["n_atoms"], "Base atom count should not change with boundary repeat"
+        # NEW CONTRACT: atoms contains ALL display atoms (canonical + boundary)
+        # So n_atoms increases when repeat_boundary=True
+        assert vis_repeat["n_atoms"] > vis_plain["n_atoms"], (
+            f"With repeat_boundary=True, n_atoms should increase. "
+            f"Got plain={vis_plain['n_atoms']} repeat={vis_repeat['n_atoms']}"
+        )
         
-        # Boundary repeat should add image atoms
+        # Boundary atoms count should be > 0 when repeat_boundary=True
         assert vis_plain.get("n_boundary_atoms", 0) == 0, "No boundary atoms when repeat_boundary=False"
         assert vis_repeat.get("n_boundary_atoms", 0) > 0, (
             f"Boundary repeat should add image atoms. Got n_boundary_atoms={vis_repeat.get('n_boundary_atoms', 0)}"
+        )
+        
+        # Verify contract: n_atoms = canonical + boundary
+        # (boundary atoms are included in atoms array)
+        assert vis_repeat["n_atoms"] >= vis_plain["n_atoms"] + vis_repeat.get("n_boundary_atoms", 0), (
+            f"n_atoms should include boundary atoms. "
+            f"Got n_atoms={vis_repeat['n_atoms']} "
+            f"plain_n_atoms={vis_plain['n_atoms']} "
+            f"n_boundary_atoms={vis_repeat.get('n_boundary_atoms', 0)}"
         )
         
         # Check that boundary_atoms array is populated
         assert "boundary_atoms" in vis_repeat, "Response should include boundary_atoms field"
         assert len(vis_repeat["boundary_atoms"]) > 0, "boundary_atoms array should be non-empty"
         
-        # Verify boundary atoms have different positions than base atoms
-        base_positions = {tuple(atom["cart_coords"]) for atom in vis_repeat["atoms"]}
-        boundary_positions = {tuple(atom["cart_coords"]) for atom in vis_repeat["boundary_atoms"]}
+        # NEW CONTRACT: boundary_atoms is a subset of atoms (those with is_boundary=True)
+        # Verify all boundary_atoms are in atoms array and marked with is_boundary
+        boundary_atom_positions = {tuple(atom["cart_coords"]) for atom in vis_repeat["boundary_atoms"]}
+        all_atom_positions = {tuple(atom["cart_coords"]) for atom in vis_repeat["atoms"]}
         
-        # Boundary atoms should have different positions (they're in neighboring cells)
-        assert len(base_positions.intersection(boundary_positions)) == 0, (
-            "Boundary atoms should have different Cartesian positions than base atoms"
+        # All boundary atoms should be in the main atoms array
+        assert boundary_atom_positions.issubset(all_atom_positions), (
+            "All boundary_atoms should be included in atoms array (new contract)"
+        )
+        
+        # Verify boundary atoms are marked with is_boundary flag
+        atoms_with_boundary_flag = {
+            tuple(atom["cart_coords"]) 
+            for atom in vis_repeat["atoms"] 
+            if atom.get("is_boundary", False)
+        }
+        assert atoms_with_boundary_flag == boundary_atom_positions, (
+            "Atoms with is_boundary=True should match boundary_atoms positions"
         )
     
     def test_not_found_raises_error(self, tmp_path):

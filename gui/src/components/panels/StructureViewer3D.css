@@ -58,10 +58,49 @@
 .viewer-controls {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 8px 16px;
-  background: var(--bg-primary);
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* Row 1: Always visible - Mode → Supercell → Boundary Repeat → Cell → Bonds → Advanced toggle */
+.viewer-controls--row1 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* Row 2: Advanced (collapsible) - Labels → Atom Size */
+.viewer-controls--row2 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.viewer-controls--compact {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: nowrap;
+  padding: 8px 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .control-item {
@@ -88,7 +127,7 @@
 }
 
 .control-item--slider input[type="range"] {
-  width: 80px;
+  width: 60px;
   height: 4px;
   accent-color: var(--color-primary);
   cursor: pointer;
@@ -123,21 +162,42 @@
   margin: 0;
 }
 
-.control-item--number input[type="number"] {
-  -moz-appearance: textfield;
+.control-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-right: 4px;
 }
 
-/* Control groups */
+.control-item select {
+  padding: 2px 6px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  cursor: pointer;
+  min-width: 90px;
+}
+
+.control-item select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
 .control-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .control-group-label {
   font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--text-muted);
+  color: var(--text-secondary);
+  margin-right: 2px;
+}
+
+.control-item--number input[type="number"] {
+  -moz-appearance: textfield;
 }
 
 /* Supercell controls row */
@@ -149,9 +209,13 @@
 
 /* Canvas Container */
 .viewer-canvas {
-  flex: 1;
-  min-height: 300px;
+  flex: 1 1 auto;
+  min-height: 0; /* Critical for flex child scrolling */
+  height: 100%;
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .viewer-canvas canvas {
@@ -159,32 +223,48 @@
   height: 100% !important;
 }
 
-/* Legend */
-.viewer-legend {
+/* Canvas wrapper for overlay positioning */
+.viewer-canvas-wrapper {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 10px 16px;
-  background: var(--bg-secondary);
-  border-top: 1px solid var(--border-color);
+  flex-direction: column;
 }
 
-.legend-item {
+/* Legend overlay - positioned inside canvas */
+.viewer-legend-overlay {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(26, 26, 46, 0.85);
+  backdrop-filter: blur(4px);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 10;
+}
+
+.viewer-legend-overlay .legend-item {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.legend-color {
+.viewer-legend-overlay .legend-color {
   width: 12px;
   height: 12px;
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.legend-label {
-  font-size: 0.7rem;
+.viewer-legend-overlay .legend-label {
+  font-size: 0.75rem;
   font-weight: 500;
-  color: var(--text-secondary);
+  color: var(--text-primary);
 }
 

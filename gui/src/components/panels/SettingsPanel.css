@@ -428,6 +428,29 @@
   gap: 0.5rem;
 }
 
+.settings-select {
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 120px;
+}
+
+.settings-select:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+
+.settings-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb, 0, 123, 255), 0.2);
+}
+
 /* Theme Buttons */
 .theme-btn {
   display: inline-flex;

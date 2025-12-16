@@ -4,8 +4,8 @@
  * Uses react-three-fiber for WebGL rendering with Three.js
  */
 
-import { useRef, useMemo, useState } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
+import { useRef, useMemo, useState, useEffect, useCallback } from 'react';
+import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Line, Text } from '@react-three/drei';
 import * as THREE from 'three';
 import type { StructureVisData, AtomVisData, BondVisData } from '../../types/qv';
@@ -23,6 +23,8 @@ interface StructureViewer3DProps {
   showLabels?: boolean;
   atomScale?: number;
   bondScale?: number;
+  onFirstFrame?: (traceId: string) => void;
+  traceId?: string;
 }
 
 interface AtomProps {
@@ -296,16 +298,57 @@ interface SceneProps {
   bondScale: number;
   structureId: string | null;
   boxBounds?: [number, number, number, number, number, number] | null;
+  onFirstFrame?: (traceId: string) => void;
+  traceId?: string;
+  allAtoms?: any[];  // Optional: pre-computed all atoms (primary + boundary)
 }
 
-function Scene({ data, showBonds, showUnitCell, showLabels, atomScale, bondScale, structureId, boxBounds }: SceneProps) {
+function Scene({ data, showBonds, showUnitCell, showLabels, atomScale, bondScale, structureId, boxBounds, onFirstFrame, traceId }: SceneProps) {
+  // Step 1: Implement correct derived sets (single source of truth)
+  // Contract: atoms is the final render list (primary + boundary), each atom has is_boundary flag
   const allAtoms = useMemo(() => {
-    const atoms = [...data.atoms];
-    if (data.boundary_atoms) {
-      atoms.push(...data.boundary_atoms);
+    // New contract: atoms contains all display atoms
+    let atoms = data.atoms;
+    
+    // Legacy fallback: if old payload has boundary_atoms but no is_boundary, reconstruct
+    if (!atoms.some(a => a.is_boundary !== undefined) && data.boundary_atoms && data.boundary_atoms.length > 0) {
+      // Best-effort reconstruction: merge boundary_atoms and mark them
+      atoms = [
+        ...data.atoms.map(a => ({ ...a, is_boundary: false })),
+        ...data.boundary_atoms.map(a => ({ ...a, is_boundary: true }))
+      ];
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[StructureViewer3D] Legacy payload detected: reconstructed is_boundary from boundary_atoms');
+      }
     }
+    
     return atoms;
   }, [data.atoms, data.boundary_atoms]);
+  
+  // Track first frame rendering
+  const hasRenderedRef = useRef(false);
+  const lastTraceIdRef = useRef<string | undefined>(undefined);
+  
+  // Reset when traceId changes (new structure loaded)
+  useEffect(() => {
+    if (traceId !== lastTraceIdRef.current) {
+      hasRenderedRef.current = false;
+      lastTraceIdRef.current = traceId;
+    }
+  }, [traceId]);
+  
+  // Use useFrame to detect first render
+  useFrame(() => {
+    if (!hasRenderedRef.current && traceId && onFirstFrame) {
+      hasRenderedRef.current = true;
+      // Call on next frame to ensure render is complete
+      requestAnimationFrame(() => {
+        if (traceId === lastTraceIdRef.current) {
+          onFirstFrame(traceId);
+        }
+      });
+    }
+  });
   
   return (
     <>
@@ -382,6 +425,8 @@ export function StructureViewer3D({
   onBoxBoundsChange,
   currentDisplayMode = 'primitive',
   currentBoxBounds = null,
+  onFirstFrame,
+  traceId,
 }: StructureViewer3DPropsExtended) {
   const [localShowBonds, setLocalShowBonds] = useState(showBonds);
   const [localShowUnitCell, setLocalShowUnitCell] = useState(showUnitCell);
@@ -393,17 +438,97 @@ export function StructureViewer3D({
   const [repeatBoundary, setRepeatBoundary] = useState(true);
   const [displayMode, setDisplayMode] = useState<'primitive' | 'supercell' | 'conventional' | 'box'>(currentDisplayMode);
   const [boxBounds, setBoxBounds] = useState<[number, number, number, number, number, number] | null>(currentBoxBounds);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   
-  // Get unique elements present in the structure
+  // Step 1: Implement correct derived sets (single source of truth) at component level
+  const allAtoms = useMemo(() => {
+    if (!data) return [];
+    // New contract: atoms contains all display atoms
+    let atoms = data.atoms;
+    
+    // Legacy fallback: if old payload has boundary_atoms but no is_boundary, reconstruct
+    if (!atoms.some((a: any) => a.is_boundary !== undefined) && data.boundary_atoms && data.boundary_atoms.length > 0) {
+      // Best-effort reconstruction: merge boundary_atoms and mark them
+      atoms = [
+        ...data.atoms.map((a: any) => ({ ...a, is_boundary: false })),
+        ...data.boundary_atoms.map((a: any) => ({ ...a, is_boundary: true }))
+      ];
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[StructureViewer3D] Legacy payload detected: reconstructed is_boundary from boundary_atoms');
+      }
+    }
+    
+    return atoms;
+  }, [data]);
+  
+  const primaryAtoms = useMemo(() => allAtoms.filter((a: any) => !a.is_boundary), [allAtoms]);
+  const boundaryAtoms = useMemo(() => allAtoms.filter((a: any) => a.is_boundary), [allAtoms]);
+  
+  // Step 2: Fix legend + color mapping correctness
+  // Build presentElements from primaryAtoms (fallback to allAtoms if empty)
   const presentElements = useMemo(() => {
     if (!data) return [];
     const elements = new Set<string>();
-    data.atoms.forEach(atom => elements.add(atom.element));
-    if (data.boundary_atoms) {
-      data.boundary_atoms.forEach(atom => elements.add(atom.element));
-    }
+    // Use primary atoms for legend (non-boundary), fallback to all if empty
+    const sourceAtoms = primaryAtoms.length > 0 ? primaryAtoms : allAtoms;
+    sourceAtoms.forEach((atom: any) => elements.add(atom.element));
     return Array.from(elements);
-  }, [data]);
+  }, [data, primaryAtoms, allAtoms]);
+  
+  // Helper: Get element color (same mapping used for meshes)
+  const getElementColor = useCallback((element: string): string => {
+    // Find first atom with this element to get its color
+    const atom = allAtoms.find((a: any) => a.element === element);
+    return atom?.color || data?.element_colors?.[element] || '#888888';
+  }, [allAtoms, data]);
+  
+  // Step 4: Runtime validation (dev mode only)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && data) {
+      const hasBoundary = boundaryAtoms.length > 0;
+      
+      if (hasBoundary) {
+        // When repeat_boundary === true (assumed if boundary atoms exist)
+        if (boundaryAtoms.length === 0) {
+          console.error('[StructureViewer3D] ASSERTION FAILED: repeat_boundary=true but boundaryAtoms.length=0');
+        }
+        if (primaryAtoms.length === 0) {
+          console.error('[StructureViewer3D] ASSERTION FAILED: repeat_boundary=true but primaryAtoms.length=0');
+        }
+        if (allAtoms.length !== primaryAtoms.length + boundaryAtoms.length) {
+          console.error(
+            `[StructureViewer3D] ASSERTION FAILED: atoms.length=${allAtoms.length} != primaryAtoms.length=${primaryAtoms.length} + boundaryAtoms.length=${boundaryAtoms.length}`
+          );
+        }
+      } else {
+        // When repeat_boundary === false
+        if (boundaryAtoms.length !== 0) {
+          console.error(`[StructureViewer3D] ASSERTION FAILED: repeat_boundary=false but boundaryAtoms.length=${boundaryAtoms.length}`);
+        }
+      }
+      
+      // Bonds validation
+      if (data.bonds && data.bonds.length > 0) {
+        const maxBondIndex = Math.max(...data.bonds.map((b: any) => Math.max(b.idx1, b.idx2)));
+        if (maxBondIndex >= allAtoms.length) {
+          const selectionKey = structureId || 'unknown';
+          console.error(
+            `[StructureViewer3D] ASSERTION FAILED: maxBondIndex=${maxBondIndex} >= atoms.length=${allAtoms.length} ` +
+            `selectionKey=${selectionKey} atoms_len=${allAtoms.length} primary_len=${primaryAtoms.length} ` +
+            `boundary_len=${boundaryAtoms.length} bonds_len=${data.bonds.length}`
+          );
+        }
+      }
+      
+      // Legend assertion: each legend entry element must exist in rendered atoms
+      presentElements.forEach(element => {
+        const hasAtom = allAtoms.some((a: any) => a.element === element);
+        if (!hasAtom) {
+          console.error(`[StructureViewer3D] ASSERTION FAILED: legend element ${element} not found in rendered atoms`);
+        }
+      });
+    }
+  }, [data, allAtoms, primaryAtoms, boundaryAtoms, presentElements, structureId]);
   
   const handleSupercellChange = (axis: 'x' | 'y' | 'z', value: number) => {
     const newX = axis === 'x' ? value : supercellX;
@@ -469,50 +594,13 @@ export function StructureViewer3D({
         )}
       </div>
       
-      {/* Controls Row 1: Display options */}
-      <div className="viewer-controls">
-        <label className="control-item">
-          <input
-            type="checkbox"
-            checked={localShowBonds}
-            onChange={(e) => setLocalShowBonds(e.target.checked)}
-          />
-          Bonds
-        </label>
-        <label className="control-item">
-          <input
-            type="checkbox"
-            checked={localShowUnitCell}
-            onChange={(e) => setLocalShowUnitCell(e.target.checked)}
-          />
-          Unit Cell
-        </label>
-        <label className="control-item">
-          <input
-            type="checkbox"
-            checked={localShowLabels}
-            onChange={(e) => setLocalShowLabels(e.target.checked)}
-          />
-          Labels
-        </label>
-        <label className="control-item control-item--slider">
-          Size
-          <input
-            type="range"
-            min="0.2"
-            max="1.0"
-            step="0.1"
-            value={localAtomScale}
-            onChange={(e) => setLocalAtomScale(parseFloat(e.target.value))}
-          />
-        </label>
-      </div>
-      
-      {/* Controls Row 2: Display mode */}
-      {onDisplayModeChange && (
-        <div className="viewer-controls viewer-controls--mode">
+      {/* Controls: Two-row layout */}
+      {/* Row 1: Always visible - Mode → Supercell a/b/c → Boundary Repeat → Cell → Bonds */}
+      <div className="viewer-controls viewer-controls--row1">
+        {/* 1. Mode (first - determines behavior) */}
+        {onDisplayModeChange && (
           <label className="control-item">
-            <span className="control-label">Display Mode:</span>
+            <span className="control-label">Mode</span>
             <select
               value={displayMode}
               onChange={(e) => handleDisplayModeChange(e.target.value as 'primitive' | 'supercell' | 'conventional' | 'box')}
@@ -523,65 +611,121 @@ export function StructureViewer3D({
               <option value="box">Box</option>
             </select>
           </label>
-        </div>
-      )}
-      
-      {/* Controls Row 3: Supercell and boundary */}
-      {(onSupercellChange || onRepeatBoundaryChange) && displayMode === 'supercell' && (
-        <div className="viewer-controls viewer-controls--supercell">
-          {onSupercellChange && (
-            <div className="control-group">
-              <span className="control-group-label">Supercell:</span>
-              <label className="control-item control-item--number">
-                a
-                <input
-                  type="number"
-                  min="1"
-                  max="5"
-                  value={supercellX}
-                  onChange={(e) => handleSupercellChange('x', parseInt(e.target.value) || 1)}
-                />
-              </label>
-              <label className="control-item control-item--number">
-                b
-                <input
-                  type="number"
-                  min="1"
-                  max="5"
-                  value={supercellY}
-                  onChange={(e) => handleSupercellChange('y', parseInt(e.target.value) || 1)}
-                />
-              </label>
-              <label className="control-item control-item--number">
-                c
-                <input
-                  type="number"
-                  min="1"
-                  max="5"
-                  value={supercellZ}
-                  onChange={(e) => handleSupercellChange('z', parseInt(e.target.value) || 1)}
-                />
-              </label>
-            </div>
-          )}
-          {onRepeatBoundaryChange && (
-            <label className="control-item">
-              <input
-                type="checkbox"
-                checked={repeatBoundary}
-                onChange={(e) => handleRepeatBoundaryChange(e.target.checked)}
-              />
-              Boundary Repeat
-            </label>
-          )}
-        </div>
-      )}
-      
-      {/* Controls Row 4: Box bounds (for box mode) */}
-      {onBoxBoundsChange && displayMode === 'box' && (
-        <div className="viewer-controls viewer-controls--box">
+        )}
+        
+        {/* 2. Supercell inputs (only when Mode = Supercell) */}
+        {onSupercellChange && displayMode === 'supercell' && (
           <div className="control-group">
-            <span className="control-group-label">Box Bounds (Å):</span>
+            <span className="control-group-label">Supercell:</span>
+            <label className="control-item control-item--number">
+              a
+              <input
+                type="number"
+                min="1"
+                max="5"
+                value={supercellX}
+                onChange={(e) => handleSupercellChange('x', parseInt(e.target.value) || 1)}
+              />
+            </label>
+            <label className="control-item control-item--number">
+              b
+              <input
+                type="number"
+                min="1"
+                max="5"
+                value={supercellY}
+                onChange={(e) => handleSupercellChange('y', parseInt(e.target.value) || 1)}
+              />
+            </label>
+            <label className="control-item control-item--number">
+              c
+              <input
+                type="number"
+                min="1"
+                max="5"
+                value={supercellZ}
+                onChange={(e) => handleSupercellChange('z', parseInt(e.target.value) || 1)}
+              />
+            </label>
+          </div>
+        )}
+        
+        {/* 3. Boundary Repeat */}
+        {onRepeatBoundaryChange && displayMode !== 'box' && (
+          <label className="control-item">
+            <input
+              type="checkbox"
+              checked={repeatBoundary}
+              onChange={(e) => handleRepeatBoundaryChange(e.target.checked)}
+            />
+            Boundary Repeat
+          </label>
+        )}
+        
+        {/* 4. Cell (Unit Cell checkbox) */}
+        <label className="control-item">
+          <input
+            type="checkbox"
+            checked={localShowUnitCell}
+            onChange={(e) => setLocalShowUnitCell(e.target.checked)}
+          />
+          Cell
+        </label>
+        
+        {/* 5. Bonds */}
+        <label className="control-item">
+          <input
+            type="checkbox"
+            checked={localShowBonds}
+            onChange={(e) => setLocalShowBonds(e.target.checked)}
+          />
+          Bonds
+        </label>
+        
+        {/* Advanced toggle (rightmost) */}
+        <label className="control-item" style={{ marginLeft: 'auto' }}>
+          <input
+            type="checkbox"
+            checked={showAdvanced}
+            onChange={(e) => setShowAdvanced(e.target.checked)}
+          />
+          Advanced
+        </label>
+      </div>
+      
+      {/* Row 2: Advanced (collapsible) - Labels → Atom Size */}
+      {showAdvanced && (
+        <div className="viewer-controls viewer-controls--row2">
+          {/* 1. Labels */}
+          <label className="control-item">
+            <input
+              type="checkbox"
+              checked={localShowLabels}
+              onChange={(e) => setLocalShowLabels(e.target.checked)}
+            />
+            Labels
+          </label>
+          
+          {/* 2. Atom Size (slider, renamed from "Size") */}
+          <label className="control-item control-item--slider">
+            Atom Size
+            <input
+              type="range"
+              min="0.2"
+              max="1.0"
+              step="0.1"
+              value={localAtomScale}
+              onChange={(e) => setLocalAtomScale(parseFloat(e.target.value))}
+            />
+          </label>
+        </div>
+      )}
+      
+      {/* Conditional: Box bounds (only when Mode = Box, shown in row 1 or row 2) */}
+      {onBoxBoundsChange && displayMode === 'box' && (
+        <div className={`viewer-controls ${showAdvanced ? 'viewer-controls--row2' : 'viewer-controls--row1'}`}>
+          <div className="control-group">
+            <span className="control-group-label">Box (Å):</span>
             <label className="control-item control-item--number">
               X: <input
                 type="number"
@@ -664,59 +808,45 @@ export function StructureViewer3D({
         </div>
       )}
       
-      {/* Controls Row 5: Boundary repeat (for other modes, static text in box mode) */}
-      {onRepeatBoundaryChange && displayMode !== 'supercell' && (
-        <div className="viewer-controls viewer-controls--boundary">
-          {displayMode === 'box' ? (
-            <div className="control-item" style={{ color: '#888', fontSize: '0.9em' }}>
-              Boundary Repeat: disabled in Box mode
-            </div>
-          ) : (
-            <label className="control-item">
-              <input
-                type="checkbox"
-                checked={repeatBoundary}
-                onChange={(e) => handleRepeatBoundaryChange(e.target.checked)}
-              />
-              Boundary Repeat
-            </label>
-          )}
+      {/* Canvas with overlay legend */}
+      <div className="viewer-canvas-wrapper">
+        <div className="viewer-canvas">
+          <Canvas
+            camera={{ position: [10, 10, 10], fov: 50 }}
+            gl={{ antialias: true, alpha: true }}
+          >
+            <Scene 
+              data={data}
+              showBonds={localShowBonds}
+              showUnitCell={localShowUnitCell}
+              showLabels={localShowLabels}
+              atomScale={localAtomScale}
+              bondScale={bondScale}
+              structureId={structureId}
+              boxBounds={boxBounds}
+              onFirstFrame={onFirstFrame}
+              traceId={traceId}
+              allAtoms={allAtoms}
+            />
+          </Canvas>
         </div>
-      )}
-      
-      {/* Canvas */}
-      <div className="viewer-canvas">
-        <Canvas
-          camera={{ position: [10, 10, 10], fov: 50 }}
-          gl={{ antialias: true, alpha: true }}
-        >
-          <Scene
-            data={data}
-            showBonds={localShowBonds}
-            showUnitCell={localShowUnitCell}
-            showLabels={localShowLabels}
-            atomScale={localAtomScale}
-            bondScale={bondScale}
-            structureId={structureId}
-            boxBounds={boxBounds}
-          />
-        </Canvas>
-      </div>
-      
-      {/* Legend - only show elements present in the structure */}
-      <div className="viewer-legend">
-        {presentElements.map((element) => {
-          const color = data.element_colors?.[element] || '#888888';
-          return (
-            <div key={element} className="legend-item">
-              <span 
-                className="legend-color" 
-                style={{ background: color }}
-              />
-              <span className="legend-label">{element}</span>
-            </div>
-          );
-        })}
+        
+        {/* Legend overlay - positioned inside canvas bottom-left */}
+        <div className="viewer-legend-overlay">
+          {presentElements.map((element) => {
+            // Step 2: Legend color must come from the exact same getElementColor used to color atoms
+            const color = getElementColor(element);
+            return (
+              <div key={element} className="legend-item">
+                <span 
+                  className="legend-color" 
+                  style={{ background: color }}
+                />
+                <span className="legend-label">{element}</span>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

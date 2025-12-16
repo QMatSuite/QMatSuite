@@ -12,7 +12,9 @@ All functions:
 from __future__ import annotations
 
 import dataclasses
+import json
 import shutil
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -1858,6 +1860,386 @@ class QVService:
         return result
     
     @staticmethod
+    def _build_structure_vis_payload(
+        structure: Any,  # PMGStructure
+        params: Any,  # DisplayModeParams
+        structure_meta: Optional[Dict[str, Any]] = None,
+        trace_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Shared helper to build structure visualization payload with performance timing.
+        
+        Args:
+            structure: pymatgen Structure object
+            params: DisplayModeParams
+            structure_meta: Optional metadata dict (structure_id, structure_name, formula)
+            trace_id: Optional trace ID for performance logging
+            
+        Returns:
+            Dict with visualization data and perf metrics
+        """
+        from quantumvitas.analysis.structure_viz import (
+            build_bonds,
+            build_display_atoms,
+            get_element_color,
+            get_element_radius,
+            ELEMENT_COLORS,
+            DisplayModeParams,
+        )
+        import numpy as np
+        import logging
+        
+        logger = logging.getLogger(__name__)
+        total_start = time.time()
+        
+        # Determine kind (project vs online) for debug logging
+        kind = "project"
+        if structure_meta and "structure_id" in structure_meta:
+            if structure_meta["structure_id"].startswith("online:"):
+                kind = "online"
+        
+        # DEBUG: Log canonical structure state (before build_display_atoms)
+        # This is the structure that enters the shared pipeline
+        canonical_lattice = structure.lattice.matrix
+        canonical_nsites = len(structure)
+        canonical_species = [str(site.specie) for site in structure]
+        canonical_frac_coords = structure.frac_coords
+        
+        logger.info(
+            f"[PIPELINE] kind={kind} mode={params.mode} "
+            f"supercell={params.supercell if params.supercell else '1x1x1'} "
+            f"repeat_boundary={params.repeat_boundary}"
+        )
+        logger.info(
+            f"[PIPELINE] canonical_structure: nsites={canonical_nsites} "
+            f"lattice_shape={canonical_lattice.shape} "
+            f"species_first10={canonical_species[:10]}"
+        )
+        if len(canonical_frac_coords) > 0:
+            frac_sample = canonical_frac_coords[:5]
+            # P2: Removed INFO-level canonical_frac_coords_first5 dump (reduce noise)
+        
+        # Measure prep time (display atoms)
+        prep_start = time.time()
+        display_atoms_list, display_structure = build_display_atoms(
+            structure,
+            params,
+            wrap_coords=True,
+        )
+        prep_end = time.time()
+        prep_ms = (prep_end - prep_start) * 1000
+        
+        # DEBUG: Log display atoms state
+        display_atoms_count = len(display_atoms_list)
+        if display_atoms_count > 0:
+            # Sample first 5 display atoms
+            sample_atoms = display_atoms_list[:5]
+            atom_samples = []
+            for da in sample_atoms:
+                atom_samples.append(
+                    f"{da.element}:frac[{da.frac_coords[0]:.6f},{da.frac_coords[1]:.6f},{da.frac_coords[2]:.6f}]"
+                    f":cart[{da.cart_coords[0]:.6f},{da.cart_coords[1]:.6f},{da.cart_coords[2]:.6f}]"
+                )
+            logger.info(
+                f"[PIPELINE] display_atoms: count={display_atoms_count} "
+                f"first5={atom_samples}"
+            )
+            
+            # Compute cartesian bbox
+            all_cart = np.array([da.cart_coords for da in display_atoms_list])
+            cart_min = all_cart.min(axis=0)
+            cart_max = all_cart.max(axis=0)
+            # P2: Removed INFO-level display_atoms_cart_bbox dump (reduce noise)
+        
+        # P2: Removed INFO-level boundary_atoms first5 dump (reduce noise)
+        # Boundary count is included in summary log below
+        
+        # Get lattice info
+        lattice = display_structure.lattice
+        
+        # CRITICAL: Payload contract - atoms must contain ALL display atoms (for rendering + bonds)
+        # boundary_atoms is optional UI metadata only, bonds cannot reference it
+        atoms = []  # ALL display atoms (canonical + supercell + boundary)
+        boundary_atoms = []  # UI metadata only (for visual distinction)
+        for da in display_atoms_list:
+            atom_dict = {
+                "index": len(atoms),  # Index in the atoms array (0-based, sequential)
+                "original_idx": da.original_idx,  # Original canonical index
+                "element": da.element,
+                "cart_coords": [float(c) for c in da.cart_coords],
+                "frac_coords": [float(f) for f in da.frac_coords],
+                "color": get_element_color(da.element),
+                "radius": get_element_radius(da.element),
+            }
+            # Mark boundary atoms for UI, but include them in main atoms array
+            if "boundary" in da.stable_id:
+                atom_dict["is_boundary"] = True
+                boundary_atoms.append(atom_dict)  # For UI reference
+            atoms.append(atom_dict)  # Always add to main atoms array
+        
+        # Measure bond building time
+        bonds_start = time.time()
+        bonds = []
+        try:
+            # CRITICAL: Use the exact same atom list that will be rendered
+            # Extract cartesian coordinates from display atoms (these are the final positions)
+            atoms_cart = np.array([da.cart_coords for da in display_atoms_list])
+            species = [da.element for da in display_atoms_list]
+            
+            # Validate: all cart_coords should be finite and reasonable
+            if len(atoms_cart) > 0:
+                cart_max = np.abs(atoms_cart).max()
+                if cart_max > 1e6:
+                    logger.warning(
+                        f"Unreasonable cartesian coordinates detected: max abs = {cart_max:.2f}. "
+                        f"This may indicate a coordinate system mismatch."
+                    )
+            
+            # Build bonds using ONLY cartesian distances (no PBC wrapping)
+            # The display_atoms_list already includes all repeated/boundary atoms
+            detected_bonds = build_bonds(
+                atoms_cart,
+                species=species,
+                max_factor=1.2,
+                tolerance=0.3,
+                max_cutoff=3.5,
+            )
+            
+            # Convert to dict format and compute diagnostics
+            # CRITICAL: bonds.idx1/idx2 must reference atoms array (0 to len(atoms)-1)
+            bond_distances = []
+            max_bond_idx = -1
+            for bond in detected_bonds:
+                distance = float(bond.distance)
+                bond_distances.append(distance)
+                idx1 = int(bond.idx1)
+                idx2 = int(bond.idx2)
+                max_bond_idx = max(max_bond_idx, idx1, idx2)
+                bonds.append({
+                    "idx1": idx1,
+                    "idx2": idx2,
+                    "coord1": [float(c) for c in bond.coord1],
+                    "coord2": [float(c) for c in bond.coord2],
+                    "distance": distance,
+                })
+            
+            # HARD ASSERT: bonds must only reference atoms array
+            atoms_len = len(atoms)
+            if bonds and max_bond_idx >= atoms_len:
+                error_msg = (
+                    f"INVALID PAYLOAD: bonds reference invalid atom indices. "
+                    f"maxBondIndex={max_bond_idx} >= atoms_len={atoms_len}. "
+                    f"Bonds must only reference payload.atoms (0 to {atoms_len-1})."
+                )
+                logger.error(f"[PIPELINE] {error_msg}")
+                raise ValueError(error_msg)
+            
+            # P2: Only log PAYLOAD_EVIDENCE on assertion failure (reduce noise)
+            # Summary log is below
+            
+            # Diagnostics: log bond statistics
+            if bond_distances:
+                bond_distances_sorted = sorted(bond_distances)
+                max_bond = max(bond_distances)
+                p99_bond = bond_distances_sorted[int(len(bond_distances) * 0.99)] if len(bond_distances) > 0 else 0
+                
+                # Compute atom degrees (how many bonds per atom)
+                atom_degrees = [0] * len(display_atoms_list)
+                for bond in detected_bonds:
+                    atom_degrees[bond.idx1] += 1
+                    atom_degrees[bond.idx2] += 1
+                max_degree = max(atom_degrees) if atom_degrees else 0
+                max_degree_atom_idx = atom_degrees.index(max_degree) if max_degree > 0 else -1
+                
+                # Find most anomalous bond (longest)
+                most_anomalous_bond = None
+                if bonds:
+                    most_anomalous_bond = max(bonds, key=lambda b: b["distance"])
+                
+                # P2: Removed INFO-level detailed bond diagnostics (reduce noise)
+                # Summary is logged below, warnings are logged on anomalies
+                
+                # P2: Summary will be logged after total_ms and payload_kb are computed (see below)
+                
+                # Warning if bonds seem unreasonable
+                if max_bond > 6.0:  # Conservative threshold for typical materials
+                    # Find the problematic bond(s)
+                    problematic_bonds = [b for b in bonds if b["distance"] > 6.0]
+                    problematic_atoms = set()
+                    for pb in problematic_bonds[:5]:  # Limit to first 5 for logging
+                        problematic_atoms.add(pb["idx1"])
+                        problematic_atoms.add(pb["idx2"])
+                    
+                    logger.warning(
+                        f"[viz] WARNING: Unusually long bonds detected (max={max_bond:.3f}Å). "
+                        f"Problematic atom indices: {sorted(problematic_atoms)[:10]}. "
+                        f"This may indicate a coordinate system mismatch or incorrect atom repetition."
+                    )
+                
+                if max_degree > 24:
+                    # Find atom(s) with high degree
+                    high_degree_atoms = [i for i, deg in enumerate(atom_degrees) if deg > 24]
+                    logger.warning(
+                        f"[viz] WARNING: Atom(s) with excessive bond count (max degree={max_degree}). "
+                        f"High-degree atom indices: {high_degree_atoms[:10]}. "
+                        f"This may indicate incorrect atom repetition or coordinate wrapping."
+                    )
+        except Exception as e:
+            logger.warning(f"Failed to build bonds: {e}", exc_info=True)
+        bonds_end = time.time()
+        bonds_ms = (bonds_end - bonds_start) * 1000
+        
+        # HARD ASSERT: Final payload contract validation
+        atoms_len = len(atoms)
+        if bonds:
+            max_bond_idx = max(max(b["idx1"], b["idx2"]) for b in bonds)
+            if max_bond_idx >= atoms_len:
+                error_msg = (
+                    f"INVALID PAYLOAD CONTRACT: bonds reference invalid indices. "
+                    f"maxBondIndex={max_bond_idx} >= atoms_len={atoms_len}. "
+                    f"Contract: bonds.idx1/idx2 must reference payload.atoms[0..{atoms_len-1}]."
+                )
+                logger.error(f"[PIPELINE] {error_msg}")
+                raise ValueError(error_msg)
+        
+        # Build result dict
+        # CONTRACT: atoms contains ALL display atoms (for rendering + bonds)
+        # P1: atoms is the single source of truth - all display atoms with is_boundary flag
+        # boundary_atoms removed (compatibility: keep empty list for now, will remove later)
+        result = {
+            "n_atoms": atoms_len,  # Total display atoms (canonical + supercell + boundary)
+            "n_boundary_atoms": 0,  # DEPRECATED: Use atoms.filter(a=>a.is_boundary) instead
+            "n_bonds": len(bonds),
+            "lattice": {
+                "matrix": lattice.matrix,
+                "a": lattice.a,
+                "b": lattice.b,
+                "c": lattice.c,
+                "alpha": lattice.alpha,
+                "beta": lattice.beta,
+                "gamma": lattice.gamma,
+                "volume": lattice.volume,
+            },
+            "atoms": atoms,  # ALL display atoms (bonds reference this array), use is_boundary flag
+            "boundary_atoms": [],  # DEPRECATED: Use atoms.filter(a=>a.is_boundary) instead. Empty for compatibility.
+            "bonds": bonds,  # idx1/idx2 reference atoms[0..len(atoms)-1]
+            "element_colors": ELEMENT_COLORS,
+        }
+        
+        # Add metadata if provided (structure_id, structure_name, formula, etc.)
+        if structure_meta:
+            result.update(structure_meta)
+        
+        # Ensure required fields exist (for compatibility with StructureVisData interface)
+        if "structure_id" not in result:
+            result["structure_id"] = structure_meta.get("structure_id", "unknown") if structure_meta else "unknown"
+        if "structure_name" not in result:
+            result["structure_name"] = structure_meta.get("structure_name", "") if structure_meta else ""
+        if "formula" not in result:
+            # Try to get formula from structure_meta or compute from atoms
+            if structure_meta and "formula" in structure_meta:
+                result["formula"] = structure_meta["formula"]
+            else:
+                # Compute from atoms
+                from collections import Counter
+                element_counts = Counter(atom["element"] for atom in atoms)
+                formula_parts = []
+                for element, count in sorted(element_counts.items()):
+                    if count == 1:
+                        formula_parts.append(element)
+                    else:
+                        formula_parts.append(f"{element}{count}")
+                result["formula"] = "".join(formula_parts)
+        if "supercell" not in result:
+            result["supercell"] = list(params.supercell) if params.supercell else [1, 1, 1]
+        if "display_mode" not in result:
+            result["display_mode"] = params.mode
+        
+        # Measure serialization time
+        ser_start = time.time()
+        result_jsonable = to_jsonable(result)
+        # Measure actual JSON bytes
+        json_str = json.dumps(result_jsonable)
+        json_bytes = len(json_str.encode('utf-8'))
+        ser_end = time.time()
+        ser_ms = (ser_end - ser_start) * 1000
+        
+        total_end = time.time()
+        total_ms = (total_end - total_start) * 1000
+        
+        # Add perf metrics to response
+        n_display_atoms = len(display_atoms_list)
+        n_bonds_count = len(bonds)
+        result_jsonable["perf"] = {
+            "trace_id": trace_id or "",
+            "prep_ms": round(prep_ms, 2),
+            "bonds_ms": round(bonds_ms, 2),
+            "ser_ms": round(ser_ms, 2),
+            "total_ms": round(total_ms, 2),
+            "atoms": n_display_atoms,
+            "bonds": n_bonds_count,
+            "bytes": json_bytes,
+        }
+        
+        # Emit viewer summary log (one line, always visible in GUI)
+        # Format: [viewer] kind=online mode=supercell sc=2x2x2 repeat=1 atoms=3->24 bonds=84 prep=8ms bonds=120ms total=135ms payload=420KB
+        try:
+            kind = "project"
+            if structure_meta and "structure_id" in structure_meta:
+                if structure_meta["structure_id"].startswith("online:"):
+                    kind = "online"
+            
+            mode_str = params.mode
+            sc_str = f"{params.supercell[0]}x{params.supercell[1]}x{params.supercell[2]}" if params.supercell else "1x1x1"
+            repeat_str = "1" if params.repeat_boundary else "0"
+            
+            # Calculate atoms_in (original structure) and atoms_out (display atoms)
+            atoms_in = len(structure)
+            atoms_out = n_display_atoms
+            
+            # Format payload size (KB)
+            payload_kb = json_bytes / 1024.0
+            
+            # Format timing (ms, integer)
+            t_prep_ms = int(round(prep_ms))
+            t_bonds_ms = int(round(bonds_ms))
+            t_total_ms = int(round(total_ms))
+            
+            # P2: 1-line summary with all metrics (reduced noise)
+            boundary_count = sum(1 for a in atoms if a.get("is_boundary", False))
+            canonical_count = atoms_in
+            # Calculate max bond, p99, max degree from bonds
+            if bonds:
+                bond_distances = [b["distance"] for b in bonds]
+                max_bond_val = max(bond_distances)
+                bond_distances_sorted = sorted(bond_distances)
+                p99_idx = int(len(bond_distances_sorted) * 0.99)
+                p99_bond_val = bond_distances_sorted[p99_idx] if p99_idx < len(bond_distances_sorted) else bond_distances_sorted[-1]
+                # Calculate max degree
+                atom_degrees = [0] * len(atoms)
+                for bond in bonds:
+                    atom_degrees[bond["idx1"]] += 1
+                    atom_degrees[bond["idx2"]] += 1
+                max_degree_val = max(atom_degrees) if atom_degrees else 0
+            else:
+                max_bond_val = 0.0
+                p99_bond_val = 0.0
+                max_degree_val = 0
+            
+            logger.info(
+                f"[viz] kind={kind} mode={mode_str} "
+                f"supercell={sc_str} repeat={repeat_str} "
+                f"atoms: {canonical_count}->{atoms_out} "
+                f"boundaryCount={boundary_count} bondsCount={n_bonds_count} "
+                f"prep={t_prep_ms}ms bonds={t_bonds_ms}ms total={t_total_ms}ms "
+                f"payload={payload_kb:.1f}KB maxBond={max_bond_val:.3f}Å p99={p99_bond_val:.3f}Å maxDeg={max_degree_val}"
+            )
+        except Exception:
+            pass  # Never crash on logging
+        
+        return result_jsonable
+    
+    @staticmethod
     def get_structure_vis_data(
         project_root: Path,
         selector: str,
@@ -1865,6 +2247,7 @@ class QVService:
         repeat_boundary: bool = False,
         display_mode: str = "primitive",
         box_bounds: Optional[Tuple[float, float, float, float, float, float]] = None,
+        trace_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Get pure visualization data for a structure (no matplotlib).
@@ -1957,106 +2340,21 @@ class QVService:
                 f"box_bounds={box_bounds}"
             )
         
-        # Build display atoms using unified function
-        display_atoms_list, display_structure = build_display_atoms(
-            original_structure,
-            params,
-            wrap_coords=True,  # Always wrap coordinates
-        )
-        
-        # Get lattice info from display structure
-        lattice = display_structure.lattice
-        # Note: lattice_matrix will be set later for bond building, then converted to JSON
-        
-        # Convert DisplayAtom objects to dict format
-        atoms = []
-        boundary_atoms = []
-        for da in display_atoms_list:
-            atom_dict = {
-                "index": da.original_idx,
-                "element": da.element,
-                "cart_coords": [float(c) for c in da.cart_coords],
-                "frac_coords": [float(f) for f in da.frac_coords],
-                "color": get_element_color(da.element),
-                "radius": get_element_radius(da.element),
-            }
-            if "boundary" in da.stable_id:
-                atom_dict["is_boundary"] = True
-                boundary_atoms.append(atom_dict)
-            else:
-                atoms.append(atom_dict)
-        
-        # Build bonds using single-source-of-truth function
-        # CRITICAL: Compute bonds on ALL display atoms (including boundary duplicates if present)
-        # This ensures bond indices match exactly with the atoms being rendered
-        bonds = []
-        try:
-            # Extract atoms and species for bond building (ALL display atoms)
-            atoms_cart = np.array([da.cart_coords for da in display_atoms_list])
-            species = [da.element for da in display_atoms_list]
-            
-            # Build radii map
-            radii_map = {sym: get_element_radius(sym) for sym in set(species)}
-            
-            # Use single-source-of-truth bond function (simple O(N²) Euclidean distance)
-            detected_bonds = build_bonds(
-                atoms_cart,
-                species,
-                radii_map,
-                max_factor=1.2,
-                tolerance=0.3,
-                max_cutoff=3.5,
-            )
-            
-            for bond in detected_bonds:
-                bonds.append({
-                    "idx1": int(bond.idx1),
-                    "idx2": int(bond.idx2),
-                    "coord1": [float(c) for c in bond.coord1],
-                    "coord2": [float(c) for c in bond.coord2],
-                    "distance": float(bond.distance),
-                })
-            
-            # Debug logging
-            if logger.isEnabledFor(logging.DEBUG):
-                logger.debug(
-                    f"Bond building: mode={display_mode}, "
-                    f"n_atoms={len(display_atoms_list)}, "
-                    f"n_bonds={len(bonds)}"
-                )
-        except Exception as e:
-            logger.warning(f"Failed to build bonds: {e}")
-            pass  # Bonds are optional
-        
-        # Build result dict (may contain numpy arrays and other non-JSON types)
-        result = {
+        # Use shared payload builder with timing
+        structure_meta = {
             "structure_id": resolved.meta.id,
             "structure_name": resolved.meta.name,
             "formula": original_structure.composition.reduced_formula,
-            "n_atoms": len(atoms),
-            "n_boundary_atoms": len(boundary_atoms),
-            "n_bonds": len(bonds),
             "supercell": list(supercell_normalized),
             "display_mode": effective_mode,
-            "lattice": {
-                "matrix": lattice.matrix,  # Will be converted to list by to_jsonable
-                "a": lattice.a,
-                "b": lattice.b,
-                "c": lattice.c,
-                "alpha": lattice.alpha,
-                "beta": lattice.beta,
-                "gamma": lattice.gamma,
-                "volume": lattice.volume,
-            },
-            "atoms": atoms,
-            "boundary_atoms": boundary_atoms,
-            "bonds": bonds,
-            "element_colors": ELEMENT_COLORS,
         }
         
-        # Convert entire result to JSON-serializable types at API boundary
-        # This is the single source of truth for JSON conversion
-        return to_jsonable(result)
+        return QVService._build_structure_vis_payload(
+            original_structure,
+            params,
+            structure_meta=structure_meta,
+            trace_id=trace_id,
+        )
     
     @staticmethod
     def ensure_calculation_analysis(
