@@ -175,7 +175,6 @@ def test_payload_contract_atoms_contains_all_display_atoms():
     )
     
     atoms_len = len(payload["atoms"])
-    boundary_atoms_len = len(payload["boundary_atoms"])
     bonds_len = len(payload["bonds"])
     
     # ASSERT: atoms contains ALL display atoms (canonical + boundary)
@@ -184,10 +183,12 @@ def test_payload_contract_atoms_contains_all_display_atoms():
     assert atoms_len >= canonical_nsites, \
         f"atoms_len={atoms_len} must be >= canonical_nsites={canonical_nsites}"
     
-    # ASSERT: All boundary atoms are also in atoms (marked with is_boundary)
+    # NEW CONTRACT (2024): boundary atoms are indicated by is_boundary flag in atoms array
+    # The separate boundary_atoms array is DEPRECATED (always empty)
     boundary_in_atoms = sum(1 for atom in payload["atoms"] if atom.get("is_boundary", False))
-    assert boundary_in_atoms == boundary_atoms_len, \
-        f"boundary_atoms_len={boundary_atoms_len} but atoms contains {boundary_in_atoms} boundary atoms"
+    # With repeat_boundary=True, there should be boundary atoms marked in the atoms array
+    assert boundary_in_atoms > 0, \
+        f"With repeat_boundary=True, atoms should contain boundary atoms (is_boundary=True). Got {boundary_in_atoms}"
     
     # ASSERT: Bonds reference atoms array correctly
     if bonds_len > 0:

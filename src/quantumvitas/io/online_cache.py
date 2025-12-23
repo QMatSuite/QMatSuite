@@ -163,12 +163,10 @@ class OnlineStructureCache:
         Uses SHA256 over a stable serialization of structure.as_dict().
         """
         structure_dict = structure.as_dict()
-        # Use msgpack for stable serialization (or JSON if msgpack unavailable)
-        if MSGPACK_AVAILABLE:
-            serialized = msgpack.packb(structure_dict, use_bin_type=True, sort_keys=True)
-        else:
-            import json
-            serialized = json.dumps(structure_dict, sort_keys=True).encode('utf-8')
+        # Use JSON for stable serialization (sorted keys for reproducibility)
+        # Note: msgpack doesn't reliably support sort_keys across all versions
+        import json
+        serialized = json.dumps(structure_dict, sort_keys=True).encode('utf-8')
         return hashlib.sha256(serialized).hexdigest()
     
     def create_session(

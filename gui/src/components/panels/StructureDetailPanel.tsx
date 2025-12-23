@@ -178,11 +178,6 @@ export function StructureDetailPanel({ model, onClose }: StructureDetailPanelPro
     return uniqueElements.join(', ');
   }, [model.species, model.atoms]);
   
-  // Step 3: Boundary count (optional display)
-  const boundaryCount = useMemo(() => {
-    return model.atoms.filter(a => (a as any).is_boundary === true).length;
-  }, [model.atoms]);
-  
   const spaceGroup = formatSpaceGroup(provenance);
   const bravaisLattice = getFirstAvailable(provenance, [
     'extras.bravais_lattice_extended',

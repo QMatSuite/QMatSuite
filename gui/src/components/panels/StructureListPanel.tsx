@@ -41,9 +41,13 @@ export function StructureListPanel({
   onExitImportMode,
   onSelectOnlineCandidate,
   selectedOnlineCandidateId,
-  onlineSessionId,
-  onlineCandidates,
+  // These are passed but handled by OnlineImportPanel internally now
+  onlineSessionId: __onlineSessionId,
+  onlineCandidates: __onlineCandidates,
 }: StructureListPanelProps) {
+  // Suppress unused variable warnings - these props are kept for API compatibility
+  void __onlineSessionId;
+  void __onlineCandidates;
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isOnlinePanelExpanded, setIsOnlinePanelExpanded] = useState(false);
   
@@ -68,7 +72,6 @@ export function StructureListPanel({
   }, [onExitImportMode]);
   
   const isImportMode = leftMode === 'import';
-  const isProjectExpanded = !isImportMode;
   // Project Structures Panel (Panel A)
   const renderProjectPanel = () => {
     if (isImportMode) {
