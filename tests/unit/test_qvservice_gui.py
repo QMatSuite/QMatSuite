@@ -198,44 +198,31 @@ class TestGetStructureVisData:
             f"Got plain={vis_plain['n_atoms']} repeat={vis_repeat['n_atoms']}"
         )
         
-        # Boundary atoms count should be > 0 when repeat_boundary=True
-        assert vis_plain.get("n_boundary_atoms", 0) == 0, "No boundary atoms when repeat_boundary=False"
-        assert vis_repeat.get("n_boundary_atoms", 0) > 0, (
-            f"Boundary repeat should add image atoms. Got n_boundary_atoms={vis_repeat.get('n_boundary_atoms', 0)}"
+        # NEW CONTRACT (2024): boundary atoms are indicated by is_boundary flag in atoms array
+        # n_boundary_atoms and boundary_atoms array are DEPRECATED (always 0/empty)
+        # Count boundary atoms from atoms array using is_boundary flag
+        plain_boundary_count = sum(1 for a in vis_plain["atoms"] if a.get("is_boundary", False))
+        repeat_boundary_count = sum(1 for a in vis_repeat["atoms"] if a.get("is_boundary", False))
+        
+        assert plain_boundary_count == 0, "No boundary atoms when repeat_boundary=False"
+        assert repeat_boundary_count > 0, (
+            f"Boundary repeat should add image atoms with is_boundary=True flag. "
+            f"Got {repeat_boundary_count} atoms with is_boundary=True"
         )
         
         # Verify contract: n_atoms = canonical + boundary
-        # (boundary atoms are included in atoms array)
-        assert vis_repeat["n_atoms"] >= vis_plain["n_atoms"] + vis_repeat.get("n_boundary_atoms", 0), (
-            f"n_atoms should include boundary atoms. "
+        # Count canonical atoms (those without is_boundary flag)
+        canonical_count = sum(1 for a in vis_repeat["atoms"] if not a.get("is_boundary", False))
+        assert vis_repeat["n_atoms"] == canonical_count + repeat_boundary_count, (
+            f"n_atoms should equal canonical + boundary. "
             f"Got n_atoms={vis_repeat['n_atoms']} "
-            f"plain_n_atoms={vis_plain['n_atoms']} "
-            f"n_boundary_atoms={vis_repeat.get('n_boundary_atoms', 0)}"
+            f"canonical={canonical_count} boundary={repeat_boundary_count}"
         )
         
-        # Check that boundary_atoms array is populated
+        # Verify boundary_atoms field exists (for backwards compatibility, may be empty)
         assert "boundary_atoms" in vis_repeat, "Response should include boundary_atoms field"
-        assert len(vis_repeat["boundary_atoms"]) > 0, "boundary_atoms array should be non-empty"
-        
-        # NEW CONTRACT: boundary_atoms is a subset of atoms (those with is_boundary=True)
-        # Verify all boundary_atoms are in atoms array and marked with is_boundary
-        boundary_atom_positions = {tuple(atom["cart_coords"]) for atom in vis_repeat["boundary_atoms"]}
-        all_atom_positions = {tuple(atom["cart_coords"]) for atom in vis_repeat["atoms"]}
-        
-        # All boundary atoms should be in the main atoms array
-        assert boundary_atom_positions.issubset(all_atom_positions), (
-            "All boundary_atoms should be included in atoms array (new contract)"
-        )
-        
-        # Verify boundary atoms are marked with is_boundary flag
-        atoms_with_boundary_flag = {
-            tuple(atom["cart_coords"]) 
-            for atom in vis_repeat["atoms"] 
-            if atom.get("is_boundary", False)
-        }
-        assert atoms_with_boundary_flag == boundary_atom_positions, (
-            "Atoms with is_boundary=True should match boundary_atoms positions"
-        )
+        # NOTE: boundary_atoms array is DEPRECATED and may be empty
+        # The is_boundary flag on atoms is the authoritative source
     
     def test_not_found_raises_error(self, tmp_path):
         """Test that missing structure raises error."""

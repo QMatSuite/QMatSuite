@@ -975,6 +975,38 @@ export interface QVCommandMap {
       project_root: string | null;
     };
   };
+  
+  // Online structure search
+  structure_search_online: {
+    payload: {
+      project_root: string;
+      query: string;
+      max_results?: number;
+    };
+    result: {
+      session_id: string;
+      candidates: Array<{
+        candidate_id: string;
+        label: string;
+        source: string;
+        source_id: string;
+        nsites: number;
+        spacegroup?: string | null;
+        flags: string[];
+        score: number;
+      }>;
+    };
+  };
+  
+  // Set daemon log level
+  set_log_level: {
+    payload: {
+      level: 'INFO' | 'DEBUG';
+    };
+    result: {
+      success: boolean;
+    };
+  };
 }
 
 // =============================================================================
