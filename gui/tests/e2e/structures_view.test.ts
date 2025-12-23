@@ -37,12 +37,12 @@ test.describe('E2E: Structures View Rendering', () => {
     await navigateToView(appPage, 'structures');
     
     // Wait for structures list to load
-    // Look for structure cards or list items
-    const structuresList = appPage.locator('.structures-list, .structure-card').first();
+    // Look for structure list or items (actual class names from StructureListPanel.tsx)
+    const structuresList = appPage.locator('.structure-list, .structure-item').first();
     await expect(structuresList).toBeVisible({ timeout: 10000 });
     
-    // Click first structure card
-    const firstStructure = appPage.locator('.structure-card, .structures-list-item').first();
+    // Click first structure item
+    const firstStructure = appPage.locator('.structure-item').first();
     await expect(firstStructure).toBeVisible({ timeout: 3000 });
     await firstStructure.click();
     
@@ -53,10 +53,11 @@ test.describe('E2E: Structures View Rendering', () => {
     const detailsPanel = appPage.getByTestId('qv-structure-detail');
     await expect(detailsPanel).toBeVisible({ timeout: 5000 });
     
-    // Verify Details panel contains non-empty atom count text
+    // Verify Details panel contains non-empty structure info
     // This ensures the structure data was actually loaded and rendered
     const detailsText = await detailsPanel.textContent();
-    expect(detailsText).toMatch(/atoms/i);
+    // UI shows "Number of Sites" or "Formula" for structure details
+    expect(detailsText).toMatch(/sites|formula|species/i);
     expect(detailsText?.trim().length).toBeGreaterThan(0);
     
     // Verify 3D Viewer wrapper is visible (using testid)
@@ -75,11 +76,12 @@ test.describe('E2E: Structures View Rendering', () => {
     
     expect(canvasVisible || webglHasChildren).toBe(true);
     
-    // Verify structure info is displayed (atoms/bonds count) - additional check
+    // Verify structure info is displayed - additional check
     const structureInfo = appPage.locator('.viewer-info, [class*="info"]');
     if (await structureInfo.count() > 0) {
       const infoText = await structureInfo.first().textContent();
-      expect(infoText).toMatch(/atoms/i);
+      // Info may contain sites, formula, species, or bonds
+      expect(infoText).toMatch(/sites|formula|species|bonds/i);
     }
     
     // Verify no error panel is shown (blank state regression check)
@@ -108,11 +110,11 @@ test.describe('E2E: Structures View Rendering', () => {
     await navigateToView(appPage, 'structures');
     
     // Wait for structures list to load
-    const structuresList = appPage.locator('.structures-list, .structure-card').first();
+    const structuresList = appPage.locator('.structure-list, .structure-item').first();
     await expect(structuresList).toBeVisible({ timeout: 10000 });
     
     // Get first structure
-    const firstStructure = appPage.locator('.structure-card, .structures-list-item').first();
+    const firstStructure = appPage.locator('.structure-item').first();
     await expect(firstStructure).toBeVisible({ timeout: 3000 });
     
     // Capture console messages for [LOAD_START]
@@ -165,11 +167,11 @@ test.describe('E2E: Structures View Rendering', () => {
     await navigateToView(appPage, 'structures');
     
     // Wait for structures list to load
-    const structuresList = appPage.locator('.structures-list, .structure-card').first();
+    const structuresList = appPage.locator('.structure-list, .structure-item').first();
     await expect(structuresList).toBeVisible({ timeout: 10000 });
     
-    // Click first structure card
-    const firstStructure = appPage.locator('.structure-card, .structures-list-item').first();
+    // Click first structure item
+    const firstStructure = appPage.locator('.structure-item').first();
     await expect(firstStructure).toBeVisible({ timeout: 3000 });
     
     // Capture ALL console messages to detect any ReferenceError
