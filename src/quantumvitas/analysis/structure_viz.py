@@ -37,6 +37,10 @@ __all__ = [
     "get_element_radius",
     "ELEMENT_COLORS",
     "COVALENT_RADII",  # Legacy, deprecated
+    "wrap_fractional_coords_shifted",  # Pure shifted-wrap helper
+    "WRAP_TOL",  # Wrap tolerance constant
+    "BOUNDARY_TOL",  # Boundary tolerance constant
+    "BOUNDARY_FRAC_TOL",  # Legacy constant (debug checks only)
 ]
 
 import matplotlib
@@ -133,16 +137,26 @@ def get_element_radius(symbol: str) -> float:
 # Wrapping and coordinate utilities
 # =============================================================================
 
-# BOUNDARY_FRAC_TOL chosen via Si diamond 2x2x2 experiment:
-# Testing with fractional shifts (0, 0.001, 0.01, -0.001, -0.01) shows that
-# values from 1e-12 to 1e-4 all produce stable bond counts of 18.
-# We choose 1e-8 as a conservative value that:
-# - Is 100x smaller than the previous 1e-4
-# - Handles typical floating point errors in integer snapping
-# - Works correctly with boundary atom detection
-# This epsilon is used for both canonicalizing fractional coordinates
-# (wrapping into primitive cell) and detecting boundary atoms.
-# 1e-8 might sometimes give wrong number of bonds on Ubuntu CI runner, so relax that
+# Tolerance constants for coordinate handling
+# 
+# wrap_tol: Controls the shifted canonical interval [lo, lo+1) where lo = -wrap_tol.
+#           Used for representative selection (integer lattice translations only).
+#           Default 0.01 means canonical interval is [-0.01, 0.99).
+# 
+# boundary_tol: Used only for boundary-repeat near-face tests (not for geometry modification).
+#               Default 0.005 means atoms within 0.005 of boundaries generate images.
+#               In supercell mode, this is scaled per dimension by supercell factors.
+#
+# BOUNDARY_FRAC_TOL: Legacy constant (1e-6). No longer used for geometry modifications.
+#                    May be used for debug consistency checks (atol) only.
+
+# Default wrap tolerance for canonicalization (representative selection interval)
+WRAP_TOL = 0.01
+
+# Default boundary tolerance for boundary-repeat detection (not for geometry modification)
+BOUNDARY_TOL = 0.005
+
+# Legacy constant - no longer used for geometry modifications, only for debug checks
 BOUNDARY_FRAC_TOL = 1e-6
 
 
@@ -157,8 +171,8 @@ BOUNDARY_FRAC_TOL = 1e-6
 #
 # Allowed call sites for canonicalize_structure_in_place():
 # - build_display_atoms() - main entry for GUI visualization
-# - visualize_structure() - high-level API entry point
-# - plot_structure_3d() - matplotlib visualization entry point
+# - visualize_structure() - high-level API entry point (canonicalizes once, passes to plot_structure_3d)
+# NOTE: plot_structure_3d() accepts optional pre-canonicalized structure to avoid double canonicalization
 #
 # FORBIDDEN: Internal helpers MUST NOT canonicalize:
 # - detect_bonds() - must assume input is already canonicalized (pure geometric function)
@@ -177,15 +191,15 @@ BOUNDARY_FRAC_TOL = 1e-6
 # - Bond detection functions are pure: they consume prepared geometry, never modify it
 #
 # IMPORTANT NOTES:
-# - BOUNDARY_FRAC_TOL = 1e-8 was chosen through extensive testing. Values from 1e-12
-#   to 1e-4 all produce stable results, but 1e-8 is a conservative balance that:
-#   * Is 100x smaller than the previous 1e-4
-#   * Handles typical floating point errors in integer snapping
-#   * Works correctly with boundary atom detection
-# - The boundary_threshold (0.0101) in canonicalize_frac_coords() is separate and
-#   larger, used for snapping values near 1.0/0.0 to exactly 0.0 after modulo.
-#   This handles cases where values like 0.99 (from -0.01 shift) need to be
-#   treated as equivalent to 0.0 for consistent supercell construction.
+# - Canonicalization uses pure shifted wrap (representative selection only):
+#   * No snapping, rounding, or threshold-based geometry modifications
+#   * Only integer lattice translations (geometry-preserving)
+#   * Canonical interval is [lo, lo+1) where lo = -WRAP_TOL (default [-0.01, 0.99))
+# - Boundary repeat uses BOUNDARY_TOL (default 0.005) for near-face detection:
+#   * In supercell mode, tolerance is scaled per dimension: tol_dim = boundary_tol / factor
+#   * This ensures real-space thickness is approximately invariant vs supercell size
+#   * Uses geometric distances to lo/hi boundaries (not abs(f-0)/abs(f-1))
+# - BOUNDARY_FRAC_TOL (1e-6) is legacy and only used for debug consistency checks (atol)
 # - See docs/CANONICALIZATION_DESIGN.md for detailed documentation.
 #
 # =============================================================================
@@ -193,16 +207,20 @@ BOUNDARY_FRAC_TOL = 1e-6
 
 def canonicalize_structure_in_place(
     structure: PMGStructure,
-    eps: float = BOUNDARY_FRAC_TOL,
+    wrap_tol: float = WRAP_TOL,
 ) -> None:
     """
     Canonicalize the fractional coordinates of a pymatgen Structure in place,
     using canonicalize_frac_coords() exactly once on the primitive structure.
     
-    CRITICAL: This is the ONLY place we should warp fractional coordinates.
+    CRITICAL: This is the ONLY place we should wrap fractional coordinates.
     After this, all downstream operations (supercell construction, boundary-image
     generation, bond detection) operate on these already-canonicalized coordinates
     without further canonicalization.
+    
+    Canonicalization is representative selection only: it uses pure shifted wrap
+    (integer lattice translations) to bring coordinates into [lo, lo+1) where lo = -wrap_tol.
+    No snapping, rounding, or threshold-based geometry modifications are applied.
     
     IMPORTANT USAGE RULES:
     - This function is called ONLY at entry points:
@@ -215,96 +233,111 @@ def canonicalize_structure_in_place(
       * Any other internal helper
     
     The canonicalization ensures:
-    - Stable, deterministic bond counts across small coordinate shifts
-    - Consistent supercell construction (values near 0/1 snapped to 0.0)
+    - Representative selection via integer lattice translations (geometry-preserving)
+    - Consistent supercell construction (coordinates in canonical interval)
     - Correct boundary atom generation (base atoms canonicalized, images not)
     
     Args:
         structure: pymatgen Structure to canonicalize (modified in place)
-        eps: Epsilon for boundary detection and snapping (defaults to BOUNDARY_FRAC_TOL = 1e-8)
+        wrap_tol: Wrap tolerance controlling canonical interval (defaults to WRAP_TOL = 0.01)
+                  Canonical interval is [-wrap_tol, 1 - wrap_tol)
     
     See Also:
-        canonicalize_frac_coords() - Core canonicalization logic
+        canonicalize_frac_coords() - Core canonicalization logic (pure shifted wrap)
         docs/CANONICALIZATION_DESIGN.md - Detailed documentation
     """
     for i, site in enumerate(structure):
         frac = np.array(site.frac_coords)
-        frac_canon = canonicalize_frac_coords(frac, eps=eps)
+        frac_canon = canonicalize_frac_coords(frac, wrap_tol=wrap_tol)
         # Update the site's fractional coordinates
         structure.replace(i, site.specie, frac_canon, coords_are_cartesian=False)
 
 
 def canonicalize_frac_coords(
     frac: np.ndarray,
-    eps: float = BOUNDARY_FRAC_TOL,
+    wrap_tol: float = WRAP_TOL,
 ) -> np.ndarray:
     """
-    Canonicalize fractional coordinates into the primitive cell in a numerically
-    robust way.
-
+    Canonicalize fractional coordinates using pure shifted wrap (representative selection only).
+    
+    This function performs representative selection: it adds/subtracts integers to bring
+    coordinates into the canonical interval [lo, lo+1) where lo = -wrap_tol.
+    It does NOT snap, round, or apply threshold-based geometry modifications.
+    
     IMPORTANT: This function is the core canonicalization logic. It is called
     ONLY from canonicalize_structure_in_place() (and wrap_fractional_coords() wrapper).
     Never call this directly from bond detection or geometry helpers.
 
     Algorithm:
-    1. Integer Snapping: Snap values very close to integers (…, -1, 0, 1, 2, …)
-       to those integers if |f - round(f)| < eps.
-    2. Modulo Wrapping: Wrap into [0, 1) using modulo 1.
-    3. Boundary Snapping: Snap values near boundaries to 0.0:
-       - Values within 0.0101 of 1.0 → snap to 0.0 (handles 0.99 from -0.01 shifts)
-       - Values within 0.0101 of 0.0 → snap to 0.0 (handles 0.01 from +0.01 shifts)
-
-    The boundary_threshold (0.0101) is separate from eps and is used to ensure
-    consistent supercell construction across small coordinate shifts. This is
-    critical for stability: values like 0.99 (from -0.01 shift) should be
-    treated as equivalent to 0.0.
+    - Pure shifted wrap: (f - lo) - floor(f - lo) + lo
+    - This ensures coordinates are in [lo, lo+1) where lo = -wrap_tol
+    - No snapping, rounding, or threshold-based modifications
+    - Only integer lattice translations (geometry-preserving)
 
     Args:
         frac: Fractional coordinates (can be shape (N, 3) or (3,))
-        eps: Epsilon for boundary detection and snapping (defaults to BOUNDARY_FRAC_TOL = 1e-8)
+        wrap_tol: Wrap tolerance controlling canonical interval (defaults to WRAP_TOL = 0.01)
+                  Canonical interval is [-wrap_tol, 1 - wrap_tol)
 
     Returns:
-        Canonicalized fractional coordinates in [0, 1), as a fresh array
+        Canonicalized fractional coordinates in [lo, lo+1) where lo = -wrap_tol, as a fresh array
 
     See Also:
         canonicalize_structure_in_place() - Entry point that calls this function
+        wrap_fractional_coords_shifted() - Pure wrap implementation
         docs/CANONICALIZATION_DESIGN.md - Detailed documentation
+    """
+    # Use the pure shifted wrap helper (no snapping)
+    return wrap_fractional_coords_shifted(frac, wrap_tol=wrap_tol)
+
+
+def wrap_fractional_coords(frac: np.ndarray, wrap_tol: float = WRAP_TOL) -> np.ndarray:
+    """
+    Wrap fractional coordinates using pure shifted wrap (backward compatibility wrapper).
+    
+    This is a thin wrapper around canonicalize_frac_coords for backward compatibility.
+    It uses pure shifted wrap (no snapping) to bring coordinates into [lo, lo+1) where lo = -wrap_tol.
+    
+    Args:
+        frac: Fractional coordinates (can be 1D or 2D array)
+        wrap_tol: Wrap tolerance controlling canonical interval (defaults to WRAP_TOL = 0.01)
+        
+    Returns:
+        Wrapped fractional coordinates in [lo, lo+1) where lo = -wrap_tol
+    """
+    return canonicalize_frac_coords(frac, wrap_tol=wrap_tol)
+
+
+def wrap_fractional_coords_shifted(
+    frac: np.ndarray,
+    wrap_tol: float = 0.0,
+) -> np.ndarray:
+    """
+    Wrap fractional coordinates to [lo, lo+1) where lo = -wrap_tol.
+    
+    This is a representative selection only: it adds/subtracts integers to bring
+    coordinates into the target range. It does not change geometry except by
+    lattice translations (which are equivalent in periodic systems).
+    
+    Unlike canonicalize_frac_coords(), this function does NOT snap, round, or
+    apply threshold-based nudging. It only performs modulo wrapping with a shift.
+    
+    Args:
+        frac: Fractional coordinates (can be 1D or 2D array)
+        wrap_tol: Lower bound for wrapping range (default 0.0 gives [0, 1))
+        
+    Returns:
+        Wrapped fractional coordinates in [lo, lo+1) where lo = -wrap_tol
     """
     frac = np.asarray(frac)
     was_1d = frac.ndim == 1
     if was_1d:
         frac = frac.reshape(1, -1)
     
-    # Work on a copy to avoid mutating input
-    result = frac.copy()
-    
-    # For each component, snap to nearest integer if within eps
-    for i in range(result.shape[0]):
-        for j in range(result.shape[1]):
-            f = result[i, j]
-            k = np.round(f)  # Nearest integer
-            if abs(f - k) < eps:
-                result[i, j] = k
-    
-    # Wrap into [0, 1) using modulo
-    result = np.mod(result, 1.0)
-    
-    # Handle values numerically close to boundaries: snap to 0.0
-    # This is critical for stability: values like 0.99 (from -0.01 shift) or 0.01 (from +0.01 shift)
-    # should be treated as equivalent to 0.0 to ensure consistent supercell construction.
-    # We use a threshold of ~0.01 to catch values that are "effectively at the boundary"
-    # - this matches the scale of typical fractional coordinate shifts in tests and ensures
-    # that canonicalization produces stable results for supercell construction.
-    boundary_threshold = 0.0101  # Slightly larger than 0.01 to catch exactly 0.99 and 0.01
-    
-    # Snap values near 1.0 to 0.0 (after modulo, these are effectively at the boundary)
-    mask_near_1 = (result >= 1.0 - boundary_threshold) & (result < 1.0 + boundary_threshold)
-    result[mask_near_1] = 0.0
-    
-    # Also snap values very close to 0.0 to exactly 0.0 (for consistency with boundary treatment)
-    # This ensures that small shifts like 0.01 are treated the same as 0.0
-    mask_near_0 = (result >= 0.0) & (result < boundary_threshold)
-    result[mask_near_0] = 0.0
+    lo = -wrap_tol
+    # Shift by lo, apply floor to get integer part, subtract to wrap
+    result = frac - lo
+    result = result - np.floor(result) + lo
     
     if was_1d:
         result = result.reshape(-1)
@@ -312,36 +345,20 @@ def canonicalize_frac_coords(
     return result
 
 
-def wrap_fractional_coords(frac: np.ndarray, eps: float = BOUNDARY_FRAC_TOL) -> np.ndarray:
-    """
-    Wrap fractional coordinates into [0, 1) with epsilon handling.
-    
-    This is a thin wrapper around canonicalize_frac_coords for backward compatibility.
-    
-    Args:
-        frac: Fractional coordinates (can be 1D or 2D array)
-        eps: Epsilon for boundary detection
-        
-    Returns:
-        Wrapped fractional coordinates in [0, 1)
-    """
-    return canonicalize_frac_coords(frac, eps=eps)
-
-
 def wrap_cartesian_coords(
     coords: np.ndarray,
     lattice,
-    eps: float = BOUNDARY_FRAC_TOL,
+    wrap_tol: float = WRAP_TOL,
 ) -> np.ndarray:
     """
     Wrap Cartesian coordinates into the unit cell.
     
-    Converts to fractional, wraps, then back to Cartesian.
+    Converts to fractional, wraps using pure shifted wrap, then back to Cartesian.
     
     Args:
         coords: Cartesian coordinates (can be 1D or 2D array)
         lattice: pymatgen Lattice object
-        eps: Epsilon for boundary detection
+        wrap_tol: Wrap tolerance controlling canonical interval (defaults to WRAP_TOL = 0.01)
         
     Returns:
         Wrapped Cartesian coordinates
@@ -354,8 +371,8 @@ def wrap_cartesian_coords(
     # Convert to fractional
     frac = np.array([lattice.get_fractional_coords(c) for c in coords])
     
-    # Wrap
-    frac_wrapped = wrap_fractional_coords(frac, eps)
+    # Wrap using pure shifted wrap (no snapping)
+    frac_wrapped = wrap_fractional_coords(frac, wrap_tol=wrap_tol)
     
     # Convert back to Cartesian
     cart_wrapped = np.array([lattice.get_cartesian_coords(f) for f in frac_wrapped])
@@ -929,56 +946,78 @@ class BoundaryAtom:
 
 def generate_boundary_atoms(
     structure: PMGStructure,
-    tolerance: float = BOUNDARY_FRAC_TOL,
+    boundary_tol: float = BOUNDARY_TOL,
+    wrap_tol: float = WRAP_TOL,
+    supercell_factors: Tuple[int, int, int] = (1, 1, 1),
 ) -> List[BoundaryAtom]:
     """
-    Generate periodic images of atoms that lie on cell boundaries.
+    Generate periodic images of atoms that lie on cell boundaries (adaptive boundary repeat).
     
-    For an atom at fractional coordinate f:
-    - If f < tolerance, it lies on the "lower" boundary and should be replicated at f+1
-    - If f > 1 - tolerance, it lies on the "upper" boundary and should be replicated at f-1
-    - This creates the visual effect of atoms shared between adjacent cells
+    Under Convention A: lattice is the supercell lattice; fractional coords are interpreted
+    with respect to that lattice. For supercell mode with factors (m,n,l), the per-dimension
+    tolerance is scaled: boundary_tol_x = boundary_tol / m, etc., so that the real-space
+    thickness is approximately invariant vs supercell size.
+    
+    Boundary detection uses the representative coordinate system (frep) directly:
+    - Detection boundaries are 0/1 in the representative system, NOT the canonical interval [lo, hi).
+    - For an atom at fractional coordinate frep (already canonicalized to [-wrap_tol, 1-wrap_tol)):
+      * If abs(frep[d] - 0.0) < tol_dim[d], it is near the 0-boundary and generates a +1 shift image
+      * If abs(frep[d] - 1.0) < tol_dim[d], it is near the 1-boundary and generates a -1 shift image
+    - Negative small frep values (e.g., -0.005) are treated as "near 0" by design, avoiding 0 being a knife-edge.
+    - This is intentionally NOT mod1/physical [0,1) interpretation; it uses representative coords as truth.
     
     IMPORTANT: Base atoms are canonicalized for consistent boundary detection, but
-    image atoms are NOT canonicalized. They are raw translated positions that lie
-    outside the [0, 1) fractional coordinate range, ensuring they appear in neighboring
-    cells rather than overlapping with base atoms.
+    image atoms are NOT canonicalized. They are generated only via integer lattice translations
+    (f_img = frep + shift_vec where shift_vec has components in {-1, 0, +1}).
+    No wrapping, snapping, or geometry modification occurs on image atoms.
     
     Args:
-        structure: pymatgen Structure object
-        tolerance: Tolerance for boundary detection in fractional coordinates
-                  (defaults to BOUNDARY_FRAC_TOL for consistency)
+        structure: pymatgen Structure object (already canonicalized, frep is in [-wrap_tol, 1-wrap_tol))
+        boundary_tol: Tolerance for boundary detection in fractional coordinates (defaults to BOUNDARY_TOL = 0.005)
+        wrap_tol: Wrap tolerance defining canonical interval [lo, lo+1) where lo = -wrap_tol (defaults to WRAP_TOL = 0.01)
+        supercell_factors: Tuple of (m, n, l) supercell scaling factors (defaults to (1,1,1) for primitive)
+                          Used to scale boundary_tol per dimension: tol_dim = boundary_tol / factor
         
     Returns:
-        List of BoundaryAtom objects (periodic images with fractional coords outside [0, 1))
+        List of BoundaryAtom objects (periodic images with fractional coords = frep + integer shift)
     """
     boundary_atoms: List[BoundaryAtom] = []
     lattice = structure.lattice
     
+    # Compute per-dimension tolerances (scaled by supercell factors)
+    tol_per_dim = np.array([
+        boundary_tol / supercell_factors[0],
+        boundary_tol / supercell_factors[1],
+        boundary_tol / supercell_factors[2],
+    ])
+    
     for idx, site in enumerate(structure):
-        # Use already-canonicalized fractional coordinates (structure should have been
-        # canonicalized at the entry point via canonicalize_structure_in_place)
+        # Use already-canonicalized fractional coordinates (frep in representative system)
+        # Structure should have been canonicalized at the entry point via canonicalize_structure_in_place
         # We only inspect these coords to decide which atoms are on boundaries
-        frac = np.array(site.frac_coords)
+        frac = np.array(site.frac_coords)  # This is frep
         symbol = site.specie.symbol
         
-        # Check each dimension for boundary proximity
-        on_boundary = [
-            abs(frac[dim]) < tolerance or abs(frac[dim] - 1.0) < tolerance
-            for dim in range(3)
-        ]
-        
         # Generate all combinations of shifts for boundary atoms
+        # Use abs(frep - 0) and abs(frep - 1) in representative system (NOT lo/hi)
         shifts_list = []
         for dim in range(3):
-            if abs(frac[dim]) < tolerance:
-                # Near 0, replicate at +1 (image atom will be at frac + 1, outside [0,1))
-                shifts_list.append([0, 1])
-            elif abs(frac[dim] - 1.0) < tolerance:
-                # Near 1, replicate at -1 (image atom will be at frac - 1, outside [0,1))
-                shifts_list.append([0, -1])
-            else:
-                shifts_list.append([0])
+            f_dim = frac[dim]  # frep[dim]
+            tol_dim_val = tol_per_dim[dim]
+            
+            # Check if near 0-boundary (two-sided band around 0 in representative system)
+            near0 = abs(f_dim - 0.0) < tol_dim_val
+            # Check if near 1-boundary (two-sided band around 1 in representative system)
+            near1 = abs(f_dim - 1.0) < tol_dim_val
+            
+            # Determine allowed shifts for this dimension
+            shifts_d = {0}  # Always include original position
+            if near0:
+                shifts_d.add(+1)  # Near 0, replicate at +1
+            if near1:
+                shifts_d.add(-1)  # Near 1, replicate at -1
+            
+            shifts_list.append(sorted(shifts_d))
         
         # Generate all shift combinations (except [0,0,0] which is original)
         from itertools import product
@@ -987,7 +1026,8 @@ def generate_boundary_atoms(
                 continue  # Skip original position
             
             # CRITICAL: Do NOT canonicalize the shifted coordinates
-            # Image atoms should have fractional coords outside [0, 1) to appear in neighboring cells
+            # Image atoms are generated only via integer lattice translations: f_img = frep + shift_vec
+            # No wrapping, snapping, or geometry modification occurs
             new_frac = frac + np.array(shift, dtype=float)
             # Convert to Cartesian using the raw (non-canonicalized) fractional coordinates
             new_cart = lattice.get_cartesian_coords(new_frac)
@@ -995,7 +1035,7 @@ def generate_boundary_atoms(
             boundary_atoms.append(BoundaryAtom(
                 original_idx=idx,
                 coords=new_cart,
-                frac_coords=new_frac,  # This will be outside [0, 1) for image atoms
+                frac_coords=new_frac,  # frep + integer shift
                 symbol=symbol,
             ))
     
@@ -1275,8 +1315,18 @@ def build_display_atoms(
     This is the unified function that all modes use to generate atoms.
     
     CRITICAL: Canonicalization happens exactly once at the very beginning on the
-    primitive structure. After that, all downstream operations (supercell, boundary images)
-    operate on these already-canonicalized coordinates without further canonicalization.
+    primitive structure using pure shifted wrap (representative selection only).
+    After that, all downstream operations (supercell, boundary images) operate on
+    these already-canonicalized coordinates (frep) without further canonicalization.
+    
+    Boundary repeat uses adaptive algorithm with supercell-aware tolerance scaling:
+    - For supercell mode with factors (m,n,l), per-dimension tolerance = boundary_tol / factor
+    - This ensures real-space thickness is approximately invariant vs supercell size
+    - Boundary detection uses abs(frep - 0) and abs(frep - 1) in the representative system
+    - Negative small frep values (e.g., -0.005) are treated as "near 0" by design, avoiding 0 being a knife-edge
+    - This is intentionally NOT mod1/physical [0,1) interpretation; it uses representative coords as truth
+    - Images are generated only via integer lattice translations (f_img = frep + shift_vec)
+    - No wrapping, snapping, or geometry modification occurs on image atoms
     
     Args:
         structure: Original pymatgen Structure
@@ -1288,11 +1338,19 @@ def build_display_atoms(
     """
     # CRITICAL: Canonicalize exactly once at the entry point on the primitive structure
     # This is the ONLY place we canonicalize fractional coordinates
+    # Uses pure shifted wrap (no snapping) with wrap_tol
     structure_canon = structure.copy()
-    canonicalize_structure_in_place(structure_canon, eps=BOUNDARY_FRAC_TOL)
+    canonicalize_structure_in_place(structure_canon, wrap_tol=WRAP_TOL)
     
     display_atoms: List[DisplayAtom] = []
     display_structure: PMGStructure
+    
+    # Determine supercell factors for boundary repeat scaling
+    # For non-supercell modes, use (1,1,1)
+    if params.mode == "supercell":
+        supercell_factors = params.supercell if params.supercell is not None else (1, 1, 1)
+    else:
+        supercell_factors = (1, 1, 1)
     
     if params.mode == "primitive":
         # Primitive cell - use already-canonicalized structure
@@ -1305,7 +1363,7 @@ def build_display_atoms(
             # This ensures consistency with the display_structure's lattice
             cart_from_lattice = display_structure.lattice.get_cartesian_coords(site.frac_coords)
             # Verify site.coords matches (should be identical, but this catches mismatches)
-            if not np.allclose(site.coords, cart_from_lattice, atol=1e-6):
+            if not np.allclose(site.coords, cart_from_lattice, atol=BOUNDARY_FRAC_TOL):
                 logger.warning(
                     f"Coordinate mismatch in primitive mode for atom {idx}: "
                     f"site.coords={site.coords} vs computed={cart_from_lattice}"
@@ -1323,7 +1381,13 @@ def build_display_atoms(
         if params.repeat_boundary:
             # CRITICAL: generate_boundary_atoms uses display_structure's lattice
             # This ensures boundary atoms are in the same coordinate system as display atoms
-            boundary_atoms = generate_boundary_atoms(display_structure)
+            # For primitive mode, supercell_factors = (1,1,1)
+            boundary_atoms = generate_boundary_atoms(
+                display_structure,
+                boundary_tol=BOUNDARY_TOL,
+                wrap_tol=WRAP_TOL,
+                supercell_factors=supercell_factors,
+            )
             for ba in boundary_atoms:
                 # Verify boundary atom coords are consistent with display_structure's lattice
                 cart_from_lattice = display_structure.lattice.get_cartesian_coords(ba.frac_coords)
@@ -1371,11 +1435,17 @@ def build_display_atoms(
         
         if params.repeat_boundary:
             # CRITICAL: generate_boundary_atoms uses display_structure's lattice
-            boundary_atoms = generate_boundary_atoms(display_structure)
+            # For supercell mode, pass supercell factors for tolerance scaling
+            boundary_atoms = generate_boundary_atoms(
+                display_structure,
+                boundary_tol=BOUNDARY_TOL,
+                wrap_tol=WRAP_TOL,
+                supercell_factors=supercell_factors,
+            )
             for ba in boundary_atoms:
                 # Verify boundary atom coords are consistent with display_structure's lattice
                 cart_from_lattice = display_structure.lattice.get_cartesian_coords(ba.frac_coords)
-                if not np.allclose(ba.coords, cart_from_lattice, atol=1e-6):
+                if not np.allclose(ba.coords, cart_from_lattice, atol=BOUNDARY_FRAC_TOL):
                     logger.warning(
                         f"Boundary atom coordinate mismatch in supercell mode for atom {ba.original_idx}: "
                         f"ba.coords={ba.coords} vs computed={cart_from_lattice}"
@@ -1421,11 +1491,17 @@ def build_display_atoms(
         
         if params.repeat_boundary:
             # CRITICAL: generate_boundary_atoms uses display_structure's lattice
-            boundary_atoms = generate_boundary_atoms(display_structure)
+            # For conventional mode, supercell_factors = (1,1,1)
+            boundary_atoms = generate_boundary_atoms(
+                display_structure,
+                boundary_tol=BOUNDARY_TOL,
+                wrap_tol=WRAP_TOL,
+                supercell_factors=supercell_factors,
+            )
             for ba in boundary_atoms:
                 # Verify boundary atom coords are consistent with display_structure's lattice
                 cart_from_lattice = display_structure.lattice.get_cartesian_coords(ba.frac_coords)
-                if not np.allclose(ba.coords, cart_from_lattice, atol=1e-6):
+                if not np.allclose(ba.coords, cart_from_lattice, atol=BOUNDARY_FRAC_TOL):
                     logger.warning(
                         f"Boundary atom coordinate mismatch in conventional mode for atom {ba.original_idx}: "
                         f"ba.coords={ba.coords} vs computed={cart_from_lattice}"
@@ -1496,14 +1572,16 @@ def plot_structure_3d(
     structure: PMGStructure,
     options: Optional[StructurePlotOptions] = None,
     ax: Optional[Axes3D] = None,
+    structure_canon: Optional[PMGStructure] = None,
 ) -> Tuple[plt.Figure, Axes3D]:
     """
     Create a 3D ball-and-stick plot of a crystal structure.
     
     Args:
-        structure: pymatgen Structure object
+        structure: pymatgen Structure object (used if structure_canon is None)
         options: Plotting options (uses defaults if None)
         ax: Optional existing 3D axes to plot on
+        structure_canon: Optional pre-canonicalized structure (avoids double canonicalization)
         
     Returns:
         Tuple of (Figure, Axes3D)
@@ -1511,9 +1589,10 @@ def plot_structure_3d(
     if options is None:
         options = StructurePlotOptions()
     
-    # CRITICAL: Canonicalize exactly once at the entry point
-    structure_canon = structure.copy()
-    canonicalize_structure_in_place(structure_canon, eps=BOUNDARY_FRAC_TOL)
+    # Use pre-canonicalized structure if provided, otherwise canonicalize here
+    if structure_canon is None:
+        structure_canon = structure.copy()
+        canonicalize_structure_in_place(structure_canon, wrap_tol=WRAP_TOL)
     
     # Normalize supercell and create supercell if requested
     supercell_scaling = _normalize_supercell(options.supercell)
@@ -1534,7 +1613,12 @@ def plot_structure_3d(
     
     # Add boundary atoms if requested
     if options.repeat_boundary:
-        boundary_atoms = generate_boundary_atoms(plot_structure)
+        boundary_atoms = generate_boundary_atoms(
+            plot_structure,
+            boundary_tol=BOUNDARY_TOL,
+            wrap_tol=WRAP_TOL,
+            supercell_factors=supercell_scaling,
+        )
         for ba in boundary_atoms:
             atoms_to_plot.append((ba.coords, ba.symbol, ba.original_idx))
     
@@ -1737,14 +1821,15 @@ def visualize_structure(
         **{k: v for k, v in kwargs.items() if hasattr(StructurePlotOptions, k)},
     )
     
-    # Create the plot (this computes bonds internally from display atoms)
-    # plot_structure_3d will canonicalize at its entry point
-    fig, ax = plot_structure_3d(structure, options)
+    # CRITICAL: Canonicalize exactly once at the entry point (not in plot_structure_3d)
+    structure_canon = structure.copy()
+    canonicalize_structure_in_place(structure_canon, wrap_tol=WRAP_TOL)
+    
+    # Create the plot (pass pre-canonicalized structure to avoid double canonicalization)
+    fig, ax = plot_structure_3d(structure, options, structure_canon=structure_canon)
     
     # Count atoms and bonds (must match what plot_structure_3d does)
-    # We need to canonicalize for bond counting (plot_structure_3d canonicalizes internally)
-    structure_canon = structure.copy()
-    canonicalize_structure_in_place(structure_canon, eps=BOUNDARY_FRAC_TOL)
+    # Reuse the canonicalized structure to avoid double canonicalization
     plot_structure = make_supercell(structure_canon, supercell_normalized)
     n_atoms = len(plot_structure)
     
@@ -1754,7 +1839,12 @@ def visualize_structure(
         atoms_to_count.append((np.array(site.coords), site.specie.symbol))
     
     if repeat_boundary:
-        boundary_atoms = generate_boundary_atoms(plot_structure)
+        boundary_atoms = generate_boundary_atoms(
+            plot_structure,
+            boundary_tol=BOUNDARY_TOL,
+            wrap_tol=WRAP_TOL,
+            supercell_factors=supercell_normalized,
+        )
         for ba in boundary_atoms:
             atoms_to_count.append((ba.coords, ba.symbol))
         n_atoms += len(boundary_atoms)
