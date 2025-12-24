@@ -142,7 +142,8 @@ def get_element_radius(symbol: str) -> float:
 # - Works correctly with boundary atom detection
 # This epsilon is used for both canonicalizing fractional coordinates
 # (wrapping into primitive cell) and detecting boundary atoms.
-BOUNDARY_FRAC_TOL = 1e-8
+# 1e-8 might sometimes give wrong number of bonds on Ubuntu CI runner, so relax that
+BOUNDARY_FRAC_TOL = 1e-6
 
 
 # =============================================================================
