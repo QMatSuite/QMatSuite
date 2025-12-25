@@ -8,7 +8,7 @@
  * Each parameter row shows:
  * - Parameter name
  * - Value editor (type-aware)
- * - Actions: Reset (remove user value) and Remove (delete from step)
+ * - Actions: Unset (remove user value) and Remove (delete from step)
  * - Info tooltip: description + type + default + enum/range + module/section
  */
 
@@ -190,9 +190,9 @@ export function ActiveParametersPanel({
                     <button
                       className="active-parameters-panel__action-btn"
                       onClick={() => onParameterReset(namelist, param.name)}
-                      title="Reset to default (remove user value)"
+                      title="Unset parameter (remove user value)"
                     >
-                      ↺ Reset
+                      ↺ Unset
                     </button>
                     <button
                       className="active-parameters-panel__action-btn active-parameters-panel__action-btn--danger"

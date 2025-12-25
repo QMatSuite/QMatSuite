@@ -3235,6 +3235,7 @@ class QVService:
         spec = StructureStepSpec.from_yaml(step.absolute_path, resolve_structure_selector=resolver)
         
         # Validate and merge parameters
+        # STRING-ONLY RULE: All parameter values must be stored as strings in YAML
         for namelist, params in parameters.items():
             namelist_upper = namelist.upper()
             
@@ -3243,19 +3244,13 @@ class QVService:
                 spec.parameters[namelist_upper] = {}
             
             for key, value in params.items():
-                # Basic type validation for known parameters
-                if key in ('ecutwfc', 'ecutrho', 'degauss', 'conv_thr'):
-                    if value is not None:
-                        try:
-                            value = float(value)
-                        except (TypeError, ValueError):
-                            raise QVServiceError(f"Parameter '{key}' must be numeric, got: {value}")
-                
                 # Set or remove the parameter
                 if value is None:
                     spec.parameters[namelist_upper].pop(key, None)
                 else:
-                    spec.parameters[namelist_upper][key] = value
+                    # STRING-ONLY: Convert all values to strings for YAML storage
+                    # Do not coerce to numbers/bools - YAML must contain strings only
+                    spec.parameters[namelist_upper][key] = str(value)
             
             # Clean up empty namelists
             if not spec.parameters[namelist_upper]:

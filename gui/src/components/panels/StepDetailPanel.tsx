@@ -538,24 +538,29 @@ export function StepDetailPanel({
   
   // Handle add parameter
   const handleAddParameter = useCallback((section: string, paramName: string) => {
+    // Enter edit mode if not already editing
+    if (!isEditing) {
+      setIsEditing(true);
+    }
+    
     // Load parameter metadata if needed
     if (module) {
       const sectionKey = section.startsWith('&') ? section : `&${section}`;
       qeMetadata.loadParameters(module, sectionKey).then(() => {
-        // After loading, add the parameter with undefined value (user will edit it)
+        // After loading, add the parameter with empty string (user will edit it)
         setEditedParams(prev => {
           const updated = { ...prev };
           if (!updated[section]) {
             updated[section] = {};
           }
-          updated[section][paramName] = undefined;
+          // Add parameter with empty string as placeholder (will be edited by user)
+          updated[section][paramName] = '';
           return updated;
         });
         setHasChanges(true);
-        setIsEditing(true);
       });
     }
-  }, [module, qeMetadata]);
+  }, [module, qeMetadata, isEditing]);
   
   // Save parameter changes
   const handleSaveParams = useCallback(async () => {
@@ -1056,50 +1061,48 @@ export function StepDetailPanel({
         <div className="detail-section">
           <div className="section-header">
             <h3>Active Parameters</h3>
-            {!isEditing ? (
-              <button 
-                className="section-action-btn"
-                onClick={() => setIsEditing(true)}
-              >
-                ✏️ Edit
-              </button>
-            ) : (
-              <div className="section-actions">
+            <div className="section-actions">
+              {module && (
+                <AddParameterPalette
+                  module={module}
+                  stepParameters={isEditing ? editedParams : stepDetail.parameters}
+                  onAddParameter={handleAddParameter}
+                />
+              )}
+              {!isEditing ? (
                 <button 
-                  className="section-action-btn section-action-btn--secondary"
-                  onClick={handleCancelEdit}
-                  disabled={isSaving}
+                  className="section-action-btn"
+                  onClick={() => setIsEditing(true)}
                 >
-                  Cancel
+                  ✏️ Edit
                 </button>
-                <button 
-                  className="section-action-btn section-action-btn--danger"
-                  onClick={handleResetParams}
-                  disabled={isSaving}
-                >
-                  Reset All
-                </button>
-                <button 
-                  className="section-action-btn section-action-btn--primary"
-                  onClick={handleSaveParams}
-                  disabled={!hasChanges || isSaving}
-                >
-                  {isSaving ? 'Saving...' : 'Apply'}
-                </button>
-              </div>
-            )}
-          </div>
-          
-          {/* Add Parameter Palette */}
-          {isEditing && module && (
-            <div style={{ marginBottom: 'var(--space-4)' }}>
-              <AddParameterPalette
-                module={module}
-                stepParameters={editedParams}
-                onAddParameter={handleAddParameter}
-              />
+              ) : (
+                <>
+                  <button 
+                    className="section-action-btn section-action-btn--secondary"
+                    onClick={handleCancelEdit}
+                    disabled={isSaving}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    className="section-action-btn section-action-btn--danger"
+                    onClick={handleResetParams}
+                    disabled={isSaving}
+                  >
+                    Reset All
+                  </button>
+                  <button 
+                    className="section-action-btn section-action-btn--primary"
+                    onClick={handleSaveParams}
+                    disabled={!hasChanges || isSaving}
+                  >
+                    {isSaving ? 'Saving...' : 'Apply'}
+                  </button>
+                </>
+              )}
             </div>
-          )}
+          </div>
           
           {/* Active Parameters Panel */}
           {stepDetail && (

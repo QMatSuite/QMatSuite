@@ -1,15 +1,17 @@
 /**
  * ParameterValueEditor - Type-aware editor for QE parameter values
  * 
+ * STRING-ONLY RULE: All values are stored as strings in YAML.
+ * 
  * Supports:
- * - LOGICAL: boolean toggle or select (.true./.false.)
- * - INTEGER: number input
- * - REAL: number input (float)
+ * - LOGICAL: select (.true./.false.) with raw string fallback
+ * - INTEGER: text input (string, numeric hints only)
+ * - REAL: text input (string, numeric hints only)
  * - CHARACTER: text input
- * - Enum: select dropdown (if enum values provided)
+ * - Enum: select dropdown with raw string fallback
  */
 
-import { useCallback } from 'react';
+import { useCallback, useState, useMemo, useEffect } from 'react';
 import type { QEParameterMeta } from '../../hooks/useQEParameterMetadata';
 import './ParameterValueEditor.css';
 
@@ -28,143 +30,146 @@ export function ParameterValueEditor({
   disabled = false,
   placeholder,
 }: ParameterValueEditorProps) {
-  const handleChange = useCallback((newValue: unknown) => {
-    onChange(newValue);
-  }, [onChange]);
+  // Always work with string values
+  const stringValue = value === null || value === undefined ? '' : String(value);
   
   const paramType = parameter.type?.toUpperCase() || 'CHARACTER';
   const hasEnum = parameter.enum && parameter.enum.length > 0;
   
-  // If enum is provided, use select regardless of type
-  if (hasEnum) {
+  // Check if value matches enum (case-insensitive for LOGICAL)
+  const enumValues = hasEnum ? parameter.enum!.map(v => String(v).toLowerCase()) : [];
+  const valueMatchesEnum = useMemo(() => {
+    if (!hasEnum || !stringValue) return false;
+    return enumValues.includes(stringValue.toLowerCase());
+  }, [hasEnum, stringValue, enumValues]);
+  
+  // Check if LOGICAL value matches .true./.false. (case-insensitive)
+  const logicalValues = ['.true.', '.false.'];
+  const valueMatchesLogical = useMemo(() => {
+    if (paramType !== 'LOGICAL' || !stringValue) return false;
+    return logicalValues.some(v => v.toLowerCase() === stringValue.toLowerCase());
+  }, [paramType, stringValue]);
+  
+  // Auto-fallback to raw mode if value doesn't match expected values
+  const [useRawMode, setUseRawMode] = useState(() => {
+    if (hasEnum && !valueMatchesEnum) return true;
+    if (paramType === 'LOGICAL' && !valueMatchesLogical) return true;
+    return false;
+  });
+  
+  // Sync raw mode state when value changes externally
+  useEffect(() => {
+    if (hasEnum && !valueMatchesEnum) {
+      setUseRawMode(true);
+    } else if (paramType === 'LOGICAL' && !valueMatchesLogical) {
+      setUseRawMode(true);
+    } else if (hasEnum || paramType === 'LOGICAL') {
+      // If value now matches, allow switching back to dropdown (but don't force it)
+      // User can manually switch back if they want
+    }
+  }, [hasEnum, valueMatchesEnum, paramType, valueMatchesLogical]);
+  
+  const handleChange = useCallback((newValue: string) => {
+    // Always store as string (empty string means unset)
+    onChange(newValue === '' ? undefined : newValue);
+  }, [onChange]);
+  
+  // If enum is provided and value matches, show select with raw toggle
+  if (hasEnum && !useRawMode) {
     return (
-      <select
-        className="parameter-value-editor parameter-value-editor--select"
-        value={value === null || value === undefined ? '' : String(value)}
-        onChange={(e) => {
-          const val = e.target.value;
-          if (val === '') {
-            handleChange(undefined);
-          } else if (paramType === 'LOGICAL' || paramType === 'INTEGER') {
-            // For LOGICAL/INTEGER with enum, keep as string (e.g., '.true.', '1')
+      <div className="parameter-value-editor-wrapper">
+        <select
+          className="parameter-value-editor parameter-value-editor--select"
+          value={stringValue}
+          onChange={(e) => {
+            const val = e.target.value;
             handleChange(val);
-          } else if (paramType === 'REAL') {
-            const num = parseFloat(val);
-            handleChange(isNaN(num) ? undefined : num);
-          } else {
+          }}
+          disabled={disabled}
+        >
+          <option value="">-- Not set --</option>
+          {parameter.enum!.map(opt => (
+            <option key={String(opt)} value={String(opt)}>{String(opt)}</option>
+          ))}
+        </select>
+        <button
+          className="parameter-value-editor__raw-toggle"
+          onClick={() => setUseRawMode(true)}
+          title="Edit raw value"
+          disabled={disabled}
+          type="button"
+        >
+          ✏️
+        </button>
+      </div>
+    );
+  }
+  
+  // LOGICAL type: .true./.false. select with raw toggle
+  if (paramType === 'LOGICAL' && !useRawMode) {
+    return (
+      <div className="parameter-value-editor-wrapper">
+        <select
+          className="parameter-value-editor parameter-value-editor--logical"
+          value={stringValue}
+          onChange={(e) => {
+            const val = e.target.value;
             handleChange(val);
-          }
-        }}
-        disabled={disabled}
-      >
-        <option value="">-- Not set --</option>
-        {parameter.enum!.map(opt => (
-          <option key={String(opt)} value={String(opt)}>{String(opt)}</option>
-        ))}
-      </select>
+          }}
+          disabled={disabled}
+        >
+          <option value="">-- Not set --</option>
+          <option value=".true.">.true.</option>
+          <option value=".false.">.false.</option>
+        </select>
+        <button
+          className="parameter-value-editor__raw-toggle"
+          onClick={() => setUseRawMode(true)}
+          title="Edit raw value"
+          disabled={disabled}
+          type="button"
+        >
+          ✏️
+        </button>
+      </div>
     );
   }
   
-  // LOGICAL type: boolean toggle or .true./.false. select
-  if (paramType === 'LOGICAL') {
-    return (
-      <select
-        className="parameter-value-editor parameter-value-editor--logical"
-        value={value === null || value === undefined ? '' : String(value)}
-        onChange={(e) => {
-          const val = e.target.value;
-          handleChange(val === '' ? undefined : val);
-        }}
-        disabled={disabled}
-      >
-        <option value="">-- Not set --</option>
-        <option value=".true.">.true.</option>
-        <option value=".false.">.false.</option>
-      </select>
-    );
-  }
+  // Raw mode or types without enum: text input (always string)
+  const inputType = paramType === 'INTEGER' || paramType === 'REAL' ? 'text' : 'text';
+  const inputPlaceholder = paramType === 'INTEGER' 
+    ? (placeholder || 'Enter integer (as string)')
+    : paramType === 'REAL'
+    ? (placeholder || 'Enter number (as string)')
+    : (placeholder || 'Enter text');
   
-  // INTEGER type: number input
-  if (paramType === 'INTEGER') {
-    return (
-      <input
-        type="text"
-        className="parameter-value-editor parameter-value-editor--integer"
-        value={value === null || value === undefined ? '' : String(value)}
-        onChange={(e) => {
-          const val = e.target.value.trim();
-          if (val === '') {
-            handleChange(undefined);
-          } else {
-            const num = parseInt(val, 10);
-            handleChange(isNaN(num) ? val : num); // Allow typing, but prefer integer
-          }
-        }}
-        onBlur={(e) => {
-          // On blur, ensure it's a valid integer
-          const val = e.target.value.trim();
-          if (val === '') {
-            handleChange(undefined);
-          } else {
-            const num = parseInt(val, 10);
-            if (!isNaN(num)) {
-              handleChange(num);
-            }
-          }
-        }}
-        placeholder={placeholder || 'Enter integer'}
-        disabled={disabled}
-      />
-    );
-  }
-  
-  // REAL type: number input (float)
-  if (paramType === 'REAL') {
-    return (
-      <input
-        type="text"
-        className="parameter-value-editor parameter-value-editor--real"
-        value={value === null || value === undefined ? '' : String(value)}
-        onChange={(e) => {
-          const val = e.target.value.trim();
-          if (val === '') {
-            handleChange(undefined);
-          } else {
-            const num = parseFloat(val);
-            handleChange(isNaN(num) ? val : num); // Allow typing, but prefer float
-          }
-        }}
-        onBlur={(e) => {
-          // On blur, ensure it's a valid float
-          const val = e.target.value.trim();
-          if (val === '') {
-            handleChange(undefined);
-          } else {
-            const num = parseFloat(val);
-            if (!isNaN(num)) {
-              handleChange(num);
-            }
-          }
-        }}
-        placeholder={placeholder || 'Enter number'}
-        disabled={disabled}
-      />
-    );
-  }
-  
-  // CHARACTER type (default): text input
   return (
-    <input
-      type="text"
-      className="parameter-value-editor parameter-value-editor--character"
-      value={value === null || value === undefined ? '' : String(value)}
-      onChange={(e) => {
-        const val = e.target.value;
-        handleChange(val === '' ? undefined : val);
-      }}
-      placeholder={placeholder || 'Enter text'}
-      disabled={disabled}
-    />
+    <div className="parameter-value-editor-wrapper">
+      <input
+        type={inputType}
+        className={`parameter-value-editor parameter-value-editor--${paramType.toLowerCase()} ${useRawMode ? 'parameter-value-editor--raw' : ''}`}
+        value={stringValue}
+        onChange={(e) => {
+          handleChange(e.target.value);
+        }}
+        placeholder={inputPlaceholder}
+        disabled={disabled}
+      />
+      {(hasEnum || paramType === 'LOGICAL') && useRawMode && (
+        <button
+          className="parameter-value-editor__raw-toggle"
+          onClick={() => {
+            setUseRawMode(false);
+            // If value now matches enum/logical, keep it; otherwise it will auto-fallback
+          }}
+          title="Use dropdown"
+          disabled={disabled}
+          type="button"
+        >
+          📋
+        </button>
+      )}
+    </div>
   );
 }
 
