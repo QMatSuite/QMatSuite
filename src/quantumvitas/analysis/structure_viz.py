@@ -1058,6 +1058,10 @@ def make_supercell(
     any canonicalization itself - it only applies integer lattice translations / supercell
     matrices to build the supercell.
     
+    This function must NOT fold coordinates into [0,1). It preserves representative coords
+    and only applies integer translations. We pass to_unit_cell=False explicitly to pymatgen
+    to prevent any implicit coordinate folding that could violate our canonicalization contract.
+    
     Args:
         structure: Original pymatgen Structure (should already be canonicalized)
         scaling: Tuple of (a, b, c) scaling factors, or int for (n, n, n)
@@ -1073,7 +1077,12 @@ def make_supercell(
     # Simply create the supercell - no canonicalization here
     # The input structure should already be canonicalized at the primitive stage
     supercell = structure.copy()
-    supercell.make_supercell(scaling)
+    # CRITICAL: do not fold/wrap again; canonicalization happens only once at entry.
+    try:
+        supercell.make_supercell(scaling, to_unit_cell=False)
+    except TypeError:
+        # Older pymatgen: no to_unit_cell kwarg; best-effort: call without it
+        supercell.make_supercell(scaling)
     
     return supercell
 
