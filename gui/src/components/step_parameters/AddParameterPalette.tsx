@@ -105,7 +105,7 @@ export function AddParameterPalette({
   return (
     <div className="add-parameter-palette">
       <button
-        className="add-parameter-palette__trigger"
+        className="add-parameter-palette__trigger section-action-btn section-action-btn--primary"
         onClick={() => setIsOpen(!isOpen)}
         title="Add QE parameter"
       >
