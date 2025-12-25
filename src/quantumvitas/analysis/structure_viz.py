@@ -141,20 +141,20 @@ def get_element_radius(symbol: str) -> float:
 # 
 # wrap_tol: Controls the shifted canonical interval [lo, lo+1) where lo = -wrap_tol.
 #           Used for representative selection (integer lattice translations only).
-#           Default 0.01 means canonical interval is [-0.01, 0.99).
+#           Default 1e-4 means canonical interval is [-1e-4, 0.9999).
 # 
 # boundary_tol: Used only for boundary-repeat near-face tests (not for geometry modification).
-#               Default 0.005 means atoms within 0.005 of boundaries generate images.
+#               Default 0.01 means atoms within 0.01 of boundaries generate images.
 #               In supercell mode, this is scaled per dimension by supercell factors.
 #
 # BOUNDARY_FRAC_TOL: Legacy constant (1e-6). No longer used for geometry modifications.
 #                    May be used for debug consistency checks (atol) only.
 
 # Default wrap tolerance for canonicalization (representative selection interval)
-WRAP_TOL = 0.01
+WRAP_TOL = 1e-4
 
 # Default boundary tolerance for boundary-repeat detection (not for geometry modification)
-BOUNDARY_TOL = 0.005
+BOUNDARY_TOL = 0.01
 
 # Legacy constant - no longer used for geometry modifications, only for debug checks
 BOUNDARY_FRAC_TOL = 1e-6
@@ -194,8 +194,8 @@ BOUNDARY_FRAC_TOL = 1e-6
 # - Canonicalization uses pure shifted wrap (representative selection only):
 #   * No snapping, rounding, or threshold-based geometry modifications
 #   * Only integer lattice translations (geometry-preserving)
-#   * Canonical interval is [lo, lo+1) where lo = -WRAP_TOL (default [-0.01, 0.99))
-# - Boundary repeat uses BOUNDARY_TOL (default 0.005) for near-face detection:
+#   * Canonical interval is [lo, lo+1) where lo = -WRAP_TOL (default [-1e-4, 0.9999))
+# - Boundary repeat uses BOUNDARY_TOL (default 0.01) for near-face detection:
 #   * In supercell mode, tolerance is scaled per dimension: tol_dim = boundary_tol / factor
 #   * This ensures real-space thickness is approximately invariant vs supercell size
 #   * Uses geometric distances to lo/hi boundaries (not abs(f-0)/abs(f-1))
@@ -239,7 +239,7 @@ def canonicalize_structure_in_place(
     
     Args:
         structure: pymatgen Structure to canonicalize (modified in place)
-        wrap_tol: Wrap tolerance controlling canonical interval (defaults to WRAP_TOL = 0.01)
+        wrap_tol: Wrap tolerance controlling canonical interval (defaults to WRAP_TOL = 1e-4)
                   Canonical interval is [-wrap_tol, 1 - wrap_tol)
     
     See Also:
@@ -276,7 +276,7 @@ def canonicalize_frac_coords(
 
     Args:
         frac: Fractional coordinates (can be shape (N, 3) or (3,))
-        wrap_tol: Wrap tolerance controlling canonical interval (defaults to WRAP_TOL = 0.01)
+        wrap_tol: Wrap tolerance controlling canonical interval (defaults to WRAP_TOL = 1e-4)
                   Canonical interval is [-wrap_tol, 1 - wrap_tol)
 
     Returns:
@@ -300,7 +300,7 @@ def wrap_fractional_coords(frac: np.ndarray, wrap_tol: float = WRAP_TOL) -> np.n
     
     Args:
         frac: Fractional coordinates (can be 1D or 2D array)
-        wrap_tol: Wrap tolerance controlling canonical interval (defaults to WRAP_TOL = 0.01)
+        wrap_tol: Wrap tolerance controlling canonical interval (defaults to WRAP_TOL = 1e-4)
         
     Returns:
         Wrapped fractional coordinates in [lo, lo+1) where lo = -wrap_tol
@@ -358,7 +358,7 @@ def wrap_cartesian_coords(
     Args:
         coords: Cartesian coordinates (can be 1D or 2D array)
         lattice: pymatgen Lattice object
-        wrap_tol: Wrap tolerance controlling canonical interval (defaults to WRAP_TOL = 0.01)
+        wrap_tol: Wrap tolerance controlling canonical interval (defaults to WRAP_TOL = 1e-4)
         
     Returns:
         Wrapped Cartesian coordinates
@@ -963,7 +963,7 @@ def generate_boundary_atoms(
     - For an atom at fractional coordinate frep (already canonicalized to [-wrap_tol, 1-wrap_tol)):
       * If abs(frep[d] - 0.0) < tol_dim[d], it is near the 0-boundary and generates a +1 shift image
       * If abs(frep[d] - 1.0) < tol_dim[d], it is near the 1-boundary and generates a -1 shift image
-    - Negative small frep values (e.g., -0.005) are treated as "near 0" by design, avoiding 0 being a knife-edge.
+    - Negative small frep values (e.g., -0.001) are treated as "near 0" by design, avoiding 0 being a knife-edge.
     - This is intentionally NOT mod1/physical [0,1) interpretation; it uses representative coords as truth.
     
     IMPORTANT: Base atoms are canonicalized for consistent boundary detection, but
@@ -973,8 +973,8 @@ def generate_boundary_atoms(
     
     Args:
         structure: pymatgen Structure object (already canonicalized, frep is in [-wrap_tol, 1-wrap_tol))
-        boundary_tol: Tolerance for boundary detection in fractional coordinates (defaults to BOUNDARY_TOL = 0.005)
-        wrap_tol: Wrap tolerance defining canonical interval [lo, lo+1) where lo = -wrap_tol (defaults to WRAP_TOL = 0.01)
+        boundary_tol: Tolerance for boundary detection in fractional coordinates (defaults to BOUNDARY_TOL = 0.01)
+        wrap_tol: Wrap tolerance defining canonical interval [lo, lo+1) where lo = -wrap_tol (defaults to WRAP_TOL = 1e-4)
         supercell_factors: Tuple of (m, n, l) supercell scaling factors (defaults to (1,1,1) for primitive)
                           Used to scale boundary_tol per dimension: tol_dim = boundary_tol / factor
         
@@ -1332,7 +1332,7 @@ def build_display_atoms(
     - For supercell mode with factors (m,n,l), per-dimension tolerance = boundary_tol / factor
     - This ensures real-space thickness is approximately invariant vs supercell size
     - Boundary detection uses abs(frep - 0) and abs(frep - 1) in the representative system
-    - Negative small frep values (e.g., -0.005) are treated as "near 0" by design, avoiding 0 being a knife-edge
+    - Negative small frep values (e.g., -0.001) are treated as "near 0" by design, avoiding 0 being a knife-edge
     - This is intentionally NOT mod1/physical [0,1) interpretation; it uses representative coords as truth
     - Images are generated only via integer lattice translations (f_img = frep + shift_vec)
     - No wrapping, snapping, or geometry modification occurs on image atoms

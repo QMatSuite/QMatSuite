@@ -156,7 +156,7 @@ supercell.make_supercell(scaling, to_unit_cell=False)
 ### Coordinate Wrapping After Supercell
 
 **Current Flow**:
-1. `canonicalize_structure_in_place()` - wraps to [-0.01, 0.99)
+1. `canonicalize_structure_in_place()` - wraps to [-1e-4, 0.9999)
 2. `make_supercell()` - expands, but may fold back to [0,1) if `to_unit_cell=True`
 3. `generate_boundary_atoms()` - expects coordinates in canonical interval
 
