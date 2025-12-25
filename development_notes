@@ -70,6 +70,9 @@ pip install --upgrade pip
   pip install pytest-xdist
   python -m pytest tests/ -v --tb=short -n 6 --dist=loadfile
 
+  # with stdout of bonds regardless of success or failureííí
+  python -m pytest tests/unit/test_structure_viz.py -s
+
   # Or run with explicit QE_HOME if needed
   QE_HOME=$HOME/src/q-e-qe-7.5 python -m pytest tests/ -v
 
