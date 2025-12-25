@@ -9,10 +9,10 @@
  * - Step Focus mode: Compact step list on left, StepDetailPanel as main workspace on right
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { CalculationDetailPanel } from './CalculationListPanel';
 import { StepDetailPanel } from './StepDetailPanel';
-import { ResizablePane } from '../layout/ResizablePane';
+import { ResizablePane, type ResizablePaneRef } from '../layout/ResizablePane';
 import { normalizeProjectRoot } from '../../utils/pathUtils';
 import type { CalculationInfo, CalculationDetailResult, StructureInfo } from '../../types/qv';
 import './CalculationOverviewTab.css';
@@ -49,6 +49,13 @@ export function CalculationOverviewTab({
   // Step Focus mode state
   // When a step is selected, enter focus mode (compact step list + expanded StepDetailPanel)
   const [stepFocused, setStepFocused] = useState(false);
+  
+  // Ref for ResizablePane to control width
+  const stepListPaneRef = useRef<ResizablePaneRef>(null);
+  
+  // Store overview width separately from focus width
+  const overviewWidthRef = useRef<number | null>(null);
+  const hasAutoShrunkRef = useRef(false);
 
   // Compute step index and count for breadcrumb
   const steps = calculationDetail?.steps ?? [];
@@ -89,6 +96,27 @@ export function CalculationOverviewTab({
       setStepFocused(true);
     }
   }, [selectedStepId, stepFocused]);
+  
+  // Auto-shrink step list panel when entering step detail view
+  useEffect(() => {
+    if (stepFocused && stepListPaneRef.current && !hasAutoShrunkRef.current) {
+      // Save current width before shrinking (if we have it)
+      const currentWidth = stepListPaneRef.current.getWidth();
+      if (currentWidth > 240) {
+        overviewWidthRef.current = currentWidth;
+      }
+      // Auto-shrink to compact width (240px)
+      stepListPaneRef.current.setWidth(240);
+      hasAutoShrunkRef.current = true;
+    } else if (!stepFocused && stepListPaneRef.current && hasAutoShrunkRef.current) {
+      // Restore previous width when leaving step detail view
+      if (overviewWidthRef.current !== null && overviewWidthRef.current > 240) {
+        stepListPaneRef.current.setWidth(overviewWidthRef.current);
+      }
+      hasAutoShrunkRef.current = false;
+      overviewWidthRef.current = null;
+    }
+  }, [stepFocused]);
 
   // Compute step YAML absolute path for reveal button
   const calculationAbsolutePath = calculationDetail?.absolute_path || calculationSummary?.absolute_path || null;
@@ -155,11 +183,13 @@ export function CalculationOverviewTab({
         {/* Left Column: Compact Step List */}
         <div onClick={(e) => e.stopPropagation()}>
           <ResizablePane
-            defaultWidth={280}
-            minWidth={240}
+            ref={stepListPaneRef}
+            defaultWidth={240}
+            minWidth={200}
             maxWidth={400}
             storageKey="qv-step-focus-list-width"
             className="calculation-overview-tab__focus-list"
+            collapsedWidth={240}
           >
             <CompactStepList
             calculation={calculation}
@@ -470,15 +500,11 @@ function CompactStepList({
               e.stopPropagation(); // Prevent background click handler from firing
               onSelectStep(step.id);
             }}
-            title={`${step.type} - ${step.step_file || step.id.substring(0, 8)}`}
+            title={step.step_file ? `${step.type} - ${step.step_file}` : `${step.type} - ${step.id.substring(0, 8)}`}
+            aria-label={step.step_file ? `Step ${idx + 1}: ${step.type} (${step.step_file})` : `Step ${idx + 1}: ${step.type}`}
           >
             <span className="compact-step-list__step-number">{idx + 1}</span>
             <span className="compact-step-list__step-type">{step.type}</span>
-            {step.step_file && (
-              <span className="compact-step-list__step-file" title={step.step_file}>
-                {step.step_file.length > 20 ? '...' + step.step_file.slice(-17) : step.step_file}
-              </span>
-            )}
           </button>
         ))}
       </div>
