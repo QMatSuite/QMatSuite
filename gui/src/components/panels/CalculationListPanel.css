@@ -125,6 +125,7 @@
   max-width: 100%;
   min-width: 0; /* Allow flex item to shrink below content size */
   box-sizing: border-box; /* Include border/padding in width */
+  overflow: visible; /* Ensure no internal scrolling */
 }
 
 .calculation-item:hover {
@@ -151,6 +152,7 @@
   cursor: pointer;
   text-align: left;
   box-sizing: border-box; /* Ensure padding is included in width */
+  overflow: visible; /* Ensure no internal scrolling - item expands to show all content */
 }
 
 /* Header row with title and actions */
@@ -227,6 +229,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 
 .calculation-item__structure code {
@@ -234,7 +239,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  display: block;
+  display: inline; /* Keep on same line as label */
 }
 
 .calculation-item__details {
