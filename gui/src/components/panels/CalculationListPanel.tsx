@@ -2,7 +2,7 @@
  * CalculationListPanel - Displays a list of calculations in a project
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, type RefObject } from 'react';
 import type { CalculationInfo } from '../../types/qv';
 import './CalculationListPanel.css';
 
@@ -14,6 +14,9 @@ interface CalculationListPanelProps {
   onRename?: (calculation: CalculationInfo) => void;
   onDelete?: (calculation: CalculationInfo) => void;
   onRefreshProjectRegistry?: () => void;
+  onToggleCollapse?: () => void;
+  isCollapsed?: boolean;
+  paneRef?: RefObject<{ toggle: () => void; collapse: () => void; expand: () => void }>;
 }
 
 export function CalculationListPanel({ 
@@ -24,8 +27,55 @@ export function CalculationListPanel({
   onRename,
   onDelete,
   onRefreshProjectRegistry,
+  onToggleCollapse,
+  isCollapsed: externalIsCollapsed,
+  paneRef,
 }: CalculationListPanelProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Internal collapsed state (persisted in localStorage, can be overridden by prop)
+  const [internalIsCollapsed, setInternalIsCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('qv-calculations-panel-collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  
+  const isCollapsed = externalIsCollapsed !== undefined ? externalIsCollapsed : internalIsCollapsed;
+  
+  // Persist collapsed state
+  useEffect(() => {
+    if (externalIsCollapsed === undefined) {
+      localStorage.setItem('qv-calculations-panel-collapsed', String(internalIsCollapsed));
+    }
+  }, [internalIsCollapsed, externalIsCollapsed]);
+  
+  const handleToggleCollapse = useCallback(() => {
+    // Sync with ResizablePane if ref is provided
+    if (paneRef?.current) {
+      paneRef.current.toggle();
+    }
+    // Also call external handler if provided
+    if (onToggleCollapse) {
+      onToggleCollapse();
+    }
+    // Update internal state if no external control
+    if (externalIsCollapsed === undefined) {
+      setInternalIsCollapsed(prev => !prev);
+    }
+  }, [onToggleCollapse, paneRef, externalIsCollapsed]);
+  
+  // Sync collapsed state with ResizablePane width
+  useEffect(() => {
+    if (paneRef?.current && externalIsCollapsed !== undefined) {
+      if (externalIsCollapsed) {
+        paneRef.current.collapse();
+      } else {
+        paneRef.current.expand();
+      }
+    }
+  }, [externalIsCollapsed, paneRef]);
   
   const handleRefresh = useCallback(async () => {
     if (!onRefreshProjectRegistry) return;
@@ -36,6 +86,40 @@ export function CalculationListPanel({
       setIsRefreshing(false);
     }
   }, [onRefreshProjectRegistry]);
+  
+  // Get selected calculation for rail view
+  const selectedCalculation = useMemo(() => {
+    if (!selectedId || !calculations) return null;
+    return calculations.find(calc => calc.id === selectedId) || null;
+  }, [selectedId, calculations]);
+  
+  // Generate monogram from calculation name or structure
+  const getMonogram = useCallback((calc: CalculationInfo | null): string => {
+    if (!calc) return '??';
+    // Prefer "Si" for Silicon
+    if (calc.structure && calc.structure.toLowerCase().includes('si')) {
+      return 'Si';
+    }
+    // Use first 2 characters of calculation name
+    if (calc.name && calc.name.length >= 2) {
+      return calc.name.substring(0, 2).toUpperCase();
+    }
+    // Fallback to structure name
+    if (calc.structure && calc.structure.length >= 2) {
+      return calc.structure.substring(0, 2).toUpperCase();
+    }
+    return '??';
+  }, []);
+  
+  // Generate tooltip text for selected calculation
+  const getTooltipText = useCallback((calc: CalculationInfo | null): string => {
+    if (!calc) return 'No calculation selected';
+    const parts = [calc.name];
+    if (calc.structure) parts.push(`Structure: ${calc.structure}`);
+    if (calc.n_steps) parts.push(`${calc.n_steps} step${calc.n_steps !== 1 ? 's' : ''}`);
+    if (calc.mode) parts.push(`Mode: ${calc.mode}`);
+    return parts.join(' • ');
+  }, []);
   if (isLoading) {
     return (
       <div className="calculation-list-panel calculation-list-panel--loading">
@@ -69,6 +153,51 @@ export function CalculationListPanel({
     );
   }
   
+  // Collapsed rail view
+  if (isCollapsed) {
+    return (
+      <div className={`calculation-list-panel calculation-list-panel--collapsed`} data-testid="qv-calculations-view">
+        {/* Icon at top */}
+        <div className="calculation-list-panel__rail-icon">
+          <span className="panel-icon">📊</span>
+        </div>
+        
+        {/* Count badge */}
+        {calculations && calculations.length > 0 && (
+          <div className="calculation-list-panel__rail-count">
+            {calculations.length}
+          </div>
+        )}
+        
+        {/* Selected item indicator */}
+        {selectedCalculation && (
+          <div 
+            className="calculation-list-panel__rail-selected"
+            title={getTooltipText(selectedCalculation)}
+          >
+            {getMonogram(selectedCalculation)}
+          </div>
+        )}
+        
+        {/* Spacer */}
+        <div className="calculation-list-panel__rail-spacer" />
+        
+        {/* Footer with collapse toggle */}
+        <div className="calculation-list-panel__footer">
+          <button
+            className="calculation-list-panel__collapse-btn"
+            onClick={handleToggleCollapse}
+            title="Expand calculations"
+            aria-label="Expand calculations"
+          >
+            »
+          </button>
+        </div>
+      </div>
+    );
+  }
+  
+  // Expanded view
   return (
     <div className="calculation-list-panel" data-testid="qv-calculations-view">
       <div className="panel-header">
@@ -168,6 +297,21 @@ export function CalculationListPanel({
             </button>
           </div>
         ))}
+      </div>
+      
+      {/* Footer spacer */}
+      <div className="calculation-list-panel__spacer" />
+      
+      {/* Footer with collapse toggle */}
+      <div className="calculation-list-panel__footer">
+        <button
+          className="calculation-list-panel__collapse-btn"
+          onClick={handleToggleCollapse}
+          title="Collapse calculations"
+          aria-label="Collapse calculations"
+        >
+          «
+        </button>
       </div>
     </div>
   );
@@ -857,7 +1001,6 @@ export function CalculationDetailPanel({
                     <span className="step-id">{step.id}</span>
                     <span className="step-type-badge">{step.type}</span>
                   </div>
-                  <code className="step-file">{step.step_file}</code>
                 </button>
                 {!isReordering && onDeleteStep && (
                   <button
