@@ -163,11 +163,23 @@ class TestBondDetection:
         """
         Test bond detection in a supercell.
         
+        This test validates bond count stability for a finite 2×2×2 Si supercell
+        without periodic boundary conditions or boundary image atoms.
+        After enforcing to_unit_cell=False, the correct and platform-independent
+        bond count is 16.
+        
+        The bond count is not a physical invariant; it depends on:
+        - finite supercell point cloud (no PBC)
+        - no boundary images (repeat_boundary=False)
+        - no fold-back after supercell generation (to_unit_cell=False)
+        
+        The previous value (18) relied on implicit coordinate folding (to_unit_cell=True)
+        and violated the canonicalization contract.
+        
         Bonds are computed using Euclidean distance on the supercell's atoms.
         No PBC - only bonds between atoms actually in the supercell.
         
         PRECONDITION: Structure must be canonicalized before building supercell and calling detect_bonds.
-        After robust canonicalization, we get stable bond counts of 18 for a 2×2×2 Si supercell.
         """
         import numpy as np
         # PRECONDITION: Canonicalize at entry point (before supercell construction)
@@ -175,6 +187,7 @@ class TestBondDetection:
         canonicalize_structure_in_place(structure_canon, wrap_tol=WRAP_TOL)
         
         # Build supercell from canonicalized structure (make_supercell does NOT canonicalize)
+        # make_supercell now explicitly passes to_unit_cell=False to prevent coordinate folding
         supercell = make_supercell(structure_canon, (2, 2, 2))
         
         # detect_bonds requires canonicalized input (supercell is built from canonicalized primitive)
@@ -190,10 +203,9 @@ class TestBondDetection:
             }
         )
         
-        # 2×2×2 Si diamond supercell with internal bonds only:
-        # after robust fractional canonicalization (snapping values near 0.0 and 1.0 to 0.0),
-        # we consistently get 18 unique bonds across small fractional shifts.
-        EXPECTED_BOND_COUNT = 18
+        # 2×2×2 Si diamond supercell with internal bonds only (finite point cloud, no PBC, no boundary images):
+        # After enforcing to_unit_cell=False, we get 16 unique bonds (platform-independent).
+        EXPECTED_BOND_COUNT = 16
         assert len(bonds) == EXPECTED_BOND_COUNT, (
             f"Expected exactly {EXPECTED_BOND_COUNT} bonds in 2×2×2 supercell, got {len(bonds)}"
         )
@@ -547,11 +559,28 @@ class TestCellListBondDetection:
         )
     
     def test_cell_list_vs_bruteforce_si_supercell(self, si_diamond_structure):
-        """Test cell-list matches brute-force on Si supercell."""
+        """
+        Test cell-list matches brute-force on Si supercell.
+        
+        This test validates bond count stability for a finite 2×2×2 Si supercell
+        without periodic boundary conditions or boundary image atoms.
+        After enforcing to_unit_cell=False, the correct and platform-independent
+        bond count is 16.
+        
+        The bond count is not a physical invariant; it depends on:
+        - finite supercell point cloud (no PBC)
+        - no boundary images (repeat_boundary=False)
+        - no fold-back after supercell generation (to_unit_cell=False)
+        
+        The previous value (18) relied on implicit coordinate folding (to_unit_cell=True)
+        and violated the canonicalization contract.
+        """
         # CRITICAL: Canonicalize exactly once at the entry point
         structure_canon = si_diamond_structure.copy()
         canonicalize_structure_in_place(structure_canon, wrap_tol=WRAP_TOL)
         
+        # Build supercell from canonicalized structure
+        # make_supercell now explicitly passes to_unit_cell=False to prevent coordinate folding
         supercell = make_supercell(structure_canon, (2, 2, 2))
         
         # Extract atoms and species from the supercell
@@ -613,14 +642,14 @@ class TestCellListBondDetection:
             f"Bond counts must match: brute-force={len(bonds_brute)}, cell-list={len(bonds_cell)}"
         )
         
-        # CRITICAL: Exact bond count for Si 2×2×2 supercell after canonicalization
-        # This is the deterministic, stable count verified by exploration tests.
-        # The primitive structure is canonicalized (snaps values near 0.0 and 1.0 to 0.0),
-        # then the supercell is built from that canonicalized primitive.
-        EXPECTED_BOND_COUNT = 18
+        # CRITICAL: Exact bond count for Si 2×2×2 supercell (finite point cloud, no PBC, no boundary images)
+        # After enforcing to_unit_cell=False, we get 16 unique bonds (platform-independent).
+        # The primitive structure is canonicalized once at entry, then the supercell is built
+        # from that canonicalized primitive with no additional coordinate folding.
+        EXPECTED_BOND_COUNT = 16
         assert len(bonds_brute) == EXPECTED_BOND_COUNT, (
             f"Expected exactly {EXPECTED_BOND_COUNT} bonds in Si 2×2×2 supercell "
-            f"after canonicalizing primitive structure, got {len(bonds_brute)}"
+            f"after canonicalizing primitive structure and enforcing to_unit_cell=False, got {len(bonds_brute)}"
         )
     
     def test_cell_list_vs_bruteforce_si_with_boundary(self, si_diamond_structure):
