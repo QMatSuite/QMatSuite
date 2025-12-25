@@ -142,6 +142,8 @@ export function StepDetailPanel({
   
   // QE parameter metadata hook (shared with Resources view)
   const qeMetadata = useQEParameterMetadata();
+  // Extract stable function references to avoid effect re-runs
+  const { loadSections, loadParameters } = qeMetadata;
   
   // Calculation selector: always use slug (backend expects calculation slug)
   const calculationSelector = selectedCalculation?.slug ?? null;
@@ -686,6 +688,42 @@ export function StepDetailPanel({
     setHasChanges(false);
     setIsEditing(false);
   }, [stepDetail]);
+  
+  // Ensure metadata is loaded when entering edit mode
+  // This is critical: metadata must be available before ParameterValueEditor renders
+  // CRITICAL: Use stable dependencies to prevent infinite loops
+  // - Track previous isEditing state to detect false->true transition
+  // - Use stable namelists key (sorted string) instead of stepDetail object
+  const prevIsEditingRef = useRef(false);
+  const stableNamelistsKey = useMemo(() => {
+    if (!stepDetail?.parameters) return '';
+    return Object.keys(stepDetail.parameters)
+      .map(n => n.startsWith('&') ? n : `&${n}`)
+      .sort()
+      .join('|');
+  }, [stepDetail?.parameters]);
+  
+  useEffect(() => {
+    // Only run when isEditing transitions from false to true, or when module/namelists change
+    const isEnteringEdit = !prevIsEditingRef.current && isEditing;
+    prevIsEditingRef.current = isEditing;
+    
+    // stableNamelistsKey is derived from stepDetail.parameters, so we don't need stepDetail in deps
+    if (isEnteringEdit && module && stableNamelistsKey) {
+      // Parse namelists from stable key (sorted, pipe-separated)
+      const sectionsToLoad = new Set(stableNamelistsKey.split('|').filter(Boolean));
+      
+      if (sectionsToLoad.size > 0) {
+        // Load sections first, then parameters for each section
+        // loadParameters is now idempotent, so calling it multiple times is safe
+        loadSections(module).then(() => {
+          sectionsToLoad.forEach(section => {
+            loadParameters(module, section);
+          });
+        });
+      }
+    }
+  }, [isEditing, module, stableNamelistsKey, loadSections, loadParameters]);
   
   // Handle deleting the step
   const handleDeleteStep = useCallback(async () => {
