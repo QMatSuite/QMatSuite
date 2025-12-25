@@ -6,7 +6,7 @@
  * access without duplicate loading.
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useQVClient } from './useQVClient';
 import type { QVResult } from '../types/qv';
 
