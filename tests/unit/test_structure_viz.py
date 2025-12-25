@@ -26,7 +26,48 @@ from quantumvitas.analysis.structure_viz import (
     WRAP_TOL,
     BOUNDARY_TOL,
     BOUNDARY_FRAC_TOL,
+    Bond,
 )
+
+
+def _dump_bonds(label: str, bonds, capsys, extra_context=None):
+    """
+    Print all bonds in a deterministic format for debugging.
+    
+    Uses capsys.disabled() to ensure output appears in CI logs even when
+    pytest capture is enabled.
+    
+    Args:
+        label: Label for this bond dump
+        bonds: List of Bond objects
+        capsys: pytest capsys fixture
+        extra_context: Optional dict with extra context to print
+    """
+    # Sort bonds deterministically: by (min(idx1, idx2), max(idx1, idx2), distance)
+    sorted_bonds = sorted(
+        bonds,
+        key=lambda b: (min(b.idx1, b.idx2), max(b.idx1, b.idx2), b.distance)
+    )
+    
+    with capsys.disabled():
+        print(f"\n=== BONDS DUMP: {label} ===")
+        print(f"n_bonds = {len(bonds)}")
+        if extra_context:
+            for key, value in extra_context.items():
+                print(f"{key} = {value}")
+        
+        for i, bond in enumerate(sorted_bonds):
+            idx1, idx2 = bond.idx1, bond.idx2
+            # Ensure idx1 < idx2 for consistent display
+            if idx1 > idx2:
+                idx1, idx2 = idx2, idx1
+            print(
+                f"{i:03d} ({idx1},{idx2}) "
+                f"d={bond.distance:.15f} "
+                f"c1={repr(bond.coord1)} "
+                f"c2={repr(bond.coord2)}"
+            )
+        print(f"=== END BONDS DUMP: {label} ===\n")
 
 
 class TestCovalentRadii:
@@ -113,7 +154,7 @@ class TestBondDetection:
         # Should be same as with include_periodic_images=True (parameter is ignored)
         assert len(bonds) == 1, f"Expected 1 bond in primitive Si, got {len(bonds)}"
 
-    def test_detect_bonds_supercell(self, si_diamond_structure):
+    def test_detect_bonds_supercell(self, si_diamond_structure, capsys):
         """
         Test bond detection in a supercell.
         
@@ -133,6 +174,17 @@ class TestBondDetection:
         
         # detect_bonds requires canonicalized input (supercell is built from canonicalized primitive)
         bonds = detect_bonds(supercell, include_periodic_images=False)
+        
+        # Print all bonds before assertions (for CI debugging)
+        _dump_bonds(
+            "test_detect_bonds_supercell",
+            bonds,
+            capsys,
+            extra_context={
+                "n_atoms": len(supercell),
+                "supercell_factors": (2, 2, 2),
+            }
+        )
         
         # 2×2×2 Si diamond supercell with internal bonds only:
         # after robust fractional canonicalization (snapping values near 0.0 and 1.0 to 0.0),
@@ -490,7 +542,7 @@ class TestCellListBondDetection:
             f"Brute-force: {len(bonds_brute)} bonds, Cell-list: {len(bonds_cell)} bonds"
         )
     
-    def test_cell_list_vs_bruteforce_si_supercell(self, si_diamond_structure):
+    def test_cell_list_vs_bruteforce_si_supercell(self, si_diamond_structure, capsys):
         """Test cell-list matches brute-force on Si supercell."""
         # CRITICAL: Canonicalize exactly once at the entry point
         structure_canon = si_diamond_structure.copy()
@@ -513,6 +565,36 @@ class TestCellListBondDetection:
             atoms_cart, species, radii_map,
             max_factor=1.2, tolerance=0.3, max_cutoff=3.5
         )
+        
+        # Print all bonds before assertions (for CI debugging)
+        _dump_bonds(
+            "test_cell_list_vs_bruteforce_si_supercell (brute-force)",
+            bonds_brute,
+            capsys,
+            extra_context={
+                "n_atoms": len(supercell),
+                "supercell_factors": (2, 2, 2),
+                "method": "bruteforce",
+            }
+        )
+        _dump_bonds(
+            "test_cell_list_vs_bruteforce_si_supercell (cell-list)",
+            bonds_cell,
+            capsys,
+            extra_context={
+                "n_atoms": len(supercell),
+                "supercell_factors": (2, 2, 2),
+                "method": "cell_list",
+            }
+        )
+        
+        # Print summary
+        with capsys.disabled():
+            print(f"\n=== BOND COUNT SUMMARY ===")
+            print(f"Brute-force: {len(bonds_brute)} bonds")
+            print(f"Cell-list: {len(bonds_cell)} bonds")
+            print(f"Match: {len(bonds_brute) == len(bonds_cell)}")
+            print(f"=== END SUMMARY ===\n")
         
         # Compare brute-force vs cell-list (they should always match)
         pairs_brute = set((int(b.idx1), int(b.idx2)) for b in bonds_brute)
