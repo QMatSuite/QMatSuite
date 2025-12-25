@@ -317,17 +317,6 @@
   flex-shrink: 0;
 }
 
-.compact-step-list__step-file {
-  font-size: 11px;
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-  min-width: 0;
-}
-
 .compact-step-list__footer {
   padding: var(--space-2) var(--space-3);
   border-top: 1px solid var(--border-subtle);

@@ -16,6 +16,7 @@ import {
   Sidebar,
   StatusBar,
   ResizablePane,
+  type ResizablePaneRef,
   ResizableSplitPane,
   ProjectSummaryPanel, 
   StructureListPanel,
@@ -86,6 +87,13 @@ function App() {
   const [structures, setStructures] = useState<StructureInfo[] | null>(null);
   const [calculations, setCalculations] = useState<CalculationInfo[] | null>(null);
   const [selectedStructure, setSelectedStructure] = useState<StructureInfo | null>(null);
+  
+  // Calculations pane collapse state (for syncing ResizablePane width)
+  const calculationsPaneRef = useRef<ResizablePaneRef>(null);
+  
+  const handleToggleCalculationsPane = useCallback(() => {
+    calculationsPaneRef.current?.toggle();
+  }, []);
   
   // Online import mode state
   const [leftMode, setLeftMode] = useState<'project' | 'import'>('project');
@@ -2303,11 +2311,13 @@ function App() {
           <div className="calculations-view">
             {/* Left Column: Calculation List (fixed, like VS Code Explorer) */}
             <ResizablePane
+              ref={calculationsPaneRef}
               defaultWidth={200}
-              minWidth={180}
+              minWidth={56}
               maxWidth={420}
               storageKey="qv-calculations-list-width"
               className="calculations-view__list"
+              collapsedWidth={56}
             >
               <CalculationListPanel
                 onRefreshProjectRegistry={handleRefreshProjectRegistry}
@@ -2317,6 +2327,8 @@ function App() {
                 onSelect={handleSelectCalculation}
                 onRename={setRenameCalculation}
                 onDelete={setDeleteCalculation}
+                onToggleCollapse={handleToggleCalculationsPane}
+                paneRef={calculationsPaneRef}
               />
               <button 
                 className="view-action-btn"

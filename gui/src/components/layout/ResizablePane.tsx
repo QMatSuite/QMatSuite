@@ -11,8 +11,16 @@
  * - The component respects the provided minWidth/maxWidth props; no internal hardcoded minimums
  */
 
-import { useState, useCallback, useRef, useEffect, ReactNode } from 'react';
+import { useState, useCallback, useRef, useEffect, ReactNode, useImperativeHandle, forwardRef } from 'react';
 import './ResizablePane.css';
+
+export interface ResizablePaneRef {
+  collapse: () => void;
+  expand: () => void;
+  toggle: () => void;
+  getWidth: () => number;
+  setWidth: (newWidth: number) => void;
+}
 
 interface ResizablePaneProps {
   children: ReactNode;
@@ -28,9 +36,11 @@ interface ResizablePaneProps {
   resizePosition?: 'left' | 'right';
   /** Additional class name */
   className?: string;
+  /** Collapsed width (defaults to minWidth) */
+  collapsedWidth?: number;
 }
 
-export function ResizablePane({
+export const ResizablePane = forwardRef<ResizablePaneRef, ResizablePaneProps>(({
   children,
   defaultWidth = 400,
   minWidth = 280,
@@ -38,7 +48,8 @@ export function ResizablePane({
   storageKey,
   resizePosition = 'right',
   className = '',
-}: ResizablePaneProps) {
+  collapsedWidth,
+}, ref) => {
   // Load saved width from localStorage
   const getSavedWidth = () => {
     if (storageKey) {
@@ -55,7 +66,38 @@ export function ResizablePane({
   
   const [width, setWidth] = useState(getSavedWidth);
   const [isResizing, setIsResizing] = useState(false);
+  const [expandedWidth, setExpandedWidth] = useState(getSavedWidth);
   const paneRef = useRef<HTMLDivElement>(null);
+  const collapsedW = collapsedWidth ?? minWidth;
+  
+  // Expose collapse/expand methods via ref
+  useImperativeHandle(ref, () => ({
+    collapse: () => {
+      if (width > collapsedW) {
+        setExpandedWidth(width);
+        setWidth(collapsedW);
+      }
+    },
+    expand: () => {
+      setWidth(expandedWidth);
+    },
+    toggle: () => {
+      if (width <= collapsedW) {
+        setWidth(expandedWidth);
+      } else {
+        setExpandedWidth(width);
+        setWidth(collapsedW);
+      }
+    },
+    getWidth: () => width,
+    setWidth: (newWidth: number) => {
+      const clampedWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
+      setWidth(clampedWidth);
+      if (clampedWidth > collapsedW) {
+        setExpandedWidth(clampedWidth);
+      }
+    },
+  }), [width, collapsedW, expandedWidth, minWidth, maxWidth]);
   
   // Handle resize drag
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -116,5 +158,5 @@ export function ResizablePane({
       />
     </div>
   );
-}
+});
 
