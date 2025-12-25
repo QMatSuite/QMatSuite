@@ -316,11 +316,12 @@ export function StepDetailPanel({
           
           // Load parameter metadata for all sections that have parameters
           const stepModule = stepTypeToModule(response.data.step_type);
-          if (stepModule && qeMetadata) {
+          const parameters = response.data.parameters;
+          if (stepModule && qeMetadata && parameters) {
             // Load sections first, then parameters for each section
             qeMetadata.loadSections(stepModule).then(() => {
               const sectionsToLoad = new Set<string>();
-              for (const namelist of Object.keys(response.data.parameters)) {
+              for (const namelist of Object.keys(parameters)) {
                 const sectionKey = namelist.startsWith('&') ? namelist : `&${namelist}`;
                 sectionsToLoad.add(sectionKey);
               }
@@ -873,8 +874,7 @@ export function StepDetailPanel({
     : (LEGACY_EDITABLE_PARAMS[stepDetail.step_type] || []);
   const hasEditableParams = editableParams.length > 0;
   
-  // Extract namelist keys for display
-  const namelists = Object.keys(stepDetail.parameters);
+  // Extract card keys for display
   const cards = Object.keys(stepDetail.cards);
   
   // Show breadcrumb if we have calculation name and step position info
@@ -1208,42 +1208,6 @@ export function StepDetailPanel({
 // Helper Components
 // =============================================================================
 
-interface NamelistSectionProps {
-  name: string;
-  parameters: Record<string, unknown>;
-}
-
-function NamelistSection({ name, parameters }: NamelistSectionProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const paramEntries = Object.entries(parameters);
-  
-  if (paramEntries.length === 0) return null;
-  
-  return (
-    <div className="namelist-section">
-      <button 
-        className="namelist-header"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        <span className="namelist-toggle">{isExpanded ? '▼' : '▶'}</span>
-        <span className="namelist-name">&{name}</span>
-        <span className="namelist-count">{paramEntries.length} params</span>
-      </button>
-      
-      {isExpanded && (
-        <div className="namelist-params">
-          {paramEntries.map(([key, value]) => (
-            <div key={key} className="param-row">
-              <span className="param-key">{key}</span>
-              <span className="param-value">{formatParamValue(value)}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 interface CardSectionProps {
   name: string;
   data: Record<string, unknown>;
@@ -1269,14 +1233,4 @@ function CardSection({ name, data }: CardSectionProps) {
       )}
     </div>
   );
-}
-
-// Format a parameter value for display
-function formatParamValue(value: unknown): string {
-  if (value === null || value === undefined) return 'null';
-  if (typeof value === 'boolean') return value ? '.true.' : '.false.';
-  if (typeof value === 'string') return `'${value}'`;
-  if (typeof value === 'number') return String(value);
-  if (Array.isArray(value)) return value.map(formatParamValue).join(', ');
-  return JSON.stringify(value);
 }
