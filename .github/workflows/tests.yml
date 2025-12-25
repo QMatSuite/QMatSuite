@@ -243,7 +243,7 @@ jobs:
       run: |
         export QE_HOME="${{ env.QE_PREFIX }}"
         export PATH="${{ env.QE_PREFIX }}/bin:$PATH"
-        python -m pytest tests/ -v --tb=short -n auto --dist=loadfile --cov=src/quantumvitas --cov-report=xml --cov-report=term
+        python -m pytest tests/ -v -s --tb=short -n auto --dist=loadfile --cov=src/quantumvitas --cov-report=xml --cov-report=term
       env:
         QE_HOME: ${{ env.QE_PREFIX }}
     
