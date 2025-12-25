@@ -6,7 +6,7 @@
  * access without duplicate loading.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useQVClient } from './useQVClient';
 import type { QVResult } from '../types/qv';
 
@@ -92,6 +92,11 @@ export function useQEParameterMetadata(): UseQEParameterMetadataResult {
   // Reload state
   const [isReloading, setIsReloading] = useState(false);
   
+  // Track loaded sections and in-flight requests to prevent duplicate loads
+  // Key format: `${module}::${section}`
+  const loadedSectionsRef = useRef<Set<string>>(new Set());
+  const inFlightRef = useRef<Map<string, Promise<void>>>(new Map());
+  
   // Load modules
   const loadModules = useCallback(async () => {
     setModulesLoading(true);
@@ -163,38 +168,95 @@ export function useQEParameterMetadata(): UseQEParameterMetadataResult {
   }, [qv]);
   
   // Load parameters for a module and section
+  // CRITICAL: This must ACCUMULATE parameters, not replace them, because multiple sections
+  // are loaded (e.g., &CONTROL, &SYSTEM, &ELECTRONS). Each call should add to the existing array.
+  // IDEMPOTENT: Uses loadedSectionsRef and inFlightRef to prevent duplicate RPC calls.
   const loadParameters = useCallback(async (module: string, section: string) => {
+    const key = `${module}::${section}`;
+    
+    // Early return if already loaded
+    if (loadedSectionsRef.current.has(key)) {
+      console.log('[useQEParameterMetadata] loadParameters early-return (already loaded)', { module, section, key });
+      return;
+    }
+    
+    // Return existing promise if already in flight
+    const existingPromise = inFlightRef.current.get(key);
+    if (existingPromise) {
+      console.log('[useQEParameterMetadata] loadParameters early-return (in-flight)', { module, section, key });
+      return existingPromise;
+    }
+    
+    // Create new load promise
+    console.log('[useQEParameterMetadata] loadParameters calling RPC', { module, section, key });
     setParametersLoading(true);
     setParametersError(null);
     
-    try {
-      const response = await qv.listQeParameterMetadata('list_parameters', { module, section });
-      
-      if (!response.ok) {
-        setParametersError(response.error?.message ?? 'Failed to load parameters');
-        setParameters([]);
-        return;
+    const loadPromise = (async () => {
+      try {
+        const response = await qv.listQeParameterMetadata('list_parameters', { module, section });
+        
+        if (!response.ok) {
+          setParametersError(response.error?.message ?? 'Failed to load parameters');
+          // Don't mark as loaded on error - allow retry
+          return;
+        }
+        
+        if (response.data?.parameters) {
+          // ACCUMULATE: Add new parameters to existing array, avoiding duplicates
+          setParameters(prev => {
+            // Create a map of existing parameters by key to avoid duplicates
+            const existingMap = new Map<string, QEParameterMeta>();
+            prev.forEach(p => {
+              const paramKey = `${p.module}::${p.section}::${p.name}`;
+              existingMap.set(paramKey, p);
+            });
+            
+            const prevSize = existingMap.size;
+            
+            // Add new parameters
+            response.data!.parameters!.forEach(p => {
+              const paramKey = `${p.module}::${p.section}::${p.name}`;
+              existingMap.set(paramKey, p);
+            });
+            
+            // Only update state if something actually changed
+            if (existingMap.size === prevSize) {
+              // No new parameters added, return prev to avoid re-render
+              return prev;
+            }
+            
+            return Array.from(existingMap.values());
+          });
+          
+          // Mark as loaded only on success
+          loadedSectionsRef.current.add(key);
+        } else {
+          // Empty response - still mark as loaded to avoid retrying
+          loadedSectionsRef.current.add(key);
+        }
+        
+        // Update metadata info
+        if (response.data) {
+          setMetadataInfo({
+            pathAbs: response.data.metadata_path_abs ?? null,
+            schemaVersion: response.data.schema_version ?? null,
+          });
+        }
+      } catch (err) {
+        setParametersError(err instanceof Error ? err.message : 'Unknown error');
+        // Don't mark as loaded on error - allow retry
+      } finally {
+        setParametersLoading(false);
+        // Remove from in-flight map
+        inFlightRef.current.delete(key);
       }
-      
-      if (response.data?.parameters) {
-        setParameters(response.data.parameters);
-      } else {
-        setParameters([]);
-      }
-      
-      // Update metadata info
-      if (response.data) {
-        setMetadataInfo({
-          pathAbs: response.data.metadata_path_abs ?? null,
-          schemaVersion: response.data.schema_version ?? null,
-        });
-      }
-    } catch (err) {
-      setParametersError(err instanceof Error ? err.message : 'Unknown error');
-      setParameters([]);
-    } finally {
-      setParametersLoading(false);
-    }
+    })();
+    
+    // Store in-flight promise
+    inFlightRef.current.set(key, loadPromise);
+    
+    return loadPromise;
   }, [qv]);
   
   // Search parameters
@@ -248,6 +310,10 @@ export function useQEParameterMetadata(): UseQEParameterMetadataResult {
       if (!response.ok) {
         throw new Error(response.error?.message ?? 'Failed to reload metadata');
       }
+      
+      // Clear loaded sections cache to allow fresh loads
+      loadedSectionsRef.current.clear();
+      inFlightRef.current.clear();
       
       // Update metadata info
       if (response.data) {
