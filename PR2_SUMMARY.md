@@ -11,18 +11,18 @@ This PR implements a major refactoring of the canonicalization system to use pur
 **Replaced `canonicalize_frac_coords()`**:
 - **Before**: Used integer snapping, modulo wrapping, and boundary snapping (hardcoded 0.0101 threshold)
 - **After**: Uses pure shifted wrap via `wrap_fractional_coords_shifted()` - only integer lattice translations
-- **Canonical interval**: `[lo, lo+1)` where `lo = -wrap_tol` (default `[-0.01, 0.99)`)
+- **Canonical interval**: `[lo, lo+1)` where `lo = -wrap_tol` (default `[-1e-4, 0.9999)`)
 - **No geometry modifications**: No snapping, rounding, or threshold-based nudging
 
 **Updated `canonicalize_structure_in_place()`**:
-- Changed parameter from `eps` to `wrap_tol` (default `WRAP_TOL = 0.01`)
+- Changed parameter from `eps` to `wrap_tol` (default `WRAP_TOL = 1e-4`)
 - Now uses pure shifted wrap throughout
 
 ### 2. Tolerance Constants: Split `wrap_tol` vs `boundary_tol`
 
 **New constants**:
-- `WRAP_TOL = 0.01`: Controls shifted canonical interval `[lo, lo+1)` where `lo = -wrap_tol`
-- `BOUNDARY_TOL = 0.005`: Used only for boundary-repeat near-face tests (not for geometry modification)
+- `WRAP_TOL = 1e-4`: Controls shifted canonical interval `[lo, lo+1)` where `lo = -wrap_tol`
+- `BOUNDARY_TOL = 0.01`: Used only for boundary-repeat near-face tests (not for geometry modification)
 - `BOUNDARY_FRAC_TOL = 1e-6`: Legacy constant, now only used for debug consistency checks (atol)
 
 **Semantics**:
