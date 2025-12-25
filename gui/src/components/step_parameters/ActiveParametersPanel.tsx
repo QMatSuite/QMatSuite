@@ -150,7 +150,7 @@ export function ActiveParametersPanel({
           
           <div className="active-parameters-panel__parameters">
             {params.map((param) => (
-              <div key={param.name} className="active-parameters-panel__parameter-row">
+              <div key={`${namelist}:${param.name}`} className="active-parameters-panel__parameter-row">
                 <div className="active-parameters-panel__parameter-info">
                   <span className="active-parameters-panel__parameter-name" title={getParameterTooltip(param)}>
                     {param.name}
