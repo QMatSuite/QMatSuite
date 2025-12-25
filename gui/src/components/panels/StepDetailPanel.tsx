@@ -5,10 +5,13 @@
  * parameter editing and the ability to run an individual step.
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import type { StepDetail, JobSubmitResult, CalculationDetailResult, QVError } from '../../types/qv';
 import { normalizeProjectRoot } from '../../utils/pathUtils';
 import { useQVClient } from '../../hooks/useQVClient';
+import { useQEParameterMetadata, type QEParameterMeta } from '../../hooks/useQEParameterMetadata';
+import { ActiveParametersPanel } from '../step_parameters/ActiveParametersPanel';
+import { AddParameterPalette } from '../step_parameters/AddParameterPalette';
 import './StepDetailPanel.css';
 
 interface StepDetailPanelProps {
@@ -137,6 +140,9 @@ export function StepDetailPanel({
   const listQeUiParametersRef = useRef(qv.listQeUiParameters);
   listQeUiParametersRef.current = qv.listQeUiParameters;
   
+  // QE parameter metadata hook (shared with Resources view)
+  const qeMetadata = useQEParameterMetadata();
+  
   // Calculation selector: always use slug (backend expects calculation slug)
   const calculationSelector = selectedCalculation?.slug ?? null;
   // Step selector: always use ULID from selectedStepId (must be ULID from calculation.yaml's steps array)
@@ -166,6 +172,25 @@ export function StepDetailPanel({
   
   // Delete step state
   const [isDeletingStep, setIsDeletingStep] = useState(false);
+  
+  // Get module for current step (after stepDetail is declared)
+  const module = stepDetail ? stepTypeToModule(stepDetail.step_type) : null;
+  
+  // Build parameter metadata map for quick lookup
+  // This map is built from already-loaded parameters in qeMetadata.parameters
+  const parameterMetadataMap = useMemo(() => {
+    const map = new Map<string, QEParameterMeta>();
+    
+    if (!module) return map;
+    
+    // Add parameters from already-loaded data
+    for (const param of qeMetadata.parameters) {
+      const key = `${param.module}::${param.section}::${param.name}`;
+      map.set(key, param);
+    }
+    
+    return map;
+  }, [module, qeMetadata.parameters]);
   
   // UI parameter metadata (from daemon)
   const [uiParams, setUiParams] = useState<Array<{
@@ -285,9 +310,25 @@ export function StepDetailPanel({
           });
           setStepDetail(response.data);
           setError(null);
-          // Initialize edited params from current values
+          // Initialize edited params from current values (include ALL parameters, not just editable ones)
           setEditedParams(JSON.parse(JSON.stringify(response.data.parameters)));
           setHasChanges(false);
+          
+          // Load parameter metadata for all sections that have parameters
+          const stepModule = stepTypeToModule(response.data.step_type);
+          if (stepModule && qeMetadata) {
+            // Load sections first, then parameters for each section
+            qeMetadata.loadSections(stepModule).then(() => {
+              const sectionsToLoad = new Set<string>();
+              for (const namelist of Object.keys(response.data.parameters)) {
+                const sectionKey = namelist.startsWith('&') ? namelist : `&${namelist}`;
+                sectionsToLoad.add(sectionKey);
+              }
+              sectionsToLoad.forEach(section => {
+                qeMetadata.loadParameters(stepModule, section);
+              });
+            });
+          }
         } else {
           // Error response: set error message and clear step detail
           // Handle structured errors from daemon (resource_not_found, registry_out_of_sync, etc.)
@@ -465,6 +506,57 @@ export function StepDetailPanel({
     setHasChanges(true);
   }, []);
   
+  // Handle parameter reset (remove user value, fallback to default)
+  const handleParameterReset = useCallback((namelist: string, paramName: string) => {
+    setEditedParams(prev => {
+      const updated = { ...prev };
+      if (updated[namelist] && updated[namelist][paramName] !== undefined) {
+        updated[namelist] = { ...updated[namelist] };
+        delete updated[namelist][paramName];
+        if (Object.keys(updated[namelist]).length === 0) {
+          delete updated[namelist];
+        }
+      }
+      return updated;
+    });
+    setHasChanges(true);
+  }, []);
+  
+  // Handle parameter remove (delete from step)
+  const handleParameterRemove = useCallback((namelist: string, paramName: string) => {
+    setEditedParams(prev => {
+      const updated = { ...prev };
+      if (!updated[namelist]) {
+        updated[namelist] = {};
+      }
+      // Set to null to mark for removal
+      updated[namelist][paramName] = null;
+      return updated;
+    });
+    setHasChanges(true);
+  }, []);
+  
+  // Handle add parameter
+  const handleAddParameter = useCallback((section: string, paramName: string) => {
+    // Load parameter metadata if needed
+    if (module) {
+      const sectionKey = section.startsWith('&') ? section : `&${section}`;
+      qeMetadata.loadParameters(module, sectionKey).then(() => {
+        // After loading, add the parameter with undefined value (user will edit it)
+        setEditedParams(prev => {
+          const updated = { ...prev };
+          if (!updated[section]) {
+            updated[section] = {};
+          }
+          updated[section][paramName] = undefined;
+          return updated;
+        });
+        setHasChanges(true);
+        setIsEditing(true);
+      });
+    }
+  }, [module, qeMetadata]);
+  
   // Save parameter changes
   const handleSaveParams = useCallback(async () => {
     if (!window.qv || !stepDetail) return;
@@ -480,23 +572,44 @@ export function StepDetailPanel({
       }
       
       // Build the parameter update object
+      // Include ALL parameters from editedParams (not just editable ones)
       const paramUpdates: Record<string, Record<string, unknown>> = {};
-      // Use legacy params for this check (or derive from stepDetail.step_type)
-      const module = stepTypeToModule(stepDetail.step_type);
-      const editableForType = module && uiParams.length > 0
-        ? uiParams.map(p => ({ namelist: p.namelist, key: p.name }))
-        : (LEGACY_EDITABLE_PARAMS[stepDetail.step_type] || []);
       
-      for (const param of editableForType) {
-        const currentValue = stepDetail.parameters[param.namelist]?.[param.key];
-        const editedValue = editedParams[param.namelist]?.[param.key];
+      // Process all edited parameters
+      for (const [namelist, params] of Object.entries(editedParams)) {
+        const currentNamelist = stepDetail.parameters[namelist] || {};
         
-        // Only include if changed
-        if (editedValue !== currentValue) {
-          if (!paramUpdates[param.namelist]) {
-            paramUpdates[param.namelist] = {};
+        for (const [paramName, editedValue] of Object.entries(params)) {
+          const currentValue = currentNamelist[paramName];
+          
+          // If editedValue is null, mark for removal
+          if (editedValue === null) {
+            if (!paramUpdates[namelist]) {
+              paramUpdates[namelist] = {};
+            }
+            paramUpdates[namelist][paramName] = null;
           }
-          paramUpdates[param.namelist][param.key] = editedValue;
+          // If value changed, include the update
+          else if (editedValue !== currentValue) {
+            if (!paramUpdates[namelist]) {
+              paramUpdates[namelist] = {};
+            }
+            paramUpdates[namelist][paramName] = editedValue;
+          }
+        }
+      }
+      
+      // Also check for removed parameters (present in stepDetail but not in editedParams)
+      for (const [namelist, params] of Object.entries(stepDetail.parameters)) {
+        const editedNamelist = editedParams[namelist] || {};
+        
+        for (const paramName of Object.keys(params)) {
+          // If parameter was in original but not in edited (and not explicitly set to null), skip
+          // (We only remove if explicitly set to null in editedParams)
+          if (!(paramName in editedNamelist)) {
+            // Parameter not changed, skip
+            continue;
+          }
         }
       }
       
@@ -509,6 +622,7 @@ export function StepDetailPanel({
       
       if (response.ok && response.data) {
         setStepDetail(response.data);
+        // Initialize edited params from current values (include ALL parameters, not just editable ones)
         setEditedParams(JSON.parse(JSON.stringify(response.data.parameters)));
         setHasChanges(false);
         setIsEditing(false);
@@ -938,21 +1052,74 @@ export function StepDetailPanel({
           </div>
         )}
         
-        {/* All Parameters Section (collapsed by default) */}
-        {namelists.length > 0 && (
-          <div className="detail-section">
-            <h3>All QE Parameters (Namelists)</h3>
-            <div className="parameters-container">
-              {namelists.map((namelist) => (
-                <NamelistSection
-                  key={namelist}
-                  name={namelist}
-                  parameters={stepDetail.parameters[namelist]}
-                />
-              ))}
-            </div>
+        {/* Active Parameters Section (VSCode Settings style) */}
+        <div className="detail-section">
+          <div className="section-header">
+            <h3>Active Parameters</h3>
+            {!isEditing ? (
+              <button 
+                className="section-action-btn"
+                onClick={() => setIsEditing(true)}
+              >
+                ✏️ Edit
+              </button>
+            ) : (
+              <div className="section-actions">
+                <button 
+                  className="section-action-btn section-action-btn--secondary"
+                  onClick={handleCancelEdit}
+                  disabled={isSaving}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="section-action-btn section-action-btn--danger"
+                  onClick={handleResetParams}
+                  disabled={isSaving}
+                >
+                  Reset All
+                </button>
+                <button 
+                  className="section-action-btn section-action-btn--primary"
+                  onClick={handleSaveParams}
+                  disabled={!hasChanges || isSaving}
+                >
+                  {isSaving ? 'Saving...' : 'Apply'}
+                </button>
+              </div>
+            )}
           </div>
-        )}
+          
+          {/* Add Parameter Palette */}
+          {isEditing && module && (
+            <div style={{ marginBottom: 'var(--space-4)' }}>
+              <AddParameterPalette
+                module={module}
+                stepParameters={editedParams}
+                onAddParameter={handleAddParameter}
+              />
+            </div>
+          )}
+          
+          {/* Active Parameters Panel */}
+          {stepDetail && (
+            <ActiveParametersPanel
+              stepDetail={{
+                ...stepDetail,
+                parameters: isEditing ? editedParams : stepDetail.parameters,
+              }}
+              module={module}
+              metadata={{
+                parameters: parameterMetadataMap,
+                modules: qeMetadata.modules,
+              }}
+              isEditing={isEditing}
+              onParameterChange={handleParamChange}
+              onParameterReset={handleParameterReset}
+              onParameterRemove={handleParameterRemove}
+            />
+          )}
+        </div>
         
         {/* Cards Section */}
         {cards.length > 0 && (

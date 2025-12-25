@@ -1,0 +1,44 @@
+/* ParameterValueEditor Styles */
+
+.parameter-value-editor {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-family: var(--font-mono);
+  transition: all var(--transition-fast);
+  min-width: 0;
+}
+
+.parameter-value-editor:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-alpha);
+}
+
+.parameter-value-editor:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--bg-secondary);
+}
+
+.parameter-value-editor--select {
+  cursor: pointer;
+}
+
+.parameter-value-editor--logical {
+  /* Logical values use select */
+}
+
+.parameter-value-editor--integer,
+.parameter-value-editor--real {
+  text-align: right;
+}
+
+.parameter-value-editor--character {
+  font-family: var(--font-mono);
+}
+
