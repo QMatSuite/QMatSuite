@@ -1,0 +1,191 @@
+.common-card-pseudo {
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 4px;
+  padding: var(--space-2, 1rem);
+  margin-bottom: var(--space-2, 1rem);
+}
+
+.common-card-pseudo__empty {
+  padding: var(--space-2, 1rem);
+  text-align: center;
+  color: var(--text-muted, #666);
+}
+
+.common-card-pseudo__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-2, 1rem);
+}
+
+.common-card-pseudo__header h4 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.common-card-pseudo__warnings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 0.5rem);
+}
+
+.common-card-pseudo__warning {
+  padding: var(--space-1, 0.5rem);
+  background-color: var(--warning-bg, #fff3cd);
+  border: 1px solid var(--warning-border, #ffc107);
+  border-radius: 4px;
+  font-size: 0.9rem;
+  color: var(--warning-text, #856404);
+}
+
+.common-card-pseudo__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 1rem);
+}
+
+.common-card-pseudo__dir {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1, 0.5rem);
+}
+
+.common-card-pseudo__dir label {
+  font-weight: 500;
+  min-width: 140px;
+}
+
+.common-card-pseudo__dir-input {
+  flex: 1;
+  padding: var(--space-1, 0.5rem);
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 4px;
+}
+
+.common-card-pseudo__mapping {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 0.5rem);
+}
+
+.common-card-pseudo__table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--border-color, #ddd);
+}
+
+.common-card-pseudo__table th,
+.common-card-pseudo__table td {
+  padding: var(--space-1, 0.5rem);
+  border: 1px solid var(--border-color, #ddd);
+  text-align: left;
+}
+
+.common-card-pseudo__table th {
+  background-color: var(--bg-secondary, #f5f5f5);
+  font-weight: 500;
+}
+
+.common-card-pseudo__pseudo-select {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1, 0.5rem);
+}
+
+.common-card-pseudo__select {
+  flex: 1;
+  padding: var(--space-1, 0.5rem);
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 4px;
+}
+
+.common-card-pseudo__not-found {
+  font-size: 0.85rem;
+  color: var(--warning-text, #856404);
+}
+
+.common-card-pseudo__pseudo-display {
+  padding: var(--space-1, 0.5rem);
+  background-color: var(--bg-secondary, #f5f5f5);
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.9rem;
+}
+
+.common-card-pseudo__clear-btn {
+  padding: var(--space-1, 0.5rem);
+  background-color: var(--danger-color, #dc3545);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.common-card-pseudo__clear-btn:hover {
+  background-color: var(--danger-hover, #c82333);
+}
+
+.common-card-pseudo__no-species {
+  padding: var(--space-2, 1rem);
+  text-align: center;
+  color: var(--text-muted, #666);
+}
+
+.common-card-pseudo__available {
+  padding: var(--space-1, 0.5rem);
+  background-color: var(--bg-secondary, #f5f5f5);
+  border-radius: 4px;
+}
+
+.common-card-pseudo__available summary {
+  cursor: pointer;
+  font-weight: 500;
+  padding: var(--space-1, 0.5rem);
+}
+
+.common-card-pseudo__pseudo-list {
+  margin: var(--space-1, 0.5rem) 0 0 0;
+  padding-left: var(--space-3, 1.5rem);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.common-card-pseudo__pseudo-item {
+  margin: var(--space-1, 0.5rem) 0;
+}
+
+.common-card-pseudo__pseudo-item code {
+  padding: var(--space-1, 0.5rem);
+  background-color: white;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.9rem;
+}
+
+.common-card-pseudo__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-2, 1rem);
+}
+
+.common-card-pseudo__apply-btn {
+  padding: var(--space-1, 0.5rem) var(--space-2, 1rem);
+  background-color: var(--primary-color, #007bff);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.common-card-pseudo__apply-btn:hover {
+  background-color: var(--primary-hover, #0056b3);
+}
+
+.common-card-pseudo__apply-btn:disabled {
+  background-color: var(--disabled-color, #ccc);
+  cursor: not-allowed;
+}
+

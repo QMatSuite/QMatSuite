@@ -25,12 +25,20 @@
 /* Panel Header */
 .step-detail-panel .panel-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  padding: var(--space-4) var(--space-5);
+  padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--border-subtle);
   background: linear-gradient(135deg, var(--color-primary-alpha) 0%, var(--bg-secondary) 100%);
   gap: var(--space-3);
+}
+
+/* Sticky header */
+.step-detail-panel .panel-header--sticky {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: blur(8px);
 }
 
 .qv-step-header-content {
@@ -234,6 +242,72 @@
   gap: var(--space-2);
 }
 
+/* Panel header action buttons */
+.panel-header-actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.panel-action-btn {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-button);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.panel-action-btn:hover:not(:disabled) {
+  background: var(--bg-button-hover);
+  color: var(--text-primary);
+}
+
+.panel-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.panel-action-btn--primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
+.panel-action-btn--primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.panel-action-btn--secondary {
+  background: transparent;
+}
+
+.panel-action-btn--warning {
+  color: var(--color-warning, #f0ad4e);
+  border-color: var(--color-warning, #f0ad4e);
+}
+
+.panel-action-btn--warning:hover:not(:disabled) {
+  background: var(--color-warning, #f0ad4e);
+  color: white;
+}
+
+.panel-action-btn--danger {
+  color: var(--color-error);
+  border-color: var(--color-error);
+}
+
+.panel-action-btn--danger:hover:not(:disabled) {
+  background: var(--color-error);
+  color: white;
+}
+
+/* Section header action buttons */
 .section-action-btn {
   padding: var(--space-1) var(--space-3);
   font-size: var(--text-xs);

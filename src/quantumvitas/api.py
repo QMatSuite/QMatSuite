@@ -3278,6 +3278,339 @@ class QVService:
         )
     
     @staticmethod
+    def get_common_cards(
+        project_root: Path,
+        calculation_selector: str,
+        step_selector: str,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
+    ) -> Dict[str, Any]:
+        """
+        Get view models for common cards (K_POINTS, etc.).
+        
+        Args:
+            project_root: Project root path
+            calculation_selector: Calculation selector
+            step_selector: Step selector
+            index: Optional ResourceIndex
+            config: Optional project config
+            
+        Returns:
+            Dict with card view models, e.g. {"k_points": KPointsViewModel}
+        """
+        from quantumvitas.calculation.k_points_view import parse_k_points, k_points_from_card_data
+        
+        # Get step detail to access cards
+        step_detail = QVService.get_step_detail(
+            project_root=project_root,
+            calculation_selector=calculation_selector,
+            step_selector=step_selector,
+            index=index,
+            config=config,
+        )
+        
+        result: Dict[str, Any] = {}
+        
+        # Parse K_POINTS if present
+        cards = step_detail.get("cards", {})
+        if "K_POINTS" in cards:
+            card_data = cards["K_POINTS"]
+            # Convert card data to raw text
+            raw = k_points_from_card_data(card_data)
+            # Parse to view model
+            view_model = parse_k_points(raw)
+            # Convert to dict for JSON serialization
+            result["k_points"] = {
+                "raw": view_model.raw,
+                "mode": view_model.mode,
+                "automatic": {
+                    "nk1": view_model.automatic.nk1,
+                    "nk2": view_model.automatic.nk2,
+                    "nk3": view_model.automatic.nk3,
+                    "sk1": view_model.automatic.sk1,
+                    "sk2": view_model.automatic.sk2,
+                    "sk3": view_model.automatic.sk3,
+                } if view_model.automatic else None,
+                "points": [
+                    {"x": p.x, "y": p.y, "z": p.z, "w": p.w}
+                    for p in (view_model.points or [])
+                ],
+                "parse_ok": view_model.parse_ok,
+                "canonical_raw": view_model.canonical_raw,
+                "warnings": view_model.warnings,
+                "errors": view_model.errors,
+                "summary": view_model.summary,
+            }
+        
+        return result
+    
+    @staticmethod
+    def set_common_card(
+        project_root: Path,
+        calculation_selector: str,
+        step_selector: str,
+        card_name: str,
+        view_model: Dict[str, Any],
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
+    ) -> Dict[str, Any]:
+        """
+        Set a common card from view model.
+        
+        Args:
+            project_root: Project root path
+            calculation_selector: Calculation selector
+            step_selector: Step selector
+            card_name: Card name (e.g., "K_POINTS")
+            view_model: View model dict (from UI)
+            index: Optional ResourceIndex
+            config: Optional project config
+            
+        Returns:
+            Updated step detail dict
+        """
+        from quantumvitas.calculation.k_points_view import (
+            KPointsViewModel,
+            KPointsAutomatic,
+            KPointsPoint,
+            format_k_points,
+            k_points_to_card_data,
+        )
+        from quantumvitas.calculation.structure_steps import StructureStepSpec
+        from quantumvitas.core.resolution import resolve_step, make_structure_selector_resolver
+        from quantumvitas.core.project_utils import load_project_config
+        import yaml
+        
+        step = resolve_step(project_root, calculation_selector, step_selector, config=config, index=index)
+        
+        # Load step spec
+        if config is None:
+            config = load_project_config(project_root)
+        resolver = make_structure_selector_resolver(project_root, config=config)
+        spec = StructureStepSpec.from_yaml(step.absolute_path, resolve_structure_selector=resolver)
+        
+        # Convert view model to raw text based on card type
+        if card_name.upper() == "K_POINTS":
+            # Reconstruct view model object
+            kp_vm = KPointsViewModel(
+                raw=view_model.get("raw", ""),
+                mode=view_model.get("mode", "custom"),
+                automatic=KPointsAutomatic(**view_model["automatic"]) if view_model.get("automatic") else None,
+                points=[
+                    KPointsPoint(x=p["x"], y=p["y"], z=p["z"], w=p["w"])
+                    for p in (view_model.get("points") or [])
+                ] if view_model.get("points") else None,
+                warnings=view_model.get("warnings"),
+            )
+            
+            # Format to raw text
+            raw = format_k_points(kp_vm)
+            
+            # Convert raw text to card data dict
+            card_data = k_points_to_card_data(raw)
+            
+            # Update spec
+            spec.cards["K_POINTS"] = card_data
+        else:
+            raise ValueError(f"Unsupported card: {card_name}")
+        
+        # Save updated spec
+        step.absolute_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
+        
+        # Return updated step detail
+        return QVService.get_step_detail(
+            project_root=project_root,
+            calculation_selector=calculation_selector,
+            step_selector=step_selector,
+            index=index,
+            config=config,
+        )
+    
+    @staticmethod
+    def get_pseudo_mapping(
+        project_root: Path,
+        calculation_selector: str,
+        step_selector: str,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
+    ) -> Dict[str, Any]:
+        """
+        Get pseudopotential mapping for a step.
+        
+        Args:
+            project_root: Project root path
+            calculation_selector: Calculation selector
+            step_selector: Step selector
+            index: Optional ResourceIndex
+            config: Optional project config
+            
+        Returns:
+            Dict with:
+            - species: List of species symbols from structure
+            - mapping: Dict[str, str] of species -> pseudo filename
+            - pseudo_dir: String path to pseudo directory (from CONTROL namelist)
+            - available_pseudos: List of available UPF files in project
+            - warnings: List of warnings (missing pseudos, etc.)
+        """
+        from quantumvitas.core.resolution import resolve_structure
+        
+        # Get step detail
+        step_detail = QVService.get_step_detail(
+            project_root=project_root,
+            calculation_selector=calculation_selector,
+            step_selector=step_selector,
+            index=index,
+            config=config,
+        )
+        
+        # Get structure to find species
+        structure_id = None
+        if step_detail.get("structure"):
+            # Resolve structure to get species
+            try:
+                if config is None:
+                    from quantumvitas.core.project_utils import load_project_config
+                    config = load_project_config(project_root)
+                structure = resolve_structure(project_root, step_detail["structure"], config=config, index=index)
+                structure_id = structure.meta.id
+            except Exception:
+                pass
+        
+        # Get species list from structure
+        species_list: List[str] = []
+        if structure_id:
+            try:
+                from quantumvitas.io import read_structure
+                structure_file = project_root / "structures" / f"{structure_id}.json"
+                if structure_file.exists():
+                    structure_obj = read_structure(structure_file)
+                    species_list = list(set(site.specie.symbol for site in structure_obj.sites))
+                    species_list.sort()
+            except Exception:
+                pass
+        
+        # Get current mapping from species_overrides
+        mapping: Dict[str, str] = {}
+        species_overrides = step_detail.get("species_overrides", {})
+        for species, overrides in species_overrides.items():
+            if isinstance(overrides, dict) and "pseudopot" in overrides:
+                mapping[species] = str(overrides["pseudopot"])
+        
+        # Get pseudo_dir from CONTROL namelist
+        pseudo_dir = ""
+        parameters = step_detail.get("parameters", {})
+        control_params = parameters.get("CONTROL", {})
+        if isinstance(control_params, dict) and "pseudo_dir" in control_params:
+            pseudo_dir = str(control_params["pseudo_dir"])
+        
+        # List available UPF files in project
+        available_pseudos: List[str] = []
+        project_pseudo_dir = project_root / "pseudo"
+        if project_pseudo_dir.exists():
+            for file in project_pseudo_dir.iterdir():
+                if file.is_file() and file.suffix.lower() in (".upf", ".UPF"):
+                    available_pseudos.append(file.name)
+        available_pseudos.sort()
+        
+        # Generate warnings
+        warnings: List[str] = []
+        for species in species_list:
+            if species not in mapping:
+                warnings.append(f"Missing pseudopotential for {species}")
+            elif mapping[species] and mapping[species] not in available_pseudos:
+                warnings.append(f"Pseudopotential file '{mapping[species]}' not found in project")
+        
+        return {
+            "species": species_list,
+            "mapping": mapping,
+            "pseudo_dir": pseudo_dir,
+            "available_pseudos": available_pseudos,
+            "warnings": warnings,
+        }
+    
+    @staticmethod
+    def set_pseudo_mapping(
+        project_root: Path,
+        calculation_selector: str,
+        step_selector: str,
+        mapping: Dict[str, str],
+        pseudo_dir: Optional[str] = None,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
+    ) -> Dict[str, Any]:
+        """
+        Set pseudopotential mapping for a step.
+        
+        Args:
+            project_root: Project root path
+            calculation_selector: Calculation selector
+            step_selector: Step selector
+            mapping: Dict[str, str] of species -> pseudo filename (empty string to unset)
+            pseudo_dir: Optional pseudo_dir value for CONTROL namelist
+            index: Optional ResourceIndex
+            config: Optional project config
+            
+        Returns:
+            Updated step detail dict
+        """
+        from quantumvitas.calculation.structure_steps import StructureStepSpec
+        from quantumvitas.core.resolution import resolve_step, make_structure_selector_resolver
+        from quantumvitas.core.project_utils import load_project_config
+        import yaml
+        
+        step = resolve_step(project_root, calculation_selector, step_selector, config=config, index=index)
+        
+        # Load step spec
+        if config is None:
+            config = load_project_config(project_root)
+        resolver = make_structure_selector_resolver(project_root, config=config)
+        spec = StructureStepSpec.from_yaml(step.absolute_path, resolve_structure_selector=resolver)
+        
+        # Update species_overrides
+        if not spec.species_overrides:
+            spec.species_overrides = {}
+        
+        for species, pseudo_filename in mapping.items():
+            if species not in spec.species_overrides:
+                spec.species_overrides[species] = {}
+            
+            if pseudo_filename:
+                spec.species_overrides[species]["pseudopot"] = str(pseudo_filename)
+            else:
+                # Remove pseudopot if empty string
+                if "pseudopot" in spec.species_overrides[species]:
+                    del spec.species_overrides[species]["pseudopot"]
+                # Clean up empty overrides
+                if not spec.species_overrides[species]:
+                    del spec.species_overrides[species]
+        
+        # Update pseudo_dir in CONTROL namelist if provided
+        if pseudo_dir is not None:
+            if "CONTROL" not in spec.parameters:
+                spec.parameters["CONTROL"] = {}
+            if pseudo_dir:
+                spec.parameters["CONTROL"]["pseudo_dir"] = str(pseudo_dir)
+            else:
+                # Remove if empty
+                if "pseudo_dir" in spec.parameters["CONTROL"]:
+                    del spec.parameters["CONTROL"]["pseudo_dir"]
+                # Clean up empty namelist
+                if not spec.parameters["CONTROL"]:
+                    del spec.parameters["CONTROL"]
+        
+        # Save updated spec
+        step.absolute_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
+        
+        # Return updated step detail
+        return QVService.get_step_detail(
+            project_root=project_root,
+            calculation_selector=calculation_selector,
+            step_selector=step_selector,
+            index=index,
+            config=config,
+        )
+    
+    @staticmethod
     def import_step_from_qe_input(
         project_root: Path,
         calculation_selector: str,

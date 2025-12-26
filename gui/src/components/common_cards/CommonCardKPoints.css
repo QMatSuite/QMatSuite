@@ -1,0 +1,559 @@
+/* CommonCardKPoints - Unified K_POINTS card styling */
+
+.kpoints-card {
+  background-color: var(--bg-secondary, rgba(0, 0, 0, 0.05));
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  margin-top: 0.75rem;
+  overflow: hidden;
+}
+
+.kpoints-card--editing {
+  border-color: var(--primary-color, #007bff);
+  border-width: 2px;
+}
+
+/* Header */
+.kpoints-card__header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background-color: var(--bg-tertiary, rgba(0, 0, 0, 0.03));
+  border-bottom: 1px solid var(--border-color);
+  flex-wrap: wrap;
+}
+
+.kpoints-card__title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.kpoints-card__summary {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.kpoints-card__edit-toggle {
+  display: flex;
+  gap: 0.25rem;
+  background: var(--bg-secondary, rgba(0, 0, 0, 0.1));
+  border-radius: 4px;
+  padding: 2px;
+}
+
+.kpoints-card__mode-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.kpoints-card__mode-btn:hover {
+  color: var(--text-primary);
+}
+
+.kpoints-card__mode-btn--active {
+  background: var(--primary-color, #007bff);
+  color: white;
+}
+
+.kpoints-card__dirty-indicator {
+  font-size: 0.75rem;
+  color: var(--warning-color, #f0ad4e);
+  font-weight: 500;
+}
+
+.kpoints-card__apply-btn-header {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border: none;
+  border-radius: 4px;
+  background-color: var(--primary-color, #007bff);
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-left: auto;
+}
+
+.kpoints-card__apply-btn-header:hover {
+  background-color: var(--primary-hover, #0056b3);
+}
+
+.kpoints-card__header-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.kpoints-card__toggle-btn {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.kpoints-card__toggle-btn:hover {
+  border-color: var(--primary-color, #007bff);
+  color: var(--primary-color, #007bff);
+}
+
+.kpoints-card__toggle-btn--active {
+  background-color: var(--primary-color, #007bff);
+  border-color: var(--primary-color, #007bff);
+  color: white;
+}
+
+/* Content */
+.kpoints-card__content {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.kpoints-card__empty {
+  padding: 1rem;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+/* Parse warning */
+.kpoints-card__parse-warning {
+  padding: 0.5rem 1rem;
+  background-color: var(--warning-bg, rgba(255, 193, 7, 0.1));
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.8rem;
+  color: var(--warning-color, #856404);
+}
+
+/* Field styling */
+.kpoints-card__field {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.kpoints-card__field label {
+  font-weight: 500;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  min-width: 50px;
+}
+
+.kpoints-card__field select {
+  flex: 0 1 auto;
+  max-width: 250px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--bg-secondary, rgba(0, 0, 0, 0.1));
+  color: var(--text-primary);
+  font-size: 0.85rem;
+}
+
+.kpoints-card__field select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.kpoints-card__field-hint {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Structured section */
+.kpoints-card__structured {
+  transition: opacity 0.2s;
+}
+
+.kpoints-card__structured--disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Gamma mode */
+.kpoints-card__gamma {
+  padding: 0.5rem;
+  background-color: var(--bg-secondary, rgba(0, 0, 0, 0.03));
+  border-radius: 4px;
+}
+
+.kpoints-card__gamma p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Automatic mode */
+.kpoints-card__automatic {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.kpoints-card__grid-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.kpoints-card__grid-label {
+  font-weight: 500;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  min-width: 50px;
+}
+
+.kpoints-card__grid-inputs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.kpoints-card__input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.kpoints-card__input-group label {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.kpoints-card__input-group input {
+  width: 60px;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--bg-secondary, rgba(0, 0, 0, 0.1));
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.kpoints-card__input-group input:focus {
+  outline: none;
+  border-color: var(--primary-color, #007bff);
+}
+
+.kpoints-card__input-group input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Raw section */
+.kpoints-card__raw-section {
+  border-top: 1px solid var(--border-color);
+  padding-top: 0.75rem;
+  transition: opacity 0.2s;
+}
+
+.kpoints-card__raw-section--disabled {
+  opacity: 0.4;
+}
+
+.kpoints-card__raw-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.kpoints-card__raw-header span:first-child {
+  font-weight: 500;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.kpoints-card__raw-hint {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.kpoints-card__raw-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--bg-secondary, rgba(0, 0, 0, 0.1));
+  color: var(--text-primary);
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 0.85rem;
+  resize: vertical;
+}
+
+.kpoints-card__raw-textarea:focus {
+  outline: none;
+  border-color: var(--primary-color, #007bff);
+}
+
+.kpoints-card__raw-textarea:disabled,
+.kpoints-card__raw-textarea[readonly] {
+  opacity: 0.7;
+  cursor: not-allowed;
+  background-color: var(--bg-tertiary, rgba(0, 0, 0, 0.02));
+}
+
+/* Preview pane */
+.kpoints-card__preview {
+  border-top: 1px solid var(--border-color);
+  padding-top: 0.75rem;
+}
+
+.kpoints-card__preview-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.kpoints-card__preview-content {
+  margin: 0;
+  padding: 0.5rem;
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 0.8rem;
+  background-color: var(--bg-secondary, rgba(0, 0, 0, 0.1));
+  border-radius: 4px;
+  white-space: pre-wrap;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+/* Raw pane (view mode) */
+.kpoints-card__raw-pane {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border-color);
+  background-color: var(--bg-tertiary, rgba(0, 0, 0, 0.02));
+}
+
+.kpoints-card__raw-pane-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.kpoints-card__raw-pane-content {
+  margin: 0;
+  padding: 0.5rem;
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 0.8rem;
+  background-color: var(--bg-secondary, rgba(0, 0, 0, 0.1));
+  border-radius: 4px;
+  white-space: pre-wrap;
+  color: var(--text-primary);
+}
+
+.kpoints-card__raw-pane-actions {
+  margin-top: 0.5rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.kpoints-card__copy-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.kpoints-card__copy-btn:hover {
+  border-color: var(--primary-color, #007bff);
+  color: var(--primary-color, #007bff);
+}
+
+.kpoints-card__debug-actions {
+  margin-top: 0.5rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Debug pane */
+.kpoints-card__debug-pane {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border-color);
+  background-color: var(--bg-tertiary, rgba(0, 0, 0, 0.02));
+}
+
+.kpoints-card__debug-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.kpoints-card__debug-content {
+  margin: 0;
+  padding: 0.5rem;
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 0.75rem;
+  background-color: var(--bg-secondary, rgba(0, 0, 0, 0.1));
+  border-radius: 4px;
+  white-space: pre-wrap;
+  color: var(--text-muted, #888);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* Points table */
+.kpoints-card__points {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.kpoints-card__points-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.kpoints-card__points-header span {
+  font-weight: 500;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.kpoints-card__add-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  border: 1px solid var(--primary-color, #007bff);
+  border-radius: 4px;
+  background-color: transparent;
+  color: var(--primary-color, #007bff);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.kpoints-card__add-btn:hover:not(:disabled) {
+  background-color: var(--primary-color, #007bff);
+  color: white;
+}
+
+.kpoints-card__add-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.kpoints-card__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.kpoints-card__table th,
+.kpoints-card__table td {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border-color);
+  text-align: center;
+}
+
+.kpoints-card__table th {
+  background-color: var(--bg-tertiary, rgba(0, 0, 0, 0.05));
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.kpoints-card__table input {
+  width: 100%;
+  max-width: 80px;
+  padding: 0.25rem 0.35rem;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  background-color: var(--bg-secondary, rgba(0, 0, 0, 0.05));
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.kpoints-card__table input:focus {
+  outline: none;
+  border-color: var(--primary-color, #007bff);
+}
+
+.kpoints-card__table input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.kpoints-card__remove-btn {
+  padding: 0.15rem 0.35rem;
+  font-size: 0.9rem;
+  border: none;
+  border-radius: 3px;
+  background-color: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.kpoints-card__remove-btn:hover:not(:disabled) {
+  background-color: var(--error-color, #dc3545);
+  color: white;
+}
+
+.kpoints-card__remove-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Warnings */
+.kpoints-card__warnings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  background-color: var(--warning-bg, rgba(255, 193, 7, 0.1));
+  border-radius: 4px;
+}
+
+.kpoints-card__warning {
+  font-size: 0.8rem;
+  color: var(--warning-color, #856404);
+}
+
+/* Actions */
+.kpoints-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.kpoints-card__apply-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border: none;
+  border-radius: 4px;
+  background-color: var(--primary-color, #007bff);
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.kpoints-card__apply-btn:hover {
+  background-color: var(--primary-hover, #0056b3);
+}

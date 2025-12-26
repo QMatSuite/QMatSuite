@@ -56,6 +56,40 @@ export interface QVClient {
     operation: 'list_modules' | 'list_sections' | 'list_parameters' | 'search',
     params?: { module?: string; section?: string; query?: string }
   ) => Promise<QVResponse<QVResult<'list_qe_parameter_metadata'>>>;
+  getCommonCards: (projectRoot: string, calculation: string, step: string) => Promise<QVResponse<QVResult<'get_common_cards'>>>;
+  setCommonCard: (
+    projectRoot: string,
+    calculation: string,
+    step: string,
+    cardName: string,
+    viewModel: {
+      raw?: string;
+      mode: string;
+      automatic?: {
+        nk1: number;
+        nk2: number;
+        nk3: number;
+        sk1: number;
+        sk2: number;
+        sk3: number;
+      };
+      points?: Array<{
+        x: number;
+        y: number;
+        z: number;
+        w: number;
+      }>;
+      warnings?: string[];
+    }
+  ) => Promise<QVResponse<QVResult<'set_common_card'>>>;
+  getPseudoMapping: (projectRoot: string, calculation: string, step: string) => Promise<QVResponse<QVResult<'get_pseudo_mapping'>>>;
+  setPseudoMapping: (
+    projectRoot: string,
+    calculation: string,
+    step: string,
+    mapping: Record<string, string>,
+    pseudoDir?: string
+  ) => Promise<QVResponse<QVResult<'set_pseudo_mapping'>>>;
   
   // Connection management
   checkConnection: () => Promise<boolean>;
@@ -305,6 +339,70 @@ export function useQVClient(): QVClient {
     [call]
   );
   
+  const getCommonCards = useCallback(
+    (projectRoot: string, calculation: string, step: string) =>
+      call('get_common_cards', { project_root: projectRoot, calculation, step }),
+    [call]
+  );
+  
+  const setCommonCard = useCallback(
+    (
+      projectRoot: string,
+      calculation: string,
+      step: string,
+      cardName: string,
+      viewModel: {
+        raw?: string;
+        mode: string;
+        automatic?: {
+          nk1: number;
+          nk2: number;
+          nk3: number;
+          sk1: number;
+          sk2: number;
+          sk3: number;
+        };
+        points?: Array<{
+          x: number;
+          y: number;
+          z: number;
+          w: number;
+        }>;
+        warnings?: string[];
+      }
+    ) => call('set_common_card', {
+      project_root: projectRoot,
+      calculation,
+      step,
+      card_name: cardName,
+      view_model: viewModel,
+    }),
+    [call]
+  );
+  
+  const getPseudoMapping = useCallback(
+    (projectRoot: string, calculation: string, step: string) =>
+      call('get_pseudo_mapping', { project_root: projectRoot, calculation, step }),
+    [call]
+  );
+  
+  const setPseudoMapping = useCallback(
+    (
+      projectRoot: string,
+      calculation: string,
+      step: string,
+      mapping: Record<string, string>,
+      pseudoDir?: string
+    ) => call('set_pseudo_mapping', {
+      project_root: projectRoot,
+      calculation,
+      step,
+      mapping,
+      pseudo_dir: pseudoDir,
+    }),
+    [call]
+  );
+  
   // Use ref to maintain stable client object reference
   // This prevents infinite loops in effects that depend on qv
   // The callbacks are already memoized, so they're stable
@@ -325,6 +423,10 @@ export function useQVClient(): QVClient {
     listJobs,
     listQeUiParameters,
     listQeParameterMetadata,
+    getCommonCards,
+    setCommonCard,
+    getPseudoMapping,
+    setPseudoMapping,
     checkConnection,
     refreshDaemonStatus,
   };
