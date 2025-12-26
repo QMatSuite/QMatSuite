@@ -220,6 +220,16 @@ class QVDaemon:
             "reload_qe_parameter_metadata": self._handle_reload_qe_parameter_metadata,
             "get_qe_parameter_metadata_debug_info": self._handle_get_qe_parameter_metadata_debug_info,
             
+            # Pseudopotential configuration
+            "get_pseudo_config": self._handle_get_pseudo_config,
+            "set_pseudo_config": self._handle_set_pseudo_config,
+            "validate_pseudo_config": self._handle_validate_pseudo_config,
+            "init_pseudo_dirs": self._handle_init_pseudo_dirs,
+            "install_seed_to_store": self._handle_install_seed_to_store,
+            "list_installed_sssp": self._handle_list_installed_sssp,
+            "download_sssp_library": self._handle_download_sssp_library,
+            "download_all_sssp": self._handle_download_all_sssp,
+            
             # Project/resource listing
             "get_project_summary": self._handle_get_project_summary,
             "list_structures": self._handle_list_structures,
@@ -252,6 +262,10 @@ class QVDaemon:
             "get_step_detail": self._handle_get_step_detail,
             "update_step_params": self._handle_update_step_params,
             "reset_step_params": self._handle_reset_step_params,
+            "get_common_cards": self._handle_get_common_cards,
+            "set_common_card": self._handle_set_common_card,
+            "get_pseudo_mapping": self._handle_get_pseudo_mapping,
+            "set_pseudo_mapping": self._handle_set_pseudo_mapping,
             
             # Calculation configuration
             "get_calculation_detail": self._handle_get_calculation_detail,
@@ -624,6 +638,312 @@ class QVDaemon:
         Returns python_version, qv_version, qe_home, etc.
         """
         return QVService.get_environment_info()
+    
+    # -------------------------------------------------------------------------
+    # Pseudopotential configuration handlers
+    # -------------------------------------------------------------------------
+    
+    def _handle_get_pseudo_config(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get pseudopotential configuration.
+        
+        Payload: (none required)
+        
+        Returns:
+            store_dir: str - Path to global pseudo store
+            seed_dir: str - Path to seed directory
+            allow_download: bool - Whether downloads are allowed
+            repo_pseudo_dir: str - Path to repo/pseudo (committed demos)
+            default_store_dir: str - Default store directory
+            default_seed_dir: str - Default seed directory
+        """
+        from quantumvitas.core.pseudo_config import (
+            load_pseudo_config,
+            PseudoConfig,
+            _find_quantumvitas_root,
+        )
+        
+        config = load_pseudo_config()
+        repo_root = _find_quantumvitas_root()
+        repo_pseudo_dir = str(repo_root / "pseudo") if repo_root else ""
+        
+        return {
+            "store_dir": config.store_dir,
+            "seed_dir": config.seed_dir,
+            "allow_download": config.allow_download,
+            "repo_pseudo_dir": repo_pseudo_dir,
+            "default_store_dir": PseudoConfig.get_default_store_dir(),
+            "default_seed_dir": PseudoConfig.get_default_seed_dir(),
+        }
+    
+    def _handle_set_pseudo_config(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Set pseudopotential configuration.
+        
+        Payload:
+            store_dir: Optional[str] - Path to global pseudo store
+            seed_dir: Optional[str] - Path to seed directory
+            allow_download: Optional[bool] - Whether downloads are allowed
+            
+        Returns:
+            Updated config (same format as get_pseudo_config)
+        """
+        from quantumvitas.core.pseudo_config import (
+            load_pseudo_config,
+            save_pseudo_config,
+            PseudoConfig,
+            _find_quantumvitas_root,
+        )
+        
+        config = load_pseudo_config()
+        
+        # Update fields if provided
+        if "store_dir" in payload:
+            config.store_dir = payload["store_dir"] or PseudoConfig.get_default_store_dir()
+        if "seed_dir" in payload:
+            config.seed_dir = payload["seed_dir"] or PseudoConfig.get_default_seed_dir()
+        if "allow_download" in payload:
+            config.allow_download = bool(payload["allow_download"])
+        
+        save_pseudo_config(config)
+        
+        repo_root = _find_quantumvitas_root()
+        repo_pseudo_dir = str(repo_root / "pseudo") if repo_root else ""
+        
+        return {
+            "store_dir": config.store_dir,
+            "seed_dir": config.seed_dir,
+            "allow_download": config.allow_download,
+            "repo_pseudo_dir": repo_pseudo_dir,
+            "default_store_dir": PseudoConfig.get_default_store_dir(),
+            "default_seed_dir": PseudoConfig.get_default_seed_dir(),
+        }
+    
+    def _handle_validate_pseudo_config(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Validate pseudopotential configuration.
+        
+        Payload: (none required, uses saved config)
+        
+        Returns:
+            ok: bool - Overall validation status
+            repo_pseudo_exists: bool
+            store_dir_exists: bool
+            store_dir_writable: bool
+            seed_dir_exists: bool
+            seed_has_sssp: bool
+            messages: List[str]
+            warnings: List[str]
+            errors: List[str]
+        """
+        from quantumvitas.core.pseudo_config import (
+            load_pseudo_config,
+            validate_pseudo_config,
+        )
+        
+        config = load_pseudo_config()
+        result = validate_pseudo_config(config)
+        return result.to_dict()
+    
+    def _handle_init_pseudo_dirs(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Initialize pseudo directories (create if missing).
+        
+        Payload: (none required, uses saved config)
+        
+        Returns:
+            store_dir_created: bool
+            seed_dir_created: bool
+            messages: List[str]
+            errors: List[str]
+        """
+        from quantumvitas.core.pseudo_config import (
+            load_pseudo_config,
+            init_pseudo_dirs,
+        )
+        
+        config = load_pseudo_config()
+        return init_pseudo_dirs(config)
+    
+    def _handle_install_seed_to_store(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Install SSSP libraries from seed to store.
+        
+        Payload:
+            version: Optional[str] - SSSP version (default: all available)
+            flavor: Optional[str] - SSSP flavor (default: all available)
+            
+        Returns:
+            success: bool
+            installed: List of installed libraries
+            skipped: List of skipped (already installed)
+            failed: List of failed installations
+            messages: List[str]
+        """
+        from quantumvitas.core.pseudo_config import (
+            load_pseudo_config,
+            install_sssp_from_seed,
+            install_all_sssp_from_seed,
+        )
+        from pathlib import Path
+        
+        config = load_pseudo_config()
+        
+        if not config.seed_dir:
+            return {
+                "success": False,
+                "messages": [],
+                "errors": ["Seed directory not configured"],
+            }
+        
+        if not config.store_dir:
+            return {
+                "success": False,
+                "messages": [],
+                "errors": ["Store directory not configured"],
+            }
+        
+        seed_dir = Path(config.seed_dir)
+        store_dir = Path(config.store_dir)
+        
+        version = payload.get("version")
+        flavor = payload.get("flavor")
+        
+        if version and flavor:
+            # Install specific version/flavor
+            result = install_sssp_from_seed(seed_dir, store_dir, version, flavor)
+            return result
+        else:
+            # Install all available
+            return install_all_sssp_from_seed(seed_dir, store_dir)
+    
+    def _handle_list_installed_sssp(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        List installed SSSP libraries in store.
+        
+        Payload: (none required, uses saved config)
+        
+        Returns:
+            libraries: List of SSSPLibraryInfo dicts
+        """
+        from quantumvitas.core.pseudo_config import (
+            load_pseudo_config,
+            list_installed_sssp,
+        )
+        from pathlib import Path
+        
+        config = load_pseudo_config()
+        
+        if not config.store_dir:
+            return {"libraries": []}
+        
+        store_dir = Path(config.store_dir)
+        libraries = list_installed_sssp(store_dir)
+        
+        return {
+            "libraries": [lib.to_dict() for lib in libraries],
+        }
+    
+    def _handle_download_sssp_library(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Download a specific SSSP library from Materials Cloud.
+        
+        Payload:
+            flavor: str - "efficiency" or "precision"
+            version: Optional[str] - SSSP version (default: "1.3.0")
+            force: Optional[bool] - If True, download even if allow_download is off
+            
+        Returns:
+            success: bool
+            version: str
+            flavor: str
+            files_installed: int
+            messages: List[str]
+            errors: List[str]
+            warnings: List[str]
+        """
+        from quantumvitas.core.pseudo_config import (
+            load_pseudo_config,
+            download_sssp_library,
+            list_installed_sssp,
+        )
+        from pathlib import Path
+        
+        flavor = payload.get("flavor")
+        if not flavor:
+            raise ValueError("flavor is required ('efficiency' or 'precision')")
+        if flavor not in ("efficiency", "precision"):
+            raise ValueError(f"Invalid flavor: {flavor}. Must be 'efficiency' or 'precision'")
+        
+        version = payload.get("version", "1.3.0")
+        force = payload.get("force", False)
+        
+        config = load_pseudo_config()
+        
+        if not config.store_dir:
+            return {
+                "success": False,
+                "errors": ["Store directory not configured"],
+                "messages": [],
+            }
+        
+        store_dir = Path(config.store_dir)
+        result = download_sssp_library(
+            store_dir=store_dir,
+            flavor=flavor,
+            version=version,
+            force=force,
+            allow_download=config.allow_download,
+        )
+        
+        # Add installed libraries to response
+        result["installed_libraries"] = [lib.to_dict() for lib in list_installed_sssp(store_dir)]
+        
+        return result
+    
+    def _handle_download_all_sssp(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Download all supported SSSP libraries from Materials Cloud.
+        
+        Payload:
+            force: Optional[bool] - If True, download even if allow_download is off
+            
+        Returns:
+            success: bool
+            installed: List of installed libraries
+            skipped: List of already-installed libraries
+            failed: List of failed downloads
+            messages: List[str]
+        """
+        from quantumvitas.core.pseudo_config import (
+            load_pseudo_config,
+            download_all_sssp,
+            list_installed_sssp,
+        )
+        from pathlib import Path
+        
+        force = payload.get("force", False)
+        
+        config = load_pseudo_config()
+        
+        if not config.store_dir:
+            return {
+                "success": False,
+                "errors": ["Store directory not configured"],
+                "messages": [],
+            }
+        
+        store_dir = Path(config.store_dir)
+        result = download_all_sssp(
+            store_dir=store_dir,
+            force=force,
+            allow_download=config.allow_download,
+        )
+        
+        # Add installed libraries to response
+        result["installed_libraries"] = [lib.to_dict() for lib in list_installed_sssp(store_dir)]
+        
+        return result
     
     def _handle_set_log_level(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -2177,6 +2497,126 @@ class QVDaemon:
         # Parameter updates don't change registry (only change step file contents)
         
         return result
+    
+    def _handle_get_common_cards(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get view models for common cards (K_POINTS, etc.).
+        
+        Payload:
+            project_root: str - Path to project root
+            calculation: str - Calculation selector
+            step: str - Step selector
+            
+        Returns:
+            Dict with card view models
+        """
+        project_root = self._require_path(payload, "project_root")
+        calculation = self._require_str(payload, "calculation")
+        step = self._require_str(payload, "step")
+        
+        cache = self.state.get_cache(project_root)
+        
+        return QVService.get_common_cards(
+            project_root=project_root,
+            calculation_selector=calculation,
+            step_selector=step,
+            index=cache.index,
+            config=cache.config,
+        )
+    
+    def _handle_set_common_card(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Set a common card from view model.
+        
+        Payload:
+            project_root: str - Path to project root
+            calculation: str - Calculation selector
+            step: str - Step selector
+            card_name: str - Card name (e.g., "K_POINTS")
+            view_model: Dict - View model dict (from UI)
+            
+        Returns:
+            Updated step detail dict
+        """
+        project_root = self._require_path(payload, "project_root")
+        calculation = self._require_str(payload, "calculation")
+        step = self._require_str(payload, "step")
+        card_name = self._require_str(payload, "card_name")
+        view_model = payload.get("view_model", {})
+        if not isinstance(view_model, dict):
+            raise ValueError("view_model must be a dict")
+        
+        cache = self.state.get_cache(project_root)
+        
+        return QVService.set_common_card(
+            project_root=project_root,
+            calculation_selector=calculation,
+            step_selector=step,
+            card_name=card_name,
+            view_model=view_model,
+            index=cache.index,
+            config=cache.config,
+        )
+    
+    def _handle_get_pseudo_mapping(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get pseudopotential mapping for a step.
+        
+        Payload:
+            project_root: str - Path to project root
+            calculation: str - Calculation selector
+            step: str - Step selector
+            
+        Returns:
+            Dict with species, mapping, pseudo_dir, available_pseudos, warnings
+        """
+        project_root = self._require_path(payload, "project_root")
+        calculation = self._require_str(payload, "calculation")
+        step = self._require_str(payload, "step")
+        
+        cache = self.state.get_cache(project_root)
+        
+        return QVService.get_pseudo_mapping(
+            project_root=project_root,
+            calculation_selector=calculation,
+            step_selector=step,
+            index=cache.index,
+            config=cache.config,
+        )
+    
+    def _handle_set_pseudo_mapping(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Set pseudopotential mapping for a step.
+        
+        Payload:
+            project_root: str - Path to project root
+            calculation: str - Calculation selector
+            step: str - Step selector
+            mapping: Dict[str, str] - Species -> pseudo filename mapping
+            pseudo_dir: Optional[str] - Pseudo directory path
+            
+        Returns:
+            Updated step detail dict
+        """
+        project_root = self._require_path(payload, "project_root")
+        calculation = self._require_str(payload, "calculation")
+        step = self._require_str(payload, "step")
+        mapping = payload.get("mapping", {})
+        if not isinstance(mapping, dict):
+            raise ValueError("mapping must be a dict")
+        pseudo_dir = payload.get("pseudo_dir")
+        
+        cache = self.state.get_cache(project_root)
+        
+        return QVService.set_pseudo_mapping(
+            project_root=project_root,
+            calculation_selector=calculation,
+            step_selector=step,
+            mapping=mapping,
+            pseudo_dir=pseudo_dir,
+            index=cache.index,
+            config=cache.config,
+        )
     
     def _handle_reset_step_params(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """

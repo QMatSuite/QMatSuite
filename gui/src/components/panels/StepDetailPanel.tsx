@@ -12,6 +12,8 @@ import { useQVClient } from '../../hooks/useQVClient';
 import { useQEParameterMetadata, type QEParameterMeta } from '../../hooks/useQEParameterMetadata';
 import { ActiveParametersPanel } from '../step_parameters/ActiveParametersPanel';
 import { AddParameterPalette } from '../step_parameters/AddParameterPalette';
+import { CommonCardKPoints, type CommonCardKPointsRef } from '../common_cards/CommonCardKPoints';
+import { CommonCardPseudo } from '../common_cards/CommonCardPseudo';
 import './StepDetailPanel.css';
 
 interface StepDetailPanelProps {
@@ -172,6 +174,45 @@ export function StepDetailPanel({
   const [editedParams, setEditedParams] = useState<Record<string, Record<string, unknown>>>({});
   const [hasChanges, setHasChanges] = useState(false);
   
+  // Common cards view model state
+  const [commonCards, setCommonCards] = useState<{
+    k_points?: {
+      raw: string;
+      mode: string;
+      automatic?: {
+        nk1: number;
+        nk2: number;
+        nk3: number;
+        sk1: number;
+        sk2: number;
+        sk3: number;
+      };
+      points?: Array<{
+        x: number;
+        y: number;
+        z: number;
+        w: number;
+      }>;
+      warnings?: string[];
+    };
+  } | null>(null);
+  const [isLoadingCommonCards, setIsLoadingCommonCards] = useState(false);
+  
+  // Ref for K_POINTS card to access apply method
+  const kPointsRef = useRef<CommonCardKPointsRef>(null);
+  const [kPointsDirty, setKPointsDirty] = useState(false);
+  const [kPointsApplying, setKPointsApplying] = useState(false);
+  
+  // Pseudopotential mapping state
+  const [pseudoMapping, setPseudoMapping] = useState<{
+    species: string[];
+    mapping: Record<string, string>;
+    pseudo_dir: string;
+    available_pseudos: string[];
+    warnings: string[];
+  } | null>(null);
+  const [isLoadingPseudoMapping, setIsLoadingPseudoMapping] = useState(false);
+  
   // Delete step state
   const [isDeletingStep, setIsDeletingStep] = useState(false);
   
@@ -315,6 +356,38 @@ export function StepDetailPanel({
           // Initialize edited params from current values (include ALL parameters, not just editable ones)
           setEditedParams(JSON.parse(JSON.stringify(response.data.parameters)));
           setHasChanges(false);
+          
+          // Load common cards view model
+          if (projectRoot && calculationSelector && stepSelector) {
+            setIsLoadingCommonCards(true);
+            qv.getCommonCards(projectRoot, calculationSelector, stepSelector)
+              .then(cardsResponse => {
+                if (cardsResponse.ok && cardsResponse.data) {
+                  setCommonCards(cardsResponse.data);
+                }
+              })
+              .catch(err => {
+                console.error('[StepDetailPanel] Failed to load common cards', err);
+              })
+              .finally(() => {
+                setIsLoadingCommonCards(false);
+              });
+            
+            // Load pseudopotential mapping
+            setIsLoadingPseudoMapping(true);
+            qv.getPseudoMapping(projectRoot, calculationSelector, stepSelector)
+              .then(mappingResponse => {
+                if (mappingResponse.ok && mappingResponse.data) {
+                  setPseudoMapping(mappingResponse.data);
+                }
+              })
+              .catch(err => {
+                console.error('[StepDetailPanel] Failed to load pseudo mapping', err);
+              })
+              .finally(() => {
+                setIsLoadingPseudoMapping(false);
+              });
+          }
           
           // Load parameter metadata for all sections that have parameters
           const stepModule = stepTypeToModule(response.data.step_type);
@@ -579,6 +652,19 @@ export function StepDetailPanel({
         throw new Error('Project root is required');
       }
       
+      // DETERMINISTIC APPLY ORDERING:
+      // 1. Apply K_POINTS (common card) FIRST - this updates step.yaml with K_POINTS card
+      // 2. Then apply normal parameters - this updates step.yaml with namelist parameters
+      // This ensures no interleaving or YAML overwrites
+      // Both operations are sequential and atomic (each RPC call is atomic)
+      
+      if (kPointsRef.current?.isDirty) {
+        await kPointsRef.current.apply();
+        // K_POINTS apply updates stepDetail via onUpdate callback
+        // We need to refresh stepDetail before applying normal params to avoid stale data
+        // The onUpdate callback already refreshes stepDetail, so we're good
+      }
+      
       // Build the parameter update object
       // Include ALL parameters from editedParams (not just editable ones)
       const paramUpdates: Record<string, Record<string, unknown>> = {};
@@ -688,6 +774,12 @@ export function StepDetailPanel({
     setHasChanges(false);
     setIsEditing(false);
   }, [stepDetail]);
+  
+  // Update hasChanges to include K_POINTS dirty state
+  useEffect(() => {
+    const paramsDirty = Object.keys(editedParams).length > 0;
+    setHasChanges(kPointsDirty || paramsDirty);
+  }, [editedParams, kPointsDirty]);
   
   // Ensure metadata is loaded when entering edit mode
   // This is critical: metadata must be available before ParameterValueEditor renders
@@ -912,8 +1004,17 @@ export function StepDetailPanel({
     : (LEGACY_EDITABLE_PARAMS[stepDetail.step_type] || []);
   const hasEditableParams = editableParams.length > 0;
   
-  // Extract card keys for display
-  const cards = Object.keys(stepDetail.cards);
+  // Extract card keys for display, filtering out K_POINTS (handled separately in Common Cards)
+  const cards = Object.keys(stepDetail.cards).filter(card => {
+    // K_POINTS is ALWAYS handled by CommonCardKPoints, never shown in raw QE Cards section
+    if (card === 'K_POINTS' && module === 'pw') {
+      return false;
+    }
+    return true;
+  });
+  
+  // Check if we have a K_POINTS card at all (either parsed or raw)
+  const hasKPointsCard = stepDetail.cards?.K_POINTS != null;
   
   // Show breadcrumb if we have calculation name and step position info
   const showBreadcrumb = calculationName && stepIndex != null && stepIndex >= 0 && stepCount != null && stepCount > 0;
@@ -938,7 +1039,7 @@ export function StepDetailPanel({
         </div>
       )}
       
-      <div className="panel-header">
+      <div className="panel-header panel-header--sticky">
         <div className="qv-step-header-content">
           {!isFocusMode && showBreadcrumb && (
             <div className="qv-step-breadcrumb">
@@ -958,6 +1059,40 @@ export function StepDetailPanel({
           </div>
         </div>
         <div className="panel-header-actions">
+          {/* Edit/Apply/Cancel/Reset buttons - always visible in header */}
+          {!isEditing ? (
+            <button 
+              className="panel-action-btn"
+              onClick={() => setIsEditing(true)}
+              title="Edit step parameters"
+            >
+              ✏️ Edit
+            </button>
+          ) : (
+            <>
+              <button 
+                className="panel-action-btn panel-action-btn--secondary"
+                onClick={handleCancelEdit}
+                disabled={isSaving}
+              >
+                Cancel
+              </button>
+              <button 
+                className="panel-action-btn panel-action-btn--warning"
+                onClick={handleResetParams}
+                disabled={isSaving}
+              >
+                Reset
+              </button>
+              <button 
+                className="panel-action-btn panel-action-btn--primary"
+                onClick={handleSaveParams}
+                disabled={!hasChanges || isSaving || kPointsApplying}
+              >
+                {isSaving || kPointsApplying ? 'Saving...' : 'Apply'}
+              </button>
+            </>
+          )}
           <button
             className="panel-action-btn panel-action-btn--danger"
             onClick={handleDeleteStep}
@@ -1004,45 +1139,15 @@ export function StepDetailPanel({
           </div>
         </div>
         
-        {/* Editable Parameters Section */}
-        {hasEditableParams && (
+        {/* Common Parameters Section (includes K_POINTS) */}
+        {(hasEditableParams || hasKPointsCard) && (
           <div className="detail-section">
             <div className="section-header">
               <h3>Common Parameters</h3>
-              {!isEditing ? (
-                <button 
-                  className="section-action-btn"
-                  onClick={() => setIsEditing(true)}
-                >
-                  ✏️ Edit
-                </button>
-              ) : (
-                <div className="section-actions">
-                  <button 
-                    className="section-action-btn section-action-btn--secondary"
-                    onClick={handleCancelEdit}
-                    disabled={isSaving}
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    className="section-action-btn section-action-btn--danger"
-                    onClick={handleResetParams}
-                    disabled={isSaving}
-                  >
-                    Reset
-                  </button>
-                  <button 
-                    className="section-action-btn section-action-btn--primary"
-                    onClick={handleSaveParams}
-                    disabled={!hasChanges || isSaving}
-                  >
-                    {isSaving ? 'Saving...' : 'Apply'}
-                  </button>
-                </div>
-              )}
             </div>
             
+            {/* Editable params */}
+            {hasEditableParams && (
             <div className="param-form">
               {editableParams.map((param) => {
                 const currentValue = editedParams[param.namelist]?.[param.key] ?? 
@@ -1092,6 +1197,52 @@ export function StepDetailPanel({
                 );
               })}
             </div>
+            )}
+            
+            {/* K_POINTS editor (inline with Common Parameters) */}
+            {hasKPointsCard && module === 'pw' && (
+              isLoadingCommonCards ? (
+                <div className="common-cards-loading">
+                  <p>Loading K_POINTS...</p>
+                </div>
+              ) : (
+                <CommonCardKPoints
+                  ref={kPointsRef}
+                  viewModel={commonCards?.k_points || null}
+                  rawCardData={stepDetail.cards?.K_POINTS}
+                  isEditing={isEditing}
+                  onDirtyChange={setKPointsDirty}
+                  onApplyingChange={setKPointsApplying}
+                  onUpdate={async (viewModel) => {
+                    if (!projectRoot || !calculationSelector || !stepSelector) return;
+                    
+                    const response = await qv.setCommonCard(
+                      projectRoot,
+                      calculationSelector,
+                      stepSelector,
+                      'K_POINTS',
+                      viewModel
+                    );
+                    
+                    if (response.ok && response.data) {
+                      setStepDetail(response.data);
+                      const cardsResponse = await qv.getCommonCards(
+                        projectRoot,
+                        calculationSelector,
+                        stepSelector
+                      );
+                      if (cardsResponse.ok && cardsResponse.data) {
+                        setCommonCards(cardsResponse.data);
+                      }
+                      setKPointsDirty(false);
+                      onParametersUpdated?.();
+                    } else {
+                      setError(response.error?.message || 'Failed to update K_POINTS card');
+                    }
+                  }}
+                />
+              )
+            )}
           </div>
         )}
         
@@ -1106,38 +1257,6 @@ export function StepDetailPanel({
                   stepParameters={isEditing ? editedParams : stepDetail.parameters}
                   onAddParameter={handleAddParameter}
                 />
-              )}
-              {!isEditing ? (
-                <button 
-                  className="section-action-btn"
-                  onClick={() => setIsEditing(true)}
-                >
-                  ✏️ Edit
-                </button>
-              ) : (
-                <>
-                  <button 
-                    className="section-action-btn section-action-btn--secondary"
-                    onClick={handleCancelEdit}
-                    disabled={isSaving}
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    className="section-action-btn section-action-btn--danger"
-                    onClick={handleResetParams}
-                    disabled={isSaving}
-                  >
-                    Reset All
-                  </button>
-                  <button 
-                    className="section-action-btn section-action-btn--primary"
-                    onClick={handleSaveParams}
-                    disabled={!hasChanges || isSaving}
-                  >
-                    {isSaving ? 'Saving...' : 'Apply'}
-                  </button>
-                </>
               )}
             </div>
           </div>
@@ -1161,6 +1280,54 @@ export function StepDetailPanel({
             />
           )}
         </div>
+        
+        {/* Pseudopotentials Section */}
+        {module === 'pw' && stepDetail && (
+          <div className="detail-section">
+            <div className="section-header">
+              <h3>Pseudopotentials</h3>
+            </div>
+            
+            {isLoadingPseudoMapping ? (
+              <div className="common-cards-loading">
+                <p>Loading pseudopotential mapping...</p>
+              </div>
+            ) : pseudoMapping ? (
+              <CommonCardPseudo
+                mapping={pseudoMapping}
+                isEditing={isEditing}
+                onUpdate={async (mapping, pseudoDir) => {
+                  if (!projectRoot || !calculationSelector || !stepSelector) return;
+                  
+                  const response = await qv.setPseudoMapping(
+                    projectRoot,
+                    calculationSelector,
+                    stepSelector,
+                    mapping,
+                    pseudoDir
+                  );
+                  
+                  if (response.ok && response.data) {
+                    setStepDetail(response.data);
+                    const mappingResponse = await qv.getPseudoMapping(
+                      projectRoot,
+                      calculationSelector,
+                      stepSelector
+                    );
+                    if (mappingResponse.ok && mappingResponse.data) {
+                      setPseudoMapping(mappingResponse.data);
+                    }
+                    onParametersUpdated?.();
+                  } else {
+                    setError(response.error?.message || 'Failed to update pseudopotential mapping');
+                  }
+                }}
+              />
+            ) : (
+              <p className="common-cards-empty">No pseudopotential mapping available</p>
+            )}
+          </div>
+        )}
         
         {/* Cards Section */}
         {cards.length > 0 && (

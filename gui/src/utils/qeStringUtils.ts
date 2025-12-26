@@ -75,3 +75,63 @@ export function quoteSingle(value: string): string {
   return `'${value}'`;
 }
 
+/**
+ * Display a scalar value for UI (strip quotes, trim).
+ * 
+ * This is the canonical function for displaying QE parameter values in the UI.
+ * Always use this instead of directly displaying raw YAML values.
+ * 
+ * @param value - The string value to display
+ * @returns Display-friendly value (unquoted, trimmed)
+ * 
+ * @example
+ * displayScalar("'scf'") => "scf"
+ * displayScalar("  .true.  ") => ".true."
+ */
+export function displayScalar(value: string): string {
+  return normalizeQeScalar(value);
+}
+
+/**
+ * Store an enum selection value for YAML (quote only when CHARACTER type).
+ * 
+ * This is the canonical function for storing enum selections from UI dropdowns.
+ * Ensures correct quoting based on parameter type metadata.
+ * 
+ * @param value - The selected enum value (unquoted, e.g., "scf")
+ * @param meta - Parameter metadata (must have type and enum fields)
+ * @returns Value formatted for YAML storage
+ * 
+ * @example
+ * storeEnumSelection("scf", {type: "CHARACTER", enum: ["scf", "nscf"]}) => "'scf'"
+ * storeEnumSelection("scf", {type: "INTEGER", enum: [1, 2]}) => "scf" (as string)
+ */
+export function storeEnumSelection(value: string, meta: { type: string | null; enum?: unknown[] | null }): string {
+  if (!value) return value;
+  
+  // Quote only for CHARACTER type enums
+  if (meta.type?.toUpperCase() === 'CHARACTER' && meta.enum && meta.enum.length > 0) {
+    return quoteSingle(value);
+  }
+  
+  // For other types, return as-is (will be stored as string per string-only rule)
+  return value;
+}
+
+/**
+ * Convert a boolean to canonical QE logical value.
+ * 
+ * This is the canonical function for storing logical (TRUE/FALSE) values.
+ * Always returns ".true." or ".false." as strings.
+ * 
+ * @param value - Boolean value
+ * @returns Canonical QE logical string: ".true." or ".false."
+ * 
+ * @example
+ * canonicalLogicalSelection(true) => ".true."
+ * canonicalLogicalSelection(false) => ".false."
+ */
+export function canonicalLogicalSelection(value: boolean): string {
+  return value ? '.true.' : '.false.';
+}
+

@@ -457,6 +457,131 @@ export interface QVCommandMap {
     payload: Record<string, never>;
     result: EnvironmentInfo;
   };
+  
+  // Pseudopotential configuration
+  get_pseudo_config: {
+    payload: Record<string, never>;
+    result: {
+      store_dir: string;
+      seed_dir: string;
+      allow_download: boolean;
+      repo_pseudo_dir: string;
+      default_store_dir: string;
+      default_seed_dir: string;
+    };
+  };
+  set_pseudo_config: {
+    payload: {
+      store_dir?: string;
+      seed_dir?: string;
+      allow_download?: boolean;
+    };
+    result: {
+      store_dir: string;
+      seed_dir: string;
+      allow_download: boolean;
+      repo_pseudo_dir: string;
+      default_store_dir: string;
+      default_seed_dir: string;
+    };
+  };
+  validate_pseudo_config: {
+    payload: Record<string, never>;
+    result: {
+      ok: boolean;
+      repo_pseudo_exists: boolean;
+      store_dir_exists: boolean;
+      store_dir_writable: boolean;
+      seed_dir_exists: boolean;
+      seed_has_sssp: boolean;
+      messages: string[];
+      warnings: string[];
+      errors: string[];
+    };
+  };
+  init_pseudo_dirs: {
+    payload: Record<string, never>;
+    result: {
+      store_dir_created: boolean;
+      seed_dir_created: boolean;
+      messages: string[];
+      errors: string[];
+    };
+  };
+  install_seed_to_store: {
+    payload: {
+      version?: string;
+      flavor?: string;
+    };
+    result: {
+      success: boolean;
+      installed?: Array<{ version: string; flavor: string; files: number }>;
+      skipped?: Array<{ version: string; flavor: string }>;
+      failed?: Array<{ version: string; flavor: string; errors: string[] }>;
+      messages: string[];
+      errors?: string[];
+    };
+  };
+  list_installed_sssp: {
+    payload: Record<string, never>;
+    result: {
+      libraries: Array<{
+        version: string;
+        flavor: string;
+        installed: boolean;
+        path: string | null;
+        file_count: number;
+        has_cutoffs: boolean;
+        has_manifest: boolean;
+      }>;
+    };
+  };
+  download_sssp_library: {
+    payload: {
+      flavor: 'efficiency' | 'precision';
+      version?: string;
+      force?: boolean;
+    };
+    result: {
+      success: boolean;
+      version: string;
+      flavor: string;
+      files_installed: number;
+      messages: string[];
+      errors: string[];
+      warnings: string[];
+      installed_libraries: Array<{
+        version: string;
+        flavor: string;
+        installed: boolean;
+        path: string | null;
+        file_count: number;
+        has_cutoffs: boolean;
+        has_manifest: boolean;
+      }>;
+    };
+  };
+  download_all_sssp: {
+    payload: {
+      force?: boolean;
+    };
+    result: {
+      success: boolean;
+      installed: Array<{ version: string; flavor: string; files: number }>;
+      skipped: Array<{ version: string; flavor: string }>;
+      failed: Array<{ version: string; flavor: string; errors: string[] }>;
+      messages: string[];
+      installed_libraries: Array<{
+        version: string;
+        flavor: string;
+        installed: boolean;
+        path: string | null;
+        file_count: number;
+        has_cutoffs: boolean;
+        has_manifest: boolean;
+      }>;
+    };
+  };
   list_qe_ui_parameters: {
     payload: {
       module: string;
@@ -872,6 +997,90 @@ export interface QVCommandMap {
       project_root: string;
       calculation: string;
       step: string;
+    };
+    result: StepDetail;
+  };
+  get_common_cards: {
+    payload: {
+      project_root: string;
+      calculation: string;
+      step: string;
+    };
+    result: {
+      k_points?: {
+        raw: string;
+        mode: string;
+        automatic?: {
+          nk1: number;
+          nk2: number;
+          nk3: number;
+          sk1: number;
+          sk2: number;
+          sk3: number;
+        };
+        points?: Array<{
+          x: number;
+          y: number;
+          z: number;
+          w: number;
+        }>;
+        parse_ok?: boolean;
+        canonical_raw?: string;
+        warnings?: string[];
+        errors?: string[];
+        summary?: string;
+      };
+    };
+  };
+  set_common_card: {
+    payload: {
+      project_root: string;
+      calculation: string;
+      step: string;
+      card_name: string;
+      view_model: {
+        raw?: string;
+        mode: string;
+        automatic?: {
+          nk1: number;
+          nk2: number;
+          nk3: number;
+          sk1: number;
+          sk2: number;
+          sk3: number;
+        };
+        points?: Array<{
+          x: number;
+          y: number;
+          z: number;
+          w: number;
+        }>;
+        warnings?: string[];
+      };
+    };
+    result: StepDetail;
+  };
+  get_pseudo_mapping: {
+    payload: {
+      project_root: string;
+      calculation: string;
+      step: string;
+    };
+    result: {
+      species: string[];
+      mapping: Record<string, string>;
+      pseudo_dir: string;
+      available_pseudos: string[];
+      warnings: string[];
+    };
+  };
+  set_pseudo_mapping: {
+    payload: {
+      project_root: string;
+      calculation: string;
+      step: string;
+      mapping: Record<string, string>;
+      pseudo_dir?: string;
     };
     result: StepDetail;
   };
