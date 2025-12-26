@@ -22,6 +22,7 @@ dependencies = [
     "ulid-py>=1.1",
     "msgpack>=1.0.0",
     "requests>=2.25.0",
+    "certifi>=2023.7.22",
 ]
 
 [project.optional-dependencies]

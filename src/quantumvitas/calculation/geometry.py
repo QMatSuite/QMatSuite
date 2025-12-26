@@ -316,6 +316,196 @@ def _extract_atomic_positions_from_output(text: str) -> List[Tuple[str, Tuple[fl
     return positions
 
 
+def read_final_geometry_from_output_text(text: str) -> Tuple[QEGeometrySnapshot, List[str]]:
+    """
+    Parse the final coordinates block from QE relax/vc-relax output.
+    
+    Extracts the LAST "Begin final coordinates ... End final coordinates" block,
+    which contains the final relaxed structure.
+    
+    Args:
+        text: Full QE output text
+        
+    Returns:
+        Tuple of (QEGeometrySnapshot, species_list)
+        - QEGeometrySnapshot with alat-scaled cell and positions
+        - List of species symbols in order
+        
+    Raises:
+        ValueError: If no valid final coordinates block is found
+    """
+    import re
+    
+    # Find all "Begin final coordinates" blocks
+    begin_pattern = r"Begin final coordinates"
+    end_pattern = r"End final coordinates"
+    
+    # Find all matches
+    begin_matches = list(re.finditer(begin_pattern, text, re.IGNORECASE))
+    end_matches = list(re.finditer(end_pattern, text, re.IGNORECASE))
+    
+    if not begin_matches or not end_matches:
+        raise ValueError("No 'Begin final coordinates' block found in output")
+    
+    # Find the last complete block (begin before end)
+    last_block_start = None
+    last_block_end = None
+    
+    for begin_match in reversed(begin_matches):
+        # Find the first end after this begin
+        for end_match in end_matches:
+            if end_match.start() > begin_match.start():
+                last_block_start = begin_match.start()
+                last_block_end = end_match.end()
+                break
+        if last_block_start is not None:
+            break
+    
+    if last_block_start is None or last_block_end is None:
+        raise ValueError("No complete 'Begin final coordinates ... End final coordinates' block found")
+    
+    # Extract the block text
+    block_text = text[last_block_start:last_block_end]
+    
+    # Parse CELL_PARAMETERS
+    cell_pattern = r"CELL_PARAMETERS\s*\(alat\s*=\s*([-\d\.Ee+]+)\)"
+    cell_match = re.search(cell_pattern, block_text, re.IGNORECASE)
+    if not cell_match:
+        # Try without explicit alat value
+        cell_pattern_alt = r"CELL_PARAMETERS\s*\(alat\)"
+        cell_match_alt = re.search(cell_pattern_alt, block_text, re.IGNORECASE)
+        if not cell_match_alt:
+            raise ValueError("CELL_PARAMETERS not found in final coordinates block")
+        # Extract alat from elsewhere in the block or use default
+        alat_match = re.search(r"lattice parameter \(alat\)\s*=\s*([-\d\.Ee+]+)", block_text, re.IGNORECASE)
+        if alat_match:
+            alat_bohr = float(alat_match.group(1))
+        else:
+            # Try to extract from earlier in output
+            alat_match_global = re.search(r"celldm\(1\)\s*=\s*([-\d\.Ee+]+)", text[:last_block_start])
+            if not alat_match_global:
+                raise ValueError("Cannot determine alat value")
+            alat_bohr = float(alat_match_global.group(1))
+        cell_start_pos = cell_match_alt.end()
+    else:
+        alat_bohr = float(cell_match.group(1))
+        cell_start_pos = cell_match.end()
+    
+    alat_angstrom = alat_bohr * BOHR_TO_ANGSTROM
+    
+    # Extract cell matrix (3 lines after CELL_PARAMETERS)
+    cell_lines = []
+    cell_section = block_text[cell_start_pos:].split('\n')
+    for line in cell_section[:10]:  # Look at first 10 lines
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith('ATOMIC_POSITIONS'):
+            break
+        # Try to parse as 3 floats
+        parts = line.split()
+        if len(parts) >= 3:
+            try:
+                row = [float(x) for x in parts[:3]]
+                cell_lines.append(row)
+                if len(cell_lines) == 3:
+                    break
+            except ValueError:
+                continue
+    
+    if len(cell_lines) != 3:
+        raise ValueError(f"Expected 3 cell parameter lines, found {len(cell_lines)}")
+    
+    cell_matrix = cell_lines  # Already dimensionless (multiples of alat)
+    
+    # Parse ATOMIC_POSITIONS
+    pos_pattern = r"ATOMIC_POSITIONS\s*\(alat\)"
+    pos_match = re.search(pos_pattern, block_text, re.IGNORECASE)
+    if not pos_match:
+        raise ValueError("ATOMIC_POSITIONS (alat) not found in final coordinates block")
+    
+    pos_lines = []
+    pos_start = pos_match.end()
+    pos_section = block_text[pos_start:].split('\n')
+    species = []
+    
+    for line in pos_section[:100]:  # Look at first 100 lines
+        line = line.strip()
+        if not line:
+            if pos_lines:
+                break  # Empty line after positions means we're done
+            continue
+        if "End final coordinates" in line:
+            break
+        # Parse: "Si  x y z  [flags]"
+        parts = line.split()
+        if len(parts) >= 4:
+            try:
+                label = parts[0]
+                coords = [float(parts[1]), float(parts[2]), float(parts[3])]
+                species.append(label)
+                pos_lines.append(QEAtomicPosition(label, tuple(coords)))
+            except (ValueError, IndexError):
+                continue
+    
+    if not pos_lines:
+        raise ValueError("No atomic positions found in final coordinates block")
+    
+    return QEGeometrySnapshot(
+        alat_angstrom=alat_angstrom,
+        cell_matrix=cell_matrix,
+        atomic_positions=pos_lines,
+    ), species
+
+
+def structure_from_qe_geometry_snapshot(
+    snapshot: QEGeometrySnapshot,
+    species: List[str],
+) -> "PMGStructure":
+    """
+    Convert QEGeometrySnapshot to pymatgen Structure with canonization.
+    
+    CRITICAL: This function applies canonization exactly once, following the
+    same path as structures loaded from JSON. The structure is canonized
+    before being returned, ensuring fractional coordinates are in the
+    canonical interval [-wrap_tol, 1 - wrap_tol).
+    
+    Args:
+        snapshot: QEGeometrySnapshot with alat-scaled geometry
+        species: List of species symbols (must match positions length)
+        
+    Returns:
+        Canonicalized pymatgen Structure
+    """
+    from pymatgen.core import Structure as PMGStructure, Lattice
+    
+    if len(species) != len(snapshot.atomic_positions):
+        raise ValueError(f"Species count ({len(species)}) != positions count ({len(snapshot.atomic_positions)})")
+    
+    # Convert alat-scaled cell to Angstrom
+    cell_matrix_ang = snapshot.scaled_cell_matrix()
+    lattice = Lattice(cell_matrix_ang)
+    
+    # Convert alat-scaled positions to Angstrom (Cartesian)
+    positions_cart = []
+    for pos in snapshot.scaled_atomic_positions():
+        positions_cart.append(pos.vector)
+    
+    # Create structure with Cartesian coordinates
+    structure = PMGStructure(
+        lattice,
+        species,
+        positions_cart,
+        coords_are_cartesian=True,
+    )
+    
+    # CRITICAL: Canonicalize exactly once (same as visualization entry point)
+    from quantumvitas.analysis.structure_viz import canonicalize_structure_in_place
+    canonicalize_structure_in_place(structure)
+    
+    return structure
+
+
 def _max_matrix_difference(a: List[List[float]], b: List[List[float]]) -> float:
     if len(a) != len(b):
         return math.inf

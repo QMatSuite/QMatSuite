@@ -9,15 +9,41 @@ This module provides:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import shutil
+import ssl
 import tarfile
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import certifi
+
 logger = logging.getLogger(__name__)
+
+# Centralized SSL context using certifi CA bundle for production-grade HTTPS
+# This ensures SSL verification works across all platforms (macOS, Linux, Windows)
+# without requiring system CA certificate installation
+# Lazy-loaded to avoid import-time permission errors
+_SSL_CONTEXT = None
+
+def get_ssl_context() -> ssl.SSLContext:
+    """Get or create the SSL context with certifi CA bundle."""
+    global _SSL_CONTEXT
+    if _SSL_CONTEXT is None:
+        _SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
+    return _SSL_CONTEXT
+
+# Export as SSL_CONTEXT for convenience (it's a function that returns the context)
+SSL_CONTEXT = get_ssl_context
+
+# GitHub release configuration
+GITHUB_REPO_OWNER = "QMatSuite"
+GITHUB_REPO_NAME = "qmatsuite-assets"
+GITHUB_RELEASE_TAG = "assets-2025-12-26"
+GITHUB_RELEASE_BASE_URL = f"https://github.com/{GITHUB_REPO_OWNER}/{GITHUB_REPO_NAME}/releases/download/{GITHUB_RELEASE_TAG}"
 
 
 def _find_quantumvitas_root() -> Optional[Path]:
@@ -532,26 +558,213 @@ def install_all_sssp_from_seed(seed_dir: Path, store_dir: Path) -> Dict[str, Any
 
 
 # =============================================================================
-# SSSP Download Functions (Network)
+# Manifest and Download Functions (GitHub Release)
 # =============================================================================
 
-# Materials Cloud SSSP URLs
-SSSP_BASE_URL = "https://archive.materialscloud.org/record/file?record_id=1732&filename="
-SSSP_LIBRARY_FILES = {
-    # Version 1.3.0
-    ("1.3.0", "efficiency"): {
-        "archive": "SSSP_1.3.0_PBE_efficiency.tar.gz",
-        "cutoffs": "SSSP_1.3.0_PBE_efficiency.json",
-    },
-    ("1.3.0", "precision"): {
-        "archive": "SSSP_1.3.0_PBE_precision.tar.gz",
-        "cutoffs": "SSSP_1.3.0_PBE_precision.json",
-    },
-}
+@dataclass
+class ManifestEntry:
+    """A single entry from MANIFEST_PSEUDO_SEED.json."""
+    relative_path: str
+    size_bytes: int
+    sha256: str
+    category: str
+    library_name: str
+    library_version: str
+    xc: str
+    quality: str
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ManifestEntry":
+        """Create from dictionary."""
+        return cls(
+            relative_path=data["relative_path"],
+            size_bytes=data["size_bytes"],
+            sha256=data["sha256"],
+            category=data["category"],
+            library_name=data["library_name"],
+            library_version=data["library_version"],
+            xc=data["xc"],
+            quality=data["quality"],
+        )
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary."""
+        return asdict(self)
 
-# Minimum file sizes for sanity check (bytes)
-MIN_ARCHIVE_SIZE = 10 * 1024 * 1024  # 10 MB
-MIN_CUTOFFS_SIZE = 1000  # 1 KB
+
+def fetch_manifest() -> List[ManifestEntry]:
+    """
+    Fetch and parse MANIFEST_PSEUDO_SEED.json from GitHub release.
+    
+    Returns:
+        List of ManifestEntry objects
+        
+    Raises:
+        Exception: If manifest cannot be fetched or parsed
+    """
+    import urllib.request
+    import urllib.error
+    import socket
+    
+    manifest_url = f"{GITHUB_RELEASE_BASE_URL}/MANIFEST_PSEUDO_SEED.json"
+    
+    try:
+        socket.setdefaulttimeout(30)
+        with urllib.request.urlopen(manifest_url, context=get_ssl_context()) as response:
+            if response.status != 200:
+                raise Exception(f"Failed to fetch manifest: HTTP {response.status}")
+            content = response.read().decode('utf-8')
+            data = json.loads(content)
+        socket.setdefaulttimeout(None)
+    except urllib.error.URLError as e:
+        socket.setdefaulttimeout(None)
+        raise Exception(f"Failed to fetch manifest from GitHub: {e}") from e
+    except json.JSONDecodeError as e:
+        raise Exception(f"Failed to parse manifest JSON: {e}") from e
+    
+    # Parse entries
+    entries = []
+    if isinstance(data, list):
+        # Manifest is a list of entries
+        for item in data:
+            if isinstance(item, dict):
+                entries.append(ManifestEntry.from_dict(item))
+    elif isinstance(data, dict):
+        # Manifest structure: {"generated_at": ..., "schema_version": ..., "files": [...]}
+        if "files" in data:
+            for item in data["files"]:
+                if isinstance(item, dict):
+                    entries.append(ManifestEntry.from_dict(item))
+        elif "entries" in data:
+            # Legacy format with "entries" key
+            for item in data["entries"]:
+                if isinstance(item, dict):
+                    entries.append(ManifestEntry.from_dict(item))
+        else:
+            # Single entry dict? Unlikely but handle it
+            entries.append(ManifestEntry.from_dict(data))
+    else:
+        raise Exception(f"Unexpected manifest format: expected list or dict, got {type(data)}")
+    
+    if len(entries) == 0:
+        raise Exception("Manifest contains no entries")
+    
+    return entries
+
+
+def select_sssp_entries(
+    manifest: List[ManifestEntry],
+    version: str = "1.3.0",
+    xc: str = "pbe",
+) -> Dict[Tuple[str, str], List[ManifestEntry]]:
+    """
+    Select SSSP entries from manifest matching criteria.
+    
+    Args:
+        manifest: List of all manifest entries
+        version: Library version (default: "1.3.0")
+        xc: Exchange-correlation functional (default: "pbe")
+        
+    Returns:
+        Dict mapping (version, quality) -> [tar.gz entry, json entry]
+    """
+    result: Dict[Tuple[str, str], List[ManifestEntry]] = {}
+    
+    for entry in manifest:
+        if (entry.category == "sssp" and
+            entry.library_version == version and
+            entry.xc == xc and
+            entry.quality in ["efficiency", "precision"]):
+            
+            key = (entry.library_version, entry.quality)
+            if key not in result:
+                result[key] = []
+            
+            # Determine file type from relative_path
+            if entry.relative_path.endswith(".tar.gz"):
+                result[key].insert(0, entry)  # Archive first
+            elif entry.relative_path.endswith(".json"):
+                result[key].append(entry)  # JSON second
+    
+    # Verify each entry has both tar.gz and json
+    for key, entries in result.items():
+        has_tar = any(e.relative_path.endswith(".tar.gz") for e in entries)
+        has_json = any(e.relative_path.endswith(".json") for e in entries)
+        if not has_tar or not has_json:
+            raise Exception(
+                f"Incomplete SSSP entry for {key}: "
+                f"has_tar={has_tar}, has_json={has_json}"
+            )
+    
+    return result
+
+
+def compute_sha256(file_path: Path) -> str:
+    """Compute SHA256 hash of a file."""
+    sha256_hash = hashlib.sha256()
+    with open(file_path, "rb") as f:
+        for byte_block in iter(lambda: f.read(4096), b""):
+            sha256_hash.update(byte_block)
+    return sha256_hash.hexdigest()
+
+
+def download_github_release_asset(
+    asset_name: str,
+    output_path: Path,
+    expected_size: Optional[int] = None,
+    expected_sha256: Optional[str] = None,
+) -> None:
+    """
+    Download an asset from GitHub release and verify integrity.
+    
+    Args:
+        asset_name: Name of the asset file (e.g., "SSSP_1.3.0_PBE_efficiency.tar.gz")
+        output_path: Path where to save the file
+        expected_size: Optional expected file size in bytes
+        expected_sha256: Optional expected SHA256 hash
+        
+    Raises:
+        Exception: If download fails, size mismatch, or checksum mismatch
+    """
+    import urllib.request
+    import urllib.error
+    import socket
+    
+    asset_url = f"{GITHUB_RELEASE_BASE_URL}/{asset_name}"
+    
+    try:
+        socket.setdefaulttimeout(120)  # Longer timeout for large files
+        # Use urlopen with SSL context for proper certificate verification
+        with urllib.request.urlopen(asset_url, context=get_ssl_context()) as response:
+            with open(output_path, 'wb') as out_file:
+                shutil.copyfileobj(response, out_file)
+        socket.setdefaulttimeout(None)
+    except urllib.error.URLError as e:
+        socket.setdefaulttimeout(None)
+        raise Exception(f"Failed to download {asset_name} from GitHub: {e}") from e
+    except Exception as e:
+        socket.setdefaulttimeout(None)
+        raise Exception(f"Failed to download {asset_name}: {e}") from e
+    
+    # Verify size if provided
+    if expected_size is not None:
+        actual_size = output_path.stat().st_size
+        if actual_size != expected_size:
+            output_path.unlink()  # Delete mismatched file
+            raise Exception(
+                f"Size mismatch for {asset_name}: "
+                f"expected {expected_size} bytes, got {actual_size} bytes"
+            )
+    
+    # Verify SHA256 if provided
+    if expected_sha256 is not None:
+        actual_sha256 = compute_sha256(output_path)
+        if actual_sha256.lower() != expected_sha256.lower():
+            output_path.unlink()  # Delete mismatched file
+            raise Exception(
+                f"SHA256 mismatch for {asset_name}: "
+                f"expected {expected_sha256}, got {actual_sha256}"
+            )
 
 
 def download_sssp_library(
@@ -562,7 +775,14 @@ def download_sssp_library(
     allow_download: bool = True,
 ) -> Dict[str, Any]:
     """
-    Download SSSP library from Materials Cloud and install into store.
+    Download SSSP library from GitHub release and install into store.
+    
+    Uses manifest-driven approach:
+    1. Fetch MANIFEST_PSEUDO_SEED.json from GitHub release
+    2. Select entries matching version/flavor/xc criteria
+    3. Download tar.gz and json files
+    4. Verify SHA256 checksums
+    5. Extract and install only after verification passes
     
     Args:
         store_dir: Path to pseudo store directory
@@ -574,9 +794,6 @@ def download_sssp_library(
     Returns:
         Dict with success, messages, errors, and installed library info
     """
-    import urllib.request
-    import urllib.error
-    import socket
     import tempfile
     
     result: Dict[str, Any] = {
@@ -595,13 +812,11 @@ def download_sssp_library(
         result["errors"].append("Downloads not allowed. Enable 'Allow Network Downloads' or confirm to proceed.")
         return result
     
-    # Validate flavor/version
-    key = (version, flavor)
-    if key not in SSSP_LIBRARY_FILES:
-        result["errors"].append(f"Unknown SSSP library: {version}/{flavor}")
+    # Validate flavor
+    if flavor not in ["efficiency", "precision"]:
+        result["errors"].append(f"Invalid flavor: {flavor} (must be 'efficiency' or 'precision')")
         return result
     
-    files = SSSP_LIBRARY_FILES[key]
     store_path = get_sssp_library_path(store_dir, version, flavor)
     library_path = store_path / "library"
     
@@ -619,79 +834,109 @@ def download_sssp_library(
         result["errors"].append(f"Failed to create directories: {e}")
         return result
     
-    result["messages"].append(f"Downloading SSSP {version} {flavor}...")
+    result["messages"].append(f"Fetching manifest from GitHub release...")
     
-    # Download files to temp dir first
+    # Step 1: Fetch manifest
+    try:
+        manifest_entries = fetch_manifest()
+        result["messages"].append(f"Fetched manifest with {len(manifest_entries)} entries")
+    except Exception as e:
+        result["errors"].append(f"Failed to fetch manifest: {e}")
+        return result
+    
+    # Step 2: Select SSSP entries
+    try:
+        sssp_entries = select_sssp_entries(manifest_entries, version=version, xc="pbe")
+        key = (version, flavor)
+        if key not in sssp_entries:
+            result["errors"].append(
+                f"No SSSP entries found for version={version}, flavor={flavor}, xc=pbe in manifest"
+            )
+            return result
+        
+        selected = sssp_entries[key]
+        # Should have exactly 2 entries: tar.gz and json
+        if len(selected) != 2:
+            result["errors"].append(
+                f"Expected 2 manifest entries (tar.gz + json), got {len(selected)}"
+            )
+            return result
+        
+        # Identify archive and cutoffs entries
+        archive_entry = next(e for e in selected if e.relative_path.endswith(".tar.gz"))
+        cutoffs_entry = next(e for e in selected if e.relative_path.endswith(".json"))
+        
+        result["messages"].append(
+            f"Selected entries: {archive_entry.relative_path} ({archive_entry.size_bytes // 1024 // 1024} MB), "
+            f"{cutoffs_entry.relative_path}"
+        )
+    except Exception as e:
+        result["errors"].append(f"Failed to select SSSP entries from manifest: {e}")
+        return result
+    
+    # Step 3: Download files to temp dir with verification
+    result["messages"].append(f"Downloading SSSP {version} {flavor} from GitHub release...")
+    
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
         
-        # Download archive
-        archive_name = files["archive"]
-        archive_url = SSSP_BASE_URL + archive_name
+        # Download archive with verification
+        archive_name = Path(archive_entry.relative_path).name
         archive_temp = temp_path / archive_name
         
         try:
             result["messages"].append(f"Downloading {archive_name}...")
-            socket.setdefaulttimeout(60)
-            urllib.request.urlretrieve(archive_url, archive_temp)
-            socket.setdefaulttimeout(None)
-            
-            # Verify size
-            if archive_temp.stat().st_size < MIN_ARCHIVE_SIZE:
-                result["errors"].append(f"Downloaded archive too small ({archive_temp.stat().st_size} bytes)")
-                return result
-            
+            download_github_release_asset(
+                asset_name=archive_name,
+                output_path=archive_temp,
+                expected_size=archive_entry.size_bytes,
+                expected_sha256=archive_entry.sha256,
+            )
             result["files_downloaded"].append(archive_name)
-            result["messages"].append(f"Downloaded {archive_name} ({archive_temp.stat().st_size // 1024 // 1024} MB)")
+            result["messages"].append(
+                f"✓ Downloaded and verified {archive_name} "
+                f"({archive_entry.size_bytes // 1024 // 1024} MB, SHA256: {archive_entry.sha256[:16]}...)"
+            )
         except Exception as e:
-            socket.setdefaulttimeout(None)
-            result["errors"].append(f"Failed to download {archive_name}: {e}")
+            result["errors"].append(f"Failed to download or verify {archive_name}: {e}")
             return result
         
-        # Download cutoffs
-        cutoffs_name = files["cutoffs"]
-        cutoffs_url = SSSP_BASE_URL + cutoffs_name
+        # Download cutoffs with verification
+        cutoffs_name = Path(cutoffs_entry.relative_path).name
         cutoffs_temp = temp_path / cutoffs_name
         
         try:
             result["messages"].append(f"Downloading {cutoffs_name}...")
-            socket.setdefaulttimeout(30)
-            urllib.request.urlretrieve(cutoffs_url, cutoffs_temp)
-            socket.setdefaulttimeout(None)
-            
-            # Verify JSON is valid
-            if cutoffs_temp.stat().st_size < MIN_CUTOFFS_SIZE:
-                result["warnings"].append(f"Cutoffs file seems small ({cutoffs_temp.stat().st_size} bytes)")
-            
-            try:
-                json.loads(cutoffs_temp.read_text())
-                result["files_downloaded"].append(cutoffs_name)
-                result["messages"].append(f"Downloaded {cutoffs_name}")
-            except json.JSONDecodeError as e:
-                result["warnings"].append(f"Cutoffs JSON invalid: {e}")
+            download_github_release_asset(
+                asset_name=cutoffs_name,
+                output_path=cutoffs_temp,
+                expected_size=cutoffs_entry.size_bytes,
+                expected_sha256=cutoffs_entry.sha256,
+            )
+            result["files_downloaded"].append(cutoffs_name)
+            result["messages"].append(
+                f"✓ Downloaded and verified {cutoffs_name} "
+                f"(SHA256: {cutoffs_entry.sha256[:16]}...)"
+            )
         except Exception as e:
-            socket.setdefaulttimeout(None)
-            result["warnings"].append(f"Failed to download cutoffs: {e}")
+            result["errors"].append(f"Failed to download or verify {cutoffs_name}: {e}")
+            return result
         
-        # Extract archive
+        # Step 4: Extract archive (only after verification passes)
         try:
             result["messages"].append("Extracting UPF files...")
-            # Verify tar can be opened (handle corrupted downloads)
+            # Verify tar can be opened
             try:
                 with tarfile.open(archive_temp, "r:gz") as tar:
-                    # Test that tar is valid by getting members
-                    tar.getmembers()
+                    tar.getmembers()  # Test that tar is valid
             except (tarfile.TarError, OSError, EOFError) as e:
-                # Corrupted tar - delete and report error
-                result["errors"].append(f"Downloaded archive is corrupted (tar open failed: {e}). Please retry download.")
-                try:
-                    archive_temp.unlink()  # Delete corrupted file
-                    result["messages"].append("Deleted corrupted archive file")
-                except Exception:
-                    pass
+                result["errors"].append(
+                    f"Downloaded archive is corrupted (tar open failed: {e}). "
+                    f"Checksum passed but tar is invalid. Please report this issue."
+                )
                 return result
             
-            # Tar is valid, proceed with extraction
+            # Extract UPF files
             with tarfile.open(archive_temp, "r:gz") as tar:
                 for member in tar.getmembers():
                     if member.name.endswith((".UPF", ".upf")):
@@ -707,21 +952,26 @@ def download_sssp_library(
             result["errors"].append(f"Failed to extract archive: {e}")
             return result
         
-        # Copy cutoffs if downloaded
-        if cutoffs_temp.exists():
-            try:
-                shutil.copy(cutoffs_temp, store_path / "cutoffs.json")
-                result["messages"].append("Installed cutoffs.json")
-            except Exception as e:
-                result["warnings"].append(f"Failed to copy cutoffs: {e}")
+        # Step 5: Copy cutoffs JSON
+        try:
+            shutil.copy(cutoffs_temp, store_path / "cutoffs.json")
+            result["messages"].append("Installed cutoffs.json")
+        except Exception as e:
+            result["errors"].append(f"Failed to copy cutoffs: {e}")
+            return result
     
-    # Create manifest
+    # Step 6: Create installation manifest
     manifest = {
         "library": "sssp",
         "version": version,
         "flavor": flavor,
-        "source": "download",
-        "source_url": SSSP_BASE_URL,
+        "source": "github_release",
+        "source_release": GITHUB_RELEASE_TAG,
+        "source_repo": f"{GITHUB_REPO_OWNER}/{GITHUB_REPO_NAME}",
+        "manifest_sha256": {
+            "archive": archive_entry.sha256,
+            "cutoffs": cutoffs_entry.sha256,
+        },
         "files_downloaded": result["files_downloaded"],
         "files_installed": result["files_installed"],
         "installed_at": __import__("datetime").datetime.now().isoformat(),
@@ -735,7 +985,7 @@ def download_sssp_library(
     
     result["success"] = result["files_installed"] > 0
     if result["success"]:
-        result["messages"].append(f"Successfully installed SSSP {version} {flavor}")
+        result["messages"].append(f"Successfully installed SSSP {version} {flavor} from GitHub release")
     
     return result
 
@@ -746,7 +996,10 @@ def download_all_sssp(
     allow_download: bool = True,
 ) -> Dict[str, Any]:
     """
-    Download all supported SSSP libraries.
+    Download all supported SSSP libraries from GitHub release.
+    
+    Uses manifest to determine which libraries are available.
+    Currently supports: SSSP 1.3.0 PBE efficiency and precision.
     
     Args:
         store_dir: Path to pseudo store directory
@@ -764,7 +1017,23 @@ def download_all_sssp(
         "messages": [],
     }
     
-    for (version, flavor) in SSSP_LIBRARY_FILES.keys():
+    # Fetch manifest once to get available libraries
+    try:
+        manifest_entries = fetch_manifest()
+        sssp_entries = select_sssp_entries(manifest_entries, version="1.3.0", xc="pbe")
+        result["messages"].append(f"Found {len(sssp_entries)} SSSP libraries in manifest")
+    except Exception as e:
+        result["success"] = False
+        result["failed"].append({
+            "version": "1.3.0",
+            "flavor": "all",
+            "errors": [f"Failed to fetch manifest: {e}"],
+        })
+        result["messages"].append(f"Failed to fetch manifest: {e}")
+        return result
+    
+    # Download each library from manifest
+    for (version, flavor) in sssp_entries.keys():
         # Check if already installed
         lib_path = get_sssp_library_path(store_dir, version, flavor) / "library"
         if lib_path.exists() and len(list(lib_path.glob("*.UPF"))) > 0:

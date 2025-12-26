@@ -213,6 +213,19 @@ export function StepDetailPanel({
   } | null>(null);
   const [isLoadingPseudoMapping, setIsLoadingPseudoMapping] = useState(false);
   
+  // Relax structure preview state
+  const [relaxPreview, setRelaxPreview] = useState<{
+    cell: number[][];
+    species: string[];
+    positions: number[][];
+    volume: number;
+    n_atoms: number;
+  } | null>(null);
+  const [isLoadingRelaxPreview, setIsLoadingRelaxPreview] = useState(false);
+  const [relaxPreviewError, setRelaxPreviewError] = useState<string | null>(null);
+  const [isSavingRelaxStructure, setIsSavingRelaxStructure] = useState(false);
+  const [relaxSaveMessage, setRelaxSaveMessage] = useState<string | null>(null);
+  
   // Delete step state
   const [isDeletingStep, setIsDeletingStep] = useState(false);
   
@@ -387,6 +400,32 @@ export function StepDetailPanel({
               .finally(() => {
                 setIsLoadingPseudoMapping(false);
               });
+          }
+          
+          // Load relax structure preview for relax/vc-relax steps (preview only, no side effects)
+          const stepType = response.data.step_type?.toLowerCase();
+          if ((stepType === 'relax' || stepType === 'vc-relax') && projectRoot && calculationSelector && stepSelector) {
+            setIsLoadingRelaxPreview(true);
+            setRelaxPreviewError(null);
+            qv.getRelaxFinalStructurePreview(projectRoot, calculationSelector, stepSelector)
+              .then(previewResponse => {
+                if (previewResponse.ok && previewResponse.data) {
+                  setRelaxPreview(previewResponse.data);
+                } else {
+                  setRelaxPreviewError(previewResponse.error?.message || 'Failed to load structure preview');
+                }
+              })
+              .catch(err => {
+                console.error('[StepDetailPanel] Failed to load relax structure preview', err);
+                setRelaxPreviewError(err instanceof Error ? err.message : 'Failed to load structure preview');
+              })
+              .finally(() => {
+                setIsLoadingRelaxPreview(false);
+              });
+          } else {
+            // Clear preview for non-relax steps
+            setRelaxPreview(null);
+            setRelaxPreviewError(null);
           }
           
           // Load parameter metadata for all sections that have parameters
@@ -1325,6 +1364,94 @@ export function StepDetailPanel({
               />
             ) : (
               <p className="common-cards-empty">No pseudopotential mapping available</p>
+            )}
+          </div>
+        )}
+        
+        {/* Relaxed Structure Section (for relax/vc-relax steps) */}
+        {stepDetail && (stepDetail.step_type?.toLowerCase() === 'relax' || stepDetail.step_type?.toLowerCase() === 'vc-relax') && (
+          <div className="detail-section">
+            <div className="section-header">
+              <h3>Relaxed Structure</h3>
+            </div>
+            
+            {isLoadingRelaxPreview ? (
+              <div className="common-cards-loading">
+                <p>Loading final structure preview...</p>
+              </div>
+            ) : relaxPreviewError ? (
+              <div className="common-cards-error">
+                <p>⚠️ {relaxPreviewError}</p>
+                <p className="common-cards-empty" style={{ fontSize: '0.9em', marginTop: '8px' }}>
+                  Step may not have completed successfully, or output file may be missing.
+                </p>
+              </div>
+            ) : relaxPreview ? (
+              <div className="relax-structure-preview">
+                <div className="relax-preview-info">
+                  <p><strong>Final structure detected</strong></p>
+                  <p style={{ fontSize: '0.9em', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    {relaxPreview.n_atoms} atoms, Volume: {relaxPreview.volume.toFixed(2)} Å³
+                  </p>
+                </div>
+                
+                {relaxSaveMessage && (
+                  <div className={`relax-save-message ${relaxSaveMessage.includes('Success') || relaxSaveMessage.includes('✅') ? 'relax-save-message--success' : ''}`}>
+                    {relaxSaveMessage}
+                  </div>
+                )}
+                
+                <div className="relax-structure-actions" style={{ marginTop: '12px' }}>
+                  <button
+                    className="action-button action-button--primary"
+                    disabled={isSavingRelaxStructure || !selectedCalculation?.structure_id}
+                    onClick={async () => {
+                      if (!projectRoot || !calculationSelector || !stepSelector || !selectedCalculation?.structure_id) return;
+                      
+                      setIsSavingRelaxStructure(true);
+                      setRelaxSaveMessage(null);
+                      
+                      try {
+                        const response = await qv.saveRelaxFinalStructure(
+                          projectRoot,
+                          calculationSelector,
+                          stepSelector,
+                          selectedCalculation.structure_id,
+                          stepDetail.name ? `${stepDetail.name} relaxed` : undefined
+                        );
+                        
+                        if (response.ok && response.data) {
+                          if (response.data.already_exists) {
+                            setRelaxSaveMessage(`Structure already exists: ${response.data.structure_ulid.slice(0, 8)}...`);
+                          } else {
+                            setRelaxSaveMessage(`✅ Saved as new structure: ${response.data.structure_ulid.slice(0, 8)}...`);
+                          }
+                          // Clear message after 5 seconds
+                          setTimeout(() => setRelaxSaveMessage(null), 5000);
+                          onParametersUpdated?.(); // Trigger refresh to show new structure
+                        } else {
+                          setRelaxSaveMessage(`❌ Failed: ${response.error?.message || 'Unknown error'}`);
+                          setTimeout(() => setRelaxSaveMessage(null), 5000);
+                        }
+                      } catch (e) {
+                        setRelaxSaveMessage(`❌ Error: ${e instanceof Error ? e.message : 'Unknown error'}`);
+                        setTimeout(() => setRelaxSaveMessage(null), 5000);
+                      } finally {
+                        setIsSavingRelaxStructure(false);
+                      }
+                    }}
+                  >
+                    {isSavingRelaxStructure ? 'Saving...' : 'Save as new Structure'}
+                  </button>
+                  {!selectedCalculation?.structure_id && (
+                    <p className="common-cards-empty" style={{ fontSize: '0.85em', marginTop: '8px' }}>
+                      ⚠️ Calculation has no structure reference. Cannot save relaxed structure.
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="common-cards-empty">No structure preview available</p>
             )}
           </div>
         )}

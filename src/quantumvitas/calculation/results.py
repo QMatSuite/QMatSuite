@@ -23,6 +23,7 @@ class StepResultSummary:
     reference_file: Optional[Path]
     message: str = ""
     metrics: Dict[str, float] = field(default_factory=dict)
+    produced_structure_ulid: Optional[str] = None  # ULID of structure created from this step (if any)
 
 
 @dataclass(slots=True)
@@ -53,6 +54,7 @@ class CalculationResult:
                     "reference_file": str(step.reference_file) if step.reference_file else None,
                     "message": step.message,
                     "metrics": step.metrics,
+                    "produced_structure_ulid": step.produced_structure_ulid,
                 }
                 for step in self.steps
             ],

@@ -1,7 +1,7 @@
 """
 Integration tests for SSSP pseudopotential download functionality.
 
-These tests verify that SSSP libraries can be downloaded from Materials Cloud.
+These tests verify that SSSP libraries can be downloaded from GitHub release.
 They require network access and may take time to complete.
 
 Run with:
@@ -30,67 +30,47 @@ def temp_store_dir() -> Generator[Path, None, None]:
         yield Path(tmpdir)
 
 
-class TestSSSPDownloadURLs:
-    """Test that SSSP download URLs are valid and accessible."""
+class TestSSSPManifest:
+    """Test manifest fetching and parsing."""
     
-    def test_sssp_base_url_accessible(self):
-        """Verify Materials Cloud base URL is accessible."""
-        import urllib.request
-        import urllib.error
+    def test_fetch_manifest(self):
+        """Test that manifest can be fetched from GitHub release."""
+        from quantumvitas.core.pseudo_config import fetch_manifest
         
-        from quantumvitas.core.pseudo_config import SSSP_BASE_URL
+        manifest = fetch_manifest()
         
-        # Just check the base URL is a valid format
-        assert SSSP_BASE_URL.startswith("https://")
-        assert "materialscloud.org" in SSSP_BASE_URL
-    
-    def test_sssp_library_files_defined(self):
-        """Verify SSSP library file definitions exist."""
-        from quantumvitas.core.pseudo_config import SSSP_LIBRARY_FILES
-        
-        # Check that we have entries for known versions/flavors
-        assert ("1.3.0", "efficiency") in SSSP_LIBRARY_FILES
-        assert ("1.3.0", "precision") in SSSP_LIBRARY_FILES
+        # Should have entries
+        assert len(manifest) > 0
         
         # Check structure of entries
-        for key, files in SSSP_LIBRARY_FILES.items():
-            assert "archive" in files
-            assert "cutoffs" in files
-            assert files["archive"].endswith(".tar.gz")
-            assert files["cutoffs"].endswith(".json")
+        for entry in manifest[:5]:  # Check first 5 entries
+            assert hasattr(entry, "relative_path")
+            assert hasattr(entry, "size_bytes")
+            assert hasattr(entry, "sha256")
+            assert hasattr(entry, "category")
+            assert hasattr(entry, "library_name")
+            assert hasattr(entry, "library_version")
+            assert hasattr(entry, "xc")
+            assert hasattr(entry, "quality")
     
-    def test_cutoffs_url_valid(self):
-        """Verify cutoffs JSON URL returns valid JSON."""
-        import urllib.request
-        import urllib.error
-        import socket
+    def test_select_sssp_entries(self):
+        """Test selecting SSSP entries from manifest."""
+        from quantumvitas.core.pseudo_config import fetch_manifest, select_sssp_entries
         
-        from quantumvitas.core.pseudo_config import SSSP_BASE_URL, SSSP_LIBRARY_FILES
+        manifest = fetch_manifest()
+        sssp_entries = select_sssp_entries(manifest, version="1.3.0", xc="pbe")
         
-        # Test just the efficiency cutoffs (smaller download)
-        files = SSSP_LIBRARY_FILES[("1.3.0", "efficiency")]
-        cutoffs_url = SSSP_BASE_URL + files["cutoffs"]
+        # Should have efficiency and precision
+        assert ("1.3.0", "efficiency") in sssp_entries
+        assert ("1.3.0", "precision") in sssp_entries
         
-        try:
-            socket.setdefaulttimeout(30)
-            response = urllib.request.urlopen(cutoffs_url)
-            content = response.read().decode('utf-8')
-            socket.setdefaulttimeout(None)
-            
-            # Parse as JSON
-            data = json.loads(content)
-            
-            # Should be a dict with element keys
-            assert isinstance(data, dict)
-            # Should have some elements
-            assert len(data) > 0
-            # Check a common element exists
-            assert "Si" in data or "C" in data or "O" in data
-            
-        except urllib.error.URLError as e:
-            pytest.skip(f"Network unavailable: {e}")
-        except socket.timeout:
-            pytest.skip("Network timeout")
+        # Each should have exactly 2 entries (tar.gz + json)
+        for key, entries in sssp_entries.items():
+            assert len(entries) == 2, f"Expected 2 entries for {key}, got {len(entries)}"
+            has_tar = any(e.relative_path.endswith(".tar.gz") for e in entries)
+            has_json = any(e.relative_path.endswith(".json") for e in entries)
+            assert has_tar, f"Missing tar.gz for {key}"
+            assert has_json, f"Missing json for {key}"
 
 
 class TestSSSPDownloadFunction:
@@ -104,36 +84,24 @@ class TestSSSPDownloadFunction:
     """
     
     def test_download_efficiency_tar_to_temp(self, temp_store_dir: Path):
-        """Test downloading SSSP efficiency tar to temp dir and verifying it.
+        """Test downloading SSSP efficiency from GitHub release with SHA256 verification.
         
-        NOTE: This test requires valid Materials Cloud URLs. If URLs return 404,
-        the test will be skipped. The download functionality is tested via the
-        structure checks even if the actual download fails.
+        This test:
+        - Fetches manifest from GitHub release
+        - Downloads SSSP_1.3.0_PBE_efficiency.tar.gz and .json
+        - Verifies SHA256 checksums against manifest
+        - Extracts tar and verifies UPF files
+        - Verifies cutoffs.json loads correctly
+        
+        If download fails, test FAILS (no skip).
         """
-        import urllib.request
-        import urllib.error
-        import socket
         import tarfile
         
         from quantumvitas.core.pseudo_config import (
             download_sssp_library,
-            SSSP_BASE_URL,
-            SSSP_LIBRARY_FILES,
+            fetch_manifest,
+            select_sssp_entries,
         )
-        
-        # First, verify the URL is accessible (skip if 404)
-        files = SSSP_LIBRARY_FILES[("1.3.0", "efficiency")]
-        archive_url = SSSP_BASE_URL + files["archive"]
-        try:
-            req = urllib.request.Request(archive_url)
-            req.add_header('User-Agent', 'Mozilla/5.0')
-            urllib.request.urlopen(req, timeout=5)
-        except urllib.error.HTTPError as e:
-            if e.code == 404:
-                pytest.skip(f"SSSP download URL returns 404 - URL may need updating: {archive_url}")
-        except Exception:
-            # Network error - skip but don't fail
-            pytest.skip("Network unavailable or URL inaccessible")
         
         # Download to temp store dir (not real store)
         result = download_sssp_library(
@@ -153,20 +121,14 @@ class TestSSSPDownloadFunction:
         assert "messages" in result
         assert "errors" in result
         
+        # If download failed, test FAILS (no skip)
         if not result["success"]:
-            # Skip if network failed (but structure should still be correct)
-            if any("Failed to download" in e or "404" in e or "NOT FOUND" in e for e in result["errors"]):
-                pytest.skip(f"Download failed (URL issue): {result['errors']}")
             pytest.fail(f"Download failed: {result['errors']}")
-        
-        # Verify tar file was downloaded (check in temp dir structure)
-        archive_name = files["archive"]
-        
-        # The download function extracts, but we can verify the extracted files
-        library_path = temp_store_dir / "sssp" / "1.3.0" / "efficiency" / "library"
         
         # Verify files were installed
         assert result["files_installed"] > 0, "No UPF files installed"
+        
+        library_path = temp_store_dir / "sssp" / "1.3.0" / "efficiency" / "library"
         assert library_path.exists(), f"Library path not created: {library_path}"
         
         # Check UPF files exist
@@ -187,7 +149,7 @@ class TestSSSPDownloadFunction:
         assert isinstance(cutoffs_data, dict)
         assert len(cutoffs_data) > 0
         
-        # Check manifest.json exists
+        # Check manifest.json exists and has correct source info
         manifest_path = temp_store_dir / "sssp" / "1.3.0" / "efficiency" / "manifest.json"
         assert manifest_path.exists(), "manifest.json not created"
         
@@ -195,9 +157,52 @@ class TestSSSPDownloadFunction:
         assert manifest_data["library"] == "sssp"
         assert manifest_data["version"] == "1.3.0"
         assert manifest_data["flavor"] == "efficiency"
+        assert manifest_data["source"] == "github_release"
+        assert "source_release" in manifest_data
+        assert "manifest_sha256" in manifest_data
         
-        # Verify archive name is in downloaded files
-        assert archive_name in result["files_downloaded"], "Archive not in downloaded files list"
+        # Verify downloaded files list includes expected files
+        assert len(result["files_downloaded"]) >= 2, "Expected at least 2 files (tar.gz + json)"
+        assert any("SSSP_1.3.0_PBE_efficiency.tar.gz" in f for f in result["files_downloaded"])
+        assert any("SSSP_1.3.0_PBE_efficiency.json" in f for f in result["files_downloaded"])
+    
+    def test_download_verifies_sha256(self, temp_store_dir: Path):
+        """Test that download verifies SHA256 checksums from manifest."""
+        from quantumvitas.core.pseudo_config import (
+            fetch_manifest,
+            select_sssp_entries,
+            download_github_release_asset,
+            compute_sha256,
+        )
+        import tempfile
+        
+        # Fetch manifest and get efficiency entry
+        manifest = fetch_manifest()
+        sssp_entries = select_sssp_entries(manifest, version="1.3.0", xc="pbe")
+        efficiency_entries = sssp_entries[("1.3.0", "efficiency")]
+        archive_entry = next(e for e in efficiency_entries if e.relative_path.endswith(".tar.gz"))
+        
+        # Download with verification
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            archive_temp = temp_path / Path(archive_entry.relative_path).name
+            
+            # This should succeed and verify SHA256
+            download_github_release_asset(
+                asset_name=Path(archive_entry.relative_path).name,
+                output_path=archive_temp,
+                expected_size=archive_entry.size_bytes,
+                expected_sha256=archive_entry.sha256,
+            )
+            
+            # Verify file exists and has correct size
+            assert archive_temp.exists()
+            assert archive_temp.stat().st_size == archive_entry.size_bytes
+            
+            # Verify SHA256 matches
+            actual_sha256 = compute_sha256(archive_temp)
+            assert actual_sha256.lower() == archive_entry.sha256.lower(), \
+                f"SHA256 mismatch: expected {archive_entry.sha256}, got {actual_sha256}"
     
     def test_download_already_installed_skips(self, temp_store_dir: Path):
         """Test that re-downloading already installed library skips gracefully."""
@@ -253,7 +258,7 @@ class TestSSSPDownloadFunction:
         )
         
         assert not result["success"]
-        assert any("unknown" in e.lower() for e in result["errors"])
+        assert any("invalid" in e.lower() or "not found" in e.lower() for e in result["errors"])
 
 
 class TestSSSPDownloadAll:

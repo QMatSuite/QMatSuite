@@ -4819,6 +4819,283 @@ class QVService:
         )
 
 
+    @staticmethod
+    def get_relax_final_structure_preview(
+        project_root: Path,
+        calculation_selector: str,
+        step_selector: str,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
+    ) -> Dict[str, Any]:
+        """
+        Preview the final structure from a relax/vc-relax step output (NO SIDE EFFECTS).
+        
+        Parses the QE output file to extract the final coordinates block and returns
+        a preview payload suitable for display. Does NOT create any Structure resource.
+        
+        Args:
+            project_root: Project root path
+            calculation_selector: Calculation selector
+            step_selector: Step selector (ULID)
+            index: Optional ResourceIndex
+            config: Optional project config
+            
+        Returns:
+            Dict with cell (angstrom), species, positions (angstrom), volume, etc.
+            
+        Raises:
+            QVServiceError: If step not found, not completed, or parsing fails
+        """
+        from quantumvitas.calculation.geometry import (
+            read_final_geometry_from_output_text,
+            structure_from_qe_geometry_snapshot,
+        )
+        from quantumvitas.calculation.naming import CalculationFileNaming, find_calculation_raw_dir
+        from quantumvitas.core.models import load_calculation
+        from quantumvitas.core.project_utils import load_project_config
+        from quantumvitas.core.resolution import resolve_calculation, resolve_step
+        
+        project_root = Path(project_root).resolve()
+        
+        # Resolve calculation and step
+        calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)
+        calculation_dir = calculation_resolved.absolute_path.parent if calculation_resolved.absolute_path.name == "calculation.yaml" else calculation_resolved.absolute_path
+        
+        if config is None:
+            config = load_project_config(project_root)
+        
+        # Load calculation to get working_dir
+        wf_model = load_calculation(calculation_dir / "calculation.yaml", project_root=project_root)
+        working_dir_name = wf_model.calculation.get("working_dir", "raw")
+        raw_dir = find_calculation_raw_dir(calculation_dir, working_dir_name)
+        
+        # Resolve step to get step_type
+        step_resolved = resolve_step(project_root, calculation_selector, step_selector, config=config, index=index)
+        
+        # Load step spec to get step_type
+        from quantumvitas.calculation.structure_steps import StructureStepSpec
+        spec = StructureStepSpec.from_yaml(step_resolved.absolute_path, resolve_structure_selector=None)
+        step_type = spec.step_type
+        
+        # Validate step type
+        from quantumvitas.calculation.types import StepType
+        if step_type not in (StepType.RELAX.value, StepType.VC_RELAX.value):
+            raise QVServiceError(
+                f"Step '{step_selector}' is not a relax/vc-relax step (type: {step_type})"
+            )
+        
+        # Find output file
+        output_filename = CalculationFileNaming.output_filename(step_type, working_dir=raw_dir)
+        output_file = raw_dir / output_filename
+        
+        if not output_file.exists():
+            raise QVServiceError(
+                f"Output file not found for step '{step_selector}': {output_file}. "
+                f"Step may not have completed successfully."
+            )
+        
+        # Parse final geometry
+        try:
+            output_text = output_file.read_text()
+            snapshot, species = read_final_geometry_from_output_text(output_text)
+        except Exception as e:
+            raise QVServiceError(
+                f"Failed to parse final coordinates from output: {e}"
+            ) from e
+        
+        # Convert to structure for preview (this applies canonization)
+        structure = structure_from_qe_geometry_snapshot(snapshot, species)
+        
+        # Build preview payload (frontend expects angstrom for positions)
+        cell_ang = structure.lattice.matrix.tolist()
+        positions_ang = structure.cart_coords.tolist()
+        volume = structure.volume
+        
+        return {
+            "cell": cell_ang,  # 3x3 matrix in Angstrom
+            "species": species,
+            "positions": positions_ang,  # Nx3 in Angstrom (Cartesian)
+            "volume": volume,  # Angstrom^3
+            "n_atoms": len(species),
+        }
+    
+    @staticmethod
+    def save_relax_final_structure(
+        project_root: Path,
+        calculation_selector: str,
+        step_selector: str,
+        parent_structure_ulid: str,
+        slug_hint: Optional[str] = None,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
+    ) -> Dict[str, Any]:
+        """
+        Save the final structure from a relax/vc-relax step as a new Structure resource.
+        
+        IDEMPOTENT: For a given (calculation_ulid, step_ulid), at most ONE structure
+        may ever be created. Repeated calls return the existing structure ULID.
+        
+        Args:
+            project_root: Project root path
+            calculation_selector: Calculation selector
+            step_selector: Step selector (ULID)
+            parent_structure_ulid: ULID of the input structure (for provenance)
+            slug_hint: Optional hint for structure slug/name
+            index: Optional ResourceIndex
+            config: Optional project config
+            
+        Returns:
+            Dict with structure_ulid and already_exists flag
+        """
+        from quantumvitas.calculation.geometry import (
+            read_final_geometry_from_output_text,
+            structure_from_qe_geometry_snapshot,
+        )
+        from quantumvitas.calculation.naming import CalculationFileNaming, find_calculation_raw_dir
+        from quantumvitas.calculation.structure_steps import StructureStepSpec
+        from quantumvitas.core.models import load_calculation
+        from quantumvitas.core.project_utils import load_project_config, save_project_config
+        from quantumvitas.core.resolution import resolve_calculation, resolve_step
+        from quantumvitas.core.resources import (
+            ensure_relative_path,
+            generate_unique_name_and_slug,
+            meta_from_name,
+        )
+        from quantumvitas.io.structure_io import write_structure
+        import yaml
+        
+        project_root = Path(project_root).resolve()
+        
+        # Resolve calculation and step
+        calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)
+        calculation_dir = calculation_resolved.absolute_path.parent if calculation_resolved.absolute_path.name == "calculation.yaml" else calculation_resolved.absolute_path
+        calculation_ulid = calculation_resolved.meta.id
+        
+        if config is None:
+            config = load_project_config(project_root)
+        
+        # Load calculation to get working_dir
+        wf_model = load_calculation(calculation_dir / "calculation.yaml", project_root=project_root)
+        working_dir_name = wf_model.calculation.get("working_dir", "raw")
+        raw_dir = find_calculation_raw_dir(calculation_dir, working_dir_name)
+        
+        # Resolve step
+        step_resolved = resolve_step(project_root, calculation_selector, step_selector, config=config, index=index)
+        step_ulid = step_resolved.meta.id
+        
+        # Load step spec
+        spec = StructureStepSpec.from_yaml(step_resolved.absolute_path, resolve_structure_selector=None)
+        step_type = spec.step_type
+        
+        # Validate step type
+        from quantumvitas.calculation.types import StepType
+        if step_type not in (StepType.RELAX.value, StepType.VC_RELAX.value):
+            raise QVServiceError(
+                f"Step '{step_selector}' is not a relax/vc-relax step (type: {step_type})"
+            )
+        
+        # Check if structure already created (idempotency check)
+        # Read step YAML to check for produced_structure_ulid
+        step_yaml_data = yaml.safe_load(step_resolved.absolute_path.read_text()) or {}
+        existing_structure_ulid = step_yaml_data.get("produced_structure_ulid")
+        
+        if existing_structure_ulid:
+            # Already exists - return it
+            return {
+                "structure_ulid": existing_structure_ulid,
+                "already_exists": True,
+            }
+        
+        # Optional: Check if structure already exists with same (source_run_ulid, source_step_ulid)
+        # This is extra safety but may be expensive - skip for MVP
+        
+        # Find output file
+        output_filename = CalculationFileNaming.output_filename(step_type, working_dir=raw_dir)
+        output_file = raw_dir / output_filename
+        
+        if not output_file.exists():
+            raise QVServiceError(
+                f"Output file not found for step '{step_selector}': {output_file}. "
+                f"Step may not have completed successfully."
+            )
+        
+        # Parse final geometry
+        try:
+            output_text = output_file.read_text()
+            snapshot, species = read_final_geometry_from_output_text(output_text)
+        except Exception as e:
+            raise QVServiceError(
+                f"Failed to parse final coordinates from output: {e}"
+            ) from e
+        
+        # Convert to structure (applies canonization)
+        structure = structure_from_qe_geometry_snapshot(snapshot, species)
+        
+        # Generate structure name/slug
+        from quantumvitas.core.project_utils import collect_slugs
+        structures = config.setdefault("structures", [])
+        existing_slugs = collect_slugs(structures, project_root=project_root)
+        
+        if slug_hint:
+            preferred_name = slug_hint
+        else:
+            # Generate from step name + " relaxed"
+            step_name = spec.meta.name or step_type
+            preferred_name = f"{step_name} relaxed"
+        
+        final_name, final_slug = generate_unique_name_and_slug(
+            kind="structure",
+            preferred_name=preferred_name,
+            existing_slugs=existing_slugs,
+        )
+        
+        # Write structure file
+        dest_path = project_root / "structures" / f"{final_slug}.json"
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        meta = meta_from_name(
+            "structure",
+            name=final_name,
+            path=ensure_relative_path(dest_path, base=project_root),
+        )
+        
+        # Write structure with provenance in __qv_meta__
+        write_structure(structure, dest_path, metadata=meta)
+        
+        # Add provenance to structure JSON (store ONLY ULIDs)
+        import json
+        structure_data = json.loads(dest_path.read_text())
+        if "extra" not in structure_data:
+            structure_data["extra"] = {}
+        structure_data["extra"]["relax_provenance"] = {
+            "parent_structure_ulid": parent_structure_ulid,
+            "source_calculation_ulid": calculation_ulid,
+            "source_step_ulid": step_ulid,
+        }
+        dest_path.write_text(json.dumps(structure_data, indent=2))
+        
+        # Add to project config
+        entry = {
+            "structure_id": meta.id,  # ID-only reference (ULID)
+        }
+        structures.append(entry)
+        save_project_config(project_root, config)
+        
+        # Update step YAML with produced_structure_ulid
+        step_yaml_data["produced_structure_ulid"] = meta.id
+        step_resolved.absolute_path.write_text(yaml.safe_dump(step_yaml_data, sort_keys=False))
+        
+        # Update registry in-place if index is provided
+        if index is not None:
+            from quantumvitas.core.resolution import update_registry_add_structure
+            update_registry_add_structure(index, meta, dest_path)
+        
+        return {
+            "structure_ulid": meta.id,
+            "already_exists": False,
+        }
+
+
 # Export the service as a singleton-like module-level instance
 service = QVService()
 

@@ -266,6 +266,8 @@ class QVDaemon:
             "set_common_card": self._handle_set_common_card,
             "get_pseudo_mapping": self._handle_get_pseudo_mapping,
             "set_pseudo_mapping": self._handle_set_pseudo_mapping,
+            "get_relax_final_structure_preview": self._handle_get_relax_final_structure_preview,
+            "save_relax_final_structure": self._handle_save_relax_final_structure,
             
             # Calculation configuration
             "get_calculation_detail": self._handle_get_calculation_detail,
@@ -2645,6 +2647,75 @@ class QVDaemon:
         )
         
         # Parameter resets don't change registry (only change step file contents)
+        
+        return result
+    
+    def _handle_get_relax_final_structure_preview(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Preview final structure from relax/vc-relax step output (NO SIDE EFFECTS).
+        
+        Payload:
+            project_root: str - Path to project root
+            calculation: str - Calculation selector
+            step: str - Step selector (ULID)
+        
+        Returns:
+            Dict with cell, species, positions, volume (preview only, no structure created)
+        """
+        project_root = self._require_path(payload, "project_root")
+        calculation = self._require_str(payload, "calculation")
+        step = self._require_str(payload, "step")
+        
+        # Resolve with fallback to ensure cache is up-to-date
+        self._resolve_step_with_fallback(project_root, calculation, step)
+        
+        cache = self.state.get_cache(project_root)
+        
+        return QVService.get_relax_final_structure_preview(
+            project_root=project_root,
+            calculation_selector=calculation,
+            step_selector=step,
+            index=cache.index,
+            config=cache.config,
+        )
+    
+    def _handle_save_relax_final_structure(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Save final structure from relax/vc-relax step as new Structure resource (IDEMPOTENT).
+        
+        Payload:
+            project_root: str - Path to project root
+            calculation: str - Calculation selector
+            step: str - Step selector (ULID)
+            parent_structure_ulid: str - ULID of input structure (for provenance)
+            slug_hint: Optional[str] - Hint for structure name/slug
+        
+        Returns:
+            Dict with structure_ulid and already_exists flag
+        """
+        project_root = self._require_path(payload, "project_root")
+        calculation = self._require_str(payload, "calculation")
+        step = self._require_str(payload, "step")
+        parent_structure_ulid = self._require_str(payload, "parent_structure_ulid")
+        slug_hint = payload.get("slug_hint")
+        
+        # Resolve with fallback to ensure cache is up-to-date
+        self._resolve_step_with_fallback(project_root, calculation, step)
+        
+        cache = self.state.get_cache(project_root)
+        
+        result = QVService.save_relax_final_structure(
+            project_root=project_root,
+            calculation_selector=calculation,
+            step_selector=step,
+            parent_structure_ulid=parent_structure_ulid,
+            slug_hint=slug_hint,
+            index=cache.index,
+            config=cache.config,
+        )
+        
+        # Structure creation updates registry - rebuild cache
+        self._rebuild_registry_after_write(project_root, reason="save_relax_final_structure")
         
         return result
     
