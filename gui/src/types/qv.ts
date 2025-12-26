@@ -1084,6 +1084,33 @@ export interface QVCommandMap {
     };
     result: StepDetail;
   };
+  get_relax_final_structure_preview: {
+    payload: {
+      project_root: string;
+      calculation: string;
+      step: string;
+    };
+    result: {
+      cell: number[][];  // 3x3 matrix in Angstrom
+      species: string[];
+      positions: number[][];  // Nx3 in Angstrom (Cartesian)
+      volume: number;  // Angstrom^3
+      n_atoms: number;
+    };
+  };
+  save_relax_final_structure: {
+    payload: {
+      project_root: string;
+      calculation: string;
+      step: string;
+      parent_structure_ulid: string;
+      slug_hint?: string;
+    };
+    result: {
+      structure_ulid: string;
+      already_exists: boolean;
+    };
+  };
   update_step_params: {
     payload: {
       project_root: string;

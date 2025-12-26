@@ -19,6 +19,8 @@ class StepType(str, Enum):
     DYNMAT = "dynmat"
     PP = "pp"
     PROJWFC = "projwfc"
+    RELAX = "relax"            # pw.x calculation with calculation='relax'
+    VC_RELAX = "vc-relax"      # pw.x calculation with calculation='vc-relax'
     CUSTOM = "custom"
 
 

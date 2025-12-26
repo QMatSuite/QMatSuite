@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional, List, Set, Dict
 
+from quantumvitas.core.pseudo_config import get_ssl_context
 from quantumvitas.io import QEInputParser, QECardType
 
 
@@ -47,9 +48,11 @@ def download_pseudopotential(
     for attempt in range(max_retries):
         try:
             print(f"  Downloading {pp_name}... (attempt {attempt + 1}/{max_retries})")
-            # Use urlretrieve with timeout
+            # Use urlopen with SSL context for proper certificate verification
             socket.setdefaulttimeout(timeout)
-            urllib.request.urlretrieve(download_url, pp_path)
+            with urllib.request.urlopen(download_url, context=get_ssl_context()) as response:
+                with open(pp_path, 'wb') as out_file:
+                    out_file.write(response.read())
             socket.setdefaulttimeout(None)  # Reset timeout
             if pp_path.exists() and pp_path.stat().st_size > 0:
                 print(f"  ✓ Successfully downloaded {pp_name}")

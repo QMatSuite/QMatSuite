@@ -90,6 +90,18 @@ export interface QVClient {
     mapping: Record<string, string>,
     pseudoDir?: string
   ) => Promise<QVResponse<QVResult<'set_pseudo_mapping'>>>;
+  getRelaxFinalStructurePreview: (
+    projectRoot: string,
+    calculation: string,
+    step: string
+  ) => Promise<QVResponse<QVResult<'get_relax_final_structure_preview'>>>;
+  saveRelaxFinalStructure: (
+    projectRoot: string,
+    calculation: string,
+    step: string,
+    parentStructureUlid: string,
+    slugHint?: string
+  ) => Promise<QVResponse<QVResult<'save_relax_final_structure'>>>;
   
   // Connection management
   checkConnection: () => Promise<boolean>;
@@ -403,6 +415,34 @@ export function useQVClient(): QVClient {
     [call]
   );
   
+  const getRelaxFinalStructurePreview = useCallback(
+    (projectRoot: string, calculation: string, step: string) =>
+      call('get_relax_final_structure_preview', {
+        project_root: projectRoot,
+        calculation,
+        step,
+      }),
+    [call]
+  );
+  
+  const saveRelaxFinalStructure = useCallback(
+    (
+      projectRoot: string,
+      calculation: string,
+      step: string,
+      parentStructureUlid: string,
+      slugHint?: string
+    ) =>
+      call('save_relax_final_structure', {
+        project_root: projectRoot,
+        calculation,
+        step,
+        parent_structure_ulid: parentStructureUlid,
+        slug_hint: slugHint,
+      }),
+    [call]
+  );
+  
   // Use ref to maintain stable client object reference
   // This prevents infinite loops in effects that depend on qv
   // The callbacks are already memoized, so they're stable
@@ -427,6 +467,8 @@ export function useQVClient(): QVClient {
     setCommonCard,
     getPseudoMapping,
     setPseudoMapping,
+    getRelaxFinalStructurePreview,
+    saveRelaxFinalStructure,
     checkConnection,
     refreshDaemonStatus,
   };
