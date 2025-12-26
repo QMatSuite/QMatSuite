@@ -51,6 +51,9 @@ export interface UseQEParameterMetadataResult {
   // Reload
   reloadMetadata: () => Promise<void>;
   isReloading: boolean;
+  
+  // Refresh (clear frontend cache, allow fresh loads)
+  refresh: () => void;
 }
 
 /**
@@ -300,7 +303,7 @@ export function useQEParameterMetadata(): UseQEParameterMetadataResult {
     }
   }, [qv]);
   
-  // Reload metadata
+  // Reload metadata (backend reload + clear frontend cache)
   const reloadMetadata = useCallback(async () => {
     setIsReloading(true);
     
@@ -333,6 +336,14 @@ export function useQEParameterMetadata(): UseQEParameterMetadataResult {
     }
   }, [qv, loadModules]);
   
+  // Refresh frontend cache only (clear loaded/in-flight, keep parameters array)
+  // This allows fresh loads without backend reload
+  const refresh = useCallback(() => {
+    loadedSectionsRef.current.clear();
+    inFlightRef.current.clear();
+    // Keep parameters array - it will be refreshed on next load
+  }, []);
+  
   return {
     modules,
     modulesLoading,
@@ -353,6 +364,7 @@ export function useQEParameterMetadata(): UseQEParameterMetadataResult {
     metadataInfo,
     reloadMetadata,
     isReloading,
+    refresh,
   };
 }
 
