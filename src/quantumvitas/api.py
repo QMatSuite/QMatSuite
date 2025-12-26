@@ -4866,7 +4866,7 @@ class QVService:
         
         # Load calculation to get working_dir
         wf_model = load_calculation(calculation_dir / "calculation.yaml", project_root=project_root)
-        working_dir_name = wf_model.calculation.get("working_dir", "raw")
+        working_dir_name = wf_model.working_dir
         raw_dir = find_calculation_raw_dir(calculation_dir, working_dir_name)
         
         # Resolve step to get step_type
@@ -4976,7 +4976,7 @@ class QVService:
         
         # Load calculation to get working_dir
         wf_model = load_calculation(calculation_dir / "calculation.yaml", project_root=project_root)
-        working_dir_name = wf_model.calculation.get("working_dir", "raw")
+        working_dir_name = wf_model.working_dir
         raw_dir = find_calculation_raw_dir(calculation_dir, working_dir_name)
         
         # Resolve step
@@ -5010,8 +5010,14 @@ class QVService:
         # This is extra safety but may be expensive - skip for MVP
         
         # Find output file
-        output_filename = CalculationFileNaming.output_filename(step_type, working_dir=raw_dir)
-        output_file = raw_dir / output_filename
+        # Try base name first, then check numbered versions if base doesn't exist
+        base_output = raw_dir / CalculationFileNaming.output_filename(step_type, working_dir=None)
+        if base_output.exists():
+            output_file = base_output
+        else:
+            # Try numbered versions (output_filename with working_dir will check for existing files)
+            output_filename = CalculationFileNaming.output_filename(step_type, working_dir=raw_dir)
+            output_file = raw_dir / output_filename
         
         if not output_file.exists():
             raise QVServiceError(

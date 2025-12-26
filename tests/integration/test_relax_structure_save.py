@@ -77,8 +77,10 @@ def test_save_relax_structure_idempotency(tmp_path: Path):
     step_id = generate_resource_id()
     step_path = calc_dir / "steps" / "relax.step.yaml"
     
+    step_meta = meta_from_name("step", name="relax", path=f"calculations/relax-test/steps/relax.step.yaml")
+    step_meta.id = step_id  # Set the ULID to match step_id in calculation.yaml
     step_spec = StructureStepSpec(
-        meta=meta_from_name("step", name="relax", path=f"calculations/relax-test/steps/relax.step.yaml"),
+        meta=step_meta,
         structure="si-bulk",  # Legacy selector
         structure_id=parent_structure_id,
         step_type="vc-relax",
@@ -110,6 +112,8 @@ def test_save_relax_structure_idempotency(tmp_path: Path):
     # Create mock output file with final coordinates
     raw_dir = calc_dir / "raw"
     raw_dir.mkdir()
+    # Create the output file with the base name
+    # The API code will first try the base name, then numbered versions if needed
     output_file = raw_dir / "vc-relax.out"
     output_file.write_text("""
 Begin final coordinates
@@ -137,9 +141,15 @@ End final coordinates
     
     structure_ulid_1 = result1["structure_ulid"]
     
-    # Verify structure file was created
+    # Verify structure file was created (should be 2 files: parent + new relaxed structure)
     structure_files = list((project_root / "structures").glob("*.json"))
-    assert len(structure_files) == 1
+    assert len(structure_files) == 2  # si-bulk.json (parent) + relaxed.json (new)
+    
+    # Verify the new structure file exists and has the correct ULID
+    new_structure_file = project_root / "structures" / "relaxed.json"
+    assert new_structure_file.exists()
+    new_structure_data = json.loads(new_structure_file.read_text())
+    assert new_structure_data["__qv_meta__"]["id"] == structure_ulid_1
     
     # Verify step YAML was updated with produced_structure_ulid
     step_data = yaml.safe_load(step_path.read_text())
@@ -157,7 +167,7 @@ End final coordinates
     assert result2["structure_ulid"] == structure_ulid_1
     assert result2["already_exists"] is True
     
-    # Verify no new structure file was created
+    # Verify no new structure file was created (still 2 files: parent + relaxed)
     structure_files_after = list((project_root / "structures").glob("*.json"))
-    assert len(structure_files_after) == 1
+    assert len(structure_files_after) == 2  # si-bulk.json (parent) + relaxed.json (same as before)
 
