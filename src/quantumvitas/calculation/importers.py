@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import shutil
 from pathlib import Path
-from typing import Dict, Iterable, Optional, Sequence
+from typing import Any, Dict, Iterable, Optional, Sequence
 
 import yaml
 
@@ -391,6 +391,35 @@ def build_calculation_from_qe_inputs(
         for result in step_results
     ]
 
+    # Build calc-level species_map from all input files
+    # This is the authoritative source of truth for pseudo mapping
+    from quantumvitas.calculation.folder_import import (
+        extract_species_map_from_qe_input,
+        merge_species_maps,
+    )
+    
+    calc_species_map: Dict[str, Dict[str, Any]] = {}
+    for input_path in files:
+        try:
+            qe_input = QEInputParser.parse_file(input_path)
+            file_species_map = extract_species_map_from_qe_input(qe_input)
+            if file_species_map:
+                calc_species_map = merge_species_maps(
+                    calc_species_map,
+                    file_species_map,
+                    source_file=input_path.name,
+                )
+        except ValueError:
+            # Re-raise conflict errors
+            raise
+        except Exception:
+            # Ignore other parse errors
+            continue
+    
+    # Add species_map to calculation metadata if we have any mappings
+    if calc_species_map:
+        calculation_meta["species_map"] = calc_species_map
+    
     calculation_config = {
         "id": calculation_id,
         "mode": mode,

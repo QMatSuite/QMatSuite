@@ -132,6 +132,10 @@ class CalculationModel:
     Structure references:
     - structure_id: ULID of the structure (canonical reference)
     - structure_name: Optional display name (cosmetic only, not used for resolution)
+    
+    Pseudopotential mapping:
+    - species_map: dict[element_symbol -> {pseudopot: str, mass: float?}]
+      This is the authoritative source for pseudo mapping (not step-level).
     """
     meta: ResourceMeta
     structure_id: Optional[str] = None  # Canonical structure reference (ULID)
@@ -140,6 +144,10 @@ class CalculationModel:
     mode: str = "normal"
     working_dir: str = "raw"
     steps: List[CalculationStepEntry] = field(default_factory=list)
+    # Calculation-level pseudopotential mapping: element -> {pseudopot, mass}
+    # This is the authoritative source of truth for pseudo mapping.
+    # Step-level species_overrides are deprecated (used only for backwards compat on load).
+    species_map: Optional[Dict[str, Dict[str, Any]]] = None
     
     @property
     def id(self) -> str:
@@ -160,6 +168,7 @@ class CalculationModel:
         DAG + ID-only constitution:
         - structure_id: ULID only (canonical reference)
         - steps: step_id (ULID) only
+        - species_map: element -> {pseudopot, mass} (calc-level authority)
         - Do NOT write structure_name (cosmetic only, not used for resolution)
         """
         result: Dict[str, Any] = {
@@ -172,6 +181,9 @@ class CalculationModel:
         # Do NOT write structure_name (cosmetic only, not used for resolution)
         if self.structure_id:
             result["structure_id"] = self.structure_id
+        # Write species_map (calculation-level pseudo mapping)
+        if self.species_map:
+            result["species_map"] = self.species_map
         return result
     
     @classmethod
@@ -236,6 +248,9 @@ class CalculationModel:
         effective_project_root = project_root if project_root else (Path(default_path) if default_path else Path.cwd())
         steps = [CalculationStepEntry.from_dict(s, project_root=effective_project_root) for s in data.get("steps", [])]
         
+        # Load species_map (calculation-level pseudo mapping)
+        species_map = data.get("species_map") or calculation_section.get("species_map")
+        
         return cls(
             meta=meta,
             structure_id=structure_id,
@@ -243,6 +258,7 @@ class CalculationModel:
             mode=data.get("mode", "normal"),
             working_dir=working_dir,
             steps=steps,
+            species_map=species_map,
         )
     
     # Legacy resolve_step_ids method removed - all steps must have step_id (ULID) at load time
@@ -327,6 +343,83 @@ def save_calculation(model: CalculationModel, path: Path) -> None:
     
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(yaml.safe_dump(model.to_dict(), sort_keys=False))
+
+
+def migrate_species_overrides_to_calc(
+    calculation: CalculationModel,
+    step_species_overrides_list: List[Optional[Dict[str, Dict[str, Any]]]],
+) -> CalculationModel:
+    """
+    Migrate step-level species_overrides to calculation-level species_map.
+    
+    This migration is applied when loading a calculation that has:
+    - No species_map set yet
+    - Steps with species_overrides
+    
+    Args:
+        calculation: The CalculationModel to migrate
+        step_species_overrides_list: List of species_overrides from each step in order
+            (None for steps without species_overrides)
+    
+    Returns:
+        Updated CalculationModel with species_map populated
+        
+    Raises:
+        ValueError: If species_overrides conflict across steps (different pseudo for same element)
+    """
+    # If species_map already set, no migration needed
+    if calculation.species_map:
+        return calculation
+    
+    # Collect all species_overrides from steps
+    merged_map: Dict[str, Dict[str, Any]] = {}
+    
+    for i, step_overrides in enumerate(step_species_overrides_list):
+        if not step_overrides:
+            continue
+        
+        for element, settings in step_overrides.items():
+            if element not in merged_map:
+                # First occurrence of this element
+                merged_map[element] = dict(settings)  # Copy to avoid mutation
+            else:
+                # Check for conflicts
+                existing = merged_map[element]
+                for key in ["pseudopot", "mass"]:
+                    if key in settings and key in existing:
+                        new_val = settings[key]
+                        old_val = existing[key]
+                        # For mass, allow small floating point differences
+                        if key == "mass":
+                            try:
+                                if abs(float(new_val) - float(old_val)) > 1e-6:
+                                    raise ValueError(
+                                        f"Conflicting mass for element {element}: "
+                                        f"{old_val} (earlier step) vs {new_val} (step {i+1})"
+                                    )
+                            except (TypeError, ValueError):
+                                # If conversion fails, do string comparison
+                                if str(new_val) != str(old_val):
+                                    raise ValueError(
+                                        f"Conflicting mass for element {element}: "
+                                        f"{old_val} (earlier step) vs {new_val} (step {i+1})"
+                                    )
+                        elif key == "pseudopot":
+                            if str(new_val) != str(old_val):
+                                raise ValueError(
+                                    f"Conflicting pseudopotential mapping for element {element}: "
+                                    f"'{old_val}' (earlier step) vs '{new_val}' (step {i+1}). "
+                                    "All steps in a calculation must use the same pseudopotential for each element."
+                                )
+                    elif key in settings and key not in existing:
+                        # New key not in existing, add it
+                        existing[key] = settings[key]
+    
+    # Update calculation with migrated species_map
+    if merged_map:
+        calculation.species_map = merged_map
+    
+    return calculation
 
 
 # ---------------------------------------------------------------------------
