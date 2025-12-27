@@ -159,6 +159,79 @@ def materialize_project_from_input_folder(
     temp_dir: Optional[Path] = None
 ) -> Dict[str, Any]:
     """
+    DEPRECATED: Use quantumvitas.calculation.folder_import.materialize_project_from_qe_input_folder() instead.
+    
+    This function is kept for backward compatibility but now delegates to the global API.
+    """
+    from quantumvitas.calculation.folder_import import materialize_project_from_qe_input_folder
+    from quantumvitas.api import QVService
+    import tempfile
+    
+    # Use global API to create snapshot
+    snapshot = materialize_project_from_qe_input_folder(
+        folder=input_folder,
+        project_name=project_name,
+        calculation_name=calculation_name or input_folder.name,
+        service=QVService,
+        temp_dir=temp_dir,
+    )
+    
+    # Materialize snapshot to get project_root for return value
+    if temp_dir is None:
+        temp_base = tempfile.mkdtemp(prefix="qv_materialize_")
+        temp_project_dir = Path(temp_base) / project_name
+    else:
+        temp_project_dir = Path(temp_dir) / project_name
+    
+    from quantumvitas.project.snapshot import materialize_project_from_snapshot
+    project_root = materialize_project_from_snapshot(
+        snapshot=snapshot,
+        target_dir=temp_project_dir,
+    )
+    
+    # Extract information for return value
+    from quantumvitas.core.resolution import build_resource_index
+    index = build_resource_index(project_root)
+    
+    # Get structure and calculation selectors
+    structures = snapshot.structures
+    calculations = snapshot.calculations
+    
+    structure_selector = structures[0]["meta"]["slug"] if structures else None
+    calculation_selector = calculations[0]["meta"]["id"] if calculations else None
+    
+    # Extract step types
+    step_types = []
+    if calculations:
+        for calc in calculations:
+            for step in calc.get("steps", []):
+                step_types.append(step.get("step_type", "unknown"))
+    
+    # Extract pseudos needed
+    all_pseudos_needed = set()
+    if snapshot.pseudo and snapshot.pseudo.get("files"):
+        all_pseudos_needed.update(snapshot.pseudo["files"])
+    
+    return {
+        "project_root": project_root,
+        "structure_selector": structure_selector,
+        "calculation_selector": calculation_selector,
+        "step_types": step_types,
+        "input_files": sorted(input_folder.glob("*.in")),
+        "all_pseudos_needed": all_pseudos_needed,
+        "index": index,
+        "config": None,
+    }
+
+
+def _materialize_project_from_input_folder_legacy(
+    input_folder: Path,
+    project_name: str,
+    calculation_name: Optional[str] = None,
+    pseudo_search_dirs: Optional[List[Path]] = None,
+    temp_dir: Optional[Path] = None
+) -> Dict[str, Any]:
+    """
     Core function: Materialize a QMatSuite project from a folder containing QE input files.
     
     This function can be used to reconstruct a project from raw input files, e.g., when
@@ -729,6 +802,152 @@ def extract_reference_artifacts_from_outputs(
     return reference_artifacts
 
 
+def validate_roundtrip_regeneration(
+    project_root: Path,
+    calculation_selector: str,
+    original_input_files: List[Path],
+    output_dir: Path,
+    demo_name: str,
+    index: Optional[Any] = None,
+    config: Optional[dict] = None,
+) -> ValidationResult:
+    """
+    Strengthened round-trip validation: regenerate .in files from step specs and compare.
+    
+    When --verify is enabled:
+    1. Materialize the demo project
+    2. For each original .in (in execution order), regenerate .in from the imported step spec
+    3. Semantic-compare regenerated input to original
+    4. Explicitly assert:
+       - regenerated .in contains ATOMIC_SPECIES
+       - no missing pseudo placeholder remains
+       - step.cards does NOT contain ATOMIC_POSITIONS/CELL_PARAMETERS/ATOMIC_SPECIES
+    5. Write regenerated .in files to generated_inputs/ for inspection
+    
+    Args:
+        project_root: Path to materialized project
+        calculation_selector: Calculation selector (ID)
+        original_input_files: List of original input files in execution order
+        output_dir: Output directory for demo files
+        demo_name: Demo name (for generated_inputs subdirectory)
+        index: Optional resource index
+        config: Optional project config
+        
+    Returns:
+        ValidationResult with success status and differences
+    """
+    from quantumvitas.core.resolution import require_calculation, require_step, require_structure
+    from quantumvitas.api import QVService
+    from quantumvitas.core.pseudo import is_missing_pseudo_placeholder
+    
+    differences = []
+    generated_inputs_dir = output_dir / "generated_inputs" / demo_name
+    generated_inputs_dir.mkdir(parents=True, exist_ok=True)
+    
+    try:
+        # Get calculation detail
+        calc_detail = QVService.get_calculation_detail(
+            project_root=project_root,
+            calculation_selector=calculation_selector,
+            index=index,
+            config=config
+        )
+        
+        steps = calc_detail.get("steps", [])
+        if len(steps) != len(original_input_files):
+            differences.append(
+                f"Step count mismatch: {len(steps)} steps vs {len(original_input_files)} input files"
+            )
+        
+        # Validate each step
+        for i, (step_entry, original_input) in enumerate(zip(steps, original_input_files)):
+            step_selector = step_entry.get("slug") or step_entry.get("name")
+            if not step_selector:
+                differences.append(f"Step {i+1} has no selector")
+                continue
+            
+            try:
+                # Load step spec
+                step_resolved = require_step(
+                    project_root, calculation_selector, step_selector, config=config, index=index
+                )
+                step_spec_data = yaml.safe_load(step_resolved.absolute_path.read_text())
+                step_spec = StructureStepSpec.from_dict(step_spec_data, source_path=step_resolved.absolute_path)
+                
+                # Assert: step.cards does NOT contain ATOMIC_POSITIONS/CELL_PARAMETERS/ATOMIC_SPECIES
+                forbidden_cards = {
+                    QECardType.ATOMIC_POSITIONS,
+                    QECardType.CELL_PARAMETERS,
+                    QECardType.ATOMIC_SPECIES,
+                }
+                if step_spec.cards:
+                    for card_type in forbidden_cards:
+                        if card_type in step_spec.cards:
+                            differences.append(
+                                f"Step {i+1} ({step_selector}): cards contains forbidden card {card_type}"
+                            )
+                
+                # Load structure
+                structure_id = step_spec.structure_id
+                if not structure_id:
+                    differences.append(f"Step {i+1} ({step_selector}): no structure_id")
+                    continue
+                
+                structure_resolved = require_structure(
+                    project_root, structure_id, config=config, index=index
+                )
+                structure = read_structure(structure_resolved.absolute_path)
+                
+                # Generate QE input from step spec
+                generated_qe_input, _ = generate_qe_input_from_spec(
+                    structure=structure,
+                    spec=step_spec
+                )
+                
+                # Assert: regenerated .in contains ATOMIC_SPECIES
+                atomic_species_card = generated_qe_input.get_card(QECardType.ATOMIC_SPECIES)
+                if not atomic_species_card:
+                    differences.append(f"Step {i+1} ({step_selector}): regenerated input missing ATOMIC_SPECIES")
+                else:
+                    # Assert: no missing pseudo placeholder
+                    if atomic_species_card.data:
+                        for row in atomic_species_card.data:
+                            if isinstance(row, list) and len(row) >= 3:
+                                pseudo_name = str(row[2]).strip()
+                                if is_missing_pseudo_placeholder(pseudo_name):
+                                    differences.append(
+                                        f"Step {i+1} ({step_selector}): regenerated input has missing pseudo placeholder: {pseudo_name}"
+                                    )
+                
+                # Write regenerated input to generated_inputs/
+                generated_input_path = generated_inputs_dir / f"step_{i+1:02d}_{original_input.name}"
+                QEInputGenerator.write_file(generated_qe_input, generated_input_path)
+                
+                # Semantic-compare regenerated input to original
+                comparison = validate_roundtrip(original_input, generated_input_path)
+                if not comparison.success:
+                    differences.extend([
+                        f"Step {i+1} ({step_selector}): {diff}" for diff in comparison.differences
+                    ])
+                    if comparison.error:
+                        differences.append(f"Step {i+1} ({step_selector}): {comparison.error}")
+                
+            except Exception as e:
+                differences.append(f"Step {i+1} ({step_selector}): Error during validation: {str(e)}")
+        
+        return ValidationResult(
+            success=len(differences) == 0,
+            differences=differences
+        )
+        
+    except Exception as e:
+        import traceback
+        return ValidationResult(
+            success=False,
+            error=f"Round-trip validation error: {str(e)}\n{traceback.format_exc()}"
+        )
+
+
 def validate_roundtrip(original_input: Path, generated_input: Path) -> ValidationResult:
     """
     Validate round-trip conversion: parse -> export -> compare.
@@ -1016,8 +1235,11 @@ def create_demo_from_dataset(
                 error="No valid input files found after filtering"
             )
         
-        # Use core function to materialize project from input folder
+        # Use global API to materialize project from input folder
+        from quantumvitas.calculation.folder_import import materialize_project_from_qe_input_folder
+        from quantumvitas.api import QVService
         import tempfile
+        
         temp_base = tempfile.mkdtemp(prefix="qv_import_")
         
         try:
@@ -1025,35 +1247,52 @@ def create_demo_from_dataset(
             calc_name = dataset.folder_name.split("_", 1)[1] if "_" in dataset.folder_name else dataset.folder_name
             calc_name = calc_name.replace("_", " ").title()
             
-            # Materialize project using core function
-            materialize_result = materialize_project_from_input_folder(
-                input_folder=dataset.folder_path,
+            # Materialize project using global API
+            snapshot = materialize_project_from_qe_input_folder(
+                folder=dataset.folder_path,
                 project_name=demo_name,
                 calculation_name=calc_name,
-                pseudo_search_dirs=pseudo_search_dirs,
+                service=QVService,
                 temp_dir=Path(temp_base)
             )
             
-            project_root = materialize_result["project_root"]
-            structure_selector = materialize_result["structure_selector"]
-            calculation_selector = materialize_result["calculation_selector"]
-            step_types = materialize_result["step_types"]
-            materialized_input_files = materialize_result["input_files"]
-            materialized_pseudos = materialize_result["all_pseudos_needed"]
-            index = materialize_result["index"]
-            config = materialize_result["config"]
+            # Materialize snapshot to get project_root for verification
+            temp_project_dir = Path(temp_base)
+            from quantumvitas.project.snapshot import materialize_project_from_snapshot
+            project_root = materialize_project_from_snapshot(
+                snapshot=snapshot,
+                parent_dir=temp_project_dir,
+                new_project_name=demo_name,
+            )
             
-            # Copy pseudopotentials to project
-            project_pseudo_dir = project_root / "pseudo"
-            project_pseudo_dir.mkdir(parents=True, exist_ok=True)
+            # Extract information from snapshot
+            from quantumvitas.core.resolution import build_resource_index
+            index = build_resource_index(project_root)
             
-            for pseudo_name in all_pseudos_needed:
-                pseudo_file = find_pseudopotential_file(pseudo_name, pseudo_search_dirs, dataset_path=dataset.folder_path)
-                if pseudo_file:
-                    shutil.copy2(pseudo_file, project_pseudo_dir / pseudo_name)
+            # Get structure and calculation selectors
+            structures = snapshot.structures
+            calculations = snapshot.calculations
             
-            # Create project snapshot
-            snapshot = export_project_to_snapshot(project_root)
+            structure_selector = structures[0]["meta"]["id"] if structures else None
+            calculation_selector = calculations[0]["meta"]["id"] if calculations else None
+            
+            # Extract step types
+            step_types = []
+            if calculations:
+                for calc in calculations:
+                    for step in calc.get("steps", []):
+                        step_types.append(step.get("step_type", "unknown"))
+            
+            # Extract pseudos needed
+            materialized_pseudos = set()
+            if snapshot.pseudo and snapshot.pseudo.get("files"):
+                materialized_pseudos.update(snapshot.pseudo["files"])
+            
+            materialized_input_files = sorted(dataset.folder_path.glob("*.in"))
+            config = None  # Will be loaded by QVService methods if needed
+            
+            # Snapshot is already created by materialize_project_from_qe_input_folder
+            # No need to copy pseudos - they're handled by materialize_project_from_snapshot
             
             # Extract reference artifacts from output files
             reference_artifacts = {}
@@ -1121,54 +1360,19 @@ def create_demo_from_dataset(
             except Exception as e:
                 print(f"    ⚠ Warning: Could not verify demo load: {str(e)}")
         
-            # Validate round-trip for first input file
+            # Round-trip validation: regenerate .in files from step specs and compare
             validation = None
-            if valid_input_files and step_types:
-                first_input = valid_input_files[0]
-                
+            if valid_input_files and step_types and project_root.exists():
                 try:
-                    # Get first step from calculation
-                    from quantumvitas.core.resolution import require_calculation, require_step
-                    from quantumvitas.api import QVService
-                    calc_resolved = require_calculation(project_root, calculation_selector, config=config, index=index)
-                    calc_detail = QVService.get_calculation_detail(
+                    validation = validate_roundtrip_regeneration(
                         project_root=project_root,
                         calculation_selector=calculation_selector,
+                        original_input_files=valid_input_files,
+                        output_dir=output_dir,
+                        demo_name=demo_name,
                         index=index,
                         config=config
                     )
-                    
-                    if calc_detail.get("steps"):
-                        first_step = calc_detail["steps"][0]
-                        step_selector = first_step.get("slug") or first_step.get("name")
-                        
-                        # Load step spec
-                        step_resolved = require_step(project_root, calculation_selector, step_selector, config=config, index=index)
-                        step_spec_data = yaml.safe_load(step_resolved.absolute_path.read_text())
-                        step_spec = StructureStepSpec.from_dict(step_spec_data, source_path=step_resolved.absolute_path)
-                        
-                        # Load structure - resolve it from the project
-                        from quantumvitas.core.resolution import require_structure
-                        structure_resolved = require_structure(project_root, structure_selector, config=config, index=index)
-                        structure = read_structure(structure_resolved.absolute_path)
-                        
-                        # Generate QE input
-                        generated_qe_input, _ = generate_qe_input_from_spec(
-                            structure=structure,
-                            spec=step_spec
-                        )
-                        
-                        # Write to temp file for comparison
-                        temp_generated = Path(tempfile.mkdtemp()) / "generated.in"
-                        QEInputGenerator.write_file(generated_qe_input, temp_generated)
-                        
-                        # Validate
-                        validation = validate_roundtrip(first_input, temp_generated)
-                        
-                        # Clean up temp generated file
-                        temp_generated.unlink()
-                        temp_generated.parent.rmdir()
-                        
                 except Exception as e:
                     import traceback
                     validation = ValidationResult(

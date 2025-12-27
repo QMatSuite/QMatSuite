@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KDG9DE1TCX3R7BRQ2JPW73R8
+    id: 01KDGCY9Q7C97SC6PYEJXAGQNE
     name: 15_bulk_modulus_Si
     slug: 15_bulk_modulus_si
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KDG9DE1XP3KV0J4XSR0GY1D4
+    id: 01KDGCY9QHZF8SHYYSJXJ1F0PA
     name: si.1_scf_equilibrium
     slug: si-1_scf_equilibrium
     path: structures/si-1_scf_equilibrium.json
@@ -69,67 +69,7 @@ structures:
       - 1.3673530097223552
       - 1.3673530097223552
 - meta:
-    id: 01KDG9DE2AH95TWDXQ0TFE03P5
-    name: si.1_scf_equilibrium 2
-    slug: si-1_scf_equilibrium-2
-    path: structures/si-1_scf_equilibrium-2.json
-    kind: structure
-  data:
-    '@module': pymatgen.core.structure
-    '@class': Structure
-    charge: 0
-    lattice:
-      matrix:
-      - - -2.734706019444711
-        - 0.0
-        - 2.734706019444711
-      - - 0.0
-        - 2.734706019444711
-        - 2.734706019444711
-      - - -2.734706019444711
-        - 2.734706019444711
-        - 0.0
-      pbc:
-      - true
-      - true
-      - true
-      a: 3.8674583418020507
-      b: 3.8674583418020507
-      c: 3.8674583418020507
-      alpha: 59.99999999999999
-      beta: 59.99999999999999
-      gamma: 59.99999999999999
-      volume: 40.9036379239812
-    properties: {}
-    sites:
-    - species:
-      - element: Si
-        occu: 1
-      abc:
-      - 0.0
-      - 0.0
-      - 0.0
-      properties: {}
-      label: Si
-      xyz:
-      - 0.0
-      - 0.0
-      - 0.0
-    - species:
-      - element: Si
-        occu: 1
-      abc:
-      - -0.25
-      - 0.75
-      - -0.25
-      properties: {}
-      label: Si
-      xyz:
-      - 1.3673530097223554
-      - 1.3673530097223552
-      - 1.3673530097223552
-- meta:
-    id: 01KDG9DE32XY4SQA58YXBSF5AY
+    id: 01KDGCY9R93YPHA36JG6Q0TTZK
     name: si.2_scf_1.01a
     slug: si-2_scf_1-01a
     path: structures/si-2_scf_1-01a.json
@@ -189,7 +129,7 @@ structures:
       - 1.3810265398195787
       - 1.3810265398195791
 - meta:
-    id: 01KDG9DE44RJZ8SJEKZQQCKTV6
+    id: 01KDGCY9SBXR02CYTPP6GK072M
     name: si.3_scf_0.99a
     slug: si-3_scf_0-99a
     path: structures/si-3_scf_0-99a.json
@@ -250,7 +190,7 @@ structures:
       - 1.3536794796251315
 calculations:
 - meta:
-    id: 01KDG9DE203M7362XH4R8QS5WR
+    id: 01KDGCY9Q9T4XGVT4KQC1S26TZ
     name: Bulk Modulus Si
     slug: bulk-modulus-si
     path: calculations/bulk-modulus-si
@@ -259,7 +199,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KDG9DE25Z4BADEMD9YVVFHDF
+      id: 01KDGCY9QCD2M4EMVR3TVDWE87
       name: si.1_scf_equilibrium
       slug: si-1_scf_equilibrium
       path: si.1_scf_equilibrium.step.yaml
@@ -296,7 +236,7 @@ calculations:
         mass: 28.0855
         pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
   - meta:
-      id: 01KDG9DE2WCXK67WW0ZA020VPN
+      id: 01KDGCY9R3GCGHSDBCY4JQCDKD
       name: si.2_scf_1.01a
       slug: si-2_scf_1-01a
       path: si.2_scf_1.01a.step.yaml
@@ -333,7 +273,7 @@ calculations:
         mass: 28.0855
         pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
   - meta:
-      id: 01KDG9DE3XS2B7VKQW4PZWXVHT
+      id: 01KDGCY9S44KYVFRF2CG2BW4D6
       name: si.3_scf_0.99a
       slug: si-3_scf_0-99a
       path: si.3_scf_0.99a.step.yaml
@@ -369,7 +309,7 @@ calculations:
       Si:
         mass: 28.0855
         pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
-  structure_id: 01KDG9DE1XP3KV0J4XSR0GY1D4
+  structure_id: 01KDGCY9QHZF8SHYYSJXJ1F0PA
 pseudo:
   directory: pseudo
   files:
@@ -377,13 +317,13 @@ pseudo:
 meta:
   id: 15_bulk_modulus_Si
   title: 15 Bulk Modulus Si
-  subtitle: "unknown \u2192 unknown \u2192 unknown"
+  subtitle: "SCF \u2192 SCF \u2192 SCF"
   tags:
   - tutorial
   - qe
-  - unknown
-  - unknown
-  recommended_analysis: null
+  - scf
+  - scf
+  recommended_analysis: scf
   difficulty: beginner
   reference_artifacts:
     scf: 15_bulk_modulus_Si.scf.json

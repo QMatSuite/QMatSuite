@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KDG9DED2ZGWV73Q6HQ3BQ60D
+    id: 01KDGCY9ZB6X41V78YD92AKWDQ
     name: 18_H2O_MD
     slug: 18_h2o_md
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KDG9DED45WX5NYKBX4CB832D
+    id: 01KDGCY9ZJB2JN1KMK8GC9A0XR
     name: h2o.1_relax
     slug: h2o-1_relax
     path: structures/h2o-1_relax.json
@@ -82,80 +82,7 @@ structures:
       - 5.299999999999999
       - 4.05
 - meta:
-    id: 01KDG9DEDFNJXWX3MSBBR1FCSK
-    name: h2o.1_relax 2
-    slug: h2o-1_relax-2
-    path: structures/h2o-1_relax-2.json
-    kind: structure
-  data:
-    '@module': pymatgen.core.structure
-    '@class': Structure
-    charge: 0
-    lattice:
-      matrix:
-      - - 7.9376581638
-        - 0.0
-        - 0.0
-      - - 0.0
-        - 7.9376581638
-        - 0.0
-      - - 0.0
-        - 0.0
-        - 7.9376581638
-      pbc:
-      - true
-      - true
-      - true
-      a: 7.9376581638
-      b: 7.9376581638
-      c: 7.9376581638
-      alpha: 90.0
-      beta: 90.0
-      gamma: 90.0
-      volume: 500.12340126674945
-    properties: {}
-    sites:
-    - species:
-      - element: O
-        occu: 1
-      abc:
-      - 0.6299087081883539
-      - 0.6299087081883539
-      - 0.6299087081883539
-      properties: {}
-      label: O
-      xyz:
-      - 4.999999999999999
-      - 4.999999999999999
-      - 4.999999999999999
-    - species:
-      - element: H
-        occu: 1
-      abc:
-      - 0.6299087081883539
-      - 0.6677032306796551
-      - 0.7495913627441412
-      properties: {}
-      label: H
-      xyz:
-      - 4.999999999999999
-      - 5.299999999999999
-      - 5.949999999999999
-    - species:
-      - element: H
-        occu: 1
-      abc:
-      - 0.6299087081883539
-      - 0.6677032306796551
-      - 0.5102260536325667
-      properties: {}
-      label: H
-      xyz:
-      - 4.999999999999999
-      - 5.299999999999999
-      - 4.05
-- meta:
-    id: 01KDG9DEE6D3SZEX0B386CZA2K
+    id: 01KDGCYA09B6JCMSRADP63NA1N
     name: h2o.2_MD
     slug: h2o-2_md
     path: structures/h2o-2_md.json
@@ -229,7 +156,7 @@ structures:
       - 4.220319481
 calculations:
 - meta:
-    id: 01KDG9DED6JVWBJN1SHNG6XP75
+    id: 01KDGCY9ZC8WAZNWVB2QKSF909
     name: H2O Md
     slug: h2o-md
     path: calculations/h2o-md
@@ -238,7 +165,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KDG9DEDBM7G7X847MWJRVEPM
+      id: 01KDGCY9ZEARWTYKT1A6ZBSQ1E
       name: h2o.1_relax
       slug: h2o-1_relax
       path: h2o.1_relax.step.yaml
@@ -277,7 +204,7 @@ calculations:
         mass: 15.999
         pseudopot: O.pbe-n-kjpaw_psl.0.1.UPF
   - meta:
-      id: 01KDG9DEE12F3JQHP9659KTX4M
+      id: 01KDGCYA03MHXQ5CFJTP7CCFQN
       name: h2o.2_MD
       slug: h2o-2_md
       path: h2o.2_MD.step.yaml
@@ -320,7 +247,7 @@ calculations:
       O:
         mass: 15.999
         pseudopot: O.pbe-n-kjpaw_psl.0.1.UPF
-  structure_id: 01KDG9DED45WX5NYKBX4CB832D
+  structure_id: 01KDGCY9ZJB2JN1KMK8GC9A0XR
 pseudo:
   directory: pseudo
   files:
@@ -329,12 +256,12 @@ pseudo:
 meta:
   id: 18_H2O_MD
   title: 18 H2O Md
-  subtitle: "unknown \u2192 unknown"
+  subtitle: "Relax \u2192 md"
   tags:
   - tutorial
   - qe
-  - unknown
-  - unknown
+  - relax
+  - md
   recommended_analysis: null
   difficulty: beginner
   reference_artifacts: null

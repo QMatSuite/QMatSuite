@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KDG9DC9C0PCX1F9BT0GH69PX
+    id: 01KDGCY8FXJQYE3JEWPVRHF80D
     name: 00_Si_scf
     slug: 00_si_scf
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KDG9DC9EFR3MKA0FCKF7SNPP
+    id: 01KDGCY8G5DX0QNK4HB8S5YDQ4
     name: si.scf
     slug: si-scf
     path: structures/si-scf.json
@@ -68,69 +68,9 @@ structures:
       - 1.349401887846
       - 1.3494018878460001
       - 1.3494018878460001
-- meta:
-    id: 01KDG9DC9SE1YKMHGQ71RNRW3S
-    name: si.scf 2
-    slug: si-scf-2
-    path: structures/si-scf-2.json
-    kind: structure
-  data:
-    '@module': pymatgen.core.structure
-    '@class': Structure
-    charge: 0
-    lattice:
-      matrix:
-      - - -2.698803775692
-        - 0.0
-        - 2.698803775692
-      - - 0.0
-        - 2.698803775692
-        - 2.698803775692
-      - - -2.698803775692
-        - 2.698803775692
-        - 0.0
-      pbc:
-      - true
-      - true
-      - true
-      a: 3.8166849017673425
-      b: 3.8166849017673425
-      c: 3.8166849017673425
-      alpha: 59.99999999999999
-      beta: 59.99999999999999
-      gamma: 59.99999999999999
-      volume: 39.31370032677663
-    properties: {}
-    sites:
-    - species:
-      - element: Si
-        occu: 1
-      abc:
-      - 0.0
-      - 0.0
-      - 0.0
-      properties: {}
-      label: Si
-      xyz:
-      - 0.0
-      - 0.0
-      - 0.0
-    - species:
-      - element: Si
-        occu: 1
-      abc:
-      - -0.25
-      - 0.75
-      - -0.25
-      properties: {}
-      label: Si
-      xyz:
-      - 1.349401887846
-      - 1.3494018878460001
-      - 1.3494018878460001
 calculations:
 - meta:
-    id: 01KDG9DC9G04SDGXZ8TWET0V45
+    id: 01KDGCY8FZP8G6GB7EVKMRKT3S
     name: Si Scf
     slug: si-scf
     path: calculations/si-scf
@@ -139,7 +79,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KDG9DC9NSB2RV094T7SA1MNH
+      id: 01KDGCY8G15R9XDM3XARHXTTR1
       name: si.scf
       slug: si-scf
       path: si.scf.step.yaml
@@ -167,7 +107,7 @@ calculations:
       Si:
         mass: 28.086
         pseudopot: Si.pz-vbc.UPF
-  structure_id: 01KDG9DC9EFR3MKA0FCKF7SNPP
+  structure_id: 01KDGCY8G5DX0QNK4HB8S5YDQ4
 pseudo:
   directory: pseudo
   files:
@@ -175,12 +115,12 @@ pseudo:
 meta:
   id: 00_Si_scf
   title: 0 Si Scf
-  subtitle: unknown
+  subtitle: SCF
   tags:
   - tutorial
   - qe
-  - unknown
-  recommended_analysis: null
+  - scf
+  recommended_analysis: scf
   difficulty: beginner
   reference_artifacts:
     scf: 00_Si_scf.scf.json
