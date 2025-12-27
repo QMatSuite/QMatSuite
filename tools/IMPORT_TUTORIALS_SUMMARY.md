@@ -19,16 +19,23 @@ This document summarizes the implementation of the tutorial dataset importer tha
 
 2. **Pseudopotential Mapping**
    - Extracts pseudopotential filenames from `ATOMIC_SPECIES` cards
-   - Searches in `pseudo/` directory (repo root)
-   - Reports missing pseudopotentials with clear error messages
+   - Searches in dataset folder, `tests/data/`, and `pseudo/` directory
+   - Automatically downloads missing pseudos to `repo/pseudo/` using `QVService.download_pseudo_by_filename()`
+   - Reports failures if download also fails (404 errors)
+   - During demo expansion, pseudos are copied from `repo/pseudo/` to `project/pseudo/`
 
 3. **Project Structure Creation**
-   - Uses `build_calculation_from_qe_inputs()` from `quantumvitas.calculation.importers`
+   - Uses QVService API (matching manual workflow):
+     - `QVService.init_project()` - Creates empty project
+     - `QVService.import_structure()` - Imports structure from first `.in` file
+     - `QVService.init_calculation()` - Creates calculation with structure
+     - `QVService.import_step_from_qe_input()` - Imports each step sequentially
    - Creates complete project structure with:
      - `project.qv.yml` (project config)
      - `calculations/main/calculation.yaml` (calculation config)
      - `calculations/main/steps/*.step.yaml` (step specs)
      - `structures/*.json` (structure files)
+   - **Core function**: `materialize_project_from_input_folder()` - Reusable function to materialize a project from a folder of `.in` files
 
 4. **Round-Trip Validation**
    - Parses original QE input
@@ -36,9 +43,10 @@ This document summarizes the implementation of the tutorial dataset importer tha
    - Generates QE input from step spec
    - Compares semantically (not strict textual)
    - Reports differences in:
-     - Namelist parameters
-     - Card data (K_POINTS, ATOMIC_SPECIES, etc.)
+     - Namelist parameters (excluding structure-related)
+     - Card data (K_POINTS only - structure cards excluded)
      - Module detection
+   - **Note**: Structure cards (ATOMIC_POSITIONS, CELL_PARAMETERS, ATOMIC_SPECIES) are not in steps - they're in the structure section or `species_overrides`
 
 5. **Demo Snapshot Generation**
    - Uses `export_project_to_snapshot()` to create project snapshots
@@ -88,10 +96,15 @@ This document summarizes the implementation of the tutorial dataset importer tha
 
 - `discover_datasets()`: Scans `tests/data/` and finds all datasets
 - `sort_input_files_by_execution_order()`: Sorts `.in` files by numeric prefix
+- `materialize_project_from_input_folder()`: **Core function** - Materializes a project from a folder of `.in` files
+  - Handles structure preprocessing (injects missing CELL_PARAMETERS, fixes ibrav issues)
+  - Uses QVService API to create project, import structure, create calculation, import steps
+  - Rebuilds resource index after each major step
 - `extract_pseudopotential_names()`: Extracts pseudo filenames from ATOMIC_SPECIES
 - `find_pseudopotential_file()`: Searches for pseudo files in search directories
 - `validate_roundtrip()`: Performs semantic comparison of original vs generated input
 - `create_demo_from_dataset()`: Main function that creates a demo from a dataset
+- `verify_demo_consistency()`: Verifies generated demo can be loaded and checks structure
 
 ## Usage
 
@@ -151,9 +164,14 @@ Round-trip validation is **semantic**, not strict textual:
 - Ignores structure-related parameters (stored in structure JSON)
 - Compares:
   - Namelist parameters (excluding structure-related)
-  - Card data (K_POINTS, ATOMIC_SPECIES)
+  - Card data (K_POINTS only - structure cards are excluded)
   - Module detection
-  - Pseudopotential names
+  - Pseudopotential names (from `species_overrides`)
+
+**Structure Separation:**
+- `ATOMIC_POSITIONS` and `CELL_PARAMETERS`: Stored in structure JSON, not in steps
+- `ATOMIC_SPECIES`: Extracted to `species_overrides` (mass, pseudopotential), not in cards
+- Steps only contain calculation-specific cards (K_POINTS, etc.)
 
 ## Future Enhancements
 
@@ -166,8 +184,11 @@ Potential improvements:
 
 ## Notes
 
-- The script uses existing QMatSuite APIs (`build_calculation_from_qe_inputs`, `export_project_to_snapshot`)
-- Pseudopotentials are copied (not symlinked) for self-contained demos
+- The script uses QVService API (`init_project`, `import_structure`, `init_calculation`, `import_step_from_qe_input`)
+- **Structure separation**: Geometry parameters are stored in structure section, not in steps
+- **Species overrides**: ATOMIC_SPECIES information is extracted to `species_overrides`, not stored as a card
+- Pseudopotentials are automatically downloaded if missing, then copied to demo snapshots
 - Original input files are preserved as reference
 - Validation is performed on the first step only (can be extended)
+- Core function `materialize_project_from_input_folder()` is reusable for other import scenarios
 

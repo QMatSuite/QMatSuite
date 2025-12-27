@@ -67,18 +67,15 @@
   background: white;
 }
 
-.common-card-pseudo__autofill-btn {
-  padding: var(--space-1, 0.5rem) var(--space-2, 0.75rem);
-  background-color: var(--info-color, #17a2b8);
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
+.common-card-pseudo__select--sssp-default {
+  border-color: var(--info-color, #17a2b8);
+  background-color: var(--info-bg, #e7f3f5);
 }
 
-.common-card-pseudo__autofill-btn:hover {
-  background-color: var(--info-hover, #138496);
+.common-card-pseudo__sssp-badge {
+  font-size: 0.85rem;
+  margin-left: var(--space-1, 0.25rem);
+  opacity: 0.7;
 }
 
 /* Mapping table */
@@ -204,4 +201,168 @@
 .common-card-pseudo__apply-btn:disabled {
   background-color: var(--disabled-color, #ccc);
   cursor: not-allowed;
+}
+
+/* Online Resolve section */
+.common-card-pseudo__online-resolve {
+  margin-top: var(--space-2, 1rem);
+  padding: var(--space-2, 0.75rem);
+  background-color: var(--bg-secondary, #f9f9f9);
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 4px;
+}
+
+.common-card-pseudo__online-resolve summary {
+  cursor: pointer;
+  font-weight: 500;
+  padding: var(--space-1, 0.5rem);
+  user-select: none;
+}
+
+.common-card-pseudo__online-resolve summary:hover {
+  color: var(--primary-color, #007bff);
+}
+
+.common-card-pseudo__online-content {
+  margin-top: var(--space-2, 0.75rem);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.75rem);
+}
+
+.common-card-pseudo__online-mode {
+  display: flex;
+  gap: var(--space-3, 1rem);
+  padding: var(--space-1, 0.5rem);
+}
+
+.common-card-pseudo__online-mode label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1, 0.25rem);
+  cursor: pointer;
+}
+
+.common-card-pseudo__online-filename,
+.common-card-pseudo__online-element {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 0.5rem);
+}
+
+.common-card-pseudo__online-filename label,
+.common-card-pseudo__online-element label {
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.common-card-pseudo__online-input-group {
+  display: flex;
+  gap: var(--space-1, 0.5rem);
+  align-items: center;
+}
+
+.common-card-pseudo__online-input {
+  flex: 1;
+  padding: var(--space-1, 0.5rem);
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.9rem;
+}
+
+.common-card-pseudo__online-select {
+  flex: 1;
+  padding: var(--space-1, 0.5rem);
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 4px;
+  background: white;
+}
+
+.common-card-pseudo__online-search-btn,
+.common-card-pseudo__online-download-btn {
+  padding: var(--space-1, 0.5rem) var(--space-2, 0.75rem);
+  background-color: var(--primary-color, #007bff);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.common-card-pseudo__online-search-btn:hover,
+.common-card-pseudo__online-download-btn:hover {
+  background-color: var(--primary-hover, #0056b3);
+}
+
+.common-card-pseudo__online-search-btn:disabled,
+.common-card-pseudo__online-download-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.common-card-pseudo__online-candidates {
+  margin-top: var(--space-2, 0.75rem);
+  padding: var(--space-2, 0.75rem);
+  background-color: white;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 4px;
+}
+
+.common-card-pseudo__online-candidates-header {
+  font-weight: 500;
+  margin-bottom: var(--space-1, 0.5rem);
+  font-size: 0.9rem;
+}
+
+.common-card-pseudo__online-candidates-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 0.5rem);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.common-card-pseudo__online-candidate {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-1, 0.5rem);
+  background-color: var(--bg-secondary, #f5f5f5);
+  border-radius: 4px;
+  gap: var(--space-2, 0.5rem);
+}
+
+.common-card-pseudo__online-candidate-info {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1, 0.5rem);
+}
+
+.common-card-pseudo__online-candidate-info code {
+  font-family: monospace;
+  font-size: 0.85rem;
+  background-color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.common-card-pseudo__online-candidate-xc {
+  font-size: 0.75rem;
+  color: var(--text-muted, #888);
+  font-style: italic;
+}
+
+.common-card-pseudo__online-error {
+  padding: var(--space-1, 0.5rem);
+  background-color: var(--danger-bg, #f8d7da);
+  border: 1px solid var(--danger-border, #f5c6cb);
+  border-radius: 4px;
+  color: var(--danger-text, #721c24);
+  font-size: 0.85rem;
 }

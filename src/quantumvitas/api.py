@@ -3498,8 +3498,15 @@ class QVService:
                 structure_file = project_root / "structures" / f"{structure_id}.json"
                 if structure_file.exists():
                     structure_obj = read_structure(structure_file)
-                    species_list = list(set(site.specie.symbol for site in structure_obj.sites))
-                    species_list.sort()
+                    # Preserve original order of elements as they appear in structure
+                    # (first occurrence order, not alphabetical)
+                    species_set = set()
+                    species_list = []
+                    for site in structure_obj.sites:
+                        symbol = site.specie.symbol
+                        if symbol not in species_set:
+                            species_set.add(symbol)
+                            species_list.append(symbol)
             except Exception:
                 pass
         
@@ -3800,6 +3807,365 @@ class QVService:
             "skipped": skipped,
             "errors": errors,
         }
+    
+    @staticmethod
+    def search_legacy_pseudos(
+        element: str,
+        config: Optional[dict] = None,
+    ) -> Dict[str, Any]:
+        """
+        Search for pseudopotentials by element using QE legacy tables.
+        
+        Fetches the element page from QE legacy tables and extracts candidate
+        pseudopotential filenames and download URLs.
+        
+        Args:
+            element: Element symbol (e.g., "Si", "Mo")
+            config: Optional project config (for network URLs)
+            
+        Returns:
+            Dict with:
+            - candidates: List of dicts with filename, url, metadata
+            - errors: List of error messages
+        """
+        import urllib.request
+        import urllib.error
+        import re
+        from quantumvitas.core.pseudo_config import PseudoConfig, get_ssl_context, load_pseudo_config
+        
+        # Load pseudo config (network URLs are user-level, not project-level)
+        pseudo_config = load_pseudo_config()
+        
+        element_lower = element.lower()
+        legacy_url = f"{pseudo_config.legacy_tables_base_url}/ps-library/{element_lower}"
+        
+        candidates: List[Dict[str, Any]] = []
+        errors: List[str] = []
+        
+        try:
+            # Fetch the element page
+            req = urllib.request.Request(legacy_url)
+            req.add_header('User-Agent', 'QuantumVITAS/1.0')
+            
+            from quantumvitas.core.pseudo_config import get_ssl_context
+            from quantumvitas.core.pseudo_config import get_ssl_context
+            with urllib.request.urlopen(req, context=get_ssl_context(), timeout=30) as response:
+                html_content = response.read().decode('utf-8', errors='ignore')
+            
+            # Parse HTML to extract pseudo candidates
+            # QE legacy tables typically have links to .UPF files
+            # Pattern: look for links ending in .UPF or .upf
+            upf_pattern = re.compile(r'href=["\']([^"\']*\.(?:UPF|upf))["\']', re.IGNORECASE)
+            filename_pattern = re.compile(r'([^/]+\.(?:UPF|upf))', re.IGNORECASE)
+            
+            # Find all UPF links
+            seen_filenames = set()
+            for match in upf_pattern.finditer(html_content):
+                url = match.group(1)
+                # Extract filename from URL
+                filename_match = filename_pattern.search(url)
+                if filename_match:
+                    filename = filename_match.group(1)
+                    if filename not in seen_filenames:
+                        seen_filenames.add(filename)
+                        
+                        # Build full URL if relative
+                        if url.startswith('http'):
+                            full_url = url
+                        elif url.startswith('/'):
+                            # Absolute path on same domain
+                            base = pseudo_config.legacy_tables_base_url.rsplit('/', 1)[0]
+                            full_url = f"{base}{url}"
+                        else:
+                            # Relative path
+                            full_url = f"{legacy_url.rsplit('/', 1)[0]}/{url}"
+                        
+                        # Try to extract metadata from surrounding HTML
+                        # Look for table rows or list items containing the link
+                        context_start = max(0, match.start() - 200)
+                        context_end = min(len(html_content), match.end() + 200)
+                        context = html_content[context_start:context_end]
+                        
+                        # Extract any text that might indicate XC functional or type
+                        xc_match = re.search(r'(pbe|lda|pz|pw|blyp|hse|pbe0)', context, re.IGNORECASE)
+                        xc = xc_match.group(1).lower() if xc_match else None
+                        
+                        candidates.append({
+                            "filename": filename,
+                            "url": full_url,
+                            "element": element,
+                            "xc": xc,
+                        })
+            
+            # If no candidates found via links, try alternative patterns
+            # Some pages might list filenames in text
+            if not candidates:
+                # Look for filenames in text content
+                text_upf_pattern = re.compile(r'\b([A-Z][a-z]?\.[\w\-]+\.(?:UPF|upf))\b')
+                for match in text_upf_pattern.finditer(html_content):
+                    filename = match.group(1)
+                    if filename not in seen_filenames and filename.lower().startswith(element_lower):
+                        seen_filenames.add(filename)
+                        # Construct download URL from NETWORK_PSEUDO base
+                        download_url = f"{pseudo_config.network_pseudo_base_url}/{filename}"
+                        candidates.append({
+                            "filename": filename,
+                            "url": download_url,
+                            "element": element,
+                            "xc": None,
+                        })
+        
+        except urllib.error.URLError as e:
+            errors.append(f"Network error: {e}")
+        except Exception as e:
+            errors.append(f"Error parsing legacy tables: {e}")
+        
+        return {
+            "candidates": candidates,
+            "errors": errors,
+        }
+    
+    @staticmethod
+    def download_pseudo_by_filename(
+        project_root: Path,
+        filename: str,
+        dest_dir: Optional[Path] = None,
+        config: Optional[dict] = None,
+    ) -> Dict[str, Any]:
+        """
+        Download a pseudopotential by filename from QE network repository.
+        
+        Args:
+            project_root: Project root path
+            filename: Exact UPF filename (e.g., "Si.pbe-n-rrkjus_psl.1.0.0.UPF")
+            dest_dir: Optional destination directory (default: project_root/pseudo)
+            config: Optional project config (for network URLs)
+            
+        Returns:
+            Dict with:
+            - filename: Final filename in destination (may be renamed if conflict)
+            - renamed: True if filename was changed due to conflict
+            - skipped: True if file already exists with same SHA256
+            - errors: List of error messages
+        """
+        import urllib.request
+        import urllib.error
+        import hashlib
+        import tempfile
+        from quantumvitas.core.pseudo_config import get_ssl_context, load_pseudo_config
+        
+        if dest_dir is None:
+            dest_dir = project_root / "pseudo"
+        dest_dir = Path(dest_dir).resolve()
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Load pseudo config (network URLs are user-level, not project-level)
+        pseudo_config = load_pseudo_config()
+        
+        download_url = f"{pseudo_config.network_pseudo_base_url}/{filename}"
+        
+        def compute_sha256(file_path: Path) -> str:
+            """Compute SHA256 hash of a file."""
+            sha256 = hashlib.sha256()
+            with open(file_path, 'rb') as f:
+                for chunk in iter(lambda: f.read(8192), b''):
+                    sha256.update(chunk)
+            return sha256.hexdigest()
+        
+        # Build SHA256 index of existing pseudos
+        existing_hashes: Dict[str, str] = {}
+        for existing_file in dest_dir.iterdir():
+            if existing_file.is_file() and existing_file.suffix.lower() in ('.upf',):
+                try:
+                    existing_hashes[compute_sha256(existing_file)] = existing_file.name
+                except Exception:
+                    pass
+        
+        result = {
+            "filename": filename,
+            "renamed": False,
+            "skipped": False,
+            "errors": [],
+        }
+        
+        try:
+            # Download to temporary file first
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.upf') as tmp_file:
+                tmp_path = Path(tmp_file.name)
+            
+            req = urllib.request.Request(download_url)
+            req.add_header('User-Agent', 'QuantumVITAS/1.0')
+            
+            from quantumvitas.core.pseudo_config import get_ssl_context
+            from quantumvitas.core.pseudo_config import get_ssl_context
+            with urllib.request.urlopen(req, context=get_ssl_context(), timeout=30) as response:
+                with open(tmp_path, 'wb') as f:
+                    shutil.copyfileobj(response, f)
+            
+            # Compute SHA256 of downloaded file
+            downloaded_hash = compute_sha256(tmp_path)
+            
+            # Check for duplicate content
+            if downloaded_hash in existing_hashes:
+                existing_name = existing_hashes[downloaded_hash]
+                tmp_path.unlink()
+                result["skipped"] = True
+                result["filename"] = existing_name
+                return result
+            
+            # Determine final filename with conflict resolution
+            final_filename = filename
+            final_path = dest_dir / final_filename
+            
+            if final_path.exists():
+                # Different content - rename deterministically
+                base_name = Path(filename).stem
+                extension = Path(filename).suffix
+                counter = 1
+                while final_path.exists():
+                    final_filename = f"{base_name}_{counter}{extension}"
+                    final_path = dest_dir / final_filename
+                    counter += 1
+                result["renamed"] = True
+                result["filename"] = final_filename
+            
+            # Move temp file to final location
+            shutil.move(str(tmp_path), str(final_path))
+            
+        except urllib.error.HTTPError as e:
+            result["errors"].append(f"HTTP error {e.code}: {e.reason}")
+            if tmp_path.exists():
+                tmp_path.unlink()
+        except urllib.error.URLError as e:
+            result["errors"].append(f"Network error: {e}")
+            if tmp_path.exists():
+                tmp_path.unlink()
+        except Exception as e:
+            result["errors"].append(f"Error downloading {filename}: {e}")
+            if tmp_path.exists():
+                tmp_path.unlink()
+        
+        return result
+    
+    @staticmethod
+    def download_pseudo_from_url(
+        project_root: Path,
+        url: str,
+        dest_dir: Optional[Path] = None,
+        preferred_filename: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Download a pseudopotential from any URL.
+        
+        Args:
+            project_root: Project root path
+            url: Full URL to download from
+            dest_dir: Optional destination directory (default: project_root/pseudo)
+            preferred_filename: Optional preferred filename (extracted from URL if not provided)
+            
+        Returns:
+            Dict with same structure as download_pseudo_by_filename
+        """
+        import urllib.request
+        import urllib.error
+        import hashlib
+        import tempfile
+        from quantumvitas.core.pseudo_config import get_ssl_context
+        
+        if dest_dir is None:
+            dest_dir = project_root / "pseudo"
+        dest_dir = Path(dest_dir).resolve()
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Extract filename from URL if not provided
+        if preferred_filename is None:
+            preferred_filename = url.split('/')[-1]
+            # Clean up URL-encoded characters
+            import urllib.parse
+            preferred_filename = urllib.parse.unquote(preferred_filename)
+        
+        def compute_sha256(file_path: Path) -> str:
+            """Compute SHA256 hash of a file."""
+            sha256 = hashlib.sha256()
+            with open(file_path, 'rb') as f:
+                for chunk in iter(lambda: f.read(8192), b''):
+                    sha256.update(chunk)
+            return sha256.hexdigest()
+        
+        # Build SHA256 index of existing pseudos
+        existing_hashes: Dict[str, str] = {}
+        for existing_file in dest_dir.iterdir():
+            if existing_file.is_file() and existing_file.suffix.lower() in ('.upf',):
+                try:
+                    existing_hashes[compute_sha256(existing_file)] = existing_file.name
+                except Exception:
+                    pass
+        
+        result = {
+            "filename": preferred_filename,
+            "renamed": False,
+            "skipped": False,
+            "errors": [],
+        }
+        
+        try:
+            # Download to temporary file first
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.upf') as tmp_file:
+                tmp_path = Path(tmp_file.name)
+            
+            req = urllib.request.Request(url)
+            req.add_header('User-Agent', 'QuantumVITAS/1.0')
+            
+            from quantumvitas.core.pseudo_config import get_ssl_context
+            from quantumvitas.core.pseudo_config import get_ssl_context
+            with urllib.request.urlopen(req, context=get_ssl_context(), timeout=30) as response:
+                with open(tmp_path, 'wb') as f:
+                    shutil.copyfileobj(response, f)
+            
+            # Compute SHA256 of downloaded file
+            downloaded_hash = compute_sha256(tmp_path)
+            
+            # Check for duplicate content
+            if downloaded_hash in existing_hashes:
+                existing_name = existing_hashes[downloaded_hash]
+                tmp_path.unlink()
+                result["skipped"] = True
+                result["filename"] = existing_name
+                return result
+            
+            # Determine final filename with conflict resolution
+            final_filename = preferred_filename
+            final_path = dest_dir / final_filename
+            
+            if final_path.exists():
+                # Different content - rename deterministically
+                base_name = Path(preferred_filename).stem
+                extension = Path(preferred_filename).suffix
+                counter = 1
+                while final_path.exists():
+                    final_filename = f"{base_name}_{counter}{extension}"
+                    final_path = dest_dir / final_filename
+                    counter += 1
+                result["renamed"] = True
+                result["filename"] = final_filename
+            
+            # Move temp file to final location
+            shutil.move(str(tmp_path), str(final_path))
+            
+        except urllib.error.HTTPError as e:
+            result["errors"].append(f"HTTP error {e.code}: {e.reason}")
+            if tmp_path.exists():
+                tmp_path.unlink()
+        except urllib.error.URLError as e:
+            result["errors"].append(f"Network error: {e}")
+            if tmp_path.exists():
+                tmp_path.unlink()
+        except Exception as e:
+            result["errors"].append(f"Error downloading from {url}: {e}")
+            if tmp_path.exists():
+                tmp_path.unlink()
+        
+        return result
     
     @staticmethod
     def import_step_from_qe_input(

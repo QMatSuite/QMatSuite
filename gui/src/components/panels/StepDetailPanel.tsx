@@ -1401,6 +1401,37 @@ export function StepDetailPanel({
                     setPseudoMapping(mappingResponse.data);
                   }
                 }}
+                onSearchLegacy={async (element: string) => {
+                  if (!projectRoot) {
+                    return { candidates: [], errors: ['No project root'] };
+                  }
+                  const response = await qv.searchLegacyPseudos(element, projectRoot);
+                  if (response.ok && response.data) {
+                    return response.data;
+                  }
+                  return { candidates: [], errors: [response.error?.message || 'Search failed'] };
+                }}
+                onDownloadByFilename={async (filename: string) => {
+                  if (!projectRoot) {
+                    return { filename: '', renamed: false, skipped: false, errors: ['No project root'] };
+                  }
+                  const response = await qv.downloadPseudoByFilename(projectRoot, filename);
+                  if (response.ok && response.data) {
+                    return response.data;
+                  }
+                  return { filename: '', renamed: false, skipped: false, errors: [response.error?.message || 'Download failed'] };
+                }}
+                onDownloadCandidate={async (candidate) => {
+                  if (!projectRoot) {
+                    return { filename: '', renamed: false, skipped: false, errors: ['No project root'] };
+                  }
+                  const response = await qv.downloadPseudoCandidate(projectRoot, candidate);
+                  if (response.ok && response.data) {
+                    return response.data;
+                  }
+                  return { filename: '', renamed: false, skipped: false, errors: [response.error?.message || 'Download failed'] };
+                }}
+                projectRoot={projectRoot || undefined}
               />
             ) : (
               <p className="common-cards-empty">No pseudopotential mapping available</p>
