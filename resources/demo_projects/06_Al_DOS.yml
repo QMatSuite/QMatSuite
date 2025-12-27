@@ -1,0 +1,340 @@
+version: 1
+project:
+  meta:
+    id: 01KDG9DGVBGD09Y9W47SXSYZ11
+    name: 06_Al_DOS
+    slug: 06_al_dos
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    id: 01KDG9DGVEWAVP8W72YMYT4PP7
+    name: al.1_vc_relax
+    slug: al-1_vc_relax
+    path: structures/al-1_vc_relax.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - -2.0246320089799204
+        - 0.0
+        - 2.0246320089799204
+      - - 0.0
+        - 2.0246320089799204
+        - 2.0246320089799204
+      - - -2.0246320089799204
+        - 2.0246320089799204
+        - 0.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 2.863262045914089
+      b: 2.863262045914089
+      c: 2.863262045914089
+      alpha: 59.99999999999999
+      beta: 59.99999999999999
+      gamma: 59.99999999999999
+      volume: 16.59847893616135
+    properties: {}
+    sites:
+    - species:
+      - element: Al
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Al
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+- meta:
+    id: 01KDG9DGVSTAK79GMVXV6E7TVP
+    name: al.1_vc_relax 2
+    slug: al-1_vc_relax-2
+    path: structures/al-1_vc_relax-2.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - -2.0246320089799204
+        - 0.0
+        - 2.0246320089799204
+      - - 0.0
+        - 2.0246320089799204
+        - 2.0246320089799204
+      - - -2.0246320089799204
+        - 2.0246320089799204
+        - 0.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 2.863262045914089
+      b: 2.863262045914089
+      c: 2.863262045914089
+      alpha: 59.99999999999999
+      beta: 59.99999999999999
+      gamma: 59.99999999999999
+      volume: 16.59847893616135
+    properties: {}
+    sites:
+    - species:
+      - element: Al
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Al
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+- meta:
+    id: 01KDG9DGWGSQS16804NVJCE25F
+    name: al.2_scf
+    slug: al-2_scf
+    path: structures/al-2_scf.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - -2.0192514319873993
+        - 0.0
+        - 2.0192514319873993
+      - - 0.0
+        - 2.0192514319873993
+        - 2.0192514319873993
+      - - -2.0192514319873993
+        - 2.0192514319873993
+        - 0.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 2.8556527609578737
+      b: 2.8556527609578737
+      c: 2.8556527609578737
+      alpha: 59.99999999999999
+      beta: 59.99999999999999
+      gamma: 59.99999999999999
+      volume: 16.4664960491407
+    properties: {}
+    sites:
+    - species:
+      - element: Al
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Al
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+- meta:
+    id: 01KDG9DGXJTQF5TE1DS16K51VE
+    name: al.3_nscf
+    slug: al-3_nscf
+    path: structures/al-3_nscf.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - -2.0192514319873993
+        - 0.0
+        - 2.0192514319873993
+      - - 0.0
+        - 2.0192514319873993
+        - 2.0192514319873993
+      - - -2.0192514319873993
+        - 2.0192514319873993
+        - 0.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 2.8556527609578737
+      b: 2.8556527609578737
+      c: 2.8556527609578737
+      alpha: 59.99999999999999
+      beta: 59.99999999999999
+      gamma: 59.99999999999999
+      volume: 16.4664960491407
+    properties: {}
+    sites:
+    - species:
+      - element: Al
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Al
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+calculations:
+- meta:
+    id: 01KDG9DGVGKDQT8QPT04RQ3HJM
+    name: Al Dos
+    slug: al-dos
+    path: calculations/al-dos
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  steps:
+  - meta:
+      id: 01KDG9DGVMMM0ERSCWQCF258P7
+      name: al.1_vc_relax
+      slug: al-1_vc_relax
+      path: al.1_vc_relax.step.yaml
+      kind: step
+    step_type: vc-relax
+    parameters:
+      CONTROL:
+        calculation: vc-relax
+        prefix: al
+        outdir: ./outdir
+        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+        etot_conv_thr: 1.0e-06
+        forc_conv_thr: 1.0e-05
+      SYSTEM:
+        ecutwfc: 40
+        ecutrho: 320
+        occupations: smearing
+        smearing: gaussian
+        degauss: 0.01
+      ELECTRONS:
+        conv_thr: 1.0e-08
+      CELL:
+        cell_dofree: ibrav
+    input_name: al.1_vc_relax.in
+    cards:
+      K_POINTS:
+        option: automatic
+        data:
+        - - '10'
+          - '10'
+          - '10'
+          - '0'
+          - '0'
+          - '0'
+    species_overrides:
+      Al:
+        mass: 26.981539
+        pseudopot: Al.pbe-n-kjpaw_psl.1.0.0.UPF
+  - meta:
+      id: 01KDG9DGWAE16GB7BK7MXWSF60
+      name: al.2_scf
+      slug: al-2_scf
+      path: al.2_scf.step.yaml
+      kind: step
+    step_type: scf
+    parameters:
+      CONTROL:
+        calculation: scf
+        restart_mode: from_scratch
+        prefix: al
+        outdir: ./outdir
+        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+      SYSTEM:
+        ecutwfc: 40
+        ecutrho: 320
+        occupations: smearing
+        smearing: gaussian
+        degauss: 0.01
+      ELECTRONS:
+        conv_thr: 1.0e-08
+    input_name: al.2_scf.in
+    cards:
+      K_POINTS:
+        option: automatic
+        data:
+        - - '10'
+          - '10'
+          - '10'
+          - '0'
+          - '0'
+          - '0'
+    species_overrides:
+      Al:
+        mass: 26.981539
+        pseudopot: Al.pbe-n-kjpaw_psl.1.0.0.UPF
+  - meta:
+      id: 01KDG9DGXBK8BBA83Y29VWWBK7
+      name: al.3_nscf
+      slug: al-3_nscf
+      path: al.3_nscf.step.yaml
+      kind: step
+    step_type: nscf
+    parameters:
+      CONTROL:
+        calculation: nscf
+        restart_mode: from_scratch
+        prefix: al
+        outdir: ./outdir
+        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+      SYSTEM:
+        ecutwfc: 40
+        ecutrho: 320
+        occupations: smearing
+        smearing: gaussian
+        degauss: 0.01
+      ELECTRONS:
+        conv_thr: 1.0e-08
+    input_name: al.3_nscf.in
+    cards:
+      K_POINTS:
+        option: automatic
+        data:
+        - - '30'
+          - '30'
+          - '30'
+          - '0'
+          - '0'
+          - '0'
+    species_overrides:
+      Al:
+        mass: 26.981539
+        pseudopot: Al.pbe-n-kjpaw_psl.1.0.0.UPF
+  structure_id: 01KDG9DGVEWAVP8W72YMYT4PP7
+pseudo:
+  directory: pseudo
+  files:
+  - Al.pbe-n-kjpaw_psl.1.0.0.UPF
+meta:
+  id: 06_Al_DOS
+  title: 6 Al Dos
+  subtitle: "unknown \u2192 unknown \u2192 unknown"
+  tags:
+  - tutorial
+  - qe
+  - unknown
+  - unknown
+  recommended_analysis: null
+  difficulty: beginner
+  reference_artifacts:
+    scf: 06_Al_DOS.scf.json

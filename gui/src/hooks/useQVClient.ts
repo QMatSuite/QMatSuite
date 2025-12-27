@@ -94,6 +94,20 @@ export interface QVClient {
     projectRoot: string,
     filePaths: string[]
   ) => Promise<QVResponse<QVResult<'import_pseudo_files'>>>;
+  searchLegacyPseudos: (
+    element: string,
+    projectRoot?: string
+  ) => Promise<QVResponse<QVResult<'search_legacy_pseudos'>>>;
+  downloadPseudoByFilename: (
+    projectRoot: string,
+    filename: string,
+    destDir?: string
+  ) => Promise<QVResponse<QVResult<'download_pseudo_by_filename'>>>;
+  downloadPseudoCandidate: (
+    projectRoot: string,
+    candidate: { filename?: string; url?: string },
+    destDir?: string
+  ) => Promise<QVResponse<QVResult<'download_pseudo_candidate'>>>;
   getRelaxFinalStructurePreview: (
     projectRoot: string,
     calculation: string,
@@ -425,6 +439,32 @@ export function useQVClient(): QVClient {
     [call]
   );
   
+  const searchLegacyPseudos = useCallback(
+    (element: string, projectRoot?: string) =>
+      call('search_legacy_pseudos', { element, project_root: projectRoot }),
+    [call]
+  );
+  
+  const downloadPseudoByFilename = useCallback(
+    (projectRoot: string, filename: string, destDir?: string) =>
+      call('download_pseudo_by_filename', {
+        project_root: projectRoot,
+        filename,
+        dest_dir: destDir,
+      }),
+    [call]
+  );
+  
+  const downloadPseudoCandidate = useCallback(
+    (projectRoot: string, candidate: { filename?: string; url?: string }, destDir?: string) =>
+      call('download_pseudo_candidate', {
+        project_root: projectRoot,
+        candidate,
+        dest_dir: destDir,
+      }),
+    [call]
+  );
+  
   const getRelaxFinalStructurePreview = useCallback(
     (projectRoot: string, calculation: string, step: string) =>
       call('get_relax_final_structure_preview', {
@@ -478,6 +518,9 @@ export function useQVClient(): QVClient {
     getPseudoMapping,
     setPseudoMapping,
     importPseudoFiles,
+    searchLegacyPseudos,
+    downloadPseudoByFilename,
+    downloadPseudoCandidate,
     getRelaxFinalStructurePreview,
     saveRelaxFinalStructure,
     checkConnection,

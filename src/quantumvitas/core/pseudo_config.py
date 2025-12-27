@@ -72,10 +72,14 @@ class PseudoConfig:
         store_dir: Global pseudo store directory (default: repo/temp/pseudo)
         seed_dir: Seed directory for offline installation (default: repo/temp/assets/pseudo_seed)
         allow_download: Whether to allow network downloads (default: False)
+        network_pseudo_base_url: Base URL for QE pseudopotential downloads (default: QE official)
+        legacy_tables_base_url: Base URL for QE legacy tables (default: QE official)
     """
     store_dir: str = ""
     seed_dir: str = ""
     allow_download: bool = False
+    network_pseudo_base_url: str = "https://pseudopotentials.quantum-espresso.org/upf_files"
+    legacy_tables_base_url: str = "https://pseudopotentials.quantum-espresso.org/legacy_tables"
     
     @classmethod
     def get_default_store_dir(cls) -> str:
@@ -100,6 +104,8 @@ class PseudoConfig:
             store_dir=cls.get_default_store_dir(),
             seed_dir=cls.get_default_seed_dir(),
             allow_download=False,
+            network_pseudo_base_url="https://pseudopotentials.quantum-espresso.org/upf_files",
+            legacy_tables_base_url="https://pseudopotentials.quantum-espresso.org/legacy_tables",
         )
     
     @classmethod
@@ -110,6 +116,8 @@ class PseudoConfig:
             store_dir=data.get("store_dir") or defaults.store_dir,
             seed_dir=data.get("seed_dir") or defaults.seed_dir,
             allow_download=data.get("allow_download", defaults.allow_download),
+            network_pseudo_base_url=data.get("network_pseudo_base_url") or defaults.network_pseudo_base_url,
+            legacy_tables_base_url=data.get("legacy_tables_base_url") or defaults.legacy_tables_base_url,
         )
     
     def to_dict(self) -> Dict[str, Any]:

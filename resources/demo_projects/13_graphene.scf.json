@@ -1,0 +1,79 @@
+{
+  "converged": true,
+  "iterations": [
+    {
+      "iteration": 1,
+      "total_energy_ry": -36.90754426,
+      "scf_accuracy_ry": 0.20182301,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 2,
+      "total_energy_ry": -36.87453697,
+      "scf_accuracy_ry": 0.06710139,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 3,
+      "total_energy_ry": -36.88608338,
+      "scf_accuracy_ry": 0.00138225,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 4,
+      "total_energy_ry": -36.88555737,
+      "scf_accuracy_ry": 0.00200728,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 5,
+      "total_energy_ry": -36.88590925,
+      "scf_accuracy_ry": 1.6e-06,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 6,
+      "total_energy_ry": -36.88591021,
+      "scf_accuracy_ry": 2.8e-07,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 7,
+      "total_energy_ry": -36.88591026,
+      "scf_accuracy_ry": 3e-08,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 8,
+      "total_energy_ry": -36.88591026,
+      "scf_accuracy_ry": 2.4e-09,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    }
+  ],
+  "total_energy_ry": -36.88591027,
+  "fermi_energy_ev": -2.3462,
+  "homo_ev": null,
+  "lumo_ev": null,
+  "band_gap_ev": null,
+  "n_electrons": 8.0,
+  "n_kpoints": 19,
+  "n_bands": 8,
+  "ecutwfc_ry": 40.0,
+  "ecutrho_ry": 400.0,
+  "calculation_type": null,
+  "total_cpu_time_s": 16.81,
+  "total_wall_time_s": 18.81,
+  "units": {
+    "energy": "Ry",
+    "fermi": "eV",
+    "time": "s"
+  }
+}

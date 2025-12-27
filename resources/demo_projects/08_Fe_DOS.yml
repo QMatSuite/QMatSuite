@@ -1,0 +1,173 @@
+version: 1
+project:
+  meta:
+    id: 01KDG9DHMWDHFTKQYQ646VECBZ
+    name: 08_Fe_DOS
+    slug: 08_fe_dos
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    id: 01KDG9DHMYJD9N04PZN99296BX
+    name: fe.scf_noncollin
+    slug: fe-scf_noncollin
+    path: structures/fe-scf_noncollin.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - 1.3482862124071955
+        - 1.3482862124071955
+        - 1.3482862124071955
+      - - -1.3482862124071955
+        - 1.3482862124071955
+        - 1.3482862124071955
+      - - -1.3482862124071955
+        - -1.3482862124071955
+        - 1.3482862124071955
+      pbc:
+      - true
+      - true
+      - true
+      a: 2.3353002230338658
+      b: 2.3353002230338658
+      c: 2.3353002230338658
+      alpha: 70.52877936550931
+      beta: 109.47122063449069
+      gamma: 70.52877936550931
+      volume: 9.804067025711518
+    properties: {}
+    sites:
+    - species:
+      - element: Fe
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Fe
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+- meta:
+    id: 01KDG9DHN911YW911C7CF8QKPC
+    name: fe.scf_noncollin 2
+    slug: fe-scf_noncollin-2
+    path: structures/fe-scf_noncollin-2.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - 1.3482862124071955
+        - 1.3482862124071955
+        - 1.3482862124071955
+      - - -1.3482862124071955
+        - 1.3482862124071955
+        - 1.3482862124071955
+      - - -1.3482862124071955
+        - -1.3482862124071955
+        - 1.3482862124071955
+      pbc:
+      - true
+      - true
+      - true
+      a: 2.3353002230338658
+      b: 2.3353002230338658
+      c: 2.3353002230338658
+      alpha: 70.52877936550931
+      beta: 109.47122063449069
+      gamma: 70.52877936550931
+      volume: 9.804067025711518
+    properties: {}
+    sites:
+    - species:
+      - element: Fe
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Fe
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+calculations:
+- meta:
+    id: 01KDG9DHN0VKHBRZWK278Q96J0
+    name: Fe Dos  2 Noncolinear
+    slug: fe-dos-2-noncolinear
+    path: calculations/fe-dos-2-noncolinear
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  steps:
+  - meta:
+      id: 01KDG9DHN4W7WVH6SVXRRBNT1N
+      name: fe.scf_noncollin
+      slug: fe-scf_noncollin
+      path: fe.scf_noncollin.step.yaml
+      kind: step
+    step_type: scf
+    parameters:
+      CONTROL:
+        calculation: scf
+        restart_mode: from_scratch
+        prefix: fe
+        outdir: ./outdir
+        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+      SYSTEM:
+        ecutwfc: 40
+        ecutrho: 320
+        occupations: smearing
+        smearing: marzari-vanderbilt
+        degauss: 0.02
+        noncolin: true
+        starting_magnetization(1): 0.1
+        angle1(1): 90.0
+        angle2(1): 0.0
+      ELECTRONS:
+        conv_thr: 1.0e-08
+        mixing_beta: 0.3
+    input_name: fe.scf_noncollin.in
+    cards:
+      K_POINTS:
+        option: automatic
+        data:
+        - - '10'
+          - '10'
+          - '10'
+          - '0'
+          - '0'
+          - '0'
+    species_overrides:
+      Fe:
+        mass: 55.845
+        pseudopot: Fe.pbe-spn-kjpaw_psl.0.2.1.UPF
+  structure_id: 01KDG9DHMYJD9N04PZN99296BX
+pseudo:
+  directory: pseudo
+  files:
+  - Fe.pbe-spn-kjpaw_psl.0.2.1.UPF
+meta:
+  id: 08_Fe_DOS
+  title: 08 Fe Dos  2 Noncolinear
+  subtitle: unknown
+  tags:
+  - tutorial
+  - qe
+  - unknown
+  recommended_analysis: null
+  difficulty: beginner
+  reference_artifacts:
+    scf: 08_Fe_DOS.scf.json

@@ -1099,6 +1099,50 @@ export interface QVCommandMap {
       errors: string[];
     };
   };
+  search_legacy_pseudos: {
+    payload: {
+      element: string;
+      project_root?: string;
+    };
+    result: {
+      candidates: Array<{
+        filename: string;
+        url: string;
+        element: string;
+        xc?: string | null;
+      }>;
+      errors: string[];
+    };
+  };
+  download_pseudo_by_filename: {
+    payload: {
+      project_root: string;
+      filename: string;
+      dest_dir?: string;
+    };
+    result: {
+      filename: string;
+      renamed: boolean;
+      skipped: boolean;
+      errors: string[];
+    };
+  };
+  download_pseudo_candidate: {
+    payload: {
+      project_root: string;
+      candidate: {
+        filename?: string;
+        url?: string;
+      };
+      dest_dir?: string;
+    };
+    result: {
+      filename: string;
+      renamed: boolean;
+      skipped: boolean;
+      errors: string[];
+    };
+  };
   get_relax_final_structure_preview: {
     payload: {
       project_root: string;

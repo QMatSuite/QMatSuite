@@ -267,6 +267,9 @@ class QVDaemon:
             "get_pseudo_mapping": self._handle_get_pseudo_mapping,
             "set_pseudo_mapping": self._handle_set_pseudo_mapping,
             "import_pseudo_files": self._handle_import_pseudo_files,
+            "search_legacy_pseudos": self._handle_search_legacy_pseudos,
+            "download_pseudo_by_filename": self._handle_download_pseudo_by_filename,
+            "download_pseudo_candidate": self._handle_download_pseudo_candidate,
             "get_relax_final_structure_preview": self._handle_get_relax_final_structure_preview,
             "save_relax_final_structure": self._handle_save_relax_final_structure,
             
@@ -2646,6 +2649,102 @@ class QVDaemon:
             project_root=project_root,
             file_paths=file_paths,
         )
+    
+    def _handle_search_legacy_pseudos(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Search for pseudopotentials by element using QE legacy tables.
+        
+        Payload:
+            element: str - Element symbol (e.g., "Si", "Mo")
+            project_root: Optional[str] - Project root (for config)
+            
+        Returns:
+            Dict with candidates list and errors
+        """
+        element = self._require_str(payload, "element")
+        project_root = payload.get("project_root")
+        
+        config = None
+        if project_root:
+            project_root = self._require_path(payload, "project_root")
+            cache = self.state.get_cache(project_root)
+            config = cache.config
+        
+        return QVService.search_legacy_pseudos(
+            element=element,
+            config=config,
+        )
+    
+    def _handle_download_pseudo_by_filename(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Download a pseudopotential by filename from QE network repository.
+        
+        Payload:
+            project_root: str - Path to project root
+            filename: str - Exact UPF filename
+            dest_dir: Optional[str] - Destination directory (default: project_root/pseudo)
+            
+        Returns:
+            Dict with filename, renamed, skipped, errors
+        """
+        project_root = self._require_path(payload, "project_root")
+        filename = self._require_str(payload, "filename")
+        dest_dir = payload.get("dest_dir")
+        
+        cache = self.state.get_cache(project_root)
+        
+        dest_path = None
+        if dest_dir:
+            dest_path = Path(dest_dir)
+        
+        return QVService.download_pseudo_by_filename(
+            project_root=project_root,
+            filename=filename,
+            dest_dir=dest_path,
+            config=cache.config,
+        )
+    
+    def _handle_download_pseudo_candidate(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Download a pseudopotential from a candidate (URL or filename).
+        
+        Payload:
+            project_root: str - Path to project root
+            candidate: Dict with url and/or filename
+            dest_dir: Optional[str] - Destination directory
+            
+        Returns:
+            Dict with filename, renamed, skipped, errors
+        """
+        project_root = self._require_path(payload, "project_root")
+        candidate = payload.get("candidate", {})
+        if not isinstance(candidate, dict):
+            raise ValueError("candidate must be a dict")
+        
+        dest_dir = payload.get("dest_dir")
+        dest_path = None
+        if dest_dir:
+            dest_path = Path(dest_dir)
+        
+        # If candidate has URL, use download_pseudo_from_url
+        if "url" in candidate:
+            return QVService.download_pseudo_from_url(
+                project_root=project_root,
+                url=candidate["url"],
+                dest_dir=dest_path,
+                preferred_filename=candidate.get("filename"),
+            )
+        # Otherwise use download_pseudo_by_filename
+        elif "filename" in candidate:
+            cache = self.state.get_cache(project_root)
+            return QVService.download_pseudo_by_filename(
+                project_root=project_root,
+                filename=candidate["filename"],
+                dest_dir=dest_path,
+                config=cache.config,
+            )
+        else:
+            raise ValueError("candidate must have either 'url' or 'filename'")
     
     def _handle_reset_step_params(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """

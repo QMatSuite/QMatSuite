@@ -580,6 +580,173 @@ Attempt to cancel a job.
 
 ---
 
+## Pseudopotential Management
+
+### `get_pseudo_mapping`
+
+Get pseudopotential mapping for a step, including available pseudos and SSSP defaults.
+
+**Payload**:
+```json
+{
+  "project_root": "/path/to/project",
+  "calculation": "si-bands",
+  "step": "scf"
+}
+```
+
+**Response**:
+```json
+{
+  "species": ["Si"],
+  "mapping": {"Si": "Si.pbe-n-rrkjus_psl.1.0.0.UPF"},
+  "pseudo_dir": "../pseudo",
+  "available_pseudos": ["Si.pbe-n-rrkjus_psl.1.0.0.UPF", "Si.pz-vbc.UPF"],
+  "warnings": [],
+  "library_preference": "precision",
+  "sssp_defaults": {
+    "Si": {
+      "precision": "Si.pbe-n-kjpaw_psl.1.0.0.UPF",
+      "efficiency": "Si.pbe-n-kjpaw_psl.1.0.0.UPF"
+    }
+  },
+  "sssp_installed": {
+    "precision": true,
+    "efficiency": true
+  }
+}
+```
+
+### `set_pseudo_mapping`
+
+Update pseudopotential mapping for a step.
+
+**Payload**:
+```json
+{
+  "project_root": "/path/to/project",
+  "calculation": "si-bands",
+  "step": "scf",
+  "mapping": {"Si": "Si.pbe-n-rrkjus_psl.1.0.0.UPF"},
+  "library_preference": "precision"
+}
+```
+
+**Response**: Updated step detail (same as `get_step_detail`)
+
+### `import_pseudo_files`
+
+Import pseudopotential files into the project pseudo directory.
+
+**Payload**:
+```json
+{
+  "project_root": "/path/to/project",
+  "file_paths": ["/path/to/Si.UPF", "/path/to/C.UPF"]
+}
+```
+
+**Response**:
+```json
+{
+  "imported": ["Si.UPF", "C.UPF"],
+  "renamed": {"Si.UPF": "Si_1.UPF"},
+  "skipped": ["C.UPF (identical to existing C.UPF)"],
+  "errors": []
+}
+```
+
+**Note**: Files are deduplicated by SHA256. If a file with the same content already exists, it is skipped. If filename conflicts but content differs, files are renamed deterministically (`_1`, `_2`, etc.).
+
+### `search_legacy_pseudos`
+
+Search for pseudopotentials by element using QE legacy tables.
+
+**Payload**:
+```json
+{
+  "element": "Si",
+  "project_root": "/path/to/project"
+}
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `element` | string | Yes | Element symbol (e.g., "Si", "Mo") |
+| `project_root` | string | No | Project root (for config) |
+
+**Response**:
+```json
+{
+  "candidates": [
+    {
+      "filename": "Si.pbe-n-rrkjus_psl.1.0.0.UPF",
+      "url": "https://pseudopotentials.quantum-espresso.org/upf_files/Si.pbe-n-rrkjus_psl.1.0.0.UPF",
+      "element": "Si",
+      "xc": "pbe"
+    }
+  ],
+  "errors": []
+}
+```
+
+**URL Pattern**: 
+- Element page: `https://pseudopotentials.quantum-espresso.org/legacy_tables/ps-library/{element_lowercase}`
+- Download URL: `https://pseudopotentials.quantum-espresso.org/upf_files/{filename}`
+
+### `download_pseudo_by_filename`
+
+Download a pseudopotential by filename from QE network repository.
+
+**Payload**:
+```json
+{
+  "project_root": "/path/to/project",
+  "filename": "Si.pbe-n-rrkjus_psl.1.0.0.UPF",
+  "dest_dir": "/path/to/project/pseudo"
+}
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_root` | string | Yes | Path to project root |
+| `filename` | string | Yes | Exact UPF filename |
+| `dest_dir` | string | No | Destination directory (default: `project_root/pseudo`) |
+
+**Response**:
+```json
+{
+  "filename": "Si.pbe-n-rrkjus_psl.1.0.0.UPF",
+  "renamed": false,
+  "skipped": false,
+  "errors": []
+}
+```
+
+**Note**: Files are deduplicated by SHA256. If a file with the same content already exists, `skipped` is `true` and `filename` is the existing filename. If filename conflicts but content differs, `renamed` is `true` and `filename` is the new name.
+
+### `download_pseudo_candidate`
+
+Download a pseudopotential from a candidate (URL or filename).
+
+**Payload**:
+```json
+{
+  "project_root": "/path/to/project",
+  "candidate": {
+    "filename": "Si.pbe-n-rrkjus_psl.1.0.0.UPF",
+    "url": "https://pseudopotentials.quantum-espresso.org/upf_files/Si.pbe-n-rrkjus_psl.1.0.0.UPF"
+  },
+  "dest_dir": "/path/to/project/pseudo"
+}
+```
+
+**Response**: Same as `download_pseudo_by_filename`
+
+**Note**: If `candidate` has `url`, downloads from that URL. If only `filename` is provided, uses `download_pseudo_by_filename` logic.
+
+---
+
 ## Architectural Notes
 
 ### Daemon Design Principles

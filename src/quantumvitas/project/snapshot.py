@@ -685,12 +685,64 @@ def materialize_project_from_snapshot(
     # Save project.qv.yml
     save_project(project_model, project_dir)
     
-    # Create pseudo directory (empty, just the directory structure)
+    # Create pseudo directory and copy/download pseudopotentials
     if snapshot.pseudo:
         pseudo_dir = project_dir / snapshot.pseudo.get("directory", "pseudo")
         pseudo_dir.mkdir(exist_ok=True)
-        # Note: We do NOT create the pseudo files themselves, only the directory
-        # The snapshot format documents which files are expected but doesn't embed content
+        
+        # Get list of required pseudopotential files from snapshot
+        required_pseudos = snapshot.pseudo.get("files", [])
+        
+        if required_pseudos:
+            # Find repo root to check repo/pseudo
+            from quantumvitas.core.pseudo_config import _find_quantumvitas_root
+            from quantumvitas.api import QVService
+            import shutil
+            import logging
+            
+            logger = logging.getLogger(__name__)
+            repo_root = _find_quantumvitas_root()
+            repo_pseudo_dir = repo_root / "pseudo" if repo_root else None
+            
+            for pseudo_filename in required_pseudos:
+                pseudo_dest = pseudo_dir / pseudo_filename
+                
+                # Skip if already exists in project/pseudo
+                if pseudo_dest.exists():
+                    continue
+                
+                # First, try to copy from repo/pseudo
+                copied = False
+                if repo_pseudo_dir and repo_pseudo_dir.exists():
+                    repo_pseudo_file = repo_pseudo_dir / pseudo_filename
+                    if repo_pseudo_file.exists():
+                        try:
+                            shutil.copy2(repo_pseudo_file, pseudo_dest)
+                            copied = True
+                        except Exception as e:
+                            logger.warning(f"Could not copy {pseudo_filename} from repo/pseudo: {e}")
+                
+                # If not copied from repo/pseudo, try to download
+                if not copied:
+                    try:
+                        result = QVService.download_pseudo_by_filename(
+                            project_root=project_dir,
+                            filename=pseudo_filename,
+                            dest_dir=pseudo_dir,
+                            config=None
+                        )
+                        
+                        if result.get("errors"):
+                            # Download failed - log warning but continue
+                            logger.warning(
+                                f"Could not download pseudopotential {pseudo_filename} for demo project: "
+                                f"{', '.join(result.get('errors', []))}"
+                            )
+                    except Exception as e:
+                        # Download failed - log warning but continue
+                        logger.warning(
+                            f"Error downloading pseudopotential {pseudo_filename} for demo project: {e}"
+                        )
     
     return project_dir
 
