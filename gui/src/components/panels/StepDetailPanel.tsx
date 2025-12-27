@@ -386,9 +386,9 @@ export function StepDetailPanel({
                 setIsLoadingCommonCards(false);
               });
             
-            // Load pseudopotential mapping
+            // Load pseudopotential mapping (calculation-level, authoritative source)
             setIsLoadingPseudoMapping(true);
-            qv.getPseudoMapping(projectRoot, calculationSelector, stepSelector)
+            qv.getCalculationPseudoMapping(projectRoot, calculationSelector)
               .then(mappingResponse => {
                 if (mappingResponse.ok && mappingResponse.data) {
                   setPseudoMapping(mappingResponse.data);
@@ -1335,23 +1335,28 @@ export function StepDetailPanel({
               <CommonCardPseudo
                 mapping={pseudoMapping}
                 isEditing={isEditing}
-                onUpdate={async (mapping, libraryPreference) => {
-                  if (!projectRoot || !calculationSelector || !stepSelector) return;
+                onUpdate={async (mapping, _libraryPreference) => {
+                  // Now updates calculation-level species_map (authoritative source)
+                  if (!projectRoot || !calculationSelector) return;
                   
-                  const response = await qv.setPseudoMapping(
+                  // Convert simple mapping (element -> pseudo) to species_map format
+                  // species_map has format: { element: { pseudopot: string, mass?: number } }
+                  const speciesMap: Record<string, { pseudopot?: string; mass?: number }> = {};
+                  for (const [element, pseudo] of Object.entries(mapping)) {
+                    speciesMap[element] = { pseudopot: pseudo };
+                  }
+                  
+                  const response = await qv.updateCalculationSpeciesMap(
                     projectRoot,
                     calculationSelector,
-                    stepSelector,
-                    mapping,
-                    libraryPreference
+                    speciesMap
                   );
                   
                   if (response.ok && response.data) {
-                    setStepDetail(response.data);
-                    const mappingResponse = await qv.getPseudoMapping(
+                    // Refresh pseudo mapping from calc-level
+                    const mappingResponse = await qv.getCalculationPseudoMapping(
                       projectRoot,
-                      calculationSelector,
-                      stepSelector
+                      calculationSelector
                     );
                     if (mappingResponse.ok && mappingResponse.data) {
                       setPseudoMapping(mappingResponse.data);
@@ -1391,11 +1396,11 @@ export function StepDetailPanel({
                   }
                 }}
                 onRefresh={async () => {
-                  if (!projectRoot || !calculationSelector || !stepSelector) return;
-                  const mappingResponse = await qv.getPseudoMapping(
+                  // Refresh calc-level pseudo mapping
+                  if (!projectRoot || !calculationSelector) return;
+                  const mappingResponse = await qv.getCalculationPseudoMapping(
                     projectRoot,
-                    calculationSelector,
-                    stepSelector
+                    calculationSelector
                   );
                   if (mappingResponse.ok && mappingResponse.data) {
                     setPseudoMapping(mappingResponse.data);

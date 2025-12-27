@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KDGCYC1N66ZJ6EGVJEEF8MGR
+    id: 01KDH0MCXZTBG1X0AYYG5AWHJ2
     name: 08_Fe_DOS
     slug: 08_fe_dos
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KDGCYC1WS2AY2V7XYDZ09MR5
+    id: 01KDH0MCYA58PRV86XC6T5433Z
     name: fe.scf_noncollin
     slug: fe-scf_noncollin
     path: structures/fe-scf_noncollin.json
@@ -57,7 +57,7 @@ structures:
       - 0.0
 calculations:
 - meta:
-    id: 01KDGCYC1PC8FA9FSAJ1FZVB2K
+    id: 01KDH0MCY1WAZA8ERFAY90BX1V
     name: Fe Dos  2 Noncolinear
     slug: fe-dos-2-noncolinear
     path: calculations/fe-dos-2-noncolinear
@@ -66,7 +66,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KDGCYC1SPQVR0QD8TBBAPN1N
+      id: 01KDH0MCY68RSAASG9ZWAGV29P
       name: fe.scf_noncollin
       slug: fe-scf_noncollin
       path: fe.scf_noncollin.step.yaml
@@ -107,7 +107,11 @@ calculations:
       Fe:
         mass: 55.845
         pseudopot: Fe.pbe-spn-kjpaw_psl.0.2.1.UPF
-  structure_id: 01KDGCYC1WS2AY2V7XYDZ09MR5
+  structure_id: 01KDH0MCY05AYJR9YP9RTWGA2A
+  species_map:
+    Fe:
+      mass: 55.845
+      pseudopot: Fe.pbe-spn-kjpaw_psl.0.2.1.UPF
 pseudo:
   directory: pseudo
   files:

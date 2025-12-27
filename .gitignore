@@ -64,6 +64,14 @@ extended-tests/*.log
 *.log
 *.err
 
+# Generated test results
+test_results*.txt
+test_results*.md
+test_reference_verification_report*.txt
+reference_generation_summary*.txt
+input_tmp*.in
+COMMIT_MESSAGE*.txt
+
 # QE output directories (Quantum ESPRESSO working directories)
 **/outdir/
 

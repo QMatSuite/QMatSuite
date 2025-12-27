@@ -162,18 +162,22 @@ cards:
 
 ### PSEUDO Card (Pseudopotentials)
 
-**Note**: Pseudopotentials are stored in `species_overrides` in step YAML, not as raw card text. The UI provides a structured editor for per-element mapping.
+**Note**: Pseudopotentials are stored in `calculation.species_map` (calculation-level), not in step YAML. The UI provides a structured editor for per-element mapping at the calculation level.
 
-**YAML (species_overrides)**:
+**YAML (calculation.yaml)**:
 ```yaml
-species_overrides:
+species_map:
   Si:
     pseudopot: "Si.pbe-n-rrkjus_psl.1.0.0.UPF"
+    mass: 28.0855
   Mo:
     pseudopot: "Mo.pbe-spn-rrkjus_psl.1.0.0.UPF"
+    mass: 95.95
 ```
 
-**View Model** (from `get_pseudo_mapping`):
+**Legacy Note**: Old projects may have `species_overrides` in step YAML files. These are migrated to `calculation.species_map` on load, and step-level `species_overrides` is considered legacy.
+
+**View Model** (from `get_calculation_pseudo_mapping`):
 ```json
 {
   "species": ["Si", "Mo"],
@@ -195,7 +199,9 @@ species_overrides:
 
 **Key Design Decisions**:
 - `pseudo_dir` is **NOT editable** in UI (runtime always uses `../pseudo`)
-- Per-element mapping is the canonical source of truth (`species_overrides`)
+- Per-element mapping is the canonical source of truth (`calculation.species_map`)
+- Pseudopotentials are stored at **calculation level**, not step level (all steps in a calculation share the same pseudo mapping)
+- Element list comes from the calculation's structure (`structure_id` → structure composition)
 - SSSP defaults are auto-preselected but only committed on Apply (no silent side effects)
 - Online resolve downloads individual UPF files into `project/pseudo/` for self-containment
 - SHA256 deduplication prevents duplicate files

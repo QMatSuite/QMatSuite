@@ -312,9 +312,11 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
         # Do NOT export structure_name or structure selector (violates DAG + ID-only constitution)
         if calculation_model.structure_id:
             calculation_dict["structure_id"] = calculation_model.structure_id
+        
         # Export species_map (calc-level pseudo mapping)
-        if calculation_model.species_map:
-            calculation_dict["species_map"] = calculation_model.species_map
+        # If species_map is already set on the calculation model, use it
+        # Otherwise, we'll compute it from step-level species_overrides after collecting steps
+        calc_species_map = calculation_model.species_map
         
         # Export each step
         # Strategy: Scan step files directly and export them, matching by ID when possible
@@ -374,6 +376,23 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
             except Exception:
                 # Skip step files that can't be loaded
                 continue
+        
+        # If calc_species_map was not set from calculation model, compute it from step-level species_overrides
+        # This migrates legacy projects to the new semantics on export
+        if not calc_species_map and calculation_dict["steps"]:
+            step_species_overrides_list = [step.get("species_overrides") for step in calculation_dict["steps"]]
+            if any(step_species_overrides_list):
+                from quantumvitas.core.models import migrate_species_overrides_to_calc
+                # Create a temporary calc model for migration
+                temp_calc = CalculationModel(
+                    meta=ResourceMeta(id="temp", name="temp", slug="temp", path="temp", kind="calculation"),
+                )
+                temp_calc = migrate_species_overrides_to_calc(temp_calc, step_species_overrides_list)
+                calc_species_map = temp_calc.species_map
+        
+        # Add species_map to calculation dict (authoritative source of truth)
+        if calc_species_map:
+            calculation_dict["species_map"] = calc_species_map
         
         calculations_data.append(calculation_dict)
     

@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KDGCYB5F4ZYKQN2XNJEDHEK4
+    id: 01KDH0M8ECNGTCM3YFRCMZC276
     name: 03_Si_vc_relax
     slug: 03_si_vc_relax
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KDGCYB5PRJSE8X5XMH8BJ34F
+    id: 01KDH0M8EPDT0X5X6SAGCB9KC3
     name: si.vc_relax
     slug: si-vc_relax
     path: structures/si-vc_relax.json
@@ -70,7 +70,7 @@ structures:
       - 1.85212023822
 calculations:
 - meta:
-    id: 01KDGCYB5GYACH0SZ49AD4AEXY
+    id: 01KDH0M8EDEK8SQVS759EJJMW9
     name: Si Vc Relax
     slug: si-vc-relax
     path: calculations/si-vc-relax
@@ -79,7 +79,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KDGCYB5JNMQYG2RE3Y4Q9RFP
+      id: 01KDH0M8EJ824PCGYN1BAJEGHZ
       name: si.vc_relax
       slug: si-vc_relax
       path: si.vc_relax.step.yaml
@@ -114,7 +114,11 @@ calculations:
       Si:
         mass: 28.0855
         pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
-  structure_id: 01KDGCYB5PRJSE8X5XMH8BJ34F
+  structure_id: 01KDH0M8ECJX0HJ16A487EDCK8
+  species_map:
+    Si:
+      mass: 28.0855
+      pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
 pseudo:
   directory: pseudo
   files:

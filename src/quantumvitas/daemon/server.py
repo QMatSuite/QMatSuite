@@ -279,6 +279,7 @@ class QVDaemon:
             "add_step_to_calculation": self._handle_add_step_to_calculation,
             "import_step_from_qe_input": self._handle_import_step_from_qe_input,
             "change_calculation_structure": self._handle_change_calculation_structure,
+            "get_calculation_pseudo_mapping": self._handle_get_calculation_pseudo_mapping,
             "update_calculation_species_map": self._handle_update_calculation_species_map,
             "delete_step": self._handle_delete_step,
             
@@ -3048,6 +3049,32 @@ class QVDaemon:
         # Reorder doesn't change registry (only changes step order in calculation.yaml)
         
         return result
+    
+    def _handle_get_calculation_pseudo_mapping(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get calculation-level pseudopotential mapping.
+        
+        Payload:
+            project_root: str - Path to project root
+            calculation: str - Calculation selector
+            
+        Returns:
+            Dict with species, mapping, species_map, available_pseudos, warnings, sssp_defaults
+        """
+        project_root = self._require_path(payload, "project_root")
+        calculation = self._require_str(payload, "calculation")
+        
+        # Resolve with fallback to ensure cache is up-to-date
+        self._resolve_calculation_with_fallback(project_root, calculation)
+        
+        # Pass cached index and config
+        cache = self.state.get_cache(project_root)
+        return QVService.get_calculation_pseudo_mapping(
+            project_root=project_root,
+            calculation_selector=calculation,
+            index=cache.index,
+            config=cache.config,
+        )
     
     def _handle_update_calculation_species_map(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """

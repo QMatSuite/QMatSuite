@@ -90,6 +90,13 @@ export interface QVClient {
     mapping: Record<string, string>,
     libraryPreference?: 'precision' | 'efficiency'
   ) => Promise<QVResponse<QVResult<'set_pseudo_mapping'>>>;
+  // Calculation-level pseudo mapping (authoritative)
+  getCalculationPseudoMapping: (projectRoot: string, calculation: string) => Promise<QVResponse<QVResult<'get_calculation_pseudo_mapping'>>>;
+  updateCalculationSpeciesMap: (
+    projectRoot: string,
+    calculation: string,
+    speciesMap: Record<string, { pseudopot?: string; mass?: number }>
+  ) => Promise<QVResponse<QVResult<'update_calculation_species_map'>>>;
   importPseudoFiles: (
     projectRoot: string,
     filePaths: string[]
@@ -433,6 +440,26 @@ export function useQVClient(): QVClient {
     [call]
   );
   
+  // Calculation-level pseudo mapping (authoritative source)
+  const getCalculationPseudoMapping = useCallback(
+    (projectRoot: string, calculation: string) =>
+      call('get_calculation_pseudo_mapping', { project_root: projectRoot, calculation }),
+    [call]
+  );
+  
+  const updateCalculationSpeciesMap = useCallback(
+    (
+      projectRoot: string,
+      calculation: string,
+      speciesMap: Record<string, { pseudopot?: string; mass?: number }>
+    ) => call('update_calculation_species_map', {
+      project_root: projectRoot,
+      calculation,
+      species_map: speciesMap,
+    }),
+    [call]
+  );
+  
   const importPseudoFiles = useCallback(
     (projectRoot: string, filePaths: string[]) =>
       call('import_pseudo_files', { project_root: projectRoot, file_paths: filePaths }),
@@ -517,6 +544,8 @@ export function useQVClient(): QVClient {
     setCommonCard,
     getPseudoMapping,
     setPseudoMapping,
+    getCalculationPseudoMapping,
+    updateCalculationSpeciesMap,
     importPseudoFiles,
     searchLegacyPseudos,
     downloadPseudoByFilename,

@@ -1232,6 +1232,21 @@ export interface QVCommandMap {
     };
     result: CalculationStructureChangeResult;
   };
+  get_calculation_pseudo_mapping: {
+    payload: {
+      project_root: string;
+      calculation: string;
+    };
+    result: CalculationPseudoMappingResult;
+  };
+  update_calculation_species_map: {
+    payload: {
+      project_root: string;
+      calculation: string;
+      species_map: Record<string, { pseudopot?: string; mass?: number }>;
+    };
+    result: CalculationDetailResult & { old_species_map?: Record<string, { pseudopot?: string; mass?: number }> };
+  };
   
   // Pre-flight checks
   preflight_check: {
@@ -1315,6 +1330,8 @@ export interface CalculationDetailResult {
   path: string;
   absolute_path: string;
   structure: string | null;
+  structure_id: string | null;
+  structure_elements: string[];  // Element symbols from structure composition
   mode: string;
   n_steps: number;
   steps: Array<{
@@ -1323,6 +1340,20 @@ export interface CalculationDetailResult {
     type: string;
     step_file: string;
   }>;
+  // Calculation-level pseudo mapping (authoritative source)
+  species_map: Record<string, { pseudopot?: string; mass?: number }> | null;
+}
+
+// Calculation-level pseudo mapping result
+export interface CalculationPseudoMappingResult {
+  species: string[];
+  mapping: Record<string, string>;
+  species_map: Record<string, { pseudopot?: string; mass?: number }> | null;
+  available_pseudos: string[];
+  pseudo_dir: string;
+  warnings: string[];
+  sssp_defaults?: Record<string, { precision: string; efficiency: string }>;
+  sssp_installed?: { precision: boolean; efficiency: boolean };
 }
 
 export interface CalculationStructureChangeResult extends CalculationDetailResult {

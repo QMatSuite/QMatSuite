@@ -48,6 +48,10 @@ meta:
 mode: normal
 structure_id: 01SABC123...        # ✅ Structure reference (ULID only)
 working_dir: raw
+species_map:                       # ✅ Calculation-level pseudopotential mapping (authoritative)
+  Si:
+    pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+    mass: 28.0855
 steps:
   - step_id: 01TXYZ789...          # ✅ Step reference (ULID only)
     type: scf                       # ✅ Relationship metadata
@@ -57,6 +61,7 @@ steps:
 
 **Key points:**
 - `structure_id` is a ULID pointing to a structure resource
+- `species_map` is the **authoritative source** for pseudopotential mappings (element → {pseudopot, mass})
 - `step_id` entries are ULIDs pointing to step resources
 - Step file locations are resolved via registry using `step_id` (not stored in calculation.yaml)
 - Optional `type`, `input`, and `reference` fields may be present for calculation-local metadata
@@ -83,7 +88,7 @@ cards:
   K_POINTS:
     option: automatic
     data: [[8, 8, 8, 0, 0, 0]]
-species_overrides:
+species_overrides:  # ⚠️ Legacy field - for backwards compatibility only
   Si:
     mass: 28.0855
     pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
@@ -95,7 +100,9 @@ kpath_metadata:  # Optional, for band structure calculations
 - ✅ **NO `structure_id`** - Structure is inherited from calculation.structure_id
 - ✅ **NO `parent_workflow_id`** - Parent calculation is implicit from file location (`calculations/<slug>/steps/<step>.step.yaml`)
 - ✅ **NO `structure` selector** - Legacy field, not written to YAML
-- Step YAML contains only step-local configuration (parameters, cards, species_overrides, kpath_metadata)
+- ✅ **NO pseudopotential mapping in step** - Pseudopotentials are stored in `calculation.species_map` (authoritative source)
+- ⚠️ **`species_overrides` is legacy** - May exist in old projects for backwards compatibility, but new projects use `calculation.species_map` only
+- Step YAML contains only step-local configuration (parameters, cards, kpath_metadata)
 
 ### 4. Structure JSON
 
@@ -125,17 +132,20 @@ Structure files contain full structure data with embedded metadata:
 - `CalculationEntry.to_dict()` writes only `{"id": self.meta.id}` - no name/slug/path
 - Full metadata is loaded from resource files when needed
 
-### Calculation Model (`CalculationModel.to_dict()`)
-
-- Writes `structure_id` (ULID) for structure reference
-- Writes `step_id` (ULID) for each step entry
-- Does NOT write structure selector (legacy field)
 
 ### Step Spec (`StructureStepSpec.to_dict()`)
 
-- Writes only step-local fields: `meta`, `step_type`, `parameters`, `cards`, `species_overrides`, `kpath_metadata`
+- Writes only step-local fields: `meta`, `step_type`, `parameters`, `cards`, `kpath_metadata`
 - **Explicitly excludes**: `structure_id`, `parent_workflow_id`, `structure` selector
+- `species_overrides` may be written for backwards compatibility with legacy projects, but new projects use `calculation.species_map` only
 - These fields may exist in memory for backwards compatibility when loading legacy YAML, but are never written
+
+### Calculation Model (`CalculationModel.to_dict()`)
+
+- Writes `structure_id` (ULID) for structure reference
+- Writes `species_map` (calculation-level pseudopotential mapping) if present
+- Writes `step_id` (ULID) for each step entry
+- Does NOT write structure selector (legacy field)
 
 ## Backwards Compatibility
 
