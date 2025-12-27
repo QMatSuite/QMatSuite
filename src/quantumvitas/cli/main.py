@@ -185,7 +185,7 @@ def _handle_legacy_project_error(e: LegacyProjectError) -> None:
         err=True,
     )
     typer.secho(
-        f"  python scripts/qv_migrate_legacy_project.py --project-root {e.project_root}",
+        f"  python tools/qv_migrate_legacy_project.py --project-root {e.project_root}",
         fg=typer.colors.YELLOW,
         err=True,
     )
