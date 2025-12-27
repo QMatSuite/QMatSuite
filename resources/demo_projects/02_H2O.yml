@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KDG9DG40AK3TFGJW4G5689RR
+    id: 01KDGCYB3FVM78YH5KGKVT1H0S
     name: 02_H2O
     slug: 02_h2o
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KDG9DG417GS35DQE8PCGQQ5B
+    id: 01KDGCYB3PSY5C6YZJABRYDAMW
     name: h2o.relax
     slug: h2o-relax
     path: structures/h2o-relax.json
@@ -81,82 +81,9 @@ structures:
       - 1.0
       - 0.01
       - 0.030000000000000002
-- meta:
-    id: 01KDG9DG4B1306F8HC409TGGG3
-    name: h2o.relax 2
-    slug: h2o-relax-2
-    path: structures/h2o-relax-2.json
-    kind: structure
-  data:
-    '@module': pymatgen.core.structure
-    '@class': Structure
-    charge: 0
-    lattice:
-      matrix:
-      - - 5.2917721092
-        - 0.0
-        - 0.0
-      - - 0.0
-        - 5.2917721092
-        - 0.0
-      - - 0.0
-        - 0.0
-        - 5.2917721092
-      pbc:
-      - true
-      - true
-      - true
-      a: 5.2917721092
-      b: 5.2917721092
-      c: 5.2917721092
-      alpha: 90.0
-      beta: 90.0
-      gamma: 90.0
-      volume: 148.1847114864443
-    properties: {}
-    sites:
-    - species:
-      - element: O
-        occu: 1
-      abc:
-      - 0.0
-      - 0.0
-      - 0.0
-      properties: {}
-      label: O
-      xyz:
-      - 0.0
-      - 0.0
-      - 0.0
-    - species:
-      - element: H
-        occu: 1
-      abc:
-      - -0.1889726124565062
-      - 0.001889726124565062
-      - 0.003779452249130124
-      properties: {}
-      label: H
-      xyz:
-      - -1.0
-      - 0.01
-      - 0.02
-    - species:
-      - element: H
-        occu: 1
-      abc:
-      - 0.1889726124565062
-      - 0.001889726124565062
-      - 0.005669178373695186
-      properties: {}
-      label: H
-      xyz:
-      - 1.0
-      - 0.01
-      - 0.030000000000000002
 calculations:
 - meta:
-    id: 01KDG9DG43AC9KB44XJRXN7NC7
+    id: 01KDGCYB3GGZFWDN7RQQ46KMDP
     name: H2O
     slug: h2o
     path: calculations/h2o
@@ -165,7 +92,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KDG9DG472AAXZ2DMZ591MDYF
+      id: 01KDGCYB3JGBNZQ2WRNRR3DGF1
       name: h2o.relax
       slug: h2o-relax
       path: h2o.relax.step.yaml
@@ -202,7 +129,7 @@ calculations:
       O:
         mass: 15.999
         pseudopot: O.pbe-n-kjpaw_psl.0.1.UPF
-  structure_id: 01KDG9DG417GS35DQE8PCGQQ5B
+  structure_id: 01KDGCYB3PSY5C6YZJABRYDAMW
 pseudo:
   directory: pseudo
   files:
@@ -211,11 +138,11 @@ pseudo:
 meta:
   id: 02_H2O
   title: 2 H2O
-  subtitle: unknown
+  subtitle: Relax
   tags:
   - tutorial
   - qe
-  - unknown
+  - relax
   recommended_analysis: null
   difficulty: beginner
   reference_artifacts: null

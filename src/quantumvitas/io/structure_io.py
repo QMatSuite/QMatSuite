@@ -208,6 +208,62 @@ def qe_input_from_structure(structure: PMGStructure) -> QEInput:
     return qe_input
 
 
+def qe_input_has_structure(qe_input: QEInput) -> bool:
+    """
+    Check if a QE input file contains structure information.
+    
+    Returns True if any of the following are present:
+    - ATOMIC_POSITIONS card
+    - CELL_PARAMETERS card
+    - SYSTEM namelist with ibrav != 0 (can infer lattice via ibrav/celldm)
+    - SYSTEM namelist with ibrav == 0 and CELL_PARAMETERS (explicit cell)
+    
+    Returns False for post-processing inputs (LR, DOS, bands, etc.) that don't need structure.
+    
+    Args:
+        qe_input: QEInput object to check
+        
+    Returns:
+        True if input contains structure information, False otherwise
+    """
+    # Check for ATOMIC_POSITIONS card (strongest indicator)
+    if qe_input.get_card(QECardType.ATOMIC_POSITIONS):
+        return True
+    
+    # Check for CELL_PARAMETERS card
+    if qe_input.get_card(QECardType.CELL_PARAMETERS):
+        return True
+    
+    # Check SYSTEM namelist for ibrav-based structure
+    system = _get_system_namelist(qe_input)
+    if system:
+        ibrav = int(system.get("ibrav", 0) or 0)
+        if ibrav != 0:
+            # ibrav != 0 means structure can be inferred from parameters
+            # Check if required parameters exist
+            if ibrav in [12, -12]:
+                # Hexagonal: need b (or a), c, and cosab
+                param_keys_lower = {str(k).lower(): k for k in system.parameters.keys()}
+                has_b = "b" in param_keys_lower or "a" in param_keys_lower
+                has_c = "c" in param_keys_lower
+                has_cosab = any(k in param_keys_lower for k in ["cosab", "cos(ab)", "cos(angle)"])
+                if has_b and has_c and has_cosab:
+                    return True
+            else:
+                # Other ibrav: need celldm(1) or a
+                has_celldm1 = any(str(k).lower() == "celldm(1)" for k in system.parameters.keys())
+                has_a = any(str(k).lower() == "a" for k in system.parameters.keys())
+                if has_celldm1 or has_a:
+                    return True
+        elif ibrav == 0:
+            # ibrav == 0 requires CELL_PARAMETERS (checked above)
+            # If we reach here, ibrav=0 but no CELL_PARAMETERS, so no structure
+            pass
+    
+    # No structure information found
+    return False
+
+
 def structure_from_qe_input(qe_input: QEInput) -> PMGStructure:
     """
     Build a pymatgen Structure from a QEInput instance, honoring QE's ibrav rules.

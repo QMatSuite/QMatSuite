@@ -388,6 +388,37 @@ class QVService:
         # Read and convert structure
         structure = read_structure(source)
         
+        # Compute fingerprint for content-based deduplication
+        from quantumvitas.core.structure_fingerprint import structure_fingerprint
+        fingerprint = structure_fingerprint(structure)
+        
+        # Check existing structures for same fingerprint (content-based dedup)
+        structures_dir = project_root / "structures"
+        existing_fingerprint_id = None
+        if structures_dir.exists():
+            for struct_file in structures_dir.glob("*.json"):
+                try:
+                    import json
+                    struct_data = json.loads(struct_file.read_text())
+                    struct_meta = struct_data.get("__qv_meta__") or struct_data.get("meta") or {}
+                    existing_fingerprint = struct_meta.get("fingerprint")
+                    if existing_fingerprint == fingerprint:
+                        # Found matching structure by fingerprint
+                        existing_fingerprint_id = struct_meta.get("id")
+                        if existing_fingerprint_id:
+                            # Verify with semantic equality as belt-and-suspenders
+                            from quantumvitas.core.structure_fingerprint import structures_semantically_equal
+                            existing_structure = read_structure(struct_file)
+                            if structures_semantically_equal(structure, existing_structure):
+                                # Reuse existing structure
+                                from quantumvitas.core.resolution import require_structure
+                                resolved = require_structure(
+                                    project_root, existing_fingerprint_id, config=config, index=index
+                                )
+                                return resolved
+                except Exception:
+                    pass  # Skip invalid files
+        
         # Write to structures directory
         dest_path = project_root / "structures" / f"{final_slug}.json"
         dest_path.parent.mkdir(parents=True, exist_ok=True)
@@ -397,7 +428,10 @@ class QVService:
             name=final_name,
             path=ensure_relative_path(dest_path, base=project_root),
         )
-        write_structure(structure, dest_path, metadata=meta)
+        # Store fingerprint in metadata (add to meta dict)
+        meta_dict = meta.to_dict()
+        meta_dict["fingerprint"] = fingerprint
+        write_structure(structure, dest_path, metadata=meta_dict)
         
         # Add to config (DAG + ID-only: only structure_id, no meta duplication)
         entry = {
@@ -4234,21 +4268,53 @@ class QVService:
         structure_id = import_result.structure_id
         structure_path = import_result.structure_path
         
-        # Check if structure already exists in project (config already loaded above)
+        # Read structure to compute fingerprint
+        from quantumvitas.io import read_structure
+        structure = read_structure(structure_path)
+        
+        # Compute fingerprint for content-based deduplication
+        from quantumvitas.core.structure_fingerprint import structure_fingerprint, structures_semantically_equal
+        fingerprint = structure_fingerprint(structure)
+        
+        # Check existing structures for same fingerprint (content-based dedup)
         structures = config.get("structures", [])
+        structures_dir = project_root / "structures"
         structure_id_value = None
-        for struct_entry in structures:
-            struct_file = project_root / struct_entry.get("file", "")
-            if struct_file.exists() and struct_file.samefile(structure_path):
-                # Get structure ID (canonical reference) using centralized selector extraction
-                structure_id_value = extract_structure_selector_from_entry(struct_entry)
-                break
+        
+        # First check by fingerprint (canonical key)
+        if structures_dir.exists():
+            for struct_file in structures_dir.glob("*.json"):
+                try:
+                    import json
+                    struct_data = json.loads(struct_file.read_text())
+                    struct_meta = struct_data.get("__qv_meta__") or struct_data.get("meta") or {}
+                    existing_fingerprint = struct_meta.get("fingerprint")
+                    if existing_fingerprint == fingerprint:
+                        # Found matching structure by fingerprint
+                        existing_id = struct_meta.get("id")
+                        if existing_id:
+                            # Verify with semantic equality as belt-and-suspenders
+                            existing_structure = read_structure(struct_file)
+                            if structures_semantically_equal(structure, existing_structure):
+                                structure_id_value = existing_id
+                                break
+                except Exception:
+                    pass  # Skip invalid files
+        
+        # Fallback: check by samefile(path) as optimization (legacy compatibility)
+        if not structure_id_value:
+            for struct_entry in structures:
+                struct_file = project_root / struct_entry.get("file", "")
+                if struct_file.exists() and struct_file.samefile(structure_path):
+                    # Get structure ID (canonical reference) using centralized selector extraction
+                    structure_id_value = extract_structure_selector_from_entry(struct_entry)
+                    break
         
         if not structure_id_value:
             # Register structure in project
             from quantumvitas.core.resources import meta_from_name, ensure_relative_path, generate_unique_name_and_slug
             from quantumvitas.core.project_utils import collect_slugs
-            from quantumvitas.io import write_structure, read_structure
+            from quantumvitas.io import write_structure
             
             # Get structure name from the original file (human-readable name based on QE input filename)
             structure_name = structure_path.stem  # e.g., "si_scf" from "si_scf.json"
@@ -4267,13 +4333,15 @@ class QVService:
             final_structure_path = project_structures_dir / f"{final_slug}.json"
             
             if not final_structure_path.exists():
-                structure = read_structure(structure_path)
                 meta = meta_from_name(
                     "structure",
                     name=final_name,  # Use human-readable name, not ULID
                     path=ensure_relative_path(final_structure_path, base=project_root),
                 )
-                write_structure(structure, final_structure_path, metadata=meta)
+                # Store fingerprint in metadata
+                meta_dict = meta.to_dict()
+                meta_dict["fingerprint"] = fingerprint
+                write_structure(structure, final_structure_path, metadata=meta_dict)
             else:
                 # Read existing meta if file exists
                 import json
@@ -4281,6 +4349,11 @@ class QVService:
                 existing_meta = existing_data.get("__qv_meta__") or existing_data.get("meta") or {}
                 from quantumvitas.core.resources import ResourceMeta
                 meta = ResourceMeta.from_dict(existing_meta, kind="structure", default_name=final_name, default_path=ensure_relative_path(final_structure_path, base=project_root))
+                # Update fingerprint if not present
+                if "fingerprint" not in existing_meta:
+                    meta_dict = meta.to_dict()
+                    meta_dict["fingerprint"] = fingerprint
+                    write_structure(structure, final_structure_path, metadata=meta_dict)
             
             # Add to project config (ID-only model: only structure_id)
             entry = {

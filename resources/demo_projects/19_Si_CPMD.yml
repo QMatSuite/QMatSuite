@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KDG9DFP2T99Z4QV420DTW8EG
+    id: 01KDGCYAR88FN91R0Y1BWYFNSH
     name: 19_Si_CPMD
     slug: 19_si_cpmd
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KDG9DFP4HRZ0SWRMKMDZCBMB
+    id: 01KDGCYARG5HYN125X9K7K4S9Z
     name: si.1_erelax
     slug: si-1_erelax
     path: structures/si-1_erelax.json
@@ -146,423 +146,9 @@ structures:
       - 4.223136593556277
       - 1.4077121978520923
       - 4.223136593556277
-- meta:
-    id: 01KDG9DFPE9BNXY6RZZDXWAH69
-    name: si.1_erelax 2
-    slug: si-1_erelax-2
-    path: structures/si-1_erelax-2.json
-    kind: structure
-  data:
-    '@module': pymatgen.core.structure
-    '@class': Structure
-    charge: 0
-    lattice:
-      matrix:
-      - - 5.630848791408369
-        - 0.0
-        - 0.0
-      - - 0.0
-        - 5.630848791408369
-        - 0.0
-      - - 0.0
-        - 0.0
-        - 5.630848791408369
-      pbc:
-      - true
-      - true
-      - true
-      a: 5.630848791408369
-      b: 5.630848791408369
-      c: 5.630848791408369
-      alpha: 90.0
-      beta: 90.0
-      gamma: 90.0
-      volume: 178.53427133813472
-    properties: {}
-    sites:
-    - species:
-      - element: Si
-        occu: 1
-      abc:
-      - 0.0
-      - 0.0
-      - 0.0
-      properties: {}
-      label: Si
-      xyz:
-      - 0.0
-      - 0.0
-      - 0.0
-    - species:
-      - element: Si
-        occu: 1
-      abc:
-      - 0.0
-      - 0.5
-      - 0.5
-      properties: {}
-      label: Si
-      xyz:
-      - 0.0
-      - 2.8154243957041847
-      - 2.8154243957041847
-    - species:
-      - element: Si
-        occu: 1
-      abc:
-      - 0.5
-      - 0.5
-      - 0.0
-      properties: {}
-      label: Si
-      xyz:
-      - 2.8154243957041847
-      - 2.8154243957041847
-      - 0.0
-    - species:
-      - element: Si
-        occu: 1
-      abc:
-      - 0.5
-      - 0.0
-      - 0.5
-      properties: {}
-      label: Si
-      xyz:
-      - 2.8154243957041847
-      - 0.0
-      - 2.8154243957041847
-    - species:
-      - element: Si
-        occu: 1
-      abc:
-      - 0.25
-      - 0.25
-      - 0.25
-      properties: {}
-      label: Si
-      xyz:
-      - 1.4077121978520923
-      - 1.4077121978520923
-      - 1.4077121978520923
-    - species:
-      - element: Si
-        occu: 1
-      abc:
-      - 0.25
-      - 0.75
-      - 0.75
-      properties: {}
-      label: Si
-      xyz:
-      - 1.4077121978520923
-      - 4.223136593556277
-      - 4.223136593556277
-    - species:
-      - element: Si
-        occu: 1
-      abc:
-      - 0.75
-      - 0.75
-      - 0.25
-      properties: {}
-      label: Si
-      xyz:
-      - 4.223136593556277
-      - 4.223136593556277
-      - 1.4077121978520923
-    - species:
-      - element: Si
-        occu: 1
-      abc:
-      - 0.75
-      - 0.25
-      - 0.75
-      properties: {}
-      label: Si
-      xyz:
-      - 4.223136593556277
-      - 1.4077121978520923
-      - 4.223136593556277
-- meta:
-    id: 01KDG9DFQ41RM9M4YA5YX4C0H7
-    name: si.2_randDisplace
-    slug: si-2_randdisplace
-    path: structures/si-2_randdisplace.json
-    kind: structure
-  data:
-    '@module': pymatgen.core.structure
-    '@class': Structure
-    charge: 0
-    lattice:
-      matrix:
-      - - 5.630848791408369
-        - 0.0
-        - 0.0
-      - - 0.0
-        - 5.630848791408369
-        - 0.0
-      - - 0.0
-        - 0.0
-        - 5.630848791408369
-      pbc:
-      - true
-      - true
-      - true
-      a: 5.630848791408369
-      b: 5.630848791408369
-      c: 5.630848791408369
-      alpha: 90.0
-      beta: 90.0
-      gamma: 90.0
-      volume: 178.53427133813472
-    properties: {}
-    sites:
-    - species:
-      - element: Si
-        occu: 1
-      abc:
-      - 0.0
-      - 0.0
-      - 0.0
-      properties: {}
-      label: Si
-      xyz:
-      - 0.0
-      - 0.0
-      - 0.0
-    - species:
-      - element: Si
-        occu: 1
-      abc:
-      - 0.0
-      - 0.5
-      - 0.5
-      properties: {}
-      label: Si
-      xyz:
-      - 0.0
-      - 2.8154243957041847
-      - 2.8154243957041847
-    - species:
-      - element: Si
-        occu: 1
-      abc:
-      - 0.5
-      - 0.5
-      - 0.0
-      properties: {}
-      label: Si
-      xyz:
-      - 2.8154243957041847
-      - 2.8154243957041847
-      - 0.0
-    - species:
-      - element: Si
-        occu: 1
-      abc:
-      - 0.5
-      - 0.0
-      - 0.5
-      properties: {}
-      label: Si
-      xyz:
-      - 2.8154243957041847
-      - 0.0
-      - 2.8154243957041847
-    - species:
-      - element: Si
-        occu: 1
-      abc:
-      - 0.25
-      - 0.25
-      - 0.25
-      properties: {}
-      label: Si
-      xyz:
-      - 1.4077121978520923
-      - 1.4077121978520923
-      - 1.4077121978520923
-    - species:
-      - element: Si
-        occu: 1
-      abc:
-      - 0.25
-      - 0.75
-      - 0.75
-      properties: {}
-      label: Si
-      xyz:
-      - 1.4077121978520923
-      - 4.223136593556277
-      - 4.223136593556277
-    - species:
-      - element: Si
-        occu: 1
-      abc:
-      - 0.75
-      - 0.75
-      - 0.25
-      properties: {}
-      label: Si
-      xyz:
-      - 4.223136593556277
-      - 4.223136593556277
-      - 1.4077121978520923
-    - species:
-      - element: Si
-        occu: 1
-      abc:
-      - 0.75
-      - 0.25
-      - 0.75
-      properties: {}
-      label: Si
-      xyz:
-      - 4.223136593556277
-      - 1.4077121978520923
-      - 4.223136593556277
-- meta:
-    id: 01KDG9DFR8H24936EC0XE44X77
-    name: si.3_cp_BOMD_NVT
-    slug: si-3_cp_bomd_nvt
-    path: structures/si-3_cp_bomd_nvt.json
-    kind: structure
-  data:
-    '@module': pymatgen.core.structure
-    '@class': Structure
-    charge: 0
-    lattice:
-      matrix:
-      - - 5.630848791408369
-        - 0.0
-        - 0.0
-      - - 0.0
-        - 5.630848791408369
-        - 0.0
-      - - 0.0
-        - 0.0
-        - 5.630848791408369
-      pbc:
-      - true
-      - true
-      - true
-      a: 5.630848791408369
-      b: 5.630848791408369
-      c: 5.630848791408369
-      alpha: 90.0
-      beta: 90.0
-      gamma: 90.0
-      volume: 178.53427133813472
-    properties: {}
-    sites:
-    - species:
-      - element: Si
-        occu: 1
-      abc:
-      - 0.0
-      - 0.0
-      - 0.0
-      properties: {}
-      label: Si
-      xyz:
-      - 0.0
-      - 0.0
-      - 0.0
-    - species:
-      - element: Si
-        occu: 1
-      abc:
-      - 0.0
-      - 0.5
-      - 0.5
-      properties: {}
-      label: Si
-      xyz:
-      - 0.0
-      - 2.8154243957041847
-      - 2.8154243957041847
-    - species:
-      - element: Si
-        occu: 1
-      abc:
-      - 0.5
-      - 0.5
-      - 0.0
-      properties: {}
-      label: Si
-      xyz:
-      - 2.8154243957041847
-      - 2.8154243957041847
-      - 0.0
-    - species:
-      - element: Si
-        occu: 1
-      abc:
-      - 0.5
-      - 0.0
-      - 0.5
-      properties: {}
-      label: Si
-      xyz:
-      - 2.8154243957041847
-      - 0.0
-      - 2.8154243957041847
-    - species:
-      - element: Si
-        occu: 1
-      abc:
-      - 0.25
-      - 0.25
-      - 0.25
-      properties: {}
-      label: Si
-      xyz:
-      - 1.4077121978520923
-      - 1.4077121978520923
-      - 1.4077121978520923
-    - species:
-      - element: Si
-        occu: 1
-      abc:
-      - 0.25
-      - 0.75
-      - 0.75
-      properties: {}
-      label: Si
-      xyz:
-      - 1.4077121978520923
-      - 4.223136593556277
-      - 4.223136593556277
-    - species:
-      - element: Si
-        occu: 1
-      abc:
-      - 0.75
-      - 0.75
-      - 0.25
-      properties: {}
-      label: Si
-      xyz:
-      - 4.223136593556277
-      - 4.223136593556277
-      - 1.4077121978520923
-    - species:
-      - element: Si
-        occu: 1
-      abc:
-      - 0.75
-      - 0.25
-      - 0.75
-      properties: {}
-      label: Si
-      xyz:
-      - 4.223136593556277
-      - 1.4077121978520923
-      - 4.223136593556277
 calculations:
 - meta:
-    id: 01KDG9DFP6BHM5HMRTP64ST2WX
+    id: 01KDGCYARAT9DZH0YKT34RT0GN
     name: Si Cpmd  4 Bomd Nvt
     slug: si-cpmd-4-bomd-nvt
     path: calculations/si-cpmd-4-bomd-nvt
@@ -571,7 +157,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KDG9DFPBG1VX4A0S1ANX4S1F
+      id: 01KDGCYARCYZJS15ZFBQBB4GE0
       name: si.1_erelax
       slug: si-1_erelax
       path: si.1_erelax.step.yaml
@@ -604,7 +190,7 @@ calculations:
         mass: 28.0855
         pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
   - meta:
-      id: 01KDG9DFPZEWTFHF13ERW30YJM
+      id: 01KDGCYAS02PY3V7YQXFCBE4QD
       name: si.2_randDisplace
       slug: si-2_randdisplace
       path: si.2_randDisplace.step.yaml
@@ -641,7 +227,7 @@ calculations:
         mass: 28.0855
         pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
   - meta:
-      id: 01KDG9DFR0H5WS2R18DR9JYRZM
+      id: 01KDGCYASY2RSB9SQH1F3CE21V
       name: si.3_cp_BOMD_NVT
       slug: si-3_cp_bomd_nvt
       path: si.3_cp_BOMD_NVT.step.yaml
@@ -680,7 +266,7 @@ calculations:
       Si:
         mass: 28.0855
         pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
-  structure_id: 01KDG9DFP4HRZ0SWRMKMDZCBMB
+  structure_id: 01KDGCYARG5HYN125X9K7K4S9Z
 pseudo:
   directory: pseudo
   files:
@@ -688,12 +274,12 @@ pseudo:
 meta:
   id: 19_Si_CPMD
   title: 19 Si Cpmd  4 Bomd Nvt
-  subtitle: "unknown \u2192 unknown \u2192 unknown"
+  subtitle: "custom \u2192 custom \u2192 custom"
   tags:
   - tutorial
   - qe
-  - unknown
-  - unknown
+  - custom
+  - custom
   recommended_analysis: null
   difficulty: beginner
   reference_artifacts: null
