@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KDGCY8FXJQYE3JEWPVRHF80D
+    id: 01KDH0KTN5Y5KK5MVR42PHQW0A
     name: 00_Si_scf
     slug: 00_si_scf
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KDGCY8G5DX0QNK4HB8S5YDQ4
+    id: 01KDH0KTNG0RPQ9RWRKG6DWSEY
     name: si.scf
     slug: si-scf
     path: structures/si-scf.json
@@ -70,7 +70,7 @@ structures:
       - 1.3494018878460001
 calculations:
 - meta:
-    id: 01KDGCY8FZP8G6GB7EVKMRKT3S
+    id: 01KDH0KTN78ND02F6C8SXEHCDJ
     name: Si Scf
     slug: si-scf
     path: calculations/si-scf
@@ -79,7 +79,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KDGCY8G15R9XDM3XARHXTTR1
+      id: 01KDH0KTNCFXBV5WHZTGNYKSZW
       name: si.scf
       slug: si-scf
       path: si.scf.step.yaml
@@ -107,7 +107,11 @@ calculations:
       Si:
         mass: 28.086
         pseudopot: Si.pz-vbc.UPF
-  structure_id: 01KDGCY8G5DX0QNK4HB8S5YDQ4
+  structure_id: 01KDH0KTN6KFT3ZRS4A53G415Y
+  species_map:
+    Si:
+      mass: 28.086
+      pseudopot: Si.pz-vbc.UPF
 pseudo:
   directory: pseudo
   files:

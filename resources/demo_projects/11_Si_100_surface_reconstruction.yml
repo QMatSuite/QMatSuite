@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KDGCY8KTH31QEFEK6YS5GXRX
+    id: 01KDH0KTS929CG3A9FK7BK0FJS
     name: 11_Si_100_surface_reconstruction
     slug: 11_si_100_surface_reconstruction
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KDGCY8M6DM1EJ72NYSX6772D
+    id: 01KDH0KTSV8K2Q2S80CYPE7A93
     name: si100.2_slab_relax
     slug: si100-2_slab_relax
     path: structures/si100-2_slab_relax.json
@@ -772,7 +772,7 @@ structures:
       - 5.469412050046539
 calculations:
 - meta:
-    id: 01KDGCY8KVVVH1QGSPSZRX4ZRK
+    id: 01KDH0KTSE8SR6DSX8EB0Z83BX
     name: Si 100 Surface Reconstruction
     slug: si-100-surface-reconstruction
     path: calculations/si-100-surface-reconstruction
@@ -781,7 +781,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KDGCY8KY19C97J5KCQ05Z4DD
+      id: 01KDH0KTSKEFHZV0BVA8685PP5
       name: si100.2_slab_relax
       slug: si100-2_slab_relax
       path: si100.2_slab_relax.step.yaml
@@ -828,7 +828,14 @@ calculations:
       H:
         mass: 1.00784
         pseudopot: H_ONCV_PBE-1.0.oncvpsp.upf
-  structure_id: 01KDGCY8M6DM1EJ72NYSX6772D
+  structure_id: 01KDH0KTSABJ7EWKE5C6ZS77KD
+  species_map:
+    Si:
+      mass: 28.0855
+      pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+    H:
+      mass: 1.00784
+      pseudopot: H_ONCV_PBE-1.0.oncvpsp.upf
 pseudo:
   directory: pseudo
   files:

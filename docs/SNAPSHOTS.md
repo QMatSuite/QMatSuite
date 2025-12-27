@@ -10,6 +10,8 @@ Snapshots in QuantumVITAS are **templates**, not bit-for-bit backups. When a sna
 
 - Preserves all `id` and `*_id` fields as recorded in the original project
 - Exports complete resource graph with all cross-references (`structure_id` in calculations, `step_id` in calculation steps)
+- Exports calculation-level `species_map` (pseudopotential mappings) - authoritative source of truth
+- Migrates legacy step-level `species_overrides` to `calculation.species_map` during export if needed
 - Snapshot contains the full graph structure with original ULIDs
 
 ### Materialize (`materialize_project_from_snapshot`)

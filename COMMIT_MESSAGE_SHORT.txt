@@ -1,8 +1,0 @@
-Refactor: migrate tutorial examples to auto-download, add QE module tests
-
-- Remove tests/examples/qe_tutorial_examples/ (25MB)
-- Add temp/ for auto-downloaded files, download script
-- Add run_all_modules_tests.py (NPROCS=4)
-- Fix test script imports, improve error reporting
-- Update .gitignore: track tests/, ignore temp/
-

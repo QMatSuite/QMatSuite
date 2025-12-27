@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KDGCY9ZB6X41V78YD92AKWDQ
+    id: 01KDH0M74GHYKXN8FRF2V1R98X
     name: 18_H2O_MD
     slug: 18_h2o_md
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KDGCY9ZJB2JN1KMK8GC9A0XR
+    id: 01KDH0M74VX09RCJ29AATBP2GC
     name: h2o.1_relax
     slug: h2o-1_relax
     path: structures/h2o-1_relax.json
@@ -82,7 +82,7 @@ structures:
       - 5.299999999999999
       - 4.05
 - meta:
-    id: 01KDGCYA09B6JCMSRADP63NA1N
+    id: 01KDH0M75JGQGDNG8B0B01NET5
     name: h2o.2_MD
     slug: h2o-2_md
     path: structures/h2o-2_md.json
@@ -156,7 +156,7 @@ structures:
       - 4.220319481
 calculations:
 - meta:
-    id: 01KDGCY9ZC8WAZNWVB2QKSF909
+    id: 01KDH0M74JJ5PZC08EYPNTG6M7
     name: H2O Md
     slug: h2o-md
     path: calculations/h2o-md
@@ -165,7 +165,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KDGCY9ZEARWTYKT1A6ZBSQ1E
+      id: 01KDH0M74QPJWXDXZASFCJ967P
       name: h2o.1_relax
       slug: h2o-1_relax
       path: h2o.1_relax.step.yaml
@@ -204,7 +204,7 @@ calculations:
         mass: 15.999
         pseudopot: O.pbe-n-kjpaw_psl.0.1.UPF
   - meta:
-      id: 01KDGCYA03MHXQ5CFJTP7CCFQN
+      id: 01KDH0M75CSM3EXBC3A7AH2RW1
       name: h2o.2_MD
       slug: h2o-2_md
       path: h2o.2_MD.step.yaml
@@ -247,7 +247,14 @@ calculations:
       O:
         mass: 15.999
         pseudopot: O.pbe-n-kjpaw_psl.0.1.UPF
-  structure_id: 01KDGCY9ZJB2JN1KMK8GC9A0XR
+  structure_id: 01KDH0M74HXH71KRAGP7MG0Y0W
+  species_map:
+    H:
+      mass: 1.00784
+      pseudopot: H_ONCV_PBE-1.0.oncvpsp.upf
+    O:
+      mass: 15.999
+      pseudopot: O.pbe-n-kjpaw_psl.0.1.UPF
 pseudo:
   directory: pseudo
   files:

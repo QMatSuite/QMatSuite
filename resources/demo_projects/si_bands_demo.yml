@@ -209,6 +209,10 @@ calculations:
         outdir: ./outdir/
         prefix: si
   structure_id: 01KC38ZCMZZQ8DAA61A6SC8X23
+  species_map:
+    Si:
+      mass: 28.0855
+      pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
 pseudo:
   directory: pseudo
   files:
