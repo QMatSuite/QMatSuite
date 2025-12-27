@@ -1072,6 +1072,9 @@ export interface QVCommandMap {
       pseudo_dir: string;
       available_pseudos: string[];
       warnings: string[];
+      library_preference?: 'precision' | 'efficiency';
+      sssp_defaults?: Record<string, { precision: string; efficiency: string }>;
+      sssp_installed?: { precision: boolean; efficiency: boolean };
     };
   };
   set_pseudo_mapping: {
@@ -1080,9 +1083,21 @@ export interface QVCommandMap {
       calculation: string;
       step: string;
       mapping: Record<string, string>;
-      pseudo_dir?: string;
+      library_preference?: 'precision' | 'efficiency';
     };
     result: StepDetail;
+  };
+  import_pseudo_files: {
+    payload: {
+      project_root: string;
+      file_paths: string[];
+    };
+    result: {
+      imported: string[];
+      renamed: Record<string, string>;
+      skipped: string[];
+      errors: string[];
+    };
   };
   get_relax_final_structure_preview: {
     payload: {

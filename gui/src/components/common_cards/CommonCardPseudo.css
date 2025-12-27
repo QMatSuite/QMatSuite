@@ -13,8 +13,8 @@
 
 .common-card-pseudo__header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
   margin-bottom: var(--space-2, 1rem);
 }
 
@@ -34,7 +34,7 @@
   background-color: var(--warning-bg, #fff3cd);
   border: 1px solid var(--warning-border, #ffc107);
   border-radius: 4px;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: var(--warning-text, #856404);
 }
 
@@ -44,24 +44,44 @@
   gap: var(--space-2, 1rem);
 }
 
-.common-card-pseudo__dir {
+/* Library preference selector */
+.common-card-pseudo__library {
   display: flex;
   align-items: center;
-  gap: var(--space-1, 0.5rem);
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-2, 0.75rem);
+  background-color: var(--bg-secondary, #f5f5f5);
+  border-radius: 4px;
 }
 
-.common-card-pseudo__dir label {
+.common-card-pseudo__library label {
   font-weight: 500;
-  min-width: 140px;
+  min-width: 100px;
 }
 
-.common-card-pseudo__dir-input {
+.common-card-pseudo__library-select {
   flex: 1;
   padding: var(--space-1, 0.5rem);
   border: 1px solid var(--border-color, #ddd);
   border-radius: 4px;
+  background: white;
 }
 
+.common-card-pseudo__autofill-btn {
+  padding: var(--space-1, 0.5rem) var(--space-2, 0.75rem);
+  background-color: var(--info-color, #17a2b8);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.common-card-pseudo__autofill-btn:hover {
+  background-color: var(--info-hover, #138496);
+}
+
+/* Mapping table */
 .common-card-pseudo__mapping {
   display: flex;
   flex-direction: column;
@@ -97,33 +117,26 @@
   padding: var(--space-1, 0.5rem);
   border: 1px solid var(--border-color, #ddd);
   border-radius: 4px;
+  background: white;
+}
+
+.common-card-pseudo__select--unset {
+  border-color: var(--warning-border, #ffc107);
+  background-color: var(--warning-bg, #fff8e6);
 }
 
 .common-card-pseudo__not-found {
   font-size: 0.85rem;
-  color: var(--warning-text, #856404);
+  color: var(--danger-color, #dc3545);
 }
 
 .common-card-pseudo__pseudo-display {
-  padding: var(--space-1, 0.5rem);
+  display: inline-block;
+  padding: var(--space-1, 0.25rem) var(--space-1, 0.5rem);
   background-color: var(--bg-secondary, #f5f5f5);
   border-radius: 4px;
   font-family: monospace;
   font-size: 0.9rem;
-}
-
-.common-card-pseudo__clear-btn {
-  padding: var(--space-1, 0.5rem);
-  background-color: var(--danger-color, #dc3545);
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
-.common-card-pseudo__clear-btn:hover {
-  background-color: var(--danger-hover, #c82333);
 }
 
 .common-card-pseudo__no-species {
@@ -132,42 +145,46 @@
   color: var(--text-muted, #666);
 }
 
-.common-card-pseudo__available {
+/* Info text */
+.common-card-pseudo__info {
   padding: var(--space-1, 0.5rem);
-  background-color: var(--bg-secondary, #f5f5f5);
-  border-radius: 4px;
+  color: var(--text-muted, #888);
 }
 
-.common-card-pseudo__available summary {
-  cursor: pointer;
-  font-weight: 500;
-  padding: var(--space-1, 0.5rem);
-}
-
-.common-card-pseudo__pseudo-list {
-  margin: var(--space-1, 0.5rem) 0 0 0;
-  padding-left: var(--space-3, 1.5rem);
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.common-card-pseudo__pseudo-item {
-  margin: var(--space-1, 0.5rem) 0;
-}
-
-.common-card-pseudo__pseudo-item code {
-  padding: var(--space-1, 0.5rem);
-  background-color: white;
-  border: 1px solid var(--border-color, #ddd);
-  border-radius: 4px;
+.common-card-pseudo__info code {
+  background-color: var(--bg-secondary, #f0f0f0);
+  padding: 2px 4px;
+  border-radius: 3px;
   font-family: monospace;
-  font-size: 0.9rem;
 }
 
+/* Actions */
 .common-card-pseudo__actions {
   display: flex;
   justify-content: flex-end;
-  margin-top: var(--space-2, 1rem);
+  gap: var(--space-2, 0.5rem);
+  margin-top: var(--space-2, 0.5rem);
+  padding-top: var(--space-2, 0.5rem);
+  border-top: 1px solid var(--border-color, #ddd);
+}
+
+.common-card-pseudo__import-btn {
+  padding: var(--space-1, 0.5rem) var(--space-2, 1rem);
+  background-color: var(--secondary-color, #6c757d);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.common-card-pseudo__import-btn:hover {
+  background-color: var(--secondary-hover, #5a6268);
+}
+
+.common-card-pseudo__import-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .common-card-pseudo__apply-btn {
@@ -188,4 +205,3 @@
   background-color: var(--disabled-color, #ccc);
   cursor: not-allowed;
 }
-

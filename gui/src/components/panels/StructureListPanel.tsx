@@ -49,7 +49,10 @@ export function StructureListPanel({
   void __onlineSessionId;
   void __onlineCandidates;
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isOnlinePanelExpanded, setIsOnlinePanelExpanded] = useState(false);
+  
+  // Sync internal expanded state with leftMode prop
+  // OnlineImportPanel needs isExpanded state, which should match leftMode === 'import'
+  const isOnlinePanelExpanded = leftMode === 'import';
   
   const handleRefresh = useCallback(async () => {
     if (!onRefreshProjectRegistry) return;
@@ -62,12 +65,10 @@ export function StructureListPanel({
   }, [onRefreshProjectRegistry]);
   
   const handleEnterImportMode = useCallback(() => {
-    setIsOnlinePanelExpanded(true);
     onEnterImportMode?.();
   }, [onEnterImportMode]);
   
   const handleExitImportMode = useCallback(() => {
-    setIsOnlinePanelExpanded(false);
     onExitImportMode?.();
   }, [onExitImportMode]);
   

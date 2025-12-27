@@ -88,8 +88,12 @@ export interface QVClient {
     calculation: string,
     step: string,
     mapping: Record<string, string>,
-    pseudoDir?: string
+    libraryPreference?: 'precision' | 'efficiency'
   ) => Promise<QVResponse<QVResult<'set_pseudo_mapping'>>>;
+  importPseudoFiles: (
+    projectRoot: string,
+    filePaths: string[]
+  ) => Promise<QVResponse<QVResult<'import_pseudo_files'>>>;
   getRelaxFinalStructurePreview: (
     projectRoot: string,
     calculation: string,
@@ -404,14 +408,20 @@ export function useQVClient(): QVClient {
       calculation: string,
       step: string,
       mapping: Record<string, string>,
-      pseudoDir?: string
+      libraryPreference?: 'precision' | 'efficiency'
     ) => call('set_pseudo_mapping', {
       project_root: projectRoot,
       calculation,
       step,
       mapping,
-      pseudo_dir: pseudoDir,
+      library_preference: libraryPreference,
     }),
+    [call]
+  );
+  
+  const importPseudoFiles = useCallback(
+    (projectRoot: string, filePaths: string[]) =>
+      call('import_pseudo_files', { project_root: projectRoot, file_paths: filePaths }),
     [call]
   );
   
@@ -467,6 +477,7 @@ export function useQVClient(): QVClient {
     setCommonCard,
     getPseudoMapping,
     setPseudoMapping,
+    importPseudoFiles,
     getRelaxFinalStructurePreview,
     saveRelaxFinalStructure,
     checkConnection,

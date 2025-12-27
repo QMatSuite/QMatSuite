@@ -72,6 +72,72 @@ K_POINTS automatic
 """
 )
 
+SIMPLE_VC_RELAX = textwrap.dedent(
+    """\
+&CONTROL
+    calculation = 'vc-relax'
+    prefix = 'si'
+/
+&SYSTEM
+    ibrav = 2
+    celldm(1) = 10.20
+    nat = 2
+    ntyp = 1
+    ecutwfc = 40
+/
+&ELECTRONS
+    conv_thr = 1.0d-8
+/
+&IONS
+/
+&CELL
+/
+ATOMIC_SPECIES
+Si  28.086  Si.pz-vbc.UPF
+ATOMIC_POSITIONS crystal
+Si 0.0 0.0 0.0
+Si 0.25 0.25 0.25
+CELL_PARAMETERS angstrom
+ 0.000000  1.920000  1.920000
+ 1.920000  0.000000  1.920000
+ 1.920000  1.920000  0.000000
+K_POINTS automatic
+4 4 4 0 0 0
+"""
+)
+
+SIMPLE_RELAX = textwrap.dedent(
+    """\
+&CONTROL
+    calculation = 'relax'
+    prefix = 'si'
+/
+&SYSTEM
+    ibrav = 2
+    celldm(1) = 10.20
+    nat = 2
+    ntyp = 1
+    ecutwfc = 40
+/
+&ELECTRONS
+    conv_thr = 1.0d-8
+/
+&IONS
+/
+ATOMIC_SPECIES
+Si  28.086  Si.pz-vbc.UPF
+ATOMIC_POSITIONS crystal
+Si 0.0 0.0 0.0
+Si 0.25 0.25 0.25
+CELL_PARAMETERS angstrom
+ 0.000000  1.920000  1.920000
+ 1.920000  0.000000  1.920000
+ 1.920000  1.920000  0.000000
+K_POINTS automatic
+4 4 4 0 0 0
+"""
+)
+
 
 def _write_input(tmp_path: Path, name: str, content: str) -> Path:
     path = tmp_path / name
@@ -102,6 +168,42 @@ def test_build_step_spec_from_qe_input_creates_structure_and_yaml(tmp_path: Path
     assert "nat" not in spec_text
     assert "ntyp" not in spec_text
     assert result.step_type == "scf"
+
+
+def test_build_step_spec_from_qe_input_detects_vc_relax(tmp_path: Path):
+    """Test that vc-relax calculation type is correctly detected and preserved."""
+    input_path = _write_input(tmp_path, "si_vc_relax.in", SIMPLE_VC_RELAX)
+    destination = tmp_path / "steps"
+    result = build_step_spec_from_qe_input(
+        input_path,
+        destination_dir=destination,
+        reference_structure_by="path",
+    )
+
+    assert result.spec_path.exists()
+    assert result.step_type == "vc-relax", f"Expected 'vc-relax', got '{result.step_type}'"
+    
+    # Verify step_type is preserved in YAML
+    spec_data = yaml.safe_load(result.spec_path.read_text())
+    assert spec_data.get("step_type") == "vc-relax"
+
+
+def test_build_step_spec_from_qe_input_detects_relax(tmp_path: Path):
+    """Test that relax calculation type is correctly detected and preserved."""
+    input_path = _write_input(tmp_path, "si_relax.in", SIMPLE_RELAX)
+    destination = tmp_path / "steps"
+    result = build_step_spec_from_qe_input(
+        input_path,
+        destination_dir=destination,
+        reference_structure_by="path",
+    )
+
+    assert result.spec_path.exists()
+    assert result.step_type == "relax", f"Expected 'relax', got '{result.step_type}'"
+    
+    # Verify step_type is preserved in YAML
+    spec_data = yaml.safe_load(result.spec_path.read_text())
+    assert spec_data.get("step_type") == "relax"
 
 
 def test_build_calculation_from_qe_inputs_and_load(tmp_path: Path):

@@ -1335,7 +1335,7 @@ export function StepDetailPanel({
               <CommonCardPseudo
                 mapping={pseudoMapping}
                 isEditing={isEditing}
-                onUpdate={async (mapping, pseudoDir) => {
+                onUpdate={async (mapping, libraryPreference) => {
                   if (!projectRoot || !calculationSelector || !stepSelector) return;
                   
                   const response = await qv.setPseudoMapping(
@@ -1343,7 +1343,7 @@ export function StepDetailPanel({
                     calculationSelector,
                     stepSelector,
                     mapping,
-                    pseudoDir
+                    libraryPreference
                   );
                   
                   if (response.ok && response.data) {
@@ -1359,6 +1359,46 @@ export function StepDetailPanel({
                     onParametersUpdated?.();
                   } else {
                     setError(response.error?.message || 'Failed to update pseudopotential mapping');
+                  }
+                }}
+                onImportFiles={async (files) => {
+                  if (!projectRoot) return;
+                  
+                  // Convert FileList to paths via temporary upload
+                  // For now, we use the file path directly (Electron environment)
+                  const filePaths: string[] = [];
+                  for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    // In Electron, File objects have a path property
+                    const filePath = (file as unknown as { path: string }).path;
+                    if (filePath) {
+                      filePaths.push(filePath);
+                    }
+                  }
+                  
+                  if (filePaths.length === 0) {
+                    setError('No valid file paths found');
+                    return;
+                  }
+                  
+                  const response = await qv.importPseudoFiles(projectRoot, filePaths);
+                  if (response.ok && response.data) {
+                    if (response.data.errors && response.data.errors.length > 0) {
+                      setError(response.data.errors.join(', '));
+                    }
+                  } else {
+                    setError(response.error?.message || 'Failed to import pseudopotential files');
+                  }
+                }}
+                onRefresh={async () => {
+                  if (!projectRoot || !calculationSelector || !stepSelector) return;
+                  const mappingResponse = await qv.getPseudoMapping(
+                    projectRoot,
+                    calculationSelector,
+                    stepSelector
+                  );
+                  if (mappingResponse.ok && mappingResponse.data) {
+                    setPseudoMapping(mappingResponse.data);
                   }
                 }}
               />
