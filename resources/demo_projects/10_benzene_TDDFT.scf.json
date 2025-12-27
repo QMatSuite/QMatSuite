@@ -1,0 +1,93 @@
+{
+  "converged": true,
+  "iterations": [
+    {
+      "iteration": 1,
+      "total_energy_ry": -78.66535133,
+      "scf_accuracy_ry": 1.34003302,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 2,
+      "total_energy_ry": -78.92085215,
+      "scf_accuracy_ry": 0.41607692,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 3,
+      "total_energy_ry": -79.02898194,
+      "scf_accuracy_ry": 0.02190044,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 4,
+      "total_energy_ry": -79.03378982,
+      "scf_accuracy_ry": 0.00017961,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 5,
+      "total_energy_ry": -79.03393088,
+      "scf_accuracy_ry": 5.292e-05,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 6,
+      "total_energy_ry": -79.03394087,
+      "scf_accuracy_ry": 4e-07,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 7,
+      "total_energy_ry": -79.033941,
+      "scf_accuracy_ry": 7e-08,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 8,
+      "total_energy_ry": -79.033941,
+      "scf_accuracy_ry": 2.2e-09,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 9,
+      "total_energy_ry": -79.033941,
+      "scf_accuracy_ry": 8.1e-10,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 10,
+      "total_energy_ry": -79.03394101,
+      "scf_accuracy_ry": 1.3e-10,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    }
+  ],
+  "total_energy_ry": -79.03394101,
+  "fermi_energy_ev": -6.16,
+  "homo_ev": -6.16,
+  "lumo_ev": null,
+  "band_gap_ev": null,
+  "n_electrons": 30.0,
+  "n_kpoints": 1,
+  "n_bands": 15,
+  "ecutwfc_ry": 40.0,
+  "ecutrho_ry": 320.0,
+  "calculation_type": null,
+  "total_cpu_time_s": 68.43,
+  "total_wall_time_s": 71.66,
+  "units": {
+    "energy": "Ry",
+    "fermi": "eV",
+    "time": "s"
+  }
+}

@@ -26,6 +26,8 @@ The system provides:
 | `store_dir` | `${repoRoot}/temp/pseudo` | Global pseudo store for installed SSSP libraries |
 | `seed_dir` | `${repoRoot}/temp/assets/pseudo_seed` | Seed directory for offline installation |
 | `allow_download` | `false` | Whether to allow network downloads |
+| `network_pseudo_base_url` | `https://pseudopotentials.quantum-espresso.org/upf_files` | Base URL for direct filename downloads |
+| `legacy_tables_base_url` | `https://pseudopotentials.quantum-espresso.org/legacy_tables` | Base URL for legacy tables search |
 
 ### Persistence
 
@@ -40,7 +42,9 @@ Example config:
   "pseudo": {
     "store_dir": "/path/to/QMatSuite/temp/pseudo",
     "seed_dir": "/path/to/QMatSuite/temp/assets/pseudo_seed",
-    "allow_download": false
+    "allow_download": false,
+    "network_pseudo_base_url": "https://pseudopotentials.quantum-espresso.org/upf_files",
+    "legacy_tables_base_url": "https://pseudopotentials.quantum-espresso.org/legacy_tables"
   }
 }
 ```
@@ -269,12 +273,67 @@ The Settings page now includes a "Pseudopotentials" card with:
 - `gui/src/types/qv.ts` (MODIFIED)
   - Added RPC types for pseudo config
 
+## Online Pseudopotential Resolution
+
+### Overview
+
+The system now supports downloading pseudopotentials directly from Quantum ESPRESSO's online repository, mirroring the behavior of QE's test-suite `check_pseudo.sh`.
+
+### Features
+
+1. **Download by Filename**: Enter exact UPF filename (e.g., `Si.pbe-n-rrkjus_psl.1.0.0.UPF`) and download directly
+2. **Search by Element**: Browse QE legacy tables to find available pseudopotentials for an element
+3. **SHA256 Deduplication**: Identical files are detected and skipped automatically
+4. **Deterministic Renaming**: Filename conflicts are resolved with `_1`, `_2` suffixes
+
+### Configuration
+
+Network URLs are configured in `PseudoConfig`:
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `network_pseudo_base_url` | `https://pseudopotentials.quantum-espresso.org/upf_files` | Base URL for direct filename downloads |
+| `legacy_tables_base_url` | `https://pseudopotentials.quantum-espresso.org/legacy_tables` | Base URL for legacy tables search |
+
+These can be overridden in the user config file (same location as other pseudo config).
+
+### URL Patterns
+
+- **Element page**: `https://pseudopotentials.quantum-espresso.org/legacy_tables/ps-library/{element_lowercase}`
+  - Example: `https://pseudopotentials.quantum-espresso.org/legacy_tables/ps-library/si`
+- **Download URL**: `https://pseudopotentials.quantum-espresso.org/upf_files/{filename}`
+  - Example: `https://pseudopotentials.quantum-espresso.org/upf_files/Si.pbe-n-rrkjus_psl.1.0.0.UPF`
+
+### RPC Endpoints
+
+See `docs/DAEMON_API_REFERENCE.md` for full API documentation:
+
+- `search_legacy_pseudos` - Search QE legacy tables by element
+- `download_pseudo_by_filename` - Download by exact filename
+- `download_pseudo_candidate` - Download from candidate (URL or filename)
+
+### UI Integration
+
+The Pseudopotentials card in StepDetailPanel includes:
+
+1. **Auto-preselection**: SSSP defaults (precision preferred, efficiency fallback) are auto-preselected but only committed on Apply
+2. **Online Resolve (Advanced)**: Collapsible section with two modes:
+   - **Mode 1: Download by filename** - Input field + Download button
+   - **Mode 2: Search by element** - Element dropdown + Search button, displays candidates list
+3. **Visual Indicators**: SSSP default badge (📚) for auto-preselected values
+4. **Error Handling**: Network errors are displayed inline, non-blocking
+
+### Offline Behavior
+
+- Network errors are caught and returned in the `errors` array
+- UI displays error messages in the online resolve section
+- Functions do not crash on network failures; they return structured error responses
+
 ## Future Work
 
-- **PSEUDO Common Card** - UI in StepDetailPanel for species→pseudo mapping (uses resolution flow)
-- **Download Implementation** - Actually fetch SSSP from Materials Cloud when allowed
 - **SSSP Library Browser** - UI to select version/flavor and view available elements
 - **Cutoff Recommendations** - Use cutoffs.json to suggest ecutwfc/ecutrho values
+- **Environment Variable Override** - Support `NETWORK_PSEUDO_BASE_URL` env var for CI/testing
 
 ## Testing
 

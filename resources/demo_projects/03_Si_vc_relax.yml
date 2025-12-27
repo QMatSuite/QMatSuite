@@ -1,0 +1,192 @@
+version: 1
+project:
+  meta:
+    id: 01KDG9DG6R305E0J8MJYP22RD7
+    name: 03_Si_vc_relax
+    slug: 03_si_vc_relax
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    id: 01KDG9DG6TGF97SN2QNM3JEJNF
+    name: si.vc_relax
+    slug: si-vc_relax
+    path: structures/si-vc_relax.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - -3.7042404764400003
+        - 0.0
+        - 3.7042404764400003
+      - - 0.0
+        - 3.7042404764400003
+        - 3.7042404764400003
+      - - -3.7042404764400003
+        - 3.7042404764400003
+        - 0.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 5.238587120072824
+      b: 5.238587120072824
+      c: 5.238587120072824
+      alpha: 59.99999999999999
+      beta: 59.99999999999999
+      gamma: 59.99999999999999
+      volume: 101.6547120797008
+    properties: {}
+    sites:
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Si
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - -0.25
+      - 0.75
+      - -0.25
+      properties: {}
+      label: Si
+      xyz:
+      - 1.8521202382200002
+      - 1.85212023822
+      - 1.85212023822
+- meta:
+    id: 01KDG9DG73V1DYXTHCP6A2E7W5
+    name: si.vc_relax 2
+    slug: si-vc_relax-2
+    path: structures/si-vc_relax-2.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - -3.7042404764400003
+        - 0.0
+        - 3.7042404764400003
+      - - 0.0
+        - 3.7042404764400003
+        - 3.7042404764400003
+      - - -3.7042404764400003
+        - 3.7042404764400003
+        - 0.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 5.238587120072824
+      b: 5.238587120072824
+      c: 5.238587120072824
+      alpha: 59.99999999999999
+      beta: 59.99999999999999
+      gamma: 59.99999999999999
+      volume: 101.6547120797008
+    properties: {}
+    sites:
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Si
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - -0.25
+      - 0.75
+      - -0.25
+      properties: {}
+      label: Si
+      xyz:
+      - 1.8521202382200002
+      - 1.85212023822
+      - 1.85212023822
+calculations:
+- meta:
+    id: 01KDG9DG6W2TWV5KBHEQTW0KN4
+    name: Si Vc Relax
+    slug: si-vc-relax
+    path: calculations/si-vc-relax
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  steps:
+  - meta:
+      id: 01KDG9DG70D199VE9GD4KA71WW
+      name: si.vc_relax
+      slug: si-vc_relax
+      path: si.vc_relax.step.yaml
+      kind: step
+    step_type: vc-relax
+    parameters:
+      CONTROL:
+        calculation: vc-relax
+        prefix: si
+        outdir: ./outdir
+        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+        etot_conv_thr: 1.0e-05
+        forc_conv_thr: 0.0001
+      SYSTEM:
+        ecutwfc: 30
+      ELECTRONS:
+        conv_thr: 1.0e-07
+      CELL:
+        cell_dofree: ibrav
+    input_name: si.vc_relax.in
+    cards:
+      K_POINTS:
+        option: automatic
+        data:
+        - - '4'
+          - '4'
+          - '4'
+          - '0'
+          - '0'
+          - '0'
+    species_overrides:
+      Si:
+        mass: 28.0855
+        pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+  structure_id: 01KDG9DG6TGF97SN2QNM3JEJNF
+pseudo:
+  directory: pseudo
+  files:
+  - Si.pbe-n-rrkjus_psl.1.0.0.UPF
+meta:
+  id: 03_Si_vc_relax
+  title: 3 Si Vc Relax
+  subtitle: unknown
+  tags:
+  - tutorial
+  - qe
+  - unknown
+  recommended_analysis: null
+  difficulty: beginner
+  reference_artifacts: null

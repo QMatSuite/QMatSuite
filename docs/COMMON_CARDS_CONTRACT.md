@@ -160,6 +160,52 @@ cards:
   K_POINTS: "automatic\n10 8 8 0 0 0"
 ```
 
+### PSEUDO Card (Pseudopotentials)
+
+**Note**: Pseudopotentials are stored in `species_overrides` in step YAML, not as raw card text. The UI provides a structured editor for per-element mapping.
+
+**YAML (species_overrides)**:
+```yaml
+species_overrides:
+  Si:
+    pseudopot: "Si.pbe-n-rrkjus_psl.1.0.0.UPF"
+  Mo:
+    pseudopot: "Mo.pbe-spn-rrkjus_psl.1.0.0.UPF"
+```
+
+**View Model** (from `get_pseudo_mapping`):
+```json
+{
+  "species": ["Si", "Mo"],
+  "mapping": {
+    "Si": "Si.pbe-n-rrkjus_psl.1.0.0.UPF",
+    "Mo": "Mo.pbe-spn-rrkjus_psl.1.0.0.UPF"
+  },
+  "pseudo_dir": "../pseudo",
+  "available_pseudos": ["Si.pbe-n-rrkjus_psl.1.0.0.UPF", "Mo.pbe-spn-rrkjus_psl.1.0.0.UPF"],
+  "warnings": [],
+  "library_preference": "precision",
+  "sssp_defaults": {
+    "Si": {"precision": "Si.pbe-n-kjpaw_psl.1.0.0.UPF", "efficiency": "Si.pbe-n-kjpaw_psl.1.0.0.UPF"},
+    "Mo": {"precision": "Mo.pbe-spn-rrkjus_psl.1.0.0.UPF", "efficiency": "Mo.pbe-spn-rrkjus_psl.1.0.0.UPF"}
+  },
+  "sssp_installed": {"precision": true, "efficiency": true}
+}
+```
+
+**Key Design Decisions**:
+- `pseudo_dir` is **NOT editable** in UI (runtime always uses `../pseudo`)
+- Per-element mapping is the canonical source of truth (`species_overrides`)
+- SSSP defaults are auto-preselected but only committed on Apply (no silent side effects)
+- Online resolve downloads individual UPF files into `project/pseudo/` for self-containment
+- SHA256 deduplication prevents duplicate files
+- Deterministic renaming (`_1`, `_2`) resolves filename conflicts
+
+**Online Resolve Features**:
+- **Download by filename**: Direct download from QE repository
+- **Search by element**: Browse QE legacy tables for available pseudopotentials
+- Both modes download to `project/pseudo/` and update available options
+
 ### K_POINTS Crystal Mode
 
 **YAML (raw)**:

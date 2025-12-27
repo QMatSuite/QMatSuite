@@ -1,0 +1,282 @@
+version: 1
+project:
+  meta:
+    id: 01KDG9DFZBKNK05A9VJ6KR9QM1
+    name: 01_H2
+    slug: 01_h2
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    id: 01KDG9DFZDMDPFVM01WES9C835
+    name: h2.relax
+    slug: h2-relax
+    path: structures/h2-relax.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - 10.5835442184
+        - 0.0
+        - 0.0
+      - - 0.0
+        - 10.5835442184
+        - 0.0
+      - - 0.0
+        - 0.0
+        - 10.5835442184
+      pbc:
+      - true
+      - true
+      - true
+      a: 10.5835442184
+      b: 10.5835442184
+      c: 10.5835442184
+      alpha: 90.0
+      beta: 90.0
+      gamma: 90.0
+      volume: 1185.4776918915543
+    properties: {}
+    sites:
+    - species:
+      - element: H
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: H
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+    - species:
+      - element: H
+        occu: 1
+      abc:
+      - 0.0944863062282531
+      - 0.0
+      - 0.0
+      properties: {}
+      label: H
+      xyz:
+      - 1.0
+      - 0.0
+      - 0.0
+- meta:
+    id: 01KDG9DFZPPMRS4Y5XHXYXJTQ5
+    name: h2.relax 2
+    slug: h2-relax-2
+    path: structures/h2-relax-2.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - 10.5835442184
+        - 0.0
+        - 0.0
+      - - 0.0
+        - 10.5835442184
+        - 0.0
+      - - 0.0
+        - 0.0
+        - 10.5835442184
+      pbc:
+      - true
+      - true
+      - true
+      a: 10.5835442184
+      b: 10.5835442184
+      c: 10.5835442184
+      alpha: 90.0
+      beta: 90.0
+      gamma: 90.0
+      volume: 1185.4776918915543
+    properties: {}
+    sites:
+    - species:
+      - element: H
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: H
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+    - species:
+      - element: H
+        occu: 1
+      abc:
+      - 0.0944863062282531
+      - 0.0
+      - 0.0
+      properties: {}
+      label: H
+      xyz:
+      - 1.0
+      - 0.0
+      - 0.0
+- meta:
+    id: 01KDG9DG0A42M2N84KW8H6WCMC
+    name: h2.scf_apart
+    slug: h2-scf_apart
+    path: structures/h2-scf_apart.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - 10.5835442184
+        - 0.0
+        - 0.0
+      - - 0.0
+        - 10.5835442184
+        - 0.0
+      - - 0.0
+        - 0.0
+        - 10.5835442184
+      pbc:
+      - true
+      - true
+      - true
+      a: 10.5835442184
+      b: 10.5835442184
+      c: 10.5835442184
+      alpha: 90.0
+      beta: 90.0
+      gamma: 90.0
+      volume: 1185.4776918915543
+    properties: {}
+    sites:
+    - species:
+      - element: H
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: H
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+    - species:
+      - element: H
+        occu: 1
+      abc:
+      - 0.1889726124565062
+      - 0.0
+      - 0.0
+      properties: {}
+      label: H
+      xyz:
+      - 2.0
+      - 0.0
+      - 0.0
+calculations:
+- meta:
+    id: 01KDG9DFZEVT6EGF7S0EBKN65Y
+    name: H2
+    slug: h2
+    path: calculations/h2
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  steps:
+  - meta:
+      id: 01KDG9DFZJBA0934G3TMN221WW
+      name: h2.relax
+      slug: h2-relax
+      path: h2.relax.step.yaml
+      kind: step
+    step_type: relax
+    parameters:
+      CONTROL:
+        calculation: relax
+        prefix: h2
+        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+      SYSTEM:
+        ecutwfc: 30.0
+      ELECTRONS:
+        conv_thr: 1.0e-08
+      IONS:
+        ion_dynamics: bfgs
+    input_name: h2.relax.in
+    cards:
+      K_POINTS:
+        option: automatic
+        data:
+        - - '1'
+          - '1'
+          - '1'
+          - '0'
+          - '0'
+          - '0'
+    species_overrides:
+      H:
+        mass: 1.00784
+        pseudopot: H_ONCV_PBE-1.0.oncvpsp.upf
+  - meta:
+      id: 01KDG9DG05645DE2YYXW1V60MR
+      name: h2.scf_apart
+      slug: h2-scf_apart
+      path: h2.scf_apart.step.yaml
+      kind: step
+    step_type: scf
+    parameters:
+      CONTROL:
+        calculation: scf
+        prefix: h2
+        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+      SYSTEM:
+        ecutwfc: 30.0
+      ELECTRONS:
+        conv_thr: 1.0e-08
+    input_name: h2.scf_apart.in
+    cards:
+      K_POINTS:
+        option: automatic
+        data:
+        - - '1'
+          - '1'
+          - '1'
+          - '0'
+          - '0'
+          - '0'
+    species_overrides:
+      H:
+        mass: 1.00784
+        pseudopot: H_ONCV_PBE-1.0.oncvpsp.upf
+  structure_id: 01KDG9DFZDMDPFVM01WES9C835
+pseudo:
+  directory: pseudo
+  files:
+  - H_ONCV_PBE-1.0.oncvpsp.upf
+meta:
+  id: 01_H2
+  title: 1 H2
+  subtitle: "unknown \u2192 unknown"
+  tags:
+  - tutorial
+  - qe
+  - unknown
+  - unknown
+  recommended_analysis: null
+  difficulty: beginner
+  reference_artifacts:
+    scf: 01_H2.scf.json
