@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KDGCY9Q7C97SC6PYEJXAGQNE
+    id: 01KDH0M6VTSKYKZAPJ31PGCZBN
     name: 15_bulk_modulus_Si
     slug: 15_bulk_modulus_si
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KDGCY9QHZF8SHYYSJXJ1F0PA
+    id: 01KDH0M6W8W3PZRJCCT33M56F3
     name: si.1_scf_equilibrium
     slug: si-1_scf_equilibrium
     path: structures/si-1_scf_equilibrium.json
@@ -69,7 +69,7 @@ structures:
       - 1.3673530097223552
       - 1.3673530097223552
 - meta:
-    id: 01KDGCY9R93YPHA36JG6Q0TTZK
+    id: 01KDH0M6WYQB1HPFYDGPHVRCQE
     name: si.2_scf_1.01a
     slug: si-2_scf_1-01a
     path: structures/si-2_scf_1-01a.json
@@ -129,7 +129,7 @@ structures:
       - 1.3810265398195787
       - 1.3810265398195791
 - meta:
-    id: 01KDGCY9SBXR02CYTPP6GK072M
+    id: 01KDH0M6Y19GANN8RSN8EDBY6X
     name: si.3_scf_0.99a
     slug: si-3_scf_0-99a
     path: structures/si-3_scf_0-99a.json
@@ -190,7 +190,7 @@ structures:
       - 1.3536794796251315
 calculations:
 - meta:
-    id: 01KDGCY9Q9T4XGVT4KQC1S26TZ
+    id: 01KDH0M6VXV5HTJKDGQC61AKGS
     name: Bulk Modulus Si
     slug: bulk-modulus-si
     path: calculations/bulk-modulus-si
@@ -199,7 +199,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KDGCY9QCD2M4EMVR3TVDWE87
+      id: 01KDH0M6W4VWNGVEKDVMBS2ZEJ
       name: si.1_scf_equilibrium
       slug: si-1_scf_equilibrium
       path: si.1_scf_equilibrium.step.yaml
@@ -236,7 +236,7 @@ calculations:
         mass: 28.0855
         pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
   - meta:
-      id: 01KDGCY9R3GCGHSDBCY4JQCDKD
+      id: 01KDH0M6WRG6FV2DF9SQA302WH
       name: si.2_scf_1.01a
       slug: si-2_scf_1-01a
       path: si.2_scf_1.01a.step.yaml
@@ -273,7 +273,7 @@ calculations:
         mass: 28.0855
         pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
   - meta:
-      id: 01KDGCY9S44KYVFRF2CG2BW4D6
+      id: 01KDH0M6XTNJHFVQCKBHFVGC80
       name: si.3_scf_0.99a
       slug: si-3_scf_0-99a
       path: si.3_scf_0.99a.step.yaml
@@ -309,7 +309,11 @@ calculations:
       Si:
         mass: 28.0855
         pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
-  structure_id: 01KDGCY9QHZF8SHYYSJXJ1F0PA
+  structure_id: 01KDH0M6VV7B0DJC6JYXTTRZR5
+  species_map:
+    Si:
+      mass: 28.0855
+      pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
 pseudo:
   directory: pseudo
   files:

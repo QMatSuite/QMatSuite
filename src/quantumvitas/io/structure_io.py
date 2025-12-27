@@ -296,24 +296,24 @@ def qe_input_has_explicit_structure(qe_input: QEInput) -> bool:
         return True
     
     # Check SYSTEM namelist for ibrav-based structure
+    # Note: _get_system_namelist returns a dict with lowercase keys
     system = _get_system_namelist(qe_input)
     if system:
         ibrav = int(system.get("ibrav", 0) or 0)
         if ibrav != 0:
             # ibrav != 0 means structure can be inferred from parameters
-            # Check if required parameters exist
+            # Check if required parameters exist (system dict already has lowercase keys)
             if ibrav in [12, -12]:
-                # Hexagonal: need b (or a), c, and cosab/cosbc
-                param_keys_lower = {str(k).lower(): k for k in system.parameters.keys()}
-                has_b = "b" in param_keys_lower or "a" in param_keys_lower
-                has_c = "c" in param_keys_lower
-                has_cos = any(k in param_keys_lower for k in ["cosab", "cos(ab)", "cos(angle)", "cosbc"])
+                # Monoclinic: need b (or a), c, and cosab/cosbc
+                has_b = "b" in system or "a" in system
+                has_c = "c" in system
+                has_cos = any(k in system for k in ["cosab", "cosbc", "cos(ab)"])
                 if has_b and has_c and has_cos:
                     return True
             else:
                 # Other ibrav: need celldm(1) or a
-                has_celldm1 = any(str(k).lower() == "celldm(1)" for k in system.parameters.keys())
-                has_a = any(str(k).lower() == "a" for k in system.parameters.keys())
+                has_celldm1 = "celldm(1)" in system
+                has_a = "a" in system
                 if has_celldm1 or has_a:
                     return True
     

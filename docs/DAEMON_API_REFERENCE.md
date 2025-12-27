@@ -218,6 +218,49 @@ List all calculations in a project.
 }
 ```
 
+#### `get_calculation_detail`
+
+Get detailed information about a calculation, including structure elements and species map.
+
+**Payload**:
+```json
+{
+  "project_root": "/path/to/project",
+  "calculation": "si-bands"
+}
+```
+
+**Response**:
+```json
+{
+  "id": "01ABC...",
+  "name": "si-bands",
+  "slug": "si-bands",
+  "path": "calculations/si-bands",
+  "absolute_path": "/path/to/project/calculations/si-bands",
+  "structure": "si",
+  "structure_id": "01SABC123...",
+  "structure_elements": ["Si"],
+  "mode": "normal",
+  "n_steps": 3,
+  "steps": [
+    {"id": "01TXYZ789...", "slug": "scf", "name": "scf", "type": "scf", "step_file": "steps/scf.step.yaml", "missing": false},
+    {"id": "01TUVW456...", "slug": "nscf", "name": "nscf", "type": "nscf", "step_file": "steps/nscf.step.yaml", "missing": false}
+  ],
+  "species_map": {
+    "Si": {
+      "pseudopot": "Si.pbe-n-rrkjus_psl.1.0.0.UPF",
+      "mass": 28.0855
+    }
+  }
+}
+```
+
+**Key fields**:
+- `structure_elements`: List of element symbols from the calculation's structure composition (for UI rendering)
+- `species_map`: Calculation-level pseudopotential mapping (authoritative source)
+- `steps`: Array of step summaries with ULID, metadata, and type
+
 ---
 
 ### Visualization Data Commands
@@ -582,16 +625,15 @@ Attempt to cancel a job.
 
 ## Pseudopotential Management
 
-### `get_pseudo_mapping`
+### `get_calculation_pseudo_mapping`
 
-Get pseudopotential mapping for a step, including available pseudos and SSSP defaults.
+Get pseudopotential mapping for a calculation (authoritative source). This is the preferred method for accessing pseudopotential mappings, as they are stored at the calculation level.
 
 **Payload**:
 ```json
 {
   "project_root": "/path/to/project",
-  "calculation": "si-bands",
-  "step": "scf"
+  "calculation": "si-bands"
 }
 ```
 
@@ -600,6 +642,12 @@ Get pseudopotential mapping for a step, including available pseudos and SSSP def
 {
   "species": ["Si"],
   "mapping": {"Si": "Si.pbe-n-rrkjus_psl.1.0.0.UPF"},
+  "species_map": {
+    "Si": {
+      "pseudopot": "Si.pbe-n-rrkjus_psl.1.0.0.UPF",
+      "mass": 28.0855
+    }
+  },
   "pseudo_dir": "../pseudo",
   "available_pseudos": ["Si.pbe-n-rrkjus_psl.1.0.0.UPF", "Si.pz-vbc.UPF"],
   "warnings": [],
@@ -617,9 +665,48 @@ Get pseudopotential mapping for a step, including available pseudos and SSSP def
 }
 ```
 
-### `set_pseudo_mapping`
+### `update_calculation_species_map`
 
-Update pseudopotential mapping for a step.
+Update pseudopotential mapping for a calculation (authoritative source). This is the preferred method for updating pseudopotential mappings.
+
+**Payload**:
+```json
+{
+  "project_root": "/path/to/project",
+  "calculation": "si-bands",
+  "species_map": {
+    "Si": {
+      "pseudopot": "Si.pbe-n-rrkjus_psl.1.0.0.UPF",
+      "mass": 28.0855
+    }
+  }
+}
+```
+
+**Response**: Updated calculation detail (same as `get_calculation_detail`), with additional `old_species_map` field
+
+### `get_pseudo_mapping` (Legacy)
+
+⚠️ **Deprecated**: Use `get_calculation_pseudo_mapping` instead. This command is kept for backwards compatibility with old step-level pseudo mappings.
+
+Get pseudopotential mapping for a step (legacy method).
+
+**Payload**:
+```json
+{
+  "project_root": "/path/to/project",
+  "calculation": "si-bands",
+  "step": "scf"
+}
+```
+
+**Response**: Same format as `get_calculation_pseudo_mapping`, but reads from step-level `species_overrides` if present (legacy)
+
+### `set_pseudo_mapping` (Legacy)
+
+⚠️ **Deprecated**: Use `update_calculation_species_map` instead. This command is kept for backwards compatibility.
+
+Update pseudopotential mapping for a step (legacy method).
 
 **Payload**:
 ```json

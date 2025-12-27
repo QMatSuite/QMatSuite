@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KDGCYB3FVM78YH5KGKVT1H0S
+    id: 01KDH0M8C0SF8B34FC357M0ESP
     name: 02_H2O
     slug: 02_h2o
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KDGCYB3PSY5C6YZJABRYDAMW
+    id: 01KDH0M8CC77SFAJ0H2X7N88SN
     name: h2o.relax
     slug: h2o-relax
     path: structures/h2o-relax.json
@@ -83,7 +83,7 @@ structures:
       - 0.030000000000000002
 calculations:
 - meta:
-    id: 01KDGCYB3GGZFWDN7RQQ46KMDP
+    id: 01KDH0M8C34DGJPKPX92HS8S0R
     name: H2O
     slug: h2o
     path: calculations/h2o
@@ -92,7 +92,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KDGCYB3JGBNZQ2WRNRR3DGF1
+      id: 01KDH0M8C89VW4T5890ZACXW7X
       name: h2o.relax
       slug: h2o-relax
       path: h2o.relax.step.yaml
@@ -129,7 +129,14 @@ calculations:
       O:
         mass: 15.999
         pseudopot: O.pbe-n-kjpaw_psl.0.1.UPF
-  structure_id: 01KDGCYB3PSY5C6YZJABRYDAMW
+  structure_id: 01KDH0M8C2JXXPEAHWV5HP8TD5
+  species_map:
+    H:
+      mass: 1.00784
+      pseudopot: H_ONCV_PBE-1.0.oncvpsp.upf
+    O:
+      mass: 15.999
+      pseudopot: O.pbe-n-kjpaw_psl.0.1.UPF
 pseudo:
   directory: pseudo
   files:

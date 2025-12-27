@@ -4905,6 +4905,126 @@ class QVService:
         return result
     
     @staticmethod
+    def get_calculation_pseudo_mapping(
+        project_root: Path,
+        calculation_selector: str,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
+    ) -> Dict[str, Any]:
+        """
+        Get pseudopotential mapping for a calculation.
+        
+        This is the calculation-level equivalent of get_pseudo_mapping (which is step-level).
+        It returns the authoritative species_map from calculation.yaml, along with
+        structure-derived element list and available pseudos.
+        
+        Args:
+            project_root: Project root path
+            calculation_selector: Calculation selector
+            index: Optional ResourceIndex
+            config: Optional project config
+            
+        Returns:
+            Dict with:
+            - species: List of element symbols from structure
+            - mapping: Dict[element, pseudopot] from species_map
+            - species_map: Full species_map dict (with mass etc.)
+            - available_pseudos: List of UPF files in project/pseudo
+            - pseudo_dir: Path to pseudo directory
+            - warnings: List of warnings
+            - sssp_defaults: SSSP default mappings if available
+            - sssp_installed: Which SSSP libraries are installed
+        """
+        from quantumvitas.core.models import load_calculation
+        from quantumvitas.core.resolution import make_structure_selector_resolver, resolve_structure
+        from quantumvitas.core.project_utils import load_project_config
+        from quantumvitas.io import read_structure
+        
+        project_root = Path(project_root).resolve()
+        
+        if config is None:
+            config = load_project_config(project_root)
+        
+        calculation = resolve_calculation(project_root, calculation_selector, config=config, index=index)
+        wf_path = calculation.absolute_path / "calculation.yaml"
+        
+        resolver = make_structure_selector_resolver(project_root, config=config)
+        wf_model = load_calculation(wf_path, project_root=project_root, resolve_structure_selector=resolver)
+        
+        # Get element list from structure
+        species_list: List[str] = []
+        if wf_model.structure_id:
+            try:
+                struct_resolved = resolve_structure(project_root, wf_model.structure_id, config=config, index=index)
+                if struct_resolved.absolute_path.exists():
+                    structure = read_structure(struct_resolved.absolute_path)
+                    species_list = sorted(set(str(el) for el in structure.composition.elements))
+            except Exception:
+                pass
+        
+        # Build mapping dict (element -> pseudopot filename) from species_map
+        mapping: Dict[str, str] = {}
+        if wf_model.species_map:
+            for element, settings in wf_model.species_map.items():
+                pseudo = settings.get("pseudopot", "")
+                if pseudo:
+                    mapping[element] = pseudo
+        
+        # Get available pseudos in project
+        pseudo_dir = project_root / "pseudo"
+        available_pseudos: List[str] = []
+        if pseudo_dir.exists():
+            available_pseudos = sorted([
+                f.name for f in pseudo_dir.iterdir() 
+                if f.is_file() and f.suffix.lower() == ".upf"
+            ])
+        
+        # Check for SSSP defaults
+        sssp_defaults: Dict[str, Dict[str, str]] = {}
+        sssp_installed = {"precision": False, "efficiency": False}
+        try:
+            from quantumvitas.core.pseudo_config import get_sssp_default_for_element, is_sssp_installed
+            sssp_installed["precision"] = is_sssp_installed("precision")
+            sssp_installed["efficiency"] = is_sssp_installed("efficiency")
+            
+            for element in species_list:
+                defaults: Dict[str, str] = {}
+                if sssp_installed["precision"]:
+                    try:
+                        defaults["precision"] = get_sssp_default_for_element(element, "precision")
+                    except Exception:
+                        pass
+                if sssp_installed["efficiency"]:
+                    try:
+                        defaults["efficiency"] = get_sssp_default_for_element(element, "efficiency")
+                    except Exception:
+                        pass
+                if defaults:
+                    sssp_defaults[element] = defaults
+        except Exception:
+            pass
+        
+        # Build warnings
+        warnings: List[str] = []
+        for element in species_list:
+            pseudo = mapping.get(element, "")
+            if not pseudo:
+                warnings.append(f"No pseudopotential set for {element}")
+            elif pseudo not in available_pseudos:
+                warnings.append(f"Pseudopotential {pseudo} for {element} not found in project")
+        
+        return {
+            "species": species_list,
+            "mapping": mapping,
+            "species_map": wf_model.species_map,
+            "available_pseudos": available_pseudos,
+            "pseudo_dir": str(pseudo_dir),
+            "warnings": warnings,
+            "sssp_defaults": sssp_defaults if sssp_defaults else None,
+            "sssp_installed": sssp_installed,
+        }
+    
+    @staticmethod
     def update_calculation_species_map(
         project_root: Path,
         calculation_selector: str,
@@ -5032,12 +5152,19 @@ class QVService:
         # Extract structure info from model
         structure_name = None
         structure_id = wf_model.structure_id
+        structure_elements: List[str] = []  # Element symbols from structure composition
         if structure_id and index:
-            # Try to get structure name from index
+            # Try to get structure name and elements from index
             try:
                 from quantumvitas.core.resolution import resolve_structure
+                from quantumvitas.io import read_structure
                 struct_resolved = resolve_structure(project_root, structure_id, config=config, index=index)
                 structure_name = struct_resolved.meta.name if struct_resolved.meta else None
+                # Read structure to get element composition
+                if struct_resolved.absolute_path.exists():
+                    structure = read_structure(struct_resolved.absolute_path)
+                    # Get unique element symbols from structure composition
+                    structure_elements = sorted(set(str(el) for el in structure.composition.elements))
             except Exception:
                 pass
         
@@ -5110,6 +5237,7 @@ class QVService:
             "absolute_path": str(calculation_dir),
             "structure": structure_name,
             "structure_id": structure_id,
+            "structure_elements": structure_elements,  # Element symbols for pseudo mapping UI
             "mode": wf_model.mode,
             "n_steps": len(step_summaries),
             "steps": step_summaries,

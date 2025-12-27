@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KDGCYAZ0VARAKSEZGJT5JXMX
+    id: 01KDH0M87W1EXKCSWMJW4MEMV6
     name: 01_H2
     slug: 01_h2
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KDGCYAZ7CKZE5NJW789EM6JA
+    id: 01KDH0M8873YPNZA3Y6NBANA97
     name: h2.relax
     slug: h2-relax
     path: structures/h2-relax.json
@@ -69,7 +69,7 @@ structures:
       - 0.0
       - 0.0
 - meta:
-    id: 01KDGCYAZV9TDZX71PQRR1B18X
+    id: 01KDH0M88TDPWPJFS3R9VMF4DD
     name: h2.scf_apart
     slug: h2-scf_apart
     path: structures/h2-scf_apart.json
@@ -130,7 +130,7 @@ structures:
       - 0.0
 calculations:
 - meta:
-    id: 01KDGCYAZ1G04NHNERZDTZT1XS
+    id: 01KDH0M87YQ94WF6KQF44HJ140
     name: H2
     slug: h2
     path: calculations/h2
@@ -139,7 +139,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KDGCYAZ4C5X8JR9WN845FEY5
+      id: 01KDH0M883WSXW5GP4P2GKT9NZ
       name: h2.relax
       slug: h2-relax
       path: h2.relax.step.yaml
@@ -172,7 +172,7 @@ calculations:
         mass: 1.00784
         pseudopot: H_ONCV_PBE-1.0.oncvpsp.upf
   - meta:
-      id: 01KDGCYAZPYD9P6QVQBFJ4K3N7
+      id: 01KDH0M88PZGTVZWBQETB1RPDZ
       name: h2.scf_apart
       slug: h2-scf_apart
       path: h2.scf_apart.step.yaml
@@ -202,7 +202,11 @@ calculations:
       H:
         mass: 1.00784
         pseudopot: H_ONCV_PBE-1.0.oncvpsp.upf
-  structure_id: 01KDGCYAZ7CKZE5NJW789EM6JA
+  structure_id: 01KDH0M87X4T33K8GTWCH1196K
+  species_map:
+    H:
+      mass: 1.00784
+      pseudopot: H_ONCV_PBE-1.0.oncvpsp.upf
 pseudo:
   directory: pseudo
   files:

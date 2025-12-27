@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KDGCYAR88FN91R0Y1BWYFNSH
+    id: 01KDH0M80M2NDX1JZ68CRZG39D
     name: 19_Si_CPMD
     slug: 19_si_cpmd
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KDGCYARG5HYN125X9K7K4S9Z
+    id: 01KDH0M810XWVJZ2G663R1RDDT
     name: si.1_erelax
     slug: si-1_erelax
     path: structures/si-1_erelax.json
@@ -148,7 +148,7 @@ structures:
       - 4.223136593556277
 calculations:
 - meta:
-    id: 01KDGCYARAT9DZH0YKT34RT0GN
+    id: 01KDH0M80PNPV2ZEYMNR5A5DT7
     name: Si Cpmd  4 Bomd Nvt
     slug: si-cpmd-4-bomd-nvt
     path: calculations/si-cpmd-4-bomd-nvt
@@ -157,7 +157,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KDGCYARCYZJS15ZFBQBB4GE0
+      id: 01KDH0M80W13F08RVTQNXSPN8T
       name: si.1_erelax
       slug: si-1_erelax
       path: si.1_erelax.step.yaml
@@ -190,7 +190,7 @@ calculations:
         mass: 28.0855
         pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
   - meta:
-      id: 01KDGCYAS02PY3V7YQXFCBE4QD
+      id: 01KDH0M81F79D4Z27EAKV0QYH6
       name: si.2_randDisplace
       slug: si-2_randdisplace
       path: si.2_randDisplace.step.yaml
@@ -227,7 +227,7 @@ calculations:
         mass: 28.0855
         pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
   - meta:
-      id: 01KDGCYASY2RSB9SQH1F3CE21V
+      id: 01KDH0M82DE0MWFCWM0BNF75S7
       name: si.3_cp_BOMD_NVT
       slug: si-3_cp_bomd_nvt
       path: si.3_cp_BOMD_NVT.step.yaml
@@ -266,7 +266,11 @@ calculations:
       Si:
         mass: 28.0855
         pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
-  structure_id: 01KDGCYARG5HYN125X9K7K4S9Z
+  structure_id: 01KDH0M80NM4HSE37ZX5XM2ESC
+  species_map:
+    Si:
+      mass: 28.0855
+      pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
 pseudo:
   directory: pseudo
   files:

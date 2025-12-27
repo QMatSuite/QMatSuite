@@ -7,7 +7,7 @@ from typing import Any, Dict, Iterable, Optional, Sequence
 
 import yaml
 
-from quantumvitas.core.resources import meta_from_name
+from quantumvitas.core.resources import meta_from_name, ensure_relative_path
 from quantumvitas.io import QEInputGenerator, QEInputParser, read_structure, write_structure
 from quantumvitas.io.model import QECardType, QEModule, QEInput
 from quantumvitas.io.structure_io import structure_from_qe_input, qe_input_has_structure
@@ -158,7 +158,6 @@ def build_step_spec_from_qe_input(
         structure = structure_from_qe_input(qe_input)
         
         # Generate a proper ULID for structure_id if not provided
-        from quantumvitas.core.resources import meta_from_name, ensure_relative_path
         if not structure_id:
             structure_id = generate_resource_id()
         else:
