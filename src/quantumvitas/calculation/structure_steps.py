@@ -312,12 +312,22 @@ def generate_qe_input_from_spec(
     structure: PMGStructure,
     spec: StructureStepSpec,
     extra_overrides: Sequence[ParameterOverride] | None = None,
+    *,
+    species_map: Optional[Dict[str, Dict[str, Any]]] = None,
 ) -> tuple[QEInput, list[ParameterOverride]]:
     """
     Build a QE input from a structure step specification.
     
     For post-processing steps (dos, bands, projwfc, etc.), creates a simple
     input with just the appropriate namelist instead of structure-based input.
+    
+    Args:
+        structure: The structure to generate input for.
+        spec: Step specification with parameters and cards.
+        extra_overrides: Additional parameter overrides to apply.
+        species_map: Calculation-level species mapping (element -> {pseudopot, mass}).
+            Takes precedence over step-level spec.species_overrides.
+            Falls back to spec.species_overrides for backwards compatibility.
     """
     step_type_lower = spec.step_type.lower() if spec.step_type else "scf"
     
@@ -383,7 +393,12 @@ def generate_qe_input_from_spec(
                         system_namelist.parameters.pop(key, None)
     
     apply_card_overrides_to_qe_input(qe_input, spec.cards)
-    apply_species_overrides_to_qe_input(qe_input, spec.species_overrides)
+    
+    # Apply species overrides: calc-level species_map takes precedence, fall back to step-level
+    # This supports backwards compatibility with old projects that have step-level species_overrides
+    effective_species_overrides = species_map if species_map else spec.species_overrides
+    apply_species_overrides_to_qe_input(qe_input, effective_species_overrides)
+    
     return qe_input, combined_overrides
 
 

@@ -1239,10 +1239,13 @@ class QVService:
         spec = StructureStepSpec.from_yaml(step_resolved.absolute_path, resolve_structure_selector=resolver)
         
         # Generate QE input from structure + step spec
+        # Use calc-level species_map if available (authoritative source for pseudopot mapping)
         from quantumvitas.calculation.structure_steps import generate_qe_input_from_spec
         from quantumvitas.io.generator import QEInputGenerator
         
-        qe_input, _ = generate_qe_input_from_spec(structure, spec)
+        qe_input, _ = generate_qe_input_from_spec(
+            structure, spec, species_map=calculation.species_map
+        )
         
         # Write input file to calculation's raw directory
         workdir = calculation_resolved.absolute_path / "raw"
@@ -4902,6 +4905,57 @@ class QVService:
         return result
     
     @staticmethod
+    def update_calculation_species_map(
+        project_root: Path,
+        calculation_selector: str,
+        species_map: Dict[str, Dict[str, Any]],
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
+    ) -> Dict[str, Any]:
+        """
+        Update the species_map (pseudopotential mapping) for a calculation.
+        
+        Args:
+            project_root: Project root path
+            calculation_selector: Calculation selector
+            species_map: New species mapping (element -> {pseudopot: str, mass: float?})
+            index: Optional ResourceIndex (avoids rebuilding if provided)
+            config: Optional project config (avoids reloading if provided)
+            
+        Returns:
+            Updated calculation info
+        """
+        from quantumvitas.core.models import load_calculation, save_calculation
+        from quantumvitas.core.resolution import make_structure_selector_resolver
+        from quantumvitas.core.project_utils import load_project_config
+        
+        project_root = Path(project_root).resolve()
+        
+        if config is None:
+            config = load_project_config(project_root)
+        
+        calculation = resolve_calculation(project_root, calculation_selector, config=config, index=index)
+        wf_path = calculation.absolute_path / "calculation.yaml"
+        
+        resolver = make_structure_selector_resolver(project_root, config=config)
+        wf_model = load_calculation(wf_path, project_root=project_root, resolve_structure_selector=resolver)
+        
+        old_species_map = wf_model.species_map
+        wf_model.species_map = species_map
+        save_calculation(wf_model, wf_path)
+        
+        # Pass cached index and config to avoid rebuilding ResourceIndex
+        result = QVService.get_calculation_detail(
+            project_root,
+            calculation_selector,
+            index=index,
+            config=config,
+        )
+        result["old_species_map"] = old_species_map
+        
+        return result
+    
+    @staticmethod
     def get_calculation_detail(
         project_root: Path,
         calculation_selector: str,
@@ -5059,6 +5113,8 @@ class QVService:
             "mode": wf_model.mode,
             "n_steps": len(step_summaries),
             "steps": step_summaries,
+            # Calculation-level pseudo mapping (authoritative source)
+            "species_map": wf_model.species_map,
         }
     
     # -------------------------------------------------------------------------
