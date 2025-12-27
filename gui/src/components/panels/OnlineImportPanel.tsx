@@ -146,7 +146,7 @@ export function OnlineImportPanel({
               Found {candidates.length} candidate{candidates.length !== 1 ? 's' : ''}
             </div>
             <div className="online-import-panel__candidates-list">
-              {candidates.slice(0, 5).map((candidate) => (
+              {candidates.map((candidate) => (
                 <div
                   key={candidate.candidate_id}
                   className={`online-import-panel__candidate ${
@@ -163,6 +163,9 @@ export function OnlineImportPanel({
                     <span className="online-import-panel__candidate-source">
                       {candidate.source}
                     </span>
+                    <span className="online-import-panel__candidate-sites">
+                      {candidate.nsites} sites
+                    </span>
                     {candidate.flags.length > 0 && (
                       <span className="online-import-panel__candidate-flags">
                         {candidate.flags.join(', ')}
@@ -171,11 +174,6 @@ export function OnlineImportPanel({
                   </div>
                 </div>
               ))}
-              {candidates.length > 5 && (
-                <div className="online-import-panel__candidates-more">
-                  + {candidates.length - 5} more (scroll to see)
-                </div>
-              )}
             </div>
           </div>
         )}

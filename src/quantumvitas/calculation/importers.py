@@ -531,15 +531,15 @@ def _infer_step_type(qe_input: QEInput) -> str:
     if module == QEModule.PW:
         control = qe_input.get_namelist("CONTROL") or qe_input.get_namelist("control")
         calculation = (control.get("calculation") if control else "scf") if control else "scf"
-        calculation = str(calculation).lower()
+        calculation = str(calculation).lower().strip("'\"")  # Strip quotes that may be in parsed value
         mapping = {
             "scf": "scf",
             "nscf": "nscf",
             "bands": "bands_pw",
-            "relax": "scf",
-            "vc-relax": "scf",
-            "md": "scf",
-            "vc-md": "scf",
+            "relax": "relax",
+            "vc-relax": "vc-relax",
+            "md": "md",
+            "vc-md": "vc-md",
         }
         return mapping.get(calculation, calculation)
 
