@@ -1327,6 +1327,118 @@ def create_demo_from_dataset(
             elif "scf" in step_types:
                 recommended_analysis = "scf"
             
+            # Check if relax/vc-relax appears in step sequence - if so, split into two calculations
+            has_relax = any(st in ["relax", "vc-relax"] for st in step_types)
+            if has_relax and len(calculations) == 1:
+                # Find the split point (first relax/vc-relax step)
+                calc = calculations[0]
+                steps = calc.get("steps", [])
+                split_idx = None
+                for i, step in enumerate(steps):
+                    step_type = step.get("step_type", "")
+                    if step_type in ["relax", "vc-relax"]:
+                        split_idx = i
+                        break
+                
+                if split_idx is not None and split_idx < len(steps) - 1:
+                    # Split into two calculations
+                    # Calc A: relax/vc-relax chain (structure = initial)
+                    # Calc B: subsequent steps (structure = relaxed, from first post-relax file with structure)
+                    from quantumvitas.io.structure_io import qe_input_has_explicit_structure, structure_from_qe_input, structure_fingerprint
+                    from quantumvitas.io import write_structure
+                    from quantumvitas.core.resources import generate_resource_id, meta_from_name, ensure_relative_path
+                    
+                    # Find relaxed structure from first post-relax input file that has structure
+                    relaxed_structure_id = None
+                    relaxed_structure = None
+                    # Use original input_files from dataset (before filtering)
+                    dataset_input_files = sort_input_files_by_execution_order(dataset.input_files)
+                    for i in range(split_idx + 1, len(dataset_input_files)):
+                        try:
+                            qe_input = QEInputParser.parse_file(dataset_input_files[i])
+                            if qe_input_has_explicit_structure(qe_input):
+                                relaxed_structure = structure_from_qe_input(qe_input)
+                                # Check if it's different from initial structure
+                                initial_structure_id = calc.get("structure_id")
+                                if initial_structure_id:
+                                    # Load initial structure for comparison
+                                    initial_struct_data = next((s for s in structures if s["meta"]["id"] == initial_structure_id), None)
+                                    if initial_struct_data:
+                                        from quantumvitas.io import read_structure
+                                        import tempfile
+                                        temp_struct_file = Path(tempfile.mkdtemp()) / "temp_struct.json"
+                                        temp_struct_file.write_text(json.dumps(initial_struct_data["data"]))
+                                        initial_structure = read_structure(temp_struct_file)
+                                        temp_struct_file.unlink()
+                                        
+                                        # Compare fingerprints
+                                        initial_fp = structure_fingerprint(initial_structure)
+                                        relaxed_fp = structure_fingerprint(relaxed_structure)
+                                        if initial_fp != relaxed_fp:
+                                            # Different structure - create new structure entry
+                                            relaxed_structure_id = generate_resource_id()
+                                            structures_dir = project_root / "structures"
+                                            structures_dir.mkdir(parents=True, exist_ok=True)
+                                            structure_filename = f"{input_files[i].stem}_relaxed"
+                                            structure_path = structures_dir / f"{structure_filename}.json"
+                                            
+                                            try:
+                                                structure_meta_path = ensure_relative_path(structure_path, base=project_root)
+                                            except ValueError:
+                                                structure_meta_path = f"structures/{structure_filename}.json"
+                                            
+                                            structure_meta = meta_from_name(
+                                                "structure",
+                                                name=structure_filename,
+                                                path=structure_meta_path,
+                                            )
+                                            structure_meta.id = relaxed_structure_id
+                                            write_structure(relaxed_structure, structure_path, format="json", metadata=structure_meta)
+                                            
+                                            # Add to snapshot structures
+                                            structures.append({
+                                                "meta": structure_meta.to_dict(),
+                                                "data": relaxed_structure.as_dict(),
+                                            })
+                                break
+                        except Exception:
+                            continue
+                    
+                    if relaxed_structure_id:
+                        # Split the calculation
+                        calc_a_steps = steps[:split_idx + 1]
+                        calc_b_steps = steps[split_idx + 1:]
+                        
+                        # Create Calc A (relax chain)
+                        calc_a = dict(calc)
+                        calc_a["meta"]["name"] = calc_a["meta"]["name"] + " (Relax)"
+                        calc_a["meta"]["slug"] = calc_a["meta"]["slug"] + "-relax"
+                        calc_a["steps"] = calc_a_steps
+                        # Keep initial structure_id
+                        
+                        # Create Calc B (post-relax)
+                        calc_b_id = generate_resource_id()
+                        calc_b = {
+                            "meta": {
+                                "id": calc_b_id,
+                                "name": calc["meta"]["name"] + " (Post-Relax)",
+                                "slug": calc["meta"]["slug"] + "-post-relax",
+                                "path": f"calculations/{calc['meta']['slug']}-post-relax",
+                                "kind": "calculation",
+                            },
+                            "mode": calc.get("mode", "normal"),
+                            "working_dir": calc.get("working_dir", "raw"),
+                            "structure_id": relaxed_structure_id,
+                            "steps": calc_b_steps,
+                        }
+                        
+                        # Replace single calculation with two
+                        calculations = [calc_a, calc_b]
+                        snapshot.calculations = calculations
+                    else:
+                        # Relaxed structure not found - keep single calc but warn
+                        print(f"    ⚠ Warning: relax/vc-relax detected but no post-relax structure found. Using initial structure for all steps.")
+            
             # Add demo metadata matching existing format
             snapshot.meta = {
                 "id": demo_name,
@@ -1357,6 +1469,16 @@ def create_demo_from_dataset(
                     print(f"    ⚠ Warning: Demo has no structures")
                 if not loaded_snapshot.calculations:
                     print(f"    ⚠ Warning: Demo has no calculations")
+                
+                # Calc-count sanity check: if relax/vc-relax detected, expect 2 calcs, else expect 1
+                has_relax_in_steps = any(st in ["relax", "vc-relax"] for st in step_types)
+                calc_count = len(loaded_snapshot.calculations)
+                if has_relax_in_steps:
+                    if calc_count != 2:
+                        print(f"    ⚠ Warning: relax/vc-relax detected but calc count is {calc_count} (expected 2)")
+                else:
+                    if calc_count != 1:
+                        print(f"    ⚠ Warning: No relax/vc-relax detected but calc count is {calc_count} (expected 1)")
             except Exception as e:
                 print(f"    ⚠ Warning: Could not verify demo load: {str(e)}")
         
@@ -1515,7 +1637,8 @@ def verify_demo_project(demo_file: Path) -> Dict[str, Any]:
         "n_calculations": 0,
         "n_steps": [],
         "step_types": [],
-        "issues": []
+        "issues": [],
+        "calc_count_check": None,  # Will contain calc count sanity check result
     }
     
     try:
@@ -1541,6 +1664,26 @@ def verify_demo_project(demo_file: Path) -> Dict[str, Any]:
             result["step_types"].append(step_types)
             if len(steps) == 0:
                 result["issues"].append(f"Calculation '{calc.get('meta', {}).get('name', 'unknown')}' has no steps")
+        
+        # Calc-count sanity check: if relax/vc-relax detected, expect 2 calcs, else expect 1
+        all_step_types = [st for step_types_list in result["step_types"] for st in step_types_list]
+        has_relax = any(st in ["relax", "vc-relax"] for st in all_step_types)
+        expected_calc_count = 2 if has_relax else 1
+        actual_calc_count = result["n_calculations"]
+        if actual_calc_count != expected_calc_count:
+            result["calc_count_check"] = {
+                "pass": False,
+                "expected": expected_calc_count,
+                "actual": actual_calc_count,
+                "message": f"relax/vc-relax detected: expect {expected_calc_count} calcs, got {actual_calc_count}"
+            }
+            result["issues"].append(result["calc_count_check"]["message"])
+        else:
+            result["calc_count_check"] = {
+                "pass": True,
+                "expected": expected_calc_count,
+                "actual": actual_calc_count,
+            }
         
     except Exception as e:
         result["issues"].append(f"Failed to load demo: {str(e)}")

@@ -178,7 +178,7 @@ class TestQVServiceDedup:
     """Test QVService structure deduplication by fingerprint."""
     
     def test_import_identical_structures_dedup(self, si_structure, tmp_path):
-        """Test that importing two steps with identical structures results in 1 structure resource."""
+        """Test that importing two steps with identical structures results in 1 structure resource when dedup enabled."""
         project_root = tmp_path / "test_project"
         QVService.init_project(target_dir=project_root, name="test")
         
@@ -190,13 +190,14 @@ class TestQVServiceDedup:
         write_structure(si_structure, struct_file1)
         write_structure(si_structure, struct_file2)
         
-        # Import both structures
-        resolved1 = QVService.import_structure(project_root, struct_file1, name="struct1")
-        resolved2 = QVService.import_structure(project_root, struct_file2, name="struct2")
+        # Import both structures WITH dedup enabled
+        # Note: dedup is opt-in (default=False) to allow users to import same structure multiple times
+        resolved1 = QVService.import_structure(project_root, struct_file1, name="struct1", dedup_by_fingerprint=True)
+        resolved2 = QVService.import_structure(project_root, struct_file2, name="struct2", dedup_by_fingerprint=True)
         
         # Both should resolve to the same structure (deduplicated by fingerprint)
         assert resolved1.meta.id == resolved2.meta.id, \
-            "Identical structures should be deduplicated to same structure_id"
+            "Identical structures should be deduplicated to same structure_id when dedup enabled"
         
         # Project should have only 1 structure
         from quantumvitas.core.project_utils import load_project_config

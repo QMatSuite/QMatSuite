@@ -7,6 +7,7 @@ using ASE, pymatgen, or other libraries.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 from pathlib import Path
@@ -21,6 +22,9 @@ from quantumvitas.io.model import QECard, QECardType, QEInput, QENamelist
 from quantumvitas.io.parser.qe_parser import QEInputParser
 
 logger = logging.getLogger(__name__)
+
+# Canonical wrapping tolerance (matches structure canonicalization)
+WRAP_TOL = 1e-4
 
 
 STRUCTURE_META_KEY = "__qv_meta__"
@@ -264,6 +268,59 @@ def qe_input_has_structure(qe_input: QEInput) -> bool:
     return False
 
 
+def qe_input_has_explicit_structure(qe_input: QEInput) -> bool:
+    """
+    Check if a QE input contains enough explicit information to build a structure with our parser.
+    
+    This is stricter than qe_input_has_structure() - it requires:
+    - ATOMIC_POSITIONS card (mandatory for structure parsing)
+    - AND either:
+      - CELL_PARAMETERS card (for ibrav=0), OR
+      - SYSTEM namelist with ibrav != 0 and required parameters (for ibrav-based lattice)
+    
+    LR/TDDFT-style inputs (no SYSTEM, no structure cards) return False.
+    
+    Args:
+        qe_input: QEInput object to check
+        
+    Returns:
+        True if input has explicit structure information that can be parsed, False otherwise
+    """
+    # Must have ATOMIC_POSITIONS to build structure
+    if not qe_input.get_card(QECardType.ATOMIC_POSITIONS):
+        return False
+    
+    # Must have either CELL_PARAMETERS (for ibrav=0) or ibrav != 0 with required params
+    cell_card = qe_input.get_card(QECardType.CELL_PARAMETERS)
+    if cell_card:
+        return True
+    
+    # Check SYSTEM namelist for ibrav-based structure
+    system = _get_system_namelist(qe_input)
+    if system:
+        ibrav = int(system.get("ibrav", 0) or 0)
+        if ibrav != 0:
+            # ibrav != 0 means structure can be inferred from parameters
+            # Check if required parameters exist
+            if ibrav in [12, -12]:
+                # Hexagonal: need b (or a), c, and cosab/cosbc
+                param_keys_lower = {str(k).lower(): k for k in system.parameters.keys()}
+                has_b = "b" in param_keys_lower or "a" in param_keys_lower
+                has_c = "c" in param_keys_lower
+                has_cos = any(k in param_keys_lower for k in ["cosab", "cos(ab)", "cos(angle)", "cosbc"])
+                if has_b and has_c and has_cos:
+                    return True
+            else:
+                # Other ibrav: need celldm(1) or a
+                has_celldm1 = any(str(k).lower() == "celldm(1)" for k in system.parameters.keys())
+                has_a = any(str(k).lower() == "a" for k in system.parameters.keys())
+                if has_celldm1 or has_a:
+                    return True
+    
+    # No explicit structure information found
+    return False
+
+
 def structure_from_qe_input(qe_input: QEInput) -> PMGStructure:
     """
     Build a pymatgen Structure from a QEInput instance, honoring QE's ibrav rules.
@@ -316,6 +373,68 @@ def structure_from_qe_input(qe_input: QEInput) -> PMGStructure:
 
 
 BOHR_TO_ANGSTROM = 0.52917721092
+
+
+def structure_fingerprint(structure: PMGStructure, tol: float = 1e-5) -> str:
+    """
+    Generate a deterministic fingerprint for a structure.
+    
+    This is a "good enough" fingerprint for demo import splitting and diagnostics,
+    not perfect crystallography. It uses:
+    - Quantized lattice parameters (Å) by tol
+    - Quantized fractional coordinates by tol
+    - Deterministic ordering
+    - SHA256 hash of the quantized data
+    
+    The fingerprint is stable for perturbations < tol and different for perturbations > tol.
+    It does NOT implement symmetry/basis-change equivalence.
+    
+    Uses the canonical wrapping convention (WRAP_TOL=1e-4) for consistency.
+    
+    Args:
+        structure: pymatgen Structure to fingerprint
+        tol: Quantization tolerance (default 1e-5)
+        
+    Returns:
+        Hex string of SHA256 hash (64 characters)
+    """
+    import numpy as np
+    
+    # Quantize lattice matrix (3x3, in Angstrom)
+    lattice_matrix = structure.lattice.matrix
+    quantized_lattice = np.round(lattice_matrix / tol) * tol
+    
+    # Get fractional coordinates and wrap to [0, 1) using canonical wrapping
+    frac_coords = structure.frac_coords
+    # Wrap using canonical tolerance
+    wrapped_coords = frac_coords % 1.0
+    # Further quantize by tol
+    quantized_coords = np.round(wrapped_coords / tol) * tol
+    
+    # Get species symbols in deterministic order (by site index)
+    species = [str(site.specie.symbol) for site in structure.sites]
+    
+    # Build deterministic payload: lattice + coords + species
+    # Format: lattice rows, then coords rows, then species
+    payload_parts = []
+    
+    # Lattice (9 values: 3x3 matrix flattened row-wise)
+    for row in quantized_lattice:
+        payload_parts.append(f"{row[0]:.10f},{row[1]:.10f},{row[2]:.10f}")
+    
+    # Coordinates (N values: fractional coords)
+    for coord in quantized_coords:
+        payload_parts.append(f"{coord[0]:.10f},{coord[1]:.10f},{coord[2]:.10f}")
+    
+    # Species (N symbols)
+    payload_parts.extend(species)
+    
+    # Create deterministic string representation
+    payload = "\n".join(payload_parts)
+    
+    # Hash with SHA256
+    hash_obj = hashlib.sha256(payload.encode('utf-8'))
+    return hash_obj.hexdigest()
 
 
 def _get_system_namelist(qe_input: QEInput) -> Optional[Dict[str, Any]]:
