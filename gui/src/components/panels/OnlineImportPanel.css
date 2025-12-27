@@ -29,7 +29,8 @@
 .online-import-panel--expanded {
   display: flex;
   flex-direction: column;
-  max-height: 400px;
+  flex: 1;
+  min-height: 200px;
   background: var(--panel-bg, var(--bg-secondary, #1e1e1e));
   border-radius: var(--radius-lg, 8px);
   overflow: hidden;
@@ -131,6 +132,11 @@
 
 .online-import-panel__candidates {
   margin-top: 15px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .online-import-panel__candidates-header {
@@ -144,7 +150,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2, 6px);
-  max-height: 250px;
+  flex: 1;
   overflow-y: auto;
 }
 
@@ -190,12 +196,8 @@
   color: var(--warning-color, #ffa726);
 }
 
-.online-import-panel__candidates-more {
-  padding: var(--space-2, 8px);
-  text-align: center;
-  font-size: var(--text-xs, 12px);
-  color: var(--text-tertiary, #888);
-  font-style: italic;
+.online-import-panel__candidate-sites {
+  color: var(--text-secondary, #aaa);
 }
 
 .online-import-panel__empty {

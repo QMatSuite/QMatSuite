@@ -266,6 +266,7 @@ class QVDaemon:
             "set_common_card": self._handle_set_common_card,
             "get_pseudo_mapping": self._handle_get_pseudo_mapping,
             "set_pseudo_mapping": self._handle_set_pseudo_mapping,
+            "import_pseudo_files": self._handle_import_pseudo_files,
             "get_relax_final_structure_preview": self._handle_get_relax_final_structure_preview,
             "save_relax_final_structure": self._handle_save_relax_final_structure,
             
@@ -1630,14 +1631,14 @@ class QVDaemon:
         if not source_file or not source_file.exists():
             raise FileNotFoundError(f"Structure file not found: {source_file}")
         
-        # Pass cached index and config for in-place registry updates
+        # Pass cached index for in-place registry updates
+        # Note: QVService.import_structure loads config internally; we only pass index
         cache = self.state.get_cache(project_root)
         result = QVService.import_structure(
             project_root=project_root,
             source=source_file,
             name=name,
             index=cache.index,
-            config=cache.config,
         )
         
         # Get structure metadata
@@ -2260,14 +2261,14 @@ class QVDaemon:
         check = QVService.can_delete_structure(project_root, selector)
         structure_name = check.get("structure_name", selector)
         
-        # Pass cached index and config for in-place registry updates
+        # Pass cached index for in-place registry updates
+        # Note: QVService.delete_structure loads config internally; we only pass index
         cache = self.state.get_cache(project_root)
         QVService.delete_structure(
             project_root=project_root,
             selector=selector,
             force=force,
             index=cache.index,
-            config=cache.config,
         )
         
         return {
@@ -2606,7 +2607,7 @@ class QVDaemon:
         mapping = payload.get("mapping", {})
         if not isinstance(mapping, dict):
             raise ValueError("mapping must be a dict")
-        pseudo_dir = payload.get("pseudo_dir")
+        library_preference = payload.get("library_preference")
         
         cache = self.state.get_cache(project_root)
         
@@ -2615,9 +2616,35 @@ class QVDaemon:
             calculation_selector=calculation,
             step_selector=step,
             mapping=mapping,
-            pseudo_dir=pseudo_dir,
+            library_preference=library_preference,
             index=cache.index,
             config=cache.config,
+        )
+    
+    def _handle_import_pseudo_files(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Import pseudopotential files into the project pseudo directory.
+        
+        Handles filename conflicts by auto-renaming with deterministic suffix.
+        
+        Payload:
+            project_root: str - Path to project root
+            file_paths: List[str] - List of file paths to import
+            
+        Returns:
+            Dict with:
+            - imported: List of successfully imported filenames
+            - renamed: Dict of original_name -> new_name for renamed files
+            - errors: List of error messages
+        """
+        project_root = self._require_path(payload, "project_root")
+        file_paths = payload.get("file_paths", [])
+        if not isinstance(file_paths, list):
+            raise ValueError("file_paths must be a list")
+        
+        return QVService.import_pseudo_files(
+            project_root=project_root,
+            file_paths=file_paths,
         )
     
     def _handle_reset_step_params(self, payload: Dict[str, Any]) -> Dict[str, Any]:

@@ -552,6 +552,14 @@ class QVService:
                 calculation_ulid=calculation_id,
             )
             calculation_id = new_ulid
+            # Create meta for the template-based calculation
+            calculation_meta = ResourceMeta(
+                id=calculation_id,
+                name=final_name,
+                slug=final_slug,
+                path=calculation_path,
+                kind="calculation",
+            )
         else:
             from quantumvitas.core.models import CalculationModel, save_calculation
             
@@ -590,13 +598,19 @@ class QVService:
         calculations.append(entry)
         save_project_config(project_root, config)
         
+        # Build ResolvedResource directly (don't use require_calculation which needs updated index)
+        # We have all the information needed: calculation_meta was created above
+        calculation_yaml_path = calculation_dir / "calculation.yaml"
+        resolved = ResolvedResource(
+            meta=calculation_meta,
+            entry=entry,  # The entry dict we just added to config
+            absolute_path=calculation_dir,
+        )
+        
         # Update registry in-place if index is provided (do NOT rebuild)
-        # Note: This requires the calculation to be resolved to get its meta
-        resolved = require_calculation(project_root, final_slug, config=config, index=index)
         if index is not None:
             from quantumvitas.core.resolution import update_registry_add_calculation
-            calculation_yaml_path = resolved.absolute_path / "calculation.yaml" if resolved.absolute_path.is_dir() else resolved.absolute_path
-            update_registry_add_calculation(index, resolved.meta, calculation_yaml_path)
+            update_registry_add_calculation(index, calculation_meta, calculation_yaml_path)
         
         return resolved
     
@@ -3508,9 +3522,77 @@ class QVService:
         project_pseudo_dir = project_root / "pseudo"
         if project_pseudo_dir.exists():
             for file in project_pseudo_dir.iterdir():
-                if file.is_file() and file.suffix.lower() in (".upf", ".UPF"):
+                if file.is_file() and file.suffix.lower() in (".upf",):
                     available_pseudos.append(file.name)
         available_pseudos.sort()
+        
+        # Get SSSP defaults for auto-fill using cutoffs.json (authoritative mapping)
+        sssp_defaults: Dict[str, Dict[str, str]] = {}
+        sssp_installed: Dict[str, bool] = {"precision": False, "efficiency": False}
+        try:
+            from quantumvitas.core.pseudo_config import (
+                PseudoConfig,
+                get_sssp_library_path,
+            )
+            import json
+            
+            pseudo_config = PseudoConfig.with_defaults()
+            store_dir = Path(pseudo_config.store_dir) if pseudo_config.store_dir else None
+            
+            if store_dir:
+                # Check both precision and efficiency libraries
+                for flavor in ["precision", "efficiency"]:
+                    lib_base = get_sssp_library_path(store_dir, "1.3.0", flavor)
+                    lib_path = lib_base / "library"
+                    cutoffs_path = lib_base / "cutoffs.json"
+                    
+                    # Mark as installed if library directory has UPF files
+                    if lib_path.exists() and any(lib_path.glob("*.upf")) or any(lib_path.glob("*.UPF")):
+                        sssp_installed[flavor] = True
+                    
+                    # Use cutoffs.json for authoritative element -> filename mapping
+                    if cutoffs_path.exists():
+                        try:
+                            cutoffs_data = json.loads(cutoffs_path.read_text())
+                            # cutoffs.json format: {"Element": {"filename": "...", ...}, ...}
+                            for species in species_list:
+                                if species not in sssp_defaults:
+                                    sssp_defaults[species] = {"precision": "", "efficiency": ""}
+                                
+                                # Look up element in cutoffs.json
+                                element_data = cutoffs_data.get(species, {})
+                                filename = element_data.get("filename", "")
+                                
+                                if filename:
+                                    # Verify file actually exists in library
+                                    if (lib_path / filename).exists():
+                                        sssp_defaults[species][flavor] = filename
+                                    else:
+                                        # Try case-insensitive match
+                                        for actual_file in lib_path.iterdir():
+                                            if actual_file.name.lower() == filename.lower():
+                                                sssp_defaults[species][flavor] = actual_file.name
+                                                break
+                        except (json.JSONDecodeError, KeyError):
+                            pass
+                    
+                    # Fallback: if cutoffs.json didn't work, try glob pattern
+                    if lib_path.exists():
+                        for species in species_list:
+                            if species not in sssp_defaults:
+                                sssp_defaults[species] = {"precision": "", "efficiency": ""}
+                            if not sssp_defaults[species].get(flavor):
+                                # Fallback: glob for files starting with element symbol
+                                for pp_file in lib_path.glob(f"{species}*.UPF"):
+                                    sssp_defaults[species][flavor] = pp_file.name
+                                    break
+                                if not sssp_defaults[species].get(flavor):
+                                    for pp_file in lib_path.glob(f"{species}*.upf"):
+                                        sssp_defaults[species][flavor] = pp_file.name
+                                        break
+        except Exception:
+            # If SSSP lookup fails, just return empty defaults
+            pass
         
         # Generate warnings
         warnings: List[str] = []
@@ -3526,6 +3608,8 @@ class QVService:
             "pseudo_dir": pseudo_dir,
             "available_pseudos": available_pseudos,
             "warnings": warnings,
+            "sssp_defaults": sssp_defaults,
+            "sssp_installed": sssp_installed,
         }
     
     @staticmethod
@@ -3534,7 +3618,7 @@ class QVService:
         calculation_selector: str,
         step_selector: str,
         mapping: Dict[str, str],
-        pseudo_dir: Optional[str] = None,
+        library_preference: Optional[str] = None,
         index: Optional["ResourceIndex"] = None,
         config: Optional[dict] = None,
     ) -> Dict[str, Any]:
@@ -3546,12 +3630,14 @@ class QVService:
             calculation_selector: Calculation selector
             step_selector: Step selector
             mapping: Dict[str, str] of species -> pseudo filename (empty string to unset)
-            pseudo_dir: Optional pseudo_dir value for CONTROL namelist
+            library_preference: Optional library preference ('precision' or 'efficiency')
             index: Optional ResourceIndex
             config: Optional project config
             
         Returns:
             Updated step detail dict
+        
+        Note: pseudo_dir is NOT configurable via UI. Runtime always uses ../pseudo.
         """
         from quantumvitas.calculation.structure_steps import StructureStepSpec
         from quantumvitas.core.resolution import resolve_step, make_structure_selector_resolver
@@ -3584,19 +3670,9 @@ class QVService:
                 if not spec.species_overrides[species]:
                     del spec.species_overrides[species]
         
-        # Update pseudo_dir in CONTROL namelist if provided
-        if pseudo_dir is not None:
-            if "CONTROL" not in spec.parameters:
-                spec.parameters["CONTROL"] = {}
-            if pseudo_dir:
-                spec.parameters["CONTROL"]["pseudo_dir"] = str(pseudo_dir)
-            else:
-                # Remove if empty
-                if "pseudo_dir" in spec.parameters["CONTROL"]:
-                    del spec.parameters["CONTROL"]["pseudo_dir"]
-                # Clean up empty namelist
-                if not spec.parameters["CONTROL"]:
-                    del spec.parameters["CONTROL"]
+        # Note: pseudo_dir is NOT set from UI - runtime always uses ../pseudo
+        # The library_preference is stored for future auto-fill operations but
+        # doesn't affect the actual pseudo_dir which is enforced at runtime
         
         # Save updated spec
         step.absolute_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
@@ -3609,6 +3685,121 @@ class QVService:
             index=index,
             config=config,
         )
+    
+    @staticmethod
+    def import_pseudo_files(
+        project_root: Path,
+        file_paths: List[str],
+    ) -> Dict[str, Any]:
+        """
+        Import pseudopotential files into the project pseudo directory.
+        
+        Handles filename conflicts by auto-renaming with deterministic suffix.
+        Project becomes self-contained with all required pseudos in project/pseudo/.
+        
+        Args:
+            project_root: Project root path
+            file_paths: List of source file paths to import
+            
+        Returns:
+            Dict with:
+            - imported: List of successfully imported filenames (in project/pseudo)
+            - renamed: Dict of original_name -> new_name for files that were renamed
+            - skipped: List of files skipped due to SHA256 duplicate
+            - errors: List of error messages
+        """
+        import shutil
+        import hashlib
+        
+        def compute_sha256(file_path: Path) -> str:
+            """Compute SHA256 hash of a file."""
+            sha256 = hashlib.sha256()
+            with open(file_path, 'rb') as f:
+                for chunk in iter(lambda: f.read(8192), b''):
+                    sha256.update(chunk)
+            return sha256.hexdigest()
+        
+        project_root = Path(project_root).resolve()
+        project_pseudo_dir = project_root / "pseudo"
+        project_pseudo_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Build SHA256 index of existing pseudos for deduplication
+        existing_hashes: Dict[str, str] = {}  # sha256 -> filename
+        for existing_file in project_pseudo_dir.iterdir():
+            if existing_file.is_file() and existing_file.suffix.lower() in ('.upf',):
+                try:
+                    existing_hashes[compute_sha256(existing_file)] = existing_file.name
+                except Exception:
+                    pass  # Skip files that can't be hashed
+        
+        imported: List[str] = []
+        renamed: Dict[str, str] = {}
+        skipped: List[str] = []
+        errors: List[str] = []
+        
+        for file_path_str in file_paths:
+            try:
+                source_path = Path(file_path_str).resolve()
+                
+                if not source_path.exists():
+                    errors.append(f"File not found: {file_path_str}")
+                    continue
+                
+                if not source_path.is_file():
+                    errors.append(f"Not a file: {file_path_str}")
+                    continue
+                
+                # Check for valid pseudo file extension
+                suffix_lower = source_path.suffix.lower()
+                if suffix_lower not in ('.upf',):
+                    errors.append(f"Invalid file type (expected .UPF): {source_path.name}")
+                    continue
+                
+                # Compute SHA256 for deduplication
+                source_hash = compute_sha256(source_path)
+                
+                # Check if file with same SHA256 already exists (content duplicate)
+                if source_hash in existing_hashes:
+                    existing_name = existing_hashes[source_hash]
+                    skipped.append(f"{source_path.name} (identical to {existing_name})")
+                    # Report the existing filename so UI knows it's available
+                    imported.append(existing_name)
+                    continue
+                
+                # Determine target filename with conflict resolution
+                original_name = source_path.name
+                target_name = original_name
+                target_path = project_pseudo_dir / target_name
+                
+                # If filename already exists (but different content), rename
+                if target_path.exists():
+                    # Deterministic renaming: add _1, _2, etc. suffix
+                    base_name = source_path.stem
+                    extension = source_path.suffix
+                    counter = 1
+                    while target_path.exists():
+                        target_name = f"{base_name}_{counter}{extension}"
+                        target_path = project_pseudo_dir / target_name
+                        counter += 1
+                    
+                    renamed[original_name] = target_name
+                
+                # Copy file to project pseudo directory
+                shutil.copy2(source_path, target_path)
+                imported.append(target_name)
+                
+                # Update hash index for subsequent files in batch
+                existing_hashes[source_hash] = target_name
+                
+            except Exception as e:
+                errors.append(f"Error importing {file_path_str}: {e}")
+        
+        return {
+            "imported": imported,
+            "renamed": renamed,
+            "skipped": skipped,
+            "errors": errors,
+        }
     
     @staticmethod
     def import_step_from_qe_input(
@@ -3689,28 +3880,45 @@ class QVService:
         
         if not structure_id_value:
             # Register structure in project
-            from quantumvitas.core.resources import meta_from_name, ensure_relative_path
+            from quantumvitas.core.resources import meta_from_name, ensure_relative_path, generate_unique_name_and_slug
+            from quantumvitas.core.project_utils import collect_slugs
             from quantumvitas.io import write_structure, read_structure
+            
+            # Get structure name from the original file (human-readable name based on QE input filename)
+            structure_name = structure_path.stem  # e.g., "si_scf" from "si_scf.json"
+            
+            # Generate unique name and slug to avoid conflicts
+            existing_slugs = collect_slugs(structures, project_root=project_root)
+            final_name, final_slug = generate_unique_name_and_slug(
+                kind="structure",
+                preferred_name=structure_name,
+                existing_slugs=existing_slugs,
+            )
             
             # Move structure to project structures directory
             project_structures_dir = project_root / "structures"
             project_structures_dir.mkdir(exist_ok=True)
-            final_structure_path = project_structures_dir / f"{structure_id}.json"
+            final_structure_path = project_structures_dir / f"{final_slug}.json"
             
             if not final_structure_path.exists():
                 structure = read_structure(structure_path)
                 meta = meta_from_name(
                     "structure",
-                    name=structure_id,
+                    name=final_name,  # Use human-readable name, not ULID
                     path=ensure_relative_path(final_structure_path, base=project_root),
                 )
                 write_structure(structure, final_structure_path, metadata=meta)
+            else:
+                # Read existing meta if file exists
+                import json
+                existing_data = json.loads(final_structure_path.read_text())
+                existing_meta = existing_data.get("__qv_meta__") or existing_data.get("meta") or {}
+                from quantumvitas.core.resources import ResourceMeta
+                meta = ResourceMeta.from_dict(existing_meta, kind="structure", default_name=final_name, default_path=ensure_relative_path(final_structure_path, base=project_root))
             
-            # Add to project config
+            # Add to project config (ID-only model: only structure_id)
             entry = {
-                "name": structure_id,
-                "file": ensure_relative_path(final_structure_path, base=project_root),
-                "meta": meta.to_dict(),
+                "structure_id": meta.id,  # ID-only reference (ULID)
             }
             structures.append(entry)
             save_project_config(project_root, config)
