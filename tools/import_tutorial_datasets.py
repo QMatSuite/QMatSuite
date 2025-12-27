@@ -6,7 +6,7 @@ This script:
 1. Scans tests/data/ for folders 0_* through 19_*
 2. For each dataset, finds .in files in execution order
 3. Extracts structure and parameters from inputs
-4. Maps pseudopotentials from project/pseudo or repo pseudo/
+4. Maps pseudopotentials from project/pseudo or repo resources/pseudo/
 5. Creates calculation structure using existing QMatSuite APIs
 6. Validates by round-tripping (parse -> export -> compare)
 7. Generates demo snapshots in resources/demo_projects/ with naming 00_* to 19_*
@@ -1099,8 +1099,8 @@ def create_demo_from_dataset(
                 continue
         
         # Check if pseudos are available (with enhanced search)
-        # Also try to download missing ones to repo/pseudo
-        repo_pseudo_dir = repo_root / "pseudo"
+        # Also try to download missing ones to repo/resources/pseudo
+        repo_pseudo_dir = repo_root / "resources" / "pseudo"
         repo_pseudo_dir.mkdir(parents=True, exist_ok=True)
         
         missing_pseudos = []
@@ -1131,7 +1131,7 @@ def create_demo_from_dataset(
                     if result.get("skipped"):
                         print(f"    ℹ Pseudo {pseudo_name} already exists as {downloaded_name}")
                     else:
-                        print(f"    ✓ Downloaded {pseudo_name} to repo/pseudo")
+                        print(f"    ✓ Downloaded {pseudo_name} to repo/resources/pseudo")
                     # Update search dirs to include repo/pseudo
                     if repo_pseudo_dir not in pseudo_search_dirs:
                         pseudo_search_dirs.append(repo_pseudo_dir)
@@ -1715,7 +1715,7 @@ def main():
     output_dir = repo_root / "resources" / "demo_projects"
     
     # Find pseudopotential directories
-    repo_pseudo_dir = repo_root / "pseudo"
+    repo_pseudo_dir = repo_root / "resources" / "pseudo"
     pseudo_search_dirs = [repo_pseudo_dir] if repo_pseudo_dir.exists() else []
     
     print(f"Repository root: {repo_root}")

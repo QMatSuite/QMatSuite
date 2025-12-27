@@ -543,7 +543,7 @@ class QVDaemon:
         except LegacyProjectError as e:
             # Convert LegacyProjectError to structured daemon error
             # Provide clear, actionable message with migration command
-            migration_command = f"python scripts/qv_migrate_legacy_project.py --project-root {e.project_root}"
+            migration_command = f"python tools/qv_migrate_legacy_project.py --project-root {e.project_root}"
             return RPCResponse(
                 id=request.id,
                 ok=False,

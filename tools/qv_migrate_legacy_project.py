@@ -3,7 +3,7 @@
 CLI entry point for legacy project migration.
 
 Usage:
-    python scripts/qv_migrate_legacy_project.py --project-root /path/to/project
+    python tools/qv_migrate_legacy_project.py --project-root /path/to/project
 """
 
 import sys

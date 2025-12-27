@@ -73,12 +73,19 @@ input_tmp*.in
 COMMIT_MESSAGE*.txt
 
 # QE output directories (Quantum ESPRESSO working directories)
+outdir/
 **/outdir/
 
 # Temporary directory (downloads, cache, etc.) - NOT tracked
 temp/
 .temp/
 .cache/
+
+# Debug test projects (should not be committed)
+debug_metadata_project/
+final_test/
+test_final/
+test_no_metadata/
 
 # OS
 .DS_Store

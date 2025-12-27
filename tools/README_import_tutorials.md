@@ -8,7 +8,7 @@ The importer:
 1. Scans `tests/data/` for folders matching pattern `0_*` through `19_*`
 2. For each dataset, finds `.in` files in execution order
 3. Extracts structure and parameters from inputs
-4. Maps pseudopotentials from `pseudo/` directory
+4. Maps pseudopotentials from `resources/pseudo/` directory
 5. Creates calculation structure using QMatSuite APIs
 6. Validates by round-tripping (parse -> export -> compare)
 7. Generates demo snapshots in `resources/demo_projects/` with naming `00_*` to `19_*`
@@ -58,7 +58,7 @@ python tools/import_tutorial_datasets.py --clean --verify
 
 - Python 3.8+
 - All dependencies from `requirements.txt` installed
-- Pseudopotentials available in `pseudo/` directory (missing ones will be automatically downloaded to `repo/pseudo/`)
+- Pseudopotentials available in `resources/pseudo/` directory (missing ones will be automatically downloaded to `repo/resources/pseudo/`)
 
 ## Output
 
@@ -187,12 +187,12 @@ This ensures generated demos match the structure of manually created projects.
 The importer handles pseudopotentials automatically:
 
 1. **During Import**: 
-   - Searches for pseudos in dataset folder, `tests/data/`, and `pseudo/` directory
-   - If not found, attempts to download from QE repository to `repo/pseudo/`
+   - Searches for pseudos in dataset folder, `tests/data/`, and `resources/pseudo/` directory
+   - If not found, attempts to download from QE repository to `repo/resources/pseudo/`
    - Reports failures if download also fails (404 errors)
 
 2. **During Demo Expansion** (when materializing from snapshot):
-   - Copies pseudos from `repo/pseudo/` to `project/pseudo/`
+   - Copies pseudos from `repo/resources/pseudo/` to `project/pseudo/`
    - Falls back to download if not in repo
    - QE execution always uses `project/pseudo/` as `pseudo_dir`
 

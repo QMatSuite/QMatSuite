@@ -8,7 +8,7 @@ It also extracts reference JSON artifacts (SCF, DOS, bands) from calculation res
 Run this when test example projects are updated to regenerate the demo snapshots.
 
 Usage:
-    python scripts/generate_demo_snapshots.py
+    python tools/generate_demo_snapshots.py
 """
 
 from __future__ import annotations
