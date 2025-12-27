@@ -67,7 +67,7 @@ pip install --upgrade pip
   # After editable install, no PYTHONPATH needed
   python -m pytest tests/ -v --tb=short
 
-  pip install pytest-xdist
+  (pip install pytest-xdist)
   python -m pytest tests/ -v --tb=short -n 6 --dist=loadfile
 
   # with stdout of bonds regardless of success or failureííí
