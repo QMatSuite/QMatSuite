@@ -100,8 +100,9 @@ def materialize_project_from_qe_input_folder(
     input_files = sort_input_files_by_execution_order(input_files)
     
     # Preprocess input files: fix missing CELL_PARAMETERS for ibrav=0
-    # Find the first file with complete structure information for reference
+    # Find the first file with explicit structure information for reference
     from quantumvitas.io import QEInputParser, QEInputGenerator
+    from quantumvitas.io.structure_io import qe_input_has_explicit_structure
     from quantumvitas.io.model import QECardType
     import tempfile
     import shutil
@@ -110,49 +111,33 @@ def materialize_project_from_qe_input_folder(
     processed_input_files = []
     
     try:
-        # Find reference structure file
+        # Find reference structure file (first file with explicit structure)
         reference_structure_file = None
         reference_qe_input = None
         for input_file in input_files:
             try:
                 qe_input = QEInputParser.parse_file(input_file)
-                system = qe_input.get_namelist("SYSTEM") or qe_input.get_namelist("system")
-                if not system:
-                    continue
-                
-                ibrav = int(system.get("ibrav", 0) or 0)
-                cell_card = qe_input.get_card(QECardType.CELL_PARAMETERS)
-                
-                # Check if file has complete structure
-                has_complete_structure = False
-                if ibrav != 0:
-                    # For ibrav != 0, check if required params exist
-                    if ibrav in [12, -12]:
-                        param_keys_lower = {str(k).lower(): k for k in system.parameters.keys()}
-                        has_b = "b" in param_keys_lower or "a" in param_keys_lower
-                        has_c = "c" in param_keys_lower
-                        has_cosab = any(k in param_keys_lower for k in ["cosab", "cos(ab)", "cos(angle)"])
-                        has_complete_structure = has_b and has_c and has_cosab
-                    else:
-                        has_celldm1 = any(str(k).lower() == "celldm(1)" for k in system.parameters.keys())
-                        has_a = any(str(k).lower() == "a" for k in system.parameters.keys())
-                        has_complete_structure = has_celldm1 or has_a
-                else:
-                    # ibrav == 0 requires CELL_PARAMETERS
-                    has_complete_structure = cell_card is not None
-                
-                if has_complete_structure:
+                if qe_input_has_explicit_structure(qe_input):
                     reference_structure_file = input_file
                     reference_qe_input = qe_input
                     break
             except Exception:
                 continue
         
+        # If no file has explicit structure, fail gracefully
+        if not reference_structure_file:
+            shutil.rmtree(temp_fix_dir, ignore_errors=True)
+            raise ValueError(
+                f"No input file in {folder} contains explicit structure information. "
+                f"At least one file must have ATOMIC_POSITIONS and a resolvable lattice representation."
+            )
+        
         # Process each input file
         for input_file in input_files:
             try:
                 qe_input = QEInputParser.parse_file(input_file)
                 system = qe_input.get_namelist("SYSTEM") or qe_input.get_namelist("system")
+                # Files without SYSTEM namelist (e.g., LR/TDDFT) are structure-less and should be processed as-is
                 if not system:
                     processed_input_files.append(input_file)
                     continue
@@ -246,6 +231,44 @@ def materialize_project_from_qe_input_folder(
         # Build resource index
         index = build_resource_index(project_root)
         
+        # Determine calculation structure_id from first file with explicit structure
+        # This structure will be used for all steps (calc-level structure semantics)
+        calculation_structure_id = None
+        if reference_structure_file:
+            # Import structure from reference file to get its ID
+            from quantumvitas.io.structure_io import structure_from_qe_input
+            from quantumvitas.io import write_structure
+            from quantumvitas.core.resources import generate_resource_id, meta_from_name, ensure_relative_path
+            
+            ref_structure = structure_from_qe_input(reference_qe_input)
+            structures_dir = project_root / "structures"
+            structures_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Generate ULID for structure
+            calculation_structure_id = generate_resource_id()
+            structure_filename = reference_structure_file.stem
+            structure_path = structures_dir / f"{structure_filename}.json"
+            
+            # Create structure file with proper meta
+            try:
+                structure_meta_path = ensure_relative_path(structure_path, base=project_root)
+            except ValueError:
+                structure_meta_path = f"structures/{structure_filename}.json"
+            
+            structure_meta = meta_from_name(
+                "structure",
+                name=structure_filename,
+                path=structure_meta_path,
+            )
+            structure_meta.id = calculation_structure_id
+            
+            # Write structure with meta
+            write_structure(ref_structure, structure_path, format="json", metadata=structure_meta)
+            
+            # Register structure in project
+            from quantumvitas.core.resolution import build_resource_index
+            index = build_resource_index(project_root)
+        
         # Create calculation
         calc_name = calculation_name or folder.name
         calc_resolved = service.init_calculation(
@@ -254,6 +277,15 @@ def materialize_project_from_qe_input_folder(
             index=index,
         )
         calculation_selector = calc_resolved.meta.id  # Use ID as selector
+        
+        # Set calculation structure_id if we determined it
+        if calculation_structure_id:
+            from quantumvitas.core.models import load_calculation, save_calculation
+            calculation_yaml = calc_resolved.absolute_path / "calculation.yaml"
+            calc_model = load_calculation(calculation_yaml, project_root)
+            calc_model.structure_id = calculation_structure_id
+            save_calculation(calc_model, calculation_yaml)
+            index = build_resource_index(project_root)  # Rebuild index after setting structure_id
         
         # Import each step in order
         for input_file in input_files:

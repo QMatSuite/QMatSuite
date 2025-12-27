@@ -342,6 +342,7 @@ class QVService:
         format: str = "auto",
         *,
         index: Optional["ResourceIndex"] = None,
+        dedup_by_fingerprint: bool = False,
     ) -> ResolvedResource:
         """
         Import a structure file into the project.
@@ -351,6 +352,10 @@ class QVService:
             source: Path to source file (CIF, QE input, JSON, etc.)
             name: Name for the structure (defaults to filename stem)
             format: File format hint
+            index: Optional resource index for registry update
+            dedup_by_fingerprint: If True, reuse existing structure with same content fingerprint.
+                                  If False (default), always create a new structure resource
+                                  with unique name/slug (e.g. silicon, silicon-2, ...).
             
         Returns:
             ResolvedResource for the imported structure
@@ -393,31 +398,32 @@ class QVService:
         fingerprint = structure_fingerprint(structure)
         
         # Check existing structures for same fingerprint (content-based dedup)
-        structures_dir = project_root / "structures"
-        existing_fingerprint_id = None
-        if structures_dir.exists():
-            for struct_file in structures_dir.glob("*.json"):
-                try:
-                    import json
-                    struct_data = json.loads(struct_file.read_text())
-                    struct_meta = struct_data.get("__qv_meta__") or struct_data.get("meta") or {}
-                    existing_fingerprint = struct_meta.get("fingerprint")
-                    if existing_fingerprint == fingerprint:
-                        # Found matching structure by fingerprint
-                        existing_fingerprint_id = struct_meta.get("id")
-                        if existing_fingerprint_id:
-                            # Verify with semantic equality as belt-and-suspenders
-                            from quantumvitas.core.structure_fingerprint import structures_semantically_equal
-                            existing_structure = read_structure(struct_file)
-                            if structures_semantically_equal(structure, existing_structure):
-                                # Reuse existing structure
-                                from quantumvitas.core.resolution import require_structure
-                                resolved = require_structure(
-                                    project_root, existing_fingerprint_id, config=config, index=index
-                                )
-                                return resolved
-                except Exception:
-                    pass  # Skip invalid files
+        # Only when dedup_by_fingerprint=True (opt-in for demo tooling)
+        if dedup_by_fingerprint:
+            structures_dir = project_root / "structures"
+            if structures_dir.exists():
+                for struct_file in structures_dir.glob("*.json"):
+                    try:
+                        import json
+                        struct_data = json.loads(struct_file.read_text())
+                        struct_meta = struct_data.get("__qv_meta__") or struct_data.get("meta") or {}
+                        existing_fingerprint = struct_meta.get("fingerprint")
+                        if existing_fingerprint == fingerprint:
+                            # Found matching structure by fingerprint
+                            existing_fingerprint_id = struct_meta.get("id")
+                            if existing_fingerprint_id:
+                                # Verify with semantic equality as belt-and-suspenders
+                                from quantumvitas.core.structure_fingerprint import structures_semantically_equal
+                                existing_structure = read_structure(struct_file)
+                                if structures_semantically_equal(structure, existing_structure):
+                                    # Reuse existing structure
+                                    from quantumvitas.core.resolution import require_structure
+                                    resolved = require_structure(
+                                        project_root, existing_fingerprint_id, config=config, index=index
+                                    )
+                                    return resolved
+                    except Exception:
+                        pass  # Skip invalid files
         
         # Write to structures directory
         dest_path = project_root / "structures" / f"{final_slug}.json"

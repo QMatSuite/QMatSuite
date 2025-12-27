@@ -162,7 +162,11 @@ def test_build_step_spec_from_qe_input_creates_structure_and_yaml(tmp_path: Path
     # Legacy structure_id field is not written to YAML
     assert "structure_id:" not in spec_text, "Step YAML should not contain structure_id (DAG model)"
     assert "K_POINTS" in spec_text  # cards captured
-    assert "ATOMIC_SPECIES" in spec_text  # pseudo mapping stored in spec
+    # Pseudo mapping stored in species_overrides, NOT as ATOMIC_SPECIES card
+    # ATOMIC_SPECIES should NOT be in cards (it's a structure card, excluded)
+    assert "ATOMIC_SPECIES" not in spec_text, "ATOMIC_SPECIES should not be in step cards"
+    assert "species_overrides" in spec_text, "Pseudo mapping should be in species_overrides"
+    assert "pseudopot" in spec_text, "Pseudopotential filename should be in species_overrides"
     assert "ibrav" not in spec_text
     assert "celldm(1)" not in spec_text
     assert "nat" not in spec_text
