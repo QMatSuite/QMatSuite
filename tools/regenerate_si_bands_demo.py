@@ -6,7 +6,7 @@ This is a minimal script that only regenerates si_bands_demo.yml.
 Run this when project2_bands is updated.
 
 Usage:
-    python scripts/regenerate_si_bands_demo.py
+    python tools/regenerate_si_bands_demo.py
 """
 
 from __future__ import annotations
