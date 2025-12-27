@@ -1,13 +1,9 @@
 {
   "total_datasets": 28,
-  "successful": 25,
-  "failed": 3,
+  "successful": 12,
+  "failed": 16,
   "verification": {
     "00_Si_scf": {
-      "consistent": true,
-      "issue_count": 0
-    },
-    "10_benzene_TDDFT": {
       "consistent": true,
       "issue_count": 0
     },
@@ -15,19 +11,7 @@
       "consistent": true,
       "issue_count": 0
     },
-    "12_NMR_gipaw": {
-      "consistent": true,
-      "issue_count": 0
-    },
-    "13_graphene": {
-      "consistent": true,
-      "issue_count": 0
-    },
     "15_bulk_modulus_Si": {
-      "consistent": true,
-      "issue_count": 0
-    },
-    "17_H2O_vibration": {
       "consistent": true,
       "issue_count": 0
     },
@@ -51,23 +35,7 @@
       "consistent": true,
       "issue_count": 0
     },
-    "04_Si_DOS": {
-      "consistent": true,
-      "issue_count": 0
-    },
-    "06_Al_DOS": {
-      "consistent": true,
-      "issue_count": 0
-    },
-    "07_Si_bandStructure": {
-      "consistent": true,
-      "issue_count": 0
-    },
     "08_Fe_DOS": {
-      "consistent": true,
-      "issue_count": 0
-    },
-    "09_Si_phonon": {
       "consistent": true,
       "issue_count": 0
     }
@@ -83,9 +51,9 @@
         "scf": "00_Si_scf.scf.json"
       },
       "validation": {
-        "success": true,
+        "success": false,
         "differences_count": 0,
-        "error": null
+        "error": "Round-trip validation error: Calculation not found - selector: '01KDGCY8FZP8G6GB7EVKMRKT3S' - in project: /private/var/folders/5g/9hd_m6jx2nn13wxv_3q6_wf40000gn/T/qv_import_zovcs1da/00_si_scf-2\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4934, in get_calculation_detail\n    calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/core/resolution.py\", line 1016, in resolve_calculation\n    raise SelectorNotFoundError(f\"Calculation '{selector}' not found\")\nquantumvitas.core.resolution.SelectorNotFoundError: Calculation '01KDGCY8FZP8G6GB7EVKMRKT3S' not found\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/tools/import_tutorial_datasets.py\", line 849, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4936, in get_calculation_detail\n    raise ResourceNotFoundError(\nquantumvitas.core.resolution.ResourceNotFoundError: Calculation not found - selector: '01KDGCY8FZP8G6GB7EVKMRKT3S' - in project: /private/var/folders/5g/9hd_m6jx2nn13wxv_3q6_wf40000gn/T/qv_import_zovcs1da/00_si_scf-2\n"
       },
       "verification": {
         "consistent": true,
@@ -95,22 +63,13 @@
     },
     {
       "demo_name": "10_benzene_TDDFT",
-      "success": true,
-      "error": null,
+      "success": false,
+      "error": "Error creating demo: CELL_PARAMETERS card required when ibrav == 0.\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/tools/import_tutorial_datasets.py\", line 1251, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 260, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4254, in import_step_from_qe_input\n    import_result = build_step_spec_from_qe_input(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/calculation/importers.py\", line 138, in build_step_spec_from_qe_input\n    structure = structure_from_qe_input(qe_input)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/io/structure_io.py\", line 221, in structure_from_qe_input\n    lattice = _lattice_from_cell_card(cell_card, system)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/io/structure_io.py\", line 307, in _lattice_from_cell_card\n    raise ValueError(\"CELL_PARAMETERS card required when ibrav == 0.\")\nValueError: CELL_PARAMETERS card required when ibrav == 0.\n",
       "missing_pseudos": [],
-      "step_count": 2,
-      "reference_artifacts": {
-        "scf": "10_benzene_TDDFT.scf.json"
-      },
-      "validation": {
-        "success": false,
-        "differences_count": 3,
-        "error": null
-      },
-      "verification": {
-        "consistent": true,
-        "issues": []
-      },
+      "step_count": 0,
+      "reference_artifacts": {},
+      "validation": null,
+      "verification": {},
       "detailed_verification": null
     },
     {
@@ -122,8 +81,8 @@
       "reference_artifacts": {},
       "validation": {
         "success": false,
-        "differences_count": 3,
-        "error": null
+        "differences_count": 0,
+        "error": "Round-trip validation error: Calculation not found - selector: '01KDGCY8KVVVH1QGSPSZRX4ZRK' - in project: /private/var/folders/5g/9hd_m6jx2nn13wxv_3q6_wf40000gn/T/qv_import_a0xxrr7a/11_si_100_surface_reconstruction-2\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4934, in get_calculation_detail\n    calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/core/resolution.py\", line 1016, in resolve_calculation\n    raise SelectorNotFoundError(f\"Calculation '{selector}' not found\")\nquantumvitas.core.resolution.SelectorNotFoundError: Calculation '01KDGCY8KVVVH1QGSPSZRX4ZRK' not found\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/tools/import_tutorial_datasets.py\", line 849, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4936, in get_calculation_detail\n    raise ResourceNotFoundError(\nquantumvitas.core.resolution.ResourceNotFoundError: Calculation not found - selector: '01KDGCY8KVVVH1QGSPSZRX4ZRK' - in project: /private/var/folders/5g/9hd_m6jx2nn13wxv_3q6_wf40000gn/T/qv_import_a0xxrr7a/11_si_100_surface_reconstruction-2\n"
       },
       "verification": {
         "consistent": true,
@@ -133,62 +92,35 @@
     },
     {
       "demo_name": "12_NMR_gipaw",
-      "success": true,
-      "error": null,
+      "success": false,
+      "error": "Error creating demo: CELL_PARAMETERS card required when ibrav == 0.\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/tools/import_tutorial_datasets.py\", line 1251, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 260, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4254, in import_step_from_qe_input\n    import_result = build_step_spec_from_qe_input(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/calculation/importers.py\", line 138, in build_step_spec_from_qe_input\n    structure = structure_from_qe_input(qe_input)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/io/structure_io.py\", line 221, in structure_from_qe_input\n    lattice = _lattice_from_cell_card(cell_card, system)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/io/structure_io.py\", line 307, in _lattice_from_cell_card\n    raise ValueError(\"CELL_PARAMETERS card required when ibrav == 0.\")\nValueError: CELL_PARAMETERS card required when ibrav == 0.\n",
       "missing_pseudos": [],
-      "step_count": 1,
-      "reference_artifacts": {
-        "scf": "12_NMR_gipaw.scf.json"
-      },
-      "validation": {
-        "success": false,
-        "differences_count": 1,
-        "error": null
-      },
-      "verification": {
-        "consistent": true,
-        "issues": []
-      },
+      "step_count": 0,
+      "reference_artifacts": {},
+      "validation": null,
+      "verification": {},
       "detailed_verification": null
     },
     {
       "demo_name": "12_NMR_gipaw",
-      "success": true,
-      "error": null,
+      "success": false,
+      "error": "Error creating demo: CELL_PARAMETERS card required when ibrav == 0.\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/tools/import_tutorial_datasets.py\", line 1251, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 260, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4254, in import_step_from_qe_input\n    import_result = build_step_spec_from_qe_input(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/calculation/importers.py\", line 138, in build_step_spec_from_qe_input\n    structure = structure_from_qe_input(qe_input)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/io/structure_io.py\", line 221, in structure_from_qe_input\n    lattice = _lattice_from_cell_card(cell_card, system)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/io/structure_io.py\", line 307, in _lattice_from_cell_card\n    raise ValueError(\"CELL_PARAMETERS card required when ibrav == 0.\")\nValueError: CELL_PARAMETERS card required when ibrav == 0.\n",
       "missing_pseudos": [],
-      "step_count": 1,
-      "reference_artifacts": {
-        "scf": "12_NMR_gipaw.scf.json"
-      },
-      "validation": {
-        "success": false,
-        "differences_count": 3,
-        "error": null
-      },
-      "verification": {
-        "consistent": true,
-        "issues": []
-      },
+      "step_count": 0,
+      "reference_artifacts": {},
+      "validation": null,
+      "verification": {},
       "detailed_verification": null
     },
     {
       "demo_name": "13_graphene",
-      "success": true,
-      "error": null,
+      "success": false,
+      "error": "Error creating demo: ibrav=12/-12 requires b, c, and cos(angle).\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/tools/import_tutorial_datasets.py\", line 1251, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 260, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4254, in import_step_from_qe_input\n    import_result = build_step_spec_from_qe_input(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/calculation/importers.py\", line 138, in build_step_spec_from_qe_input\n    structure = structure_from_qe_input(qe_input)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/io/structure_io.py\", line 219, in structure_from_qe_input\n    lattice = _lattice_from_ibrav(system)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/io/structure_io.py\", line 336, in _lattice_from_ibrav\n    vectors = _ibrav_vectors(ibrav, params)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/io/structure_io.py\", line 455, in _ibrav_vectors\n    raise ValueError(\"ibrav=12/-12 requires b, c, and cos(angle).\")\nValueError: ibrav=12/-12 requires b, c, and cos(angle).\n",
       "missing_pseudos": [],
-      "step_count": 3,
-      "reference_artifacts": {
-        "scf": "13_graphene.scf.json"
-      },
-      "validation": {
-        "success": false,
-        "differences_count": 8,
-        "error": null
-      },
-      "verification": {
-        "consistent": true,
-        "issues": []
-      },
+      "step_count": 0,
+      "reference_artifacts": {},
+      "validation": null,
+      "verification": {},
       "detailed_verification": null
     },
     {
@@ -227,9 +159,9 @@
         "scf": "15_bulk_modulus_Si.scf.json"
       },
       "validation": {
-        "success": true,
+        "success": false,
         "differences_count": 0,
-        "error": null
+        "error": "Round-trip validation error: Calculation not found - selector: '01KDGCY9Q9T4XGVT4KQC1S26TZ' - in project: /private/var/folders/5g/9hd_m6jx2nn13wxv_3q6_wf40000gn/T/qv_import_4aigciya/15_bulk_modulus_si-2\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4934, in get_calculation_detail\n    calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/core/resolution.py\", line 1016, in resolve_calculation\n    raise SelectorNotFoundError(f\"Calculation '{selector}' not found\")\nquantumvitas.core.resolution.SelectorNotFoundError: Calculation '01KDGCY9Q9T4XGVT4KQC1S26TZ' not found\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/tools/import_tutorial_datasets.py\", line 849, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4936, in get_calculation_detail\n    raise ResourceNotFoundError(\nquantumvitas.core.resolution.ResourceNotFoundError: Calculation not found - selector: '01KDGCY9Q9T4XGVT4KQC1S26TZ' - in project: /private/var/folders/5g/9hd_m6jx2nn13wxv_3q6_wf40000gn/T/qv_import_4aigciya/15_bulk_modulus_si-2\n"
       },
       "verification": {
         "consistent": true,
@@ -239,20 +171,13 @@
     },
     {
       "demo_name": "17_H2O_vibration",
-      "success": true,
-      "error": null,
+      "success": false,
+      "error": "Error creating demo: CELL_PARAMETERS card required when ibrav == 0.\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/tools/import_tutorial_datasets.py\", line 1251, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 260, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4254, in import_step_from_qe_input\n    import_result = build_step_spec_from_qe_input(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/calculation/importers.py\", line 138, in build_step_spec_from_qe_input\n    structure = structure_from_qe_input(qe_input)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/io/structure_io.py\", line 221, in structure_from_qe_input\n    lattice = _lattice_from_cell_card(cell_card, system)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/io/structure_io.py\", line 307, in _lattice_from_cell_card\n    raise ValueError(\"CELL_PARAMETERS card required when ibrav == 0.\")\nValueError: CELL_PARAMETERS card required when ibrav == 0.\n",
       "missing_pseudos": [],
-      "step_count": 1,
+      "step_count": 0,
       "reference_artifacts": {},
-      "validation": {
-        "success": false,
-        "differences_count": 1,
-        "error": null
-      },
-      "verification": {
-        "consistent": true,
-        "issues": []
-      },
+      "validation": null,
+      "verification": {},
       "detailed_verification": null
     },
     {
@@ -264,8 +189,8 @@
       "reference_artifacts": {},
       "validation": {
         "success": false,
-        "differences_count": 1,
-        "error": null
+        "differences_count": 0,
+        "error": "Round-trip validation error: Calculation not found - selector: '01KDGCY9ZC8WAZNWVB2QKSF909' - in project: /private/var/folders/5g/9hd_m6jx2nn13wxv_3q6_wf40000gn/T/qv_import_1i2vo_hs/18_h2o_md-2\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4934, in get_calculation_detail\n    calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/core/resolution.py\", line 1016, in resolve_calculation\n    raise SelectorNotFoundError(f\"Calculation '{selector}' not found\")\nquantumvitas.core.resolution.SelectorNotFoundError: Calculation '01KDGCY9ZC8WAZNWVB2QKSF909' not found\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/tools/import_tutorial_datasets.py\", line 849, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4936, in get_calculation_detail\n    raise ResourceNotFoundError(\nquantumvitas.core.resolution.ResourceNotFoundError: Calculation not found - selector: '01KDGCY9ZC8WAZNWVB2QKSF909' - in project: /private/var/folders/5g/9hd_m6jx2nn13wxv_3q6_wf40000gn/T/qv_import_1i2vo_hs/18_h2o_md-2\n"
       },
       "verification": {
         "consistent": true,
@@ -282,8 +207,40 @@
       "reference_artifacts": {},
       "validation": {
         "success": false,
-        "differences_count": 4,
-        "error": null
+        "differences_count": 0,
+        "error": "Round-trip validation error: Calculation not found - selector: '01KDGCYA3TK6SFFAARA2D0CXDT' - in project: /private/var/folders/5g/9hd_m6jx2nn13wxv_3q6_wf40000gn/T/qv_import_sbb7qbkq/19_si_cpmd-2\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4934, in get_calculation_detail\n    calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/core/resolution.py\", line 1016, in resolve_calculation\n    raise SelectorNotFoundError(f\"Calculation '{selector}' not found\")\nquantumvitas.core.resolution.SelectorNotFoundError: Calculation '01KDGCYA3TK6SFFAARA2D0CXDT' not found\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/tools/import_tutorial_datasets.py\", line 849, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4936, in get_calculation_detail\n    raise ResourceNotFoundError(\nquantumvitas.core.resolution.ResourceNotFoundError: Calculation not found - selector: '01KDGCYA3TK6SFFAARA2D0CXDT' - in project: /private/var/folders/5g/9hd_m6jx2nn13wxv_3q6_wf40000gn/T/qv_import_sbb7qbkq/19_si_cpmd-2\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "19_Si_CPMD",
+      "success": false,
+      "error": "Error creating demo: CELL_PARAMETERS card required when ibrav == 0.\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/tools/import_tutorial_datasets.py\", line 1251, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 260, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4254, in import_step_from_qe_input\n    import_result = build_step_spec_from_qe_input(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/calculation/importers.py\", line 138, in build_step_spec_from_qe_input\n    structure = structure_from_qe_input(qe_input)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/io/structure_io.py\", line 221, in structure_from_qe_input\n    lattice = _lattice_from_cell_card(cell_card, system)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/io/structure_io.py\", line 307, in _lattice_from_cell_card\n    raise ValueError(\"CELL_PARAMETERS card required when ibrav == 0.\")\nValueError: CELL_PARAMETERS card required when ibrav == 0.\n",
+      "missing_pseudos": [],
+      "step_count": 0,
+      "reference_artifacts": {},
+      "validation": null,
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "19_Si_CPMD",
+      "success": true,
+      "error": null,
+      "missing_pseudos": [],
+      "step_count": 3,
+      "reference_artifacts": {},
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: Calculation not found - selector: '01KDGCYA9PGK7TX6N2BMZNXVH0' - in project: /private/var/folders/5g/9hd_m6jx2nn13wxv_3q6_wf40000gn/T/qv_import_zfofnd8g/19_si_cpmd-2\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4934, in get_calculation_detail\n    calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/core/resolution.py\", line 1016, in resolve_calculation\n    raise SelectorNotFoundError(f\"Calculation '{selector}' not found\")\nquantumvitas.core.resolution.SelectorNotFoundError: Calculation '01KDGCYA9PGK7TX6N2BMZNXVH0' not found\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/tools/import_tutorial_datasets.py\", line 849, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4936, in get_calculation_detail\n    raise ResourceNotFoundError(\nquantumvitas.core.resolution.ResourceNotFoundError: Calculation not found - selector: '01KDGCYA9PGK7TX6N2BMZNXVH0' - in project: /private/var/folders/5g/9hd_m6jx2nn13wxv_3q6_wf40000gn/T/qv_import_zfofnd8g/19_si_cpmd-2\n"
       },
       "verification": {
         "consistent": true,
@@ -300,8 +257,8 @@
       "reference_artifacts": {},
       "validation": {
         "success": false,
-        "differences_count": 3,
-        "error": null
+        "differences_count": 0,
+        "error": "Round-trip validation error: Calculation not found - selector: '01KDGCYAHFZFCEJM1CAN5N6WYC' - in project: /private/var/folders/5g/9hd_m6jx2nn13wxv_3q6_wf40000gn/T/qv_import_c7qafds5/19_si_cpmd-2\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4934, in get_calculation_detail\n    calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/core/resolution.py\", line 1016, in resolve_calculation\n    raise SelectorNotFoundError(f\"Calculation '{selector}' not found\")\nquantumvitas.core.resolution.SelectorNotFoundError: Calculation '01KDGCYAHFZFCEJM1CAN5N6WYC' not found\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/tools/import_tutorial_datasets.py\", line 849, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4936, in get_calculation_detail\n    raise ResourceNotFoundError(\nquantumvitas.core.resolution.ResourceNotFoundError: Calculation not found - selector: '01KDGCYAHFZFCEJM1CAN5N6WYC' - in project: /private/var/folders/5g/9hd_m6jx2nn13wxv_3q6_wf40000gn/T/qv_import_c7qafds5/19_si_cpmd-2\n"
       },
       "verification": {
         "consistent": true,
@@ -318,44 +275,8 @@
       "reference_artifacts": {},
       "validation": {
         "success": false,
-        "differences_count": 3,
-        "error": null
-      },
-      "verification": {
-        "consistent": true,
-        "issues": []
-      },
-      "detailed_verification": null
-    },
-    {
-      "demo_name": "19_Si_CPMD",
-      "success": true,
-      "error": null,
-      "missing_pseudos": [],
-      "step_count": 3,
-      "reference_artifacts": {},
-      "validation": {
-        "success": false,
-        "differences_count": 3,
-        "error": null
-      },
-      "verification": {
-        "consistent": true,
-        "issues": []
-      },
-      "detailed_verification": null
-    },
-    {
-      "demo_name": "19_Si_CPMD",
-      "success": true,
-      "error": null,
-      "missing_pseudos": [],
-      "step_count": 3,
-      "reference_artifacts": {},
-      "validation": {
-        "success": false,
-        "differences_count": 3,
-        "error": null
+        "differences_count": 0,
+        "error": "Round-trip validation error: Calculation not found - selector: '01KDGCYARAT9DZH0YKT34RT0GN' - in project: /private/var/folders/5g/9hd_m6jx2nn13wxv_3q6_wf40000gn/T/qv_import__i9igi_s/19_si_cpmd-2\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4934, in get_calculation_detail\n    calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/core/resolution.py\", line 1016, in resolve_calculation\n    raise SelectorNotFoundError(f\"Calculation '{selector}' not found\")\nquantumvitas.core.resolution.SelectorNotFoundError: Calculation '01KDGCYARAT9DZH0YKT34RT0GN' not found\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/tools/import_tutorial_datasets.py\", line 849, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4936, in get_calculation_detail\n    raise ResourceNotFoundError(\nquantumvitas.core.resolution.ResourceNotFoundError: Calculation not found - selector: '01KDGCYARAT9DZH0YKT34RT0GN' - in project: /private/var/folders/5g/9hd_m6jx2nn13wxv_3q6_wf40000gn/T/qv_import__i9igi_s/19_si_cpmd-2\n"
       },
       "verification": {
         "consistent": true,
@@ -373,9 +294,9 @@
         "scf": "01_H2.scf.json"
       },
       "validation": {
-        "success": true,
+        "success": false,
         "differences_count": 0,
-        "error": null
+        "error": "Round-trip validation error: Calculation not found - selector: '01KDGCYAZ1G04NHNERZDTZT1XS' - in project: /private/var/folders/5g/9hd_m6jx2nn13wxv_3q6_wf40000gn/T/qv_import_eqs1dgsc/01_h2-2\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4934, in get_calculation_detail\n    calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/core/resolution.py\", line 1016, in resolve_calculation\n    raise SelectorNotFoundError(f\"Calculation '{selector}' not found\")\nquantumvitas.core.resolution.SelectorNotFoundError: Calculation '01KDGCYAZ1G04NHNERZDTZT1XS' not found\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/tools/import_tutorial_datasets.py\", line 849, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4936, in get_calculation_detail\n    raise ResourceNotFoundError(\nquantumvitas.core.resolution.ResourceNotFoundError: Calculation not found - selector: '01KDGCYAZ1G04NHNERZDTZT1XS' - in project: /private/var/folders/5g/9hd_m6jx2nn13wxv_3q6_wf40000gn/T/qv_import_eqs1dgsc/01_h2-2\n"
       },
       "verification": {
         "consistent": true,
@@ -392,8 +313,8 @@
       "reference_artifacts": {},
       "validation": {
         "success": false,
-        "differences_count": 1,
-        "error": null
+        "differences_count": 0,
+        "error": "Round-trip validation error: Calculation not found - selector: '01KDGCYB3GGZFWDN7RQQ46KMDP' - in project: /private/var/folders/5g/9hd_m6jx2nn13wxv_3q6_wf40000gn/T/qv_import_crpo6sn8/02_h2o-2\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4934, in get_calculation_detail\n    calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/core/resolution.py\", line 1016, in resolve_calculation\n    raise SelectorNotFoundError(f\"Calculation '{selector}' not found\")\nquantumvitas.core.resolution.SelectorNotFoundError: Calculation '01KDGCYB3GGZFWDN7RQQ46KMDP' not found\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/tools/import_tutorial_datasets.py\", line 849, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4936, in get_calculation_detail\n    raise ResourceNotFoundError(\nquantumvitas.core.resolution.ResourceNotFoundError: Calculation not found - selector: '01KDGCYB3GGZFWDN7RQQ46KMDP' - in project: /private/var/folders/5g/9hd_m6jx2nn13wxv_3q6_wf40000gn/T/qv_import_crpo6sn8/02_h2o-2\n"
       },
       "verification": {
         "consistent": true,
@@ -410,8 +331,8 @@
       "reference_artifacts": {},
       "validation": {
         "success": false,
-        "differences_count": 2,
-        "error": null
+        "differences_count": 0,
+        "error": "Round-trip validation error: Calculation not found - selector: '01KDGCYB5GYACH0SZ49AD4AEXY' - in project: /private/var/folders/5g/9hd_m6jx2nn13wxv_3q6_wf40000gn/T/qv_import_y7rlwlwh/03_si_vc_relax-2\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4934, in get_calculation_detail\n    calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/core/resolution.py\", line 1016, in resolve_calculation\n    raise SelectorNotFoundError(f\"Calculation '{selector}' not found\")\nquantumvitas.core.resolution.SelectorNotFoundError: Calculation '01KDGCYB5GYACH0SZ49AD4AEXY' not found\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/tools/import_tutorial_datasets.py\", line 849, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4936, in get_calculation_detail\n    raise ResourceNotFoundError(\nquantumvitas.core.resolution.ResourceNotFoundError: Calculation not found - selector: '01KDGCYB5GYACH0SZ49AD4AEXY' - in project: /private/var/folders/5g/9hd_m6jx2nn13wxv_3q6_wf40000gn/T/qv_import_y7rlwlwh/03_si_vc_relax-2\n"
       },
       "verification": {
         "consistent": true,
@@ -421,22 +342,13 @@
     },
     {
       "demo_name": "04_Si_DOS",
-      "success": true,
-      "error": null,
+      "success": false,
+      "error": "Error creating demo: CELL_PARAMETERS card required when ibrav == 0.\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/tools/import_tutorial_datasets.py\", line 1251, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 260, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4254, in import_step_from_qe_input\n    import_result = build_step_spec_from_qe_input(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/calculation/importers.py\", line 138, in build_step_spec_from_qe_input\n    structure = structure_from_qe_input(qe_input)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/io/structure_io.py\", line 221, in structure_from_qe_input\n    lattice = _lattice_from_cell_card(cell_card, system)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/io/structure_io.py\", line 307, in _lattice_from_cell_card\n    raise ValueError(\"CELL_PARAMETERS card required when ibrav == 0.\")\nValueError: CELL_PARAMETERS card required when ibrav == 0.\n",
       "missing_pseudos": [],
-      "step_count": 2,
-      "reference_artifacts": {
-        "scf": "04_Si_DOS.scf.json"
-      },
-      "validation": {
-        "success": true,
-        "differences_count": 0,
-        "error": null
-      },
-      "verification": {
-        "consistent": true,
-        "issues": []
-      },
+      "step_count": 0,
+      "reference_artifacts": {},
+      "validation": null,
+      "verification": {},
       "detailed_verification": null
     },
     {
@@ -454,38 +366,34 @@
     },
     {
       "demo_name": "06_Al_DOS",
-      "success": true,
-      "error": null,
+      "success": false,
+      "error": "Error creating demo: CELL_PARAMETERS card required when ibrav == 0.\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/tools/import_tutorial_datasets.py\", line 1251, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 260, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4254, in import_step_from_qe_input\n    import_result = build_step_spec_from_qe_input(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/calculation/importers.py\", line 138, in build_step_spec_from_qe_input\n    structure = structure_from_qe_input(qe_input)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/io/structure_io.py\", line 221, in structure_from_qe_input\n    lattice = _lattice_from_cell_card(cell_card, system)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/io/structure_io.py\", line 307, in _lattice_from_cell_card\n    raise ValueError(\"CELL_PARAMETERS card required when ibrav == 0.\")\nValueError: CELL_PARAMETERS card required when ibrav == 0.\n",
       "missing_pseudos": [],
-      "step_count": 3,
-      "reference_artifacts": {
-        "scf": "06_Al_DOS.scf.json"
-      },
-      "validation": {
-        "success": false,
-        "differences_count": 2,
-        "error": null
-      },
-      "verification": {
-        "consistent": true,
-        "issues": []
-      },
+      "step_count": 0,
+      "reference_artifacts": {},
+      "validation": null,
+      "verification": {},
       "detailed_verification": null
     },
     {
       "demo_name": "07_Si_bandStructure",
-      "success": true,
-      "error": null,
+      "success": false,
+      "error": "Error creating demo: CELL_PARAMETERS card required when ibrav == 0.\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/tools/import_tutorial_datasets.py\", line 1251, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 260, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4254, in import_step_from_qe_input\n    import_result = build_step_spec_from_qe_input(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/calculation/importers.py\", line 138, in build_step_spec_from_qe_input\n    structure = structure_from_qe_input(qe_input)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/io/structure_io.py\", line 221, in structure_from_qe_input\n    lattice = _lattice_from_cell_card(cell_card, system)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/io/structure_io.py\", line 307, in _lattice_from_cell_card\n    raise ValueError(\"CELL_PARAMETERS card required when ibrav == 0.\")\nValueError: CELL_PARAMETERS card required when ibrav == 0.\n",
       "missing_pseudos": [],
-      "step_count": 3,
-      "reference_artifacts": {
-        "scf": "07_Si_bandStructure.scf.json"
-      },
-      "validation": {
-        "success": true,
-        "differences_count": 0,
-        "error": null
-      },
+      "step_count": 0,
+      "reference_artifacts": {},
+      "validation": null,
+      "verification": {},
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "08_Fe_DOS",
+      "success": false,
+      "error": "Error creating demo: CELL_PARAMETERS card required when ibrav == 0.\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/tools/import_tutorial_datasets.py\", line 1251, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 260, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4254, in import_step_from_qe_input\n    import_result = build_step_spec_from_qe_input(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/calculation/importers.py\", line 138, in build_step_spec_from_qe_input\n    structure = structure_from_qe_input(qe_input)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/io/structure_io.py\", line 221, in structure_from_qe_input\n    lattice = _lattice_from_cell_card(cell_card, system)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/io/structure_io.py\", line 307, in _lattice_from_cell_card\n    raise ValueError(\"CELL_PARAMETERS card required when ibrav == 0.\")\nValueError: CELL_PARAMETERS card required when ibrav == 0.\n",
+      "missing_pseudos": [],
+      "step_count": 0,
+      "reference_artifacts": {},
+      "validation": null,
       "verification": {
         "consistent": true,
         "issues": []
@@ -497,34 +405,14 @@
       "success": true,
       "error": null,
       "missing_pseudos": [],
-      "step_count": 3,
+      "step_count": 1,
       "reference_artifacts": {
         "scf": "08_Fe_DOS.scf.json"
       },
       "validation": {
         "success": false,
-        "differences_count": 2,
-        "error": null
-      },
-      "verification": {
-        "consistent": true,
-        "issues": []
-      },
-      "detailed_verification": null
-    },
-    {
-      "demo_name": "08_Fe_DOS",
-      "success": true,
-      "error": null,
-      "missing_pseudos": [],
-      "step_count": 1,
-      "reference_artifacts": {
-        "scf": "08_Fe_DOS.scf.json"
-      },
-      "validation": {
-        "success": true,
         "differences_count": 0,
-        "error": null
+        "error": "Round-trip validation error: Calculation not found - selector: '01KDGCYC1PC8FA9FSAJ1FZVB2K' - in project: /private/var/folders/5g/9hd_m6jx2nn13wxv_3q6_wf40000gn/T/qv_import_3zxi4z6k/08_fe_dos-2\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4934, in get_calculation_detail\n    calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/core/resolution.py\", line 1016, in resolve_calculation\n    raise SelectorNotFoundError(f\"Calculation '{selector}' not found\")\nquantumvitas.core.resolution.SelectorNotFoundError: Calculation '01KDGCYC1PC8FA9FSAJ1FZVB2K' not found\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/tools/import_tutorial_datasets.py\", line 849, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4936, in get_calculation_detail\n    raise ResourceNotFoundError(\nquantumvitas.core.resolution.ResourceNotFoundError: Calculation not found - selector: '01KDGCYC1PC8FA9FSAJ1FZVB2K' - in project: /private/var/folders/5g/9hd_m6jx2nn13wxv_3q6_wf40000gn/T/qv_import_3zxi4z6k/08_fe_dos-2\n"
       },
       "verification": {
         "consistent": true,
@@ -534,62 +422,35 @@
     },
     {
       "demo_name": "09_Si_phonon",
-      "success": true,
-      "error": null,
+      "success": false,
+      "error": "Error creating demo: CELL_PARAMETERS card required when ibrav == 0.\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/tools/import_tutorial_datasets.py\", line 1251, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 260, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4254, in import_step_from_qe_input\n    import_result = build_step_spec_from_qe_input(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/calculation/importers.py\", line 138, in build_step_spec_from_qe_input\n    structure = structure_from_qe_input(qe_input)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/io/structure_io.py\", line 221, in structure_from_qe_input\n    lattice = _lattice_from_cell_card(cell_card, system)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/io/structure_io.py\", line 307, in _lattice_from_cell_card\n    raise ValueError(\"CELL_PARAMETERS card required when ibrav == 0.\")\nValueError: CELL_PARAMETERS card required when ibrav == 0.\n",
       "missing_pseudos": [],
-      "step_count": 1,
-      "reference_artifacts": {
-        "scf": "09_Si_phonon.scf.json"
-      },
-      "validation": {
-        "success": true,
-        "differences_count": 0,
-        "error": null
-      },
-      "verification": {
-        "consistent": true,
-        "issues": []
-      },
+      "step_count": 0,
+      "reference_artifacts": {},
+      "validation": null,
+      "verification": {},
       "detailed_verification": null
     },
     {
       "demo_name": "09_Si_phonon",
-      "success": true,
-      "error": null,
+      "success": false,
+      "error": "Error creating demo: CELL_PARAMETERS card required when ibrav == 0.\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/tools/import_tutorial_datasets.py\", line 1251, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 260, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4254, in import_step_from_qe_input\n    import_result = build_step_spec_from_qe_input(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/calculation/importers.py\", line 138, in build_step_spec_from_qe_input\n    structure = structure_from_qe_input(qe_input)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/io/structure_io.py\", line 221, in structure_from_qe_input\n    lattice = _lattice_from_cell_card(cell_card, system)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/io/structure_io.py\", line 307, in _lattice_from_cell_card\n    raise ValueError(\"CELL_PARAMETERS card required when ibrav == 0.\")\nValueError: CELL_PARAMETERS card required when ibrav == 0.\n",
       "missing_pseudos": [],
-      "step_count": 1,
-      "reference_artifacts": {
-        "scf": "09_Si_phonon.scf.json"
-      },
-      "validation": {
-        "success": true,
-        "differences_count": 0,
-        "error": null
-      },
-      "verification": {
-        "consistent": true,
-        "issues": []
-      },
+      "step_count": 0,
+      "reference_artifacts": {},
+      "validation": null,
+      "verification": {},
       "detailed_verification": null
     },
     {
       "demo_name": "09_Si_phonon",
-      "success": true,
-      "error": null,
+      "success": false,
+      "error": "Error creating demo: CELL_PARAMETERS card required when ibrav == 0.\nTraceback (most recent call last):\n  File \"/Users/mac11/QMatSuite/tools/import_tutorial_datasets.py\", line 1251, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 260, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/api.py\", line 4254, in import_step_from_qe_input\n    import_result = build_step_spec_from_qe_input(\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/calculation/importers.py\", line 138, in build_step_spec_from_qe_input\n    structure = structure_from_qe_input(qe_input)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/io/structure_io.py\", line 221, in structure_from_qe_input\n    lattice = _lattice_from_cell_card(cell_card, system)\n  File \"/Users/mac11/QMatSuite/src/quantumvitas/io/structure_io.py\", line 307, in _lattice_from_cell_card\n    raise ValueError(\"CELL_PARAMETERS card required when ibrav == 0.\")\nValueError: CELL_PARAMETERS card required when ibrav == 0.\n",
       "missing_pseudos": [],
-      "step_count": 1,
-      "reference_artifacts": {
-        "scf": "09_Si_phonon.scf.json"
-      },
-      "validation": {
-        "success": true,
-        "differences_count": 0,
-        "error": null
-      },
-      "verification": {
-        "consistent": true,
-        "issues": []
-      },
+      "step_count": 0,
+      "reference_artifacts": {},
+      "validation": null,
+      "verification": {},
       "detailed_verification": null
     }
   ]

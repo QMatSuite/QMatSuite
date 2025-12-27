@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KDG9DHMWDHFTKQYQ646VECBZ
+    id: 01KDGCYC1N66ZJ6EGVJEEF8MGR
     name: 08_Fe_DOS
     slug: 08_fe_dos
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KDG9DHMYJD9N04PZN99296BX
+    id: 01KDGCYC1WS2AY2V7XYDZ09MR5
     name: fe.scf_noncollin
     slug: fe-scf_noncollin
     path: structures/fe-scf_noncollin.json
@@ -55,56 +55,9 @@ structures:
       - 0.0
       - 0.0
       - 0.0
-- meta:
-    id: 01KDG9DHN911YW911C7CF8QKPC
-    name: fe.scf_noncollin 2
-    slug: fe-scf_noncollin-2
-    path: structures/fe-scf_noncollin-2.json
-    kind: structure
-  data:
-    '@module': pymatgen.core.structure
-    '@class': Structure
-    charge: 0
-    lattice:
-      matrix:
-      - - 1.3482862124071955
-        - 1.3482862124071955
-        - 1.3482862124071955
-      - - -1.3482862124071955
-        - 1.3482862124071955
-        - 1.3482862124071955
-      - - -1.3482862124071955
-        - -1.3482862124071955
-        - 1.3482862124071955
-      pbc:
-      - true
-      - true
-      - true
-      a: 2.3353002230338658
-      b: 2.3353002230338658
-      c: 2.3353002230338658
-      alpha: 70.52877936550931
-      beta: 109.47122063449069
-      gamma: 70.52877936550931
-      volume: 9.804067025711518
-    properties: {}
-    sites:
-    - species:
-      - element: Fe
-        occu: 1
-      abc:
-      - 0.0
-      - 0.0
-      - 0.0
-      properties: {}
-      label: Fe
-      xyz:
-      - 0.0
-      - 0.0
-      - 0.0
 calculations:
 - meta:
-    id: 01KDG9DHN0VKHBRZWK278Q96J0
+    id: 01KDGCYC1PC8FA9FSAJ1FZVB2K
     name: Fe Dos  2 Noncolinear
     slug: fe-dos-2-noncolinear
     path: calculations/fe-dos-2-noncolinear
@@ -113,7 +66,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KDG9DHN4W7WVH6SVXRRBNT1N
+      id: 01KDGCYC1SPQVR0QD8TBBAPN1N
       name: fe.scf_noncollin
       slug: fe-scf_noncollin
       path: fe.scf_noncollin.step.yaml
@@ -154,7 +107,7 @@ calculations:
       Fe:
         mass: 55.845
         pseudopot: Fe.pbe-spn-kjpaw_psl.0.2.1.UPF
-  structure_id: 01KDG9DHMYJD9N04PZN99296BX
+  structure_id: 01KDGCYC1WS2AY2V7XYDZ09MR5
 pseudo:
   directory: pseudo
   files:
@@ -162,12 +115,12 @@ pseudo:
 meta:
   id: 08_Fe_DOS
   title: 08 Fe Dos  2 Noncolinear
-  subtitle: unknown
+  subtitle: SCF
   tags:
   - tutorial
   - qe
-  - unknown
-  recommended_analysis: null
+  - scf
+  recommended_analysis: scf
   difficulty: beginner
   reference_artifacts:
     scf: 08_Fe_DOS.scf.json
