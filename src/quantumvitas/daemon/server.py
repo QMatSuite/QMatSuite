@@ -279,6 +279,7 @@ class QVDaemon:
             "add_step_to_calculation": self._handle_add_step_to_calculation,
             "import_step_from_qe_input": self._handle_import_step_from_qe_input,
             "change_calculation_structure": self._handle_change_calculation_structure,
+            "update_calculation_species_map": self._handle_update_calculation_species_map,
             "delete_step": self._handle_delete_step,
             
             # Pre-flight checks
@@ -3045,6 +3046,37 @@ class QVDaemon:
         )
         
         # Reorder doesn't change registry (only changes step order in calculation.yaml)
+        
+        return result
+    
+    def _handle_update_calculation_species_map(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Update calculation species_map (pseudopotential mapping).
+        
+        Payload:
+            project_root: str - Path to project root
+            calculation: str - Calculation selector
+            species_map: dict - New species mapping (element -> {pseudopot, mass})
+        """
+        project_root = self._require_path(payload, "project_root")
+        calculation = self._require_str(payload, "calculation")
+        species_map = payload.get("species_map", {})
+        
+        if not isinstance(species_map, dict):
+            raise ValueError("species_map must be a dictionary")
+        
+        # Resolve with fallback to ensure cache is up-to-date
+        self._resolve_calculation_with_fallback(project_root, calculation)
+        
+        # Pass cached index and config to avoid rebuilding ResourceIndex
+        cache = self.state.get_cache(project_root)
+        result = QVService.update_calculation_species_map(
+            project_root=project_root,
+            calculation_selector=calculation,
+            species_map=species_map,
+            index=cache.index,
+            config=cache.config,
+        )
         
         return result
     

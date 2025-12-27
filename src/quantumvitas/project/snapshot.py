@@ -312,6 +312,9 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
         # Do NOT export structure_name or structure selector (violates DAG + ID-only constitution)
         if calculation_model.structure_id:
             calculation_dict["structure_id"] = calculation_model.structure_id
+        # Export species_map (calc-level pseudo mapping)
+        if calculation_model.species_map:
+            calculation_dict["species_map"] = calculation_model.species_map
         
         # Export each step
         # Strategy: Scan step files directly and export them, matching by ID when possible
@@ -601,6 +604,33 @@ def materialize_project_from_snapshot(
                         calculation_structure_name = struct_name
                     break
         
+        # Collect species_overrides from steps and migrate to calc-level species_map
+        # This handles backwards compatibility: old snapshots with step-level species_overrides
+        # are migrated to new calc-level species_map on materialization.
+        step_species_overrides_list = []
+        for step_data in calculation_data.get("steps", []):
+            step_species_overrides_list.append(step_data.get("species_overrides"))
+        
+        # Migrate to calc-level species_map if needed
+        # calculation_data may already have species_map if from a new-format snapshot
+        calc_species_map = calculation_data.get("species_map")
+        if not calc_species_map and step_species_overrides_list:
+            from quantumvitas.core.models import migrate_species_overrides_to_calc
+            # Create a temporary calc model for migration
+            temp_calc_for_migration = CalculationModel(
+                meta=ResourceMeta(
+                    id=new_calculation_id,
+                    name=calculation_name,
+                    slug=calculation_slug,
+                    path=f"calculations/{calculation_slug}",
+                    kind="calculation",
+                ),
+            )
+            temp_calc_for_migration = migrate_species_overrides_to_calc(
+                temp_calc_for_migration, step_species_overrides_list
+            )
+            calc_species_map = temp_calc_for_migration.species_map
+        
         # Create calculation.yaml
         calculation_model = CalculationModel(
             meta=ResourceMeta(
@@ -617,6 +647,7 @@ def materialize_project_from_snapshot(
             mode=calculation_data.get("mode", "normal"),
             working_dir=calculation_data.get("working_dir", "raw"),
             steps=[],
+            species_map=calc_species_map,  # Calc-level pseudo mapping
         )
         
         # Create step files
