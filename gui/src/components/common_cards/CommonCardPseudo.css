@@ -47,24 +47,34 @@
 /* Library preference selector */
 .common-card-pseudo__library {
   display: flex;
-  align-items: center;
-  gap: var(--space-2, 0.5rem);
+  flex-direction: column;
+  gap: var(--space-1);
   padding: var(--space-2, 0.75rem);
-  background-color: var(--bg-secondary, #f5f5f5);
+  background-color: var(--bg-secondary);
   border-radius: 4px;
 }
 
-.common-card-pseudo__library label {
+.common-card-pseudo__library > label {
   font-weight: 500;
-  min-width: 100px;
+  font-size: var(--text-sm);
 }
+
 
 .common-card-pseudo__library-select {
   flex: 1;
   padding: var(--space-1, 0.5rem);
-  border: 1px solid var(--border-color, #ddd);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
-  background: white;
+  background: var(--bg-input, var(--bg-primary));
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+}
+
+.common-card-pseudo__library-note {
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 .common-card-pseudo__select--sssp-default {
@@ -112,9 +122,11 @@
 .common-card-pseudo__select {
   flex: 1;
   padding: var(--space-1, 0.5rem);
-  border: 1px solid var(--border-color, #ddd);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
-  background: white;
+  background: var(--bg-input, var(--bg-primary));
+  color: var(--text-primary);
+  font-size: var(--text-sm);
 }
 
 .common-card-pseudo__select--unset {
@@ -128,12 +140,20 @@
 }
 
 .common-card-pseudo__pseudo-display {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.common-card-pseudo__pseudo-display code {
   display: inline-block;
   padding: var(--space-1, 0.25rem) var(--space-1, 0.5rem);
-  background-color: var(--bg-secondary, #f5f5f5);
+  background-color: var(--bg-tertiary);
   border-radius: 4px;
-  font-family: monospace;
-  font-size: 0.9rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
 }
 
 .common-card-pseudo__no-species {
@@ -265,18 +285,21 @@
 .common-card-pseudo__online-input {
   flex: 1;
   padding: var(--space-1, 0.5rem);
-  border: 1px solid var(--border-color, #ddd);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
-  font-family: monospace;
+  background: var(--bg-input, var(--bg-primary));
+  color: var(--text-primary);
+  font-family: var(--font-mono);
   font-size: 0.9rem;
 }
 
 .common-card-pseudo__online-select {
   flex: 1;
   padding: var(--space-1, 0.5rem);
-  border: 1px solid var(--border-color, #ddd);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
-  background: white;
+  background: var(--bg-input, var(--bg-primary));
+  color: var(--text-primary);
 }
 
 .common-card-pseudo__online-search-btn,
@@ -305,8 +328,8 @@
 .common-card-pseudo__online-candidates {
   margin-top: var(--space-2, 0.75rem);
   padding: var(--space-2, 0.75rem);
-  background-color: white;
-  border: 1px solid var(--border-color, #ddd);
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
 }
 
@@ -314,6 +337,7 @@
   font-weight: 500;
   margin-bottom: var(--space-1, 0.5rem);
   font-size: 0.9rem;
+  color: var(--text-primary);
 }
 
 .common-card-pseudo__online-candidates-list {
@@ -331,10 +355,16 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--space-1, 0.5rem);
-  background-color: var(--bg-secondary, #f5f5f5);
-  border-radius: 4px;
+  padding: var(--space-2, 0.5rem);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
   gap: var(--space-2, 0.5rem);
+  transition: background-color var(--transition-fast);
+}
+
+.common-card-pseudo__online-candidate:hover {
+  background-color: var(--bg-hover);
 }
 
 .common-card-pseudo__online-candidate-info {
@@ -345,24 +375,84 @@
 }
 
 .common-card-pseudo__online-candidate-info code {
-  font-family: monospace;
+  font-family: var(--font-mono);
   font-size: 0.85rem;
-  background-color: white;
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
   padding: 2px 6px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
 .common-card-pseudo__online-candidate-xc {
   font-size: 0.75rem;
-  color: var(--text-muted, #888);
+  color: var(--text-muted);
   font-style: italic;
+}
+
+.common-card-pseudo__online-candidate button {
+  padding: var(--space-1, 0.5rem) var(--space-2, 0.75rem);
+  background-color: var(--primary-color);
+  color: var(--text-on-primary, white);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background-color var(--transition-fast);
+}
+
+.common-card-pseudo__online-candidate button:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+}
+
+.common-card-pseudo__online-candidate button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .common-card-pseudo__online-error {
   padding: var(--space-1, 0.5rem);
-  background-color: var(--danger-bg, #f8d7da);
-  border: 1px solid var(--danger-border, #f5c6cb);
+  background-color: var(--color-error-bg);
+  border: 1px solid var(--color-error);
   border-radius: 4px;
-  color: var(--danger-text, #721c24);
+  color: var(--color-error);
   font-size: 0.85rem;
+}
+
+/* Source badges */
+.common-card-pseudo__source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  margin-left: var(--space-1);
+}
+
+.common-card-pseudo__source-badge--internal {
+  background: var(--color-info-bg);
+  color: var(--color-info);
+}
+
+.common-card-pseudo__source-badge--sssp-precision {
+  background: var(--color-accent-alpha);
+  color: var(--color-accent);
+}
+
+.common-card-pseudo__source-badge--sssp-efficiency {
+  background: var(--color-accent-alpha);
+  color: var(--color-accent);
+}
+
+.common-card-pseudo__source-badge--project {
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+}
+
+.common-card-pseudo__copy-note {
+  font-size: 0.7em;
+  opacity: 0.8;
+  font-style: italic;
+  margin-left: 2px;
 }

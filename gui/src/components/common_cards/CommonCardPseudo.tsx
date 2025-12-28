@@ -13,7 +13,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import './CommonCardPseudo.css';
 
-type LibraryPreference = 'precision' | 'efficiency';
+type LibraryPreference = 'internal' | 'precision' | 'efficiency';
 
 interface PseudoMapping {
   species: string[];
@@ -24,6 +24,22 @@ interface PseudoMapping {
   library_preference?: LibraryPreference;
   sssp_defaults?: Record<string, { precision: string; efficiency: string }>;
   sssp_installed?: { precision: boolean; efficiency: boolean };
+  installed_sources?: {
+    internal: boolean;
+    sssp_precision: boolean;
+    sssp_efficiency: boolean;
+  };
+  candidates_by_element?: Record<string, Array<{
+    filename: string;
+    source: 'internal' | 'sssp_precision' | 'sssp_efficiency' | 'project';
+    path?: string | null;
+  }>>;
+  resolved_by_element?: Record<string, {
+    filename: string;
+    source: 'internal' | 'sssp_precision' | 'sssp_efficiency' | 'project' | null;
+    resolved: boolean;
+    in_project?: boolean;
+  }>;
 }
 
 interface LegacyPseudoCandidate {
@@ -54,12 +70,11 @@ export function CommonCardPseudo({
   onSearchLegacy,
   onDownloadByFilename,
   onDownloadCandidate,
-  projectRoot,
+  projectRoot: _projectRoot,
 }: CommonCardPseudoProps) {
   const [localMapping, setLocalMapping] = useState<Record<string, string>>({});
-  const [libraryPreference, setLibraryPreference] = useState<LibraryPreference>('precision');
+  const [libraryPreference, setLibraryPreference] = useState<LibraryPreference>('internal');
   const [isImporting, setIsImporting] = useState(false);
-  const [onlineResolveExpanded, setOnlineResolveExpanded] = useState(false);
   const [onlineMode, setOnlineMode] = useState<'filename' | 'element'>('filename');
   const [filenameInput, setFilenameInput] = useState('');
   const [selectedElement, setSelectedElement] = useState('');
@@ -76,41 +91,82 @@ export function CommonCardPseudo({
     if (mapping) {
       const initialMapping: Record<string, string> = {};
       
-      // Start with existing mapping from species_overrides (backend truth)
+      // Start with existing mapping from species_map (backend truth)
+      // If a pseudo is already set and resolved, preserve it
       for (const [species, pseudo] of Object.entries(mapping.mapping)) {
-        initialMapping[species] = pseudo;
+        if (pseudo) {
+          // Check if this pseudo is resolved from any source
+          const resolvedInfo = mapping.resolved_by_element?.[species];
+          if (resolvedInfo?.resolved) {
+            // Pseudo is resolved, use it
+            initialMapping[species] = pseudo;
+          } else {
+            // Pseudo is set but not resolved - still use it (user may have typed it)
+            initialMapping[species] = pseudo;
+          }
+        }
       }
       
       // CRITICAL: Only auto-preselect if:
       // 1. species_overrides[element] is None/empty (not set in backend)
       // 2. localMapping[element] is also empty (user hasn't manually selected)
       // This prevents overwriting user selections after download
-      if (mapping.sssp_defaults) {
-        for (const species of mapping.species) {
-          // Check backend: only auto-preselect if species_overrides[species] is None/empty
-          const backendValue = mapping.mapping[species];
-          const isBackendUnset = !backendValue || backendValue === '';
+      for (const species of mapping.species) {
+        // Check backend: only auto-preselect if species_overrides[species] is None/empty
+        const backendValue = mapping.mapping[species];
+        const isBackendUnset = !backendValue || backendValue === '';
+        
+        // Check local state: only auto-preselect if user hasn't set it
+        const localValue = localMapping[species];
+        const isLocalUnset = !localValue || localValue === '';
+        
+        // Only auto-preselect if BOTH backend and local are unset
+        if (isBackendUnset && isLocalUnset) {
+          // Try to find a candidate from the preferred library
+          const candidates = mapping.candidates_by_element?.[species] || [];
+          const preferredLibrary = mapping.library_preference || 'internal';
           
-          // Check local state: only auto-preselect if user hasn't set it
-          const localValue = localMapping[species];
-          const isLocalUnset = !localValue || localValue === '';
-          
-          // Only auto-preselect if BOTH backend and local are unset
-          if (isBackendUnset && isLocalUnset) {
-            const defaults = mapping.sssp_defaults[species];
-            if (defaults) {
-              // Prefer precision, fallback to efficiency
-              initialMapping[species] = defaults.precision || defaults.efficiency || '';
+          // Find first candidate from preferred library
+          let selectedCandidate = null;
+          if (preferredLibrary === 'internal') {
+            selectedCandidate = candidates.find(c => c.source === 'internal');
+          } else if (preferredLibrary === 'precision') {
+            selectedCandidate = candidates.find(c => c.source === 'sssp_precision');
+            if (!selectedCandidate) {
+              // Fallback to internal if SSSP precision not available
+              selectedCandidate = candidates.find(c => c.source === 'internal');
             }
-          } else if (localValue) {
-            // Preserve user's local selection (e.g., after download)
-            initialMapping[species] = localValue;
+          } else if (preferredLibrary === 'efficiency') {
+            selectedCandidate = candidates.find(c => c.source === 'sssp_efficiency');
+            if (!selectedCandidate) {
+              // Fallback to internal if SSSP efficiency not available
+              selectedCandidate = candidates.find(c => c.source === 'internal');
+            }
           }
+          
+          // Fallback to SSSP defaults if available
+          if (!selectedCandidate && mapping.sssp_defaults?.[species]) {
+            const defaults = mapping.sssp_defaults[species];
+            if (preferredLibrary === 'precision' && defaults.precision) {
+              initialMapping[species] = defaults.precision;
+            } else if (preferredLibrary === 'efficiency' && defaults.efficiency) {
+              initialMapping[species] = defaults.efficiency;
+            } else if (defaults.precision) {
+              initialMapping[species] = defaults.precision;
+            } else if (defaults.efficiency) {
+              initialMapping[species] = defaults.efficiency;
+            }
+          } else if (selectedCandidate) {
+            initialMapping[species] = selectedCandidate.filename;
+          }
+        } else if (localValue) {
+          // Preserve user's local selection (e.g., after download)
+          initialMapping[species] = localValue;
         }
       }
       
       setLocalMapping(initialMapping);
-      setLibraryPreference(mapping.library_preference || 'precision');
+      setLibraryPreference(mapping.library_preference || 'internal');
       
       // Set selected element for online search to first species if available
       if (mapping.species.length > 0 && !selectedElement) {
@@ -130,17 +186,37 @@ export function CommonCardPseudo({
     setLibraryPreference(preference);
     
     // Update unset mappings from the selected library
-    if (mapping?.sssp_defaults) {
+    if (preference === 'internal') {
+      // For INTERNAL, use first candidate from internal source for each element
+      if (mapping?.candidates_by_element) {
+        setLocalMapping(prev => {
+          const updated = { ...prev };
+          for (const species of mapping.species) {
+            const current = updated[species] || '';
+            if (!current) {
+              const candidates = mapping.candidates_by_element?.[species] || [];
+              const internalCandidate = candidates.find(c => c.source === 'internal');
+              if (internalCandidate) {
+                updated[species] = internalCandidate.filename;
+              }
+            }
+          }
+          return updated;
+        });
+      }
+    } else if (mapping?.sssp_defaults) {
+      // For SSSP, use defaults
       setLocalMapping(prev => {
         const updated = { ...prev };
         for (const species of mapping.species) {
-          // Only update if currently unset or matches old preference
           const current = updated[species] || '';
           const defaults = mapping.sssp_defaults?.[species];
           if (defaults) {
             const oldDefault = mapping.library_preference === 'precision' 
               ? defaults.precision 
-              : defaults.efficiency;
+              : mapping.library_preference === 'efficiency'
+              ? defaults.efficiency
+              : null;
             // If current value matches old default, update to new default
             if (current === oldDefault || !current) {
               updated[species] = defaults[preference] || '';
@@ -265,17 +341,27 @@ export function CommonCardPseudo({
     );
   }
   
-  // Group available pseudos by element for cleaner dropdowns
-  const pseudosByElement: Record<string, string[]> = {};
-  for (const pseudo of mapping.available_pseudos) {
-    // Simple heuristic: first part before '.' or '_' is element symbol
-    const match = pseudo.match(/^([A-Z][a-z]?)/i);
-    const elem = match ? match[1] : 'other';
-    if (!pseudosByElement[elem]) {
-      pseudosByElement[elem] = [];
+  // Helper to get source label
+  const getSourceLabel = (source: string): string => {
+    switch (source) {
+      case 'internal': return 'Internal';
+      case 'sssp_precision': return 'SSSP Precision';
+      case 'sssp_efficiency': return 'SSSP Efficiency';
+      case 'project': return 'Project';
+      default: return source;
     }
-    pseudosByElement[elem].push(pseudo);
-  }
+  };
+  
+  // Helper to get source badge class
+  const getSourceBadgeClass = (source: string): string => {
+    switch (source) {
+      case 'internal': return 'pseudo-source-badge--internal';
+      case 'sssp_precision': return 'pseudo-source-badge--sssp-precision';
+      case 'sssp_efficiency': return 'pseudo-source-badge--sssp-efficiency';
+      case 'project': return 'pseudo-source-badge--project';
+      default: return '';
+    }
+  };
   
   return (
     <div className="common-card-pseudo">
@@ -296,25 +382,33 @@ export function CommonCardPseudo({
         {/* Library preference selector */}
         {isEditing && (
           <div className="common-card-pseudo__library">
-            <label>SSSP Library:</label>
+            <label>Library:</label>
             <select
               value={libraryPreference}
               onChange={(e) => handleLibraryPreferenceChange(e.target.value as LibraryPreference)}
               className="common-card-pseudo__library-select"
             >
+              <option value="internal">
+                Internal{mapping.installed_sources?.internal ? '' : ' — not available'}
+              </option>
               <option 
                 value="precision" 
-                disabled={mapping.sssp_installed && !mapping.sssp_installed.precision}
+                disabled={mapping.installed_sources && !mapping.installed_sources.sssp_precision}
               >
-                SSSP Precision (recommended){mapping.sssp_installed && !mapping.sssp_installed.precision ? ' — not installed' : ''}
+                SSSP Precision{mapping.installed_sources && !mapping.installed_sources.sssp_precision ? ' — not installed' : ''}
               </option>
               <option 
                 value="efficiency"
-                disabled={mapping.sssp_installed && !mapping.sssp_installed.efficiency}
+                disabled={mapping.installed_sources && !mapping.installed_sources.sssp_efficiency}
               >
-                SSSP Efficiency{mapping.sssp_installed && !mapping.sssp_installed.efficiency ? ' — not installed' : ''}
+                SSSP Efficiency{mapping.installed_sources && !mapping.installed_sources.sssp_efficiency ? ' — not installed' : ''}
               </option>
             </select>
+            {mapping.installed_sources && !mapping.installed_sources.sssp_precision && !mapping.installed_sources.sssp_efficiency && (
+              <div className="common-card-pseudo__library-note">
+                SSSP libraries not installed. Install from Settings or use Internal library.
+              </div>
+            )}
           </div>
         )}
         
@@ -331,16 +425,22 @@ export function CommonCardPseudo({
               <tbody>
                 {mapping.species.map((species) => {
                   const currentPseudo = localMapping[species] || '';
-                  const matchingPseudos = pseudosByElement[species] || [];
-                  const otherPseudos = mapping.available_pseudos.filter(
-                    p => !matchingPseudos.includes(p)
-                  );
+                  const resolvedInfo = mapping.resolved_by_element?.[species];
+                  const candidates = mapping.candidates_by_element?.[species] || [];
                   
-                  // Check if current value is from SSSP defaults (for visual indication)
-                  const isSSSPDefault = mapping.sssp_defaults?.[species] && (
-                    currentPseudo === mapping.sssp_defaults[species].precision ||
-                    currentPseudo === mapping.sssp_defaults[species].efficiency
-                  );
+                  // Group candidates by source
+                  const candidatesBySource: Record<string, typeof candidates> = {};
+                  for (const cand of candidates) {
+                    if (!candidatesBySource[cand.source]) {
+                      candidatesBySource[cand.source] = [];
+                    }
+                    candidatesBySource[cand.source].push(cand);
+                  }
+                  
+                  // Get current source
+                  const currentSource = resolvedInfo?.source || null;
+                  const isResolved = resolvedInfo?.resolved || false;
+                  const inProject = resolvedInfo?.in_project || false;
                   
                   return (
                     <tr key={species}>
@@ -355,39 +455,74 @@ export function CommonCardPseudo({
                               onChange={(e) => handlePseudoChange(species, e.target.value)}
                               className={`common-card-pseudo__select ${
                                 !currentPseudo ? 'common-card-pseudo__select--unset' : ''
-                              } ${isSSSPDefault ? 'common-card-pseudo__select--sssp-default' : ''}`}
+                              }`}
                             >
                               <option value="">— Select —</option>
-                              {matchingPseudos.length > 0 && (
-                                <optgroup label={`${species} pseudopotentials`}>
-                                  {matchingPseudos.map(p => (
-                                    <option key={p} value={p}>{p}</option>
+                              {/* Group by source */}
+                              {candidatesBySource['internal'] && candidatesBySource['internal'].length > 0 && (
+                                <optgroup label="Internal">
+                                  {candidatesBySource['internal'].map(cand => (
+                                    <option key={cand.filename} value={cand.filename}>
+                                      {cand.filename}
+                                    </option>
                                   ))}
                                 </optgroup>
                               )}
-                              {otherPseudos.length > 0 && (
-                                <optgroup label="Other available">
-                                  {otherPseudos.map(p => (
-                                    <option key={p} value={p}>{p}</option>
+                              {candidatesBySource['sssp_precision'] && candidatesBySource['sssp_precision'].length > 0 && (
+                                <optgroup label="SSSP Precision">
+                                  {candidatesBySource['sssp_precision'].map(cand => (
+                                    <option key={cand.filename} value={cand.filename}>
+                                      {cand.filename}
+                                    </option>
+                                  ))}
+                                </optgroup>
+                              )}
+                              {candidatesBySource['sssp_efficiency'] && candidatesBySource['sssp_efficiency'].length > 0 && (
+                                <optgroup label="SSSP Efficiency">
+                                  {candidatesBySource['sssp_efficiency'].map(cand => (
+                                    <option key={cand.filename} value={cand.filename}>
+                                      {cand.filename}
+                                    </option>
+                                  ))}
+                                </optgroup>
+                              )}
+                              {candidatesBySource['project'] && candidatesBySource['project'].length > 0 && (
+                                <optgroup label="Project">
+                                  {candidatesBySource['project'].map(cand => (
+                                    <option key={cand.filename} value={cand.filename}>
+                                      {cand.filename}
+                                    </option>
                                   ))}
                                 </optgroup>
                               )}
                             </select>
-                            {currentPseudo && !mapping.available_pseudos.includes(currentPseudo) && (
-                              <span className="common-card-pseudo__not-found">
-                                ⚠️ Not in project
+                            {/* Show resolved status */}
+                            {currentPseudo && isResolved && currentSource && (
+                              <span className={`common-card-pseudo__source-badge ${getSourceBadgeClass(currentSource)}`}>
+                                {getSourceLabel(currentSource)}
+                                {!inProject && (
+                                  <span className="common-card-pseudo__copy-note" title="Will be copied into project on run">
+                                    (will copy)
+                                  </span>
+                                )}
                               </span>
                             )}
-                            {isSSSPDefault && (
-                              <span className="common-card-pseudo__sssp-badge" title="SSSP default (will be saved on Apply)">
-                                📚
+                            {/* Only show warning if truly unresolved */}
+                            {currentPseudo && !isResolved && (
+                              <span className="common-card-pseudo__not-found">
+                                ⚠️ Not found
                               </span>
                             )}
                           </div>
                         ) : (
-                          <code className="common-card-pseudo__pseudo-display">
-                            {currentPseudo || '—'}
-                          </code>
+                          <div className="common-card-pseudo__pseudo-display">
+                            <code>{currentPseudo || '—'}</code>
+                            {currentSource && (
+                              <span className={`common-card-pseudo__source-badge ${getSourceBadgeClass(currentSource)}`}>
+                                {getSourceLabel(currentSource)}
+                              </span>
+                            )}
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -402,16 +537,14 @@ export function CommonCardPseudo({
           </div>
         )}
         
-        {/* Info: pseudo_dir is managed automatically */}
-        <div className="common-card-pseudo__info">
-          <small>
-            📁 Runtime uses <code>project/pseudo/</code> and QE inputs reference <code>../pseudo</code>.
-            SSSP libraries are managed in Settings; online resolve downloads individual UPF files into this project.
-          </small>
-          <small style={{ display: 'block', marginTop: '0.5rem', color: 'var(--text-muted, #888)' }}>
-            ⚠️ <strong>Note:</strong> Setting pseudopotentials is only one step. You still need to configure k-points, cutoffs, and other parameters before running.
-          </small>
-        </div>
+        {/* Info: minimal, clean */}
+        {isEditing && (
+          <div className="common-card-pseudo__info">
+            <small>
+              Pseudopotentials will be copied into <code>project/pseudo/</code> when the calculation runs.
+            </small>
+          </div>
+        )}
         
         {/* Online Resolve section (Advanced) */}
         {isEditing && (onDownloadByFilename || onSearchLegacy) && (

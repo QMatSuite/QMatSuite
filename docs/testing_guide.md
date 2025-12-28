@@ -124,6 +124,63 @@ When adding a new QE-backed calculation test:
 
 This ensures compliance with the "one QE-running test per file" convention.
 
+#### Test Sandbox Pattern
+
+Integration tests that execute QE steps must follow the **sandbox pattern** to keep template directories read-only:
+
+1. **`raw_dir` is read-only**: Use `raw_dir` only as a template/fixture directory for materialized step specs. Never pass `raw_dir` as `working_dir` to `run_step()`.
+
+2. **Create separate `sandbox_dir`**: Use `create_sandbox_working_dir()` from `tests.core.qe_step_runner` to create a temporary execution directory.
+
+3. **Copy inputs to sandbox**: Copy generated inputs from `raw_dir` to `sandbox_dir` before execution.
+
+4. **Materialize pseudos to sandbox**: Pseudopotentials must be materialized to `sandbox_dir/pseudo/` (not `raw_dir/pseudo/`). The `run_step()` function will set `ESPRESSO_PSEUDO` to `sandbox_dir/pseudo/` in standalone mode.
+
+**Example pattern:**
+```python
+# Materialize step spec to raw_dir (read-only template)
+generated_input, spec = materialize_step_spec(
+    step_result.spec_path,
+    output_dir=raw_dir,  # Template directory
+    calculation_dir=working_dir,
+    project_root=None,  # Standalone mode
+)
+
+# Create sandbox for execution
+from tests.core.qe_step_runner import create_sandbox_working_dir
+import shutil
+sandbox_dir = create_sandbox_working_dir(working_dir, prefix=f"{slug}_run_")
+
+# Copy input to sandbox
+sandbox_input = sandbox_dir / generated_input.name
+shutil.copy2(generated_input, sandbox_input)
+
+# Materialize pseudos to sandbox_dir/pseudo
+sandbox_pseudo_dir = sandbox_dir / "pseudo"
+sandbox_pseudo_dir.mkdir(parents=True, exist_ok=True)
+from quantumvitas.core.pseudo import ensure_qe_pseudos, get_system_pseudo_dir
+result = ensure_qe_pseudos(
+    qe_input_file=sandbox_input,
+    project_pseudo_dir=sandbox_pseudo_dir,  # Materialize to sandbox
+    system_pseudo_dir=get_system_pseudo_dir(),
+    strict=False,
+)
+
+# Run in sandbox_dir (not raw_dir)
+step_result = qe_engine.run_step(
+    input_file=sandbox_input,
+    working_dir=sandbox_dir,  # Execution happens here
+    step_type=step_type,
+    timeout=300,
+)
+```
+
+**Key invariants:**
+- `raw_dir` stays read-only (no `pseudo/` directory created there)
+- `sandbox_dir` is the execution directory (contains `pseudo/` with materialized pseudos)
+- `ESPRESSO_PSEUDO` points to `sandbox_dir/pseudo/` in standalone mode
+- Pseudo materialization happens at runtime, not at materialize time
+
 ### Running Tests Without QE Installation
 
 For environments without Quantum ESPRESSO installed, you can run only unit tests that don't require QE:

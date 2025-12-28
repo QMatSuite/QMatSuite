@@ -72,7 +72,9 @@ class TestPWStepSpecsExecution:
             )
             steps_dir = working_dir / "steps"
             structures_dir = working_dir / "structures"
-            raw_dir = working_dir / "raw"
+            # fixture_dir: read-only template directory for materialized step specs
+            # This is NOT the same as product "project/calc/raw" (which is a writable runtime directory)
+            fixture_dir = working_dir / "raw"
 
             steps_dir.mkdir(parents=True, exist_ok=True)
             structures_dir.mkdir(parents=True, exist_ok=True)
@@ -84,40 +86,38 @@ class TestPWStepSpecsExecution:
                 reference_structure_by="path",
             )
 
-            # Don't pass repo_root as project_root - tests must use tmp directories
-            # When project_root is None, materialize_step_spec uses output_dir/pseudo
+            # Materialize step spec to fixture_dir (read-only template/fixture directory)
+            # fixture_dir is used only as source of input templates, not for execution
+            # In product code, this would be calculation.raw_dir (a writable runtime directory)
             generated_input, spec = materialize_step_spec(
                 step_result.spec_path,
-                output_dir=raw_dir,
+                output_dir=fixture_dir,
                 calculation_dir=working_dir,
-                project_root=None,  # Use None - pseudo_dir will be set to output_dir/pseudo
+                project_root=None,  # Standalone mode
             )
 
-            # Ensure pseudopotentials are available
-            # run_step with working_dir=raw_dir will set ESPRESSO_PSEUDO to raw_dir/pseudo
-            # So we need to put pseudos in raw_dir/pseudo, not raw_dir/
-            raw_pseudo_dir = raw_dir / "pseudo"
-            raw_pseudo_dir.mkdir(parents=True, exist_ok=True)
+            # Create sandbox working directory for execution (separate from fixture_dir)
+            # This ensures fixture_dir stays read-only and execution happens in sandbox
+            from tests.core.qe_step_runner import create_sandbox_working_dir
+            import shutil
+            sandbox_dir = create_sandbox_working_dir(working_dir, prefix=f"{slug}_run_")
+            
+            # Copy generated input from fixture_dir (template) to sandbox_dir (execution)
+            sandbox_input = sandbox_dir / generated_input.name
+            shutil.copy2(generated_input, sandbox_input)
+            
+            # Materialize pseudopotentials to sandbox_dir/pseudo (standalone mode)
+            # run_step will set ESPRESSO_PSEUDO to sandbox_dir/pseudo
+            sandbox_pseudo_dir = sandbox_dir / "pseudo"
+            sandbox_pseudo_dir.mkdir(parents=True, exist_ok=True)
             from quantumvitas.core.pseudo import ensure_qe_pseudos, get_system_pseudo_dir
             result = ensure_qe_pseudos(
-                qe_input_file=generated_input,
-                project_pseudo_dir=raw_pseudo_dir,
+                qe_input_file=sandbox_input,
+                project_pseudo_dir=sandbox_pseudo_dir,
                 system_pseudo_dir=get_system_pseudo_dir(),
                 strict=False,
                 additional_search_dirs=None,
             )
-            # Also copy to raw_dir for backwards compatibility (some QE versions look there)
-            if result.all_available:
-                import shutil
-                for pp_name, pp_path in result.resolved_pseudos.items():
-                    # Copy to raw_dir/pseudo (where ESPRESSO_PSEUDO points)
-                    working_pp = raw_pseudo_dir / pp_name
-                    if not working_pp.exists() or working_pp.stat().st_mtime < pp_path.stat().st_mtime:
-                        shutil.copy2(pp_path, working_pp)
-                    # Also copy to raw_dir for backwards compatibility
-                    raw_pp = raw_dir / pp_name
-                    if not raw_pp.exists() or raw_pp.stat().st_mtime < pp_path.stat().st_mtime:
-                        shutil.copy2(pp_path, raw_pp)
             if not result.all_available:
                 results.append(
                     {
@@ -128,14 +128,12 @@ class TestPWStepSpecsExecution:
                 )
                 continue
 
-            # Prepare the working directory (outdir is already set in the generated input)
-            (raw_dir / "outdir").mkdir(parents=True, exist_ok=True)
-
-            # Run the step directly on the generated input (no re-parsing)
-            step_type = qe_engine.detect_step_type(generated_input)
+            # Run the step in sandbox_dir (not raw_dir)
+            # run_step will set ESPRESSO_PSEUDO to sandbox_dir/pseudo (standalone mode)
+            step_type = qe_engine.detect_step_type(sandbox_input)
             step_result = qe_engine.run_step(
-                input_file=generated_input,
-                working_dir=raw_dir,
+                input_file=sandbox_input,
+                working_dir=sandbox_dir,
                 step_type=step_type,
                 timeout=300,
             )

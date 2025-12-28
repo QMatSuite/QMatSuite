@@ -401,6 +401,77 @@ def list_installed_sssp(store_dir: Path) -> List[SSSPLibraryInfo]:
     return results
 
 
+@dataclass
+class SeedArchiveInfo:
+    """Information about a seed archive."""
+    filename: str
+    path: Path
+    size_bytes: int
+    sha256: Optional[str] = None
+    version: Optional[str] = None
+    flavor: Optional[str] = None
+    
+    def to_dict(self) -> Dict[str, Any]:
+        d = asdict(self)
+        d["path"] = str(self.path)
+        return d
+
+
+def list_seed_archives(seed_dir: Path) -> List[SeedArchiveInfo]:
+    """
+    List all SSSP archives in seed directory.
+    
+    Scans seed_dir/sssp/{version}/{flavor}/ for *.tar.gz files.
+    """
+    results = []
+    
+    if not seed_dir.exists():
+        return results
+    
+    seed_sssp_dir = seed_dir / "sssp"
+    if not seed_sssp_dir.exists():
+        return results
+    
+    for version_dir in seed_sssp_dir.iterdir():
+        if not version_dir.is_dir():
+            continue
+        
+        version = version_dir.name
+        for flavor_dir in version_dir.iterdir():
+            if not flavor_dir.is_dir():
+                continue
+            
+            flavor = flavor_dir.name
+            
+            # Find tar.gz archives
+            archives = list(flavor_dir.glob("*.tar.gz")) + list(flavor_dir.glob("*.tgz"))
+            for archive_path in archives:
+                try:
+                    size = archive_path.stat().st_size
+                    # Try to extract SHA256 from filename if present
+                    sha256 = None
+                    filename = archive_path.name
+                    # Format: SSSP_{version}_{flavor}_{sha256_prefix}.tar.gz
+                    if "_" in filename:
+                        parts = filename.replace(".tar.gz", "").replace(".tgz", "").split("_")
+                        if len(parts) >= 4 and len(parts[3]) >= 16:
+                            sha256 = parts[3][:64] if len(parts[3]) >= 64 else None
+                    
+                    info = SeedArchiveInfo(
+                        filename=filename,
+                        path=archive_path,
+                        size_bytes=size,
+                        sha256=sha256,
+                        version=version,
+                        flavor=flavor,
+                    )
+                    results.append(info)
+                except Exception:
+                    continue
+    
+    return results
+
+
 def install_sssp_from_seed(
     seed_dir: Path,
     store_dir: Path,
@@ -781,6 +852,7 @@ def download_sssp_library(
     version: str = "1.3.0",
     force: bool = False,
     allow_download: bool = True,
+    seed_dir: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """
     Download SSSP library from GitHub release and install into store.
@@ -960,7 +1032,35 @@ def download_sssp_library(
             result["errors"].append(f"Failed to extract archive: {e}")
             return result
         
-        # Step 5: Copy cutoffs JSON
+        # Step 5: Save archive to seed_dir for disaster recovery (if seed_dir provided)
+        if seed_dir:
+            try:
+                seed_path = get_sssp_seed_path(seed_dir, version, flavor)
+                seed_path.mkdir(parents=True, exist_ok=True)
+                
+                # Save archive with deterministic name based on SHA256
+                # Format: SSSP_{version}_{flavor}_{sha256_prefix}.tar.gz
+                sha256_prefix = archive_entry.sha256[:16]
+                seed_archive_name = f"SSSP_{version}_{flavor}_{sha256_prefix}.tar.gz"
+                seed_archive_path = seed_path / seed_archive_name
+                
+                # Only copy if not already exists (dedup by SHA256)
+                if not seed_archive_path.exists():
+                    shutil.copy(archive_temp, seed_archive_path)
+                    result["messages"].append(f"Saved archive to seed cache: {seed_archive_name}")
+                else:
+                    result["messages"].append(f"Archive already in seed cache: {seed_archive_name}")
+                
+                # Save cutoffs JSON to seed
+                seed_cutoffs_path = seed_path / cutoffs_name
+                if not seed_cutoffs_path.exists():
+                    shutil.copy(cutoffs_temp, seed_cutoffs_path)
+                    result["messages"].append(f"Saved cutoffs to seed cache")
+            except Exception as e:
+                # Don't fail the download if seed save fails, just warn
+                result["warnings"].append(f"Failed to save to seed cache: {e}")
+        
+        # Step 6: Copy cutoffs JSON to store
         try:
             shutil.copy(cutoffs_temp, store_path / "cutoffs.json")
             result["messages"].append("Installed cutoffs.json")
@@ -968,7 +1068,7 @@ def download_sssp_library(
             result["errors"].append(f"Failed to copy cutoffs: {e}")
             return result
     
-    # Step 6: Create installation manifest
+    # Step 7: Create installation manifest
     manifest = {
         "library": "sssp",
         "version": version,
@@ -1002,6 +1102,7 @@ def download_all_sssp(
     store_dir: Path,
     force: bool = False,
     allow_download: bool = True,
+    seed_dir: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """
     Download all supported SSSP libraries from GitHub release.
@@ -1055,6 +1156,7 @@ def download_all_sssp(
             version=version,
             force=force,
             allow_download=allow_download,
+            seed_dir=seed_dir,
         )
         
         if download_result["success"]:

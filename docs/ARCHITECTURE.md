@@ -29,14 +29,17 @@ src/quantumvitas/
   folder so steps can pass restart data without juggling paths. The I/O directory path is determined by the runner layer (single source of truth).
 
 - **Step execution**  
-  Steps point to QE `.in` files located in the calculation’s `raw/` directory. Step
+  Steps point to QE `.in` files located in the calculation's `raw/` directory. Step
   type is auto-detected from the input file (SCF/NSCF/PH/DOS/etc.). When a step
   runs we:
   1. Copy the original input to `raw/<name>_original.in`.
-  2. Apply `outdir='./outdir'` and `pseudo_dir=project_root/pseudo` to produce
-     `<name>_modified.in`.
-  3. Invoke QE via `calculation.input_runner.run_input_step`, capturing `.out` plus
-     leaving QE’s own files in `raw/` (single shared `outdir/`).
+  2. Apply `outdir='./outdir'` and set `pseudo_dir` based on mode:
+     - **Project mode**: `pseudo_dir=project_root/pseudo` (relative to calculation's raw/)
+     - **Standalone mode**: `pseudo_dir=./pseudo` (relative to working directory)
+  3. Materialize required pseudopotentials to the pseudo directory before execution
+  4. Set `ESPRESSO_PSEUDO` environment variable to the absolute path of the pseudo directory
+  5. Invoke QE via `calculation.input_runner.run_input_step`, capturing `.out` plus
+     leaving QE's own files in `raw/` (single shared `outdir/`).
 
 - **Engine layer (`quantumvitas.engine`)**  
   Provides the public `Engine` interface, QE installation helpers, and a
@@ -89,6 +92,9 @@ and makes cleanup trivial (`rm -rf raw/`).
 1. **Editable install first** (`pip install -e .[dev]`). No new `sys.path`
    hacks; scripts and tests should import `quantumvitas` normally.
 2. **Outdir/pseudo_dir** always rewired through `calculation.input_runner`.
+   - **Project mode**: `pseudo_dir = project_root/pseudo` (shared across all calculations)
+   - **Standalone mode**: `pseudo_dir = working_dir/pseudo` (isolated per execution)
+   - `ESPRESSO_PSEUDO` environment variable is set to the absolute path of the pseudo directory
 3. **QE step execution** uses `QuantumEspressoEngine.run_step` +
    `calculation.input_runner.prepare_input_step` (or the higher-level
    `run_and_verify_step_with_assert` in tests).  
@@ -98,6 +104,8 @@ and makes cleanup trivial (`rm -rf raw/`).
    - Calculations specify structured steps (`Step(type=...)`).  
    - Test harnesses may still auto-detect step type from inputs, but the
      detection logic sits in the engine/calculation layer for reuse.
+   - **Test sandbox pattern**: Tests use `raw_dir` as read-only template/fixture directory,
+     create separate `sandbox_dir` for execution, and materialize pseudos to `sandbox_dir/pseudo`.
 6. **Documentation** (this file, README, test README) must be updated
    whenever architecture shifts—new helpers, new directories, etc.
 
