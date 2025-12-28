@@ -545,6 +545,105 @@
   margin-bottom: 0;
 }
 
+/* MetaForm: 2×2 form layout with aligned value column */
+.meta-form {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  column-gap: 16px;
+  row-gap: 10px;
+  align-items: center;
+}
+
+.meta-form__label {
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  align-self: center;
+}
+
+.meta-form__value {
+  min-width: 0; /* Allow content to shrink */
+}
+
+/* Structure value: horizontal flex container for baseline alignment */
+.meta-form__value--structure {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.meta-form__structure-select {
+  width: fit-content !important;
+  min-width: 220px;
+  max-width: 520px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.meta-form__structure-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-alpha);
+}
+
+.meta-form__structure-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Pseudopotentials value: container for pseudo list + Edit button */
+.meta-form__value--pseudo {
+  /* No special styling needed, just a container */
+}
+
+.meta-form__pseudo-container {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.meta-form__edit-btn {
+  padding: 0.25em 0.5em;
+  font-size: 0.85em;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex-shrink: 0; /* Prevent button from shrinking */
+  align-self: flex-start; /* Align with first line */
+}
+
+.meta-form__edit-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* Pseudopotentials list (fully expanded, no scroll) */
+.pseudo-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1;
+  min-width: 0; /* Allow list to shrink if needed */
+}
+
+.pseudo-list__item {
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+  word-break: break-word; /* Allow wrapping if needed */
+}
+
 .detail-section__header {
   display: flex;
   align-items: center;

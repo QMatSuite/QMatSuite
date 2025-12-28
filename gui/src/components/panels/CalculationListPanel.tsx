@@ -809,28 +809,6 @@ export function CalculationDetailPanel({
           </h2>
           <div className="qv-calc-header-subtitle">
             Calculation: <code style={{ fontSize: '0.85em', marginLeft: '0.25em' }}>{calculation.id}</code>
-            <button
-              className="copy-id-btn"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(calculation.id);
-                } catch (err) {
-                  console.error('Failed to copy ID', err);
-                }
-              }}
-              title="Copy calculation ID"
-              style={{
-                marginLeft: '0.5em',
-                padding: '0.125em 0.375em',
-                fontSize: '0.75em',
-                background: 'transparent',
-                border: '1px solid var(--border-color)',
-                borderRadius: '3px',
-                cursor: 'pointer',
-              }}
-            >
-              📋
-            </button>
           </div>
         </div>
         <div className="panel-header-actions">
@@ -863,123 +841,64 @@ export function CalculationDetailPanel({
         )}
         
         <div className="detail-section">
-          <h3>Overview</h3>
-          <div className="detail-grid">
-            {/* Combined Structure + Pseudopotentials row */}
-            <div className="detail-item detail-item--full-width" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: '200px' }}>
-                <span className="detail-label">Structure:</span>
-                {isLoadingStructures ? (
-                  <span className="detail-value">Loading...</span>
-                ) : effectiveStructures.length > 0 ? (
-                  <select
-                    className="structure-selector"
-                    value={
-                      calculation.structure 
-                        ? (effectiveStructures.find(s => s.name === calculation.structure)?.slug || '')
-                        : ''
-                    }
-                    onChange={(e) => handleStructureChange(e.target.value)}
-                    disabled={isSaving}
-                    style={{ flex: 1, minWidth: '150px' }}
-                  >
-                    <option value="">-- None --</option>
-                    {effectiveStructures.map(s => (
-                      <option key={s.id} value={s.slug}>{s.name} ({s.formula})</option>
-                    ))}
-                  </select>
-                ) : (
-                  <code className="detail-value">{calculation.structure || 'None'}</code>
-                )}
-              </div>
-              {!isFocusMode && pseudoMapping && pseudoMapping.species.length > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
-                  <span className="detail-label">Pseudopotentials:</span>
-                  <span className="detail-value" style={{ fontSize: '0.9em' }}>
-                    {pseudoMapping.species.map((species, idx) => {
-                      const pseudo = pseudoMapping.mapping[species] || '—';
-                      const resolvedInfo = pseudoMapping.resolved_by_element?.[species];
-                      const source = resolvedInfo?.source;
-                      const getSourceLabel = (src: string | null | undefined): string => {
-                        if (!src) return '';
-                        switch (src) {
-                          case 'internal': return 'Internal';
-                          case 'sssp_precision': return 'SSSP Precision';
-                          case 'sssp_efficiency': return 'SSSP Efficiency';
-                          case 'project': return 'Project';
-                          default: return '';
-                        }
-                      };
-                      return (
-                        <span key={species}>
-                          {idx > 0 && ' | '}
-                          <strong>{species}</strong>: {pseudo !== '—' ? (
-                            <>
-                              {pseudo}
-                              {source && (
-                                <span className="pseudo-source-badge pseudo-source-badge--compact" style={{ marginLeft: '0.25em' }}>
-                                  {getSourceLabel(source)}
-                                </span>
-                              )}
-                            </>
-                          ) : '—'}
-                        </span>
-                      );
-                    })}
-                  </span>
-                  <button
-                    className="section-action-btn"
-                    onClick={() => setIsEditingPseudos(true)}
-                    title="Edit pseudopotential mappings"
-                    style={{
-                      marginLeft: 'auto',
-                      padding: '0.25em 0.5em',
-                      fontSize: '0.85em',
-                    }}
-                  >
-                    ✏️ Edit
-                  </button>
-                </div>
+          {/* MetaForm: 2×2 form layout with aligned value column */}
+          <div className="meta-form">
+            {/* Row 1: Structure */}
+            <div className="meta-form__label">Structure:</div>
+            <div className="meta-form__value meta-form__value--structure">
+              {isLoadingStructures ? (
+                <span className="detail-value">Loading...</span>
+              ) : effectiveStructures.length > 0 ? (
+                <select
+                  className="structure-selector meta-form__structure-select"
+                  value={
+                    calculation.structure 
+                      ? (effectiveStructures.find(s => s.name === calculation.structure)?.slug || '')
+                      : ''
+                  }
+                  onChange={(e) => handleStructureChange(e.target.value)}
+                  disabled={isSaving}
+                >
+                  <option value="">-- None --</option>
+                  {effectiveStructures.map(s => (
+                    <option key={s.id} value={s.slug}>{s.name} ({s.formula})</option>
+                  ))}
+                </select>
+              ) : (
+                <code className="detail-value">{calculation.structure || 'None'}</code>
               )}
             </div>
-            {/* Compact pseudo summary in collapsed mode (when step is selected) */}
-            {isFocusMode && pseudoMapping && pseudoMapping.species.length > 0 && (
-              <div className="detail-item detail-item--full-width">
-                <span className="detail-label">Pseudopotentials</span>
-                <span className="detail-value">
-                  {pseudoMapping.species.map((species, idx) => {
-                    const pseudo = pseudoMapping.mapping[species] || '—';
-                    const resolvedInfo = pseudoMapping.resolved_by_element?.[species];
-                    const source = resolvedInfo?.source;
-                    const getSourceLabel = (src: string | null | undefined): string => {
-                      if (!src) return '';
-                      switch (src) {
-                        case 'internal': return 'Internal';
-                        case 'sssp_precision': return 'SSSP Precision';
-                        case 'sssp_efficiency': return 'SSSP Efficiency';
-                        case 'project': return 'Project';
-                        default: return '';
-                      }
-                    };
-                    return (
-                      <span key={species}>
-                        {idx > 0 && ' | '}
-                        <strong>{species}</strong>: {pseudo !== '—' ? (
-                          <>
-                            {pseudo}
-                            {source && (
-                              <span className="pseudo-source-badge pseudo-source-badge--compact">
-                                {getSourceLabel(source)}
-                              </span>
-                            )}
-                          </>
-                        ) : '—'}
-                      </span>
-                    );
-                  })}
-                </span>
-              </div>
-            )}
+            {/* Row 2: Pseudopotentials */}
+            <div className="meta-form__label">Pseudopotentials:</div>
+            <div className="meta-form__value meta-form__value--pseudo">
+              {_isLoadingPseudoMapping ? (
+                <span className="detail-value">Loading...</span>
+              ) : pseudoMapping && pseudoMapping.species.length > 0 ? (
+                <div className="meta-form__pseudo-container">
+                  <div className="pseudo-list">
+                    {pseudoMapping.species.map((species) => {
+                      const pseudo = pseudoMapping.mapping[species] || '—';
+                      return (
+                        <div key={species} className="pseudo-list__item">
+                          {species}: {pseudo !== '—' ? pseudo : 'Missing'}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {!isFocusMode && (
+                    <button
+                      className="meta-form__edit-btn"
+                      onClick={() => setIsEditingPseudos(true)}
+                      title="Edit pseudopotential mappings"
+                    >
+                      ✏️ Edit
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <span className="detail-value">No pseudopotentials mapping</span>
+              )}
+            </div>
           </div>
         </div>
         
