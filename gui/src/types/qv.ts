@@ -536,6 +536,19 @@ export interface QVCommandMap {
       }>;
     };
   };
+  list_seed_archives: {
+    payload: Record<string, never>;
+    result: {
+      archives: Array<{
+        filename: string;
+        path: string;
+        size_bytes: number;
+        sha256: string | null;
+        version: string | null;
+        flavor: string | null;
+      }>;
+    };
+  };
   download_sssp_library: {
     payload: {
       flavor: 'efficiency' | 'precision';
@@ -1354,6 +1367,22 @@ export interface CalculationPseudoMappingResult {
   warnings: string[];
   sssp_defaults?: Record<string, { precision: string; efficiency: string }>;
   sssp_installed?: { precision: boolean; efficiency: boolean };
+  installed_sources?: {
+    internal: boolean;
+    sssp_precision: boolean;
+    sssp_efficiency: boolean;
+  };
+  candidates_by_element?: Record<string, Array<{
+    filename: string;
+    source: 'internal' | 'sssp_precision' | 'sssp_efficiency' | 'project';
+    path?: string | null;
+  }>>;
+  resolved_by_element?: Record<string, {
+    filename: string;
+    source: 'internal' | 'sssp_precision' | 'sssp_efficiency' | 'project' | null;
+    resolved: boolean;
+    in_project?: boolean;
+  }>;
 }
 
 export interface CalculationStructureChangeResult extends CalculationDetailResult {

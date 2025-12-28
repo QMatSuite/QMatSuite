@@ -227,6 +227,7 @@ class QVDaemon:
             "init_pseudo_dirs": self._handle_init_pseudo_dirs,
             "install_seed_to_store": self._handle_install_seed_to_store,
             "list_installed_sssp": self._handle_list_installed_sssp,
+            "list_seed_archives": self._handle_list_seed_archives,
             "download_sssp_library": self._handle_download_sssp_library,
             "download_all_sssp": self._handle_download_all_sssp,
             
@@ -852,6 +853,33 @@ class QVDaemon:
             "libraries": [lib.to_dict() for lib in libraries],
         }
     
+    def _handle_list_seed_archives(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        List SSSP archives in seed directory.
+        
+        Payload: (none required, uses saved config)
+        
+        Returns:
+            archives: List of SeedArchiveInfo dicts
+        """
+        from quantumvitas.core.pseudo_config import (
+            load_pseudo_config,
+            list_seed_archives,
+        )
+        from pathlib import Path
+        
+        config = load_pseudo_config()
+        
+        if not config.seed_dir:
+            return {"archives": []}
+        
+        seed_dir = Path(config.seed_dir)
+        archives = list_seed_archives(seed_dir)
+        
+        return {
+            "archives": [arch.to_dict() for arch in archives],
+        }
+    
     def _handle_download_sssp_library(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Download a specific SSSP library from Materials Cloud.
@@ -896,12 +924,14 @@ class QVDaemon:
             }
         
         store_dir = Path(config.store_dir)
+        seed_dir = Path(config.seed_dir) if config.seed_dir else None
         result = download_sssp_library(
             store_dir=store_dir,
             flavor=flavor,
             version=version,
             force=force,
             allow_download=config.allow_download,
+            seed_dir=seed_dir,
         )
         
         # Add installed libraries to response
@@ -942,10 +972,12 @@ class QVDaemon:
             }
         
         store_dir = Path(config.store_dir)
+        seed_dir = Path(config.seed_dir) if config.seed_dir else None
         result = download_all_sssp(
             store_dir=store_dir,
             force=force,
             allow_download=config.allow_download,
+            seed_dir=seed_dir,
         )
         
         # Add installed libraries to response

@@ -198,7 +198,10 @@ species_map:
 ```
 
 **Key Design Decisions**:
-- `pseudo_dir` is **NOT editable** in UI (runtime always uses `../pseudo`)
+- `pseudo_dir` is **NOT editable** in UI (runtime always uses `../pseudo` relative to calculation's raw/)
+- **Pseudo directory location**:
+  - **Project mode**: `project_root/pseudo/` (shared across all calculations in the project)
+  - **Standalone mode**: `working_dir/pseudo/` (isolated per execution, used in tests)
 - Per-element mapping is the canonical source of truth (`calculation.species_map`)
 - Pseudopotentials are stored at **calculation level**, not step level (all steps in a calculation share the same pseudo mapping)
 - Element list comes from the calculation's structure (`structure_id` → structure composition)
@@ -206,6 +209,7 @@ species_map:
 - Online resolve downloads individual UPF files into `project/pseudo/` for self-containment
 - SHA256 deduplication prevents duplicate files
 - Deterministic renaming (`_1`, `_2`) resolves filename conflicts
+- `ESPRESSO_PSEUDO` environment variable is set to the absolute path of the pseudo directory during execution
 
 **Online Resolve Features**:
 - **Download by filename**: Direct download from QE repository

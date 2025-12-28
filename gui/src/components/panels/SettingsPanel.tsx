@@ -696,67 +696,120 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
 
 
 /**
- * PseudopotentialsSection - Settings for pseudopotential management
+ * PseudopotentialsSection - Simplified SSSP library management
+ * 
+ * Normal view: Status summary, Download & Install buttons, progress, installed list
+ * Advanced (collapsed): Seed cache, network toggle, validate
  */
 function PseudopotentialsSection() {
   const {
     config,
     isLoading,
     isDownloading,
+    downloadStage,
     error,
     validationResult,
     isValidating,
     installedLibraries,
+    seedArchives,
     updateConfig,
-    resetToDefaults,
     validate,
-    initDirs,
     installFromSeed,
     listInstalledLibraries,
+    listSeedArchives,
     downloadLibrary,
     downloadAll,
   } = usePseudoConfig();
   
-  const [localStoreDir, setLocalStoreDir] = useState('');
-  const [localSeedDir, setLocalSeedDir] = useState('');
   const [actionResult, setActionResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [confirmDownload, setConfirmDownload] = useState<{ flavor: 'efficiency' | 'precision' | 'all' } | null>(null);
+  const [advancedExpanded, setAdvancedExpanded] = useState(false);
+  const [localStoreDir, setLocalStoreDir] = useState('');
   
   // Sync local state with config
   useEffect(() => {
     if (config) {
       setLocalStoreDir(config.store_dir);
-      setLocalSeedDir(config.seed_dir);
     }
   }, [config]);
   
-  // Load installed libraries on mount
+  // Load installed libraries and seed archives on mount
   useEffect(() => {
     listInstalledLibraries();
-  }, [listInstalledLibraries]);
+    listSeedArchives();
+  }, [listInstalledLibraries, listSeedArchives]);
+  
+  // Refresh seed archives after download/install
+  useEffect(() => {
+    if (!isDownloading && !isLoading) {
+      listSeedArchives();
+    }
+  }, [isDownloading, isLoading, listSeedArchives]);
   
   const handleStoreDirChange = useCallback((value: string) => {
     setLocalStoreDir(value);
   }, []);
   
-  const handleSeedDirChange = useCallback((value: string) => {
-    setLocalSeedDir(value);
+  const handleApplyStoreDir = useCallback(async () => {
+    await updateConfig({ store_dir: localStoreDir });
+    setActionResult({ type: 'success', message: 'Store directory updated' });
+    setTimeout(() => setActionResult(null), 3000);
+  }, [localStoreDir, updateConfig]);
+  
+  const handleRevealPath = useCallback((path: string) => {
+    if (window.qv?.revealPath) {
+      window.qv.revealPath(path);
+    }
   }, []);
   
-  const handleApplyChanges = useCallback(async () => {
-    await updateConfig({
-      store_dir: localStoreDir,
-      seed_dir: localSeedDir,
-    });
-    setActionResult({ type: 'success', message: 'Settings saved' });
-    setTimeout(() => setActionResult(null), 3000);
-  }, [localStoreDir, localSeedDir, updateConfig]);
+  // One-click download: enables network access if needed, then downloads
+  const handleDownloadClick = useCallback(async (flavor: 'efficiency' | 'precision' | 'all') => {
+    setActionResult(null);
+    
+    const needsEnable = config ? !config.allow_download : false;
+    
+    try {
+      let result;
+      if (flavor === 'all') {
+        result = await downloadAll(needsEnable);
+      } else {
+        result = await downloadLibrary(flavor, needsEnable);
+      }
+      
+      if (result.success) {
+        const successMsg = result.messages && result.messages.length > 0 
+          ? result.messages.join('; ')
+          : `Successfully ${needsEnable ? 'enabled downloads and ' : ''}downloaded ${flavor === 'all' ? 'all SSSP libraries' : `SSSP ${flavor} library`}`;
+        setActionResult({ type: 'success', message: successMsg });
+        await listInstalledLibraries();
+        await listSeedArchives();
+      } else {
+        const errorMsg = result.errors && result.errors.length > 0
+          ? result.errors.join('; ')
+          : `Download failed for ${flavor === 'all' ? 'SSSP libraries' : `SSSP ${flavor}`}`;
+        setActionResult({ type: 'error', message: errorMsg });
+      }
+      setTimeout(() => setActionResult(null), 8000);
+    } catch (e) {
+      setActionResult({ 
+        type: 'error', 
+        message: `Download error: ${e instanceof Error ? e.message : 'Unknown error'}` 
+      });
+      setTimeout(() => setActionResult(null), 8000);
+    }
+  }, [config, downloadLibrary, downloadAll, listInstalledLibraries, listSeedArchives]);
   
-  const handleResetToDefaults = useCallback(async () => {
-    await resetToDefaults();
-    setActionResult({ type: 'success', message: 'Reset to defaults' });
-    setTimeout(() => setActionResult(null), 3000);
-  }, [resetToDefaults]);
+  const handleInstallFromSeed = useCallback(async () => {
+    setActionResult(null);
+    const result = await installFromSeed();
+    if (result.success) {
+      setActionResult({ type: 'success', message: result.messages.join(', ') || 'Installation complete' });
+      await listInstalledLibraries();
+      await listSeedArchives();
+    } else {
+      setActionResult({ type: 'error', message: result.messages.join(', ') || 'Installation failed' });
+    }
+    setTimeout(() => setActionResult(null), 5000);
+  }, [installFromSeed, listInstalledLibraries, listSeedArchives]);
   
   const handleAllowDownloadChange = useCallback(async (checked: boolean) => {
     await updateConfig({ allow_download: checked });
@@ -775,94 +828,43 @@ function PseudopotentialsSection() {
     }
   }, [validate]);
   
-  const handleInitDirs = useCallback(async () => {
-    setActionResult(null);
-    const result = await initDirs();
-    if (result.success) {
-      setActionResult({ type: 'success', message: result.messages.join(', ') || 'Directories created' });
-    } else {
-      setActionResult({ type: 'error', message: result.errors.join(', ') || 'Failed to create directories' });
-    }
-    setTimeout(() => setActionResult(null), 5000);
-  }, [initDirs]);
+  // Get status summary
+  const hasPrecision = installedLibraries.some(lib => lib.installed && lib.flavor === 'precision');
+  const hasEfficiency = installedLibraries.some(lib => lib.installed && lib.flavor === 'efficiency');
+  const statusSummary = hasPrecision && hasEfficiency 
+    ? 'Both Precision and Efficiency installed'
+    : hasPrecision 
+      ? 'Precision installed'
+      : hasEfficiency
+        ? 'Efficiency installed'
+        : 'No libraries installed';
   
-  const handleInstallFromSeed = useCallback(async () => {
-    setActionResult(null);
-    const result = await installFromSeed();
-    if (result.success) {
-      setActionResult({ type: 'success', message: result.messages.join(', ') || 'Installation complete' });
-    } else {
-      setActionResult({ type: 'error', message: result.messages.join(', ') || 'Installation failed' });
+  // Get download stage label
+  const getDownloadStageLabel = useCallback(() => {
+    switch (downloadStage) {
+      case 'downloading':
+        return 'Downloading...';
+      case 'verifying':
+        return 'Verifying...';
+      case 'extracting':
+        return 'Extracting...';
+      case 'installed':
+        return 'Installed ✓';
+      case 'error':
+        return 'Error';
+      default:
+        return '';
     }
-    setTimeout(() => setActionResult(null), 5000);
-  }, [installFromSeed]);
+  }, [downloadStage]);
   
-  // Define handleDownload first (it's used by handleDownloadClick)
-  const handleDownload = useCallback(async (flavor: 'efficiency' | 'precision' | 'all', force: boolean) => {
-    setActionResult(null);
-    setConfirmDownload(null);
-    
-    try {
-      let result;
-      if (flavor === 'all') {
-        result = await downloadAll(force);
-      } else {
-        result = await downloadLibrary(flavor, force);
-      }
-      
-      if (result.success) {
-        const successMsg = result.messages && result.messages.length > 0 
-          ? result.messages.join('; ')
-          : `Successfully downloaded ${flavor === 'all' ? 'all SSSP libraries' : `SSSP ${flavor} library`}`;
-        setActionResult({ type: 'success', message: successMsg });
-        
-        // Refresh installed libraries list
-        await listInstalledLibraries();
-      } else {
-        const errorMsg = result.errors && result.errors.length > 0
-          ? result.errors.join('; ')
-          : `Download failed for ${flavor === 'all' ? 'SSSP libraries' : `SSSP ${flavor}`}`;
-        setActionResult({ type: 'error', message: errorMsg });
-      }
-      
-      // Refresh validation after download
-      await validate();
-      setTimeout(() => setActionResult(null), 8000); // Show longer for download results
-    } catch (e) {
-      setActionResult({ 
-        type: 'error', 
-        message: `Download error: ${e instanceof Error ? e.message : 'Unknown error'}` 
-      });
-      setTimeout(() => setActionResult(null), 8000);
-    }
-  }, [downloadLibrary, downloadAll, validate, listInstalledLibraries]);
-  
-  // Define handleDownloadClick after handleDownload (it depends on it)
-  const handleDownloadClick = useCallback((flavor: 'efficiency' | 'precision' | 'all') => {
-    // If downloads are allowed, proceed directly
-    // Note: buttons are disabled when allow_download is OFF, so this should only be called when enabled
-    if (config?.allow_download) {
-      handleDownload(flavor, false);
-    } else {
-      // Fallback: show confirmation (shouldn't happen if buttons are properly disabled)
-      setConfirmDownload({ flavor });
-    }
-  }, [config?.allow_download, handleDownload]);
-  
-  const handleConfirmDownload = useCallback(() => {
-    if (confirmDownload) {
-      handleDownload(confirmDownload.flavor, true);
-    }
-  }, [confirmDownload, handleDownload]);
-  
-  const hasChanges = config && (localStoreDir !== config.store_dir || localSeedDir !== config.seed_dir);
+  const hasStoreDirChanges = config && localStoreDir !== config.store_dir;
   
   return (
     <div className="settings-section">
       <div className="settings-section__header">
         <h3 className="settings-section__title">
           <span className="settings-icon">⚗️</span>
-          Pseudopotentials
+          SSSP Libraries
         </h3>
       </div>
       
@@ -881,254 +883,105 @@ function PseudopotentialsSection() {
           </div>
         )}
         
-        {config ? (
+        {!config ? (
+          <p className="settings-empty">
+            {isLoading ? 'Loading configuration...' : 'Configuration not available'}
+          </p>
+        ) : (
           <>
-            {/* Store Directory */}
-            <div className="settings-option">
-              <div className="settings-option__info">
-                <span className="settings-option__label">Store Directory</span>
-                <span className="settings-option__description">
-                  Global pseudopotential store for installed SSSP libraries
-                </span>
-              </div>
-              <div className="settings-option__control settings-option__control--wide">
-                <input
-                  type="text"
-                  className="settings-input settings-input--path"
-                  value={localStoreDir}
-                  onChange={(e) => handleStoreDirChange(e.target.value)}
-                  placeholder={config.default_store_dir}
-                />
+            {/* NORMAL VIEW - Status Summary */}
+            <div className="pseudo-status-summary">
+              <div className="pseudo-status-summary__label">Status:</div>
+              <div className="pseudo-status-summary__value">
+                {hasPrecision && hasEfficiency ? '✓ ' : hasPrecision || hasEfficiency ? '○ ' : '○ '}
+                {statusSummary}
               </div>
             </div>
             
-            {/* Seed Directory */}
-            <div className="settings-option">
-              <div className="settings-option__info">
-                <span className="settings-option__label">Seed Directory</span>
-                <span className="settings-option__description">
-                  Offline installation source (SSSP archives for no-network setup)
-                </span>
-              </div>
-              <div className="settings-option__control settings-option__control--wide">
-                <input
-                  type="text"
-                  className="settings-input settings-input--path"
-                  value={localSeedDir}
-                  onChange={(e) => handleSeedDirChange(e.target.value)}
-                  placeholder={config.default_seed_dir}
-                />
-              </div>
-            </div>
-            
-            {/* Allow Download Toggle */}
-            <div className="settings-option">
-              <div className="settings-option__info">
-                <span className="settings-option__label">Allow Network Downloads</span>
-                <span className="settings-option__description">
-                  {config.allow_download 
-                    ? 'Downloads enabled - will fetch missing pseudopotentials' 
-                    : 'Manual install only (no auto download)'}
-                </span>
-              </div>
-              <div className="settings-option__control">
-                <label className="toggle-switch">
-                  <input
-                    type="checkbox"
-                    checked={config.allow_download}
-                    onChange={(e) => handleAllowDownloadChange(e.target.checked)}
-                    disabled={isLoading}
-                  />
-                  <span className="toggle-slider"></span>
-                </label>
-              </div>
-            </div>
-            
-            {/* Action Buttons */}
-            <div className="settings-option">
-              <div className="settings-option__info">
-                <span className="settings-option__label">Actions</span>
-              </div>
-              <div className="settings-option__control settings-option__control--buttons">
-                {hasChanges && (
-                  <button
-                    className="settings-btn settings-btn--primary"
-                    onClick={handleApplyChanges}
-                    disabled={isLoading}
-                  >
-                    Apply Changes
-                  </button>
-                )}
+            {/* NORMAL VIEW - Download & Install Buttons */}
+            <div className="pseudo-download-section">
+              <div className="pseudo-download-section__buttons">
                 <button
-                  className="settings-btn"
-                  onClick={handleResetToDefaults}
-                  disabled={isLoading}
-                >
-                  Reset to Default
-                </button>
-                <button
-                  className="settings-btn"
-                  onClick={handleValidate}
-                  disabled={isLoading || isValidating}
-                >
-                  {isValidating ? 'Validating...' : 'Validate'}
-                </button>
-                <button
-                  className="settings-btn"
-                  onClick={handleInitDirs}
-                  disabled={isLoading}
-                >
-                  Initialize Dirs
-                </button>
-                <button
-                  className="settings-btn settings-btn--primary"
-                  onClick={handleInstallFromSeed}
-                  disabled={isLoading || isDownloading}
-                >
-                  Install from Seed
-                </button>
-              </div>
-            </div>
-            
-            {/* Download Buttons */}
-            <div className="settings-option">
-              <div className="settings-option__info">
-                <span className="settings-option__label">Download SSSP Libraries</span>
-                <span className="settings-option__description">
-                  {isDownloading 
-                    ? '⏳ Downloading from Materials Cloud... This may take a few minutes.' 
-                    : config?.allow_download 
-                      ? 'Download SSSP libraries from Materials Cloud. Requires network access.'
-                      : '⚠️ Network downloads are disabled. Enable "Allow Network Downloads" above to download.'}
-                </span>
-              </div>
-              <div className="settings-option__control settings-option__control--buttons">
-                <button
-                  className="settings-btn settings-btn--download"
-                  onClick={() => handleDownloadClick('efficiency')}
-                  disabled={isLoading || isDownloading || !config?.allow_download}
-                  title={config?.allow_download 
-                    ? "Download SSSP Efficiency library (smaller, faster calculations)"
-                    : "Enable 'Allow Network Downloads' to download"}
-                >
-                  {isDownloading ? '⏳' : '⬇️'} Efficiency
-                </button>
-                <button
-                  className="settings-btn settings-btn--download"
+                  className="settings-btn settings-btn--primary settings-btn--download"
                   onClick={() => handleDownloadClick('precision')}
-                  disabled={isLoading || isDownloading || !config?.allow_download}
-                  title={config?.allow_download 
-                    ? "Download SSSP Precision library (higher accuracy)"
-                    : "Enable 'Allow Network Downloads' to download"}
+                  disabled={isLoading || isDownloading}
+                  title={config.allow_download 
+                    ? "Download & Install SSSP Precision library (higher accuracy)"
+                    : "Click to enable network downloads and install Precision"}
                 >
-                  {isDownloading ? '⏳' : '⬇️'} Precision
+                  {isDownloading && downloadStage !== 'idle' ? (
+                    <span>{getDownloadStageLabel()}</span>
+                  ) : (
+                    <span>⬇️ Download & Install Precision{!config.allow_download ? ' (Enable Network)' : ''}</span>
+                  )}
                 </button>
                 <button
-                  className="settings-btn settings-btn--download"
-                  onClick={() => handleDownloadClick('all')}
-                  disabled={isLoading || isDownloading || !config?.allow_download}
-                  title={config?.allow_download 
-                    ? "Download both Efficiency and Precision libraries"
-                    : "Enable 'Allow Network Downloads' to download"}
+                  className="settings-btn settings-btn--primary settings-btn--download"
+                  onClick={() => handleDownloadClick('efficiency')}
+                  disabled={isLoading || isDownloading}
+                  title={config.allow_download 
+                    ? "Download & Install SSSP Efficiency library (smaller, faster)"
+                    : "Click to enable network downloads and install Efficiency"}
                 >
-                  {isDownloading ? '⏳' : '⬇️'} Download All
+                  {isDownloading && downloadStage !== 'idle' ? (
+                    <span>{getDownloadStageLabel()}</span>
+                  ) : (
+                    <span>⬇️ Download & Install Efficiency{!config.allow_download ? ' (Enable Network)' : ''}</span>
+                  )}
+                </button>
+                <button
+                  className="settings-btn settings-btn--primary settings-btn--download"
+                  onClick={() => handleDownloadClick('all')}
+                  disabled={isLoading || isDownloading}
+                  title={config.allow_download 
+                    ? "Download & Install both Precision and Efficiency libraries"
+                    : "Click to enable network downloads and install all libraries"}
+                >
+                  {isDownloading && downloadStage !== 'idle' ? (
+                    <span>{getDownloadStageLabel()}</span>
+                  ) : (
+                    <span>⬇️ Download & Install All{!config.allow_download ? ' (Enable Network)' : ''}</span>
+                  )}
                 </button>
               </div>
             </div>
             
-            {/* Download Confirmation Modal */}
-            {confirmDownload && (
-              <div className="pseudo-confirm-modal">
-                <div className="pseudo-confirm-modal__content">
-                  <p className="pseudo-confirm-modal__text">
-                    <strong>Network downloads are disabled.</strong><br />
-                    Do you want to proceed with downloading SSSP {confirmDownload.flavor === 'all' ? 'libraries' : confirmDownload.flavor}?
-                  </p>
-                  <div className="pseudo-confirm-modal__buttons">
-                    <button
-                      className="settings-btn"
-                      onClick={() => setConfirmDownload(null)}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      className="settings-btn settings-btn--primary"
-                      onClick={handleConfirmDownload}
-                    >
-                      Proceed with Download
-                    </button>
+            {/* NORMAL VIEW - Progress Indicator */}
+            {isDownloading && downloadStage !== 'idle' && (
+              <div className="pseudo-download-progress">
+                <div className="pseudo-download-progress__stages">
+                  <div className={`pseudo-download-progress__stage ${['downloading', 'verifying', 'extracting', 'installed'].includes(downloadStage) ? 'pseudo-download-progress__stage--active' : ''} ${downloadStage === 'installed' ? 'pseudo-download-progress__stage--completed' : ''}`}>
+                    <span className="pseudo-download-progress__dot">1</span>
+                    <span>Download</span>
+                  </div>
+                  <div className={`pseudo-download-progress__stage ${['verifying', 'extracting', 'installed'].includes(downloadStage) ? 'pseudo-download-progress__stage--active' : ''} ${downloadStage === 'installed' ? 'pseudo-download-progress__stage--completed' : ''}`}>
+                    <span className="pseudo-download-progress__dot">2</span>
+                    <span>Verify</span>
+                  </div>
+                  <div className={`pseudo-download-progress__stage ${['extracting', 'installed'].includes(downloadStage) ? 'pseudo-download-progress__stage--active' : ''} ${downloadStage === 'installed' ? 'pseudo-download-progress__stage--completed' : ''}`}>
+                    <span className="pseudo-download-progress__dot">3</span>
+                    <span>Extract</span>
+                  </div>
+                  <div className={`pseudo-download-progress__stage ${downloadStage === 'installed' ? 'pseudo-download-progress__stage--active pseudo-download-progress__stage--completed' : ''}`}>
+                    <span className="pseudo-download-progress__dot">✓</span>
+                    <span>Installed</span>
                   </div>
                 </div>
               </div>
             )}
             
-            {/* Validation Results */}
-            {validationResult && (
-              <div className="pseudo-validation">
-                <div className="pseudo-validation__header">
-                  <span className={`pseudo-validation__status pseudo-validation__status--${validationResult.ok ? 'ok' : 'error'}`}>
-                    {validationResult.ok ? '✓ Valid' : '⚠️ Issues Found'}
-                  </span>
-                </div>
-                <div className="pseudo-validation__details">
-                  <div className="pseudo-validation__row">
-                    <span>Repo Pseudos:</span>
-                    <span className={validationResult.repo_pseudo_exists ? 'pseudo-validation--ok' : 'pseudo-validation--warn'}>
-                      {validationResult.repo_pseudo_exists ? '✓ Found' : '⚠️ Missing'}
-                    </span>
-                  </div>
-                  <div className="pseudo-validation__row">
-                    <span>Store Dir:</span>
-                    <span className={validationResult.store_dir_exists ? 'pseudo-validation--ok' : 'pseudo-validation--warn'}>
-                      {validationResult.store_dir_exists ? '✓ Exists' : '○ Not created'}
-                    </span>
-                  </div>
-                  <div className="pseudo-validation__row">
-                    <span>Store Writable:</span>
-                    <span className={validationResult.store_dir_writable ? 'pseudo-validation--ok' : 'pseudo-validation--error'}>
-                      {validationResult.store_dir_writable ? '✓ Yes' : '✗ No'}
-                    </span>
-                  </div>
-                  <div className="pseudo-validation__row">
-                    <span>Seed Dir:</span>
-                    <span className={validationResult.seed_dir_exists ? 'pseudo-validation--ok' : 'pseudo-validation--warn'}>
-                      {validationResult.seed_dir_exists ? '✓ Exists' : '○ Not found'}
-                    </span>
-                  </div>
-                  {validationResult.seed_dir_exists && (
-                    <div className="pseudo-validation__row">
-                      <span>Seed SSSP:</span>
-                      <span className={validationResult.seed_has_sssp ? 'pseudo-validation--ok' : 'pseudo-validation--warn'}>
-                        {validationResult.seed_has_sssp ? '✓ Found' : '○ No SSSP data'}
-                      </span>
-                    </div>
-                  )}
-                </div>
-                {validationResult.messages.length > 0 && (
-                  <div className="pseudo-validation__messages">
-                    {validationResult.messages.map((msg, i) => (
-                      <div key={i} className="pseudo-validation__message">{msg}</div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            
-            {/* Installed Libraries */}
+            {/* NORMAL VIEW - Installed Libraries List */}
             {installedLibraries.some(lib => lib.installed) && (
               <div className="pseudo-libraries">
-                <div className="pseudo-libraries__header">
-                  <span>Installed SSSP Libraries</span>
-                </div>
+                <div className="pseudo-libraries__header">Installed Libraries</div>
                 <div className="pseudo-libraries__list">
                   {installedLibraries.filter(lib => lib.installed).map(lib => (
                     <div key={`${lib.version}-${lib.flavor}`} className="pseudo-library">
                       <span className="pseudo-library__name">
-                        SSSP {lib.version} ({lib.flavor})
+                        ✓ SSSP {lib.version} ({lib.flavor})
                       </span>
                       <span className="pseudo-library__info">
-                        {lib.file_count} files
-                        {lib.has_cutoffs && ' • cutoffs'}
+                        {lib.file_count} files{lib.has_cutoffs && ' • cutoffs'}
                       </span>
                     </div>
                   ))}
@@ -1136,19 +989,203 @@ function PseudopotentialsSection() {
               </div>
             )}
             
-            {/* Repo Pseudo Info */}
-            {config.repo_pseudo_dir && (
-              <div className="pseudo-info">
-                <span className="pseudo-info__label">Repo Pseudos:</span>
-                <code className="pseudo-info__path">{config.repo_pseudo_dir}</code>
-                <span className="pseudo-info__note">(committed, for demos/tests)</span>
+            {/* NORMAL VIEW - Store Directory (simplified) */}
+            <div className="pseudo-store-dir">
+              <div className="pseudo-store-dir__label">Store Directory</div>
+              <div className="pseudo-store-dir__control">
+                <input
+                  type="text"
+                  className="settings-input settings-input--path"
+                  value={localStoreDir}
+                  onChange={(e) => handleStoreDirChange(e.target.value)}
+                  placeholder={config.default_store_dir}
+                  style={{ flex: 1, marginRight: '0.5rem' }}
+                />
+                {localStoreDir && (
+                  <button
+                    className="settings-btn settings-btn--sm"
+                    onClick={() => handleRevealPath(localStoreDir)}
+                    title={`Open: ${localStoreDir}`}
+                  >
+                    📂 Open
+                  </button>
+                )}
+                {hasStoreDirChanges && (
+                  <button
+                    className="settings-btn settings-btn--sm settings-btn--primary"
+                    onClick={handleApplyStoreDir}
+                    disabled={isLoading}
+                  >
+                    Apply
+                  </button>
+                )}
               </div>
-            )}
+            </div>
+            
+            {/* ADVANCED SECTION - Collapsed by default */}
+            <div className="pseudo-advanced-section">
+              <button
+                className="pseudo-advanced-section__header"
+                onClick={() => setAdvancedExpanded(!advancedExpanded)}
+                aria-expanded={advancedExpanded}
+              >
+                <span className="pseudo-advanced-section__title">Advanced</span>
+                <span className="pseudo-advanced-section__icon">{advancedExpanded ? '▼' : '▶'}</span>
+              </button>
+              
+              {advancedExpanded && (
+                <div className="pseudo-advanced-section__content">
+                  {/* Seed Cache */}
+                  <div className="pseudo-advanced-subsection">
+                    <div className="pseudo-advanced-subsection__header">
+                      <span className="pseudo-advanced-subsection__title">Seed Cache (Disaster Recovery)</span>
+                    </div>
+                    <div className="pseudo-advanced-subsection__description">
+                      Archives are kept here so you can reinstall if the store is corrupted.
+                    </div>
+                    
+                    {config.seed_dir && (
+                      <div className="pseudo-advanced-subsection__field">
+                        <div className="pseudo-advanced-subsection__label">Seed Directory</div>
+                        <div className="pseudo-advanced-subsection__control">
+                          <code className="pseudo-advanced-subsection__path">{config.seed_dir}</code>
+                          <button
+                            className="settings-btn settings-btn--sm"
+                            onClick={() => handleRevealPath(config.seed_dir)}
+                            title={`Open: ${config.seed_dir}`}
+                          >
+                            📂 Open
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {seedArchives.length > 0 && (
+                      <div className="pseudo-advanced-subsection__archives">
+                        <div className="pseudo-advanced-subsection__archives-header">Cached Archives</div>
+                        <div className="pseudo-advanced-subsection__archives-list">
+                          {seedArchives.map((arch, idx) => (
+                            <div key={idx} className="pseudo-archive-item">
+                              <span className="pseudo-archive-item__name">{arch.filename}</span>
+                              <span className="pseudo-archive-item__size">
+                                {(arch.size_bytes / 1024 / 1024).toFixed(1)} MB
+                                {arch.sha256 && ` • SHA256: ${arch.sha256.substring(0, 16)}...`}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="pseudo-advanced-subsection__actions">
+                      <button
+                        className="settings-btn settings-btn--primary"
+                        onClick={handleInstallFromSeed}
+                        disabled={isLoading || isDownloading || seedArchives.length === 0}
+                        title="Re-extract cached archives into store directory"
+                      >
+                        Install from Seed
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Network Behavior */}
+                  <div className="pseudo-advanced-subsection">
+                    <div className="pseudo-advanced-subsection__header">
+                      <span className="pseudo-advanced-subsection__title">Network Behavior</span>
+                    </div>
+                    <div className="pseudo-advanced-subsection__field">
+                      <label className="toggle-switch">
+                        <input
+                          type="checkbox"
+                          checked={config.allow_download}
+                          onChange={(e) => handleAllowDownloadChange(e.target.checked)}
+                          disabled={isLoading}
+                        />
+                        <span className="toggle-slider"></span>
+                        <span className="pseudo-advanced-subsection__toggle-label">Allow network downloads</span>
+                      </label>
+                    </div>
+                  </div>
+                  
+                  {/* Validate / Diagnostics */}
+                  <div className="pseudo-advanced-subsection">
+                    <div className="pseudo-advanced-subsection__header">
+                      <span className="pseudo-advanced-subsection__title">Diagnostics</span>
+                    </div>
+                    <div className="pseudo-advanced-subsection__actions">
+                      <button
+                        className="settings-btn"
+                        onClick={handleValidate}
+                        disabled={isLoading || isValidating}
+                      >
+                        {isValidating ? 'Validating...' : 'Validate Configuration'}
+                      </button>
+                    </div>
+                    
+                    {validationResult && (
+                      <div className="pseudo-validation">
+                        <div className="pseudo-validation__header">
+                          <span className={`pseudo-validation__status pseudo-validation__status--${validationResult.ok ? 'ok' : 'error'}`}>
+                            {validationResult.ok ? '✓ Valid' : '⚠️ Issues Found'}
+                          </span>
+                        </div>
+                        <div className="pseudo-validation__details">
+                          <div className="pseudo-validation__row">
+                            <span>Repo Pseudos:</span>
+                            <span className={validationResult.repo_pseudo_exists ? 'pseudo-validation--ok' : 'pseudo-validation--warn'}>
+                              {validationResult.repo_pseudo_exists ? '✓ Found' : '⚠️ Missing'}
+                            </span>
+                          </div>
+                          <div className="pseudo-validation__row">
+                            <span>Store Dir:</span>
+                            <span className={validationResult.store_dir_exists ? 'pseudo-validation--ok' : 'pseudo-validation--warn'}>
+                              {validationResult.store_dir_exists ? '✓ Exists' : '○ Not created'}
+                            </span>
+                          </div>
+                          <div className="pseudo-validation__row">
+                            <span>Store Writable:</span>
+                            <span className={validationResult.store_dir_writable ? 'pseudo-validation--ok' : 'pseudo-validation--error'}>
+                              {validationResult.store_dir_writable ? '✓ Yes' : '✗ No'}
+                            </span>
+                          </div>
+                          <div className="pseudo-validation__row">
+                            <span>Seed Dir:</span>
+                            <span className={validationResult.seed_dir_exists ? 'pseudo-validation--ok' : 'pseudo-validation--warn'}>
+                              {validationResult.seed_dir_exists ? '✓ Exists' : '○ Not found'}
+                            </span>
+                          </div>
+                          {validationResult.seed_dir_exists && (
+                            <div className="pseudo-validation__row">
+                              <span>Seed SSSP:</span>
+                              <span className={validationResult.seed_has_sssp ? 'pseudo-validation--ok' : 'pseudo-validation--warn'}>
+                                {validationResult.seed_has_sssp ? '✓ Found' : '○ No SSSP data'}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Repo Pseudo Info (read-only) */}
+                  {config.repo_pseudo_dir && (
+                    <div className="pseudo-advanced-subsection">
+                      <div className="pseudo-advanced-subsection__header">
+                        <span className="pseudo-advanced-subsection__title">Repo Pseudos</span>
+                      </div>
+                      <div className="pseudo-advanced-subsection__field">
+                        <code className="pseudo-advanced-subsection__path pseudo-advanced-subsection__path--readonly">
+                          {config.repo_pseudo_dir}
+                        </code>
+                        <span className="pseudo-advanced-subsection__note">(committed, for demos/tests)</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </>
-        ) : (
-          <p className="settings-empty">
-            {isLoading ? 'Loading configuration...' : 'Configuration not available'}
-          </p>
         )}
       </div>
     </div>

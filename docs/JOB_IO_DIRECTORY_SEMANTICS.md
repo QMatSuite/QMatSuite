@@ -4,6 +4,21 @@
 
 QuantumVITAS uses a unified `io_dir` field to represent the I/O directory for job execution. This directory is where the runner writes QE input/output files and artifacts.
 
+## Terminology: Product vs Tests
+
+**Important distinction**: The term "raw" directory has different meanings in tests vs product:
+
+- **Product**: `project_root/calculations/<calc_id>/raw/` is a **writable runtime I/O directory**.
+  This is the actual execution directory where QE runs in production. It's part of the project
+  structure and contains QE inputs, outputs, `outdir/`, and optionally `pseudo/` (standalone mode).
+
+- **Tests**: Test fixtures use `fixture_dir` (often named `raw_dir` in old code) as a **read-only
+  template directory** containing input templates. Tests must never execute QE in fixture directories.
+  Instead, tests create a separate `sandbox_dir` for execution and copy inputs from `fixture_dir`
+  to `sandbox_dir` before running QE.
+
+See `docs/TERMINOLOGY_DIRECTORIES.md` for complete terminology reference.
+
 ## Key Principles
 
 1. **Runner is the single source of truth**: The I/O directory path is determined by the runner layer, not by hardcoded conventions in the server or GUI.
