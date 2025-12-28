@@ -89,7 +89,7 @@ def run_and_verify_step(
                     f"Project root cannot be the repository root. "
                     f"Provided project_root={project_root} is the repo root, which is invalid."
                 )
-        working_dir = get_default_working_dir(project_root, category)
+            working_dir = get_default_working_dir(project_root, category)
         else:
             # No project_root and no working_dir: use tmp
             import tempfile

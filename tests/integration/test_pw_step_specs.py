@@ -94,24 +94,30 @@ class TestPWStepSpecsExecution:
             )
 
             # Ensure pseudopotentials are available
-            # Use working_dir/pseudo, NOT project_root/pseudo (project_root is repo root in tests)
-            unified_pseudo_dir = working_dir / "pseudo"
-            unified_pseudo_dir.mkdir(parents=True, exist_ok=True)
+            # run_step with working_dir=raw_dir will set ESPRESSO_PSEUDO to raw_dir/pseudo
+            # So we need to put pseudos in raw_dir/pseudo, not raw_dir/
+            raw_pseudo_dir = raw_dir / "pseudo"
+            raw_pseudo_dir.mkdir(parents=True, exist_ok=True)
             from quantumvitas.core.pseudo import ensure_qe_pseudos, get_system_pseudo_dir
             result = ensure_qe_pseudos(
                 qe_input_file=generated_input,
-                project_pseudo_dir=unified_pseudo_dir,
+                project_pseudo_dir=raw_pseudo_dir,
                 system_pseudo_dir=get_system_pseudo_dir(),
                 strict=False,
                 additional_search_dirs=None,
             )
-            # Copy to working_dir for compatibility with old behavior
+            # Also copy to raw_dir for backwards compatibility (some QE versions look there)
             if result.all_available:
                 import shutil
                 for pp_name, pp_path in result.resolved_pseudos.items():
-                    working_pp = raw_dir / pp_name
+                    # Copy to raw_dir/pseudo (where ESPRESSO_PSEUDO points)
+                    working_pp = raw_pseudo_dir / pp_name
                     if not working_pp.exists() or working_pp.stat().st_mtime < pp_path.stat().st_mtime:
                         shutil.copy2(pp_path, working_pp)
+                    # Also copy to raw_dir for backwards compatibility
+                    raw_pp = raw_dir / pp_name
+                    if not raw_pp.exists() or raw_pp.stat().st_mtime < pp_path.stat().st_mtime:
+                        shutil.copy2(pp_path, raw_pp)
             if not result.all_available:
                 results.append(
                     {
