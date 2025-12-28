@@ -88,7 +88,7 @@ def test_cli_show_command_executes_against_references(
     )
     assert result.exit_code == 0, result.stdout
 
-    pseudo_src = project_root_path / "pseudo"
+    pseudo_src = project_root_path / "resources" / "pseudo"
     if pseudo_src.exists():
         shutil.copytree(pseudo_src, project_root / "pseudo", dirs_exist_ok=True)
 

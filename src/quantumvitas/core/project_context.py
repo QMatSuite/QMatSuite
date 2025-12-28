@@ -67,7 +67,7 @@ class ProjectContext:
                 )
         else:
             # Auto-detect from cwd
-            project_root = find_project_root(cwd)
+            project_root = require_project_root(cwd)
         
         # Load config and build registry
         config = load_project_config(project_root)

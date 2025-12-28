@@ -4,7 +4,7 @@ Pseudopotential configuration and management.
 This module provides:
 - PseudoConfig: Settings for pseudo store, seed, and downloads
 - PseudoStore: Manager for SSSP installation and resolution
-- Resolution flow: repo/pseudo → project → store → seed → download
+- Resolution flow: resources/pseudo → project → store → seed → download
 """
 
 from __future__ import annotations
@@ -224,10 +224,10 @@ def validate_pseudo_config(config: PseudoConfig) -> ValidationResult:
     """
     result = ValidationResult()
     
-    # Check repo/pseudo (always should exist)
+    # Check resources/pseudo (always should exist)
     repo_root = _find_quantumvitas_root()
     if repo_root:
-        repo_pseudo = repo_root / "pseudo"
+        repo_pseudo = repo_root / "resources" / "pseudo"
         result.repo_pseudo_exists = repo_pseudo.exists()
         if result.repo_pseudo_exists:
             result.messages.append(f"✓ Repo pseudo dir: {repo_pseudo}")
@@ -1112,7 +1112,7 @@ def resolve_project_pseudos(
     Resolve pseudopotentials for a project.
     
     Resolution order:
-    1. repo/pseudo (committed; always available for demos/tests)
+    1. resources/pseudo (committed; always available for demos/tests)
     2. project pseudos folder (project-local copies; reproducibility)
     3. global pseudo store (store_dir)
     4. seed (seed_dir) - install to store if found
@@ -1131,7 +1131,7 @@ def resolve_project_pseudos(
     result.project_pseudo_dir = str(project_pseudo_dir)
     
     repo_root = _find_quantumvitas_root()
-    repo_pseudo_dir = repo_root / "pseudo" if repo_root else None
+    repo_pseudo_dir = repo_root / "resources" / "pseudo" if repo_root else None
     
     store_dir = Path(config.store_dir) if config.store_dir else None
     seed_dir = Path(config.seed_dir) if config.seed_dir else None

@@ -33,6 +33,17 @@ def download_pseudopotential(
     Returns:
         True if file exists or was successfully downloaded
     """
+    # GUARD: Never create repo_root/pseudo
+    qv_root = _find_quantumvitas_root()
+    if qv_root:
+        pseudo_resolved = pseudo_dir.resolve()
+        repo_pseudo = (qv_root / "pseudo").resolve()
+        if pseudo_resolved == repo_pseudo:
+            raise RuntimeError(
+                f"BUG: download_pseudopotential attempted to create repo_root/pseudo at {pseudo_dir}. "
+                f"Internal pseudo library must be at resources/pseudo, not repo_root/pseudo."
+            )
+    
     pseudo_dir.mkdir(parents=True, exist_ok=True)
     pp_path = pseudo_dir / pp_name
     

@@ -418,7 +418,7 @@ def build_calculation_from_qe_inputs(
     # Add species_map to calculation metadata if we have any mappings
     if calc_species_map:
         calculation_meta["species_map"] = calc_species_map
-    
+
     calculation_config = {
         "id": calculation_id,
         "mode": mode,

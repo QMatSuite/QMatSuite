@@ -49,7 +49,17 @@ def create_calculation_project(
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source_dir / "reference" / reference_name, dest)
 
-    shutil.copytree(pseudo_src, project_root / "pseudo")
+    # GUARD: Never use repo_root as project_root (tests must use tmp directories)
+    from quantumvitas.core.pseudo_config import _find_quantumvitas_root
+    repo_root = _find_quantumvitas_root()
+    if repo_root and project_root.resolve() == repo_root.resolve():
+        raise RuntimeError(
+            f"BUG: create_calculation_project called with project_root=repo_root ({project_root}). "
+            f"Tests must use a temp directory, not the repo root."
+        )
+    
+    project_pseudo_dir = project_root / "pseudo"
+    shutil.copytree(pseudo_src, project_pseudo_dir)
 
     # Extract structure from the first input file (SCF step typically has the structure)
     from quantumvitas.core.resources import generate_resource_id, meta_from_name

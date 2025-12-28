@@ -555,12 +555,23 @@ def materialize_step_spec(
     # Set outdir and pseudo_dir if project_root is provided
     if project_root:
         project_root_path = Path(project_root).resolve()
+        
+        # Validate project_root is not repo root
+        from quantumvitas.core.pseudo_config import _find_quantumvitas_root
+        repo_root = _find_quantumvitas_root()
+        if repo_root and project_root_path == repo_root.resolve():
+            raise ValueError(
+                f"Project root cannot be the repository root. "
+                f"Provided project_root={project_root} is the repo root, which is invalid."
+            )
+        
         set_outdir_to_temp(qe_input)
         
         # Use central pseudopotential resolution
         from quantumvitas.core.pseudo import ensure_qe_pseudos, get_system_pseudo_dir
         from quantumvitas.calculation.input_runner import set_pseudo_dir_in_input
         
+        # Normal case: project_root is a user project
         project_pseudo_dir = project_root_path / "pseudo"
         
         # Write temporary input file to extract required pseudos

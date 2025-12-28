@@ -373,27 +373,97 @@ def calculation_directory(project_root: Path, entry: dict) -> Path:
 # ---------------------------------------------------------------------------
 
 
-def find_project_root(start: Optional[Path] = None) -> Path:
+def find_project_root(start: Optional[Path] = None, *, stop_at: Optional[Path] = None, max_levels: int = 100) -> Optional[Path]:
     """
-    Find project root by walking up from start directory.
+    Find project root by walking up from start directory using marker-based detection.
+    
+    This function walks upward from start_dir looking for project.qv.yml (the project marker).
+    It stops at the first marker found, or when it reaches stop_at boundary, filesystem root, or max_levels.
     
     Args:
         start: Starting directory (defaults to cwd)
+        stop_at: Optional boundary directory. If provided, search stops when current dir
+                 would move above stop_at. You are allowed to check stop_at itself, but
+                 must not go above it. This is used to sandbox searches in tests.
+        max_levels: Maximum number of parent directories to traverse (default: 100)
+        
+    Returns:
+        Path to project root (directory containing project.qv.yml) if found, None otherwise.
+        Returns None if marker not found, boundary exceeded, or max_levels reached.
+        Never raises - this is a pure finder function.
+    """
+    current = Path(start or Path.cwd()).resolve()
+    stop_at_resolved = stop_at.resolve() if stop_at else None
+    levels = 0
+    
+    while current != current.parent and levels < max_levels:
+        # Check for project marker (project.qv.yml)
+        if (current / "project.qv.yml").exists():
+            return current
+        
+        # Check boundary: if stop_at provided, ensure we don't go above it
+        if stop_at_resolved:
+            # Check if current is within or equal to stop_at
+            try:
+                current.relative_to(stop_at_resolved)
+                # current is within stop_at - check if next parent would be outside
+                next_parent = current.parent
+                if next_parent == current:
+                    # Reached filesystem root
+                    return None
+                try:
+                    next_parent.relative_to(stop_at_resolved)
+                    # next_parent is still within - continue
+                except ValueError:
+                    # next_parent would be outside stop_at - stop here
+                    return None
+            except ValueError:
+                # current is already outside stop_at - should not happen, but stop
+                return None
+        
+        current = current.parent
+        levels += 1
+    
+    # Reached filesystem root or max_levels without finding marker
+    return None
+
+
+def require_project_root(start: Optional[Path] = None, *, stop_at: Optional[Path] = None, max_levels: int = 100) -> Path:
+    """
+    Require a project root to be found (raises if not found).
+    
+    This is a strict wrapper around find_project_root for CLI/product code.
+    It validates that a project root was found and that it is not the repo root.
+    
+    Args:
+        start: Starting directory (defaults to cwd)
+        stop_at: Optional boundary directory (see find_project_root)
+        max_levels: Maximum number of parent directories to traverse (default: 100)
         
     Returns:
         Path to project root (directory containing project.qv.yml)
         
     Raises:
         ResourceNotFoundError: If no project.qv.yml found
+        ValueError: If project root is the repo root (repo root is not a project root)
     """
-    current = Path(start or Path.cwd()).resolve()
-    while current != current.parent:
-        if (current / "project.qv.yml").exists():
-            return current
-        current = current.parent
-    raise ResourceNotFoundError(
-        "No project.qv.yml found. Run inside a project or specify --project."
-    )
+    result = find_project_root(start, stop_at=stop_at, max_levels=max_levels)
+    if result is None:
+        raise ResourceNotFoundError(
+            "No project.qv.yml found. Run inside a project or specify --project."
+        )
+    
+    # Validate that project root is not repo root
+    from quantumvitas.core.pseudo_config import _find_quantumvitas_root
+    repo_root = _find_quantumvitas_root()
+    if repo_root and result.resolve() == repo_root.resolve():
+        raise ValueError(
+            f"Project root cannot be the repository root. "
+            f"Found project.qv.yml at repo root ({result}), which is invalid. "
+            f"Projects must be created in user directories, not the QMatSuite repository root."
+        )
+    
+    return result
 
 
 def find_enclosing_calculation(
@@ -599,7 +669,7 @@ def resolve_resource(
         if not (project_root / "project.qv.yml").exists():
             raise ResourceNotFoundError(f"No project.qv.yml in {project_root}")
     else:
-        project_root = find_project_root(start)
+        project_root = require_project_root(start)
     
     config = load_project_config(project_root)
     

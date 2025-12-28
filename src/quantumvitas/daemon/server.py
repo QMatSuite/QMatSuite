@@ -661,7 +661,7 @@ class QVDaemon:
             store_dir: str - Path to global pseudo store
             seed_dir: str - Path to seed directory
             allow_download: bool - Whether downloads are allowed
-            repo_pseudo_dir: str - Path to repo/pseudo (committed demos)
+            repo_pseudo_dir: str - Path to resources/pseudo (committed demos)
             default_store_dir: str - Default store directory
             default_seed_dir: str - Default seed directory
         """
@@ -673,7 +673,7 @@ class QVDaemon:
         
         config = load_pseudo_config()
         repo_root = _find_quantumvitas_root()
-        repo_pseudo_dir = str(repo_root / "pseudo") if repo_root else ""
+        repo_pseudo_dir = str(repo_root / "resources" / "pseudo") if repo_root else ""
         
         return {
             "store_dir": config.store_dir,
@@ -716,7 +716,7 @@ class QVDaemon:
         save_pseudo_config(config)
         
         repo_root = _find_quantumvitas_root()
-        repo_pseudo_dir = str(repo_root / "pseudo") if repo_root else ""
+        repo_pseudo_dir = str(repo_root / "resources" / "pseudo") if repo_root else ""
         
         return {
             "store_dir": config.store_dir,
