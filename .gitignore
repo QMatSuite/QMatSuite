@@ -80,6 +80,8 @@ outdir/
 temp/
 .temp/
 .cache/
+# Pseudo libinfo download directory (covered by temp/ but explicit)
+temp/pseudo_libinfo_download/
 
 # Debug test projects (should not be committed)
 debug_metadata_project/
