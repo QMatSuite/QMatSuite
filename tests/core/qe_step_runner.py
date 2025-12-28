@@ -76,16 +76,57 @@ def run_and_verify_step(
     Returns:
         (step_result, success, message) tuple
     """
-    project_root = detect_project_root(project_root or Path(__file__).parent)
-    
-    # Determine working directory:
-    # - If working_dir is provided, always respect it.
-    # - If not provided, fall back to a default temp/test_outputs/{category}/ directory.
+    # Determine working directory first (needed for boundary detection)
     if working_dir is None:
-        working_dir = get_default_working_dir(project_root, category)
+        # If project_root is provided, use it to determine working_dir
+        if project_root is not None:
+            project_root = Path(project_root).resolve()
+            # Validate project_root is not repo root
+            from quantumvitas.core.pseudo_config import _find_quantumvitas_root
+            repo_root = _find_quantumvitas_root()
+            if repo_root and project_root == repo_root.resolve():
+                raise ValueError(
+                    f"Project root cannot be the repository root. "
+                    f"Provided project_root={project_root} is the repo root, which is invalid."
+                )
+            working_dir = get_default_working_dir(project_root, category)
+        else:
+            # No project_root and no working_dir: use tmp
+            import tempfile
+            working_dir = Path(tempfile.mkdtemp(prefix="qe_test_"))
     else:
         working_dir = Path(working_dir)
         working_dir.mkdir(parents=True, exist_ok=True)
+    
+    # If project_root not provided, try to detect from working_dir
+    # In tests, we want to sandbox the search, so use working_dir as boundary
+    if project_root is None:
+        # Sandbox: stop search at working_dir (tests should create projects within tmp)
+        # This prevents search from escaping into repo root
+        from quantumvitas.core.project_utils import find_project_root
+        from quantumvitas.core.pseudo_config import _find_quantumvitas_root
+        
+        # Use working_dir as stop_at boundary to sandbox the search
+        detected = find_project_root(start=working_dir, stop_at=working_dir)
+        if detected:
+            # Validate it's not repo root (shouldn't happen with stop_at, but be safe)
+            repo_root = _find_quantumvitas_root()
+            if repo_root and detected.resolve() == repo_root.resolve():
+                # Repo root detected - treat as standalone mode
+                project_root = None
+            else:
+                project_root = detected
+        # If not found, project_root stays None (standalone mode)
+    else:
+        project_root = Path(project_root).resolve()
+        # Validate project_root is not repo root
+        from quantumvitas.core.pseudo_config import _find_quantumvitas_root
+        repo_root = _find_quantumvitas_root()
+        if repo_root and project_root == repo_root.resolve():
+            raise ValueError(
+                f"Project root cannot be the repository root. "
+                f"Provided project_root={project_root} is the repo root, which is invalid."
+            )
     
     try:
         prepared = prepare_input_step(

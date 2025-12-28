@@ -89,7 +89,7 @@ def project_with_structure(test_project_dir: Path, project_root_path: Path) -> P
     )
     
     # Copy only the Si pseudopotential
-    pseudo_src = project_root_path / "pseudo"
+    pseudo_src = project_root_path / "resources" / "pseudo"
     pseudo_dst = project_dir / "pseudo"
     pseudo_dst.mkdir(parents=True, exist_ok=True)
     

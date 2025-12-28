@@ -142,6 +142,7 @@ class TestPWQuickExecution:
             )
 
             try:
+                # Don't pass repo_root as project_root - use None for standalone mode
                 step_result = run_and_verify_step_with_assert(
                     input_file=input_file,
                     qe_engine=qe_engine,
@@ -149,7 +150,7 @@ class TestPWQuickExecution:
                     reference_file=None,
                     category=category,
                     timeout=300,
-                    project_root=project_root,
+                    project_root=None,  # Use None - pseudo_dir will be working_dir/pseudo
                 )
                 results.append(
                     {

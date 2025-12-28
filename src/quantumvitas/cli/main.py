@@ -78,6 +78,7 @@ from quantumvitas.core.project_utils import (
     apply_calculation_rename,
     delete_calculation_entry,
     find_project_root,
+    require_project_root,
     find_enclosing_calculation,
     find_step_in_calculation,
     find_resource_auto,
@@ -2353,7 +2354,7 @@ def delete_step_command(
         project_root = Path(project).expanduser().resolve()
     else:
         try:
-            project_root = find_project_root()
+            project_root = require_project_root()
         except Exception as exc:
             raise typer.BadParameter(str(exc)) from exc
     
@@ -2468,7 +2469,7 @@ def delete_project_command(
         project_root = Path(project).expanduser().resolve()
     else:
         try:
-            project_root = find_project_root()
+            project_root = require_project_root()
         except RegistryOutOfSyncError as exc:
             # Registry out of sync - provide clear user-facing message
             typer.secho(
@@ -2588,7 +2589,7 @@ def configure_step_command(
         if not project_root_resolved:
             from quantumvitas.core.project_utils import find_project_root
             try:
-                project_root_resolved = find_project_root(step_file.parent)
+                project_root_resolved = require_project_root(step_file.parent)
             except Exception:
                 pass  # No project found, that's OK for standalone step files
     else:
@@ -2734,7 +2735,7 @@ def configure_calculation_command(
         project_root = Path(project).expanduser().resolve()
     else:
         try:
-            project_root = find_project_root()
+            project_root = require_project_root()
         except Exception as exc:
             raise typer.BadParameter(str(exc)) from exc
     
@@ -2976,7 +2977,7 @@ def configure_structure_command(
         project_root = Path(project).expanduser().resolve()
     else:
         try:
-            project_root = find_project_root()
+            project_root = require_project_root()
         except Exception as exc:
             raise typer.BadParameter(str(exc)) from exc
     
@@ -3183,7 +3184,7 @@ def run_calculation_command(
         project_root = Path(project).expanduser().resolve()
     else:
         try:
-            project_root = find_project_root()
+            project_root = require_project_root()
         except Exception as exc:
             raise typer.BadParameter(str(exc)) from exc
     
@@ -3446,7 +3447,7 @@ def analyze_output_command(
     if calculation:
         # Explicit --calculation option
         try:
-            project_root = Path(project).resolve() if project else find_project_root()
+            project_root = Path(project).resolve() if project else require_project_root()
             config = load_project_config(project_root)
             wf_entry = find_calculation_entry(config, calculation, project_root)
             calculation_dir = calculation_directory(project_root, wf_entry)
@@ -3536,7 +3537,7 @@ def analyze_output_command(
         # Try to detect calculation from input file location
         input_path = Path(input_file).resolve()
         try:
-            proj_root = find_project_root(start=input_path.parent)
+            proj_root = require_project_root(start=input_path.parent)
             config = load_project_config(proj_root)
             # Check if input is inside a calculation directory
             for wf_entry in config.get("calculations", []):

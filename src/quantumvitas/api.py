@@ -393,13 +393,13 @@ class QVService:
         # Read and convert structure
         structure = read_structure(source)
         
-        # Compute fingerprint for content-based deduplication
-        from quantumvitas.core.structure_fingerprint import structure_fingerprint
-        fingerprint = structure_fingerprint(structure)
-        
         # Check existing structures for same fingerprint (content-based dedup)
         # Only when dedup_by_fingerprint=True (opt-in for demo tooling)
         if dedup_by_fingerprint:
+            # Compute fingerprint for content-based deduplication
+            from quantumvitas.core.structure_fingerprint import structure_fingerprint
+            fingerprint = structure_fingerprint(structure)
+            
             structures_dir = project_root / "structures"
             if structures_dir.exists():
                 for struct_file in structures_dir.glob("*.json"):
@@ -424,6 +424,10 @@ class QVService:
                                     return resolved
                     except Exception:
                         pass  # Skip invalid files
+        
+        # Compute fingerprint for storage (even if not using for dedup)
+        from quantumvitas.core.structure_fingerprint import structure_fingerprint
+        fingerprint = structure_fingerprint(structure)
         
         # Write to structures directory
         dest_path = project_root / "structures" / f"{final_slug}.json"

@@ -84,15 +84,18 @@ class TestPWStepSpecsExecution:
                 reference_structure_by="path",
             )
 
+            # Don't pass repo_root as project_root - tests must use tmp directories
+            # When project_root is None, materialize_step_spec uses output_dir/pseudo
             generated_input, spec = materialize_step_spec(
                 step_result.spec_path,
                 output_dir=raw_dir,
                 calculation_dir=working_dir,
-                project_root=project_root,  # This sets outdir and pseudo_dir during generation
+                project_root=None,  # Use None - pseudo_dir will be set to output_dir/pseudo
             )
 
             # Ensure pseudopotentials are available
-            unified_pseudo_dir = project_root / "pseudo"
+            # Use working_dir/pseudo, NOT project_root/pseudo (project_root is repo root in tests)
+            unified_pseudo_dir = working_dir / "pseudo"
             unified_pseudo_dir.mkdir(parents=True, exist_ok=True)
             from quantumvitas.core.pseudo import ensure_qe_pseudos, get_system_pseudo_dir
             result = ensure_qe_pseudos(
