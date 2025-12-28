@@ -370,7 +370,7 @@ def materialize_project_from_qe_input_folder(
             
             # Register structure in project
             from quantumvitas.core.resolution import build_resource_index
-            index = build_resource_index(project_root)
+        index = build_resource_index(project_root)
         
         # Create calculation
         calc_name = calculation_name or folder.name

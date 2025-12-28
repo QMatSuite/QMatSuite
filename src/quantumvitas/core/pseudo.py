@@ -89,7 +89,7 @@ def ensure_qe_pseudos(
     Args:
         qe_input_file: Path to QE input file (parsed to extract required pseudos)
         project_pseudo_dir: Directory for project/run-specific pseudos (e.g., project_root/pseudo or workdir/pseudo)
-        system_pseudo_dir: Optional system-wide pseudo cache directory. If None, uses quantumvitas root/pseudo
+        system_pseudo_dir: Optional system-wide pseudo cache directory. If None, uses quantumvitas resources/pseudo
         strict: If True, do not attempt network download; fail early if pseudo not found locally
         additional_search_dirs: Optional list of additional directories to search (e.g., test fixtures)
     
@@ -152,7 +152,7 @@ def ensure_qe_pseudos(
     if system_pseudo_dir is None:
         qv_root = _find_quantumvitas_root()
         if qv_root:
-            system_pseudo_dir = qv_root / "pseudo"
+            system_pseudo_dir = qv_root / "resources" / "pseudo"
         else:
             system_pseudo_dir = None
     
@@ -187,9 +187,32 @@ def ensure_qe_pseudos(
             search_dirs.append(env_path)
     
     # Ensure directories exist
+    # GUARD: Never create repo_root/pseudo for project_pseudo_dir
+    qv_root = _find_quantumvitas_root()
+    if qv_root:
+        project_resolved = project_pseudo_dir.resolve()
+        repo_pseudo = (qv_root / "pseudo").resolve()
+        if project_resolved == repo_pseudo:
+            raise RuntimeError(
+                f"BUG: ensure_qe_pseudos attempted to create repo_root/pseudo at {project_pseudo_dir}. "
+                f"Internal pseudo library must be at resources/pseudo, not repo_root/pseudo. "
+                f"Caller should use output_dir/pseudo or a temp directory instead."
+            )
+    
     project_pseudo_dir.mkdir(parents=True, exist_ok=True)
+    # system_pseudo_dir (resources/pseudo) should already exist in repo - don't mkdir it
+    # Only mkdir if it's a user-configured system directory outside the repo
     if system_pseudo_dir:
-        system_pseudo_dir.mkdir(parents=True, exist_ok=True)
+        # GUARD: Never create repo_root/pseudo for system_pseudo_dir
+        if qv_root and system_pseudo_dir.resolve() == (qv_root / "pseudo").resolve():
+            raise RuntimeError(
+                f"BUG: Attempted to create repo_root/pseudo at {system_pseudo_dir}. "
+                f"Internal pseudo library must be at resources/pseudo, not repo_root/pseudo."
+            )
+        # Only mkdir system_pseudo_dir if it's outside the repo (user-configured)
+        # The repo-internal resources/pseudo should already exist and should not be created
+        if not qv_root or not system_pseudo_dir.resolve().is_relative_to(qv_root.resolve()):
+            system_pseudo_dir.mkdir(parents=True, exist_ok=True)
     
     # Resolve each required pseudopotential
     resolved_pseudos: Dict[str, Path] = {}
@@ -298,10 +321,10 @@ def get_system_pseudo_dir() -> Optional[Path]:
     Get the system-wide pseudopotential cache directory.
     
     Returns:
-        Path to quantumvitas root/pseudo, or None if quantumvitas root not found
+        Path to quantumvitas resources/pseudo, or None if quantumvitas root not found
     """
     qv_root = _find_quantumvitas_root()
     if qv_root:
-        return qv_root / "pseudo"
+        return qv_root / "resources" / "pseudo"
     return None
 

@@ -40,7 +40,7 @@ def si_bands_project(project_root_path: Path, si_bands_dir: Path) -> Path:
         calculation_id="si_bands",
         steps=steps,
         source_dir=si_bands_dir,
-        pseudo_src=project_root_path / "pseudo",
+        pseudo_src=project_root_path / "resources" / "pseudo",
     )
 
 

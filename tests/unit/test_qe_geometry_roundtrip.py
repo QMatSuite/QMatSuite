@@ -54,11 +54,12 @@ def test_pw_scf_ibrav_geometry_roundtrip(ci_test_data_dir: Path, tmp_path: Path)
             reference_structure_by="path",
         )
 
+        # Don't pass repo_root as project_root - use None for standalone mode
         generated_input, _ = materialize_step_spec(
             step_spec.spec_path,
             output_dir=raw_dir,
             calculation_dir=working_dir,
-            project_root=project_root,
+            project_root=None,  # Use None - pseudo_dir will be output_dir/pseudo
         )
 
         generated_geometry = read_geometry_from_input(generated_input)

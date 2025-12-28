@@ -61,17 +61,17 @@ def _safe_copy(src: Path, dst: Path) -> None:
         pass
 
 
-def detect_project_root(start: Optional[Path] = None) -> Path:
+def detect_project_root(start: Optional[Path] = None, *, stop_at: Optional[Path] = None) -> Optional[Path]:
     """
-    Try to locate the project root (directory containing src/quantumvitas).
+    [DEPRECATED] Legacy alias for find_project_root.
+    
+    This function previously used repo markers (src/quantumvitas) which was incorrect.
+    It now delegates to the canonical marker-based detection (project.qv.yml).
+    
+    Use find_project_root() or require_project_root() from quantumvitas.core.project_utils instead.
     """
-    start_path = Path(start or Path.cwd()).resolve()
-    current = start_path
-    while current != current.parent:
-        if (current / "pyproject.toml").exists() or (current / "src" / "quantumvitas").exists():
-            return current
-        current = current.parent
-    return start_path
+    from quantumvitas.core.project_utils import find_project_root
+    return find_project_root(start, stop_at=stop_at)
 
 
 def set_outdir_to_temp(qe_input: QEInput, _project_root: Optional[Path] = None) -> None:
@@ -122,6 +122,18 @@ def set_pseudo_dir_in_input(qe_input: QEInput, pseudo_dir: Path, working_dir: Pa
         pseudo_dir: Absolute path to the project/run pseudo directory
         working_dir: Optional working directory (for computing relative path)
     """
+    # GUARD: Never use repo_root/pseudo (safety check)
+    from quantumvitas.core.pseudo_config import _find_quantumvitas_root
+    repo_root = _find_quantumvitas_root()
+    if repo_root:
+        pseudo_resolved = pseudo_dir.resolve()
+        repo_pseudo = (repo_root / "pseudo").resolve()
+        if pseudo_resolved == repo_pseudo:
+            raise RuntimeError(
+                f"BUG: set_pseudo_dir_in_input attempted to use repo_root/pseudo at {pseudo_dir}. "
+                f"Internal pseudo library must be at resources/pseudo, not repo_root/pseudo."
+            )
+    
     # Compute relative path from working_dir to pseudo_dir if working_dir is provided
     if working_dir:
         try:
@@ -168,7 +180,18 @@ def set_pseudo_dir_to_temp(qe_input: QEInput, project_root: Path) -> None:
     
     Use set_pseudo_dir_in_input() instead.
     """
-    pseudo_dir = project_root / "pseudo"
+    project_root_path = Path(project_root).resolve()
+    
+    # Validate project_root is not repo root
+    from quantumvitas.core.pseudo_config import _find_quantumvitas_root
+    repo_root = _find_quantumvitas_root()
+    if repo_root and project_root_path == repo_root.resolve():
+        raise ValueError(
+            f"Project root cannot be the repository root. "
+            f"Provided project_root={project_root} is the repo root, which is invalid."
+        )
+    
+    pseudo_dir = project_root_path / "pseudo"
     # Use working_dir = project_root as fallback (not ideal but maintains compatibility)
     set_pseudo_dir_in_input(qe_input, pseudo_dir, project_root)
 
@@ -205,10 +228,34 @@ def prepare_input_step(
         - Original copy: <name>_original.in (only if keep_original=True and 
           input is from outside working_dir)
     """
-    # Handle project_root: if None (standalone mode), skip project-specific setup
-    # Otherwise, detect project root for pseudo_dir resolution
-    if project_root is not None:
-        project_root = detect_project_root(project_root)
+    # Handle project_root: if None, try to detect from working_dir using marker-based detection
+    # If provided, validate it is not repo root and use as-is
+    from quantumvitas.core.project_utils import find_project_root
+    from quantumvitas.core.pseudo_config import _find_quantumvitas_root
+    
+    if project_root is None:
+        # Auto-detect from working_dir using marker-based detection
+        # Use stop_at=None to allow full upward search (product mode)
+        detected_project_root = find_project_root(start=working_dir, stop_at=None)
+        if detected_project_root:
+            # Validate it's not repo root
+            repo_root = _find_quantumvitas_root()
+            if repo_root and detected_project_root.resolve() == repo_root.resolve():
+                # Repo root detected - treat as standalone mode (don't raise, just ignore)
+                project_root = None
+            else:
+                project_root = detected_project_root
+        # If not found, project_root stays None (standalone mode)
+    else:
+        # Validate provided project_root is not repo root
+        project_root = Path(project_root).resolve()
+        repo_root = _find_quantumvitas_root()
+        if repo_root and project_root == repo_root.resolve():
+            raise ValueError(
+                f"Project root cannot be the repository root. "
+                f"Provided project_root={project_root} is the repo root, which is invalid."
+            )
+    
     working_dir = Path(working_dir)
     working_dir.mkdir(parents=True, exist_ok=True)
     (working_dir / "outdir").mkdir(parents=True, exist_ok=True)

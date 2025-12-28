@@ -39,7 +39,7 @@ def si_dos_project(project_root_path: Path, si_dos_dir: Path) -> Path:
         calculation_id="si_dos",
         steps=steps,
         source_dir=si_dos_dir,
-        pseudo_src=project_root_path / "pseudo",
+        pseudo_src=project_root_path / "resources" / "pseudo",
     )
 
 

@@ -6,8 +6,135 @@ or `PYTHONPATH=src`).
 """
 
 from pathlib import Path
+import os
+import shutil
+import traceback
 
 import pytest
+
+
+def _find_repo_root() -> Path:
+    """Find repository root (directory containing pyproject.toml or .git)."""
+    current = Path(__file__).resolve().parent
+    while current != current.parent:
+        if (current / "pyproject.toml").exists() or (current / ".git").exists():
+            return current
+        current = current.parent
+    raise RuntimeError("Could not find repository root")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def cleanup_repo_pseudo_at_start():
+    """Clean up repo_root/pseudo at session start to avoid leftover confusion."""
+    repo_root = _find_repo_root()
+    repo_pseudo = repo_root / "pseudo"
+    if repo_pseudo.exists():
+        shutil.rmtree(repo_pseudo)
+    yield
+    # Assert at session end that it wasn't recreated
+    if repo_pseudo.exists():
+        pytest.fail(
+            f"BUG: repo_root/pseudo was created during test session at {repo_pseudo}. "
+            f"The mkdir trap should have caught this. Check test output for stack traces."
+        )
+
+
+@pytest.fixture(scope="session", autouse=True)
+def force_test_cwd_to_tmp(tmp_path_factory):
+    """Force CWD to a tmp directory to prevent relative Path('pseudo') from landing in repo root."""
+    original_cwd = os.getcwd()
+    tmp_cwd = tmp_path_factory.mktemp("test_cwd")
+    os.chdir(tmp_cwd)
+    yield
+    os.chdir(original_cwd)
+
+
+@pytest.fixture(scope="function", autouse=True)
+def trap_repo_pseudo_creation():
+    """Intercept mkdir operations to catch creation of repo_root/pseudo."""
+    repo_root = _find_repo_root()
+    repo_pseudo = repo_root / "pseudo"
+    
+    # Store original functions
+    original_path_mkdir = Path.mkdir
+    original_os_mkdir = os.mkdir
+    original_os_makedirs = os.makedirs
+    
+    def check_path(target_path, operation_name):
+        """Check if target_path would create repo_root/pseudo."""
+        try:
+            # Resolve to absolute path (best effort)
+            if isinstance(target_path, Path):
+                resolved = target_path.resolve()
+            else:
+                resolved = Path(target_path).resolve()
+            
+            # Check if it's exactly repo_root/pseudo or inside it
+            if resolved == repo_pseudo.resolve() or repo_pseudo.resolve() in resolved.parents:
+                stack = ''.join(traceback.format_stack())
+                raise RuntimeError(
+                    f"BUG: {operation_name} attempted to create repo_root/pseudo at {target_path} (resolved: {resolved}).\n"
+                    f"Stack trace:\n{stack}"
+                )
+            
+            # Enforce repo write policy: only allow writes to specific directories
+            if resolved.is_relative_to(repo_root.resolve()):
+                allowed_dirs = [
+                    repo_root / "temp",
+                    repo_root / ".pytest_cache",
+                    repo_root / "htmlcov",
+                    repo_root / ".venv",  # Virtual environment
+                    repo_root / "resources" / "pseudo",  # Repo-internal pseudo library (read-only, should exist)
+                ]
+                # Check if it's in an allowed directory
+                is_allowed = any(
+                    resolved.is_relative_to(allowed.resolve()) or resolved == allowed.resolve()
+                    for allowed in allowed_dirs
+                )
+                if not is_allowed:
+                    # Allow if it's a file (not a directory creation)
+                    if not resolved.exists() or resolved.is_file():
+                        return  # Might be creating a file, not a directory
+                    # Otherwise, this is suspicious
+                    stack = ''.join(traceback.format_stack())
+                    raise RuntimeError(
+                        f"BUG: {operation_name} attempted to create directory under repo_root at {target_path} (resolved: {resolved}).\n"
+                        f"Tests should only write to tmp directories. Allowed: temp/, .pytest_cache/, htmlcov/, .venv/, resources/pseudo/\n"
+                        f"Stack trace:\n{stack}"
+                    )
+        except (ValueError, OSError):
+            # If resolve fails (e.g., path doesn't exist yet), try string comparison
+            target_str = str(target_path)
+            if "pseudo" in target_str and str(repo_root) in target_str:
+                stack = ''.join(traceback.format_stack())
+                raise RuntimeError(
+                    f"BUG: {operation_name} attempted to create path containing 'pseudo' under repo_root: {target_path}.\n"
+                    f"Stack trace:\n{stack}"
+                )
+    
+    def guarded_path_mkdir(self, *args, **kwargs):
+        check_path(self, "Path.mkdir")
+        return original_path_mkdir(self, *args, **kwargs)
+    
+    def guarded_os_mkdir(path, *args, **kwargs):
+        check_path(path, "os.mkdir")
+        return original_os_mkdir(path, *args, **kwargs)
+    
+    def guarded_os_makedirs(path, *args, **kwargs):
+        check_path(path, "os.makedirs")
+        return original_os_makedirs(path, *args, **kwargs)
+    
+    # Apply monkeypatch
+    Path.mkdir = guarded_path_mkdir
+    os.mkdir = guarded_os_mkdir
+    os.makedirs = guarded_os_makedirs
+    
+    yield
+    
+    # Restore original functions
+    Path.mkdir = original_path_mkdir
+    os.mkdir = original_os_mkdir
+    os.makedirs = original_os_makedirs
 
 
 @pytest.fixture(scope="session")
