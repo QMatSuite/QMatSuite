@@ -3,6 +3,36 @@ Standardized QE step execution and verification.
 
 This module provides a unified interface for running QE steps and verifying results.
 All tests should use these functions instead of implementing their own execution logic.
+
+TERMINOLOGY CLARIFICATION:
+--------------------------
+This module uses specific terminology to distinguish test fixtures from product runtime directories:
+
+1. fixture_dir (tests only):
+   - Read-only template directory containing input files (.in templates)
+   - Used as source for copying inputs to sandbox
+   - Must never be used as working_dir for run_step()
+   - Example: tests/integration/test_pw_step_specs.py uses fixture_dir = working_dir / "raw"
+
+2. sandbox_dir / execution_dir (tests only):
+   - Writable temporary directory where QE execution happens
+   - Created via create_sandbox_working_dir()
+   - Contains copied inputs, materialized pseudos (sandbox_dir/pseudo/), QE outputs
+   - This is what gets passed as working_dir to run_step()
+
+3. calculation.raw_dir (product only):
+   - Writable runtime I/O directory: project_root/calculations/<calc_id>/raw/
+   - Part of the project structure, used for actual QE execution in product mode
+   - NOT the same as test fixture_dir (which is read-only)
+
+4. working_dir (context-dependent):
+   - In tests: Base test directory (may contain fixture_dir as subdirectory)
+   - In product: Same as calculation.raw_dir (the I/O directory name)
+
+The sandbox pattern ensures:
+- fixture_dir stays read-only (no execution, no pseudo materialization)
+- All QE execution happens in sandbox_dir (temporary, isolated)
+- Tests never execute QE in directories under repo root (except reading fixtures)
 """
 
 from pathlib import Path
@@ -39,6 +69,38 @@ def get_default_working_dir(
         base = base / safe_name
     base.mkdir(parents=True, exist_ok=True)
     return base
+
+
+def create_sandbox_working_dir(
+    base_dir: Path,
+    prefix: str = "sandbox_",
+) -> Path:
+    """
+    Create a temporary sandbox working directory for test execution.
+    
+    Terminology clarification:
+    - fixture_dir: Read-only template directory containing input files (tests only)
+    - sandbox_dir: Writable execution directory where QE runs (tests only)
+    - calculation.raw_dir: Writable runtime I/O directory in product (project/calc/raw)
+    
+    This function creates a sandbox_dir to ensure fixture directories stay read-only
+    and all QE execution happens in a separate temporary directory.
+    
+    Args:
+        base_dir: Base directory for creating sandbox
+        prefix: Prefix for sandbox directory name
+        
+    Returns:
+        Path to created sandbox directory
+    """
+    import tempfile
+    import uuid
+    
+    # Create a unique sandbox directory
+    sandbox_name = f"{prefix}{uuid.uuid4().hex[:8]}"
+    sandbox_dir = base_dir / sandbox_name
+    sandbox_dir.mkdir(parents=True, exist_ok=True)
+    return sandbox_dir
 
 
 def run_and_verify_step(

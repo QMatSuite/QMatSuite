@@ -4983,39 +4983,204 @@ class QVService:
                 if f.is_file() and f.suffix.lower() == ".upf"
             ])
         
-        # Check for SSSP defaults
+        # Get INTERNAL (resources/pseudo) directory
+        from quantumvitas.core.pseudo import get_system_pseudo_dir
+        from quantumvitas.core.pseudo_config import _find_quantumvitas_root, get_sssp_library_path, load_pseudo_config, PseudoConfig
+        internal_pseudo_dir = get_system_pseudo_dir()
+        internal_pseudos: List[str] = []
+        if internal_pseudo_dir and internal_pseudo_dir.exists():
+            internal_pseudos = sorted([
+                f.name for f in internal_pseudo_dir.iterdir()
+                if f.is_file() and f.suffix.lower() == ".upf"
+            ])
+        
+        # Check SSSP libraries
         sssp_defaults: Dict[str, Dict[str, str]] = {}
         sssp_installed = {"precision": False, "efficiency": False}
+        sssp_precision_pseudos: List[str] = []
+        sssp_efficiency_pseudos: List[str] = []
+        
         try:
-            from quantumvitas.core.pseudo_config import get_sssp_default_for_element, is_sssp_installed
-            sssp_installed["precision"] = is_sssp_installed("precision")
-            sssp_installed["efficiency"] = is_sssp_installed("efficiency")
+            pseudo_config = load_pseudo_config()
+            store_dir = Path(pseudo_config.store_dir) if pseudo_config.store_dir else None
             
-            for element in species_list:
-                defaults: Dict[str, str] = {}
-                if sssp_installed["precision"]:
-                    try:
-                        defaults["precision"] = get_sssp_default_for_element(element, "precision")
-                    except Exception:
-                        pass
-                if sssp_installed["efficiency"]:
-                    try:
-                        defaults["efficiency"] = get_sssp_default_for_element(element, "efficiency")
-                    except Exception:
-                        pass
-                if defaults:
-                    sssp_defaults[element] = defaults
+            if store_dir:
+                # Check SSSP precision
+                precision_lib_path = get_sssp_library_path(store_dir, "1.3.0", "precision") / "library"
+                if precision_lib_path.exists():
+                    sssp_installed["precision"] = True
+                    sssp_precision_pseudos = sorted([
+                        f.name for f in precision_lib_path.iterdir()
+                        if f.is_file() and f.suffix.lower() == ".upf"
+                    ])
+                
+                # Check SSSP efficiency
+                efficiency_lib_path = get_sssp_library_path(store_dir, "1.3.0", "efficiency") / "library"
+                if efficiency_lib_path.exists():
+                    sssp_installed["efficiency"] = True
+                    sssp_efficiency_pseudos = sorted([
+                        f.name for f in efficiency_lib_path.iterdir()
+                        if f.is_file() and f.suffix.lower() == ".upf"
+                    ])
+                
+                # Build SSSP defaults from cutoffs.json if available
+                for flavor in ["precision", "efficiency"]:
+                    if sssp_installed[flavor]:
+                        lib_path = get_sssp_library_path(store_dir, "1.3.0", flavor)
+                        cutoffs_path = lib_path / "cutoffs.json"
+                        if cutoffs_path.exists():
+                            try:
+                                import json
+                                cutoffs_data = json.loads(cutoffs_path.read_text())
+                                # SSSP cutoffs.json format: list of {element, filename, ...}
+                                if isinstance(cutoffs_data, list):
+                                    for entry in cutoffs_data:
+                                        if isinstance(entry, dict) and "element" in entry and "filename" in entry:
+                                            elem = str(entry["element"])
+                                            filename = str(entry["filename"])
+                                            if elem in species_list:
+                                                if elem not in sssp_defaults:
+                                                    sssp_defaults[elem] = {}
+                                                sssp_defaults[elem][flavor] = filename
+                            except Exception:
+                                pass
         except Exception:
             pass
         
-        # Build warnings
-        warnings: List[str] = []
+        # Build candidates_by_element: all available pseudos from all sources
+        # Element matching: match files that start with element symbol (case-insensitive)
+        # e.g., "Si" matches "Si.pbe-n-rrkjus_psl.1.0.0.UPF", "si.pbe...", etc.
+        candidates_by_element: Dict[str, List[Dict[str, Any]]] = {}
+        for element in species_list:
+            candidates: List[Dict[str, Any]] = []
+            element_upper = element.upper()
+            element_lower = element.lower()
+            
+            # Helper to check if pseudo matches element
+            def matches_element(pseudo_name: str) -> bool:
+                # Check exact match (case-insensitive)
+                if pseudo_name.upper().startswith(element_upper + '.') or \
+                   pseudo_name.upper().startswith(element_upper + '_'):
+                    return True
+                # Check case variations
+                if pseudo_name.startswith(element + '.') or \
+                   pseudo_name.startswith(element + '_') or \
+                   pseudo_name.startswith(element_upper + '.') or \
+                   pseudo_name.startswith(element_upper + '_') or \
+                   pseudo_name.startswith(element_lower + '.') or \
+                   pseudo_name.startswith(element_lower + '_'):
+                    return True
+                return False
+            
+            # INTERNAL source
+            if internal_pseudo_dir and internal_pseudo_dir.exists():
+                for pseudo in internal_pseudos:
+                    if matches_element(pseudo):
+                        candidates.append({
+                            "filename": pseudo,
+                            "source": "internal",
+                            "path": str(internal_pseudo_dir / pseudo),
+                        })
+            
+            # SSSP Precision
+            for pseudo in sssp_precision_pseudos:
+                if matches_element(pseudo):
+                    candidates.append({
+                        "filename": pseudo,
+                        "source": "sssp_precision",
+                        "path": None,  # Path in store, not exposed
+                    })
+            
+            # SSSP Efficiency
+            for pseudo in sssp_efficiency_pseudos:
+                if matches_element(pseudo):
+                    candidates.append({
+                        "filename": pseudo,
+                        "source": "sssp_efficiency",
+                        "path": None,
+                    })
+            
+            # Project source
+            for pseudo in available_pseudos:
+                if matches_element(pseudo):
+                    candidates.append({
+                        "filename": pseudo,
+                        "source": "project",
+                        "path": str(pseudo_dir / pseudo),
+                    })
+            
+            # Deduplicate by filename (keep first occurrence, prefer internal > sssp > project)
+            seen = set()
+            unique_candidates = []
+            source_priority = {"internal": 0, "sssp_precision": 1, "sssp_efficiency": 2, "project": 3}
+            for cand in sorted(candidates, key=lambda x: (x["filename"], source_priority.get(x["source"], 99))):
+                if cand["filename"] not in seen:
+                    seen.add(cand["filename"])
+                    unique_candidates.append(cand)
+            
+            candidates_by_element[element] = sorted(unique_candidates, key=lambda x: (source_priority.get(x["source"], 99), x["filename"]))
+        
+        # Build resolved_by_element: check if current mapping is resolvable
+        resolved_by_element: Dict[str, Dict[str, Any]] = {}
         for element in species_list:
             pseudo = mapping.get(element, "")
             if not pseudo:
-                warnings.append(f"No pseudopotential set for {element}")
-            elif pseudo not in available_pseudos:
-                warnings.append(f"Pseudopotential {pseudo} for {element} not found in project")
+                resolved_by_element[element] = {
+                    "filename": "",
+                    "source": None,
+                    "resolved": False,
+                }
+            else:
+                # Check if pseudo is resolvable from any source
+                resolved = False
+                source = None
+                
+                # Resolution order: INTERNAL > SSSP Precision > SSSP Efficiency > Project
+                # Check INTERNAL first
+                if internal_pseudo_dir and (internal_pseudo_dir / pseudo).exists():
+                    resolved = True
+                    source = "internal"
+                # Check SSSP Precision
+                elif store_dir and sssp_installed["precision"]:
+                    precision_lib_path = get_sssp_library_path(store_dir, "1.3.0", "precision") / "library"
+                    if (precision_lib_path / pseudo).exists():
+                        resolved = True
+                        source = "sssp_precision"
+                # Check SSSP Efficiency
+                elif store_dir and sssp_installed["efficiency"]:
+                    efficiency_lib_path = get_sssp_library_path(store_dir, "1.3.0", "efficiency") / "library"
+                    if (efficiency_lib_path / pseudo).exists():
+                        resolved = True
+                        source = "sssp_efficiency"
+                # Check Project last
+                elif pseudo in available_pseudos:
+                    resolved = True
+                    source = "project"
+                
+                resolved_by_element[element] = {
+                    "filename": pseudo,
+                    "source": source,
+                    "resolved": resolved,
+                    "in_project": pseudo in available_pseudos,
+                }
+        
+        # Build warnings: only warn if truly unresolved
+        warnings: List[str] = []
+        for element in species_list:
+            resolved_info = resolved_by_element[element]
+            if not resolved_info["resolved"]:
+                pseudo = resolved_info["filename"]
+                if not pseudo:
+                    warnings.append(f"No pseudopotential set for {element}")
+                else:
+                    warnings.append(f"Pseudopotential {pseudo} for {element} not found in any source")
+        
+        # Build installed_sources
+        installed_sources = {
+            "internal": internal_pseudo_dir is not None and internal_pseudo_dir.exists(),
+            "sssp_precision": sssp_installed["precision"],
+            "sssp_efficiency": sssp_installed["efficiency"],
+        }
         
         return {
             "species": species_list,
@@ -5026,6 +5191,9 @@ class QVService:
             "warnings": warnings,
             "sssp_defaults": sssp_defaults if sssp_defaults else None,
             "sssp_installed": sssp_installed,
+            "installed_sources": installed_sources,
+            "candidates_by_element": candidates_by_element,
+            "resolved_by_element": resolved_by_element,
         }
     
     @staticmethod

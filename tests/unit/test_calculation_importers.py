@@ -318,15 +318,18 @@ def test_build_calculation_from_qe_inputs_and_load(tmp_path: Path):
         assert step.meta.id.startswith("01"), f"Step meta.id should start with '01', got: {step.meta.id}"
 
 
-def test_materialize_step_spec_generates_atomic_species_and_pseudos(tmp_path: Path):
+def test_materialize_step_spec_generates_atomic_species(tmp_path: Path):
     """
     Regression test: Verify that materialize_step_spec generates ATOMIC_SPECIES
-    and that pseudos are present in runtime pseudo directory.
+    with correct pseudo filenames from species_overrides.
     
     This test ensures the fix for integration test failures:
     - ATOMIC_SPECIES card must be present in generated input
-    - Pseudos must be in the correct location (working_dir/pseudo for standalone)
-    - Species overrides from original QE input are preserved
+    - Species overrides from original QE input are preserved and applied
+    - Pseudo filenames are correctly set in ATOMIC_SPECIES
+    
+    Note: This test does NOT verify pseudo materialization (that happens at runtime
+    via prepare_input_step/run_step, not at materialize time).
     """
     from quantumvitas.calculation import materialize_step_spec
     from quantumvitas.io import QEInputParser
@@ -349,12 +352,13 @@ def test_materialize_step_spec_generates_atomic_species_and_pseudos(tmp_path: Pa
         reference_structure_by="path",
     )
     
-    # Verify species_overrides were extracted
+    # Verify species_overrides were extracted from original input
     assert step_result.spec.species_overrides is not None
     assert "Si" in step_result.spec.species_overrides
     assert step_result.spec.species_overrides["Si"]["pseudopot"] == "Si.pz-vbc.UPF"
     
     # Materialize step spec (standalone mode, no project_root)
+    # This should generate ATOMIC_SPECIES with pseudo filenames from species_overrides
     output_dir = tmp_path / "raw"
     output_dir.mkdir(parents=True, exist_ok=True)
     
@@ -372,7 +376,7 @@ def test_materialize_step_spec_generates_atomic_species_and_pseudos(tmp_path: Pa
     assert atomic_species.data is not None, "ATOMIC_SPECIES card must have data"
     assert len(atomic_species.data) > 0, "ATOMIC_SPECIES must have at least one entry"
     
-    # Verify Si entry has correct pseudo filename
+    # Verify Si entry has correct pseudo filename from species_overrides
     si_entry = None
     for row in atomic_species.data:
         if row[0] == "Si":
@@ -380,17 +384,11 @@ def test_materialize_step_spec_generates_atomic_species_and_pseudos(tmp_path: Pa
             break
     assert si_entry is not None, "ATOMIC_SPECIES must contain Si entry"
     assert len(si_entry) >= 3, "Si entry must have at least 3 fields (symbol, mass, pseudo)"
-    assert si_entry[2] == "Si.pz-vbc.UPF", f"Expected 'Si.pz-vbc.UPF', got '{si_entry[2]}'"
+    assert si_entry[2] == "Si.pz-vbc.UPF", f"Expected 'Si.pz-vbc.UPF' from species_overrides, got '{si_entry[2]}'"
     
-    # Verify pseudo directory exists (standalone mode uses output_dir/pseudo)
-    # Note: materialize_step_spec doesn't materialize pseudos, but run_step will use output_dir/pseudo
-    pseudo_dir = output_dir / "pseudo"
-    # For this test, we just verify the directory structure is correct
-    # In real execution, ensure_qe_pseudos would populate it
-    
-    # Verify the generated input file exists and is readable
+    # Verify the generated input file exists and contains ATOMIC_SPECIES
     assert generated_input.exists(), f"Generated input file should exist: {generated_input}"
     input_content = generated_input.read_text()
     assert "ATOMIC_SPECIES" in input_content, "Generated input must contain ATOMIC_SPECIES"
-    assert "Si.pz-vbc.UPF" in input_content, "Generated input must contain pseudo filename"
+    assert "Si.pz-vbc.UPF" in input_content, "Generated input must contain pseudo filename from species_overrides"
 

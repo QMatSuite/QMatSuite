@@ -323,6 +323,8 @@ export function CalculationListPanel({
 
 import type { StructureInfo, CalculationDetailResult } from '../../types/qv';
 import { normalizeProjectRoot } from '../../utils/pathUtils';
+import { useQVClient } from '../../hooks/useQVClient';
+import { CommonCardPseudo } from '../common_cards/CommonCardPseudo';
 
 interface CalculationDetailPanelProps {
   calculationSummary: CalculationInfo | null;  // Summary from list_calculations (for high-level fields)
@@ -376,6 +378,53 @@ export function CalculationDetailPanel({
   
   // Delete step state
   const [isDeletingStep, setIsDeletingStep] = useState(false);
+  
+  // Pseudopotential mapping state (calculation-level)
+  const qv = useQVClient();
+  
+  // Local structures state (fallback if not provided via props)
+  const [localStructures, setLocalStructures] = useState<StructureInfo[] | null>(null);
+  const [isLoadingStructures, setIsLoadingStructures] = useState(false);
+  
+  // Use provided structures or local state
+  const effectiveStructures = structures ?? localStructures ?? [];
+  
+  // Fetch structures if not provided and project is loaded
+  useEffect(() => {
+    if (!structures && projectRoot && calculation) {
+      setIsLoadingStructures(true);
+      qv.listStructures(projectRoot)
+        .then(response => {
+          if (response.ok && response.data) {
+            setLocalStructures(response.data.structures);
+          }
+        })
+        .finally(() => setIsLoadingStructures(false));
+    }
+  }, [structures, projectRoot, calculation, qv]);
+  
+  const [pseudoMapping, setPseudoMapping] = useState<{
+    species: string[];
+    mapping: Record<string, string>;
+    pseudo_dir: string;
+    available_pseudos: string[];
+    warnings: string[];
+    sssp_defaults?: Record<string, { precision: string; efficiency: string }>;
+    sssp_installed?: { precision: boolean; efficiency: boolean };
+    installed_sources?: {
+      internal: boolean;
+      sssp_precision: boolean;
+      sssp_efficiency: boolean;
+    };
+    resolved_by_element?: Record<string, {
+      filename: string;
+      source: 'internal' | 'sssp_precision' | 'sssp_efficiency' | 'project' | null;
+      resolved: boolean;
+      in_project?: boolean;
+    }>;
+  } | null>(null);
+  const [_isLoadingPseudoMapping, setIsLoadingPseudoMapping] = useState(false);
+  const [isEditingPseudos, setIsEditingPseudos] = useState(false);
   
   // Handle deleting a step
   const handleDeleteStep = useCallback(async (stepId: string, stepType: string) => {
@@ -660,6 +709,31 @@ export function CalculationDetailPanel({
     }
   }, [calculationForSteps, projectRoot, onCalculationUpdated]);
   
+  // Fetch pseudopotential mapping when calculation changes
+  useEffect(() => {
+    if (!calculationForSteps || !projectRoot) {
+      setPseudoMapping(null);
+      return;
+    }
+    
+    setIsLoadingPseudoMapping(true);
+    qv.getCalculationPseudoMapping(projectRoot, calculationForSteps.slug)
+      .then(response => {
+        if (response.ok && response.data) {
+          setPseudoMapping(response.data);
+        } else {
+          setPseudoMapping(null);
+        }
+      })
+      .catch(err => {
+        console.error('[CalculationDetailPanel] Failed to load pseudo mapping', err);
+        setPseudoMapping(null);
+      })
+      .finally(() => {
+        setIsLoadingPseudoMapping(false);
+      });
+  }, [calculationForSteps?.slug, projectRoot, qv]);
+  
   // CRITICAL: Use calculationDetail.steps if available (canonical from calculation.yaml),
   // otherwise fall back to calculationSummary.steps (may have wrong order, but better than nothing)
   // The steps array from get_calculation_detail is the canonical source of step order and IDs.
@@ -733,7 +807,31 @@ export function CalculationDetailPanel({
             <span className="panel-icon">📊</span>
             {calculation.name}
           </h2>
-          <div className="qv-calc-header-subtitle">Calculation</div>
+          <div className="qv-calc-header-subtitle">
+            Calculation: <code style={{ fontSize: '0.85em', marginLeft: '0.25em' }}>{calculation.id}</code>
+            <button
+              className="copy-id-btn"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(calculation.id);
+                } catch (err) {
+                  console.error('Failed to copy ID', err);
+                }
+              }}
+              title="Copy calculation ID"
+              style={{
+                marginLeft: '0.5em',
+                padding: '0.125em 0.375em',
+                fontSize: '0.75em',
+                background: 'transparent',
+                border: '1px solid var(--border-color)',
+                borderRadius: '3px',
+                cursor: 'pointer',
+              }}
+            >
+              📋
+            </button>
+          </div>
         </div>
         <div className="panel-header-actions">
           {onRunCalculation && (
@@ -767,44 +865,121 @@ export function CalculationDetailPanel({
         <div className="detail-section">
           <h3>Overview</h3>
           <div className="detail-grid">
-            <div className="detail-item">
-              <span className="detail-label">Structure</span>
-              {structures && structures.length > 0 ? (
-                <select
-                  className="structure-selector"
-                  value={
-                    // Match calculation.structure (name) to structure slug for dropdown value
-                    // Backend returns structure name, but dropdown uses slug as value
-                    calculation.structure 
-                      ? (structures.find(s => s.name === calculation.structure)?.slug || '')
-                      : ''
-                  }
-                  onChange={(e) => handleStructureChange(e.target.value)}
-                  disabled={isSaving}
-                >
-                  <option value="">-- None --</option>
-                  {structures.map(s => (
-                    <option key={s.id} value={s.slug}>{s.name} ({s.formula})</option>
-                  ))}
-                </select>
-              ) : (
-                <code className="detail-value">{calculation.structure || 'None'}</code>
+            {/* Combined Structure + Pseudopotentials row */}
+            <div className="detail-item detail-item--full-width" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: '200px' }}>
+                <span className="detail-label">Structure:</span>
+                {isLoadingStructures ? (
+                  <span className="detail-value">Loading...</span>
+                ) : effectiveStructures.length > 0 ? (
+                  <select
+                    className="structure-selector"
+                    value={
+                      calculation.structure 
+                        ? (effectiveStructures.find(s => s.name === calculation.structure)?.slug || '')
+                        : ''
+                    }
+                    onChange={(e) => handleStructureChange(e.target.value)}
+                    disabled={isSaving}
+                    style={{ flex: 1, minWidth: '150px' }}
+                  >
+                    <option value="">-- None --</option>
+                    {effectiveStructures.map(s => (
+                      <option key={s.id} value={s.slug}>{s.name} ({s.formula})</option>
+                    ))}
+                  </select>
+                ) : (
+                  <code className="detail-value">{calculation.structure || 'None'}</code>
+                )}
+              </div>
+              {!isFocusMode && pseudoMapping && pseudoMapping.species.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
+                  <span className="detail-label">Pseudopotentials:</span>
+                  <span className="detail-value" style={{ fontSize: '0.9em' }}>
+                    {pseudoMapping.species.map((species, idx) => {
+                      const pseudo = pseudoMapping.mapping[species] || '—';
+                      const resolvedInfo = pseudoMapping.resolved_by_element?.[species];
+                      const source = resolvedInfo?.source;
+                      const getSourceLabel = (src: string | null | undefined): string => {
+                        if (!src) return '';
+                        switch (src) {
+                          case 'internal': return 'Internal';
+                          case 'sssp_precision': return 'SSSP Precision';
+                          case 'sssp_efficiency': return 'SSSP Efficiency';
+                          case 'project': return 'Project';
+                          default: return '';
+                        }
+                      };
+                      return (
+                        <span key={species}>
+                          {idx > 0 && ' | '}
+                          <strong>{species}</strong>: {pseudo !== '—' ? (
+                            <>
+                              {pseudo}
+                              {source && (
+                                <span className="pseudo-source-badge pseudo-source-badge--compact" style={{ marginLeft: '0.25em' }}>
+                                  {getSourceLabel(source)}
+                                </span>
+                              )}
+                            </>
+                          ) : '—'}
+                        </span>
+                      );
+                    })}
+                  </span>
+                  <button
+                    className="section-action-btn"
+                    onClick={() => setIsEditingPseudos(true)}
+                    title="Edit pseudopotential mappings"
+                    style={{
+                      marginLeft: 'auto',
+                      padding: '0.25em 0.5em',
+                      fontSize: '0.85em',
+                    }}
+                  >
+                    ✏️ Edit
+                  </button>
+                </div>
               )}
             </div>
-            <div className="detail-item">
-              <span className="detail-label">Mode</span>
-              <span className={`detail-value mode-badge mode-badge--${calculation.mode}`}>
-                {calculation.mode}
-              </span>
-            </div>
-            <div className="detail-item">
-              <span className="detail-label">Steps</span>
-              <span className="detail-value">{calculation.n_steps}</span>
-            </div>
-            <div className="detail-item">
-              <span className="detail-label">ID</span>
-              <code className="detail-value detail-value--id">{calculation.id}</code>
-            </div>
+            {/* Compact pseudo summary in collapsed mode (when step is selected) */}
+            {isFocusMode && pseudoMapping && pseudoMapping.species.length > 0 && (
+              <div className="detail-item detail-item--full-width">
+                <span className="detail-label">Pseudopotentials</span>
+                <span className="detail-value">
+                  {pseudoMapping.species.map((species, idx) => {
+                    const pseudo = pseudoMapping.mapping[species] || '—';
+                    const resolvedInfo = pseudoMapping.resolved_by_element?.[species];
+                    const source = resolvedInfo?.source;
+                    const getSourceLabel = (src: string | null | undefined): string => {
+                      if (!src) return '';
+                      switch (src) {
+                        case 'internal': return 'Internal';
+                        case 'sssp_precision': return 'SSSP Precision';
+                        case 'sssp_efficiency': return 'SSSP Efficiency';
+                        case 'project': return 'Project';
+                        default: return '';
+                      }
+                    };
+                    return (
+                      <span key={species}>
+                        {idx > 0 && ' | '}
+                        <strong>{species}</strong>: {pseudo !== '—' ? (
+                          <>
+                            {pseudo}
+                            {source && (
+                              <span className="pseudo-source-badge pseudo-source-badge--compact">
+                                {getSourceLabel(source)}
+                              </span>
+                            )}
+                          </>
+                        ) : '—'}
+                      </span>
+                    );
+                  })}
+                </span>
+              </div>
+            )}
           </div>
         </div>
         
@@ -1040,6 +1215,127 @@ export function CalculationDetailPanel({
               </div>
             )}
       </div>
+      
+      {/* Edit Pseudopotentials Modal */}
+      {isEditingPseudos && pseudoMapping && (
+        <div className="pseudo-edit-modal-overlay" onClick={() => setIsEditingPseudos(false)}>
+          <div className="pseudo-edit-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="pseudo-edit-modal-header">
+              <h3>Edit Pseudopotentials</h3>
+              <button
+                className="pseudo-edit-modal-close"
+                onClick={() => setIsEditingPseudos(false)}
+                title="Close"
+              >
+                ×
+              </button>
+            </div>
+            <div className="pseudo-edit-modal-content">
+              <CommonCardPseudo
+                mapping={pseudoMapping}
+                isEditing={true}
+                onUpdate={async (mapping, _libraryPreference) => {
+                  if (!calculationForSteps || !projectRoot) return;
+                  
+                  // Convert simple mapping to species_map format
+                  const speciesMap: Record<string, { pseudopot?: string; mass?: number }> = {};
+                  for (const [element, pseudo] of Object.entries(mapping)) {
+                    speciesMap[element] = { pseudopot: pseudo };
+                  }
+                  
+                  const response = await qv.updateCalculationSpeciesMap(
+                    projectRoot,
+                    calculationForSteps.slug,
+                    speciesMap
+                  );
+                  
+                  if (response.ok && response.data) {
+                    // Refresh pseudo mapping
+                    const mappingResponse = await qv.getCalculationPseudoMapping(
+                      projectRoot,
+                      calculationForSteps.slug
+                    );
+                    if (mappingResponse.ok && mappingResponse.data) {
+                      setPseudoMapping(mappingResponse.data);
+                    }
+                    onCalculationUpdated?.();
+                    setIsEditingPseudos(false);
+                  } else {
+                    setError(response.error?.message || 'Failed to update pseudopotential mapping');
+                  }
+                }}
+                onImportFiles={async (files) => {
+                  if (!projectRoot) return;
+                  
+                  const filePaths: string[] = [];
+                  for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const filePath = (file as unknown as { path: string }).path;
+                    if (filePath) {
+                      filePaths.push(filePath);
+                    }
+                  }
+                  
+                  if (filePaths.length === 0) {
+                    setError('No valid file paths found');
+                    return;
+                  }
+                  
+                  const response = await qv.importPseudoFiles(projectRoot, filePaths);
+                  if (response.ok && response.data) {
+                    if (response.data.errors && response.data.errors.length > 0) {
+                      setError(response.data.errors.join(', '));
+                    }
+                  } else {
+                    setError(response.error?.message || 'Failed to import pseudopotential files');
+                  }
+                }}
+                onRefresh={async () => {
+                  if (!projectRoot || !calculationForSteps) return;
+                  const mappingResponse = await qv.getCalculationPseudoMapping(
+                    projectRoot,
+                    calculationForSteps.slug
+                  );
+                  if (mappingResponse.ok && mappingResponse.data) {
+                    setPseudoMapping(mappingResponse.data);
+                  }
+                }}
+                onSearchLegacy={async (element: string) => {
+                  if (!projectRoot) {
+                    return { candidates: [], errors: ['No project root'] };
+                  }
+                  const response = await qv.searchLegacyPseudos(element, projectRoot);
+                  if (response.ok && response.data) {
+                    return response.data;
+                  }
+                  return { candidates: [], errors: [response.error?.message || 'Search failed'] };
+                }}
+                onDownloadByFilename={async (filename: string) => {
+                  if (!projectRoot) {
+                    return { filename: '', renamed: false, skipped: false, errors: ['No project root'] };
+                  }
+                  const response = await qv.downloadPseudoByFilename(projectRoot, filename);
+                  if (response.ok && response.data) {
+                    return response.data;
+                  }
+                  return { filename: '', renamed: false, skipped: false, errors: [response.error?.message || 'Download failed'] };
+                }}
+                onDownloadCandidate={async (candidate) => {
+                  if (!projectRoot) {
+                    return { filename: '', renamed: false, skipped: false, errors: ['No project root'] };
+                  }
+                  const response = await qv.downloadPseudoCandidate(projectRoot, candidate);
+                  if (response.ok && response.data) {
+                    return response.data;
+                  }
+                  return { filename: '', renamed: false, skipped: false, errors: [response.error?.message || 'Download failed'] };
+                }}
+                projectRoot={projectRoot}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

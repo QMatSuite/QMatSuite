@@ -13,7 +13,6 @@ import { useQEParameterMetadata, type QEParameterMeta } from '../../hooks/useQEP
 import { ActiveParametersPanel } from '../step_parameters/ActiveParametersPanel';
 import { AddParameterPalette } from '../step_parameters/AddParameterPalette';
 import { CommonCardKPoints, type CommonCardKPointsRef } from '../common_cards/CommonCardKPoints';
-import { CommonCardPseudo } from '../common_cards/CommonCardPseudo';
 import './StepDetailPanel.css';
 
 interface StepDetailPanelProps {
@@ -203,7 +202,7 @@ export function StepDetailPanel({
   const [kPointsDirty, setKPointsDirty] = useState(false);
   const [kPointsApplying, setKPointsApplying] = useState(false);
   
-  // Pseudopotential mapping state
+  // Pseudopotential mapping state (read-only, from calculation-level)
   const [pseudoMapping, setPseudoMapping] = useState<{
     species: string[];
     mapping: Record<string, string>;
@@ -386,7 +385,7 @@ export function StepDetailPanel({
                 setIsLoadingCommonCards(false);
               });
             
-            // Load pseudopotential mapping (calculation-level, authoritative source)
+            // Load pseudopotential mapping (calculation-level, read-only reference)
             setIsLoadingPseudoMapping(true);
             qv.getCalculationPseudoMapping(projectRoot, calculationSelector)
               .then(mappingResponse => {
@@ -1320,11 +1319,26 @@ export function StepDetailPanel({
           )}
         </div>
         
-        {/* Pseudopotentials Section */}
+        {/* Pseudopotentials Section - Read-only reference */}
         {module === 'pw' && stepDetail && (
           <div className="detail-section">
             <div className="section-header">
               <h3>Pseudopotentials</h3>
+              <div className="section-actions">
+                <button
+                  className="section-action-btn"
+                  onClick={() => {
+                    // Navigate back to calculation overview
+                    // This will be handled by parent component
+                    if (onClose) {
+                      onClose();
+                    }
+                  }}
+                  title="Edit pseudopotentials in Calculation Overview"
+                >
+                  Edit in Calculation Overview →
+                </button>
+              </div>
             </div>
             
             {isLoadingPseudoMapping ? (
@@ -1332,112 +1346,39 @@ export function StepDetailPanel({
                 <p>Loading pseudopotential mapping...</p>
               </div>
             ) : pseudoMapping ? (
-              <CommonCardPseudo
-                mapping={pseudoMapping}
-                isEditing={isEditing}
-                onUpdate={async (mapping, _libraryPreference) => {
-                  // Now updates calculation-level species_map (authoritative source)
-                  if (!projectRoot || !calculationSelector) return;
-                  
-                  // Convert simple mapping (element -> pseudo) to species_map format
-                  // species_map has format: { element: { pseudopot: string, mass?: number } }
-                  const speciesMap: Record<string, { pseudopot?: string; mass?: number }> = {};
-                  for (const [element, pseudo] of Object.entries(mapping)) {
-                    speciesMap[element] = { pseudopot: pseudo };
-                  }
-                  
-                  const response = await qv.updateCalculationSpeciesMap(
-                    projectRoot,
-                    calculationSelector,
-                    speciesMap
-                  );
-                  
-                  if (response.ok && response.data) {
-                    // Refresh pseudo mapping from calc-level
-                    const mappingResponse = await qv.getCalculationPseudoMapping(
-                      projectRoot,
-                      calculationSelector
-                    );
-                    if (mappingResponse.ok && mappingResponse.data) {
-                      setPseudoMapping(mappingResponse.data);
-                    }
-                    onParametersUpdated?.();
-                  } else {
-                    setError(response.error?.message || 'Failed to update pseudopotential mapping');
-                  }
-                }}
-                onImportFiles={async (files) => {
-                  if (!projectRoot) return;
-                  
-                  // Convert FileList to paths via temporary upload
-                  // For now, we use the file path directly (Electron environment)
-                  const filePaths: string[] = [];
-                  for (let i = 0; i < files.length; i++) {
-                    const file = files[i];
-                    // In Electron, File objects have a path property
-                    const filePath = (file as unknown as { path: string }).path;
-                    if (filePath) {
-                      filePaths.push(filePath);
-                    }
-                  }
-                  
-                  if (filePaths.length === 0) {
-                    setError('No valid file paths found');
-                    return;
-                  }
-                  
-                  const response = await qv.importPseudoFiles(projectRoot, filePaths);
-                  if (response.ok && response.data) {
-                    if (response.data.errors && response.data.errors.length > 0) {
-                      setError(response.data.errors.join(', '));
-                    }
-                  } else {
-                    setError(response.error?.message || 'Failed to import pseudopotential files');
-                  }
-                }}
-                onRefresh={async () => {
-                  // Refresh calc-level pseudo mapping
-                  if (!projectRoot || !calculationSelector) return;
-                  const mappingResponse = await qv.getCalculationPseudoMapping(
-                    projectRoot,
-                    calculationSelector
-                  );
-                  if (mappingResponse.ok && mappingResponse.data) {
-                    setPseudoMapping(mappingResponse.data);
-                  }
-                }}
-                onSearchLegacy={async (element: string) => {
-                  if (!projectRoot) {
-                    return { candidates: [], errors: ['No project root'] };
-                  }
-                  const response = await qv.searchLegacyPseudos(element, projectRoot);
-                  if (response.ok && response.data) {
-                    return response.data;
-                  }
-                  return { candidates: [], errors: [response.error?.message || 'Search failed'] };
-                }}
-                onDownloadByFilename={async (filename: string) => {
-                  if (!projectRoot) {
-                    return { filename: '', renamed: false, skipped: false, errors: ['No project root'] };
-                  }
-                  const response = await qv.downloadPseudoByFilename(projectRoot, filename);
-                  if (response.ok && response.data) {
-                    return response.data;
-                  }
-                  return { filename: '', renamed: false, skipped: false, errors: [response.error?.message || 'Download failed'] };
-                }}
-                onDownloadCandidate={async (candidate) => {
-                  if (!projectRoot) {
-                    return { filename: '', renamed: false, skipped: false, errors: ['No project root'] };
-                  }
-                  const response = await qv.downloadPseudoCandidate(projectRoot, candidate);
-                  if (response.ok && response.data) {
-                    return response.data;
-                  }
-                  return { filename: '', renamed: false, skipped: false, errors: [response.error?.message || 'Download failed'] };
-                }}
-                projectRoot={projectRoot || undefined}
-              />
+              <div className="pseudo-reference">
+                {pseudoMapping.warnings && pseudoMapping.warnings.length > 0 && (
+                  <div className="pseudo-warnings">
+                    {pseudoMapping.warnings.map((w, i) => (
+                      <div key={i} className="pseudo-warning">
+                        ⚠️ {w}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {pseudoMapping.species.length > 0 ? (
+                  <div className="pseudo-reference-list">
+                    {pseudoMapping.species.map((species) => {
+                      const pseudo = pseudoMapping.mapping[species] || '—';
+                      return (
+                        <div key={species} className="pseudo-reference-item">
+                          <strong>{species}</strong>: <code className="pseudo-filename">{pseudo}</code>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="pseudo-empty">No species found in structure.</p>
+                )}
+                
+                <div className="pseudo-info">
+                  <small>
+                    Pseudopotentials are managed at the calculation level and shared across all steps.
+                    Click "Edit in Calculation Overview" to modify mappings.
+                  </small>
+                </div>
+              </div>
             ) : (
               <p className="common-cards-empty">No pseudopotential mapping available</p>
             )}

@@ -37,8 +37,13 @@ workdir/
   <stem>.in           # Generated normalized input (used for execution)
   <stem>.out          # QE output
   outdir/             # QE outdir
-  pseudo/             # Pseudopotentials (if needed)
+  pseudo/             # Pseudopotentials (materialized at runtime)
 ```
+
+**Pseudo Directory Location:**
+- In standalone mode, pseudopotentials are materialized to `workdir/pseudo/`
+- The `ESPRESSO_PSEUDO` environment variable is set to `workdir/pseudo/` during execution
+- Pseudos are resolved from system libraries (`resources/pseudo/` or SSSP store) and copied to `workdir/pseudo/` before QE execution
 
 ## Implementation
 

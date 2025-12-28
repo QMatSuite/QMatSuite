@@ -41,6 +41,15 @@ export interface SSSPLibraryInfo {
   has_manifest: boolean;
 }
 
+export interface SeedArchiveInfo {
+  filename: string;
+  path: string;
+  size_bytes: number;
+  sha256: string | null;
+  version: string | null;
+  flavor: string | null;
+}
+
 export interface DownloadResult {
   success: boolean;
   messages: string[];
@@ -48,11 +57,14 @@ export interface DownloadResult {
   warnings: string[];
 }
 
+export type DownloadStage = 'idle' | 'downloading' | 'verifying' | 'extracting' | 'installed' | 'error';
+
 export interface UsePseudoConfigResult {
   // State
   config: PseudoConfig | null;
   isLoading: boolean;
   isDownloading: boolean;
+  downloadStage: DownloadStage;
   error: string | null;
   
   // Validation
@@ -62,6 +74,9 @@ export interface UsePseudoConfigResult {
   // Installed libraries
   installedLibraries: SSSPLibraryInfo[];
   
+  // Seed archives
+  seedArchives: SeedArchiveInfo[];
+  
   // Actions
   loadConfig: () => Promise<void>;
   updateConfig: (updates: Partial<Pick<PseudoConfig, 'store_dir' | 'seed_dir' | 'allow_download'>>) => Promise<void>;
@@ -70,20 +85,23 @@ export interface UsePseudoConfigResult {
   initDirs: () => Promise<{ success: boolean; messages: string[]; errors: string[] }>;
   installFromSeed: (version?: string, flavor?: string) => Promise<{ success: boolean; messages: string[] }>;
   listInstalledLibraries: () => Promise<void>;
+  listSeedArchives: () => Promise<void>;
   
   // Download actions
-  downloadLibrary: (flavor: 'efficiency' | 'precision', force?: boolean) => Promise<DownloadResult>;
-  downloadAll: (force?: boolean) => Promise<DownloadResult>;
+  downloadLibrary: (flavor: 'efficiency' | 'precision', enableIfDisabled?: boolean) => Promise<DownloadResult>;
+  downloadAll: (enableIfDisabled?: boolean) => Promise<DownloadResult>;
 }
 
 export function usePseudoConfig(): UsePseudoConfigResult {
   const [config, setConfig] = useState<PseudoConfig | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadStage, setDownloadStage] = useState<DownloadStage>('idle');
   const [error, setError] = useState<string | null>(null);
   const [validationResult, setValidationResult] = useState<PseudoValidationResult | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [installedLibraries, setInstalledLibraries] = useState<SSSPLibraryInfo[]>([]);
+  const [seedArchives, setSeedArchives] = useState<SeedArchiveInfo[]>([]);
   
   // Track if we've loaded initially
   const hasLoadedRef = useRef(false);
@@ -248,9 +266,22 @@ export function usePseudoConfig(): UsePseudoConfigResult {
     }
   }, []);
   
+  const listSeedArchives = useCallback(async () => {
+    if (!window.qv) return;
+    
+    try {
+      const response = await window.qv.request<QVResult<'list_seed_archives'>>('list_seed_archives', {});
+      if (response.ok && response.data) {
+        setSeedArchives(response.data.archives || []);
+      }
+    } catch (e) {
+      console.error('Failed to list seed archives:', e);
+    }
+  }, []);
+  
   const downloadLibrary = useCallback(async (
     flavor: 'efficiency' | 'precision',
-    force: boolean = false
+    enableIfDisabled: boolean = false
   ): Promise<DownloadResult> => {
     if (!window.qv) return { success: false, messages: [], errors: ['No connection'], warnings: [] };
     
@@ -266,18 +297,48 @@ export function usePseudoConfig(): UsePseudoConfigResult {
     
     downloadInFlightRef.current = true;
     setIsDownloading(true);
+    setDownloadStage('downloading');
     setError(null);
     
     try {
+      // If enableIfDisabled is true and downloads are disabled, enable them first
+      if (enableIfDisabled && config && !config.allow_download) {
+        await updateConfig({ allow_download: true });
+      }
+      
       const response = await window.qv.request<QVResult<'download_sssp_library'>>(
         'download_sssp_library',
-        { flavor, force }
+        { flavor, force: enableIfDisabled }
       );
+      
+      // Track progress stages from messages
       if (response.ok && response.data) {
-        // Update installed libraries from response
-        if (response.data.installed_libraries) {
-          setInstalledLibraries(response.data.installed_libraries);
+        const messages = response.data.messages || [];
+        const allMessages = messages.join(' ').toLowerCase();
+        
+        // Check for extraction stage
+        if (allMessages.includes('extract') || allMessages.includes('extracted')) {
+          setDownloadStage('extracting');
         }
+        // Check for verification stage (after download, before extract)
+        else if (allMessages.includes('verif') || allMessages.includes('verified') || allMessages.includes('sha256')) {
+          setDownloadStage('verifying');
+        }
+        // Check for download stage
+        else if (allMessages.includes('download')) {
+          setDownloadStage('downloading');
+        }
+        
+        if (response.data.success) {
+          setDownloadStage('installed');
+          // Update installed libraries from response
+          if (response.data.installed_libraries) {
+            setInstalledLibraries(response.data.installed_libraries);
+          }
+        } else if (response.data.errors && response.data.errors.length > 0) {
+          setDownloadStage('error');
+        }
+        
         return {
           success: response.data.success,
           messages: response.data.messages,
@@ -285,6 +346,7 @@ export function usePseudoConfig(): UsePseudoConfigResult {
           warnings: response.data.warnings,
         };
       } else {
+        setDownloadStage('error');
         return {
           success: false,
           messages: [],
@@ -293,6 +355,7 @@ export function usePseudoConfig(): UsePseudoConfigResult {
         };
       }
     } catch (e) {
+      setDownloadStage('error');
       return {
         success: false,
         messages: [],
@@ -302,11 +365,20 @@ export function usePseudoConfig(): UsePseudoConfigResult {
     } finally {
       downloadInFlightRef.current = false;
       setIsDownloading(false);
+      // Reset stage after a delay to show final state
+      setTimeout(() => {
+        setDownloadStage((current) => {
+          if (current === 'installed') {
+            return 'idle';
+          }
+          return current;
+        });
+      }, 2000);
     }
-  }, []);
+  }, [config, updateConfig]);
   
   const downloadAll = useCallback(async (
-    force: boolean = false
+    enableIfDisabled: boolean = false
   ): Promise<DownloadResult> => {
     if (!window.qv) return { success: false, messages: [], errors: ['No connection'], warnings: [] };
     
@@ -322,18 +394,48 @@ export function usePseudoConfig(): UsePseudoConfigResult {
     
     downloadInFlightRef.current = true;
     setIsDownloading(true);
+    setDownloadStage('downloading');
     setError(null);
     
     try {
+      // If enableIfDisabled is true and downloads are disabled, enable them first
+      if (enableIfDisabled && config && !config.allow_download) {
+        await updateConfig({ allow_download: true });
+      }
+      
       const response = await window.qv.request<QVResult<'download_all_sssp'>>(
         'download_all_sssp',
-        { force }
+        { force: enableIfDisabled }
       );
+      
+      // Track progress stages from messages
       if (response.ok && response.data) {
-        // Update installed libraries from response
-        if (response.data.installed_libraries) {
-          setInstalledLibraries(response.data.installed_libraries);
+        const messages = response.data.messages || [];
+        const allMessages = messages.join(' ').toLowerCase();
+        
+        // Check for extraction stage
+        if (allMessages.includes('extract') || allMessages.includes('extracted')) {
+          setDownloadStage('extracting');
         }
+        // Check for verification stage (after download, before extract)
+        else if (allMessages.includes('verif') || allMessages.includes('verified') || allMessages.includes('sha256')) {
+          setDownloadStage('verifying');
+        }
+        // Check for download stage
+        else if (allMessages.includes('download')) {
+          setDownloadStage('downloading');
+        }
+        
+        if (response.data.success) {
+          setDownloadStage('installed');
+          // Update installed libraries from response
+          if (response.data.installed_libraries) {
+            setInstalledLibraries(response.data.installed_libraries);
+          }
+        } else if (response.data.failed && response.data.failed.length > 0) {
+          setDownloadStage('error');
+        }
+        
         return {
           success: response.data.success,
           messages: response.data.messages,
@@ -341,6 +443,7 @@ export function usePseudoConfig(): UsePseudoConfigResult {
           warnings: [],
         };
       } else {
+        setDownloadStage('error');
         return {
           success: false,
           messages: [],
@@ -349,6 +452,7 @@ export function usePseudoConfig(): UsePseudoConfigResult {
         };
       }
     } catch (e) {
+      setDownloadStage('error');
       return {
         success: false,
         messages: [],
@@ -358,8 +462,17 @@ export function usePseudoConfig(): UsePseudoConfigResult {
     } finally {
       downloadInFlightRef.current = false;
       setIsDownloading(false);
+      // Reset stage after a delay to show final state
+      setTimeout(() => {
+        setDownloadStage((current) => {
+          if (current === 'installed') {
+            return 'idle';
+          }
+          return current;
+        });
+      }, 2000);
     }
-  }, []);
+  }, [config, updateConfig]);
   
   // Load config on mount
   useEffect(() => {
@@ -373,10 +486,12 @@ export function usePseudoConfig(): UsePseudoConfigResult {
     config,
     isLoading,
     isDownloading,
+    downloadStage,
     error,
     validationResult,
     isValidating,
     installedLibraries,
+    seedArchives,
     loadConfig,
     updateConfig,
     resetToDefaults,
@@ -384,6 +499,7 @@ export function usePseudoConfig(): UsePseudoConfigResult {
     initDirs,
     installFromSeed,
     listInstalledLibraries,
+    listSeedArchives,
     downloadLibrary,
     downloadAll,
   };
