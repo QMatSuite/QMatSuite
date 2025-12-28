@@ -449,9 +449,9 @@ def require_project_root(start: Optional[Path] = None, *, stop_at: Optional[Path
     """
     result = find_project_root(start, stop_at=stop_at, max_levels=max_levels)
     if result is None:
-        raise ResourceNotFoundError(
-            "No project.qv.yml found. Run inside a project or specify --project."
-        )
+    raise ResourceNotFoundError(
+        "No project.qv.yml found. Run inside a project or specify --project."
+    )
     
     # Validate that project root is not repo root
     from quantumvitas.core.pseudo_config import _find_quantumvitas_root
