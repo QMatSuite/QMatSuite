@@ -232,6 +232,9 @@ class QVDaemon:
             "download_all_sssp": self._handle_download_all_sssp,
             "resolve_project_pseudo_provenance": self._handle_resolve_project_pseudo_provenance,
             "import_seed_archives": self._handle_import_seed_archives,
+            "list_pseudo_archives_status": self._handle_list_pseudo_archives_status,
+            "install_pseudo_archive": self._handle_install_pseudo_archive,
+            "analyze_project_pseudo_effects": self._handle_analyze_project_pseudo_effects,
             
             # Generic library manager RPCs
             "list_libraries": self._handle_list_libraries,
@@ -292,6 +295,8 @@ class QVDaemon:
             "change_calculation_structure": self._handle_change_calculation_structure,
             "get_calculation_pseudo_mapping": self._handle_get_calculation_pseudo_mapping,
             "update_calculation_species_map": self._handle_update_calculation_species_map,
+            "get_pseudo_options_for_calculation": self._handle_get_pseudo_options_for_calculation,
+            "materialize_pseudo_file": self._handle_materialize_pseudo_file,
             "delete_step": self._handle_delete_step,
             
             # Pre-flight checks
@@ -1229,6 +1234,156 @@ class QVDaemon:
             str(pseudo_path),
             project_root=project_root_str,
         )
+    
+    def _handle_list_pseudo_archives_status(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        List all pseudopotential archives from vendored manifest with install status.
+        
+        Payload: (none required)
+        
+        Returns:
+            Dict with:
+            - archives: List[ArchiveStatus dict] - All archives with install status
+            - grouped_by_library: Dict[str, List[ArchiveStatus dict]] - Grouped by library_name
+        """
+        from quantumvitas.core.pseudo_installs import (
+            load_manifest_archives,
+            check_archives_status,
+        )
+        from quantumvitas.core.pseudo_config import load_pseudo_config
+        
+        try:
+            config = load_pseudo_config()
+            archives = load_manifest_archives()
+            archives = check_archives_status(archives=archives, config=config)
+            
+            # Group by library_name + library_version
+            grouped: Dict[str, List[Dict[str, Any]]] = {}
+            for archive in archives:
+                key = f"{archive.library_name} {archive.library_version}"
+                if key not in grouped:
+                    grouped[key] = []
+                grouped[key].append(archive.to_dict())
+            
+            return {
+                "archives": [a.to_dict() for a in archives],
+                "grouped_by_library": grouped,
+            }
+        except Exception as e:
+            return {
+                "archives": [],
+                "grouped_by_library": {},
+                "error": str(e),
+            }
+    
+    def _handle_install_pseudo_archive(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Install a pseudopotential archive by asset name.
+        
+        Payload:
+            asset_name: str - Archive filename (e.g., "SSSP_1.3.0_PBE_efficiency.tar.gz")
+            force: Optional[bool] - Force re-download even if installed (default: False)
+        
+        Returns:
+            Dict with:
+            - success: bool
+            - messages: List[str]
+            - errors: List[str]
+            - archive_status: Optional[ArchiveStatus dict] - Updated status after install
+        """
+        from quantumvitas.core.pseudo_installs import (
+            load_manifest_archives,
+            install_archive,
+            check_archives_status,
+        )
+        from quantumvitas.core.pseudo_config import load_pseudo_config
+        
+        asset_name = payload.get("asset_name")
+        if not asset_name:
+            return {
+                "success": False,
+                "messages": [],
+                "errors": ["asset_name is required"],
+                "archive_status": None,
+            }
+        
+        force = payload.get("force", False)
+        
+        try:
+            config = load_pseudo_config()
+            
+            # Check if downloads are allowed
+            if not config.allow_download and not force:
+                return {
+                    "success": False,
+                    "messages": [],
+                    "errors": ["Network downloads not allowed. Enable 'Allow Network Downloads' in Settings."],
+                    "archive_status": None,
+                }
+            
+            # Find archive in manifest
+            archives = load_manifest_archives()
+            archive = None
+            for arch in archives:
+                if arch.asset_name == asset_name:
+                    archive = arch
+                    break
+            
+            if not archive:
+                return {
+                    "success": False,
+                    "messages": [],
+                    "errors": [f"Archive not found in manifest: {asset_name}"],
+                    "archive_status": None,
+                }
+            
+            # Check if already installed (unless force)
+            if not force:
+                from quantumvitas.core.pseudo_installs import is_archive_installed
+                if is_archive_installed(asset_name, archive.sha256, config=config):
+                    # Return success with current status
+                    archives_updated = check_archives_status(archives=[archive], config=config)
+                    return {
+                        "success": True,
+                        "messages": [f"Archive already installed: {asset_name}"],
+                        "errors": [],
+                        "archive_status": archives_updated[0].to_dict() if archives_updated else None,
+                    }
+            
+            # Install archive
+            if not archive.upstream_url:
+                return {
+                    "success": False,
+                    "messages": [],
+                    "errors": [f"No upstream URL for archive: {asset_name}"],
+                    "archive_status": None,
+                }
+            
+            result = install_archive(
+                asset_url=archive.upstream_url,
+                asset_name=archive.asset_name,
+                expected_sha256=archive.sha256,
+                expected_size=archive.size_bytes,
+                config=config,
+            )
+            
+            # Get updated status
+            archives_updated = check_archives_status(archives=[archive], config=config)
+            archive_status = archives_updated[0].to_dict() if archives_updated else None
+            
+            return {
+                "success": result["success"],
+                "messages": result.get("messages", []),
+                "errors": result.get("errors", []),
+                "archive_status": archive_status,
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "messages": [],
+                "errors": [f"Installation failed: {e}"],
+                "archive_status": None,
+            }
     
     def _handle_set_log_level(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -3383,6 +3538,145 @@ class QVDaemon:
         )
         
         return result
+    
+    def _handle_analyze_project_pseudo_effects(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Analyze pseudo preparation effects (read-only, safe for UI).
+        
+        Payload:
+            project_root: str - Path to project root
+            selections: list[dict] - List of pseudo selections (element, requested_basename, etc.)
+        
+        Returns:
+            Dict with actions, warnings, errors (no mutations performed)
+        """
+        from quantumvitas.core.pseudo_runtime import (
+            analyze_project_pseudo_effects,
+            PseudoSelection,
+        )
+        from pathlib import Path
+        
+        project_root = self._require_path(payload, "project_root")
+        selections_data = payload.get("selections", [])
+        
+        selections: List[PseudoSelection] = []
+        for sel_data in selections_data:
+            selections.append(PseudoSelection(
+                element=sel_data["element"],
+                requested_basename=sel_data["requested_basename"],
+                requested_sha256=sel_data.get("requested_sha256"),
+                requested_sha_token=sel_data.get("requested_sha_token"),
+                source_kind=sel_data.get("source_kind", "project"),
+                source_path=Path(sel_data["source_path"]) if sel_data.get("source_path") else None,
+            ))
+        
+        report = analyze_project_pseudo_effects(project_root, selections)
+        
+        return {
+            "actions": [
+                {
+                    "action": a.action,
+                    "element": a.element,
+                    "detail": a.detail,
+                    "source_path": str(a.source_path) if a.source_path else None,
+                    "dest_path": str(a.dest_path) if a.dest_path else None,
+                    "renamed_from": str(a.renamed_from) if a.renamed_from else None,
+                    "renamed_to": str(a.renamed_to) if a.renamed_to else None,
+                }
+                for a in report.actions
+            ],
+            "warnings": report.warnings,
+            "errors": report.errors,
+        }
+    
+    def _handle_materialize_pseudo_file(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Materialize a pseudo file from sha256 selection to actual file path.
+        
+        Payload:
+            project_root: str - Path to project root
+            element: str - Element symbol
+            sha256: str - SHA256 hash of the pseudo file
+            preferred_basename: Optional[str] - Preferred basename
+            
+        Returns:
+            Dict with success, file_path, source, error, needs_install, archive_asset
+        """
+        from quantumvitas.core.pseudo_options import materialize_pseudo_file
+        from pathlib import Path
+        
+        project_root = self._require_path(payload, "project_root")
+        element = self._require_str(payload, "element")
+        sha256 = self._require_str(payload, "sha256")
+        preferred_basename = payload.get("preferred_basename")
+        
+        return materialize_pseudo_file(
+            project_root=project_root,
+            element=element,
+            sha256=sha256,
+            preferred_basename=preferred_basename,
+        )
+    
+    def _handle_get_pseudo_options_for_calculation(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get pseudo options for a calculation (derives elements from structure).
+        
+        Payload:
+            project_root: str - Path to project root
+            calculation: str - Calculation selector
+            
+        Returns:
+            Dict with:
+            - options_by_element: Dict[str, List[PseudoOption dict]]
+        """
+        from quantumvitas.api import QVService
+        from quantumvitas.core.resolution import resolve_structure
+        from quantumvitas.io import read_structure
+        
+        project_root = self._require_path(payload, "project_root")
+        calculation = self._require_str(payload, "calculation")
+        
+        # Resolve calculation and get structure
+        self._resolve_calculation_with_fallback(project_root, calculation)
+        cache = self.state.get_cache(project_root)
+        
+        calc_detail = QVService.get_calculation_detail(
+            project_root=project_root,
+            calculation_selector=calculation,
+            index=cache.index,
+            config=cache.config,
+        )
+        
+        # Extract elements from structure
+        elements: List[str] = []
+        structure_id = calc_detail.get("structure_id")
+        if structure_id:
+            try:
+                struct_resolved = resolve_structure(
+                    project_root, structure_id, config=cache.config, index=cache.index
+                )
+                if struct_resolved.absolute_path.exists():
+                    structure = read_structure(struct_resolved.absolute_path)
+                    elements = sorted(set(str(el) for el in structure.composition.elements))
+            except Exception:
+                pass
+        
+        # Fallback to species list from calc_detail
+        if not elements:
+            species = calc_detail.get("structure_elements", [])
+            elements = sorted(set(species))
+        
+        # Get options (sha256-keyed, filename-first, constitution-compliant)
+        from quantumvitas.core.pseudo_options import get_pseudo_options_for_elements
+        options = get_pseudo_options_for_elements(
+            project_root=project_root,
+            elements=elements,
+            config=cache.config,
+        )
+        
+        return {
+            "options_by_element": options,
+        }
     
     # -------------------------------------------------------------------------
     # Pre-flight check handlers

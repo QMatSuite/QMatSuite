@@ -456,3 +456,38 @@
   font-style: italic;
   margin-left: 2px;
 }
+
+/* Source chips for new API */
+.common-card-pseudo__source-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1, 0.25rem);
+  margin-top: var(--space-1, 0.5rem);
+}
+
+.common-card-pseudo__source-chip {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.common-card-pseudo__source-chip--installed {
+  background-color: var(--primary-color, #007bff);
+  color: white;
+}
+
+.common-card-pseudo__source-chip--available {
+  background-color: var(--bg-secondary, #f0f0f0);
+  color: var(--text-muted, #666);
+  border: 1px solid var(--border-color, #ddd);
+}
+
+.common-card-pseudo__loading {
+  padding: var(--space-1, 0.5rem);
+  color: var(--text-muted, #666);
+  font-size: var(--text-sm);
+  font-style: italic;
+}

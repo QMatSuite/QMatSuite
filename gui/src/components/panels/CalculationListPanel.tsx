@@ -1153,13 +1153,29 @@ export function CalculationDetailPanel({
               <CommonCardPseudo
                 mapping={pseudoMapping}
                 isEditing={true}
-                onUpdate={async (mapping, _libraryPreference) => {
+                projectRoot={projectRoot}
+                calculation={calculationForSteps?.slug}
+                onUpdate={async (mapping, _libraryPreference, sha256Map, shaTokenMap) => {
                   if (!calculationForSteps || !projectRoot) return;
                   
-                  // Convert simple mapping to species_map format
-                  const speciesMap: Record<string, { pseudopot?: string; mass?: number }> = {};
+                  // Convert to species_map format with sha256 pinning
+                  const speciesMap: Record<string, { 
+                    pseudopot?: string; 
+                    pseudo_sha256?: string;
+                    pseudo_sha_token?: string;
+                    pseudo_basename?: string;
+                    mass?: number;
+                  }> = {};
                   for (const [element, pseudo] of Object.entries(mapping)) {
-                    speciesMap[element] = { pseudopot: pseudo };
+                    const entry: any = { pseudopot: pseudo }; // Legacy field for backward compat
+                    if (sha256Map?.[element]) {
+                      entry.pseudo_sha256 = sha256Map[element];
+                      entry.pseudo_basename = pseudo; // Use basename from mapping
+                    }
+                    if (shaTokenMap?.[element]) {
+                      entry.pseudo_sha_token = shaTokenMap[element];
+                    }
+                    speciesMap[element] = entry;
                   }
                   
                   const response = await qv.updateCalculationSpeciesMap(

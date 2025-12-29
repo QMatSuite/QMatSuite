@@ -4,6 +4,8 @@ This document contains implementation details, evidence, and location references
 
 **Note**: This document tracks implementation details that may change over time. The Constitution (`CONSTITUTION_ZH.md`) contains only the rules and definitions, not implementation details.
 
+Line numbers are approximate; prefer the grep commands below.
+
 ---
 
 ## [A] Resource Index & Cache Implementation

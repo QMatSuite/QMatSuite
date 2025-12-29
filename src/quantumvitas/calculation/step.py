@@ -49,9 +49,16 @@ class Step:
         engine: Engine,
         calculation_raw_dir: Path,
         project_root: Path,
+        species_map: Optional[Dict[str, Dict[str, Any]]] = None,
     ) -> StepResult:
         """
         Execute the step using the provided engine inside the calculation raw dir.
+        
+        Args:
+            engine: Engine to use for execution
+            calculation_raw_dir: Working directory for this calculation (e.g., raw_dir)
+            project_root: Project root path
+            species_map: Optional species mapping from calculation (for pseudo materialization)
         """
         if engine.name != "qe":
             return engine.run_step(self, calculation_raw_dir)
@@ -72,6 +79,7 @@ class Step:
             project_root=project_root,
             step_type=step_type_value,
             timeout=timeout,
+            species_map=species_map,
         )
         return result
 

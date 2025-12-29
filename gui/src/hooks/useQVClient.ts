@@ -92,6 +92,21 @@ export interface QVClient {
   ) => Promise<QVResponse<QVResult<'set_pseudo_mapping'>>>;
   // Calculation-level pseudo mapping (authoritative)
   getCalculationPseudoMapping: (projectRoot: string, calculation: string) => Promise<QVResponse<QVResult<'get_calculation_pseudo_mapping'>>>;
+  getPseudoOptionsForCalculation: (projectRoot: string, calculation: string) => Promise<QVResponse<QVResult<'get_pseudo_options_for_calculation'>>>;
+  materializePseudoFile: (projectRoot: string, element: string, sha256: string, preferredBasename?: string) => Promise<QVResponse<QVResult<'materialize_pseudo_file'>>>;
+  listPseudoArchivesStatus: () => Promise<QVResponse<QVResult<'list_pseudo_archives_status'>>>;
+  installPseudoArchive: (assetName: string) => Promise<QVResponse<QVResult<'install_pseudo_archive'>>>;
+  analyzeProjectPseudoEffects: (
+    projectRoot: string,
+    selections: Array<{
+      element: string;
+      requested_basename: string;
+      requested_sha256?: string;
+      requested_sha_token?: string;
+      source_kind?: 'project' | 'internal' | 'lib';
+      source_path?: string;
+    }>
+  ) => Promise<QVResponse<QVResult<'analyze_project_pseudo_effects'>>>;
   updateCalculationSpeciesMap: (
     projectRoot: string,
     calculation: string,
@@ -447,6 +462,23 @@ export function useQVClient(): QVClient {
     [call]
   );
   
+  const getPseudoOptionsForCalculation = useCallback(
+    (projectRoot: string, calculation: string) =>
+      call('get_pseudo_options_for_calculation', { project_root: projectRoot, calculation }),
+    [call]
+  );
+
+  const materializePseudoFile = useCallback(
+    (projectRoot: string, element: string, sha256: string, preferredBasename?: string) =>
+      call('materialize_pseudo_file', {
+        project_root: projectRoot,
+        element,
+        sha256,
+        preferred_basename: preferredBasename,
+      }),
+    [call]
+  );
+  
   const updateCalculationSpeciesMap = useCallback(
     (
       projectRoot: string,
@@ -519,6 +551,31 @@ export function useQVClient(): QVClient {
       }),
     [call]
   );
+
+  const listPseudoArchivesStatus = useCallback(
+    () => call('list_pseudo_archives_status', {}),
+    [call]
+  );
+
+  const installPseudoArchive = useCallback(
+    (assetName: string) => call('install_pseudo_archive', { asset_name: assetName }),
+    [call]
+  );
+
+  const analyzeProjectPseudoEffects = useCallback(
+    (
+      projectRoot: string,
+      selections: Array<{
+        element: string;
+        requested_basename: string;
+        requested_sha256?: string;
+        requested_sha_token?: string;
+        source_kind?: 'project' | 'internal' | 'lib';
+        source_path?: string;
+      }>
+    ) => call('analyze_project_pseudo_effects', { project_root: projectRoot, selections }),
+    [call]
+  );
   
   // Use ref to maintain stable client object reference
   // This prevents infinite loops in effects that depend on qv
@@ -545,6 +602,11 @@ export function useQVClient(): QVClient {
     getPseudoMapping,
     setPseudoMapping,
     getCalculationPseudoMapping,
+    getPseudoOptionsForCalculation,
+      materializePseudoFile,
+      listPseudoArchivesStatus,
+      installPseudoArchive,
+      analyzeProjectPseudoEffects,
     updateCalculationSpeciesMap,
     importPseudoFiles,
     searchLegacyPseudos,
@@ -561,7 +623,7 @@ export function useQVClient(): QVClient {
     clientRef.current.state = state;
   }
   
-  return clientRef.current;
+  return clientRef.current!;
 }
 
 // =============================================================================

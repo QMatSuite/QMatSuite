@@ -272,11 +272,12 @@ def prepare_input_step(
     input_is_external = input_path.resolve().parent != working_dir.resolve()
     original_copy: Optional[Path] = None
     
-    # Determine project/run pseudo directory
+    # Constitution: QE runtime only reads project/pseudo
+    # Step0 has already prepared pseudos in project/pseudo (if in project mode)
     if project_root is not None:
         project_pseudo_dir = project_root / "pseudo"
     else:
-        # Standalone mode: use workdir/pseudo
+        # Standalone mode: use workdir/pseudo (no Step0 in standalone)
         project_pseudo_dir = working_dir / "pseudo"
     
     # Use central pseudopotential resolution
@@ -369,6 +370,7 @@ def run_input_step(
     species_overrides: Optional[Mapping[str, Mapping[str, Any]]] = None,
     keep_original: bool = True,
     output_name: Optional[str] = None,
+    species_map: Optional[Dict[str, Dict[str, Any]]] = None,
 ) -> tuple[StepResult, PreparedInputStep]:
     """
     Convenience function combining preparation + execution.
@@ -386,10 +388,15 @@ def run_input_step(
         keep_original: If True and input is from outside working_dir, 
                        save original as <name>_original.in
         output_name: Optional name for the generated input file
+        species_map: Optional calculation-level species_map (for sha256-pinned pseudo materialization)
     
     Returns:
         Tuple of (StepResult, PreparedInputStep)
     """
+    # Constitution: Pseudos are prepared in project/pseudo by Step0 (before this function is called)
+    # No materialization needed here - Step0 has already handled it
+    # This function only prepares the QE input file, which references project/pseudo
+    
     prepared = prepare_input_step(
         input_file=input_file,
         working_dir=working_dir,

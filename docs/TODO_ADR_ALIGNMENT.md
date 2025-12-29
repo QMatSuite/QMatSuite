@@ -240,8 +240,7 @@ This document lists lightweight improvements needed to align the codebase with t
 - Constitution acknowledges this is "not yet done", but should be tracked.
 
 **Suggested Fix**:
-- Add Windows runner to CI when GitHub Actions supports it (or use alternative CI).
-- Track as low priority (not blocking).
+- Windows CI is not yet integrated in this repo (not a technical limitation, just not done yet). Track as low priority.
 
 **Files to Modify**:
 - `.github/workflows/tests.yml` - Add Windows matrix when ready

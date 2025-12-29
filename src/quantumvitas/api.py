@@ -4146,6 +4146,27 @@ class QVService:
             "warnings": result.warnings,
         })
     
+    @staticmethod
+    def get_pseudo_options_for_elements(
+        project_root: Path,
+        elements: List[str],
+        config: Optional[dict] = None,
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        """
+        Get pseudo options for a list of elements (sha256-keyed, filename-first).
+        
+        Args:
+            project_root: Project root path
+            elements: List of element symbols
+            config: Optional project config
+            
+        Returns:
+            Dict mapping element -> List[PseudoVariant dict] (sha256-keyed)
+        """
+        from quantumvitas.core.pseudo_options import get_pseudo_options_for_elements as get_options
+        
+        return get_options(project_root, elements, config=config)
+    
     def download_pseudo_from_url(
         project_root: Path,
         url: str,
@@ -5261,12 +5282,23 @@ class QVService:
         Args:
             project_root: Project root path
             calculation_selector: Calculation selector
-            species_map: New species mapping (element -> {pseudopot: str, mass: float?})
+            species_map: New species mapping (element -> {
+                pseudopot: str (legacy filename, for backward compat),
+                pseudo_sha256: str (primary identity, new),
+                pseudo_sha_token: str (secondary, new),
+                pseudo_basename: str (display + file naming, new),
+                mass: float? (optional)
+            })
             index: Optional ResourceIndex (avoids rebuilding if provided)
             config: Optional project config (avoids reloading if provided)
             
         Returns:
             Updated calculation info
+            
+        Note:
+            - If pseudo_sha256 is provided, it is the primary identity (pinned selection)
+            - Legacy filename-only entries (no sha256) are treated as "un-pinned"
+            - All fields are stored for backward compatibility
         """
         from quantumvitas.core.models import load_calculation, save_calculation
         from quantumvitas.core.resolution import make_structure_selector_resolver
