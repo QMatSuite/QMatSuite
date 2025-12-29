@@ -27,8 +27,23 @@ def compute_sha256_file(path: Path) -> str:
     return compute_sha256_bytes(data)
 
 
-def create_dummy_pseudo_file(path: Path, content: str = "DUMMY UPF CONTENT\n") -> tuple[str, str]:
+def make_minimal_upf(element: str) -> str:
+    """Create minimal valid UPF content that can be parsed for element."""
+    return f"""<UPF version="2.0.1">
+<PP_HEADER element="{element}" pseudo_type="NC" z_valence="4.0"/>
+</UPF>
+"""
+
+
+def create_dummy_pseudo_file(path: Path, content: str = None) -> tuple[str, str]:
     """Create a dummy UPF file and return (sha256, sha_token)."""
+    if content is None:
+        # Infer element from filename if possible
+        element = path.stem.split(".")[0].upper()
+        if len(element) <= 2 and element.isalpha():
+            content = make_minimal_upf(element)
+        else:
+            content = make_minimal_upf("Si")  # Default fallback
     path.write_text(content, encoding="utf-8")
     sha256 = compute_sha256_file(path)
     sha_token = compute_sha_token_file(path)
@@ -65,10 +80,12 @@ def test_sha256_keyed_variants(temp_project: Path, tmp_path: Path) -> None:
     internal_dir.mkdir()
     
     file1 = internal_dir / "Si.upf"
-    sha256_1, sha_token_1 = create_dummy_pseudo_file(file1, "Si UPF content\n")
+    sha256_1, sha_token_1 = create_dummy_pseudo_file(file1)
     
     file2 = internal_dir / "Si_v2.upf"
-    sha256_2, sha_token_2 = create_dummy_pseudo_file(file2, "Si    UPF    content\n")  # More spaces
+    # Create file with different whitespace (same token, different sha256)
+    content2 = make_minimal_upf("Si") + "    \n"  # Extra whitespace
+    sha256_2, sha_token_2 = create_dummy_pseudo_file(file2, content2)
     
     # They should have different sha256 but same sha_token
     assert sha256_1 != sha256_2, "Files should have different sha256"
@@ -104,14 +121,16 @@ def test_token_match_warnings(temp_project: Path, tmp_path: Path) -> None:
     # Create project file
     project_pseudo = temp_project / "pseudo" / "Si.upf"
     project_pseudo.parent.mkdir(parents=True, exist_ok=True)
-    proj_sha256, proj_sha_token = create_dummy_pseudo_file(project_pseudo, "Si UPF content\n")
+    proj_sha256, proj_sha_token = create_dummy_pseudo_file(project_pseudo)
     
     # Create internal file with same token but different sha256 (different whitespace)
     internal_dir = tmp_path / "internal"
     internal_dir.mkdir()
     
     internal_file = internal_dir / "Si.upf"
-    internal_sha256, internal_sha_token = create_dummy_pseudo_file(internal_file, "Si    UPF    content\n")  # More spaces
+    # Create file with different whitespace (same token, different sha256)
+    content_internal = make_minimal_upf("Si") + "    \n"  # Extra whitespace
+    internal_sha256, internal_sha_token = create_dummy_pseudo_file(internal_file, content_internal)
     
     # They should have different sha256 but same sha_token
     assert proj_sha256 != internal_sha256, "Files should have different sha256"
@@ -201,8 +220,6 @@ def test_filesystem_real_filtering(temp_project: Path, tmp_path: Path) -> None:
         has_internal = any(s["kind"] == "internal" and s["installed"] for s in variant["sources"])
         has_installed_lib = any(s["kind"] == "lib" and s["installed"] and not s.get("corrupt", False) for s in variant["sources"])
         assert has_project or has_internal or has_installed_lib, f"Variant {variant['sha256']} should have at least one filesystem-real source"
-    with pytest.mock.patch('quantumvitas.core.pseudo_options.get_system_pseudo_dir', return_value=internal_dir):
-        options = get_pseudo_options_for_elements_sha_token(temp_project, ["Si"])
     
     si_options = options.get("Si", [])
     
