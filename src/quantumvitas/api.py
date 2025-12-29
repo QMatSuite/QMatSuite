@@ -4095,6 +4095,57 @@ class QVService:
         return result
     
     @staticmethod
+    @staticmethod
+    def resolve_pseudo_provenance(
+        pseudo_path: str,
+        project_root: Optional[str] = None,
+    ) -> dict:
+        """
+        Resolve pseudo provenance by matching against libinfo index.
+        
+        Args:
+            pseudo_path: Path to pseudo file (absolute or relative to project_root)
+            project_root: Optional project root (for resolving relative paths)
+            
+        Returns:
+            Dict with provenance information (serialized PseudoProvenanceResult)
+        """
+        from quantumvitas.core.pseudo_provenance import resolve_pseudo_provenance
+        from pathlib import Path
+        
+        pseudo_path_obj = Path(pseudo_path)
+        if not pseudo_path_obj.is_absolute() and project_root:
+            pseudo_path_obj = Path(project_root) / pseudo_path_obj
+        
+        result = resolve_pseudo_provenance(pseudo_path_obj)
+        
+        # Serialize to dict
+        return to_jsonable({
+            "path": result.path,
+            "element": result.element,
+            "basename": result.basename,
+            "sha256": result.sha256,
+            "sha_token": result.sha_token,
+            "match_kind": result.match_kind,
+            "matches": [
+                {
+                    "archive_name": m.archive_name,
+                    "archive_sha256": m.archive_sha256,
+                    "library_name": m.library_name,
+                    "category": m.category,
+                    "library_version": m.library_version,
+                    "xc": m.xc,
+                    "quality": m.quality,
+                    "type": m.type,
+                    "relativistic": m.relativistic,
+                    "path_in_archive": m.path_in_archive,
+                    "basename": m.basename,
+                }
+                for m in result.matches
+            ],
+            "warnings": result.warnings,
+        })
+    
     def download_pseudo_from_url(
         project_root: Path,
         url: str,
