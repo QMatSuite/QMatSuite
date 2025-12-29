@@ -472,6 +472,114 @@ def list_seed_archives(seed_dir: Path) -> List[SeedArchiveInfo]:
     return results
 
 
+def import_seed_archives(
+    seed_dir: Path,
+    archive_paths: List[Path],
+) -> Dict[str, Any]:
+    """
+    Import seed archives (tar/zip) into seed_dir with SHA256 deduplication.
+    
+    Args:
+        seed_dir: Seed directory to import into
+        archive_paths: List of archive file paths to import
+        
+    Returns:
+        Dict with:
+        - imported: List of successfully imported filenames
+        - skipped: List of files skipped (duplicates or invalid)
+        - errors: List of error messages
+    """
+    import hashlib
+    
+    result: Dict[str, Any] = {
+        "imported": [],
+        "skipped": [],
+        "errors": [],
+    }
+    
+    if not seed_dir:
+        result["errors"].append("Seed directory not configured")
+        return result
+    
+    seed_dir = Path(seed_dir)
+    seed_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Build SHA256 index of existing archives for deduplication
+    existing_hashes: Dict[str, Path] = {}
+    for existing_archive in seed_dir.rglob("*.tar.gz"):
+        try:
+            sha256 = compute_sha256(existing_archive)
+            existing_hashes[sha256] = existing_archive
+        except Exception:
+            pass
+    
+    for existing_archive in seed_dir.rglob("*.tgz"):
+        try:
+            sha256 = compute_sha256(existing_archive)
+            existing_hashes[sha256] = existing_archive
+        except Exception:
+            pass
+    
+    for archive_path in archive_paths:
+        archive_path = Path(archive_path)
+        
+        if not archive_path.exists():
+            result["errors"].append(f"File not found: {archive_path}")
+            continue
+        
+        # Validate it's a tar.gz or tgz
+        if not (archive_path.suffix == ".gz" and archive_path.name.endswith((".tar.gz", ".tgz"))):
+            result["skipped"].append(f"{archive_path.name}: Not a tar.gz archive")
+            continue
+        
+        try:
+            # Compute SHA256
+            sha256 = compute_sha256(archive_path)
+            
+            # Check for duplicate
+            if sha256 in existing_hashes:
+                result["skipped"].append(f"{archive_path.name}: Already exists (SHA256: {sha256[:16]}...)")
+                continue
+            
+            # Try to determine version/flavor from filename or manifest
+            # For now, use a generic location - user can organize manually
+            # Or we could try to extract from archive metadata
+            version = "1.3.0"  # Default
+            flavor = "unknown"
+            
+            # Try to guess from filename
+            name_lower = archive_path.name.lower()
+            if "efficiency" in name_lower:
+                flavor = "efficiency"
+            elif "precision" in name_lower:
+                flavor = "precision"
+            
+            # Save to seed_dir/sssp/{version}/{flavor}/
+            seed_path = get_sssp_seed_path(seed_dir, version, flavor)
+            seed_path.mkdir(parents=True, exist_ok=True)
+            
+            # Use deterministic naming: SSSP_{version}_{flavor}_{sha256_prefix}.tar.gz
+            sha256_prefix = sha256[:16]
+            seed_archive_name = f"SSSP_{version}_{flavor}_{sha256_prefix}.tar.gz"
+            seed_archive_path = seed_path / seed_archive_name
+            
+            # Copy file
+            shutil.copy2(archive_path, seed_archive_path)
+            existing_hashes[sha256] = seed_archive_path
+            
+            result["imported"].append({
+                "original": archive_path.name,
+                "saved_as": seed_archive_name,
+                "sha256": sha256,
+                "version": version,
+                "flavor": flavor,
+            })
+        except Exception as e:
+            result["errors"].append(f"{archive_path.name}: {e}")
+    
+    return result
+
+
 def install_sssp_from_seed(
     seed_dir: Path,
     store_dir: Path,

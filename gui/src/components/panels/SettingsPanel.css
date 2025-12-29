@@ -361,6 +361,17 @@
   background-color: var(--primary-hover, #0056b3);
 }
 
+.settings-btn--secondary {
+  background-color: var(--bg-secondary, rgba(0, 0, 0, 0.1));
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.settings-btn--secondary:hover:not(:disabled) {
+  background-color: var(--bg-tertiary, rgba(0, 0, 0, 0.15));
+  border-color: var(--border-color);
+}
+
 .pseudo-validation {
   margin-top: 1rem;
   padding: 0.75rem;
