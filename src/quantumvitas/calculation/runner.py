@@ -66,6 +66,63 @@ class CalculationRunner:
         status = StepStatus.SUCCESS
         calculation_failed = False
 
+        # Step0: Prepare pseudos in project/pseudo (constitution-compliant)
+        # This is the ONLY place allowed to mutate project/pseudo
+        if calculation.species_map:
+            from quantumvitas.core.pseudo_runtime import (
+                prepare_project_pseudos_for_run,
+                species_map_to_selections,
+                refresh_calc_pseudo_records_after_step0,
+            )
+            
+            try:
+                selections = species_map_to_selections(
+                    calculation.project.root,
+                    calculation.species_map,
+                )
+                
+                if selections:
+                    # Prepare pseudos (mutates project/pseudo)
+                    report = prepare_project_pseudos_for_run(
+                        calculation.project.root,
+                        selections,
+                    )
+                    
+                    # Refresh calc records with actual file info
+                    refresh_calc_pseudo_records_after_step0(
+                        calculation.project.root,
+                        calculation.dir,
+                        calculation.species_map or {},
+                    )
+                    
+                    # Log warnings if any
+                    if report.warnings:
+                        # TODO: Consider logging these warnings somewhere visible
+                        pass
+            except Exception as e:
+                # Step0 failure: mark calculation as failed
+                calculation_failed = True
+                status = StepStatus.FAILED
+                step_summaries.append(StepResultSummary(
+                    step_id="step0",
+                    step_type=StepType.CUSTOM,
+                    status=StepStatus.FAILED,
+                    working_dir=calculation.raw_dir,
+                    input_file=Path(),
+                    output_file=Path(),
+                    reference_file=None,
+                    message=f"Step0 pseudo preparation failed: {e}",
+                    metrics={},
+                ))
+                # Don't proceed to QE steps if Step0 failed
+                return CalculationResult(
+                    calculation_id=calculation.id,
+                    status=status,
+                    started=started,
+                    finished=datetime.now(timezone.utc),
+                    step_summaries=step_summaries,
+                )
+
         for step in calculation.steps:
             # If a previous step failed in strict mode, mark remaining steps as SKIPPED
             if calculation_failed:
@@ -94,6 +151,7 @@ class CalculationRunner:
                 engine=engine,
                 calculation_raw_dir=raw_dir,
                 project_root=calculation.project.root,
+                species_map=calculation.species_map,
             )
             output_text = ""
             if result.output_file and result.output_file.exists():

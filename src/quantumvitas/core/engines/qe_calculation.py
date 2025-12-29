@@ -161,33 +161,40 @@ class QECalculationRunner:
         if 'OMP_NUM_THREADS' not in env:
             env['OMP_NUM_THREADS'] = str(self.engine.config.omp_threads)
         
-        # Set ESPRESSO_PSEUDO to project_root/pseudo if project exists, else working_dir/pseudo
-        # This ensures QE can find pseudopotentials in the project's pseudo directory
-        # The pseudo_dir should be set in the input file, but ESPRESSO_PSEUDO provides a fallback
+        # Constitution: QE runtime only reads project/pseudo
+        # Step0 has already prepared pseudos in project/pseudo (if in project mode)
         if 'ESPRESSO_PSEUDO' not in env:
-            # Try to detect project root from working_dir using marker-based detection
-            # If no project found, use standalone mode (working_dir/pseudo)
             from quantumvitas.core.project_utils import find_project_root
             from quantumvitas.core.pseudo_config import _find_quantumvitas_root
             
-            # Start from working_dir and walk up looking for project.qv.yml
-            # Use stop_at=None for product mode (allow full search)
+            # Try to detect project root
             detected_project_root = find_project_root(start=working_dir, stop_at=None)
             
-            # Validate it's not repo root (if detected)
+            # Validate it's not repo root
             if detected_project_root:
                 repo_root = _find_quantumvitas_root()
                 if repo_root and detected_project_root.resolve() == repo_root.resolve():
-                    # Repo root detected - treat as standalone mode
                     detected_project_root = None
             
             if detected_project_root:
-                # Use project_root/pseudo (runtime materialization location)
+                # Project mode: use project/pseudo (Step0 has prepared it)
                 project_pseudo_dir = detected_project_root / "pseudo"
             else:
-                # Standalone mode: no project found, use working_dir/pseudo
+                # Standalone mode: use working_dir/pseudo
                 project_pseudo_dir = working_dir / "pseudo"
             
+            # GUARD: Never use repo_root/pseudo
+            repo_root = _find_quantumvitas_root()
+            if repo_root:
+                repo_pseudo = (repo_root / "pseudo").resolve()
+                project_pseudo_resolved = project_pseudo_dir.resolve()
+                if project_pseudo_resolved == repo_pseudo:
+                    raise RuntimeError(
+                        f"BUG: ESPRESSO_PSEUDO attempted to use repo_root/pseudo at {project_pseudo_dir}. "
+                        f"Internal pseudo library must be at resources/pseudo, not repo_root/pseudo."
+                    )
+            
+            # Ensure directory exists (Step0 should have created project/pseudo, but be safe for standalone)
             project_pseudo_dir.mkdir(parents=True, exist_ok=True)
             env['ESPRESSO_PSEUDO'] = str(project_pseudo_dir.absolute())
         
