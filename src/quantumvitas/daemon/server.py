@@ -233,6 +233,14 @@ class QVDaemon:
             "resolve_project_pseudo_provenance": self._handle_resolve_project_pseudo_provenance,
             "import_seed_archives": self._handle_import_seed_archives,
             
+            # Generic library manager RPCs
+            "list_libraries": self._handle_list_libraries,
+            "get_library_status": self._handle_get_library_status,
+            "install_library": self._handle_install_library,
+            "remove_library": self._handle_remove_library,
+            "repair_library": self._handle_repair_library,
+            "compute_store_size": self._handle_compute_store_size,
+            
             # Project/resource listing
             "get_project_summary": self._handle_get_project_summary,
             "list_structures": self._handle_list_structures,
@@ -1023,6 +1031,171 @@ class QVDaemon:
         archive_paths = [Path(p) for p in file_paths]
         
         return import_seed_archives(seed_dir, archive_paths)
+    
+    def _handle_list_libraries(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        List all supported libraries with metadata.
+        
+        Payload: (none required)
+        
+        Returns:
+            libraries: List of LibraryMetadata dicts
+        """
+        from quantumvitas.core.library_manager import get_supported_libraries
+        
+        libraries = get_supported_libraries()
+        return {
+            "libraries": [lib.to_dict() for lib in libraries],
+        }
+    
+    def _handle_get_library_status(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get status of a library (which variants are installed).
+        
+        Payload:
+            library_id: str - Library identifier (e.g., "sssp")
+            
+        Returns:
+            LibraryStatus dict
+        """
+        from quantumvitas.core.library_manager import get_library_status
+        
+        library_id = payload.get("library_id")
+        if not library_id:
+            return {
+                "ok": False,
+                "error": {"code": "missing_field", "message": "library_id required"},
+            }
+        
+        status = get_library_status(library_id)
+        if status is None:
+            return {
+                "ok": False,
+                "error": {"code": "unsupported_library", "message": f"Unsupported library: {library_id}"},
+            }
+        
+        return {
+            "ok": True,
+            "data": status.to_dict(),
+        }
+    
+    def _handle_install_library(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Install a library with specified variants.
+        
+        Payload:
+            library_id: str - Library identifier
+            variants: List[str] - Variant names to install
+            source: str - "github_release", "local_archive", or "seed"
+            local_archive_paths: Optional[List[str]] - For local_archive source
+            force: Optional[bool] - Force download even if allow_download is False
+            
+        Returns:
+            Dict with success, messages, errors, warnings
+        """
+        from quantumvitas.core.library_manager import install_library
+        from quantumvitas.core.pseudo_config import load_pseudo_config, save_pseudo_config
+        
+        library_id = payload.get("library_id")
+        variants = payload.get("variants", [])
+        source = payload.get("source", "github_release")
+        local_archive_paths = payload.get("local_archive_paths")
+        force = payload.get("force", False)
+        
+        if not library_id:
+            return {
+                "success": False,
+                "errors": ["library_id required"],
+                "messages": [],
+                "warnings": [],
+            }
+        
+        config = load_pseudo_config()
+        allow_download = config.allow_download
+        
+        # If force=True and downloads are disabled, enable them automatically
+        if force and not allow_download and source == "github_release":
+            config.allow_download = True
+            save_pseudo_config(config)
+            allow_download = True
+        
+        result = install_library(
+            library_id=library_id,
+            variants=variants,
+            source=source,
+            local_archive_paths=local_archive_paths,
+            config=config,
+            force=force,
+            allow_download=allow_download,
+        )
+        
+        return result
+    
+    def _handle_remove_library(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Remove library variants from store.
+        
+        Payload:
+            library_id: str - Library identifier
+            variants: List[str] - Variant names to remove
+            
+        Returns:
+            Dict with success, messages, errors
+        """
+        from quantumvitas.core.library_manager import remove_library
+        
+        library_id = payload.get("library_id")
+        variants = payload.get("variants", [])
+        
+        if not library_id:
+            return {
+                "success": False,
+                "errors": ["library_id required"],
+                "messages": [],
+            }
+        
+        return remove_library(library_id=library_id, variants=variants)
+    
+    def _handle_repair_library(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Repair library by re-extracting from seed cache.
+        
+        Payload:
+            library_id: str - Library identifier
+            variants: List[str] - Variant names to repair
+            
+        Returns:
+            Dict with success, messages, errors
+        """
+        from quantumvitas.core.library_manager import repair_library
+        
+        library_id = payload.get("library_id")
+        variants = payload.get("variants", [])
+        
+        if not library_id:
+            return {
+                "success": False,
+                "errors": ["library_id required"],
+                "messages": [],
+            }
+        
+        return repair_library(library_id=library_id, variants=variants)
+    
+    def _handle_compute_store_size(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Compute total size of store directory.
+        
+        Payload: (none required)
+        
+        Returns:
+            size_bytes: Optional[int] - Total size in bytes, or None if not configured
+        """
+        from quantumvitas.core.library_manager import compute_store_size
+        
+        size_bytes = compute_store_size()
+        return {
+            "size_bytes": size_bytes,
+        }
     
     def _handle_resolve_project_pseudo_provenance(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
