@@ -13,6 +13,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useQVClient, useQVLogs } from '../../hooks/useQVClient';
 import { usePseudoConfig } from '../../hooks/usePseudoConfig';
 import { LibrariesPanel } from './LibrariesPanel';
+import { PseudoArchivesPanel } from '../settings/PseudoArchivesPanel';
 import type { QEDetectionResult, EnvironmentInfo } from '../../types/qv';
 import { getVisibleLogLines, getVisibleLogText } from '../../utils/logFilter';
 import './SettingsPanel.css';
@@ -308,6 +309,9 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
             window.qv.revealPath(path);
           }
         }} />
+        
+        {/* Pseudopotential Archives Section */}
+        <PseudoArchivesPanel />
         
         {/* Python/Daemon Section */}
         <div className="settings-section">

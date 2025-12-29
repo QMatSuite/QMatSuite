@@ -1,0 +1,184 @@
+.pseudo-archives-table {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.archive-group {
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 1rem;
+  background-color: var(--bg-secondary);
+}
+
+.archive-group__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.archive-group__title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.archive-group__count {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.archive-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.archive-table thead {
+  background-color: var(--bg-tertiary);
+}
+
+.archive-table th {
+  text-align: left;
+  padding: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.archive-table td {
+  padding: 0.75rem 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+
+.archive-table tbody tr:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.archive-table tbody tr.archive-row--corrupt {
+  background-color: rgba(255, 193, 7, 0.1);
+}
+
+.archive-name {
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.archive-tags {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.archive-tag {
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  background-color: var(--bg-tertiary);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+}
+
+.archive-size {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.archive-status-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.archive-status {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.archive-status--installed {
+  background-color: var(--success-color-light);
+  color: var(--text-on-success);
+  border: 1px solid var(--success-color);
+}
+
+.archive-status--not-installed {
+  background-color: var(--bg-tertiary);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+}
+
+.archive-status--corrupt {
+  background-color: rgba(255, 193, 7, 0.2);
+  color: var(--warning-color);
+  border: 1px solid var(--warning-color);
+}
+
+.archive-warning {
+  cursor: help;
+  font-size: 0.9rem;
+}
+
+.archive-action-cell {
+  white-space: nowrap;
+}
+
+.archive-action {
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.archive-action:hover:not(:disabled) {
+  background-color: var(--bg-tertiary);
+  border-color: var(--accent-color);
+}
+
+.archive-action:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.archive-action--install {
+  background-color: var(--accent-color-light);
+  color: var(--text-on-accent);
+  border-color: var(--accent-color);
+}
+
+.archive-action--install:hover:not(:disabled) {
+  background-color: var(--accent-color);
+}
+
+.archive-action--reinstall {
+  background-color: var(--warning-color-light);
+  color: var(--text-on-warning);
+  border-color: var(--warning-color);
+}
+
+.archive-action--reinstall:hover:not(:disabled) {
+  background-color: var(--warning-color);
+}
+
+.archive-action--verify {
+  background-color: var(--info-color-light);
+  color: var(--text-on-info);
+  border-color: var(--info-color);
+}
+
+.archive-action--verify:hover:not(:disabled) {
+  background-color: var(--info-color);
+}
+

@@ -115,6 +115,66 @@ def list_installed_archives(
     return result
 
 
+def check_archive_status(
+    asset_name: str,
+    expected_sha256: str,
+    install_root: Optional[Path] = None,
+    config: Optional[PseudoConfig] = None,
+) -> Dict[str, Any]:
+    """
+    Check archive installation status with detailed result.
+    
+    Args:
+        asset_name: Archive filename (e.g., "SSSP_1.3.0_PBE_efficiency.tar.gz")
+        expected_sha256: Expected SHA256 hash from manifest
+        install_root: Optional install root (uses config if not provided)
+        config: Optional PseudoConfig (loads if not provided)
+        
+    Returns:
+        Dict with:
+        - installed: bool - True if exists and SHA256 matches
+        - exists: bool - True if file exists
+        - corrupt: bool - True if exists but SHA256 mismatch
+        - actual_sha256: Optional[str] - Actual SHA256 if file exists
+        - error: Optional[str] - Error message if check failed
+    """
+    result = {
+        "installed": False,
+        "exists": False,
+        "corrupt": False,
+        "actual_sha256": None,
+        "error": None,
+    }
+    
+    if install_root is None:
+        install_root = get_pseudo_install_root(config)
+        if install_root is None:
+            return result
+    
+    archives_dir = get_archives_dir(install_root)
+    archive_path = archives_dir / asset_name
+    
+    if not archive_path.exists() or not archive_path.is_file():
+        return result
+    
+    result["exists"] = True
+    
+    try:
+        actual_sha256 = compute_sha256(archive_path)
+        result["actual_sha256"] = actual_sha256
+        
+        if actual_sha256.lower() == expected_sha256.lower():
+            result["installed"] = True
+        else:
+            result["corrupt"] = True
+            result["error"] = f"SHA256 mismatch: expected {expected_sha256[:16]}..., got {actual_sha256[:16]}..."
+    except Exception as e:
+        result["error"] = f"Failed to compute SHA256: {e}"
+        result["corrupt"] = True
+    
+    return result
+
+
 def is_archive_installed(
     asset_name: str,
     expected_sha256: str,
@@ -133,22 +193,8 @@ def is_archive_installed(
     Returns:
         True if archive exists and SHA256 matches, False otherwise
     """
-    if install_root is None:
-        install_root = get_pseudo_install_root(config)
-        if install_root is None:
-            return False
-    
-    archives_dir = get_archives_dir(install_root)
-    archive_path = archives_dir / asset_name
-    
-    if not archive_path.exists() or not archive_path.is_file():
-        return False
-    
-    try:
-        actual_sha256 = compute_sha256(archive_path)
-        return actual_sha256.lower() == expected_sha256.lower()
-    except Exception:
-        return False
+    status = check_archive_status(asset_name, expected_sha256, install_root, config)
+    return status["installed"]
 
 
 def install_archive(
@@ -394,6 +440,8 @@ class ArchiveStatus:
     relativistic: Optional[str] = None
     category: Optional[str] = None
     installed: bool = False
+    corrupt: bool = False  # True if exists but SHA256 mismatch
+    warning: Optional[str] = None  # Warning message (e.g., "needs reinstall")
     upstream_url: Optional[str] = None  # URL to download from GitHub release
     
     def to_dict(self) -> Dict[str, Any]:
@@ -410,6 +458,8 @@ class ArchiveStatus:
             "relativistic": self.relativistic,
             "category": self.category,
             "installed": self.installed,
+            "corrupt": self.corrupt,
+            "warning": self.warning,
             "upstream_url": self.upstream_url,
         }
 
@@ -482,7 +532,7 @@ def check_archives_status(
         config: Optional PseudoConfig (loads if not provided)
         
     Returns:
-        List of ArchiveStatus with installed flag set
+        List of ArchiveStatus with installed/corrupt/warning flags set
     """
     if archives is None:
         archives = load_manifest_archives()
@@ -490,18 +540,22 @@ def check_archives_status(
     if install_root is None:
         install_root = get_pseudo_install_root(config)
     
-    installed_map = list_installed_archives(install_root, config)
-    
     for archive in archives:
         if install_root:
-            archive.installed = is_archive_installed(
+            status = check_archive_status(
                 archive.asset_name,
                 archive.sha256,
                 install_root,
                 config,
             )
+            archive.installed = status["installed"]
+            archive.corrupt = status["corrupt"]
+            if status["corrupt"]:
+                archive.warning = status.get("error") or "Archive exists but SHA256 mismatch. Needs reinstall."
         else:
             archive.installed = False
+            archive.corrupt = False
+            archive.warning = None
     
     return archives
 

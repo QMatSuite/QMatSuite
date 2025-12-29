@@ -16,6 +16,9 @@
 - 除本文档外，所有代码、注释、文档默认语言为**英文**。除非作者明确要求，不新增其它中文文档或注释。
 - 本文档只记录**规则与定义**，不记录实现细节（文件路径、行号、函数列表、证据摘录等应放入英文文档/ TODO）。
 
+**给 AI 的一句话指令（复制粘贴即可）**
+> 遵守根目录 CONSTITUTION_ZH.md；实现入口/证据看 docs/IMPLEMENTATION_NOTES.md；可做改进按 docs/TODO_ADR_ALIGNMENT.md 走小 PR。
+
 ---
 
 ## 术语与真相层
@@ -136,12 +139,109 @@
 
 ---
 
-## 7. Windows Toolchain：oneAPI + MKL + MPI（拒绝 MinGW 作为主路线）
+## 7. 伪势管理（Pseudopotentials）不变量
 
-### 7.1 主路线（必须）
+### 7.1 伪势三源（唯一来源模型）
+- 仅允许三类来源：
+  - **internal**：仅指 `repo/resources/pseudo`（禁止使用 `tests/demo` 等其它目录）。
+  - **lib**：用户安装在 `temp/pseudo/...` 下的库（例如 `temp/pseudo/sssp/1.3.0/efficiency` 的结构）。
+  - **project runtime**：`project/pseudo`（项目运行目录）。
+- **禁止**引入第四来源（如 cache、seed、或任何隐式目录）。
+- 如历史代码/文档出现 `repo_root/pseudo`、`tests/demo`、其它 pseudo 缓存目录等概念，必须清理。
+
+### 7.2 唯一运行目录：project/pseudo
+- QE 运行时（输入文件中的 pseudo 路径）**永远只指向** `project/pseudo`。
+- lib/internal 的 pseudo 仅作为“可被选择/拷贝”的外部候选；实际运行前**必须落地到** `project/pseudo`。
+- **禁止**在 repo root 创建/使用 `repo_root/pseudo`。
+
+### 7.3 UI 与 Run 的职责边界
+- **UI/设置页面/预览页面**：不得执行任何文件系统写操作（不得 copy / rename / 覆盖 / mkdir pseudo）。
+- 所有涉及 `project/pseudo` 的文件系统变更，**只允许**在用户点击 Run 后的“Step0/准备阶段”统一执行。
+- 目的：保证 UI 与 Run 不分叉语义，避免“双逻辑”。
+
+### 7.4 sha256 vs sha_token 的语义与用途
+- **sha256**：严格字节一致性（打开保存、换行 CRLF、空格变化都会变）。
+- **sha_token**：物理等价指纹（对空白/换行等无关变化保持不变；token 边界改变必须改变）。
+- **重要**：UI 下拉选择主键是 **sha256**，不是 sha_token。
+- **sha_token 仅用于**：
+  - 冲突处理（Step0 rename/overwrite 决策）
+  - 警告/提示（token-match、token-mismatch）
+  - 跨 calc 引用一致性更新（rename 后按 sha_token 更新 calc 引用的 filename）
+
+### 7.5 UI 选择与 calc.yml 持久化规则
+
+#### 7.5.1 UI 展示/可选项规则
+- Dropdown 中“可选条目”必须对应文件系统真实存在的 UPF（project 或 internal 或已安装 lib 中能解析得到的文件）。
+- UI 允许展示 provenance chips（project/internal/lib），但不要求展示“未安装库”的 disabled 条目；未安装库可以只在右侧 chip/提示中出现为 provenance 信息（例如“属于某未安装库”）。
+- UI 默认选择优先级：project → internal → lib（优先贴近 runtime 实际，减少“无意覆盖”）。
+
+#### 7.5.1.1 确定性优先级（tie-break）规则
+- 当 sha256 命中多个候选（多来源或多路径/多 basename），用以下规则选“默认展示/默认选中”的那一个：
+  - **若 calc.yml 里有 pseudo_filename**，优先选择 filename 完全匹配的候选（同 sha256 下可能多个候选，先 filename 命中）。
+  - **若 filename 命中仍有多个，或没有任何 filename 命中**：按来源优先级 project → internal → lib。
+  - **若仍有多个**（例如同为 lib 且 sha256 命中多库），按 library/asset 名称字母序（ascending）稳定排序选第一个。
+  - **若同一 lib 内仍有多个**（极少见），按 relative_path / basename 字母序稳定排序选第一个。
+
+#### 7.5.2 默认选中（恢复选择）规则：不写 yml
+- 打开 calc 时，UI 根据 calc.yml 里的记录恢复选择：
+  - **优先按 pseudo_sha256 精确匹配**（命中则选中该 sha256 对应条目；若同 sha256 有多来源，按 7.5.1.1 tie-break 规则选定）。
+  - **若 sha256 找不到**（库未安装/文件改名/迁移等），fallback 按 pseudo_filename：
+    - 先在 project/pseudo/<filename> 找
+    - 再在 internal/resources/pseudo/<filename> 找
+    - 再在已安装 lib 中按 filename 找（若多条则按 7.5.1.1 tie-break 规则选定，并给 warning）
+- **以上“自动恢复默认选中”的过程绝对不能写回 calc.yml**（只读恢复，不做持久化变更）。
+
+#### 7.5.3 用户主动选择时：写 triplet，三元必须一起写
+- 只有当用户在 UI 中手动点击改变选择时，才写回 calc.yml。
+- 写回时必须一次性更新三元组（triplet）：
+  - `pseudo_filename`
+  - `pseudo_sha256`
+  - `pseudo_sha_token`
+- 并要求在 UI debug log 输出一条“写 yml”的日志（用于排查）。
+
+#### 7.5.4 Token-match edge case 的 UI 规则
+- 若 project/pseudo/<basename> 与某 external（lib/internal）：
+  - sha256 不同但 sha_token 相同（token-match）
+- 则 UI 不得合并成一个条目（避免“用户没选却被替换”的隐式行为）。应表现为：
+  - **project 本地条目**：显示 project chip，并额外提示“token-match with <lib/internal>（仅物理等价）”
+  - **external 条目**：显示 lib/internal chip，并额外提示“token-match with project（仅物理等价）”
+- 这样用户只有在显式选择 external 条目时，Run 才会发生覆盖行为（见 Step0 规则）。
+
+### 7.6 Calculation 必须记录 pseudo 三元组
+- 每个 calc **必须记录**：
+  - `pseudo_filename`（在 `project/pseudo` 下的文件名）
+  - `pseudo_sha256`（严格字节哈希）
+  - `pseudo_sha_token`（“物理等价”哈希）
+- Run 前 Step0 结束后，**必须刷新写回**上述记录。
+- 允许 calc 存在 stale sha256 状态：未重新 Run 前可以与当前文件不一致（见 7.7.3）。
+
+### 7.7 Step0 冲突规则（以 sha_token 做语义分歧）
+
+#### 7.7.1 Step0 总原则
+- Step0 的职责：根据 UI/calc 选中的 pseudo，把所需 pseudo 准备到 project/pseudo，并刷新 calc 记录（sha256/sha_token/filename）。
+- **如果用户选择的是 project/pseudo 自身的文件（project source）**：
+  - Step0 必须 noop（不覆盖/不改名），但仍需计算并刷新 calc 的 sha256/sha_token（用于修复 stale 记录）。
+
+#### 7.7.2 当选择的是 external（internal/lib）并需要落地到 project/pseudo/<basename> 时
+- 若目标 basename 已存在于 project/pseudo：
+  - **若 sha256 相同**：noop
+  - **若 sha_token 相同但 sha256 不同**：overwrite（只有在用户显式选择 external 时才发生；“标准库版本”= 用户所选 external）
+  - **若 sha_token 不同**：rename_existing
+    - 必须把已存在的旧文件改名为不冲突的新名字（例如追加 `__tok-<old_token[:10]>` 之类），保证 project/pseudo 内同名文件不对应不同 sha_token
+    - 并且必须基于旧文件的 sha_token，对项目内所有 calcs 做引用更新：只更新 filename，不改变其 sha_token 身份（保持物理身份不变）
+
+#### 7.7.3 stale sha 的定义与允许性
+- calc 可以存在 stale sha256：文件被打开保存/换行改变导致 sha256 变化但 sha_token 不变，这并不表示“物理改变”。
+- 只有当 sha_token 也变化才表示物理改变，需要更强 warning；但处理仍然遵循上述 Step0 规则。
+
+---
+
+## 8. Windows Toolchain：oneAPI + MKL + MPI（拒绝 MinGW 作为主路线）
+
+### 8.1 主路线（必须）
 - Windows 下专业/HPC 可交付路线：**原生 oneAPI + MKL + (MS-MPI / Intel MPI)**。
 
-### 7.2 MinGW 不是主路线（政策）
+### 8.2 MinGW 不是主路线（政策）
 - MinGW 路线不是主路线：往往更难（可能需要修改 QE 源码以通过）且性能不如 oneAPI+MKL。
 - 本仓库当前未接入 Windows CI：不是技术不可行，仅为尚未完成；但路线选择必须明确写入宪法以防误导。
 
@@ -150,3 +250,27 @@
 ## 最后条款：修改原则
 - 宪法的修改需谨慎，任何修改必须由项目作者审核。
 - 实现细节、证据、TODO、改进建议等请放在英文文档中维护（避免宪法过时）。
+
+---
+
+## 本次修订摘要（2025-01-XX）
+
+### 修改章节
+- **第 7 章：伪势管理（Pseudopotentials）不变量**（全面重写）
+
+### 关键语义变化
+1. **选择主键改为 sha256**：明确 UI 下拉选择主键是 sha256（不是 sha_token）；sha_token 仅用于冲突处理、警告、跨 calc 引用更新。
+2. **新增 7.5 小节：UI 选择与 calc.yml 持久化规则**：
+   - 7.5.1 UI 展示/可选项规则（文件系统真实存在要求）
+   - 7.5.2 默认选中（恢复选择）规则：不写 yml（只读恢复）
+   - 7.5.3 用户主动选择时：写 triplet（三元必须一起写）
+   - 7.5.4 Token-match edge case 的 UI 规则（不合并条目）
+3. **重写 7.7 小节：Step0 冲突规则**：
+   - 7.7.1 Step0 总原则（project source = noop）
+   - 7.7.2 external 选择落地规则（sha256 相同/noop，sha_token 相同/overwrite，sha_token 不同/rename）
+   - 7.7.3 stale sha 的定义与允许性
+4. **更新 7.4 小节**：明确 sha256 vs sha_token 的语义与用途（sha256 是选择主键）。
+5. **删除旧 7.5 小节**：移除“以 sha_token 为物理身份”的旧表述（已整合到 7.4 和 7.7）。
+6. **删除旧 7.6 小节**：冲突规则已整合到 7.7。
+7. **明确 UI 默认优先级动机**：在 7.5.1 中说明“优先贴近 runtime 实际，减少无意覆盖”。
+8. **强调 project source noop**：在 7.7.1 中明确用户选择 project/pseudo 自身文件时 Step0 必须 noop。

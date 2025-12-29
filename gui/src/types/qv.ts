@@ -427,6 +427,35 @@ export interface StepDetail {
 }
 
 // =============================================================================
+// Data Types - Pseudopotential Archives
+// =============================================================================
+
+export interface ArchiveStatus {
+  asset_name: string;
+  relative_path: string;
+  sha256: string;
+  size_bytes: number;
+  library_name: string;
+  library_version: string;
+  xc?: string;
+  quality?: string;
+  type?: string;
+  relativistic?: string;
+  category?: string;
+  installed: boolean;
+  corrupt?: boolean;
+  warning?: string;
+  upstream_url?: string;
+}
+
+export interface ArchiveInstallResult {
+  success: boolean;
+  messages: string[];
+  errors: string[];
+  archive_status?: ArchiveStatus;
+}
+
+// =============================================================================
 // Command Map - Central Type-Safe API Definition
 // =============================================================================
 
@@ -573,6 +602,21 @@ export interface QVCommandMap {
         has_manifest: boolean;
       }>;
     };
+  };
+  list_pseudo_archives_status: {
+    payload: Record<string, never>;
+    result: {
+      archives: ArchiveStatus[];
+      grouped_by_library?: Record<string, ArchiveStatus[]>;
+      error?: string;
+    };
+  };
+  install_pseudo_archive: {
+    payload: {
+      asset_name: string;
+      force?: boolean;
+    };
+    result: ArchiveInstallResult;
   };
   download_all_sssp: {
     payload: {
@@ -1260,6 +1304,72 @@ export interface QVCommandMap {
     };
     result: CalculationDetailResult & { old_species_map?: Record<string, { pseudopot?: string; mass?: number }> };
   };
+  get_pseudo_options_for_calculation: {
+    payload: {
+      project_root: string;
+      calculation: string;
+    };
+    result: {
+      options_by_element: Record<string, Array<{
+        sha256: string;
+        sha_token: string;
+        element: string;
+        display_basename: string;
+        all_basenames: string[];
+        sources: Array<{
+          kind: 'project' | 'internal' | 'library';
+          label: string;
+          installed: boolean;
+          corrupt?: boolean;
+          warning?: string;
+          archive_asset?: string;
+        }>;
+        availability: { any_installed: boolean };
+      }>>;
+    };
+  };
+  materialize_pseudo_file: {
+    payload: {
+      project_root: string;
+      element: string;
+      sha256: string;
+      preferred_basename?: string;
+    };
+    result: {
+      success: boolean;
+      file_path?: string;
+      source?: 'project' | 'internal' | 'library';
+      error?: string;
+      needs_install: boolean;
+      archive_asset?: string;
+    };
+  };
+  analyze_project_pseudo_effects: {
+    payload: {
+      project_root: string;
+      selections: Array<{
+        element: string;
+        requested_basename: string;
+        requested_sha256?: string;
+        requested_sha_token?: string;
+        source_kind?: 'project' | 'internal' | 'lib';
+        source_path?: string;
+      }>;
+    };
+    result: {
+      actions: Array<{
+        action: 'noop' | 'copy' | 'overwrite' | 'rename_existing' | 'error';
+        element: string;
+        detail: string;
+        source_path?: string | null;
+        dest_path?: string | null;
+        renamed_from?: string | null;
+        renamed_to?: string | null;
+      }>;
+      warnings: string[];
+      errors: string[];
+    };
+  };
   
   // Pre-flight checks
   preflight_check: {
@@ -1515,6 +1625,61 @@ export interface QVApi {
    * Reveal a file or folder in the native file manager (Finder/Explorer)
    */
   revealPath: (targetPath: string) => Promise<boolean>;
+}
+
+// =============================================================================
+// Pseudo Selection Types (sha256-keyed, filename-first, constitution-compliant)
+// =============================================================================
+
+export interface PseudoVariant {
+  sha256: string;  // Primary selection key
+  sha_token: string;  // For warnings/collision detection only
+  basename: string;
+  element: string;
+  sources: PseudoSource[];
+  size_bytes?: number | null;
+  upf_format?: string | null;
+  is_project_local_unknown?: boolean;  // True if project has basename but sha256 not in index
+  token_match_warnings?: string[];  // Warnings about token matches with different sha256
+  display_label: string;  // Computed label (e.g., "Si: Si.upf" or "Si: Si.upf (project-local)")
+  availability: {
+    any_installed: boolean;
+  };
+}
+
+export interface PseudoSource {
+  kind: "project" | "internal" | "lib";
+  label: string;
+  installed: boolean;  // lib-only meaningful (project/internal always installed if file exists)
+  corrupt?: boolean;
+  warning?: string | null;
+  
+  // lib metadata when kind==="lib"
+  library_name?: string | null;
+  library_version?: string | null;
+  archive_asset?: string | null;
+  archive_sha256?: string | null;
+  
+  // optional: basename/path if backend provides
+  basename?: string | null;
+}
+
+// Legacy PseudoOption (sha256-based) - kept for backward compatibility
+export interface PseudoOption {
+  sha256: string;
+  sha_token: string;
+  element: string;
+  display_basename: string;
+  all_basenames: string[];
+  sources: Array<{
+    kind: 'project' | 'internal' | 'library';
+    label: string;
+    installed: boolean;
+    corrupt?: boolean;
+    warning?: string;
+    archive_asset?: string;
+  }>;
+  availability: { any_installed: boolean };
 }
 
 // Extend Window interface
