@@ -249,13 +249,13 @@ def test_step0_rename_different_token_same_basename(temp_project: Path, tmp_path
     
     # Update calc to reference this file
     calc_yaml_path = temp_calculation / "calculation.yaml"
-    calc_data = yaml.safe_load(calc_yaml_path.read_text())
-    calc_data["species_map"]["Si"] = {
+    calc_yaml_dict = yaml.safe_load(calc_yaml_path.read_text())
+    calc_yaml_dict["species_map"]["Si"] = {
         "pseudopot": "Si.upf",
         "pseudo_sha256": existing_sha256,
         "pseudo_sha_token": existing_sha_token,
     }
-    calc_yaml_path.write_text(yaml.safe_dump(calc_data))
+    calc_yaml_path.write_text(yaml.safe_dump(calc_yaml_dict))
     
     # Create canonical source (token B, different content)
     internal_pseudo = tmp_path / "internal" / "Si.upf"
@@ -419,7 +419,7 @@ def test_refresh_calc_pseudo_records_missing_file(temp_project: Path) -> None:
     Expected: Log warning and keep stored triplet unchanged (no mutation).
     """
     from quantumvitas.core.pseudo_runtime import refresh_calc_pseudo_records_after_step0
-    from quantumvitas.core.models import CalculationModel, save_calculation, load_calculation
+    from quantumvitas.core.models import CalculationModel, save_calculation, load_calculation, ResourceMeta
     import logging
     
     # Create calculation with pseudo_basename but file doesn't exist
@@ -431,8 +431,15 @@ def test_refresh_calc_pseudo_records_missing_file(temp_project: Path) -> None:
     stored_sha256 = "abc123" * 8  # Fake sha256
     stored_sha_token = "def456" * 8  # Fake sha_token
     
+    # Use correct CalculationModel constructor with ResourceMeta
     calc_model = CalculationModel(
-        name="Test Calc",
+        meta=ResourceMeta(
+            id="test-calc-id",
+            name="Test Calc",
+            slug="test-calc",
+            path="calculations/test_calc",
+            kind="calculation",
+        ),
         species_map={
             "Si": {
                 "pseudopot": "Si.upf",

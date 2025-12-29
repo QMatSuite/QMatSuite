@@ -402,108 +402,110 @@ def get_pseudo_options_for_elements(
     
     # Scan internal pseudos
     if internal_pseudo_dir and internal_pseudo_dir.exists():
-        for pseudo_file in internal_pseudo_dir.glob("*.UPF"):
-            if not pseudo_file.is_file():
-                continue
-            
-            try:
-                sha256 = compute_sha256_file(pseudo_file)
-                sha_token = compute_sha_token_file(pseudo_file)
-                
-                try:
-                    text = pseudo_file.read_text(encoding="utf-8", errors="replace")
-                    element = parse_element_from_upf_text(text)
-                except Exception:
-                    element = None
-                
-                if element is None:
-                    element = _extract_element_from_filename(pseudo_file.name)
-                
-                if not element or element not in elements:
+        # Scan both .UPF and .upf files
+        for pattern in ["*.UPF", "*.upf"]:
+            for pseudo_file in internal_pseudo_dir.glob(pattern):
+                if not pseudo_file.is_file():
                     continue
                 
-                # Create/update variant
-                variant = get_or_create_variant(element, sha256, pseudo_file.name, sha_token)
-                
-                # Add internal source chip (if not already present)
-                has_internal = any(s.kind == "internal" for s in variant.sources)
-                if not has_internal:
-                    internal_source = PseudoSource(
-                        kind="internal",
-                        label="Internal",
-                        installed=True,  # Always installed if file exists
-                    )
-                    variant.sources.append(internal_source)
-                
-                # Check for token-match with project file (different sha256)
-                project_key = (element, pseudo_file.name)
-                if project_key in project_files_by_element_basename:
-                    proj_sha256, proj_sha_token, proj_path = project_files_by_element_basename[project_key]
-                    if proj_sha_token == sha_token and proj_sha256 != sha256:
-                        # Token match but sha256 differs: add warning
-                        variant.token_match_warnings.append(
-                            f"project has same filename with token-match but different bytes; selecting this will overwrite on Run"
+                try:
+                    sha256 = compute_sha256_file(pseudo_file)
+                    sha_token = compute_sha_token_file(pseudo_file)
+                    
+                    try:
+                        text = pseudo_file.read_text(encoding="utf-8", errors="replace")
+                        element = parse_element_from_upf_text(text)
+                    except Exception:
+                        element = None
+                    
+                    if element is None:
+                        element = _extract_element_from_filename(pseudo_file.name)
+                    
+                    if not element or element not in elements:
+                        continue
+                    
+                    # Create/update variant
+                    variant = get_or_create_variant(element, sha256, pseudo_file.name, sha_token)
+                    
+                    # Add internal source chip (if not already present)
+                    has_internal = any(s.kind == "internal" for s in variant.sources)
+                    if not has_internal:
+                        internal_source = PseudoSource(
+                            kind="internal",
+                            label="Internal",
+                            installed=True,  # Always installed if file exists
                         )
-                        # Also add warning to project variant if it exists
-                        if proj_sha256 in variants_by_element[element]:
-                            proj_variant = variants_by_element[element][proj_sha256]
-                            proj_variant.token_match_warnings.append(
-                                f"token matches {_format_library_label(occurrences_index.get(sha256, [{}])[0] if sha256 in occurrences_index else {})} (bytes differ)"
+                        variant.sources.append(internal_source)
+                    
+                    # Check for token-match with project file (different sha256)
+                    project_key = (element, pseudo_file.name)
+                    if project_key in project_files_by_element_basename:
+                        proj_sha256, proj_sha_token, proj_path = project_files_by_element_basename[project_key]
+                        if proj_sha_token == sha_token and proj_sha256 != sha256:
+                            # Token match but sha256 differs: add warning
+                            variant.token_match_warnings.append(
+                                f"project has same filename with token-match but different bytes; selecting this will overwrite on Run"
                             )
-                
-                # Add library chips if sha256 matches index
-                if sha256 in occurrences_index:
-                    for occ in occurrences_index[sha256]:
-                        archive_name = occ.get("archive", {}).get("name", "")
-                        archive_sha256 = occ.get("archive", {}).get("sha256", "")
-                        library = occ.get("library", {})
-                        
-                        archive_status = None
-                        for arch in manifest_archives:
-                            if arch.asset_name == archive_name:
-                                archive_status = arch
-                                break
-                            if arch.sha256 == archive_sha256:
-                                archive_status = arch
-                                break
-                        
-                        if not archive_status:
-                            relative_path = occ.get("archive", {}).get("relative_path", "")
-                            if relative_path:
-                                for arch in manifest_archives:
-                                    if arch.relative_path == relative_path:
-                                        archive_status = arch
-                                        break
-                        
-                        installed = False
-                        corrupt = False
-                        warning = None
-                        if archive_status:
-                            status = check_archive_status(
-                                archive_status.asset_name,
-                                archive_status.sha256,
-                                config=config,
+                            # Also add warning to project variant if it exists
+                            if proj_sha256 in variants_by_element[element]:
+                                proj_variant = variants_by_element[element][proj_sha256]
+                                proj_variant.token_match_warnings.append(
+                                    f"token matches internal (bytes differ)"
+                                )
+                    
+                    # Add library chips if sha256 matches index
+                    if sha256 in occurrences_index:
+                        for occ in occurrences_index[sha256]:
+                            archive_name = occ.get("archive", {}).get("name", "")
+                            archive_sha256 = occ.get("archive", {}).get("sha256", "")
+                            library = occ.get("library", {})
+                            
+                            archive_status = None
+                            for arch in manifest_archives:
+                                if arch.asset_name == archive_name:
+                                    archive_status = arch
+                                    break
+                                if arch.sha256 == archive_sha256:
+                                    archive_status = arch
+                                    break
+                            
+                            if not archive_status:
+                                relative_path = occ.get("archive", {}).get("relative_path", "")
+                                if relative_path:
+                                    for arch in manifest_archives:
+                                        if arch.relative_path == relative_path:
+                                            archive_status = arch
+                                            break
+                            
+                            installed = False
+                            corrupt = False
+                            warning = None
+                            if archive_status:
+                                status = check_archive_status(
+                                    archive_status.asset_name,
+                                    archive_status.sha256,
+                                    config=config,
+                                )
+                                installed = status["installed"] and not status["corrupt"]
+                                corrupt = status["corrupt"]
+                                if corrupt:
+                                    warning = status.get("error") or "Archive corrupt, needs reinstall"
+                            
+                            label = _format_library_label(occ)
+                            lib_source = PseudoSource(
+                                kind="lib",
+                                label=label,
+                                installed=installed,
+                                corrupt=corrupt,
+                                warning=warning,
+                                archive_asset=archive_name,
+                                library_name=library.get("library_name"),
+                                library_version=library.get("library_version"),
                             )
-                            installed = status["installed"] and not status["corrupt"]
-                            corrupt = status["corrupt"]
-                            if corrupt:
-                                warning = status.get("error") or "Archive corrupt, needs reinstall"
-                        
-                        label = _format_library_label(occ)
-                        lib_source = PseudoSource(
-                            kind="lib",
-                            label=label,
-                            installed=installed,
-                            corrupt=corrupt,
-                            warning=warning,
-                            archive_asset=archive_name,
-                            library_name=library.get("library_name"),
-                            library_version=library.get("library_version"),
-                        )
-                        variant.sources.append(lib_source)
+                            variant.sources.append(lib_source)
                 
-            except Exception:
-                continue
+                except Exception:
+                    continue
     
     # Add library-only variants (from index, not in project/internal)
     for file_entry in bundle.index.get("files", []):

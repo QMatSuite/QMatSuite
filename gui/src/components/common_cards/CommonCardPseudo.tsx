@@ -1165,107 +1165,107 @@ export function CommonCardPseudo({
                     );
                   } else {
                     // Old API: use candidates_by_element
-                    const candidates = mapping.candidates_by_element?.[species] || [];
-                    
-                    // Group candidates by source
-                    const candidatesBySource: Record<string, typeof candidates> = {};
-                    for (const cand of candidates) {
-                      if (!candidatesBySource[cand.source]) {
-                        candidatesBySource[cand.source] = [];
-                      }
-                      candidatesBySource[cand.source].push(cand);
+                  const candidates = mapping.candidates_by_element?.[species] || [];
+                  
+                  // Group candidates by source
+                  const candidatesBySource: Record<string, typeof candidates> = {};
+                  for (const cand of candidates) {
+                    if (!candidatesBySource[cand.source]) {
+                      candidatesBySource[cand.source] = [];
                     }
-                    
-                    // Get current source
-                    const currentSource = resolvedInfo?.source || null;
-                    const isResolved = resolvedInfo?.resolved || false;
-                    const inProject = resolvedInfo?.in_project || false;
-                    
-                    return (
-                      <tr key={species}>
-                        <td>
-                          <strong>{species}</strong>
-                        </td>
-                        <td>
-                          {isEditing ? (
-                            <div className="common-card-pseudo__pseudo-select">
-                              <select
-                                value={currentPseudo}
-                                onChange={(e) => handlePseudoChange(species, e.target.value)}
-                                className={`common-card-pseudo__select ${
-                                  !currentPseudo ? 'common-card-pseudo__select--unset' : ''
-                                }`}
-                              >
-                                <option value="">— Select —</option>
-                                {/* Group by source */}
-                                {candidatesBySource['internal'] && candidatesBySource['internal'].length > 0 && (
-                                  <optgroup label="Internal">
-                                    {candidatesBySource['internal'].map(cand => (
-                                      <option key={cand.filename} value={cand.filename}>
-                                        {cand.filename}
-                                      </option>
-                                    ))}
-                                  </optgroup>
-                                )}
-                                {candidatesBySource['sssp_precision'] && candidatesBySource['sssp_precision'].length > 0 && (
-                                  <optgroup label="SSSP Precision">
-                                    {candidatesBySource['sssp_precision'].map(cand => (
-                                      <option key={cand.filename} value={cand.filename}>
-                                        {cand.filename}
-                                      </option>
-                                    ))}
-                                  </optgroup>
-                                )}
-                                {candidatesBySource['sssp_efficiency'] && candidatesBySource['sssp_efficiency'].length > 0 && (
-                                  <optgroup label="SSSP Efficiency">
-                                    {candidatesBySource['sssp_efficiency'].map(cand => (
-                                      <option key={cand.filename} value={cand.filename}>
-                                        {cand.filename}
-                                      </option>
-                                    ))}
-                                  </optgroup>
-                                )}
-                                {candidatesBySource['project'] && candidatesBySource['project'].length > 0 && (
-                                  <optgroup label="Project">
-                                    {candidatesBySource['project'].map(cand => (
-                                      <option key={cand.filename} value={cand.filename}>
-                                        {cand.filename}
-                                      </option>
-                                    ))}
-                                  </optgroup>
-                                )}
-                              </select>
-                              {/* Show resolved status */}
-                              {currentPseudo && isResolved && currentSource && (
-                                <span className={`common-card-pseudo__source-badge ${getSourceBadgeClass(currentSource)}`}>
-                                  {getSourceLabel(currentSource)}
-                                  {!inProject && (
-                                    <span className="common-card-pseudo__copy-note" title="Will be copied into project on run">
-                                      (will copy)
-                                    </span>
-                                  )}
-                                </span>
+                    candidatesBySource[cand.source].push(cand);
+                  }
+                  
+                  // Get current source
+                  const currentSource = resolvedInfo?.source || null;
+                  const isResolved = resolvedInfo?.resolved || false;
+                  const inProject = resolvedInfo?.in_project || false;
+                  
+                  return (
+                    <tr key={species}>
+                      <td>
+                        <strong>{species}</strong>
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <div className="common-card-pseudo__pseudo-select">
+                            <select
+                              value={currentPseudo}
+                              onChange={(e) => handlePseudoChange(species, e.target.value)}
+                              className={`common-card-pseudo__select ${
+                                !currentPseudo ? 'common-card-pseudo__select--unset' : ''
+                              }`}
+                            >
+                              <option value="">— Select —</option>
+                              {/* Group by source */}
+                              {candidatesBySource['internal'] && candidatesBySource['internal'].length > 0 && (
+                                <optgroup label="Internal">
+                                  {candidatesBySource['internal'].map(cand => (
+                                    <option key={cand.filename} value={cand.filename}>
+                                      {cand.filename}
+                                    </option>
+                                  ))}
+                                </optgroup>
                               )}
-                              {/* Only show warning if truly unresolved */}
-                              {currentPseudo && !isResolved && (
-                                <span className="common-card-pseudo__not-found">
-                                  ⚠️ Not found
-                                </span>
+                              {candidatesBySource['sssp_precision'] && candidatesBySource['sssp_precision'].length > 0 && (
+                                <optgroup label="SSSP Precision">
+                                  {candidatesBySource['sssp_precision'].map(cand => (
+                                    <option key={cand.filename} value={cand.filename}>
+                                      {cand.filename}
+                                    </option>
+                                  ))}
+                                </optgroup>
                               )}
-                            </div>
-                          ) : (
-                            <div className="common-card-pseudo__pseudo-display">
-                              <code>{currentPseudo || '—'}</code>
-                              {currentSource && (
-                                <span className={`common-card-pseudo__source-badge ${getSourceBadgeClass(currentSource)}`}>
-                                  {getSourceLabel(currentSource)}
-                                </span>
+                              {candidatesBySource['sssp_efficiency'] && candidatesBySource['sssp_efficiency'].length > 0 && (
+                                <optgroup label="SSSP Efficiency">
+                                  {candidatesBySource['sssp_efficiency'].map(cand => (
+                                    <option key={cand.filename} value={cand.filename}>
+                                      {cand.filename}
+                                    </option>
+                                  ))}
+                                </optgroup>
                               )}
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    );
+                              {candidatesBySource['project'] && candidatesBySource['project'].length > 0 && (
+                                <optgroup label="Project">
+                                  {candidatesBySource['project'].map(cand => (
+                                    <option key={cand.filename} value={cand.filename}>
+                                      {cand.filename}
+                                    </option>
+                                  ))}
+                                </optgroup>
+                              )}
+                            </select>
+                            {/* Show resolved status */}
+                            {currentPseudo && isResolved && currentSource && (
+                              <span className={`common-card-pseudo__source-badge ${getSourceBadgeClass(currentSource)}`}>
+                                {getSourceLabel(currentSource)}
+                                {!inProject && (
+                                  <span className="common-card-pseudo__copy-note" title="Will be copied into project on run">
+                                    (will copy)
+                                  </span>
+                                )}
+                              </span>
+                            )}
+                            {/* Only show warning if truly unresolved */}
+                            {currentPseudo && !isResolved && (
+                              <span className="common-card-pseudo__not-found">
+                                ⚠️ Not found
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="common-card-pseudo__pseudo-display">
+                            <code>{currentPseudo || '—'}</code>
+                            {currentSource && (
+                              <span className={`common-card-pseudo__source-badge ${getSourceBadgeClass(currentSource)}`}>
+                                {getSourceLabel(currentSource)}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
                   }
                 })}
               </tbody>
