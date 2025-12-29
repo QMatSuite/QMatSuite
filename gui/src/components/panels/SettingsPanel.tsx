@@ -719,6 +719,7 @@ function PseudopotentialsSection() {
     listSeedArchives,
     downloadLibrary,
     downloadAll,
+    importSeedArchives,
   } = usePseudoConfig();
   
   const [actionResult, setActionResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -827,6 +828,59 @@ function PseudopotentialsSection() {
       setTimeout(() => setActionResult(null), 5000);
     }
   }, [validate]);
+  
+  const handleImportSeedArchives = useCallback(async () => {
+    if (!window.qv?.openFiles) {
+      setActionResult({ type: 'error', message: 'File picker not available' });
+      setTimeout(() => setActionResult(null), 5000);
+      return;
+    }
+    
+    setActionResult(null);
+    
+    try {
+      const filePaths = await window.qv.openFiles({
+        filters: [
+          { name: 'Archive Files', extensions: ['tar.gz', 'tgz', 'zip'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+        properties: ['multiSelections'],
+      });
+      
+      if (!filePaths || filePaths.length === 0) {
+        return; // User cancelled
+      }
+      
+      const result = await importSeedArchives(filePaths);
+      
+      if (result.errors.length > 0) {
+        setActionResult({ 
+          type: 'error', 
+          message: `Import completed with errors: ${result.errors.join('; ')}` 
+        });
+      } else if (result.imported.length > 0) {
+        setActionResult({ 
+          type: 'success', 
+          message: `Imported ${result.imported.length} archive(s). ${result.skipped.length > 0 ? `${result.skipped.length} skipped (duplicates).` : ''}` 
+        });
+      } else if (result.skipped.length > 0) {
+        setActionResult({ 
+          type: 'success', 
+          message: `All archives already exist (${result.skipped.length} skipped)` 
+        });
+      } else {
+        setActionResult({ type: 'success', message: 'Import completed' });
+      }
+      
+      setTimeout(() => setActionResult(null), 8000);
+    } catch (e) {
+      setActionResult({ 
+        type: 'error', 
+        message: `Import failed: ${e instanceof Error ? e.message : 'Unknown error'}` 
+      });
+      setTimeout(() => setActionResult(null), 8000);
+    }
+  }, [importSeedArchives]);
   
   // Get status summary
   const hasPrecision = installedLibraries.some(lib => lib.installed && lib.flavor === 'precision');
@@ -1046,7 +1100,7 @@ function PseudopotentialsSection() {
                     
                     {config.seed_dir && (
                       <div className="pseudo-advanced-subsection__field">
-                        <div className="pseudo-advanced-subsection__label">Seed Directory</div>
+                        <div className="pseudo-advanced-subsection__label">Seed Directory (Advanced Cache)</div>
                         <div className="pseudo-advanced-subsection__control">
                           <code className="pseudo-advanced-subsection__path">{config.seed_dir}</code>
                           <button
@@ -1078,6 +1132,14 @@ function PseudopotentialsSection() {
                     )}
                     
                     <div className="pseudo-advanced-subsection__actions">
+                      <button
+                        className="settings-btn settings-btn--secondary"
+                        onClick={handleImportSeedArchives}
+                        disabled={isLoading || isDownloading}
+                        title="Import tar.gz/zip archives into seed cache"
+                      >
+                        Import Seed Archives…
+                      </button>
                       <button
                         className="settings-btn settings-btn--primary"
                         onClick={handleInstallFromSeed}

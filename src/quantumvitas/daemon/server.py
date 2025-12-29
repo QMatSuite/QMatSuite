@@ -230,6 +230,8 @@ class QVDaemon:
             "list_seed_archives": self._handle_list_seed_archives,
             "download_sssp_library": self._handle_download_sssp_library,
             "download_all_sssp": self._handle_download_all_sssp,
+            "resolve_project_pseudo_provenance": self._handle_resolve_project_pseudo_provenance,
+            "import_seed_archives": self._handle_import_seed_archives,
             
             # Project/resource listing
             "get_project_summary": self._handle_get_project_summary,
@@ -984,6 +986,76 @@ class QVDaemon:
         result["installed_libraries"] = [lib.to_dict() for lib in list_installed_sssp(store_dir)]
         
         return result
+    
+    def _handle_import_seed_archives(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Import seed archives (tar/zip) into seed_dir with SHA256 deduplication.
+        
+        Payload:
+            file_paths: List[str] - Paths to archive files to import
+            
+        Returns:
+            Dict with imported, skipped, errors lists
+        """
+        from quantumvitas.core.pseudo_config import (
+            load_pseudo_config,
+            import_seed_archives,
+        )
+        from pathlib import Path
+        
+        file_paths = payload.get("file_paths", [])
+        if not file_paths:
+            return {
+                "imported": [],
+                "skipped": [],
+                "errors": ["No files provided"],
+            }
+        
+        config = load_pseudo_config()
+        if not config.seed_dir:
+            return {
+                "imported": [],
+                "skipped": [],
+                "errors": ["Seed directory not configured"],
+            }
+        
+        seed_dir = Path(config.seed_dir)
+        archive_paths = [Path(p) for p in file_paths]
+        
+        return import_seed_archives(seed_dir, archive_paths)
+    
+    def _handle_resolve_project_pseudo_provenance(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Resolve pseudo provenance for a pseudo file in a project.
+        
+        Payload:
+            project_root: str - Path to project root
+            pseudo_relpath: Optional[str] - Relative path from project root (e.g., "pseudo/Si.upf")
+            pseudo_abspath: Optional[str] - Absolute path to pseudo file
+            
+        Returns:
+            Dict with provenance information (serialized PseudoProvenanceResult)
+        """
+        from quantumvitas.api import QVService
+        from pathlib import Path
+        
+        project_root_str = payload.get("project_root")
+        pseudo_relpath = payload.get("pseudo_relpath")
+        pseudo_abspath = payload.get("pseudo_abspath")
+        
+        if pseudo_abspath:
+            pseudo_path = Path(pseudo_abspath)
+        elif pseudo_relpath and project_root_str:
+            pseudo_path = Path(project_root_str) / pseudo_relpath
+        else:
+            raise ValueError(
+                "Must provide either 'pseudo_abspath' or both 'project_root' and 'pseudo_relpath'"
+            )
+        
+        return QVService.resolve_pseudo_provenance(
+            str(pseudo_path),
+            project_root=project_root_str,
+        )
     
     def _handle_set_log_level(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """

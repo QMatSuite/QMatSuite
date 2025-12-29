@@ -90,6 +90,9 @@ export interface UsePseudoConfigResult {
   // Download actions
   downloadLibrary: (flavor: 'efficiency' | 'precision', enableIfDisabled?: boolean) => Promise<DownloadResult>;
   downloadAll: (enableIfDisabled?: boolean) => Promise<DownloadResult>;
+  
+  // Seed import
+  importSeedArchives: (filePaths: string[]) => Promise<{ imported: any[]; skipped: string[]; errors: string[] }>;
 }
 
 export function usePseudoConfig(): UsePseudoConfigResult {
@@ -474,6 +477,45 @@ export function usePseudoConfig(): UsePseudoConfigResult {
     }
   }, [config, updateConfig]);
   
+  const importSeedArchives = useCallback(async (
+    filePaths: string[]
+  ): Promise<{ imported: any[]; skipped: string[]; errors: string[] }> => {
+    if (!window.qv) return { imported: [], skipped: [], errors: ['No connection'] };
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await window.qv.request<QVResult<'import_seed_archives'>>(
+        'import_seed_archives',
+        { file_paths: filePaths }
+      );
+      if (response.ok && response.data) {
+        // Refresh seed archives after import
+        await listSeedArchives();
+        return {
+          imported: response.data.imported || [],
+          skipped: response.data.skipped || [],
+          errors: response.data.errors || [],
+        };
+      } else {
+        return {
+          imported: [],
+          skipped: [],
+          errors: [response.error?.message || 'Failed to import seed archives'],
+        };
+      }
+    } catch (e) {
+      return {
+        imported: [],
+        skipped: [],
+        errors: [e instanceof Error ? e.message : 'Failed to import seed archives'],
+      };
+    } finally {
+      setIsLoading(false);
+    }
+  }, [listSeedArchives]);
+  
   // Load config on mount
   useEffect(() => {
     if (!hasLoadedRef.current) {
@@ -502,6 +544,7 @@ export function usePseudoConfig(): UsePseudoConfigResult {
     listSeedArchives,
     downloadLibrary,
     downloadAll,
+    importSeedArchives,
   };
 }
 
