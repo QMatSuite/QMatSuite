@@ -1,7 +1,7 @@
 /**
  * Path helpers for E2E tests
  * 
- * All E2E-generated projects live under temp/e2e_projects/
+ * All E2E-generated projects live under .tmp/e2e_projects/
  */
 
 import * as fs from 'fs';
@@ -45,10 +45,10 @@ export function getGuiDir(): string {
 
 /**
  * Get and ensure the E2E projects root directory exists
- * Creates <repo_root>/temp/e2e_projects if it doesn't exist
+ * Creates <repo_root>/.tmp/e2e_projects if it doesn't exist
  */
 export function ensureE2EProjectsRoot(): string {
-  const e2eRoot = path.join(getRepoRoot(), 'temp', 'e2e_projects');
+  const e2eRoot = path.join(getRepoRoot(), '.tmp', 'e2e_projects');
   fs.mkdirSync(e2eRoot, { recursive: true });
   return e2eRoot;
 }
@@ -78,10 +78,10 @@ export function cleanupProjectDir(dirPath: string): void {
 
 /**
  * Clear all E2E test projects directory
- * Removes all contents of temp/e2e_projects/
+ * Removes all contents of .tmp/e2e_projects/
  */
 export function clearE2EProjectsRoot(): void {
-  const e2eRoot = path.join(getRepoRoot(), 'temp', 'e2e_projects');
+  const e2eRoot = path.join(getRepoRoot(), '.tmp', 'e2e_projects');
   if (fs.existsSync(e2eRoot)) {
     fs.rmSync(e2eRoot, { recursive: true, force: true });
   }

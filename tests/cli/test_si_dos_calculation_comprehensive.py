@@ -43,8 +43,8 @@ def run_qv(args: list[str], cwd: Path, check: bool = True) -> subprocess.Complet
 
 @pytest.fixture(scope="module")
 def test_project_dir(project_root_path: Path) -> Path:
-    """Create a temporary project directory for the test in temp/ folder."""
-    test_dir = project_root_path / "temp" / "test_si_dos_calculation"
+    """Create a temporary project directory for the test in .tmp/ folder."""
+    test_dir = project_root_path / ".tmp" / "test_si_dos_calculation"
     if test_dir.exists():
         shutil.rmtree(test_dir)
     test_dir.mkdir(parents=True, exist_ok=True)

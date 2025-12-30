@@ -65,7 +65,7 @@ def wait_for_job(daemon: QVDaemon, job_id: str, timeout: float = 300.0) -> Dict[
 @pytest.fixture(scope="module")
 def test_project_dir(project_root_path: Path) -> Path:
     """Create a temporary project directory for the test."""
-    test_dir = project_root_path / "temp" / "test_si_bands_daemon"
+    test_dir = project_root_path / ".tmp" / "test_si_bands_daemon"
     if test_dir.exists():
         shutil.rmtree(test_dir)
     test_dir.mkdir(parents=True, exist_ok=True)

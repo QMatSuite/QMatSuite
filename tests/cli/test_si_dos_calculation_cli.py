@@ -21,7 +21,7 @@ def cli_si_dos_project(ci_test_data_dir: Path, project_root_path: Path) -> Path:
         {"id": "nscf", "input": "si.2_nscf.in", "reference": "si.2_nscf.out"},
         {"id": "dos", "input": "si.3_dos.in", "reference": "si.3_dos.out"},
     ]
-    project_root = project_root_path / "temp" / "test_outputs" / "cli_si_dos_project"
+    project_root = project_root_path / ".tmp" / "test_outputs" / "cli_si_dos_project"
     return create_calculation_project(
         project_root=project_root,
         calculation_id="si_dos",
