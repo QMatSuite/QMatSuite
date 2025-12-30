@@ -121,7 +121,7 @@ export function useLibraryManager(): UseLibraryManagerResult {
       if (response.ok && response.data) {
         setLibraryStatuses(prev => {
           const next = new Map(prev);
-          next.set(libraryId, response.data as LibraryStatus);
+          next.set(libraryId, response.data as unknown as LibraryStatus);
           return next;
         });
       }
@@ -137,9 +137,10 @@ export function useLibraryManager(): UseLibraryManagerResult {
     try {
       const configResponse = await window.qv.request<{ ok: boolean; data?: { store_dir?: string; seed_dir?: string; allow_download?: boolean }; error?: any }>('get_pseudo_config', {});
       if (configResponse.ok && configResponse.data) {
-        setStoreDir(configResponse.data.store_dir || null);
-        setSeedDir(configResponse.data.seed_dir || null);
-        setAllowDownload(configResponse.data.allow_download || false);
+        const data = configResponse.data as { store_dir?: string; seed_dir?: string; allow_download?: boolean };
+        setStoreDir(data.store_dir || null);
+        setSeedDir(data.seed_dir || null);
+        setAllowDownload(data.allow_download || false);
       }
     } catch (e) {
       console.error('Failed to load config:', e);
@@ -157,7 +158,8 @@ export function useLibraryManager(): UseLibraryManagerResult {
     try {
       const response = await window.qv.request<{ ok: boolean; data?: { size_bytes?: number | null }; error?: any }>('compute_store_size', {});
       if (response.ok && response.data) {
-        setStoreSize(response.data.size_bytes ?? null);
+        const data = response.data as { size_bytes?: number | null };
+        setStoreSize(data.size_bytes ?? null);
       }
     } catch (e) {
       console.error('Failed to load store size:', e);
@@ -203,7 +205,7 @@ export function useLibraryManager(): UseLibraryManagerResult {
       );
       
       if (response.ok && response.data) {
-        const result = response.data as InstallResult;
+        const result = response.data as unknown as InstallResult;
         const messages = result.messages || [];
         const allMessages = messages.join(' ').toLowerCase();
         
@@ -274,7 +276,7 @@ export function useLibraryManager(): UseLibraryManagerResult {
       );
       
       if (response.ok && response.data) {
-        const result = response.data as RemoveResult;
+        const result = response.data as unknown as RemoveResult;
         // Force refresh status - wait a bit for filesystem to settle
         await new Promise(resolve => setTimeout(resolve, 500));
         await loadLibraryStatus(libraryId);
@@ -319,7 +321,7 @@ export function useLibraryManager(): UseLibraryManagerResult {
       );
       
       if (response.ok && response.data) {
-        const result = response.data as InstallResult;
+        const result = response.data as unknown as InstallResult;
         if (result.success) {
           setInstallStage('installed');
           // Force refresh status - wait a bit for filesystem to settle

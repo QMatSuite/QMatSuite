@@ -37,12 +37,12 @@ def mock_bundle():
         "files": [
             {
                 "sha256": "abc123",
-                "sha_token": "token123",
+                "sha_family": "family123",
                 "basenames": ["Si.pbe-n-rrkjus_psl.1.0.0.UPF"],
             },
             {
                 "sha256": "def456",
-                "sha_token": "token456",
+                "sha_family": "family456",
                 "basenames": ["Si.pbe-n-rrkjus_psl.1.0.0.UPF"],  # Same basename, different sha256
             },
         ],
@@ -264,7 +264,7 @@ def test_library_chips_from_occurrences(
 
 @patch("quantumvitas.core.pseudo_options.load_pseudo_libinfo_bundle")
 @patch("quantumvitas.core.pseudo_options.load_manifest_archives")
-@patch("quantumvitas.core.pseudo_options.check_archive_status")
+@patch("quantumvitas.core.pseudo_installs.check_archive_status")
 @patch("quantumvitas.core.pseudo_options.get_system_pseudo_dir")
 def test_installed_chip_reflects_archive_status(
     mock_get_system_pseudo_dir,
@@ -423,7 +423,7 @@ def test_rpc_roundtrip_stable_json(
     if len(parsed["Si"]) > 0:
         option = parsed["Si"][0]
         assert "sha256" in option
-        assert "sha_token" in option
+        assert "sha_family" in option
         assert "element" in option
         assert "basename" in option
         assert "display_label" in option  # New field name

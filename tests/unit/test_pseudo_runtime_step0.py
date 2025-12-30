@@ -3,8 +3,8 @@ Unit tests for Step0 pseudo runtime preparation (constitution-compliant).
 
 Tests verify that prepare_project_pseudos_for_run() correctly handles:
 - Noop (same sha256)
-- Overwrite (same sha_token, different sha256)
-- Rename existing (different sha_token, same basename)
+- Overwrite (same sha_family, different sha256)
+- Rename existing (different sha_family, same basename)
 - Analyzer is read-only (no filesystem mutations)
 - Calc refresh updates records correctly
 """
@@ -19,7 +19,7 @@ import yaml
 
 from quantumvitas.core.pseudo_libinfo import (
     compute_sha256_bytes,
-    compute_sha_token_file,
+    compute_sha_family_file,
 )
 
 
@@ -32,25 +32,25 @@ from quantumvitas.core.pseudo_runtime import (
     prepare_project_pseudos_for_run,
     refresh_calc_pseudo_records_after_step0,
     species_map_to_selections,
-    update_project_calcs_filename_by_sha_token,
+    update_project_calcs_filename_by_sha_family,
     PseudoSelection,
 )
 
 
 def create_dummy_pseudo_file(path: Path, content: str = "DUMMY UPF CONTENT\n") -> tuple[str, str]:
-    """Create a dummy UPF file and return (sha256, sha_token)."""
+    """Create a dummy UPF file and return (sha256, sha_family)."""
     path.write_text(content, encoding="utf-8")
     sha256 = compute_sha256_file(path)
-    sha_token = compute_sha_token_file(path)
-    return sha256, sha_token
+    sha_family = compute_sha_family_file(path)
+    return sha256, sha_family
 
 
-def create_dummy_pseudo_file_different_token(path: Path, content: str = "DIFFERENT UPF CONTENT\n") -> tuple[str, str]:
-    """Create a dummy UPF file with different token and return (sha256, sha_token)."""
+def create_dummy_pseudo_file_different_family(path: Path, content: str = "DIFFERENT UPF CONTENT\n") -> tuple[str, str]:
+    """Create a dummy UPF file with different family and return (sha256, sha_family)."""
     path.write_text(content, encoding="utf-8")
     sha256 = compute_sha256_file(path)
-    sha_token = compute_sha_token_file(path)
-    return sha256, sha_token
+    sha_family = compute_sha_family_file(path)
+    return sha256, sha_family
 
 
 @pytest.fixture
@@ -98,7 +98,7 @@ def temp_calculation(temp_project: Path) -> Path:
             "Si": {
                 "pseudopot": "Si.upf",
                 "pseudo_sha256": "",
-                "pseudo_sha_token": "",
+                "pseudo_sha_family": "",
             }
         },
         "steps": [],
@@ -116,7 +116,7 @@ def test_step0_noop_project_source(temp_project: Path) -> None:
     """
     # Create existing file in project/pseudo
     project_pseudo = temp_project / "pseudo" / "Si.upf"
-    existing_sha256, existing_sha_token = create_dummy_pseudo_file(project_pseudo, "Si UPF content\n")
+    existing_sha256, existing_sha_family = create_dummy_pseudo_file(project_pseudo, "Si UPF content\n")
     
     # Create selection with project source (sha256 matches project file)
     selections = [
@@ -124,7 +124,7 @@ def test_step0_noop_project_source(temp_project: Path) -> None:
             element="Si",
             requested_basename="Si.upf",
             requested_sha256=existing_sha256,
-            requested_sha_token=existing_sha_token,
+            requested_sha_family=existing_sha_family,
             source_kind="project",  # Project selection
             source_path=None,  # Project selection doesn't need source_path
         )
@@ -152,15 +152,15 @@ def test_step0_noop_same_sha256(temp_project: Path, tmp_path: Path) -> None:
     """
     # Create existing file in project/pseudo
     project_pseudo = temp_project / "pseudo" / "Si.upf"
-    existing_sha256, existing_sha_token = create_dummy_pseudo_file(project_pseudo, "Si UPF content\n")
+    existing_sha256, existing_sha_family = create_dummy_pseudo_file(project_pseudo, "Si UPF content\n")
     
     # Create source file (internal) with same content
     internal_pseudo = tmp_path / "internal" / "Si.upf"
     internal_pseudo.parent.mkdir()
-    source_sha256, source_sha_token = create_dummy_pseudo_file(internal_pseudo, "Si UPF content\n")
+    source_sha256, source_sha_family = create_dummy_pseudo_file(internal_pseudo, "Si UPF content\n")
     
     assert existing_sha256 == source_sha256, "Files should have same sha256"
-    assert existing_sha_token == source_sha_token, "Files should have same sha_token"
+    assert existing_sha_family == source_sha_family, "Files should have same sha_family"
     
     # Create selection
     selections = [
@@ -168,7 +168,7 @@ def test_step0_noop_same_sha256(temp_project: Path, tmp_path: Path) -> None:
             element="Si",
             requested_basename="Si.upf",
             requested_sha256=source_sha256,
-            requested_sha_token=source_sha_token,
+            requested_sha_family=source_sha_family,
             source_kind="internal",
             source_path=internal_pseudo,
         )
@@ -187,25 +187,25 @@ def test_step0_noop_same_sha256(temp_project: Path, tmp_path: Path) -> None:
     assert compute_sha256_file(project_pseudo) == existing_sha256
 
 
-def test_step0_overwrite_same_token_different_sha256(temp_project: Path, tmp_path: Path) -> None:
+def test_step0_overwrite_same_family_different_sha256(temp_project: Path, tmp_path: Path) -> None:
     """
-    Test overwrite: project has Si.upf with same sha_token but different sha256.
+    Test overwrite: project has Si.upf with same sha_family but different sha256.
     
     Step0 should overwrite with canonical (internal/lib) version.
     """
-    # Create existing file in project/pseudo (different bytes, same token)
+    # Create existing file in project/pseudo (different bytes, same family)
     project_pseudo = temp_project / "pseudo" / "Si.upf"
-    # Use content that normalizes to same token but different bytes
+    # Use content that produces same family but different bytes
     existing_content = "Si UPF content\n"
-    existing_sha256, existing_sha_token = create_dummy_pseudo_file(project_pseudo, existing_content)
+    existing_sha256, existing_sha_family = create_dummy_pseudo_file(project_pseudo, existing_content)
     
-    # Create canonical source (same token, different bytes due to whitespace)
+    # Create canonical source (same family, different bytes due to whitespace)
     internal_pseudo = tmp_path / "internal" / "Si.upf"
     internal_pseudo.parent.mkdir()
-    canonical_content = "Si    UPF    content\n"  # More spaces, same token
-    source_sha256, source_sha_token = create_dummy_pseudo_file(internal_pseudo, canonical_content)
+    canonical_content = "Si    UPF    content\n"  # More spaces, same family (whitespace stripped)
+    source_sha256, source_sha_family = create_dummy_pseudo_file(internal_pseudo, canonical_content)
     
-    assert existing_sha_token == source_sha_token, "Files should have same sha_token"
+    assert existing_sha_family == source_sha_family, "Files should have same sha_family"
     assert existing_sha256 != source_sha256, "Files should have different sha256"
     
     # Create selection
@@ -214,7 +214,7 @@ def test_step0_overwrite_same_token_different_sha256(temp_project: Path, tmp_pat
             element="Si",
             requested_basename="Si.upf",
             requested_sha256=source_sha256,
-            requested_sha_token=source_sha_token,
+            requested_sha_family=source_sha_family,
             source_kind="internal",
             source_path=internal_pseudo,
         )
@@ -231,21 +231,21 @@ def test_step0_overwrite_same_token_different_sha256(temp_project: Path, tmp_pat
     # Verify file content changed to canonical
     assert project_pseudo.exists()
     assert compute_sha256_file(project_pseudo) == source_sha256
-    assert compute_sha_token_file(project_pseudo) == source_sha_token
+    assert compute_sha_family_file(project_pseudo) == source_sha_family
 
 
-def test_step0_rename_different_token_same_basename(temp_project: Path, tmp_path: Path, temp_calculation: Path) -> None:
+def test_step0_rename_different_family_same_basename(temp_project: Path, tmp_path: Path, temp_calculation: Path) -> None:
     """
-    Test rename: project has Si.upf token A, user selects Si.upf token B.
+    Test rename: project has Si.upf family A, user selects Si.upf family B.
     
     Step0 should:
-    1. Rename existing file to disambiguated filename
+    1. Rename existing file to disambiguated filename (__fam-<sha_family[:10]>)
     2. Copy new canonical to Si.upf
-    3. Update calcs referencing token A by sha_token
+    3. Update calcs referencing family A by sha_family
     """
-    # Create existing file in project/pseudo (token A)
+    # Create existing file in project/pseudo (family A)
     project_pseudo = temp_project / "pseudo" / "Si.upf"
-    existing_sha256, existing_sha_token = create_dummy_pseudo_file(project_pseudo, "Si UPF content A\n")
+    existing_sha256, existing_sha_family = create_dummy_pseudo_file(project_pseudo, "Si UPF content A\n")
     
     # Update calc to reference this file
     calc_yaml_path = temp_calculation / "calculation.yaml"
@@ -253,16 +253,16 @@ def test_step0_rename_different_token_same_basename(temp_project: Path, tmp_path
     calc_yaml_dict["species_map"]["Si"] = {
         "pseudopot": "Si.upf",
         "pseudo_sha256": existing_sha256,
-        "pseudo_sha_token": existing_sha_token,
+        "pseudo_sha_family": existing_sha_family,
     }
     calc_yaml_path.write_text(yaml.safe_dump(calc_yaml_dict))
     
-    # Create canonical source (token B, different content)
+    # Create canonical source (family B, different content)
     internal_pseudo = tmp_path / "internal" / "Si.upf"
     internal_pseudo.parent.mkdir()
-    source_sha256, source_sha_token = create_dummy_pseudo_file_different_token(internal_pseudo, "Si UPF content B\n")
+    source_sha256, source_sha_family = create_dummy_pseudo_file_different_family(internal_pseudo, "Si UPF content B\n")
     
-    assert existing_sha_token != source_sha_token, "Files should have different sha_token"
+    assert existing_sha_family != source_sha_family, "Files should have different sha_family"
     
     # Create selection
     selections = [
@@ -270,7 +270,7 @@ def test_step0_rename_different_token_same_basename(temp_project: Path, tmp_path
             element="Si",
             requested_basename="Si.upf",
             requested_sha256=source_sha256,
-            requested_sha_token=source_sha_token,
+            requested_sha_family=source_sha_family,
             source_kind="internal",
             source_path=internal_pseudo,
         )
@@ -286,31 +286,24 @@ def test_step0_rename_different_token_same_basename(temp_project: Path, tmp_path
     assert rename_actions[0].renamed_from is not None
     assert rename_actions[0].renamed_to is not None
     
+    # Verify renamed filename contains __fam- prefix
+    assert "__fam-" in rename_actions[0].renamed_to.name, "Renamed file should have __fam- prefix"
+    
     # Verify existing file renamed
     renamed_path = temp_project / "pseudo" / rename_actions[0].renamed_to.name
     assert renamed_path.exists(), f"Renamed file should exist at {renamed_path}"
     assert compute_sha256_file(renamed_path) == existing_sha256
-    assert compute_sha_token_file(renamed_path) == existing_sha_token
+    assert compute_sha_family_file(renamed_path) == existing_sha_family
     
     # Verify new canonical copied
     assert project_pseudo.exists()
     assert compute_sha256_file(project_pseudo) == source_sha256
-    assert compute_sha_token_file(project_pseudo) == source_sha_token
+    assert compute_sha_family_file(project_pseudo) == source_sha_family
     
-    # Verify calc filename updated by sha_token
-    import yaml
-    updated_count = update_project_calcs_filename_by_sha_token(
-        temp_project,
-        existing_sha_token,
-        "Si.upf",
-        renamed_path.name,
-    )
-    assert updated_count >= 1, "Should update at least one calc"
-    
-    # Verify calc record updated
+    # Verify calc record was updated by Step0 (Step0 calls update_project_calcs_filename_by_sha_family internally)
     calc_data_after = yaml.safe_load(calc_yaml_path.read_text())
     assert calc_data_after["species_map"]["Si"]["pseudopot"] == renamed_path.name
-    assert calc_data_after["species_map"]["Si"]["pseudo_sha_token"] == existing_sha_token  # Unchanged
+    assert calc_data_after["species_map"]["Si"]["pseudo_sha_family"] == existing_sha_family  # Unchanged
 
 
 def test_analyzer_read_only(temp_project: Path, tmp_path: Path) -> None:
@@ -319,19 +312,19 @@ def test_analyzer_read_only(temp_project: Path, tmp_path: Path) -> None:
     """
     # Create existing file
     project_pseudo = temp_project / "pseudo" / "Si.upf"
-    existing_sha256, existing_sha_token = create_dummy_pseudo_file(project_pseudo)
+    existing_sha256, existing_sha_family = create_dummy_pseudo_file(project_pseudo)
     
     # Create source file
     internal_pseudo = tmp_path / "internal" / "Si.upf"
     internal_pseudo.parent.mkdir()
-    source_sha256, source_sha_token = create_dummy_pseudo_file_different_token(internal_pseudo)
+    source_sha256, source_sha_family = create_dummy_pseudo_file_different_family(internal_pseudo)
     
     selections = [
         PseudoSelection(
             element="Si",
             requested_basename="Si.upf",
             requested_sha256=source_sha256,
-            requested_sha_token=source_sha_token,
+            requested_sha_family=source_sha_family,
             source_kind="internal",
             source_path=internal_pseudo,
         )
@@ -356,7 +349,7 @@ def test_calc_refresh_after_step0(temp_project: Path, temp_calculation: Path) ->
     """
     # Create project file (after Step0)
     project_pseudo = temp_project / "pseudo" / "Si.upf"
-    actual_sha256, actual_sha_token = create_dummy_pseudo_file(project_pseudo, "Si UPF content\n")
+    actual_sha256, actual_sha_family = create_dummy_pseudo_file(project_pseudo, "Si UPF content\n")
     
     # Load initial calc
     calc_yaml = temp_calculation / "calculation.yaml"
@@ -367,7 +360,7 @@ def test_calc_refresh_after_step0(temp_project: Path, temp_calculation: Path) ->
     calc_data["species_map"]["Si"] = {
         "pseudopot": "Si.upf",
         "pseudo_sha256": "old_sha256",
-        "pseudo_sha_token": "old_sha_token",
+        "pseudo_sha_family": "old_sha_family",
         "pseudo_basename": "Si.upf",
     }
     
@@ -384,7 +377,7 @@ def test_calc_refresh_after_step0(temp_project: Path, temp_calculation: Path) ->
     
     si_entry = updated_calc["species_map"]["Si"]
     assert si_entry["pseudo_sha256"] == actual_sha256, "sha256 should be updated"
-    assert si_entry["pseudo_sha_token"] == actual_sha_token, "sha_token should be updated"
+    assert si_entry["pseudo_sha_family"] == actual_sha_family, "sha_family should be updated"
     assert si_entry["pseudopot"] == "Si.upf", "filename should be preserved"
 
 
@@ -392,13 +385,13 @@ def test_species_map_to_selections(temp_project: Path) -> None:
     """Test conversion of species_map to PseudoSelection list."""
     # Create existing file in project
     project_pseudo = temp_project / "pseudo" / "Si.upf"
-    existing_sha256, existing_sha_token = create_dummy_pseudo_file(project_pseudo)
+    existing_sha256, existing_sha_family = create_dummy_pseudo_file(project_pseudo)
     
     species_map = {
         "Si": {
             "pseudopot": "Si.upf",
             "pseudo_sha256": existing_sha256,
-            "pseudo_sha_token": existing_sha_token,
+            "pseudo_sha_family": existing_sha_family,
         }
     }
     
@@ -408,7 +401,7 @@ def test_species_map_to_selections(temp_project: Path) -> None:
     assert selections[0].element == "Si"
     assert selections[0].requested_basename == "Si.upf"
     assert selections[0].requested_sha256 == existing_sha256
-    assert selections[0].requested_sha_token == existing_sha_token
+    assert selections[0].requested_sha_family == existing_sha_family
     assert selections[0].source_kind == "project"
 
 
@@ -429,7 +422,7 @@ def test_refresh_calc_pseudo_records_missing_file(temp_project: Path) -> None:
     
     # Create calc with stored triplet
     stored_sha256 = "abc123" * 8  # Fake sha256
-    stored_sha_token = "def456" * 8  # Fake sha_token
+    stored_sha_family = "def456" * 8  # Fake sha_family
     
     # Use correct CalculationModel constructor with ResourceMeta
     calc_model = CalculationModel(
@@ -445,7 +438,7 @@ def test_refresh_calc_pseudo_records_missing_file(temp_project: Path) -> None:
                 "pseudopot": "Si.upf",
                 "pseudo_basename": "Si.upf",
                 "pseudo_sha256": stored_sha256,
-                "pseudo_sha_token": stored_sha_token,
+                "pseudo_sha_family": stored_sha_family,
             }
         }
     )
@@ -490,8 +483,8 @@ def test_refresh_calc_pseudo_records_missing_file(temp_project: Path) -> None:
         # Stored values should be unchanged
         assert si_entry.get("pseudo_sha256") == stored_sha256, \
             "pseudo_sha256 should remain unchanged when file missing"
-        assert si_entry.get("pseudo_sha_token") == stored_sha_token, \
-            "pseudo_sha_token should remain unchanged when file missing"
+        assert si_entry.get("pseudo_sha_family") == stored_sha_family, \
+            "pseudo_sha_family should remain unchanged when file missing"
         assert si_entry.get("pseudo_basename") == "Si.upf", \
             "pseudo_basename should remain unchanged when file missing"
     finally:

@@ -102,7 +102,7 @@ export interface QVClient {
       element: string;
       requested_basename: string;
       requested_sha256?: string;
-      requested_sha_token?: string;
+      requested_sha_family?: string;
       source_kind?: 'project' | 'internal' | 'lib';
       source_path?: string;
     }>
@@ -569,7 +569,7 @@ export function useQVClient(): QVClient {
         element: string;
         requested_basename: string;
         requested_sha256?: string;
-        requested_sha_token?: string;
+        requested_sha_family?: string;
         source_kind?: 'project' | 'internal' | 'lib';
         source_path?: string;
       }>

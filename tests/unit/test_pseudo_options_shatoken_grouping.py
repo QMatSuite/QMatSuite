@@ -2,9 +2,9 @@
 Unit tests for sha256-keyed pseudo options (filename-first, constitution-compliant).
 
 Tests verify that get_pseudo_options_for_elements() correctly:
-- Returns sha256-keyed variants (not sha_token-grouped)
+- Returns sha256-keyed variants (not sha_family-grouped)
 - Handles "project_local_unknown" variants
-- Shows token-match warnings when project has same basename with token-match but sha256 differs
+- Shows family-match warnings when project has same basename with family-match but sha256 differs
 - Filters to filesystem-real options only (project/internal or installed lib)
 - Default selection priority: project → internal → lib
 """
@@ -17,7 +17,7 @@ import pytest
 from quantumvitas.core.pseudo_options import get_pseudo_options_for_elements
 from quantumvitas.core.pseudo_libinfo import (
     compute_sha256_bytes,
-    compute_sha_token_file,
+    compute_sha_family_file,
 )
 
 
@@ -35,8 +35,31 @@ def make_minimal_upf(element: str) -> str:
 """
 
 
+def upf_text_si_canonical() -> str:
+    """Canonical UPF text for Si (LF line endings, minimal whitespace)."""
+    return (
+        '<UPF version="2.0.1">\n'
+        '<PP_HEADER element="Si" pseudo_type="NC" z_valence="4.0"/>\n'
+        '</UPF>\n'
+    )
+
+
+def upf_text_si_whitespace_variant() -> str:
+    """UPF text with same content but different whitespace (CRLF, extra spaces).
+    
+    Important: sha_family strips ALL whitespace, so this will produce the same
+    sha_family as the canonical version (whitespace position doesn't matter).
+    """
+    return (
+        '<UPF version="2.0.1">\r\n'
+        '   <PP_HEADER   element="Si"   pseudo_type="NC"   z_valence="4.0"/>\r\n'
+        '\r\n'
+        '</UPF>\r\n'
+    )
+
+
 def create_dummy_pseudo_file(path: Path, content: str = None) -> tuple[str, str]:
-    """Create a dummy UPF file and return (sha256, sha_token)."""
+    """Create a dummy UPF file and return (sha256, sha_family)."""
     if content is None:
         # Infer element from filename if possible
         element = path.stem.split(".")[0].upper()
@@ -46,8 +69,8 @@ def create_dummy_pseudo_file(path: Path, content: str = None) -> tuple[str, str]
             content = make_minimal_upf("Si")  # Default fallback
     path.write_text(content, encoding="utf-8")
     sha256 = compute_sha256_file(path)
-    sha_token = compute_sha_token_file(path)
-    return sha256, sha_token
+    sha_family = compute_sha_family_file(path)
+    return sha256, sha_family
 
 
 @pytest.fixture
@@ -71,25 +94,26 @@ def temp_project(tmp_path: Path) -> Path:
 
 def test_sha256_keyed_variants(temp_project: Path, tmp_path: Path) -> None:
     """
-    Test that options are keyed by sha256 (not sha_token-grouped).
+    Test that options are keyed by sha256 (not sha_family-grouped).
     
-    Two files with same sha_token but different sha256 should be separate variants.
+    Two files with same sha_family but different sha256 should be separate variants.
     """
-    # Create two files with same token (different whitespace, same physical)
+    # Create two files with same family (different whitespace, same physical)
     internal_dir = tmp_path / "internal"
     internal_dir.mkdir()
     
     file1 = internal_dir / "Si.upf"
-    sha256_1, sha_token_1 = create_dummy_pseudo_file(file1)
+    content1 = upf_text_si_canonical()
+    sha256_1, sha_family_1 = create_dummy_pseudo_file(file1, content1)
     
     file2 = internal_dir / "Si_v2.upf"
-    # Create file with different whitespace (same token, different sha256)
-    content2 = make_minimal_upf("Si") + "    \n"  # Extra whitespace
-    sha256_2, sha_token_2 = create_dummy_pseudo_file(file2, content2)
+    # Create file with different whitespace (same family, different sha256)
+    content2 = upf_text_si_whitespace_variant()
+    sha256_2, sha_family_2 = create_dummy_pseudo_file(file2, content2)
     
-    # They should have different sha256 but same sha_token
+    # They should have different sha256 but same sha_family
     assert sha256_1 != sha256_2, "Files should have different sha256"
-    assert sha_token_1 == sha_token_2, "Files should have same sha_token"
+    assert sha_family_1 == sha_family_2, "Files should have same sha_family"
     
     # Mock get_system_pseudo_dir to return our temp internal dir
     from unittest.mock import patch
@@ -108,33 +132,34 @@ def test_sha256_keyed_variants(temp_project: Path, tmp_path: Path) -> None:
     assert sha256_1 in variant_sha256s, "First sha256 should be present"
     assert sha256_2 in variant_sha256s, "Second sha256 should be present"
     
-    # Verify both have same sha_token (for warnings)
+    # Verify both have same sha_family (for warnings)
     variant1 = next(v for v in si_options if v["sha256"] == sha256_1)
     variant2 = next(v for v in si_options if v["sha256"] == sha256_2)
-    assert variant1["sha_token"] == variant2["sha_token"], "Both should have same sha_token"
+    assert variant1["sha_family"] == variant2["sha_family"], "Both should have same sha_family"
 
 
-def test_token_match_warnings(temp_project: Path, tmp_path: Path) -> None:
+def test_family_match_warnings(temp_project: Path, tmp_path: Path) -> None:
     """
-    Test that token-match warnings are shown when project has same basename with token-match but sha256 differs.
+    Test that family-match warnings are shown when project has same basename with family-match but sha256 differs.
     """
     # Create project file
     project_pseudo = temp_project / "pseudo" / "Si.upf"
     project_pseudo.parent.mkdir(parents=True, exist_ok=True)
-    proj_sha256, proj_sha_token = create_dummy_pseudo_file(project_pseudo)
+    content_proj = upf_text_si_canonical()
+    proj_sha256, proj_sha_family = create_dummy_pseudo_file(project_pseudo, content_proj)
     
-    # Create internal file with same token but different sha256 (different whitespace)
+    # Create internal file with same family but different sha256 (different whitespace)
     internal_dir = tmp_path / "internal"
     internal_dir.mkdir()
     
     internal_file = internal_dir / "Si.upf"
-    # Create file with different whitespace (same token, different sha256)
-    content_internal = make_minimal_upf("Si") + "    \n"  # Extra whitespace
-    internal_sha256, internal_sha_token = create_dummy_pseudo_file(internal_file, content_internal)
+    # Create file with different whitespace (same family, different sha256)
+    content_internal = upf_text_si_whitespace_variant()
+    internal_sha256, internal_sha_family = create_dummy_pseudo_file(internal_file, content_internal)
     
-    # They should have different sha256 but same sha_token
+    # They should have different sha256 but same sha_family
     assert proj_sha256 != internal_sha256, "Files should have different sha256"
-    assert proj_sha_token == internal_sha_token, "Files should have same sha_token"
+    assert proj_sha_family == internal_sha_family, "Files should have same sha_family"
     
     # Mock get_system_pseudo_dir to return our temp internal dir
     from unittest.mock import patch
@@ -156,11 +181,11 @@ def test_token_match_warnings(temp_project: Path, tmp_path: Path) -> None:
     internal_variant = next((v for v in si_options if v["sha256"] == internal_sha256), None)
     assert internal_variant is not None, "Internal variant should exist"
     
-    # Internal variant should have token-match warning
-    assert len(internal_variant.get("token_match_warnings", [])) > 0, "Internal variant should have token-match warning"
+    # Internal variant should have family-match warning
+    assert len(internal_variant.get("family_match_warnings", [])) > 0, "Internal variant should have family-match warning"
     
-    # Project variant should also have token-match warning
-    assert len(project_variant.get("token_match_warnings", [])) > 0, "Project variant should have token-match warning"
+    # Project variant should also have family-match warning
+    assert len(project_variant.get("family_match_warnings", [])) > 0, "Project variant should have family-match warning"
 
 
 def test_project_local_unknown(temp_project: Path, tmp_path: Path) -> None:
@@ -170,7 +195,7 @@ def test_project_local_unknown(temp_project: Path, tmp_path: Path) -> None:
     # Create project file that's not in any index
     project_pseudo = temp_project / "pseudo" / "Si.upf"
     project_pseudo.parent.mkdir(parents=True, exist_ok=True)
-    proj_sha256, proj_sha_token = create_dummy_pseudo_file(project_pseudo, "Si UPF content\n")
+    proj_sha256, proj_sha_family = create_dummy_pseudo_file(project_pseudo, "Si UPF content\n")
     
     # Mock get_system_pseudo_dir to return None (no internal)
     from unittest.mock import patch
@@ -197,13 +222,16 @@ def test_filesystem_real_filtering(temp_project: Path, tmp_path: Path) -> None:
     # Create project file
     project_pseudo = temp_project / "pseudo" / "Si.upf"
     project_pseudo.parent.mkdir(parents=True, exist_ok=True)
-    proj_sha256, _ = create_dummy_pseudo_file(project_pseudo, "Si UPF content\n")
+    proj_content = make_minimal_upf("Si")
+    proj_sha256, _ = create_dummy_pseudo_file(project_pseudo, proj_content)
     
-    # Create internal file
+    # Create internal file (different content so different sha256)
     internal_dir = tmp_path / "internal"
     internal_dir.mkdir()
     internal_file = internal_dir / "Si_v2.upf"
-    internal_sha256, _ = create_dummy_pseudo_file(internal_file, "Si UPF content v2\n")
+    # Use different content to ensure different sha256
+    internal_content = make_minimal_upf("Si") + "<!-- comment -->\n"
+    internal_sha256, _ = create_dummy_pseudo_file(internal_file, internal_content)
     
     # Mock get_system_pseudo_dir to return our temp internal dir
     from unittest.mock import patch
@@ -221,24 +249,8 @@ def test_filesystem_real_filtering(temp_project: Path, tmp_path: Path) -> None:
         has_installed_lib = any(s["kind"] == "lib" and s["installed"] and not s.get("corrupt", False) for s in variant["sources"])
         assert has_project or has_internal or has_installed_lib, f"Variant {variant['sha256']} should have at least one filesystem-real source"
     
-    si_options = options.get("Si", [])
-    
-    # Should have multiple groups (different sha_token)
-    assert len(si_options) >= 2, f"Should have at least 2 groups, got {len(si_options)}"
-    
-    # Check disambiguation labels
-    basename_to_groups = {}
-    for group in si_options:
-        canonical = group["canonical_basename"]
-        if canonical not in basename_to_groups:
-            basename_to_groups[canonical] = []
-        basename_to_groups[canonical].append(group)
-    
-    # Groups with same basename should have disambiguated labels
-    for basename, groups in basename_to_groups.items():
-        if len(groups) > 1:
-            for group in groups:
-                assert "(tok-" in group["display_label"], f"Label should have token disambiguation: {group['display_label']}"
+    # Should have multiple variants (at least project and internal)
+    assert len(si_options) >= 2, f"Should have at least 2 variants, got {len(si_options)}"
 
 
 def test_sources_aggregation(temp_project: Path, tmp_path: Path) -> None:
@@ -249,7 +261,7 @@ def test_sources_aggregation(temp_project: Path, tmp_path: Path) -> None:
     internal_dir = tmp_path / "internal"
     internal_dir.mkdir()
     file1 = internal_dir / "Si.upf"
-    sha256_1, sha_token_1 = create_dummy_pseudo_file(file1)
+    sha256_1, sha_family_1 = create_dummy_pseudo_file(file1)
     
     # Create file in project (same sha256)
     project_pseudo = temp_project / "pseudo"
@@ -328,7 +340,7 @@ def test_tie_break_multiple_libs(temp_project: Path, tmp_path: Path) -> None:
             mock_bundle.return_value.index = {
                 "files": [{
                     "sha256": sha256_1,
-                    "sha_token": "test_token",
+                    "sha_family": "test_family",
                     "basenames": ["Si.upf"],
                 }]
             }
@@ -359,7 +371,7 @@ def test_tie_break_multiple_libs_ordering(temp_project: Path) -> None:
     # Create two fake variants with same sha256 but different lib sources
     # We'll test the ordering logic by constructing variants directly
     sha256 = "test_sha256_" * 4  # 64 chars
-    sha_token = "test_token_" * 4
+    sha_family = "test_family_" * 4
     
     # Variant A: library_name="SSSP", archive_asset="sssp_v1.tar.gz"
     variant_a_sources = [
@@ -399,9 +411,9 @@ def test_tie_break_multiple_libs_ordering(temp_project: Path) -> None:
     
     # All have same sha256 and basename
     variants = [
-        {"sha256": sha256, "sha_token": sha_token, "basename": "Si.upf", "sources": variant_a_sources},
-        {"sha256": sha256, "sha_token": sha_token, "basename": "Si.upf", "sources": variant_b_sources},
-        {"sha256": sha256, "sha_token": sha_token, "basename": "Si.upf", "sources": variant_c_sources},
+        {"sha256": sha256, "sha_family": sha_family, "basename": "Si.upf", "sources": variant_a_sources},
+        {"sha256": sha256, "sha_family": sha_family, "basename": "Si.upf", "sources": variant_b_sources},
+        {"sha256": sha256, "sha_family": sha_family, "basename": "Si.upf", "sources": variant_c_sources},
     ]
     
     # Apply tie-break logic (simulating restoreSelectionFromCalc logic)

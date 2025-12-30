@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KDH0M8ECNGTCM3YFRCMZC276
+    id: 01KDPDXTMQETKP5SC2FRGXGZ63
     name: 03_Si_vc_relax
     slug: 03_si_vc_relax
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KDH0M8EPDT0X5X6SAGCB9KC3
+    id: 01KDPDXTN2AG6RXDY9DWHCTRRK
     name: si.vc_relax
     slug: si-vc_relax
     path: structures/si-vc_relax.json
@@ -17,7 +17,7 @@ structures:
   data:
     '@module': pymatgen.core.structure
     '@class': Structure
-    charge: 0
+    charge: 0.0
     lattice:
       matrix:
       - - -3.7042404764400003
@@ -70,7 +70,7 @@ structures:
       - 1.85212023822
 calculations:
 - meta:
-    id: 01KDH0M8EDEK8SQVS759EJJMW9
+    id: 01KDPDXTMTFX03GN5GA1B5MXC6
     name: Si Vc Relax
     slug: si-vc-relax
     path: calculations/si-vc-relax
@@ -79,7 +79,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KDH0M8EJ824PCGYN1BAJEGHZ
+      id: 01KDPDXTMYCB1CHQ2RC8Y8M6DJ
       name: si.vc_relax
       slug: si-vc_relax
       path: si.vc_relax.step.yaml
@@ -114,11 +114,14 @@ calculations:
       Si:
         mass: 28.0855
         pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
-  structure_id: 01KDH0M8ECJX0HJ16A487EDCK8
+  structure_id: 01KDPDXTMREPY917JR39F45NH9
   species_map:
     Si:
       mass: 28.0855
       pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+      pseudo_sha256: 669fb75395a9d26973b0ea1ce8223bbcb30d3396c5d48bf5e794d1243c52375a
+      pseudo_sha_family: 9d5fdea5cc45742d1254e8023b481a202b0022642b381478e6195db3d81e2723
+      pseudo_basename: Si.pbe-n-rrkjus_psl.1.0.0.UPF
 pseudo:
   directory: pseudo
   files:

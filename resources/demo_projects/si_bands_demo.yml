@@ -213,6 +213,9 @@ calculations:
     Si:
       mass: 28.0855
       pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+      pseudo_sha256: 669fb75395a9d26973b0ea1ce8223bbcb30d3396c5d48bf5e794d1243c52375a
+      pseudo_sha_family: 9d5fdea5cc45742d1254e8023b481a202b0022642b381478e6195db3d81e2723
+      pseudo_basename: Si.pbe-n-rrkjus_psl.1.0.0.UPF
 pseudo:
   directory: pseudo
   files:

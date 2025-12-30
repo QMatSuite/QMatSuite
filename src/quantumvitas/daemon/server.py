@@ -3565,7 +3565,7 @@ class QVDaemon:
                 element=sel_data["element"],
                 requested_basename=sel_data["requested_basename"],
                 requested_sha256=sel_data.get("requested_sha256"),
-                requested_sha_token=sel_data.get("requested_sha_token"),
+                requested_sha_family=sel_data.get("requested_sha_family"),
                 source_kind=sel_data.get("source_kind", "project"),
                 source_path=Path(sel_data["source_path"]) if sel_data.get("source_path") else None,
             ))

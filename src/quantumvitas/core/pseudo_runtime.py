@@ -7,7 +7,7 @@ All filesystem operations that touch project/pseudo must happen here, during Ste
 Constitution rules:
 - Only 3 sources: internal (repo/resources/pseudo), lib (temp/pseudo/...), project (project/pseudo)
 - QE runtime only reads project/pseudo
-- sha_token is primary for physical equivalence
+- sha_family is primary for physical equivalence
 - sha256 is strict bytes identity
 - All mutations happen in Step0 only (before first QE step)
 """
@@ -32,7 +32,7 @@ from quantumvitas.core.pseudo_libinfo import load_pseudo_libinfo_bundle
 from quantumvitas.core.pseudo_provenance import (
     _build_occurrences_index,
     compute_sha256_file,
-    compute_sha_token_file,
+    compute_sha_family_file,
 )
 import tarfile
 import zipfile
@@ -55,7 +55,7 @@ class PseudoSelection:
     element: str
     requested_basename: str  # Filename to appear in project/pseudo
     requested_sha256: Optional[str] = None  # Optional: if provided, must match
-    requested_sha_token: Optional[str] = None  # Optional: if provided, used for physical equivalence
+    requested_sha_family: Optional[str] = None  # Optional: if provided, used for physical equivalence
     source_kind: Literal["project", "internal", "lib"] = "project"
     source_path: Optional[Path] = None  # For internal/lib; None for project selection
 
@@ -87,11 +87,11 @@ class PseudoPrepareReport:
 def _resolve_lib_source_path(
     element: str,
     requested_basename: str,
-    requested_sha_token: Optional[str],
+    requested_sha_family: Optional[str],
     config: Any,
 ) -> Optional[Path]:
     """
-    Resolve a lib source path for a given element/basename/sha_token.
+    Resolve a lib source path for a given element/basename/sha_family.
     
     Searches installed archives for matching pseudo.
     
@@ -109,17 +109,17 @@ def _resolve_lib_source_path(
     archives_dir = get_archives_dir(install_root)
     manifest_archives = load_manifest_archives()
     
-    # Search files by sha_token if provided, else by basename
+    # Search files by sha_family if provided, else by basename
     for file_entry in bundle.index.get("files", []):
         basenames = file_entry.get("basenames", [])
         file_sha256 = file_entry.get("sha256")
-        file_sha_token = file_entry.get("sha_token")
+        file_sha_family = file_entry.get("sha_family")
         
-        # Match by basename and optionally sha_token
+        # Match by basename and optionally sha_family
         if requested_basename not in basenames:
             continue
         
-        if requested_sha_token and file_sha_token != requested_sha_token:
+        if requested_sha_family and file_sha_family != requested_sha_family:
             continue
         
         # Find occurrences in archives
@@ -204,10 +204,10 @@ def _resolve_lib_source_path(
 def _resolve_internal_source_path(
     element: str,
     requested_basename: str,
-    requested_sha_token: Optional[str],
+    requested_sha_family: Optional[str],
 ) -> Optional[Path]:
     """
-    Resolve an internal source path for a given element/basename/sha_token.
+    Resolve an internal source path for a given element/basename/sha_family.
     
     Searches repo/resources/pseudo for matching pseudo.
     
@@ -221,19 +221,19 @@ def _resolve_internal_source_path(
     # Search by basename
     for pseudo_file in internal_pseudo_dir.glob(f"{requested_basename}"):
         if pseudo_file.is_file():
-            # Optionally verify sha_token
-            if requested_sha_token:
-                file_sha_token = compute_sha_token_file(pseudo_file)
-                if file_sha_token != requested_sha_token:
+            # Optionally verify sha_family
+            if requested_sha_family:
+                file_sha_family = compute_sha_family_file(pseudo_file)
+                if file_sha_family != requested_sha_family:
                     continue
             return pseudo_file
     
     # Try case-insensitive
     for pseudo_file in internal_pseudo_dir.glob("*.UPF"):
         if pseudo_file.name.lower() == requested_basename.lower():
-            if requested_sha_token:
-                file_sha_token = compute_sha_token_file(pseudo_file)
-                if file_sha_token != requested_sha_token:
+            if requested_sha_family:
+                file_sha_family = compute_sha_family_file(pseudo_file)
+                if file_sha_family != requested_sha_family:
                     continue
             return pseudo_file
     
@@ -268,7 +268,7 @@ def analyze_project_pseudo_effects(
         # Check if destination exists
         if dst.exists():
             existing_sha256 = compute_sha256_file(dst)
-            existing_sha_token = compute_sha_token_file(dst)
+            existing_sha_family = compute_sha_family_file(dst)
             
             # Resolve source if needed
             source_path = selection.source_path
@@ -276,19 +276,19 @@ def analyze_project_pseudo_effects(
                 source_path = _resolve_internal_source_path(
                     selection.element,
                     selection.requested_basename,
-                    selection.requested_sha_token,
+                    selection.requested_sha_family,
                 )
             elif selection.source_kind == "lib" and not source_path:
                 source_path = _resolve_lib_source_path(
                     selection.element,
                     selection.requested_basename,
-                    selection.requested_sha_token,
+                    selection.requested_sha_family,
                     config,
                 )
             
             if source_path and source_path.exists():
                 source_sha256 = compute_sha256_file(source_path)
-                source_sha_token = compute_sha_token_file(source_path)
+                source_sha_family = compute_sha_family_file(source_path)
                 
                 # Apply collision rules
                 if existing_sha256 == source_sha256:
@@ -298,29 +298,29 @@ def analyze_project_pseudo_effects(
                         detail=f"File already exists with same sha256",
                         dest_path=dst,
                     ))
-                elif existing_sha_token == source_sha_token:
+                elif existing_sha_family == source_sha_family:
                     # Same physical, different bytes - overwrite
                     report.actions.append(PseudoPrepareAction(
                         action="overwrite",
                         element=selection.element,
-                        detail=f"Same sha_token but different sha256; will overwrite with canonical",
+                        detail=f"Same sha_family but different sha256; will overwrite with canonical",
                         source_path=source_path,
                         dest_path=dst,
                     ))
                     report.warnings.append(
                         f"{selection.element}: Project pseudo will be overwritten with canonical library/internal version "
-                        f"(sha_token same but sha256 differs)"
+                        f"(sha_family same but sha256 differs)"
                     )
                 else:
-                    # Different sha_token - must rename
+                    # Different sha_family - must rename
                     report.actions.append(PseudoPrepareAction(
                         action="rename_existing",
                         element=selection.element,
-                        detail=f"Different sha_token; will rename existing file",
+                        detail=f"Different sha_family; will rename existing file",
                         dest_path=dst,
                     ))
                     report.warnings.append(
-                        f"{selection.element}: Project pseudo '{selection.requested_basename}' exists with different sha_token. "
+                        f"{selection.element}: Project pseudo '{selection.requested_basename}' exists with different sha_family. "
                         f"Run will rename existing file and update affected calcs."
                     )
             else:
@@ -413,7 +413,7 @@ def prepare_project_pseudos_for_run(
                 source_path = _resolve_internal_source_path(
                     selection.element,
                     selection.requested_basename,
-                    selection.requested_sha_token,
+                    selection.requested_sha_family,
                 )
                 if source_path and source_path.exists():
                     selection.source_kind = "internal"
@@ -422,7 +422,7 @@ def prepare_project_pseudos_for_run(
                     source_path = _resolve_lib_source_path(
                         selection.element,
                         selection.requested_basename,
-                        selection.requested_sha_token,
+                        selection.requested_sha_family,
                         config,
                     )
                     if source_path and source_path.exists():
@@ -436,7 +436,7 @@ def prepare_project_pseudos_for_run(
         
         # Compute source hashes
         source_sha256 = compute_sha256_file(source_path)
-        source_sha_token = compute_sha_token_file(source_path)
+        source_sha_family = compute_sha_family_file(source_path)
         
         # Verify requested hashes if provided
         if selection.requested_sha256 and source_sha256 != selection.requested_sha256:
@@ -446,17 +446,17 @@ def prepare_project_pseudos_for_run(
             )
             continue
         
-        if selection.requested_sha_token and source_sha_token != selection.requested_sha_token:
+        if selection.requested_sha_family and source_sha_family != selection.requested_sha_family:
             report.errors.append(
-                f"{selection.element}: Source sha_token mismatch: expected {selection.requested_sha_token[:16]}..., "
-                f"got {source_sha_token[:16]}..."
+                f"{selection.element}: Source sha_family mismatch: expected {selection.requested_sha_family[:16]}..., "
+                f"got {source_sha_family[:16]}..."
             )
             continue
         
         # Apply collision rules (only for internal/lib selections; project selections already handled above)
         if dst.exists():
             existing_sha256 = compute_sha256_file(dst)
-            existing_sha_token = compute_sha_token_file(dst)
+            existing_sha_family = compute_sha_family_file(dst)
             
             if existing_sha256 == source_sha256:
                 # Same sha256: noop
@@ -468,50 +468,50 @@ def prepare_project_pseudos_for_run(
                 ))
                 continue
             
-            elif existing_sha_token == source_sha_token:
-                # Same sha_token, different sha256: overwrite with canonical (no rename)
+            elif existing_sha_family == source_sha_family:
+                # Same sha_family, different sha256: overwrite with canonical (no rename)
                 shutil.copy2(source_path, dst)
                 report.actions.append(PseudoPrepareAction(
                     action="overwrite",
                     element=selection.element,
-                    detail=f"Overwritten with canonical version (sha_token same, sha256 differs)",
+                    detail=f"Overwritten with canonical version (sha_family same, sha256 differs)",
                     source_path=source_path,
                     dest_path=dst,
                 ))
                 continue
             
             else:
-                # Different sha_token: rename existing
-                # Deterministic rename: <basename>__tok-<sha_token[:10]>.upf
+                # Different sha_family: rename existing
+                # Deterministic rename: <basename>__fam-<sha_family[:10]>.upf
                 stem = dst.stem
                 suffix = dst.suffix
-                renamed_to = project_pseudo_dir / f"{stem}__tok-{existing_sha_token[:10]}{suffix}"
+                renamed_to = project_pseudo_dir / f"{stem}__fam-{existing_sha_family[:10]}{suffix}"
                 
                 # Ensure renamed filename is unique
                 counter = 1
                 while renamed_to.exists():
-                    renamed_to = project_pseudo_dir / f"{stem}__tok-{existing_sha_token[:10]}_{counter}{suffix}"
+                    renamed_to = project_pseudo_dir / f"{stem}__fam-{existing_sha_family[:10]}_{counter}{suffix}"
                     counter += 1
                 
                 dst.rename(renamed_to)
                 report.actions.append(PseudoPrepareAction(
                     action="rename_existing",
                     element=selection.element,
-                    detail=f"Renamed existing file due to sha_token mismatch",
+                    detail=f"Renamed existing file due to sha_family mismatch",
                     renamed_from=dst,
                     renamed_to=renamed_to,
                 ))
                 
-                # Update project calcs by sha_token
-                updated_count = update_project_calcs_filename_by_sha_token(
+                # Update project calcs by sha_family
+                updated_count = update_project_calcs_filename_by_sha_family(
                     project_root,
-                    existing_sha_token,
+                    existing_sha_family,
                     selection.requested_basename,
                     renamed_to.name,
                 )
                 report.warnings.append(
                     f"{selection.element}: Renamed existing '{selection.requested_basename}' to '{renamed_to.name}'. "
-                    f"Updated {updated_count} calculation(s) by sha_token."
+                    f"Updated {updated_count} calculation(s) by sha_family."
                 )
         
         # Copy source to destination
@@ -532,22 +532,22 @@ def prepare_project_pseudos_for_run(
     return report
 
 
-def update_project_calcs_filename_by_sha_token(
+def update_project_calcs_filename_by_sha_family(
     project_root: Path,
-    sha_token: str,
+    sha_family: str,
     old_filename: str,
     new_filename: str,
 ) -> int:
     """
-    Update project calculations that reference a pseudo by sha_token.
+    Update project calculations that reference a pseudo by sha_family.
     
-    When a file is renamed due to sha_token collision, this function finds all
+    When a file is renamed due to sha_family collision, this function finds all
     calculations in the project that reference the old filename with matching
-    sha_token and updates only their filename field (not sha256/sha_token).
+    sha_family and updates only their filename field (not sha256/sha_family).
     
     Args:
         project_root: Project root path
-        sha_token: The sha_token of the renamed file
+        sha_family: The sha_family of the renamed file
         old_filename: Old filename (before rename)
         new_filename: New filename (after rename)
         
@@ -588,13 +588,13 @@ def update_project_calcs_filename_by_sha_token(
                 if not isinstance(entry, dict):
                     continue
                 
-                # Check if this entry references the old filename with matching sha_token
+                # Check if this entry references the old filename with matching sha_family
                 entry_filename = entry.get("pseudopot") or entry.get("pseudo_basename")
-                entry_sha_token = entry.get("pseudo_sha_token")
+                entry_sha_family = entry.get("pseudo_sha_family")
                 
                 if (entry_filename == old_filename and 
-                    entry_sha_token == sha_token):
-                    # Update filename only (keep sha256/sha_token unchanged)
+                    entry_sha_family == sha_family):
+                    # Update filename only (keep sha256/sha_family unchanged)
                     entry["pseudopot"] = new_filename
                     if "pseudo_basename" in entry:
                         entry["pseudo_basename"] = new_filename
@@ -635,7 +635,7 @@ def species_map_to_selections(
         # Determine basename
         basename = entry.get("pseudo_basename") or entry.get("pseudopot") or f"{element}.upf"
         sha256 = entry.get("pseudo_sha256")
-        sha_token = entry.get("pseudo_sha_token")
+        sha_family = entry.get("pseudo_sha_family")
         
         # Determine source kind based on sha256
         # If project/pseudo has file with matching sha256, it's a project selection
@@ -661,7 +661,7 @@ def species_map_to_selections(
             element=element,
             requested_basename=basename,
             requested_sha256=sha256,
-            requested_sha_token=sha_token,
+            requested_sha_family=sha_family,
             source_kind=source_kind,
             source_path=source_path,
         ))
@@ -675,7 +675,7 @@ def refresh_calc_pseudo_records_after_step0(
     species_map: Dict[str, Dict[str, Any]],
 ) -> None:
     """
-    Refresh calculation pseudo records (filename, sha256, sha_token) after Step0.
+    Refresh calculation pseudo records (filename, sha256, sha_family) after Step0.
     
     This updates the calculation's species_map with the actual files in project/pseudo
     after Step0 preparation.
@@ -716,13 +716,13 @@ def refresh_calc_pseudo_records_after_step0(
         actual_file = project_pseudo_dir / basename
         if actual_file.exists():
             actual_sha256 = compute_sha256_file(actual_file)
-            actual_sha_token = compute_sha_token_file(actual_file)
+            actual_sha_family = compute_sha_family_file(actual_file)
             
             # Update record
             calc_entry["pseudopot"] = basename
             calc_entry["pseudo_basename"] = basename
             calc_entry["pseudo_sha256"] = actual_sha256
-            calc_entry["pseudo_sha_token"] = actual_sha_token
+            calc_entry["pseudo_sha_family"] = actual_sha_family
         else:
             # File missing: log warning and keep stored triplet unchanged (preserves current semantics)
             # This can happen if Step0 failed or file was manually deleted after Step0
