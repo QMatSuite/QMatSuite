@@ -1,8 +1,10 @@
 """
 QE Engine Resolution Diagnostics.
 
-This module provides diagnostic tools to trace how QE engines are resolved,
-helping identify when legacy auto-detection bypasses the registry system.
+This module provides diagnostic tools to trace how QE engines are resolved
+using the two-state model:
+- External QE: settings.qe.bin_dir is set (absolute path to bin directory)
+- Internal QE: settings.qe.bin_dir is null (auto-selected from .qmatsuite/engines/qe/**/bin)
 """
 
 from __future__ import annotations
@@ -14,8 +16,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, Any, Optional
 
-from quantumvitas.core.engines.qe_registry import QEEngineRegistry, resolve_qe_engine
-from quantumvitas.core.engines.qe_installation import get_qe_home, QEInstallation
+from quantumvitas.core.engines.qe_resolver import resolve_qe_bin_dir, find_internal_qe_bin_dir, validate_qe_bin_dir
 from quantumvitas.core.settings import load_settings
 from quantumvitas.core.paths import home_qe_engines_dir
 
@@ -24,158 +25,135 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class QEResolutionReport:
-    """Diagnostic report for QE engine resolution."""
-    resolved_engine_id: Optional[str] = None
-    resolved_pw_path: Optional[str] = None
+    """Diagnostic report for QE engine resolution (two-state model)."""
+    mode: str = "unknown"  # "external" or "internal"
+    qe_bin_dir: Optional[str] = None  # Resolved bin directory path
+    settings_bin_dir: Optional[str] = None  # settings.qe.bin_dir value
     resolution_reason: str = "unknown"
     inputs_used: Dict[str, Any] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
+    error: Optional[str] = None  # Error message if resolution failed
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {
-            "resolved_engine_id": self.resolved_engine_id,
-            "resolved_pw_path": str(self.resolved_pw_path) if self.resolved_pw_path else None,
+            "mode": self.mode,
+            "qe_bin_dir": str(self.qe_bin_dir) if self.qe_bin_dir else None,
+            "settings_bin_dir": str(self.settings_bin_dir) if self.settings_bin_dir else None,
             "resolution_reason": self.resolution_reason,
             "inputs_used": self.inputs_used,
             "warnings": self.warnings,
+            "error": self.error,
         }
 
 
-def diagnose_qe_resolution(
-    project_engine_id: Optional[str] = None,
-    check_legacy: bool = True,
-) -> QEResolutionReport:
+def diagnose_qe_resolution() -> QEResolutionReport:
     """
-    Diagnose how QE engine would be resolved.
+    Diagnose how QE engine would be resolved using the two-state model.
     
-    This function traces through all possible resolution paths and reports
-    which one would be used and why.
+    Two-state model:
+    1. External QE: settings.qe.bin_dir is set (absolute path)
+       - Must validate pw* exists; if invalid, raise error (no fallback)
+    2. Internal QE: settings.qe.bin_dir is null
+       - Auto-select from .qmatsuite/engines/qe/**/bin
+       - If none found, raise error (no fallback)
     
-    Args:
-        project_engine_id: Optional project-level engine_id override
-        check_legacy: If True, also check legacy auto-detection paths
-        
     Returns:
         QEResolutionReport with diagnostic information
     """
     report = QEResolutionReport()
     settings = load_settings()
     
-    # Check registry-based resolution first
+    # Record settings value
+    report.settings_bin_dir = settings.qe.bin_dir
+    
     try:
-        registry = QEEngineRegistry(settings)
+        # Use the resolver (two-state model)
+        resolved_bin_dir = resolve_qe_bin_dir(settings)
+        report.qe_bin_dir = str(resolved_bin_dir)
         
-        # Priority 1: Project override
-        if project_engine_id:
-            engine = registry._get_engine_by_id(project_engine_id)
-            if engine:
-                report.resolved_engine_id = engine.engine_id
-                report.resolved_pw_path = str(engine.pw_path)
-                report.resolution_reason = "project_override"
-                report.inputs_used["project_engine_id"] = project_engine_id
-                return report
+        # Determine mode
+        if settings.qe.bin_dir:
+            report.mode = "external"
+            report.resolution_reason = "external_explicit"
+            report.inputs_used["settings.qe.bin_dir"] = settings.qe.bin_dir
+        else:
+            report.mode = "internal"
+            report.resolution_reason = "internal_auto_selected"
+            # Find all internal candidates for reporting
+            engines_dir = home_qe_engines_dir()
+            if engines_dir.exists():
+                candidates = []
+                for engine_dir in engines_dir.rglob("bin"):
+                    if engine_dir.is_dir():
+                        pw_x = engine_dir / "pw.x"
+                        pw_exe = engine_dir / "pw.x.exe"
+                        if pw_x.exists() or pw_exe.exists():
+                            candidates.append(str(engine_dir))
+                report.inputs_used["internal_candidates"] = candidates
+                report.inputs_used["internal_candidates_count"] = len(candidates)
+                report.inputs_used["selected_bin_dir"] = str(resolved_bin_dir)
         
-        # Priority 2: Discovered engine
-        if settings.qe.discovered_engine_id:
-            engine = registry._get_engine_by_id(settings.qe.discovered_engine_id)
-            if engine:
-                report.resolved_engine_id = engine.engine_id
-                report.resolved_pw_path = str(engine.pw_path)
-                report.resolution_reason = "settings_discovered_engine_id"
-                report.inputs_used["settings.qe.discovered_engine_id"] = settings.qe.discovered_engine_id
-                return report
-        
-        # Priority 3: Default engine
-        if settings.defaults.qe_engine_id:
-            engine = registry._get_engine_by_id(settings.defaults.qe_engine_id)
-            if engine:
-                report.resolved_engine_id = engine.engine_id
-                report.resolved_pw_path = str(engine.pw_path)
-                report.resolution_reason = "settings_defaults_qe_engine_id"
-                report.inputs_used["settings.defaults.qe_engine_id"] = settings.defaults.qe_engine_id
-                return report
-        
-        # Priority 4: Managed engines
-        managed_engines = registry.list_managed_engines()
-        if managed_engines:
-            latest = managed_engines[0]
-            report.resolved_engine_id = latest.engine_id
-            report.resolved_pw_path = str(latest.pw_path)
-            report.resolution_reason = "managed_engine_fallback"
-            report.inputs_used["managed_engines_count"] = len(managed_engines)
-            report.inputs_used["managed_engines_dir"] = str(home_qe_engines_dir())
-            return report
-        
-        # Priority 5: PATH fallback (if allowed)
-        if settings.qe.allow_path_fallback:
-            path_engine = registry._find_engine_in_path()
-            if path_engine:
-                report.resolved_engine_id = path_engine.engine_id
-                report.resolved_pw_path = str(path_engine.pw_path)
-                report.resolution_reason = "path_fallback"
-                report.inputs_used["settings.qe.allow_path_fallback"] = True
-                report.inputs_used["path_pw_x"] = str(path_engine.pw_path)
-                report.warnings.append(
-                    "PATH fallback is enabled. This bypasses managed engine requirement."
-                )
-                return report
-        
+    except RuntimeError as e:
+        # Resolution failed
+        report.error = str(e)
+        if settings.qe.bin_dir:
+            report.mode = "external"
+            report.resolution_reason = "external_invalid"
+            report.inputs_used["settings.qe.bin_dir"] = settings.qe.bin_dir
+            report.warnings.append(
+                f"External QE bin_dir is set but invalid: {settings.qe.bin_dir}. "
+                f"Error: {e}"
+            )
+        else:
+            report.mode = "internal"
+            report.resolution_reason = "internal_not_found"
+            # Check if internal engines directory exists
+            engines_dir = home_qe_engines_dir()
+            report.inputs_used["engines_dir_exists"] = engines_dir.exists()
+            report.inputs_used["engines_dir_path"] = str(engines_dir)
+            if engines_dir.exists():
+                # Count candidates
+                candidates = []
+                for engine_dir in engines_dir.rglob("bin"):
+                    if engine_dir.is_dir():
+                        pw_x = engine_dir / "pw.x"
+                        pw_exe = engine_dir / "pw.x.exe"
+                        if pw_x.exists() or pw_exe.exists():
+                            candidates.append(str(engine_dir))
+                report.inputs_used["internal_candidates"] = candidates
+                report.inputs_used["internal_candidates_count"] = len(candidates)
+            report.warnings.append(
+                f"No internal QE found. Error: {e}"
+            )
     except Exception as e:
-        report.warnings.append(f"Registry resolution failed: {e}")
+        report.error = str(e)
+        report.resolution_reason = "resolution_error"
+        report.warnings.append(f"Unexpected error during resolution: {e}")
     
-    # Check legacy auto-detection (if enabled)
-    if check_legacy:
-        legacy_qe_home = get_qe_home()
-        if legacy_qe_home:
-            pw_path = legacy_qe_home / "bin" / "pw.x"
-            if pw_path.exists():
-                report.resolved_engine_id = "legacy-auto-detected"
-                report.resolved_pw_path = str(pw_path)
-                report.resolution_reason = "legacy_auto_detection"
-                
-                # Trace how it was detected
-                qe_home_env = os.environ.get("QE_HOME")
-                if qe_home_env:
-                    report.inputs_used["QE_HOME_env"] = qe_home_env
-                    report.resolution_reason = "legacy_QE_HOME_env"
-                else:
-                    # Check PATH
-                    path_pw = shutil.which("pw.x")
-                    if path_pw:
-                        report.inputs_used["PATH_pw_x"] = path_pw
-                        report.resolution_reason = "legacy_PATH_detection"
-                    else:
-                        # Shell config or home directory scan
-                        report.inputs_used["detection_method"] = "shell_config_or_home_scan"
-                        report.resolution_reason = "legacy_shell_config_or_home_scan"
-                
-                report.warnings.append(
-                    "Legacy auto-detection bypassed registry. "
-                    "This violates 'default managed-only' policy."
-                )
-                return report
-    
-    # No resolution found
-    report.resolution_reason = "no_engine_found"
     return report
 
 
 def check_settings_for_external_engines() -> Dict[str, Any]:
-    """Check if settings.json contains external engines that might be used."""
+    """Check settings.json for QE configuration (two-state model)."""
     settings = load_settings()
-    return {
-        "has_discovered_engine_id": settings.qe.discovered_engine_id is not None,
-        "discovered_engine_id": settings.qe.discovered_engine_id,
-        "has_default_engine_id": settings.defaults.qe_engine_id is not None,
-        "default_engine_id": settings.defaults.qe_engine_id,
-        "allow_path_fallback": settings.qe.allow_path_fallback,
-        "external_engines_count": len(settings.external_engines),
-        "external_engines": [
-            {"id": eng.id, "pw_path": eng.pw_path, "label": eng.label}
-            for eng in settings.external_engines
-        ],
+    result = {
+        "qe_bin_dir": settings.qe.bin_dir,
+        "mode": "external" if settings.qe.bin_dir else "internal",
     }
+    
+    # If external, validate the path
+    if settings.qe.bin_dir:
+        bin_dir = Path(settings.qe.bin_dir)
+        result["bin_dir_exists"] = bin_dir.exists()
+        result["bin_dir_is_dir"] = bin_dir.is_dir() if bin_dir.exists() else False
+        pw_x = bin_dir / "pw.x"
+        pw_exe = bin_dir / "pw.x.exe"
+        result["has_pw_x"] = pw_x.exists()
+        result["has_pw_exe"] = pw_exe.exists()
+        result["is_valid"] = pw_x.exists() or pw_exe.exists()
+    
+    return result
 
 
 def check_environment_variables() -> Dict[str, Any]:

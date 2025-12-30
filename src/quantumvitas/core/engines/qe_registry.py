@@ -1,6 +1,9 @@
 """
 QE Engine Registry and Selection.
 
+DEPRECATED: This module is deprecated in favor of qe_resolver.py which implements
+the new two-state QE resolution model. This module may be removed in a future version.
+
 This module implements the QE engine resolution priority according to
 CONSTITUTION_ZH.md section 9.4.
 """
@@ -13,7 +16,7 @@ from typing import Optional, List, Dict, Any
 from dataclasses import dataclass
 
 from quantumvitas.core.paths import home_qe_engines_dir
-from quantumvitas.core.settings import load_settings, QMatSuiteSettings, ExternalEngine
+from quantumvitas.core.settings import load_settings, QMatSuiteSettings
 
 logger = logging.getLogger(__name__)
 
@@ -74,19 +77,11 @@ class QEEngineRegistry:
                 logger.debug(f"Resolved engine from project override: {project_engine_id}")
                 return engine
         
-        # Priority 2: User explicit discovered engine
-        if self.settings.qe.discovered_engine_id:
-            engine = self._get_engine_by_id(self.settings.qe.discovered_engine_id)
-            if engine:
-                logger.debug(f"Resolved engine from discovered_engine_id: {self.settings.qe.discovered_engine_id}")
-                return engine
+        # Priority 2: User explicit discovered engine (deprecated - no longer in settings)
+        # Removed: settings.qe.discovered_engine_id
         
-        # Priority 3: User default
-        if self.settings.defaults.qe_engine_id:
-            engine = self._get_engine_by_id(self.settings.defaults.qe_engine_id)
-            if engine:
-                logger.debug(f"Resolved engine from defaults.qe_engine_id: {self.settings.defaults.qe_engine_id}")
-                return engine
+        # Priority 3: User default (deprecated - no longer in settings)
+        # Removed: settings.defaults.qe_engine_id
         
         # Priority 4: Latest managed engine
         managed_engines = self.list_managed_engines()
@@ -95,12 +90,9 @@ class QEEngineRegistry:
             logger.debug(f"Resolved engine from managed fallback: {latest.engine_id}")
             return latest
         
-        # Priority 5: PATH fallback (only if allowed)
-        if self.settings.qe.allow_path_fallback:
-            path_engine = self._find_engine_in_path()
-            if path_engine:
-                logger.debug("Resolved engine from PATH fallback")
-                return path_engine
+        # Priority 5: PATH fallback (deprecated - no longer in settings)
+        # Removed: settings.qe.allow_path_fallback
+        # PATH fallback is no longer supported in the new two-state model
         
         # Priority 6: Error with actionable message
         raise RuntimeError(
@@ -119,18 +111,9 @@ class QEEngineRegistry:
             if eng.engine_id == engine_id:
                 return eng
         
-        # Check external engines
-        for ext_eng in self.settings.external_engines:
-            if ext_eng.id == engine_id:
-                pw_path = Path(ext_eng.pw_path)
-                if pw_path.exists():
-                    return QEEngineInfo(
-                        engine_id=ext_eng.id,
-                        engine_path=pw_path.parent.parent,  # Assume bin/ is under engine root
-                        pw_path=pw_path,
-                        is_managed=False,
-                        verified_sha256=ext_eng.verified_sha256,
-                    )
+        # Check external engines (deprecated - no longer in settings)
+        # Removed: settings.external_engines
+        # External engines are now handled via settings.qe.bin_dir
         
         return None
     

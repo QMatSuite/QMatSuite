@@ -13,7 +13,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useQVClient, useQVLogs } from '../../hooks/useQVClient';
 import { LibrariesPanel } from './LibrariesPanel';
 import { PseudoArchivesPanel } from '../settings/PseudoArchivesPanel';
-import type { QEDetectionResult, EnvironmentInfo, QVResult } from '../../types/qv';
+import type { QEDetectionResult, EnvironmentInfo } from '../../types/qv';
 import { getVisibleLogLines, getVisibleLogText } from '../../utils/logFilter';
 import './SettingsPanel.css';
 
@@ -71,7 +71,12 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
     try {
       const response = await window.qv.request('get_qe_parameter_metadata_debug_info', {});
       if (response.ok && response.data) {
-        setQeMetadataDebugInfo(response.data);
+        setQeMetadataDebugInfo(response.data as {
+          loaded_via: 'cache' | 'disk' | 'not_loaded';
+          loaded_at: string | null;
+          schema_version: number | null;
+          path_abs: string | null;
+        });
       }
     } catch (e) {
       // Silently fail - debug info is optional
@@ -429,10 +434,6 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
                       setIsSettingQE(false);
                       return;
                     }
-                    
-                    // Validate: check for pw.x or pw.x.exe
-                    const pwX = `${selectedDir}/pw.x`;
-                    const pwExe = `${selectedDir}/pw.x.exe`;
                     
                     // Note: We can't directly check file existence from frontend,
                     // so we rely on backend validation

@@ -51,6 +51,16 @@ which pw.x
 cd test-suite
 make run-tests NPROCS=4
 
+--- NEW ENGINE SETUP ---
+.qmatsuite/engines/qe/q-e-qe-7.5/bin/pw.x
+CI 结构：
+.qmatsuite/engines/qe/managed:qe-7.5:ubuntu-22.04/bin/├── pw.x  (实际可执行文件，通过 cp 复制)├── ph.x├── pp.x└── dos.x
+你的结构：
+.qmatsuite/engines/qe/managed:qe-7.5:ubuntu-22.04/bin/├── pw.x  (实际可执行文件，通过 cp 复制)├── ph.x├── pp.x└── dos.x
+两种结构都符合要求。解析器查找 .qmatsuite/engines/qe/**/bin 中包含 pw.x 的目录，符号链接和实际文件都可以。
+
+
+
 To run tests, use the following command:
 pip install --upgrade pip
 
