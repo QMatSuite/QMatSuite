@@ -5,7 +5,7 @@ This module loads vendor metadata from resources/pseudo_libinfo/<tag>/
 without any network access. It verifies SHA256 checksums and cross-validates
 the manifest against the index.
 
-Also provides sha_token normalization functions for deterministic
+Also provides sha_family normalization functions for deterministic
 pseudopotential file identification.
 """
 
@@ -68,46 +68,58 @@ def compute_sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def compute_sha_token_text(text: str) -> str:
+def compute_sha_family_text(text: str) -> str:
     """
-    Compute sha_token from text using whitespace normalization.
+    Compute sha_family from text by removing all whitespace and hashing.
     
-    Tokenization is whitespace-splitting (any whitespace), then joining
-    with single spaces. This makes sha_token stable across:
-    - Multiple spaces -> single space
-    - CRLF vs LF line endings
-    - Extra blank lines
+    Algorithm:
+    1. Remove all whitespace characters (any char where ch.isspace() is True)
+    2. Hash the resulting canonical string (UTF-8 bytes) with SHA256
+    
+    This makes sha_family stable across:
+    - Any whitespace changes (spaces, tabs, CRLF/LF, etc.)
+    - Multiple spaces, blank lines, etc.
     
     Args:
-        text: Text content to tokenize and hash
+        text: Text content to process
         
     Returns:
-        Hexadecimal SHA256 hash of normalized text
+        Hexadecimal SHA256 hash of whitespace-stripped text
+        
+    Raises:
+        ValueError: If canonical string becomes empty after stripping
     """
-    # Split on any whitespace (removes empties, normalizes CRLF/LF)
-    tokens = text.split()
-    # Join with single space
-    norm = " ".join(tokens)
-    # Hash UTF-8 encoded normalized string
-    return hashlib.sha256(norm.encode("utf-8")).hexdigest()
+    # Remove all whitespace characters
+    canonical = ''.join(ch for ch in text if not ch.isspace())
+    
+    # Debug assert: ensure no whitespace remains
+    assert not any(ch.isspace() for ch in canonical), "Canonical string should contain zero whitespace"
+    
+    # Check for empty result
+    if not canonical:
+        raise ValueError("sha_family computation failed: text contains only whitespace")
+    
+    # Hash UTF-8 encoded canonical string
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def compute_sha_token_file(path: Path) -> str:
+def compute_sha_family_file(path: Path) -> str:
     """
-    Compute sha_token from a file (reads as text with UTF-8, errors="replace").
+    Compute sha_family from a file (reads as text with UTF-8, errors="replace").
     
     Args:
         path: Path to file to read
         
     Returns:
-        Hexadecimal SHA256 hash of normalized text content
+        Hexadecimal SHA256 hash of whitespace-stripped text content
         
     Raises:
         FileNotFoundError: If file does not exist
+        ValueError: If file contains only whitespace
     """
     # Read as text with UTF-8, replacing invalid bytes
     text = path.read_text(encoding="utf-8", errors="replace")
-    return compute_sha_token_text(text)
+    return compute_sha_family_text(text)
 
 
 @lru_cache(maxsize=1)
@@ -246,6 +258,61 @@ def load_pseudo_libinfo_bundle(repo_root: Path | None = None) -> PseudoLibInfoBu
             f"  Expected (from index): {expected_manifest_sha256}\n"
             f"  Got (computed):        {computed_manifest_sha256}"
         )
+    
+    # Strict schema validation: check for sha_family and sha_token
+    files = index_data.get("files", [])
+    if not isinstance(files, list):
+        raise RuntimeError(
+            f"PSEUDO_FILE_INDEX.json 'files' must be a list (tag: {tag})"
+        )
+    
+    for i, file_entry in enumerate(files):
+        if not isinstance(file_entry, dict):
+            raise RuntimeError(
+                f"PSEUDO_FILE_INDEX.json files[{i}] must be a dict (tag: {tag})"
+            )
+        
+        # Check for legacy sha_token field (must not exist)
+        if "sha_token" in file_entry or "pseudo_sha_token" in file_entry:
+            raise RuntimeError(
+                f"PSEUDO_FILE_INDEX.json files[{i}] contains legacy sha_token field (tag: {tag}). "
+                f"Migration to sha_family is complete - sha_token must not appear in bundle."
+            )
+        
+        # Check for required sha_family field
+        if "sha_family" not in file_entry:
+            raise RuntimeError(
+                f"PSEUDO_FILE_INDEX.json files[{i}] missing required 'sha_family' field (tag: {tag}). "
+                f"All index entries must have sha_family (migration from sha_token is complete)."
+            )
+        
+        # Validate sha_family is a non-empty string
+        sha_family = file_entry.get("sha_family")
+        if not isinstance(sha_family, str) or not sha_family:
+            raise RuntimeError(
+                f"PSEUDO_FILE_INDEX.json files[{i}] has invalid sha_family (tag: {tag}): "
+                f"must be a non-empty string, got {type(sha_family).__name__}"
+            )
+    
+    # Check manifest for legacy fields
+    if isinstance(manifest_data, dict):
+        # Check top-level keys
+        if "sha_token" in manifest_data or "pseudo_sha_token" in manifest_data:
+            raise RuntimeError(
+                f"MANIFEST_PSEUDO_SEED.json contains legacy sha_token field (tag: {tag}). "
+                f"Migration to sha_family is complete - sha_token must not appear in bundle."
+            )
+        
+        # Check entries if manifest has a list/array structure
+        entries = manifest_data.get("entries", manifest_data.get("files", []))
+        if isinstance(entries, list):
+            for i, entry in enumerate(entries):
+                if isinstance(entry, dict):
+                    if "sha_token" in entry or "pseudo_sha_token" in entry:
+                        raise RuntimeError(
+                            f"MANIFEST_PSEUDO_SEED.json entries[{i}] contains legacy sha_token field (tag: {tag}). "
+                            f"Migration to sha_family is complete - sha_token must not appear in bundle."
+                        )
     
     return PseudoLibInfoBundle(
         tag=tag,

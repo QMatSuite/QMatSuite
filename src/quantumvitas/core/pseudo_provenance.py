@@ -1,7 +1,7 @@
 """
 Pseudo provenance recognition (Stage A).
 
-Given a pseudopotential file path, compute sha256, sha_token, and element,
+Given a pseudopotential file path, compute sha256, sha_family, and element,
 then attempt to match it to the pseudo libinfo index to identify its source
 library and archive.
 
@@ -17,7 +17,7 @@ from typing import Dict, List, Optional
 
 from quantumvitas.core.pseudo_libinfo import (
     compute_sha256_bytes,
-    compute_sha_token_file,
+    compute_sha_family_file,
     load_pseudo_libinfo_bundle,
 )
 
@@ -47,8 +47,8 @@ class PseudoProvenanceResult:
     element: Optional[str]
     basename: str
     sha256: str
-    sha_token: str
-    match_kind: str  # "sha256", "sha_token", or "none"
+    sha_family: str
+    match_kind: str  # "sha256", "sha_family", or "none"
     matches: List[PseudoOccurrenceRef]
     warnings: List[str]
 
@@ -170,27 +170,27 @@ def _extract_element_from_filename(basename: str) -> Optional[str]:
     return None
 
 
-def _build_sha_token_index(bundle) -> Dict[str, List[Dict]]:
+def _build_sha_family_index(bundle) -> Dict[str, List[Dict]]:
     """
-    Build reverse index: sha_token -> list of file entries.
+    Build reverse index: sha_family -> list of file entries.
     
     Args:
         bundle: PseudoLibInfoBundle
         
     Returns:
-        Dict mapping sha_token to list of file entries from index
+        Dict mapping sha_family to list of file entries from index
     """
-    sha_token_index: Dict[str, List[Dict]] = {}
+    sha_family_index: Dict[str, List[Dict]] = {}
     
     files = bundle.index.get("files", [])
     for file_entry in files:
-        sha_token = file_entry.get("sha_token")
-        if sha_token:
-            if sha_token not in sha_token_index:
-                sha_token_index[sha_token] = []
-            sha_token_index[sha_token].append(file_entry)
+        sha_family = file_entry.get("sha_family")
+        if sha_family:
+            if sha_family not in sha_family_index:
+                sha_family_index[sha_family] = []
+            sha_family_index[sha_family].append(file_entry)
     
-    return sha_token_index
+    return sha_family_index
 
 
 def _build_occurrences_index(bundle) -> Dict[str, List[Dict]]:
@@ -276,7 +276,7 @@ def resolve_pseudo_provenance(
     
     # Compute hashes
     sha256 = compute_sha256_file(path)
-    sha_token = compute_sha_token_file(path)
+    sha_family = compute_sha_family_file(path)
     
     # Parse element from file
     try:
@@ -301,7 +301,7 @@ def resolve_pseudo_provenance(
     
     # Build indices
     occurrences_index = _build_occurrences_index(bundle)
-    sha_token_index = _build_sha_token_index(bundle)
+    sha_family_index = _build_sha_family_index(bundle)
     
     # Lookup by sha256 first (primary match)
     matches: List[PseudoOccurrenceRef] = []
@@ -318,11 +318,11 @@ def resolve_pseudo_provenance(
             ref = _create_occurrence_ref(occ, file_entry or {})
             matches.append(ref)
     
-    # Fallback to sha_token match (secondary match)
-    elif sha_token in sha_token_index:
-        match_kind = "sha_token"
-        # Find all file entries with this sha_token
-        file_entries = sha_token_index[sha_token]
+    # Fallback to sha_family match (secondary match)
+    elif sha_family in sha_family_index:
+        match_kind = "sha_family"
+        # Find all file entries with this sha_family
+        file_entries = sha_family_index[sha_family]
         
         # For each file entry, find occurrences
         for file_entry in file_entries:
@@ -337,7 +337,7 @@ def resolve_pseudo_provenance(
         element=element,
         basename=basename,
         sha256=sha256,
-        sha_token=sha_token,
+        sha_family=sha_family,
         match_kind=match_kind,
         matches=matches,
         warnings=warnings,

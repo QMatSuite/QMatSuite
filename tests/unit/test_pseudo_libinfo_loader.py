@@ -87,3 +87,41 @@ def test_load_pseudo_libinfo_bundle_missing_bundle_raises() -> None:
     with pytest.raises(RuntimeError, match="Pseudo libinfo root not found"):
         load_pseudo_libinfo_bundle(repo_root=fake_root)
 
+
+def test_load_pseudo_libinfo_bundle_validates_sha_family() -> None:
+    """Test that bundle loader validates sha_family presence in index entries."""
+    repo_root = Path(__file__).parent.parent.parent
+    bundle = load_pseudo_libinfo_bundle(repo_root=repo_root)
+    
+    # Verify all files have sha_family
+    files = bundle.index.get("files", [])
+    assert len(files) > 0, "Bundle should have at least one file entry"
+    
+    for file_entry in files:
+        assert "sha_family" in file_entry, f"File entry missing sha_family: {file_entry.get('basename', 'unknown')}"
+        assert isinstance(file_entry["sha_family"], str), "sha_family must be a string"
+        assert len(file_entry["sha_family"]) > 0, "sha_family must be non-empty"
+        
+        # Verify no legacy sha_token fields
+        assert "sha_token" not in file_entry, "File entry must not contain legacy sha_token"
+        assert "pseudo_sha_token" not in file_entry, "File entry must not contain legacy pseudo_sha_token"
+
+
+def test_load_pseudo_libinfo_bundle_validates_sha_family() -> None:
+    """Test that bundle loader validates sha_family presence in index entries."""
+    repo_root = Path(__file__).parent.parent.parent
+    bundle = load_pseudo_libinfo_bundle(repo_root=repo_root)
+    
+    # Verify all files have sha_family
+    files = bundle.index.get("files", [])
+    assert len(files) > 0, "Bundle should have at least one file entry"
+    
+    for file_entry in files:
+        assert "sha_family" in file_entry, f"File entry missing sha_family: {file_entry.get('basename', 'unknown')}"
+        assert isinstance(file_entry["sha_family"], str), "sha_family must be a string"
+        assert len(file_entry["sha_family"]) > 0, "sha_family must be non-empty"
+        
+        # Verify no legacy sha_token fields
+        assert "sha_token" not in file_entry, "File entry must not contain legacy sha_token"
+        assert "pseudo_sha_token" not in file_entry, "File entry must not contain legacy pseudo_sha_token"
+

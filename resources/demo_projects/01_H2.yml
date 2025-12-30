@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KDH0M87W1EXKCSWMJW4MEMV6
+    id: 01KDPDXTFPB4NP9C47ZJ6BHA4J
     name: 01_H2
     slug: 01_h2
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KDH0M8873YPNZA3Y6NBANA97
+    id: 01KDPDXTFZ91KVZN483KS6Y4FY
     name: h2.relax
     slug: h2-relax
     path: structures/h2-relax.json
@@ -17,7 +17,7 @@ structures:
   data:
     '@module': pymatgen.core.structure
     '@class': Structure
-    charge: 0
+    charge: 0.0
     lattice:
       matrix:
       - - 10.5835442184
@@ -69,7 +69,7 @@ structures:
       - 0.0
       - 0.0
 - meta:
-    id: 01KDH0M88TDPWPJFS3R9VMF4DD
+    id: 01KDPDXTGF0KXK2D1A4R2E0EHX
     name: h2.scf_apart
     slug: h2-scf_apart
     path: structures/h2-scf_apart.json
@@ -77,7 +77,7 @@ structures:
   data:
     '@module': pymatgen.core.structure
     '@class': Structure
-    charge: 0
+    charge: 0.0
     lattice:
       matrix:
       - - 10.5835442184
@@ -130,7 +130,7 @@ structures:
       - 0.0
 calculations:
 - meta:
-    id: 01KDH0M87YQ94WF6KQF44HJ140
+    id: 01KDPDXTFRC4REPH3KC3PSRE5Z
     name: H2
     slug: h2
     path: calculations/h2
@@ -139,7 +139,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KDH0M883WSXW5GP4P2GKT9NZ
+      id: 01KDPDXTFXJ2MFJY4CB70EFDY7
       name: h2.relax
       slug: h2-relax
       path: h2.relax.step.yaml
@@ -172,7 +172,7 @@ calculations:
         mass: 1.00784
         pseudopot: H_ONCV_PBE-1.0.oncvpsp.upf
   - meta:
-      id: 01KDH0M88PZGTVZWBQETB1RPDZ
+      id: 01KDPDXTGB4F5JGR9C99AEWCN6
       name: h2.scf_apart
       slug: h2-scf_apart
       path: h2.scf_apart.step.yaml
@@ -202,7 +202,7 @@ calculations:
       H:
         mass: 1.00784
         pseudopot: H_ONCV_PBE-1.0.oncvpsp.upf
-  structure_id: 01KDH0M87X4T33K8GTWCH1196K
+  structure_id: 01KDPDXTFPN299G38NN68V29YY
   species_map:
     H:
       mass: 1.00784

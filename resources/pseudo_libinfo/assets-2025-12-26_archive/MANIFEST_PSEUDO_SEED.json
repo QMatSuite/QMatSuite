@@ -1,0 +1,426 @@
+{
+  "generated_at": "2025-12-26T20:50:40.098950Z",
+  "schema_version": "1.0",
+  "files": [
+    {
+      "relative_path": "pseudo_seed/GIPAW_DavideCeresoli.zip",
+      "size_bytes": 22541581,
+      "sha256": "c230e92ade53994634e26cf6985373f330ef8c9b0c966b3fe7430b2508d7cda3",
+      "category": "gipaw",
+      "library_name": "GIPAW",
+      "library_version": null,
+      "relativistic": null,
+      "xc": null,
+      "quality": null,
+      "type": null,
+      "upstream_urls": [
+        "https://sites.google.com/site/dceresoli/pseudopotentials",
+        "https://www.quantum-espresso.org/other-resources/"
+      ],
+      "license_url": null,
+      "notes": null
+    },
+    {
+      "relative_path": "pseudo_seed/SCAN_TM_YiYao_2017.zip",
+      "size_bytes": 1073811,
+      "sha256": "423d6a7d9189a2a0fc506eff3e62bd1a4e1f0f7f86729b263c15ebee7e1a6ab4",
+      "category": "scan",
+      "library_name": "SCAN_TM",
+      "library_version": "2017",
+      "relativistic": null,
+      "xc": null,
+      "quality": null,
+      "type": null,
+      "upstream_urls": [
+        "https://yaoyi92.github.io/scan-tm-pseudopotentials.html",
+        "https://www.quantum-espresso.org/other-resources/"
+      ],
+      "license_url": null,
+      "notes": null
+    },
+    {
+      "relative_path": "pseudo_seed/SSSP_1.3.0_PBE_efficiency.json",
+      "size_bytes": 22376,
+      "sha256": "2c8642a70308ecd072a209a30c160bf51423560bb202116cb31fd5275eff814a",
+      "category": "sssp",
+      "library_name": "SSSP",
+      "library_version": "1.3.0",
+      "relativistic": null,
+      "xc": "pbe",
+      "quality": "efficiency",
+      "type": null,
+      "upstream_urls": [
+        "https://legacy.materialscloud.org/discover/sssp/table/efficiency",
+        "https://legacy.materialscloud.org/discover/sssp/table/precision",
+        "https://www.quantum-espresso.org/other-resources/",
+        "https://www.quantum-espresso.org/pseudopotentials/"
+      ],
+      "license_url": null,
+      "notes": null
+    },
+    {
+      "relative_path": "pseudo_seed/SSSP_1.3.0_PBE_efficiency.tar.gz",
+      "size_bytes": 59513522,
+      "sha256": "7a85b71fa3d68df1b5ed33c55c7057681fbf10377ae3b3eac9392924d9189f12",
+      "category": "sssp",
+      "library_name": "SSSP",
+      "library_version": "1.3.0",
+      "relativistic": null,
+      "xc": "pbe",
+      "quality": "efficiency",
+      "type": null,
+      "upstream_urls": [
+        "https://legacy.materialscloud.org/discover/sssp/table/efficiency",
+        "https://legacy.materialscloud.org/discover/sssp/table/precision",
+        "https://www.quantum-espresso.org/other-resources/",
+        "https://www.quantum-espresso.org/pseudopotentials/"
+      ],
+      "license_url": null,
+      "notes": null
+    },
+    {
+      "relative_path": "pseudo_seed/SSSP_1.3.0_PBE_precision.json",
+      "size_bytes": 22485,
+      "sha256": "7b7b648915e54c8397cd8143a7385c17eeed3104ad1236cecd905126d338a4e3",
+      "category": "sssp",
+      "library_name": "SSSP",
+      "library_version": "1.3.0",
+      "relativistic": null,
+      "xc": "pbe",
+      "quality": "precision",
+      "type": null,
+      "upstream_urls": [
+        "https://legacy.materialscloud.org/discover/sssp/table/efficiency",
+        "https://legacy.materialscloud.org/discover/sssp/table/precision",
+        "https://www.quantum-espresso.org/other-resources/",
+        "https://www.quantum-espresso.org/pseudopotentials/"
+      ],
+      "license_url": null,
+      "notes": null
+    },
+    {
+      "relative_path": "pseudo_seed/SSSP_1.3.0_PBE_precision.tar.gz",
+      "size_bytes": 62963841,
+      "sha256": "d91db6b4b3788501d535a5b84ebabf3859ea3e3ac6ea154c4be3718da50f0c85",
+      "category": "sssp",
+      "library_name": "SSSP",
+      "library_version": "1.3.0",
+      "relativistic": null,
+      "xc": "pbe",
+      "quality": "precision",
+      "type": null,
+      "upstream_urls": [
+        "https://legacy.materialscloud.org/discover/sssp/table/efficiency",
+        "https://legacy.materialscloud.org/discover/sssp/table/precision",
+        "https://www.quantum-espresso.org/other-resources/",
+        "https://www.quantum-espresso.org/pseudopotentials/"
+      ],
+      "license_url": null,
+      "notes": null
+    },
+    {
+      "relative_path": "pseudo_seed/nc-fr-04_pbe_standard_upf.tar",
+      "size_bytes": 23029760,
+      "sha256": "5c4e7fc6ccc1dd413759cadd000223c182c65233b5fc90c879c4f284abdf3a9d",
+      "category": "pseudo-dojo",
+      "library_name": "PseudoDojo",
+      "library_version": "04",
+      "relativistic": "fr",
+      "xc": "pbe",
+      "quality": "standard",
+      "type": "nc",
+      "upstream_urls": [
+        "https://www.pseudo-dojo.org",
+        "https://www.pseudo-dojo.org/faq.html",
+        "https://www.quantum-espresso.org/other-resources/"
+      ],
+      "license_url": null,
+      "notes": null
+    },
+    {
+      "relative_path": "pseudo_seed/nc-fr-04_pbe_stringent_upf.tar",
+      "size_bytes": 25313280,
+      "sha256": "ff9a35e620ef4f7c11ce3316e8cf740f8825a203e66cf2a63cdcde68886776c8",
+      "category": "pseudo-dojo",
+      "library_name": "PseudoDojo",
+      "library_version": "04",
+      "relativistic": "fr",
+      "xc": "pbe",
+      "quality": "stringent",
+      "type": "nc",
+      "upstream_urls": [
+        "https://www.pseudo-dojo.org",
+        "https://www.pseudo-dojo.org/faq.html",
+        "https://www.quantum-espresso.org/other-resources/"
+      ],
+      "license_url": null,
+      "notes": null
+    },
+    {
+      "relative_path": "pseudo_seed/nc-fr-04_pbesol_standard_upf.tar",
+      "size_bytes": 23439360,
+      "sha256": "e381e357a9b170dac8b8db8c9f34a764feacfd7d5d8c70beac4d44463e5b1274",
+      "category": "pseudo-dojo",
+      "library_name": "PseudoDojo",
+      "library_version": "04",
+      "relativistic": "fr",
+      "xc": "pbesol",
+      "quality": "standard",
+      "type": "nc",
+      "upstream_urls": [
+        "https://www.pseudo-dojo.org",
+        "https://www.pseudo-dojo.org/faq.html",
+        "https://www.quantum-espresso.org/other-resources/"
+      ],
+      "license_url": null,
+      "notes": null
+    },
+    {
+      "relative_path": "pseudo_seed/nc-fr-04_pbesol_stringent_upf.tar",
+      "size_bytes": 24596480,
+      "sha256": "5864cf94a7f02b35333a73ae1422c0a2ee46977f2c3de189c10879a6b008908a",
+      "category": "pseudo-dojo",
+      "library_name": "PseudoDojo",
+      "library_version": "04",
+      "relativistic": "fr",
+      "xc": "pbesol",
+      "quality": "stringent",
+      "type": "nc",
+      "upstream_urls": [
+        "https://www.pseudo-dojo.org",
+        "https://www.pseudo-dojo.org/faq.html",
+        "https://www.quantum-espresso.org/other-resources/"
+      ],
+      "license_url": null,
+      "notes": null
+    },
+    {
+      "relative_path": "pseudo_seed/nc-sr-04_pbe_standard_upf.tgz",
+      "size_bytes": 5230385,
+      "sha256": "603d7f07d364b60b321aa5c8eb0ae809aab339c3e884e4b62f31c35370991067",
+      "category": "pseudo-dojo",
+      "library_name": "PseudoDojo",
+      "library_version": "04",
+      "relativistic": "sr",
+      "xc": "pbe",
+      "quality": "standard",
+      "type": "nc",
+      "upstream_urls": [
+        "https://www.pseudo-dojo.org",
+        "https://www.pseudo-dojo.org/faq.html",
+        "https://www.quantum-espresso.org/other-resources/"
+      ],
+      "license_url": null,
+      "notes": null
+    },
+    {
+      "relative_path": "pseudo_seed/nc-sr-04_pbe_stringent_upf.tgz",
+      "size_bytes": 5448379,
+      "sha256": "7291a544e4a10f77b8f5a8e3984876dfedc24c54ec2eac05d81120510848639e",
+      "category": "pseudo-dojo",
+      "library_name": "PseudoDojo",
+      "library_version": "04",
+      "relativistic": "sr",
+      "xc": "pbe",
+      "quality": "stringent",
+      "type": "nc",
+      "upstream_urls": [
+        "https://www.pseudo-dojo.org",
+        "https://www.pseudo-dojo.org/faq.html",
+        "https://www.quantum-espresso.org/other-resources/"
+      ],
+      "license_url": null,
+      "notes": null
+    },
+    {
+      "relative_path": "pseudo_seed/nc-sr-04_pbesol_standard_upf.tgz",
+      "size_bytes": 5201271,
+      "sha256": "6e6af9f7ba82d95f8381760780c056b07bdedf7d4c33c1857c97613399ae3c55",
+      "category": "pseudo-dojo",
+      "library_name": "PseudoDojo",
+      "library_version": "04",
+      "relativistic": "sr",
+      "xc": "pbesol",
+      "quality": "standard",
+      "type": "nc",
+      "upstream_urls": [
+        "https://www.pseudo-dojo.org",
+        "https://www.pseudo-dojo.org/faq.html",
+        "https://www.quantum-espresso.org/other-resources/"
+      ],
+      "license_url": null,
+      "notes": null
+    },
+    {
+      "relative_path": "pseudo_seed/nc-sr-04_pbesol_stringent_upf.tgz",
+      "size_bytes": 5420063,
+      "sha256": "7c89c52051dc3e977589c249f4f1c845fd8e2772f5891670eef127df20195c5d",
+      "category": "pseudo-dojo",
+      "library_name": "PseudoDojo",
+      "library_version": "04",
+      "relativistic": "sr",
+      "xc": "pbesol",
+      "quality": "stringent",
+      "type": "nc",
+      "upstream_urls": [
+        "https://www.pseudo-dojo.org",
+        "https://www.pseudo-dojo.org/faq.html",
+        "https://www.quantum-espresso.org/other-resources/"
+      ],
+      "license_url": null,
+      "notes": null
+    },
+    {
+      "relative_path": "pseudo_seed/nc-sr-04_pw_standard_upf.tgz",
+      "size_bytes": 4940384,
+      "sha256": "305351634a791ca63ff8043bd498b526e45d1e893d49e7a4429762cf7c5a3bcd",
+      "category": "pseudo-dojo",
+      "library_name": "PseudoDojo",
+      "library_version": "04",
+      "relativistic": "sr",
+      "xc": "pw",
+      "quality": "standard",
+      "type": "nc",
+      "upstream_urls": [
+        "https://www.pseudo-dojo.org",
+        "https://www.pseudo-dojo.org/faq.html",
+        "https://www.quantum-espresso.org/other-resources/"
+      ],
+      "license_url": null,
+      "notes": null
+    },
+    {
+      "relative_path": "pseudo_seed/nc-sr-04_pw_stringent_upf.tgz",
+      "size_bytes": 5173731,
+      "sha256": "aadb3b9e889b044e1756b846a1e71d7698b6a7ba6512a7a0fc757e398deb8290",
+      "category": "pseudo-dojo",
+      "library_name": "PseudoDojo",
+      "library_version": "04",
+      "relativistic": "sr",
+      "xc": "pw",
+      "quality": "stringent",
+      "type": "nc",
+      "upstream_urls": [
+        "https://www.pseudo-dojo.org",
+        "https://www.pseudo-dojo.org/faq.html",
+        "https://www.quantum-espresso.org/other-resources/"
+      ],
+      "license_url": null,
+      "notes": null
+    },
+    {
+      "relative_path": "pseudo_seed/paw-sr-11_lda_standard_upf.tgz",
+      "size_bytes": 138630053,
+      "sha256": "b06f26d1af93bd82d86cf5e6e7aac5ad816efeb53e43186aa7650c3756a5091e",
+      "category": "pseudo-dojo",
+      "library_name": "PseudoDojo",
+      "library_version": "11",
+      "relativistic": "sr",
+      "xc": "lda",
+      "quality": "standard",
+      "type": "paw",
+      "upstream_urls": [
+        "https://www.pseudo-dojo.org",
+        "https://www.pseudo-dojo.org/faq.html",
+        "https://www.quantum-espresso.org/other-resources/"
+      ],
+      "license_url": null,
+      "notes": null
+    },
+    {
+      "relative_path": "pseudo_seed/paw-sr-11_lda_stringent_upf.tgz",
+      "size_bytes": 135116417,
+      "sha256": "0b10b93c954ce8c9ed8eeb63dd0c82337d4dcc035a3d24cca0119e3092a185ab",
+      "category": "pseudo-dojo",
+      "library_name": "PseudoDojo",
+      "library_version": "11",
+      "relativistic": "sr",
+      "xc": "lda",
+      "quality": "stringent",
+      "type": "paw",
+      "upstream_urls": [
+        "https://www.pseudo-dojo.org",
+        "https://www.pseudo-dojo.org/faq.html",
+        "https://www.quantum-espresso.org/other-resources/"
+      ],
+      "license_url": null,
+      "notes": null
+    },
+    {
+      "relative_path": "pseudo_seed/paw-sr-11_pbe_standard_upf.tgz",
+      "size_bytes": 138643914,
+      "sha256": "2d1d7e5b4153f4e9e52142e0305360d3c8f3203b18de217bc29880c8e9074d74",
+      "category": "pseudo-dojo",
+      "library_name": "PseudoDojo",
+      "library_version": "11",
+      "relativistic": "sr",
+      "xc": "pbe",
+      "quality": "standard",
+      "type": "paw",
+      "upstream_urls": [
+        "https://www.pseudo-dojo.org",
+        "https://www.pseudo-dojo.org/faq.html",
+        "https://www.quantum-espresso.org/other-resources/"
+      ],
+      "license_url": null,
+      "notes": null
+    },
+    {
+      "relative_path": "pseudo_seed/paw-sr-11_pbe_stringent_upf.tgz",
+      "size_bytes": 135757311,
+      "sha256": "8aeddea7c17793329d5c8708edc931075737ac3c6346ca0157093f693057df79",
+      "category": "pseudo-dojo",
+      "library_name": "PseudoDojo",
+      "library_version": "11",
+      "relativistic": "sr",
+      "xc": "pbe",
+      "quality": "stringent",
+      "type": "paw",
+      "upstream_urls": [
+        "https://www.pseudo-dojo.org",
+        "https://www.pseudo-dojo.org/faq.html",
+        "https://www.quantum-espresso.org/other-resources/"
+      ],
+      "license_url": null,
+      "notes": null
+    },
+    {
+      "relative_path": "pseudo_seed/paw-sr-11_pbesol_standard_upf.tgz",
+      "size_bytes": 135345974,
+      "sha256": "58f4cfd71fc1e28b8e072517eaeffc7f8fec4ab8f6516f3d611d0c4320eaaf16",
+      "category": "pseudo-dojo",
+      "library_name": "PseudoDojo",
+      "library_version": "11",
+      "relativistic": "sr",
+      "xc": "pbesol",
+      "quality": "standard",
+      "type": "paw",
+      "upstream_urls": [
+        "https://www.pseudo-dojo.org",
+        "https://www.pseudo-dojo.org/faq.html",
+        "https://www.quantum-espresso.org/other-resources/"
+      ],
+      "license_url": null,
+      "notes": null
+    },
+    {
+      "relative_path": "pseudo_seed/paw-sr-11_pbesol_stringent_upf.tgz",
+      "size_bytes": 135348007,
+      "sha256": "1f71b59dc914d52f45820b29d9eb806667a46743ea880c73a03be94c11761213",
+      "category": "pseudo-dojo",
+      "library_name": "PseudoDojo",
+      "library_version": "11",
+      "relativistic": "sr",
+      "xc": "pbesol",
+      "quality": "stringent",
+      "type": "paw",
+      "upstream_urls": [
+        "https://www.pseudo-dojo.org",
+        "https://www.pseudo-dojo.org/faq.html",
+        "https://www.quantum-espresso.org/other-resources/"
+      ],
+      "license_url": null,
+      "notes": null
+    }
+  ]
+}

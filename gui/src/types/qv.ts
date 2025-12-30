@@ -578,6 +578,16 @@ export interface QVCommandMap {
       }>;
     };
   };
+  import_seed_archives: {
+    payload: {
+      file_paths: string[];
+    };
+    result: {
+      imported: string[];
+      skipped: string[];
+      errors: string[];
+    };
+  };
   download_sssp_library: {
     payload: {
       flavor: 'efficiency' | 'precision';
@@ -1312,7 +1322,7 @@ export interface QVCommandMap {
     result: {
       options_by_element: Record<string, Array<{
         sha256: string;
-        sha_token: string;
+        sha_family: string;
         element: string;
         display_basename: string;
         all_basenames: string[];
@@ -1351,7 +1361,7 @@ export interface QVCommandMap {
         element: string;
         requested_basename: string;
         requested_sha256?: string;
-        requested_sha_token?: string;
+        requested_sha_family?: string;
         source_kind?: 'project' | 'internal' | 'lib';
         source_path?: string;
       }>;
@@ -1633,14 +1643,14 @@ export interface QVApi {
 
 export interface PseudoVariant {
   sha256: string;  // Primary selection key
-  sha_token: string;  // For warnings/collision detection only
+  sha_family: string;  // For warnings/collision detection only
   basename: string;
   element: string;
   sources: PseudoSource[];
   size_bytes?: number | null;
   upf_format?: string | null;
   is_project_local_unknown?: boolean;  // True if project has basename but sha256 not in index
-  token_match_warnings?: string[];  // Warnings about token matches with different sha256
+  family_match_warnings?: string[];  // Warnings about family matches with different sha256
   display_label: string;  // Computed label (e.g., "Si: Si.upf" or "Si: Si.upf (project-local)")
   availability: {
     any_installed: boolean;
@@ -1667,7 +1677,7 @@ export interface PseudoSource {
 // Legacy PseudoOption (sha256-based) - kept for backward compatibility
 export interface PseudoOption {
   sha256: string;
-  sha_token: string;
+  sha_family: string;
   element: string;
   display_basename: string;
   all_basenames: string[];

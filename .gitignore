@@ -77,9 +77,15 @@ outdir/
 **/outdir/
 
 # Temporary directory (downloads, cache, etc.) - NOT tracked
+# NOTE: temp/ is deprecated - use .qmatsuite/ and .tmp/ instead (see CONSTITUTION_ZH.md)
 temp/
 .temp/
 .cache/
+
+# QMatSuite data directories (see CONSTITUTION_ZH.md section 9)
+.qmatsuite/          # Persistent, migratable, reproducible assets (engines, libraries, seeds, config, logs)
+.tmp/                # Temporary directory (runs, downloads, unpack, probe, locks) - can be deleted anytime
+
 # Pseudo libinfo download directory (covered by temp/ but explicit)
 temp/pseudo_libinfo_download/
 

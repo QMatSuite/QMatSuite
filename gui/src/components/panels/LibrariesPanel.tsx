@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useLibraryManager, type LibraryStatus, type InstallSource } from '../../hooks/useLibraryManager';
+import { useLibraryManager, type LibraryStatus, type LibraryVariantStatus, type InstallSource } from '../../hooks/useLibraryManager';
 import './SettingsPanel.css';
 
 interface LibrariesPanelProps {
@@ -28,7 +28,6 @@ export function LibrariesPanel({ onRevealPath }: LibrariesPanelProps) {
     installLibrary,
     removeLibrary,
     repairLibrary,
-    loadLibraryStatus,
   } = manager;
   
   const [selectedLibrary, setSelectedLibrary] = useState<string | null>(null);
@@ -213,7 +212,7 @@ export function LibrariesPanel({ onRevealPath }: LibrariesPanelProps) {
                 <div className="library-card__variants">
                   <span className="library-card__variants-label">Variants:</span>
                   <div className="library-card__variants-chips">
-                    {(status.variant_statuses || []).map(vs => (
+                    {(status.variant_statuses || []).map((vs: LibraryVariantStatus) => (
                       <span
                         key={vs.variant}
                         className={`library-variant-chip ${vs.installed ? 'library-variant-chip--installed' : ''}`}
@@ -388,7 +387,7 @@ interface InstallLibraryModalProps {
 
 function InstallLibraryModal({
   library,
-  status,
+  status: _status,
   allowDownload,
   onInstall,
   onClose,
@@ -398,7 +397,6 @@ function InstallLibraryModal({
   const [selectedVariants, setSelectedVariants] = useState<string[]>(library.default_variants);
   const [source, setSource] = useState<InstallSource>('github_release');
   const [localPaths, setLocalPaths] = useState<string[]>([]);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   
   const handleVariantToggle = (variant: string) => {
     setSelectedVariants(prev =>
@@ -410,24 +408,20 @@ function InstallLibraryModal({
   
   const handleSourceChange = (newSource: InstallSource) => {
     setSource(newSource);
-    if (newSource === 'local_archive') {
-      setShowAdvanced(true);
-    }
   };
   
   const handleSelectFiles = async () => {
-    if (!window.qv?.openFiles) return;
+    if (!window.qv?.openFile) return;
     
-    const paths = await window.qv.openFiles({
+    const path = await window.qv.openFile({
       filters: [
         { name: 'Archive Files', extensions: ['tar.gz', 'tgz', 'zip'] },
         { name: 'All Files', extensions: ['*'] },
       ],
-      properties: ['multiSelections'],
     });
     
-    if (paths && paths.length > 0) {
-      setLocalPaths(paths);
+    if (path) {
+      setLocalPaths([path]);
     }
   };
   
@@ -668,8 +662,8 @@ function RemoveLibraryModal({
             <label className="modal-label">Select variants to remove:</label>
             <div className="modal-checkboxes">
               {(status.variant_statuses || [])
-                .filter(vs => vs && vs.installed)
-                .map(vs => (
+                .filter((vs: LibraryVariantStatus) => vs && vs.installed)
+                .map((vs: LibraryVariantStatus) => (
                   <label key={vs.variant} className="modal-checkbox">
                     <input
                       type="checkbox"

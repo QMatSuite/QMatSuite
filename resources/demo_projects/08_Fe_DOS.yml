@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KDH0MCXZTBG1X0AYYG5AWHJ2
+    id: 01KDPDXV1TQ0KV3BWEY8A838SN
     name: 08_Fe_DOS
     slug: 08_fe_dos
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KDH0MCYA58PRV86XC6T5433Z
+    id: 01KDPDXV2543CF8NHT99EABXX7
     name: fe.scf_noncollin
     slug: fe-scf_noncollin
     path: structures/fe-scf_noncollin.json
@@ -17,7 +17,7 @@ structures:
   data:
     '@module': pymatgen.core.structure
     '@class': Structure
-    charge: 0
+    charge: 0.0
     lattice:
       matrix:
       - - 1.3482862124071955
@@ -57,7 +57,7 @@ structures:
       - 0.0
 calculations:
 - meta:
-    id: 01KDH0MCY1WAZA8ERFAY90BX1V
+    id: 01KDPDXV1X08XKQF3ZB10W2JCV
     name: Fe Dos  2 Noncolinear
     slug: fe-dos-2-noncolinear
     path: calculations/fe-dos-2-noncolinear
@@ -66,7 +66,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KDH0MCY68RSAASG9ZWAGV29P
+      id: 01KDPDXV22A03PJCV8XMJ7R95Y
       name: fe.scf_noncollin
       slug: fe-scf_noncollin
       path: fe.scf_noncollin.step.yaml
@@ -107,11 +107,14 @@ calculations:
       Fe:
         mass: 55.845
         pseudopot: Fe.pbe-spn-kjpaw_psl.0.2.1.UPF
-  structure_id: 01KDH0MCY05AYJR9YP9RTWGA2A
+  structure_id: 01KDPDXV1VQSWD3HZGDVFFBJ6Z
   species_map:
     Fe:
       mass: 55.845
       pseudopot: Fe.pbe-spn-kjpaw_psl.0.2.1.UPF
+      pseudo_sha256: 9bd9be733c96fa58b1b3ae483036107f9cd2ad7f0301c0ec627472293734590b
+      pseudo_sha_family: 4c30fff62c550a80fede9d7d222be39000fa3e460d4a66388e6c7ad9cb5a505f
+      pseudo_basename: Fe.pbe-spn-kjpaw_psl.0.2.1.UPF
 pseudo:
   directory: pseudo
   files:

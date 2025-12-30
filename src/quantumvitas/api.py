@@ -4125,7 +4125,7 @@ class QVService:
             "element": result.element,
             "basename": result.basename,
             "sha256": result.sha256,
-            "sha_token": result.sha_token,
+            "sha_family": result.sha_family,
             "match_kind": result.match_kind,
             "matches": [
                 {
@@ -5285,7 +5285,7 @@ class QVService:
             species_map: New species mapping (element -> {
                 pseudopot: str (legacy filename, for backward compat),
                 pseudo_sha256: str (primary identity, new),
-                pseudo_sha_token: str (secondary, new),
+                pseudo_sha_family: str (secondary, new),
                 pseudo_basename: str (display + file naming, new),
                 mass: float? (optional)
             })

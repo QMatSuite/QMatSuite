@@ -1,8 +1,9 @@
 """
-Unit tests for sha_token normalization functions.
+Unit tests for sha_family normalization functions.
 
-Tests verify that sha_token is stable across whitespace-only changes
-and line ending differences, but changes when token boundaries change.
+Tests verify that sha_family is stable across whitespace-only changes
+and line ending differences. sha_family is computed by stripping ALL whitespace
+and hashing the result, so "12 3" and "1 23" produce the SAME sha_family.
 """
 
 import tempfile
@@ -12,18 +13,18 @@ import pytest
 
 from quantumvitas.core.pseudo_libinfo import (
     compute_sha256_bytes,
-    compute_sha_token_file,
-    compute_sha_token_text,
+    compute_sha_family_file,
+    compute_sha_family_text,
 )
 
 
 def test_whitespace_only_change(tmp_path: Path) -> None:
     """
-    Test that sha_token is stable across whitespace-only changes.
+    Test that sha_family is stable across whitespace-only changes.
     
     Assertions:
     1. sha256(raw_bytes) != sha256(modified_ws_bytes)  (raw hash differs)
-    2. sha_token(orig_text) == sha_token(modified_ws_text)  (normalized hash same)
+    2. sha_family(orig_text) == sha_family(modified_ws_text)  (normalized hash same)
     """
     # Find a pseudo file from resources/pseudo/
     repo_root = Path(__file__).parent.parent.parent
@@ -72,18 +73,18 @@ def test_whitespace_only_change(tmp_path: Path) -> None:
     modified_ws_sha256 = compute_sha256_bytes(modified_ws_bytes)
     assert orig_sha256 != modified_ws_sha256, "Raw SHA256 should differ with whitespace changes"
     
-    orig_sha_token = compute_sha_token_text(original_text)
-    modified_ws_sha_token = compute_sha_token_text(modified_text)
-    assert orig_sha_token == modified_ws_sha_token, "sha_token should be stable across whitespace-only changes"
+    orig_sha_family = compute_sha_family_text(original_text)
+    modified_ws_sha_family = compute_sha_family_text(modified_text)
+    assert orig_sha_family == modified_ws_sha_family, "sha_family should be stable across whitespace-only changes"
 
 
 def test_lf_to_crlf_change(tmp_path: Path) -> None:
     """
-    Test that sha_token is stable across LF -> CRLF line ending changes.
+    Test that sha_family is stable across LF -> CRLF line ending changes.
     
     Assertions:
     1. sha256(orig_bytes) != sha256(crlf_bytes)  (raw hash differs)
-    2. sha_token(orig_text) == sha_token(crlf_text)  (normalized hash same)
+    2. sha_family(orig_text) == sha_family(crlf_text)  (normalized hash same)
     """
     # Find a pseudo file from resources/pseudo/
     repo_root = Path(__file__).parent.parent.parent
@@ -126,59 +127,92 @@ def test_lf_to_crlf_change(tmp_path: Path) -> None:
     crlf_sha256 = compute_sha256_bytes(crlf_bytes)
     assert orig_sha256 != crlf_sha256, "Raw SHA256 should differ with CRLF vs LF"
     
-    orig_sha_token = compute_sha_token_text(original_text)
-    crlf_sha_token = compute_sha_token_text(crlf_text)
-    assert orig_sha_token == crlf_sha_token, "sha_token should be stable across LF/CRLF changes"
+    orig_sha_family = compute_sha_family_text(original_text)
+    crlf_sha_family = compute_sha_family_text(crlf_text)
+    assert orig_sha_family == crlf_sha_family, "sha_family should be stable across LF/CRLF changes"
 
 
-def test_token_boundary_change_must_change_sha_token(tmp_path: Path) -> None:
+def test_whitespace_position_does_not_change_sha_family(tmp_path: Path) -> None:
     """
-    Test that token-boundary changes MUST change sha_token.
+    Test that whitespace position does NOT change sha_family (whitespace is stripped).
     
-    Create two files with different token boundaries:
-    a) "1 23\n"  -> tokens: ["1", "23"]
-    b) "12 3\n"  -> tokens: ["12", "3"]
+    sha_family strips ALL whitespace, so:
+    a) "1 23\n"  -> stripped: "123"
+    b) "12 3\n"  -> stripped: "123"
     
     Assertion:
-    sha_token(a) != sha_token(b)
+    sha_family(a) == sha_family(b)  (both strip to "123")
+    
+    This is intentional: sha_family represents "whitespace-stripped identity",
+    not full parse-semantic identity.
     """
-    # Create two tiny temp files with different token boundaries
+    # Create two tiny temp files with different whitespace positions
     file_a_path = tmp_path / "a.upf"
     file_b_path = tmp_path / "b.upf"
     
     file_a_path.write_text("1 23\n", encoding="utf-8")
     file_b_path.write_text("12 3\n", encoding="utf-8")
     
-    # Compute sha_tokens
-    sha_token_a = compute_sha_token_file(file_a_path)
-    sha_token_b = compute_sha_token_file(file_b_path)
+    # Compute sha_family
+    sha_family_a = compute_sha_family_file(file_a_path)
+    sha_family_b = compute_sha_family_file(file_b_path)
     
-    # Assertion
-    assert sha_token_a != sha_token_b, "sha_token must differ when token boundaries change"
+    # Assertion: both should produce same sha_family (whitespace stripped)
+    assert sha_family_a == sha_family_b, "sha_family should be same when whitespace position differs (whitespace is stripped)"
 
 
-def test_sha_token_file_helper(tmp_path: Path) -> None:
-    """Test that compute_sha_token_file works correctly."""
+def test_sha_family_file_helper(tmp_path: Path) -> None:
+    """Test that compute_sha_family_file works correctly."""
     test_file = tmp_path / "test.txt"
     test_file.write_text("hello world\n", encoding="utf-8")
     
-    sha_token = compute_sha_token_file(test_file)
-    assert isinstance(sha_token, str)
-    assert len(sha_token) == 64  # SHA256 hex digest length
-    assert all(c in "0123456789abcdef" for c in sha_token)
+    sha_family = compute_sha_family_file(test_file)
+    assert isinstance(sha_family, str)
+    assert len(sha_family) == 64  # SHA256 hex digest length
+    assert all(c in "0123456789abcdef" for c in sha_family)
 
 
-def test_sha_token_text_helper() -> None:
-    """Test that compute_sha_token_text works correctly."""
+def test_sha_family_text_helper() -> None:
+    """Test that compute_sha_family_text works correctly."""
     text = "hello world\n"
-    sha_token = compute_sha_token_text(text)
-    assert isinstance(sha_token, str)
-    assert len(sha_token) == 64  # SHA256 hex digest length
-    assert all(c in "0123456789abcdef" for c in sha_token)
+    sha_family = compute_sha_family_text(text)
+    assert isinstance(sha_family, str)
+    assert len(sha_family) == 64  # SHA256 hex digest length
+    assert all(c in "0123456789abcdef" for c in sha_family)
     
     # Should be deterministic
-    sha_token2 = compute_sha_token_text(text)
-    assert sha_token == sha_token2
+    sha_family2 = compute_sha_family_text(text)
+    assert sha_family == sha_family2
+
+
+def test_non_whitespace_change_must_change_sha_family(tmp_path: Path) -> None:
+    """
+    Test that any non-whitespace character change MUST change sha_family.
+    
+    Create two files that differ only in non-whitespace characters.
+    
+    Assertion:
+    sha_family(a) != sha_family(b)
+    """
+    # Create two files with different content (non-whitespace difference)
+    file_a_path = tmp_path / "a.upf"
+    file_b_path = tmp_path / "b.upf"
+    
+    file_a_path.write_text("hello world\n", encoding="utf-8")
+    file_b_path.write_text("hello  world\n", encoding="utf-8")  # Extra space (whitespace only)
+    
+    sha_family_a = compute_sha_family_file(file_a_path)
+    sha_family_b = compute_sha_family_file(file_b_path)
+    
+    # Extra whitespace should NOT change sha_family
+    assert sha_family_a == sha_family_b, "sha_family should be same with extra whitespace"
+    
+    # But changing a character should change sha_family
+    file_c_path = tmp_path / "c.upf"
+    file_c_path.write_text("hello xorld\n", encoding="utf-8")  # Changed 'w' to 'x'
+    
+    sha_family_c = compute_sha_family_file(file_c_path)
+    assert sha_family_a != sha_family_c, "sha_family must differ when non-whitespace characters change"
 
 
 def test_sha256_bytes_helper() -> None:

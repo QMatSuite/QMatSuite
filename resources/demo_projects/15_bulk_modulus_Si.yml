@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KDH0M6VTSKYKZAPJ31PGCZBN
+    id: 01KDPDXS5DS5DHVB1G7H45736E
     name: 15_bulk_modulus_Si
     slug: 15_bulk_modulus_si
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KDH0M6W8W3PZRJCCT33M56F3
+    id: 01KDPDXS5R2R4NE836696QTGCK
     name: si.1_scf_equilibrium
     slug: si-1_scf_equilibrium
     path: structures/si-1_scf_equilibrium.json
@@ -17,7 +17,7 @@ structures:
   data:
     '@module': pymatgen.core.structure
     '@class': Structure
-    charge: 0
+    charge: 0.0
     lattice:
       matrix:
       - - -2.734706019444711
@@ -69,7 +69,7 @@ structures:
       - 1.3673530097223552
       - 1.3673530097223552
 - meta:
-    id: 01KDH0M6WYQB1HPFYDGPHVRCQE
+    id: 01KDPDXS6B5SQE8V00NEKP72Q0
     name: si.2_scf_1.01a
     slug: si-2_scf_1-01a
     path: structures/si-2_scf_1-01a.json
@@ -77,7 +77,7 @@ structures:
   data:
     '@module': pymatgen.core.structure
     '@class': Structure
-    charge: 0
+    charge: 0.0
     lattice:
       matrix:
       - - -2.762053079639158
@@ -129,7 +129,7 @@ structures:
       - 1.3810265398195787
       - 1.3810265398195791
 - meta:
-    id: 01KDH0M6Y19GANN8RSN8EDBY6X
+    id: 01KDPDXS799B8Y3RKSES0PC72D
     name: si.3_scf_0.99a
     slug: si-3_scf_0-99a
     path: structures/si-3_scf_0-99a.json
@@ -137,7 +137,7 @@ structures:
   data:
     '@module': pymatgen.core.structure
     '@class': Structure
-    charge: 0
+    charge: 0.0
     lattice:
       matrix:
       - - -2.7073589592502634
@@ -190,7 +190,7 @@ structures:
       - 1.3536794796251315
 calculations:
 - meta:
-    id: 01KDH0M6VXV5HTJKDGQC61AKGS
+    id: 01KDPDXS5FDXB9NZGKZY4VSFVF
     name: Bulk Modulus Si
     slug: bulk-modulus-si
     path: calculations/bulk-modulus-si
@@ -199,7 +199,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KDH0M6W4VWNGVEKDVMBS2ZEJ
+      id: 01KDPDXS5NYSV58J93RPKHM0G2
       name: si.1_scf_equilibrium
       slug: si-1_scf_equilibrium
       path: si.1_scf_equilibrium.step.yaml
@@ -236,7 +236,7 @@ calculations:
         mass: 28.0855
         pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
   - meta:
-      id: 01KDH0M6WRG6FV2DF9SQA302WH
+      id: 01KDPDXS668RQJXRPNEW59E5H0
       name: si.2_scf_1.01a
       slug: si-2_scf_1-01a
       path: si.2_scf_1.01a.step.yaml
@@ -273,7 +273,7 @@ calculations:
         mass: 28.0855
         pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
   - meta:
-      id: 01KDH0M6XTNJHFVQCKBHFVGC80
+      id: 01KDPDXS729FK5GYYRZQ2ETMNH
       name: si.3_scf_0.99a
       slug: si-3_scf_0-99a
       path: si.3_scf_0.99a.step.yaml
@@ -309,11 +309,14 @@ calculations:
       Si:
         mass: 28.0855
         pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
-  structure_id: 01KDH0M6VV7B0DJC6JYXTTRZR5
+  structure_id: 01KDPDXS5E46PR3SGAFCMGYG56
   species_map:
     Si:
       mass: 28.0855
       pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+      pseudo_sha256: 669fb75395a9d26973b0ea1ce8223bbcb30d3396c5d48bf5e794d1243c52375a
+      pseudo_sha_family: 9d5fdea5cc45742d1254e8023b481a202b0022642b381478e6195db3d81e2723
+      pseudo_basename: Si.pbe-n-rrkjus_psl.1.0.0.UPF
 pseudo:
   directory: pseudo
   files:
