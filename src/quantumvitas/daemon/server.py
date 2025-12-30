@@ -214,6 +214,9 @@ class QVDaemon:
             # Environment and settings
             "detect_qe": self._handle_detect_qe,
             "get_env_info": self._handle_get_env_info,
+            "list_qe_engines": self._handle_list_qe_engines,
+            "discover_qe_engines": self._handle_discover_qe_engines,
+            "set_qe_engine": self._handle_set_qe_engine,
             "set_log_level": self._handle_set_log_level,
             "list_qe_ui_parameters": self._handle_list_qe_ui_parameters,
             "list_qe_parameter_metadata": self._handle_list_qe_parameter_metadata,
@@ -662,6 +665,38 @@ class QVDaemon:
         Returns python_version, qv_version, qe_home, etc.
         """
         return QVService.get_environment_info()
+    
+    def _handle_list_qe_engines(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        List available QE engines (managed + external).
+        
+        Payload: (none required)
+        
+        Returns managed_engines and external_engines lists.
+        """
+        return QVService.list_qe_engines()
+    
+    def _handle_discover_qe_engines(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Auto-discover QE engines on the system.
+        
+        Payload: (none required)
+        
+        Returns discovered_engines list (cached in .tmp/probe/).
+        """
+        return QVService.discover_qe_engines()
+    
+    def _handle_set_qe_engine(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Set QE bin directory (two-state model).
+        
+        Payload:
+            bin_dir: Optional absolute path to QE bin directory (None to use internal QE)
+        
+        Returns success status.
+        """
+        bin_dir = payload.get("bin_dir")
+        return QVService.set_qe_engine(bin_dir=bin_dir)
     
     # -------------------------------------------------------------------------
     # Pseudopotential configuration handlers

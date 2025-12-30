@@ -1,12 +1,17 @@
 """
 Quantum ESPRESSO installation detection and path management.
 
-This module provides utilities to automatically detect QE installation
-by storing the QE home directory (which contains bin/ and test-suite/).
+DEPRECATED: This module's auto-detection features are deprecated.
+Runtime QE selection now uses the two-state model via qe_resolver.py:
+- If settings.qe.bin_dir is set: use that external QE
+- If settings.qe.bin_dir is null: auto-select internal QE from .qmatsuite/engines/qe/**/bin
 
-The detected QE home is stored in an internal registry (not os.environ)
-to avoid pollution from external processes. Use get_qe_home()/set_qe_home()
-to access or modify the configured path.
+This module is kept for:
+- Backward compatibility (QEInstallation class still used by QuantumEspressoEngine)
+- Optional discovery tools (explicit user-invoked discovery, not runtime selection)
+
+The auto-detection methods (_detect_qe_home, _extract_from_shell_config, etc.)
+should NOT be used for runtime QE selection.
 """
 
 from pathlib import Path
@@ -203,6 +208,12 @@ class QEInstallation:
     def _detect_qe_home() -> Optional[Path]:
         """
         Automatically detect QE home directory using heuristics.
+        
+        DEPRECATED: This method should not be used for runtime QE selection.
+        Use qe_resolver.resolve_qe_bin_dir() instead, which implements the
+        two-state model (external via settings.qe.bin_dir or internal auto-select).
+        
+        This method is kept only for optional discovery tools.
         
         Note: This does NOT check os.environ["QE_HOME"] - that's handled
         separately by _initialize_qe_home() to ensure the env var is only

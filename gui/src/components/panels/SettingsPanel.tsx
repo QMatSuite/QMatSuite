@@ -13,7 +13,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useQVClient, useQVLogs } from '../../hooks/useQVClient';
 import { LibrariesPanel } from './LibrariesPanel';
 import { PseudoArchivesPanel } from '../settings/PseudoArchivesPanel';
-import type { QEDetectionResult, EnvironmentInfo } from '../../types/qv';
+import type { QEDetectionResult, EnvironmentInfo, QVResult } from '../../types/qv';
 import { getVisibleLogLines, getVisibleLogText } from '../../utils/logFilter';
 import './SettingsPanel.css';
 
@@ -35,6 +35,15 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
   const [isLoading, setIsLoading] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // QE Engine selection state (two-state model)
+  const [qeEngineInfo, setQeEngineInfo] = useState<{
+    current_mode: 'internal' | 'external';
+    current_bin_dir: string | null;
+    internal_engines: Array<{ bin_dir: string; engine_path: string; pw_path: string }>;
+  } | null>(null);
+  const [isSettingQE, setIsSettingQE] = useState(false);
+  const [qeError, setQeError] = useState<string | null>(null);
   
   // Debug/Diagnostics state
   const [showDiagnostics, setShowDiagnostics] = useState(false);
@@ -60,7 +69,7 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
     if (!qv) return;
     
     try {
-      const response = await qv.call('get_qe_parameter_metadata_debug_info', {});
+      const response = await window.qv.request('get_qe_parameter_metadata_debug_info', {});
       if (response.ok && response.data) {
         setQeMetadataDebugInfo(response.data);
       }
@@ -70,7 +79,30 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
     }
   }, [qv]);
   
+  // Fetch QE engine info on mount
+  const fetchQEEngineInfo = useCallback(async () => {
+    if (!qv) return;
+    try {
+      const response = await qv.call('list_qe_engines', {});
+      if (response.ok && response.data) {
+        setQeEngineInfo({
+          current_mode: response.data.current_mode || 'internal',
+          current_bin_dir: response.data.current_bin_dir || null,
+          internal_engines: response.data.internal_engines || [],
+        });
+        setQeError(null);
+      }
+    } catch (e) {
+      console.error('[Settings] Failed to fetch QE engine info', e);
+      setQeError(e instanceof Error ? e.message : 'Failed to fetch QE engine info');
+    }
+  }, [qv]);
+  
   // Fetch environment info on mount
+  useEffect(() => {
+    fetchQEEngineInfo();
+  }, [fetchQEEngineInfo]);
+  
   useEffect(() => {
     const fetchEnvInfo = async () => {
       if (!window.qv) return;
@@ -299,6 +331,147 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
           ) : (
             <p className="settings-empty">Click &quot;Re-detect&quot; to check for QE installation</p>
           )}
+          </div>
+        </div>
+        
+        {/* QE Engine Selection Section (Two-State Model) */}
+        <div className="settings-section">
+          <div className="settings-section__header">
+            <h3 className="settings-section__title">
+              <span className="settings-icon">⚙️</span>
+              QE Engine Selection
+            </h3>
+          </div>
+          
+          <div className="settings-section__content">
+            {/* Current Mode Display */}
+            {qeEngineInfo && (
+              <div className="settings-field">
+                <label className="settings-field__label">Current Mode</label>
+                <div className="qe-mode-display">
+                  {qeEngineInfo.current_mode === 'internal' ? (
+                    <div>
+                      <span className="status-text">Using internal QE</span>
+                      {qeEngineInfo.current_bin_dir && (
+                        <code className="detail-value detail-value--path" style={{ display: 'block', marginTop: '0.5rem' }}>
+                          {qeEngineInfo.current_bin_dir}
+                        </code>
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      <span className="status-text">Using external QE</span>
+                      {qeEngineInfo.current_bin_dir && (
+                        <code className="detail-value detail-value--path" style={{ display: 'block', marginTop: '0.5rem' }}>
+                          {qeEngineInfo.current_bin_dir}
+                        </code>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Error Display */}
+            {qeError && (
+              <div className="settings-error" style={{ marginBottom: '1rem' }}>
+                <span className="error-icon">⚠️</span>
+                <span className="error-text">{qeError}</span>
+              </div>
+            )}
+            
+            {/* Action Buttons */}
+            <div className="settings-field">
+              <button
+                className="settings-btn"
+                onClick={async () => {
+                  if (!qv) return;
+                  setIsSettingQE(true);
+                  setQeError(null);
+                  try {
+                    const response = await qv.call('set_qe_engine', { bin_dir: null });
+                    if (response.ok) {
+                      await fetchQEEngineInfo();
+                      // Also refresh QE detection
+                      const qeResponse = await window.qv?.request<QEDetectionResult>('detect_qe', {});
+                      if (qeResponse?.ok && qeResponse.data) {
+                        setQeInfo(qeResponse.data);
+                      }
+                    } else {
+                      setQeError(response.error?.message || 'Failed to set internal QE');
+                    }
+                  } catch (e) {
+                    setQeError(e instanceof Error ? e.message : 'Failed to set internal QE');
+                  } finally {
+                    setIsSettingQE(false);
+                  }
+                }}
+                disabled={isSettingQE || (qeEngineInfo?.current_mode === 'internal')}
+              >
+                {isSettingQE ? 'Setting...' : 'Use Internal QE'}
+              </button>
+            </div>
+            
+            <div className="settings-field">
+              <button
+                className="settings-btn"
+                onClick={async () => {
+                  if (!window.qv?.openDirectory) {
+                    setQeError('File picker not available');
+                    return;
+                  }
+                  
+                  setIsSettingQE(true);
+                  setQeError(null);
+                  try {
+                    const selectedDir = await window.qv.openDirectory();
+                    if (!selectedDir) {
+                      setIsSettingQE(false);
+                      return;
+                    }
+                    
+                    // Validate: check for pw.x or pw.x.exe
+                    const pwX = `${selectedDir}/pw.x`;
+                    const pwExe = `${selectedDir}/pw.x.exe`;
+                    
+                    // Note: We can't directly check file existence from frontend,
+                    // so we rely on backend validation
+                    const response = await qv.call('set_qe_engine', { bin_dir: selectedDir });
+                    if (response.ok) {
+                      await fetchQEEngineInfo();
+                      // Also refresh QE detection
+                      const qeResponse = await window.qv?.request<QEDetectionResult>('detect_qe', {});
+                      if (qeResponse?.ok && qeResponse.data) {
+                        setQeInfo(qeResponse.data);
+                      }
+                    } else {
+                      setQeError(response.error?.message || 'Invalid QE bin directory. Must contain pw.x or pw.x.exe');
+                    }
+                  } catch (e) {
+                    setQeError(e instanceof Error ? e.message : 'Failed to set external QE');
+                  } finally {
+                    setIsSettingQE(false);
+                  }
+                }}
+                disabled={isSettingQE}
+              >
+                {isSettingQE ? 'Setting...' : 'Set External QE Bin Dir...'}
+              </button>
+            </div>
+            
+            {/* Internal Engines List (Info Only) */}
+            {qeEngineInfo && qeEngineInfo.internal_engines.length > 0 && (
+              <div className="settings-field">
+                <label className="settings-field__label">Available Internal Engines</label>
+                <div className="internal-engines-list">
+                  {qeEngineInfo.internal_engines.map((eng, idx) => (
+                    <div key={idx} className="internal-engine-item">
+                      <code className="detail-value detail-value--path">{eng.bin_dir}</code>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
         

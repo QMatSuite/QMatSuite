@@ -21,6 +21,13 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import certifi
 
+from quantumvitas.core.paths import (
+    home_pseudo_libraries_dir,
+    home_pseudo_seeds_dir,
+    tmp_downloads_dir,
+    tmp_unpack_dir,
+)
+
 logger = logging.getLogger(__name__)
 
 # Centralized SSL context using certifi CA bundle for production-grade HTTPS
@@ -69,8 +76,8 @@ class PseudoConfig:
     Persisted in a user config file outside of project directories.
     
     Attributes:
-        store_dir: Global pseudo store directory (default: repo/temp/pseudo)
-        seed_dir: Seed directory for offline installation (default: repo/temp/assets/pseudo_seed)
+        store_dir: Global pseudo store directory (default: .qmatsuite/libraries/pseudo)
+        seed_dir: Seed directory for offline installation (default: .qmatsuite/seeds/pseudo)
         allow_download: Whether to allow network downloads (default: False)
         network_pseudo_base_url: Base URL for QE pseudopotential downloads (default: QE official)
         legacy_tables_base_url: Base URL for QE legacy tables (default: QE official)
@@ -83,19 +90,19 @@ class PseudoConfig:
     
     @classmethod
     def get_default_store_dir(cls) -> str:
-        """Get default store directory path."""
-        root = _find_quantumvitas_root()
-        if root:
-            return str(root / "temp" / "pseudo")
-        return ""
+        """Get default store directory path (.qmatsuite/libraries/pseudo)."""
+        try:
+            return str(home_pseudo_libraries_dir())
+        except Exception:
+            return ""
     
     @classmethod
     def get_default_seed_dir(cls) -> str:
-        """Get default seed directory path."""
-        root = _find_quantumvitas_root()
-        if root:
-            return str(root / "temp" / "assets" / "pseudo_seed")
-        return ""
+        """Get default seed directory path (.qmatsuite/seeds/pseudo)."""
+        try:
+            return str(home_pseudo_seeds_dir())
+        except Exception:
+            return ""
     
     @classmethod
     def with_defaults(cls) -> "PseudoConfig":
@@ -1062,10 +1069,12 @@ def download_sssp_library(
         result["errors"].append(f"Failed to select SSSP entries from manifest: {e}")
         return result
     
-    # Step 3: Download files to temp dir with verification
+    # Step 3: Download files to .tmp/downloads/ with verification
     result["messages"].append(f"Downloading SSSP {version} {flavor} from GitHub release...")
     
-    with tempfile.TemporaryDirectory() as temp_dir:
+    # Use .tmp/downloads/ as base for temporary downloads
+    downloads_base = tmp_downloads_dir()
+    with tempfile.TemporaryDirectory(prefix="sssp_download_", dir=str(downloads_base)) as temp_dir:
         temp_path = Path(temp_dir)
         
         # Download archive with verification

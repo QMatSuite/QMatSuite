@@ -2159,7 +2159,7 @@ def main() -> int:
     parser.add_argument(
         "--cache-dir",
         type=Path,
-        default=Path(__file__).parent.parent / "temp" / "qe_docs",
+        default=Path(__file__).parent.parent / ".tmp" / "qe_docs",
         help="Directory to cache HTML files",
     )
     parser.add_argument(

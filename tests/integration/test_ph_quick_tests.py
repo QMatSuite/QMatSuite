@@ -30,21 +30,28 @@ PH_CI_TESTS: List[Dict[str, Any]] = [
 def qe_engine() -> QuantumEspressoEngine:
     """Create a QE engine instance and validate required executables."""
     config = EngineConfig(name="qe")
-    engine = QuantumEspressoEngine(config)
+    try:
+        engine = QuantumEspressoEngine(config)
+        
+        if not engine.installation.is_valid():
+            raise RuntimeError(
+                "QE installation not found. Please set QE_HOME/QE_BIN_DIR or install QE."
+            )
 
-    if not engine.installation.is_valid():
+        required = ["pw.x", "ph.x"]
+        missing = [exe for exe in required if not engine.detect_executable(exe)]
+        if missing:
+            raise RuntimeError(
+                "Required QE executables not found: " + ", ".join(missing)
+            )
+
+        return engine
+    except RuntimeError as e:
+        # Re-raise with clear message about missing QE
         raise RuntimeError(
-            "QE installation not found. Please set QE_HOME/QE_BIN_DIR or install QE."
-        )
-
-    required = ["pw.x", "ph.x"]
-    missing = [exe for exe in required if not engine.detect_executable(exe)]
-    if missing:
-        raise RuntimeError(
-            "Required QE executables not found: " + ", ".join(missing)
-        )
-
-    return engine
+            f"QE engine initialization failed: {e}\n"
+            "Install internal QE to .qmatsuite/engines/qe/<folder>/bin or set settings.qe.bin_dir to external QE bin directory."
+        ) from e
 
 
 @pytest.fixture(scope="module")

@@ -221,31 +221,84 @@ jobs:
         # Install QE to prefix
         make install
     
+    - name: Stage QE to .qmatsuite/engines/qe
+      run: |
+        # Determine engine_id: managed:qe-7.5:<os>
+        ENGINE_ID="managed:qe-7.5:${{ matrix.os }}"
+        QMATSUITE_ENGINE_DIR="${{ github.workspace }}/.qmatsuite/engines/qe/${ENGINE_ID}"
+        
+        # Create engine directory structure
+        mkdir -p "${QMATSUITE_ENGINE_DIR}/bin"
+        
+        # Copy essential QE executables
+        cp "${{ env.QE_PREFIX }}/bin/pw.x" "${QMATSUITE_ENGINE_DIR}/bin/" || exit 1
+        cp "${{ env.QE_PREFIX }}/bin/ph.x" "${QMATSUITE_ENGINE_DIR}/bin/" || exit 1
+        cp "${{ env.QE_PREFIX }}/bin/pp.x" "${QMATSUITE_ENGINE_DIR}/bin/" || exit 1
+        cp "${{ env.QE_PREFIX }}/bin/dos.x" "${QMATSUITE_ENGINE_DIR}/bin/" 2>/dev/null || true
+        
+        # Copy test-suite if available
+        if [ -d "${{ env.QE_PREFIX }}/test-suite" ]; then
+          cp -r "${{ env.QE_PREFIX }}/test-suite" "${QMATSUITE_ENGINE_DIR}/" || true
+        fi
+        
+        # Verify staged engine
+        if [ ! -f "${QMATSUITE_ENGINE_DIR}/bin/pw.x" ]; then
+          echo "ERROR: Failed to stage pw.x to ${QMATSUITE_ENGINE_DIR}/bin/"
+          exit 1
+        fi
+        
+        echo "Staged QE engine to ${QMATSUITE_ENGINE_DIR}"
+        echo "ENGINE_ID=${ENGINE_ID}" >> $GITHUB_ENV
+        echo "QMATSUITE_ENGINE_DIR=${QMATSUITE_ENGINE_DIR}" >> $GITHUB_ENV
+    
     - name: Set QE environment variables
       run: |
-        echo "QE_HOME=${{ env.QE_PREFIX }}" >> $GITHUB_ENV
-        echo "${{ env.QE_PREFIX }}/bin" >> $GITHUB_PATH
+        # Use staged engine from .qmatsuite/engines/qe
+        echo "QE_HOME=${{ env.QMATSUITE_ENGINE_DIR }}" >> $GITHUB_ENV
+        echo "${{ env.QMATSUITE_ENGINE_DIR }}/bin" >> $GITHUB_PATH
+        # Also set for backward compatibility (tests may still check QE_PREFIX)
+        echo "QE_PREFIX=${{ env.QE_PREFIX }}" >> $GITHUB_ENV
     
     - name: Verify QE installation
       run: |
-        export QE_HOME="${{ env.QE_PREFIX }}"
-        export PATH="${{ env.QE_PREFIX }}/bin:$PATH"
+        export QE_HOME="${{ env.QMATSUITE_ENGINE_DIR }}"
+        export PATH="${{ env.QMATSUITE_ENGINE_DIR }}/bin:$PATH"
         which pw.x || (echo "pw.x not found in PATH" && exit 1)
         pw.x --version || echo "pw.x version check failed (may be normal)"
-        ls -la ${{ env.QE_PREFIX }}/bin/pw.x || exit 1
+        ls -la ${{ env.QMATSUITE_ENGINE_DIR }}/bin/pw.x || exit 1
+        echo "Using staged QE engine: ${{ env.ENGINE_ID }}"
     
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -e '.[dev]'
     
+    - name: Configure QMatSuite to use staged engine
+      run: |
+        # Set default engine in settings.json to use the staged managed engine
+        python -c "
+        from quantumvitas.core.paths import home_config_dir
+        from quantumvitas.core.settings import load_settings, save_settings
+        import json
+        import os
+        
+        settings = load_settings()
+        engine_id = os.environ.get('ENGINE_ID', 'managed:qe-7.5:${{ matrix.os }}')
+        settings.defaults.qe_engine_id = engine_id
+        save_settings(settings)
+        print(f'Configured default QE engine: {engine_id}')
+        "
+    
     - name: Run all tests in tests/ directory
       run: |
-        export QE_HOME="${{ env.QE_PREFIX }}"
-        export PATH="${{ env.QE_PREFIX }}/bin:$PATH"
+        export QE_HOME="${{ env.QMATSUITE_ENGINE_DIR }}"
+        export PATH="${{ env.QMATSUITE_ENGINE_DIR }}/bin:$PATH"
+        # Export engine ID for tests that need it
+        export QMATSUITE_TEST_QE_ENGINE_ID="${{ env.ENGINE_ID }}"
         python -m pytest tests/ -v --tb=short -n auto --dist=loadfile --cov=src/quantumvitas --cov-report=xml --cov-report=term
       env:
-        QE_HOME: ${{ env.QE_PREFIX }}
+        QE_HOME: ${{ env.QMATSUITE_ENGINE_DIR }}
+        QMATSUITE_TEST_QE_ENGINE_ID: ${{ env.ENGINE_ID }}
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
@@ -291,8 +344,8 @@ jobs:
     - name: Run GUI E2E tests
       working-directory: gui
       run: |
-        export QE_HOME="${{ env.QE_PREFIX }}"
-        export PATH="${{ env.QE_PREFIX }}/bin:$PATH"
+        export QE_HOME="${{ env.QMATSUITE_ENGINE_DIR }}"
+        export PATH="${{ env.QMATSUITE_ENGINE_DIR }}/bin:$PATH"
         # Unified E2E tests - fixture automatically chooses launch strategy:
         # Linux: uses Playwright's _electron.launch()
         # macOS: uses CDP workaround
