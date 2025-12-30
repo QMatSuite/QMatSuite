@@ -1484,6 +1484,64 @@ export interface QVCommandMap {
       success: boolean;
     };
   };
+  
+  // Preset detection (Constitution §10.4.1: Detector B is sole state source)
+  detect_presets: {
+    payload: {
+      project_root: string;
+      calculation: string;
+    };
+    result: PresetDetectionResult;
+  };
+  
+  // Workflow detection (runtime-only, informational)
+  detect_workflow: {
+    payload: {
+      project_root: string;
+      calculation: string;
+    };
+    result: WorkflowDetectionResult;
+  };
+  
+  // Apply presets to step (Constitution §10.3.3: overwrite, not merge)
+  apply_presets_to_step: {
+    payload: {
+      project_root: string;
+      calculation: string;
+      step: string;
+      presets: {
+        spin?: SpinValue;
+        soc?: SOCValue;
+        material?: MaterialValue;
+      };
+      validate_physics?: boolean;
+    };
+    result: ApplyPresetsResult;
+  };
+  
+  // Apply presets to all steps (BROADCAST)
+  apply_presets_to_calculation: {
+    payload: {
+      project_root: string;
+      calculation: string;
+      presets: {
+        spin?: SpinValue;
+        soc?: SOCValue;
+        material?: MaterialValue;
+      };
+      validate_physics?: boolean;
+    };
+    result: ApplyPresetsToCalcResult;
+  };
+  
+  // Get preset footprints for all steps
+  get_step_preset_footprints: {
+    payload: {
+      project_root: string;
+      calculation: string;
+    };
+    result: StepFootprintsResult;
+  };
 }
 
 // =============================================================================
@@ -1725,6 +1783,103 @@ export interface PseudoOption {
   }>;
   availability: { any_installed: boolean };
 }
+
+// =============================================================================
+// Preset Types (Constitution Chapter 10 compliant)
+// =============================================================================
+
+/** Preset dimension values - corresponds to Python SpinOption, SOCOption, MaterialOption */
+export type SpinValue = 'nonspin' | 'collinear' | 'noncollinear';
+export type SOCValue = 'no_soc' | 'with_soc';
+export type MaterialValue = 'insulator' | 'metal';
+export type PresetValue = SpinValue | SOCValue | MaterialValue | 'Custom';
+
+/** Detected workflow type */
+export type WorkflowType = 'SCF' | 'DOS' | 'BandStructure' | 'Relaxation' | 'Phonon' | 'MD' | 'NSCF' | 'Unknown';
+
+/** Preset detection result from daemon */
+export interface PresetDetectionResult {
+  presets: {
+    spin: SpinValue | 'Custom';
+    soc: SOCValue | 'Custom';
+    material: MaterialValue | 'Custom';
+  };
+}
+
+/** Workflow detection result from daemon */
+export interface WorkflowDetectionResult {
+  workflow: WorkflowType;
+}
+
+/** Apply presets result from daemon (single step) */
+export interface ApplyPresetsResult {
+  status: 'applied' | 'error';
+  presets: {
+    spin: SpinValue | 'Custom';
+    soc: SOCValue | 'Custom';
+    material: MaterialValue | 'Custom';
+  };
+  error?: {
+    code: string;
+    message: string;
+  };
+}
+
+/** Step apply result in BROADCAST apply */
+export interface StepApplyResult {
+  step_file: string;
+  step_type: string;
+  status: 'updated' | 'skipped' | 'error';
+  applied_presets?: string[];  // List of dimension names applied (e.g., ['spin', 'soc'])
+  reason?: string;  // For skipped/error: why it was skipped
+}
+
+/** Apply presets to calculation result (BROADCAST) */
+export interface ApplyPresetsToCalcResult {
+  status: 'applied';
+  steps_updated: number;
+  steps_skipped: number;
+  step_results: StepApplyResult[];
+  presets: {
+    spin: SpinValue | 'Custom';
+    soc: SOCValue | 'Custom';
+    material: MaterialValue | 'Custom';
+  };
+}
+
+/** Step preset footprint for display */
+export interface StepPresetFootprint {
+  params: Record<string, unknown>;
+  spin: SpinValue;
+  soc: SOCValue;
+  material: MaterialValue;
+}
+
+/** Step footprints result from daemon */
+export interface StepFootprintsResult {
+  footprints: Record<string, StepPresetFootprint>;
+}
+
+/** Preset options for each dimension */
+export const SPIN_OPTIONS: SpinValue[] = ['nonspin', 'collinear', 'noncollinear'];
+export const SOC_OPTIONS: SOCValue[] = ['no_soc', 'with_soc'];
+export const MATERIAL_OPTIONS: MaterialValue[] = ['insulator', 'metal'];
+
+/** Human-readable labels for preset values */
+export const PRESET_LABELS: Record<string, string> = {
+  // Spin
+  nonspin: 'Non-spin-polarized',
+  collinear: 'Collinear spin',
+  noncollinear: 'Non-collinear spin',
+  // SOC
+  no_soc: 'No SOC',
+  with_soc: 'With SOC',
+  // Material
+  insulator: 'Insulator / Semiconductor',
+  metal: 'Metal',
+  // Custom
+  Custom: 'Custom (mixed)',
+};
 
 // Extend Window interface
 declare global {

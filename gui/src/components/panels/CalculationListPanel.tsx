@@ -321,10 +321,70 @@ export function CalculationListPanel({
 // Calculation Detail View
 // =============================================================================
 
-import type { StructureInfo, CalculationDetailResult } from '../../types/qv';
+import type { StructureInfo, CalculationDetailResult, StepPresetFootprint } from '../../types/qv';
 import { normalizeProjectRoot } from '../../utils/pathUtils';
 import { useQVClient } from '../../hooks/useQVClient';
 import { CommonCardPseudo } from '../common_cards/CommonCardPseudo';
+import { PresetSection } from '../presets/PresetSection';
+import { usePresets } from '../../hooks/usePresets';
+
+/**
+ * FootprintChips - Displays preset-related params as chips (Phase 8C)
+ * 
+ * Shows at most maxChips chips, with "+k more" expander if more exist.
+ * Click on "+k more" expands to show all chips.
+ */
+interface FootprintChipsProps {
+  footprint: StepPresetFootprint;
+  maxChips?: number;
+}
+
+function FootprintChips({ footprint, maxChips = 3 }: FootprintChipsProps) {
+  const [expanded, setExpanded] = useState(false);
+  
+  const entries = Object.entries(footprint.params);
+  const totalCount = entries.length;
+  
+  if (totalCount === 0) return null;
+  
+  const visibleEntries = expanded ? entries : entries.slice(0, maxChips);
+  const hiddenCount = totalCount - maxChips;
+  const showMore = !expanded && hiddenCount > 0;
+  
+  return (
+    <div className="step-footprint">
+      {visibleEntries.map(([key, value]) => (
+        <span key={key} className="step-footprint__chip" title={`${key}=${value}`}>
+          {key}={String(value)}
+        </span>
+      ))}
+      {showMore && (
+        <button
+          className="step-footprint__more"
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded(true);
+          }}
+          title={`Show ${hiddenCount} more parameter${hiddenCount > 1 ? 's' : ''}`}
+        >
+          +{hiddenCount}
+        </button>
+      )}
+      {expanded && hiddenCount > 0 && (
+        <button
+          className="step-footprint__collapse"
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded(false);
+          }}
+          title="Show fewer"
+        >
+          ◂
+        </button>
+      )}
+    </div>
+  );
+}
 
 interface CalculationDetailPanelProps {
   calculationSummary: CalculationInfo | null;  // Summary from list_calculations (for high-level fields)
@@ -425,6 +485,12 @@ export function CalculationDetailPanel({
   } | null>(null);
   const [_isLoadingPseudoMapping, setIsLoadingPseudoMapping] = useState(false);
   const [isEditingPseudos, setIsEditingPseudos] = useState(false);
+  
+  // Get preset footprints for step rows
+  const { footprints: stepFootprints } = usePresets(
+    !isFocusMode ? projectRoot : null,
+    !isFocusMode && calculationForSteps ? calculationForSteps.slug : null
+  );
   
   // Handle deleting a step
   const handleDeleteStep = useCallback(async (stepId: string, stepType: string) => {
@@ -902,6 +968,15 @@ export function CalculationDetailPanel({
           </div>
         </div>
         
+        {/* Presets Section - Per Constitution §10.4.1: Detector B is sole state source */}
+        {calculationForSteps && projectRoot && !isFocusMode && (
+          <PresetSection
+            projectRoot={projectRoot}
+            calculationSlug={calculationForSteps.slug}
+            onPresetsChanged={onCalculationUpdated}
+          />
+        )}
+        
         <div className="detail-section">
           <div className="section-header-row">
             <h3>Calculation Steps</h3>
@@ -1095,6 +1170,10 @@ export function CalculationDetailPanel({
                     <span className="step-id">{step.id}</span>
                     <span className="step-type-badge">{step.type}</span>
                   </div>
+                  {/* Preset footprint chips - WYSIWYG from step.yml (Phase 8C: limit to 3) */}
+                  {stepFootprints && stepFootprints[step.step_file] && (
+                    <FootprintChips footprint={stepFootprints[step.step_file]} maxChips={3} />
+                  )}
                 </button>
                 {!isReordering && onDeleteStep && (
                   <button
