@@ -421,6 +421,226 @@ repo_root/
 
 ---
 
+## 10. 计算模型与 Preset / Workflow 宪法
+
+本宪法用于约束 QMatSuite 中 proj / calc / step 计算模型，以及 preset / workflow / compiler / detector 的设计边界。  
+本宪法优先级高于任何具体实现、UI 便利或短期工程优化。
+
+### 10.1 唯一真相原则（Single Source of Truth）
+
+#### 10.1.1 执行真相
+系统中**唯一的可执行真相**是 step.yml 中记录的 input parameters。  
+任何计算结果的可复现性，只能且必须由 step 参数保证。
+
+#### 10.1.2 文件系统纯度
+step.yml 必须保持纯粹输入，不得包含以下任何信息：
+
+- workflow 标识
+- preset / option / provenance
+- 参数来源、继承关系、生成历史
+- compiler / detector 相关元数据
+
+违反本条视为模型污染。
+
+#### 10.1.3 calc 职责边界
+calc 仅负责：
+
+- structure
+- pseudopotentials
+
+calc 不得持有任何计算参数、preset 状态或 workflow 状态。
+
+### 10.2 Preset / Workflow 的法律地位
+
+#### 10.2.1 非实体原则
+workflow 与 preset 不是一等公民，不得作为持久化实体存在于文件系统中。
+
+它们仅是：
+
+- 对当前 step DAG 的运行时解释
+- 对 step 参数集合的正向生成与反向解释
+
+### 10.3 Compiler（正向生成）的宪法约束
+
+#### 10.3.1 Compiler 定义与职责
+Compiler 是一个纯函数族，其职责是**规范化写入器**：将用户选项映射为 step 的 input parameters。
+
+其形式为：
+
+```
+compile_one(step_type, options) -> full_parameter_dict
+```
+
+或等价的批量形式。
+
+**职责定位**：Compiler 是规范化写入器，负责将用户意图转换为显式、完整的参数表示。
+
+#### 10.3.2 输入独立性
+Compiler 不得依赖以下任何信息：
+
+- step 拓扑 / DAG
+- workflow
+- structure
+- pseudopotential
+- calc 状态
+
+Compiler 仅允许依赖：
+
+- step_type
+- 用户 options（spin / soc / material / accuracy 等）
+
+#### 10.3.3 覆盖性原则
+Preset apply 时，Compiler 必须完全重写 step 参数：
+
+- 不得 append
+- 不得 merge
+- 不得保留旧参数
+
+该规则用于保证 canonical form 与数学等价性。
+
+#### 10.3.4 Canonical Encoding（必须显式写出）
+Compiler 输出必须采用规范化参数表示，**必须显式写出所有关键参数**：
+
+- 所有关键语义（如 spin / soc / material / accuracy）必须显式写出
+- 不得依赖默认值（即使 QE 有默认值，也必须显式写入）
+- 不得留下与当前 option 冲突的残留参数
+- 不得省略任何影响语义的参数
+
+**示例**：若 option 为 nonspin，Compiler 必须显式写入 `nspin = 1`，不得依赖 QE 默认值。
+
+### 10.4 Detector B（反向检测）的宪法地位
+
+#### 10.4.1 Detector 核心性与职责
+Detector B 是系统中**唯一合法的 preset / option 状态判定来源**。  
+UI 不得基于用户"选择历史"显示状态。
+
+**职责定位**：Detector B 是语义解释器，负责从 step 参数反向推断用户意图，包括隐式默认语义。
+
+#### 10.4.2 无 A 原则
+系统中**不存在"Selected vs Detected"双轨状态模型**。  
+所有状态均由 Detector B 从 step 参数实时推断。
+
+### 10.5 Detector B 的数学定义
+
+#### 10.5.1 维度判定
+每个 preset 维度（如 Spin / SOC / Material / Accuracy）独立判定。
+
+对任一维度 d：
+
+1. 选取相关 step 集合 R_d
+2. 从每个 step 提取值 v_d(step)（见 10.5.3 隐式默认语义）
+3. 构造集合 V = unique(v_d(step) for step in R_d)
+
+判定规则为：
+
+- 若 |V| == 1 → Detected = 该唯一值
+- 若 |V| > 1 → Detected = Custom
+
+不存在 Unknown 状态。
+
+#### 10.5.2 单步合法性
+若 R_d 中仅包含一个 step，则该 step 的值即为 Detected 值。  
+单步合法，不构成 Custom。
+
+#### 10.5.3 隐式默认语义的反向解释（必须支持）
+Detector B 必须支持隐式默认语义的反向解释。
+
+**规则**：当 step 参数中未显式写出某个关键参数时，Detector 必须按照 QE 默认语义进行解释。
+
+**示例**：
+- 若 step 中未写 `nspin`，Detector 必须解释为 `nonspin`（等价于 `nspin = 1`）
+- 若 step 中未写 `lspinorb`，Detector 必须解释为 `no_soc`（等价于 `lspinorb = .false.`）
+
+**目的**：保证 Detector 能够正确解释非 Compiler 生成的 step（如用户手动编辑、从 QE input 导入等）。
+
+### 10.6 Compiler 与 Detector 的数学等价性
+
+#### 10.6.1 职责不对称性
+Compiler 与 Detector 在职责上具有不对称性：
+
+- **Compiler（规范化写入器）**：将用户意图转换为显式、完整的参数表示
+- **Detector（语义解释器）**：从参数反向推断用户意图，包括隐式默认语义
+
+这种不对称性导致等价性要求的不同严格程度。
+
+#### 10.6.2 等价性公理（区分 Compiler 输出与非 Compiler 输出）
+
+**对 Compiler 输出（严格等价）**：
+对任意 options 与 step_type，必须满足：
+
+```
+detect( compile_one(step_type, options) ) == options 在该维度的值
+```
+
+该等价性是强制不变量，必须严格满足。
+
+**对非 Compiler 输出（宽容语义推断）**：
+对非 Compiler 生成的 step（如用户手动编辑、从 QE input 导入），Detector 允许更宽容的语义推断：
+
+- 允许基于隐式默认语义进行解释（见 10.5.3）
+- 允许处理参数缺失、参数冗余等情况
+- 目标是在语义等价的前提下，尽可能推断出合理的 preset / option 状态
+
+**示例**：
+- Compiler 输出：`nspin = 1` → Detector 必须检测为 `nonspin`
+- 非 Compiler 输出：未写 `nspin` → Detector 应推断为 `nonspin`（基于隐式默认）
+
+#### 10.6.3 等价性验证
+等价性必须通过 unit tests 验证，而非经验保证：
+
+- **Compiler 输出等价性**：必须通过严格的 unit tests 验证
+- **非 Compiler 输出语义推断**：必须通过测试覆盖常见场景（参数缺失、默认值、冗余参数等）
+
+### 10.7 Advanced 用户路径
+
+#### 10.7.1 Step 自治
+Advanced 用户对 step 的任何手动修改：
+
+- 直接写入 step.yml
+- 不触发隐式继承、联动或修正
+
+#### 10.7.2 显式继承
+如提供继承能力，必须通过显式 UI 行为（如 dropdown copy），且仅为一次性复制。
+
+### 10.8 读写策略（非宪法核心）
+
+#### 10.8.1 当前实现
+当前阶段允许：
+
+- UI 操作即刻读写 step.yml
+
+#### 10.8.2 未来优化
+未来可引入内存缓冲、延迟写入等优化，但不得改变前述宪法语义。
+
+### 10.9 禁止事项
+
+禁止引入以下概念进入持久模型：
+
+- **preset / workflow 的持久化**：preset 与 workflow 不得作为持久化实体存在于文件系统中（见 10.2.1）
+- **anchor**：禁止引入 anchor 概念
+- **family state**：禁止引入 family state 概念
+- **baseline**：禁止引入 baseline 概念
+- **implicit inheritance**：禁止引入隐式继承机制
+- **A/B 双轨状态**：禁止引入"Selected vs Detected"双轨状态模型（见 10.4.2）
+- **compiler version / schema version 作为运行语义依赖**：禁止将版本号作为运行语义依赖
+
+### 10.10 解释权
+
+当实现与宪法存在冲突时：
+
+- 宪法优先
+- 简洁性优先
+- 数学可证明性优先于 UX 便利
+
+### 10.11 宪法总结性原则（一句话）
+
+**Execution is concrete; intention is inferred.**
+
+所有计算只相信 step 参数；  
+workflow 与 preset 只是对现状的解释，而非事实。
+
+---
+
 ## 最后条款：修改原则
 - 宪法的修改需谨慎，任何修改必须由项目作者审核。
 - 实现细节、证据、TODO、改进建议等请放在英文文档中维护（避免宪法过时）。
@@ -430,7 +650,21 @@ repo_root/
 ## 本次修订摘要（2025-01-XX）
 
 ### 新增章节
-- **第 9 章：数据根目录、临时目录与可复现资产**（全新章节）
+- **第 10 章：计算模型与 Preset / Workflow 宪法**（全新章节）
+  - 10.1 唯一真相原则（step.yml 是唯一可执行真相）
+  - 10.2 Preset / Workflow 的法律地位（非实体原则）
+  - 10.3 Compiler（正向生成）的宪法约束
+  - 10.4 Detector B（反向检测）的宪法地位
+  - 10.5 Detector B 的数学定义
+  - 10.6 Compiler 与 Detector 的数学等价性
+  - 10.7 Advanced 用户路径
+  - 10.8 读写策略（非宪法核心）
+  - 10.9 禁止事项（anchor / family state / baseline / implicit inheritance）
+  - 10.10 解释权
+  - 10.11 宪法总结性原则
+
+### 历史新增章节
+- **第 9 章：数据根目录、临时目录与可复现资产**（历史章节）
   - 9.1 两类根目录定义（`.qmatsuite/` 与 `.tmp/`）
   - 9.2 目录结构标准化
   - 9.3 QE Seed 机制
@@ -464,10 +698,47 @@ repo_root/
 7. **明确 UI 默认优先级动机**：在 7.5.1 中说明"优先贴近 runtime 实际，减少无意覆盖"。
 8. **强调 project source noop**：在 7.7.1 中明确用户选择 project/pseudo 自身文件时 Step0 必须 noop。
 
-### 变更摘要（sha_token → sha_family，2025-01-XX）
+### 变更摘要（sha_token → sha_family，历史）
 - **sha_token 重命名为 sha_family**：术语更清晰，表示"家族"（物理等价组）而非"令牌"。
 - **算法变更**：从"token 边界敏感"改为"空白字符完全移除"：
   - 旧算法：空白字符 split → 保留非空白 token → 单空格 join → SHA256
   - 新算法：移除所有空白字符（isspace()）→ 拼接剩余字符 → SHA256
   - 影响：`"12 3"` 和 `"1 23"` 现在产生相同的 sha_family（都变成 `"123"`），这是预期的行为。
 - **其他语义不变**：dropdown 仍以 sha256 为选择主键；sha_family 仍仅用于警告、冲突处理、跨 calc 引用更新。
+
+### 本次修订关键原则（第 10 章）
+1. **唯一真相原则**：step.yml 是唯一可执行真相，不得包含 workflow / preset / provenance 等元数据。
+2. **非实体原则**：workflow 与 preset 不是持久化实体，仅为运行时解释。
+3. **Compiler 纯函数约束**：Compiler 是纯函数，仅依赖 step_type 和用户 options，必须完全重写参数。
+4. **Detector B 唯一性**：Detector B 是唯一合法的状态判定来源，不存在 Selected vs Detected 双轨模型。
+5. **数学等价性**：Compiler 与 Detector 必须满足数学等价性，并通过 unit tests 验证。
+6. **禁止事项**：禁止 anchor / family state / baseline / implicit inheritance 等概念进入持久模型。
+
+### 本次修订（2025-01-XX）：职责不对称性与等价性细化
+
+#### 新增内容
+- **10.3.1**：明确 Compiler 是规范化写入器的职责定位
+- **10.3.4**：强化 Canonical Encoding 要求，必须显式写出所有关键参数（不得依赖默认值）
+- **10.4.1**：明确 Detector B 是语义解释器的职责定位
+- **10.5.3**：新增隐式默认语义的反向解释规则（Detector 必须支持）
+- **10.6.1**：新增职责不对称性说明
+- **10.6.2**：修订等价性公理，区分 Compiler 输出（严格等价）与非 Compiler 输出（宽容语义推断）
+- **10.6.3**：细化等价性验证要求
+- **10.9**：明确禁止 preset/workflow 持久化和 A/B 双轨状态
+
+#### 关键变化
+1. **职责不对称性**：
+   - Compiler（规范化写入器）：将用户意图转换为显式、完整的参数表示
+   - Detector（语义解释器）：从参数反向推断用户意图，包括隐式默认语义
+
+2. **等价性要求细化**：
+   - **Compiler 输出**：Detector 必须严格等价（`detect(compile_one(...)) == options`）
+   - **非 Compiler 输出**：Detector 允许更宽容的语义推断（基于隐式默认语义）
+
+3. **Canonical Encoding 强化**：
+   - 必须显式写出所有关键参数
+   - 不得依赖默认值（即使 QE 有默认值，也必须显式写入）
+
+4. **隐式默认语义支持**：
+   - Detector 必须支持隐式默认语义的反向解释
+   - 示例：未写 `nspin` → 解释为 `nonspin`（等价于 `nspin = 1`）
