@@ -5,7 +5,7 @@ This module is the ONLY place allowed to mutate project/pseudo.
 All filesystem operations that touch project/pseudo must happen here, during Step0.
 
 Constitution rules:
-- Only 3 sources: internal (repo/resources/pseudo), lib (temp/pseudo/...), project (project/pseudo)
+- Only 3 sources: internal (repo/resources/pseudo), lib (.qmatsuite/libraries/pseudo/...), project (project/pseudo)
 - QE runtime only reads project/pseudo
 - sha_family is primary for physical equivalence
 - sha256 is strict bytes identity
@@ -42,7 +42,7 @@ class PseudoSourceKind(str, Enum):
     """The three allowed pseudo sources per constitution."""
     PROJECT = "project"  # project/pseudo
     INTERNAL = "internal"  # repo/resources/pseudo
-    LIB = "lib"  # temp/pseudo/... (installed libraries)
+    LIB = "lib"  # .qmatsuite/libraries/pseudo/... (installed libraries)
 
 
 @dataclass

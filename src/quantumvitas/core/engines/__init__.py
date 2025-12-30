@@ -8,6 +8,11 @@ from .qe_installation import (
     set_qe_home,
     reset_qe_home,
 )
+from .qe_resolver import (
+    resolve_qe_bin_dir,
+    find_internal_qe_bin_dir,
+    validate_qe_bin_dir,
+)
 from quantumvitas.io import (
     QEInputParser,
     QEInputGenerator,
@@ -27,6 +32,9 @@ __all__ = [
     "get_qe_home",
     "set_qe_home",
     "reset_qe_home",
+    "resolve_qe_bin_dir",
+    "find_internal_qe_bin_dir",
+    "validate_qe_bin_dir",
     "QEInputParser",
     "QEInputGenerator",
     "QEInput",

@@ -33,7 +33,8 @@ def si_dos_project(project_root_path: Path, si_dos_dir: Path) -> Path:
         {"id": "nscf", "input": "si.2_nscf.in", "reference": "si.2_nscf.out"},
         {"id": "dos", "input": "si.3_dos.in", "reference": "si.3_dos.out"},
     ]
-    destination = project_root_path / "temp" / "test_outputs" / "calculation_si_dos"
+    from quantumvitas.core.paths import tmp_runs_dir
+    destination = tmp_runs_dir() / "calculation_si_dos"
     return create_calculation_project(
         project_root=destination,
         calculation_id="si_dos",

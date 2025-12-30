@@ -201,7 +201,8 @@ class TestRunStructureCommand:
             from quantumvitas.core.engines.qe_calculation import StepResult
             from quantumvitas.calculation.input_runner import PreparedInputStep
 
-            working_dir = kwargs.get("working_dir", Path("temp"))
+            from quantumvitas.core.paths import tmp_runs_dir
+            working_dir = kwargs.get("working_dir", tmp_runs_dir() / "cli_examples")
             return (
                 StepResult(
                     step_type="scf",

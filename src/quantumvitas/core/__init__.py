@@ -8,6 +8,8 @@ This package contains:
 - models: Dataclass models with load/save for all resources
 - project_utils: Project configuration helpers
 - templates: Template copying utilities
+- paths: Path utilities for .qmatsuite/ and .tmp/
+- settings: Global settings management
 """
 
 from . import engines
@@ -17,6 +19,8 @@ from . import resources
 from . import models
 from . import project_utils
 from . import templates
+from . import paths
+from . import settings
 
 __all__ = [
     "engines",
@@ -26,5 +30,7 @@ __all__ = [
     "models",
     "project_utils",
     "templates",
+    "paths",
+    "settings",
 ]
 

@@ -20,10 +20,17 @@ pytestmark = pytest.mark.qe_cli
 @pytest.fixture(scope="module")
 def qe_engine() -> QuantumEspressoEngine:
     config = EngineConfig(name="qe")
-    engine = QuantumEspressoEngine(config)
-    if not engine.detect_executable("pw.x"):
-        pytest.skip("pw.x not found. CLI step integration requires QE.")
-    return engine
+    try:
+        engine = QuantumEspressoEngine(config)
+        if not engine.detect_executable("pw.x"):
+            raise RuntimeError("pw.x not found. CLI step integration requires QE.")
+        return engine
+    except RuntimeError as e:
+        # Re-raise with clear message about missing QE
+        raise RuntimeError(
+            f"QE engine initialization failed: {e}\n"
+            "Install internal QE to .qmatsuite/engines/qe/<folder>/bin or set settings.qe.bin_dir to external QE bin directory."
+        ) from e
 
 
 def _extract_paths(stdout: str) -> tuple[Path, Path]:
@@ -77,7 +84,8 @@ def test_cli_show_command_executes_against_references(
     qe_engine: QuantumEspressoEngine,
 ):
     runner = CliRunner()
-    base_dir = project_root_path / "temp" / "test_outputs" / "cli_show_command_exec"
+    from quantumvitas.core.paths import tmp_runs_dir
+    base_dir = tmp_runs_dir() / "cli_show_command_exec"
     _ensure_clean_directory(base_dir)
 
     project_root = base_dir / "project"
