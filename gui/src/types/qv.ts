@@ -395,9 +395,11 @@ export interface JobCounts {
 export interface QEDetectionResult {
   found: boolean;
   qe_home: string | null;
+  qe_bin_dir: string | null;
   version: string | null;
   executables: string[];
-  detection_source: string | null;
+  mode?: 'internal' | 'external';
+  error?: string;
 }
 
 export interface EnvironmentInfo {
@@ -485,6 +487,38 @@ export interface QVCommandMap {
   get_env_info: {
     payload: Record<string, never>;
     result: EnvironmentInfo;
+  };
+  list_qe_engines: {
+    payload: Record<string, never>;
+    result: {
+      current_mode: 'internal' | 'external';
+      current_bin_dir: string | null;
+      internal_engines: Array<{
+        bin_dir: string;
+        engine_path: string;
+        pw_path: string;
+      }>;
+    };
+  };
+  discover_qe_engines: {
+    payload: Record<string, never>;
+    result: {
+      discovered_engines: Array<{
+        engine_id: string;
+        label: string;
+        qe_home: string;
+        pw_path: string;
+      }>;
+      cached_at: number;
+    };
+  };
+  set_qe_engine: {
+    payload: {
+      bin_dir?: string | null;
+    };
+    result: {
+      success: boolean;
+    };
   };
   
   // Pseudopotential configuration

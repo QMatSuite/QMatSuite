@@ -20,10 +20,17 @@ pytestmark = pytest.mark.quick
 @pytest.fixture(scope="module")
 def qe_engine() -> QuantumEspressoEngine:
     config = EngineConfig(name="qe")
-    engine = QuantumEspressoEngine(config)
-    if not engine.detect_executable("pw.x"):
-        raise RuntimeError("pw.x not found. QE installation required for PW spec integration tests.")
-    return engine
+    try:
+        engine = QuantumEspressoEngine(config)
+        if not engine.detect_executable("pw.x"):
+            raise RuntimeError("pw.x not found. QE installation required for PW spec integration tests.")
+        return engine
+    except RuntimeError as e:
+        # Re-raise with clear message about missing QE
+        raise RuntimeError(
+            f"QE engine initialization failed: {e}\n"
+            "Install internal QE to .qmatsuite/engines/qe/<folder>/bin or set settings.qe.bin_dir to external QE bin directory."
+        ) from e
 
 
 @pytest.fixture(scope="module")

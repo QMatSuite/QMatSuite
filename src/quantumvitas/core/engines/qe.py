@@ -95,23 +95,35 @@ class QuantumEspressoEngine(Engine):
         """
         Initialize Quantum ESPRESSO engine.
         
-        Automatically detects QE installation if executable_path is not provided.
+        Uses two-state QE resolution model:
+        - If config.qe_home or config.executable_path provided: use that (explicit override)
+        - Otherwise: resolve via settings.qe.bin_dir (external) or internal QE (auto-selected)
         
         Args:
-            config: Engine configuration. If executable_path is provided, it should
-                   point to QE home directory (contains bin/ and test-suite/).
-                   If None, will auto-detect.
+            config: Engine configuration. If qe_home or executable_path is provided,
+                   it should point to QE home directory (contains bin/ and test-suite/).
+                   If None, will use two-state resolver.
         """
         super().__init__(config)
         
-        # Use qe_home if provided, otherwise fallback to executable_path, otherwise auto-detect
+        # Explicit override: use provided path (backward compatibility for tests)
         if config.qe_home:
             self._installation = QEInstallation(qe_home=config.qe_home)
         elif config.executable_path:
             # Backward compatibility: treat executable_path as QE home
             self._installation = QEInstallation(qe_home=config.executable_path)
         else:
-            self._installation = QEInstallation()
+            # Use two-state resolver
+            from quantumvitas.core.engines.qe_resolver import resolve_qe_bin_dir
+            
+            try:
+                qe_bin_dir = resolve_qe_bin_dir()
+                # Convert bin_dir to qe_home (parent of bin)
+                qe_home = qe_bin_dir.parent
+                self._installation = QEInstallation(qe_home=qe_home)
+            except RuntimeError as e:
+                # Re-raise with clear error message
+                raise RuntimeError(str(e)) from e
         
         # For backward compatibility
         self.qe_bin_dir = self._installation.bin_dir or Path()

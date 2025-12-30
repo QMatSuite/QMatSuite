@@ -22,7 +22,8 @@ step_type = engine.detect_step_type(input_file)
 print(f"Detected step type: {step_type}")  # Should be "scf"
 
 # Example 2: Run a single step
-working_dir = Path("temp/work")
+from quantumvitas.core.paths import tmp_runs_dir
+working_dir = tmp_runs_dir() / "work"
 result = engine.run_step(
     input_file=input_file,
     working_dir=working_dir,

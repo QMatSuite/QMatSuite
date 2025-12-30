@@ -2867,38 +2867,221 @@ class QVService:
     # -------------------------------------------------------------------------
     
     @staticmethod
+    def list_qe_engines() -> Dict[str, Any]:
+        """
+        List available QE engines (two-state model).
+        
+        Returns:
+            Dict with current_mode, current_bin_dir, and internal_engines list
+        """
+        from quantumvitas.core.settings import load_settings
+        from quantumvitas.core.engines.qe_resolver import find_internal_qe_bin_dir, resolve_qe_bin_dir
+        
+        settings = load_settings()
+        
+        # Get current mode
+        current_bin_dir = None
+        current_mode = "internal"
+        resolved_bin_dir = None
+        
+        try:
+            resolved_bin_dir = resolve_qe_bin_dir(settings)
+            current_bin_dir = str(resolved_bin_dir)
+            if settings.qe.bin_dir:
+                current_mode = "external"
+            else:
+                current_mode = "internal"
+        except RuntimeError:
+            # No QE found
+            pass
+        
+        # List internal engines
+        from quantumvitas.core.paths import home_qe_engines_dir
+        engines_base = home_qe_engines_dir()
+        internal_engines = []
+        
+        if engines_base.exists():
+            for engine_dir in engines_base.rglob("bin"):
+                if not engine_dir.is_dir():
+                    continue
+                pw_x = engine_dir / "pw.x"
+                pw_exe = engine_dir / "pw.x.exe"
+                if pw_x.exists() or pw_exe.exists():
+                    parent_engine = engine_dir.parent
+                    internal_engines.append({
+                        "bin_dir": str(engine_dir),
+                        "engine_path": str(parent_engine),
+                        "pw_path": str(pw_x if pw_x.exists() else pw_exe),
+                    })
+        
+        return {
+            "current_mode": current_mode,
+            "current_bin_dir": current_bin_dir,
+            "internal_engines": internal_engines,
+        }
+    
+    @staticmethod
+    def discover_qe_engines() -> Dict[str, Any]:
+        """
+        Auto-discover QE engines on the system (full disk search).
+        
+        Results are cached in .tmp/probe/qe_discovery.json.
+        
+        Returns:
+            Dict with discovered engines list
+        """
+        import json
+        import platform
+        import time
+        from pathlib import Path
+        from quantumvitas.core.paths import tmp_probe_dir
+        from quantumvitas.core.engines.qe_installation import QEInstallation
+        
+        cache_path = tmp_probe_dir() / "qe_discovery.json"
+        
+        # Check cache first
+        if cache_path.exists():
+            try:
+                with open(cache_path, "r", encoding="utf-8") as f:
+                    cached = json.load(f)
+                    # Return cached if less than 1 hour old
+                    if time.time() - cached.get("cached_at", 0) < 3600:
+                        return cached
+            except Exception:
+                pass
+        
+        # Perform discovery
+        discovered = []
+        
+        # Search common locations
+        search_paths = []
+        if platform.system() == "Windows":
+            search_paths.extend([
+                Path("C:/Program Files"),
+                Path.home() / "AppData" / "Local",
+            ])
+        else:
+            search_paths.extend([
+                Path.home() / "src",
+                Path.home() / "local",
+                Path("/usr/local"),
+                Path("/opt"),
+            ])
+        
+        # Also check PATH
+        import shutil
+        pw_path = shutil.which("pw.x")
+        if pw_path:
+            qe_home = QEInstallation.qe_home_from_binary(Path(pw_path))
+            if qe_home:
+                discovered.append({
+                    "engine_id": f"external:path:{qe_home.name}",
+                    "label": f"QE from PATH ({qe_home})",
+                    "qe_home": str(qe_home),
+                    "pw_path": pw_path,
+                })
+        
+        # Search filesystem (limited depth to avoid being too slow)
+        for search_root in search_paths[:3]:  # Limit to first 3 to avoid timeout
+            if not search_root.exists():
+                continue
+            try:
+                for qe_dir in search_root.rglob("q-e-qe-*"):
+                    if (qe_dir / "bin" / "pw.x").exists() or (qe_dir / "bin" / "pw.x.exe").exists():
+                        pw_path = qe_dir / "bin" / "pw.x"
+                        if not pw_path.exists():
+                            pw_path = qe_dir / "bin" / "pw.x.exe"
+                        discovered.append({
+                            "engine_id": f"external:discovered:{qe_dir.name}",
+                            "label": f"QE {qe_dir.name} ({qe_dir})",
+                            "qe_home": str(qe_dir),
+                            "pw_path": str(pw_path),
+                        })
+                        # Limit results
+                        if len(discovered) >= 10:
+                            break
+                if len(discovered) >= 10:
+                    break
+            except (PermissionError, OSError):
+                continue
+        
+        result = {
+            "discovered_engines": discovered,
+            "cached_at": time.time(),
+        }
+        
+        # Save cache
+        try:
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(cache_path, "w", encoding="utf-8") as f:
+                json.dump(result, f, indent=2)
+        except Exception:
+            pass
+        
+        return result
+    
+    @staticmethod
+    def set_qe_engine(bin_dir: Optional[str]) -> Dict[str, Any]:
+        """
+        Set QE bin directory (two-state model).
+        
+        Args:
+            bin_dir: Absolute path to QE bin directory, or None to use internal QE
+        
+        Returns:
+            Success status
+        """
+        from quantumvitas.core.settings import load_settings, save_settings
+        from quantumvitas.core.engines.qe_resolver import validate_qe_bin_dir
+        from pathlib import Path
+        
+        settings = load_settings()
+        
+        if bin_dir:
+            # Validate external QE bin directory
+            bin_path = Path(bin_dir).resolve()
+            validate_qe_bin_dir(bin_path)
+            settings.qe.bin_dir = str(bin_path)
+        else:
+            # Use internal QE
+            settings.qe.bin_dir = None
+        
+        save_settings(settings)
+        
+        return {"success": True}
+    
+    @staticmethod
     def detect_qe() -> Dict[str, Any]:
         """
-        Detect Quantum ESPRESSO installation.
+        Detect current QE installation (two-state model).
         
         Returns:
             Dict with QE detection status, path, version, and available executables
         """
-        from quantumvitas.core.engines.qe_installation import (
-            get_qe_home,
-            reset_qe_home,
-            QEInstallation,
-        )
+        from quantumvitas.core.engines.qe_resolver import resolve_qe_bin_dir
+        from quantumvitas.core.engines.qe_installation import QEInstallation
+        from quantumvitas.core.settings import load_settings
+        from pathlib import Path
         
-        # Force re-detection
-        reset_qe_home()
-        qe_home = get_qe_home()
-        
-        result: Dict[str, Any] = {
-            "found": qe_home is not None,
-            "qe_home": str(qe_home) if qe_home else None,
-            "version": None,
-            "executables": [],
-            "detection_source": None,
-        }
-        
-        if qe_home:
+        try:
+            settings = load_settings()
+            qe_bin_dir = resolve_qe_bin_dir(settings)
+            qe_home = qe_bin_dir.parent  # bin_dir.parent is qe_home
+            
+            result: Dict[str, Any] = {
+                "found": True,
+                "qe_home": str(qe_home),
+                "qe_bin_dir": str(qe_bin_dir),
+                "version": None,
+                "executables": [],
+                "mode": "external" if settings.qe.bin_dir else "internal",
+            }
+            
             # Find available executables
-            bin_dir = qe_home / "bin"
-            if bin_dir.exists():
+            if qe_bin_dir.exists():
                 executables = []
                 for exe in ["pw.x", "ph.x", "dos.x", "bands.x", "projwfc.x", "pp.x"]:
-                    if (bin_dir / exe).exists():
+                    if (qe_bin_dir / exe).exists():
                         executables.append(exe)
                 result["executables"] = executables
             
@@ -2910,8 +3093,17 @@ class QVService:
                     result["version"] = version
             except Exception:
                 pass
-        
-        return result
+            
+            return result
+        except RuntimeError as e:
+            return {
+                "found": False,
+                "qe_home": None,
+                "qe_bin_dir": None,
+                "version": None,
+                "executables": [],
+                "error": str(e),
+            }
     
     @staticmethod
     def get_environment_info() -> Dict[str, Any]:

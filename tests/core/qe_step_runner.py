@@ -57,9 +57,12 @@ def get_default_working_dir(
     """
     Return a default working directory for QE steps.
 
-    Layout: {project_root}/temp/test_outputs/{category}/{test_name}/
+    Layout: {repo_root}/.tmp/runs/{category}/{test_name}/
+    Note: project_root is ignored for test runs; uses repo .tmp/runs/
     """
-    base = project_root / "temp" / "test_outputs"
+    from quantumvitas.core.paths import tmp_runs_dir
+    
+    base = tmp_runs_dir()
     if category:
         base = base / category
     if test_name:

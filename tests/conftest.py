@@ -80,7 +80,8 @@ def trap_repo_pseudo_creation():
             # Enforce repo write policy: only allow writes to specific directories
             if resolved.is_relative_to(repo_root.resolve()):
                 allowed_dirs = [
-                    repo_root / "temp",
+                    repo_root / ".tmp",  # New scratch directory
+                    repo_root / ".qmatsuite",  # New persistent directory
                     repo_root / ".pytest_cache",
                     repo_root / "htmlcov",
                     repo_root / ".venv",  # Virtual environment
@@ -99,7 +100,7 @@ def trap_repo_pseudo_creation():
                     stack = ''.join(traceback.format_stack())
                     raise RuntimeError(
                         f"BUG: {operation_name} attempted to create directory under repo_root at {target_path} (resolved: {resolved}).\n"
-                        f"Tests should only write to tmp directories. Allowed: temp/, .pytest_cache/, htmlcov/, .venv/, resources/pseudo/\n"
+                        f"Tests should only write to tmp directories. Allowed: .tmp/, .qmatsuite/, .pytest_cache/, htmlcov/, .venv/, resources/pseudo/\n"
                         f"Stack trace:\n{stack}"
                     )
         except (ValueError, OSError):
@@ -173,7 +174,8 @@ def sample_input_file(project_root_path: Path):
         return local_test_file
 
     # Fallback: use tutorial examples if already downloaded (do not auto-download)
-    tutorial_dir = project_root / "temp" / "downloads" / "qe_tutorial_examples"
+    from quantumvitas.core.paths import tmp_downloads_dir
+    tutorial_dir = tmp_downloads_dir() / "qe_tutorial_examples"
     if tutorial_dir.exists() and (tutorial_dir / ".git").exists():
         example_file = tutorial_dir / "0_Si_scf" / "si.scf.in"
         if example_file.exists():
@@ -210,10 +212,11 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list) -> None:
 
 @pytest.fixture(autouse=True)
 def cleanup_temp_outdir(project_root_path: Path):
-    """Automatically clean up temp/outdir after each test."""
+    """Automatically clean up .tmp/runs/outdir after each test."""
     import shutil
+    from quantumvitas.core.paths import tmp_runs_dir
 
-    temp_outdir = project_root_path / "temp" / "outdir"
+    temp_outdir = tmp_runs_dir() / "outdir"
 
     if temp_outdir.exists():
         try:
@@ -240,5 +243,25 @@ def reset_qe_registry():
     from quantumvitas.core.engines import reset_qe_home
     
     reset_qe_home()
+    
+    # Diagnostic: check if QE resolution would use legacy paths
+    # (Only warn, don't fail - this is informational)
+    try:
+        from quantumvitas.core.engines.qe_diagnostics import diagnose_qe_resolution
+        report = diagnose_qe_resolution(check_legacy=True)
+        if report.resolution_reason.startswith("legacy_"):
+            import warnings
+            warnings.warn(
+                f"QE resolution using legacy path: {report.resolution_reason}\n"
+                f"This bypasses the registry system. Consider using managed engines.\n"
+                f"Resolved: {report.resolved_pw_path}\n"
+                f"Inputs: {report.inputs_used}",
+                UserWarning,
+                stacklevel=2
+            )
+    except Exception:
+        # Silently ignore diagnostic failures (don't break tests)
+        pass
+    
     yield
     reset_qe_home()
