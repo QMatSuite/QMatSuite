@@ -306,6 +306,8 @@ class QVDaemon:
             "detect_presets": self._handle_detect_presets,
             "detect_workflow": self._handle_detect_workflow,
             "apply_presets_to_step": self._handle_apply_presets_to_step,
+            "apply_presets_to_calculation": self._handle_apply_presets_to_calculation,
+            "get_step_preset_footprints": self._handle_get_step_preset_footprints,
             
             # Pre-flight checks
             "preflight_check": self._handle_preflight_check,
@@ -3490,6 +3492,143 @@ class QVDaemon:
         return {
             "status": "applied",
             "presets": updated_presets,
+        }
+    
+    def _handle_apply_presets_to_calculation(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Apply preset options to ALL steps in a calculation (BROADCAST).
+        
+        Per Constitution §10.3.3: This OVERWRITES preset-related parameters.
+        Per UI design principle: Preset application is BROADCAST, not filtered.
+        
+        Each step defines its own preset receiver - it may accept, partially accept,
+        or ignore the preset based on step_type.
+        
+        Payload:
+            project_root: str - Path to project root
+            calculation: str - Calculation selector (slug or ULID)
+            presets: Dict with preset options
+                Example: {"spin": "collinear", "soc": "no_soc", "material": "metal"}
+            validate_physics: bool (optional, default True) - Validate physics constraints
+        
+        Returns:
+            Dict with:
+                status: "applied"
+                steps_updated: Number of steps that were updated
+                steps_skipped: Number of steps that were skipped (non-receivers)
+                step_results: List of detailed results per step
+                presets: Updated detected presets for the calculation
+        """
+        from quantumvitas.presets.integration import (
+            apply_presets_to_step,
+            detect_presets_from_calculation,
+        )
+        from quantumvitas.presets.compiler import PresetCompilationError
+        
+        project_root = self._require_path(payload, "project_root")
+        calculation = self._require_str(payload, "calculation")
+        presets = payload.get("presets", {})
+        validate_physics = payload.get("validate_physics", True)
+        
+        # Resolve calculation
+        resolved = self._resolve_calculation_with_fallback(project_root, calculation)
+        calculation_dir = resolved.path.parent
+        steps_dir = calculation_dir / "steps"
+        
+        # Find all step files
+        step_files = sorted(steps_dir.glob("*.step.yaml"))
+        steps_updated = 0
+        steps_skipped = 0
+        step_results = []
+        
+        # Apply presets to each step (BROADCAST)
+        for step_path in step_files:
+            step_name = step_path.name
+            try:
+                # Load step to get step_type for result
+                content = yaml.safe_load(step_path.read_text()) or {}
+                step_type = content.get("step_type", "scf")
+                
+                result = apply_presets_to_step(step_path, presets, validate_physics=validate_physics)
+                
+                if result["accepted"]:
+                    steps_updated += 1
+                    step_results.append({
+                        "step_file": step_name,
+                        "step_type": step_type,
+                        "status": "updated",
+                        "applied_presets": list(result["filtered_options"].keys()),
+                    })
+                else:
+                    steps_skipped += 1
+                    step_results.append({
+                        "step_file": step_name,
+                        "step_type": step_type,
+                        "status": "skipped",
+                        "reason": "non-receiver",
+                    })
+                    
+            except PresetCompilationError as e:
+                # Log but continue - some steps may not accept certain presets
+                logger.warning(f"Preset application error for {step_name}: {e}")
+                steps_skipped += 1
+                step_results.append({
+                    "step_file": step_name,
+                    "step_type": step_type if 'step_type' in dir() else "unknown",
+                    "status": "error",
+                    "reason": str(e),
+                })
+            except Exception as e:
+                logger.warning(f"Unexpected error applying presets to {step_name}: {e}")
+                steps_skipped += 1
+                step_results.append({
+                    "step_file": step_name,
+                    "step_type": "unknown",
+                    "status": "error",
+                    "reason": str(e),
+                })
+        
+        # Return updated presets for the calculation
+        updated_presets = detect_presets_from_calculation(calculation_dir)
+        
+        return {
+            "status": "applied",
+            "steps_updated": steps_updated,
+            "steps_skipped": steps_skipped,
+            "step_results": step_results,
+            "presets": updated_presets,
+        }
+    
+    def _handle_get_step_preset_footprints(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get preset-related parameter footprints for all steps in a calculation.
+        
+        This enables the UI to show parameter summary on each step row
+        without fetching full step details for every step.
+        
+        Payload:
+            project_root: str - Path to project root
+            calculation: str - Calculation selector (slug or ULID)
+        
+        Returns:
+            Dict with:
+                footprints: Dict mapping step_file name to footprint data
+                    {"1_scf.step.yaml": {"params": {}, "spin": "collinear", ...}}
+        """
+        from quantumvitas.presets.integration import get_step_preset_footprints
+        
+        project_root = self._require_path(payload, "project_root")
+        calculation = self._require_str(payload, "calculation")
+        
+        # Resolve calculation with fallback to ensure cache is up-to-date
+        resolved = self._resolve_calculation_with_fallback(project_root, calculation)
+        calculation_dir = resolved.path.parent
+        
+        # Get step footprints
+        footprints = get_step_preset_footprints(calculation_dir)
+        
+        return {
+            "footprints": footprints,
         }
     
     def _handle_get_calculation_detail(self, payload: Dict[str, Any]) -> Dict[str, Any]:

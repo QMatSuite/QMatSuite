@@ -223,7 +223,9 @@ class TestApplyPresetsToStep:
             {"spin": "collinear", "material": "metal"},
         )
         
-        system = result["parameters"]["SYSTEM"]
+        # Result now includes accepted flag and content
+        assert result["accepted"] is True
+        system = result["content"]["parameters"]["SYSTEM"]
         
         # Preset params changed
         assert system["nspin"] == 2
@@ -318,8 +320,11 @@ class TestApplyPresetsToStep:
             validate_physics=False,
         )
         
+        # Result includes accepted flag
+        assert result["accepted"] is True
+        
         # Parameters written despite invalid physics
-        system = result["parameters"]["SYSTEM"]
+        system = result["content"]["parameters"]["SYSTEM"]
         assert system["lspinorb"] == ".true."
         assert system["nspin"] == 1
     
