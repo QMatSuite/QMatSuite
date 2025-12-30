@@ -292,8 +292,8 @@ repo_root/
       settings.json              # 唯一全局配置（极简）
     engines/
       qe/
-        <engine_id>/             # managed QE 引擎
-          bin/
+        <opaque_folder_name>/    # QE 引擎文件夹（名称不具语义）
+          bin/                   # 语义单元：包含 pw* 可执行文件的 bin 目录
           test-suite/
           ...
     libraries/
@@ -322,7 +322,12 @@ repo_root/
     unpack/                      # 解包临时目录
     probe/                       # 自动搜索缓存
     locks/                       # 文件锁
+    e2e_projects/                # E2E 测试项目目录
 ```
+
+**重要说明**：
+- 在 `.qmatsuite/engines/qe/**/bin` 下，**包含 pw* 可执行文件的 bin 目录是唯一的语义单元**。
+- 引擎文件夹名称（`<opaque_folder_name>`）不具语义，仅作为组织用途。
 
 ### 9.3 QE Seed 机制
 
@@ -333,58 +338,66 @@ repo_root/
   - 支持回滚
   - 离线安装（无需重新下载）
 
-#### 9.3.2 安装流程
+#### 9.3.2 安装流程（设计级定义）
 1. **下载阶段**：下载到 `.tmp/downloads/`
 2. **校验阶段**：校验 SHA256
 3. **落盘阶段**：保存到 `.qmatsuite/seeds/qe/<seed_id>/`
-4. **解包/安装阶段**：解包/安装到 `.qmatsuite/engines/qe/<engine_id>/`
+4. **解包/安装阶段**：解包/安装到 `.qmatsuite/engines/qe/<opaque_folder_name>/`
 
-#### 9.3.3 灾难恢复
-- 如果 `engines/` 损坏：从 `seeds/qe/` 重新安装，无需重新下载。
+#### 9.3.3 当前状态
+- **当前版本尚未支持通过 seed 在程序内自动重装 QE；seed 仅作为未来可复现机制的占位定义。**
+- 灾难恢复功能（从 `seeds/qe/` 重新安装）尚未实现。
 
-### 9.4 引擎选择优先级
+### 9.4 QE 引擎解析（两态模型）
 
-#### 9.4.1 优先级顺序（必须严格按此顺序）
-1. **Project override**：若项目声明 `engine_id`，优先使用。
-2. **用户显式选择**：`settings.json` 中记录的 `qe.discovered_engine_id`。
-3. **用户默认**：`settings.json` 中的 `defaults.qe_engine_id`。
-4. **Managed fallback**：最新已安装的 managed engine（`.qmatsuite/engines/qe/` 下）。
-5. **PATH fallback**（可选）：仅当 `qe.allow_path_fallback=true` 时，搜索系统 PATH。
-6. **否则**：提示安装/添加引擎。
+#### 9.4.1 唯一真相：settings.qe.bin_dir
+- QE 引擎选择的唯一真相来源是 `settings.json` 中的 `qe.bin_dir` 字段。
+- `bin_dir` 必须是绝对路径，指向包含 `pw*` 可执行文件的 bin 目录。
 
-#### 9.4.2 自动搜索规则
-- **仅作为导入器/登记器**：搜索功能仅用于“导入/登记”外部引擎。
-- **禁止“发现即启用”**：自动搜索到的引擎不得自动成为默认引擎。
-- **搜索缓存**：写到 `.tmp/probe/`。
+#### 9.4.2 两态模型
+
+**状态 1：External QE（外部 QE）**
+- 若 `settings.qe.bin_dir != null`：
+  - 视为 External QE
+  - 必须是包含 `pw*` 可执行文件的 bin 目录
+  - 若无效（目录不存在或缺少 `pw*` 可执行文件）→ 直接报错，不回退
+
+**状态 2：Internal QE（内部 QE）**
+- 若 `settings.qe.bin_dir == null`：
+  - 使用 Internal QE
+  - 从 `.qmatsuite/engines/qe/**/bin` 中自动选择
+  - 若不存在 → 报错并提示安装
+
+#### 9.4.3 禁止隐式 fallback
+- **禁止任何隐式 fallback**：
+  - 禁止搜索系统 PATH
+  - 禁止搜索 QE_HOME 环境变量
+  - 禁止 shell 自动发现
+  - 禁止磁盘扫描自动发现
+- 所有引擎选择必须通过显式配置（`settings.qe.bin_dir`）或内部引擎自动选择完成。
 
 ### 9.5 settings.json 最小 Schema
 
 ```json
 {
   "version": "1.0",
-  "defaults": {
-    "qe_engine_id": "qe-7.5",
-    "pseudo_set_id": "sssp-1.3.0-precision"
-  },
   "qe": {
-    "allow_path_fallback": false,
-    "allow_auto_discover": false,
-    "discovered_engine_id": null
-  },
-  "external_engines": []
+    "bin_dir": null
+  }
 }
 ```
 
 **字段说明**：
 - `version`：配置版本号
-- `defaults.qe_engine_id`：默认 QE 引擎 ID
-- `defaults.pseudo_set_id`：默认伪势集 ID
-- `qe.allow_path_fallback`：是否允许 PATH fallback
-- `qe.allow_auto_discover`：是否允许自动发现
-- `qe.discovered_engine_id`：用户显式选择的 discovered engine ID
-- `external_engines[]`：显式登记的外部引擎列表
+- `qe.bin_dir`：QE bin 目录的绝对路径
+  - 若为 `null`：使用 Internal QE（从 `.qmatsuite/engines/qe/**/bin` 自动选择）
+  - 若为非 `null`：使用 External QE（必须指向包含 `pw*` 可执行文件的 bin 目录）
 
 **原则**：
+- `settings.json` 是 machine-local 配置，不可移植。
+- `bin_dir` 是绝对路径，绑定到特定机器的文件系统。
+- Project 配置不记录 engine 信息。
+- 可复现性来自 raw in/out 中的 QE version 记录，而非 settings。
 - `settings.json` 是唯一全局配置（极简）。
 - 禁止引入多个配置文件。
 
@@ -398,12 +411,13 @@ repo_root/
 | `temp/pseudo/` | `.qmatsuite/libraries/pseudo/` | 伪势库迁移 |
 | `temp/test_outputs/` | `.tmp/runs/` | 测试运行目录迁移 |
 | `temp/matplotlib_tests/` | `.tmp/runs/` | 测试运行目录迁移 |
-| `temp/e2e/` | `.tmp/runs/` | E2E 测试运行目录迁移 |
+| `temp/e2e/` | `.tmp/e2e_projects/` | E2E 测试项目目录迁移 |
 
 #### 9.6.2 迁移规则
 - 所有 `temp/` 下的持久化资产（pseudo_seed、pseudo 解包库）→ `.qmatsuite/`
-- 所有 `temp/` 下的临时文件（test_outputs、e2e、matplotlib_tests）→ `.tmp/`
+- 所有 `temp/` 下的临时文件（test_outputs、e2e、matplotlib_tests、e2e_projects）→ `.tmp/`
 - 迁移后，代码中禁止再出现 `temp/` 路径。
+- **明确规则**：任何新代码引用 `repo_root/temp` 视为违反宪法。
 
 ---
 
@@ -420,12 +434,18 @@ repo_root/
   - 9.1 两类根目录定义（`.qmatsuite/` 与 `.tmp/`）
   - 9.2 目录结构标准化
   - 9.3 QE Seed 机制
-  - 9.4 引擎选择优先级
+  - 9.4 QE 引擎解析（两态模型）
   - 9.5 settings.json 最小 Schema
   - 9.6 迁移说明
 
 ### 修改章节
 - **第 7 章：伪势管理（Pseudopotentials）不变量**（全面重写）
+- **第 9 章：数据根目录、临时目录与可复现资产**（QE 两态模型重构）
+  - 9.2：移除 engine_id 语义，明确 bin 目录为唯一语义单元
+  - 9.3：明确 QE seed 当前尚未支持程序内自动重装
+  - 9.4：完全重写为"QE 引擎解析（两态模型）"，移除所有 engine_id、PATH fallback、自动发现逻辑
+  - 9.5：简化为极简两态 schema（仅 `qe.bin_dir`）
+  - 9.6：更新迁移规则，明确禁止 `repo_root/temp` 引用
 
 ### 关键语义变化
 1. **选择主键改为 sha256**：明确 UI 下拉选择主键是 sha256（不是 sha_family）；sha_family 仅用于冲突处理、警告、跨 calc 引用更新。
