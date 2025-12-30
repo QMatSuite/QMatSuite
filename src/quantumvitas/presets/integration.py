@@ -92,16 +92,25 @@ def detect_presets_from_calculation_typed(
     return detect_all_presets(step_params_list)
 
 
-def _load_step_parameters(calculation_dir: Path) -> List[Dict[str, Dict[str, Any]]]:
+def _load_step_parameters(
+    calculation_dir: Path,
+    *,
+    receivers_only: bool = True,
+) -> List[Dict[str, Dict[str, Any]]]:
     """
-    Load parameters from all steps in a calculation.
+    Load parameters from steps in a calculation.
     
     Args:
         calculation_dir: Path to calculation directory
+        receivers_only: If True (default), only load parameters from
+            preset-receiving steps (pw.x-based). Post-processing steps
+            like DOS are excluded from detection to avoid false Custom.
         
     Returns:
         List of step parameter dicts (section -> params)
     """
+    from quantumvitas.presets.receivers import is_receiver
+    
     calculation_dir = Path(calculation_dir).resolve()
     steps_dir = calculation_dir / "steps"
     
@@ -116,6 +125,12 @@ def _load_step_parameters(calculation_dir: Path) -> List[Dict[str, Dict[str, Any
     for step_file in step_files:
         try:
             content = yaml.safe_load(step_file.read_text()) or {}
+            step_type = content.get("step_type", "scf")
+            
+            # Filter to only receiver steps for preset detection
+            if receivers_only and not is_receiver(step_type):
+                continue
+            
             parameters = content.get("parameters", {})
             if parameters:
                 step_params_list.append(parameters)
@@ -138,6 +153,10 @@ def apply_presets_to_step(
     Per Constitution §10.3.3: This OVERWRITES preset-related parameters,
     it does NOT merge. Non-preset parameters are preserved.
     
+    Per Constitution §10.1.1: Step defines its own "preset receiver".
+    This function uses the receiver registry to determine which presets
+    the step accepts based on step_type.
+    
     Args:
         step_path: Path to step.yaml file
         options: Preset options dict with dimension keys
@@ -145,12 +164,17 @@ def apply_presets_to_step(
         validate_physics: If True, validate physics constraints
         
     Returns:
-        Updated step content dict
+        Dict with:
+            - "content": Updated step content dict
+            - "accepted": True if step accepted presets, False if skipped
+            - "filtered_options": Options that were actually applied
         
     Raises:
         PresetCompilationError: If invalid option combinations
         FileNotFoundError: If step file doesn't exist
     """
+    from quantumvitas.presets.receivers import filter_presets_for_step
+    
     step_path = Path(step_path).resolve()
     
     if not step_path.exists():
@@ -158,10 +182,22 @@ def apply_presets_to_step(
     
     # Load existing step content
     content = yaml.safe_load(step_path.read_text()) or {}
+    step_type = content.get("step_type", "scf")
     existing_params = content.get("parameters", {})
     
-    # Compile preset options
-    compiled = compile_presets(options, validate_physics=validate_physics)
+    # Filter options based on step's receiver capability
+    filtered_options = filter_presets_for_step(step_type, options)
+    
+    # If step doesn't accept any of the provided presets, skip
+    if not filtered_options:
+        return {
+            "content": content,
+            "accepted": False,
+            "filtered_options": {},
+        }
+    
+    # Compile preset options (only the filtered ones)
+    compiled = compile_presets(filtered_options, validate_physics=validate_physics)
     compiled_system = compiled.get("SYSTEM", {})
     
     # Get existing SYSTEM params
@@ -192,7 +228,11 @@ def apply_presets_to_step(
     # Write back
     step_path.write_text(yaml.safe_dump(content, default_flow_style=False, sort_keys=False))
     
-    return content
+    return {
+        "content": content,
+        "accepted": True,
+        "filtered_options": filtered_options,
+    }
 
 
 def get_step_preset_params(step_path: Path) -> Dict[str, Dict[str, Any]]:
@@ -225,6 +265,71 @@ def get_step_preset_params(step_path: Path) -> Dict[str, Dict[str, Any]]:
     if preset_system:
         return {"SYSTEM": preset_system}
     return {}
+
+
+def get_step_preset_footprints(calculation_dir: Path) -> Dict[str, Dict[str, Any]]:
+    """
+    Get preset-related parameter footprints for all steps in a calculation.
+    
+    Returns a dict mapping step file name (without path) to its preset params.
+    This enables UI to show parameter summary on each step row.
+    
+    Args:
+        calculation_dir: Path to calculation directory
+        
+    Returns:
+        Dict mapping step_file name to footprint data:
+        {
+            "1_scf.step.yaml": {
+                "params": {"nspin": 2, "occupations": "smearing"},
+                "spin": "collinear",
+                "material": "metal"
+            },
+            ...
+        }
+    """
+    from quantumvitas.presets.detector import detect_spin, detect_soc, detect_material
+    
+    calculation_dir = Path(calculation_dir).resolve()
+    steps_dir = calculation_dir / "steps"
+    
+    if not steps_dir.exists():
+        return {}
+    
+    footprints = {}
+    
+    # Find all step.yaml files
+    step_files = sorted(steps_dir.glob("*.step.yaml"))
+    
+    for step_file in step_files:
+        try:
+            content = yaml.safe_load(step_file.read_text()) or {}
+            parameters = content.get("parameters", {})
+            system = parameters.get("SYSTEM", {})
+            
+            # Extract preset-related params
+            PRESET_PARAMS = {
+                "nspin", "noncolin", "lspinorb",
+                "occupations", "smearing", "degauss",
+            }
+            
+            preset_system = {k: v for k, v in system.items() if k.lower() in PRESET_PARAMS}
+            
+            # Detect preset values for this step
+            footprint = {
+                "params": preset_system,
+                "spin": detect_spin(parameters).value if hasattr(detect_spin(parameters), 'value') else str(detect_spin(parameters)),
+                "soc": detect_soc(parameters).value if hasattr(detect_soc(parameters), 'value') else str(detect_soc(parameters)),
+                "material": detect_material(parameters).value if hasattr(detect_material(parameters), 'value') else str(detect_material(parameters)),
+            }
+            
+            footprints[step_file.name] = footprint
+            
+        except Exception:
+            # Skip malformed step files
+            continue
+    
+    return footprints
 
 
 def detect_workflow_type(calculation_dir: Path) -> str:
