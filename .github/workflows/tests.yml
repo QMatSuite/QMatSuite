@@ -230,22 +230,27 @@ jobs:
         # Create engine directory structure
         mkdir -p "${QMATSUITE_ENGINE_DIR}/bin"
         
-        # Copy essential QE executables
-        cp "${{ env.QE_PREFIX }}/bin/pw.x" "${QMATSUITE_ENGINE_DIR}/bin/" || exit 1
-        cp "${{ env.QE_PREFIX }}/bin/ph.x" "${QMATSUITE_ENGINE_DIR}/bin/" || exit 1
-        cp "${{ env.QE_PREFIX }}/bin/pp.x" "${QMATSUITE_ENGINE_DIR}/bin/" || exit 1
-        cp "${{ env.QE_PREFIX }}/bin/dos.x" "${QMATSUITE_ENGINE_DIR}/bin/" 2>/dev/null || true
+        # Copy ALL QE executables from QE_PREFIX/bin to staged bin directory
+        cp -a "${{ env.QE_PREFIX }}/bin/"*.x "${QMATSUITE_ENGINE_DIR}/bin/" || exit 1
+        
+        # Ensure executables are executable (important on macOS/Linux)
+        chmod +x "${QMATSUITE_ENGINE_DIR}/bin/"*.x || true
         
         # Copy test-suite if available
         if [ -d "${{ env.QE_PREFIX }}/test-suite" ]; then
           cp -r "${{ env.QE_PREFIX }}/test-suite" "${QMATSUITE_ENGINE_DIR}/" || true
         fi
         
-        # Verify staged engine
-        if [ ! -f "${QMATSUITE_ENGINE_DIR}/bin/pw.x" ]; then
-          echo "ERROR: Failed to stage pw.x to ${QMATSUITE_ENGINE_DIR}/bin/"
-          exit 1
-        fi
+        # List staged bin directory for debugging
+        echo "Staged QE executables:"
+        ls -la "${QMATSUITE_ENGINE_DIR}/bin" || exit 1
+        
+        # Sanity check: verify required executables exist
+        test -f "${QMATSUITE_ENGINE_DIR}/bin/pw.x" || (echo "ERROR: pw.x not found" && exit 1)
+        test -f "${QMATSUITE_ENGINE_DIR}/bin/ph.x" || (echo "ERROR: ph.x not found" && exit 1)
+        test -f "${QMATSUITE_ENGINE_DIR}/bin/bands.x" || (echo "WARNING: bands.x not found (may be optional)" || true)
+        test -f "${QMATSUITE_ENGINE_DIR}/bin/q2r.x" || (echo "WARNING: q2r.x not found (may be optional)" || true)
+        test -f "${QMATSUITE_ENGINE_DIR}/bin/dynmat.x" || (echo "WARNING: dynmat.x not found (may be optional)" || true)
         
         echo "Staged QE engine to ${QMATSUITE_ENGINE_DIR}"
         echo "ENGINE_ID=${ENGINE_ID}" >> $GITHUB_ENV
