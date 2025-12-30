@@ -189,14 +189,18 @@ class QuantumEspressoEngine(Engine):
                     search_paths.append(qe_home_bin)
             
             # Priority 2: Add configured bin directory (backward compatibility)
+            # NOTE: According to two-state resolver contract, qe_bin_dir is always the bin directory,
+            # never the QE root. So we should never append "/bin" again.
             if self.qe_bin_dir:
-                # If qe_bin_dir is QE root, check bin subdirectory
-                if (self.qe_bin_dir / "bin").exists():
+                # Check if qe_bin_dir is actually a QE root (has bin subdirectory)
+                # This is for backward compatibility with old code that might pass QE root
+                if (self.qe_bin_dir / "bin").exists() and self.qe_bin_dir.name != "bin":
+                    # qe_bin_dir is QE root, use bin subdirectory
                     bin_subdir = self.qe_bin_dir / "bin"
                     if bin_subdir not in search_paths:
                         search_paths.append(bin_subdir)
                 elif self.qe_bin_dir not in search_paths:
-                    # qe_bin_dir is already a bin directory
+                    # qe_bin_dir is already a bin directory (normal case with two-state resolver)
                     search_paths.append(self.qe_bin_dir)
         
         # Search in specified paths
@@ -263,8 +267,11 @@ class QuantumEspressoEngine(Engine):
             
             search_locations = []
             if self.qe_bin_dir:
+                # According to two-state resolver contract, qe_bin_dir is always the bin directory
                 search_locations.append(str(self.qe_bin_dir))
-                search_locations.append(str(self.qe_bin_dir / "bin"))
+                # Only add qe_bin_dir/bin if qe_bin_dir is actually a QE root (for backward compatibility)
+                if (self.qe_bin_dir / "bin").exists() and self.qe_bin_dir.name != "bin":
+                    search_locations.append(str(self.qe_bin_dir / "bin"))
             search_locations.append("system PATH")
             
             error_msg = (

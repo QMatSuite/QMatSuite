@@ -211,3 +211,54 @@ def test_resolve_qe_bin_dir_no_qe():
         finally:
             qe_resolver.home_qe_engines_dir = original_func
 
+
+def test_bin_dir_contract_no_double_bin(tmp_path):
+    """
+    Test that bin_dir contract is respected: bin_dir is always the bin directory.
+    
+    This test ensures that when bin_dir is already a bin directory (as per two-state
+    resolver contract), we never create "bin/bin" paths in search locations or error messages.
+    """
+    from quantumvitas.core.engines.qe import QuantumEspressoEngine
+    from quantumvitas.core.engines.base import EngineConfig
+    
+    # Create a QE installation structure: qe_root/bin/
+    qe_root = tmp_path / "qe-7.5"
+    bin_dir = qe_root / "bin"
+    bin_dir.mkdir(parents=True)
+    (bin_dir / "pw.x").touch()
+    (bin_dir / "pw.x").chmod(0o755)
+    (bin_dir / "bands.x").touch()
+    (bin_dir / "bands.x").chmod(0o755)
+    
+    # Create engine with qe_home pointing to QE root (normal case)
+    # The engine will set qe_bin_dir = qe_root/bin (which is already a bin directory)
+    config = EngineConfig(name="qe", qe_home=qe_root)
+    engine = QuantumEspressoEngine(config)
+    
+    # Verify qe_bin_dir is set to the bin directory (not QE root)
+    assert engine.qe_bin_dir == bin_dir or engine.qe_bin_dir == bin_dir.resolve()
+    
+    # Test that find_executable works and doesn't create bin/bin paths
+    exe_path = engine.find_executable("pw.x")
+    assert exe_path is not None
+    assert exe_path == bin_dir / "pw.x" or exe_path == (bin_dir / "pw.x").resolve()
+    
+    # Test that get_executable_path error message doesn't contain "bin/bin"
+    # Try to find a non-existent executable to trigger error message
+    try:
+        engine.get_executable_path("nonexistent.x")
+        pytest.fail("Should have raised FileNotFoundError")
+    except FileNotFoundError as e:
+        error_msg = str(e)
+        # Verify error message doesn't contain "bin/bin"
+        assert "/bin/bin" not in error_msg, f"Error message contains '/bin/bin': {error_msg}"
+        # Verify it does contain the correct bin directory (or at least doesn't have double bin)
+        assert str(bin_dir) in error_msg or str(bin_dir.resolve()) in error_msg, \
+            f"Error message should contain bin_dir: {error_msg}"
+    
+    # Test that find_executable with bands.x works (common executable that was missing)
+    bands_path = engine.find_executable("bands.x")
+    assert bands_path is not None
+    assert bands_path == bin_dir / "bands.x" or bands_path == (bin_dir / "bands.x").resolve()
+
