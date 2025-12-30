@@ -302,6 +302,11 @@ class QVDaemon:
             "materialize_pseudo_file": self._handle_materialize_pseudo_file,
             "delete_step": self._handle_delete_step,
             
+            # Preset detection (Constitution §10.4.1: Detector B is sole state source)
+            "detect_presets": self._handle_detect_presets,
+            "detect_workflow": self._handle_detect_workflow,
+            "apply_presets_to_step": self._handle_apply_presets_to_step,
+            
             # Pre-flight checks
             "preflight_check": self._handle_preflight_check,
             
@@ -3359,6 +3364,132 @@ class QVDaemon:
         
         return {
             "status": "deleted",
+        }
+    
+    # ═══════════════════════════════════════════════════════════════════════════════
+    # Preset Detection Handlers (Constitution §10.4.1: Detector B is sole state source)
+    # ═══════════════════════════════════════════════════════════════════════════════
+    
+    def _handle_detect_presets(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Detect preset values from a calculation's steps.
+        
+        Per Constitution §10.4.1: Detector B is the sole legitimate source
+        for preset/option state. UI should derive all preset state from this.
+        
+        Payload:
+            project_root: str - Path to project root
+            calculation: str - Calculation selector (slug or ULID)
+        
+        Returns:
+            Dict with:
+                presets: Dict mapping dimension name to detected value or "Custom"
+                    Example: {"spin": "collinear", "soc": "no_soc", "material": "metal"}
+        """
+        from quantumvitas.presets.integration import detect_presets_from_calculation
+        
+        project_root = self._require_path(payload, "project_root")
+        calculation = self._require_str(payload, "calculation")
+        
+        # Resolve calculation with fallback to ensure cache is up-to-date
+        resolved = self._resolve_calculation_with_fallback(project_root, calculation)
+        calculation_dir = resolved.path.parent
+        
+        # Detect presets from calculation steps
+        presets = detect_presets_from_calculation(calculation_dir)
+        
+        return {
+            "presets": presets,
+        }
+    
+    def _handle_detect_workflow(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Detect workflow type from a calculation's step sequence.
+        
+        This is informational only - does NOT affect execution.
+        Per Constitution: workflow is runtime interpretation only.
+        
+        Payload:
+            project_root: str - Path to project root
+            calculation: str - Calculation selector (slug or ULID)
+        
+        Returns:
+            Dict with:
+                workflow: Detected workflow type string
+                    ("SCF", "DOS", "BandStructure", "Relaxation", "Phonon", "MD", "Unknown")
+        """
+        from quantumvitas.presets.integration import detect_workflow_type
+        
+        project_root = self._require_path(payload, "project_root")
+        calculation = self._require_str(payload, "calculation")
+        
+        # Resolve calculation with fallback to ensure cache is up-to-date
+        resolved = self._resolve_calculation_with_fallback(project_root, calculation)
+        calculation_dir = resolved.path.parent
+        
+        # Detect workflow type
+        workflow = detect_workflow_type(calculation_dir)
+        
+        return {
+            "workflow": workflow,
+        }
+    
+    def _handle_apply_presets_to_step(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Apply preset options to a step.
+        
+        Per Constitution §10.3.3: This OVERWRITES preset-related parameters,
+        it does NOT merge. Non-preset parameters are preserved.
+        
+        Payload:
+            project_root: str - Path to project root
+            calculation: str - Calculation selector (slug or ULID)
+            step: str - Step selector (ULID)
+            presets: Dict with preset options
+                Example: {"spin": "collinear", "soc": "no_soc", "material": "metal"}
+            validate_physics: bool (optional, default True) - Validate physics constraints
+        
+        Returns:
+            Dict with:
+                status: "applied"
+                presets: Updated detected presets for the calculation
+        """
+        from quantumvitas.presets.integration import (
+            apply_presets_to_step,
+            detect_presets_from_calculation,
+        )
+        from quantumvitas.presets.compiler import PresetCompilationError
+        
+        project_root = self._require_path(payload, "project_root")
+        calculation = self._require_str(payload, "calculation")
+        step_selector = self._require_str(payload, "step")
+        presets = payload.get("presets", {})
+        validate_physics = payload.get("validate_physics", True)
+        
+        # Resolve calculation and step
+        self._resolve_calculation_with_fallback(project_root, calculation)
+        resolved_step = self._resolve_step_with_fallback(project_root, calculation, step_selector)
+        
+        step_path = resolved_step.path
+        
+        try:
+            apply_presets_to_step(step_path, presets, validate_physics=validate_physics)
+        except PresetCompilationError as e:
+            return {
+                "ok": False,
+                "error": {
+                    "code": "INVALID_PRESET",
+                    "message": str(e),
+                },
+            }
+        
+        # Return updated presets for the calculation
+        calculation_dir = step_path.parent.parent  # steps/foo.step.yaml -> calculation_dir
+        updated_presets = detect_presets_from_calculation(calculation_dir)
+        
+        return {
+            "status": "applied",
+            "presets": updated_presets,
         }
     
     def _handle_get_calculation_detail(self, payload: Dict[str, Any]) -> Dict[str, Any]:
