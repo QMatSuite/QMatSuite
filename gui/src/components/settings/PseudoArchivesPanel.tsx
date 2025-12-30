@@ -5,7 +5,7 @@
  * with install status and actions (Install/Reinstall/Verify).
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useQVClient } from '../../hooks/useQVClient';
 import type { ArchiveStatus } from '../../types/qv';
 import './PseudoArchivesPanel.css';
@@ -16,7 +16,6 @@ interface GroupedArchives {
 
 export function PseudoArchivesPanel() {
   const qv = useQVClient();
-  const [archives, setArchives] = useState<ArchiveStatus[]>([]);
   const [groupedArchives, setGroupedArchives] = useState<GroupedArchives>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +37,6 @@ export function PseudoArchivesPanel() {
       const response = await qv.listPseudoArchivesStatus();
       if (response.ok && response.data) {
         const archivesList = response.data.archives || [];
-        setArchives(archivesList);
         
         // Group by library_name + library_version
         const grouped: GroupedArchives = {};
@@ -51,7 +49,7 @@ export function PseudoArchivesPanel() {
         }
         setGroupedArchives(grouped);
       } else {
-        setError(response.error || 'Failed to load archives');
+        setError(response.error?.message || 'Failed to load archives');
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error');
@@ -90,7 +88,7 @@ export function PseudoArchivesPanel() {
       } else {
         setActionResult({
           type: 'error',
-          message: response.error || `Failed to install ${assetName}`,
+          message: response.error?.message || `Failed to install ${assetName}`,
         });
       }
     } catch (e) {

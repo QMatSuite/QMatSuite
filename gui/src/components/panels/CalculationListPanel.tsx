@@ -1155,14 +1155,14 @@ export function CalculationDetailPanel({
                 isEditing={true}
                 projectRoot={projectRoot}
                 calculation={calculationForSteps?.slug}
-                onUpdate={async (mapping, _libraryPreference, sha256Map, shaTokenMap) => {
+                onUpdate={async (mapping, _libraryPreference, sha256Map, shaFamilyMap) => {
                   if (!calculationForSteps || !projectRoot) return;
                   
                   // Convert to species_map format with sha256 pinning
                   const speciesMap: Record<string, { 
                     pseudopot?: string; 
                     pseudo_sha256?: string;
-                    pseudo_sha_token?: string;
+                    pseudo_sha_family?: string;
                     pseudo_basename?: string;
                     mass?: number;
                   }> = {};
@@ -1172,8 +1172,8 @@ export function CalculationDetailPanel({
                       entry.pseudo_sha256 = sha256Map[element];
                       entry.pseudo_basename = pseudo; // Use basename from mapping
                     }
-                    if (shaTokenMap?.[element]) {
-                      entry.pseudo_sha_token = shaTokenMap[element];
+                    if (shaFamilyMap?.[element]) {
+                      entry.pseudo_sha_family = shaFamilyMap[element];
                     }
                     speciesMap[element] = entry;
                   }
@@ -1265,7 +1265,6 @@ export function CalculationDetailPanel({
                   }
                   return { filename: '', renamed: false, skipped: false, errors: [response.error?.message || 'Download failed'] };
                 }}
-                projectRoot={projectRoot}
               />
             </div>
           </div>

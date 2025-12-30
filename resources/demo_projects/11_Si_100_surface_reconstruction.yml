@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KDH0KTS929CG3A9FK7BK0FJS
+    id: 01KDPDXRXY5WT2G5ARMBMHJCPJ
     name: 11_Si_100_surface_reconstruction
     slug: 11_si_100_surface_reconstruction
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KDH0KTSV8K2Q2S80CYPE7A93
+    id: 01KDPDXRYCJFD6FZRRE0B5ZDYC
     name: si100.2_slab_relax
     slug: si100-2_slab_relax
     path: structures/si100-2_slab_relax.json
@@ -17,7 +17,7 @@ structures:
   data:
     '@module': pymatgen.core.structure
     '@class': Structure
-    charge: 0
+    charge: 0.0
     lattice:
       matrix:
       - - 15.469833337213572
@@ -772,7 +772,7 @@ structures:
       - 5.469412050046539
 calculations:
 - meta:
-    id: 01KDH0KTSE8SR6DSX8EB0Z83BX
+    id: 01KDPDXRY2FZS012JWKJJ4VZJD
     name: Si 100 Surface Reconstruction
     slug: si-100-surface-reconstruction
     path: calculations/si-100-surface-reconstruction
@@ -781,7 +781,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KDH0KTSKEFHZV0BVA8685PP5
+      id: 01KDPDXRY7NXT0DY4WH7QQPT35
       name: si100.2_slab_relax
       slug: si100-2_slab_relax
       path: si100.2_slab_relax.step.yaml
@@ -828,11 +828,14 @@ calculations:
       H:
         mass: 1.00784
         pseudopot: H_ONCV_PBE-1.0.oncvpsp.upf
-  structure_id: 01KDH0KTSABJ7EWKE5C6ZS77KD
+  structure_id: 01KDPDXRY0CT1WXJB6NV1JJTGP
   species_map:
     Si:
       mass: 28.0855
       pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+      pseudo_sha256: 669fb75395a9d26973b0ea1ce8223bbcb30d3396c5d48bf5e794d1243c52375a
+      pseudo_sha_family: 9d5fdea5cc45742d1254e8023b481a202b0022642b381478e6195db3d81e2723
+      pseudo_basename: Si.pbe-n-rrkjus_psl.1.0.0.UPF
     H:
       mass: 1.00784
       pseudopot: H_ONCV_PBE-1.0.oncvpsp.upf

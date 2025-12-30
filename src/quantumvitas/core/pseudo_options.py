@@ -2,22 +2,22 @@
 Pseudo options generation for UI selection (sha256-keyed, filename-first, constitution-compliant).
 
 This module provides functions to generate pseudo options per element,
-with sha256 as the primary selection key (not sha_token).
+with sha256 as the primary selection key (not sha_family).
 
 **Selection Model:**
 - UI selection key = sha256 (strict bytes identity)
 - Default selection priority: project filename → internal filename → lib
-- sha_token is secondary: used only for warnings and collision handling
+- sha_family is secondary: used only for warnings and collision handling
 
 **Options Structure:**
 - Grouped by (element, basename)
 - Each basename has variants[] keyed by sha256
-- sha_token included per variant for warnings/collision detection
+- sha_family included per variant for warnings/collision detection
 - "project_local_unknown" variant when project has basename not in internal/lib index
 
 **Constitution:**
 - Only 3 sources (project, internal, lib) - no caches beyond existing LRU
-- Token-match edge case: If project has same basename with token-match but sha256 differs,
+- Family-match edge case: If project has same basename with family-match but sha256 differs,
   show SEPARATE entries (don't merge)
 """
 
@@ -36,7 +36,7 @@ from quantumvitas.core.pseudo_installs import (
     load_manifest_archives,
 )
 from quantumvitas.core.pseudo_libinfo import (
-    compute_sha_token_file,
+    compute_sha_family_file,
     load_pseudo_libinfo_bundle,
 )
 from quantumvitas.core.pseudo_provenance import (
@@ -67,22 +67,22 @@ class PseudoVariant:
     A single pseudo variant keyed by sha256 (primary selection identity).
     
     Each variant represents a unique (element, basename, sha256) combination.
-    sha_token is included for warnings and collision detection only.
+    sha_family is included for warnings and collision detection only.
     """
     sha256: str  # Primary selection key
-    sha_token: str  # For warnings/collision detection
+    sha_family: str  # For warnings/collision detection
     basename: str
     element: str
     sources: List[PseudoSource] = field(default_factory=list)
     size_bytes: Optional[int] = None
     upf_format: Optional[str] = None
     is_project_local_unknown: bool = False  # True if project has this basename but sha256 not in index
-    token_match_warnings: List[str] = field(default_factory=list)  # Warnings about token matches with different sha256
+    family_match_warnings: List[str] = field(default_factory=list)  # Warnings about family matches with different sha256
     
     def to_dict(self) -> Dict[str, Any]:
         return {
             "sha256": self.sha256,
-            "sha_token": self.sha_token,
+            "sha_family": self.sha_family,
             "basename": self.basename,
             "element": self.element,
             "sources": [
@@ -101,7 +101,7 @@ class PseudoVariant:
             "size_bytes": self.size_bytes,
             "upf_format": self.upf_format,
             "is_project_local_unknown": self.is_project_local_unknown,
-            "token_match_warnings": self.token_match_warnings,
+            "family_match_warnings": self.family_match_warnings,
             "display_label": self._compute_display_label(),
             "availability": {
                 "any_installed": any(s.installed and not s.corrupt for s in self.sources),
@@ -120,7 +120,7 @@ class PseudoVariant:
 class PseudoOption:
     """Legacy: A single pseudo option (deduplicated by SHA256)."""
     sha256: str
-    sha_token: str
+    sha_family: str
     element: str
     display_basename: str
     all_basenames: List[str]
@@ -130,7 +130,7 @@ class PseudoOption:
     def to_dict(self) -> Dict[str, Any]:
         return {
             "sha256": self.sha256,
-            "sha_token": self.sha_token,
+            "sha_family": self.sha_family,
             "element": self.element,
             "display_basename": self.display_basename,
             "all_basenames": self.all_basenames,
@@ -154,10 +154,10 @@ def _format_library_label(occ: Dict) -> str:
     library = occ.get("library", {})
     archive = occ.get("archive", {})
     
-    library_name = library.get("library_name", "").upper()
-    library_version = library.get("library_version", "")
-    xc = library.get("xc", "").upper()
-    quality = library.get("quality", "")
+    library_name = (library.get("library_name") or "").upper()
+    library_version = library.get("library_version") or ""
+    xc = (library.get("xc") or "").upper()
+    quality = library.get("quality") or ""
     type_val = library.get("type", "")
     relativistic = library.get("relativistic", "")
     
@@ -226,8 +226,8 @@ def get_pseudo_options_for_elements(
     Options are keyed by sha256. Each variant shows:
     - Basename
     - Sources (project/internal/lib) with installed/corrupt status
-    - sha_token for warnings/collision detection
-    - Token-match warnings when project has same basename with token-match but sha256 differs
+    - sha_family for warnings/collision detection
+    - Family-match warnings when project has same basename with family-match but sha256 differs
     
     Default selection priority: project filename → internal filename → lib
     
@@ -261,19 +261,19 @@ def get_pseudo_options_for_elements(
     # Build variants by element -> sha256 (primary key)
     variants_by_element: Dict[str, Dict[str, PseudoVariant]] = {}
     
-    # Track project files by (element, basename) for token-match detection
-    project_files_by_element_basename: Dict[Tuple[str, str], Tuple[str, str, Path]] = {}  # (element, basename) -> (sha256, sha_token, path)
+    # Track project files by (element, basename) for family-match detection
+    project_files_by_element_basename: Dict[Tuple[str, str], Tuple[str, str, Path]] = {}  # (element, basename) -> (sha256, sha_family, path)
     
     # Initialize per element
     for element in elements:
         variants_by_element[element] = {}
     
     # Helper: Get or create variant for sha256
-    def get_or_create_variant(element: str, sha256: str, basename: str, sha_token: str) -> PseudoVariant:
+    def get_or_create_variant(element: str, sha256: str, basename: str, sha_family: str) -> PseudoVariant:
         if sha256 not in variants_by_element[element]:
             variants_by_element[element][sha256] = PseudoVariant(
                 sha256=sha256,
-                sha_token=sha_token,
+                sha_family=sha_family,
                 basename=basename,
                 element=element,
             )
@@ -298,8 +298,8 @@ def get_pseudo_options_for_elements(
                 continue
             
             try:
-                # Compute sha_token (not cached)
-                sha_token = compute_sha_token_file(pseudo_file)
+                # Compute sha_family (not cached)
+                sha_family = compute_sha_family_file(pseudo_file)
                 
                 # Parse element
                 try:
@@ -314,13 +314,13 @@ def get_pseudo_options_for_elements(
                 if not element or element not in elements:
                     continue
                 
-                # Track project file for token-match detection
-                project_files_by_element_basename[(element, basename)] = (sha256, sha_token, pseudo_file)
+                # Track project file for family-match detection
+                project_files_by_element_basename[(element, basename)] = (sha256, sha_family, pseudo_file)
                 
                 # Check if sha256 is in index (known variant)
                 if sha256 in files_index:
                     # Known variant: create/update variant
-                    variant = get_or_create_variant(element, sha256, basename, sha_token)
+                    variant = get_or_create_variant(element, sha256, basename, sha_family)
                     
                     # Add project source chip
                     project_source = PseudoSource(
@@ -385,7 +385,7 @@ def get_pseudo_options_for_elements(
                             variant.sources.append(lib_source)
                 else:
                     # Unknown variant: project-local file not in index
-                    variant = get_or_create_variant(element, sha256, basename, sha_token)
+                    variant = get_or_create_variant(element, sha256, basename, sha_family)
                     variant.is_project_local_unknown = True
                     
                     # Add project source chip
@@ -410,7 +410,7 @@ def get_pseudo_options_for_elements(
                 
                 try:
                     sha256 = compute_sha256_file(pseudo_file)
-                    sha_token = compute_sha_token_file(pseudo_file)
+                    sha_family = compute_sha_family_file(pseudo_file)
                     
                     try:
                         text = pseudo_file.read_text(encoding="utf-8", errors="replace")
@@ -425,7 +425,7 @@ def get_pseudo_options_for_elements(
                         continue
                     
                     # Create/update variant
-                    variant = get_or_create_variant(element, sha256, pseudo_file.name, sha_token)
+                    variant = get_or_create_variant(element, sha256, pseudo_file.name, sha_family)
                     
                     # Add internal source chip (if not already present)
                     has_internal = any(s.kind == "internal" for s in variant.sources)
@@ -437,20 +437,20 @@ def get_pseudo_options_for_elements(
                         )
                         variant.sources.append(internal_source)
                     
-                    # Check for token-match with project file (different sha256)
+                    # Check for family-match with project file (different sha256)
                     project_key = (element, pseudo_file.name)
                     if project_key in project_files_by_element_basename:
-                        proj_sha256, proj_sha_token, proj_path = project_files_by_element_basename[project_key]
-                        if proj_sha_token == sha_token and proj_sha256 != sha256:
-                            # Token match but sha256 differs: add warning
-                            variant.token_match_warnings.append(
-                                f"project has same filename with token-match but different bytes; selecting this will overwrite on Run"
+                        proj_sha256, proj_sha_family, proj_path = project_files_by_element_basename[project_key]
+                        if proj_sha_family == sha_family and proj_sha256 != sha256:
+                            # Family match but sha256 differs: add warning
+                            variant.family_match_warnings.append(
+                                f"project has same filename with family-match but different bytes; selecting this will overwrite on Run"
                             )
                             # Also add warning to project variant if it exists
                             if proj_sha256 in variants_by_element[element]:
                                 proj_variant = variants_by_element[element][proj_sha256]
-                                proj_variant.token_match_warnings.append(
-                                    f"token matches internal (bytes differ)"
+                                proj_variant.family_match_warnings.append(
+                                    f"family matches internal (bytes differ)"
                                 )
                     
                     # Add library chips if sha256 matches index
@@ -510,10 +510,10 @@ def get_pseudo_options_for_elements(
     # Add library-only variants (from index, not in project/internal)
     for file_entry in bundle.index.get("files", []):
         file_sha256 = file_entry.get("sha256")
-        file_sha_token = file_entry.get("sha_token", "")
+        file_sha_family = file_entry.get("sha_family", "")
         basenames = file_entry.get("basenames", [])
         
-        if not file_sha256 or not file_sha_token:
+        if not file_sha256 or not file_sha_family:
             continue
         
         # Try to infer element from basenames
@@ -531,7 +531,7 @@ def get_pseudo_options_for_elements(
         if file_sha256 not in variants_by_element[element]:
             # New library-only variant
             canonical_basename = basenames[0] if basenames else f"{element}.upf"
-            variant = get_or_create_variant(element, file_sha256, canonical_basename, file_sha_token)
+            variant = get_or_create_variant(element, file_sha256, canonical_basename, file_sha_family)
             
             # Add library chips
             if file_sha256 in occurrences_index:

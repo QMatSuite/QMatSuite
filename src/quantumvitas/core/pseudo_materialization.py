@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 from quantumvitas.core.pseudo_options import materialize_pseudo_file
 from quantumvitas.core.pseudo_provenance import (
     compute_sha256_file,
-    compute_sha_token_file,
+    compute_sha_family_file,
 )
 from quantumvitas.core.pseudo_libinfo import load_pseudo_libinfo_bundle
 
@@ -143,7 +143,7 @@ def materialize_calc_pseudos(
             # Resolution order: project/pseudo -> internal -> installed archives
             source_path = None
             resolved_sha256 = None
-            resolved_sha_token = None
+            resolved_sha_family = None
             
             # 1. Check project/pseudo
             if project_root:
@@ -153,7 +153,7 @@ def materialize_calc_pseudos(
                         if pseudo_file.is_file():
                             source_path = pseudo_file
                             resolved_sha256 = compute_sha256_file(pseudo_file)
-                            resolved_sha_token = compute_sha_token_file(pseudo_file)
+                            resolved_sha_family = compute_sha_family_file(pseudo_file)
                             break
                     if source_path:
                         break
@@ -163,7 +163,7 @@ def materialize_calc_pseudos(
                         if pseudo_file.name.lower() == legacy_pseudopot.lower():
                             source_path = pseudo_file
                             resolved_sha256 = compute_sha256_file(pseudo_file)
-                            resolved_sha_token = compute_sha_token_file(pseudo_file)
+                            resolved_sha_family = compute_sha_family_file(pseudo_file)
                             break
                     if source_path:
                         break
@@ -174,7 +174,7 @@ def materialize_calc_pseudos(
                     if pseudo_file.is_file():
                         source_path = pseudo_file
                         resolved_sha256 = compute_sha256_file(pseudo_file)
-                        resolved_sha_token = compute_sha_token_file(pseudo_file)
+                        resolved_sha_family = compute_sha_family_file(pseudo_file)
                         break
                 if not source_path:
                     # Try case-insensitive
@@ -182,7 +182,7 @@ def materialize_calc_pseudos(
                         if pseudo_file.name.lower() == legacy_pseudopot.lower():
                             source_path = pseudo_file
                             resolved_sha256 = compute_sha256_file(pseudo_file)
-                            resolved_sha_token = compute_sha_token_file(pseudo_file)
+                            resolved_sha_family = compute_sha_family_file(pseudo_file)
                             break
             
             # 3. Check installed archives (by basename match in occurrences)
@@ -267,7 +267,7 @@ def materialize_calc_pseudos(
                                                 
                                                 if temp_extract.exists():
                                                     resolved_sha256 = compute_sha256_file(temp_extract)
-                                                    resolved_sha_token = compute_sha_token_file(temp_extract)
+                                                    resolved_sha_family = compute_sha_family_file(temp_extract)
                                                     source_path = temp_extract
                                                     break
                                             except Exception:

@@ -390,6 +390,78 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
                 temp_calc = migrate_species_overrides_to_calc(temp_calc, step_species_overrides_list)
                 calc_species_map = temp_calc.species_map
         
+        # Enhance species_map with sha256 and sha_family if missing (migration from legacy format)
+        # This ensures exported snapshots have complete triplet: pseudo_basename + pseudo_sha256 + pseudo_sha_family
+        if calc_species_map:
+            from quantumvitas.core.pseudo_provenance import compute_sha256_file
+            from quantumvitas.core.pseudo_libinfo import compute_sha_family_file
+            
+            # Try multiple locations for pseudo files
+            project_pseudo_dir = project_root / "pseudo"
+            
+            # Try to find resources/pseudo directory
+            # Method 1: Try to find repo root and check resources/pseudo
+            repo_root = project_root
+            resources_pseudo_dir = None
+            while repo_root != repo_root.parent:
+                candidate_resources = repo_root / "resources" / "pseudo"
+                if candidate_resources.exists():
+                    resources_pseudo_dir = candidate_resources
+                    break
+                # Check for repo markers
+                if (repo_root / "pyproject.toml").exists() or (repo_root / "project.qv.yml").exists():
+                    candidate_resources = repo_root / "resources" / "pseudo"
+                    if candidate_resources.exists():
+                        resources_pseudo_dir = candidate_resources
+                    break
+                repo_root = repo_root.parent
+            
+            # Method 2: Try using get_resources_dir if available
+            if not resources_pseudo_dir:
+                try:
+                    from quantumvitas.core.resources import get_resources_dir
+                    resources_base = get_resources_dir()
+                    candidate_resources = resources_base / "pseudo"
+                    if candidate_resources.exists():
+                        resources_pseudo_dir = candidate_resources
+                except (ImportError, AttributeError):
+                    pass
+            
+            for element, entry in calc_species_map.items():
+                if not isinstance(entry, dict):
+                    continue
+                
+                # Get basename from entry
+                basename = entry.get("pseudo_basename") or entry.get("pseudopot")
+                if not basename:
+                    continue
+                
+                # Check if sha256 or sha_family is missing
+                has_sha256 = "pseudo_sha256" in entry and entry["pseudo_sha256"]
+                has_sha_family = "pseudo_sha_family" in entry and entry["pseudo_sha_family"]
+                
+                # If either is missing, try to compute from file
+                if not has_sha256 or not has_sha_family:
+                    # Try project/pseudo first, then resources/pseudo
+                    pseudo_file = None
+                    if (project_pseudo_dir / basename).exists():
+                        pseudo_file = project_pseudo_dir / basename
+                    elif resources_pseudo_dir and resources_pseudo_dir.exists() and (resources_pseudo_dir / basename).exists():
+                        pseudo_file = resources_pseudo_dir / basename
+                    
+                    if pseudo_file and pseudo_file.is_file():
+                        try:
+                            if not has_sha256:
+                                entry["pseudo_sha256"] = compute_sha256_file(pseudo_file)
+                            if not has_sha_family:
+                                entry["pseudo_sha_family"] = compute_sha_family_file(pseudo_file)
+                            # Also ensure pseudo_basename is set
+                            if "pseudo_basename" not in entry:
+                                entry["pseudo_basename"] = basename
+                        except Exception:
+                            # If computation fails, leave fields missing (will be filled at runtime)
+                            pass
+        
         # Add species_map to calculation dict (authoritative source of truth)
         if calc_species_map:
             calculation_dict["species_map"] = calc_species_map
@@ -649,6 +721,22 @@ def materialize_project_from_snapshot(
                 temp_calc_for_migration, step_species_overrides_list
             )
             calc_species_map = temp_calc_for_migration.species_map
+        
+        # Clean up legacy pseudo_sha_token field if present (migration: sha_token → sha_family)
+        # Remove pseudo_sha_token and ensure pseudo_sha_family is present
+        if calc_species_map:
+            for element, entry in calc_species_map.items():
+                if not isinstance(entry, dict):
+                    continue
+                
+                # Remove legacy pseudo_sha_token field if present
+                if "pseudo_sha_token" in entry:
+                    # Legacy field - remove it (sha_family should be used instead)
+                    del entry["pseudo_sha_token"]
+                
+                # Note: We don't compute sha_family here during materialization
+                # because pseudo files may not exist yet (they're resolved at runtime via Step0)
+                # If sha_family is missing, it will be computed during Step0 refresh
         
         # Create calculation.yaml
         calculation_model = CalculationModel(

@@ -5,20 +5,20 @@
  * 
  * **Selection Model:**
  * - Selection keyed by sha256 (strict bytes identity) - PRIMARY
- * - sha_token used only for warnings and collision detection
+ * - sha_family used only for warnings and collision detection
  * - Default selection priority: project filename → internal filename → lib
  * 
  * **Constitution Rules:**
  * - UI must NEVER mutate filesystem (no copy/rename/overwrite/mkdir)
  * - Only Step0 (prepare_project_pseudos_for_run) mutates project/pseudo
  * - Only 3 sources exist: lib, internal, project/pseudo
- * - sha256 is selection key; sha_token is for physical equivalence warnings
+ * - sha256 is selection key; sha_family is for physical equivalence warnings
  * - Warnings come from backend analyzer (read-only)
  * 
  * **Key design decisions:**
  * - pseudo_dir is NOT editable (runtime always uses project/pseudo)
  * - Per-element mapping is the canonical source of truth (species_map)
- * - Selection stored as sha256 (primary) + basename + sha_token (triplet)
+ * - Selection stored as sha256 (primary) + basename + sha_family (triplet)
  * - Restore-by-sha256 first, then fallback-by-filename (does NOT write calc.yml)
  * - Write triplet together on user change (with debug log)
  * - Warnings displayed inline per element from analyzer
@@ -60,7 +60,7 @@ interface PseudoMapping {
   species_map?: Record<string, {
     pseudopot?: string;
     pseudo_sha256?: string;
-    pseudo_sha_token?: string;
+    pseudo_sha_family?: string;
     pseudo_basename?: string;
     mass?: number;
   }>;
@@ -76,7 +76,7 @@ interface LegacyPseudoCandidate {
 // Legacy PseudoOption (sha256-based) - kept for backward compatibility
 interface PseudoOption {
   sha256: string;
-  sha_token: string;
+  sha_family: string;
   element: string;
   display_basename: string;
   all_basenames: string[];
@@ -101,7 +101,7 @@ interface CommonCardPseudoProps {
     mapping: Record<string, string>,
     libraryPreference?: LibraryPreference,
     sha256Map?: Record<string, string>,
-    shaTokenMap?: Record<string, string>
+    shaFamilyMap?: Record<string, string>
   ) => Promise<void>;
   onImportFiles?: (files: FileList) => Promise<void>;
   onRefresh?: () => Promise<void>;
@@ -128,7 +128,7 @@ export function CommonCardPseudo({
   // Store sha256 + basename for pinned selections
   const [localMapping, setLocalMapping] = useState<Record<string, string>>({});
   const [localMappingSha256, setLocalMappingSha256] = useState<Record<string, string>>({});
-  const [localMappingShaToken, setLocalMappingShaToken] = useState<Record<string, string>>({});
+  const [localMappingShaFamily, setLocalMappingShaFamily] = useState<Record<string, string>>({});
   const [libraryPreference, setLibraryPreference] = useState<LibraryPreference>('internal');
   const [isImporting, setIsImporting] = useState(false);
   const [onlineMode, setOnlineMode] = useState<'filename' | 'element'>('filename');
@@ -149,205 +149,6 @@ export function CommonCardPseudo({
   
   // Use new API if calculation is provided
   const useNewAPI = Boolean(projectRoot && calculation);
-  
-  // Fetch options from new API (sha256-keyed variants)
-  const fetchPseudoOptions = useCallback(() => {
-    if (!useNewAPI || !projectRoot || !calculation) {
-      return;
-    }
-    
-    setIsLoadingOptions(true);
-    qv.getPseudoOptionsForCalculation(projectRoot, calculation)
-      .then(response => {
-        if (response.ok && response.data) {
-          const optionsByElement = response.data.options_by_element || {};
-          
-          // Check if new sha256-keyed format (has sha256, basename, element)
-          const isNewFormat = Object.values(optionsByElement).some((opts: any) => 
-            Array.isArray(opts) && opts.length > 0 && opts[0].sha256 !== undefined && opts[0].basename !== undefined
-          );
-          
-          if (isNewFormat) {
-            // New sha256-keyed format (PseudoVariant[])
-            setPseudoVariants(optionsByElement as Record<string, PseudoVariant[]>);
-            setPseudoOptions({}); // Clear legacy
-          } else {
-            // Legacy format
-            setPseudoOptions(optionsByElement as Record<string, PseudoOption[]>);
-            setPseudoVariants({}); // Clear new
-          }
-          
-          // After loading options, restore selection from calc (if not already restored)
-          if (!hasRestoredRef.current) {
-            restoreSelectionFromCalc();
-            hasRestoredRef.current = true;
-          }
-          
-          // After loading options, analyze current selections for warnings
-          if (projectRoot && Object.keys(selectedSha256ByElement).length > 0) {
-            analyzeSelections();
-          }
-        }
-      })
-      .catch(err => {
-        console.error('[CommonCardPseudo] Failed to load pseudo options', err);
-      })
-      .finally(() => {
-        setIsLoadingOptions(false);
-      });
-  }, [useNewAPI, projectRoot, calculation, qv]);
-
-  // Initial fetch
-  useEffect(() => {
-    fetchPseudoOptions();
-  }, [fetchPseudoOptions]);
-  
-  // Restore selection when variants are loaded (if not already restored)
-  useEffect(() => {
-    if (Object.keys(pseudoVariants).length > 0 && !hasRestoredRef.current && mapping?.species_map) {
-      restoreSelectionFromCalc();
-      hasRestoredRef.current = true;
-    }
-  }, [pseudoVariants, mapping, restoreSelectionFromCalc]);
-
-  // Listen for archive changes
-  useEffect(() => {
-    const handleArchiveChange = () => {
-      // Refresh options when archives are installed/reinstalled
-      fetchPseudoOptions();
-    };
-    
-    window.addEventListener('pseudo-archives-changed', handleArchiveChange);
-    return () => {
-      window.removeEventListener('pseudo-archives-changed', handleArchiveChange);
-    };
-  }, [fetchPseudoOptions]);
-  
-  // Sync local state when mapping changes
-  // Auto-preselect SSSP defaults ONLY for entries that are truly unset (None/empty in species_overrides)
-  // AND not already set by user in localMapping (e.g., after download)
-  useEffect(() => {
-    if (mapping) {
-      const initialMapping: Record<string, string> = {};
-      
-      // Start with existing mapping from species_map (backend truth)
-      // If a pseudo is already set and resolved, preserve it
-      const initialSha256: Record<string, string> = {};
-      const initialShaToken: Record<string, string> = {};
-      
-      for (const [species, pseudo] of Object.entries(mapping.mapping)) {
-        if (pseudo) {
-          // Check if this pseudo is resolved from any source
-          const resolvedInfo = mapping.resolved_by_element?.[species];
-          if (resolvedInfo?.resolved) {
-            // Pseudo is resolved, use it
-            initialMapping[species] = pseudo;
-          } else {
-            // Pseudo is set but not resolved - still use it (user may have typed it)
-            initialMapping[species] = pseudo;
-          }
-        }
-      }
-      
-      // Also load sha256/sha_token from species_map if available (new pinned format)
-      // Note: mapping.mapping may contain the full species_map entry with pseudo_sha256
-      // We need to check the actual species_map structure
-      const initialSelectedShaToken: Record<string, string> = {};
-      
-      if (mapping.species_map) {
-        for (const [species, entry] of Object.entries(mapping.species_map)) {
-          if (typeof entry === 'object' && entry !== null) {
-            if (entry.pseudo_sha256) {
-              initialSha256[species] = entry.pseudo_sha256;
-            }
-            if (entry.pseudo_sha_token) {
-              initialShaToken[species] = entry.pseudo_sha_token;
-              initialSelectedShaToken[species] = entry.pseudo_sha_token; // Primary selection key (constitution)
-            } else if (entry.pseudo_sha256) {
-              // Backward compatibility: if calc has sha256 but not sha_token, try to map it
-              // This will be resolved when options load and we can match sha256 to sha_token
-              initialSha256[species] = entry.pseudo_sha256;
-            }
-            // Use pseudo_basename if available, otherwise fall back to pseudopot
-            if (entry.pseudo_basename) {
-              initialMapping[species] = entry.pseudo_basename;
-            } else if (entry.pseudopot && !initialMapping[species]) {
-              initialMapping[species] = entry.pseudopot;
-            }
-          }
-        }
-      }
-      
-      setLocalMappingSha256(initialSha256);
-      setLocalMappingShaToken(initialShaToken);
-      
-      // CRITICAL: Only auto-preselect if:
-      // 1. species_overrides[element] is None/empty (not set in backend)
-      // 2. localMapping[element] is also empty (user hasn't manually selected)
-      // This prevents overwriting user selections after download
-      for (const species of mapping.species) {
-        // Check backend: only auto-preselect if species_overrides[species] is None/empty
-        const backendValue = mapping.mapping[species];
-        const isBackendUnset = !backendValue || backendValue === '';
-        
-        // Check local state: only auto-preselect if user hasn't set it
-        const localValue = localMapping[species];
-        const isLocalUnset = !localValue || localValue === '';
-        
-        // Only auto-preselect if BOTH backend and local are unset
-        if (isBackendUnset && isLocalUnset) {
-          // Try to find a candidate from the preferred library
-          const candidates = mapping.candidates_by_element?.[species] || [];
-          const preferredLibrary = mapping.library_preference || 'internal';
-          
-          // Find first candidate from preferred library
-          let selectedCandidate = null;
-          if (preferredLibrary === 'internal') {
-            selectedCandidate = candidates.find(c => c.source === 'internal');
-          } else if (preferredLibrary === 'precision') {
-            selectedCandidate = candidates.find(c => c.source === 'sssp_precision');
-            if (!selectedCandidate) {
-              // Fallback to internal if SSSP precision not available
-              selectedCandidate = candidates.find(c => c.source === 'internal');
-            }
-          } else if (preferredLibrary === 'efficiency') {
-            selectedCandidate = candidates.find(c => c.source === 'sssp_efficiency');
-            if (!selectedCandidate) {
-              // Fallback to internal if SSSP efficiency not available
-              selectedCandidate = candidates.find(c => c.source === 'internal');
-            }
-          }
-          
-          // Fallback to SSSP defaults if available
-          if (!selectedCandidate && mapping.sssp_defaults?.[species]) {
-            const defaults = mapping.sssp_defaults[species];
-            if (preferredLibrary === 'precision' && defaults.precision) {
-              initialMapping[species] = defaults.precision;
-            } else if (preferredLibrary === 'efficiency' && defaults.efficiency) {
-              initialMapping[species] = defaults.efficiency;
-            } else if (defaults.precision) {
-              initialMapping[species] = defaults.precision;
-            } else if (defaults.efficiency) {
-              initialMapping[species] = defaults.efficiency;
-            }
-          } else if (selectedCandidate) {
-            initialMapping[species] = selectedCandidate.filename;
-          }
-        } else if (localValue) {
-          // Preserve user's local selection (e.g., after download)
-          initialMapping[species] = localValue;
-        }
-      }
-      
-      setLocalMapping(initialMapping);
-      setLibraryPreference(mapping.library_preference || 'internal');
-      
-      // Set selected element for online search to first species if available
-      if (mapping.species.length > 0 && !selectedElement) {
-        setSelectedElement(mapping.species[0]);
-      }
-    }
-  }, [mapping]); // Removed selectedElement from deps to avoid unnecessary re-runs
   
   // Restore selection from calc.yml (does NOT write calc.yml)
   // Rule: match by sha256 first, then fallback by filename (project > internal > lib)
@@ -455,53 +256,241 @@ export function CommonCardPseudo({
           ) || null;
         }
         
-        // Then lib (with tie-break: sort by library/asset name, then basename)
+        // Then lib (any installed, non-corrupt)
         if (!matchedVariant) {
-          const libMatches = realVariants.filter(v => 
+          matchedVariant = realVariants.find(v => 
             v.basename === calcFilename && v.sources.some(s => s.kind === 'lib' && s.installed && !s.corrupt)
-          );
-          
-          if (libMatches.length > 0) {
-            // Sort by library/asset name, then basename (tie-break rule)
-            libMatches.sort((a, b) => {
-              const aLibs = a.sources.filter(s => s.kind === 'lib' && s.installed && !s.corrupt);
-              const bLibs = b.sources.filter(s => s.kind === 'lib' && s.installed && !s.corrupt);
-              
-              if (aLibs.length > 0 && bLibs.length > 0) {
-                const aLib = aLibs[0];
-                const bLib = bLibs[0];
-                const aLabel = `${aLib.library_name || ''}_${aLib.archive_asset || ''}`.toLowerCase();
-                const bLabel = `${bLib.library_name || ''}_${bLib.archive_asset || ''}`.toLowerCase();
-                const cmp = aLabel.localeCompare(bLabel);
-                if (cmp !== 0) return cmp;
-              }
-              
-              return a.basename.localeCompare(b.basename);
-            });
-            
-            matchedVariant = libMatches[0];
-            
-            if (libMatches.length > 1) {
-              console.warn(`[CommonCardPseudo] Multiple lib matches for ${element} filename ${calcFilename}, selected first after tie-break`);
-            }
-          }
+          ) || null;
         }
       }
       
       if (matchedVariant) {
         restored[element] = matchedVariant.sha256;
-        // Also update local mapping state (but don't write calc.yml)
-        setLocalMapping(prev => ({ ...prev, [element]: matchedVariant!.basename }));
         setLocalMappingSha256(prev => ({ ...prev, [element]: matchedVariant!.sha256 }));
-        setLocalMappingShaToken(prev => ({ ...prev, [element]: matchedVariant!.sha_token }));
-      } else {
-        // No match found - clear selection and show error
-        console.warn(`[CommonCardPseudo] Could not restore selection for ${element}: sha256=${calcSha256}, filename=${calcFilename}`);
+        setLocalMappingShaFamily(prev => ({ ...prev, [element]: matchedVariant!.sha_family }));
+        setLocalMapping(prev => ({ ...prev, [element]: matchedVariant!.basename }));
+        setSelectedSha256ByElement(prev => ({ ...prev, [element]: matchedVariant!.sha256 }));
       }
     }
-    
-    setSelectedSha256ByElement(restored);
   }, [mapping, pseudoVariants]);
+  
+  // Fetch options from new API (sha256-keyed variants)
+  const fetchPseudoOptions = useCallback(() => {
+    if (!useNewAPI || !projectRoot || !calculation) {
+      return;
+    }
+    
+    setIsLoadingOptions(true);
+    qv.getPseudoOptionsForCalculation(projectRoot, calculation)
+      .then(response => {
+        if (response.ok && response.data) {
+          const optionsByElement = response.data.options_by_element || {};
+          
+          // Check if new sha256-keyed format (has sha256, basename, element)
+          const isNewFormat = Object.values(optionsByElement).some((opts: any) => 
+            Array.isArray(opts) && opts.length > 0 && opts[0].sha256 !== undefined && opts[0].basename !== undefined
+          );
+          
+          if (isNewFormat) {
+            // New sha256-keyed format (PseudoVariant[])
+            // Transform API response to match PseudoVariant interface
+            const transformed: Record<string, PseudoVariant[]> = {};
+            for (const [element, variants] of Object.entries(optionsByElement)) {
+              if (Array.isArray(variants)) {
+                transformed[element] = variants.map((v: any) => ({
+                  sha256: v.sha256,
+                  sha_family: v.sha_family,
+                  basename: v.display_basename || v.basename,
+                  element: v.element,
+                  sources: v.sources || [],
+                  size_bytes: v.size_bytes,
+                  upf_format: v.upf_format,
+                  is_project_local_unknown: v.is_project_local_unknown,
+                  family_match_warnings: v.family_match_warnings,
+                  display_label: v.display_basename || v.basename,
+                  availability: v.availability || { any_installed: false },
+                })) as PseudoVariant[];
+              }
+            }
+            setPseudoVariants(transformed);
+            setPseudoOptions({}); // Clear legacy
+          } else {
+            // Legacy format
+            setPseudoOptions(optionsByElement as Record<string, PseudoOption[]>);
+            setPseudoVariants({}); // Clear new
+          }
+          
+          // After loading options, restore selection from calc (if not already restored)
+          if (!hasRestoredRef.current) {
+            restoreSelectionFromCalc();
+            hasRestoredRef.current = true;
+          }
+          
+          // After loading options, analyze current selections for warnings
+          if (projectRoot && Object.keys(selectedSha256ByElement).length > 0) {
+            analyzeSelections();
+          }
+        }
+      })
+      .catch(err => {
+        console.error('[CommonCardPseudo] Failed to load pseudo options', err);
+      })
+      .finally(() => {
+        setIsLoadingOptions(false);
+      });
+  }, [useNewAPI, projectRoot, calculation, qv]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchPseudoOptions();
+  }, [fetchPseudoOptions]);
+  
+  // Restore selection when variants are loaded (if not already restored)
+  useEffect(() => {
+    if (Object.keys(pseudoVariants).length > 0 && !hasRestoredRef.current && mapping?.species_map) {
+      restoreSelectionFromCalc();
+      hasRestoredRef.current = true;
+    }
+  }, [pseudoVariants, mapping, restoreSelectionFromCalc]);
+
+  // Listen for archive changes
+  useEffect(() => {
+    const handleArchiveChange = () => {
+      // Refresh options when archives are installed/reinstalled
+      fetchPseudoOptions();
+    };
+    
+    window.addEventListener('pseudo-archives-changed', handleArchiveChange);
+    return () => {
+      window.removeEventListener('pseudo-archives-changed', handleArchiveChange);
+    };
+  }, [fetchPseudoOptions]);
+  
+  // Sync local state when mapping changes
+  // Auto-preselect SSSP defaults ONLY for entries that are truly unset (None/empty in species_overrides)
+  // AND not already set by user in localMapping (e.g., after download)
+  useEffect(() => {
+    if (mapping) {
+      const initialMapping: Record<string, string> = {};
+      
+      // Start with existing mapping from species_map (backend truth)
+      // If a pseudo is already set and resolved, preserve it
+      const initialSha256: Record<string, string> = {};
+      const initialShaFamily: Record<string, string> = {};
+      
+      for (const [species, pseudo] of Object.entries(mapping.mapping)) {
+        if (pseudo) {
+          // Check if this pseudo is resolved from any source
+          const resolvedInfo = mapping.resolved_by_element?.[species];
+          if (resolvedInfo?.resolved) {
+            // Pseudo is resolved, use it
+            initialMapping[species] = pseudo;
+          } else {
+            // Pseudo is set but not resolved - still use it (user may have typed it)
+            initialMapping[species] = pseudo;
+          }
+        }
+      }
+      
+      // Also load sha256/sha_family from species_map if available (new pinned format)
+      // Note: mapping.mapping may contain the full species_map entry with pseudo_sha256
+      // We need to check the actual species_map structure
+      const initialSelectedShaFamily: Record<string, string> = {};
+      
+      if (mapping.species_map) {
+        for (const [species, entry] of Object.entries(mapping.species_map)) {
+          if (typeof entry === 'object' && entry !== null) {
+            if (entry.pseudo_sha256) {
+              initialSha256[species] = entry.pseudo_sha256;
+            }
+            if (entry.pseudo_sha_family) {
+              initialShaFamily[species] = entry.pseudo_sha_family;
+              initialSelectedShaFamily[species] = entry.pseudo_sha_family; // Primary selection key (constitution)
+            } else if (entry.pseudo_sha256) {
+              // Backward compatibility: if calc has sha256 but not sha_family, try to map it
+              // This will be resolved when options load and we can match sha256 to sha_family
+              initialSha256[species] = entry.pseudo_sha256;
+            }
+            // Use pseudo_basename if available, otherwise fall back to pseudopot
+            if (entry.pseudo_basename) {
+              initialMapping[species] = entry.pseudo_basename;
+            } else if (entry.pseudopot && !initialMapping[species]) {
+              initialMapping[species] = entry.pseudopot;
+            }
+          }
+        }
+      }
+      
+      setLocalMappingSha256(initialSha256);
+      setLocalMappingShaFamily(initialShaFamily);
+      
+      // CRITICAL: Only auto-preselect if:
+      // 1. species_overrides[element] is None/empty (not set in backend)
+      // 2. localMapping[element] is also empty (user hasn't manually selected)
+      // This prevents overwriting user selections after download
+      for (const species of mapping.species) {
+        // Check backend: only auto-preselect if species_overrides[species] is None/empty
+        const backendValue = mapping.mapping[species];
+        const isBackendUnset = !backendValue || backendValue === '';
+        
+        // Check local state: only auto-preselect if user hasn't set it
+        const localValue = localMapping[species];
+        const isLocalUnset = !localValue || localValue === '';
+        
+        // Only auto-preselect if BOTH backend and local are unset
+        if (isBackendUnset && isLocalUnset) {
+          // Try to find a candidate from the preferred library
+          const candidates = mapping.candidates_by_element?.[species] || [];
+          const preferredLibrary = mapping.library_preference || 'internal';
+          
+          // Find first candidate from preferred library
+          let selectedCandidate = null;
+          if (preferredLibrary === 'internal') {
+            selectedCandidate = candidates.find(c => c.source === 'internal');
+          } else if (preferredLibrary === 'precision') {
+            selectedCandidate = candidates.find(c => c.source === 'sssp_precision');
+            if (!selectedCandidate) {
+              // Fallback to internal if SSSP precision not available
+              selectedCandidate = candidates.find(c => c.source === 'internal');
+            }
+          } else if (preferredLibrary === 'efficiency') {
+            selectedCandidate = candidates.find(c => c.source === 'sssp_efficiency');
+            if (!selectedCandidate) {
+              // Fallback to internal if SSSP efficiency not available
+              selectedCandidate = candidates.find(c => c.source === 'internal');
+            }
+          }
+          
+          // Fallback to SSSP defaults if available
+          if (!selectedCandidate && mapping.sssp_defaults?.[species]) {
+            const defaults = mapping.sssp_defaults[species];
+            if (preferredLibrary === 'precision' && defaults.precision) {
+              initialMapping[species] = defaults.precision;
+            } else if (preferredLibrary === 'efficiency' && defaults.efficiency) {
+              initialMapping[species] = defaults.efficiency;
+            } else if (defaults.precision) {
+              initialMapping[species] = defaults.precision;
+            } else if (defaults.efficiency) {
+              initialMapping[species] = defaults.efficiency;
+            }
+          } else if (selectedCandidate) {
+            initialMapping[species] = selectedCandidate.filename;
+          }
+        } else if (localValue) {
+          // Preserve user's local selection (e.g., after download)
+          initialMapping[species] = localValue;
+        }
+      }
+      
+      setLocalMapping(initialMapping);
+      setLibraryPreference(mapping.library_preference || 'internal');
+      
+      // Set selected element for online search to first species if available
+      if (mapping.species.length > 0 && !selectedElement) {
+        setSelectedElement(mapping.species[0]);
+      }
+    }
+  }, [mapping]); // Removed selectedElement from deps to avoid unnecessary re-runs
   
   // Analyze selections using backend analyzer (read-only)
   const analyzeSelections = useCallback(async () => {
@@ -527,7 +516,7 @@ export function CommonCardPseudo({
           element,
           requested_basename: variant.basename,
           requested_sha256: sha256,
-          requested_sha_token: variant.sha_token,
+          requested_sha_family: variant.sha_family,
           source_kind,
           source_path: undefined, // Will be resolved by backend
         };
@@ -547,12 +536,20 @@ export function CommonCardPseudo({
         speciesMap[sel.element] = {
           pseudopot: sel.requested_basename,
           pseudo_sha256: sel.requested_sha256,
-          pseudo_sha_token: sel.requested_sha_token,
+          pseudo_sha_family: sel.requested_sha_family,
           pseudo_basename: sel.requested_basename,
         };
       }
       
-      const response = await qv.analyzeProjectPseudoEffects(projectRoot, speciesMap);
+      const speciesMapArray = Object.entries(speciesMap).map(([element, entry]) => ({
+        element,
+        requested_basename: entry.pseudo_basename || entry.pseudopot || '',
+        requested_sha256: entry.pseudo_sha256,
+        requested_sha_family: entry.pseudo_sha_family,
+        source_kind: entry.source_kind,
+        source_path: entry.source_path,
+      }));
+      const response = await qv.analyzeProjectPseudoEffects(projectRoot, speciesMapArray);
       if (response.ok && response.data) {
         const warnings: Record<string, string[]> = {};
         const errors: Record<string, string[]> = {};
@@ -587,9 +584,9 @@ export function CommonCardPseudo({
         // Add token-match warnings from variants
         for (const sel of selections) {
           const variant = allVariants.find(v => v.element === sel.element && v.sha256 === sel.requested_sha256);
-          if (variant && variant.token_match_warnings && variant.token_match_warnings.length > 0) {
+          if (variant && variant.family_match_warnings && variant.family_match_warnings.length > 0) {
             if (!warnings[sel.element]) warnings[sel.element] = [];
-            warnings[sel.element].push(...variant.token_match_warnings);
+            warnings[sel.element].push(...variant.family_match_warnings);
           }
         }
         
@@ -611,9 +608,9 @@ export function CommonCardPseudo({
       ...prev,
       [species]: variant.sha256,
     }));
-    setLocalMappingShaToken(prev => ({
+    setLocalMappingShaFamily(prev => ({
       ...prev,
-      [species]: variant.sha_token,
+      [species]: variant.sha_family,
     }));
     // Update primary selection key (sha256)
     setSelectedSha256ByElement(prev => ({
@@ -633,10 +630,10 @@ export function CommonCardPseudo({
       { [species]: variant.basename },
       libraryPreference,
       { [species]: variant.sha256 },
-      { [species]: variant.sha_token }
+      { [species]: variant.sha_family }
     ).then(() => {
       // Debug log: one line per user-initiated change
-      console.log(`[CommonCardPseudo] User selection changed: element=${species}, filename=${variant.basename}, sha256=${variant.sha256.substring(0, 16)}..., sha_token=${variant.sha_token.substring(0, 16)}..., source=${sourceKind}`);
+      console.log(`[CommonCardPseudo] User selection changed: element=${species}, filename=${variant.basename}, sha256=${variant.sha256.substring(0, 16)}..., sha_family=${variant.sha_family.substring(0, 16)}..., source=${sourceKind}`);
     }).catch(err => {
       console.error('[CommonCardPseudo] Failed to write selection to calc.yml', err);
     });
@@ -723,11 +720,11 @@ export function CommonCardPseudo({
       return;
     }
     
-    // Apply writes triplet together (filename + sha256 + sha_token)
+    // Apply writes triplet together (filename + sha256 + sha_family)
     // Note: handlePseudoChange already writes on user change, but Apply button
     // ensures all selections are written together
-    await onUpdate(localMapping, libraryPreference, localMappingSha256, localMappingShaToken);
-  }, [localMapping, libraryPreference, localMappingSha256, localMappingShaToken, onUpdate, analyzeSelections, canApply]);
+    await onUpdate(localMapping, libraryPreference, localMappingSha256, localMappingShaFamily);
+  }, [localMapping, libraryPreference, localMappingSha256, localMappingShaFamily, onUpdate, analyzeSelections, canApply]);
   
   const handleImportClick = useCallback(() => {
     fileInputRef.current?.click();
@@ -814,7 +811,12 @@ export function CommonCardPseudo({
         // Auto-select FIRST (before refresh) to preserve user choice
         // This ensures useEffect won't overwrite it when mapping updates
         if (candidate.element && (!localMapping[candidate.element] || localMapping[candidate.element] === '')) {
-          handlePseudoChange(candidate.element, result.filename);
+          // Find variant by filename or create a minimal one
+          const variants = pseudoVariants[candidate.element] || [];
+          const variant = variants.find(v => v.basename === result.filename) || variants[0];
+          if (variant) {
+            handlePseudoChange(candidate.element, variant);
+          }
         }
         // Then refresh to update available_pseudos list
         if (onRefresh) {
@@ -996,7 +998,7 @@ export function CommonCardPseudo({
                                           // Legacy: create a minimal variant-like object
                                           const legacyVariant: PseudoVariant = {
                                             sha256: selected.sha256,
-                                            sha_token: selected.sha_token,
+                                            sha_family: selected.sha_family,
                                             basename: selected.display_basename,
                                             element: selected.element,
                                             sources: selected.sources.map(s => ({
@@ -1088,10 +1090,10 @@ export function CommonCardPseudo({
                                     </div>
                                   )}
                                   {/* Token-match warnings */}
-                                  {useVariants && currentVariant && currentVariant.token_match_warnings && currentVariant.token_match_warnings.length > 0 && (
+                                  {useVariants && currentVariant && currentVariant.family_match_warnings && currentVariant.family_match_warnings.length > 0 && (
                                     <div className="common-card-pseudo__warnings-inline">
-                                      {currentVariant.token_match_warnings.map((warn, idx) => (
-                                        <div key={`token-warn-${idx}`} className="common-card-pseudo__warning-info">
+                                      {currentVariant.family_match_warnings.map((warn, idx) => (
+                                        <div key={`family-warn-${idx}`} className="common-card-pseudo__warning-info">
                                           ⚠️ {warn}
                                         </div>
                                       ))}
@@ -1124,9 +1126,9 @@ export function CommonCardPseudo({
                           ) : (
                             <div className="common-card-pseudo__pseudo-display">
                               <code>{currentPseudo || '—'}</code>
-                              {useGroups && currentGroup && (
+                              {useVariants && currentVariant && (
                                 <div className="common-card-pseudo__source-chips">
-                                  {currentGroup.sources.map((source, idx) => (
+                                  {currentVariant.sources.map((source, idx) => (
                                     <span
                                       key={idx}
                                       className={`common-card-pseudo__source-chip ${
@@ -1141,7 +1143,7 @@ export function CommonCardPseudo({
                                   ))}
                                 </div>
                               )}
-                              {!useGroups && currentOption && (
+                              {!useVariants && currentOption && (
                                 <div className="common-card-pseudo__source-chips">
                                   {currentOption.sources.map((source, idx) => (
                                     <span
@@ -1191,7 +1193,32 @@ export function CommonCardPseudo({
                           <div className="common-card-pseudo__pseudo-select">
                             <select
                               value={currentPseudo}
-                              onChange={(e) => handlePseudoChange(species, e.target.value)}
+                              onChange={(e) => {
+                                const selectedFilename = e.target.value;
+                                // Find candidate by filename
+                                const selectedCandidate = candidates.find(c => c.filename === selectedFilename);
+                                if (selectedCandidate) {
+                                  // Create minimal variant-like object for legacy API
+                                  const legacyVariant: PseudoVariant = {
+                                    sha256: '', // Not available in legacy API
+                                    sha_family: '',
+                                    basename: selectedCandidate.filename,
+                                    element: species,
+                                    sources: [{
+                                      kind: selectedCandidate.source === 'sssp_precision' ? 'lib' : 
+                                            selectedCandidate.source === 'sssp_efficiency' ? 'lib' :
+                                            selectedCandidate.source === 'internal' ? 'internal' : 'project',
+                                      label: selectedCandidate.source === 'sssp_precision' ? 'SSSP Precision' :
+                                             selectedCandidate.source === 'sssp_efficiency' ? 'SSSP Efficiency' :
+                                             selectedCandidate.source === 'internal' ? 'Internal' : 'Project',
+                                      installed: true,
+                                    }],
+                                    display_label: selectedCandidate.filename,
+                                    availability: { any_installed: true },
+                                  };
+                                  handlePseudoChange(species, legacyVariant);
+                                }
+                              }}
                               className={`common-card-pseudo__select ${
                                 !currentPseudo ? 'common-card-pseudo__select--unset' : ''
                               }`}

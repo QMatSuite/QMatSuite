@@ -144,10 +144,10 @@ class CalculationModel:
     mode: str = "normal"
     working_dir: str = "raw"
     steps: List[CalculationStepEntry] = field(default_factory=list)
-    # Calculation-level pseudopotential mapping: element -> {pseudopot, mass, pseudo_sha256, pseudo_sha_token, pseudo_basename}
+    # Calculation-level pseudopotential mapping: element -> {pseudopot, mass, pseudo_sha256, pseudo_sha_family, pseudo_basename}
     # This is the authoritative source of truth for pseudo mapping.
     # Step-level species_overrides are deprecated (used only for backwards compat on load).
-    # Constitution: Each entry must store filename, sha256 (strict), sha_token (physical equivalence).
+    # Constitution: Each entry must store filename, sha256 (strict), sha_family (physical equivalence).
     # Step0 refreshes these fields after preparing project/pseudo.
     species_map: Optional[Dict[str, Dict[str, Any]]] = None
     

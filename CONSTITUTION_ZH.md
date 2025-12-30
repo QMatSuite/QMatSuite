@@ -1,7 +1,7 @@
 # QMatSuite 宪法（Constitution）
 
-**版本**: 1.1  
-**最后更新**: 2025-12-28  
+**版本**: 1.2  
+**最后更新**: 2025-01-XX  
 **适用范围**: QMatSuite / QuantumVITAS v2 代码库
 
 ---
@@ -29,7 +29,7 @@
 
 ### 身份（Identity）
 - 资源身份以 **ULID** 为唯一标识。
-- 伪势身份以 **SHA256（严格）** / **SHATOKEN（物理）** 为核心判定键（见第 6 节）。
+- 伪势身份以 **SHA256（严格）** / **SHA_FAMILY（物理）** 为核心判定键（见第 6 节）。
 
 ---
 
@@ -122,20 +122,20 @@
 ### 6.1 SHA256（严格身份）
 - SHA256 表示 bitwise identical 的严格身份，用于去重存储与可复现锁定。
 
-### 6.2 SHATOKEN（物理相同 / 语义等价）
-- SHATOKEN 用于“物理相同”的判定（语义等价）。
+### 6.2 SHA_FAMILY（物理相同 / 语义等价）
+- SHA_FAMILY 用于"物理相同"的判定（语义等价）。
 - 算法（宪法定义）：
-  1) 以“任何空白字符”（空格/tab/换行/CRLF 等）对内容 split
-  2) 丢弃空 token，仅保留非空白 token
-  3) 用单个空格 join
-  4) 对 join 后的文本做 SHA256
+  1) 将 UPF 文本中所有空白字符（isspace()）移除
+  2) 把剩余字符拼接为字符串
+  3) 对该字符串的 UTF-8 bytes 计算 SHA256
 - 因此：
-  - `"1    23"` 与 `"1 23"` → shatoken 相同
-  - `"1    23"` 与 `"12  3"` → shatoken 不同
+  - `"1    23"` 与 `"1 23"` → sha_family 相同（空白被移除）
+  - `"1    23"` 与 `"12  3"` → sha_family 相同（空白被移除，都变成 "123"）
+  - `"1    23"` 与 `"1    24"` → sha_family 不同（非空白字符不同）
 
 ### 6.3 判定规则（必须）
-- **shatoken 不同**：视为完全不同，不可混用。
-- **shatoken 相同但 sha 不同**：视为物理一致；默认以标准库/权威来源的版本覆盖用户导入副本（例如 CRLF/LF 差异导致 sha 不同）。
+- **sha_family 不同**：视为完全不同，不可混用。
+- **sha_family 相同但 sha256 不同**：视为物理一致；默认以标准库/权威来源的版本覆盖用户导入副本（例如 CRLF/LF 差异导致 sha256 不同）。
 
 ---
 
@@ -159,14 +159,14 @@
 - 所有涉及 `project/pseudo` 的文件系统变更，**只允许**在用户点击 Run 后的“Step0/准备阶段”统一执行。
 - 目的：保证 UI 与 Run 不分叉语义，避免“双逻辑”。
 
-### 7.4 sha256 vs sha_token 的语义与用途
+### 7.4 sha256 vs sha_family 的语义与用途
 - **sha256**：严格字节一致性（打开保存、换行 CRLF、空格变化都会变）。
-- **sha_token**：物理等价指纹（对空白/换行等无关变化保持不变；token 边界改变必须改变）。
-- **重要**：UI 下拉选择主键是 **sha256**，不是 sha_token。
-- **sha_token 仅用于**：
+- **sha_family**：物理等价指纹（将 UPF 文本中所有空白字符移除后，把剩余字符拼接为字符串，再对该字符串的 UTF-8 bytes 计算 sha256）。
+- **重要**：UI 下拉选择主键是 **sha256**，不是 sha_family。
+- **sha_family 仅用于**：
   - 冲突处理（Step0 rename/overwrite 决策）
-  - 警告/提示（token-match、token-mismatch）
-  - 跨 calc 引用一致性更新（rename 后按 sha_token 更新 calc 引用的 filename）
+  - 警告/提示（family-match、family-mismatch）
+  - 跨 calc 引用一致性更新（rename 后按 sha_family 更新 calc 引用的 filename）
 
 ### 7.5 UI 选择与 calc.yml 持久化规则
 
@@ -196,43 +196,43 @@
 - 写回时必须一次性更新三元组（triplet）：
   - `pseudo_filename`
   - `pseudo_sha256`
-  - `pseudo_sha_token`
-- 并要求在 UI debug log 输出一条“写 yml”的日志（用于排查）。
+  - `pseudo_sha_family`
+- 并要求在 UI debug log 输出一条"写 yml"的日志（用于排查）。
 
-#### 7.5.4 Token-match edge case 的 UI 规则
+#### 7.5.4 Family-match edge case 的 UI 规则
 - 若 project/pseudo/<basename> 与某 external（lib/internal）：
-  - sha256 不同但 sha_token 相同（token-match）
-- 则 UI 不得合并成一个条目（避免“用户没选却被替换”的隐式行为）。应表现为：
-  - **project 本地条目**：显示 project chip，并额外提示“token-match with <lib/internal>（仅物理等价）”
-  - **external 条目**：显示 lib/internal chip，并额外提示“token-match with project（仅物理等价）”
+  - sha256 不同但 sha_family 相同（family-match）
+- 则 UI 不得合并成一个条目（避免"用户没选却被替换"的隐式行为）。应表现为：
+  - **project 本地条目**：显示 project chip，并额外提示"family-match with <lib/internal>（仅物理等价）"
+  - **external 条目**：显示 lib/internal chip，并额外提示"family-match with project（仅物理等价）"
 - 这样用户只有在显式选择 external 条目时，Run 才会发生覆盖行为（见 Step0 规则）。
 
 ### 7.6 Calculation 必须记录 pseudo 三元组
 - 每个 calc **必须记录**：
   - `pseudo_filename`（在 `project/pseudo` 下的文件名）
   - `pseudo_sha256`（严格字节哈希）
-  - `pseudo_sha_token`（“物理等价”哈希）
+  - `pseudo_sha_family`（"物理等价"哈希）
 - Run 前 Step0 结束后，**必须刷新写回**上述记录。
 - 允许 calc 存在 stale sha256 状态：未重新 Run 前可以与当前文件不一致（见 7.7.3）。
 
-### 7.7 Step0 冲突规则（以 sha_token 做语义分歧）
+### 7.7 Step0 冲突规则（以 sha_family 做语义分歧）
 
 #### 7.7.1 Step0 总原则
-- Step0 的职责：根据 UI/calc 选中的 pseudo，把所需 pseudo 准备到 project/pseudo，并刷新 calc 记录（sha256/sha_token/filename）。
+- Step0 的职责：根据 UI/calc 选中的 pseudo，把所需 pseudo 准备到 project/pseudo，并刷新 calc 记录（sha256/sha_family/filename）。
 - **如果用户选择的是 project/pseudo 自身的文件（project source）**：
-  - Step0 必须 noop（不覆盖/不改名），但仍需计算并刷新 calc 的 sha256/sha_token（用于修复 stale 记录）。
+  - Step0 必须 noop（不覆盖/不改名），但仍需计算并刷新 calc 的 sha256/sha_family（用于修复 stale 记录）。
 
 #### 7.7.2 当选择的是 external（internal/lib）并需要落地到 project/pseudo/<basename> 时
 - 若目标 basename 已存在于 project/pseudo：
   - **若 sha256 相同**：noop
-  - **若 sha_token 相同但 sha256 不同**：overwrite（只有在用户显式选择 external 时才发生；“标准库版本”= 用户所选 external）
-  - **若 sha_token 不同**：rename_existing
-    - 必须把已存在的旧文件改名为不冲突的新名字（例如追加 `__tok-<old_token[:10]>` 之类），保证 project/pseudo 内同名文件不对应不同 sha_token
-    - 并且必须基于旧文件的 sha_token，对项目内所有 calcs 做引用更新：只更新 filename，不改变其 sha_token 身份（保持物理身份不变）
+  - **若 sha_family 相同但 sha256 不同**：overwrite（只有在用户显式选择 external 时才发生；"标准库版本"= 用户所选 external）
+  - **若 sha_family 不同**：rename_existing
+    - 必须把已存在的旧文件改名为不冲突的新名字（例如追加 `__fam-<old_family[:10]>` 之类），保证 project/pseudo 内同名文件不对应不同 sha_family
+    - 并且必须基于旧文件的 sha_family，对项目内所有 calcs 做引用更新：只更新 filename，不改变其 sha_family 身份（保持物理身份不变）
 
 #### 7.7.3 stale sha 的定义与允许性
-- calc 可以存在 stale sha256：文件被打开保存/换行改变导致 sha256 变化但 sha_token 不变，这并不表示“物理改变”。
-- 只有当 sha_token 也变化才表示物理改变，需要更强 warning；但处理仍然遵循上述 Step0 规则。
+- calc 可以存在 stale sha256：文件被打开保存/换行改变导致 sha256 变化但 sha_family 不变，这并不表示"物理改变"。
+- 只有当 sha_family 也变化才表示物理改变，需要更强 warning；但处理仍然遵循上述 Step0 规则。
 
 ---
 
@@ -247,6 +247,166 @@
 
 ---
 
+## 9. 数据根目录、临时目录与可复现资产
+
+### 9.1 两类根目录（dev 阶段固定在 repo root，且都 gitignore）
+
+#### 9.1.1 `.qmatsuite/`：持久化、可迁移、可复现资产
+- **语义**：持久化资产目录，包含可迁移、可复现的数据。
+- **位置**：`repo_root/.qmatsuite/`（dev 阶段固定）。
+- **内容**：
+  - `engines/`：已安装的 QE 引擎（managed engines）
+  - `libraries/`：已安装的库（如伪势库）
+  - `seeds/`：可重装介质（QE seed、伪势 seed）
+  - `config/`：全局配置（`settings.json`）
+  - `logs/`：日志文件
+- **特性**：
+  - 可迁移（可复制到其他机器）
+  - 可复现（seed 支持离线重装）
+  - 必须 gitignore
+
+#### 9.1.2 `.tmp/`：临时目录
+- **语义**：临时文件目录，任何时候可删除。
+- **位置**：`repo_root/.tmp/`（dev 阶段固定）。
+- **内容**：
+  - `runs/`：计算运行目录（`<calc_ulid>/`）
+  - `downloads/`：下载缓存
+  - `unpack/`：解包临时目录
+  - `probe/`：自动搜索缓存
+  - `locks/`：文件锁
+- **特性**：
+  - 可随时删除
+  - 必须 gitignore
+
+#### 9.1.3 废弃 `temp/`
+- **禁止**：代码中不得再使用 `repo_root/temp/`。
+- **迁移**：所有 `temp/` 下的内容必须迁入 `.qmatsuite/` 或 `.tmp/`。
+- **规则**：新代码若出现 `temp/`，视为违反宪法。
+
+### 9.2 目录结构标准化
+
+```
+repo_root/
+  .qmatsuite/                    # 持久化资产（gitignore）
+    config/
+      settings.json              # 唯一全局配置（极简）
+    engines/
+      qe/
+        <engine_id>/             # managed QE 引擎
+          bin/
+          test-suite/
+          ...
+    libraries/
+      pseudo/                    # 已安装伪势库
+        sssp/
+          1.3.0/
+            precision/
+            efficiency/
+    seeds/
+      qe/
+        <seed_id>/               # QE seed：压缩包/安装介质/校验信息
+          archive.tar.gz
+          manifest.json
+          sha256.txt
+      pseudo/                    # 伪势 seed
+        sssp/
+          1.3.0/
+            precision/
+            efficiency/
+    logs/
+      ...
+  .tmp/                          # 临时目录（gitignore）
+    runs/
+      <calc_ulid>/               # 计算运行目录
+    downloads/                   # 下载缓存
+    unpack/                      # 解包临时目录
+    probe/                       # 自动搜索缓存
+    locks/                       # 文件锁
+```
+
+### 9.3 QE Seed 机制
+
+#### 9.3.1 定义与用途
+- **QE seed**：可重装介质，用于离线/快速重装 engine。
+- **功能**：
+  - 校验 hash（SHA256）
+  - 支持回滚
+  - 离线安装（无需重新下载）
+
+#### 9.3.2 安装流程
+1. **下载阶段**：下载到 `.tmp/downloads/`
+2. **校验阶段**：校验 SHA256
+3. **落盘阶段**：保存到 `.qmatsuite/seeds/qe/<seed_id>/`
+4. **解包/安装阶段**：解包/安装到 `.qmatsuite/engines/qe/<engine_id>/`
+
+#### 9.3.3 灾难恢复
+- 如果 `engines/` 损坏：从 `seeds/qe/` 重新安装，无需重新下载。
+
+### 9.4 引擎选择优先级
+
+#### 9.4.1 优先级顺序（必须严格按此顺序）
+1. **Project override**：若项目声明 `engine_id`，优先使用。
+2. **用户显式选择**：`settings.json` 中记录的 `qe.discovered_engine_id`。
+3. **用户默认**：`settings.json` 中的 `defaults.qe_engine_id`。
+4. **Managed fallback**：最新已安装的 managed engine（`.qmatsuite/engines/qe/` 下）。
+5. **PATH fallback**（可选）：仅当 `qe.allow_path_fallback=true` 时，搜索系统 PATH。
+6. **否则**：提示安装/添加引擎。
+
+#### 9.4.2 自动搜索规则
+- **仅作为导入器/登记器**：搜索功能仅用于“导入/登记”外部引擎。
+- **禁止“发现即启用”**：自动搜索到的引擎不得自动成为默认引擎。
+- **搜索缓存**：写到 `.tmp/probe/`。
+
+### 9.5 settings.json 最小 Schema
+
+```json
+{
+  "version": "1.0",
+  "defaults": {
+    "qe_engine_id": "qe-7.5",
+    "pseudo_set_id": "sssp-1.3.0-precision"
+  },
+  "qe": {
+    "allow_path_fallback": false,
+    "allow_auto_discover": false,
+    "discovered_engine_id": null
+  },
+  "external_engines": []
+}
+```
+
+**字段说明**：
+- `version`：配置版本号
+- `defaults.qe_engine_id`：默认 QE 引擎 ID
+- `defaults.pseudo_set_id`：默认伪势集 ID
+- `qe.allow_path_fallback`：是否允许 PATH fallback
+- `qe.allow_auto_discover`：是否允许自动发现
+- `qe.discovered_engine_id`：用户显式选择的 discovered engine ID
+- `external_engines[]`：显式登记的外部引擎列表
+
+**原则**：
+- `settings.json` 是唯一全局配置（极简）。
+- 禁止引入多个配置文件。
+
+### 9.6 迁移说明
+
+#### 9.6.1 历史目录迁移对照表
+
+| 历史路径 | 新路径 | 说明 |
+|---------|--------|------|
+| `temp/pseudo_seed/` | `.qmatsuite/seeds/pseudo/` | 伪势 seed 迁移 |
+| `temp/pseudo/` | `.qmatsuite/libraries/pseudo/` | 伪势库迁移 |
+| `temp/test_outputs/` | `.tmp/runs/` | 测试运行目录迁移 |
+| `temp/matplotlib_tests/` | `.tmp/runs/` | 测试运行目录迁移 |
+| `temp/e2e/` | `.tmp/runs/` | E2E 测试运行目录迁移 |
+
+#### 9.6.2 迁移规则
+- 所有 `temp/` 下的持久化资产（pseudo_seed、pseudo 解包库）→ `.qmatsuite/`
+- 所有 `temp/` 下的临时文件（test_outputs、e2e、matplotlib_tests）→ `.tmp/`
+- 迁移后，代码中禁止再出现 `temp/` 路径。
+
+---
+
 ## 最后条款：修改原则
 - 宪法的修改需谨慎，任何修改必须由项目作者审核。
 - 实现细节、证据、TODO、改进建议等请放在英文文档中维护（避免宪法过时）。
@@ -255,22 +415,39 @@
 
 ## 本次修订摘要（2025-01-XX）
 
+### 新增章节
+- **第 9 章：数据根目录、临时目录与可复现资产**（全新章节）
+  - 9.1 两类根目录定义（`.qmatsuite/` 与 `.tmp/`）
+  - 9.2 目录结构标准化
+  - 9.3 QE Seed 机制
+  - 9.4 引擎选择优先级
+  - 9.5 settings.json 最小 Schema
+  - 9.6 迁移说明
+
 ### 修改章节
 - **第 7 章：伪势管理（Pseudopotentials）不变量**（全面重写）
 
 ### 关键语义变化
-1. **选择主键改为 sha256**：明确 UI 下拉选择主键是 sha256（不是 sha_token）；sha_token 仅用于冲突处理、警告、跨 calc 引用更新。
+1. **选择主键改为 sha256**：明确 UI 下拉选择主键是 sha256（不是 sha_family）；sha_family 仅用于冲突处理、警告、跨 calc 引用更新。
 2. **新增 7.5 小节：UI 选择与 calc.yml 持久化规则**：
    - 7.5.1 UI 展示/可选项规则（文件系统真实存在要求）
    - 7.5.2 默认选中（恢复选择）规则：不写 yml（只读恢复）
    - 7.5.3 用户主动选择时：写 triplet（三元必须一起写）
-   - 7.5.4 Token-match edge case 的 UI 规则（不合并条目）
+   - 7.5.4 Family-match edge case 的 UI 规则（不合并条目）
 3. **重写 7.7 小节：Step0 冲突规则**：
    - 7.7.1 Step0 总原则（project source = noop）
-   - 7.7.2 external 选择落地规则（sha256 相同/noop，sha_token 相同/overwrite，sha_token 不同/rename）
+   - 7.7.2 external 选择落地规则（sha256 相同/noop，sha_family 相同/overwrite，sha_family 不同/rename）
    - 7.7.3 stale sha 的定义与允许性
-4. **更新 7.4 小节**：明确 sha256 vs sha_token 的语义与用途（sha256 是选择主键）。
-5. **删除旧 7.5 小节**：移除“以 sha_token 为物理身份”的旧表述（已整合到 7.4 和 7.7）。
+4. **更新 7.4 小节**：明确 sha256 vs sha_family 的语义与用途（sha256 是选择主键）。
+5. **删除旧 7.5 小节**：移除"以 sha_family 为物理身份"的旧表述（已整合到 7.4 和 7.7）。
 6. **删除旧 7.6 小节**：冲突规则已整合到 7.7。
-7. **明确 UI 默认优先级动机**：在 7.5.1 中说明“优先贴近 runtime 实际，减少无意覆盖”。
+7. **明确 UI 默认优先级动机**：在 7.5.1 中说明"优先贴近 runtime 实际，减少无意覆盖"。
 8. **强调 project source noop**：在 7.7.1 中明确用户选择 project/pseudo 自身文件时 Step0 必须 noop。
+
+### 变更摘要（sha_token → sha_family，2025-01-XX）
+- **sha_token 重命名为 sha_family**：术语更清晰，表示"家族"（物理等价组）而非"令牌"。
+- **算法变更**：从"token 边界敏感"改为"空白字符完全移除"：
+  - 旧算法：空白字符 split → 保留非空白 token → 单空格 join → SHA256
+  - 新算法：移除所有空白字符（isspace()）→ 拼接剩余字符 → SHA256
+  - 影响：`"12 3"` 和 `"1 23"` 现在产生相同的 sha_family（都变成 `"123"`），这是预期的行为。
+- **其他语义不变**：dropdown 仍以 sha256 为选择主键；sha_family 仍仅用于警告、冲突处理、跨 calc 引用更新。

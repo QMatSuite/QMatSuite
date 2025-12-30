@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KDH0M8C0SF8B34FC357M0ESP
+    id: 01KDPDXTJX2S82KR3WTMPFH331
     name: 02_H2O
     slug: 02_h2o
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KDH0M8CC77SFAJ0H2X7N88SN
+    id: 01KDPDXTK7GYS1YG2STSE821N6
     name: h2o.relax
     slug: h2o-relax
     path: structures/h2o-relax.json
@@ -17,7 +17,7 @@ structures:
   data:
     '@module': pymatgen.core.structure
     '@class': Structure
-    charge: 0
+    charge: 0.0
     lattice:
       matrix:
       - - 5.2917721092
@@ -83,7 +83,7 @@ structures:
       - 0.030000000000000002
 calculations:
 - meta:
-    id: 01KDH0M8C34DGJPKPX92HS8S0R
+    id: 01KDPDXTJZT72S5F5FNYSD6VB6
     name: H2O
     slug: h2o
     path: calculations/h2o
@@ -92,7 +92,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KDH0M8C89VW4T5890ZACXW7X
+      id: 01KDPDXTK4HDS4VC7ZXN8SA0TG
       name: h2o.relax
       slug: h2o-relax
       path: h2o.relax.step.yaml
@@ -129,7 +129,7 @@ calculations:
       O:
         mass: 15.999
         pseudopot: O.pbe-n-kjpaw_psl.0.1.UPF
-  structure_id: 01KDH0M8C2JXXPEAHWV5HP8TD5
+  structure_id: 01KDPDXTJY235Z7QPFCEHFSQ1R
   species_map:
     H:
       mass: 1.00784
