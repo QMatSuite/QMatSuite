@@ -242,29 +242,38 @@ def _get_electrons_param(
 
 def _get_kpoints_mesh(params: Dict[str, Dict[str, Any]]) -> Optional[Tuple[int, int, int, int, int, int]]:
     """
-    Extract K_POINTS automatic mesh from parameters.
+    Extract K_POINTS automatic mesh from step content.
+    
+    QE kpoints are represented as cards.K_POINTS only.
+    Format: cards.K_POINTS = {"option": "automatic", "data": [[nk1, nk2, nk3, sk1, sk2, sk3]]}
     
     Returns:
-        Tuple of (nk1, nk2, nk3, sk1, sk2, sk3) or None if not automatic mesh.
+        Tuple of (nk1, nk2, nk3, sk1, sk2, sk3) or None if not automatic mesh or not found.
     """
-    kpoints = params.get("K_POINTS") or params.get("k_points") or {}
+    cards = params.get("cards") or {}
+    kpoints_card = cards.get("K_POINTS") or cards.get("k_points") or {}
     
-    # Check if it's automatic type
-    kp_type = kpoints.get("type", "").lower()
-    if kp_type != "automatic":
+    if not kpoints_card:
         return None
     
-    mesh = kpoints.get("mesh")
-    if not mesh or not isinstance(mesh, (list, tuple)) or len(mesh) < 3:
+    option = kpoints_card.get("option", "").lower()
+    if option != "automatic":
         return None
     
-    # Extract nk and shifts
-    nk1 = int(mesh[0]) if len(mesh) > 0 else 1
-    nk2 = int(mesh[1]) if len(mesh) > 1 else 1
-    nk3 = int(mesh[2]) if len(mesh) > 2 else 1
-    sk1 = int(mesh[3]) if len(mesh) > 3 else 0
-    sk2 = int(mesh[4]) if len(mesh) > 4 else 0
-    sk3 = int(mesh[5]) if len(mesh) > 5 else 0
+    data = kpoints_card.get("data", [])
+    if not data or not isinstance(data, list) or len(data) == 0:
+        return None
+    
+    mesh_row = data[0]
+    if not isinstance(mesh_row, (list, tuple)) or len(mesh_row) < 3:
+        return None
+    
+    nk1 = int(mesh_row[0])
+    nk2 = int(mesh_row[1])
+    nk3 = int(mesh_row[2])
+    sk1 = int(mesh_row[3]) if len(mesh_row) > 3 else 0
+    sk2 = int(mesh_row[4]) if len(mesh_row) > 4 else 0
+    sk3 = int(mesh_row[5]) if len(mesh_row) > 5 else 0
     
     return (nk1, nk2, nk3, sk1, sk2, sk3)
 
@@ -478,7 +487,16 @@ def detect_dimension_from_steps(
     
     # For precision, use step-type-aware strict detection if possible
     if dimension == DIMENSION_PRECISION and step_types and calculation_dir:
-        return _detect_precision_from_steps_strict(steps, step_types, calculation_dir)
+        try:
+            return _detect_precision_from_steps_strict(steps, step_types, calculation_dir)
+        except Exception as e:
+            # If precision detection fails (e.g., structure resolution error),
+            # return CUSTOM rather than raising (to maintain backward compatibility)
+            # But log the error for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Precision detection failed, returning CUSTOM: {e}")
+            return CUSTOM
     
     # For other dimensions or when step_types not available, use simple detection
     values = set()
@@ -519,25 +537,39 @@ def _detect_precision_from_steps_strict(
         # Mismatch - can't do step-type-aware detection
         return CUSTOM
     
-    # Load calculation for structure/species_map
+    # Use unified resolver (single source of truth)
     try:
-        calc_model = load_calculation(calculation_dir)
-        structure = calc_model.structure
-        species_map = calc_model.species_map
-        lattice_matrix = [list(v) for v in structure.lattice.matrix]
-        
-        # Get base cutoffs from pseudos
-        from quantumvitas.presets.precision import (
-            aggregate_cutoffs,
-            get_pseudo_index,
+        from quantumvitas.presets.precision_context import (
+            resolve_precision_context,
+            PrecisionContextError,
         )
-        index_files = get_pseudo_index()
-        base_ecutwfc, base_ecutrho = aggregate_cutoffs(species_map, index_files)
-    except Exception:
-        # Can't load calculation - cannot do strict detection, return CUSTOM
-        # This is safer than falling back to simple detection which might
-        # incorrectly return a precision level when parameters don't match
-        return CUSTOM
+        from quantumvitas.presets.precision import aggregate_cutoffs
+        
+        # Resolve context using unified resolver
+        context = resolve_precision_context(
+            calculation_dir=calculation_dir,
+            project_root=None,  # Will be derived from calculation_dir
+        )
+        
+        # Extract values from context
+        species_map = context.species_map
+        lattice_matrix = context.lattice_matrix
+        
+        # Get base cutoffs from pseudos (using context's pseudo_index)
+        base_ecutwfc, base_ecutrho = aggregate_cutoffs(species_map, context.pseudo_index)
+        
+    except PrecisionContextError as e:
+        # Precision context resolution failed - this is an error, not CUSTOM
+        # Raise exception to propagate error (don't silently return CUSTOM)
+        raise PrecisionContextError(
+            f"Failed to resolve precision context for detection: {e}"
+        ) from e
+    except Exception as e:
+        # Other errors should also be raised
+        from quantumvitas.presets.precision_context import PrecisionContextError
+        raise PrecisionContextError(
+            f"Unexpected error during precision context resolution: {e}"
+        ) from e
     
     # Collect detected precision for each receiver step
     receiver_values = []

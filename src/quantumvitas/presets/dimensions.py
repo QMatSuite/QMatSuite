@@ -11,7 +11,7 @@ Dimension semantics are derived from physics, not from QE parameter names:
 """
 
 from enum import Enum
-from typing import Final
+from typing import Final, Tuple
 
 
 class SpinOption(str, Enum):
@@ -114,14 +114,14 @@ DIMENSION_MATERIAL: Final[str] = "material"
 DIMENSION_PRECISION: Final[str] = "precision"
 
 # v0 dimensions (spin, soc, material)
-V0_DIMENSIONS: Final[tuple[str, ...]] = (
+V0_DIMENSIONS: Final[Tuple[str, ...]] = (
     DIMENSION_SPIN,
     DIMENSION_SOC,
     DIMENSION_MATERIAL,
 )
 
 # v1 dimensions (v0 + precision)
-V1_DIMENSIONS: Final[tuple[str, ...]] = (
+V1_DIMENSIONS: Final[Tuple[str, ...]] = (
     DIMENSION_SPIN,
     DIMENSION_SOC,
     DIMENSION_MATERIAL,
