@@ -55,11 +55,17 @@ def detect_presets_from_calculation(
         Returns string values for JSON serialization to daemon/GUI.
         Use detect_presets_from_calculation_typed() for enum values.
     """
-    # Load step parameters from calculation
-    step_params_list = _load_step_parameters(calculation_dir)
+    # Load step parameters and types from calculation
+    step_data = _load_step_parameters_with_types(calculation_dir)
+    step_params_list = [params for params, _ in step_data]
+    step_types_list = [step_type for _, step_type in step_data]
     
-    # Detect presets
-    detected = detect_all_presets(step_params_list)
+    # Detect presets (with step-type-aware precision detection)
+    detected = detect_all_presets(
+        step_params_list,
+        step_types=step_types_list if step_types_list else None,
+        calculation_dir=calculation_dir,
+    )
     
     # Convert to string representation for JSON serialization
     result = {}
@@ -135,12 +141,60 @@ def _load_step_parameters(
             
             parameters = content.get("parameters", {})
             if parameters:
-                step_params_list.append(parameters)
+                # Store step_type in params for step-type-aware detection
+                # (detector can access it via a special key)
+                step_params_list.append({
+                    **parameters,
+                    "_step_type": step_type,  # Internal metadata for detector
+                })
         except Exception:
             # Skip malformed step files
             continue
     
     return step_params_list
+
+
+def _load_step_parameters_with_types(
+    calculation_dir: Path,
+    *,
+    receivers_only: bool = True,
+) -> List[tuple[Dict[str, Dict[str, Any]], str]]:
+    """
+    Load parameters from steps with step_type information.
+    
+    Args:
+        calculation_dir: Path to calculation directory
+        receivers_only: If True (default), only load from receiver steps
+        
+    Returns:
+        List of (params_dict, step_type) tuples
+    """
+    from quantumvitas.presets.receivers import is_receiver
+    
+    calculation_dir = Path(calculation_dir).resolve()
+    steps_dir = calculation_dir / "steps"
+    
+    if not steps_dir.exists():
+        return []
+    
+    result = []
+    step_files = sorted(steps_dir.glob("*.step.yaml"))
+    
+    for step_file in step_files:
+        try:
+            content = yaml.safe_load(step_file.read_text()) or {}
+            step_type = content.get("step_type", "scf")
+            
+            if receivers_only and not is_receiver(step_type):
+                continue
+            
+            parameters = content.get("parameters", {})
+            if parameters:
+                result.append((parameters, step_type))
+        except Exception:
+            continue
+    
+    return result
 
 
 def apply_presets_to_step(
@@ -217,10 +271,25 @@ def apply_presets_to_step(
     
     # Handle precision preset separately (requires pre-computed advice)
     if precision_option is not None and precision_advice is not None:
-        precision_compiled = compile_precision_from_advice(precision_advice)
-        compiled_system.update(precision_compiled.get("SYSTEM", {}))
-        compiled_electrons.update(precision_compiled.get("ELECTRONS", {}))
-        compiled_kpoints = precision_compiled.get("K_POINTS")
+        from quantumvitas.presets.receivers import get_precision_receiver_spec
+        
+        # Get precision receiver spec for this step type
+        precision_spec = get_precision_receiver_spec(step_type)
+        
+        if precision_spec and precision_spec.accepts_any:
+            precision_compiled = compile_precision_from_advice(precision_advice)
+            
+            # Apply cutoffs if accepted
+            if precision_spec.accepts_cutoffs:
+                compiled_system.update(precision_compiled.get("SYSTEM", {}))
+            
+            # Apply conv_thr if accepted
+            if precision_spec.accepts_conv_thr:
+                compiled_electrons.update(precision_compiled.get("ELECTRONS", {}))
+            
+            # Apply kmesh if accepted (receiver decides strategy)
+            if precision_spec.accepts_kmesh and precision_spec.kmesh_strategy != "none":
+                compiled_kpoints = precision_compiled.get("K_POINTS")
     
     # Get existing params
     existing_system = dict(existing_params.get("SYSTEM", {}))

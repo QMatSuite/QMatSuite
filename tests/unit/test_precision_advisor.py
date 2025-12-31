@@ -605,3 +605,63 @@ class TestLegacyPrecisionConfigs:
         assert hasattr(config, 'k_density')
         assert hasattr(config, 'conv_thr')
         assert hasattr(config, 'cutoff_multiplier')
+
+
+class TestStepTypeAwareAdvice:
+    """Tests for step-type-aware precision advice."""
+    
+    def test_nscf_gets_denser_kmesh(self):
+        """NSCF step gets 2x denser k-mesh than SCF."""
+        from quantumvitas.presets.precision import NSCF_KMESH_FACTOR
+        
+        species_map = {"Si": {}}
+        a = 5.43
+        lattice = [[a, 0, 0], [0, a, 0], [0, 0, a]]
+        
+        advisor = PrecisionAdvisor(species_map, lattice_matrix=lattice)
+        
+        # SCF advice (standard)
+        scf_advice = advisor.advise_for_step(PrecisionOption.MED, "scf")
+        
+        # NSCF advice (should be denser)
+        nscf_advice = advisor.advise_for_step(PrecisionOption.MED, "nscf")
+        
+        # NSCF mesh should be NSCF_KMESH_FACTOR times denser
+        assert nscf_advice.nk1 == scf_advice.nk1 * NSCF_KMESH_FACTOR
+        assert nscf_advice.nk2 == scf_advice.nk2 * NSCF_KMESH_FACTOR
+        assert nscf_advice.nk3 == scf_advice.nk3 * NSCF_KMESH_FACTOR
+        
+        # Cutoffs and conv_thr should be the same
+        assert nscf_advice.ecutwfc == scf_advice.ecutwfc
+        assert nscf_advice.ecutrho == scf_advice.ecutrho
+        assert nscf_advice.conv_thr == scf_advice.conv_thr
+    
+    def test_bands_pw_gets_standard_advice(self):
+        """Bands_pw step gets standard advice (K_POINTS excluded in integration)."""
+        species_map = {"Si": {}}
+        lattice = [[5.43, 0, 0], [0, 5.43, 0], [0, 0, 5.43]]
+        
+        advisor = PrecisionAdvisor(species_map, lattice_matrix=lattice)
+        
+        # bands_pw gets standard advice (K_POINTS filtering is in integration layer)
+        scf_advice = advisor.advise_for_step(PrecisionOption.MED, "scf")
+        bands_advice = advisor.advise_for_step(PrecisionOption.MED, "bands_pw")
+        
+        # Should have same parameters
+        assert bands_advice.nk1 == scf_advice.nk1
+        assert bands_advice.ecutwfc == scf_advice.ecutwfc
+        assert bands_advice.conv_thr == scf_advice.conv_thr
+    
+    def test_nscf_kmesh_factor_is_2(self):
+        """NSCF k-mesh factor constant is 2."""
+        from quantumvitas.presets.precision import NSCF_KMESH_FACTOR
+        assert NSCF_KMESH_FACTOR == 2
+    
+    def test_no_kpoints_step_types_includes_bands(self):
+        """bands_pw does not accept kmesh via receiver spec."""
+        from quantumvitas.presets.receivers import get_precision_receiver_spec
+        
+        spec = get_precision_receiver_spec("bands_pw")
+        assert spec is not None
+        assert spec.accepts_kmesh is False
+        assert spec.kmesh_strategy == "none"
