@@ -210,7 +210,7 @@ class TestApplyPresetsToStep:
             "parameters": {
                 "SYSTEM": {
                     "nspin": 1,
-                    "ecutwfc": 50,  # Non-preset param
+                    "nbnd": 50,  # Non-preset param (ecutwfc is now precision-related)
                     "occupations": "'fixed'",
                 },
             },
@@ -233,8 +233,8 @@ class TestApplyPresetsToStep:
         assert system["smearing"] == "'gaussian'"
         assert system["degauss"] == 0.01
         
-        # Non-preset params preserved
-        assert system["ecutwfc"] == 50
+        # Non-preset params preserved (nbnd is not a preset param)
+        assert system["nbnd"] == 50
     
     def test_apply_preserves_nonpreset_params(self, tmp_path):
         """Non-preset SYSTEM params are preserved."""
@@ -244,9 +244,9 @@ class TestApplyPresetsToStep:
             "parameters": {
                 "SYSTEM": {
                     "nspin": 1,
-                    "ecutwfc": 60,
-                    "ecutrho": 600,
-                    "nbnd": 20,
+                    "nbnd": 20,  # Non-preset param
+                    "ntyp": 2,  # Non-preset param
+                    "nat": 4,  # Non-preset param
                 },
                 "CONTROL": {
                     "calculation": "scf",
@@ -261,9 +261,10 @@ class TestApplyPresetsToStep:
         updated = yaml.safe_load(step_path.read_text())
         system = updated["parameters"]["SYSTEM"]
         
-        assert system["ecutwfc"] == 60
-        assert system["ecutrho"] == 600
+        # Non-preset params preserved (ecutwfc/ecutrho are now precision-related)
         assert system["nbnd"] == 20
+        assert system["ntyp"] == 2
+        assert system["nat"] == 4
         
         # CONTROL untouched
         assert updated["parameters"]["CONTROL"]["calculation"] == "scf"
