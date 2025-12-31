@@ -1513,6 +1513,7 @@ export interface QVCommandMap {
         spin?: SpinValue;
         soc?: SOCValue;
         material?: MaterialValue;
+        precision?: PrecisionValue;
       };
       validate_physics?: boolean;
     };
@@ -1528,6 +1529,7 @@ export interface QVCommandMap {
         spin?: SpinValue;
         soc?: SOCValue;
         material?: MaterialValue;
+        precision?: PrecisionValue;
       };
       validate_physics?: boolean;
     };
@@ -1788,11 +1790,12 @@ export interface PseudoOption {
 // Preset Types (Constitution Chapter 10 compliant)
 // =============================================================================
 
-/** Preset dimension values - corresponds to Python SpinOption, SOCOption, MaterialOption */
+/** Preset dimension values - corresponds to Python SpinOption, SOCOption, MaterialOption, PrecisionOption */
 export type SpinValue = 'nonspin' | 'collinear' | 'noncollinear';
 export type SOCValue = 'no_soc' | 'with_soc';
 export type MaterialValue = 'insulator' | 'metal';
-export type PresetValue = SpinValue | SOCValue | MaterialValue | 'Custom';
+export type PrecisionValue = 'low' | 'med' | 'high';
+export type PresetValue = SpinValue | SOCValue | MaterialValue | PrecisionValue | 'Custom';
 
 /** Detected workflow type */
 export type WorkflowType = 'SCF' | 'DOS' | 'BandStructure' | 'Relaxation' | 'Phonon' | 'MD' | 'NSCF' | 'Unknown';
@@ -1803,6 +1806,7 @@ export interface PresetDetectionResult {
     spin: SpinValue | 'Custom';
     soc: SOCValue | 'Custom';
     material: MaterialValue | 'Custom';
+    precision: PrecisionValue | 'Custom';
   };
 }
 
@@ -1818,6 +1822,7 @@ export interface ApplyPresetsResult {
     spin: SpinValue | 'Custom';
     soc: SOCValue | 'Custom';
     material: MaterialValue | 'Custom';
+    precision: PrecisionValue | 'Custom';
   };
   error?: {
     code: string;
@@ -1844,6 +1849,7 @@ export interface ApplyPresetsToCalcResult {
     spin: SpinValue | 'Custom';
     soc: SOCValue | 'Custom';
     material: MaterialValue | 'Custom';
+    precision: PrecisionValue | 'Custom';
   };
 }
 
@@ -1864,6 +1870,7 @@ export interface StepFootprintsResult {
 export const SPIN_OPTIONS: SpinValue[] = ['nonspin', 'collinear', 'noncollinear'];
 export const SOC_OPTIONS: SOCValue[] = ['no_soc', 'with_soc'];
 export const MATERIAL_OPTIONS: MaterialValue[] = ['insulator', 'metal'];
+export const PRECISION_OPTIONS: PrecisionValue[] = ['low', 'med', 'high'];
 
 /** Human-readable labels for preset values */
 export const PRESET_LABELS: Record<string, string> = {
@@ -1877,6 +1884,10 @@ export const PRESET_LABELS: Record<string, string> = {
   // Material
   insulator: 'Insulator / Semiconductor',
   metal: 'Metal',
+  // Precision
+  low: 'Low (fast screening)',
+  med: 'Medium (production)',
+  high: 'High (accurate)',
   // Custom
   Custom: 'Custom (mixed)',
 };

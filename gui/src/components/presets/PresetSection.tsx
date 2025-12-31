@@ -17,6 +17,7 @@ import {
   SPIN_OPTIONS,
   SOC_OPTIONS,
   MATERIAL_OPTIONS,
+  PRECISION_OPTIONS,
   PRESET_LABELS,
 } from '../../types/qv';
 import './PresetSection.css';
@@ -250,6 +251,10 @@ export function PresetSection({
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [currentApplyResult, setCurrentApplyResult] = useState<ApplyResult | null>(null);
   
+  // State for confirmation modal (Bug 2: Custom → preset safety)
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pendingApply, setPendingApply] = useState<{ dimension: string; value: string } | null>(null);
+  
   const handleApplyComplete = useCallback((result: ApplyResult) => {
     setCurrentApplyResult(result);
     setShowToast(true);
@@ -263,19 +268,64 @@ export function PresetSection({
   }, [onPresetsChanged]);
   
   const handleSpinChange = useCallback(async (value: string) => {
+    // Safety check: if current state is Custom, show confirmation modal
+    if (presets?.spin === 'Custom') {
+      setPendingApply({ dimension: 'spin', value });
+      setShowConfirmModal(true);
+      return;
+    }
     const result = await applyPreset('spin', value);
     handleApplyComplete(result);
-  }, [applyPreset, handleApplyComplete]);
+  }, [applyPreset, handleApplyComplete, presets]);
   
   const handleSocChange = useCallback(async (value: string) => {
+    // Safety check: if current state is Custom, show confirmation modal
+    if (presets?.soc === 'Custom') {
+      setPendingApply({ dimension: 'soc', value });
+      setShowConfirmModal(true);
+      return;
+    }
     const result = await applyPreset('soc', value);
     handleApplyComplete(result);
-  }, [applyPreset, handleApplyComplete]);
+  }, [applyPreset, handleApplyComplete, presets]);
   
   const handleMaterialChange = useCallback(async (value: string) => {
+    // Safety check: if current state is Custom, show confirmation modal
+    if (presets?.material === 'Custom') {
+      setPendingApply({ dimension: 'material', value });
+      setShowConfirmModal(true);
+      return;
+    }
     const result = await applyPreset('material', value);
     handleApplyComplete(result);
-  }, [applyPreset, handleApplyComplete]);
+  }, [applyPreset, handleApplyComplete, presets]);
+  
+  const handlePrecisionChange = useCallback(async (value: string) => {
+    // Safety check: if current state is Custom, show confirmation modal
+    if (presets?.precision === 'Custom') {
+      setPendingApply({ dimension: 'precision', value });
+      setShowConfirmModal(true);
+      return;
+    }
+    
+    // Not Custom - apply directly
+    const result = await applyPreset('precision', value);
+    handleApplyComplete(result);
+  }, [applyPreset, handleApplyComplete, presets]);
+  
+  const handleConfirmApply = useCallback(async () => {
+    if (!pendingApply) return;
+    
+    setShowConfirmModal(false);
+    const result = await applyPreset(pendingApply.dimension as any, pendingApply.value);
+    setPendingApply(null);
+    handleApplyComplete(result);
+  }, [pendingApply, applyPreset, handleApplyComplete]);
+  
+  const handleCancelApply = useCallback(() => {
+    setShowConfirmModal(false);
+    setPendingApply(null);
+  }, []);
   
   const handleCloseToast = useCallback(() => {
     setShowToast(false);
@@ -374,6 +424,17 @@ export function PresetSection({
           tooltip="Material type: insulator (fixed occupations) or metal (smearing)"
           customTooltip={customTooltip}
         />
+        
+        <PresetDimensionRow
+          label="Precision"
+          value={presets.precision}
+          options={PRECISION_OPTIONS}
+          isCustom={presets.precision === 'Custom'}
+          isApplying={isApplying}
+          onChange={handlePrecisionChange}
+          tooltip="Precision level: controls k-mesh density, cutoffs, and convergence threshold"
+          customTooltip={customTooltip}
+        />
       </div>
       
       <div className="preset-section__footer">
@@ -381,6 +442,39 @@ export function PresetSection({
           Changes apply to all steps • Detected from step.yml
         </small>
       </div>
+      
+      {/* Confirmation modal for Custom → preset (Bug 2: Safety) */}
+      {showConfirmModal && pendingApply && (
+        <div className="preset-confirm-modal-overlay" onClick={handleCancelApply}>
+          <div className="preset-confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="preset-confirm-modal__header">
+              <h4>Confirm Preset Application</h4>
+            </div>
+            <div className="preset-confirm-modal__body">
+              <p>
+                This will overwrite step parameters for all applicable steps.
+              </p>
+              <p className="preset-confirm-modal__detail">
+                Applying <strong>{PRESET_LABELS[pendingApply.value] || pendingApply.value}</strong> to <strong>{pendingApply.dimension}</strong> dimension.
+              </p>
+            </div>
+            <div className="preset-confirm-modal__actions">
+              <button
+                className="preset-confirm-modal__btn preset-confirm-modal__btn--cancel"
+                onClick={handleCancelApply}
+              >
+                Cancel
+              </button>
+              <button
+                className="preset-confirm-modal__btn preset-confirm-modal__btn--apply"
+                onClick={handleConfirmApply}
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Toast for apply feedback (Phase 8B) */}
       {showToast && currentApplyResult && (

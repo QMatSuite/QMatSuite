@@ -17,6 +17,7 @@ Design principles:
 - Receiver declaration is metadata, NOT persisted preset state
 """
 
+from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, FrozenSet, Optional, Set
 
@@ -85,6 +86,100 @@ FUTURE_PRESET_STEP_TYPES: FrozenSet[str] = frozenset({
     "hp",        # hp.x - Hubbard parameters
     "gipaw",     # gipaw.x - NMR/EPR
 })
+
+
+# ============================================================================
+# Precision Subparts Receiver Specification
+# ============================================================================
+
+@dataclass(frozen=True)
+class PrecisionReceiverSpec:
+    """
+    Specification for which precision subparts a step type accepts.
+    
+    Precision has three subparts:
+    - kmesh: K_POINTS automatic mesh
+    - cutoffs: ecutwfc, ecutrho
+    - conv_thr: SCF convergence threshold
+    
+    kmesh_strategy:
+    - "default": Use base mesh from PrecisionAdvisor (scf canonical)
+    - "nscf": Use base mesh × NSCF_KMESH_FACTOR (nscf denser)
+    - "none": Do not apply kmesh (e.g., bands_pw uses k-path)
+    """
+    accepts_kmesh: bool
+    accepts_cutoffs: bool
+    accepts_conv_thr: bool
+    kmesh_strategy: str  # "default", "nscf", "none"
+    
+    @property
+    def accepts_any(self) -> bool:
+        """Check if step accepts any precision subpart."""
+        return self.accepts_kmesh or self.accepts_cutoffs or self.accepts_conv_thr
+
+
+# Default precision receiver specs for each step type
+PRECISION_RECEIVER_SPECS: Dict[str, PrecisionReceiverSpec] = {
+    # pw.x: scf/relax/vc-relax/md/vc-md - accept all subparts, default kmesh
+    "scf": PrecisionReceiverSpec(
+        accepts_kmesh=True,
+        accepts_cutoffs=True,
+        accepts_conv_thr=True,
+        kmesh_strategy="default",
+    ),
+    "relax": PrecisionReceiverSpec(
+        accepts_kmesh=True,
+        accepts_cutoffs=True,
+        accepts_conv_thr=True,
+        kmesh_strategy="default",
+    ),
+    "vc-relax": PrecisionReceiverSpec(
+        accepts_kmesh=True,
+        accepts_cutoffs=True,
+        accepts_conv_thr=True,
+        kmesh_strategy="default",
+    ),
+    "md": PrecisionReceiverSpec(
+        accepts_kmesh=True,
+        accepts_cutoffs=True,
+        accepts_conv_thr=True,
+        kmesh_strategy="default",
+    ),
+    "vc-md": PrecisionReceiverSpec(
+        accepts_kmesh=True,
+        accepts_cutoffs=True,
+        accepts_conv_thr=True,
+        kmesh_strategy="default",
+    ),
+    # pw.x: nscf - accept all subparts, but kmesh is ×2 denser
+    "nscf": PrecisionReceiverSpec(
+        accepts_kmesh=True,
+        accepts_cutoffs=True,
+        accepts_conv_thr=True,
+        kmesh_strategy="nscf",
+    ),
+    # pw.x: bands_pw - accept cutoffs/conv_thr, but NOT kmesh (uses k-path)
+    "bands_pw": PrecisionReceiverSpec(
+        accepts_kmesh=False,
+        accepts_cutoffs=True,
+        accepts_conv_thr=True,
+        kmesh_strategy="none",
+    ),
+}
+
+
+def get_precision_receiver_spec(step_type: str) -> Optional[PrecisionReceiverSpec]:
+    """
+    Get precision receiver specification for a step type.
+    
+    Args:
+        step_type: Step type string
+        
+    Returns:
+        PrecisionReceiverSpec if step accepts precision, None otherwise
+    """
+    step_type_lower = step_type.lower() if step_type else ""
+    return PRECISION_RECEIVER_SPECS.get(step_type_lower)
 
 
 class PresetReceiverRegistry:

@@ -67,6 +67,10 @@ CONV_THR_ABS_TOL = 1e-11
 DEFAULT_ECUTWFC = 50.0  # Ry
 DEFAULT_ECUTRHO = 400.0  # Ry (8× ecutwfc for USPP/PAW)
 
+# NSCF uses denser k-mesh than SCF by this factor
+# nk_i(nscf) = max(1, nk_i(scf) * NSCF_KMESH_FACTOR)
+NSCF_KMESH_FACTOR = 2
+
 
 # Legacy alias for backward compatibility
 @dataclass(frozen=True)
@@ -521,6 +525,61 @@ class PrecisionAdvisor:
             level: self.advise(level)
             for level in PrecisionOption
         }
+    
+    def advise_for_step(
+        self,
+        precision: PrecisionOption,
+        step_type: str,
+    ) -> PrecisionAdvice:
+        """
+        Compute precision advice adjusted for a specific step type.
+        
+        Uses PrecisionReceiverSpec to determine step-type-specific adjustments:
+        - nscf: K-mesh multiplied by NSCF_KMESH_FACTOR (2x denser)
+        - bands_pw: Returns base advice (K_POINTS filtering done in integration)
+        - scf/relax/etc: Standard advice
+        
+        Args:
+            precision: Desired precision level
+            step_type: Step type string (e.g., "scf", "nscf", "bands_pw")
+            
+        Returns:
+            PrecisionAdvice adjusted for step type
+        """
+        from quantumvitas.presets.receivers import get_precision_receiver_spec
+        
+        # Get base advice
+        advice = self.advise(precision)
+        
+        # Get receiver spec for step type
+        spec = get_precision_receiver_spec(step_type)
+        
+        # Apply nscf mesh multiplier if needed
+        if spec and spec.kmesh_strategy == "nscf":
+            nk1 = max(1, advice.nk1 * NSCF_KMESH_FACTOR)
+            nk2 = max(1, advice.nk2 * NSCF_KMESH_FACTOR)
+            nk3 = max(1, advice.nk3 * NSCF_KMESH_FACTOR)
+            
+            return PrecisionAdvice(
+                precision=advice.precision,
+                nk1=nk1,
+                nk2=nk2,
+                nk3=nk3,
+                sk1=advice.sk1,
+                sk2=advice.sk2,
+                sk3=advice.sk3,
+                ecutwfc=advice.ecutwfc,
+                ecutrho=advice.ecutrho,
+                conv_thr=advice.conv_thr,
+                base_ecutwfc=advice.base_ecutwfc,
+                base_ecutrho=advice.base_ecutrho,
+                delta_k=advice.delta_k,
+                reciprocal_lengths=advice.reciprocal_lengths,
+            )
+        
+        # For other steps (scf, bands_pw, etc.), return base advice
+        # (bands_pw K_POINTS filtering is done in integration layer via receiver spec)
+        return advice
 
 
 # ============================================================================

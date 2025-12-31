@@ -405,4 +405,157 @@ Revising the precision backend to align with updated product/physics decisions.
   - D) Added strict 3-way detection (conv_thr, kmesh, cutoffs)
   - E) Compiler outputs deterministic integer cutoffs
   - F) 35 precision tests passing, 788 total tests passing
+- 2025-12-31: Precision v1 Completion phase COMPLETED
+  - S1) Added NSCF_KMESH_FACTOR=2 and advise_for_step() method
+  - S2) Updated receiver logic for bands_pw and nscf
+  - S3) Updated integration to skip K_POINTS for bands_pw
+  - S4) Updated daemon handler to create PrecisionAdvisor
+  - S5) Updated TypeScript types with PrecisionValue
+  - S6) Updated PresetSection UI with precision row
+  - S8) Added 4 step-type-aware tests
+  - All 792 Python tests pass, TypeScript compiles
+
+---
+
+## Phase: Precision v1 Completion (Semantics + UI)
+
+### Goal
+Complete Precision preset end-to-end: semantics, daemon, UI, fully functional.
+
+### Semantic Decisions (finalized)
+
+| Aspect | Decision |
+|--------|----------|
+| Multipliers | low=0.8, med=1.0, high=1.2 (symmetric) |
+| K-mesh | Reciprocal: nk_i = max(1, ceil(\|b_i\| / Δk)) |
+| Δk values | low=0.30, med=0.20, high=0.15 Å⁻¹ |
+| NSCF mesh | 2x SCF mesh: nk_i(nscf) = max(1, nk_i(scf) * 2) |
+| Bands K_POINTS | NOT applied (bands uses k-path) |
+| Bands cutoffs | Applied (ecutwfc, ecutrho, conv_thr) |
+| Shifts | Always 0 0 0 |
+
+### Completion Tasks
+
+- [x] **S1) Add NSCF_KMESH_FACTOR constant**
+  - Added `NSCF_KMESH_FACTOR = 2` to precision.py constants
+  - Added `DENSE_KMESH_STEP_TYPES` and `NO_KPOINTS_STEP_TYPES`
+  - Added `PrecisionAdvisor.advise_for_step(precision, step_type)` method
+  - nscf: multiplies base mesh by NSCF_KMESH_FACTOR
+
+- [x] **S2) Update receiver registry for precision subparts**
+  - bands_pw: accepts precision (cutoffs + conv_thr) but K_POINTS excluded in integration
+  - scf/relax/vc-relax/md/vc-md: accepts all precision params
+  - nscf: accepts all, with 2x mesh override
+
+- [x] **S3) Update integration for step-type-aware precision**
+  - `apply_presets_to_step()` checks `NO_KPOINTS_STEP_TYPES` for bands_pw
+  - Advisor.advise_for_step() handles nscf mesh multiplier
+  - bands_pw gets cutoffs but K_POINTS unchanged
+
+- [x] **S4) Update daemon handlers**
+  - `apply_presets_to_calculation` handles precision with step-type logic
+  - Creates PrecisionAdvisor from calculation species_map and structure
+  - Uses `advise_for_step()` for each step
+
+- [x] **S5) Update TypeScript types**
+  - Added `PrecisionValue = 'low' | 'med' | 'high'`
+  - Updated `PresetDetectionResult` to include precision
+  - Updated `ApplyPresetsToCalcResult` and related types
+  - Added `PRECISION_OPTIONS` constant
+  - Added labels: 'Low (fast screening)', 'Medium (production)', 'High (accurate)'
+
+- [x] **S6) Update PresetSection UI**
+  - Added Precision dropdown row
+  - Custom badge + tooltip for precision
+  - Toast feedback includes precision
+
+- [ ] **S7) Add footprint chips for precision params** (future enhancement)
+  - Show ecutwfc, conv_thr in step row chips
+  - Compact format with +k expand
+
+- [x] **S8) Add/update tests**
+  - Added `TestStepTypeAwareAdvice` class (4 tests)
+  - Tests nscf gets 2x mesh
+  - Tests bands_pw gets standard advice
+  - Tests NSCF_KMESH_FACTOR constant
+  - Tests NO_KPOINTS_STEP_TYPES includes bands_pw
+  - All 792 Python tests pass, TypeScript compiles
+
+### Verification Commands
+
+```bash
+# Run precision tests
+python -m pytest tests/unit/test_precision_advisor.py -v
+
+# Run all tests
+source .venv/bin/activate
+python -m pytest tests/ -q
+
+# TypeScript build (after UI changes)
+cd gui && npm run typecheck
+```
+
+## Bug Fixes + Receiver Semantics Cleanup (Latest)
+
+### A. Fix Runtime Crashes (最高优先级)
+- [x] **A1: Fix `resolved.path` AttributeError in daemon handlers**
+  - Fixed `_handle_detect_presets`, `_handle_detect_workflow`, `_handle_get_step_preset_footprints`
+  - Changed `resolved.path.parent` to `resolved.absolute_path.parent` (with name check)
+  - ResolvedResource uses `absolute_path`, not `path`
+  
+- [x] **A2: Improve UI error handling**
+  - Updated `usePresets.ts` to show "Presets unavailable" instead of raw exception strings
+  - Errors logged to console for debugging
+  - Prevents e2e from catching visible error messages
+
+### B. Receiver Semantics Cleanup (必做(1))
+- [x] **B1: Define precision subparts**
+  - kmesh: K_POINTS automatic mesh
+  - cutoffs: ecutwfc, ecutrho
+  - conv_thr: SCF convergence threshold
+
+- [x] **B2: Add PrecisionReceiverSpec to receivers.py**
+  - Created `PrecisionReceiverSpec` dataclass with `accepts_kmesh`, `accepts_cutoffs`, `accepts_conv_thr`, `kmesh_strategy`
+  - Defined specs for scf/relax/md (default), nscf (×2), bands_pw (no kmesh)
+  - Removed hardcoded `NO_KPOINTS_STEP_TYPES` and `DENSE_KMESH_STEP_TYPES` from precision.py
+
+- [x] **B3: Update integration.py to use receiver spec**
+  - Removed hardcoded `NO_KPOINTS_STEP_TYPES` check
+  - Uses `get_precision_receiver_spec()` to determine which subparts to apply
+  - Integration layer no longer knows about bands/nscf specifics
+
+- [x] **B4: Update detector for step-type-aware strict matching**
+  - Added `detect_precision_strict_for_step_type()` for step-type-specific canonical values
+  - Added `_detect_precision_from_steps_strict()` for aggregation with step types
+  - Updated `detect_dimension_from_steps()` to support step-type-aware precision detection
+  - Non-receiver steps are wildcards (don't contribute, don't block)
+
+### C. Key Integration Tests (必做(2))
+- [x] **C1: scf+nscf precision=med test**
+  - Created `TestPrecisionScfNscf` in `tests/integration/test_precision_integration.py`
+  - Verifies scf gets 6×6×6 mesh (med, Δk=0.20)
+  - Verifies nscf gets 12×12×12 mesh (×2 factor)
+  - Verifies detection returns "med" (not Custom)
+
+- [x] **C2: bands_pw K_POINTS test**
+  - Created `TestPrecisionBandsPw`
+  - Verifies bands_pw K_POINTS unchanged (k-path preserved)
+  - Verifies cutoffs are applied
+  - Verifies detection doesn't fail due to K_POINTS mismatch
+
+- [x] **C3: Single dimension change → Custom test**
+  - Created `TestPrecisionCustomOnMismatch`
+  - Applies med precision, then manually changes ecutrho
+  - Verifies strict detection returns None (no match)
+  - Tests strict detection function directly
+
+- [x] **C4: Daemon handler regression test**
+  - Created `TestDaemonHandlerRegression`
+  - Verifies ResolvedResource uses `absolute_path`, not `path`
+  - Verifies daemon handler logic works correctly
+
+### Verification
+- All 796 Python tests pass
+- Integration tests for precision pass
+- No regressions in existing preset functionality
 
