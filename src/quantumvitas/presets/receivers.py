@@ -24,6 +24,7 @@ from quantumvitas.presets.dimensions import (
     DIMENSION_SPIN,
     DIMENSION_SOC, 
     DIMENSION_MATERIAL,
+    DIMENSION_PRECISION,
 )
 
 
@@ -32,13 +33,22 @@ class PresetDimension(str, Enum):
     SPIN = DIMENSION_SPIN
     SOC = DIMENSION_SOC
     MATERIAL = DIMENSION_MATERIAL
+    PRECISION = DIMENSION_PRECISION
 
 
-# V0 preset dimensions (spin, soc, material)
+# V0 preset dimensions (spin, soc, material) - kept for backward compatibility
 V0_DIMENSIONS: FrozenSet[str] = frozenset({
     DIMENSION_SPIN,
     DIMENSION_SOC,
     DIMENSION_MATERIAL,
+})
+
+# V1 preset dimensions (spin, soc, material, precision)
+V1_DIMENSIONS: FrozenSet[str] = frozenset({
+    DIMENSION_SPIN,
+    DIMENSION_SOC,
+    DIMENSION_MATERIAL,
+    DIMENSION_PRECISION,
 })
 
 # Step types that accept v0 preset dimensions (QE pw.x-based calculations)
@@ -94,9 +104,9 @@ class PresetReceiverRegistry:
     
     def _initialize_defaults(self):
         """Initialize default step_type → dimensions mapping."""
-        # PW.x step types accept all v0 dimensions
+        # PW.x step types accept all v1 dimensions (including precision)
         for step_type in PW_STEP_TYPES:
-            self._registry[step_type] = V0_DIMENSIONS
+            self._registry[step_type] = V1_DIMENSIONS
         
         # Post-processing steps accept no presets
         for step_type in POST_PROCESSING_STEP_TYPES:

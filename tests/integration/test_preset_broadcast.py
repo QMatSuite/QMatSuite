@@ -30,6 +30,7 @@ from quantumvitas.presets.receivers import (
     PW_STEP_TYPES,
     POST_PROCESSING_STEP_TYPES,
     V0_DIMENSIONS,
+    V1_DIMENSIONS,
 )
 from quantumvitas.presets.detector import detect_spin, detect_soc, detect_material
 from quantumvitas.presets.dimensions import SpinOption, SOCOption, MaterialOption
@@ -38,13 +39,13 @@ from quantumvitas.presets.dimensions import SpinOption, SOCOption, MaterialOptio
 class TestReceiverRegistry:
     """Tests for the preset receiver registry (Phase 8A)."""
     
-    def test_pw_step_types_accept_v0_dimensions(self):
-        """Verify pw.x step types accept all v0 preset dimensions."""
+    def test_pw_step_types_accept_v1_dimensions(self):
+        """Verify pw.x step types accept all v1 preset dimensions (including precision)."""
         registry = get_receiver_registry()
         
         for step_type in PW_STEP_TYPES:
             accepted = registry.get_accepted_dimensions(step_type)
-            assert accepted == V0_DIMENSIONS, f"{step_type} should accept all v0 dimensions"
+            assert accepted == V1_DIMENSIONS, f"{step_type} should accept all v1 dimensions"
             assert is_receiver(step_type), f"{step_type} should be a receiver"
     
     def test_post_processing_step_types_accept_none(self):
@@ -103,7 +104,7 @@ class TestApplyPresetsToStep:
         step_file.write_text(yaml.safe_dump({
             "step_type": "scf",
             "parameters": {
-                "SYSTEM": {"ecutwfc": 40.0}
+                "SYSTEM": {"nbnd": 40}  # nbnd is not a preset param
             }
         }))
         
@@ -115,7 +116,7 @@ class TestApplyPresetsToStep:
         # Verify file was updated
         updated = yaml.safe_load(step_file.read_text())
         assert updated["parameters"]["SYSTEM"]["nspin"] == 2
-        assert updated["parameters"]["SYSTEM"]["ecutwfc"] == 40.0  # Preserved
+        assert updated["parameters"]["SYSTEM"]["nbnd"] == 40  # Preserved (not preset-related)
     
     def test_apply_to_non_receiver_step(self, temp_step_dir):
         """Apply presets to a non-receiver step (DOS) - should skip."""
