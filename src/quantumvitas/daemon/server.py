@@ -3555,41 +3555,35 @@ class QVDaemon:
         if precision_option:
             try:
                 from quantumvitas.presets.precision import PrecisionAdvisor
+                from quantumvitas.presets.precision_context import (
+                    resolve_precision_context,
+                    PrecisionContextError,
+                )
                 
-                # Load calculation.yaml for structure/species_map
-                calc_yaml = calculation_dir / "calculation.yaml"
-                if calc_yaml.exists():
-                    calc_content = yaml.safe_load(calc_yaml.read_text()) or {}
-                    species_map = calc_content.get("species_map", {})
-                    
-                    # Get structure for lattice matrix
-                    lattice_matrix = None
-                    structure_ref = calc_content.get("structure")
-                    if structure_ref:
-                        try:
-                            from quantumvitas.core.resolution import resolve_structure
-                            resolved_struct = resolve_structure(
-                                self._get_or_build_index(project_root),
-                                structure_ref
-                            )
-                            struct_yaml = resolved_struct.absolute_path
-                            if struct_yaml.exists():
-                                from pymatgen.core import Structure
-                                struct_content = yaml.safe_load(struct_yaml.read_text()) or {}
-                                # Try to get structure from CIF string or file
-                                cif_str = struct_content.get("cif_string")
-                                if cif_str:
-                                    structure = Structure.from_str(cif_str, fmt="cif")
-                                    lattice_matrix = [list(v) for v in structure.lattice.matrix]
-                        except Exception as e:
-                            self.logger.warning(f"Could not load structure for precision: {e}")
-                    
-                    precision_advisor = PrecisionAdvisor(
-                        species_map=species_map,
-                        lattice_matrix=lattice_matrix,
+                # Use unified resolver (single source of truth)
+                try:
+                    context = resolve_precision_context(
+                        calculation_dir=calculation_dir,
+                        project_root=project_root,
                     )
+                    precision_advisor = PrecisionAdvisor(
+                        species_map=context.species_map,
+                        lattice_matrix=context.lattice_matrix,
+                        repo_root=project_root,
+                    )
+                except PrecisionContextError as e:
+                    # Precision context resolution failed - this is an error, not a warning
+                    raise QVServiceError(
+                        f"Failed to resolve precision context: {e}"
+                    ) from e
+            except QVServiceError:
+                # Re-raise service errors
+                raise
             except Exception as e:
-                self.logger.warning(f"Could not create PrecisionAdvisor: {e}")
+                # Other errors should also be raised, not silently ignored
+                raise QVServiceError(
+                    f"Failed to create PrecisionAdvisor: {e}"
+                ) from e
         
         # Find all step files
         step_files = sorted(steps_dir.glob("*.step.yaml"))
@@ -3627,6 +3621,8 @@ class QVDaemon:
                         "step_type": step_type,
                         "status": "updated",
                         "applied_presets": list(result["filtered_options"].keys()),
+                        "updated_fields": result.get("updated_fields", []),
+                        "skipped_fields": result.get("skipped_fields", []),
                     })
                 else:
                     steps_skipped += 1
@@ -3635,6 +3631,8 @@ class QVDaemon:
                         "step_type": step_type,
                         "status": "skipped",
                         "reason": "non-receiver",
+                        "updated_fields": [],
+                        "skipped_fields": result.get("skipped_fields", ["non-receiver step"]),
                     })
                     
             except PresetCompilationError as e:
@@ -3646,6 +3644,8 @@ class QVDaemon:
                     "step_type": step_type if 'step_type' in dir() else "unknown",
                     "status": "error",
                     "reason": str(e),
+                    "updated_fields": [],
+                    "skipped_fields": [],
                 })
             except Exception as e:
                 self.logger.warning(f"Unexpected error applying presets to {step_name}: {e}")
@@ -3655,6 +3655,8 @@ class QVDaemon:
                     "step_type": "unknown",
                     "status": "error",
                     "reason": str(e),
+                    "updated_fields": [],
+                    "skipped_fields": [],
                 })
         
         # Return updated presets for the calculation

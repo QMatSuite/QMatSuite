@@ -14,7 +14,7 @@ Per Constitution Chapter 10:
 """
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 import yaml
 
 from quantumvitas.presets.dimensions import (
@@ -140,13 +140,15 @@ def _load_step_parameters(
                 continue
             
             parameters = content.get("parameters", {})
-            if parameters:
-                # Store step_type in params for step-type-aware detection
-                # (detector can access it via a special key)
-                step_params_list.append({
-                    **parameters,
-                    "_step_type": step_type,  # Internal metadata for detector
-                })
+            cards = content.get("cards", {})
+            if parameters or cards:
+                # Store both parameters and cards for detector
+                # (detector needs cards.K_POINTS for canonical format)
+                step_params = dict(parameters)
+                if cards:
+                    step_params["cards"] = cards
+                step_params["_step_type"] = step_type  # Internal metadata for detector
+                step_params_list.append(step_params)
         except Exception:
             # Skip malformed step files
             continue
@@ -158,7 +160,7 @@ def _load_step_parameters_with_types(
     calculation_dir: Path,
     *,
     receivers_only: bool = True,
-) -> List[tuple[Dict[str, Dict[str, Any]], str]]:
+) -> List[Tuple[Dict[str, Dict[str, Any]], str]]:
     """
     Load parameters from steps with step_type information.
     
@@ -189,8 +191,13 @@ def _load_step_parameters_with_types(
                 continue
             
             parameters = content.get("parameters", {})
-            if parameters:
-                result.append((parameters, step_type))
+            cards = content.get("cards", {})
+            if parameters or cards:
+                # Include both parameters and cards for detector
+                step_params = dict(parameters)
+                if cards:
+                    step_params["cards"] = cards
+                result.append((step_params, step_type))
         except Exception:
             continue
     
@@ -254,6 +261,8 @@ def apply_presets_to_step(
             "content": content,
             "accepted": False,
             "filtered_options": {},
+            "updated_fields": [],
+            "skipped_fields": ["non-receiver step"],
         }
     
     # Separate precision from other presets (it needs special handling)
@@ -263,7 +272,7 @@ def apply_presets_to_step(
     # Compile non-precision preset options
     compiled_system: Dict[str, Any] = {}
     compiled_electrons: Dict[str, Any] = {}
-    compiled_kpoints: Optional[Dict[str, Any]] = None
+    compiled_kpoints_card: Optional[Dict[str, Any]] = None
     
     if non_precision_options:
         compiled = compile_presets(non_precision_options, validate_physics=validate_physics)
@@ -289,7 +298,7 @@ def apply_presets_to_step(
             
             # Apply kmesh if accepted (receiver decides strategy)
             if precision_spec.accepts_kmesh and precision_spec.kmesh_strategy != "none":
-                compiled_kpoints = precision_compiled.get("K_POINTS")
+                compiled_kpoints_card = precision_compiled.get("K_POINTS_CARD")
     
     # Get existing params
     existing_system = dict(existing_params.get("SYSTEM", {}))
@@ -331,17 +340,43 @@ def apply_presets_to_step(
     if existing_electrons:
         content["parameters"]["ELECTRONS"] = existing_electrons
     
-    # Handle K_POINTS (special card, not namelist)
-    if compiled_kpoints is not None:
-        content["parameters"]["K_POINTS"] = compiled_kpoints
+    # Handle K_POINTS (QE kpoints are represented as cards.K_POINTS only)
+    if compiled_kpoints_card is not None:
+        if "cards" not in content:
+            content["cards"] = {}
+        content["cards"]["K_POINTS"] = compiled_kpoints_card
     
     # Write back
     step_path.write_text(yaml.safe_dump(content, default_flow_style=False, sort_keys=False))
+    
+    # Build updated_fields and skipped_fields lists for detailed feedback
+    updated_fields = []
+    skipped_fields = []
+    
+    if compiled_system:
+        updated_fields.extend(compiled_system.keys())
+    if compiled_electrons:
+        updated_fields.extend([f"ELECTRONS.{k}" for k in compiled_electrons.keys()])
+    if compiled_kpoints_card is not None:
+        updated_fields.append("K_POINTS")
+    
+    # Check if precision was applied but some subparts were skipped
+    if precision_option is not None and precision_advice is not None:
+        precision_spec = get_precision_receiver_spec(step_type)
+        if precision_spec:
+            if not precision_spec.accepts_kmesh and precision_spec.kmesh_strategy == "none":
+                skipped_fields.append("K_POINTS: kpath preserved")
+            if not precision_spec.accepts_cutoffs:
+                skipped_fields.append("ecutwfc/ecutrho: not accepted by step type")
+            if not precision_spec.accepts_conv_thr:
+                skipped_fields.append("conv_thr: not accepted by step type")
     
     return {
         "content": content,
         "accepted": True,
         "filtered_options": filtered_options,
+        "updated_fields": updated_fields,
+        "skipped_fields": skipped_fields,
     }
 
 
@@ -362,9 +397,12 @@ def get_step_preset_params(step_path: Path) -> Dict[str, Dict[str, Any]]:
     
     content = yaml.safe_load(step_path.read_text()) or {}
     parameters = content.get("parameters", {})
+    cards = content.get("cards", {})
     system = parameters.get("SYSTEM", {})
     electrons = parameters.get("ELECTRONS", {})
-    kpoints = parameters.get("K_POINTS", {})
+    
+    # QE kpoints are represented as cards.K_POINTS only
+    kpoints = cards.get("K_POINTS", {})
     
     # Extract only preset-related params
     SYSTEM_PRESET_PARAMS = {
@@ -435,9 +473,12 @@ def get_step_preset_footprints(calculation_dir: Path) -> Dict[str, Dict[str, Any
         try:
             content = yaml.safe_load(step_file.read_text()) or {}
             parameters = content.get("parameters", {})
+            cards = content.get("cards", {})
             system = parameters.get("SYSTEM", {})
             electrons = parameters.get("ELECTRONS", {})
-            kpoints = parameters.get("K_POINTS", {})
+            
+            # QE kpoints are represented as cards.K_POINTS only
+            kpoints = cards.get("K_POINTS", {})
             
             # Extract preset-related params (for UI display)
             SYSTEM_PRESET_PARAMS = {
@@ -459,10 +500,25 @@ def get_step_preset_footprints(calculation_dir: Path) -> Dict[str, Dict[str, Any
                     preset_params[k] = v
             
             # Add k-mesh summary if present
-            if isinstance(kpoints, dict) and "mesh" in kpoints:
-                mesh = kpoints["mesh"]
-                if isinstance(mesh, (list, tuple)) and len(mesh) >= 3:
-                    preset_params["kmesh"] = f"{mesh[0]}×{mesh[1]}×{mesh[2]}"
+            # QE kpoints are represented as cards.K_POINTS = {"option": "automatic", "data": [[nk1, nk2, nk3, ...]]}
+            if isinstance(kpoints, dict) and "data" in kpoints and kpoints.get("option", "").lower() == "automatic":
+                data = kpoints.get("data", [])
+                if data and isinstance(data, list) and len(data) > 0:
+                    mesh_row = data[0]
+                    if isinstance(mesh_row, (list, tuple)) and len(mesh_row) >= 3:
+                        preset_params["kmesh"] = f"{mesh_row[0]}×{mesh_row[1]}×{mesh_row[2]}"
+            
+            # Format ecutwfc/ecutrho for display (round to integer)
+            if "ecutwfc" in preset_params:
+                try:
+                    preset_params["ecutwfc"] = round(float(preset_params["ecutwfc"]))
+                except (ValueError, TypeError):
+                    pass
+            if "ecutrho" in preset_params:
+                try:
+                    preset_params["ecutrho"] = round(float(preset_params["ecutrho"]))
+                except (ValueError, TypeError):
+                    pass
             
             # Detect preset values for this step
             spin_val = detect_spin(parameters)
