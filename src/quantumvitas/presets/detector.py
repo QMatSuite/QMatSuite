@@ -22,11 +22,14 @@ from quantumvitas.presets.dimensions import (
     SpinOption,
     SOCOption,
     MaterialOption,
+    PrecisionOption,
     CUSTOM,
     DIMENSION_SPIN,
     DIMENSION_SOC,
     DIMENSION_MATERIAL,
+    DIMENSION_PRECISION,
     V0_DIMENSIONS,
+    V1_DIMENSIONS,
     _CustomType,
 )
 
@@ -214,16 +217,211 @@ def detect_material(params: Dict[str, Dict[str, Any]]) -> MaterialOption:
     return MaterialOption.INSULATOR
 
 
+def _get_electrons_param(
+    params: Dict[str, Dict[str, Any]],
+    key: str,
+    default: Any = None,
+) -> Any:
+    """
+    Get a parameter from the ELECTRONS namelist (case-insensitive).
+    """
+    electrons = params.get("ELECTRONS") or params.get("electrons") or {}
+    
+    if key in electrons:
+        return electrons[key]
+    if key.lower() in electrons:
+        return electrons[key.lower()]
+    
+    for k, v in electrons.items():
+        if k.lower() == key.lower():
+            return v
+    
+    return default
+
+
+def _get_kpoints_mesh(params: Dict[str, Dict[str, Any]]) -> Optional[Tuple[int, int, int, int, int, int]]:
+    """
+    Extract K_POINTS automatic mesh from parameters.
+    
+    Returns:
+        Tuple of (nk1, nk2, nk3, sk1, sk2, sk3) or None if not automatic mesh.
+    """
+    kpoints = params.get("K_POINTS") or params.get("k_points") or {}
+    
+    # Check if it's automatic type
+    kp_type = kpoints.get("type", "").lower()
+    if kp_type != "automatic":
+        return None
+    
+    mesh = kpoints.get("mesh")
+    if not mesh or not isinstance(mesh, (list, tuple)) or len(mesh) < 3:
+        return None
+    
+    # Extract nk and shifts
+    nk1 = int(mesh[0]) if len(mesh) > 0 else 1
+    nk2 = int(mesh[1]) if len(mesh) > 1 else 1
+    nk3 = int(mesh[2]) if len(mesh) > 2 else 1
+    sk1 = int(mesh[3]) if len(mesh) > 3 else 0
+    sk2 = int(mesh[4]) if len(mesh) > 4 else 0
+    sk3 = int(mesh[5]) if len(mesh) > 5 else 0
+    
+    return (nk1, nk2, nk3, sk1, sk2, sk3)
+
+
+def _parse_float(value: Any, default: float = 0.0) -> float:
+    """Parse a QE float value."""
+    if value is None:
+        return default
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            # Handle Fortran-style exponents (1d-8 -> 1e-8)
+            value = value.lower().replace('d', 'e')
+            return float(value)
+        except ValueError:
+            return default
+    return default
+
+
+def _parse_int(value: Any, default: int = 0) -> int:
+    """Parse a QE integer value."""
+    if value is None:
+        return default
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(round(value))
+    if isinstance(value, str):
+        try:
+            return int(float(value))
+        except ValueError:
+            return default
+    return default
+
+
+def detect_precision(params: Dict[str, Dict[str, Any]]) -> PrecisionOption:
+    """
+    Detect precision level from step parameters (simple heuristic).
+    
+    This is a fallback detection based only on conv_thr when structure
+    info is not available. For strict detection, use detect_precision_strict().
+    
+    Detection logic (based on conv_thr ranges):
+    - conv_thr >= 5e-7 (loose) → LOW
+    - 5e-9 <= conv_thr < 5e-7 → MED
+    - conv_thr < 5e-9 (tight) → HIGH
+    
+    Args:
+        params: Step parameters dict with section -> params structure
+        
+    Returns:
+        Detected PrecisionOption (heuristic, may not be exact)
+    """
+    conv_thr = _get_electrons_param(params, "conv_thr")
+    
+    if conv_thr is None:
+        # QE default is 1e-6, which corresponds to LOW
+        # But we're generous and return MED if unspecified
+        return PrecisionOption.MED
+    
+    conv_thr_val = _parse_float(conv_thr, 1e-6)
+    
+    # Classification based on conv_thr ranges
+    if conv_thr_val >= 5e-7:
+        return PrecisionOption.LOW
+    elif conv_thr_val >= 5e-9:
+        return PrecisionOption.MED
+    else:
+        return PrecisionOption.HIGH
+
+
+def detect_precision_strict(
+    params: Dict[str, Dict[str, Any]],
+    lattice_matrix: List[List[float]],
+    base_ecutwfc: float,
+    base_ecutrho: float,
+) -> Optional[PrecisionOption]:
+    """
+    Detect precision level with strict 3-way matching.
+    
+    Checks all three aspects for each level:
+    1. conv_thr matches canonical value (within abs_tol)
+    2. K_POINTS automatic mesh matches canonical computed mesh
+    3. ecutwfc AND ecutrho match canonical integer-rounded values
+    
+    Args:
+        params: Step parameters dict
+        lattice_matrix: 3x3 lattice vectors in Angstrom
+        base_ecutwfc: Base ecutwfc from pseudos (before multiplier)
+        base_ecutrho: Base ecutrho from pseudos (before multiplier)
+        
+    Returns:
+        PrecisionOption if all aspects match a level, None otherwise
+    """
+    from quantumvitas.presets.precision import (
+        PRECISION_CONSTANTS,
+        CONV_THR_ABS_TOL,
+        compute_kmesh,
+        round_cutoff_integer,
+    )
+    
+    # Extract actual values from params
+    actual_conv_thr = _parse_float(_get_electrons_param(params, "conv_thr"), None)
+    actual_ecutwfc = _parse_int(_get_system_param(params, "ecutwfc"), None)
+    actual_ecutrho = _parse_int(_get_system_param(params, "ecutrho"), None)
+    actual_kmesh = _get_kpoints_mesh(params)
+    
+    # If essential params are missing, can't do strict match
+    if actual_conv_thr is None or actual_ecutwfc is None or actual_ecutrho is None:
+        return None
+    if actual_kmesh is None:
+        return None
+    
+    actual_nk1, actual_nk2, actual_nk3, actual_sk1, actual_sk2, actual_sk3 = actual_kmesh
+    
+    # Check each precision level
+    for level, constants in PRECISION_CONSTANTS.items():
+        # Compute canonical values for this level
+        canonical_conv_thr = constants.conv_thr
+        canonical_ecutwfc = round_cutoff_integer(base_ecutwfc * constants.cutoff_multiplier)
+        canonical_ecutrho = round_cutoff_integer(base_ecutrho * constants.cutoff_multiplier)
+        
+        nk1, nk2, nk3, sk1, sk2, sk3 = compute_kmesh(lattice_matrix, constants.delta_k)
+        
+        # Check conv_thr (with tolerance)
+        if abs(actual_conv_thr - canonical_conv_thr) > CONV_THR_ABS_TOL:
+            continue
+        
+        # Check cutoffs (exact integer match)
+        if actual_ecutwfc != canonical_ecutwfc:
+            continue
+        if actual_ecutrho != canonical_ecutrho:
+            continue
+        
+        # Check k-mesh (exact match)
+        if (actual_nk1, actual_nk2, actual_nk3) != (nk1, nk2, nk3):
+            continue
+        if (actual_sk1, actual_sk2, actual_sk3) != (sk1, sk2, sk3):
+            continue
+        
+        # All checks passed for this level
+        return level
+    
+    # No level matched
+    return None
+
+
 def _detect_dimension(
     params: Dict[str, Dict[str, Any]],
     dimension: str,
-) -> Union[SpinOption, SOCOption, MaterialOption]:
+) -> Union[SpinOption, SOCOption, MaterialOption, PrecisionOption]:
     """
     Detect a single dimension value from step parameters.
     
     Args:
         params: Step parameters dict
-        dimension: Dimension name (spin, soc, material)
+        dimension: Dimension name (spin, soc, material, precision)
         
     Returns:
         Detected value for the dimension
@@ -237,6 +435,8 @@ def _detect_dimension(
         return detect_soc(params)
     elif dimension == DIMENSION_MATERIAL:
         return detect_material(params)
+    elif dimension == DIMENSION_PRECISION:
+        return detect_precision(params)
     else:
         raise ValueError(f"Unknown preset dimension: {dimension}")
 
@@ -244,7 +444,7 @@ def _detect_dimension(
 def detect_dimension_from_steps(
     steps: List[Dict[str, Dict[str, Any]]],
     dimension: str,
-) -> Union[SpinOption, SOCOption, MaterialOption, _CustomType]:
+) -> Union[SpinOption, SOCOption, MaterialOption, PrecisionOption, _CustomType]:
     """
     Detect a preset dimension value aggregated across multiple steps.
     
@@ -280,9 +480,11 @@ def detect_dimension_from_steps(
 
 def detect_all_presets(
     steps: List[Dict[str, Dict[str, Any]]],
-) -> Dict[str, Union[SpinOption, SOCOption, MaterialOption, _CustomType]]:
+    *,
+    include_precision: bool = True,
+) -> Dict[str, Union[SpinOption, SOCOption, MaterialOption, PrecisionOption, _CustomType]]:
     """
-    Detect all v0 preset dimensions from a list of steps.
+    Detect all preset dimensions from a list of steps.
     
     This is the main entry point for Detector B. It returns the detected
     value for each dimension, aggregated across all steps.
@@ -292,6 +494,7 @@ def detect_all_presets(
     
     Args:
         steps: List of step parameters dicts (section -> params)
+        include_precision: If True (default), include precision dimension
         
     Returns:
         Dict mapping dimension name to detected value (or CUSTOM)
@@ -299,17 +502,20 @@ def detect_all_presets(
     Example:
         >>> steps = [{"SYSTEM": {"nspin": 2}}]
         >>> detect_all_presets(steps)
-        {"spin": SpinOption.COLLINEAR, "soc": SOCOption.NO_SOC, "material": MaterialOption.INSULATOR}
+        {"spin": SpinOption.COLLINEAR, "soc": SOCOption.NO_SOC, "material": MaterialOption.INSULATOR, "precision": PrecisionOption.MED}
     """
+    dimensions = V1_DIMENSIONS if include_precision else V0_DIMENSIONS
     result = {}
-    for dimension in V0_DIMENSIONS:
+    for dimension in dimensions:
         result[dimension] = detect_dimension_from_steps(steps, dimension)
     return result
 
 
 def detect_presets_from_step_specs(
     step_specs: List[Any],
-) -> Dict[str, Union[SpinOption, SOCOption, MaterialOption, _CustomType]]:
+    *,
+    include_precision: bool = True,
+) -> Dict[str, Union[SpinOption, SOCOption, MaterialOption, PrecisionOption, _CustomType]]:
     """
     Convenience function to detect presets from StructureStepSpec objects.
     
@@ -317,6 +523,7 @@ def detect_presets_from_step_specs(
     
     Args:
         step_specs: List of StructureStepSpec objects
+        include_precision: If True (default), include precision dimension
         
     Returns:
         Dict mapping dimension name to detected value (or CUSTOM)
@@ -332,5 +539,5 @@ def detect_presets_from_step_specs(
         else:
             steps_params.append({})
     
-    return detect_all_presets(steps_params)
+    return detect_all_presets(steps_params, include_precision=include_precision)
 

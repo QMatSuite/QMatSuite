@@ -21,10 +21,12 @@ from quantumvitas.presets.dimensions import (
     SpinOption,
     SOCOption,
     MaterialOption,
+    PrecisionOption,
     CUSTOM,
     DIMENSION_SPIN,
     DIMENSION_SOC,
     DIMENSION_MATERIAL,
+    DIMENSION_PRECISION,
     _CustomType,
 )
 from quantumvitas.presets.detector import detect_all_presets
@@ -146,6 +148,7 @@ def apply_presets_to_step(
     options: Dict[str, Any],
     *,
     validate_physics: bool = True,
+    precision_advice: Optional[Any] = None,  # PrecisionAdvice object
 ) -> Dict[str, Any]:
     """
     Apply preset options to an existing step.
@@ -160,8 +163,10 @@ def apply_presets_to_step(
     Args:
         step_path: Path to step.yaml file
         options: Preset options dict with dimension keys
-            {"spin": "collinear", "soc": "no_soc", "material": "metal"}
+            {"spin": "collinear", "soc": "no_soc", "material": "metal", "precision": "med"}
         validate_physics: If True, validate physics constraints
+        precision_advice: Optional PrecisionAdvice for precision preset
+            (required if "precision" is in options)
         
     Returns:
         Dict with:
@@ -174,6 +179,7 @@ def apply_presets_to_step(
         FileNotFoundError: If step file doesn't exist
     """
     from quantumvitas.presets.receivers import filter_presets_for_step
+    from quantumvitas.presets.compiler import compile_precision_from_advice
     
     step_path = Path(step_path).resolve()
     
@@ -196,34 +202,69 @@ def apply_presets_to_step(
             "filtered_options": {},
         }
     
-    # Compile preset options (only the filtered ones)
-    compiled = compile_presets(filtered_options, validate_physics=validate_physics)
-    compiled_system = compiled.get("SYSTEM", {})
+    # Separate precision from other presets (it needs special handling)
+    non_precision_options = {k: v for k, v in filtered_options.items() if k != DIMENSION_PRECISION}
+    precision_option = filtered_options.get(DIMENSION_PRECISION)
     
-    # Get existing SYSTEM params
+    # Compile non-precision preset options
+    compiled_system: Dict[str, Any] = {}
+    compiled_electrons: Dict[str, Any] = {}
+    compiled_kpoints: Optional[Dict[str, Any]] = None
+    
+    if non_precision_options:
+        compiled = compile_presets(non_precision_options, validate_physics=validate_physics)
+        compiled_system = compiled.get("SYSTEM", {})
+    
+    # Handle precision preset separately (requires pre-computed advice)
+    if precision_option is not None and precision_advice is not None:
+        precision_compiled = compile_precision_from_advice(precision_advice)
+        compiled_system.update(precision_compiled.get("SYSTEM", {}))
+        compiled_electrons.update(precision_compiled.get("ELECTRONS", {}))
+        compiled_kpoints = precision_compiled.get("K_POINTS")
+    
+    # Get existing params
     existing_system = dict(existing_params.get("SYSTEM", {}))
+    existing_electrons = dict(existing_params.get("ELECTRONS", {}))
     
     # Define preset-related parameters (to be overwritten)
-    PRESET_PARAMS = {
+    SYSTEM_PRESET_PARAMS = {
         # Spin
         "nspin", "noncolin",
         # SOC
         "lspinorb",
         # Material
         "occupations", "smearing", "degauss",
+        # Precision (cutoffs)
+        "ecutwfc", "ecutrho",
+    }
+    
+    ELECTRONS_PRESET_PARAMS = {
+        # Precision (convergence)
+        "conv_thr",
     }
     
     # Remove existing preset params, then add compiled ones
-    for param in PRESET_PARAMS:
+    for param in SYSTEM_PRESET_PARAMS:
         existing_system.pop(param, None)
+    for param in ELECTRONS_PRESET_PARAMS:
+        existing_electrons.pop(param, None)
     
     # Add compiled params
     existing_system.update(compiled_system)
+    existing_electrons.update(compiled_electrons)
     
     # Update content
     if "parameters" not in content:
         content["parameters"] = {}
-    content["parameters"]["SYSTEM"] = existing_system
+    
+    if existing_system:
+        content["parameters"]["SYSTEM"] = existing_system
+    if existing_electrons:
+        content["parameters"]["ELECTRONS"] = existing_electrons
+    
+    # Handle K_POINTS (special card, not namelist)
+    if compiled_kpoints is not None:
+        content["parameters"]["K_POINTS"] = compiled_kpoints
     
     # Write back
     step_path.write_text(yaml.safe_dump(content, default_flow_style=False, sort_keys=False))
@@ -243,7 +284,7 @@ def get_step_preset_params(step_path: Path) -> Dict[str, Dict[str, Any]]:
         step_path: Path to step.yaml file
         
     Returns:
-        Dict with SYSTEM -> preset params
+        Dict with SYSTEM, ELECTRONS, K_POINTS -> preset params
     """
     step_path = Path(step_path).resolve()
     
@@ -253,18 +294,35 @@ def get_step_preset_params(step_path: Path) -> Dict[str, Dict[str, Any]]:
     content = yaml.safe_load(step_path.read_text()) or {}
     parameters = content.get("parameters", {})
     system = parameters.get("SYSTEM", {})
+    electrons = parameters.get("ELECTRONS", {})
+    kpoints = parameters.get("K_POINTS", {})
     
     # Extract only preset-related params
-    PRESET_PARAMS = {
+    SYSTEM_PRESET_PARAMS = {
         "nspin", "noncolin", "lspinorb",
         "occupations", "smearing", "degauss",
+        "ecutwfc", "ecutrho",  # Precision
     }
     
-    preset_system = {k: v for k, v in system.items() if k.lower() in PRESET_PARAMS}
+    ELECTRONS_PRESET_PARAMS = {
+        "conv_thr",  # Precision
+    }
     
+    result = {}
+    
+    preset_system = {k: v for k, v in system.items() if k.lower() in SYSTEM_PRESET_PARAMS}
     if preset_system:
-        return {"SYSTEM": preset_system}
-    return {}
+        result["SYSTEM"] = preset_system
+    
+    preset_electrons = {k: v for k, v in electrons.items() if k.lower() in ELECTRONS_PRESET_PARAMS}
+    if preset_electrons:
+        result["ELECTRONS"] = preset_electrons
+    
+    # Include K_POINTS if present
+    if kpoints:
+        result["K_POINTS"] = kpoints
+    
+    return result
 
 
 def get_step_preset_footprints(calculation_dir: Path) -> Dict[str, Dict[str, Any]]:
@@ -281,14 +339,17 @@ def get_step_preset_footprints(calculation_dir: Path) -> Dict[str, Dict[str, Any
         Dict mapping step_file name to footprint data:
         {
             "1_scf.step.yaml": {
-                "params": {"nspin": 2, "occupations": "smearing"},
+                "params": {"nspin": 2, "occupations": "smearing", "ecutwfc": 60.0, ...},
                 "spin": "collinear",
-                "material": "metal"
+                "material": "metal",
+                "precision": "med"
             },
             ...
         }
     """
-    from quantumvitas.presets.detector import detect_spin, detect_soc, detect_material
+    from quantumvitas.presets.detector import (
+        detect_spin, detect_soc, detect_material, detect_precision
+    )
     
     calculation_dir = Path(calculation_dir).resolve()
     steps_dir = calculation_dir / "steps"
@@ -306,21 +367,46 @@ def get_step_preset_footprints(calculation_dir: Path) -> Dict[str, Dict[str, Any
             content = yaml.safe_load(step_file.read_text()) or {}
             parameters = content.get("parameters", {})
             system = parameters.get("SYSTEM", {})
+            electrons = parameters.get("ELECTRONS", {})
+            kpoints = parameters.get("K_POINTS", {})
             
-            # Extract preset-related params
-            PRESET_PARAMS = {
+            # Extract preset-related params (for UI display)
+            SYSTEM_PRESET_PARAMS = {
                 "nspin", "noncolin", "lspinorb",
                 "occupations", "smearing", "degauss",
+                "ecutwfc", "ecutrho",  # Precision
             }
             
-            preset_system = {k: v for k, v in system.items() if k.lower() in PRESET_PARAMS}
+            ELECTRONS_PRESET_PARAMS = {
+                "conv_thr",  # Precision
+            }
+            
+            preset_params = {}
+            for k, v in system.items():
+                if k.lower() in SYSTEM_PRESET_PARAMS:
+                    preset_params[k] = v
+            for k, v in electrons.items():
+                if k.lower() in ELECTRONS_PRESET_PARAMS:
+                    preset_params[k] = v
+            
+            # Add k-mesh summary if present
+            if isinstance(kpoints, dict) and "mesh" in kpoints:
+                mesh = kpoints["mesh"]
+                if isinstance(mesh, (list, tuple)) and len(mesh) >= 3:
+                    preset_params["kmesh"] = f"{mesh[0]}×{mesh[1]}×{mesh[2]}"
             
             # Detect preset values for this step
+            spin_val = detect_spin(parameters)
+            soc_val = detect_soc(parameters)
+            material_val = detect_material(parameters)
+            precision_val = detect_precision(parameters)
+            
             footprint = {
-                "params": preset_system,
-                "spin": detect_spin(parameters).value if hasattr(detect_spin(parameters), 'value') else str(detect_spin(parameters)),
-                "soc": detect_soc(parameters).value if hasattr(detect_soc(parameters), 'value') else str(detect_soc(parameters)),
-                "material": detect_material(parameters).value if hasattr(detect_material(parameters), 'value') else str(detect_material(parameters)),
+                "params": preset_params,
+                "spin": spin_val.value if hasattr(spin_val, 'value') else str(spin_val),
+                "soc": soc_val.value if hasattr(soc_val, 'value') else str(soc_val),
+                "material": material_val.value if hasattr(material_val, 'value') else str(material_val),
+                "precision": precision_val.value if hasattr(precision_val, 'value') else str(precision_val),
             }
             
             footprints[step_file.name] = footprint

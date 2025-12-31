@@ -26,9 +26,11 @@ from quantumvitas.presets.dimensions import (
     SpinOption,
     SOCOption,
     MaterialOption,
+    PrecisionOption,
     DIMENSION_SPIN,
     DIMENSION_SOC,
     DIMENSION_MATERIAL,
+    DIMENSION_PRECISION,
 )
 
 
@@ -142,6 +144,100 @@ def compile_material(option: MaterialOption) -> Dict[str, Any]:
     
     else:
         raise ValueError(f"Unknown material option: {option}")
+
+
+def compile_precision(
+    option: PrecisionOption,
+    *,
+    ecutwfc: Optional[float] = None,
+    ecutrho: Optional[float] = None,
+    conv_thr: Optional[float] = None,
+    nk1: Optional[int] = None,
+    nk2: Optional[int] = None,
+    nk3: Optional[int] = None,
+    sk1: int = 0,
+    sk2: int = 0,
+    sk3: int = 0,
+) -> Dict[str, Any]:
+    """
+    Compile precision preset option to QE parameters.
+    
+    This function requires pre-computed values from PrecisionAdvisor.
+    The advisor uses structure + pseudo info to compute actual values.
+    
+    Per Constitution §10.3.4 (Canonical Encoding):
+    - Explicitly write ecutwfc, ecutrho, conv_thr
+    - Write K_POINTS automatic with computed mesh
+    
+    Args:
+        option: PrecisionOption value (LOW, MED, HIGH)
+        ecutwfc: Plane-wave cutoff in Ry (required)
+        ecutrho: Charge density cutoff in Ry (required)
+        conv_thr: SCF convergence threshold (required)
+        nk1, nk2, nk3: K-point mesh divisions (required)
+        sk1, sk2, sk3: K-point mesh shifts (default 0)
+        
+    Returns:
+        Dict with SYSTEM params and K_POINTS card data
+        
+    Raises:
+        PresetCompilationError: If required values not provided
+    """
+    # Validate required parameters
+    if ecutwfc is None or ecutrho is None or conv_thr is None:
+        raise PresetCompilationError(
+            f"Precision preset compilation requires ecutwfc, ecutrho, and conv_thr. "
+            f"Use PrecisionAdvisor to compute these from structure and pseudos."
+        )
+    
+    if nk1 is None or nk2 is None or nk3 is None:
+        raise PresetCompilationError(
+            f"Precision preset compilation requires k-mesh (nk1, nk2, nk3). "
+            f"Use PrecisionAdvisor to compute these from structure."
+        )
+    
+    return {
+        "SYSTEM": {
+            "ecutwfc": ecutwfc,
+            "ecutrho": ecutrho,
+        },
+        "ELECTRONS": {
+            "conv_thr": conv_thr,
+        },
+        "K_POINTS": {
+            "type": "automatic",
+            "mesh": [nk1, nk2, nk3, sk1, sk2, sk3],
+        },
+    }
+
+
+def compile_precision_from_advice(advice: "PrecisionAdvice") -> Dict[str, Any]:
+    """
+    Compile precision preset from PrecisionAdvice object.
+    
+    Convenience wrapper around compile_precision.
+    
+    Args:
+        advice: PrecisionAdvice from PrecisionAdvisor
+        
+    Returns:
+        Dict with SYSTEM params and K_POINTS card data
+    """
+    # Import here to avoid circular import
+    from quantumvitas.presets.precision import PrecisionAdvice
+    
+    return compile_precision(
+        advice.precision,
+        ecutwfc=advice.ecutwfc,
+        ecutrho=advice.ecutrho,
+        conv_thr=advice.conv_thr,
+        nk1=advice.nk1,
+        nk2=advice.nk2,
+        nk3=advice.nk3,
+        sk1=advice.sk1,
+        sk2=advice.sk2,
+        sk3=advice.sk3,
+    )
 
 
 def compile_presets(

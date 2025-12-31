@@ -56,6 +56,25 @@ class MaterialOption(str, Enum):
     METAL = "metal"
 
 
+class PrecisionOption(str, Enum):
+    """
+    Precision level options for computational accuracy.
+    
+    Physical meaning:
+    - LOW: Quick screening, coarse k-mesh, relaxed convergence
+    - MED: Production quality, balanced accuracy/cost
+    - HIGH: High accuracy for forces, phonons, fine energy differences
+    
+    This affects:
+    - K_POINTS mesh density (nk1, nk2, nk3)
+    - ecutwfc, ecutrho (plane-wave cutoffs)
+    - conv_thr (SCF convergence threshold)
+    """
+    LOW = "low"
+    MED = "med"
+    HIGH = "high"
+
+
 class _CustomType:
     """
     Singleton marker for heterogeneous preset values across steps.
@@ -92,11 +111,20 @@ CUSTOM: Final[_CustomType] = _CustomType()
 DIMENSION_SPIN: Final[str] = "spin"
 DIMENSION_SOC: Final[str] = "soc"
 DIMENSION_MATERIAL: Final[str] = "material"
+DIMENSION_PRECISION: Final[str] = "precision"
 
-# All v0 dimensions
+# v0 dimensions (spin, soc, material)
 V0_DIMENSIONS: Final[tuple[str, ...]] = (
     DIMENSION_SPIN,
     DIMENSION_SOC,
     DIMENSION_MATERIAL,
+)
+
+# v1 dimensions (v0 + precision)
+V1_DIMENSIONS: Final[tuple[str, ...]] = (
+    DIMENSION_SPIN,
+    DIMENSION_SOC,
+    DIMENSION_MATERIAL,
+    DIMENSION_PRECISION,
 )
 
