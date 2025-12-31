@@ -1837,6 +1837,8 @@ export interface StepApplyResult {
   status: 'updated' | 'skipped' | 'error';
   applied_presets?: string[];  // List of dimension names applied (e.g., ['spin', 'soc'])
   reason?: string;  // For skipped/error: why it was skipped
+  updated_fields?: string[];  // List of fields that were updated (e.g., ['ecutwfc', 'ecutrho', 'K_POINTS'])
+  skipped_fields?: string[];  // List of fields that were skipped with reasons (e.g., ['K_POINTS: kpath preserved'])
 }
 
 /** Apply presets to calculation result (BROADCAST) */

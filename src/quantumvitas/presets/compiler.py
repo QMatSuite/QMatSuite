@@ -196,6 +196,8 @@ def compile_precision(
             f"Use PrecisionAdvisor to compute these from structure."
         )
     
+    # Return K_POINTS in cards format (canonical)
+    # Format: {"option": "automatic", "data": [[nk1, nk2, nk3, sk1, sk2, sk3]]}
     return {
         "SYSTEM": {
             "ecutwfc": ecutwfc,
@@ -204,9 +206,9 @@ def compile_precision(
         "ELECTRONS": {
             "conv_thr": conv_thr,
         },
-        "K_POINTS": {
-            "type": "automatic",
-            "mesh": [nk1, nk2, nk3, sk1, sk2, sk3],
+        "K_POINTS_CARD": {
+            "option": "automatic",
+            "data": [[nk1, nk2, nk3, sk1, sk2, sk3]],
         },
     }
 

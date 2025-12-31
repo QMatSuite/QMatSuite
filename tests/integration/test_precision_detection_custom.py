@@ -25,15 +25,45 @@ class TestPrecisionDetectionCustom:
     def temp_calc_dir(self):
         """Create a temporary calculation directory."""
         temp_dir = tempfile.mkdtemp()
-        calc_dir = Path(temp_dir) / "test_calc"
-        calc_dir.mkdir()
+        project_root = Path(temp_dir) / "test_project"
+        project_root.mkdir()
+        calc_dir = project_root / "calculations" / "test_calc"
+        calc_dir.mkdir(parents=True)
         steps_dir = calc_dir / "steps"
         steps_dir.mkdir()
+        
+        # Create project.qv.yml
+        project_qv_yml = project_root / "project.qv.yml"
+        project_qv_yml.write_text(yaml.safe_dump({
+            "name": "Test Project",
+            "version": "1.0",
+        }))
+        
+        # Create structure
+        structures_dir = project_root / "structures"
+        structures_dir.mkdir(exist_ok=True)
+        from pymatgen.core import Structure, Lattice
+        structure = Structure(
+            lattice=Lattice.cubic(5.43),
+            species=["Si", "Si"],
+            coords=[[0, 0, 0], [0.25, 0.25, 0.25]],
+        )
+        structure_file = structures_dir / "test_structure.json"
+        import json
+        from quantumvitas.io.structure_io import STRUCTURE_META_KEY
+        struct_dict = structure.as_dict()
+        struct_dict[STRUCTURE_META_KEY] = {
+            "id": "test_structure",
+            "name": "test_structure",
+            "slug": "test_structure",
+        }
+        structure_file.write_text(json.dumps(struct_dict))
         
         # Create calculation.yaml
         calc_yaml = calc_dir / "calculation.yaml"
         calc_yaml.write_text(yaml.safe_dump({
             "name": "Test Calculation",
+            "structure_id": "test_structure",
             "species_map": {
                 "Si": {
                     "pseudo_sha256": "test_sha",
@@ -53,11 +83,7 @@ class TestPrecisionDetectionCustom:
         si_lattice = Lattice.cubic(5.43)
         si_structure = Structure(si_lattice, ["Si", "Si"], [[0, 0, 0], [0.25, 0.25, 0.25]])
         
-        # Update calculation.yaml with structure_id
-        calc_yaml = temp_calc_dir / "calculation.yaml"
-        calc_data = yaml.safe_load(calc_yaml.read_text())
-        calc_data["structure_id"] = "test_structure_ulid"
-        calc_yaml.write_text(yaml.safe_dump(calc_data))
+        # calculation.yaml already has structure_id="test_structure" from fixture
         
         # Create scf step
         scf_step = temp_calc_dir / "steps" / "scf.step.yaml"
@@ -78,37 +104,19 @@ class TestPrecisionDetectionCustom:
             precision_advice=precision_advice,
         )
         
-        # Mock CalculationModel.load to return structure
-        from unittest.mock import patch
-        from quantumvitas.core.models import load_calculation
+        # Verify initial detection is med (no need to mock - unified resolver handles it)
+        detected = detect_presets_from_calculation(temp_calc_dir)
+        assert detected["precision"] == "med", f"Expected 'med', got {detected.get('precision')}"
         
-        mock_model = CalculationModel(
-            meta=ResourceMeta(
-                id="test_calc",
-                name="Test Calculation",
-                slug="test-calc",
-                kind="calculation",  # type: ignore
-                path="calculations/test_calc/calculation.yaml",
-            ),
-            species_map=species_map,
-        )
-        mock_model.structure = si_structure  # type: ignore
+        # Manually change ecutrho (+1) - this should break strict match
+        scf_content = yaml.safe_load(scf_step.read_text())
+        original_ecutrho = scf_content["parameters"]["SYSTEM"]["ecutrho"]
+        scf_content["parameters"]["SYSTEM"]["ecutrho"] = original_ecutrho + 1
+        scf_step.write_text(yaml.safe_dump(scf_content))
         
-        # Patch load_calculation where it's imported in detector
-        with patch('quantumvitas.core.models.load_calculation', return_value=mock_model):
-            # Verify initial detection is med
-            detected = detect_presets_from_calculation(temp_calc_dir)
-            assert detected["precision"] == "med", f"Expected 'med', got {detected.get('precision')}"
-            
-            # Manually change ecutrho (+1) - this should break strict match
-            scf_content = yaml.safe_load(scf_step.read_text())
-            original_ecutrho = scf_content["parameters"]["SYSTEM"]["ecutrho"]
-            scf_content["parameters"]["SYSTEM"]["ecutrho"] = original_ecutrho + 1
-            scf_step.write_text(yaml.safe_dump(scf_content))
-            
-            # Detection should now return Custom (strict detection fails)
-            detected = detect_presets_from_calculation(temp_calc_dir)
-            assert detected["precision"] == "Custom", f"Expected 'Custom' after changing ecutrho, got {detected.get('precision')}"
+        # Detection should now return Custom (strict detection fails)
+        detected = detect_presets_from_calculation(temp_calc_dir)
+        assert detected["precision"] == "Custom", f"Expected 'Custom' after changing ecutrho, got {detected.get('precision')}"
     
     def test_custom_on_missing_calculation_data(self, temp_calc_dir):
         """Test that missing calculation data returns Custom (not fallback to simple detection)."""

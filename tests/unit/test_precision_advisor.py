@@ -422,6 +422,7 @@ class TestPrecisionDetectorStrict:
         # Δk=0.20 → nk=6 for Si
         # cutoff_mult=1.0 → ecutwfc=50, ecutrho=400
         # conv_thr=1e-8
+        # QE kpoints are represented as cards.K_POINTS only
         params = {
             "SYSTEM": {
                 "ecutwfc": round_cutoff_integer(base_ecutwfc * 1.0),  # 50
@@ -430,9 +431,11 @@ class TestPrecisionDetectorStrict:
             "ELECTRONS": {
                 "conv_thr": 1e-8,
             },
-            "K_POINTS": {
-                "type": "automatic",
-                "mesh": [6, 6, 6, 0, 0, 0],
+            "cards": {
+                "K_POINTS": {
+                    "option": "automatic",
+                    "data": [[6, 6, 6, 0, 0, 0]],
+                },
             },
         }
         
@@ -449,6 +452,7 @@ class TestPrecisionDetectorStrict:
         base_ecutrho = 400.0
         
         # All params for MED except wrong ecutwfc
+        # QE kpoints are represented as cards.K_POINTS only
         params = {
             "SYSTEM": {
                 "ecutwfc": 55,  # Wrong! Should be 50
@@ -457,9 +461,11 @@ class TestPrecisionDetectorStrict:
             "ELECTRONS": {
                 "conv_thr": 1e-8,
             },
-            "K_POINTS": {
-                "type": "automatic",
-                "mesh": [6, 6, 6, 0, 0, 0],
+            "cards": {
+                "K_POINTS": {
+                    "option": "automatic",
+                    "data": [[6, 6, 6, 0, 0, 0]],
+                },
             },
         }
         
@@ -484,9 +490,11 @@ class TestPrecisionDetectorStrict:
             "ELECTRONS": {
                 "conv_thr": 1e-8,
             },
-            "K_POINTS": {
-                "type": "automatic",
-                "mesh": [8, 8, 8, 0, 0, 0],  # Wrong! Should be 6×6×6 for MED
+            "cards": {
+                "K_POINTS": {
+                    "option": "automatic",
+                    "data": [[8, 8, 8, 0, 0, 0]],  # Wrong! Should be 6×6×6 for MED
+                },
             },
         }
         
@@ -511,9 +519,11 @@ class TestPrecisionDetectorStrict:
             "ELECTRONS": {
                 "conv_thr": 1e-7,  # Wrong! Should be 1e-8 for MED
             },
-            "K_POINTS": {
-                "type": "automatic",
-                "mesh": [6, 6, 6, 0, 0, 0],
+            "cards": {
+                "K_POINTS": {
+                    "option": "automatic",
+                    "data": [[6, 6, 6, 0, 0, 0]],
+                },
             },
         }
         
@@ -540,11 +550,13 @@ class TestCompilerDetectorEquivalence:
             advice = advisor.advise(level)
             compiled = compile_precision_from_advice(advice)
             
-            # Build params dict
+            # Build params dict with canonical format (cards.K_POINTS)
             params = {
                 "SYSTEM": compiled.get("SYSTEM", {}),
                 "ELECTRONS": compiled.get("ELECTRONS", {}),
-                "K_POINTS": compiled.get("K_POINTS", {}),
+                "cards": {
+                    "K_POINTS": compiled.get("K_POINTS_CARD", {}),
+                },
             }
             
             # Detect with strict matching

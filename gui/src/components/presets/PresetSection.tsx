@@ -190,6 +190,16 @@ function ApplyDetailsModal({ result, onClose }: ApplyDetailsModalProps) {
                   {step.applied_presets.join(', ')}
                 </span>
               )}
+              {step.updated_fields && step.updated_fields.length > 0 && (
+                <span className="apply-details-modal__step-fields apply-details-modal__step-fields--updated">
+                  Updated: {step.updated_fields.join(', ')}
+                </span>
+              )}
+              {step.skipped_fields && step.skipped_fields.length > 0 && (
+                <span className="apply-details-modal__step-fields apply-details-modal__step-fields--skipped">
+                  Skipped: {step.skipped_fields.join('; ')}
+                </span>
+              )}
               {step.reason && (
                 <span className="apply-details-modal__step-reason">{step.reason}</span>
               )}

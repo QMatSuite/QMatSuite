@@ -339,6 +339,48 @@ interface FootprintChipsProps {
   maxChips?: number;
 }
 
+/**
+ * Format a footprint parameter for display.
+ * Makes chips more readable (e.g., "K 6×6×6" instead of "kmesh=6×6×6").
+ */
+function formatFootprintChip(key: string, value: unknown): string {
+  const strValue = String(value);
+  
+  // Special formatting for common parameters
+  if (key === 'kmesh' || key === 'K_POINTS') {
+    // kmesh is already formatted as "6×6×6"
+    return `K ${strValue}`;
+  }
+  
+  if (key === 'ecutwfc' || key === 'ecutrho') {
+    // Round to integer for display
+    const num = typeof value === 'number' ? value : parseFloat(strValue);
+    if (!isNaN(num)) {
+      return `${key.replace('ecut', '')} ${Math.round(num)}`;
+    }
+  }
+  
+  if (key === 'conv_thr') {
+    // Format scientific notation more compactly
+    const num = typeof value === 'number' ? value : parseFloat(strValue);
+    if (!isNaN(num) && num < 1) {
+      const exp = Math.floor(Math.log10(num));
+      return `conv 1e${exp}`;
+    }
+  }
+  
+  if (key === 'nspin') {
+    return `nspin ${strValue}`;
+  }
+  
+  if (key === 'occupations') {
+    return `occ ${strValue}`;
+  }
+  
+  // Default: key=value
+  return `${key}=${strValue}`;
+}
+
 function FootprintChips({ footprint, maxChips = 3 }: FootprintChipsProps) {
   const [expanded, setExpanded] = useState(false);
   
@@ -353,11 +395,19 @@ function FootprintChips({ footprint, maxChips = 3 }: FootprintChipsProps) {
   
   return (
     <div className="step-footprint">
-      {visibleEntries.map(([key, value]) => (
-        <span key={key} className="step-footprint__chip" title={`${key}=${value}`}>
-          {key}={String(value)}
-        </span>
-      ))}
+      {visibleEntries.map(([key, value]) => {
+        const displayText = formatFootprintChip(key, value);
+        const fullText = `${key}=${String(value)}`;
+        return (
+          <span 
+            key={key} 
+            className="step-footprint__chip" 
+            title={fullText}
+          >
+            {displayText}
+          </span>
+        );
+      })}
       {showMore && (
         <button
           className="step-footprint__more"
