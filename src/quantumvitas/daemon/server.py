@@ -23,6 +23,7 @@ import os
 import sys
 import time
 import traceback
+import yaml
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional, TextIO
@@ -3395,7 +3396,11 @@ class QVDaemon:
         
         # Resolve calculation with fallback to ensure cache is up-to-date
         resolved = self._resolve_calculation_with_fallback(project_root, calculation)
-        calculation_dir = resolved.path.parent
+        # absolute_path points to calculation.yaml, so get the parent directory
+        if resolved.absolute_path.name == "calculation.yaml":
+            calculation_dir = resolved.absolute_path.parent
+        else:
+            calculation_dir = resolved.absolute_path
         
         # Detect presets from calculation steps
         presets = detect_presets_from_calculation(calculation_dir)
@@ -3427,7 +3432,11 @@ class QVDaemon:
         
         # Resolve calculation with fallback to ensure cache is up-to-date
         resolved = self._resolve_calculation_with_fallback(project_root, calculation)
-        calculation_dir = resolved.path.parent
+        # absolute_path points to calculation.yaml, so get the parent directory
+        if resolved.absolute_path.name == "calculation.yaml":
+            calculation_dir = resolved.absolute_path.parent
+        else:
+            calculation_dir = resolved.absolute_path
         
         # Detect workflow type
         workflow = detect_workflow_type(calculation_dir)
@@ -3508,7 +3517,7 @@ class QVDaemon:
             project_root: str - Path to project root
             calculation: str - Calculation selector (slug or ULID)
             presets: Dict with preset options
-                Example: {"spin": "collinear", "soc": "no_soc", "material": "metal"}
+                Example: {"spin": "collinear", "soc": "no_soc", "material": "metal", "precision": "med"}
             validate_physics: bool (optional, default True) - Validate physics constraints
         
         Returns:
@@ -3524,6 +3533,7 @@ class QVDaemon:
             detect_presets_from_calculation,
         )
         from quantumvitas.presets.compiler import PresetCompilationError
+        from quantumvitas.presets.dimensions import DIMENSION_PRECISION, PrecisionOption
         
         project_root = self._require_path(payload, "project_root")
         calculation = self._require_str(payload, "calculation")
@@ -3532,8 +3542,54 @@ class QVDaemon:
         
         # Resolve calculation
         resolved = self._resolve_calculation_with_fallback(project_root, calculation)
-        calculation_dir = resolved.path.parent
+        # absolute_path points to calculation.yaml, so get the parent directory
+        if resolved.absolute_path.name == "calculation.yaml":
+            calculation_dir = resolved.absolute_path.parent
+        else:
+            calculation_dir = resolved.absolute_path
         steps_dir = calculation_dir / "steps"
+        
+        # If precision preset is being applied, load calculation for PrecisionAdvisor
+        precision_advisor = None
+        precision_option = presets.get(DIMENSION_PRECISION) or presets.get("precision")
+        if precision_option:
+            try:
+                from quantumvitas.presets.precision import PrecisionAdvisor
+                
+                # Load calculation.yaml for structure/species_map
+                calc_yaml = calculation_dir / "calculation.yaml"
+                if calc_yaml.exists():
+                    calc_content = yaml.safe_load(calc_yaml.read_text()) or {}
+                    species_map = calc_content.get("species_map", {})
+                    
+                    # Get structure for lattice matrix
+                    lattice_matrix = None
+                    structure_ref = calc_content.get("structure")
+                    if structure_ref:
+                        try:
+                            from quantumvitas.core.resolution import resolve_structure
+                            resolved_struct = resolve_structure(
+                                self._get_or_build_index(project_root),
+                                structure_ref
+                            )
+                            struct_yaml = resolved_struct.absolute_path
+                            if struct_yaml.exists():
+                                from pymatgen.core import Structure
+                                struct_content = yaml.safe_load(struct_yaml.read_text()) or {}
+                                # Try to get structure from CIF string or file
+                                cif_str = struct_content.get("cif_string")
+                                if cif_str:
+                                    structure = Structure.from_str(cif_str, fmt="cif")
+                                    lattice_matrix = [list(v) for v in structure.lattice.matrix]
+                        except Exception as e:
+                            self.logger.warning(f"Could not load structure for precision: {e}")
+                    
+                    precision_advisor = PrecisionAdvisor(
+                        species_map=species_map,
+                        lattice_matrix=lattice_matrix,
+                    )
+            except Exception as e:
+                self.logger.warning(f"Could not create PrecisionAdvisor: {e}")
         
         # Find all step files
         step_files = sorted(steps_dir.glob("*.step.yaml"))
@@ -3549,7 +3605,20 @@ class QVDaemon:
                 content = yaml.safe_load(step_path.read_text()) or {}
                 step_type = content.get("step_type", "scf")
                 
-                result = apply_presets_to_step(step_path, presets, validate_physics=validate_physics)
+                # Get step-type-aware precision advice if applicable
+                precision_advice = None
+                if precision_advisor and precision_option:
+                    try:
+                        precision_level = PrecisionOption(precision_option)
+                        precision_advice = precision_advisor.advise_for_step(precision_level, step_type)
+                    except (ValueError, KeyError) as e:
+                        self.logger.warning(f"Invalid precision level '{precision_option}': {e}")
+                
+                result = apply_presets_to_step(
+                    step_path, presets, 
+                    validate_physics=validate_physics,
+                    precision_advice=precision_advice,
+                )
                 
                 if result["accepted"]:
                     steps_updated += 1
@@ -3570,7 +3639,7 @@ class QVDaemon:
                     
             except PresetCompilationError as e:
                 # Log but continue - some steps may not accept certain presets
-                logger.warning(f"Preset application error for {step_name}: {e}")
+                self.logger.warning(f"Preset application error for {step_name}: {e}")
                 steps_skipped += 1
                 step_results.append({
                     "step_file": step_name,
@@ -3579,7 +3648,7 @@ class QVDaemon:
                     "reason": str(e),
                 })
             except Exception as e:
-                logger.warning(f"Unexpected error applying presets to {step_name}: {e}")
+                self.logger.warning(f"Unexpected error applying presets to {step_name}: {e}")
                 steps_skipped += 1
                 step_results.append({
                     "step_file": step_name,
@@ -3622,7 +3691,11 @@ class QVDaemon:
         
         # Resolve calculation with fallback to ensure cache is up-to-date
         resolved = self._resolve_calculation_with_fallback(project_root, calculation)
-        calculation_dir = resolved.path.parent
+        # absolute_path points to calculation.yaml, so get the parent directory
+        if resolved.absolute_path.name == "calculation.yaml":
+            calculation_dir = resolved.absolute_path.parent
+        else:
+            calculation_dir = resolved.absolute_path
         
         # Get step footprints
         footprints = get_step_preset_footprints(calculation_dir)

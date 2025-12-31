@@ -16,7 +16,8 @@ Key functions:
 - detect_all_presets(steps) -> Dict: Aggregate detection across all steps
 """
 
-from typing import Any, Dict, List, Union
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
 from quantumvitas.presets.dimensions import (
     SpinOption,
@@ -444,6 +445,9 @@ def _detect_dimension(
 def detect_dimension_from_steps(
     steps: List[Dict[str, Dict[str, Any]]],
     dimension: str,
+    *,
+    step_types: Optional[List[str]] = None,
+    calculation_dir: Optional[Path] = None,
 ) -> Union[SpinOption, SOCOption, MaterialOption, PrecisionOption, _CustomType]:
     """
     Detect a preset dimension value aggregated across multiple steps.
@@ -453,19 +457,30 @@ def detect_dimension_from_steps(
     - If steps have different values → return CUSTOM
     - Single step is valid (returns its value, not CUSTOM)
     
+    For precision dimension: Uses step-type-aware strict detection if
+    step_types and calculation_dir are provided.
+    
     Args:
         steps: List of step parameters dicts
         dimension: Dimension name to detect
+        step_types: Optional list of step_type strings (one per step)
+        calculation_dir: Optional calculation directory (for precision detection)
         
     Returns:
         Detected value or CUSTOM if heterogeneous
     """
     if not steps:
-        # No steps - return default for dimension
-        # This handles edge case of empty step list
+        # No steps - for precision, return CUSTOM (safer than default)
+        # For other dimensions, return default
+        if dimension == DIMENSION_PRECISION:
+            return CUSTOM
         return _detect_dimension({}, dimension)
     
-    # Collect unique values across all steps
+    # For precision, use step-type-aware strict detection if possible
+    if dimension == DIMENSION_PRECISION and step_types and calculation_dir:
+        return _detect_precision_from_steps_strict(steps, step_types, calculation_dir)
+    
+    # For other dimensions or when step_types not available, use simple detection
     values = set()
     for step_params in steps:
         value = _detect_dimension(step_params, dimension)
@@ -478,10 +493,184 @@ def detect_dimension_from_steps(
         return CUSTOM
 
 
+def _detect_precision_from_steps_strict(
+    steps: List[Dict[str, Dict[str, Any]]],
+    step_types: List[str],
+    calculation_dir: Path,
+) -> Union[PrecisionOption, _CustomType]:
+    """
+    Detect precision from steps using step-type-aware strict matching.
+    
+    Only receiver steps are considered. Non-receiver steps are wildcards.
+    Each receiver step must match its step-type-specific canonical values.
+    
+    Args:
+        steps: List of step parameters dicts
+        step_types: List of step_type strings (one per step)
+        calculation_dir: Calculation directory (for loading structure/species_map)
+        
+    Returns:
+        PrecisionOption if all receiver steps match, CUSTOM otherwise
+    """
+    from quantumvitas.presets.receivers import get_precision_receiver_spec
+    from quantumvitas.core.models import load_calculation
+    
+    if len(steps) != len(step_types):
+        # Mismatch - can't do step-type-aware detection
+        return CUSTOM
+    
+    # Load calculation for structure/species_map
+    try:
+        calc_model = load_calculation(calculation_dir)
+        structure = calc_model.structure
+        species_map = calc_model.species_map
+        lattice_matrix = [list(v) for v in structure.lattice.matrix]
+        
+        # Get base cutoffs from pseudos
+        from quantumvitas.presets.precision import (
+            aggregate_cutoffs,
+            get_pseudo_index,
+        )
+        index_files = get_pseudo_index()
+        base_ecutwfc, base_ecutrho = aggregate_cutoffs(species_map, index_files)
+    except Exception:
+        # Can't load calculation - cannot do strict detection, return CUSTOM
+        # This is safer than falling back to simple detection which might
+        # incorrectly return a precision level when parameters don't match
+        return CUSTOM
+    
+    # Collect detected precision for each receiver step
+    receiver_values = []
+    
+    for step_params, step_type in zip(steps, step_types):
+        spec = get_precision_receiver_spec(step_type)
+        
+        # Non-receiver steps are wildcards (don't contribute)
+        if not spec or not spec.accepts_any:
+            continue
+        
+        # Use strict detection with step-type-aware canonical values
+        detected = detect_precision_strict_for_step_type(
+            step_params, step_type, lattice_matrix, base_ecutwfc, base_ecutrho
+        )
+        
+        if detected is None:
+            # Step doesn't match any precision level
+            return CUSTOM
+        
+        receiver_values.append(detected)
+    
+    # If no receiver steps, return default
+    if not receiver_values:
+        return PrecisionOption.MED  # Default
+    
+    # Check if all receiver steps agree
+    unique_values = set(receiver_values)
+    if len(unique_values) == 1:
+        return unique_values.pop()
+    else:
+        return CUSTOM
+
+
+def detect_precision_strict_for_step_type(
+    params: Dict[str, Dict[str, Any]],
+    step_type: str,
+    lattice_matrix: List[List[float]],
+    base_ecutwfc: float,
+    base_ecutrho: float,
+) -> Optional[PrecisionOption]:
+    """
+    Detect precision with strict matching for a specific step type.
+    
+    Uses step-type-specific canonical values (e.g., nscf ×2 mesh).
+    
+    Args:
+        params: Step parameters dict
+        step_type: Step type string
+        lattice_matrix: 3x3 lattice vectors in Angstrom
+        base_ecutwfc: Base ecutwfc from pseudos
+        base_ecutrho: Base ecutrho from pseudos
+        
+    Returns:
+        PrecisionOption if matches, None otherwise
+    """
+    from quantumvitas.presets.receivers import get_precision_receiver_spec
+    from quantumvitas.presets.precision import (
+        PRECISION_CONSTANTS,
+        CONV_THR_ABS_TOL,
+        compute_kmesh,
+        round_cutoff_integer,
+        NSCF_KMESH_FACTOR,
+    )
+    
+    spec = get_precision_receiver_spec(step_type)
+    if not spec or not spec.accepts_any:
+        return None  # Non-receiver step
+    
+    # Extract actual values
+    actual_conv_thr = _parse_float(_get_electrons_param(params, "conv_thr"), None)
+    actual_ecutwfc = _parse_int(_get_system_param(params, "ecutwfc"), None)
+    actual_ecutrho = _parse_int(_get_system_param(params, "ecutrho"), None)
+    actual_kmesh = _get_kpoints_mesh(params)
+    
+    # Check required params based on spec
+    if spec.accepts_conv_thr and actual_conv_thr is None:
+        return None
+    if spec.accepts_cutoffs and (actual_ecutwfc is None or actual_ecutrho is None):
+        return None
+    if spec.accepts_kmesh and actual_kmesh is None:
+        return None
+    
+    # Check each precision level
+    for level, constants in PRECISION_CONSTANTS.items():
+        # Check conv_thr if required
+        if spec.accepts_conv_thr:
+            if abs(actual_conv_thr - constants.conv_thr) > CONV_THR_ABS_TOL:
+                continue
+        
+        # Check cutoffs if required
+        if spec.accepts_cutoffs:
+            canonical_ecutwfc = round_cutoff_integer(base_ecutwfc * constants.cutoff_multiplier)
+            canonical_ecutrho = round_cutoff_integer(base_ecutrho * constants.cutoff_multiplier)
+            
+            if actual_ecutwfc != canonical_ecutwfc:
+                continue
+            if actual_ecutrho != canonical_ecutrho:
+                continue
+        
+        # Check kmesh if required
+        if spec.accepts_kmesh and spec.kmesh_strategy != "none":
+            # Compute base mesh
+            base_nk1, base_nk2, base_nk3, sk1, sk2, sk3 = compute_kmesh(lattice_matrix, constants.delta_k)
+            
+            # Apply step-type strategy
+            if spec.kmesh_strategy == "nscf":
+                canonical_nk1 = max(1, base_nk1 * NSCF_KMESH_FACTOR)
+                canonical_nk2 = max(1, base_nk2 * NSCF_KMESH_FACTOR)
+                canonical_nk3 = max(1, base_nk3 * NSCF_KMESH_FACTOR)
+            else:  # "default"
+                canonical_nk1, canonical_nk2, canonical_nk3 = base_nk1, base_nk2, base_nk3
+            
+            actual_nk1, actual_nk2, actual_nk3, actual_sk1, actual_sk2, actual_sk3 = actual_kmesh
+            
+            if (actual_nk1, actual_nk2, actual_nk3) != (canonical_nk1, canonical_nk2, canonical_nk3):
+                continue
+            if (actual_sk1, actual_sk2, actual_sk3) != (sk1, sk2, sk3):
+                continue
+        
+        # All required checks passed for this level
+        return level
+    
+    # No level matched
+    return None
+
+
 def detect_all_presets(
     steps: List[Dict[str, Dict[str, Any]]],
     *,
     include_precision: bool = True,
+    step_types: Optional[List[str]] = None,
+    calculation_dir: Optional[Path] = None,
 ) -> Dict[str, Union[SpinOption, SOCOption, MaterialOption, PrecisionOption, _CustomType]]:
     """
     Detect all preset dimensions from a list of steps.
@@ -495,6 +684,8 @@ def detect_all_presets(
     Args:
         steps: List of step parameters dicts (section -> params)
         include_precision: If True (default), include precision dimension
+        step_types: Optional list of step_type strings (for step-type-aware precision detection)
+        calculation_dir: Optional calculation directory (for precision detection)
         
     Returns:
         Dict mapping dimension name to detected value (or CUSTOM)
@@ -504,10 +695,16 @@ def detect_all_presets(
         >>> detect_all_presets(steps)
         {"spin": SpinOption.COLLINEAR, "soc": SOCOption.NO_SOC, "material": MaterialOption.INSULATOR, "precision": PrecisionOption.MED}
     """
+    from pathlib import Path
+    
     dimensions = V1_DIMENSIONS if include_precision else V0_DIMENSIONS
     result = {}
     for dimension in dimensions:
-        result[dimension] = detect_dimension_from_steps(steps, dimension)
+        result[dimension] = detect_dimension_from_steps(
+            steps, dimension,
+            step_types=step_types,
+            calculation_dir=Path(calculation_dir) if calculation_dir else None,
+        )
     return result
 
 

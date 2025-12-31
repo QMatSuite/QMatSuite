@@ -13,6 +13,7 @@ import type {
   SpinValue,
   SOCValue,
   MaterialValue,
+  PrecisionValue,
   WorkflowType,
   PresetDetectionResult,
   WorkflowDetectionResult,
@@ -26,6 +27,7 @@ export interface PresetState {
   spin: SpinValue | 'Custom';
   soc: SOCValue | 'Custom';
   material: MaterialValue | 'Custom';
+  precision: PrecisionValue | 'Custom';
 }
 
 /** Result of applying presets - for toast/modal feedback */
@@ -55,7 +57,7 @@ export interface PresetsHook extends PresetsHookState {
   refresh: () => Promise<void>;
   
   /** Apply preset to all steps in calculation (BROADCAST), returns detailed result */
-  applyPreset: (dimension: 'spin' | 'soc' | 'material', value: string) => Promise<ApplyResult>;
+  applyPreset: (dimension: 'spin' | 'soc' | 'material' | 'precision', value: string) => Promise<ApplyResult>;
   
   /** Apply multiple presets at once */
   applyPresets: (presets: Partial<PresetState>) => Promise<ApplyResult>;
@@ -190,22 +192,29 @@ export function usePresets(
           error: null,
         }));
       } else {
+        // Don't expose raw error messages to UI (e2e will catch them)
+        const errorMsg = presetsResponse.error?.message || 'Failed to detect presets';
+        // Log to console for debugging
+        console.error('Preset detection failed:', errorMsg);
         setState(prev => ({
           ...prev,
           presets: null,
           workflow: null,
           footprints: null,
           isLoading: false,
-          error: presetsResponse.error?.message || 'Failed to detect presets',
+          error: 'Presets unavailable', // User-friendly message
         }));
       }
     } catch (e) {
       // Check if stale before updating error state
       if (mountedRef.current && currentSeq === requestSeqRef.current) {
+        const errorMsg = e instanceof Error ? e.message : 'Unknown error';
+        // Log to console for debugging
+        console.error('Preset detection error:', errorMsg);
         setState(prev => ({
           ...prev,
           isLoading: false,
-          error: e instanceof Error ? e.message : 'Unknown error',
+          error: 'Presets unavailable', // User-friendly message
         }));
       }
     }
@@ -218,7 +227,7 @@ export function usePresets(
   
   // Apply single preset dimension (BROADCAST to all steps)
   const applyPreset = useCallback(async (
-    dimension: 'spin' | 'soc' | 'material',
+    dimension: 'spin' | 'soc' | 'material' | 'precision',
     value: string,
   ): Promise<ApplyResult> => {
     const errorResult: ApplyResult = {
