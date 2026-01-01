@@ -877,6 +877,64 @@ Precision ParamSpace 在 apply 时必须：
 
 - **Single-writer 不可协商**：每个 key 只能由一个 ParamSpace 写入/删除，避免多写者导致的冲突、覆盖和数据丢失。即使语义上相关（如 degauss 与 occupation），写入权也必须唯一归属。
 
+#### 10.8.9 ParamSpace Key Access 与 Ownership 强制规则
+
+##### 10.8.9.1 ParamSpace Detect / Compile / Apply Key Access 规则（强制）
+
+在 detect、compile、apply 的整个生命周期中：
+
+**任一 ParamSpace 只能访问**：
+
+- 自身声明的 owned keys；以及
+- Oracle 明确暴露的语义前提（semantic prerequisites）。
+
+**禁止**任何形式的：
+
+- 直接读取；
+- 间接读取；
+- 或基于派生状态、缓存、聚合结果的方式，
+
+访问其他 ParamSpace 的 owned keys。
+
+**任何违反上述规则的行为，必须在运行时立即报错并中止执行。**
+
+##### 10.8.9.2 Key Ownership 唯一性规则（运行时强制）
+
+任一 YAML key 必须且只能被一个 ParamSpace 声明为 owned key。
+
+若发生以下任一情况：
+
+- 同一 key 被多个 ParamSpace 声明为 owned；或
+- 同一 key 在系统生命周期内被多个 ParamSpace 作为 writer 访问；
+
+**系统必须在初始化或运行时立即失败。**
+
+该规则不可降级为 warning。
+
+##### 10.8.9.3 非法行为的明确判定
+
+以下行为均视为**非法的 ParamSpace 行为**：
+
+- 访问未声明为自身 owned 的 YAML key（例如：occupation ParamSpace 读取或写入 degauss）；
+- 通过 detect 结果、preset ID、聚合状态等方式绕过 key ownership 规则；
+- 任何"语义等价但路径非法"的访问方式。
+
+##### 10.8.9.4 Rationale（设计依据）
+
+以下规则存在的依据，用于解释为何规则存在，而非指导实现：
+
+- **Key ownership 是防止 ParamSpace 之间隐式耦合与语义污染的唯一可靠机制**：若无强制规则，不同 ParamSpace 可能通过共享 key 产生隐式依赖，导致系统行为不可预测、难以维护。
+
+- **Detect 阶段的越权读取会导致 UI 状态不稳定、preset 结果不对称**：若 detect 阶段允许读取其他 ParamSpace 的 owned keys，会导致 detect 结果依赖于其他维度的状态，破坏 detect 的独立性与可复现性。
+
+- **即使语义等价，绕过 Oracle 的直接访问仍然是非法的**：Oracle 是唯一合法的跨 ParamSpace 语义查询通道。直接访问虽然可能功能等价，但破坏了架构边界，导致未来无法统一管理跨维度依赖。
+
+- **非-YAML 输入（如 structure、pseudo、派生 cutoff）不属于 ParamSpace key space**：
+  - 它们是只读的、不可变的外部事实；
+  - 不参与 detect / apply 写入；
+  - 不存在 ownership 冲突的可能；
+  - 因此不受 key-access 规则约束。
+
 ### 10.9 Advanced 用户路径
 
 #### 10.9.1 Step 自治
