@@ -131,10 +131,32 @@ class ParamSpace:
     
     Profiles must be a "full matrix" - all keys must have a cell.
     Missing cells are auto-filled with WILDCARD (but discouraged).
+    
+    Per ParamSpace Constitution v1:
+    - Each ParamSpace must enforce invariants even when CUSTOM
+    - apply_invariants() is called unconditionally during apply
     """
     name: str
     keys: list[ParamKey] = field(default_factory=list)
     profiles: dict[str, dict[ParamKey, Cell]] = field(default_factory=dict)
+    
+    def apply_invariants(self, yaml_state: dict[str, dict[str, Any]], oracle: Any) -> None:
+        """
+        Enforce invariants for keys owned by this ParamSpace.
+        
+        This method is called unconditionally during apply, even when:
+        - detect result is CUSTOM
+        - user has not modified this ParamSpace
+        - no preset is being applied
+        
+        Default implementation is no-op (pass).
+        Subclasses should override to enforce their invariants.
+        
+        Args:
+            yaml_state: Current YAML state dict (section -> {key: value})
+            oracle: Oracle instance for semantic prerequisite queries
+        """
+        pass  # default no-op
     
     def __post_init__(self):
         """Validate that profiles form a full matrix."""
@@ -712,11 +734,40 @@ def build_precision_paramspace() -> ParamSpace:
         "HIGH": {},
     }
     
-    return ParamSpace(
+    precision_space = ParamSpace(
         name="precision",
         keys=keys,
         profiles=profiles,
     )
+    
+    # Per ParamSpace Constitution v1: Override apply_invariants for degauss enforcement
+    # SYSTEM.degauss is owned by Precision ParamSpace (writer)
+    # Even though degauss is semantically related to occupations, Precision enforces its invariants
+    original_apply_invariants = precision_space.apply_invariants
+    
+    def precision_apply_invariants(yaml_state: dict[str, dict[str, Any]], oracle: Any) -> None:
+        """
+        Enforce degauss invariants for Precision ParamSpace.
+        
+        Per Constitution v1 §7:
+        - SYSTEM.degauss is owned by Precision ParamSpace
+        - If degauss_applicability == false, must delete degauss
+        - Only write degauss when user explicitly sets precision preset (handled in compile)
+        - Strategy A: smearing without degauss does not auto-fill
+        """
+        if not oracle.degauss_applicability():
+            # degauss is not applicable (not using smearing) - must be absent
+            system = yaml_state.get("SYSTEM", {})
+            if "degauss" in system:
+                # Delete degauss if present
+                del system["degauss"]
+        # If applicable, do nothing (Strategy A: don't auto-fill)
+        # Writing degauss values is handled by preset compilation, not invariant enforcement
+    
+    # Override the method
+    precision_space.apply_invariants = precision_apply_invariants
+    
+    return precision_space
 
 
 _PRECISION_PARAMSPACE: Optional[ParamSpace] = None

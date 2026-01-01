@@ -813,39 +813,103 @@ compiler/detector 的每个维度入口必须是薄封装：只能把参数转�
 
 必须有 enforcement tests 保证：同一 (dimension, step_type) 不能被多个 variant 覆盖（禁止 overlap）、关键 step_type 必须被覆盖或明确声明 N/A。
 
-### 10.8 Advanced 用户路径
+### 10.8 ParamSpace / Preset Apply / Invariant Enforcement 宪法
 
-#### 10.8.1 Step 自治
+#### 10.8.1 Single-writer 原则（不可违反）
+每一个 YAML key 只能由一个 ParamSpace 写/删。任何"多个 ParamSpace 共同管理同一 key"的设计都是非法的。
+
+**语义归属 ≠ 写入归属**：例如 degauss 语义依赖 occupation，但 writer 仍归 precision。
+
+#### 10.8.2 ParamSpace 的统一职责模型
+每个 ParamSpace 必须且只做三件事：
+
+**Detect**：使用 matrix 判定 preset / CUSTOM，只依赖 YAML 真相 + Oracle（只读）。
+
+**Preset Apply**：仅当用户显式选择该 ParamSpace 的 preset 时执行，使用同一套 matrix 写入值，NOT_APPLICABLE ⇒ must-absent。
+
+**Custom Apply（Invariant Enforcement）**：永远执行，即使 detect 结果是 CUSTOM，即使用户没有修改该 ParamSpace，用于维护该 ParamSpace 负责 keys 的定义域 / 适用性不变量。默认行为是 no-op（pass）。
+
+**禁止 "CUSTOM ⇒ 什么都不做" 的隐式假设**。
+
+#### 10.8.3 NOT_APPLICABLE 的强语义
+NOT_APPLICABLE ≠ WILDCARD。它隐含 must-absent：apply 必须删除该 key，detect 若 present ⇒ 冲突 ⇒ CUSTOM。
+
+#### 10.8.4 Oracle 的定位（极窄）
+Oracle 不是 guard，不负责 preset 判定，只提供"语义前提（semantic prerequisite）"。
+
+Oracle 必须满足：
+- 只读
+- 只返回小离散值（bool / 小 enum）
+- 不返回 preset id
+- 不返回"建议值"
+
+Oracle 只看 YAML 真相（当前内存态），不看 preset intention，不看 detect 的命中结果。
+
+#### 10.8.5 Apply 执行顺序（必须）
+Apply 必须分阶段执行：
+1. **Prerequisite ParamSpaces**：会改变 applicability 的（如 occupation、step_type）
+2. **Dependent ParamSpaces**：依赖 oracle 的（如 precision）
+
+这是为了保证 Oracle 在 apply 时永远只读"最新 YAML 真相"。
+
+#### 10.8.6 Precision / degauss 的宪法级约束（示例）
+SYSTEM.degauss 的唯一 writer 是 Precision ParamSpace。
+
+Precision ParamSpace 在 apply 时必须：
+1. **永远执行 invariant enforcement**：若 degauss_applicability == false ⇒ 删除 degauss
+2. **仅在用户显式设置 precision preset 时写入 degauss 值**：LOW / MED / HIGH ⇒ 0.01 / 0.02 / 0.03
+3. **smearing 时不强制自动补 degauss（策略 A）**
+
+#### 10.8.7 禁止事项（红线）
+- ParamSpace 读取其他 ParamSpace 的 preset 结果
+- Oracle 返回 preset id / 参数值
+- 为了方便 detect/apply 而引入共享写入
+- 为 custom case 写隐式特判逻辑而不通过 ParamSpace 统一接口
+
+#### 10.8.8 Rationale（设计理由）
+以下规则存在的理由，确保未来修改不显得任意：
+
+- **CUSTOM 不能意味着 no-op**：即使 detect 结果为 CUSTOM，ParamSpace 仍必须维护其负责 keys 的定义域不变量（如 degauss 在非 smearing 时必须删除）。这保证 YAML 状态始终符合物理语义，避免残留无效参数。
+
+- **Invariant enforcement 必须无条件执行**：不因 detect 结果、用户选择或 preset 应用状态而跳过。这确保系统始终处于一致状态，避免"部分应用"导致的不一致。
+
+- **Oracle 必须读取 YAML 真相，而非 preset intention**：Oracle 只读当前内存中的 YAML 状态，不读取用户意图或 detect 结果。这保证 Oracle 的纯函数性质，避免循环依赖和状态不一致。
+
+- **Single-writer 不可协商**：每个 key 只能由一个 ParamSpace 写入/删除，避免多写者导致的冲突、覆盖和数据丢失。即使语义上相关（如 degauss 与 occupation），写入权也必须唯一归属。
+
+### 10.9 Advanced 用户路径
+
+#### 10.9.1 Step 自治
 Advanced 用户对 step 的任何手动修改：
 
 - 直接写入 step.yml
 - 不触发隐式继承、联动或修正
 
-#### 10.8.2 显式继承
+#### 10.9.2 显式继承
 如提供继承能力，必须通过显式 UI 行为（如 dropdown copy），且仅为一次性复制。
 
-### 10.9 Precision 的制度化（Context-dependent 参数）
+### 10.10 Precision 的制度化（Context-dependent 参数）
 
-#### 10.9.1 策略与数值分离
+#### 10.10.1 策略与数值分离
 precision 的 ecut/kmesh 是 context-dependent（pseudo/structure），因此：ParamSpace profiles 存"策略参数"（如 multiplier / delta_k / conv_thr / nscf factor 等），具体数值由 resolver 在 apply/detect 时计算得到。
 
-#### 10.9.2 Variant 适用范围
+#### 10.10.2 Variant 适用范围
 precision 必须用多个 variant 明确适用范围（例如 default PW steps / nscf / bands_pw）。每个 variant 必须显式声明 applies_to_step_types（见 10.7.9）。
 
-#### 10.9.3 bands_pw 的 K_POINTS 排除规则
+#### 10.10.3 bands_pw 的 K_POINTS 排除规则
 关键硬约束：bands_pw 的 precision variant 必须移除 K_POINTS（因为 bands_pw 的 K_POINTS 语义属于 kpath，不由 precision 管）。必须有回归测试保证：对 bands_pw 应用 precision 不得改变其 kpath K_POINTS（内容完全不变）。bands_pw 的 K_POINTS 属于 kpath 语义；若要 preset 化，应由独立的 kpath 维度管理，而非 precision。
 
-### 10.10 读写策略（非宪法核心）
+### 10.11 读写策略（非宪法核心）
 
-#### 10.10.1 当前实现
+#### 10.11.1 当前实现
 当前阶段允许：
 
 - UI 操作即刻读写 step.yml
 
-#### 10.10.2 未来优化
+#### 10.11.2 未来优化
 未来可引入内存缓冲、延迟写入等优化，但不得改变前述宪法语义。
 
-### 10.11 禁止事项
+### 10.12 禁止事项
 
 禁止引入以下概念进入持久模型：
 
@@ -857,7 +921,7 @@ precision 必须用多个 variant 明确适用范围（例如 default PW steps /
 - **A/B 双轨状态**：禁止引入"Selected vs Detected"双轨状态模型（见 10.4.2）
 - **compiler version / schema version 作为运行语义依赖**：禁止将版本号作为运行语义依赖
 
-### 10.12 解释权
+### 10.13 解释权
 
 当实现与宪法存在冲突时：
 
@@ -865,7 +929,7 @@ precision 必须用多个 variant 明确适用范围（例如 default PW steps /
 - 简洁性优先
 - 数学可证明性优先于 UX 便利
 
-### 10.13 宪法总结性原则（一句话）
+### 10.14 宪法总结性原则（一句话）
 
 **Execution is concrete; intention is inferred.**
 
@@ -922,7 +986,18 @@ workflow 与 preset 只是对现状的解释，而非事实。
 
 ## 历史修订摘要（2025-01-XX）
 
-### 新增条款（Preset Space 统一框架）
+### 新增条款（ParamSpace / Preset Apply / Invariant Enforcement）
+- **10.8 ParamSpace / Preset Apply / Invariant Enforcement 宪法**（全新章节）
+  - **10.8.1 Single-writer 原则**：每个 YAML key 只能由一个 ParamSpace 写/删
+  - **10.8.2 ParamSpace 的统一职责模型**：Detect、Preset Apply、Custom Apply（Invariant Enforcement）
+  - **10.8.3 NOT_APPLICABLE 的强语义**：must-absent 规则
+  - **10.8.4 Oracle 的定位**：只读、极窄、基于 YAML 真相
+  - **10.8.5 Apply 执行顺序**：Prerequisite → Dependent 分阶段执行
+  - **10.8.6 Precision / degauss 的宪法级约束**：作为示例说明 Single-writer 与 Invariant Enforcement
+  - **10.8.7 禁止事项**：红线规则
+  - **10.8.8 Rationale**：设计理由说明
+
+### 历史新增条款（Preset Space 统一框架）
 - **10.7 Preset Space 统一框架（声明式数据结构 + 通用算法）**
   - **10.7.1 统一框架原则**：禁止各维度单独写特判逻辑，必须使用声明式 ParamSpace
     - 解决的问题：避免每个维度各写一套 compiler/detector/receiver 导致反复出现"apply 能写、detect 读不出"的 bug
@@ -953,12 +1028,14 @@ workflow 与 preset 只是对现状的解释，而非事实。
   - 10.4 Detector B（反向检测）的宪法地位
   - 10.5 Detector B 的数学定义
   - 10.6 Compiler 与 Detector 的数学等价性
-  - 10.7 Preset Space 统一框架（声明式数据结构 + 通用算法）**新增**
-  - 10.8 Advanced 用户路径
-  - 10.9 读写策略（非宪法核心）
-  - 10.10 禁止事项（anchor / family state / baseline / implicit inheritance）
-  - 10.11 解释权
-  - 10.12 宪法总结性原则
+  - 10.7 Preset Space 统一框架（声明式数据结构 + 通用算法）
+  - 10.8 ParamSpace / Preset Apply / Invariant Enforcement 宪法**新增**
+  - 10.9 Advanced 用户路径
+  - 10.10 Precision 的制度化（Context-dependent 参数）
+  - 10.11 读写策略（非宪法核心）
+  - 10.12 禁止事项（anchor / family state / baseline / implicit inheritance）
+  - 10.13 解释权
+  - 10.14 宪法总结性原则
 
 ### 历史新增章节
 - **第 9 章：数据根目录、临时目录与可复现资产**（历史章节）
@@ -1040,7 +1117,16 @@ workflow 与 preset 只是对现状的解释，而非事实。
    - Detector 必须支持隐式默认语义的反向解释
    - 示例：未写 `nspin` → 解释为 `nonspin`（等价于 `nspin = 1`）
 
-### 本次修订（2025-01-XX）：精确 apply、清理按钮、precision resolver 例外、variant 索引澄清、JSON enforcement、kpath 归属
+### 本次修订（2025-01-XX）：ParamSpace Invariant Enforcement 宪法合并
+
+#### 变更摘要
+1. **新增 10.8 章节：ParamSpace / Preset Apply / Invariant Enforcement 宪法**：将独立的 ParamSpace Constitution 合并入全局宪法，作为第 10 章的子章节。包含 Single-writer 原则、ParamSpace 统一职责模型（Detect、Preset Apply、Custom Apply/Invariant Enforcement）、NOT_APPLICABLE 强语义、Oracle 定位（只读、极窄、基于 YAML 真相）、Apply 执行顺序（Prerequisite → Dependent）、Precision/degauss 示例、禁止事项和 Rationale（设计理由说明）。
+
+2. **章节重新编号**：原 10.8-10.13 调整为 10.9-10.14。
+
+3. **源文档标记为已合并**：`docs/paramspace_constitution_cn.md` 已添加弃用说明，指向全局宪法。
+
+### 历史修订（2025-01-XX）：精确 apply、清理按钮、precision resolver 例外、variant 索引澄清、JSON enforcement、kpath 归属
 
 #### 变更摘要
 1. **修订 10.3.3：从"完全重写"改为"局部精确修改"**：Preset Apply 必须是局部精确修改，只允许修改该维度 ParamSpace Variant 明确声明的 keys，所有不归该 preset 维度管理的参数必须保持原样。明确说明如果未来需要"清理/归一化/删除多余参数"，应通过独立的清理功能实现，而不是 preset apply 的职责。
