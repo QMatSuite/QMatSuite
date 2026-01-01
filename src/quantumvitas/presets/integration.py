@@ -35,6 +35,7 @@ from quantumvitas.presets.compiler import (
     PresetCompilationError,
     _normalize_option,
 )
+from quantumvitas.presets.oracle import Oracle
 
 
 def _parse_bool_value(value: Any) -> Optional[bool]:
@@ -374,8 +375,14 @@ def apply_presets_to_step(
     # Load step using StepDoc (compiler has write access to parameters/cards)
     doc = StepDoc.load(step_path, access_control=True, owner="compiler")
     
-    # Get step_type for variant lookup
+    # Get step_type for variant lookup (map machine_type to public_type if needed)
     step_type = doc.get(["step_type"], default="scf")
+    # Map machine_type to public_type for variant lookup (presets use public_type)
+    from quantumvitas.workflow.registry import get_registry
+    registry = get_registry()
+    spec = registry.get(step_type)
+    if spec and spec.public_type:
+        step_type = spec.public_type
     
     # Build step_yaml structure for compilation (export to avoid mutation)
     step_yaml: Dict[str, Dict[str, Any]] = {}
@@ -404,17 +411,30 @@ def apply_presets_to_step(
             "skipped_fields": ["no variant applies to this step_type"],
         }
     
+    # Per ParamSpace Constitution v1: Apply must be executed in phases
+    # Phase 1: Prerequisite ParamSpaces (occupations_scheme, step_type, etc.)
+    # Phase 2: Dependent ParamSpaces (precision)
+    prerequisite_dimensions = [
+        d for d in applied_dimensions 
+        if d in (DIMENSION_OCCUPATIONS_SCHEME, DIMENSION_MAGNETISM)
+    ]
+    dependent_dimensions = [
+        d for d in applied_dimensions 
+        if d == DIMENSION_PRECISION
+    ]
+    
     # Build unified patch for apply_patch (uses None for deletions)
     unified_patch: Dict[str, Dict[str, Any]] = {
         "parameters": {
-        "SYSTEM": {},
-        "ELECTRONS": {},
+            "SYSTEM": {},
+            "ELECTRONS": {},
         },
         "cards": {},
     }
     all_deletions: set[Tuple[str, str]] = set()  # (section, key) tuples
     
-    for dimension in applied_dimensions:
+    # Phase 1: Prerequisite dimensions (occupations_scheme, magnetism)
+    for dimension in prerequisite_dimensions:
         # Normalize option
         if dimension == DIMENSION_MAGNETISM:
             option_enum = _normalize_option(filtered_options[dimension], MagnetismOption, MagnetismOption.NONMAGNETIC)
@@ -424,10 +444,45 @@ def apply_presets_to_step(
                 OccupationsSchemeOption,
                 OccupationsSchemeOption.FIXED,
             )
-        elif dimension == DIMENSION_PRECISION:
+        else:
+            continue
+        
+        # Build precision context if needed (not needed for prerequisite dimensions)
+        precision_context = None
+        
+        # Compile using variant
+        patch, deletions = compile_dimension_patch_for_step(
+            dimension,
+            option_enum,
+            step_type,
+            step_yaml,
+            explicit_defaults=True,
+            precision_context=precision_context,
+        )
+        
+        # Merge patch into unified_patch
+        if "SYSTEM" in patch:
+            unified_patch["parameters"]["SYSTEM"].update(patch["SYSTEM"])
+        if "ELECTRONS" in patch:
+            unified_patch["parameters"]["ELECTRONS"].update(patch["ELECTRONS"])
+        if "cards" in patch:
+            unified_patch["cards"].update(patch["cards"])
+        
+        # Collect deletions
+        all_deletions.update(deletions)
+    
+    # Apply Phase 1 patches to step_yaml (for oracle to read latest state in Phase 2)
+    step_yaml["SYSTEM"].update(unified_patch["parameters"]["SYSTEM"])
+    step_yaml["ELECTRONS"].update(unified_patch["parameters"]["ELECTRONS"])
+    if "cards" not in step_yaml:
+        step_yaml["cards"] = {}
+    step_yaml["cards"].update(unified_patch["cards"])
+    
+    # Phase 2: Dependent dimensions (precision)
+    for dimension in dependent_dimensions:
+        # Normalize option
+        if dimension == DIMENSION_PRECISION:
             option_enum = _normalize_option(filtered_options[dimension], PrecisionOption, PrecisionOption.MED)
-        elif dimension == DIMENSION_CONVERGENCE:
-            option_enum = _normalize_option(filtered_options[dimension], ConvergenceOption, ConvergenceOption.NORMAL)
         else:
             continue
         
@@ -497,6 +552,14 @@ def apply_presets_to_step(
             precision_context=precision_context,
         )
         
+        # Merge patch
+        if "SYSTEM" in patch:
+            compiled_patches["SYSTEM"].update(patch["SYSTEM"])
+        if "ELECTRONS" in patch:
+            compiled_patches["ELECTRONS"].update(patch["ELECTRONS"])
+        if "cards" in patch:
+            compiled_patches["cards"].update(patch["cards"])
+        
         # Merge patch into unified patch
         if "SYSTEM" in patch:
             unified_patch["parameters"]["SYSTEM"].update(patch["SYSTEM"])
@@ -517,8 +580,71 @@ def apply_presets_to_step(
         elif section == "cards":
             unified_patch["cards"][key] = None
     
+    # Per ParamSpace Constitution v1: Apply invariants unconditionally
+    # Build current YAML state for oracle (must be mutable dict for invariant enforcement)
+    # Start with existing state from doc, then apply unified_patch to get final state
+    current_yaml_state: Dict[str, Dict[str, Any]] = {
+        "SYSTEM": {},
+        "ELECTRONS": {},
+        "cards": {},
+    }
+    if doc.has(["parameters", "SYSTEM"]):
+        current_yaml_state["SYSTEM"] = dict(doc.export_copy(["parameters", "SYSTEM"]))
+    if doc.has(["parameters", "ELECTRONS"]):
+        current_yaml_state["ELECTRONS"] = dict(doc.export_copy(["parameters", "ELECTRONS"]))
+    if doc.has(["cards"]):
+        current_yaml_state["cards"] = dict(doc.export_copy(["cards"]))
+    
+    # Apply unified_patch to current_yaml_state (for oracle to read final state)
+    for key, value in unified_patch["parameters"]["SYSTEM"].items():
+        if value is None:
+            current_yaml_state["SYSTEM"].pop(key, None)
+        else:
+            current_yaml_state["SYSTEM"][key] = value
+    for key, value in unified_patch["parameters"]["ELECTRONS"].items():
+        if value is None:
+            current_yaml_state["ELECTRONS"].pop(key, None)
+        else:
+            current_yaml_state["ELECTRONS"][key] = value
+    for key, value in unified_patch["cards"].items():
+        if value is None:
+            current_yaml_state["cards"].pop(key, None)
+        else:
+            current_yaml_state["cards"][key] = value
+    
+    oracle = Oracle(current_yaml_state)
+    
+    # Apply invariants for all ParamSpaces (even if not being applied)
+    # This ensures invariant enforcement runs even when CUSTOM
+    # Per Constitution v1 §2: Custom Apply (Invariant Enforcement) always runs
+    from quantumvitas.presets.spaces_registry import SPACES
+    for dimension_name, paramspace in SPACES.items():
+        paramspace.apply_invariants(current_yaml_state, oracle)
+    
+    # Update unified_patch from current_yaml_state (invariants may have mutated it)
+    # Compare with original to find what changed
+    original_system = {}
+    original_electrons = {}
+    original_cards = {}
+    if doc.has(["parameters", "SYSTEM"]):
+        original_system = doc.export_copy(["parameters", "SYSTEM"])
+    if doc.has(["parameters", "ELECTRONS"]):
+        original_electrons = doc.export_copy(["parameters", "ELECTRONS"])
+    if doc.has(["cards"]):
+        original_cards = doc.export_copy(["cards"])
+    
+    # Update unified_patch with invariant-enforced values
+    for key, value in current_yaml_state["SYSTEM"].items():
+        if key not in original_system or original_system[key] != value:
+            unified_patch["parameters"]["SYSTEM"][key] = value
+    for key, value in current_yaml_state["ELECTRONS"].items():
+        if key not in original_electrons or original_electrons[key] != value:
+            unified_patch["parameters"]["ELECTRONS"][key] = value
+    for key, value in current_yaml_state["cards"].items():
+        if key not in original_cards or original_cards[key] != value:
+            unified_patch["cards"][key] = value
+    
     # Physics validation before applying
-    # Build merged SYSTEM params for validation
     if validate_physics:
         merged_system = {}
         if doc.has(["parameters", "SYSTEM"]):
