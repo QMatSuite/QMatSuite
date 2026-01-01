@@ -76,15 +76,16 @@ class TestOccupationsSchemeRoundtrip:
         assert detected == CUSTOM
     
     def test_not_applicable_strictness_fixed_degauss(self):
-        """NOT_APPLICABLE: FIXED profile with degauss present → CUSTOM."""
+        """NOT_APPLICABLE: FIXED profile with degauss present → FIXED (degauss owned by Precision)."""
         params = {
             "SYSTEM": {
                 "occupations": "fixed",
-                "degauss": 0.02,  # Should not be present for FIXED
+                "degauss": 0.02,  # Should not be present for FIXED, but OccupationsScheme doesn't read it
             }
         }
         detected = detect_occupations_scheme(params)
-        assert detected == CUSTOM
+        # OccupationsScheme detect does NOT read degauss (owned by Precision)
+        assert detected == OccupationsSchemeOption.FIXED
     
     def test_not_applicable_strictness_tetrahedra(self):
         """NOT_APPLICABLE: TETRAHEDRA profile with smearing present → CUSTOM."""

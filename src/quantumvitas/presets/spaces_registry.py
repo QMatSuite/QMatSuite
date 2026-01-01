@@ -60,13 +60,13 @@ SPACES: Dict[str, ParamSpace] = {
 OCCUPATIONS_SCHEME_PROFILE_TO_ENUM = {
     "FIXED": OccupationsSchemeOption.FIXED,
     "TETRAHEDRA": OccupationsSchemeOption.TETRAHEDRA,
-    "SMEARING_GAUSSIAN_0.02": OccupationsSchemeOption.SMEARING_GAUSSIAN,
+    "SMEARING_GAUSSIAN": OccupationsSchemeOption.SMEARING_GAUSSIAN,
 }
 
 OCCUPATIONS_SCHEME_ENUM_TO_PROFILE = {
     OccupationsSchemeOption.FIXED: "FIXED",
     OccupationsSchemeOption.TETRAHEDRA: "TETRAHEDRA",
-    OccupationsSchemeOption.SMEARING_GAUSSIAN: "SMEARING_GAUSSIAN_0.02",
+    OccupationsSchemeOption.SMEARING_GAUSSIAN: "SMEARING_GAUSSIAN",
 }
 
 # Magnetism: profile_name -> enum

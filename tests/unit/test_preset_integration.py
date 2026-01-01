@@ -214,10 +214,13 @@ class TestApplyPresetsToStep:
         }
         step_path.write_text(yaml.safe_dump(original_content))
         
-        # Apply collinear + smearing_gaussian
+        # Apply collinear + smearing_gaussian (degauss is NOT written by OccupationsScheme)
         result = apply_presets_to_step(
             step_path,
-            {"magnetism": "collinear_lsda", "occupations_scheme": "smearing_gaussian"},
+            {
+                "magnetism": "collinear_lsda",
+                "occupations_scheme": "smearing_gaussian",
+            },
         )
         
         # Result now includes accepted flag and content
@@ -228,7 +231,8 @@ class TestApplyPresetsToStep:
         assert system["nspin"] == 2
         assert system["occupations"] == "smearing"  # YAML parsed value (no outer quotes)
         assert system["smearing"] == "gaussian"  # YAML parsed value (no outer quotes)
-        assert system["degauss"] == 0.02
+        # degauss is NOT written by OccupationsScheme (owned by Precision)
+        assert "degauss" not in system
         
         # Non-preset params preserved (nbnd is not a preset param)
         assert system["nbnd"] == 50

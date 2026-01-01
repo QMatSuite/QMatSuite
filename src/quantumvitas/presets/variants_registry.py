@@ -154,13 +154,13 @@ VARIANTS_BY_DIMENSION, VARIANT_BY_STEP_AND_DIMENSION = _build_indexes()
 OCCUPATIONS_SCHEME_PROFILE_TO_ENUM = {
     "FIXED": OccupationsSchemeOption.FIXED,
     "TETRAHEDRA": OccupationsSchemeOption.TETRAHEDRA,
-    "SMEARING_GAUSSIAN_0.02": OccupationsSchemeOption.SMEARING_GAUSSIAN,
+    "SMEARING_GAUSSIAN": OccupationsSchemeOption.SMEARING_GAUSSIAN,
 }
 
 OCCUPATIONS_SCHEME_ENUM_TO_PROFILE = {
     OccupationsSchemeOption.FIXED: "FIXED",
     OccupationsSchemeOption.TETRAHEDRA: "TETRAHEDRA",
-    OccupationsSchemeOption.SMEARING_GAUSSIAN: "SMEARING_GAUSSIAN_0.02",
+    OccupationsSchemeOption.SMEARING_GAUSSIAN: "SMEARING_GAUSSIAN",
 }
 
 # Magnetism: profile_name -> enum
@@ -372,11 +372,12 @@ def _compile_precision_patch_for_step(
     # When user explicitly sets precision preset, write degauss value
     # LOW / MED / HIGH => 0.01 / 0.02 / 0.03
     # But only if degauss is applicable (smearing is active)
-    # Check current YAML state for occupations
+    # Per Constitution 10.8.9.1: Must use Oracle to check applicability, not direct YAML read
+    from quantumvitas.presets.oracle import Oracle
+    
     step_yaml = context.get("step_yaml", {})
-    system_yaml = step_yaml.get("SYSTEM", {})
-    occupations = system_yaml.get("occupations")
-    if occupations and str(occupations).lower().strip() == "smearing":
+    oracle = Oracle(step_yaml)
+    if oracle.degauss_applicability():
         # degauss is applicable - write value based on precision level
         degauss_map = {
             "LOW": 0.01,
@@ -448,9 +449,12 @@ def detect_dimension_for_step(
             variant, step_type, step_yaml, precision_context or {}
         )
     
-    # Standard ParamSpace matching
+    # Standard ParamSpace matching (with key-access enforcement)
+    from quantumvitas.presets.paramspace import ParamSpaceContext
+    
     profile_to_enum = PROFILE_TO_ENUM[dimension]
-    matched_profile = match_profile(variant.space, step_yaml)
+    with ParamSpaceContext(variant.space):
+        matched_profile = match_profile(variant.space, step_yaml)
     
     if matched_profile is None:
         return CUSTOM
@@ -533,12 +537,14 @@ def _detect_precision_for_step(
             "profile_name": level_name,
         }
         
-        # Match (variant-aware)
+        # Match (variant-aware) - context is set by match_precision_profile internally
         if has_kpoints_key:
             matched_profile = match_precision_profile(step_yaml, canonical_values)
         else:
-            # Match without K_POINTS (bands_pw)
-            matched_profile = _match_precision_without_kpoints(step_yaml, canonical_values)
+            # Match without K_POINTS (bands_pw) - need to set context manually
+            from quantumvitas.presets.paramspace import ParamSpaceContext
+            with ParamSpaceContext(variant.space):
+                matched_profile = _match_precision_without_kpoints(step_yaml, canonical_values)
         
         if matched_profile is not None:
             profile_to_enum = PRECISION_PROFILE_TO_ENUM
@@ -588,6 +594,8 @@ def _match_precision_without_kpoints(
     Match precision profile without requiring K_POINTS (for bands_pw variant).
     
     Only matches on ecutwfc, ecutrho, and conv_thr.
+    
+    Note: This function assumes ParamSpaceContext is already set by the caller.
     """
     from quantumvitas.presets.paramspace import get_yaml_value
     
@@ -595,7 +603,7 @@ def _match_precision_without_kpoints(
     # Get variant directly (avoid circular import)
     paramspace = PRECISION_PW_BANDS_PW_VARIANT.space
     
-    # Extract actual values
+    # Extract actual values (context should be set by caller)
     ecutwfc_present, ecutwfc_raw = get_yaml_value(step_yaml, "SYSTEM", "ecutwfc")
     ecutrho_present, ecutrho_raw = get_yaml_value(step_yaml, "SYSTEM", "ecutrho")
     conv_thr_present, conv_thr_raw = get_yaml_value(step_yaml, "ELECTRONS", "conv_thr")
