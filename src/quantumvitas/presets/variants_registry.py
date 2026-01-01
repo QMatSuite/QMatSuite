@@ -121,19 +121,19 @@ def _build_indexes() -> Tuple[
 ]:
     """
     Build indexes for variant lookup.
-    
+
     Returns:
         Tuple of (variants_by_dimension, variant_by_step_and_dimension)
     """
     variants_by_dimension: Dict[str, list[ParamSpaceVariant]] = {}
     variant_by_step_and_dimension: Dict[Tuple[str, str], ParamSpaceVariant] = {}
-    
+
     for variant in VARIANTS:
         # Index by dimension
         if variant.dimension not in variants_by_dimension:
             variants_by_dimension[variant.dimension] = []
         variants_by_dimension[variant.dimension].append(variant)
-        
+
         # Index by (step_type, dimension)
         for step_type in variant.applies_to_step_types:
             key = (step_type, variant.dimension)
@@ -145,12 +145,12 @@ def _build_indexes() -> Tuple[
                     f"apply to step_type={step_type}, dimension={variant.dimension}"
                 )
             variant_by_step_and_dimension[key] = variant
-    
+
     # Convert lists to tuples
     variants_by_dimension_frozen = {
         dim: tuple(variants) for dim, variants in variants_by_dimension.items()
     }
-    
+
     return variants_by_dimension_frozen, variant_by_step_and_dimension
 
 
@@ -168,13 +168,13 @@ VARIANTS_BY_DIMENSION, VARIANT_BY_STEP_AND_DIMENSION = _build_indexes()
 OCCUPATIONS_SCHEME_PROFILE_TO_ENUM = {
     "FIXED": OccupationsSchemeOption.FIXED,
     "TETRAHEDRA": OccupationsSchemeOption.TETRAHEDRA,
-    "SMEARING_GAUSSIAN_0.02": OccupationsSchemeOption.SMEARING_GAUSSIAN,
+    "SMEARING_GAUSSIAN": OccupationsSchemeOption.SMEARING_GAUSSIAN,
 }
 
 OCCUPATIONS_SCHEME_ENUM_TO_PROFILE = {
     OccupationsSchemeOption.FIXED: "FIXED",
     OccupationsSchemeOption.TETRAHEDRA: "TETRAHEDRA",
-    OccupationsSchemeOption.SMEARING_GAUSSIAN: "SMEARING_GAUSSIAN_0.02",
+    OccupationsSchemeOption.SMEARING_GAUSSIAN: "SMEARING_GAUSSIAN",
 }
 
 # Magnetism: profile_name -> enum
@@ -245,11 +245,11 @@ ENUM_TO_PROFILE: Dict[str, Dict[Any, str]] = {
 def get_variant(dimension: str, step_type: str) -> Optional[ParamSpaceVariant]:
     """
     Get the variant that applies to a given dimension and step type.
-    
+
     Args:
         dimension: Dimension name (e.g., "precision", "magnetism")
         step_type: Step type string (e.g., "scf", "bands_pw")
-    
+
     Returns:
         ParamSpaceVariant if one applies, None otherwise
     """
@@ -269,9 +269,9 @@ def compile_dimension_patch_for_step(
 ) -> Tuple[Dict[str, Dict[str, Any]], set[Tuple[str, str]]]:
     """
     Compile a preset dimension to YAML patch for a specific step type.
-    
+
     This selects the appropriate variant and compiles using that variant's ParamSpace.
-    
+
     Args:
         dimension: Dimension name
         option_enum: Enum option value
@@ -279,12 +279,12 @@ def compile_dimension_patch_for_step(
         step_yaml: Current step YAML dict
         explicit_defaults: If True, always write VALUE cells
         precision_context: Optional context for precision (lattice, pseudo cutoffs, etc.)
-    
+
     Returns:
         Tuple of (patch_dict, deletions_set)
         - patch_dict: Nested dict to merge into YAML
         - deletions_set: Set of (section, key) tuples to delete
-    
+
     Raises:
         ValueError: If dimension/option not supported
     """
@@ -293,14 +293,14 @@ def compile_dimension_patch_for_step(
     if variant is None:
         # No variant applies - return empty patch
         return ({}, set())
-    
+
     # Get profile name
     enum_to_profile = ENUM_TO_PROFILE[dimension]
     if option_enum not in enum_to_profile:
         raise ValueError(f"Unknown option for dimension {dimension}: {option_enum}")
-    
+
     profile_name = enum_to_profile[option_enum]
-    
+
     # Special handling for precision (uses resolver)
     if dimension == "precision":
         # Pass step_yaml to context for degauss applicability check
@@ -309,19 +309,25 @@ def compile_dimension_patch_for_step(
         return _compile_precision_patch_for_step(
             variant, profile_name, step_type, precision_context
         )
-    
+
     # Standard ParamSpace compilation
-    # Convert QE YAML → IR YAML before compilation (ParamSpace operates on IR keys)
+    # ADAPTER LAYER: Convert QE YAML → IR YAML before compilation (ParamSpace operates on IR keys in v0)
+    # This is a thin adapter layer - ParamSpace kernel (baac796) expects QE params, but we pass IR YAML
+    # Since IR 1:1 mapping in v0, this is mostly identity, but explicit for future non-1:1 support
     from quantumvitas.ir.backends.qe.mapping import qe_yaml_to_ir_yaml, ir_patch_to_qe_patch
     ir_yaml = qe_yaml_to_ir_yaml(step_yaml, qe_module="pw")
-    
-    ir_patch, deletions = compile_profile_patch(
-        variant.space, profile_name, ir_yaml, explicit_defaults=explicit_defaults
-    )
-    
-    # Convert IR patch → QE patch (ParamSpace produces IR keys, but step.yaml needs QE keys)
+
+    # ParamSpace kernel (baac796) - operates on IR keys (conceptually, but v0 IR == QE)
+    # Use ParamSpaceContext for key access enforcement (baac796 requirement)
+    from quantumvitas.presets.paramspace import ParamSpaceContext
+    with ParamSpaceContext(variant.space):
+        ir_patch, deletions = compile_profile_patch(
+            variant.space, profile_name, ir_yaml, explicit_defaults=explicit_defaults
+        )
+
+    # ADAPTER LAYER: Convert IR patch → QE patch (ParamSpace produces IR keys, but step.yaml needs QE keys)
     patch = ir_patch_to_qe_patch(ir_patch)
-    
+
     # Also convert deletions (IR section/key → QE section/key)
     # Note: In ParamKey, section is QE section and key is IR key (conceptually)
     # In v0, IR sections == QE sections, so section stays the same, but we convert IR key → QE key
@@ -342,7 +348,7 @@ def compile_dimension_patch_for_step(
             # IR key not in mapping - keep as-is (should not happen in v0, but handle gracefully)
             qe_deletions.add((section, ir_key))
     deletions = qe_deletions
-    
+
     return (patch, deletions)
 
 
@@ -354,7 +360,7 @@ def _compile_precision_patch_for_step(
 ) -> Tuple[Dict[str, Dict[str, Any]], set[Tuple[str, str]]]:
     """
     Compile precision patch using resolver.
-    
+
     Args:
         variant: Precision variant
         profile_name: "LOW", "MED", or "HIGH"
@@ -363,7 +369,7 @@ def _compile_precision_patch_for_step(
             - lattice_matrix: 3x3 lattice matrix
             - base_ecutwfc: Base ecutwfc from pseudos
             - base_ecutrho: Base ecutrho from pseudos
-    
+
     Returns:
         Tuple of (patch_dict, deletions_set)
     """
@@ -371,26 +377,26 @@ def _compile_precision_patch_for_step(
         compute_kmesh,
         round_cutoff_integer,
     )
-    
+
     # Get policy
     policy = get_precision_policy(profile_name, variant.name)
-    
+
     # Resolve values
     base_ecutwfc = context.get("base_ecutwfc")
     base_ecutrho = context.get("base_ecutrho")
-    
+
     if base_ecutwfc is None or base_ecutrho is None:
         from quantumvitas.presets.compiler import PresetCompilationError
         raise PresetCompilationError(
             "Precision compilation requires base_ecutwfc and base_ecutrho in context"
         )
-    
+
     # Check if variant includes K_POINTS key
     has_kpoints_key = any(
         key.section == "cards" and key.key == "K_POINTS"
         for key in variant.space.keys
     )
-    
+
     # If variant includes K_POINTS, lattice_matrix is required
     if has_kpoints_key:
         lattice_matrix = context.get("lattice_matrix")
@@ -400,12 +406,12 @@ def _compile_precision_patch_for_step(
                 f"Precision compilation for {step_type} requires lattice_matrix in context "
                 f"(variant {variant.name} includes K_POINTS)"
             )
-    
+
     # Compute cutoffs
     ecutwfc = round_cutoff_integer(base_ecutwfc * policy.cutoff_multiplier)
     ecutrho = round_cutoff_integer(base_ecutrho * policy.cutoff_multiplier)
     conv_thr = policy.conv_thr
-    
+
     # Build patch for keys in variant
     patch: Dict[str, Dict[str, Any]] = {
         "SYSTEM": {
@@ -416,16 +422,17 @@ def _compile_precision_patch_for_step(
             "conv_thr": conv_thr,
         },
     }
-    
+
     # Per ParamSpace Constitution v1 §7: degauss is owned by Precision ParamSpace
     # When user explicitly sets precision preset, write degauss value
     # LOW / MED / HIGH => 0.01 / 0.02 / 0.03
     # But only if degauss is applicable (smearing is active)
-    # Check current YAML state for occupations
+    # Per Constitution 10.8.9.1: Must use Oracle to check applicability, not direct YAML read
+    from quantumvitas.presets.oracle import Oracle
+
     step_yaml = context.get("step_yaml", {})
-    system_yaml = step_yaml.get("SYSTEM", {})
-    occupations = system_yaml.get("occupations")
-    if occupations and str(occupations).lower().strip() == "smearing":
+    oracle = Oracle(step_yaml)
+    if oracle.degauss_applicability():
         # degauss is applicable - write value based on precision level
         degauss_map = {
             "LOW": 0.01,
@@ -434,7 +441,7 @@ def _compile_precision_patch_for_step(
         }
         if profile_name in degauss_map:
             patch["SYSTEM"]["degauss"] = degauss_map[profile_name]
-    
+
     # Add K_POINTS only if variant includes it
     if has_kpoints_key:
         lattice_matrix = context.get("lattice_matrix")
@@ -442,7 +449,7 @@ def _compile_precision_patch_for_step(
         base_nk1, base_nk2, base_nk3, sk1, sk2, sk3 = compute_kmesh(
             lattice_matrix, policy.delta_k
         )
-        
+
         # Apply nscf factor if needed
         if variant.name == "PRECISION_PW_NSCF":
             nk1 = max(1, int(base_nk1 * policy.nscf_factor))
@@ -450,21 +457,21 @@ def _compile_precision_patch_for_step(
             nk3 = max(1, int(base_nk3 * policy.nscf_factor))
         else:
             nk1, nk2, nk3 = base_nk1, base_nk2, base_nk3
-        
+
         patch["cards"] = {
             "K_POINTS": {
                 "option": "automatic",
                 "data": [[nk1, nk2, nk3, sk1, sk2, sk3]],
             }
         }
-    
+
     # Convert IR patch → QE patch (ParamSpace produces IR keys, but step.yaml needs QE keys)
     # Note: In v0, IR keys == QE keys, so this is mostly identity, but explicit conversion
     from quantumvitas.ir.backends.qe.mapping import ir_patch_to_qe_patch
     # Store original cards before conversion (for K_POINTS which might not be in mapping)
     original_cards = patch.get("cards", {})
     patch = ir_patch_to_qe_patch(patch)
-    
+
     # Handle K_POINTS card - ensure it's preserved after conversion
     # K_POINTS is in the mapping, but ensure cards section is preserved
     if "cards" not in patch and original_cards:
@@ -472,9 +479,9 @@ def _compile_precision_patch_for_step(
     elif "cards" in patch and "K_POINTS" not in patch["cards"] and "K_POINTS" in original_cards:
         # If K_POINTS was lost during conversion, restore it
         patch["cards"]["K_POINTS"] = original_cards["K_POINTS"]
-    
+
     deletions: set[Tuple[str, str]] = set()
-    
+
     return (patch, deletions)
 
 
@@ -488,15 +495,15 @@ def detect_dimension_for_step(
 ) -> Optional[Union[MagnetismOption, OccupationsSchemeOption, PrecisionOption]]:
     """
     Detect a preset dimension for a specific step type.
-    
+
     This selects the appropriate variant and detects using that variant's ParamSpace.
-    
+
     Args:
         dimension: Dimension name
         step_type: Step type string
         step_yaml: Step YAML dict
         precision_context: Optional context for precision
-    
+
     Returns:
         Detected enum option, None if no variant applies, or CUSTOM if no match
     """
@@ -505,27 +512,33 @@ def detect_dimension_for_step(
     if variant is None:
         # No variant applies - return None (not CUSTOM, dimension is N/A)
         return None
-    
+
     # Special handling for precision (uses resolver + canonical matching)
     if dimension == "precision":
         return _detect_precision_for_step(
             variant, step_type, step_yaml, precision_context or {}
         )
-    
-    # Standard ParamSpace matching
-    # Convert QE YAML → IR YAML before matching (ParamSpace operates on IR keys)
+
+    # Standard ParamSpace matching (with key-access enforcement from baac796)
+    # ADAPTER LAYER: Convert QE YAML → IR YAML before matching (ParamSpace operates on IR keys in v0)
+    # This is a thin adapter layer - ParamSpace kernel (baac796) expects QE params, but we pass IR YAML
     from quantumvitas.ir.backends.qe.mapping import qe_yaml_to_ir_yaml
+    from quantumvitas.presets.paramspace import ParamSpaceContext
+
     ir_yaml = qe_yaml_to_ir_yaml(step_yaml, qe_module="pw")
-    
+
+    # ParamSpace kernel (baac796) - operates on IR keys (conceptually, but v0 IR == QE)
+    # Use ParamSpaceContext for key access enforcement (baac796 requirement)
     profile_to_enum = PROFILE_TO_ENUM[dimension]
-    matched_profile = match_profile(variant.space, ir_yaml)
-    
+    with ParamSpaceContext(variant.space):
+        matched_profile = match_profile(variant.space, ir_yaml)
+
     if matched_profile is None:
         return CUSTOM
-    
+
     if matched_profile not in profile_to_enum:
         return CUSTOM
-    
+
     return profile_to_enum[matched_profile]
 
 
@@ -537,13 +550,13 @@ def _detect_precision_for_step(
 ) -> Optional[PrecisionOption]:
     """
     Detect precision using variant-specific matching.
-    
+
     Args:
         variant: Precision variant
         step_type: Step type
         step_yaml: Step YAML dict
         context: Context dict with lattice_matrix, base_ecutwfc, base_ecutrho
-    
+
     Returns:
         PrecisionOption if match, None if context missing, CUSTOM if no match
     """
@@ -552,34 +565,34 @@ def _detect_precision_for_step(
         round_cutoff_integer,
     )
     from quantumvitas.presets.paramspace import match_precision_profile
-    
+
     lattice_matrix = context.get("lattice_matrix")
     base_ecutwfc = context.get("base_ecutwfc")
     base_ecutrho = context.get("base_ecutrho")
-    
+
     if lattice_matrix is None or base_ecutwfc is None or base_ecutrho is None:
         return None  # Context missing - cannot detect
-    
+
     # Try matching against each precision level
     for level_name in ["LOW", "MED", "HIGH"]:
         policy = get_precision_policy(level_name, variant.name)
-        
+
         # Compute canonical values
         canonical_ecutwfc = round_cutoff_integer(base_ecutwfc * policy.cutoff_multiplier)
         canonical_ecutrho = round_cutoff_integer(base_ecutrho * policy.cutoff_multiplier)
         canonical_conv_thr = policy.conv_thr
-        
+
         # Compute kmesh (only if variant includes K_POINTS)
         has_kpoints_key = any(
             key.section == "cards" and key.key == "K_POINTS"
             for key in variant.space.keys
         )
-        
+
         if has_kpoints_key:
             base_nk1, base_nk2, base_nk3, sk1, sk2, sk3 = compute_kmesh(
                 lattice_matrix, policy.delta_k
             )
-            
+
             # Apply nscf factor if needed
             if variant.name == "PRECISION_PW_NSCF":
                 canonical_nk1 = max(1, int(base_nk1 * policy.nscf_factor))
@@ -587,12 +600,12 @@ def _detect_precision_for_step(
                 canonical_nk3 = max(1, int(base_nk3 * policy.nscf_factor))
             else:
                 canonical_nk1, canonical_nk2, canonical_nk3 = base_nk1, base_nk2, base_nk3
-            
+
             canonical_kmesh = (canonical_nk1, canonical_nk2, canonical_nk3, sk1, sk2, sk3)
         else:
             # bands_pw variant - no kmesh
             canonical_kmesh = None
-        
+
         canonical_values = {
             "ecutwfc": canonical_ecutwfc,
             "ecutrho": canonical_ecutrho,
@@ -600,23 +613,27 @@ def _detect_precision_for_step(
             "kmesh": canonical_kmesh,
             "profile_name": level_name,
         }
-        
-        # Convert QE YAML → IR YAML before matching (precision matching uses IR keys)
+
+        # ADAPTER LAYER: Convert QE YAML → IR YAML before matching (precision matching uses IR keys in v0)
+        # This is a thin adapter layer - ParamSpace kernel (baac796) expects QE params, but we pass IR YAML
         from quantumvitas.ir.backends.qe.mapping import qe_yaml_to_ir_yaml
         ir_yaml = qe_yaml_to_ir_yaml(step_yaml, qe_module="pw")
-        
-        # Match (variant-aware)
+
+        # Match (variant-aware) - use ParamSpaceContext for key access enforcement (baac796 requirement)
+        from quantumvitas.presets.paramspace import ParamSpaceContext
         if has_kpoints_key:
-            matched_profile = match_precision_profile(ir_yaml, canonical_values)
+            with ParamSpaceContext(variant.space):
+                matched_profile = match_precision_profile(ir_yaml, canonical_values)
         else:
-            # Match without K_POINTS (bands_pw)
-            matched_profile = _match_precision_without_kpoints(ir_yaml, canonical_values)
-        
+            # Match without K_POINTS (bands_pw) - need to set context manually
+            with ParamSpaceContext(variant.space):
+                matched_profile = _match_precision_without_kpoints(ir_yaml, canonical_values)
+
         if matched_profile is not None:
             profile_to_enum = PRECISION_PROFILE_TO_ENUM
             if matched_profile in profile_to_enum:
                 return profile_to_enum[matched_profile]
-    
+
     return CUSTOM
 
 
@@ -628,25 +645,25 @@ def _warn_if_key_not_in_schema(
 ) -> None:
     """
     Optional sanity check: warn if a key is not in QE JSON schema for this step_type.
-    
+
     This is diagnostics-only and does NOT affect behavior.
     JSON schema is NOT used as truth - variants are.
     """
     try:
         from quantumvitas.data.qe_metadata import safe_load_metadata
-        
+
         metadata = safe_load_metadata()
         if metadata is None:
             return  # No metadata available - skip check
-        
+
         # Check if key is accepted by step_type
         # This is a simplified check - full implementation would need to map
         # step_type to QE module and check parameter acceptance
         # For now, just log a warning if we can't verify
-        
+
         # TODO: Implement full schema check when QE metadata API is available
         # For now, this is a placeholder that does nothing
-        
+
     except Exception:
         # Ignore errors - this is diagnostics only
         pass
@@ -658,47 +675,49 @@ def _match_precision_without_kpoints(
 ) -> Optional[str]:
     """
     Match precision profile without requiring K_POINTS (for bands_pw variant).
-    
+
     Only matches on ecutwfc, ecutrho, and conv_thr.
+
+    Note: This function assumes ParamSpaceContext is already set by the caller.
     """
     from quantumvitas.presets.paramspace import get_yaml_value
-    
+
     # Use bands_pw variant's space to get key parsers
     # Get variant directly (avoid circular import)
     paramspace = PRECISION_PW_BANDS_PW_VARIANT.space
-    
-    # Extract actual values
+
+    # Extract actual values (context should be set by caller)
     ecutwfc_present, ecutwfc_raw = get_yaml_value(step_yaml, "SYSTEM", "ecutwfc")
     ecutrho_present, ecutrho_raw = get_yaml_value(step_yaml, "SYSTEM", "ecutrho")
     conv_thr_present, conv_thr_raw = get_yaml_value(step_yaml, "ELECTRONS", "conv_thr")
-    
+
     # All essential params (except K_POINTS) must be present
     if not (ecutwfc_present and ecutrho_present and conv_thr_present):
         return None
-    
+
     # Parse actual values using variant's keys
     key_ecutwfc = paramspace.keys[0]
     key_ecutrho = paramspace.keys[1]
     key_conv_thr = paramspace.keys[2]
-    
+
     actual_ecutwfc = key_ecutwfc.parser(ecutwfc_raw)
     actual_ecutrho = key_ecutrho.parser(ecutrho_raw)
     actual_conv_thr = key_conv_thr.parser(conv_thr_raw)
-    
+
     canonical_ecutwfc = canonical_values["ecutwfc"]
     canonical_ecutrho = canonical_values["ecutrho"]
     canonical_conv_thr = canonical_values["conv_thr"]
-    
+
     # Check cutoffs (exact match)
     if actual_ecutwfc != canonical_ecutwfc:
         return None
     if actual_ecutrho != canonical_ecutrho:
         return None
-    
+
     # Check conv_thr (with tolerance using key's matches method)
     if not key_conv_thr.matches(actual_conv_thr, canonical_conv_thr):
         return None
-    
+
     # All checks passed
     return canonical_values.get("profile_name")
 
