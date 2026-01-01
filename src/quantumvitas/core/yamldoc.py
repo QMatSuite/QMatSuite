@@ -303,22 +303,30 @@ class YamlDoc:
         - Creates intermediate dicts as needed
         - Deep copies list values to prevent reference leakage
         - Setting to None is allowed (explicit null value)
+        - Setting a dict is FORBIDDEN (use apply_patch for subtree updates)
         
         For delete-on-set behavior, use delete() explicitly or apply_patch().
         
         Args:
             path: Path to set
-            value: Value to set (deep copied if container)
+            value: Value to set (deep copied if list)
             
         Raises:
-            YamlDocError: If path is empty or intermediate is not dict
+            YamlDocError: If path is empty, intermediate is not dict, or value is dict
         """
         path = _normalize_path(path)
         if not path:
             raise YamlDocError("Cannot set root. Use apply_patch() for bulk updates.")
         
-        # Deep copy containers before storing
-        if isinstance(value, (dict, list)):
+        # Reject dict values - use apply_patch for subtree updates
+        if isinstance(value, dict):
+            raise YamlDocError(
+                f"Cannot set() a dict at path '{'.'.join(path)}'. "
+                "Use apply_patch() for subtree updates."
+            )
+        
+        # Deep copy lists before storing to prevent reference leakage
+        if isinstance(value, list):
             value = _deep_copy(value)
         
         parent, key = self._navigate_to_parent(path, create=True)
@@ -577,11 +585,14 @@ class StepDoc(YamlDoc):
         return cls(data, access_control=access_control, owner=owner)
     
     def save(self, path: Path) -> None:
-        """Save step document to YAML file."""
-        from quantumvitas.core.yaml_io import _save_yaml_raw
+        """
+        Save step document to YAML file.
         
-        _save_yaml_raw(self.to_dict(), path)
-        self.commit_changes()
+        Delegates to save_yaml_doc() for Journal integration.
+        """
+        from quantumvitas.core.yaml_io import save_yaml_doc
+        
+        save_yaml_doc(self, path)
 
 
 class CalcDoc(YamlDoc):
@@ -603,14 +614,14 @@ class CalcDoc(YamlDoc):
         return cls(data)
     
     def save(self, path: Path) -> None:
-        """Save calculation document to YAML file."""
-        from quantumvitas.core.yaml_io import _save_yaml_raw
+        """
+        Save calculation document to YAML file.
         
-        if path.is_dir():
-            path = path / "calculation.yaml"
+        Delegates to save_yaml_doc() for Journal integration.
+        """
+        from quantumvitas.core.yaml_io import save_yaml_doc
         
-        _save_yaml_raw(self.to_dict(), path)
-        self.commit_changes()
+        save_yaml_doc(self, path)
 
 
 class ProjectDoc(YamlDoc):
@@ -632,12 +643,12 @@ class ProjectDoc(YamlDoc):
         return cls(data)
     
     def save(self, path: Path) -> None:
-        """Save project document to YAML file."""
-        from quantumvitas.core.yaml_io import _save_yaml_raw
+        """
+        Save project document to YAML file.
         
-        if path.is_dir():
-            path = path / "project.qv.yml"
+        Delegates to save_yaml_doc() for Journal integration.
+        """
+        from quantumvitas.core.yaml_io import save_yaml_doc
         
-        _save_yaml_raw(self.to_dict(), path)
-        self.commit_changes()
+        save_yaml_doc(self, path)
 
