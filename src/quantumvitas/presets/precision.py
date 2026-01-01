@@ -12,7 +12,7 @@ Per Constitution: These are runtime-only computations, never persisted.
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 import math
 
 from quantumvitas.presets.dimensions import PrecisionOption
@@ -72,31 +72,14 @@ DEFAULT_ECUTRHO = 400.0  # Ry (8× ecutwfc for USPP/PAW)
 NSCF_KMESH_FACTOR = 2
 
 
-# Legacy alias for backward compatibility
-@dataclass(frozen=True)
-class PrecisionConfig:
-    """Legacy configuration class - use PRECISION_CONSTANTS instead."""
-    k_density: float  # Deprecated: use delta_k
-    conv_thr: float
-    cutoff_multiplier: float
-
-
-# Legacy mapping (for tests that may still use it)
-PRECISION_CONFIGS: Dict[PrecisionOption, PrecisionConfig] = {
-    level: PrecisionConfig(
-        k_density=2 * math.pi / const.delta_k,  # Approximate conversion
-        conv_thr=const.conv_thr,
-        cutoff_multiplier=const.cutoff_multiplier,
-    )
-    for level, const in PRECISION_CONSTANTS.items()
-}
+# Legacy code removed per Constitution 10.7.6 (zero tech debt)
 
 
 # ============================================================================
 # K-Mesh Calculation (Reciprocal Space Formulation)
 # ============================================================================
 
-def compute_reciprocal_lengths(lattice_matrix: List[List[float]]) -> Tuple[float, float, float]:
+def compute_reciprocal_lengths(lattice_matrix: list[list[float]]) -> tuple[float, float, float]:
     """
     Compute reciprocal lattice vector lengths |b_i| from real-space lattice.
     
@@ -107,7 +90,7 @@ def compute_reciprocal_lengths(lattice_matrix: List[List[float]]) -> Tuple[float
         lattice_matrix: 3x3 lattice vectors in Angstrom (row vectors a1, a2, a3)
         
     Returns:
-        Tuple of (|b1|, |b2|, |b3|) in Å⁻¹
+        tuple of (|b1|, |b2|, |b3|) in Å⁻¹
     """
     a1 = lattice_matrix[0]
     a2 = lattice_matrix[1]
@@ -148,9 +131,9 @@ def compute_reciprocal_lengths(lattice_matrix: List[List[float]]) -> Tuple[float
 
 
 def compute_kmesh(
-    lattice_matrix: List[List[float]],
+    lattice_matrix: list[list[float]],
     delta_k: float,
-) -> Tuple[int, int, int, int, int, int]:
+) -> tuple[int, int, int, int, int, int]:
     """
     Compute k-point mesh from lattice vectors using reciprocal space formulation.
     
@@ -164,7 +147,7 @@ def compute_kmesh(
         delta_k: k-point spacing in Å⁻¹ (smaller = denser mesh)
         
     Returns:
-        Tuple of (nk1, nk2, nk3, sk1, sk2, sk3) where sk are shifts (always 0)
+        tuple of (nk1, nk2, nk3, sk1, sk2, sk3) where sk are shifts (always 0)
         
     Example for Si (a ≈ 5.43 Å, |b| ≈ 1.157 Å⁻¹):
         - delta_k=0.30: nk = ceil(1.157/0.30) = 4
@@ -186,7 +169,7 @@ def compute_kmesh(
 def compute_kmesh_from_structure(
     structure: Any,  # pymatgen Structure
     delta_k: float,
-) -> Tuple[int, int, int, int, int, int]:
+) -> tuple[int, int, int, int, int, int]:
     """
     Compute k-mesh from a pymatgen Structure object.
     
@@ -195,7 +178,7 @@ def compute_kmesh_from_structure(
         delta_k: k-point spacing in Å⁻¹
         
     Returns:
-        Tuple of (nk1, nk2, nk3, sk1, sk2, sk3)
+        tuple of (nk1, nk2, nk3, sk1, sk2, sk3)
     """
     lattice_matrix = [list(vec) for vec in structure.lattice.matrix]
     return compute_kmesh(lattice_matrix, delta_k)
@@ -253,8 +236,8 @@ def clear_pseudo_index_cache():
 
 def get_cutoffs_from_index(
     sha256: str,
-    index_files: List[Dict[str, Any]],
-) -> Tuple[Optional[float], Optional[float]]:
+    index_files: list[dict[str, Any]],
+) -> tuple[Optional[float], Optional[float]]:
     """
     Look up recommended cutoffs from PSEUDO_FILE_INDEX by sha256.
     
@@ -263,7 +246,7 @@ def get_cutoffs_from_index(
         index_files: List of file entries from PSEUDO_FILE_INDEX.json
         
     Returns:
-        Tuple of (ecutwfc, ecutrho) in Ry. Either can be None if not available.
+        tuple of (ecutwfc, ecutrho) in Ry. Either can be None if not available.
     """
     for entry in index_files:
         if entry.get("sha256") == sha256:
@@ -283,8 +266,8 @@ def get_cutoffs_from_index(
 
 def get_cutoffs_from_index_by_sha_family(
     sha_family: str,
-    index_files: List[Dict[str, Any]],
-) -> Tuple[Optional[float], Optional[float]]:
+    index_files: list[dict[str, Any]],
+) -> tuple[Optional[float], Optional[float]]:
     """
     Look up recommended cutoffs from PSEUDO_FILE_INDEX by sha_family.
     
@@ -296,7 +279,7 @@ def get_cutoffs_from_index_by_sha_family(
         index_files: List of file entries from PSEUDO_FILE_INDEX.json
         
     Returns:
-        Tuple of (ecutwfc, ecutrho) in Ry. Either can be None if not available.
+        tuple of (ecutwfc, ecutrho) in Ry. Either can be None if not available.
     """
     for entry in index_files:
         if entry.get("sha_family") == sha_family:
@@ -315,9 +298,9 @@ def get_cutoffs_from_index_by_sha_family(
 
 
 def aggregate_cutoffs(
-    species_map: Dict[str, Dict[str, Any]],
-    index_files: List[Dict[str, Any]],
-) -> Tuple[float, float]:
+    species_map: dict[str, dict[str, Any]],
+    index_files: list[dict[str, Any]],
+) -> tuple[float, float]:
     """
     Aggregate cutoffs across all species in a calculation.
     
@@ -328,7 +311,7 @@ def aggregate_cutoffs(
         index_files: List of file entries from PSEUDO_FILE_INDEX.json
         
     Returns:
-        Tuple of (ecutwfc, ecutrho) in Ry.
+        tuple of (ecutwfc, ecutrho) in Ry.
         Uses defaults if no recommendations found.
     """
     max_ecutwfc = None
@@ -378,10 +361,8 @@ def round_cutoff_integer(value: float) -> int:
     return int(round(value))
 
 
-# Legacy function for backward compatibility
-def round_cutoff(value: float, step: float) -> float:
-    """Deprecated: Use round_cutoff_integer instead."""
-    return round(value / step) * step
+# Legacy function removed per Constitution 10.7.6 (zero tech debt)
+# round_cutoff() has been removed - use round_cutoff_integer() instead
 
 
 # ============================================================================
@@ -417,7 +398,7 @@ class PrecisionAdvice:
     base_ecutwfc: Optional[float] = None  # Before multiplier
     base_ecutrho: Optional[float] = None  # Before multiplier
     delta_k: Optional[float] = None  # K-point spacing used
-    reciprocal_lengths: Optional[Tuple[float, float, float]] = None
+    reciprocal_lengths: Optional[tuple[float, float, float]] = None
 
 
 class PrecisionAdvisor:
@@ -610,10 +591,10 @@ def get_precision_advice(
 
 def get_canonical_precision_params(
     precision: PrecisionOption,
-    lattice_matrix: List[List[float]],
+    lattice_matrix: list[list[float]],
     base_ecutwfc: float,
     base_ecutrho: float,
-) -> Tuple[int, int, int, int, int, int, int, int, float]:
+) -> tuple[int, int, int, int, int, int, int, int, float]:
     """
     Get canonical precision parameters for a given level.
     
@@ -626,7 +607,7 @@ def get_canonical_precision_params(
         base_ecutrho: Base ecutrho from pseudos
         
     Returns:
-        Tuple of (nk1, nk2, nk3, sk1, sk2, sk3, ecutwfc, ecutrho, conv_thr)
+        tuple of (nk1, nk2, nk3, sk1, sk2, sk3, ecutwfc, ecutrho, conv_thr)
     """
     constants = PRECISION_CONSTANTS[precision]
     

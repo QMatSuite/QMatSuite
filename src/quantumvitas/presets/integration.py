@@ -18,19 +18,86 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import yaml
 
 from quantumvitas.presets.dimensions import (
-    SpinOption,
-    SOCOption,
-    MaterialOption,
+    MagnetismOption,
+    OccupationsSchemeOption,
     PrecisionOption,
     CUSTOM,
-    DIMENSION_SPIN,
-    DIMENSION_SOC,
-    DIMENSION_MATERIAL,
+    DIMENSION_MAGNETISM,
+    DIMENSION_OCCUPATIONS_SCHEME,
     DIMENSION_PRECISION,
     _CustomType,
 )
 from quantumvitas.presets.detector import detect_all_presets
-from quantumvitas.presets.compiler import compile_presets, PresetCompilationError
+from quantumvitas.presets.compiler import (
+    compile_presets,
+    PresetCompilationError,
+    _normalize_option,
+)
+
+
+def _parse_bool_value(value: Any) -> Optional[bool]:
+    """Parse QE boolean value to Python bool."""
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        s = value.strip().lower()
+        if s in (".true.", "true", "t", ".t."):
+            return True
+        if s in (".false.", "false", "f", ".f."):
+            return False
+    return None
+
+
+def _parse_int_value(value: Any) -> Optional[int]:
+    """Parse integer value."""
+    if value is None:
+        return None
+    if isinstance(value, int):
+        return value
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return None
+
+
+def _validate_magnetism_physics(system_params: Dict[str, Any]) -> None:
+    """
+    Validate magnetism physics constraints in final YAML state.
+    
+    Rules:
+    1. If lspinorb=true then noncolin must be true (SOC requires noncollinear)
+    2. If noncolin=true then nspin must be either missing or 4 (contradictions invalid)
+    3. If noncolin=false and nspin=4, that's a contradiction
+    
+    Raises:
+        PresetCompilationError: If physics constraints are violated
+    """
+    noncolin = _parse_bool_value(system_params.get("noncolin"))
+    lspinorb = _parse_bool_value(system_params.get("lspinorb"))
+    nspin = _parse_int_value(system_params.get("nspin"))
+    
+    # Rule 1: SOC requires noncollinear
+    if lspinorb is True and noncolin is not True:
+        raise PresetCompilationError(
+            "Physics constraint violation: lspinorb=true requires noncolin=true "
+            "(spin-orbit coupling requires noncollinear magnetism)"
+        )
+    
+    # Rule 2: noncolin=true with nspin=2 is a contradiction
+    if noncolin is True and nspin == 2:
+        raise PresetCompilationError(
+            "Physics constraint violation: noncolin=true is incompatible with nspin=2. "
+            "Noncollinear magnetism requires nspin=4 or nspin to be absent."
+        )
+    
+    # Rule 3: noncolin=false with nspin=4 is a contradiction
+    if noncolin is False and nspin == 4:
+        raise PresetCompilationError(
+            "Physics constraint violation: nspin=4 requires noncolin=true "
+            "(nspin=4 implies noncollinear magnetism)"
+        )
 
 
 def detect_presets_from_calculation(
@@ -49,7 +116,7 @@ def detect_presets_from_calculation(
             
     Returns:
         Dict mapping dimension name to detected value (string) or "Custom"
-        Example: {"spin": "collinear", "soc": "no_soc", "material": "metal"}
+        Example: {"magnetism": "collinear_lsda", "occupations_scheme": "smearing_gaussian", "precision": "med"}
         
     Note:
         Returns string values for JSON serialization to daemon/GUI.
@@ -61,10 +128,28 @@ def detect_presets_from_calculation(
     step_types_list = [step_type for _, step_type in step_data]
     
     # Detect presets (with step-type-aware precision detection)
+    # Only enable precision detection if we have step_types and calculation_dir
+    # AND if calculation.yaml exists AND project root can be found
+    # (indicates proper project structure for precision detection)
+    enable_precision = False
+    if step_types_list and calculation_dir:
+        calc_yaml = calculation_dir / "calculation.yaml"
+        if calc_yaml.exists():
+            # Quick check: try to find project root by walking up from calculation_dir
+            # If found, enable precision detection; otherwise skip it (for test compatibility)
+            candidate = calculation_dir.parent
+            while candidate != candidate.parent:  # Stop at filesystem root
+                if (candidate / "project.qv.yml").exists():
+                    enable_precision = True
+                    break
+                candidate = candidate.parent
+    
+    # If precision context resolution fails, PrecisionContextError will propagate
+    # (don't catch it here - let it bubble up to daemon handler)
     detected = detect_all_presets(
         step_params_list,
-        step_types=step_types_list if step_types_list else None,
-        calculation_dir=calculation_dir,
+        step_types=step_types_list if enable_precision else None,
+        calculation_dir=calculation_dir if enable_precision else None,
     )
     
     # Convert to string representation for JSON serialization
@@ -83,7 +168,7 @@ def detect_presets_from_calculation(
 
 def detect_presets_from_calculation_typed(
     calculation_dir: Path,
-) -> Dict[str, Union[SpinOption, SOCOption, MaterialOption, _CustomType]]:
+) -> Dict[str, Union[MagnetismOption, OccupationsSchemeOption, _CustomType]]:
     """
     Detect preset values from a calculation's steps (typed version).
     
@@ -160,7 +245,7 @@ def _load_step_parameters_with_types(
     calculation_dir: Path,
     *,
     receivers_only: bool = True,
-) -> List[Tuple[Dict[str, Dict[str, Any]], str]]:
+) -> list[tuple[dict[str, dict[str, Any]], str]]:
     """
     Load parameters from steps with step_type information.
     
@@ -204,30 +289,50 @@ def _load_step_parameters_with_types(
     return result
 
 
+# Dimension ownership: which keys belong to which dimension
+# DEPRECATED: This is no longer used for deletion decisions.
+# Deletions are now driven by profile NOT_APPLICABLE cells and keys that will be written.
+# This mapping is kept only for UI display purposes and should be generated from variants.
+# TODO: Generate this from variants registry instead of hardcoding.
+DIMENSION_OWNED_KEYS: dict[str, dict[str, set[str]]] = {
+    DIMENSION_MAGNETISM: {
+        "SYSTEM": {"nspin", "noncolin", "lspinorb"},
+    },
+    DIMENSION_OCCUPATIONS_SCHEME: {
+        "SYSTEM": {"occupations", "smearing", "degauss"},
+    },
+    DIMENSION_PRECISION: {
+        "SYSTEM": {"ecutwfc", "ecutrho"},
+        "ELECTRONS": {"conv_thr"},
+        # NOTE: cards.K_POINTS is NOT included here because it's variant-dependent
+        # bands_pw variant does NOT own K_POINTS
+    },
+}
+
+
 def apply_presets_to_step(
     step_path: Path,
     options: Dict[str, Any],
     *,
     validate_physics: bool = True,
     precision_advice: Optional[Any] = None,  # PrecisionAdvice object
+    precision_lattice_matrix: Optional[List[List[float]]] = None,  # For precision context
 ) -> Dict[str, Any]:
     """
-    Apply preset options to an existing step.
+    Apply preset options to an existing step using variants registry.
     
     Per Constitution §10.3.3: This OVERWRITES preset-related parameters,
     it does NOT merge. Non-preset parameters are preserved.
     
-    Per Constitution §10.1.1: Step defines its own "preset receiver".
-    This function uses the receiver registry to determine which presets
-    the step accepts based on step_type.
+    Uses variants registry to determine which dimensions apply to this step_type.
+    Deletions are driven by profile NOT_APPLICABLE cells and keys that will be written.
     
     Args:
         step_path: Path to step.yaml file
         options: Preset options dict with dimension keys
-            {"spin": "collinear", "soc": "no_soc", "material": "metal", "precision": "med"}
         validate_physics: If True, validate physics constraints
         precision_advice: Optional PrecisionAdvice for precision preset
-            (required if "precision" is in options)
+        precision_lattice_matrix: Optional lattice matrix for precision context
         
     Returns:
         Dict with:
@@ -239,8 +344,10 @@ def apply_presets_to_step(
         PresetCompilationError: If invalid option combinations
         FileNotFoundError: If step file doesn't exist
     """
-    from quantumvitas.presets.receivers import filter_presets_for_step
-    from quantumvitas.presets.compiler import compile_precision_from_advice
+    from quantumvitas.presets.variants_registry import (
+        get_variant,
+        compile_dimension_patch_for_step,
+    )
     
     step_path = Path(step_path).resolve()
     
@@ -251,85 +358,166 @@ def apply_presets_to_step(
     content = yaml.safe_load(step_path.read_text()) or {}
     step_type = content.get("step_type", "scf")
     existing_params = content.get("parameters", {})
+    existing_cards = dict(content.get("cards", {}))
     
-    # Filter options based on step's receiver capability
-    filtered_options = filter_presets_for_step(step_type, options)
+    # Build step_yaml structure for compilation
+    step_yaml: Dict[str, Dict[str, Any]] = dict(existing_params)
+    if existing_cards:
+        step_yaml["cards"] = existing_cards
     
-    # If step doesn't accept any of the provided presets, skip
-    if not filtered_options:
+    # Get existing params (copy to avoid mutating original)
+    existing_system = dict(existing_params.get("SYSTEM", {}))
+    existing_electrons = dict(existing_params.get("ELECTRONS", {}))
+    
+    # Track which dimensions are being applied (check variants)
+    applied_dimensions = []
+    filtered_options = {}
+    
+    for dimension, option_value in options.items():
+        variant = get_variant(dimension, step_type)
+        if variant is not None:
+            applied_dimensions.append(dimension)
+            filtered_options[dimension] = option_value
+    
+    # If no dimensions apply, skip
+    if not applied_dimensions:
         return {
             "content": content,
             "accepted": False,
             "filtered_options": {},
             "updated_fields": [],
-            "skipped_fields": ["non-receiver step"],
+            "skipped_fields": ["no variant applies to this step_type"],
         }
     
-    # Separate precision from other presets (it needs special handling)
-    non_precision_options = {k: v for k, v in filtered_options.items() if k != DIMENSION_PRECISION}
-    precision_option = filtered_options.get(DIMENSION_PRECISION)
-    
-    # Compile non-precision preset options
-    compiled_system: Dict[str, Any] = {}
-    compiled_electrons: Dict[str, Any] = {}
-    compiled_kpoints_card: Optional[Dict[str, Any]] = None
-    
-    if non_precision_options:
-        compiled = compile_presets(non_precision_options, validate_physics=validate_physics)
-        compiled_system = compiled.get("SYSTEM", {})
-    
-    # Handle precision preset separately (requires pre-computed advice)
-    if precision_option is not None and precision_advice is not None:
-        from quantumvitas.presets.receivers import get_precision_receiver_spec
-        
-        # Get precision receiver spec for this step type
-        precision_spec = get_precision_receiver_spec(step_type)
-        
-        if precision_spec and precision_spec.accepts_any:
-            precision_compiled = compile_precision_from_advice(precision_advice)
-            
-            # Apply cutoffs if accepted
-            if precision_spec.accepts_cutoffs:
-                compiled_system.update(precision_compiled.get("SYSTEM", {}))
-            
-            # Apply conv_thr if accepted
-            if precision_spec.accepts_conv_thr:
-                compiled_electrons.update(precision_compiled.get("ELECTRONS", {}))
-            
-            # Apply kmesh if accepted (receiver decides strategy)
-            if precision_spec.accepts_kmesh and precision_spec.kmesh_strategy != "none":
-                compiled_kpoints_card = precision_compiled.get("K_POINTS_CARD")
-    
-    # Get existing params
-    existing_system = dict(existing_params.get("SYSTEM", {}))
-    existing_electrons = dict(existing_params.get("ELECTRONS", {}))
-    
-    # Define preset-related parameters (to be overwritten)
-    SYSTEM_PRESET_PARAMS = {
-        # Spin
-        "nspin", "noncolin",
-        # SOC
-        "lspinorb",
-        # Material
-        "occupations", "smearing", "degauss",
-        # Precision (cutoffs)
-        "ecutwfc", "ecutrho",
+    # Compile each dimension using variants
+    compiled_patches: dict[str, dict[str, Any]] = {
+        "SYSTEM": {},
+        "ELECTRONS": {},
+        "cards": {},
     }
+    all_deletions: set[Tuple[str, str]] = set()  # (section, key) tuples
     
-    ELECTRONS_PRESET_PARAMS = {
-        # Precision (convergence)
-        "conv_thr",
-    }
+    for dimension in applied_dimensions:
+        # Normalize option
+        if dimension == DIMENSION_MAGNETISM:
+            option_enum = _normalize_option(filtered_options[dimension], MagnetismOption, MagnetismOption.NONMAGNETIC)
+        elif dimension == DIMENSION_OCCUPATIONS_SCHEME:
+            option_enum = _normalize_option(
+                filtered_options[dimension],
+                OccupationsSchemeOption,
+                OccupationsSchemeOption.FIXED,
+            )
+        elif dimension == DIMENSION_PRECISION:
+            option_enum = _normalize_option(filtered_options[dimension], PrecisionOption, PrecisionOption.MED)
+        else:
+            continue
+        
+        # Build precision context if needed
+        precision_context = None
+        if dimension == DIMENSION_PRECISION and precision_advice is not None:
+            # Check if variant requires lattice_matrix (if it includes K_POINTS)
+            variant = get_variant(dimension, step_type)
+            has_kpoints_key = False
+            if variant is not None:
+                has_kpoints_key = any(
+                    key.section == "cards" and key.key == "K_POINTS"
+                    for key in variant.space.keys
+                )
+            
+            # Only require lattice_matrix if variant includes K_POINTS
+            if has_kpoints_key:
+                if precision_lattice_matrix is None:
+                    # Try to infer from step_path (look for calculation.yaml)
+                    calc_dir = step_path.parent.parent
+                    calc_yaml = calc_dir / "calculation.yaml"
+                    if calc_yaml.exists():
+                        try:
+                            from quantumvitas.presets.precision_context import resolve_precision_context
+                            context = resolve_precision_context(calc_dir)
+                            if context.structure:
+                                precision_lattice_matrix = [list(vec) for vec in context.structure.lattice.matrix]
+                        except Exception:
+                            pass
+                
+                if precision_lattice_matrix is None:
+                    from quantumvitas.presets.compiler import PresetCompilationError
+                    raise PresetCompilationError(
+                        f"precision_lattice_matrix is required for precision preset application to {step_type}. "
+                        f"Pass it explicitly or ensure calculation.yaml and structure are available."
+                    )
+            
+            # Get base cutoffs from advice
+            base_ecutwfc = precision_advice.base_ecutwfc
+            base_ecutrho = precision_advice.base_ecutrho
+            
+            # If base values not available, approximate from final values and multiplier
+            if base_ecutwfc is None or base_ecutrho is None:
+                from quantumvitas.presets.precision import PRECISION_CONSTANTS
+                constants = PRECISION_CONSTANTS[option_enum]
+                if base_ecutwfc is None:
+                    base_ecutwfc = precision_advice.ecutwfc / constants.cutoff_multiplier
+                if base_ecutrho is None:
+                    base_ecutrho = precision_advice.ecutrho / constants.cutoff_multiplier
+            
+            precision_context = {
+                "base_ecutwfc": base_ecutwfc,
+                "base_ecutrho": base_ecutrho,
+            }
+            
+            # Only add lattice_matrix if variant requires it
+            if has_kpoints_key and precision_lattice_matrix is not None:
+                precision_context["lattice_matrix"] = precision_lattice_matrix
+        
+        # Compile using variant
+        patch, deletions = compile_dimension_patch_for_step(
+            dimension,
+            option_enum,
+            step_type,
+            step_yaml,
+            explicit_defaults=True,
+            precision_context=precision_context,
+        )
+        
+        # Merge patch
+        if "SYSTEM" in patch:
+            compiled_patches["SYSTEM"].update(patch["SYSTEM"])
+        if "ELECTRONS" in patch:
+            compiled_patches["ELECTRONS"].update(patch["ELECTRONS"])
+        if "cards" in patch:
+            compiled_patches["cards"].update(patch["cards"])
+        
+        # Collect deletions
+        all_deletions.update(deletions)
     
-    # Remove existing preset params, then add compiled ones
-    for param in SYSTEM_PRESET_PARAMS:
-        existing_system.pop(param, None)
-    for param in ELECTRONS_PRESET_PARAMS:
-        existing_electrons.pop(param, None)
+    # Apply deletions (only keys marked NOT_APPLICABLE or that will be written)
+    for section, key in all_deletions:
+        if section == "SYSTEM":
+            existing_system.pop(key, None)
+        elif section == "ELECTRONS":
+            existing_electrons.pop(key, None)
+        elif section == "cards":
+            existing_cards.pop(key, None)
+    
+    # Also delete keys that will be written (overwrite semantics)
+    for section, patch_dict in compiled_patches.items():
+        if section == "SYSTEM":
+            for key in patch_dict.keys():
+                existing_system.pop(key, None)
+        elif section == "ELECTRONS":
+            for key in patch_dict.keys():
+                existing_electrons.pop(key, None)
+        elif section == "cards":
+            for key in patch_dict.keys():
+                existing_cards.pop(key, None)
     
     # Add compiled params
-    existing_system.update(compiled_system)
-    existing_electrons.update(compiled_electrons)
+    existing_system.update(compiled_patches["SYSTEM"])
+    existing_electrons.update(compiled_patches["ELECTRONS"])
+    existing_cards.update(compiled_patches["cards"])
+    
+    # Physics validation
+    if validate_physics:
+        _validate_magnetism_physics(existing_system)
     
     # Update content
     if "parameters" not in content:
@@ -340,43 +528,30 @@ def apply_presets_to_step(
     if existing_electrons:
         content["parameters"]["ELECTRONS"] = existing_electrons
     
-    # Handle K_POINTS (QE kpoints are represented as cards.K_POINTS only)
-    if compiled_kpoints_card is not None:
+    # Handle cards
+    if existing_cards:
         if "cards" not in content:
             content["cards"] = {}
-        content["cards"]["K_POINTS"] = compiled_kpoints_card
+        content["cards"].update(existing_cards)
     
     # Write back
     step_path.write_text(yaml.safe_dump(content, default_flow_style=False, sort_keys=False))
     
-    # Build updated_fields and skipped_fields lists for detailed feedback
+    # Build updated_fields
     updated_fields = []
-    skipped_fields = []
-    
-    if compiled_system:
-        updated_fields.extend(compiled_system.keys())
-    if compiled_electrons:
-        updated_fields.extend([f"ELECTRONS.{k}" for k in compiled_electrons.keys()])
-    if compiled_kpoints_card is not None:
-        updated_fields.append("K_POINTS")
-    
-    # Check if precision was applied but some subparts were skipped
-    if precision_option is not None and precision_advice is not None:
-        precision_spec = get_precision_receiver_spec(step_type)
-        if precision_spec:
-            if not precision_spec.accepts_kmesh and precision_spec.kmesh_strategy == "none":
-                skipped_fields.append("K_POINTS: kpath preserved")
-            if not precision_spec.accepts_cutoffs:
-                skipped_fields.append("ecutwfc/ecutrho: not accepted by step type")
-            if not precision_spec.accepts_conv_thr:
-                skipped_fields.append("conv_thr: not accepted by step type")
+    if compiled_patches["SYSTEM"]:
+        updated_fields.extend(compiled_patches["SYSTEM"].keys())
+    if compiled_patches["ELECTRONS"]:
+        updated_fields.extend([f"ELECTRONS.{k}" for k in compiled_patches["ELECTRONS"].keys()])
+    if compiled_patches["cards"]:
+        updated_fields.extend([f"cards.{k}" for k in compiled_patches["cards"].keys()])
     
     return {
         "content": content,
         "accepted": True,
         "filtered_options": filtered_options,
         "updated_fields": updated_fields,
-        "skipped_fields": skipped_fields,
+        "skipped_fields": [],
     }
 
 
@@ -447,15 +622,15 @@ def get_step_preset_footprints(calculation_dir: Path) -> Dict[str, Dict[str, Any
         {
             "1_scf.step.yaml": {
                 "params": {"nspin": 2, "occupations": "smearing", "ecutwfc": 60.0, ...},
-                "spin": "collinear",
-                "material": "metal",
+                "magnetism": "collinear_lsda",
+                "occupations_scheme": "smearing_gaussian",
                 "precision": "med"
             },
             ...
         }
     """
     from quantumvitas.presets.detector import (
-        detect_spin, detect_soc, detect_material, detect_precision
+        detect_magnetism, detect_occupations_scheme, detect_precision
     )
     
     calculation_dir = Path(calculation_dir).resolve()
@@ -521,16 +696,16 @@ def get_step_preset_footprints(calculation_dir: Path) -> Dict[str, Dict[str, Any
                     pass
             
             # Detect preset values for this step
-            spin_val = detect_spin(parameters)
-            soc_val = detect_soc(parameters)
-            material_val = detect_material(parameters)
+            from quantumvitas.presets.detector import detect_magnetism
+            magnetism_val = detect_magnetism(parameters)
+            occupations_scheme_val = detect_occupations_scheme(parameters)
+            # Precision requires context - without it, returns CUSTOM
             precision_val = detect_precision(parameters)
             
             footprint = {
                 "params": preset_params,
-                "spin": spin_val.value if hasattr(spin_val, 'value') else str(spin_val),
-                "soc": soc_val.value if hasattr(soc_val, 'value') else str(soc_val),
-                "material": material_val.value if hasattr(material_val, 'value') else str(material_val),
+                "magnetism": magnetism_val.value if hasattr(magnetism_val, 'value') else str(magnetism_val),
+                "occupations_scheme": occupations_scheme_val.value if hasattr(occupations_scheme_val, 'value') else str(occupations_scheme_val),
                 "precision": precision_val.value if hasattr(precision_val, 'value') else str(precision_val),
             }
             

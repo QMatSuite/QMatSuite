@@ -10,10 +10,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useQVClient } from './useQVClient';
 import type {
-  SpinValue,
-  SOCValue,
-  MaterialValue,
-  PrecisionValue,
   WorkflowType,
   PresetDetectionResult,
   WorkflowDetectionResult,
@@ -24,10 +20,7 @@ import type {
 import { normalizeProjectRoot } from '../utils/pathUtils';
 
 export interface PresetState {
-  spin: SpinValue | 'Custom';
-  soc: SOCValue | 'Custom';
-  material: MaterialValue | 'Custom';
-  precision: PrecisionValue | 'Custom';
+  [dimension: string]: string | 'Custom';
 }
 
 /** Result of applying presets - for toast/modal feedback */
@@ -57,7 +50,7 @@ export interface PresetsHook extends PresetsHookState {
   refresh: () => Promise<void>;
   
   /** Apply preset to all steps in calculation (BROADCAST), returns detailed result */
-  applyPreset: (dimension: 'spin' | 'soc' | 'material' | 'precision', value: string) => Promise<ApplyResult>;
+  applyPreset: (dimension: string, value: string) => Promise<ApplyResult>;
   
   /** Apply multiple presets at once */
   applyPresets: (presets: Partial<PresetState>) => Promise<ApplyResult>;
@@ -79,9 +72,9 @@ export interface PresetsHook extends PresetsHookState {
  *   return (
  *     <div>
  *       <div>Workflow: {workflow}</div>
- *       <div>Spin: {presets.spin}</div>
- *       <select onChange={(e) => applyPreset('spin', e.target.value)}>
- *         {SPIN_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+ *       <div>Magnetism: {presets.magnetism}</div>
+ *       <select onChange={(e) => applyPreset('magnetism', e.target.value)}>
+ *         Options come from preset catalog
  *       </select>
  *     </div>
  *   );
@@ -185,7 +178,7 @@ export function usePresets(
         
         setState(prev => ({
           ...prev,
-          presets: presetData.presets,
+          presets: presetData.dimension_states,
           workflow: workflowData?.workflow || null,
           footprints: footprintsData,
           isLoading: false,
@@ -227,7 +220,7 @@ export function usePresets(
   
   // Apply single preset dimension (BROADCAST to all steps)
   const applyPreset = useCallback(async (
-    dimension: 'spin' | 'soc' | 'material' | 'precision',
+    dimension: string,
     value: string,
   ): Promise<ApplyResult> => {
     const errorResult: ApplyResult = {
@@ -277,10 +270,10 @@ export function usePresets(
           value,
         };
         
-        // Update local state with new presets from response
+        // Update local state with new dimension states from response
         setState(prev => ({
           ...prev,
-          presets: data.presets,
+          presets: data.dimension_states,
           isApplying: false,
           error: null,
           lastApplyResult: result,
@@ -369,7 +362,7 @@ export function usePresets(
         
         setState(prev => ({
           ...prev,
-          presets: data.presets,
+          presets: data.dimension_states,
           isApplying: false,
           error: null,
           lastApplyResult: result,
