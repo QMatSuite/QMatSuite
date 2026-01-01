@@ -191,7 +191,7 @@ def _load_step_parameters(
     receivers_only: bool = True,
 ) -> List[Dict[str, Dict[str, Any]]]:
     """
-    Load parameters from steps in a calculation.
+    Load parameters from steps in a calculation using StepDoc.
     
     Args:
         calculation_dir: Path to calculation directory
@@ -203,6 +203,7 @@ def _load_step_parameters(
         List of step parameter dicts (section -> params)
     """
     from quantumvitas.presets.receivers import is_receiver
+    from quantumvitas.core.yamldoc import StepDoc
     
     calculation_dir = Path(calculation_dir).resolve()
     steps_dir = calculation_dir / "steps"
@@ -217,15 +218,18 @@ def _load_step_parameters(
     
     for step_file in step_files:
         try:
-            content = yaml.safe_load(step_file.read_text()) or {}
-            step_type = content.get("step_type", "scf")
+            # Load via StepDoc (detector is read-only)
+            doc = StepDoc.load(step_file, access_control=True, owner="detector")
+            step_type = doc.get(["step_type"], default="scf")
             
             # Filter to only receiver steps for preset detection
             if receivers_only and not is_receiver(step_type):
                 continue
             
-            parameters = content.get("parameters", {})
-            cards = content.get("cards", {})
+            # Export parameters and cards as deep copies (no reference leakage)
+            parameters = doc.export_copy(["parameters"]) if doc.has(["parameters"]) else {}
+            cards = doc.export_copy(["cards"]) if doc.has(["cards"]) else {}
+            
             if parameters or cards:
                 # Store both parameters and cards for detector
                 # (detector needs cards.K_POINTS for canonical format)
@@ -247,7 +251,7 @@ def _load_step_parameters_with_types(
     receivers_only: bool = True,
 ) -> list[tuple[dict[str, dict[str, Any]], str]]:
     """
-    Load parameters from steps with step_type information.
+    Load parameters from steps with step_type information using StepDoc.
     
     Args:
         calculation_dir: Path to calculation directory
@@ -257,6 +261,7 @@ def _load_step_parameters_with_types(
         List of (params_dict, step_type) tuples
     """
     from quantumvitas.presets.receivers import is_receiver
+    from quantumvitas.core.yamldoc import StepDoc
     
     calculation_dir = Path(calculation_dir).resolve()
     steps_dir = calculation_dir / "steps"
@@ -269,14 +274,17 @@ def _load_step_parameters_with_types(
     
     for step_file in step_files:
         try:
-            content = yaml.safe_load(step_file.read_text()) or {}
-            step_type = content.get("step_type", "scf")
+            # Load via StepDoc (detector is read-only)
+            doc = StepDoc.load(step_file, access_control=True, owner="detector")
+            step_type = doc.get(["step_type"], default="scf")
             
             if receivers_only and not is_receiver(step_type):
                 continue
             
-            parameters = content.get("parameters", {})
-            cards = content.get("cards", {})
+            # Export parameters and cards as deep copies (no reference leakage)
+            parameters = doc.export_copy(["parameters"]) if doc.has(["parameters"]) else {}
+            cards = doc.export_copy(["cards"]) if doc.has(["cards"]) else {}
+            
             if parameters or cards:
                 # Include both parameters and cards for detector
                 step_params = dict(parameters)
@@ -319,13 +327,15 @@ def apply_presets_to_step(
     precision_lattice_matrix: Optional[List[List[float]]] = None,  # For precision context
 ) -> Dict[str, Any]:
     """
-    Apply preset options to an existing step using variants registry.
+    Apply preset options to an existing step using variants registry and StepDoc.
     
     Per Constitution §10.3.3: This OVERWRITES preset-related parameters,
     it does NOT merge. Non-preset parameters are preserved.
     
     Uses variants registry to determine which dimensions apply to this step_type.
     Deletions are driven by profile NOT_APPLICABLE cells and keys that will be written.
+    
+    Uses StepDoc abstraction for mutation containment (no direct dict mutation).
     
     Args:
         step_path: Path to step.yaml file
@@ -348,26 +358,25 @@ def apply_presets_to_step(
         get_variant,
         compile_dimension_patch_for_step,
     )
+    from quantumvitas.core.yamldoc import StepDoc
     
     step_path = Path(step_path).resolve()
     
     if not step_path.exists():
         raise FileNotFoundError(f"Step file not found: {step_path}")
     
-    # Load existing step content
-    content = yaml.safe_load(step_path.read_text()) or {}
-    step_type = content.get("step_type", "scf")
-    existing_params = content.get("parameters", {})
-    existing_cards = dict(content.get("cards", {}))
+    # Load step using StepDoc (compiler has write access to parameters/cards)
+    doc = StepDoc.load(step_path, access_control=True, owner="compiler")
     
-    # Build step_yaml structure for compilation
-    step_yaml: Dict[str, Dict[str, Any]] = dict(existing_params)
-    if existing_cards:
-        step_yaml["cards"] = existing_cards
+    # Get step_type for variant lookup
+    step_type = doc.get(["step_type"], default="scf")
     
-    # Get existing params (copy to avoid mutating original)
-    existing_system = dict(existing_params.get("SYSTEM", {}))
-    existing_electrons = dict(existing_params.get("ELECTRONS", {}))
+    # Build step_yaml structure for compilation (export to avoid mutation)
+    step_yaml: Dict[str, Dict[str, Any]] = {}
+    if doc.has(["parameters"]):
+        step_yaml = doc.export_copy(["parameters"])
+    if doc.has(["cards"]):
+        step_yaml["cards"] = doc.export_copy(["cards"])
     
     # Track which dimensions are being applied (check variants)
     applied_dimensions = []
@@ -382,17 +391,19 @@ def apply_presets_to_step(
     # If no dimensions apply, skip
     if not applied_dimensions:
         return {
-            "content": content,
+            "content": doc.to_dict(),
             "accepted": False,
             "filtered_options": {},
             "updated_fields": [],
             "skipped_fields": ["no variant applies to this step_type"],
         }
     
-    # Compile each dimension using variants
-    compiled_patches: dict[str, dict[str, Any]] = {
-        "SYSTEM": {},
-        "ELECTRONS": {},
+    # Build unified patch for apply_patch (uses None for deletions)
+    unified_patch: Dict[str, Dict[str, Any]] = {
+        "parameters": {
+            "SYSTEM": {},
+            "ELECTRONS": {},
+        },
         "cards": {},
     }
     all_deletions: set[Tuple[str, str]] = set()  # (section, key) tuples
@@ -478,76 +489,70 @@ def apply_presets_to_step(
             precision_context=precision_context,
         )
         
-        # Merge patch
+        # Merge patch into unified patch
         if "SYSTEM" in patch:
-            compiled_patches["SYSTEM"].update(patch["SYSTEM"])
+            unified_patch["parameters"]["SYSTEM"].update(patch["SYSTEM"])
         if "ELECTRONS" in patch:
-            compiled_patches["ELECTRONS"].update(patch["ELECTRONS"])
+            unified_patch["parameters"]["ELECTRONS"].update(patch["ELECTRONS"])
         if "cards" in patch:
-            compiled_patches["cards"].update(patch["cards"])
+            unified_patch["cards"].update(patch["cards"])
         
         # Collect deletions
         all_deletions.update(deletions)
     
-    # Apply deletions (only keys marked NOT_APPLICABLE or that will be written)
+    # Convert deletions to None values in patch (Delete Semantics A)
     for section, key in all_deletions:
         if section == "SYSTEM":
-            existing_system.pop(key, None)
+            unified_patch["parameters"]["SYSTEM"][key] = None
         elif section == "ELECTRONS":
-            existing_electrons.pop(key, None)
+            unified_patch["parameters"]["ELECTRONS"][key] = None
         elif section == "cards":
-            existing_cards.pop(key, None)
+            unified_patch["cards"][key] = None
     
-    # Also delete keys that will be written (overwrite semantics)
-    for section, patch_dict in compiled_patches.items():
-        if section == "SYSTEM":
-            for key in patch_dict.keys():
-                existing_system.pop(key, None)
-        elif section == "ELECTRONS":
-            for key in patch_dict.keys():
-                existing_electrons.pop(key, None)
-        elif section == "cards":
-            for key in patch_dict.keys():
-                existing_cards.pop(key, None)
-    
-    # Add compiled params
-    existing_system.update(compiled_patches["SYSTEM"])
-    existing_electrons.update(compiled_patches["ELECTRONS"])
-    existing_cards.update(compiled_patches["cards"])
-    
-    # Physics validation
+    # Physics validation before applying
+    # Build merged SYSTEM params for validation
     if validate_physics:
-        _validate_magnetism_physics(existing_system)
+        merged_system = {}
+        if doc.has(["parameters", "SYSTEM"]):
+            merged_system = doc.export_copy(["parameters", "SYSTEM"])
+        # Apply updates
+        for key, value in unified_patch["parameters"]["SYSTEM"].items():
+            if value is None:
+                merged_system.pop(key, None)
+            else:
+                merged_system[key] = value
+        _validate_magnetism_physics(merged_system)
     
-    # Update content
-    if "parameters" not in content:
-        content["parameters"] = {}
+    # Apply unified patch via StepDoc (uses apply_patch with None = delete)
+    # Clean up empty sections before applying
+    if not unified_patch["parameters"]["SYSTEM"]:
+        del unified_patch["parameters"]["SYSTEM"]
+    if not unified_patch["parameters"]["ELECTRONS"]:
+        del unified_patch["parameters"]["ELECTRONS"]
+    if not unified_patch["parameters"]:
+        del unified_patch["parameters"]
+    if not unified_patch["cards"]:
+        del unified_patch["cards"]
     
-    if existing_system:
-        content["parameters"]["SYSTEM"] = existing_system
-    if existing_electrons:
-        content["parameters"]["ELECTRONS"] = existing_electrons
+    if unified_patch:
+        doc.apply_patch(unified_patch)
     
-    # Handle cards
-    if existing_cards:
-        if "cards" not in content:
-            content["cards"] = {}
-        content["cards"].update(existing_cards)
+    # Save via StepDoc (single commit point)
+    doc.save(step_path)
     
-    # Write back
-    step_path.write_text(yaml.safe_dump(content, default_flow_style=False, sort_keys=False))
-    
-    # Build updated_fields
+    # Build updated_fields from the patch
     updated_fields = []
-    if compiled_patches["SYSTEM"]:
-        updated_fields.extend(compiled_patches["SYSTEM"].keys())
-    if compiled_patches["ELECTRONS"]:
-        updated_fields.extend([f"ELECTRONS.{k}" for k in compiled_patches["ELECTRONS"].keys()])
-    if compiled_patches["cards"]:
-        updated_fields.extend([f"cards.{k}" for k in compiled_patches["cards"].keys()])
+    params_patch = unified_patch.get("parameters", {})
+    if "SYSTEM" in params_patch:
+        updated_fields.extend([k for k, v in params_patch["SYSTEM"].items() if v is not None])
+    if "ELECTRONS" in params_patch:
+        updated_fields.extend([f"ELECTRONS.{k}" for k, v in params_patch["ELECTRONS"].items() if v is not None])
+    cards_patch = unified_patch.get("cards", {})
+    if cards_patch:
+        updated_fields.extend([f"cards.{k}" for k, v in cards_patch.items() if v is not None])
     
     return {
-        "content": content,
+        "content": doc.to_dict(),
         "accepted": True,
         "filtered_options": filtered_options,
         "updated_fields": updated_fields,
@@ -557,7 +562,7 @@ def apply_presets_to_step(
 
 def get_step_preset_params(step_path: Path) -> Dict[str, Dict[str, Any]]:
     """
-    Get the preset-related parameters from a step.
+    Get the preset-related parameters from a step using StepDoc.
     
     Args:
         step_path: Path to step.yaml file
@@ -565,19 +570,25 @@ def get_step_preset_params(step_path: Path) -> Dict[str, Dict[str, Any]]:
     Returns:
         Dict with SYSTEM, ELECTRONS, K_POINTS -> preset params
     """
+    from quantumvitas.core.yamldoc import StepDoc
+    
     step_path = Path(step_path).resolve()
     
     if not step_path.exists():
         return {}
     
-    content = yaml.safe_load(step_path.read_text()) or {}
-    parameters = content.get("parameters", {})
-    cards = content.get("cards", {})
-    system = parameters.get("SYSTEM", {})
-    electrons = parameters.get("ELECTRONS", {})
+    # Load via StepDoc (read-only access)
+    try:
+        doc = StepDoc.load(step_path, access_control=True, owner="detector")
+    except Exception:
+        return {}
+    
+    # Extract preset-related params using export_copy (no reference leakage)
+    system = doc.export_copy(["parameters", "SYSTEM"]) if doc.has(["parameters", "SYSTEM"]) else {}
+    electrons = doc.export_copy(["parameters", "ELECTRONS"]) if doc.has(["parameters", "ELECTRONS"]) else {}
     
     # QE kpoints are represented as cards.K_POINTS only
-    kpoints = cards.get("K_POINTS", {})
+    kpoints = doc.export_copy(["cards", "K_POINTS"]) if doc.has(["cards", "K_POINTS"]) else {}
     
     # Extract only preset-related params
     SYSTEM_PRESET_PARAMS = {
@@ -609,7 +620,7 @@ def get_step_preset_params(step_path: Path) -> Dict[str, Dict[str, Any]]:
 
 def get_step_preset_footprints(calculation_dir: Path) -> Dict[str, Dict[str, Any]]:
     """
-    Get preset-related parameter footprints for all steps in a calculation.
+    Get preset-related parameter footprints for all steps in a calculation using StepDoc.
     
     Returns a dict mapping step file name (without path) to its preset params.
     This enables UI to show parameter summary on each step row.
@@ -632,6 +643,7 @@ def get_step_preset_footprints(calculation_dir: Path) -> Dict[str, Dict[str, Any
     from quantumvitas.presets.detector import (
         detect_magnetism, detect_occupations_scheme, detect_precision
     )
+    from quantumvitas.core.yamldoc import StepDoc
     
     calculation_dir = Path(calculation_dir).resolve()
     steps_dir = calculation_dir / "steps"
@@ -646,9 +658,12 @@ def get_step_preset_footprints(calculation_dir: Path) -> Dict[str, Dict[str, Any
     
     for step_file in step_files:
         try:
-            content = yaml.safe_load(step_file.read_text()) or {}
-            parameters = content.get("parameters", {})
-            cards = content.get("cards", {})
+            # Load via StepDoc (read-only access)
+            doc = StepDoc.load(step_file, access_control=True, owner="detector")
+            
+            # Export parameters and cards as deep copies (no reference leakage)
+            parameters = doc.export_copy(["parameters"]) if doc.has(["parameters"]) else {}
+            cards = doc.export_copy(["cards"]) if doc.has(["cards"]) else {}
             system = parameters.get("SYSTEM", {})
             electrons = parameters.get("ELECTRONS", {})
             
@@ -696,7 +711,6 @@ def get_step_preset_footprints(calculation_dir: Path) -> Dict[str, Dict[str, Any
                     pass
             
             # Detect preset values for this step
-            from quantumvitas.presets.detector import detect_magnetism
             magnetism_val = detect_magnetism(parameters)
             occupations_scheme_val = detect_occupations_scheme(parameters)
             # Precision requires context - without it, returns CUSTOM
@@ -720,7 +734,7 @@ def get_step_preset_footprints(calculation_dir: Path) -> Dict[str, Dict[str, Any
 
 def detect_workflow_type(calculation_dir: Path) -> str:
     """
-    Detect the workflow type from a calculation's step sequence.
+    Detect the workflow type from a calculation's step sequence using YamlDoc.
     
     This is informational only - does NOT affect execution.
     Per Constitution: workflow is runtime interpretation only.
@@ -738,6 +752,8 @@ def detect_workflow_type(calculation_dir: Path) -> str:
         - "MD" - molecular dynamics
         - "Unknown" - unrecognized pattern
     """
+    from quantumvitas.core.yamldoc import CalcDoc, StepDoc
+    
     calculation_dir = Path(calculation_dir).resolve()
     
     # Load calculation.yaml to get step info
@@ -746,8 +762,8 @@ def detect_workflow_type(calculation_dir: Path) -> str:
         return "Unknown"
     
     try:
-        content = yaml.safe_load(calc_yaml.read_text()) or {}
-        steps = content.get("steps", [])
+        calc_doc = CalcDoc.load(calc_yaml)
+        steps = calc_doc.export_copy(["steps"]) if calc_doc.has(["steps"]) else []
     except Exception:
         return "Unknown"
     
@@ -763,8 +779,8 @@ def detect_workflow_type(calculation_dir: Path) -> str:
                 step_path = calculation_dir / step_file
                 if step_path.exists():
                     try:
-                        step_content = yaml.safe_load(step_path.read_text()) or {}
-                        step_type = step_content.get("step_type")
+                        step_doc = StepDoc.load(step_path, access_control=True, owner="detector")
+                        step_type = step_doc.get(["step_type"], default=None)
                     except Exception:
                         pass
         
