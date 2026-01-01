@@ -33,6 +33,7 @@ from quantumvitas.presets.compiler import (
     PresetCompilationError,
     _normalize_option,
 )
+from quantumvitas.presets.oracle import Oracle
 
 
 def _parse_bool_value(value: Any) -> Optional[bool]:
@@ -362,8 +363,14 @@ def apply_presets_to_step(
     
     # Build step_yaml structure for compilation
     step_yaml: Dict[str, Dict[str, Any]] = dict(existing_params)
+    if "SYSTEM" not in step_yaml:
+        step_yaml["SYSTEM"] = {}
+    if "ELECTRONS" not in step_yaml:
+        step_yaml["ELECTRONS"] = {}
     if existing_cards:
         step_yaml["cards"] = existing_cards
+    else:
+        step_yaml["cards"] = {}
     
     # Get existing params (copy to avoid mutating original)
     existing_system = dict(existing_params.get("SYSTEM", {}))
@@ -389,6 +396,18 @@ def apply_presets_to_step(
             "skipped_fields": ["no variant applies to this step_type"],
         }
     
+    # Per ParamSpace Constitution v1: Apply must be executed in phases
+    # Phase 1: Prerequisite ParamSpaces (occupations_scheme, step_type, etc.)
+    # Phase 2: Dependent ParamSpaces (precision)
+    prerequisite_dimensions = [
+        d for d in applied_dimensions 
+        if d in (DIMENSION_OCCUPATIONS_SCHEME, DIMENSION_MAGNETISM)
+    ]
+    dependent_dimensions = [
+        d for d in applied_dimensions 
+        if d == DIMENSION_PRECISION
+    ]
+    
     # Compile each dimension using variants
     compiled_patches: dict[str, dict[str, Any]] = {
         "SYSTEM": {},
@@ -397,7 +416,8 @@ def apply_presets_to_step(
     }
     all_deletions: set[Tuple[str, str]] = set()  # (section, key) tuples
     
-    for dimension in applied_dimensions:
+    # Phase 1: Prerequisite dimensions
+    for dimension in prerequisite_dimensions:
         # Normalize option
         if dimension == DIMENSION_MAGNETISM:
             option_enum = _normalize_option(filtered_options[dimension], MagnetismOption, MagnetismOption.NONMAGNETIC)
@@ -407,7 +427,129 @@ def apply_presets_to_step(
                 OccupationsSchemeOption,
                 OccupationsSchemeOption.FIXED,
             )
-        elif dimension == DIMENSION_PRECISION:
+        else:
+            continue
+        
+        # Build precision context if needed (not needed for prerequisite dimensions)
+        precision_context = None
+        
+        # Compile using variant
+        patch, deletions = compile_dimension_patch_for_step(
+            dimension,
+            option_enum,
+            step_type,
+            step_yaml,
+            explicit_defaults=True,
+            precision_context=precision_context,
+        )
+        
+        # Merge patch
+        if "SYSTEM" in patch:
+            compiled_patches["SYSTEM"].update(patch["SYSTEM"])
+        if "ELECTRONS" in patch:
+            compiled_patches["ELECTRONS"].update(patch["ELECTRONS"])
+        if "cards" in patch:
+            compiled_patches["cards"].update(patch["cards"])
+        
+        # Collect deletions
+        all_deletions.update(deletions)
+    
+    # Apply Phase 1 patches to step_yaml (for oracle to read latest state)
+    step_yaml["SYSTEM"].update(compiled_patches["SYSTEM"])
+    step_yaml["ELECTRONS"].update(compiled_patches["ELECTRONS"])
+    if "cards" not in step_yaml:
+        step_yaml["cards"] = {}
+    step_yaml["cards"].update(compiled_patches["cards"])
+    
+    # Phase 2: Dependent dimensions (precision)
+    for dimension in dependent_dimensions:
+        # Normalize option
+        if dimension == DIMENSION_PRECISION:
+            option_enum = _normalize_option(filtered_options[dimension], PrecisionOption, PrecisionOption.MED)
+        else:
+            continue
+        
+        # Build precision context if needed
+        precision_context = None
+        if dimension == DIMENSION_PRECISION and precision_advice is not None:
+            # Check if variant requires lattice_matrix (if it includes K_POINTS)
+            variant = get_variant(dimension, step_type)
+            has_kpoints_key = False
+            if variant is not None:
+                has_kpoints_key = any(
+                    key.section == "cards" and key.key == "K_POINTS"
+                    for key in variant.space.keys
+                )
+            
+            # Only require lattice_matrix if variant includes K_POINTS
+            if has_kpoints_key:
+                if precision_lattice_matrix is None:
+                    # Try to infer from step_path (look for calculation.yaml)
+                    calc_dir = step_path.parent.parent
+                    calc_yaml = calc_dir / "calculation.yaml"
+                    if calc_yaml.exists():
+                        try:
+                            from quantumvitas.presets.precision_context import resolve_precision_context
+                            context = resolve_precision_context(calc_dir)
+                            if context.structure:
+                                precision_lattice_matrix = [list(vec) for vec in context.structure.lattice.matrix]
+                        except Exception:
+                            pass
+                
+                if precision_lattice_matrix is None:
+                    from quantumvitas.presets.compiler import PresetCompilationError
+                    raise PresetCompilationError(
+                        f"precision_lattice_matrix is required for precision preset application to {step_type}. "
+                        f"Pass it explicitly or ensure calculation.yaml and structure are available."
+                    )
+            
+            # Get base cutoffs from advice
+            base_ecutwfc = precision_advice.base_ecutwfc
+            base_ecutrho = precision_advice.base_ecutrho
+            
+            # If base values not available, approximate from final values and multiplier
+            if base_ecutwfc is None or base_ecutrho is None:
+                from quantumvitas.presets.precision import PRECISION_CONSTANTS
+                constants = PRECISION_CONSTANTS[option_enum]
+                if base_ecutwfc is None:
+                    base_ecutwfc = precision_advice.ecutwfc / constants.cutoff_multiplier
+                if base_ecutrho is None:
+                    base_ecutrho = precision_advice.ecutrho / constants.cutoff_multiplier
+            
+            precision_context = {
+                "base_ecutwfc": base_ecutwfc,
+                "base_ecutrho": base_ecutrho,
+            }
+            
+            # Only add lattice_matrix if variant requires it
+            if has_kpoints_key and precision_lattice_matrix is not None:
+                precision_context["lattice_matrix"] = precision_lattice_matrix
+        
+        # Compile using variant
+        patch, deletions = compile_dimension_patch_for_step(
+            dimension,
+            option_enum,
+            step_type,
+            step_yaml,
+            explicit_defaults=True,
+            precision_context=precision_context,
+        )
+        
+        # Merge patch
+        if "SYSTEM" in patch:
+            compiled_patches["SYSTEM"].update(patch["SYSTEM"])
+        if "ELECTRONS" in patch:
+            compiled_patches["ELECTRONS"].update(patch["ELECTRONS"])
+        if "cards" in patch:
+            compiled_patches["cards"].update(patch["cards"])
+        
+        # Collect deletions
+        all_deletions.update(deletions)
+    
+    # Phase 2: Dependent dimensions (precision)
+    for dimension in dependent_dimensions:
+        # Normalize option
+        if dimension == DIMENSION_PRECISION:
             option_enum = _normalize_option(filtered_options[dimension], PrecisionOption, PrecisionOption.MED)
         else:
             continue
@@ -514,6 +656,27 @@ def apply_presets_to_step(
     existing_system.update(compiled_patches["SYSTEM"])
     existing_electrons.update(compiled_patches["ELECTRONS"])
     existing_cards.update(compiled_patches["cards"])
+    
+    # Per ParamSpace Constitution v1: Apply invariants unconditionally
+    # Build current YAML state for oracle (must be mutable dict for invariant enforcement)
+    current_yaml_state = {
+        "SYSTEM": existing_system,
+        "ELECTRONS": existing_electrons,
+        "cards": existing_cards,
+    }
+    oracle = Oracle(current_yaml_state)
+    
+    # Apply invariants for all ParamSpaces (even if not being applied)
+    # This ensures invariant enforcement runs even when CUSTOM
+    # Per Constitution v1 §2: Custom Apply (Invariant Enforcement) always runs
+    from quantumvitas.presets.spaces_registry import SPACES
+    for dimension_name, paramspace in SPACES.items():
+        paramspace.apply_invariants(current_yaml_state, oracle)
+    
+    # Update existing dicts from current_yaml_state (invariants may have mutated it)
+    existing_system = current_yaml_state["SYSTEM"]
+    existing_electrons = current_yaml_state["ELECTRONS"]
+    existing_cards = current_yaml_state["cards"]
     
     # Physics validation
     if validate_physics:
