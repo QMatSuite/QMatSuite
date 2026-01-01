@@ -14,22 +14,19 @@ without relying on QE defaults. This ensures:
 - No "hidden" parameter dependencies
 
 Key functions:
-- compile_spin(option) -> Dict: Generate spin-related SYSTEM params
-- compile_soc(option, spin) -> Dict: Generate SOC-related SYSTEM params
-- compile_material(option) -> Dict: Generate material-related SYSTEM params
+- compile_magnetism(option) -> Dict: Generate magnetism-related SYSTEM params (merged spin + SOC)
+- compile_occupations_scheme(option) -> Dict: Generate occupations_scheme-related SYSTEM params
 - compile_presets(options) -> Dict: Generate all preset params combined
 """
 
 from typing import Any, Dict, Optional
 
 from quantumvitas.presets.dimensions import (
-    SpinOption,
-    SOCOption,
-    MaterialOption,
+    MagnetismOption,
+    OccupationsSchemeOption,
     PrecisionOption,
-    DIMENSION_SPIN,
-    DIMENSION_SOC,
-    DIMENSION_MATERIAL,
+    DIMENSION_MAGNETISM,
+    DIMENSION_OCCUPATIONS_SCHEME,
     DIMENSION_PRECISION,
 )
 
@@ -39,111 +36,60 @@ class PresetCompilationError(Exception):
     pass
 
 
-def compile_spin(option: SpinOption) -> Dict[str, Any]:
+def compile_magnetism(
+    option: MagnetismOption,
+    *,
+    explicit_defaults: bool = True,
+) -> Dict[str, Any]:
     """
-    Compile spin preset option to QE SYSTEM parameters.
+    Compile magnetism preset option to QE SYSTEM parameters.
     
-    Per Constitution §10.3.4 (Canonical Encoding):
-    - All key semantics must be explicitly written
-    - Do not rely on QE defaults
+    Thin wrapper around registry-driven ParamSpace compilation.
     
     Args:
-        option: SpinOption value (NONSPIN, COLLINEAR, NONCOLLINEAR)
+        option: MagnetismOption value (NONMAGNETIC, COLLINEAR_LSDA, NONCOLLINEAR, NONCOLLINEAR_SOC)
+        explicit_defaults: If True, always write VALUE cells; if False, skip if value == default
         
     Returns:
-        Dict of SYSTEM parameters for spin treatment
-        
-    Mapping:
-        NONSPIN → nspin=1
-        COLLINEAR → nspin=2
-        NONCOLLINEAR → noncolin=.true. (QE internally uses nspin=4)
+        Dict with nested structure: {"SYSTEM": {...parameters...}}
     """
-    if option == SpinOption.NONSPIN:
-        return {"nspin": 1}
+    from quantumvitas.presets.spaces_registry import compile_dimension_patch
     
-    elif option == SpinOption.COLLINEAR:
-        return {"nspin": 2}
+    patch, deletions = compile_dimension_patch(
+        "magnetism", option, {}, explicit_defaults=explicit_defaults
+    )
     
-    elif option == SpinOption.NONCOLLINEAR:
-        # For noncollinear, we set noncolin=.true.
-        # QE internally treats this as nspin=4, but we don't explicitly write nspin
-        # because QE docs say "DO NOT specify nspin in this case"
-        return {"noncolin": ".true."}
-    
-    else:
-        raise ValueError(f"Unknown spin option: {option}")
+    # Return full patch structure (nested {SECTION: {key: value}})
+    # Deletions handled by integration layer
+    return patch
 
 
-def compile_soc(option: SOCOption, spin: Optional[SpinOption] = None) -> Dict[str, Any]:
+def compile_occupations_scheme(
+    option: OccupationsSchemeOption,
+    *,
+    explicit_defaults: bool = True,
+) -> Dict[str, Any]:
     """
-    Compile SOC preset option to QE SYSTEM parameters.
+    Compile occupations_scheme preset option to QE SYSTEM parameters.
     
-    Per Constitution §10.3.4 (Canonical Encoding):
-    - Explicitly write lspinorb even when false
-    
-    Physics constraint:
-    - SOC requires noncollinear calculation (noncolin=.true.)
-    - If with_soc is requested with non-noncollinear spin, raise error
+    Thin wrapper around registry-driven ParamSpace compilation.
     
     Args:
-        option: SOCOption value (NO_SOC, WITH_SOC)
-        spin: Optional SpinOption for validation (required if WITH_SOC)
+        option: OccupationsSchemeOption value (FIXED, SMEARING_GAUSSIAN, TETRAHEDRA)
+        explicit_defaults: If True, always write VALUE cells; if False, skip if value == default
         
     Returns:
-        Dict of SYSTEM parameters for SOC
-        
-    Raises:
-        PresetCompilationError: If WITH_SOC requested with incompatible spin
+        Dict with nested structure: {"SYSTEM": {...parameters...}}
     """
-    if option == SOCOption.NO_SOC:
-        return {"lspinorb": ".false."}
+    from quantumvitas.presets.spaces_registry import compile_dimension_patch
     
-    elif option == SOCOption.WITH_SOC:
-        # Physics constraint: SOC requires noncollinear
-        if spin is not None and spin != SpinOption.NONCOLLINEAR:
-            raise PresetCompilationError(
-                f"Spin-orbit coupling (SOC) requires noncollinear spin treatment. "
-                f"Got spin={spin.value}, but WITH_SOC requires spin=noncollinear. "
-                f"Either change spin to 'noncollinear' or SOC to 'no_soc'."
-            )
-        return {"lspinorb": ".true."}
+    patch, deletions = compile_dimension_patch(
+        "occupations_scheme", option, {}, explicit_defaults=explicit_defaults
+    )
     
-    else:
-        raise ValueError(f"Unknown SOC option: {option}")
-
-
-def compile_material(option: MaterialOption) -> Dict[str, Any]:
-    """
-    Compile material preset option to QE SYSTEM parameters.
-    
-    Per Constitution §10.3.4 (Canonical Encoding):
-    - Explicitly write all relevant parameters
-    - For metals: include smearing type and degauss
-    
-    Args:
-        option: MaterialOption value (INSULATOR, METAL)
-        
-    Returns:
-        Dict of SYSTEM parameters for material type
-        
-    Mapping:
-        INSULATOR → occupations='fixed'
-        METAL → occupations='smearing', smearing='gaussian', degauss=0.01
-    """
-    if option == MaterialOption.INSULATOR:
-        return {"occupations": "'fixed'"}
-    
-    elif option == MaterialOption.METAL:
-        # Provide canonical smearing parameters for metals
-        # Users can override via step params if needed
-        return {
-            "occupations": "'smearing'",
-            "smearing": "'gaussian'",
-            "degauss": 0.01,
-        }
-    
-    else:
-        raise ValueError(f"Unknown material option: {option}")
+    # Return full patch structure (nested {SECTION: {key: value}})
+    # Deletions handled by integration layer
+    return patch
 
 
 def compile_precision(
@@ -158,16 +104,15 @@ def compile_precision(
     sk1: int = 0,
     sk2: int = 0,
     sk3: int = 0,
+    explicit_defaults: bool = True,
 ) -> Dict[str, Any]:
     """
     Compile precision preset option to QE parameters.
     
+    Thin wrapper around registry-driven ParamSpace compilation.
+    
     This function requires pre-computed values from PrecisionAdvisor.
     The advisor uses structure + pseudo info to compute actual values.
-    
-    Per Constitution §10.3.4 (Canonical Encoding):
-    - Explicitly write ecutwfc, ecutrho, conv_thr
-    - Write K_POINTS automatic with computed mesh
     
     Args:
         option: PrecisionOption value (LOW, MED, HIGH)
@@ -176,41 +121,33 @@ def compile_precision(
         conv_thr: SCF convergence threshold (required)
         nk1, nk2, nk3: K-point mesh divisions (required)
         sk1, sk2, sk3: K-point mesh shifts (default 0)
+        explicit_defaults: If True, always write VALUE cells; if False, skip if value == default
         
     Returns:
-        Dict with SYSTEM params and K_POINTS card data
+        Dict with SYSTEM, ELECTRONS params and K_POINTS_CARD data
         
     Raises:
         PresetCompilationError: If required values not provided
     """
-    # Validate required parameters
-    if ecutwfc is None or ecutrho is None or conv_thr is None:
-        raise PresetCompilationError(
-            f"Precision preset compilation requires ecutwfc, ecutrho, and conv_thr. "
-            f"Use PrecisionAdvisor to compute these from structure and pseudos."
-        )
+    from quantumvitas.presets.spaces_registry import compile_dimension_patch
     
-    if nk1 is None or nk2 is None or nk3 is None:
-        raise PresetCompilationError(
-            f"Precision preset compilation requires k-mesh (nk1, nk2, nk3). "
-            f"Use PrecisionAdvisor to compute these from structure."
-        )
+    patch, deletions = compile_dimension_patch(
+        "precision",
+        option,
+        {},
+        explicit_defaults=explicit_defaults,
+        ecutwfc=ecutwfc,
+        ecutrho=ecutrho,
+        conv_thr=conv_thr,
+        nk1=nk1,
+        nk2=nk2,
+        nk3=nk3,
+        sk1=sk1,
+        sk2=sk2,
+        sk3=sk3,
+    )
     
-    # Return K_POINTS in cards format (canonical)
-    # Format: {"option": "automatic", "data": [[nk1, nk2, nk3, sk1, sk2, sk3]]}
-    return {
-        "SYSTEM": {
-            "ecutwfc": ecutwfc,
-            "ecutrho": ecutrho,
-        },
-        "ELECTRONS": {
-            "conv_thr": conv_thr,
-        },
-        "K_POINTS_CARD": {
-            "option": "automatic",
-            "data": [[nk1, nk2, nk3, sk1, sk2, sk3]],
-        },
-    }
+    return patch
 
 
 def compile_precision_from_advice(advice: "PrecisionAdvice") -> Dict[str, Any]:
@@ -258,9 +195,8 @@ def compile_presets(
     
     Args:
         options: Dict with preset dimension keys:
-            - 'spin': SpinOption or string value
-            - 'soc': SOCOption or string value  
-            - 'material': MaterialOption or string value
+            - 'magnetism': MagnetismOption or string value
+            - 'occupations_scheme': OccupationsSchemeOption or string value
         validate_physics: If True, validate physics constraints (default True)
         
     Returns:
@@ -271,29 +207,34 @@ def compile_presets(
         PresetCompilationError: If invalid option combinations
         
     Example:
-        >>> options = {'spin': SpinOption.COLLINEAR, 'soc': SOCOption.NO_SOC, 'material': MaterialOption.METAL}
+        >>> options = {'magnetism': MagnetismOption.COLLINEAR_LSDA, 'occupations_scheme': OccupationsSchemeOption.SMEARING_GAUSSIAN}
         >>> compile_presets(options)
-        {'SYSTEM': {'nspin': 2, 'lspinorb': '.false.', 'occupations': "'smearing'", ...}}
+        {'SYSTEM': {'nspin': 2, 'noncolin': '.false.', 'lspinorb': '.false.', 'occupations': 'smearing', ...}}
     """
     # Normalize options to enum values
-    spin = _normalize_option(options.get(DIMENSION_SPIN), SpinOption, SpinOption.NONSPIN)
-    soc = _normalize_option(options.get(DIMENSION_SOC), SOCOption, SOCOption.NO_SOC)
-    material = _normalize_option(options.get(DIMENSION_MATERIAL), MaterialOption, MaterialOption.INSULATOR)
+    magnetism = _normalize_option(
+        options.get(DIMENSION_MAGNETISM),
+        MagnetismOption,
+        MagnetismOption.NONMAGNETIC,
+    )
+    occupations_scheme = _normalize_option(
+        options.get(DIMENSION_OCCUPATIONS_SCHEME),
+        OccupationsSchemeOption,
+        OccupationsSchemeOption.FIXED,
+    )
     
     # Compile each dimension
     system_params: Dict[str, Any] = {}
     
-    # Spin params
-    system_params.update(compile_spin(spin))
+    # Magnetism params (merged spin + SOC)
+    magnetism_patch = compile_magnetism(magnetism)
+    if "SYSTEM" in magnetism_patch:
+        system_params.update(magnetism_patch["SYSTEM"])
     
-    # SOC params (with physics validation)
-    if validate_physics:
-        system_params.update(compile_soc(soc, spin=spin))
-    else:
-        system_params.update(compile_soc(soc, spin=None))
-    
-    # Material params
-    system_params.update(compile_material(material))
+    # Occupations scheme params
+    occ_patch = compile_occupations_scheme(occupations_scheme)
+    if "SYSTEM" in occ_patch:
+        system_params.update(occ_patch["SYSTEM"])
     
     return {"SYSTEM": system_params}
 
@@ -381,20 +322,13 @@ def compile_one_dimension(
     Returns:
         Dict of SYSTEM parameters for this dimension
     """
-    if dimension == DIMENSION_SPIN:
-        option = _normalize_option(value, SpinOption, SpinOption.NONSPIN)
-        return compile_spin(option)
-    
-    elif dimension == DIMENSION_SOC:
-        option = _normalize_option(value, SOCOption, SOCOption.NO_SOC)
-        spin = None
-        if context and DIMENSION_SPIN in context:
-            spin = _normalize_option(context[DIMENSION_SPIN], SpinOption, None)
-        return compile_soc(option, spin=spin)
+    if dimension == DIMENSION_MAGNETISM:
+        option = _normalize_option(value, MagnetismOption, MagnetismOption.NONMAGNETIC)
+        return compile_magnetism(option)
     
     elif dimension == DIMENSION_MATERIAL:
-        option = _normalize_option(value, MaterialOption, MaterialOption.INSULATOR)
-        return compile_material(option)
+        option = _normalize_option(value, OccupationsSchemeOption, OccupationsSchemeOption.FIXED)
+        return compile_occupations_scheme(option)
     
     else:
         raise ValueError(f"Unknown preset dimension: {dimension}")

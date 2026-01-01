@@ -3,23 +3,19 @@
  * 
  * Per Constitution Chapter 10:
  * - §10.4.1: Detector B is the sole legitimate state source (UI shows detected state)
- * - §10.3.3: Applying a preset BROADCASTS to all steps (overwrite, not merge)
+ * - §10.3.3: Applying a preset BROADCASTS to applicable steps (overwrite, not merge)
  * - Presets are runtime-only interpretations
  * 
- * Phase 8B: Toast feedback with expandable audit detail
- * Phase 8F: Custom badge tooltip explaining disagreement
+ * Per UI requirements:
+ * - UI must not hardcode dimensions, options, or labels
+ * - All rendering is driven by preset catalog from backend
+ * - Scope information comes from variant applies_to_step_types
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useMemo } from 'react';
 import { usePresets, ApplyResult } from '../../hooks/usePresets';
+import { usePresetCatalog, PresetCatalogDimension } from '../../hooks/usePresetCatalog';
 import type { WorkflowType } from '../../types/qv';
-import {
-  SPIN_OPTIONS,
-  SOC_OPTIONS,
-  MATERIAL_OPTIONS,
-  PRECISION_OPTIONS,
-  PRESET_LABELS,
-} from '../../types/qv';
 import './PresetSection.css';
 
 interface PresetSectionProps {
@@ -30,14 +26,11 @@ interface PresetSectionProps {
 }
 
 interface PresetDimensionRowProps {
-  label: string;
-  value: string;
-  options: readonly string[];
+  dimension: PresetCatalogDimension;
+  value: string | 'Custom' | undefined;
   isCustom: boolean;
   isApplying: boolean;
   onChange: (value: string) => void;
-  tooltip?: string;
-  /** Tooltip for Custom badge specifically (Phase 8F) */
   customTooltip?: string;
 }
 
@@ -45,22 +38,42 @@ interface PresetDimensionRowProps {
  * Individual preset dimension row with dropdown
  */
 function PresetDimensionRow({
-  label,
+  dimension,
   value,
-  options,
   isCustom,
   isApplying,
   onChange,
-  tooltip,
   customTooltip,
 }: PresetDimensionRowProps) {
   const handleChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     onChange(e.target.value);
   }, [onChange]);
   
+  // Render scope information
+  const scopeText = useMemo(() => {
+    if (dimension.scope.type === 'variant_step_types') {
+      const stepTypes = dimension.scope.step_types || [];
+      if (stepTypes.length === 0) {
+        return 'No applicable steps';
+      }
+      return `Applies to: ${stepTypes.join(', ')}`;
+    } else if (dimension.scope.type === 'variants') {
+      const variants = dimension.scope.variants || [];
+      if (variants.length === 0) {
+        return 'No applicable steps';
+      }
+      // For precision, show variant details
+      const stepTypesSet = new Set<string>();
+      variants.forEach(v => v.step_types.forEach(st => stepTypesSet.add(st)));
+      const stepTypes = Array.from(stepTypesSet).sort();
+      return `Applies to: ${stepTypes.join(', ')}`;
+    }
+    return 'Applies to applicable steps';
+  }, [dimension.scope]);
+  
   return (
-    <div className="preset-dimension-row" title={tooltip}>
-      <span className="preset-dimension-row__label">{label}</span>
+    <div className="preset-dimension-row" title={dimension.description}>
+      <span className="preset-dimension-row__label">{dimension.label}</span>
       <div className="preset-dimension-row__value-container">
         {isCustom ? (
           <>
@@ -75,12 +88,12 @@ function PresetDimensionRow({
               value=""
               onChange={handleChange}
               disabled={isApplying}
-              title="Apply preset to all steps"
+              title="Apply preset to applicable steps"
             >
               <option value="" disabled>Apply...</option>
-              {options.map(opt => (
-                <option key={opt} value={opt}>
-                  {PRESET_LABELS[opt] || opt}
+              {dimension.options.map(opt => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
                 </option>
               ))}
             </select>
@@ -88,17 +101,21 @@ function PresetDimensionRow({
         ) : (
           <select
             className="preset-dimension-row__select"
-            value={value}
+            value={value || ''}
             onChange={handleChange}
             disabled={isApplying}
           >
-            {options.map(opt => (
-              <option key={opt} value={opt}>
-                {PRESET_LABELS[opt] || opt}
+            {dimension.options.map(opt => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
               </option>
             ))}
+            <option value="Custom" disabled>Custom</option>
           </select>
         )}
+      </div>
+      <div className="preset-dimension-row__scope" title={scopeText}>
+        <small>{scopeText}</small>
       </div>
     </div>
   );
@@ -106,14 +123,13 @@ function PresetDimensionRow({
 
 /** Toast component for apply feedback (Phase 8B) */
 interface ApplyToastProps {
-  result: ApplyResult;
+  result: ApplyResult
   onClose: () => void;
   onShowDetails: () => void;
 }
 
 function ApplyToast({ result, onClose, onShowDetails }: ApplyToastProps) {
   const isSuccess = result.success;
-  const dimensionLabel = PRESET_LABELS[result.value] || result.value;
   
   return (
     <div className={`apply-toast ${isSuccess ? 'apply-toast--success' : 'apply-toast--error'}`}>
@@ -122,7 +138,7 @@ function ApplyToast({ result, onClose, onShowDetails }: ApplyToastProps) {
           <>
             <span className="apply-toast__icon">✓</span>
             <span className="apply-toast__message">
-              Applied {result.dimension}={dimensionLabel}: {result.stepsUpdated} updated, {result.stepsSkipped} skipped
+              Applied {result.dimension}={result.value}: {result.stepsUpdated} updated, {result.stepsSkipped} skipped
             </span>
           </>
         ) : (
@@ -157,13 +173,11 @@ interface ApplyDetailsModalProps {
 }
 
 function ApplyDetailsModal({ result, onClose }: ApplyDetailsModalProps) {
-  const dimensionLabel = PRESET_LABELS[result.value] || result.value;
-  
   return (
     <div className="apply-details-modal-overlay" onClick={onClose}>
       <div className="apply-details-modal" onClick={e => e.stopPropagation()}>
         <div className="apply-details-modal__header">
-          <h3>Apply Results: {result.dimension}={dimensionLabel}</h3>
+          <h3>Apply Results: {result.dimension}={result.value}</h3>
           <button className="apply-details-modal__close" onClick={onClose}>×</button>
         </div>
         <div className="apply-details-modal__summary">
@@ -246,12 +260,15 @@ export function PresetSection({
   calculationSlug,
   onPresetsChanged,
 }: PresetSectionProps) {
+  // Fetch catalog (UI's single source of truth)
+  const { catalog, isLoading: catalogLoading, error: catalogError } = usePresetCatalog();
+  
   const {
     presets,
     workflow,
-    isLoading,
+    isLoading: presetsLoading,
     isApplying,
-    error,
+    error: presetsError,
     applyPreset,
     clearApplyResult,
   } = usePresets(projectRoot, calculationSlug);
@@ -277,49 +294,16 @@ export function PresetSection({
     }, 5000);
   }, [onPresetsChanged]);
   
-  const handleSpinChange = useCallback(async (value: string) => {
+  // Generic handler for dimension changes
+  const handleDimensionChange = useCallback(async (dimension: string, value: string) => {
     // Safety check: if current state is Custom, show confirmation modal
-    if (presets?.spin === 'Custom') {
-      setPendingApply({ dimension: 'spin', value });
+    const currentValue = presets?.[dimension];
+    if (currentValue === 'Custom') {
+      setPendingApply({ dimension, value });
       setShowConfirmModal(true);
       return;
     }
-    const result = await applyPreset('spin', value);
-    handleApplyComplete(result);
-  }, [applyPreset, handleApplyComplete, presets]);
-  
-  const handleSocChange = useCallback(async (value: string) => {
-    // Safety check: if current state is Custom, show confirmation modal
-    if (presets?.soc === 'Custom') {
-      setPendingApply({ dimension: 'soc', value });
-      setShowConfirmModal(true);
-      return;
-    }
-    const result = await applyPreset('soc', value);
-    handleApplyComplete(result);
-  }, [applyPreset, handleApplyComplete, presets]);
-  
-  const handleMaterialChange = useCallback(async (value: string) => {
-    // Safety check: if current state is Custom, show confirmation modal
-    if (presets?.material === 'Custom') {
-      setPendingApply({ dimension: 'material', value });
-      setShowConfirmModal(true);
-      return;
-    }
-    const result = await applyPreset('material', value);
-    handleApplyComplete(result);
-  }, [applyPreset, handleApplyComplete, presets]);
-  
-  const handlePrecisionChange = useCallback(async (value: string) => {
-    // Safety check: if current state is Custom, show confirmation modal
-    if (presets?.precision === 'Custom') {
-      setPendingApply({ dimension: 'precision', value });
-      setShowConfirmModal(true);
-      return;
-    }
-    
-    // Not Custom - apply directly
-    const result = await applyPreset('precision', value);
+    const result = await applyPreset(dimension, value);
     handleApplyComplete(result);
   }, [applyPreset, handleApplyComplete, presets]);
   
@@ -327,7 +311,7 @@ export function PresetSection({
     if (!pendingApply) return;
     
     setShowConfirmModal(false);
-    const result = await applyPreset(pendingApply.dimension as any, pendingApply.value);
+    const result = await applyPreset(pendingApply.dimension, pendingApply.value);
     setPendingApply(null);
     handleApplyComplete(result);
   }, [pendingApply, applyPreset, handleApplyComplete]);
@@ -350,7 +334,8 @@ export function PresetSection({
     setShowDetailsModal(false);
   }, []);
   
-  if (isLoading) {
+  // Loading state
+  if (catalogLoading || presetsLoading) {
     return (
       <div className="preset-section preset-section--loading">
         <div className="preset-section__header">
@@ -363,20 +348,36 @@ export function PresetSection({
     );
   }
   
-  if (error) {
+  // Error state - catalog unavailable
+  if (catalogError) {
     return (
       <div className="preset-section preset-section--error">
         <div className="preset-section__header">
           <h3>Presets</h3>
         </div>
         <div className="preset-section__error">
-          {error}
+          {catalogError}
         </div>
       </div>
     );
   }
   
-  if (!presets) {
+  // Error state - presets unavailable
+  if (presetsError) {
+    return (
+      <div className="preset-section preset-section--error">
+        <div className="preset-section__header">
+          <h3>Presets</h3>
+        </div>
+        <div className="preset-section__error">
+          {presetsError}
+        </div>
+      </div>
+    );
+  }
+  
+  // No catalog or presets
+  if (!catalog || !presets) {
     return null;
   }
   
@@ -390,66 +391,39 @@ export function PresetSection({
           Presets
           <WorkflowBadge workflow={workflow} />
         </h3>
-        <div className="preset-section__info" title="Presets are detected from step parameters and broadcast to all steps when changed">
+        <div className="preset-section__info" title="Presets are detected from step parameters and applied to applicable steps when changed">
           ℹ️
         </div>
       </div>
       
       {isApplying && (
         <div className="preset-section__applying">
-          Applying preset to all steps...
+          Applying preset to applicable steps...
         </div>
       )}
       
       <div className="preset-section__dimensions">
-        <PresetDimensionRow
-          label="Spin"
-          value={presets.spin}
-          options={SPIN_OPTIONS}
-          isCustom={presets.spin === 'Custom'}
-          isApplying={isApplying}
-          onChange={handleSpinChange}
-          tooltip="Spin treatment: non-polarized, collinear, or non-collinear"
-          customTooltip={customTooltip}
-        />
-        
-        <PresetDimensionRow
-          label="SOC"
-          value={presets.soc}
-          options={SOC_OPTIONS}
-          isCustom={presets.soc === 'Custom'}
-          isApplying={isApplying}
-          onChange={handleSocChange}
-          tooltip="Spin-orbit coupling (requires non-collinear spin and FR pseudopotentials)"
-          customTooltip={customTooltip}
-        />
-        
-        <PresetDimensionRow
-          label="Material"
-          value={presets.material}
-          options={MATERIAL_OPTIONS}
-          isCustom={presets.material === 'Custom'}
-          isApplying={isApplying}
-          onChange={handleMaterialChange}
-          tooltip="Material type: insulator (fixed occupations) or metal (smearing)"
-          customTooltip={customTooltip}
-        />
-        
-        <PresetDimensionRow
-          label="Precision"
-          value={presets.precision}
-          options={PRECISION_OPTIONS}
-          isCustom={presets.precision === 'Custom'}
-          isApplying={isApplying}
-          onChange={handlePrecisionChange}
-          tooltip="Precision level: controls k-mesh density, cutoffs, and convergence threshold"
-          customTooltip={customTooltip}
-        />
+        {catalog.dimensions.map(dimension => {
+          const currentValue = presets[dimension.dimension];
+          const isCustom = currentValue === 'Custom' || currentValue === undefined;
+          
+          return (
+            <PresetDimensionRow
+              key={dimension.dimension}
+              dimension={dimension}
+              value={isCustom ? undefined : currentValue}
+              isCustom={isCustom}
+              isApplying={isApplying}
+              onChange={(value) => handleDimensionChange(dimension.dimension, value)}
+              customTooltip={customTooltip}
+            />
+          );
+        })}
       </div>
       
       <div className="preset-section__footer">
         <small>
-          Changes apply to all steps • Detected from step.yml
+          Applies to applicable steps (preset variant scope) • Detected from step.yml
         </small>
       </div>
       
@@ -465,7 +439,7 @@ export function PresetSection({
                 This will overwrite step parameters for all applicable steps.
               </p>
               <p className="preset-confirm-modal__detail">
-                Applying <strong>{PRESET_LABELS[pendingApply.value] || pendingApply.value}</strong> to <strong>{pendingApply.dimension}</strong> dimension.
+                Applying <strong>{pendingApply.value}</strong> to <strong>{pendingApply.dimension}</strong> dimension.
               </p>
             </div>
             <div className="preset-confirm-modal__actions">
@@ -505,4 +479,3 @@ export function PresetSection({
     </div>
   );
 }
-

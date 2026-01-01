@@ -129,6 +129,7 @@ class TestPrecisionScfNscf:
             scf_step,
             {"precision": "med"},
             precision_advice=precision_advice_scf,
+            precision_lattice_matrix=lattice,
         )
         
         # Apply to nscf
@@ -136,6 +137,7 @@ class TestPrecisionScfNscf:
             nscf_step,
             {"precision": "med"},
             precision_advice=precision_advice_nscf,
+            precision_lattice_matrix=lattice,
         )
         
         # Verify scf mesh (canonical format: cards.K_POINTS)

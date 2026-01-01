@@ -22,33 +22,29 @@ from enum import Enum
 from typing import Dict, FrozenSet, Optional, Set
 
 from quantumvitas.presets.dimensions import (
-    DIMENSION_SPIN,
-    DIMENSION_SOC, 
-    DIMENSION_MATERIAL,
+    DIMENSION_MAGNETISM,
+    DIMENSION_OCCUPATIONS_SCHEME,
     DIMENSION_PRECISION,
 )
 
 
 class PresetDimension(str, Enum):
     """Preset dimensions that can be applied."""
-    SPIN = DIMENSION_SPIN
-    SOC = DIMENSION_SOC
-    MATERIAL = DIMENSION_MATERIAL
+    MAGNETISM = DIMENSION_MAGNETISM
+    OCCUPATIONS_SCHEME = DIMENSION_OCCUPATIONS_SCHEME
     PRECISION = DIMENSION_PRECISION
 
 
-# V0 preset dimensions (spin, soc, material) - kept for backward compatibility
+# V0 preset dimensions (magnetism, occupations_scheme)
 V0_DIMENSIONS: FrozenSet[str] = frozenset({
-    DIMENSION_SPIN,
-    DIMENSION_SOC,
-    DIMENSION_MATERIAL,
+    DIMENSION_MAGNETISM,
+    DIMENSION_OCCUPATIONS_SCHEME,
 })
 
-# V1 preset dimensions (spin, soc, material, precision)
+# V1 preset dimensions (magnetism, occupations_scheme, precision)
 V1_DIMENSIONS: FrozenSet[str] = frozenset({
-    DIMENSION_SPIN,
-    DIMENSION_SOC,
-    DIMENSION_MATERIAL,
+    DIMENSION_MAGNETISM,
+    DIMENSION_OCCUPATIONS_SCHEME,
     DIMENSION_PRECISION,
 })
 
@@ -199,9 +195,17 @@ class PresetReceiverRegistry:
     
     def _initialize_defaults(self):
         """Initialize default step_type → dimensions mapping."""
-        # PW.x step types accept all v1 dimensions (including precision)
+        # PW.x step types accept all v1 dimensions (including precision and occupations_scheme)
         for step_type in PW_STEP_TYPES:
             self._registry[step_type] = V1_DIMENSIONS
+        
+        # bands_pw is a special case: accepts magnetism/precision but NOT occupations_scheme (uses k-path)
+        # Override the default V1_DIMENSIONS assignment for bands_pw
+        self._registry["bands_pw"] = frozenset({
+            DIMENSION_MAGNETISM,
+            DIMENSION_PRECISION,
+            # Note: DIMENSION_OCCUPATIONS_SCHEME is excluded (k-path step, not k-mesh)
+        })
         
         # Post-processing steps accept no presets
         for step_type in POST_PROCESSING_STEP_TYPES:
@@ -234,7 +238,7 @@ class PresetReceiverRegistry:
         
         Args:
             step_type: Step type string
-            dimension: Preset dimension name (e.g., "spin", "soc", "material")
+            dimension: Preset dimension name (e.g., "magnetism", "occupations_scheme", "precision")
             
         Returns:
             True if step type accepts this dimension, False otherwise.

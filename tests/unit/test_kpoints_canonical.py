@@ -49,6 +49,7 @@ class TestKPointsCanonicalization:
             temp_step_file,
             {"precision": "med"},
             precision_advice=precision_advice,
+            precision_lattice_matrix=lattice,
         )
         
         # Verify step.yml content
