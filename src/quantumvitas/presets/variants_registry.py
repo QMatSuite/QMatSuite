@@ -303,8 +303,11 @@ def compile_dimension_patch_for_step(
     
     # Special handling for precision (uses resolver)
     if dimension == "precision":
+        # Pass step_yaml to context for degauss applicability check
+        precision_context = precision_context or {}
+        precision_context["step_yaml"] = step_yaml
         return _compile_precision_patch_for_step(
-            variant, profile_name, step_type, precision_context or {}
+            variant, profile_name, step_type, precision_context
         )
     
     # Standard ParamSpace compilation
@@ -413,6 +416,24 @@ def _compile_precision_patch_for_step(
             "conv_thr": conv_thr,
         },
     }
+    
+    # Per ParamSpace Constitution v1 §7: degauss is owned by Precision ParamSpace
+    # When user explicitly sets precision preset, write degauss value
+    # LOW / MED / HIGH => 0.01 / 0.02 / 0.03
+    # But only if degauss is applicable (smearing is active)
+    # Check current YAML state for occupations
+    step_yaml = context.get("step_yaml", {})
+    system_yaml = step_yaml.get("SYSTEM", {})
+    occupations = system_yaml.get("occupations")
+    if occupations and str(occupations).lower().strip() == "smearing":
+        # degauss is applicable - write value based on precision level
+        degauss_map = {
+            "LOW": 0.01,
+            "MED": 0.02,
+            "HIGH": 0.03,
+        }
+        if profile_name in degauss_map:
+            patch["SYSTEM"]["degauss"] = degauss_map[profile_name]
     
     # Add K_POINTS only if variant includes it
     if has_kpoints_key:
