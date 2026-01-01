@@ -336,6 +336,10 @@ class QVDaemon:
             "list_jobs": self._handle_list_jobs,
             "job_counts": self._handle_job_counts,
             "cancel_job": self._handle_cancel_job,
+            
+            # Journal (change history)
+            "list_journal_entries": self._handle_list_journal_entries,
+            "get_journal_entry": self._handle_get_journal_entry,
         }
     
     def log(self, message: str, level: str = "INFO"):
@@ -5021,6 +5025,62 @@ class QVDaemon:
                     })
         
         return diff
+    
+    # -------------------------------------------------------------------------
+    # Journal Handlers
+    # -------------------------------------------------------------------------
+    
+    def _handle_list_journal_entries(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        List journal entries.
+        
+        Payload:
+            target_ulid: Optional[str] - Filter by target ULID
+            doc_type: Optional[str] - Filter by doc type ("step", "calc", "project")
+            limit: Optional[int] - Maximum entries (default 100)
+            
+        Returns:
+            entries: List of journal entry dicts
+        """
+        from quantumvitas.core.journal import get_journal
+        
+        target_ulid = payload.get("target_ulid")
+        doc_type = payload.get("doc_type")
+        limit = payload.get("limit", 100)
+        
+        journal = get_journal()
+        entries = journal.list_entries(
+            target_ulid=target_ulid,
+            doc_type=doc_type,
+            limit=limit,
+        )
+        
+        return {
+            "entries": [e.to_dict() for e in entries],
+            "total": len(entries),
+        }
+    
+    def _handle_get_journal_entry(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get a specific journal entry by ID.
+        
+        Payload:
+            entry_id: str - ULID of the entry
+            
+        Returns:
+            entry: Journal entry dict or null
+        """
+        from quantumvitas.core.journal import get_journal
+        
+        entry_id = self._require_str(payload, "entry_id")
+        
+        journal = get_journal()
+        entry = journal.get_entry(entry_id)
+        
+        if entry is None:
+            return {"entry": None}
+        
+        return {"entry": entry.to_dict()}
     
     # -------------------------------------------------------------------------
     # Helpers

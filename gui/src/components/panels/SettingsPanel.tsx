@@ -13,6 +13,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useQVClient, useQVLogs } from '../../hooks/useQVClient';
 import { LibrariesPanel } from './LibrariesPanel';
 import { PseudoArchivesPanel } from '../settings/PseudoArchivesPanel';
+import { JournalHistoryPanel } from '../settings/JournalHistoryPanel';
 import type { QEDetectionResult, EnvironmentInfo } from '../../types/qv';
 import { getVisibleLogLines, getVisibleLogText } from '../../utils/logFilter';
 import './SettingsPanel.css';
@@ -855,6 +856,16 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
                       </div>
                     ))
                   )}
+                </div>
+              </div>
+              
+              {/* Journal History (Debug View) */}
+              <div className="diagnostics-subsection">
+                <div className="diagnostics-subsection__header">
+                  <h4 className="diagnostics-subsection__title">Journal History</h4>
+                </div>
+                <div className="diagnostics-subsection__content">
+                  <JournalHistoryPanel autoLoad={showDiagnostics} />
                 </div>
               </div>
             </div>

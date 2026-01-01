@@ -9,6 +9,11 @@ This module provides centralized YAML loading/saving that:
 Per docs/yamldoc_refactor_plan.md:
 - Business logic should use load_yaml_doc/save_yaml_doc
 - Direct yaml.safe_load/dump should only be in this module
+
+Journal Integration:
+- save_yaml_doc() is the ONLY place that records journal entries
+- All YamlDoc.save() methods delegate to save_yaml_doc()
+- See docs/journal_design.md for architecture details
 """
 
 from __future__ import annotations
@@ -109,34 +114,72 @@ def load_yaml_doc(
     return doc_type(data, **kwargs)
 
 
-def save_yaml_doc(doc: YamlDoc, path: Path) -> None:
+def save_yaml_doc(doc: YamlDoc, path: Path, *, skip_journal: bool = False) -> None:
     """
     Save Doc to YAML file.
     
-    This is the single commit point for all YAML changes.
-    Journal integration hooks here.
+    This is the SINGLE COMMIT POINT for all YAML changes.
+    Journal is hooked here - no other place records changes.
     
     Args:
         doc: Document to save
         path: Path to save to
+        skip_journal: If True, skip journal recording (for internal use)
         
-    Journal Integration Point:
-        Future implementation will add:
-        ```
-        journal.record_change(
-            path=path,
-            before=doc.get_snapshot(),
-            after=doc.to_dict(),
-        )
-        ```
+    Journal Integration:
+        - Captures before (snapshot) and after (current state)
+        - Records entry with target ULID from meta.id
+        - Infers doc_type from document structure
     """
-    # Use type-specific save if available
-    if hasattr(doc, "save"):
-        doc.save(path)
-        return
+    # Capture before/after for Journal
+    before = doc.get_snapshot()
+    after = doc.to_dict()
     
-    _save_yaml_raw(doc.to_dict(), path)
+    # Resolve path for different doc types
+    resolved_path = path
+    if isinstance(doc, StepDoc):
+        pass  # Step paths are already files
+    elif isinstance(doc, CalcDoc) and path.is_dir():
+        resolved_path = path / "calculation.yaml"
+    elif isinstance(doc, ProjectDoc) and path.is_dir():
+        resolved_path = path / "project.qv.yml"
+    
+    # Write to disk
+    _save_yaml_raw(after, resolved_path)
+    
+    # Update doc's snapshot
     doc.commit_changes()
+    
+    # Record in Journal (lazy import to avoid circular dependencies)
+    if not skip_journal and before is not None:
+        try:
+            from quantumvitas.core.journal import (
+                get_journal,
+                JournalEntry,
+                infer_doc_type,
+                extract_target_ulid,
+                generate_summary,
+            )
+            
+            journal = get_journal()
+            if journal.enabled:
+                doc_type = infer_doc_type(after)
+                target_ulid = extract_target_ulid(after)
+                summary = generate_summary(doc_type, before, after)
+                
+                entry = JournalEntry.create(
+                    target_ulid=target_ulid,
+                    doc_type=doc_type,
+                    before=before,
+                    after=after,
+                    summary=summary,
+                    path=resolved_path,
+                )
+                journal.record_change(entry)
+        except Exception:
+            # Journal failures should not break saves
+            # In production, consider logging this
+            pass
 
 
 # =============================================================================

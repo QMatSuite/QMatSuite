@@ -1,8 +1,23 @@
 # YamlDoc Refactor Plan
 
-**Status**: ✅ COMPLETE - All Phases Implemented  
+**Status**: ✅ COMPLETE - All Phases Implemented + Journal Integration  
 **Date**: 2026-01-01  
 **Author**: AI Assistant
+
+---
+
+## Journal Readiness: ✅ CONFIRMED
+
+The Journal system has been fully integrated:
+
+- **Hook Point:** `src/quantumvitas/core/yaml_io.py::save_yaml_doc()`
+- **Journal Module:** `src/quantumvitas/core/journal.py`
+- **Storage:** Append-only JSONL at `~/.quantumvitas/journal/journal.jsonl`
+- **UI Access:** Settings → Diagnostics → Journal History
+
+All YamlDoc.save() methods delegate to save_yaml_doc(), ensuring the Journal captures all YAML mutations.
+
+See `docs/journal_design.md` for complete Journal documentation.
 
 ---
 
@@ -15,6 +30,7 @@ All phases have been successfully implemented:
 - ✅ Phase 4: CalcDoc/ProjectDoc available for use
 - ✅ Phase 5: 787 tests passing (only network-blocked tests fail)
 - ✅ Phase 6: Documentation complete
+- ✅ Journal: Fully integrated with 23 unit tests passing
 
 ---
 

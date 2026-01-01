@@ -1912,6 +1912,33 @@ export const PRESET_LABELS: Record<string, string> = {
   Custom: 'Custom (mixed)',
 };
 
+// =============================================================================
+// Journal Types
+// =============================================================================
+
+/** A single journal entry recording a YAML document change */
+export interface JournalEntry {
+  id: string;
+  target_ulid: string;
+  doc_type: 'step' | 'calc' | 'project' | 'unknown';
+  timestamp: string;
+  before: Record<string, unknown>;
+  after: Record<string, unknown>;
+  summary: string;
+  path: string | null;
+}
+
+/** Response from list_journal_entries */
+export interface ListJournalEntriesResult {
+  entries: JournalEntry[];
+  total: number;
+}
+
+/** Response from get_journal_entry */
+export interface GetJournalEntryResult {
+  entry: JournalEntry | null;
+}
+
 // Extend Window interface
 declare global {
   interface Window {

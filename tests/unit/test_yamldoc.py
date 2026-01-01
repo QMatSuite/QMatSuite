@@ -248,14 +248,15 @@ class TestYamlDocSet:
         lst.append(4)
         assert doc.get(["items"]) == [1, 2, 3]
     
-    def test_set_dict_deep_copies(self):
-        """Set deep copies dict values."""
+    def test_set_dict_raises(self):
+        """Set rejects dict values (use apply_patch instead)."""
         doc = YamlDoc()
         data = {"a": 1}
-        doc.set(["nested"], data)
         
-        data["a"] = 999
-        assert doc.export_copy(["nested"]) == {"a": 1}
+        with pytest.raises(YamlDocError) as exc_info:
+            doc.set(["nested"], data)
+        
+        assert "apply_patch" in str(exc_info.value)
 
 
 class TestYamlDocDelete:
@@ -515,7 +516,8 @@ class TestStepDocAccessControl:
         """Compiler can write to cards."""
         doc = StepDoc(access_control=True, owner="compiler")
         
-        doc.set(["cards", "K_POINTS"], {"option": "automatic"})
+        # Use apply_patch for nested dict values (set() rejects dicts)
+        doc.apply_patch({"cards": {"K_POINTS": {"option": "automatic"}}})
         
         # Access via export_copy since it's a dict
         assert doc.export_copy(["cards", "K_POINTS"]) == {"option": "automatic"}
