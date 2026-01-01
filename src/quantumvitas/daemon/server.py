@@ -304,6 +304,7 @@ class QVDaemon:
             "delete_step": self._handle_delete_step,
             
             # Preset detection (Constitution §10.4.1: Detector B is sole state source)
+            "get_preset_catalog": self._handle_get_preset_catalog,
             "detect_presets": self._handle_detect_presets,
             "detect_workflow": self._handle_detect_workflow,
             "apply_presets_to_step": self._handle_apply_presets_to_step,
@@ -3373,6 +3374,42 @@ class QVDaemon:
     # Preset Detection Handlers (Constitution §10.4.1: Detector B is sole state source)
     # ═══════════════════════════════════════════════════════════════════════════════
     
+    def _handle_get_preset_catalog(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get preset catalog for UI rendering.
+        
+        This is the single source of truth for UI preset dimensions, options,
+        labels, and scopes. All information is derived from the variants registry.
+        
+        Payload:
+            (empty - no parameters needed)
+        
+        Returns:
+            Dict with catalog structure:
+            {
+                "dimensions": [
+                    {
+                        "dimension": str,
+                        "label": str,
+                        "description": str,
+                        "order": int,
+                        "options": [{"value": str, "label": str}],
+                        "default": str,
+                        "scope": {
+                            "type": "variant_step_types" | "variants",
+                            "step_types": List[str] | None,
+                            "variants": List[Dict] | None,
+                        }
+                    }
+                ],
+                "schema_version": int
+            }
+        """
+        from quantumvitas.presets.catalog import get_preset_catalog
+        
+        catalog = get_preset_catalog()
+        return catalog
+    
     def _handle_detect_presets(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Detect preset values from a calculation's steps.
@@ -3386,8 +3423,8 @@ class QVDaemon:
         
         Returns:
             Dict with:
-                presets: Dict mapping dimension name to detected value or "Custom"
-                    Example: {"spin": "collinear", "soc": "no_soc", "material": "metal"}
+                dimension_states: Dict mapping dimension name to detected value or "Custom"
+                    Example: {"magnetism": "collinear_lsda", "occupations_scheme": "smearing_gaussian", "precision": "med"}
         """
         from quantumvitas.presets.integration import detect_presets_from_calculation
         
@@ -3403,10 +3440,26 @@ class QVDaemon:
             calculation_dir = resolved.absolute_path
         
         # Detect presets from calculation steps
-        presets = detect_presets_from_calculation(calculation_dir)
+        # If precision context resolution fails, PrecisionContextError will be raised
+        # and converted to a structured error response
+        try:
+            dimension_states = detect_presets_from_calculation(calculation_dir)
+        except Exception as e:
+            # Check if it's a PrecisionContextError
+            from quantumvitas.presets.precision_context import PrecisionContextError
+            if isinstance(e, PrecisionContextError):
+                return {
+                    "ok": False,
+                    "error": {
+                        "code": "PRECISION_CONTEXT_ERROR",
+                        "message": f"Failed to resolve precision context: {e}",
+                    },
+                }
+            # Re-raise other errors
+            raise
         
         return {
-            "presets": presets,
+            "dimension_states": dimension_states,
         }
     
     def _handle_detect_workflow(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -3494,13 +3547,13 @@ class QVDaemon:
                 },
             }
         
-        # Return updated presets for the calculation
+        # Return updated dimension states for the calculation
         calculation_dir = step_path.parent.parent  # steps/foo.step.yaml -> calculation_dir
-        updated_presets = detect_presets_from_calculation(calculation_dir)
+        updated_dimension_states = detect_presets_from_calculation(calculation_dir)
         
         return {
             "status": "applied",
-            "presets": updated_presets,
+            "dimension_states": updated_dimension_states,
         }
     
     def _handle_apply_presets_to_calculation(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -3526,7 +3579,7 @@ class QVDaemon:
                 steps_updated: Number of steps that were updated
                 steps_skipped: Number of steps that were skipped (non-receivers)
                 step_results: List of detailed results per step
-                presets: Updated detected presets for the calculation
+                dimension_states: Updated detected dimension states for the calculation
         """
         from quantumvitas.presets.integration import (
             apply_presets_to_step,
@@ -3659,15 +3712,15 @@ class QVDaemon:
                     "skipped_fields": [],
                 })
         
-        # Return updated presets for the calculation
-        updated_presets = detect_presets_from_calculation(calculation_dir)
+        # Return updated dimension states for the calculation
+        updated_dimension_states = detect_presets_from_calculation(calculation_dir)
         
         return {
             "status": "applied",
             "steps_updated": steps_updated,
             "steps_skipped": steps_skipped,
             "step_results": step_results,
-            "presets": updated_presets,
+            "dimension_states": updated_dimension_states,
         }
     
     def _handle_get_step_preset_footprints(self, payload: Dict[str, Any]) -> Dict[str, Any]:

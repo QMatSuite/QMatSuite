@@ -1,0 +1,20 @@
+project:
+  name: silicon-band-structure-2
+  meta:
+    id: 01KDTJYMXYVEC4TPPTD1GHVFCV
+    name: silicon-band-structure-2
+    slug: silicon-band-structure-2
+    path: .
+    kind: project
+  settings:
+    origin:
+      kind: demo
+      demo_id: si_bands_demo
+      reference_artifacts:
+        bands: si_bands_demo.bands.json
+        scf: si_bands_demo.scf.json
+settings: {}
+structures:
+- structure_id: 01KDTJYMXY21PZ4P5J5P0RCERR
+calculations:
+- calculation_id: 01KDTJYMXYMMQHMDM7N3BXQAH6

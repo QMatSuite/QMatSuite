@@ -489,14 +489,13 @@ Compiler 仅允许依赖：
 - step_type
 - 用户 options（spin / soc / material / accuracy 等）
 
-#### 10.3.3 覆盖性原则
-Preset apply 时，Compiler 必须完全重写 step 参数：
+**例外：precision resolver 的 context 依赖**：
+一般维度的 compiler 不得依赖 structure/pseudo；但允许少数维度（如 precision）通过明确命名的 resolver 依赖 context。resolver 必须纯函数、可审计、有合同测试。
 
-- 不得 append
-- 不得 merge
-- 不得保留旧参数
+#### 10.3.3 局部精确修改原则
+Preset Apply 必须是局部精确修改：只允许修改该维度 ParamSpace Variant 明确声明的 keys（包括写入 VALUE 和删除 NOT_APPLICABLE）。所有不归该 preset 维度管理的参数必须保持原样（不得被重置、不得被删除、不得被覆盖）。该规则用于保证 canonical form 与数学等价性，同时确保用户手写/其他维度参数不会被清空。
 
-该规则用于保证 canonical form 与数学等价性。
+如果未来需要"清理/归一化/删除多余参数"，应通过一个独立的清理功能实现，而不是 preset apply 的职责。
 
 #### 10.3.4 Canonical Encoding（必须显式写出）
 Compiler 输出必须采用规范化参数表示，**必须显式写出所有关键参数**：
@@ -585,34 +584,209 @@ detect( compile_one(step_type, options) ) == options 在该维度的值
 - Compiler 输出：`nspin = 1` → Detector 必须检测为 `nonspin`
 - 非 Compiler 输出：未写 `nspin` → Detector 应推断为 `nonspin`（基于隐式默认）
 
-#### 10.6.3 等价性验证
+**QE 参数 JSON / schema 的定位（仅诊断工具）**：
+QE 参数 JSON / schema 仅作为诊断工具：当 Variant 声称写入的 key 不被该 step_type 接受时，发出 warning。但 warning 不改变 apply/detect 的行为。禁止用 JSON 推导/决定：某维度是否应用、某 key 是否应该被写入/删除、某 step 是否属于某 variant。行为真相必须来自 ParamSpace Variant 的显式声明（见 10.7.9）。该规则确保 apply/detect 逻辑的唯一真相来源，避免 JSON schema 成为第二真相。
+
+运行时可发 warning；对核心 step_types / 核心维度，必须有 enforcement tests（或 CI 约束）确保：variant 声称写入的 key 在 schema 中被接受，否则视为配置错误（fail）。
+
+#### 10.6.3 禁止 Guessing（猜测式识别）
+
+当某维度的关键参数缺失，且不存在可靠的 QE 隐式默认语义可映射到某个 profile 时：
+
+- Detector 必须返回 CUSTOM
+- 不得"猜一个最可能的 preset"
+
+容忍缺失只允许以两种方式出现：
+
+1. 该维度在 ParamSpace 中明确声明 defaults，并用 present vs effective 区分语义（见 10.7.4）
+2. 该 key 在该 space 之外（无关参数）或被声明为 WILDCARD（无语义，见 10.7.3）
+
+禁止任何基于"最可能值"、"常见值"、"历史经验"的猜测行为。该规则防止未来再出现"缺 conv_thr 就 MED"等猜测式识别，确保 detect 的严格性与可复现性。
+
+#### 10.6.4 等价性验证
 等价性必须通过 unit tests 验证，而非经验保证：
 
 - **Compiler 输出等价性**：必须通过严格的 unit tests 验证
 - **非 Compiler 输出语义推断**：必须通过测试覆盖常见场景（参数缺失、默认值、冗余参数等）
 
-### 10.7 Advanced 用户路径
+### 10.7 Preset Space 统一框架（声明式数据结构 + 通用算法）
 
-#### 10.7.1 Step 自治
+#### 10.7.1 统一框架原则
+Preset Space = 声明式数据结构 + 通用算法。
+
+**目标**：避免每个维度各写一套 compiler/detector/receiver 导致反复出现"apply 能写、detect 读不出"的 bug。
+
+**核心要求**：
+- 每个 preset 维度必须由一个"参数空间声明（ParamSpace）"描述
+- 禁止为某个维度单独写"特判 detector/特判 compiler"
+- 允许维度提供 ParamSpace 声明 + （可选）少量纯函数 canonicalizer，但核心逻辑必须复用通用框架
+
+#### 10.7.2 ParamSpace 声明结构
+每个 preset 维度必须声明一个 ParamSpace，包含以下要素：
+
+**keys（固定有序列表）**：
+- 完整定义本空间允许读写的参数键
+- 必须是有序列表（用于确定性匹配与写入顺序）
+
+**defaults（隐式默认值字典）**：
+- 每个 key 的隐式默认值，用于 detect 时补全 effective_value
+- 当 YAML 中未显式包含某 key 时，使用对应的 default 值
+
+**aliases/canonicalizers（同义词表/规范化规则）**：
+- 同义词表：例如 `gaussian` 与 `gauss` 等价
+- 规范化规则：必须属于 ParamSpace，而不是散落在 detector 中
+- 每个 key 可以有独立的 canonicalizer 函数（纯函数）
+
+**profiles（用户可选项的矩阵）**：
+- 对 keys 的每一项给出 cell（见 10.7.3）
+- profiles 必须是"满矩阵"：对 keys 全覆盖
+- 任何漏填在构造时必须自动补 WILDCARD 或直接报错（实现由代码决定，但宪法必须要求"不可漏 key"）
+
+**numeric tolerances（数值容差）**：
+- 如 float 的 abs_tol
+- 用于 detect 时的数值比较
+
+#### 10.7.3 Cell 语义（三态）
+每个 profile 对每个 key 必须给出一个 cell，且只能是以下三种之一：
+
+**VALUE(v)**：
+- 该 key 的期望值为 v
+- detect 用 effective_value 比较（带 canonicalize/容差）
+- apply 根据 explicit_defaults 决定是否显式写入（见 10.7.5）
+
+**NOT_APPLICABLE**：
+- 该 key 在此 profile 下不应显式存在
+- apply 必须删除该 key
+- detect 若 present==True 则不匹配（见 10.7.4）
+
+**WILDCARD**：
+- 该 key 在此 profile 下不参与匹配
+- detect 不检查该 key
+- apply 默认不写、不删，保持原样
+
+**满矩阵要求**：
+- profiles 必须对 keys 全覆盖
+- 任何漏填在构造时必须自动补 WILDCARD 或直接报错
+- 实现由代码决定，但宪法必须要求"不可漏 key"
+
+#### 10.7.4 present vs effective_value（detect 必须区分）
+detect 必须区分两个概念：
+
+**present**：
+- YAML 是否显式包含该 key
+- 布尔值：True 表示 YAML 中存在该 key，False 表示不存在
+
+**effective_value**：
+- 若 present 则取 YAML 值，否则取 defaults 值
+- 取值后必须经过 canonicalize（应用同义词表/规范化规则）
+
+**匹配规则**：
+- **VALUE**：比较 effective_value（带 canonicalize/容差）
+- **NOT_APPLICABLE**：检查 present 必须为 False（不看 effective_value）
+- **WILDCARD**：不检查
+
+**目的**：解决"apply 能写、detect 读不出"的根本原因——detect 必须正确处理参数缺失与默认值。
+
+#### 10.7.5 apply 的 explicit_defaults 开关
+apply(profile, explicit_defaults=True|False) 的行为：
+
+**VALUE**：
+- explicit_defaults=True：必写（即使 value == default 也显式写入）
+- explicit_defaults=False：若 value == default 则不写（删除该 key，依赖隐式默认）
+
+**NOT_APPLICABLE**：
+- 必须删除该 key（无论 explicit_defaults 值）
+
+**WILDCARD**：
+- 默认不写不删（不触碰该 key）
+
+**目的**：允许 Compiler 在"显式写入所有参数"与"依赖 QE 默认值"之间选择，同时保证 detect 的一致性。
+
+**Policy 澄清（explicit_defaults 与显式写入原则）**：
+Production compiler 默认必须使用 explicit_defaults=True，以满足宪法里"显式写出关键参数、不依赖 QE 默认值"的原则（见 10.3.4 Canonical Encoding）。explicit_defaults=False 只能作为 advanced/compact encoding 的可选模式存在：不能成为默认路径、必须有独立合同测试覆盖、不能影响 detect 的严格可逆性（尤其是 strict detector）。该政策确保所有关键参数可审计、可追溯，避免依赖隐式默认导致的语义模糊。
+
+**Apply 契约：精确修改，不 reset 众生**：
+apply 只能修改该 Variant 的 parameter space 中的 key（profile 指定的 VALUE/NOT_APPLICABLE）。任何不在该 space 的 key 必须保持原样（不得被重置、不得被删除、不得被覆盖）。这是为了保证用户手写/其他维度参数（如 DFT+U 等）不会因为应用其它 preset 而被清空。该规则确保 apply 的局部性：只影响显式声明的 keys，不影响其他参数。
+
+**删除规则：禁止"因为 owned 就先删"**：
+删除只能由两类原因触发：profile cell == NOT_APPLICABLE（明确要求清理）、本次 apply 将写入该 key（覆盖语义）。禁止为了"归属/owned keys"而先删除，但最终又不写回 replacement（这会导致数据丢失）。必须有合同测试覆盖此规则（尤其是 cards 类参数的安全性），确保不会出现"先删后不写"的数据丢失场景。
+
+#### 10.7.6 零技术债原则
+本系统是新功能：不允许"向后兼容两种 YAML 表示法"。
+
+**规则**：
+- 出现不规范旧表示必须通过一次性 migration 或直接重写生成
+- 禁止在运行时 silently fallback 到旧表示法
+- 新增/修改 schema 必须配套更新测试与迁移策略
+
+**目的**：避免"apply 能写、detect 读不出"的另一个根本原因——YAML 表示法不一致。
+
+#### 10.7.7 合同测试（必须）
+每个 preset space 必须有 roundtrip contract tests。
+
+**必须覆盖的测试场景**：
+1. **对每个 profile**：apply → detect 必须命中同一 profile
+2. **对 NOT_APPLICABLE**：若强行写入该 key（即使写默认值），detect 必须变 CUSTOM
+3. **对 aliases**：同义词写法必须 detect 命中同一 profile
+
+**要求**：
+- 没有这些测试，不允许 merge
+- 测试必须作为 CI 的一部分，不允许跳过
+
+**目的**：通过自动化测试保证等价性公理（10.6.2）的严格执行，避免"apply 能写、detect 读不出"的 bug 进入代码库。
+
+#### 10.7.8 单一注册表 + 薄封装 + 强制执行（Enforced）
+
+**Single Source of Truth（单一真源）**：
+所有 preset 维度必须在一个集中注册表中注册（声明式、唯一真源）。禁止"分散声明"或"临时绕过注册表"的维度实现。
+
+**Thin Wrapper（薄封装）**：
+compiler/detector 的每个维度入口必须是薄封装：只能把参数转交给通用引擎（ParamSpace），不得写维度特判逻辑。维度特判（aliases/tolerance/defaults/present/effective）只能存在于 ParamSpace 声明中。
+
+**Enforcement Tests（强制执行测试）**：
+必须有 CI/enforcement tests 防止回归：新增维度未注册 → 失败；wrapper 变厚/出现特判逻辑 → 失败；出现旧路径/猜测式识别 → 失败。这些测试必须可强制、可自动化，不允许手动审查替代。
+
+#### 10.7.9 ParamSpace Variant 与适用范围
+
+每个 preset 维度允许有多个 ParamSpace Variant。每个 Variant 必须显式声明 applies_to_step_types（适用 step_type 列表）。适用范围是唯一真相：apply/detect 只对该列表中的 step 生效；不在范围内的 step 视为 N/A（不 apply、不 detect、不参与 custom 判定）。禁止把"适用范围真相"散落在别处（例如 registry 映射表/receiver 隐式过滤）形成第二真相。
+
+允许实现层从 variants 自动导出 step_type→variant 的索引/缓存用于查询或性能；但索引必须完全可由 variants 推导生成，不允许手工维护额外语义；真相仍在 variant 的 applies_to_step_types。
+
+必须有 enforcement tests 保证：同一 (dimension, step_type) 不能被多个 variant 覆盖（禁止 overlap）、关键 step_type 必须被覆盖或明确声明 N/A。
+
+### 10.8 Advanced 用户路径
+
+#### 10.8.1 Step 自治
 Advanced 用户对 step 的任何手动修改：
 
 - 直接写入 step.yml
 - 不触发隐式继承、联动或修正
 
-#### 10.7.2 显式继承
+#### 10.8.2 显式继承
 如提供继承能力，必须通过显式 UI 行为（如 dropdown copy），且仅为一次性复制。
 
-### 10.8 读写策略（非宪法核心）
+### 10.9 Precision 的制度化（Context-dependent 参数）
 
-#### 10.8.1 当前实现
+#### 10.9.1 策略与数值分离
+precision 的 ecut/kmesh 是 context-dependent（pseudo/structure），因此：ParamSpace profiles 存"策略参数"（如 multiplier / delta_k / conv_thr / nscf factor 等），具体数值由 resolver 在 apply/detect 时计算得到。
+
+#### 10.9.2 Variant 适用范围
+precision 必须用多个 variant 明确适用范围（例如 default PW steps / nscf / bands_pw）。每个 variant 必须显式声明 applies_to_step_types（见 10.7.9）。
+
+#### 10.9.3 bands_pw 的 K_POINTS 排除规则
+关键硬约束：bands_pw 的 precision variant 必须移除 K_POINTS（因为 bands_pw 的 K_POINTS 语义属于 kpath，不由 precision 管）。必须有回归测试保证：对 bands_pw 应用 precision 不得改变其 kpath K_POINTS（内容完全不变）。bands_pw 的 K_POINTS 属于 kpath 语义；若要 preset 化，应由独立的 kpath 维度管理，而非 precision。
+
+### 10.10 读写策略（非宪法核心）
+
+#### 10.10.1 当前实现
 当前阶段允许：
 
 - UI 操作即刻读写 step.yml
 
-#### 10.8.2 未来优化
+#### 10.10.2 未来优化
 未来可引入内存缓冲、延迟写入等优化，但不得改变前述宪法语义。
 
-### 10.9 禁止事项
+### 10.11 禁止事项
 
 禁止引入以下概念进入持久模型：
 
@@ -624,7 +798,7 @@ Advanced 用户对 step 的任何手动修改：
 - **A/B 双轨状态**：禁止引入"Selected vs Detected"双轨状态模型（见 10.4.2）
 - **compiler version / schema version 作为运行语义依赖**：禁止将版本号作为运行语义依赖
 
-### 10.10 解释权
+### 10.12 解释权
 
 当实现与宪法存在冲突时：
 
@@ -632,7 +806,7 @@ Advanced 用户对 step 的任何手动修改：
 - 简洁性优先
 - 数学可证明性优先于 UX 便利
 
-### 10.11 宪法总结性原则（一句话）
+### 10.13 宪法总结性原则（一句话）
 
 **Execution is concrete; intention is inferred.**
 
@@ -649,7 +823,30 @@ workflow 与 preset 只是对现状的解释，而非事实。
 
 ## 本次修订摘要（2025-01-XX）
 
-### 新增章节
+### 新增条款（Preset Space 统一框架）
+- **10.7 Preset Space 统一框架（声明式数据结构 + 通用算法）**
+  - **10.7.1 统一框架原则**：禁止各维度单独写特判逻辑，必须使用声明式 ParamSpace
+    - 解决的问题：避免每个维度各写一套 compiler/detector/receiver 导致反复出现"apply 能写、detect 读不出"的 bug
+  - **10.7.2 ParamSpace 声明结构**：keys、defaults、aliases/canonicalizers、profiles、numeric tolerances
+    - 解决的问题：occupations_scheme 类问题（gaussian/gauss 同义词、degauss 容差）、precision 类问题（数值容差、同义词处理）
+  - **10.7.3 Cell 语义（三态）**：VALUE(v)、NOT_APPLICABLE、WILDCARD，满矩阵要求
+    - 解决的问题：维度交叉污染（通过 keys 隔离）、NOT_APPLICABLE 的明确语义
+  - **10.7.4 present vs effective_value**：detect 必须区分，解决参数缺失与默认值问题
+    - 解决的问题：occupations_scheme 类问题（缺失 smearing/degauss 时的检测）、precision 类问题（缺失参数时的处理）
+  - **10.7.5 apply 的 explicit_defaults 开关**：控制是否显式写入默认值
+    - 解决的问题：Compiler 在"显式写入所有参数"与"依赖 QE 默认值"之间的选择
+  - **10.7.6 零技术债原则**：禁止向后兼容两种 YAML 表示法，必须 migration
+    - 解决的问题：YAML 表示法不一致导致的"apply 能写、detect 读不出"
+  - **10.7.7 合同测试（必须）**：roundtrip 测试、NOT_APPLICABLE 测试、aliases 测试
+    - 解决的问题：通过自动化测试保证等价性公理的严格执行，避免 bug 进入代码库
+
+**解决的问题类型总结**：
+- **occupations_scheme 类问题**：`gaussian`/`gauss` 同义词、`degauss=0.02` 容差匹配、缺失 `smearing`/`degauss` 时的检测
+- **precision 类问题**：`ecutwfc`/`ecutrho` 整数舍入、`conv_thr` 容差、K_POINTS 匹配、缺失结构时的错误处理
+- **维度交叉污染**：apply 一个维度影响其他维度（通过 ParamSpace 的 keys 隔离解决）
+- **apply/detect 不一致**：通过统一框架和合同测试保证等价性
+
+### 新增章节（历史）
 - **第 10 章：计算模型与 Preset / Workflow 宪法**（全新章节）
   - 10.1 唯一真相原则（step.yml 是唯一可执行真相）
   - 10.2 Preset / Workflow 的法律地位（非实体原则）
@@ -657,11 +854,12 @@ workflow 与 preset 只是对现状的解释，而非事实。
   - 10.4 Detector B（反向检测）的宪法地位
   - 10.5 Detector B 的数学定义
   - 10.6 Compiler 与 Detector 的数学等价性
-  - 10.7 Advanced 用户路径
-  - 10.8 读写策略（非宪法核心）
-  - 10.9 禁止事项（anchor / family state / baseline / implicit inheritance）
-  - 10.10 解释权
-  - 10.11 宪法总结性原则
+  - 10.7 Preset Space 统一框架（声明式数据结构 + 通用算法）**新增**
+  - 10.8 Advanced 用户路径
+  - 10.9 读写策略（非宪法核心）
+  - 10.10 禁止事项（anchor / family state / baseline / implicit inheritance）
+  - 10.11 解释权
+  - 10.12 宪法总结性原则
 
 ### 历史新增章节
 - **第 9 章：数据根目录、临时目录与可复现资产**（历史章节）
@@ -742,3 +940,16 @@ workflow 与 preset 只是对现状的解释，而非事实。
 4. **隐式默认语义支持**：
    - Detector 必须支持隐式默认语义的反向解释
    - 示例：未写 `nspin` → 解释为 `nonspin`（等价于 `nspin = 1`）
+
+### 本次修订（2025-01-XX）：精确 apply、清理按钮、precision resolver 例外、variant 索引澄清、JSON enforcement、kpath 归属
+
+#### 变更摘要
+1. **修订 10.3.3：从"完全重写"改为"局部精确修改"**：Preset Apply 必须是局部精确修改，只允许修改该维度 ParamSpace Variant 明确声明的 keys，所有不归该 preset 维度管理的参数必须保持原样。明确说明如果未来需要"清理/归一化/删除多余参数"，应通过独立的清理功能实现，而不是 preset apply 的职责。
+
+2. **修订 10.3.2：加入 precision resolver 的例外条款**：保留"通常 compiler 不得依赖 structure/pseudo"的原则，但允许少数维度（如 precision）通过明确命名的 resolver 依赖 context。resolver 必须纯函数、可审计、有合同测试。
+
+3. **10.7.9 补一句：允许导出索引，但索引不是第二真相**：允许实现层从 variants 自动导出 step_type→variant 的索引/缓存用于查询或性能，但索引必须完全可由 variants 推导生成，不允许手工维护额外语义；真相仍在 variant 的 applies_to_step_types。
+
+4. **JSON sanity-check 章节补充 enforcement 政策**：在"JSON 仅用于诊断工具"条款下补充：运行时可发 warning；对核心 step_types / 核心维度，必须有 enforcement tests（或 CI 约束）确保 variant 声称写入的 key 在 schema 中被接受，否则视为配置错误（fail）。
+
+5. **precision 的 K_POINTS 规则补充 kpath 归属提示**：在 bands_pw 的 precision variant 必须移除 K_POINTS 的规则后补充：bands_pw 的 K_POINTS 属于 kpath 语义；若要 preset 化，应由独立的 kpath 维度管理，而非 precision。

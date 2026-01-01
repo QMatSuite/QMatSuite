@@ -10,9 +10,8 @@ Detector B is a "semantic interpreter" - it tolerantly infers user intent
 from step parameters, including handling implicit QE defaults.
 
 Key functions:
-- detect_spin(params) -> SpinOption: Detect spin treatment from step params
-- detect_soc(params) -> SOCOption: Detect SOC from step params
-- detect_material(params) -> MaterialOption: Detect material type from step params
+- detect_magnetism(params) -> MagnetismOption: Detect magnetism treatment from step params (merged spin + SOC)
+- detect_occupations_scheme(params, step_type) -> OccupationsSchemeOption: Detect occupations scheme from step params
 - detect_all_presets(steps) -> Dict: Aggregate detection across all steps
 """
 
@@ -20,14 +19,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from quantumvitas.presets.dimensions import (
-    SpinOption,
-    SOCOption,
-    MaterialOption,
+    MagnetismOption,
+    OccupationsSchemeOption,
     PrecisionOption,
     CUSTOM,
-    DIMENSION_SPIN,
-    DIMENSION_SOC,
-    DIMENSION_MATERIAL,
+    DIMENSION_MAGNETISM,
+    DIMENSION_OCCUPATIONS_SCHEME,
     DIMENSION_PRECISION,
     V0_DIMENSIONS,
     V1_DIMENSIONS,
@@ -104,118 +101,54 @@ def _parse_int(value: Any, default: int = 0) -> int:
     return default
 
 
-def detect_spin(params: Dict[str, Dict[str, Any]]) -> SpinOption:
+def detect_magnetism(
+    params: Dict[str, Dict[str, Any]],
+    step_type: str = "scf",
+) -> MagnetismOption:
     """
-    Detect spin treatment from step parameters.
-    
-    Detection logic (per QE documentation):
-    1. If noncolin = .true. → NONCOLLINEAR (nspin=4 internally)
-    2. If nspin = 2 → COLLINEAR (LSDA)
-    3. If nspin = 1 or absent → NONSPIN (default)
-    
-    Implicit defaults (per Constitution 10.5.3):
-    - Missing nspin → 1 (nonspin)
-    - Missing noncolin → .false.
+    Detect magnetism treatment from step parameters using variants API.
     
     Args:
         params: Step parameters dict with section -> params structure
+        step_type: Step type (default "scf" for backward compatibility)
         
     Returns:
-        Detected SpinOption
+        Detected MagnetismOption or CUSTOM
     """
-    # Check noncolin first (takes precedence)
-    noncolin = _get_system_param(params, "noncolin")
-    if noncolin is not None and _parse_bool(noncolin):
-        return SpinOption.NONCOLLINEAR
+    from quantumvitas.presets.variants_registry import detect_dimension_for_step
     
-    # Check nspin
-    nspin = _get_system_param(params, "nspin")
-    nspin_val = _parse_int(nspin, default=1)  # QE default is 1
+    detected = detect_dimension_for_step("magnetism", step_type, params)
     
-    if nspin_val == 2:
-        return SpinOption.COLLINEAR
-    elif nspin_val == 4:
-        # nspin=4 implies noncollinear, but noncolin should be set
-        # This handles edge case where nspin=4 is set without noncolin
-        return SpinOption.NONCOLLINEAR
-    else:
-        # nspin=1 or implicit default
-        return SpinOption.NONSPIN
+    # If None (no variant applies) or CUSTOM, return CUSTOM
+    if detected is None or detected == CUSTOM:
+        return CUSTOM
+    
+    return detected
 
 
-def detect_soc(params: Dict[str, Dict[str, Any]]) -> SOCOption:
+def detect_occupations_scheme(
+    params: Dict[str, Dict[str, Any]],
+    step_type: str = "scf",
+) -> Union[OccupationsSchemeOption, _CustomType]:
     """
-    Detect spin-orbit coupling from step parameters.
-    
-    Detection logic:
-    - If lspinorb = .true. → WITH_SOC
-    - Otherwise → NO_SOC
-    
-    Implicit defaults (per Constitution 10.5.3):
-    - Missing lspinorb → .false. (no SOC)
-    
-    Note: WITH_SOC physically requires noncolin=.true., but detector
-    only reports what parameters say, not physics validity.
+    Detect occupations_scheme from step parameters using variants API.
     
     Args:
         params: Step parameters dict with section -> params structure
+        step_type: Step type (default "scf" for backward compatibility)
         
     Returns:
-        Detected SOCOption
+        Detected OccupationsSchemeOption or CUSTOM
     """
-    lspinorb = _get_system_param(params, "lspinorb")
+    from quantumvitas.presets.variants_registry import detect_dimension_for_step
     
-    if lspinorb is not None and _parse_bool(lspinorb):
-        return SOCOption.WITH_SOC
+    detected = detect_dimension_for_step("occupations_scheme", step_type, params)
     
-    # Implicit default: no SOC
-    return SOCOption.NO_SOC
-
-
-def detect_material(params: Dict[str, Dict[str, Any]]) -> MaterialOption:
-    """
-    Detect material type (insulator/metal) from step parameters.
+    # If None (no variant applies) or CUSTOM, return CUSTOM
+    if detected is None or detected == CUSTOM:
+        return CUSTOM
     
-    Detection logic (based on occupations parameter):
-    - If occupations = 'smearing' → METAL
-    - If occupations = 'tetrahedra*' → INSULATOR (requires uniform k-grid)
-    - If occupations = 'fixed' → INSULATOR (explicit gap)
-    - If occupations absent → INSULATOR (QE defaults assume insulating)
-    
-    Note: 'from_input' is ambiguous; we treat it as INSULATOR since
-    it's typically used for specialized cases, not metallic smearing.
-    
-    Args:
-        params: Step parameters dict with section -> params structure
-        
-    Returns:
-        Detected MaterialOption
-    """
-    occupations = _get_system_param(params, "occupations")
-    
-    if occupations is None:
-        # Implicit default: insulator (fixed occupations)
-        return MaterialOption.INSULATOR
-    
-    # Normalize string value
-    occ_str = str(occupations).lower().strip().strip("'\"")
-    
-    if occ_str == "smearing":
-        return MaterialOption.METAL
-    
-    # Tetrahedra variants are for insulators
-    if occ_str.startswith("tetrahedra"):
-        return MaterialOption.INSULATOR
-    
-    if occ_str == "fixed":
-        return MaterialOption.INSULATOR
-    
-    if occ_str == "from_input":
-        # Ambiguous, but typically insulating behavior
-        return MaterialOption.INSULATOR
-    
-    # Unknown value - default to insulator
-    return MaterialOption.INSULATOR
+    return detected
 
 
 def _get_electrons_param(
@@ -240,7 +173,7 @@ def _get_electrons_param(
     return default
 
 
-def _get_kpoints_mesh(params: Dict[str, Dict[str, Any]]) -> Optional[Tuple[int, int, int, int, int, int]]:
+def _get_kpoints_mesh(params: dict[str, dict[str, Any]]) -> Optional[tuple[int, int, int, int, int, int]]:
     """
     Extract K_POINTS automatic mesh from step content.
     
@@ -248,7 +181,7 @@ def _get_kpoints_mesh(params: Dict[str, Dict[str, Any]]) -> Optional[Tuple[int, 
     Format: cards.K_POINTS = {"option": "automatic", "data": [[nk1, nk2, nk3, sk1, sk2, sk3]]}
     
     Returns:
-        Tuple of (nk1, nk2, nk3, sk1, sk2, sk3) or None if not automatic mesh or not found.
+        tuple of (nk1, nk2, nk3, sk1, sk2, sk3) or None if not automatic mesh or not found.
     """
     cards = params.get("cards") or {}
     kpoints_card = cards.get("K_POINTS") or cards.get("k_points") or {}
@@ -310,128 +243,56 @@ def _parse_int(value: Any, default: int = 0) -> int:
     return default
 
 
-def detect_precision(params: Dict[str, Dict[str, Any]]) -> PrecisionOption:
+def detect_precision(
+    params: Dict[str, Dict[str, Any]],
+    *,
+    lattice_matrix: Optional[List[List[float]]] = None,
+    base_ecutwfc: Optional[float] = None,
+    base_ecutrho: Optional[float] = None,
+) -> Union[PrecisionOption, _CustomType]:
     """
-    Detect precision level from step parameters (simple heuristic).
+    Detect precision level from step parameters.
     
-    This is a fallback detection based only on conv_thr when structure
-    info is not available. For strict detection, use detect_precision_strict().
+    Thin wrapper around registry-driven ParamSpace detection.
     
-    Detection logic (based on conv_thr ranges):
-    - conv_thr >= 5e-7 (loose) → LOW
-    - 5e-9 <= conv_thr < 5e-7 → MED
-    - conv_thr < 5e-9 (tight) → HIGH
+    Requires structure + pseudo context for strict matching.
+    Returns CUSTOM if context not available (no heuristic fallback).
     
     Args:
         params: Step parameters dict with section -> params structure
+        lattice_matrix: Optional 3x3 lattice vectors in Angstrom (required for strict matching)
+        base_ecutwfc: Optional base ecutwfc from pseudos (required for strict matching)
+        base_ecutrho: Optional base ecutrho from pseudos (required for strict matching)
         
     Returns:
-        Detected PrecisionOption (heuristic, may not be exact)
+        Detected PrecisionOption or CUSTOM if context not available
     """
-    conv_thr = _get_electrons_param(params, "conv_thr")
+    from quantumvitas.presets.spaces_registry import detect_dimension
     
-    if conv_thr is None:
-        # QE default is 1e-6, which corresponds to LOW
-        # But we're generous and return MED if unspecified
-        return PrecisionOption.MED
-    
-    conv_thr_val = _parse_float(conv_thr, 1e-6)
-    
-    # Classification based on conv_thr ranges
-    if conv_thr_val >= 5e-7:
-        return PrecisionOption.LOW
-    elif conv_thr_val >= 5e-9:
-        return PrecisionOption.MED
-    else:
-        return PrecisionOption.HIGH
-
-
-def detect_precision_strict(
-    params: Dict[str, Dict[str, Any]],
-    lattice_matrix: List[List[float]],
-    base_ecutwfc: float,
-    base_ecutrho: float,
-) -> Optional[PrecisionOption]:
-    """
-    Detect precision level with strict 3-way matching.
-    
-    Checks all three aspects for each level:
-    1. conv_thr matches canonical value (within abs_tol)
-    2. K_POINTS automatic mesh matches canonical computed mesh
-    3. ecutwfc AND ecutrho match canonical integer-rounded values
-    
-    Args:
-        params: Step parameters dict
-        lattice_matrix: 3x3 lattice vectors in Angstrom
-        base_ecutwfc: Base ecutwfc from pseudos (before multiplier)
-        base_ecutrho: Base ecutrho from pseudos (before multiplier)
-        
-    Returns:
-        PrecisionOption if all aspects match a level, None otherwise
-    """
-    from quantumvitas.presets.precision import (
-        PRECISION_CONSTANTS,
-        CONV_THR_ABS_TOL,
-        compute_kmesh,
-        round_cutoff_integer,
+    return detect_dimension(
+        "precision",
+        params,
+        lattice_matrix=lattice_matrix,
+        base_ecutwfc=base_ecutwfc,
+        base_ecutrho=base_ecutrho,
     )
-    
-    # Extract actual values from params
-    actual_conv_thr = _parse_float(_get_electrons_param(params, "conv_thr"), None)
-    actual_ecutwfc = _parse_int(_get_system_param(params, "ecutwfc"), None)
-    actual_ecutrho = _parse_int(_get_system_param(params, "ecutrho"), None)
-    actual_kmesh = _get_kpoints_mesh(params)
-    
-    # If essential params are missing, can't do strict match
-    if actual_conv_thr is None or actual_ecutwfc is None or actual_ecutrho is None:
-        return None
-    if actual_kmesh is None:
-        return None
-    
-    actual_nk1, actual_nk2, actual_nk3, actual_sk1, actual_sk2, actual_sk3 = actual_kmesh
-    
-    # Check each precision level
-    for level, constants in PRECISION_CONSTANTS.items():
-        # Compute canonical values for this level
-        canonical_conv_thr = constants.conv_thr
-        canonical_ecutwfc = round_cutoff_integer(base_ecutwfc * constants.cutoff_multiplier)
-        canonical_ecutrho = round_cutoff_integer(base_ecutrho * constants.cutoff_multiplier)
-        
-        nk1, nk2, nk3, sk1, sk2, sk3 = compute_kmesh(lattice_matrix, constants.delta_k)
-        
-        # Check conv_thr (with tolerance)
-        if abs(actual_conv_thr - canonical_conv_thr) > CONV_THR_ABS_TOL:
-            continue
-        
-        # Check cutoffs (exact integer match)
-        if actual_ecutwfc != canonical_ecutwfc:
-            continue
-        if actual_ecutrho != canonical_ecutrho:
-            continue
-        
-        # Check k-mesh (exact match)
-        if (actual_nk1, actual_nk2, actual_nk3) != (nk1, nk2, nk3):
-            continue
-        if (actual_sk1, actual_sk2, actual_sk3) != (sk1, sk2, sk3):
-            continue
-        
-        # All checks passed for this level
-        return level
-    
-    # No level matched
-    return None
+
+
+# Legacy function removed - use detect_precision() with ParamSpace instead
 
 
 def _detect_dimension(
     params: Dict[str, Dict[str, Any]],
     dimension: str,
-) -> Union[SpinOption, SOCOption, MaterialOption, PrecisionOption]:
+) -> Union[MagnetismOption, OccupationsSchemeOption, PrecisionOption]:
     """
     Detect a single dimension value from step parameters.
     
+    Uses registry-based detection (ParamSpace-only approach).
+    
     Args:
         params: Step parameters dict
-        dimension: Dimension name (spin, soc, material, precision)
+        dimension: Dimension name (magnetism, occupations_scheme, precision)
         
     Returns:
         Detected value for the dimension
@@ -439,16 +300,10 @@ def _detect_dimension(
     Raises:
         ValueError: If dimension is not recognized
     """
-    if dimension == DIMENSION_SPIN:
-        return detect_spin(params)
-    elif dimension == DIMENSION_SOC:
-        return detect_soc(params)
-    elif dimension == DIMENSION_MATERIAL:
-        return detect_material(params)
-    elif dimension == DIMENSION_PRECISION:
-        return detect_precision(params)
-    else:
-        raise ValueError(f"Unknown preset dimension: {dimension}")
+    from quantumvitas.presets.spaces_registry import detect_dimension as registry_detect
+    
+    # Use registry-based detection (ParamSpace-only)
+    return registry_detect(dimension, params)
 
 
 def detect_dimension_from_steps(
@@ -457,56 +312,105 @@ def detect_dimension_from_steps(
     *,
     step_types: Optional[List[str]] = None,
     calculation_dir: Optional[Path] = None,
-) -> Union[SpinOption, SOCOption, MaterialOption, PrecisionOption, _CustomType]:
+) -> Union[MagnetismOption, OccupationsSchemeOption, PrecisionOption, _CustomType]:
     """
-    Detect a preset dimension value aggregated across multiple steps.
+    Detect a preset dimension value aggregated across multiple steps using variants.
     
     Per Constitution 10.5.1:
     - If all steps have the same value → return that value
     - If steps have different values → return CUSTOM
     - Single step is valid (returns its value, not CUSTOM)
+    - Steps without a variant for this dimension are skipped (dimension is N/A)
     
-    For precision dimension: Uses step-type-aware strict detection if
-    step_types and calculation_dir are provided.
+    Uses variants registry to determine which steps are relevant.
     
     Args:
         steps: List of step parameters dicts
         dimension: Dimension name to detect
         step_types: Optional list of step_type strings (one per step)
-        calculation_dir: Optional calculation directory (for precision detection)
+        calculation_dir: Optional calculation directory (for precision context)
         
     Returns:
         Detected value or CUSTOM if heterogeneous
     """
+    from quantumvitas.presets.variants_registry import (
+        get_variant,
+        detect_dimension_for_step,
+    )
+    
     if not steps:
-        # No steps - for precision, return CUSTOM (safer than default)
-        # For other dimensions, return default
-        if dimension == DIMENSION_PRECISION:
-            return CUSTOM
-        return _detect_dimension({}, dimension)
-    
-    # For precision, use step-type-aware strict detection if possible
-    if dimension == DIMENSION_PRECISION and step_types and calculation_dir:
-        try:
-            return _detect_precision_from_steps_strict(steps, step_types, calculation_dir)
-        except Exception as e:
-            # If precision detection fails (e.g., structure resolution error),
-            # return CUSTOM rather than raising (to maintain backward compatibility)
-            # But log the error for debugging
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.warning(f"Precision detection failed, returning CUSTOM: {e}")
+        # No steps - return default for this dimension
+        if dimension == DIMENSION_MAGNETISM:
+            return MagnetismOption.NONMAGNETIC
+        elif dimension == DIMENSION_OCCUPATIONS_SCHEME:
+            return OccupationsSchemeOption.FIXED
+        elif dimension == DIMENSION_PRECISION:
+            return CUSTOM  # Precision requires context, cannot default
+        else:
             return CUSTOM
     
-    # For other dimensions or when step_types not available, use simple detection
-    values = set()
-    for step_params in steps:
-        value = _detect_dimension(step_params, dimension)
-        values.add(value)
+    # If step_types not provided, try to detect without variants (legacy path)
+    if step_types is None or len(step_types) != len(steps):
+        # Fallback to old logic for backward compatibility during transition
+        values = set()
+        for step_params in steps:
+            value = _detect_dimension(step_params, dimension)
+            values.add(value)
+        
+        if len(values) == 1:
+            return values.pop()
+        else:
+            return CUSTOM
+    
+    # Use variants-based detection
+    values = []
+    for step_params, step_type in zip(steps, step_types):
+        # Check if variant applies
+        variant = get_variant(dimension, step_type)
+        if variant is None:
+            # No variant applies - skip this step (dimension is N/A for this step)
+            continue
+        
+        # Build context for precision
+        precision_context = None
+        if dimension == DIMENSION_PRECISION and calculation_dir:
+            try:
+                from quantumvitas.presets.precision_context import resolve_precision_context
+                from quantumvitas.presets.precision import aggregate_cutoffs
+                context = resolve_precision_context(calculation_dir)
+                if context.structure:
+                    # Compute base cutoffs from pseudos
+                    base_ecutwfc, base_ecutrho = aggregate_cutoffs(
+                        context.species_map, context.pseudo_index
+                    )
+                    precision_context = {
+                        "lattice_matrix": context.lattice_matrix,
+                        "base_ecutwfc": base_ecutwfc,
+                        "base_ecutrho": base_ecutrho,
+                    }
+            except Exception:
+                # Context resolution failed - cannot detect precision for this step
+                continue
+        
+        # Detect using variant
+        detected = detect_dimension_for_step(
+            dimension,
+            step_type,
+            step_params,
+            precision_context=precision_context,
+        )
+        
+        if detected is not None:
+            values.append(detected)
+    
+    # If no steps had applicable variants, return CUSTOM
+    if not values:
+        return CUSTOM
     
     # Per Constitution 10.5.1: single unique value or Custom
-    if len(values) == 1:
-        return values.pop()
+    unique_values = set(values)
+    if len(unique_values) == 1:
+        return unique_values.pop()
     else:
         return CUSTOM
 
@@ -581,10 +485,23 @@ def _detect_precision_from_steps_strict(
         if not spec or not spec.accepts_any:
             continue
         
-        # Use strict detection with step-type-aware canonical values
-        detected = detect_precision_strict_for_step_type(
-            step_params, step_type, lattice_matrix, base_ecutwfc, base_ecutrho
+        # Use variants API for detection
+        precision_context = {
+            "lattice_matrix": lattice_matrix,
+            "base_ecutwfc": base_ecutwfc,
+            "base_ecutrho": base_ecutrho,
+        }
+        from quantumvitas.presets.variants_registry import detect_dimension_for_step
+        detected = detect_dimension_for_step(
+            "precision",
+            step_type,
+            step_params,
+            precision_context=precision_context,
         )
+        
+        # Convert CUSTOM/None to None for strict detection
+        if detected is None or detected == CUSTOM:
+            detected = None
         
         if detected is None:
             # Step doesn't match any precision level
@@ -592,9 +509,9 @@ def _detect_precision_from_steps_strict(
         
         receiver_values.append(detected)
     
-    # If no receiver steps, return default
+    # If no receiver steps, return CUSTOM (no default fallback)
     if not receiver_values:
-        return PrecisionOption.MED  # Default
+        return CUSTOM
     
     # Check if all receiver steps agree
     unique_values = set(receiver_values)
@@ -612,9 +529,9 @@ def detect_precision_strict_for_step_type(
     base_ecutrho: float,
 ) -> Optional[PrecisionOption]:
     """
-    Detect precision with strict matching for a specific step type.
+    Detect precision with strict matching for a specific step type using variants API.
     
-    Uses step-type-specific canonical values (e.g., nscf ×2 mesh).
+    This is a convenience wrapper around detect_dimension_for_step for precision.
     
     Args:
         params: Step parameters dict
@@ -626,84 +543,87 @@ def detect_precision_strict_for_step_type(
     Returns:
         PrecisionOption if matches, None otherwise
     """
-    from quantumvitas.presets.receivers import get_precision_receiver_spec
-    from quantumvitas.presets.precision import (
-        PRECISION_CONSTANTS,
-        CONV_THR_ABS_TOL,
-        compute_kmesh,
-        round_cutoff_integer,
-        NSCF_KMESH_FACTOR,
+    from quantumvitas.presets.variants_registry import detect_dimension_for_step
+    
+    # Build precision context
+    precision_context = {
+        "lattice_matrix": lattice_matrix,
+        "base_ecutwfc": base_ecutwfc,
+        "base_ecutrho": base_ecutrho,
+    }
+    
+    # Use variants API
+    detected = detect_dimension_for_step(
+        "precision",
+        step_type,
+        params,
+        precision_context=precision_context,
     )
     
-    spec = get_precision_receiver_spec(step_type)
-    if not spec or not spec.accepts_any:
-        return None  # Non-receiver step
-    
-    # Extract actual values
-    actual_conv_thr = _parse_float(_get_electrons_param(params, "conv_thr"), None)
-    actual_ecutwfc = _parse_int(_get_system_param(params, "ecutwfc"), None)
-    actual_ecutrho = _parse_int(_get_system_param(params, "ecutrho"), None)
-    actual_kmesh = _get_kpoints_mesh(params)
-    
-    # Check required params based on spec
-    if spec.accepts_conv_thr and actual_conv_thr is None:
-        return None
-    if spec.accepts_cutoffs and (actual_ecutwfc is None or actual_ecutrho is None):
-        return None
-    if spec.accepts_kmesh and actual_kmesh is None:
+    # Return None if CUSTOM or None (no match)
+    if detected is None or detected == CUSTOM:
         return None
     
-    # Check each precision level
-    for level, constants in PRECISION_CONSTANTS.items():
-        # Check conv_thr if required
-        if spec.accepts_conv_thr:
-            if abs(actual_conv_thr - constants.conv_thr) > CONV_THR_ABS_TOL:
-                continue
-        
-        # Check cutoffs if required
-        if spec.accepts_cutoffs:
-            canonical_ecutwfc = round_cutoff_integer(base_ecutwfc * constants.cutoff_multiplier)
-            canonical_ecutrho = round_cutoff_integer(base_ecutrho * constants.cutoff_multiplier)
-            
-            if actual_ecutwfc != canonical_ecutwfc:
-                continue
-            if actual_ecutrho != canonical_ecutrho:
-                continue
-        
-        # Check kmesh if required
-        if spec.accepts_kmesh and spec.kmesh_strategy != "none":
-            # Compute base mesh
-            base_nk1, base_nk2, base_nk3, sk1, sk2, sk3 = compute_kmesh(lattice_matrix, constants.delta_k)
-            
-            # Apply step-type strategy
-            if spec.kmesh_strategy == "nscf":
-                canonical_nk1 = max(1, base_nk1 * NSCF_KMESH_FACTOR)
-                canonical_nk2 = max(1, base_nk2 * NSCF_KMESH_FACTOR)
-                canonical_nk3 = max(1, base_nk3 * NSCF_KMESH_FACTOR)
-            else:  # "default"
-                canonical_nk1, canonical_nk2, canonical_nk3 = base_nk1, base_nk2, base_nk3
-            
-            actual_nk1, actual_nk2, actual_nk3, actual_sk1, actual_sk2, actual_sk3 = actual_kmesh
-            
-            if (actual_nk1, actual_nk2, actual_nk3) != (canonical_nk1, canonical_nk2, canonical_nk3):
-                continue
-            if (actual_sk1, actual_sk2, actual_sk3) != (sk1, sk2, sk3):
-                continue
-        
-        # All required checks passed for this level
-        return level
+    return detected
+
+
+def _match_precision_without_kpoints(
+    params: Dict[str, Dict[str, Any]],
+    canonical_values: Dict[str, Any],
+) -> Optional[str]:
+    """
+    Match precision profile without requiring K_POINTS (for steps that don't accept kmesh).
     
-    # No level matched
-    return None
+    Only matches on ecutwfc, ecutrho, and conv_thr.
+    """
+    from quantumvitas.presets.paramspace import get_precision_paramspace, get_yaml_value
+    
+    paramspace = get_precision_paramspace()
+    
+    # Extract actual values from YAML
+    ecutwfc_present, ecutwfc_raw = get_yaml_value(params, "SYSTEM", "ecutwfc")
+    ecutrho_present, ecutrho_raw = get_yaml_value(params, "SYSTEM", "ecutrho")
+    conv_thr_present, conv_thr_raw = get_yaml_value(params, "ELECTRONS", "conv_thr")
+    
+    # All essential params (except K_POINTS) must be present
+    if not (ecutwfc_present and ecutrho_present and conv_thr_present):
+        return None
+    
+    # Parse actual values
+    key_ecutwfc = paramspace.keys[0]
+    key_ecutrho = paramspace.keys[1]
+    key_conv_thr = paramspace.keys[2]
+    
+    actual_ecutwfc = key_ecutwfc.parser(ecutwfc_raw)
+    actual_ecutrho = key_ecutrho.parser(ecutrho_raw)
+    actual_conv_thr = key_conv_thr.parser(conv_thr_raw)
+    
+    # Compare with canonical values
+    canonical_ecutwfc = canonical_values["ecutwfc"]
+    canonical_ecutrho = canonical_values["ecutrho"]
+    canonical_conv_thr = canonical_values["conv_thr"]
+    
+    # Check cutoffs (exact integer match)
+    if actual_ecutwfc != canonical_ecutwfc:
+        return None
+    if actual_ecutrho != canonical_ecutrho:
+        return None
+    
+    # Check conv_thr (with tolerance)
+    if not key_conv_thr.matches(actual_conv_thr, canonical_conv_thr):
+        return None
+    
+    # All checks passed - return the profile name from canonical_values
+    return canonical_values.get("profile_name")
 
 
 def detect_all_presets(
-    steps: List[Dict[str, Dict[str, Any]]],
+    steps: list[dict[str, dict[str, Any]]],
     *,
     include_precision: bool = True,
-    step_types: Optional[List[str]] = None,
+    step_types: Optional[list[str]] = None,
     calculation_dir: Optional[Path] = None,
-) -> Dict[str, Union[SpinOption, SOCOption, MaterialOption, PrecisionOption, _CustomType]]:
+) -> dict[str, Union[MagnetismOption, OccupationsSchemeOption, PrecisionOption, _CustomType]]:
     """
     Detect all preset dimensions from a list of steps.
     
@@ -725,18 +645,23 @@ def detect_all_presets(
     Example:
         >>> steps = [{"SYSTEM": {"nspin": 2}}]
         >>> detect_all_presets(steps)
-        {"spin": SpinOption.COLLINEAR, "soc": SOCOption.NO_SOC, "material": MaterialOption.INSULATOR, "precision": PrecisionOption.MED}
+        {"magnetism": MagnetismOption.COLLINEAR_LSDA, "occupations_scheme": OccupationsSchemeOption.FIXED, "precision": PrecisionOption.MED}
     """
     from pathlib import Path
     
     dimensions = V1_DIMENSIONS if include_precision else V0_DIMENSIONS
     result = {}
     for dimension in dimensions:
-        result[dimension] = detect_dimension_from_steps(
-            steps, dimension,
-            step_types=step_types,
-            calculation_dir=Path(calculation_dir) if calculation_dir else None,
-        )
+        # For precision, if step_types/calculation_dir not provided, return CUSTOM
+        # (cannot do strict detection without context, and simple detection is unreliable)
+        if dimension == DIMENSION_PRECISION and (not step_types or not calculation_dir):
+            result[dimension] = CUSTOM
+        else:
+            result[dimension] = detect_dimension_from_steps(
+                steps, dimension,
+                step_types=step_types,
+                calculation_dir=Path(calculation_dir) if calculation_dir else None,
+            )
     return result
 
 
@@ -744,7 +669,7 @@ def detect_presets_from_step_specs(
     step_specs: List[Any],
     *,
     include_precision: bool = True,
-) -> Dict[str, Union[SpinOption, SOCOption, MaterialOption, PrecisionOption, _CustomType]]:
+) -> Dict[str, Union[MagnetismOption, OccupationsSchemeOption, PrecisionOption, _CustomType]]:
     """
     Convenience function to detect presets from StructureStepSpec objects.
     

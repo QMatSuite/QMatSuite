@@ -25,7 +25,6 @@ from quantumvitas.presets.precision import (
     PrecisionAdvisor,
     PrecisionAdvice,
     PRECISION_CONSTANTS,
-    PRECISION_CONFIGS,
     get_pseudo_index,
     clear_pseudo_index_cache,
 )
@@ -373,171 +372,19 @@ class TestPrecisionAdvisor:
         assert all_advice[PrecisionOption.HIGH].nk1 > all_advice[PrecisionOption.LOW].nk1
 
 
-class TestPrecisionDetectorSimple:
-    """Tests for simple precision detection from conv_thr."""
-    
-    def test_detect_low_from_conv_thr(self):
-        """Detect LOW precision from loose conv_thr."""
-        from quantumvitas.presets.detector import detect_precision
-        
-        params = {"ELECTRONS": {"conv_thr": 1e-6}}
-        result = detect_precision(params)
-        
-        assert result == PrecisionOption.LOW
-    
-    def test_detect_med_from_conv_thr(self):
-        """Detect MED precision from typical conv_thr."""
-        from quantumvitas.presets.detector import detect_precision
-        
-        params = {"ELECTRONS": {"conv_thr": 1e-8}}
-        result = detect_precision(params)
-        
-        assert result == PrecisionOption.MED
-    
-    def test_detect_high_from_conv_thr(self):
-        """Detect HIGH precision from tight conv_thr."""
-        from quantumvitas.presets.detector import detect_precision
-        
-        params = {"ELECTRONS": {"conv_thr": 1e-10}}
-        result = detect_precision(params)
-        
-        assert result == PrecisionOption.HIGH
-
-
-class TestPrecisionDetectorStrict:
-    """Tests for strict 3-way precision detection."""
-    
-    def test_strict_detect_matches_level(self):
-        """Strict detection matches when all three aspects align."""
-        from quantumvitas.presets.detector import detect_precision_strict
-        from quantumvitas.presets.precision import round_cutoff_integer
-        
-        # Si lattice
-        a = 5.43
-        lattice = [[a, 0, 0], [0, a, 0], [0, 0, a]]
-        base_ecutwfc = 50.0
-        base_ecutrho = 400.0
-        
-        # Compute canonical values for MED
-        # Δk=0.20 → nk=6 for Si
-        # cutoff_mult=1.0 → ecutwfc=50, ecutrho=400
-        # conv_thr=1e-8
-        # QE kpoints are represented as cards.K_POINTS only
-        params = {
-            "SYSTEM": {
-                "ecutwfc": round_cutoff_integer(base_ecutwfc * 1.0),  # 50
-                "ecutrho": round_cutoff_integer(base_ecutrho * 1.0),  # 400
-            },
-            "ELECTRONS": {
-                "conv_thr": 1e-8,
-            },
-            "cards": {
-                "K_POINTS": {
-                    "option": "automatic",
-                    "data": [[6, 6, 6, 0, 0, 0]],
-                },
-            },
-        }
-        
-        result = detect_precision_strict(params, lattice, base_ecutwfc, base_ecutrho)
-        assert result == PrecisionOption.MED
-    
-    def test_strict_detect_mismatch_cutoff(self):
-        """Strict detection returns None if cutoffs don't match."""
-        from quantumvitas.presets.detector import detect_precision_strict
-        
-        a = 5.43
-        lattice = [[a, 0, 0], [0, a, 0], [0, 0, a]]
-        base_ecutwfc = 50.0
-        base_ecutrho = 400.0
-        
-        # All params for MED except wrong ecutwfc
-        # QE kpoints are represented as cards.K_POINTS only
-        params = {
-            "SYSTEM": {
-                "ecutwfc": 55,  # Wrong! Should be 50
-                "ecutrho": 400,
-            },
-            "ELECTRONS": {
-                "conv_thr": 1e-8,
-            },
-            "cards": {
-                "K_POINTS": {
-                    "option": "automatic",
-                    "data": [[6, 6, 6, 0, 0, 0]],
-                },
-            },
-        }
-        
-        result = detect_precision_strict(params, lattice, base_ecutwfc, base_ecutrho)
-        assert result is None  # No level matches
-    
-    def test_strict_detect_mismatch_kmesh(self):
-        """Strict detection returns None if k-mesh doesn't match."""
-        from quantumvitas.presets.detector import detect_precision_strict
-        
-        a = 5.43
-        lattice = [[a, 0, 0], [0, a, 0], [0, 0, a]]
-        base_ecutwfc = 50.0
-        base_ecutrho = 400.0
-        
-        # All params for MED except wrong k-mesh
-        params = {
-            "SYSTEM": {
-                "ecutwfc": 50,
-                "ecutrho": 400,
-            },
-            "ELECTRONS": {
-                "conv_thr": 1e-8,
-            },
-            "cards": {
-                "K_POINTS": {
-                    "option": "automatic",
-                    "data": [[8, 8, 8, 0, 0, 0]],  # Wrong! Should be 6×6×6 for MED
-                },
-            },
-        }
-        
-        result = detect_precision_strict(params, lattice, base_ecutwfc, base_ecutrho)
-        assert result is None  # No level matches
-    
-    def test_strict_detect_mismatch_conv_thr(self):
-        """Strict detection returns None if conv_thr doesn't match."""
-        from quantumvitas.presets.detector import detect_precision_strict
-        
-        a = 5.43
-        lattice = [[a, 0, 0], [0, a, 0], [0, 0, a]]
-        base_ecutwfc = 50.0
-        base_ecutrho = 400.0
-        
-        # All params for MED except wrong conv_thr
-        params = {
-            "SYSTEM": {
-                "ecutwfc": 50,
-                "ecutrho": 400,
-            },
-            "ELECTRONS": {
-                "conv_thr": 1e-7,  # Wrong! Should be 1e-8 for MED
-            },
-            "cards": {
-                "K_POINTS": {
-                    "option": "automatic",
-                    "data": [[6, 6, 6, 0, 0, 0]],
-                },
-            },
-        }
-        
-        result = detect_precision_strict(params, lattice, base_ecutwfc, base_ecutrho)
-        assert result is None  # No level matches
+# TestPrecisionDetectorSimple and TestPrecisionDetectorStrict removed:
+# - Simple detection (conv_thr-only) is deprecated
+# - detect_precision_strict is removed, replaced by variants-based detection
+# Use detect_dimension_for_step() with variants API instead
 
 
 class TestCompilerDetectorEquivalence:
-    """Test that detect(compile(x)) == x for precision."""
+    """Test that detect(compile(x)) == x for precision using variants API."""
     
-    def test_equivalence_via_strict_detection(self):
-        """Compiled params can be strictly detected back to the same level."""
+    def test_equivalence_via_variants_detection(self):
+        """Compiled params can be detected back to the same level using variants."""
         from quantumvitas.presets.compiler import compile_precision_from_advice
-        from quantumvitas.presets.detector import detect_precision_strict
+        from quantumvitas.presets.variants_registry import detect_dimension_for_step
         
         # Si lattice
         a = 5.43
@@ -559,9 +406,17 @@ class TestCompilerDetectorEquivalence:
                 },
             }
             
-            # Detect with strict matching
-            detected = detect_precision_strict(
-                params, lattice, advice.base_ecutwfc, advice.base_ecutrho
+            # Detect using variants API (scf step type)
+            precision_context = {
+                "lattice_matrix": lattice,
+                "base_ecutwfc": advice.base_ecutwfc or advice.ecutwfc / 1.0,
+                "base_ecutrho": advice.base_ecutrho or advice.ecutrho / 1.0,
+            }
+            detected = detect_dimension_for_step(
+                "precision",
+                "scf",
+                params,
+                precision_context=precision_context,
             )
             
             assert detected == level, f"Failed for {level}: detected {detected}"
@@ -602,21 +457,26 @@ class TestPseudoIndexCaching:
 
 
 # Legacy test compatibility
-class TestLegacyPrecisionConfigs:
-    """Tests for legacy PRECISION_CONFIGS compatibility."""
+class TestPrecisionConstants:
+    """Tests for PRECISION_CONSTANTS (registry-driven source of truth)."""
     
-    def test_legacy_configs_exist(self):
-        """Legacy PRECISION_CONFIGS mapping exists."""
-        assert PrecisionOption.LOW in PRECISION_CONFIGS
-        assert PrecisionOption.MED in PRECISION_CONFIGS
-        assert PrecisionOption.HIGH in PRECISION_CONFIGS
+    def test_precision_constants_exist(self):
+        """PRECISION_CONSTANTS mapping exists for all precision levels."""
+        assert PrecisionOption.LOW in PRECISION_CONSTANTS
+        assert PrecisionOption.MED in PRECISION_CONSTANTS
+        assert PrecisionOption.HIGH in PRECISION_CONSTANTS
     
-    def test_legacy_config_has_expected_fields(self):
-        """Legacy config has expected fields."""
-        config = PRECISION_CONFIGS[PrecisionOption.MED]
-        assert hasattr(config, 'k_density')
+    def test_precision_constants_have_expected_fields(self):
+        """PRECISION_CONSTANTS have expected fields (delta_k, conv_thr, cutoff_multiplier)."""
+        config = PRECISION_CONSTANTS[PrecisionOption.MED]
+        assert hasattr(config, 'delta_k')
         assert hasattr(config, 'conv_thr')
         assert hasattr(config, 'cutoff_multiplier')
+        
+        # Verify values are reasonable
+        assert config.delta_k > 0
+        assert config.conv_thr > 0
+        assert config.cutoff_multiplier > 0
 
 
 class TestStepTypeAwareAdvice:

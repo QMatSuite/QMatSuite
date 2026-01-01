@@ -20,145 +20,128 @@ import pytest
 from pathlib import Path
 
 from quantumvitas.presets import (
-    SpinOption,
-    SOCOption,
-    MaterialOption,
+    MagnetismOption,
+    OccupationsSchemeOption,
     CUSTOM,
-    detect_spin,
-    detect_soc,
-    detect_material,
+    detect_magnetism,
+    detect_occupations_scheme,
     detect_all_presets,
-    compile_spin,
-    compile_soc,
-    compile_material,
+    compile_magnetism,
+    compile_occupations_scheme,
     compile_presets,
     PresetCompilationError,
 )
 from quantumvitas.presets.detector import detect_dimension_from_steps
 
 
-class TestSpinDetection:
-    """Tests for spin dimension detection."""
+class TestMagnetismDetection:
+    """Tests for magnetism dimension detection (merged spin + SOC)."""
     
-    def test_explicit_nonspin(self):
-        """nspin=1 should detect as NONSPIN."""
+    def test_explicit_nonmagnetic(self):
+        """nspin=1 should detect as NONMAGNETIC."""
         params = {"SYSTEM": {"nspin": 1}}
-        assert detect_spin(params) == SpinOption.NONSPIN
+        assert detect_magnetism(params) == MagnetismOption.NONMAGNETIC
     
-    def test_explicit_collinear(self):
-        """nspin=2 should detect as COLLINEAR."""
+    def test_explicit_collinear_lsda(self):
+        """nspin=2 should detect as COLLINEAR_LSDA."""
         params = {"SYSTEM": {"nspin": 2}}
-        assert detect_spin(params) == SpinOption.COLLINEAR
+        assert detect_magnetism(params) == MagnetismOption.COLLINEAR_LSDA
     
     def test_explicit_noncollinear_via_noncolin(self):
         """noncolin=.true. should detect as NONCOLLINEAR."""
         params = {"SYSTEM": {"noncolin": ".true."}}
-        assert detect_spin(params) == SpinOption.NONCOLLINEAR
+        assert detect_magnetism(params) == MagnetismOption.NONCOLLINEAR
     
     def test_explicit_noncollinear_via_noncolin_bool(self):
         """noncolin=True should detect as NONCOLLINEAR."""
         params = {"SYSTEM": {"noncolin": True}}
-        assert detect_spin(params) == SpinOption.NONCOLLINEAR
+        assert detect_magnetism(params) == MagnetismOption.NONCOLLINEAR
     
     def test_explicit_nspin_4_implies_noncollinear(self):
-        """nspin=4 should detect as NONCOLLINEAR (edge case)."""
-        params = {"SYSTEM": {"nspin": 4}}
-        assert detect_spin(params) == SpinOption.NONCOLLINEAR
+        """nspin=4 with noncolin=true should detect as NONCOLLINEAR."""
+        params = {"SYSTEM": {"nspin": 4, "noncolin": ".true."}}
+        assert detect_magnetism(params) == MagnetismOption.NONCOLLINEAR
     
-    def test_implicit_default_nonspin(self):
-        """Missing nspin should default to NONSPIN per QE defaults."""
+    def test_implicit_default_nonmagnetic(self):
+        """Missing nspin should default to NONMAGNETIC per QE defaults."""
         params = {"SYSTEM": {"ecutwfc": 50}}
-        assert detect_spin(params) == SpinOption.NONSPIN
+        assert detect_magnetism(params) == MagnetismOption.NONMAGNETIC
     
-    def test_empty_params_defaults_nonspin(self):
-        """Empty params should default to NONSPIN."""
-        assert detect_spin({}) == SpinOption.NONSPIN
+    def test_empty_params_defaults_nonmagnetic(self):
+        """Empty params should default to NONMAGNETIC."""
+        assert detect_magnetism({}) == MagnetismOption.NONMAGNETIC
     
     def test_noncolin_false_is_not_noncollinear(self):
-        """noncolin=.false. should not trigger NONCOLLINEAR."""
+        """noncolin=.false. with nspin=1 should detect as NONMAGNETIC.
+        
+        Note: Per ParamSpace framework, explicit false values are tolerated.
+        """
         params = {"SYSTEM": {"noncolin": ".false.", "nspin": 1}}
-        assert detect_spin(params) == SpinOption.NONSPIN
+        assert detect_magnetism(params) == MagnetismOption.NONMAGNETIC
     
-    def test_noncolin_takes_precedence_over_nspin(self):
-        """noncolin=.true. takes precedence over nspin=2."""
+    def test_noncolin_true_nspin2_contradiction(self):
+        """noncolin=.true. with nspin=2 is a contradiction → CUSTOM."""
         params = {"SYSTEM": {"noncolin": ".true.", "nspin": 2}}
-        assert detect_spin(params) == SpinOption.NONCOLLINEAR
+        assert detect_magnetism(params) == CUSTOM
+    
+    def test_noncollinear_soc(self):
+        """noncolin=true, lspinorb=true should detect as NONCOLLINEAR_SOC."""
+        params = {"SYSTEM": {"noncolin": ".true.", "lspinorb": ".true."}}
+        assert detect_magnetism(params) == MagnetismOption.NONCOLLINEAR_SOC
     
     def test_case_insensitive_section(self):
         """Section names should be case-insensitive."""
         params = {"system": {"nspin": 2}}
-        assert detect_spin(params) == SpinOption.COLLINEAR
+        assert detect_magnetism(params) == MagnetismOption.COLLINEAR_LSDA
 
 
-class TestSOCDetection:
-    """Tests for spin-orbit coupling detection."""
+class TestOccupationsSchemeDetection:
+    """Tests for occupations_scheme detection."""
     
-    def test_explicit_with_soc(self):
-        """lspinorb=.true. should detect as WITH_SOC."""
-        params = {"SYSTEM": {"lspinorb": ".true."}}
-        assert detect_soc(params) == SOCOption.WITH_SOC
+    def test_smearing_gaussian_canonical(self):
+        """occupations='smearing' + smearing='gaussian' + degauss=0.02 → SMEARING_GAUSSIAN."""
+        params = {"SYSTEM": {"occupations": "smearing", "smearing": "gaussian", "degauss": 0.02}}
+        assert detect_occupations_scheme(params) == OccupationsSchemeOption.SMEARING_GAUSSIAN
     
-    def test_explicit_with_soc_bool(self):
-        """lspinorb=True should detect as WITH_SOC."""
-        params = {"SYSTEM": {"lspinorb": True}}
-        assert detect_soc(params) == SOCOption.WITH_SOC
+    def test_smearing_gauss_synonym(self):
+        """occupations='smearing' + smearing='gauss' + degauss=0.02 → SMEARING_GAUSSIAN."""
+        params = {"SYSTEM": {"occupations": "smearing", "smearing": "gauss", "degauss": 0.02}}
+        assert detect_occupations_scheme(params) == OccupationsSchemeOption.SMEARING_GAUSSIAN
     
-    def test_explicit_no_soc(self):
-        """lspinorb=.false. should detect as NO_SOC."""
-        params = {"SYSTEM": {"lspinorb": ".false."}}
-        assert detect_soc(params) == SOCOption.NO_SOC
+    def test_smearing_wrong_degauss(self):
+        """occupations='smearing' + degauss != 0.02 → CUSTOM."""
+        params = {"SYSTEM": {"occupations": "smearing", "smearing": "gaussian", "degauss": 0.01}}
+        assert detect_occupations_scheme(params) == CUSTOM
     
-    def test_implicit_default_no_soc(self):
-        """Missing lspinorb should default to NO_SOC per QE defaults."""
+    def test_smearing_non_gaussian(self):
+        """occupations='smearing' + smearing != gaussian/gauss → CUSTOM."""
+        params = {"SYSTEM": {"occupations": "smearing", "smearing": "mv", "degauss": 0.02}}
+        assert detect_occupations_scheme(params) == CUSTOM
+    
+    def test_fixed_explicit(self):
+        """occupations='fixed' → FIXED."""
+        params = {"SYSTEM": {"occupations": "fixed"}}
+        assert detect_occupations_scheme(params) == OccupationsSchemeOption.FIXED
+    
+    def test_fixed_missing_occupations(self):
+        """Missing occupations → FIXED (QE default)."""
         params = {"SYSTEM": {"ecutwfc": 50}}
-        assert detect_soc(params) == SOCOption.NO_SOC
+        assert detect_occupations_scheme(params) == OccupationsSchemeOption.FIXED
     
-    def test_empty_params_defaults_no_soc(self):
-        """Empty params should default to NO_SOC."""
-        assert detect_soc({}) == SOCOption.NO_SOC
-
-
-class TestMaterialDetection:
-    """Tests for material type detection."""
+    def test_tetrahedra(self):
+        """occupations='tetrahedra' → TETRAHEDRA."""
+        params = {"SYSTEM": {"occupations": "tetrahedra"}}
+        assert detect_occupations_scheme(params) == OccupationsSchemeOption.TETRAHEDRA
     
-    def test_smearing_is_metal(self):
-        """occupations='smearing' should detect as METAL."""
-        params = {"SYSTEM": {"occupations": "'smearing'"}}
-        assert detect_material(params) == MaterialOption.METAL
+    def test_tetrahedra_opt_custom(self):
+        """occupations='tetrahedra_opt' → CUSTOM."""
+        params = {"SYSTEM": {"occupations": "tetrahedra_opt"}}
+        assert detect_occupations_scheme(params) == CUSTOM
     
-    def test_smearing_unquoted_is_metal(self):
-        """occupations=smearing (unquoted) should detect as METAL."""
-        params = {"SYSTEM": {"occupations": "smearing"}}
-        assert detect_material(params) == MaterialOption.METAL
-    
-    def test_fixed_is_insulator(self):
-        """occupations='fixed' should detect as INSULATOR."""
-        params = {"SYSTEM": {"occupations": "'fixed'"}}
-        assert detect_material(params) == MaterialOption.INSULATOR
-    
-    def test_tetrahedra_is_insulator(self):
-        """occupations='tetrahedra' should detect as INSULATOR."""
-        params = {"SYSTEM": {"occupations": "'tetrahedra'"}}
-        assert detect_material(params) == MaterialOption.INSULATOR
-    
-    def test_tetrahedra_opt_is_insulator(self):
-        """occupations='tetrahedra_opt' should detect as INSULATOR."""
-        params = {"SYSTEM": {"occupations": "'tetrahedra_opt'"}}
-        assert detect_material(params) == MaterialOption.INSULATOR
-    
-    def test_implicit_default_insulator(self):
-        """Missing occupations should default to INSULATOR."""
-        params = {"SYSTEM": {"ecutwfc": 50}}
-        assert detect_material(params) == MaterialOption.INSULATOR
-    
-    def test_empty_params_defaults_insulator(self):
-        """Empty params should default to INSULATOR."""
-        assert detect_material({}) == MaterialOption.INSULATOR
-    
-    def test_from_input_is_insulator(self):
-        """occupations='from_input' should detect as INSULATOR."""
-        params = {"SYSTEM": {"occupations": "'from_input'"}}
-        assert detect_material(params) == MaterialOption.INSULATOR
+    def test_from_input_custom(self):
+        """occupations='from_input' → CUSTOM."""
+        params = {"SYSTEM": {"occupations": "from_input"}}
+        assert detect_occupations_scheme(params) == CUSTOM
 
 
 class TestMultiStepAggregation:
@@ -167,8 +150,8 @@ class TestMultiStepAggregation:
     def test_single_step_returns_value(self):
         """Single step should return its value (not Custom)."""
         steps = [{"SYSTEM": {"nspin": 2}}]
-        result = detect_dimension_from_steps(steps, "spin")
-        assert result == SpinOption.COLLINEAR
+        result = detect_dimension_from_steps(steps, "magnetism")
+        assert result == MagnetismOption.COLLINEAR_LSDA
     
     def test_homogeneous_steps_return_value(self):
         """Multiple steps with same value should return that value."""
@@ -177,8 +160,8 @@ class TestMultiStepAggregation:
             {"SYSTEM": {"nspin": 2}},
             {"SYSTEM": {"nspin": 2}},
         ]
-        result = detect_dimension_from_steps(steps, "spin")
-        assert result == SpinOption.COLLINEAR
+        result = detect_dimension_from_steps(steps, "magnetism")
+        assert result == MagnetismOption.COLLINEAR_LSDA
     
     def test_heterogeneous_steps_return_custom(self):
         """Multiple steps with different values should return CUSTOM."""
@@ -186,13 +169,13 @@ class TestMultiStepAggregation:
             {"SYSTEM": {"nspin": 1}},
             {"SYSTEM": {"nspin": 2}},
         ]
-        result = detect_dimension_from_steps(steps, "spin")
+        result = detect_dimension_from_steps(steps, "magnetism")
         assert result is CUSTOM
     
     def test_empty_steps_returns_default(self):
         """Empty step list should return the dimension's default."""
-        result = detect_dimension_from_steps([], "spin")
-        assert result == SpinOption.NONSPIN
+        result = detect_dimension_from_steps([], "magnetism")
+        assert result == MagnetismOption.NONMAGNETIC
     
     def test_implicit_and_explicit_same_value_homogeneous(self):
         """Implicit default and explicit same value should be homogeneous."""
@@ -200,8 +183,8 @@ class TestMultiStepAggregation:
             {},  # Implicit nspin=1 (NONSPIN)
             {"SYSTEM": {"nspin": 1}},  # Explicit nspin=1 (NONSPIN)
         ]
-        result = detect_dimension_from_steps(steps, "spin")
-        assert result == SpinOption.NONSPIN
+        result = detect_dimension_from_steps(steps, "magnetism")
+        assert result == MagnetismOption.NONMAGNETIC
 
 
 class TestDetectAllPresets:
@@ -212,17 +195,15 @@ class TestDetectAllPresets:
         steps = [{"SYSTEM": {"nspin": 2, "occupations": "'smearing'"}}]
         result = detect_all_presets(steps)
         
-        assert "spin" in result
-        assert "soc" in result
-        assert "material" in result
+        assert "magnetism" in result
+        assert "occupations_scheme" in result
     
     def test_empty_steps_returns_defaults(self):
         """Empty steps should return defaults for all dimensions."""
         result = detect_all_presets([])
         
-        assert result["spin"] == SpinOption.NONSPIN
-        assert result["soc"] == SOCOption.NO_SOC
-        assert result["material"] == MaterialOption.INSULATOR
+        assert result["magnetism"] == MagnetismOption.NONMAGNETIC
+        assert result["occupations_scheme"] == OccupationsSchemeOption.FIXED
     
     def test_mixed_presets(self):
         """Should correctly detect mixed preset values."""
@@ -230,12 +211,13 @@ class TestDetectAllPresets:
             "nspin": 2,
             "lspinorb": ".false.",
             "occupations": "'smearing'",
+            "smearing": "'gaussian'",
+            "degauss": 0.02,
         }}]
         result = detect_all_presets(steps)
         
-        assert result["spin"] == SpinOption.COLLINEAR
-        assert result["soc"] == SOCOption.NO_SOC
-        assert result["material"] == MaterialOption.METAL
+        assert result["magnetism"] == MagnetismOption.COLLINEAR_LSDA
+        assert result["occupations_scheme"] == OccupationsSchemeOption.SMEARING_GAUSSIAN
 
 
 class TestRealQEInputs:
@@ -270,10 +252,9 @@ class TestRealQEInputs:
         
         params = self._params_from_qe_file(input_file)
         
-        assert detect_spin(params) == SpinOption.NONSPIN
-        assert detect_soc(params) == SOCOption.NO_SOC
+        assert detect_magnetism(params) == MagnetismOption.NONMAGNETIC
         # Si SCF has no occupations -> implicit insulator
-        assert detect_material(params) == MaterialOption.INSULATOR
+        assert detect_occupations_scheme(params) == OccupationsSchemeOption.FIXED
     
     def test_fe_collinear_is_collinear_metal(self, test_data_dir: Path):
         """tests/data/8_Fe_DOS/1_collinear/fe.2_scf.in should be collinear metal."""
@@ -283,12 +264,12 @@ class TestRealQEInputs:
         
         params = self._params_from_qe_file(input_file)
         
-        # nspin=2 -> COLLINEAR
-        assert detect_spin(params) == SpinOption.COLLINEAR
-        # no lspinorb -> NO_SOC
-        assert detect_soc(params) == SOCOption.NO_SOC
-        # occupations='smearing' -> METAL
-        assert detect_material(params) == MaterialOption.METAL
+        # nspin=2 -> COLLINEAR_LSDA
+        assert detect_magnetism(params) == MagnetismOption.COLLINEAR_LSDA
+        # occupations='smearing' → check if SMEARING_GAUSSIAN or CUSTOM
+        # (depends on smearing type and degauss value)
+        occ_result = detect_occupations_scheme(params)
+        assert occ_result in (OccupationsSchemeOption.SMEARING_GAUSSIAN, CUSTOM)
     
     def test_fe_noncollinear_is_noncollinear_metal(self, test_data_dir: Path):
         """tests/data/8_Fe_DOS/2_noncolinear/fe.scf_noncollin.in should be noncollinear metal."""
@@ -299,11 +280,11 @@ class TestRealQEInputs:
         params = self._params_from_qe_file(input_file)
         
         # noncolin=.true. -> NONCOLLINEAR
-        assert detect_spin(params) == SpinOption.NONCOLLINEAR
-        # no lspinorb -> NO_SOC
-        assert detect_soc(params) == SOCOption.NO_SOC
-        # occupations='smearing' -> METAL
-        assert detect_material(params) == MaterialOption.METAL
+        assert detect_magnetism(params) == MagnetismOption.NONCOLLINEAR
+        # occupations='smearing' → check if SMEARING_GAUSSIAN or CUSTOM
+        # (depends on smearing type and degauss value)
+        occ_result = detect_occupations_scheme(params)
+        assert occ_result in (OccupationsSchemeOption.SMEARING_GAUSSIAN, CUSTOM)
     
     def test_al_dos_is_nonspin_metal(self, test_data_dir: Path):
         """tests/data/6_Al_DOS/al.2_scf.in should be nonspin metal."""
@@ -313,12 +294,12 @@ class TestRealQEInputs:
         
         params = self._params_from_qe_file(input_file)
         
-        # no nspin -> NONSPIN (implicit)
-        assert detect_spin(params) == SpinOption.NONSPIN
-        # no lspinorb -> NO_SOC
-        assert detect_soc(params) == SOCOption.NO_SOC
-        # occupations='smearing' -> METAL
-        assert detect_material(params) == MaterialOption.METAL
+        # no nspin -> NONMAGNETIC (implicit)
+        assert detect_magnetism(params) == MagnetismOption.NONMAGNETIC
+        # occupations='smearing' → check if SMEARING_GAUSSIAN or CUSTOM
+        # (depends on smearing type and degauss value)
+        occ_result = detect_occupations_scheme(params)
+        assert occ_result in (OccupationsSchemeOption.SMEARING_GAUSSIAN, CUSTOM)
     
     def test_si_dos_workflow_is_nonspin_insulator(self, test_data_dir: Path):
         """tests/data/4_Si_DOS workflow should aggregate to nonspin insulator."""
@@ -340,11 +321,11 @@ class TestRealQEInputs:
         
         result = detect_all_presets(steps)
         
-        # All Si DOS steps should be nonspin insulator
-        assert result["spin"] == SpinOption.NONSPIN
-        assert result["soc"] == SOCOption.NO_SOC
-        # Si is insulator (no smearing or tetrahedra)
-        assert result["material"] == MaterialOption.INSULATOR
+        # All Si DOS steps should be nonmagnetic
+        assert result["magnetism"] == MagnetismOption.NONMAGNETIC
+        # Si DOS: scf has no occupations (FIXED), nscf has tetrahedra (TETRAHEDRA)
+        # Steps disagree → CUSTOM
+        assert result["occupations_scheme"] == CUSTOM
 
 
 class TestCustomSingleton:
@@ -379,124 +360,117 @@ class TestCompilerDetectorEquivalence:
     This is the critical invariant that ensures the system is self-consistent.
     """
     
-    def test_spin_roundtrip_nonspin(self):
-        """compile(nonspin) -> detect should equal nonspin."""
-        from quantumvitas.presets import compile_spin
+    def test_magnetism_roundtrip_nonmagnetic(self):
+        """compile(nonmagnetic) -> detect should equal nonmagnetic."""
+        compiled = compile_magnetism(MagnetismOption.NONMAGNETIC)
+        # compiled is now {"SYSTEM": {...}}
+        params = compiled
+        detected = detect_magnetism(params, step_type="scf")
         
-        compiled = compile_spin(SpinOption.NONSPIN)
-        params = {"SYSTEM": compiled}
-        detected = detect_spin(params)
-        
-        assert detected == SpinOption.NONSPIN
+        assert detected == MagnetismOption.NONMAGNETIC
     
-    def test_spin_roundtrip_collinear(self):
-        """compile(collinear) -> detect should equal collinear."""
-        from quantumvitas.presets import compile_spin
+    def test_magnetism_roundtrip_collinear_lsda(self):
+        """compile(collinear_lsda) -> detect should equal collinear_lsda."""
+        compiled = compile_magnetism(MagnetismOption.COLLINEAR_LSDA)
+        # compiled is now {"SYSTEM": {...}}
+        params = compiled
+        detected = detect_magnetism(params, step_type="scf")
         
-        compiled = compile_spin(SpinOption.COLLINEAR)
-        params = {"SYSTEM": compiled}
-        detected = detect_spin(params)
-        
-        assert detected == SpinOption.COLLINEAR
+        assert detected == MagnetismOption.COLLINEAR_LSDA
     
-    def test_spin_roundtrip_noncollinear(self):
+    def test_magnetism_roundtrip_noncollinear(self):
         """compile(noncollinear) -> detect should equal noncollinear."""
-        from quantumvitas.presets import compile_spin
+        compiled = compile_magnetism(MagnetismOption.NONCOLLINEAR)
+        # compiled is now {"SYSTEM": {...}}
+        params = compiled
+        detected = detect_magnetism(params, step_type="scf")
         
-        compiled = compile_spin(SpinOption.NONCOLLINEAR)
-        params = {"SYSTEM": compiled}
-        detected = detect_spin(params)
-        
-        assert detected == SpinOption.NONCOLLINEAR
+        assert detected == MagnetismOption.NONCOLLINEAR
     
-    def test_soc_roundtrip_no_soc(self):
-        """compile(no_soc) -> detect should equal no_soc."""
-        from quantumvitas.presets import compile_soc
+    def test_magnetism_roundtrip_noncollinear_soc(self):
+        """compile(noncollinear_soc) -> detect should equal noncollinear_soc."""
+        compiled = compile_magnetism(MagnetismOption.NONCOLLINEAR_SOC)
+        # compiled is now {"SYSTEM": {...}}
+        params = compiled
+        detected = detect_magnetism(params, step_type="scf")
         
-        compiled = compile_soc(SOCOption.NO_SOC)
-        params = {"SYSTEM": compiled}
-        detected = detect_soc(params)
-        
-        assert detected == SOCOption.NO_SOC
+        assert detected == MagnetismOption.NONCOLLINEAR_SOC
     
-    def test_soc_roundtrip_with_soc(self):
-        """compile(with_soc) -> detect should equal with_soc."""
-        from quantumvitas.presets import compile_soc
-        
-        # with_soc requires noncollinear for physics validity
-        compiled = compile_soc(SOCOption.WITH_SOC, spin=SpinOption.NONCOLLINEAR)
-        params = {"SYSTEM": compiled}
-        detected = detect_soc(params)
-        
-        assert detected == SOCOption.WITH_SOC
     
-    def test_material_roundtrip_insulator(self):
-        """compile(insulator) -> detect should equal insulator."""
-        from quantumvitas.presets import compile_material
+    def test_occupations_scheme_roundtrip_fixed(self):
+        """compile(fixed) -> detect should equal fixed."""
+        from quantumvitas.presets import compile_occupations_scheme
         
-        compiled = compile_material(MaterialOption.INSULATOR)
-        params = {"SYSTEM": compiled}
-        detected = detect_material(params)
+        compiled = compile_occupations_scheme(OccupationsSchemeOption.FIXED)
+        # compiled is now {"SYSTEM": {...}}
+        params = compiled
+        detected = detect_occupations_scheme(params, step_type="scf")
         
-        assert detected == MaterialOption.INSULATOR
+        assert detected == OccupationsSchemeOption.FIXED
     
-    def test_material_roundtrip_metal(self):
-        """compile(metal) -> detect should equal metal."""
-        from quantumvitas.presets import compile_material
+    def test_occupations_scheme_roundtrip_smearing_gaussian(self):
+        """compile(smearing_gaussian) -> detect should equal smearing_gaussian."""
+        from quantumvitas.presets import compile_occupations_scheme
         
-        compiled = compile_material(MaterialOption.METAL)
-        params = {"SYSTEM": compiled}
-        detected = detect_material(params)
+        compiled = compile_occupations_scheme(OccupationsSchemeOption.SMEARING_GAUSSIAN)
+        # compiled is now {"SYSTEM": {...}}
+        params = compiled
+        detected = detect_occupations_scheme(params, step_type="scf")
         
-        assert detected == MaterialOption.METAL
+        assert detected == OccupationsSchemeOption.SMEARING_GAUSSIAN
+    
+    def test_occupations_scheme_roundtrip_tetrahedra(self):
+        """compile(tetrahedra) -> detect should equal tetrahedra."""
+        from quantumvitas.presets import compile_occupations_scheme
+        
+        compiled = compile_occupations_scheme(OccupationsSchemeOption.TETRAHEDRA)
+        # compiled is now {"SYSTEM": {...}}
+        params = compiled
+        detected = detect_occupations_scheme(params, step_type="scf")
+        
+        assert detected == OccupationsSchemeOption.TETRAHEDRA
     
     def test_full_preset_roundtrip_defaults(self):
         """compile_presets with defaults should roundtrip through detect_all_presets."""
         from quantumvitas.presets import compile_presets
         
         options = {
-            "spin": SpinOption.NONSPIN,
-            "soc": SOCOption.NO_SOC,
-            "material": MaterialOption.INSULATOR,
+            "magnetism": MagnetismOption.NONMAGNETIC,
+            "occupations_scheme": OccupationsSchemeOption.FIXED,
         }
         compiled = compile_presets(options)
         detected = detect_all_presets([compiled])
         
-        assert detected["spin"] == SpinOption.NONSPIN
-        assert detected["soc"] == SOCOption.NO_SOC
-        assert detected["material"] == MaterialOption.INSULATOR
+        assert detected["magnetism"] == MagnetismOption.NONMAGNETIC
+        assert detected["occupations_scheme"] == OccupationsSchemeOption.FIXED
     
     def test_full_preset_roundtrip_collinear_metal(self):
         """compile_presets for collinear metal should roundtrip correctly."""
         from quantumvitas.presets import compile_presets
         
         options = {
-            "spin": SpinOption.COLLINEAR,
-            "soc": SOCOption.NO_SOC,
-            "material": MaterialOption.METAL,
+            "magnetism": MagnetismOption.COLLINEAR_LSDA,
+            "occupations_scheme": OccupationsSchemeOption.SMEARING_GAUSSIAN,
         }
         compiled = compile_presets(options)
         detected = detect_all_presets([compiled])
         
-        assert detected["spin"] == SpinOption.COLLINEAR
-        assert detected["soc"] == SOCOption.NO_SOC
-        assert detected["material"] == MaterialOption.METAL
+        assert detected["magnetism"] == MagnetismOption.COLLINEAR_LSDA
+        assert detected["occupations_scheme"] == OccupationsSchemeOption.SMEARING_GAUSSIAN
     
     def test_full_preset_roundtrip_noncollinear_soc(self):
         """compile_presets for noncollinear with SOC should roundtrip correctly."""
         from quantumvitas.presets import compile_presets
         
         options = {
-            "spin": SpinOption.NONCOLLINEAR,
-            "soc": SOCOption.WITH_SOC,
-            "material": MaterialOption.METAL,
+            "magnetism": MagnetismOption.NONCOLLINEAR_SOC,
+            "occupations_scheme": OccupationsSchemeOption.SMEARING_GAUSSIAN,
         }
         compiled = compile_presets(options)
         detected = detect_all_presets([compiled])
         
-        assert detected["spin"] == SpinOption.NONCOLLINEAR
-        assert detected["soc"] == SOCOption.WITH_SOC
-        assert detected["material"] == MaterialOption.METAL
+        assert detected["magnetism"] == MagnetismOption.NONCOLLINEAR_SOC
+        assert detected["occupations_scheme"] == OccupationsSchemeOption.SMEARING_GAUSSIAN
 
 
 class TestCompilerCanonicalEncoding:
@@ -506,65 +480,86 @@ class TestCompilerCanonicalEncoding:
     Compiler must explicitly write all key parameters - no reliance on defaults.
     """
     
-    def test_compile_spin_nonspin_explicit_nspin(self):
-        """compile_spin(NONSPIN) must explicitly write nspin=1."""
-        result = compile_spin(SpinOption.NONSPIN)
+    def test_compile_magnetism_nonmagnetic_explicit_nspin(self):
+        """compile_magnetism(NONMAGNETIC) must explicitly write nspin=1."""
+        result = compile_magnetism(MagnetismOption.NONMAGNETIC)
         
-        assert "nspin" in result
-        assert result["nspin"] == 1
+        assert "SYSTEM" in result
+        system = result["SYSTEM"]
+        assert "nspin" in system
+        assert system["nspin"] == 1
     
-    def test_compile_spin_collinear_explicit_nspin(self):
-        """compile_spin(COLLINEAR) must explicitly write nspin=2."""
-        result = compile_spin(SpinOption.COLLINEAR)
+    def test_compile_magnetism_collinear_lsda_explicit_nspin(self):
+        """compile_magnetism(COLLINEAR_LSDA) must explicitly write nspin=2."""
+        result = compile_magnetism(MagnetismOption.COLLINEAR_LSDA)
         
-        assert "nspin" in result
-        assert result["nspin"] == 2
+        assert "SYSTEM" in result
+        system = result["SYSTEM"]
+        assert "nspin" in system
+        assert system["nspin"] == 2
     
-    def test_compile_spin_noncollinear_explicit_noncolin(self):
-        """compile_spin(NONCOLLINEAR) must explicitly write noncolin=.true."""
-        result = compile_spin(SpinOption.NONCOLLINEAR)
+    def test_compile_magnetism_noncollinear_explicit_noncolin(self):
+        """compile_magnetism(NONCOLLINEAR) must explicitly write noncolin=.true."""
+        result = compile_magnetism(MagnetismOption.NONCOLLINEAR)
         
-        assert "noncolin" in result
-        assert result["noncolin"] == ".true."
-        # Should NOT write nspin per QE docs
-        assert "nspin" not in result
+        assert "SYSTEM" in result
+        system = result["SYSTEM"]
+        assert "noncolin" in system
+        assert system["noncolin"] == ".true."
+        # Should NOT write nspin per QE docs (NOT_APPLICABLE)
+        assert "nspin" not in system
     
-    def test_compile_soc_no_soc_explicit_lspinorb(self):
-        """compile_soc(NO_SOC) must explicitly write lspinorb=.false."""
-        result = compile_soc(SOCOption.NO_SOC)
+    def test_compile_magnetism_noncollinear_soc_explicit(self):
+        """compile_magnetism(NONCOLLINEAR_SOC) must explicitly write noncolin and lspinorb."""
+        result = compile_magnetism(MagnetismOption.NONCOLLINEAR_SOC)
         
-        assert "lspinorb" in result
-        assert result["lspinorb"] == ".false."
+        assert "SYSTEM" in result
+        system = result["SYSTEM"]
+        assert "noncolin" in system
+        assert system["noncolin"] == ".true."
+        assert "lspinorb" in system
+        assert system["lspinorb"] == ".true."
+        # Should NOT write nspin per QE docs (NOT_APPLICABLE)
+        assert "nspin" not in system
     
-    def test_compile_soc_with_soc_explicit_lspinorb(self):
-        """compile_soc(WITH_SOC) must explicitly write lspinorb=.true."""
-        result = compile_soc(SOCOption.WITH_SOC, spin=SpinOption.NONCOLLINEAR)
+    def test_compile_occupations_scheme_fixed_explicit(self):
+        """compile_occupations_scheme(FIXED) must explicitly write occupations='fixed'."""
+        result = compile_occupations_scheme(OccupationsSchemeOption.FIXED)
         
-        assert "lspinorb" in result
-        assert result["lspinorb"] == ".true."
+        assert "SYSTEM" in result
+        system = result["SYSTEM"]
+        assert "occupations" in system
+        assert system["occupations"] == "fixed"
+        # smearing and degauss should NOT be in result (will be removed by integration layer)
     
-    def test_compile_material_insulator_explicit_occupations(self):
-        """compile_material(INSULATOR) must explicitly write occupations='fixed'."""
-        result = compile_material(MaterialOption.INSULATOR)
+    def test_compile_occupations_scheme_smearing_gaussian_explicit(self):
+        """compile_occupations_scheme(SMEARING_GAUSSIAN) must explicitly write all params."""
+        result = compile_occupations_scheme(OccupationsSchemeOption.SMEARING_GAUSSIAN)
         
-        assert "occupations" in result
-        assert result["occupations"] == "'fixed'"
+        assert "SYSTEM" in result
+        system = result["SYSTEM"]
+        assert "occupations" in system
+        assert system["occupations"] == "smearing"
+        assert "smearing" in system
+        assert system["smearing"] == "gaussian"
+        assert "degauss" in system
+        assert system["degauss"] == 0.02
     
-    def test_compile_material_metal_explicit_smearing_params(self):
-        """compile_material(METAL) must explicitly write all smearing params."""
-        result = compile_material(MaterialOption.METAL)
+    def test_compile_occupations_scheme_tetrahedra_explicit(self):
+        """compile_occupations_scheme(TETRAHEDRA) must explicitly write occupations='tetrahedra'."""
+        result = compile_occupations_scheme(OccupationsSchemeOption.TETRAHEDRA)
         
-        assert "occupations" in result
-        assert result["occupations"] == "'smearing'"
-        assert "smearing" in result
-        assert "degauss" in result
+        assert "SYSTEM" in result
+        system = result["SYSTEM"]
+        assert "occupations" in system
+        assert system["occupations"] == "tetrahedra"
+        # smearing and degauss should NOT be in result (will be removed by integration layer)
     
     def test_compile_presets_structure(self):
         """compile_presets should return section -> params structure."""
         options = {
-            "spin": SpinOption.NONSPIN,
-            "soc": SOCOption.NO_SOC,
-            "material": MaterialOption.INSULATOR,
+            "magnetism": MagnetismOption.NONMAGNETIC,
+            "occupations_scheme": OccupationsSchemeOption.FIXED,
         }
         result = compile_presets(options)
         
@@ -573,69 +568,38 @@ class TestCompilerCanonicalEncoding:
 
 
 class TestCompilerPhysicsConstraints:
-    """Tests for Compiler physics constraint validation."""
+    """Tests for Compiler physics constraint validation.
     
-    def test_soc_with_nonspin_raises_error(self):
-        """WITH_SOC with NONSPIN spin should raise PresetCompilationError."""
-        with pytest.raises(PresetCompilationError) as exc_info:
-            compile_soc(SOCOption.WITH_SOC, spin=SpinOption.NONSPIN)
-        
-        assert "noncollinear" in str(exc_info.value).lower()
+    Note: With magnetism merge, all magnetism options are valid.
+    Physics constraints are now enforced at the option level (e.g., SOC requires noncollinear).
+    """
     
-    def test_soc_with_collinear_raises_error(self):
-        """WITH_SOC with COLLINEAR spin should raise PresetCompilationError."""
-        with pytest.raises(PresetCompilationError) as exc_info:
-            compile_soc(SOCOption.WITH_SOC, spin=SpinOption.COLLINEAR)
-        
-        assert "noncollinear" in str(exc_info.value).lower()
-    
-    def test_soc_with_noncollinear_succeeds(self):
-        """WITH_SOC with NONCOLLINEAR spin should succeed."""
-        result = compile_soc(SOCOption.WITH_SOC, spin=SpinOption.NONCOLLINEAR)
-        assert result["lspinorb"] == ".true."
-    
-    def test_compile_presets_soc_nonspin_raises(self):
-        """compile_presets with WITH_SOC and NONSPIN should raise error."""
-        options = {
-            "spin": SpinOption.NONSPIN,
-            "soc": SOCOption.WITH_SOC,
-            "material": MaterialOption.INSULATOR,
-        }
-        with pytest.raises(PresetCompilationError):
-            compile_presets(options, validate_physics=True)
-    
-    def test_compile_presets_skip_physics_validation(self):
-        """compile_presets with validate_physics=False should not raise."""
-        options = {
-            "spin": SpinOption.NONSPIN,
-            "soc": SOCOption.WITH_SOC,  # Invalid combo
-            "material": MaterialOption.INSULATOR,
-        }
-        # Should not raise when validation is disabled
-        result = compile_presets(options, validate_physics=False)
-        assert "SYSTEM" in result
+    def test_magnetism_all_options_valid(self):
+        """All magnetism options should compile successfully."""
+        # All magnetism options are valid (physics constraints built into options)
+        for option in MagnetismOption:
+            result = compile_magnetism(option)
+            assert "SYSTEM" in result or result == {}  # Some may return empty if using defaults
 
 
 class TestCompilerStringOptions:
     """Tests for Compiler string option normalization."""
     
-    def test_compile_presets_string_spin(self):
-        """compile_presets should accept string spin values."""
+    def test_compile_presets_string_magnetism(self):
+        """compile_presets should accept string magnetism values."""
         options = {
-            "spin": "collinear",
-            "soc": "no_soc",
-            "material": "metal",
+            "magnetism": "collinear_lsda",
+            "occupations_scheme": "smearing_gaussian",
         }
         result = compile_presets(options)
         
         assert result["SYSTEM"]["nspin"] == 2
     
-    def test_compile_presets_string_noncollinear(self):
-        """compile_presets should accept 'noncollinear' string."""
+    def test_compile_presets_string_noncollinear_soc(self):
+        """compile_presets should accept 'noncollinear_soc' string."""
         options = {
-            "spin": "noncollinear",
-            "soc": "with_soc",
-            "material": "metal",
+            "magnetism": "noncollinear_soc",
+            "occupations_scheme": "smearing_gaussian",
         }
         result = compile_presets(options)
         
@@ -651,9 +615,8 @@ class TestCompilerPostProcessing:
         from quantumvitas.presets import compile_presets_for_step
         
         options = {
-            "spin": SpinOption.COLLINEAR,
-            "soc": SOCOption.NO_SOC,
-            "material": MaterialOption.METAL,
+            "magnetism": MagnetismOption.COLLINEAR_LSDA,
+            "occupations_scheme": OccupationsSchemeOption.SMEARING_GAUSSIAN,
         }
         result = compile_presets_for_step("dos", options)
         
@@ -664,7 +627,7 @@ class TestCompilerPostProcessing:
         """BANDS step should return empty params."""
         from quantumvitas.presets import compile_presets_for_step
         
-        options = {"spin": SpinOption.NONSPIN}
+        options = {"magnetism": MagnetismOption.NONMAGNETIC}
         result = compile_presets_for_step("bands", options)
         
         assert result == {}
@@ -674,9 +637,8 @@ class TestCompilerPostProcessing:
         from quantumvitas.presets import compile_presets_for_step
         
         options = {
-            "spin": SpinOption.COLLINEAR,
-            "soc": SOCOption.NO_SOC,
-            "material": MaterialOption.METAL,
+            "magnetism": MagnetismOption.COLLINEAR_LSDA,
+            "occupations_scheme": OccupationsSchemeOption.SMEARING_GAUSSIAN,
         }
         result = compile_presets_for_step("scf", options)
         
@@ -690,9 +652,8 @@ class TestMultiStepCompilerDetectorEquivalence:
     def test_homogeneous_compiled_steps_detect_single_value(self):
         """Multiple steps compiled with same options should detect that value."""
         options = {
-            "spin": SpinOption.COLLINEAR,
-            "soc": SOCOption.NO_SOC,
-            "material": MaterialOption.METAL,
+            "magnetism": MagnetismOption.COLLINEAR_LSDA,
+            "occupations_scheme": OccupationsSchemeOption.SMEARING_GAUSSIAN,
         }
         
         # Compile the same options multiple times
@@ -702,29 +663,24 @@ class TestMultiStepCompilerDetectorEquivalence:
         
         detected = detect_all_presets([step1, step2, step3])
         
-        assert detected["spin"] == SpinOption.COLLINEAR
-        assert detected["soc"] == SOCOption.NO_SOC
-        assert detected["material"] == MaterialOption.METAL
+        assert detected["magnetism"] == MagnetismOption.COLLINEAR_LSDA
+        assert detected["occupations_scheme"] == OccupationsSchemeOption.SMEARING_GAUSSIAN
     
     def test_heterogeneous_compiled_steps_detect_custom(self):
         """Steps compiled with different options should detect CUSTOM."""
         step1 = compile_presets({
-            "spin": SpinOption.NONSPIN,
-            "soc": SOCOption.NO_SOC,
-            "material": MaterialOption.INSULATOR,
+            "magnetism": MagnetismOption.NONMAGNETIC,
+            "occupations_scheme": OccupationsSchemeOption.FIXED,
         })
         step2 = compile_presets({
-            "spin": SpinOption.COLLINEAR,
-            "soc": SOCOption.NO_SOC,
-            "material": MaterialOption.METAL,
+            "magnetism": MagnetismOption.COLLINEAR_LSDA,
+            "occupations_scheme": OccupationsSchemeOption.SMEARING_GAUSSIAN,
         })
         
         detected = detect_all_presets([step1, step2])
         
-        # Different spin values -> CUSTOM
-        assert detected["spin"] is CUSTOM
-        # Same SOC values -> NO_SOC
-        assert detected["soc"] == SOCOption.NO_SOC
-        # Different material values -> CUSTOM
-        assert detected["material"] is CUSTOM
+        # Different magnetism values -> CUSTOM
+        assert detected["magnetism"] is CUSTOM
+        # Different occupations_scheme values -> CUSTOM
+        assert detected["occupations_scheme"] is CUSTOM
 

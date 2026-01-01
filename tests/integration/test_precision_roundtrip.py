@@ -109,10 +109,12 @@ class TestPrecisionRoundtrip:
             (bands_step, "bands"),
         ]:
             precision_advice = advisor.advise_for_step(PrecisionOption.MED, step_type)
+            # bands_pw doesn't need lattice_matrix (variant doesn't include K_POINTS)
             apply_presets_to_step(
                 step_file,
                 {"precision": "med"},
                 precision_advice=precision_advice,
+                precision_lattice_matrix=lattice if step_type != "bands_pw" else None,
             )
         
         # Verify YAML structure
@@ -170,6 +172,7 @@ class TestPrecisionRoundtrip:
             scf_step,
             {"precision": "med"},
             precision_advice=precision_advice,
+            precision_lattice_matrix=lattice,
         )
         
         # Verify initial detection is MED

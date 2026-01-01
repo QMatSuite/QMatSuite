@@ -1,0 +1,25 @@
+meta:
+  id: 01KDTJYMXYMMQHMDM7N3BXQAH6
+  name: Si bands
+  slug: si-bands
+  path: calculations/si-bands
+  kind: calculation
+mode: normal
+working_dir: raw
+steps:
+- step_id: 01KDTJYMXYG7DM4V80GGGPQAT9
+  type: scf
+- step_id: 01KDTJYMXYTA85JQ23357NV2D4
+  type: nscf
+- step_id: 01KDTJYMXYPAZNJY4FH3PV7B91
+  type: bands_pw
+- step_id: 01KDTJYMXYCM2E6AGA3RZPJRG3
+  type: bands
+structure_id: 01KDTJYMXY21PZ4P5J5P0RCERR
+species_map:
+  Si:
+    mass: 28.0855
+    pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+    pseudo_sha256: 669fb75395a9d26973b0ea1ce8223bbcb30d3396c5d48bf5e794d1243c52375a
+    pseudo_sha_family: 9d5fdea5cc45742d1254e8023b481a202b0022642b381478e6195db3d81e2723
+    pseudo_basename: Si.pbe-n-rrkjus_psl.1.0.0.UPF

@@ -11,49 +11,42 @@ Dimension semantics are derived from physics, not from QE parameter names:
 """
 
 from enum import Enum
-from typing import Final, Tuple
+from typing import Final
 
 
-class SpinOption(str, Enum):
+class MagnetismOption(str, Enum):
     """
-    Spin treatment options.
+    Magnetism treatment options (merged spin + SOC).
     
     Physical meaning:
-    - NONSPIN: Closed-shell systems, non-magnetic (nspin=1)
-    - COLLINEAR: Spin-polarized with magnetization along z (nspin=2)
-    - NONCOLLINEAR: Full vector magnetization (noncolin=.true.)
+    - NONMAGNETIC: Closed-shell systems, non-magnetic (nspin=1, noncolin=false, lspinorb=false)
+    - COLLINEAR_LSDA: Spin-polarized with magnetization along z (nspin=2, noncolin=false, lspinorb=false)
+    - NONCOLLINEAR: Full vector magnetization (noncolin=true, lspinorb=false, nspin not written)
+    - NONCOLLINEAR_SOC: Noncollinear with spin-orbit coupling (noncolin=true, lspinorb=true, nspin not written)
+    
+    Note: SOC requires noncollinear treatment per physics constraints.
     """
-    NONSPIN = "nonspin"
-    COLLINEAR = "collinear"
+    NONMAGNETIC = "nonmagnetic"
+    COLLINEAR_LSDA = "collinear_lsda"
     NONCOLLINEAR = "noncollinear"
+    NONCOLLINEAR_SOC = "noncollinear_soc"
 
 
-class SOCOption(str, Enum):
+class OccupationsSchemeOption(str, Enum):
     """
-    Spin-orbit coupling options.
+    Occupations / BZ integration scheme options.
     
     Physical meaning:
-    - NO_SOC: No relativistic spin-orbit interaction
-    - WITH_SOC: Include spin-orbit coupling (requires noncollinear + FR pseudos)
+    - FIXED: Fixed occupations (gapped / default QE behavior)
+    - SMEARING_GAUSSIAN: Gaussian smearing (degauss=0.02 Ry) for metals
+    - TETRAHEDRA: Tetrahedra method for BZ integration
     
-    Note: WITH_SOC requires SpinOption.NONCOLLINEAR per physics constraints.
+    This affects how Fermi level / occupations are handled and may affect
+    convergence and DOS calculations.
     """
-    NO_SOC = "no_soc"
-    WITH_SOC = "with_soc"
-
-
-class MaterialOption(str, Enum):
-    """
-    Material type options (electronic structure characteristics).
-    
-    Physical meaning:
-    - INSULATOR: Systems with a band gap, fixed occupations or tetrahedra
-    - METAL: Conducting systems, requires smearing for fractional occupations
-    
-    This affects how Fermi level / occupations are handled.
-    """
-    INSULATOR = "insulator"
-    METAL = "metal"
+    FIXED = "fixed"
+    SMEARING_GAUSSIAN = "smearing_gaussian"
+    TETRAHEDRA = "tetrahedra"
 
 
 class PrecisionOption(str, Enum):
@@ -108,23 +101,20 @@ CUSTOM: Final[_CustomType] = _CustomType()
 
 
 # Dimension names as constants for consistency
-DIMENSION_SPIN: Final[str] = "spin"
-DIMENSION_SOC: Final[str] = "soc"
-DIMENSION_MATERIAL: Final[str] = "material"
+DIMENSION_MAGNETISM: Final[str] = "magnetism"
+DIMENSION_OCCUPATIONS_SCHEME: Final[str] = "occupations_scheme"
 DIMENSION_PRECISION: Final[str] = "precision"
 
-# v0 dimensions (spin, soc, material)
-V0_DIMENSIONS: Final[Tuple[str, ...]] = (
-    DIMENSION_SPIN,
-    DIMENSION_SOC,
-    DIMENSION_MATERIAL,
+# v0 dimensions (magnetism, occupations_scheme)
+V0_DIMENSIONS: Final[tuple[str, ...]] = (
+    DIMENSION_MAGNETISM,
+    DIMENSION_OCCUPATIONS_SCHEME,
 )
 
 # v1 dimensions (v0 + precision)
-V1_DIMENSIONS: Final[Tuple[str, ...]] = (
-    DIMENSION_SPIN,
-    DIMENSION_SOC,
-    DIMENSION_MATERIAL,
+V1_DIMENSIONS: Final[tuple[str, ...]] = (
+    DIMENSION_MAGNETISM,
+    DIMENSION_OCCUPATIONS_SCHEME,
     DIMENSION_PRECISION,
 )
 

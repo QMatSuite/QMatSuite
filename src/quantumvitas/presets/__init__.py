@@ -16,21 +16,19 @@ Key invariants:
 """
 
 from quantumvitas.presets.dimensions import (
-    SpinOption,
-    SOCOption,
-    MaterialOption,
+    MagnetismOption,
+    OccupationsSchemeOption,
     CUSTOM,
 )
 from quantumvitas.presets.detector import (
-    detect_spin,
-    detect_soc,
-    detect_material,
+    detect_magnetism,
+    detect_occupations_scheme,
+    detect_precision,
     detect_all_presets,
 )
 from quantumvitas.presets.compiler import (
-    compile_spin,
-    compile_soc,
-    compile_material,
+    compile_magnetism,
+    compile_occupations_scheme,
     compile_presets,
     compile_presets_for_step,
     PresetCompilationError,
@@ -44,19 +42,17 @@ from quantumvitas.presets.integration import (
 
 __all__ = [
     # Dimension enums
-    "SpinOption",
-    "SOCOption",
-    "MaterialOption",
+    "MagnetismOption",
+    "OccupationsSchemeOption",
     "CUSTOM",
     # Detector functions
-    "detect_spin",
-    "detect_soc",
-    "detect_material",
+    "detect_magnetism",
+    "detect_occupations_scheme",
+    "detect_precision",
     "detect_all_presets",
     # Compiler functions
-    "compile_spin",
-    "compile_soc",
-    "compile_material",
+    "compile_magnetism",
+    "compile_occupations_scheme",
     "compile_presets",
     "compile_presets_for_step",
     "PresetCompilationError",

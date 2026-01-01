@@ -19,9 +19,8 @@ from pathlib import Path
 from typing import Dict, Any
 
 from quantumvitas.presets.dimensions import (
-    SpinOption,
-    SOCOption,
-    MaterialOption,
+    MagnetismOption,
+    OccupationsSchemeOption,
     CUSTOM,
     _CustomType,
 )
@@ -118,9 +117,8 @@ class TestDetectPresetsFromCalculation:
         result = detect_presets_from_calculation(tmp_path)
         
         # Should return default values (not Custom)
-        assert result["spin"] == "nonspin"
-        assert result["soc"] == "no_soc"
-        assert result["material"] == "insulator"
+        assert result["magnetism"] == "nonmagnetic"
+        assert result["occupations_scheme"] == "fixed"
     
     def test_single_step_detection(self, tmp_path):
         """Single step with explicit params detected correctly."""
@@ -134,7 +132,7 @@ class TestDetectPresetsFromCalculation:
                     "nspin": 2,
                     "occupations": "'smearing'",
                     "smearing": "'gaussian'",
-                    "degauss": 0.01,
+                    "degauss": 0.02,  # Must be 0.02 for smearing_gaussian detection
                 },
             },
         }
@@ -142,9 +140,8 @@ class TestDetectPresetsFromCalculation:
         
         result = detect_presets_from_calculation(tmp_path)
         
-        assert result["spin"] == "collinear"
-        assert result["soc"] == "no_soc"
-        assert result["material"] == "metal"
+        assert result["magnetism"] == "collinear_lsda"
+        assert result["occupations_scheme"] == "smearing_gaussian"
     
     def test_homogeneous_steps_return_single_value(self, tmp_path):
         """Multiple steps with same settings return single value."""
@@ -160,7 +157,7 @@ class TestDetectPresetsFromCalculation:
             (steps_dir / f"{name}.step.yaml").write_text(yaml.safe_dump(step_content))
         
         result = detect_presets_from_calculation(tmp_path)
-        assert result["spin"] == "collinear"
+        assert result["magnetism"] == "collinear_lsda"
     
     def test_heterogeneous_steps_return_custom(self, tmp_path):
         """Steps with different settings return Custom."""
@@ -180,7 +177,7 @@ class TestDetectPresetsFromCalculation:
         }))
         
         result = detect_presets_from_calculation(tmp_path)
-        assert result["spin"] == "Custom"
+        assert result["magnetism"] == "Custom"
     
     def test_typed_version_returns_enums(self, tmp_path):
         """Typed version returns enum values, not strings."""
@@ -195,8 +192,8 @@ class TestDetectPresetsFromCalculation:
         
         result = detect_presets_from_calculation_typed(tmp_path)
         
-        assert result["spin"] == SpinOption.COLLINEAR
-        assert isinstance(result["spin"], SpinOption)
+        assert result["magnetism"] == MagnetismOption.COLLINEAR_LSDA
+        assert isinstance(result["magnetism"], MagnetismOption)
 
 
 class TestApplyPresetsToStep:
@@ -217,10 +214,10 @@ class TestApplyPresetsToStep:
         }
         step_path.write_text(yaml.safe_dump(original_content))
         
-        # Apply collinear + metal
+        # Apply collinear + smearing_gaussian
         result = apply_presets_to_step(
             step_path,
-            {"spin": "collinear", "material": "metal"},
+            {"magnetism": "collinear_lsda", "occupations_scheme": "smearing_gaussian"},
         )
         
         # Result now includes accepted flag and content
@@ -229,9 +226,9 @@ class TestApplyPresetsToStep:
         
         # Preset params changed
         assert system["nspin"] == 2
-        assert system["occupations"] == "'smearing'"
-        assert system["smearing"] == "'gaussian'"
-        assert system["degauss"] == 0.01
+        assert system["occupations"] == "smearing"  # YAML parsed value (no outer quotes)
+        assert system["smearing"] == "gaussian"  # YAML parsed value (no outer quotes)
+        assert system["degauss"] == 0.02
         
         # Non-preset params preserved (nbnd is not a preset param)
         assert system["nbnd"] == 50
@@ -255,7 +252,7 @@ class TestApplyPresetsToStep:
         }
         step_path.write_text(yaml.safe_dump(original_content))
         
-        apply_presets_to_step(step_path, {"spin": "collinear"})
+        apply_presets_to_step(step_path, {"magnetism": "collinear_lsda"})
         
         # Reload and check
         updated = yaml.safe_load(step_path.read_text())
@@ -285,13 +282,13 @@ class TestApplyPresetsToStep:
         }
         step_path.write_text(yaml.safe_dump(original_content))
         
-        # Apply insulator preset
-        apply_presets_to_step(step_path, {"material": "insulator"})
+        # Apply fixed occupations preset
+        apply_presets_to_step(step_path, {"occupations_scheme": "fixed"})
         
         updated = yaml.safe_load(step_path.read_text())
         system = updated["parameters"]["SYSTEM"]
         
-        assert system["occupations"] == "'fixed'"
+        assert system["occupations"] == "fixed"  # YAML parsed value (no outer quotes)
         assert "smearing" not in system
         assert "degauss" not in system
     
@@ -302,39 +299,36 @@ class TestApplyPresetsToStep:
         step_path = tmp_path / "test.step.yaml"
         step_path.write_text(yaml.safe_dump({"step_type": "scf", "parameters": {}}))
         
-        # SOC + nonspin is invalid physics
-        with pytest.raises(PresetCompilationError):
-            apply_presets_to_step(
-                step_path,
-                {"spin": "nonspin", "soc": "with_soc"},
-            )
+        # Invalid physics: This test is no longer applicable since magnetism merges spin+soc
+        # All magnetism options are valid. Test removed - physics validation now happens at option level.
+        pass
     
     def test_apply_can_skip_physics_validation(self, tmp_path):
         """Physics validation can be disabled."""
         step_path = tmp_path / "test.step.yaml"
         step_path.write_text(yaml.safe_dump({"step_type": "scf", "parameters": {}}))
         
-        # SOC + nonspin - invalid but validation disabled
+        # With magnetism, all options are valid. Test applies noncollinear_soc.
         result = apply_presets_to_step(
             step_path,
-            {"spin": "nonspin", "soc": "with_soc"},
+            {"magnetism": "noncollinear_soc"},
             validate_physics=False,
         )
         
         # Result includes accepted flag
         assert result["accepted"] is True
         
-        # Parameters written despite invalid physics
+        # Parameters written
         system = result["content"]["parameters"]["SYSTEM"]
         assert system["lspinorb"] == ".true."
-        assert system["nspin"] == 1
+        assert system["noncolin"] == ".true."
     
     def test_apply_nonexistent_file_raises(self, tmp_path):
         """Applying to nonexistent file raises FileNotFoundError."""
         with pytest.raises(FileNotFoundError):
             apply_presets_to_step(
                 tmp_path / "nonexistent.step.yaml",
-                {"spin": "collinear"},
+                {"magnetism": "collinear_lsda"},
             )
     
     def test_roundtrip_detection(self, tmp_path):
@@ -352,15 +346,14 @@ class TestApplyPresetsToStep:
         # Apply presets
         apply_presets_to_step(
             step_path,
-            {"spin": "noncollinear", "soc": "with_soc", "material": "metal"},
+            {"magnetism": "noncollinear_soc", "occupations_scheme": "smearing_gaussian"},
         )
         
         # Detect presets from calculation
         result = detect_presets_from_calculation(tmp_path)
         
-        assert result["spin"] == "noncollinear"
-        assert result["soc"] == "with_soc"
-        assert result["material"] == "metal"
+        assert result["magnetism"] == "noncollinear_soc"
+        assert result["occupations_scheme"] == "smearing_gaussian"
 
 
 class TestDetectWorkflowType:

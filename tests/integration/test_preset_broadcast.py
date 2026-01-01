@@ -32,8 +32,8 @@ from quantumvitas.presets.receivers import (
     V0_DIMENSIONS,
     V1_DIMENSIONS,
 )
-from quantumvitas.presets.detector import detect_spin, detect_soc, detect_material
-from quantumvitas.presets.dimensions import SpinOption, SOCOption, MaterialOption
+from quantumvitas.presets.detector import detect_magnetism, detect_occupations_scheme
+from quantumvitas.presets.dimensions import MagnetismOption, OccupationsSchemeOption, DIMENSION_OCCUPATIONS_SCHEME
 
 
 class TestReceiverRegistry:
@@ -45,7 +45,12 @@ class TestReceiverRegistry:
         
         for step_type in PW_STEP_TYPES:
             accepted = registry.get_accepted_dimensions(step_type)
-            assert accepted == V1_DIMENSIONS, f"{step_type} should accept all v1 dimensions"
+            # bands_pw is a special case: accepts magnetism/precision but NOT occupations_scheme
+            if step_type == "bands_pw":
+                expected = V1_DIMENSIONS - {DIMENSION_OCCUPATIONS_SCHEME}
+                assert accepted == expected, f"{step_type} should accept v1 dimensions except occupations_scheme"
+            else:
+                assert accepted == V1_DIMENSIONS, f"{step_type} should accept all v1 dimensions"
             assert is_receiver(step_type), f"{step_type} should be a receiver"
     
     def test_post_processing_step_types_accept_none(self):
@@ -59,7 +64,7 @@ class TestReceiverRegistry:
     
     def test_filter_presets_for_receiver_step(self):
         """Filter presets for a receiver step type."""
-        presets = {"spin": "collinear", "soc": "no_soc", "material": "metal"}
+        presets = {"magnetism": "collinear_lsda", "occupations_scheme": "smearing_gaussian"}
         
         # SCF step should accept all presets
         filtered = filter_presets_for_step("scf", presets)
@@ -71,7 +76,7 @@ class TestReceiverRegistry:
     
     def test_filter_presets_for_non_receiver_step(self):
         """Filter presets for a non-receiver step type."""
-        presets = {"spin": "collinear", "soc": "no_soc", "material": "metal"}
+        presets = {"magnetism": "collinear_lsda", "occupations_scheme": "smearing_gaussian"}
         
         # DOS step should filter out all presets
         filtered = filter_presets_for_step("dos", presets)
@@ -83,7 +88,7 @@ class TestReceiverRegistry:
     
     def test_unknown_step_type_accepts_none(self):
         """Unknown step types should accept no presets (safe default)."""
-        presets = {"spin": "collinear"}
+        presets = {"magnetism": "collinear_lsda"}
         filtered = filter_presets_for_step("unknown_step_type", presets)
         assert filtered == {}
 
@@ -108,10 +113,10 @@ class TestApplyPresetsToStep:
             }
         }))
         
-        result = apply_presets_to_step(step_file, {"spin": "collinear"})
+        result = apply_presets_to_step(step_file, {"magnetism": "collinear_lsda"})
         
         assert result["accepted"] is True
-        assert result["filtered_options"] == {"spin": "collinear"}
+        assert result["filtered_options"] == {"magnetism": "collinear_lsda"}
         
         # Verify file was updated
         updated = yaml.safe_load(step_file.read_text())
@@ -128,7 +133,7 @@ class TestApplyPresetsToStep:
             }
         }))
         
-        result = apply_presets_to_step(step_file, {"spin": "collinear"})
+        result = apply_presets_to_step(step_file, {"magnetism": "collinear_lsda"})
         
         assert result["accepted"] is False
         assert result["filtered_options"] == {}
@@ -146,18 +151,20 @@ class TestApplyPresetsToStep:
         }))
         
         result = apply_presets_to_step(step_file, {
-            "spin": "collinear",
-            "material": "metal",
+            "magnetism": "collinear_lsda",
+            "occupations_scheme": "smearing_gaussian",
         })
         
         assert result["accepted"] is True
-        assert "spin" in result["filtered_options"]
-        assert "material" in result["filtered_options"]
+        assert "magnetism" in result["filtered_options"]
+        assert "occupations_scheme" in result["filtered_options"]
         
         # Verify file was updated with both
         updated = yaml.safe_load(step_file.read_text())
         assert updated["parameters"]["SYSTEM"]["nspin"] == 2
-        assert updated["parameters"]["SYSTEM"]["occupations"] == "'smearing'"
+        assert updated["parameters"]["SYSTEM"]["occupations"] == "smearing"  # YAML parsed value (no outer quotes)
+        assert updated["parameters"]["SYSTEM"]["smearing"] == "gaussian"  # YAML parsed value (no outer quotes)
+        assert updated["parameters"]["SYSTEM"]["degauss"] == 0.02
 
 
 class TestBroadcastApply:
@@ -206,10 +213,10 @@ class TestBroadcastApply:
         calc_dir = calc_with_mixed_steps
         steps_dir = calc_dir / "steps"
         
-        # Apply spin=collinear to all steps (BROADCAST)
+        # Apply magnetism=collinear_lsda to all steps (BROADCAST)
         results = []
         for step_file in sorted(steps_dir.glob("*.step.yaml")):
-            result = apply_presets_to_step(step_file, {"spin": "collinear"})
+            result = apply_presets_to_step(step_file, {"magnetism": "collinear_lsda"})
             results.append({
                 "file": step_file.name,
                 "accepted": result["accepted"],
@@ -242,36 +249,36 @@ class TestBroadcastApply:
         calc_dir = calc_with_mixed_steps
         steps_dir = calc_dir / "steps"
         
-        # Initial detection - should be nonspin (default)
+        # Initial detection - should be nonmagnetic (default)
         initial = detect_presets_from_calculation(calc_dir)
-        assert initial["spin"] == "nonspin"
+        assert initial["magnetism"] == "nonmagnetic"
         
-        # Apply spin=collinear to all receiver steps
+        # Apply magnetism=collinear_lsda to all receiver steps
         for step_file in sorted(steps_dir.glob("*.step.yaml")):
-            apply_presets_to_step(step_file, {"spin": "collinear"})
+            apply_presets_to_step(step_file, {"magnetism": "collinear_lsda"})
         
-        # Detection after apply - should be collinear
+        # Detection after apply - should be collinear_lsda
         after = detect_presets_from_calculation(calc_dir)
-        assert after["spin"] == "collinear"
+        assert after["magnetism"] == "collinear_lsda"
     
-    def test_broadcast_apply_material_preset(self, calc_with_mixed_steps):
-        """BROADCAST apply material preset (metal)."""
+    def test_broadcast_apply_occupations_scheme_preset(self, calc_with_mixed_steps):
+        """BROADCAST apply occupations_scheme preset (smearing_gaussian)."""
         calc_dir = calc_with_mixed_steps
         steps_dir = calc_dir / "steps"
         
-        # Apply material=metal to all steps
+        # Apply occupations_scheme=smearing_gaussian to all steps
         for step_file in sorted(steps_dir.glob("*.step.yaml")):
-            apply_presets_to_step(step_file, {"material": "metal"})
+            apply_presets_to_step(step_file, {"occupations_scheme": "smearing_gaussian"})
         
         # Verify receiver steps have smearing
         scf_content = yaml.safe_load((steps_dir / "1_scf.step.yaml").read_text())
-        assert scf_content["parameters"]["SYSTEM"]["occupations"] == "'smearing'"
-        assert "smearing" in scf_content["parameters"]["SYSTEM"]
-        assert "degauss" in scf_content["parameters"]["SYSTEM"]
+        assert scf_content["parameters"]["SYSTEM"]["occupations"] == "smearing"  # YAML parsed value (no outer quotes)
+        assert scf_content["parameters"]["SYSTEM"]["smearing"] == "gaussian"  # YAML parsed value (no outer quotes)
+        assert scf_content["parameters"]["SYSTEM"]["degauss"] == 0.02
         
         # Verify detection
         detected = detect_presets_from_calculation(calc_dir)
-        assert detected["material"] == "metal"
+        assert detected["occupations_scheme"] == "smearing_gaussian"
 
 
 class TestBroadcastApplyEdgeCases:
@@ -295,7 +302,7 @@ class TestBroadcastApplyEdgeCases:
         """Apply to a step that has no parameters section yet."""
         step_file = calc_with_empty_steps / "steps" / "1_scf.step.yaml"
         
-        result = apply_presets_to_step(step_file, {"spin": "collinear"})
+        result = apply_presets_to_step(step_file, {"magnetism": "collinear_lsda"})
         
         assert result["accepted"] is True
         
@@ -306,26 +313,86 @@ class TestBroadcastApplyEdgeCases:
         assert updated["parameters"]["SYSTEM"]["nspin"] == 2
     
     def test_apply_with_physics_validation_failure(self, calc_with_empty_steps):
-        """Apply invalid physics combination (SOC without non-collinear)."""
+        """Apply invalid physics combination (contradiction: lspinorb=true + noncolin=false)."""
         step_file = calc_with_empty_steps / "steps" / "1_scf.step.yaml"
         
-        # This should raise PresetCompilationError due to physics validation
+        # Create a step with noncolin=false, then manually add lspinorb=true
+        # This creates a contradiction: SOC requires noncollinear
+        step_file.write_text(yaml.safe_dump({
+            "step_type": "scf",
+            "parameters": {"SYSTEM": {"noncolin": ".false.", "lspinorb": ".true."}}
+        }))
+        
         from quantumvitas.presets.compiler import PresetCompilationError
         
-        with pytest.raises(PresetCompilationError):
-            apply_presets_to_step(step_file, {
-                "spin": "collinear",  # Not noncollinear!
-                "soc": "with_soc",    # Requires noncollinear
-            }, validate_physics=True)
+        # Applying any magnetism option should trigger validation
+        # The final state will have lspinorb=true but noncolin=false, which is invalid
+        # Actually, applying will overwrite, so we need to test a case where the contradiction persists
+        # Let's apply something that doesn't change noncolin but keeps lspinorb
+        # Actually, the validation checks the final merged state, so if we apply nonmagnetic
+        # it will set noncolin=false and lspinorb=false, removing the contradiction
+        # We need to test a case where the final state has the contradiction
+        
+        # Better test: Apply noncollinear_soc, but the step already has noncolin=false
+        # Wait, that will overwrite noncolin to true, so no contradiction
+        
+        # Actually, the real test case: if we have a step with both noncolin=false AND lspinorb=true
+        # (manually set, which shouldn't happen but could), validation should catch it
+        # But when we apply, we overwrite, so the contradiction is resolved
+        
+        # Let's test by applying something that would create a contradiction if the existing state persists
+        # Actually, validation happens on the FINAL state after merge, so if we have:
+        # existing: noncolin=false, lspinorb=true
+        # applying: noncollinear_soc (sets noncolin=true, lspinorb=true)
+        # final: noncolin=true, lspinorb=true (valid!)
+        
+        # The test needs to check a case where the final merged state has a contradiction
+        # One way: have existing nspin=2, apply something that sets noncolin=true but doesn't remove nspin
+        # But noncollinear removes nspin, so that won't work
+        
+        # Actually, let's test the case where we manually have both noncolin=true and nspin=2
+        # and validation should catch it even if we don't apply anything new
+        # But we're applying, so...
+        
+        # Let me test a simpler case: apply noncollinear_soc to a step that has nspin=2 explicitly set
+        # After apply: noncolin=true, lspinorb=true, but nspin should be removed
+        # If nspin is NOT removed (bug), then we have noncolin=true + nspin=2 which is invalid
+        
+        # Actually, the real issue: we need to test that validation catches contradictions
+        # in the final state. Let's create a step with noncolin=true and nspin=2 (manually),
+        # then apply something that doesn't fix it
+        step_file.write_text(yaml.safe_dump({
+            "step_type": "scf",
+            "parameters": {"SYSTEM": {"noncolin": ".true.", "nspin": 2}}
+        }))
+        
+        # Applying any magnetism option should trigger validation on the final state
+        # But applying will fix it by removing nspin or setting noncolin=false
+        # So we need to test validation on a state that already has the contradiction
+        
+        # Actually, let's just test that validation works by checking the final state
+        # We'll manually create a contradiction and see if validation catches it
+        # But validation only runs when we apply...
+        
+        # Better approach: test that if we have a step with a contradiction already,
+        # and we try to apply something that would keep the contradiction, it fails
+        # But since apply overwrites, it will fix it...
+        
+        # Let me just test that validation function works by calling it directly on invalid state
+        from quantumvitas.presets.integration import _validate_magnetism_physics
+        
+        with pytest.raises(PresetCompilationError) as exc_info:
+            _validate_magnetism_physics({"noncolin": ".true.", "nspin": 2})
+        
+        assert "noncolin=true" in str(exc_info.value).lower() or "nspin=2" in str(exc_info.value).lower()
     
     def test_apply_with_physics_validation_disabled(self, calc_with_empty_steps):
-        """Apply invalid physics combination with validation disabled."""
+        """Apply with validation disabled should succeed."""
         step_file = calc_with_empty_steps / "steps" / "1_scf.step.yaml"
         
         # With validation disabled, should not raise
         result = apply_presets_to_step(step_file, {
-            "spin": "collinear",
-            "soc": "with_soc",
+            "magnetism": "noncollinear_soc",
         }, validate_physics=False)
         
         assert result["accepted"] is True
@@ -359,8 +426,8 @@ class TestCustomStateDetection:
         """Detector should return Custom when steps have different values."""
         detected = detect_presets_from_calculation(calc_with_disagreeing_steps)
         
-        # Steps disagree on spin: SCF has nspin=2, NSCF has implicit nspin=1
-        assert detected["spin"] == "Custom"
+        # Steps disagree on magnetism: SCF has nspin=2 (collinear_lsda), NSCF has implicit nspin=1 (nonmagnetic)
+        assert detected["magnetism"] == "Custom"
     
     def test_broadcast_apply_resolves_custom(self, calc_with_disagreeing_steps):
         """BROADCAST apply should resolve Custom state."""
@@ -369,13 +436,13 @@ class TestCustomStateDetection:
         
         # Initially Custom
         initial = detect_presets_from_calculation(calc_dir)
-        assert initial["spin"] == "Custom"
+        assert initial["magnetism"] == "Custom"
         
-        # Apply spin=collinear to all receiver steps
+        # Apply magnetism=collinear_lsda to all receiver steps
         for step_file in sorted(steps_dir.glob("*.step.yaml")):
-            apply_presets_to_step(step_file, {"spin": "collinear"})
+            apply_presets_to_step(step_file, {"magnetism": "collinear_lsda"})
         
-        # After apply, should be collinear (not Custom)
+        # After apply, should be collinear_lsda (not Custom)
         after = detect_presets_from_calculation(calc_dir)
-        assert after["spin"] == "collinear"
+        assert after["magnetism"] == "collinear_lsda"
 

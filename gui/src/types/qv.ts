@@ -1485,6 +1485,31 @@ export interface QVCommandMap {
     };
   };
   
+  // Get preset catalog (UI's single source of truth)
+  get_preset_catalog: {
+    payload: Record<string, never>;
+    result: {
+      dimensions: Array<{
+        dimension: string;
+        label: string;
+        description: string;
+        order: number;
+        options: Array<{ value: string; label: string }>;
+        default: string;
+        scope: {
+          type: 'variant_step_types' | 'variants';
+          step_types?: string[];
+          variants?: Array<{
+            name: string;
+            step_types: string[];
+            notes: string;
+          }>;
+        };
+      }>;
+      schema_version: number;
+    };
+  };
+  
   // Preset detection (Constitution §10.4.1: Detector B is sole state source)
   detect_presets: {
     payload: {
@@ -1512,7 +1537,7 @@ export interface QVCommandMap {
       presets: {
         spin?: SpinValue;
         soc?: SOCValue;
-        material?: MaterialValue;
+        occupations_scheme?: OccupationsSchemeValue;
         precision?: PrecisionValue;
       };
       validate_physics?: boolean;
@@ -1525,12 +1550,7 @@ export interface QVCommandMap {
     payload: {
       project_root: string;
       calculation: string;
-      presets: {
-        spin?: SpinValue;
-        soc?: SOCValue;
-        material?: MaterialValue;
-        precision?: PrecisionValue;
-      };
+      presets: Record<string, string>;  // dimension -> option_value
       validate_physics?: boolean;
     };
     result: ApplyPresetsToCalcResult;
@@ -1790,24 +1810,19 @@ export interface PseudoOption {
 // Preset Types (Constitution Chapter 10 compliant)
 // =============================================================================
 
-/** Preset dimension values - corresponds to Python SpinOption, SOCOption, MaterialOption, PrecisionOption */
+/** Preset dimension values - corresponds to Python SpinOption, SOCOption, OccupationsSchemeOption, PrecisionOption */
 export type SpinValue = 'nonspin' | 'collinear' | 'noncollinear';
 export type SOCValue = 'no_soc' | 'with_soc';
-export type MaterialValue = 'insulator' | 'metal';
+export type OccupationsSchemeValue = 'fixed' | 'smearing_gaussian' | 'tetrahedra';
 export type PrecisionValue = 'low' | 'med' | 'high';
-export type PresetValue = SpinValue | SOCValue | MaterialValue | PrecisionValue | 'Custom';
+export type PresetValue = SpinValue | SOCValue | OccupationsSchemeValue | PrecisionValue | 'Custom';
 
 /** Detected workflow type */
 export type WorkflowType = 'SCF' | 'DOS' | 'BandStructure' | 'Relaxation' | 'Phonon' | 'MD' | 'NSCF' | 'Unknown';
 
 /** Preset detection result from daemon */
 export interface PresetDetectionResult {
-  presets: {
-    spin: SpinValue | 'Custom';
-    soc: SOCValue | 'Custom';
-    material: MaterialValue | 'Custom';
-    precision: PrecisionValue | 'Custom';
-  };
+  dimension_states: Record<string, string | 'Custom'>;
 }
 
 /** Workflow detection result from daemon */
@@ -1821,7 +1836,7 @@ export interface ApplyPresetsResult {
   presets: {
     spin: SpinValue | 'Custom';
     soc: SOCValue | 'Custom';
-    material: MaterialValue | 'Custom';
+    occupations_scheme: OccupationsSchemeValue | 'Custom';
     precision: PrecisionValue | 'Custom';
   };
   error?: {
@@ -1847,12 +1862,7 @@ export interface ApplyPresetsToCalcResult {
   steps_updated: number;
   steps_skipped: number;
   step_results: StepApplyResult[];
-  presets: {
-    spin: SpinValue | 'Custom';
-    soc: SOCValue | 'Custom';
-    material: MaterialValue | 'Custom';
-    precision: PrecisionValue | 'Custom';
-  };
+  dimension_states: Record<string, string | 'Custom'>;
 }
 
 /** Step preset footprint for display */
@@ -1860,7 +1870,7 @@ export interface StepPresetFootprint {
   params: Record<string, unknown>;
   spin: SpinValue;
   soc: SOCValue;
-  material: MaterialValue;
+  occupations_scheme: OccupationsSchemeValue;
 }
 
 /** Step footprints result from daemon */
@@ -1869,12 +1879,19 @@ export interface StepFootprintsResult {
 }
 
 /** Preset options for each dimension */
+// DEPRECATED: These constants are no longer used.
+// UI now uses preset catalog from backend (get_preset_catalog RPC).
+// Keeping for backward compatibility only - will be removed in future version.
+/** @deprecated Use preset catalog from backend instead */
 export const SPIN_OPTIONS: SpinValue[] = ['nonspin', 'collinear', 'noncollinear'];
+/** @deprecated Use preset catalog from backend instead */
 export const SOC_OPTIONS: SOCValue[] = ['no_soc', 'with_soc'];
-export const MATERIAL_OPTIONS: MaterialValue[] = ['insulator', 'metal'];
+/** @deprecated Use preset catalog from backend instead */
+export const OCCUPATIONS_SCHEME_OPTIONS: OccupationsSchemeValue[] = ['fixed', 'smearing_gaussian', 'tetrahedra'];
+/** @deprecated Use preset catalog from backend instead */
 export const PRECISION_OPTIONS: PrecisionValue[] = ['low', 'med', 'high'];
 
-/** Human-readable labels for preset values */
+/** @deprecated Use preset catalog from backend instead */
 export const PRESET_LABELS: Record<string, string> = {
   // Spin
   nonspin: 'Non-spin-polarized',
@@ -1883,9 +1900,10 @@ export const PRESET_LABELS: Record<string, string> = {
   // SOC
   no_soc: 'No SOC',
   with_soc: 'With SOC',
-  // Material
-  insulator: 'Insulator / Semiconductor',
-  metal: 'Metal',
+  // Occupations scheme
+  fixed: 'Fixed',
+  smearing_gaussian: 'Smearing (Gaussian 0.02 Ry)',
+  tetrahedra: 'Tetrahedra',
   // Precision
   low: 'Low (fast screening)',
   med: 'Medium (production)',
