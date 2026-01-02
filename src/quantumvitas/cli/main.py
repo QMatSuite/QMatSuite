@@ -871,6 +871,7 @@ KNOWN_STEP_TYPES = {
     "dos", "bands", "bands_pw",  # post-processing
     "ph", "q2r", "matdyn", "dynmat",  # phonon
     "pp", "projwfc",  # other post-processing
+    "w90_preproc", "pw2wannier90", "w90_run",  # Wannier90
     "custom",  # escape hatch for unsupported types
 }
 

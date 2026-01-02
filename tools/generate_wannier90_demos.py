@@ -1,0 +1,392 @@
+#!/usr/bin/env python3
+"""
+Generate Wannier90 demo project snapshots from the official examples.
+
+This script creates demo projects from Wannier90 examples:
+- Example05: Diamond (4 MLWFs)
+- Example06: Copper (7 MLWFs with disentanglement)
+- Example16: Silicon (8 MLWFs with disentanglement)
+
+The demos are created in a proper project structure with all input files
+copied to the raw/ directory, pseudo files to project/pseudo/, and 
+calculation.yaml referencing steps.
+
+Usage:
+    python tools/generate_wannier90_demos.py
+"""
+
+from __future__ import annotations
+
+import shutil
+import sys
+from pathlib import Path
+from datetime import datetime
+from typing import Dict, Any, List, Optional
+
+# Add src to path
+repo_root = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(repo_root / "src"))
+
+from quantumvitas.project.snapshot import export_project_to_snapshot
+from quantumvitas.core.pseudo_provenance import compute_sha256_file
+from quantumvitas.core.pseudo_libinfo import compute_sha_family_file
+from quantumvitas.core.resources import generate_ulid
+import yaml
+
+
+# Paths
+EXAMPLES_ROOT = repo_root / ".qmatsuite" / "engines" / "qe" / "q-e-qe-7.5" / "external" / "wannier90" / "examples"
+PSEUDO_SOURCE = repo_root / ".qmatsuite" / "engines" / "qe" / "q-e-qe-7.5" / "external" / "wannier90" / "pseudo"
+PSEUDO_DEST = repo_root / "resources" / "pseudo"
+DEMO_OUTPUT_DIR = repo_root / "resources" / "demo_projects"
+TEST_DATA_DIR = repo_root / "tests" / "data" / "wannier90_examples"
+
+# Example configurations
+EXAMPLES = {
+    "diamond": {
+        "dir": "example05",
+        "seedname": "diamond",
+        "prefix": "di",
+        "pseudo": "C.pz-vbc.UPF",
+        "element": "C",
+        "mass": 12.011,
+        "num_wann": 4,
+        "num_bands": 4,
+        "description": "Diamond valence bands - 4 sp3 bonding MLWFs",
+    },
+    "copper": {
+        "dir": "example06", 
+        "seedname": "copper",
+        "prefix": "cu",
+        "pseudo": "Cu.pz-n-van_ak.UPF",
+        "element": "Cu",
+        "mass": 63.546,
+        "num_wann": 7,
+        "num_bands": 12,
+        "description": "Copper Fermi surface - 7 MLWFs (5d + 2s)",
+    },
+    "silicon": {
+        "dir": "example16-withqe",
+        "seedname": "Si",
+        "prefix": "si",
+        "pseudo": "Si.pbe-n-van.UPF",
+        "element": "Si",
+        "mass": 28.0855,
+        "num_wann": 8,
+        "num_bands": 12,
+        "description": "Silicon Boltzmann transport - 8 sp3 MLWFs",
+    },
+}
+
+
+def ensure_pseudo_in_resources(pseudo_name: str) -> bool:
+    """Copy pseudo from wannier90 distribution to resources/pseudo/ if needed."""
+    dest = PSEUDO_DEST / pseudo_name
+    if dest.exists():
+        return True
+    
+    source = PSEUDO_SOURCE / pseudo_name
+    if source.exists():
+        PSEUDO_DEST.mkdir(parents=True, exist_ok=True)
+        shutil.copy(source, dest)
+        print(f"  ✓ Copied {pseudo_name} to resources/pseudo/")
+        return True
+    
+    print(f"  ✗ Pseudo {pseudo_name} not found in wannier90 distribution")
+    return False
+
+
+def compute_pseudo_identity(pseudo_name: str) -> Optional[Dict[str, str]]:
+    """Compute pseudo identity triple."""
+    pseudo_path = PSEUDO_DEST / pseudo_name
+    if not pseudo_path.exists():
+        return None
+    
+    try:
+        sha256 = compute_sha256_file(pseudo_path)
+        sha_family = compute_sha_family_file(pseudo_path)
+        return {
+            "pseudo_sha256": sha256,
+            "pseudo_sha_family": sha_family,
+        }
+    except Exception as e:
+        print(f"  ⚠️  Error computing hashes for {pseudo_name}: {e}")
+        return None
+
+
+def parse_structure_from_scf(scf_content: str) -> Dict[str, Any]:
+    """Extract structure data from SCF input file."""
+    lines = scf_content.split("\n")
+    
+    # Parse CELL_PARAMETERS or celldm/ibrav
+    cell_params = []
+    atomic_species = {}
+    atomic_positions = []
+    
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+        
+        # CELL_PARAMETERS block
+        if line.upper().startswith("CELL_PARAMETERS"):
+            unit = "angstrom" if "angstrom" in line.lower() else "bohr"
+            for j in range(1, 4):
+                if i + j < len(lines):
+                    parts = lines[i + j].split()
+                    if len(parts) >= 3:
+                        vec = [float(parts[0]), float(parts[1]), float(parts[2])]
+                        # Convert to angstrom if needed
+                        if unit == "bohr":
+                            vec = [v * 0.529177 for v in vec]
+                        cell_params.append(vec)
+            i += 4
+            continue
+        
+        # ATOMIC_SPECIES block
+        if line.upper() == "ATOMIC_SPECIES":
+            i += 1
+            while i < len(lines) and lines[i].strip() and not lines[i].strip().upper().startswith(("ATOMIC_POSITIONS", "K_POINTS", "CELL_PARAMETERS")):
+                parts = lines[i].split()
+                if len(parts) >= 3:
+                    elem = parts[0]
+                    mass = float(parts[1])
+                    pseudo = parts[2]
+                    atomic_species[elem] = {"mass": mass, "pseudo": pseudo}
+                i += 1
+            continue
+        
+        # ATOMIC_POSITIONS block
+        if line.upper().startswith("ATOMIC_POSITIONS"):
+            coord_type = "crystal" if "crystal" in line.lower() else "angstrom"
+            i += 1
+            while i < len(lines) and lines[i].strip() and not lines[i].strip().upper().startswith(("K_POINTS", "CELL_PARAMETERS")):
+                parts = lines[i].split()
+                if len(parts) >= 4:
+                    elem = parts[0]
+                    x, y, z = float(parts[1]), float(parts[2]), float(parts[3])
+                    if coord_type == "crystal":
+                        atomic_positions.append({"label": elem, "abc": [x, y, z]})
+                    else:
+                        atomic_positions.append({"label": elem, "xyz": [x, y, z]})
+                i += 1
+            continue
+        
+        # Parse ibrav lattice
+        if "ibrav" in line.lower():
+            # Extract ibrav and celldm from system namelist
+            pass  # For now, skip - we use CELL_PARAMETERS
+        
+        i += 1
+    
+    # Build structure dict in our format
+    structure = {
+        "lattice": {"matrix": cell_params} if cell_params else {},
+        "sites": atomic_positions,
+    }
+    
+    return structure, atomic_species
+
+
+def create_step_spec(step_type: str, index: int, seedname: str, params: Optional[Dict] = None) -> Dict[str, Any]:
+    """Create a step specification dictionary."""
+    step_id = generate_ulid()
+    
+    # Determine input file name based on step type
+    if step_type == "scf":
+        input_name = f"{seedname}.scf"
+    elif step_type == "nscf":
+        input_name = f"{seedname}.nscf"
+    elif step_type == "w90_preproc":
+        input_name = f"{seedname}.win"
+    elif step_type == "pw2wannier90":
+        input_name = f"{seedname}.pw2wan"
+    elif step_type == "w90_run":
+        input_name = f"{seedname}.win"
+    else:
+        input_name = f"{seedname}.{step_type}"
+    
+    spec = {
+        "meta": {
+            "id": step_id,
+            "name": f"{step_type}_{seedname}",
+            "step_type": step_type,
+        },
+        "input_file": input_name,
+        "index": index,
+    }
+    
+    if params:
+        spec["parameters"] = params
+    
+    return spec
+
+
+def generate_demo_snapshot(name: str, config: Dict[str, Any]) -> Dict[str, Any]:
+    """Generate a demo snapshot from example configuration."""
+    example_dir = EXAMPLES_ROOT / config["dir"]
+    seedname = config["seedname"]
+    
+    print(f"\nGenerating {name} demo from {example_dir}...")
+    
+    # Ensure pseudo is available
+    if not ensure_pseudo_in_resources(config["pseudo"]):
+        print(f"  ⚠️  Skipping {name} - pseudo not available")
+        return None
+    
+    # Read SCF input to get structure
+    scf_file = example_dir / f"{seedname}.scf"
+    if not scf_file.exists():
+        print(f"  ⚠️  SCF file not found: {scf_file}")
+        return None
+    
+    scf_content = scf_file.read_text()
+    structure, atomic_species = parse_structure_from_scf(scf_content)
+    
+    # Build species_map with pseudo identity
+    pseudo_identity = compute_pseudo_identity(config["pseudo"])
+    if not pseudo_identity:
+        print(f"  ⚠️  Could not compute pseudo identity")
+        return None
+    
+    species_map = {
+        config["element"]: {
+            "mass": config["mass"],
+            "pseudopot": config["pseudo"],
+            "pseudo_basename": config["pseudo"],
+            **pseudo_identity,
+        }
+    }
+    
+    # Create project structure
+    project_id = generate_ulid()
+    calc_id = generate_ulid()
+    structure_id = generate_ulid()
+    
+    # Create steps
+    steps = [
+        create_step_spec("scf", 0, seedname),
+        create_step_spec("nscf", 1, seedname),
+        create_step_spec("w90_preproc", 2, seedname),
+        create_step_spec("pw2wannier90", 3, seedname),
+        create_step_spec("w90_run", 4, seedname),
+    ]
+    
+    # Build snapshot
+    snapshot = {
+        "version": "1.0",
+        "generated_at": datetime.now().isoformat(),
+        "project": {
+            "meta": {
+                "id": project_id,
+                "name": f"{name}_wannier90_demo",
+                "created_at": datetime.now().isoformat(),
+            },
+        },
+        "structures": [
+            {
+                "meta": {
+                    "id": structure_id,
+                    "name": name.title(),
+                },
+                "data": structure,
+            }
+        ],
+        "calculations": [
+            {
+                "meta": {
+                    "id": calc_id,
+                    "name": f"{name}_wannier90",
+                },
+                "structure_id": structure_id,
+                "species_map": species_map,
+                "steps": steps,
+            }
+        ],
+        "pseudo": {
+            "files": [config["pseudo"]],
+        },
+        "raw_inputs": {
+            "description": "Original input files from Wannier90 examples",
+            "files": [
+                f"{seedname}.scf",
+                f"{seedname}.nscf", 
+                f"{seedname}.pw2wan",
+                f"{seedname}.win",
+            ],
+        },
+    }
+    
+    return snapshot
+
+
+def copy_example_inputs_to_test_data(name: str, config: Dict[str, Any]) -> bool:
+    """Copy example input files to tests/data for roundtrip tests."""
+    example_dir = EXAMPLES_ROOT / config["dir"]
+    seedname = config["seedname"]
+    
+    dest_dir = TEST_DATA_DIR / config["dir"].replace("-withqe", "")
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    
+    files = [f"{seedname}.scf", f"{seedname}.nscf", f"{seedname}.pw2wan", f"{seedname}.win"]
+    
+    for f in files:
+        src = example_dir / f
+        if src.exists():
+            shutil.copy(src, dest_dir / f)
+    
+    # Also copy to pseudo dir
+    pseudo_dest = TEST_DATA_DIR / "pseudo"
+    pseudo_dest.mkdir(exist_ok=True)
+    pseudo_src = PSEUDO_SOURCE / config["pseudo"]
+    if pseudo_src.exists():
+        shutil.copy(pseudo_src, pseudo_dest / config["pseudo"])
+    
+    return True
+
+
+def main():
+    """Generate all Wannier90 demos."""
+    print("=" * 60)
+    print("Generating Wannier90 Demo Projects")
+    print("=" * 60)
+    
+    DEMO_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    
+    generated = []
+    skipped = []
+    
+    for name, config in EXAMPLES.items():
+        # Generate snapshot
+        snapshot = generate_demo_snapshot(name, config)
+        
+        if snapshot:
+            # Write demo file
+            demo_file = DEMO_OUTPUT_DIR / f"{name}_wannier90_demo.yml"
+            with open(demo_file, "w") as f:
+                yaml.dump(snapshot, f, default_flow_style=False, sort_keys=False)
+            print(f"  ✓ Written {demo_file.name}")
+            generated.append(name)
+            
+            # Also copy test data
+            copy_example_inputs_to_test_data(name, config)
+        else:
+            skipped.append(name)
+    
+    print("\n" + "=" * 60)
+    print("Summary")
+    print("=" * 60)
+    print(f"Generated: {len(generated)}")
+    for name in generated:
+        print(f"  - {name}_wannier90_demo.yml")
+    
+    if skipped:
+        print(f"\nSkipped: {len(skipped)}")
+        for name in skipped:
+            print(f"  - {name}")
+    
+    print("\nTo run Wannier90 tests:")
+    print("  python -m pytest tests/integration/test_wannier90_project_execution.py -v")
+
+
+if __name__ == "__main__":
+    main()

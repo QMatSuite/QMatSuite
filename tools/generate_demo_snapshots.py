@@ -17,12 +17,16 @@ import json
 import shutil
 import sys
 from pathlib import Path
+from typing import Any
 
 # Add src to path so we can import quantumvitas
 repo_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(repo_root / "src"))
 
 from quantumvitas.project.snapshot import export_project_to_snapshot
+from quantumvitas.core.pseudo_provenance import compute_sha256_file
+from quantumvitas.core.pseudo_libinfo import compute_sha_family_file
+from quantumvitas.core.engines.qe_pseudopotentials import download_pseudopotential
 import yaml
 
 
@@ -38,6 +42,98 @@ def find_calculation_dirs(project_path: Path) -> list[Path]:
             calculation_dirs.append(item)
     
     return calculation_dirs
+
+
+def compute_pseudo_identity(
+    repo_root: Path,
+    pseudo_filename: str,
+    auto_download: bool = True,
+) -> tuple[str, str] | None:
+    """
+    Compute pseudo identity triple (sha256, sha_family) from resources/pseudo/.
+    If file is missing and auto_download=True, attempts to download from QE repository.
+    
+    Args:
+        repo_root: Repository root directory
+        pseudo_filename: Filename of pseudopotential (e.g., "Si.pbe-n-rrkjus_psl.1.0.0.UPF")
+        auto_download: If True and file missing, attempt to download from QE repository
+        
+    Returns:
+        Tuple of (sha256, sha_family) if file exists or was downloaded, None otherwise
+    """
+    resources_pseudo_dir = repo_root / "resources" / "pseudo"
+    pseudo_file = resources_pseudo_dir / pseudo_filename
+    
+    # If file doesn't exist and auto_download is enabled, try downloading
+    if not pseudo_file.exists() and auto_download:
+        resources_pseudo_dir.mkdir(parents=True, exist_ok=True)
+        print(f"  Attempting to download {pseudo_filename} from QE repository...")
+        if download_pseudopotential(pseudo_filename, resources_pseudo_dir):
+            print(f"  ✓ Successfully downloaded {pseudo_filename}")
+        else:
+            print(f"  ✗ Failed to download {pseudo_filename}")
+            return None
+    
+    if not pseudo_file.exists():
+        return None
+    
+    try:
+        sha256 = compute_sha256_file(pseudo_file)
+        sha_family = compute_sha_family_file(pseudo_file)
+        return (sha256, sha_family)
+    except Exception as e:
+        print(f"  ⚠️  Error computing hashes for {pseudo_filename}: {e}", file=sys.stderr)
+        return None
+
+
+def enhance_species_map_with_pseudo_identities(
+    species_map: dict[str, dict[str, Any]],
+    repo_root: Path,
+    auto_download: bool = True,
+) -> tuple[dict[str, dict[str, Any]], list[str]]:
+    """
+    Enhance species_map with pseudo identity triple from resources/pseudo/.
+    
+    Args:
+        species_map: Species mapping dict (element -> {mass, pseudopot, ...})
+        repo_root: Repository root directory
+        
+    Returns:
+        Tuple of (enhanced_species_map, missing_pseudos_list)
+    """
+    enhanced = {}
+    missing_pseudos = []
+    
+    for element, entry in species_map.items():
+        if not isinstance(entry, dict):
+            enhanced[element] = entry
+            continue
+        
+        # Get pseudo filename
+        pseudo_filename = entry.get("pseudo_basename") or entry.get("pseudopot")
+        if not pseudo_filename:
+            enhanced[element] = entry
+            continue
+        
+        # Compute identity triple
+        identity = compute_pseudo_identity(repo_root, pseudo_filename, auto_download=auto_download)
+        if identity is None:
+            missing_pseudos.append(f"{element}: {pseudo_filename}")
+            continue
+        
+        sha256, sha_family = identity
+        
+        # Enhance entry
+        enhanced_entry = dict(entry)
+        enhanced_entry["pseudo_basename"] = pseudo_filename
+        if "pseudopot" not in enhanced_entry:
+            enhanced_entry["pseudopot"] = pseudo_filename
+        enhanced_entry["pseudo_sha256"] = sha256
+        enhanced_entry["pseudo_sha_family"] = sha_family
+        
+        enhanced[element] = enhanced_entry
+    
+    return enhanced, missing_pseudos
 
 
 def extract_reference_artifacts(
@@ -103,8 +199,13 @@ def extract_reference_artifacts(
     return reference_artifacts
 
 
-def main():
-    """Generate demo snapshots from test projects."""
+def main(auto_download: bool = True):
+    """
+    Generate demo snapshots from test projects.
+    
+    Args:
+        auto_download: If True, automatically download missing pseudos from QE repository
+    """
     repo_root = Path(__file__).resolve().parent.parent
     
     # Define source projects and target snapshots
@@ -140,11 +241,51 @@ def main():
         
         print(f"Exporting {source_path.name} to {target_path.name}...")
         
+        # Load project to check species_map before export
+        from quantumvitas.core.models import load_project
+        from quantumvitas.core.models import load_calculation
+        
+        project_model = load_project(source_path)
+        calculation_dirs = find_calculation_dirs(source_path)
+        
+        # Check for missing pseudos before export
+        all_missing_pseudos = []
+        for calc_dir in calculation_dirs:
+            calc_yaml = calc_dir / "calculation.yaml"
+            if calc_yaml.exists():
+                calc_model = load_calculation(calc_yaml, source_path)
+                if calc_model.species_map:
+                    enhanced_map, missing = enhance_species_map_with_pseudo_identities(
+                        calc_model.species_map,
+                        repo_root,
+                        auto_download=auto_download,
+                    )
+                    all_missing_pseudos.extend(missing)
+        
+        # Skip demo if pseudos are missing
+        if all_missing_pseudos:
+            print(f"  ⚠️  SKIPPING {demo_id}: Missing pseudos:")
+            for missing in all_missing_pseudos:
+                print(f"      - {missing}")
+            continue
+        
         # Export project to snapshot
         snapshot = export_project_to_snapshot(source_path)
         
+        # Enhance species_map in snapshot calculations with pseudo identities
+        # (export_project_to_snapshot may have computed them, but we ensure they're from resources/pseudo/)
+        for calc_data in snapshot.calculations:
+            if "species_map" in calc_data:
+                enhanced_map, missing = enhance_species_map_with_pseudo_identities(
+                    calc_data["species_map"],
+                    repo_root,
+                    auto_download=auto_download,
+                )
+                if missing:
+                    print(f"  ⚠️  Warning: Missing pseudos in snapshot: {missing}", file=sys.stderr)
+                calc_data["species_map"] = enhanced_map
+        
         # Extract reference artifacts from calculation results
-        calculation_dirs = find_calculation_dirs(source_path)
         reference_artifacts = {}
         if calculation_dirs:
             # Use the first calculation (should be the main one)
@@ -201,5 +342,13 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser(description="Generate demo project snapshots")
+    parser.add_argument(
+        "--no-auto-download",
+        action="store_true",
+        help="Disable automatic download of missing pseudos from QE repository",
+    )
+    args = parser.parse_args()
+    main(auto_download=not args.no_auto_download)
 

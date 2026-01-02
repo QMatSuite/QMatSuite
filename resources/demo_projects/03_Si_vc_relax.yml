@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KDPDXTMQETKP5SC2FRGXGZ63
+    id: 01KE0086215F88MJ73DYWJBDEK
     name: 03_Si_vc_relax
     slug: 03_si_vc_relax
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KDPDXTN2AG6RXDY9DWHCTRRK
+    id: 01KE00862G0F7SP6CSD1NFJM5H
     name: si.vc_relax
     slug: si-vc_relax
     path: structures/si-vc_relax.json
@@ -17,7 +17,7 @@ structures:
   data:
     '@module': pymatgen.core.structure
     '@class': Structure
-    charge: 0.0
+    charge: 0
     lattice:
       matrix:
       - - -3.7042404764400003
@@ -70,7 +70,7 @@ structures:
       - 1.85212023822
 calculations:
 - meta:
-    id: 01KDPDXTMTFX03GN5GA1B5MXC6
+    id: 01KE008625VAV0F3TGJYQDWE6E
     name: Si Vc Relax
     slug: si-vc-relax
     path: calculations/si-vc-relax
@@ -79,7 +79,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KDPDXTMYCB1CHQ2RC8Y8M6DJ
+      id: 01KE00862BYFSQ6YP0YHBP04WR
       name: si.vc_relax
       slug: si-vc_relax
       path: si.vc_relax.step.yaml
@@ -114,7 +114,7 @@ calculations:
       Si:
         mass: 28.0855
         pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
-  structure_id: 01KDPDXTMREPY917JR39F45NH9
+  structure_id: 01KE008623M4D00Y7B3BE42HK0
   species_map:
     Si:
       mass: 28.0855

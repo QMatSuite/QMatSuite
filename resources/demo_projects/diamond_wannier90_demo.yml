@@ -1,0 +1,197 @@
+version: 1
+project:
+  meta:
+    id: 01KE052JQEF0S7KQMHE2M9KGX7
+    name: Diamond Wannier90
+    slug: diamond-wannier90
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    id: 01KE052JQAD8TDX0M6ZVBPP8NK
+    name: Diamond
+    slug: diamond
+    path: structures/diamond.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - -0.8540867881135099
+        - 0.0
+        - 0.8540867881135099
+      - - 0.0
+        - 0.8540867881135099
+        - 0.8540867881135099
+      - - -0.8540867881135099
+        - 0.8540867881135099
+        - 0.0
+      pbc:
+      - true
+      - true
+      - true
+    properties: {}
+    sites:
+    - species:
+      - element: C
+        occu: 1
+      abc:
+      - -0.125
+      - -0.125
+      - -0.125
+      xyz:
+      - 0.21352169702837748
+      - -0.21352169702837748
+      - -0.21352169702837748
+      properties: {}
+      label: C
+    - species:
+      - element: C
+        occu: 1
+      abc:
+      - 0.125
+      - 0.125
+      - 0.125
+      xyz:
+      - -0.21352169702837748
+      - 0.21352169702837748
+      - 0.21352169702837748
+      properties: {}
+      label: C
+calculations:
+- meta:
+    id: 01KE052JQE0AGXFKSK5NEW4ST9
+    name: Diamond MLWFs
+    slug: diamond-mlwfs
+    path: calculations/diamond-mlwfs
+    kind: calculation
+  structure_id: 01KE052JQAD8TDX0M6ZVBPP8NK
+  species_map:
+    C:
+      mass: 12.0
+      pseudopot: C.pz-vbc.UPF
+      pseudo_basename: C.pz-vbc.UPF
+      pseudo_sha256: 62d92a1d77af114ffd1d8816087624cb551d35f6fa9efede7a72e40a9d7a0bcc
+      pseudo_sha_family: 013161d04858e342cac75eff58755cc93c1b9ffca56a491d7b6c9abf140dedeb
+  steps:
+  - meta:
+      id: 01KE052JQEF534VRMNRWS3X04A
+      name: scf
+      slug: scf
+      path: steps/scf.step.yaml
+      kind: step
+    step_type: scf
+    structure_id: 01KE052JQAD8TDX0M6ZVBPP8NK
+    status: pending
+    parameters:
+      calculation: scf
+      ecutwfc: 40.0
+      conv_thr: 1.0e-13
+      k_points:
+        type: automatic
+        grid:
+        - 4
+        - 4
+        - 4
+        offset:
+        - 0
+        - 0
+        - 0
+  - meta:
+      id: 01KE052JQE9EP9244MATCQ73D2
+      name: nscf
+      slug: nscf
+      path: steps/nscf.step.yaml
+      kind: step
+    step_type: nscf
+    structure_id: 01KE052JQAD8TDX0M6ZVBPP8NK
+    status: pending
+    parameters:
+      calculation: nscf
+      ecutwfc: 40.0
+      nbnd: 4
+      nosym: true
+      k_points:
+        type: crystal
+        grid:
+        - 4
+        - 4
+        - 4
+    depends_on:
+    - 01KE052JQEF534VRMNRWS3X04A
+  - meta:
+      id: 01KE052JQE394GRV0QFBY48SEJ
+      name: w90_preproc
+      slug: w90_preproc
+      path: steps/w90_preproc.step.yaml
+      kind: step
+    step_type: w90_preproc
+    structure_id: 01KE052JQAD8TDX0M6ZVBPP8NK
+    status: pending
+    parameters:
+      seedname: diamond
+      num_wann: 4
+      num_iter: 20
+      mp_grid:
+      - 4
+      - 4
+      - 4
+      projections: 'f=0.0,0.0,0.0:s
+
+        f=0.0,0.0,0.5:s
+
+        f=0.0,0.5,0.0:s
+
+        f=0.5,0.0,0.0:s'
+    depends_on:
+    - 01KE052JQE9EP9244MATCQ73D2
+  - meta:
+      id: 01KE052JQETXK0YQNYG4ZXFD82
+      name: pw2wannier90
+      slug: pw2wannier90
+      path: steps/pw2wannier90.step.yaml
+      kind: step
+    step_type: pw2wannier90
+    structure_id: 01KE052JQAD8TDX0M6ZVBPP8NK
+    status: pending
+    parameters:
+      seedname: diamond
+      prefix: di
+      write_mmn: true
+      write_amn: true
+    depends_on:
+    - 01KE052JQE9EP9244MATCQ73D2
+    - 01KE052JQE394GRV0QFBY48SEJ
+  - meta:
+      id: 01KE052JQE33P1HSEBQBEVXEPE
+      name: w90_run
+      slug: w90_run
+      path: steps/w90_run.step.yaml
+      kind: step
+    step_type: w90_run
+    structure_id: 01KE052JQAD8TDX0M6ZVBPP8NK
+    status: pending
+    parameters:
+      seedname: diamond
+      num_wann: 4
+      num_iter: 20
+    depends_on:
+    - 01KE052JQETXK0YQNYG4ZXFD82
+pseudo:
+  directory: pseudo
+  files:
+  - C.pz-vbc.UPF
+meta:
+  id: diamond_wannier90_demo
+  title: Diamond Wannier90
+  subtitle: 4 sp³ bonding MLWFs
+  tags:
+  - wannier90
+  - diamond
+  - mlwf
+  - tutorial
+  recommended_analysis: wannier
+  difficulty: intermediate

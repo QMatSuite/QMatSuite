@@ -1,13 +1,9 @@
 {
   "total_datasets": 28,
-  "successful": 12,
-  "failed": 16,
+  "successful": 8,
+  "failed": 20,
   "verification": {
     "00_Si_scf": {
-      "consistent": true,
-      "issue_count": 0
-    },
-    "11_Si_100_surface_reconstruction": {
       "consistent": true,
       "issue_count": 0
     },
@@ -15,19 +11,7 @@
       "consistent": true,
       "issue_count": 0
     },
-    "18_H2O_MD": {
-      "consistent": true,
-      "issue_count": 0
-    },
     "19_Si_CPMD": {
-      "consistent": true,
-      "issue_count": 0
-    },
-    "01_H2": {
-      "consistent": true,
-      "issue_count": 0
-    },
-    "02_H2O": {
       "consistent": true,
       "issue_count": 0
     },
@@ -53,7 +37,7 @@
       "validation": {
         "success": false,
         "differences_count": 0,
-        "error": "Round-trip validation error: Calculation not found - selector: '01KDPDXRTJ59KJGH4RWGN9GB5V' - in project: /private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_import_m6_3soi_/00_si_scf-2\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 5369, in get_calculation_detail\n    calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)\n                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/core/resolution.py\", line 1016, in resolve_calculation\n    raise SelectorNotFoundError(f\"Calculation '{selector}' not found\")\nquantumvitas.core.resolution.SelectorNotFoundError: Calculation '01KDPDXRTJ59KJGH4RWGN9GB5V' not found\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/tools/import_tutorial_datasets.py\", line 849, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 5371, in get_calculation_detail\n    raise ResourceNotFoundError(\nquantumvitas.core.resolution.ResourceNotFoundError: Calculation not found - selector: '01KDPDXRTJ59KJGH4RWGN9GB5V' - in project: /private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_import_m6_3soi_/00_si_scf-2\n"
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
       },
       "verification": {
         "consistent": true,
@@ -64,8 +48,11 @@
     {
       "demo_name": "10_benzene_TDDFT",
       "success": false,
-      "error": "Error creating demo: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/tools/import_tutorial_datasets.py\", line 1251, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 415, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 4358, in import_step_from_qe_input\n    structure = read_structure(structure_path)\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/io/structure_io.py\", line 46, in read_structure\n    filepath = Path(filepath)\n               ^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/pathlib.py\", line 1162, in __init__\n    super().__init__(*args)\n  File \"/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/pathlib.py\", line 373, in __init__\n    raise TypeError(\nTypeError: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'\n",
-      "missing_pseudos": [],
+      "error": "Missing pseudopotentials (download failed): C.upf, H.upf",
+      "missing_pseudos": [
+        "C.upf",
+        "H.upf"
+      ],
       "step_count": 0,
       "reference_artifacts": {},
       "validation": null,
@@ -74,27 +61,11 @@
     },
     {
       "demo_name": "11_Si_100_surface_reconstruction",
-      "success": true,
-      "error": null,
-      "missing_pseudos": [],
-      "step_count": 1,
-      "reference_artifacts": {},
-      "validation": {
-        "success": false,
-        "differences_count": 0,
-        "error": "Round-trip validation error: Calculation not found - selector: '01KDPDXRY2FZS012JWKJJ4VZJD' - in project: /private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_import_s3r2se_y/11_si_100_surface_reconstruction-2\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 5369, in get_calculation_detail\n    calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)\n                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/core/resolution.py\", line 1016, in resolve_calculation\n    raise SelectorNotFoundError(f\"Calculation '{selector}' not found\")\nquantumvitas.core.resolution.SelectorNotFoundError: Calculation '01KDPDXRY2FZS012JWKJJ4VZJD' not found\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/tools/import_tutorial_datasets.py\", line 849, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 5371, in get_calculation_detail\n    raise ResourceNotFoundError(\nquantumvitas.core.resolution.ResourceNotFoundError: Calculation not found - selector: '01KDPDXRY2FZS012JWKJJ4VZJD' - in project: /private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_import_s3r2se_y/11_si_100_surface_reconstruction-2\n"
-      },
-      "verification": {
-        "consistent": true,
-        "issues": []
-      },
-      "detailed_verification": null
-    },
-    {
-      "demo_name": "12_NMR_gipaw",
       "success": false,
-      "error": "Error creating demo: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/tools/import_tutorial_datasets.py\", line 1251, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 415, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 4358, in import_step_from_qe_input\n    structure = read_structure(structure_path)\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/io/structure_io.py\", line 46, in read_structure\n    filepath = Path(filepath)\n               ^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/pathlib.py\", line 1162, in __init__\n    super().__init__(*args)\n  File \"/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/pathlib.py\", line 373, in __init__\n    raise TypeError(\nTypeError: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'\n",
-      "missing_pseudos": [],
+      "error": "Missing pseudopotentials (download failed): H_ONCV_PBE-1.0.oncvpsp.upf",
+      "missing_pseudos": [
+        "H_ONCV_PBE-1.0.oncvpsp.upf"
+      ],
       "step_count": 0,
       "reference_artifacts": {},
       "validation": null,
@@ -104,8 +75,26 @@
     {
       "demo_name": "12_NMR_gipaw",
       "success": false,
-      "error": "Error creating demo: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/tools/import_tutorial_datasets.py\", line 1251, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 415, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 4358, in import_step_from_qe_input\n    structure = read_structure(structure_path)\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/io/structure_io.py\", line 46, in read_structure\n    filepath = Path(filepath)\n               ^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/pathlib.py\", line 1162, in __init__\n    super().__init__(*args)\n  File \"/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/pathlib.py\", line 373, in __init__\n    raise TypeError(\nTypeError: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'\n",
-      "missing_pseudos": [],
+      "error": "Missing pseudopotentials (download failed): Si.pbe-tm-gipaw.UPF, H.pbe-tm-gipaw.UPF, C.pbe-tm-gipaw.UPF",
+      "missing_pseudos": [
+        "Si.pbe-tm-gipaw.UPF",
+        "H.pbe-tm-gipaw.UPF",
+        "C.pbe-tm-gipaw.UPF"
+      ],
+      "step_count": 0,
+      "reference_artifacts": {},
+      "validation": null,
+      "verification": {},
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "12_NMR_gipaw",
+      "success": false,
+      "error": "Missing pseudopotentials (download failed): H.pbe-tm-gipaw.UPF, C.pbe-tm-gipaw.UPF",
+      "missing_pseudos": [
+        "H.pbe-tm-gipaw.UPF",
+        "C.pbe-tm-gipaw.UPF"
+      ],
       "step_count": 0,
       "reference_artifacts": {},
       "validation": null,
@@ -115,7 +104,7 @@
     {
       "demo_name": "13_graphene",
       "success": false,
-      "error": "Error creating demo: ibrav=12/-12 requires b, c, and cos(angle).\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/tools/import_tutorial_datasets.py\", line 1251, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 346, in materialize_project_from_qe_input_folder\n    ref_structure = structure_from_qe_input(reference_qe_input)\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/io/structure_io.py\", line 332, in structure_from_qe_input\n    lattice = _lattice_from_ibrav(system)\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/io/structure_io.py\", line 511, in _lattice_from_ibrav\n    vectors = _ibrav_vectors(ibrav, params)\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/io/structure_io.py\", line 630, in _ibrav_vectors\n    raise ValueError(\"ibrav=12/-12 requires b, c, and cos(angle).\")\nValueError: ibrav=12/-12 requires b, c, and cos(angle).\n",
+      "error": "Error creating demo: ibrav=12/-12 requires b, c, and cos(angle).\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 1316, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 346, in materialize_project_from_qe_input_folder\n    ref_structure = structure_from_qe_input(reference_qe_input)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/io/structure_io.py\", line 332, in structure_from_qe_input\n    lattice = _lattice_from_ibrav(system)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/io/structure_io.py\", line 511, in _lattice_from_ibrav\n    vectors = _ibrav_vectors(ibrav, params)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/io/structure_io.py\", line 630, in _ibrav_vectors\n    raise ValueError(\"ibrav=12/-12 requires b, c, and cos(angle).\")\nValueError: ibrav=12/-12 requires b, c, and cos(angle).\n",
       "missing_pseudos": [],
       "step_count": 0,
       "reference_artifacts": {},
@@ -126,7 +115,7 @@
     {
       "demo_name": "14_DFT_plus_U_NiO",
       "success": false,
-      "error": "Missing pseudopotentials (could not download): ni_pbe_v1.4.uspp.F.UPF",
+      "error": "Missing pseudopotentials (download failed): ni_pbe_v1.4.uspp.F.UPF",
       "missing_pseudos": [
         "ni_pbe_v1.4.uspp.F.UPF"
       ],
@@ -139,7 +128,7 @@
     {
       "demo_name": "14_DFT_plus_U_NiO",
       "success": false,
-      "error": "Missing pseudopotentials (could not download): ni_pbe_v1.4.uspp.F.UPF",
+      "error": "Missing pseudopotentials (download failed): ni_pbe_v1.4.uspp.F.UPF",
       "missing_pseudos": [
         "ni_pbe_v1.4.uspp.F.UPF"
       ],
@@ -161,7 +150,7 @@
       "validation": {
         "success": false,
         "differences_count": 0,
-        "error": "Round-trip validation error: Calculation not found - selector: '01KDPDXS5FDXB9NZGKZY4VSFVF' - in project: /private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_import_5mcafguz/15_bulk_modulus_si-2\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 5369, in get_calculation_detail\n    calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)\n                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/core/resolution.py\", line 1016, in resolve_calculation\n    raise SelectorNotFoundError(f\"Calculation '{selector}' not found\")\nquantumvitas.core.resolution.SelectorNotFoundError: Calculation '01KDPDXS5FDXB9NZGKZY4VSFVF' not found\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/tools/import_tutorial_datasets.py\", line 849, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 5371, in get_calculation_detail\n    raise ResourceNotFoundError(\nquantumvitas.core.resolution.ResourceNotFoundError: Calculation not found - selector: '01KDPDXS5FDXB9NZGKZY4VSFVF' - in project: /private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_import_5mcafguz/15_bulk_modulus_si-2\n"
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
       },
       "verification": {
         "consistent": true,
@@ -172,8 +161,10 @@
     {
       "demo_name": "17_H2O_vibration",
       "success": false,
-      "error": "Error creating demo: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/tools/import_tutorial_datasets.py\", line 1251, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 415, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 4358, in import_step_from_qe_input\n    structure = read_structure(structure_path)\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/io/structure_io.py\", line 46, in read_structure\n    filepath = Path(filepath)\n               ^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/pathlib.py\", line 1162, in __init__\n    super().__init__(*args)\n  File \"/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/pathlib.py\", line 373, in __init__\n    raise TypeError(\nTypeError: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'\n",
-      "missing_pseudos": [],
+      "error": "Missing pseudopotentials (download failed): H_ONCV_PBE-1.0.oncvpsp.upf",
+      "missing_pseudos": [
+        "H_ONCV_PBE-1.0.oncvpsp.upf"
+      ],
       "step_count": 0,
       "reference_artifacts": {},
       "validation": null,
@@ -182,20 +173,15 @@
     },
     {
       "demo_name": "18_H2O_MD",
-      "success": true,
-      "error": null,
-      "missing_pseudos": [],
-      "step_count": 2,
+      "success": false,
+      "error": "Missing pseudopotentials (download failed): H_ONCV_PBE-1.0.oncvpsp.upf",
+      "missing_pseudos": [
+        "H_ONCV_PBE-1.0.oncvpsp.upf"
+      ],
+      "step_count": 0,
       "reference_artifacts": {},
-      "validation": {
-        "success": false,
-        "differences_count": 0,
-        "error": "Round-trip validation error: Calculation not found - selector: '01KDPDXSEJFZZCPMGBZW39HXAK' - in project: /private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_import_rzh64255/18_h2o_md-2\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 5369, in get_calculation_detail\n    calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)\n                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/core/resolution.py\", line 1016, in resolve_calculation\n    raise SelectorNotFoundError(f\"Calculation '{selector}' not found\")\nquantumvitas.core.resolution.SelectorNotFoundError: Calculation '01KDPDXSEJFZZCPMGBZW39HXAK' not found\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/tools/import_tutorial_datasets.py\", line 849, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 5371, in get_calculation_detail\n    raise ResourceNotFoundError(\nquantumvitas.core.resolution.ResourceNotFoundError: Calculation not found - selector: '01KDPDXSEJFZZCPMGBZW39HXAK' - in project: /private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_import_rzh64255/18_h2o_md-2\n"
-      },
-      "verification": {
-        "consistent": true,
-        "issues": []
-      },
+      "validation": null,
+      "verification": {},
       "detailed_verification": null
     },
     {
@@ -208,7 +194,7 @@
       "validation": {
         "success": false,
         "differences_count": 0,
-        "error": "Round-trip validation error: Calculation not found - selector: '01KDPDXSJ9C4C3VCQBPMGC76NP' - in project: /private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_import_mqen8ynq/19_si_cpmd-2\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 5369, in get_calculation_detail\n    calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)\n                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/core/resolution.py\", line 1016, in resolve_calculation\n    raise SelectorNotFoundError(f\"Calculation '{selector}' not found\")\nquantumvitas.core.resolution.SelectorNotFoundError: Calculation '01KDPDXSJ9C4C3VCQBPMGC76NP' not found\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/tools/import_tutorial_datasets.py\", line 849, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 5371, in get_calculation_detail\n    raise ResourceNotFoundError(\nquantumvitas.core.resolution.ResourceNotFoundError: Calculation not found - selector: '01KDPDXSJ9C4C3VCQBPMGC76NP' - in project: /private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_import_mqen8ynq/19_si_cpmd-2\n"
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
       },
       "verification": {
         "consistent": true,
@@ -219,7 +205,7 @@
     {
       "demo_name": "19_Si_CPMD",
       "success": false,
-      "error": "Error creating demo: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/tools/import_tutorial_datasets.py\", line 1251, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 415, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 4358, in import_step_from_qe_input\n    structure = read_structure(structure_path)\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/io/structure_io.py\", line 46, in read_structure\n    filepath = Path(filepath)\n               ^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/pathlib.py\", line 1162, in __init__\n    super().__init__(*args)\n  File \"/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/pathlib.py\", line 373, in __init__\n    raise TypeError(\nTypeError: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'\n",
+      "error": "Error creating demo: expected str, bytes or os.PathLike object, not NoneType\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 1316, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 433, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(**call_kwargs)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/api.py\", line 4717, in import_step_from_qe_input\n    structure = read_structure(structure_path)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/io/structure_io.py\", line 46, in read_structure\n    filepath = Path(filepath)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 1072, in __new__\n    self = cls._from_parts(args, init=False)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 697, in _from_parts\n    drv, root, parts = self._parse_args(args)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 681, in _parse_args\n    a = os.fspath(a)\nTypeError: expected str, bytes or os.PathLike object, not NoneType\n",
       "missing_pseudos": [],
       "step_count": 0,
       "reference_artifacts": {},
@@ -240,7 +226,7 @@
       "validation": {
         "success": false,
         "differences_count": 0,
-        "error": "Round-trip validation error: Calculation not found - selector: '01KDPDXSS49ZZCWCN6A4CH82YZ' - in project: /private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_import_x164q31y/19_si_cpmd-2\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 5369, in get_calculation_detail\n    calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)\n                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/core/resolution.py\", line 1016, in resolve_calculation\n    raise SelectorNotFoundError(f\"Calculation '{selector}' not found\")\nquantumvitas.core.resolution.SelectorNotFoundError: Calculation '01KDPDXSS49ZZCWCN6A4CH82YZ' not found\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/tools/import_tutorial_datasets.py\", line 849, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 5371, in get_calculation_detail\n    raise ResourceNotFoundError(\nquantumvitas.core.resolution.ResourceNotFoundError: Calculation not found - selector: '01KDPDXSS49ZZCWCN6A4CH82YZ' - in project: /private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_import_x164q31y/19_si_cpmd-2\n"
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
       },
       "verification": {
         "consistent": true,
@@ -258,7 +244,7 @@
       "validation": {
         "success": false,
         "differences_count": 0,
-        "error": "Round-trip validation error: Calculation not found - selector: '01KDPDXT10VPYJKKMVYBVHVA5A' - in project: /private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_import_j4rns2t_/19_si_cpmd-2\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 5369, in get_calculation_detail\n    calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)\n                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/core/resolution.py\", line 1016, in resolve_calculation\n    raise SelectorNotFoundError(f\"Calculation '{selector}' not found\")\nquantumvitas.core.resolution.SelectorNotFoundError: Calculation '01KDPDXT10VPYJKKMVYBVHVA5A' not found\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/tools/import_tutorial_datasets.py\", line 849, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 5371, in get_calculation_detail\n    raise ResourceNotFoundError(\nquantumvitas.core.resolution.ResourceNotFoundError: Calculation not found - selector: '01KDPDXT10VPYJKKMVYBVHVA5A' - in project: /private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_import_j4rns2t_/19_si_cpmd-2\n"
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
       },
       "verification": {
         "consistent": true,
@@ -276,7 +262,7 @@
       "validation": {
         "success": false,
         "differences_count": 0,
-        "error": "Round-trip validation error: Calculation not found - selector: '01KDPDXT8DMFMPVY4D1RSSQZVC' - in project: /private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_import_a9ljxi0y/19_si_cpmd-2\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 5369, in get_calculation_detail\n    calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)\n                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/core/resolution.py\", line 1016, in resolve_calculation\n    raise SelectorNotFoundError(f\"Calculation '{selector}' not found\")\nquantumvitas.core.resolution.SelectorNotFoundError: Calculation '01KDPDXT8DMFMPVY4D1RSSQZVC' not found\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/tools/import_tutorial_datasets.py\", line 849, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 5371, in get_calculation_detail\n    raise ResourceNotFoundError(\nquantumvitas.core.resolution.ResourceNotFoundError: Calculation not found - selector: '01KDPDXT8DMFMPVY4D1RSSQZVC' - in project: /private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_import_a9ljxi0y/19_si_cpmd-2\n"
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
       },
       "verification": {
         "consistent": true,
@@ -286,40 +272,28 @@
     },
     {
       "demo_name": "01_H2",
-      "success": true,
-      "error": null,
-      "missing_pseudos": [],
-      "step_count": 2,
-      "reference_artifacts": {
-        "scf": "01_H2.scf.json"
-      },
-      "validation": {
-        "success": false,
-        "differences_count": 0,
-        "error": "Round-trip validation error: Calculation not found - selector: '01KDPDXTFRC4REPH3KC3PSRE5Z' - in project: /private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_import_gnsdh4k7/01_h2-2\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 5369, in get_calculation_detail\n    calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)\n                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/core/resolution.py\", line 1016, in resolve_calculation\n    raise SelectorNotFoundError(f\"Calculation '{selector}' not found\")\nquantumvitas.core.resolution.SelectorNotFoundError: Calculation '01KDPDXTFRC4REPH3KC3PSRE5Z' not found\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/tools/import_tutorial_datasets.py\", line 849, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 5371, in get_calculation_detail\n    raise ResourceNotFoundError(\nquantumvitas.core.resolution.ResourceNotFoundError: Calculation not found - selector: '01KDPDXTFRC4REPH3KC3PSRE5Z' - in project: /private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_import_gnsdh4k7/01_h2-2\n"
-      },
-      "verification": {
-        "consistent": true,
-        "issues": []
-      },
+      "success": false,
+      "error": "Missing pseudopotentials (download failed): H_ONCV_PBE-1.0.oncvpsp.upf",
+      "missing_pseudos": [
+        "H_ONCV_PBE-1.0.oncvpsp.upf"
+      ],
+      "step_count": 0,
+      "reference_artifacts": {},
+      "validation": null,
+      "verification": {},
       "detailed_verification": null
     },
     {
       "demo_name": "02_H2O",
-      "success": true,
-      "error": null,
-      "missing_pseudos": [],
-      "step_count": 1,
+      "success": false,
+      "error": "Missing pseudopotentials (download failed): H_ONCV_PBE-1.0.oncvpsp.upf",
+      "missing_pseudos": [
+        "H_ONCV_PBE-1.0.oncvpsp.upf"
+      ],
+      "step_count": 0,
       "reference_artifacts": {},
-      "validation": {
-        "success": false,
-        "differences_count": 0,
-        "error": "Round-trip validation error: Calculation not found - selector: '01KDPDXTJZT72S5F5FNYSD6VB6' - in project: /private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_import_ok8dj1q3/02_h2o-2\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 5369, in get_calculation_detail\n    calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)\n                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/core/resolution.py\", line 1016, in resolve_calculation\n    raise SelectorNotFoundError(f\"Calculation '{selector}' not found\")\nquantumvitas.core.resolution.SelectorNotFoundError: Calculation '01KDPDXTJZT72S5F5FNYSD6VB6' not found\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/tools/import_tutorial_datasets.py\", line 849, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 5371, in get_calculation_detail\n    raise ResourceNotFoundError(\nquantumvitas.core.resolution.ResourceNotFoundError: Calculation not found - selector: '01KDPDXTJZT72S5F5FNYSD6VB6' - in project: /private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_import_ok8dj1q3/02_h2o-2\n"
-      },
-      "verification": {
-        "consistent": true,
-        "issues": []
-      },
+      "validation": null,
+      "verification": {},
       "detailed_verification": null
     },
     {
@@ -332,7 +306,7 @@
       "validation": {
         "success": false,
         "differences_count": 0,
-        "error": "Round-trip validation error: Calculation not found - selector: '01KDPDXTMTFX03GN5GA1B5MXC6' - in project: /private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_import_y31kk3n7/03_si_vc_relax-2\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 5369, in get_calculation_detail\n    calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)\n                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/core/resolution.py\", line 1016, in resolve_calculation\n    raise SelectorNotFoundError(f\"Calculation '{selector}' not found\")\nquantumvitas.core.resolution.SelectorNotFoundError: Calculation '01KDPDXTMTFX03GN5GA1B5MXC6' not found\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/tools/import_tutorial_datasets.py\", line 849, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 5371, in get_calculation_detail\n    raise ResourceNotFoundError(\nquantumvitas.core.resolution.ResourceNotFoundError: Calculation not found - selector: '01KDPDXTMTFX03GN5GA1B5MXC6' - in project: /private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_import_y31kk3n7/03_si_vc_relax-2\n"
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
       },
       "verification": {
         "consistent": true,
@@ -343,7 +317,7 @@
     {
       "demo_name": "04_Si_DOS",
       "success": false,
-      "error": "Error creating demo: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/tools/import_tutorial_datasets.py\", line 1251, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 415, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 4358, in import_step_from_qe_input\n    structure = read_structure(structure_path)\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/io/structure_io.py\", line 46, in read_structure\n    filepath = Path(filepath)\n               ^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/pathlib.py\", line 1162, in __init__\n    super().__init__(*args)\n  File \"/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/pathlib.py\", line 373, in __init__\n    raise TypeError(\nTypeError: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'\n",
+      "error": "Error creating demo: expected str, bytes or os.PathLike object, not NoneType\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 1316, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 433, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(**call_kwargs)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/api.py\", line 4717, in import_step_from_qe_input\n    structure = read_structure(structure_path)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/io/structure_io.py\", line 46, in read_structure\n    filepath = Path(filepath)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 1072, in __new__\n    self = cls._from_parts(args, init=False)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 697, in _from_parts\n    drv, root, parts = self._parse_args(args)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 681, in _parse_args\n    a = os.fspath(a)\nTypeError: expected str, bytes or os.PathLike object, not NoneType\n",
       "missing_pseudos": [],
       "step_count": 0,
       "reference_artifacts": {},
@@ -354,9 +328,10 @@
     {
       "demo_name": "05_NH3_inversion",
       "success": false,
-      "error": "Missing pseudopotentials (could not download): N.oncvpsp.upf",
+      "error": "Missing pseudopotentials (download failed): N.oncvpsp.upf, H_ONCV_PBE-1.0.oncvpsp.upf",
       "missing_pseudos": [
-        "N.oncvpsp.upf"
+        "N.oncvpsp.upf",
+        "H_ONCV_PBE-1.0.oncvpsp.upf"
       ],
       "step_count": 0,
       "reference_artifacts": {},
@@ -367,7 +342,7 @@
     {
       "demo_name": "06_Al_DOS",
       "success": false,
-      "error": "Error creating demo: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/tools/import_tutorial_datasets.py\", line 1251, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 415, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 4358, in import_step_from_qe_input\n    structure = read_structure(structure_path)\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/io/structure_io.py\", line 46, in read_structure\n    filepath = Path(filepath)\n               ^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/pathlib.py\", line 1162, in __init__\n    super().__init__(*args)\n  File \"/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/pathlib.py\", line 373, in __init__\n    raise TypeError(\nTypeError: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'\n",
+      "error": "Error creating demo: expected str, bytes or os.PathLike object, not NoneType\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 1316, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 433, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(**call_kwargs)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/api.py\", line 4717, in import_step_from_qe_input\n    structure = read_structure(structure_path)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/io/structure_io.py\", line 46, in read_structure\n    filepath = Path(filepath)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 1072, in __new__\n    self = cls._from_parts(args, init=False)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 697, in _from_parts\n    drv, root, parts = self._parse_args(args)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 681, in _parse_args\n    a = os.fspath(a)\nTypeError: expected str, bytes or os.PathLike object, not NoneType\n",
       "missing_pseudos": [],
       "step_count": 0,
       "reference_artifacts": {},
@@ -378,7 +353,7 @@
     {
       "demo_name": "07_Si_bandStructure",
       "success": false,
-      "error": "Error creating demo: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/tools/import_tutorial_datasets.py\", line 1251, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 415, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 4358, in import_step_from_qe_input\n    structure = read_structure(structure_path)\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/io/structure_io.py\", line 46, in read_structure\n    filepath = Path(filepath)\n               ^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/pathlib.py\", line 1162, in __init__\n    super().__init__(*args)\n  File \"/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/pathlib.py\", line 373, in __init__\n    raise TypeError(\nTypeError: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'\n",
+      "error": "Error creating demo: expected str, bytes or os.PathLike object, not NoneType\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 1316, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 433, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(**call_kwargs)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/api.py\", line 4717, in import_step_from_qe_input\n    structure = read_structure(structure_path)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/io/structure_io.py\", line 46, in read_structure\n    filepath = Path(filepath)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 1072, in __new__\n    self = cls._from_parts(args, init=False)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 697, in _from_parts\n    drv, root, parts = self._parse_args(args)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 681, in _parse_args\n    a = os.fspath(a)\nTypeError: expected str, bytes or os.PathLike object, not NoneType\n",
       "missing_pseudos": [],
       "step_count": 0,
       "reference_artifacts": {},
@@ -389,7 +364,7 @@
     {
       "demo_name": "08_Fe_DOS",
       "success": false,
-      "error": "Error creating demo: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/tools/import_tutorial_datasets.py\", line 1251, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 415, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 4358, in import_step_from_qe_input\n    structure = read_structure(structure_path)\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/io/structure_io.py\", line 46, in read_structure\n    filepath = Path(filepath)\n               ^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/pathlib.py\", line 1162, in __init__\n    super().__init__(*args)\n  File \"/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/pathlib.py\", line 373, in __init__\n    raise TypeError(\nTypeError: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'\n",
+      "error": "Error creating demo: expected str, bytes or os.PathLike object, not NoneType\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 1316, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 433, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(**call_kwargs)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/api.py\", line 4717, in import_step_from_qe_input\n    structure = read_structure(structure_path)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/io/structure_io.py\", line 46, in read_structure\n    filepath = Path(filepath)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 1072, in __new__\n    self = cls._from_parts(args, init=False)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 697, in _from_parts\n    drv, root, parts = self._parse_args(args)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 681, in _parse_args\n    a = os.fspath(a)\nTypeError: expected str, bytes or os.PathLike object, not NoneType\n",
       "missing_pseudos": [],
       "step_count": 0,
       "reference_artifacts": {},
@@ -412,7 +387,7 @@
       "validation": {
         "success": false,
         "differences_count": 0,
-        "error": "Round-trip validation error: Calculation not found - selector: '01KDPDXV1X08XKQF3ZB10W2JCV' - in project: /private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_import_s_q7iqpj/08_fe_dos-2\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 5369, in get_calculation_detail\n    calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)\n                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/core/resolution.py\", line 1016, in resolve_calculation\n    raise SelectorNotFoundError(f\"Calculation '{selector}' not found\")\nquantumvitas.core.resolution.SelectorNotFoundError: Calculation '01KDPDXV1X08XKQF3ZB10W2JCV' not found\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/tools/import_tutorial_datasets.py\", line 849, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 5371, in get_calculation_detail\n    raise ResourceNotFoundError(\nquantumvitas.core.resolution.ResourceNotFoundError: Calculation not found - selector: '01KDPDXV1X08XKQF3ZB10W2JCV' - in project: /private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_import_s_q7iqpj/08_fe_dos-2\n"
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
       },
       "verification": {
         "consistent": true,
@@ -423,7 +398,7 @@
     {
       "demo_name": "09_Si_phonon",
       "success": false,
-      "error": "Error creating demo: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/tools/import_tutorial_datasets.py\", line 1251, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 415, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 4358, in import_step_from_qe_input\n    structure = read_structure(structure_path)\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/io/structure_io.py\", line 46, in read_structure\n    filepath = Path(filepath)\n               ^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/pathlib.py\", line 1162, in __init__\n    super().__init__(*args)\n  File \"/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/pathlib.py\", line 373, in __init__\n    raise TypeError(\nTypeError: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'\n",
+      "error": "Error creating demo: expected str, bytes or os.PathLike object, not NoneType\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 1316, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 433, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(**call_kwargs)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/api.py\", line 4717, in import_step_from_qe_input\n    structure = read_structure(structure_path)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/io/structure_io.py\", line 46, in read_structure\n    filepath = Path(filepath)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 1072, in __new__\n    self = cls._from_parts(args, init=False)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 697, in _from_parts\n    drv, root, parts = self._parse_args(args)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 681, in _parse_args\n    a = os.fspath(a)\nTypeError: expected str, bytes or os.PathLike object, not NoneType\n",
       "missing_pseudos": [],
       "step_count": 0,
       "reference_artifacts": {},
@@ -434,7 +409,7 @@
     {
       "demo_name": "09_Si_phonon",
       "success": false,
-      "error": "Error creating demo: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/tools/import_tutorial_datasets.py\", line 1251, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 415, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 4358, in import_step_from_qe_input\n    structure = read_structure(structure_path)\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/io/structure_io.py\", line 46, in read_structure\n    filepath = Path(filepath)\n               ^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/pathlib.py\", line 1162, in __init__\n    super().__init__(*args)\n  File \"/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/pathlib.py\", line 373, in __init__\n    raise TypeError(\nTypeError: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'\n",
+      "error": "Error creating demo: expected str, bytes or os.PathLike object, not NoneType\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 1316, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 433, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(**call_kwargs)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/api.py\", line 4717, in import_step_from_qe_input\n    structure = read_structure(structure_path)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/io/structure_io.py\", line 46, in read_structure\n    filepath = Path(filepath)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 1072, in __new__\n    self = cls._from_parts(args, init=False)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 697, in _from_parts\n    drv, root, parts = self._parse_args(args)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 681, in _parse_args\n    a = os.fspath(a)\nTypeError: expected str, bytes or os.PathLike object, not NoneType\n",
       "missing_pseudos": [],
       "step_count": 0,
       "reference_artifacts": {},
@@ -445,7 +420,7 @@
     {
       "demo_name": "09_Si_phonon",
       "success": false,
-      "error": "Error creating demo: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'\nTraceback (most recent call last):\n  File \"/Users/hh7465/QMatSuite/tools/import_tutorial_datasets.py\", line 1251, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 415, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/api.py\", line 4358, in import_step_from_qe_input\n    structure = read_structure(structure_path)\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hh7465/QMatSuite/src/quantumvitas/io/structure_io.py\", line 46, in read_structure\n    filepath = Path(filepath)\n               ^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/pathlib.py\", line 1162, in __init__\n    super().__init__(*args)\n  File \"/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/pathlib.py\", line 373, in __init__\n    raise TypeError(\nTypeError: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'\n",
+      "error": "Error creating demo: expected str, bytes or os.PathLike object, not NoneType\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 1316, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 433, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(**call_kwargs)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/api.py\", line 4717, in import_step_from_qe_input\n    structure = read_structure(structure_path)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/io/structure_io.py\", line 46, in read_structure\n    filepath = Path(filepath)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 1072, in __new__\n    self = cls._from_parts(args, init=False)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 697, in _from_parts\n    drv, root, parts = self._parse_args(args)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 681, in _parse_args\n    a = os.fspath(a)\nTypeError: expected str, bytes or os.PathLike object, not NoneType\n",
       "missing_pseudos": [],
       "step_count": 0,
       "reference_artifacts": {},

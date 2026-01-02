@@ -411,13 +411,26 @@ def materialize_project_from_qe_input_folder(
                 continue
         
         # Import each step in order
+        # Use adaptive call to handle API signature differences
+        import inspect
+        import_step_sig = inspect.signature(service.import_step_from_qe_input)
+        
         for input_file in input_files:
-            service.import_step_from_qe_input(
-                project_root=project_root,
-                calculation_selector=calculation_selector,
-                input_file=input_file,
-                index=index,
-            )
+            # Build kwargs based on actual API signature
+            call_kwargs = {
+                "project_root": project_root,
+                "input_file": input_file,
+                "index": index,
+            }
+            
+            # Adapt parameter name: API uses calculation_ulid, but we have calculation_selector (which is a ULID)
+            if "calculation_ulid" in import_step_sig.parameters:
+                call_kwargs["calculation_ulid"] = calculation_selector
+            elif "calculation_selector" in import_step_sig.parameters:
+                call_kwargs["calculation_selector"] = calculation_selector
+            # If neither exists, skip (shouldn't happen, but be defensive)
+            
+            service.import_step_from_qe_input(**call_kwargs)
             # Rebuild index after each step to pick up new structures
             index = build_resource_index(project_root)
         

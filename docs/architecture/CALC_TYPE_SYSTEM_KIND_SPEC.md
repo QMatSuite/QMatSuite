@@ -42,8 +42,8 @@ class SystemKind(str, Enum):
 
 | Kind | Boundary | K-Points | Typical Engines |
 |------|----------|----------|-----------------|
-| `PERIODIC` | PBC in 3D | Required mesh/path | QE, Wannier90, VASP |
-| `MOLECULAR` | Open | Gamma-only | PySCF, Gaussian, QE (with assume_isolated) |
+| `PERIODIC` | PBC in 3D | Required mesh/path | QE, Wannier90, PySCF-PBC |
+| `MOLECULAR` | No lattice | N/A (molecular) | PySCF (gto.Mole), Gaussian |
 
 ### 2.3 Structure ↔ System Kind
 
@@ -53,20 +53,20 @@ def infer_system_kind(structure: Structure) -> SystemKind:
     """
     Infer system kind from structure.
     
-    Heuristics:
+    Rules:
     1. If structure has no lattice → MOLECULAR
-    2. If lattice has large vacuum in all directions → MOLECULAR
-    3. Otherwise → PERIODIC
+    2. Otherwise → PERIODIC
+    
+    Note: PySCF molecular calculations use gto.Mole (no lattice).
+    PySCF-PBC calculations use pbc.gto.Cell (with lattice) and are PERIODIC.
     """
     if not structure.has_lattice:
         return SystemKind.MOLECULAR
     
-    # Check for vacuum (e.g., > 15 Å in all directions)
-    if structure.has_large_vacuum_all_directions():
-        return SystemKind.MOLECULAR
-    
     return SystemKind.PERIODIC
 ```
+
+**UI Suggestion**: For structures with large vacuum regions, the UI may suggest using `assume_isolated` in QE, but this does not change the system_kind classification.
 
 ---
 
@@ -324,10 +324,10 @@ def validate_structure_system_kind(
             warnings.append("Periodic system requires lattice vectors")
     
     elif system_kind == SystemKind.MOLECULAR:
-        if structure.has_lattice and not structure.has_large_vacuum():
+        if structure.has_lattice:
             warnings.append(
-                "Molecular system has small vacuum region. "
-                "Consider increasing cell size or using periodic system."
+                "Molecular system should not have lattice vectors. "
+                "Use PySCF gto.Mole (no lattice) for molecular calculations."
             )
     
     return warnings

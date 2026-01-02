@@ -58,6 +58,10 @@ class QuantumEspressoEngine(Engine):
         "d3hess": "d3hess.x",
         "ppacf": "ppacf.x",
         "pprism": "pprism.x",
+        # Wannier90 step types
+        "w90_preproc": "wannier90.x",
+        "pw2wannier90": "pw2wannier90.x",
+        "w90_run": "wannier90.x",
     }
     
     # Mapping of QE modules to their primary namelists.
@@ -346,7 +350,8 @@ class QuantumEspressoEngine(Engine):
         """
         Build QE command with MPI support if configured.
         
-        Uses stdin redirection (pw.x < input.in) instead of command-line flags.
+        Uses stdin redirection (pw.x < input.in) instead of command-line flags,
+        except for Wannier90 steps which use command-line arguments.
         
         Args:
             step_type: Type of calculation step
@@ -354,7 +359,7 @@ class QuantumEspressoEngine(Engine):
             working_dir: Working directory for execution
             
         Returns:
-            List of command arguments for subprocess (without input file flags)
+            List of command arguments for subprocess
             
         Raises:
             FileNotFoundError: If executable is not found
@@ -366,8 +371,18 @@ class QuantumEspressoEngine(Engine):
         
         command = [str(exe_path)]
         
-        # No longer add input file flags (-inp or -i)
-        # Input will be provided via stdin redirection
+        # Wannier90-specific command building
+        if step_type == "w90_preproc":
+            # wannier90.x -pp seedname
+            # Extract seedname from input file (e.g., diamond.win -> diamond)
+            seedname = input_file.stem
+            command.append("-pp")
+            command.append(seedname)
+        elif step_type == "w90_run":
+            # wannier90.x seedname
+            seedname = input_file.stem
+            command.append(seedname)
+        # pw2wannier90 uses stdin like regular QE, no special handling needed
         
         # Add MPI wrapper if configured
         if self.config.mpi_command and self.config.mpi_cores > 1:
@@ -375,6 +390,23 @@ class QuantumEspressoEngine(Engine):
             command = mpi_cmd + command
         
         return command
+    
+    def uses_stdin(self, step_type: str) -> bool:
+        """
+        Check if step type uses stdin for input (vs command-line arguments).
+        
+        Wannier90 steps (w90_preproc, w90_run) use command-line seedname,
+        while most QE steps use stdin redirection.
+        
+        Args:
+            step_type: Type of calculation step
+            
+        Returns:
+            True if step uses stdin, False if uses command-line arguments
+        """
+        # These Wannier90 steps use command-line seedname, not stdin
+        no_stdin_steps = {"w90_preproc", "w90_run"}
+        return step_type not in no_stdin_steps
     
     def detect_module_from_input(self, input_file: Path) -> QEModule:
         """
