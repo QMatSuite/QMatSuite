@@ -2385,9 +2385,10 @@ function App() {
                       await fetchCalculations();
                       
                       if (selectedCalculationSummary) {
+                        // Use calculation ULID (id) instead of slug for subsequent calls
                         const response = await qv.call('get_calculation_detail', {
                           project_root: projectRoot,
-                          calculation: selectedCalculationSummary.slug,
+                          calculation: selectedCalculationSummary.id,  // Use ULID, not slug
                         });
                         if (response.ok && response.data) {
                           const updatedDetail = response.data as CalculationDetailResult;

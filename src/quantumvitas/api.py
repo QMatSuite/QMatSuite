@@ -716,19 +716,51 @@ class QVService:
     @staticmethod
     def delete_calculation(
         project_root: Path,
-        selector: str,
+        calculation_ulid: str,
         force: bool = False,
         cascade: bool = False,
         *,
         index: Optional["ResourceIndex"] = None,
         config: Optional[dict] = None,
     ) -> None:
-        """Delete a calculation (move to trash)."""
+        """
+        Delete a calculation (move to trash).
+        
+        Args:
+            project_root: Project root path
+            calculation_ulid: Calculation ULID (core service requires ULID only)
+            force: Force delete
+            cascade: Cascade delete dependent calculations
+            index: Optional ResourceIndex
+            config: Optional project config
+        """
+        from quantumvitas.core.resolution import validate_ulid, resolve_calculation
+        
+        # Validate ULID
+        calculation_ulid = validate_ulid(calculation_ulid, kind="calculation")
+        
         if config is None:
             config = load_project_config(project_root)
         
-        entry = find_calculation_entry(config, selector, project_root)
-        calculation_id = extract_calculation_selector_from_entry(entry)
+        # Resolve calculation to get entry
+        calculation = resolve_calculation(project_root, calculation_ulid, config=config, index=index)
+        
+        # Get entry from config for backwards compatibility
+        entry = None
+        for calc_entry in config.get("calculations", []):
+            calc_id = (calc_entry.get("meta") or {}).get("id") or calc_entry.get("calculation_id")
+            if calc_id == calculation_ulid:
+                entry = calc_entry
+                break
+        
+        if entry is None:
+            # Fallback: create minimal entry from resolved calculation
+            entry = {
+                "meta": calculation.meta.to_dict(),
+                "calculation_id": calculation_ulid,
+            }
+        
+        calculation_id = calculation_ulid
         trash = project_root / "trash"
         
         # If cascade=True, we need to collect all calculation IDs that will be deleted
@@ -738,7 +770,7 @@ class QVService:
             from quantumvitas.core.project_utils import calculations_depending_on
             dependents = calculations_depending_on(config, entry)
             for dep in dependents:
-                dep_id = extract_calculation_selector_from_entry(dep)
+                dep_id = (dep.get("meta") or {}).get("id") or dep.get("calculation_id")
                 if dep_id:
                     calculation_ids_to_remove.append(dep_id)
         
@@ -3311,22 +3343,54 @@ class QVService:
     @staticmethod
     def can_delete_calculation(
         project_root: Path,
-        selector: str,
+        calculation_ulid: str,
+        *,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
     ) -> Dict[str, Any]:
         """
         Check if a calculation can be safely deleted.
         
+        Args:
+            project_root: Project root path
+            calculation_ulid: Calculation ULID (core service requires ULID only)
+            index: Optional ResourceIndex
+            config: Optional project config
+        
         Returns:
             Dict with calculation name and dependent calculations (if any)
         """
-        config = load_project_config(project_root)
-        entry = find_calculation_entry(config, selector, project_root)
+        from quantumvitas.core.resolution import validate_ulid, resolve_calculation
+        
+        # Validate ULID
+        calculation_ulid = validate_ulid(calculation_ulid, kind="calculation")
+        
+        if config is None:
+            config = load_project_config(project_root)
+        
+        # Resolve calculation to get entry
+        calculation = resolve_calculation(project_root, calculation_ulid, config=config, index=index)
+        
+        # Get entry from config for backwards compatibility with calculations_depending_on
+        entry = None
+        for calc_entry in config.get("calculations", []):
+            calc_id = (calc_entry.get("meta") or {}).get("id") or calc_entry.get("calculation_id")
+            if calc_id == calculation_ulid:
+                entry = calc_entry
+                break
+        
+        if entry is None:
+            # Fallback: create minimal entry from resolved calculation
+            entry = {
+                "meta": calculation.meta.to_dict(),
+                "calculation_id": calculation_ulid,
+            }
         
         dependent_calculations = calculations_depending_on(config, entry)
         dep_names = [w.get("name", "?") for w in dependent_calculations]
         
         return {
-            "calculation_name": (entry.get("meta") or {}).get("name") or entry.get("name"),
+            "calculation_name": calculation.meta.name,
             "dependent_calculations": dep_names,
             "has_dependencies": len(dep_names) > 0,
         }
@@ -3338,7 +3402,7 @@ class QVService:
     @staticmethod
     def get_step_detail(
         project_root: Path,
-        calculation_selector: str,
+        calculation_ulid: str,
         step_selector: str,
         index: Optional["ResourceIndex"] = None,
         config: Optional[dict] = None,
@@ -3346,12 +3410,13 @@ class QVService:
         """
         Get detailed information about a step.
         
+        CRITICAL: calculation_ulid MUST be a ULID (not slug/name).
         CRITICAL: For GUI path, step_selector MUST be a ULID that exists in calculation.yaml's steps array.
         We verify this BEFORE resolving via ResourceIndex to ensure the step belongs to this calculation.
         
         Args:
             project_root: Project root path
-            calculation_selector: Calculation selector
+            calculation_ulid: Calculation ULID (required, not slug/name)
             step_selector: Step selector (for GUI: must be ULID from calculation.yaml)
             index: Optional ResourceIndex (avoids rebuilding if provided)
             config: Optional project config (avoids reloading if provided)
@@ -3360,18 +3425,32 @@ class QVService:
             Dict with step metadata, parameters, cards, etc.
             
         Raises:
+            ValueError: If calculation_ulid is not a valid ULID
             ResourceNotFoundError: If step_selector is not in calculation.yaml's steps array
         """
+        import logging
         from quantumvitas.calculation.structure_steps import StructureStepSpec
-        from quantumvitas.core.resolution import ResourceNotFoundError, resolve_calculation
+        from quantumvitas.core.resolution import ResourceNotFoundError, resolve_calculation, validate_ulid
         from quantumvitas.core.models import load_calculation
         from quantumvitas.core.project_utils import load_project_config
         from quantumvitas.core.resolution import make_structure_selector_resolver
         
+        logger = logging.getLogger(__name__)
+        
+        # Validate calculation_ulid is actually a ULID
+        try:
+            calculation_ulid = validate_ulid(calculation_ulid, kind="calculation")
+        except ValueError as e:
+            logger.warning(
+                f"[GET_STEP_DETAIL] WARNING: Non-ULID calculation identifier received: '{calculation_ulid}'. "
+                f"Core endpoint requires ULID. Error: {e}"
+            )
+            raise
+        
         project_root = Path(project_root).resolve()
         
-        # Resolve calculation first
-        calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)
+        # Resolve calculation by ULID (already validated)
+        calculation_resolved = resolve_calculation(project_root, calculation_ulid, config=config, index=index)
         
         # Determine calculation directory and YAML path
         if calculation_resolved.absolute_path.name == "calculation.yaml":
@@ -3387,12 +3466,35 @@ class QVService:
         resolver = make_structure_selector_resolver(project_root, config=config)
         wf_model = load_calculation(calculation_yaml_path, project_root=project_root, resolve_structure_selector=resolver)
         
+        import logging
+        from quantumvitas.core.debug import is_resolution_debug_enabled
+        
+        logger = logging.getLogger(__name__)
+        debug_enabled = is_resolution_debug_enabled()
+        
+        if debug_enabled:
+            logger.info(
+                f"[GET_STEP_DETAIL] Resolving step detail: "
+                f"calculation_ulid='{calculation_ulid}', step_selector='{step_selector}' "
+                f"(is_ulid={len(step_selector) == 26 and step_selector.startswith('01')})"
+            )
+            
+            # Log calculation.yaml steps entries
+            logger.info(
+                f"[GET_STEP_DETAIL] calculation.yaml.steps[] entries: "
+                f"{[(e.step_id, e.type) for e in wf_model.steps]}"
+            )
+        
         # CRITICAL: Verify step_selector exists in calculation.yaml's steps array
         # This ensures the step belongs to this calculation's DAG
         step_id = step_selector
         entry = next((e for e in wf_model.steps if e.step_id == step_id), None)
         if entry is None:
             # Step not in this calculation's DAG
+            logger.error(
+                f"[GET_STEP_DETAIL] ERROR: Step selector '{step_selector}' not found in "
+                f"calculation.yaml.steps[]. Available step_ids: {[e.step_id for e in wf_model.steps]}"
+            )
             raise ResourceNotFoundError(
                 kind="step",
                 selector=step_selector,
@@ -3402,8 +3504,21 @@ class QVService:
                         f"The step must be listed in calculation.yaml's steps array.",
             )
         
+        if debug_enabled:
+            logger.info(
+                f"[GET_STEP_DETAIL] Step entry found in calculation.yaml: "
+                f"step_id={entry.step_id}, type={entry.type}"
+            )
+        
         # Now that we know the step belongs to this calculation, resolve it via ResourceIndex
-        step = resolve_step(project_root, calculation_selector, step_id, config=config, index=index)
+        step = resolve_step(project_root, calculation_ulid, step_id, config=config, index=index)
+        
+        if debug_enabled:
+            logger.info(
+                f"[GET_STEP_DETAIL] Step resolved via ResourceIndex: "
+                f"id={step.meta.id}, slug={step.meta.slug}, kind={step.meta.kind}, "
+                f"path={step.absolute_path}"
+            )
         
         # CRITICAL: Verify the step file actually exists on disk.
         # If calculation.yaml has a step entry but the step file is missing (ghost step),
@@ -3415,7 +3530,7 @@ class QVService:
                 selector=step_selector,
                 id=step.meta.id if step.meta else None,
                 project_root=project_root,
-                message=f"Step '{step_selector[:8]}...{step_selector[-6:]}' is listed in calculation '{wf_model.meta.name or wf_model.meta.slug or calculation_selector}', "
+                        message=f"Step '{step_selector[:8]}...{step_selector[-6:]}' is listed in calculation '{wf_model.meta.name or wf_model.meta.slug or calculation_ulid}', "
                         f"but the expected step YAML file '{step.absolute_path}' "
                         f"does not exist. Registry and filesystem are out of sync. Try refreshing the project registry.",
             )
@@ -3437,7 +3552,7 @@ class QVService:
                 selector=step_selector,
                 id=step.meta.id if step.meta else None,
                 project_root=project_root,
-                message=f"Step '{step_selector[:8] if len(step_selector) > 14 else step_selector}...{step_selector[-6:] if len(step_selector) > 6 else step_selector}' is listed in calculation '{wf_model.meta.name or wf_model.meta.slug or calculation_selector}', "
+                        message=f"Step '{step_selector[:8] if len(step_selector) > 14 else step_selector}...{step_selector[-6:] if len(step_selector) > 6 else step_selector}' is listed in calculation '{wf_model.meta.name or wf_model.meta.slug or calculation_ulid}', "
                         f"but the expected step YAML file '{step.absolute_path}' "
                         f"does not exist. Registry and filesystem are out of sync. Try refreshing the project registry.",
             )
@@ -3465,7 +3580,7 @@ class QVService:
     @staticmethod
     def update_step_params(
         project_root: Path,
-        calculation_selector: str,
+        calculation_ulid: str,
         step_selector: str,
         parameters: Dict[str, Dict[str, Any]],
         cards: Optional[Dict[str, Dict[str, Any]]] = None,
@@ -3474,6 +3589,15 @@ class QVService:
     ) -> Dict[str, Any]:
         """
         Update step parameters safely.
+        
+        Args:
+            project_root: Project root path
+            calculation_ulid: Calculation ULID (core service requires ULID only)
+            step_selector: Step selector (ULID, slug, or name)
+            parameters: Parameters to update
+            cards: Optional cards to update
+            index: Optional ResourceIndex
+            config: Optional project config
         
         Only updates the specified parameters; does not clobber unknown options.
         Validates types for known parameters.
@@ -3490,10 +3614,14 @@ class QVService:
         Returns:
             Updated step detail dict
         """
+        from quantumvitas.core.resolution import validate_ulid
         from quantumvitas.core.yamldoc import StepDoc
         from quantumvitas.workflow.step_factory import save_step_doc
         
-        step = resolve_step(project_root, calculation_selector, step_selector, config=config, index=index)
+        # Validate ULID
+        calculation_ulid = validate_ulid(calculation_ulid, kind="calculation")
+        
+        step = resolve_step(project_root, calculation_ulid, step_selector, config=config, index=index)
         
         # Load as StepDoc
         step_doc = StepDoc.load(step.absolute_path)
@@ -3511,7 +3639,7 @@ class QVService:
                 else:
                     # STRING-ONLY: Convert all values to strings for YAML storage
                     param_patch[namelist_upper][key] = str(value)
-        
+            
         # Apply parameter patch
         if param_patch:
             step_doc.apply_patch({"parameters": param_patch})
@@ -3533,7 +3661,7 @@ class QVService:
         # Return the updated step detail (pass cached index/config to avoid rebuilding)
         return QVService.get_step_detail(
             project_root=project_root,
-            calculation_selector=calculation_selector,
+            calculation_ulid=calculation_ulid,
             step_selector=step_selector,
             index=index,
             config=config,
@@ -3542,7 +3670,7 @@ class QVService:
     @staticmethod
     def get_common_cards(
         project_root: Path,
-        calculation_selector: str,
+        calculation_ulid: str,
         step_selector: str,
         index: Optional["ResourceIndex"] = None,
         config: Optional[dict] = None,
@@ -3552,20 +3680,24 @@ class QVService:
         
         Args:
             project_root: Project root path
-            calculation_selector: Calculation selector
-            step_selector: Step selector
+            calculation_ulid: Calculation ULID (core service requires ULID only)
+            step_selector: Step selector (ULID, slug, or name)
             index: Optional ResourceIndex
             config: Optional project config
             
         Returns:
             Dict with card view models, e.g. {"k_points": KPointsViewModel}
         """
+        from quantumvitas.core.resolution import validate_ulid
         from quantumvitas.calculation.k_points_view import parse_k_points, k_points_from_card_data
+        
+        # Validate ULID
+        calculation_ulid = validate_ulid(calculation_ulid, kind="calculation")
         
         # Get step detail to access cards
         step_detail = QVService.get_step_detail(
             project_root=project_root,
-            calculation_selector=calculation_selector,
+            calculation_ulid=calculation_ulid,
             step_selector=step_selector,
             index=index,
             config=config,
@@ -3609,7 +3741,7 @@ class QVService:
     @staticmethod
     def set_common_card(
         project_root: Path,
-        calculation_selector: str,
+        calculation_ulid: str,
         step_selector: str,
         card_name: str,
         view_model: Dict[str, Any],
@@ -3621,8 +3753,8 @@ class QVService:
         
         Args:
             project_root: Project root path
-            calculation_selector: Calculation selector
-            step_selector: Step selector
+            calculation_ulid: Calculation ULID (core service requires ULID only)
+            step_selector: Step selector (ULID, slug, or name)
             card_name: Card name (e.g., "K_POINTS")
             view_model: View model dict (from UI)
             index: Optional ResourceIndex
@@ -3631,6 +3763,7 @@ class QVService:
         Returns:
             Updated step detail dict
         """
+        from quantumvitas.core.resolution import validate_ulid
         from quantumvitas.calculation.k_points_view import (
             KPointsViewModel,
             KPointsAutomatic,
@@ -3643,7 +3776,10 @@ class QVService:
         from quantumvitas.core.project_utils import load_project_config
         import yaml
         
-        step = resolve_step(project_root, calculation_selector, step_selector, config=config, index=index)
+        # Validate ULID
+        calculation_ulid = validate_ulid(calculation_ulid, kind="calculation")
+        
+        step = resolve_step(project_root, calculation_ulid, step_selector, config=config, index=index)
         
         # Load step spec
         if config is None:
@@ -3684,7 +3820,7 @@ class QVService:
         # Return updated step detail
         return QVService.get_step_detail(
             project_root=project_root,
-            calculation_selector=calculation_selector,
+            calculation_ulid=calculation_ulid,
             step_selector=step_selector,
             index=index,
             config=config,
@@ -3693,7 +3829,7 @@ class QVService:
     @staticmethod
     def get_pseudo_mapping(
         project_root: Path,
-        calculation_selector: str,
+        calculation_ulid: str,
         step_selector: str,
         index: Optional["ResourceIndex"] = None,
         config: Optional[dict] = None,
@@ -3703,8 +3839,8 @@ class QVService:
         
         Args:
             project_root: Project root path
-            calculation_selector: Calculation selector
-            step_selector: Step selector
+            calculation_ulid: Calculation ULID (core service requires ULID only)
+            step_selector: Step selector (ULID, slug, or name)
             index: Optional ResourceIndex
             config: Optional project config
             
@@ -3716,12 +3852,15 @@ class QVService:
             - available_pseudos: List of available UPF files in project
             - warnings: List of warnings (missing pseudos, etc.)
         """
-        from quantumvitas.core.resolution import resolve_structure
+        from quantumvitas.core.resolution import validate_ulid, resolve_structure
+        
+        # Validate ULID
+        calculation_ulid = validate_ulid(calculation_ulid, kind="calculation")
         
         # Get step detail
         step_detail = QVService.get_step_detail(
             project_root=project_root,
-            calculation_selector=calculation_selector,
+            calculation_ulid=calculation_ulid,
             step_selector=step_selector,
             index=index,
             config=config,
@@ -3872,7 +4011,7 @@ class QVService:
     @staticmethod
     def set_pseudo_mapping(
         project_root: Path,
-        calculation_selector: str,
+        calculation_ulid: str,
         step_selector: str,
         mapping: Dict[str, str],
         library_preference: Optional[str] = None,
@@ -3884,8 +4023,8 @@ class QVService:
         
         Args:
             project_root: Project root path
-            calculation_selector: Calculation selector
-            step_selector: Step selector
+            calculation_ulid: Calculation ULID (core service requires ULID only)
+            step_selector: Step selector (ULID, slug, or name)
             mapping: Dict[str, str] of species -> pseudo filename (empty string to unset)
             library_preference: Optional library preference ('precision' or 'efficiency')
             index: Optional ResourceIndex
@@ -3896,12 +4035,16 @@ class QVService:
         
         Note: pseudo_dir is NOT configurable via UI. Runtime always uses ../pseudo.
         """
+        from quantumvitas.core.resolution import validate_ulid
         from quantumvitas.calculation.structure_steps import StructureStepSpec
         from quantumvitas.core.resolution import resolve_step, make_structure_selector_resolver
         from quantumvitas.core.project_utils import load_project_config
         import yaml
         
-        step = resolve_step(project_root, calculation_selector, step_selector, config=config, index=index)
+        # Validate ULID
+        calculation_ulid = validate_ulid(calculation_ulid, kind="calculation")
+        
+        step = resolve_step(project_root, calculation_ulid, step_selector, config=config, index=index)
         
         # Load step spec
         if config is None:
@@ -3943,7 +4086,7 @@ class QVService:
         # Return updated step detail
         return QVService.get_step_detail(
             project_root=project_root,
-            calculation_selector=calculation_selector,
+            calculation_ulid=calculation_ulid,
             step_selector=step_selector,
             index=index,
             config=config,
@@ -4498,7 +4641,7 @@ class QVService:
     @staticmethod
     def import_step_from_qe_input(
         project_root: Path,
-        calculation_selector: str,
+        calculation_ulid: str,
         input_file: Path,
         step_name: Optional[str] = None,
         index: Optional["ResourceIndex"] = None,
@@ -4512,13 +4655,19 @@ class QVService:
         
         Args:
             project_root: Project root path
-            calculation_selector: Calculation selector (name, slug, or id)
+            calculation_ulid: Calculation ULID (core service requires ULID only)
             input_file: Path to QE input file (.in)
             step_name: Optional name for the new step (defaults to input file stem)
+            index: Optional ResourceIndex
+            config: Optional project config
             
         Returns:
             Updated calculation info with the new step
         """
+        from quantumvitas.core.resolution import validate_ulid
+        
+        # Validate ULID
+        calculation_ulid = validate_ulid(calculation_ulid, kind="calculation")
         from quantumvitas.calculation.importers import build_step_spec_from_qe_input
         from quantumvitas.core.models import load_calculation, save_calculation, CalculationStepEntry
         import yaml
@@ -4530,10 +4679,11 @@ class QVService:
             raise QVServiceError(f"QE input file not found: {input_file}")
         
         # Resolve calculation (use cached index if provided)
+        from quantumvitas.core.resolution import resolve_calculation
         from quantumvitas.core.project_utils import load_project_config
         if config is None:
             config = load_project_config(project_root)
-        calculation = resolve_calculation(project_root, calculation_selector, config=config, index=index)
+        calculation = resolve_calculation(project_root, calculation_ulid, config=config, index=index)
         calculation_dir = calculation.absolute_path
         steps_dir = calculation_dir / "steps"
         steps_dir.mkdir(exist_ok=True)
@@ -4709,7 +4859,7 @@ class QVService:
         # Pass cached index to avoid rebuilding ResourceIndex
         return QVService.get_calculation_detail(
             project_root=project_root,
-            calculation_selector=calculation_selector,
+            calculation_ulid=calculation_ulid,
             index=index,
             config=config,
         )
@@ -4767,7 +4917,7 @@ class QVService:
         # Return the updated step detail (pass cached index/config to avoid rebuilding)
         return QVService.get_step_detail(
             project_root=project_root,
-            calculation_selector=calculation_selector,
+            calculation_ulid=calculation_ulid,
             step_selector=step_selector,
             index=index,
             config=config,
@@ -4894,21 +5044,28 @@ class QVService:
         calculation_ulid: str,
         ordered_step_ulids: List[str],
         *,
+        step_types: Optional[Dict[str, str]] = None,
         index: Optional["ResourceIndex"] = None,
         config: Optional[dict] = None,
     ) -> None:
         """
         Set calculation.yaml.steps[] to an ordered list of step ULIDs.
         
+        CRITICAL: This function preserves step type metadata in calculation.yaml.
+        If step_types mapping is provided, it will be used. Otherwise, step types
+        are resolved from step YAML files or preserved from existing entries.
+        
         Args:
             project_root: Project root path
             calculation_ulid: Calculation ULID
             ordered_step_ulids: Ordered list of step ULIDs
+            step_types: Optional mapping of step_ulid -> step_type (for new steps)
             index: Optional ResourceIndex
             config: Optional project config
         """
         from quantumvitas.core.models import load_calculation, CalculationStepEntry
-        from quantumvitas.core.resolution import resolve_calculation
+        from quantumvitas.core.resolution import resolve_calculation, resolve_step
+        from quantumvitas.core.yamldoc import StepDoc
         
         if config is None:
             from quantumvitas.core.project_utils import load_project_config
@@ -4926,11 +5083,37 @@ class QVService:
         new_steps = []
         for step_ulid in ordered_step_ulids:
             if step_ulid in step_map:
+                # Preserve existing entry (includes type if present)
                 new_steps.append(step_map[step_ulid])
             else:
-                # Step not in current model - create minimal entry
-                # Type will be resolved when step is loaded
-                new_steps.append(CalculationStepEntry(step_id=step_ulid, type=None))
+                # Step not in current model - resolve step_type
+                step_type = None
+                
+                # Try step_types mapping first (provided by caller)
+                if step_types and step_ulid in step_types:
+                    step_type = step_types[step_ulid]
+                
+                # If not provided, try to resolve from step YAML file
+                if not step_type:
+                    try:
+                        # Resolve step to get file path
+                        step_resolved = resolve_step(
+                            project_root,
+                            calculation_ulid,
+                            step_ulid,
+                            config=config,
+                            index=index,
+                        )
+                        # Load step YAML to get step_type
+                        step_doc = StepDoc.load(step_resolved.absolute_path)
+                        step_type = step_doc.get(["step_type"], default=None)
+                    except Exception:
+                        # Step file missing or invalid - leave type as None
+                        # This will be resolved later when step is loaded
+                        pass
+                
+                # Create entry with step_type if available
+                new_steps.append(CalculationStepEntry(step_id=step_ulid, type=step_type))
         
         wf_model.steps = new_steps
         # Save via CalcDoc + yaml_io (journaled)
@@ -5264,8 +5447,8 @@ class QVService:
     @staticmethod
     def change_calculation_structure(
         project_root: Path,
-        calculation_selector: str,
-        new_structure: str,
+        calculation_ulid: str,
+        new_structure_ulid: str,
         update_steps: bool = True,
         index: Optional["ResourceIndex"] = None,
         config: Optional[dict] = None,
@@ -5275,8 +5458,8 @@ class QVService:
         
         Args:
             project_root: Project root path
-            calculation_selector: Calculation selector
-            new_structure: New structure selector
+            calculation_ulid: Calculation ULID (core service requires ULID only)
+            new_structure_ulid: New structure ULID (core service requires ULID only)
             update_steps: Whether to also update all steps' structure field
             index: Optional ResourceIndex (avoids rebuilding if provided)
             config: Optional project config (avoids reloading if provided)
@@ -5284,26 +5467,27 @@ class QVService:
         Returns:
             Updated calculation info with any warnings
         """
+        import logging
+        from quantumvitas.core.resolution import validate_ulid, resolve_calculation, resolve_structure
+        
+        logger = logging.getLogger(__name__)
+        
+        # Validate ULIDs
+        calculation_ulid = validate_ulid(calculation_ulid, kind="calculation")
+        structure_ulid = validate_ulid(new_structure_ulid, kind="structure")
+        
         from quantumvitas.core.models import CalculationModel
         from quantumvitas.calculation.structure_steps import StructureStepSpec
         
-        # Validate that new_structure is not accidentally project_root (common bug)
-        project_root_str = str(project_root.resolve())
-        if new_structure == project_root_str or new_structure == str(project_root):
-            raise ValueError(
-                f"Invalid structure selector: '{new_structure}' appears to be a project root path. "
-                f"Structure selectors must be structure names, slugs, or ULIDs, not absolute paths."
-            )
-        
-        # Validate structure exists
-        resolved_structure = resolve_structure(project_root, new_structure, config=config, index=index)
+        # Resolve structure by ULID
+        resolved_structure = resolve_structure(project_root, structure_ulid, config=config, index=index)
         
         from quantumvitas.core.models import load_calculation, save_calculation
         from quantumvitas.core.resolution import make_structure_selector_resolver
         from quantumvitas.core.project_utils import load_project_config
         if config is None:
             config = load_project_config(project_root)
-        calculation = resolve_calculation(project_root, calculation_selector, config=config, index=index)
+        calculation = resolve_calculation(project_root, calculation_ulid, config=config, index=index)
         wf_path = calculation.absolute_path / "calculation.yaml"
         # Load calculation model; legacy 'structure' selectors (if present) are normalized to structure_id via the registry
         config = load_project_config(project_root)
@@ -5361,7 +5545,7 @@ class QVService:
         # Pass cached index and config to avoid rebuilding ResourceIndex
         result = QVService.get_calculation_detail(
             project_root,
-            calculation_selector,
+            calculation_ulid,
             index=index,
             config=config,
         )
@@ -5374,12 +5558,14 @@ class QVService:
     @staticmethod
     def get_calculation_pseudo_mapping(
         project_root: Path,
-        calculation_selector: str,
+        calculation_ulid: str,
         index: Optional["ResourceIndex"] = None,
         config: Optional[dict] = None,
     ) -> Dict[str, Any]:
         """
         Get pseudopotential mapping for a calculation.
+        
+        CRITICAL: calculation_ulid MUST be a ULID (not slug/name).
         
         This is the calculation-level equivalent of get_pseudo_mapping (which is step-level).
         It returns the authoritative species_map from calculation.yaml, along with
@@ -5387,7 +5573,7 @@ class QVService:
         
         Args:
             project_root: Project root path
-            calculation_selector: Calculation selector
+            calculation_ulid: Calculation ULID (required, not slug/name)
             index: Optional ResourceIndex
             config: Optional project config
             
@@ -5402,17 +5588,30 @@ class QVService:
             - sssp_defaults: SSSP default mappings if available
             - sssp_installed: Which SSSP libraries are installed
         """
+        import logging
         from quantumvitas.core.models import load_calculation
-        from quantumvitas.core.resolution import make_structure_selector_resolver, resolve_structure
+        from quantumvitas.core.resolution import make_structure_selector_resolver, resolve_structure, validate_ulid
         from quantumvitas.core.project_utils import load_project_config
         from quantumvitas.io import read_structure
+        
+        logger = logging.getLogger(__name__)
+        
+        # Validate calculation_ulid is actually a ULID
+        try:
+            calculation_ulid = validate_ulid(calculation_ulid, kind="calculation")
+        except ValueError as e:
+            logger.warning(
+                f"[GET_CALCULATION_PSEUDO_MAPPING] WARNING: Non-ULID calculation identifier received: '{calculation_ulid}'. "
+                f"Core endpoint requires ULID. Error: {e}"
+            )
+            raise
         
         project_root = Path(project_root).resolve()
         
         if config is None:
             config = load_project_config(project_root)
         
-        calculation = resolve_calculation(project_root, calculation_selector, config=config, index=index)
+        calculation = resolve_calculation(project_root, calculation_ulid, config=config, index=index)
         wf_path = calculation.absolute_path / "calculation.yaml"
         
         resolver = make_structure_selector_resolver(project_root, config=config)
@@ -5724,13 +5923,14 @@ class QVService:
     @staticmethod
     def get_calculation_detail(
         project_root: Path,
-        calculation_selector: str,
+        calculation_ulid: str,
         index: Optional["ResourceIndex"] = None,
         config: Optional[dict] = None,
     ) -> Dict[str, Any]:
         """
         Get detailed calculation information for GUI display.
         
+        CRITICAL: calculation_ulid MUST be a ULID (not slug/name).
         CRITICAL: Uses calculation.yaml's steps array as the ONLY source of truth for:
         - Which steps belong to the calculation
         - The order of steps
@@ -5740,29 +5940,46 @@ class QVService:
         
         Args:
             project_root: Project root path
-            calculation_selector: Calculation selector
+            calculation_ulid: Calculation ULID (required, not slug/name)
             index: Optional ResourceIndex (avoids rebuilding if provided)
             config: Optional project config (avoids reloading if provided)
             
         Returns:
             Dict with calculation details including steps (in calculation.yaml order)
+            
+        Raises:
+            ValueError: If calculation_ulid is not a valid ULID
         """
-        from quantumvitas.core.resolution import ResourceNotFoundError, resolve_calculation
+        import logging
+        from quantumvitas.core.resolution import ResourceNotFoundError, resolve_calculation, validate_ulid
         from quantumvitas.core.models import load_calculation
         from quantumvitas.core.project_utils import load_project_config
         from quantumvitas.calculation.structure_steps import StructureStepSpec
         from quantumvitas.core.resolution import make_structure_selector_resolver
         
+        logger = logging.getLogger(__name__)
+        
+        # Validate calculation_ulid is actually a ULID
+        try:
+            calculation_ulid = validate_ulid(calculation_ulid, kind="calculation")
+        except ValueError as e:
+            # Always log warnings (not gated by debug flag)
+            logger.warning(
+                f"[GET_CALCULATION_DETAIL] WARNING: Non-ULID calculation identifier received: '{calculation_ulid}'. "
+                f"Core endpoint requires ULID. Error: {e}"
+            )
+            raise
+        
         project_root = Path(project_root).resolve()
         
-        # Resolve calculation to get the reference (handles name/slug/id selectors)
+        # Resolve calculation by ULID (already validated)
         try:
-            calculation_resolved = resolve_calculation(project_root, calculation_selector, config=config, index=index)
+            calculation_resolved = resolve_calculation(project_root, calculation_ulid, config=config, index=index)
         except Exception as e:
             raise ResourceNotFoundError(
                 kind="calculation",
-                selector=calculation_selector,
-                id=None,
+                selector=calculation_ulid,
+                id=calculation_ulid,
                 project_root=project_root,
             ) from e
         
@@ -5831,8 +6048,8 @@ class QVService:
                     from quantumvitas.core.resolution import resolve_step
                     step_resolved = resolve_step(
                         project_root,
-                        calculation_selector=calculation_resolved.meta.id or calculation_resolved.meta.slug,
-                        step_selector=step_id,
+                        calculation_ulid,  # calculation_selector parameter accepts ULID
+                        step_id,  # step_selector parameter
                         config=config,
                         index=index,
                     )
@@ -5919,29 +6136,55 @@ class QVService:
                 "warnings": [str],
             }
         """
-        from quantumvitas.core.engines.qe_installation import get_qe_home, QEInstallation
+        import logging
+        from quantumvitas.core.engines.qe_resolver import resolve_qe_bin_dir
+        from quantumvitas.core.engines.qe_installation import QEInstallation
+        from quantumvitas.core.settings import load_settings
+        
+        logger = logging.getLogger(__name__)
         
         checks = []
         errors = []
         warnings = []
         
-        # Check 1: QE installation
-        qe_home = get_qe_home()
-        if qe_home:
-            try:
-                qe = QEInstallation(qe_home)
-                pw_x = qe.find_executable("pw.x")
-                if pw_x and pw_x.exists():
-                    checks.append({"name": "QE Installation", "ok": True, "message": f"pw.x found at {pw_x}"})
-                else:
-                    checks.append({"name": "QE Installation", "ok": False, "message": "pw.x not found"})
-                    errors.append("Quantum ESPRESSO pw.x executable not found")
-            except Exception as e:
-                checks.append({"name": "QE Installation", "ok": False, "message": str(e)})
-                errors.append(f"QE installation error: {e}")
-        else:
-            checks.append({"name": "QE Installation", "ok": False, "message": "QE not detected"})
+        # Check 1: QE installation (use two-state resolver)
+        logger.info("[PREFLIGHT] Starting QE check")
+        try:
+            # Ensure QE is initialized using two-state model
+            settings = load_settings()
+            qe_bin_dir = resolve_qe_bin_dir(settings)
+            qe_home = qe_bin_dir.parent
+            
+            # Validate executables exist
+            pw_x = qe_bin_dir / "pw.x"
+            pw_exe = qe_bin_dir / "pw.x.exe"
+            
+            if pw_x.exists() or pw_exe.exists():
+                executable_path = pw_x if pw_x.exists() else pw_exe
+                logger.info(
+                    f"[PREFLIGHT] qe_detected=true reason='Found pw.x at {executable_path}' "
+                    f"qe_bin_dir={qe_bin_dir} mode={'external' if settings.qe.bin_dir else 'internal'}"
+                )
+                checks.append({"name": "QE Installation", "ok": True, "message": f"QE: pw.x found at {executable_path}"})
+            else:
+                logger.warning(
+                    f"[PREFLIGHT] qe_detected=false reason='pw.x not found in {qe_bin_dir}' "
+                    f"qe_bin_dir={qe_bin_dir}"
+                )
+                checks.append({"name": "QE Installation", "ok": False, "message": "pw.x not found"})
+                errors.append("Quantum ESPRESSO pw.x executable not found")
+        except RuntimeError as e:
+            logger.warning(
+                f"[PREFLIGHT] qe_detected=false reason='{str(e)}' qe_bin_dir=None"
+            )
+            checks.append({"name": "QE Installation", "ok": False, "message": str(e)})
             errors.append("Quantum ESPRESSO not detected. Use Settings to detect or configure QE.")
+        except Exception as e:
+            logger.error(
+                f"[PREFLIGHT] qe_detected=error reason='{str(e)}' qe_bin_dir=None"
+            )
+            checks.append({"name": "QE Installation", "ok": False, "message": str(e)})
+            errors.append(f"QE installation error: {e}")
         
         # Check 2: Project path
         project_path = Path(project_root)

@@ -52,6 +52,8 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
   const [isPinging, setIsPinging] = useState(false);
   const [daemonLogVerbosity, setDaemonLogVerbosity] = useState<'INFO' | 'DEBUG'>('INFO');
   const [logVerbosityError, setLogVerbosityError] = useState<string | null>(null);
+  const [debugResolution, setDebugResolution] = useState<boolean>(false);
+  const [debugResolutionError, setDebugResolutionError] = useState<string | null>(null);
   const [showPollingLogs, setShowPollingLogs] = useState(false);
   const [copyButtonLabel, setCopyButtonLabel] = useState('Copy');
   const logs = useQVLogs(200);
@@ -64,6 +66,23 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
     schema_version: number | null;
     path_abs: string | null;
   } | null>(null);
+  
+  // Fetch debug resolution flag on mount
+  useEffect(() => {
+    const fetchDebugResolution = async () => {
+      try {
+        const response = await qv.call('get_debug_resolution', {});
+        if (response.ok && response.data) {
+          setDebugResolution(response.data.enabled);
+        }
+      } catch (e) {
+        // Ignore errors on initial load
+      }
+    };
+    if (qv && qv.state.isConnected) {
+      fetchDebugResolution();
+    }
+  }, [qv, qv?.state.isConnected]);
   
   // Fetch QE metadata debug info
   const fetchQEMetadataDebugInfo = useCallback(async () => {
@@ -206,6 +225,27 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
       setLogVerbosityError(e instanceof Error ? e.message : 'Failed to set log level');
     }
   }, [qv, daemonLogVerbosity]);
+  
+  const handleDebugResolutionChange = useCallback(async (enabled: boolean) => {
+    if (!qv) return;
+    
+    const previousEnabled = debugResolution;
+    setDebugResolution(enabled);
+    setDebugResolutionError(null);
+    
+    try {
+      const response = await qv.call('set_debug_resolution', { enabled });
+      if (!response.ok) {
+        // Revert on failure
+        setDebugResolution(previousEnabled);
+        setDebugResolutionError(response.error?.message || 'Failed to set debug resolution flag');
+      }
+    } catch (e) {
+      // Revert on error
+      setDebugResolution(previousEnabled);
+      setDebugResolutionError(e instanceof Error ? e.message : 'Failed to set debug resolution flag');
+    }
+  }, [qv, debugResolution]);
   
   const handleCopyLogs = useCallback(async () => {
     const textToCopy = getVisibleLogText(logs, showPollingLogs);
@@ -709,6 +749,39 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
                     <div className="settings-error" style={{ marginTop: '8px' }}>
                       <span className="error-icon">⚠️</span>
                       <span className="error-text">{logVerbosityError}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Resolution/Addressing Debug Logs */}
+              <div className="diagnostics-subsection">
+                <h4 className="diagnostics-subsection__title">Resolution/Addressing Debug Logs</h4>
+                <div className="diagnostics-subsection__content">
+                  <div className="settings-option">
+                    <div className="settings-option__info">
+                      <span className="settings-option__label">Enable resolution/addressing debug logs</span>
+                      <span className="settings-option__description">
+                        When enabled, emits detailed trace logs for resource resolution (ULID vs slug, expected_kind filtering),
+                        step detail loading (calculation.steps entries), workflow detection (per-step tracing), and RPC boundary logging.
+                        Default: OFF. Useful for debugging slug collisions and resolution issues.
+                      </span>
+                    </div>
+                    <div className="settings-option__control">
+                      <label className="settings-toggle">
+                        <input
+                          type="checkbox"
+                          checked={debugResolution}
+                          onChange={(e) => handleDebugResolutionChange(e.target.checked)}
+                        />
+                        <span className="settings-toggle__slider"></span>
+                      </label>
+                    </div>
+                  </div>
+                  {debugResolutionError && (
+                    <div className="settings-error" style={{ marginTop: '8px' }}>
+                      <span className="error-icon">⚠️</span>
+                      <span className="error-text">{debugResolutionError}</span>
                     </div>
                   )}
                 </div>

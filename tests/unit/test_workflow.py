@@ -30,6 +30,8 @@ from quantumvitas.workflow.step_factory import (
     save_step_doc,
     create_and_save_step,
 )
+import yaml
+
 from quantumvitas.core.yamldoc import StepDoc
 from quantumvitas.core.yaml_io import _save_yaml_raw
 
@@ -445,14 +447,47 @@ class TestWorkflowInstantiation:
     
     def test_instantiate_scf_workflow(self, tmp_path, service, test_journal):
         """Instantiate SCF workflow creates one step."""
-        calc_dir = tmp_path / "calc"
-        calc_dir.mkdir()
+        from quantumvitas.core.resources import generate_resource_id
+        
+        # Generate proper ULIDs (26 characters)
+        calc_ulid = generate_resource_id()
+        struct_ulid = generate_resource_id()
+        
+        # Create project structure
+        project_root = tmp_path / "project"
+        project_root.mkdir()
+        project_config = {
+            "project": {"name": "Test", "id": generate_resource_id()},
+            "calculations": [{"calculation_id": calc_ulid}]
+        }
+        (project_root / "project.qv.yml").write_text(
+            yaml.safe_dump(project_config, sort_keys=False)
+        )
+        
+        calc_dir = project_root / "calculations" / "test_calc"
+        calc_dir.mkdir(parents=True)
+        
+        # Create calculation.yaml with meta.id and proper structure
+        calc_yaml_data = {
+            "meta": {
+                "id": calc_ulid,
+                "name": "test-calc",
+                "slug": "test-calc",
+                "path": "calculations/test_calc"
+            },
+            "id": "test-calc",
+        }
+        _save_yaml_raw(calc_yaml_data, calc_dir / "calculation.yaml")
+        
+        # Build resource index to ensure calculation is discoverable
+        from quantumvitas.core.resolution import build_resource_index
+        build_resource_index(project_root)
         
         paths = service.instantiate_workflow(
             workflow_id="scf",
             calc_dir=calc_dir,
-            structure_id="01STRUCT123",
-            parent_calculation_id="01CALC123",
+            structure_id=struct_ulid,
+            parent_calculation_id=calc_ulid,
         )
         
         assert len(paths) == 1
@@ -464,14 +499,47 @@ class TestWorkflowInstantiation:
     
     def test_instantiate_dos_workflow(self, tmp_path, service, test_journal):
         """Instantiate DOS workflow creates three steps."""
-        calc_dir = tmp_path / "calc"
-        calc_dir.mkdir()
+        from quantumvitas.core.resources import generate_resource_id
+        
+        # Generate proper ULIDs (26 characters)
+        calc_ulid = generate_resource_id()
+        struct_ulid = generate_resource_id()
+        
+        # Create project structure
+        project_root = tmp_path / "project"
+        project_root.mkdir()
+        project_config = {
+            "project": {"name": "Test", "id": generate_resource_id()},
+            "calculations": [{"calculation_id": calc_ulid}]
+        }
+        (project_root / "project.qv.yml").write_text(
+            yaml.safe_dump(project_config, sort_keys=False)
+        )
+        
+        calc_dir = project_root / "calculations" / "test_calc"
+        calc_dir.mkdir(parents=True)
+        
+        # Create calculation.yaml with meta.id and proper structure
+        calc_yaml_data = {
+            "meta": {
+                "id": calc_ulid,
+                "name": "test-calc",
+                "slug": "test-calc",
+                "path": "calculations/test_calc"
+            },
+            "id": "test-calc",
+        }
+        _save_yaml_raw(calc_yaml_data, calc_dir / "calculation.yaml")
+        
+        # Build resource index to ensure calculation is discoverable
+        from quantumvitas.core.resolution import build_resource_index
+        build_resource_index(project_root)
         
         paths = service.instantiate_workflow(
             workflow_id="dos",
             calc_dir=calc_dir,
-            structure_id="01STRUCT123",
-            parent_calculation_id="01CALC123",
+            structure_id=struct_ulid,
+            parent_calculation_id=calc_ulid,
         )
         
         assert len(paths) == 3
@@ -486,14 +554,47 @@ class TestWorkflowInstantiation:
     
     def test_instantiate_bands_workflow(self, tmp_path, service, test_journal):
         """Instantiate Bands workflow creates three steps."""
-        calc_dir = tmp_path / "calc"
-        calc_dir.mkdir()
+        from quantumvitas.core.resources import generate_resource_id
+        
+        # Generate proper ULIDs (26 characters)
+        calc_ulid = generate_resource_id()
+        struct_ulid = generate_resource_id()
+        
+        # Create project structure
+        project_root = tmp_path / "project"
+        project_root.mkdir()
+        project_config = {
+            "project": {"name": "Test", "id": generate_resource_id()},
+            "calculations": [{"calculation_id": calc_ulid}]
+        }
+        (project_root / "project.qv.yml").write_text(
+            yaml.safe_dump(project_config, sort_keys=False)
+        )
+        
+        calc_dir = project_root / "calculations" / "test_calc"
+        calc_dir.mkdir(parents=True)
+        
+        # Create calculation.yaml with meta.id and proper structure
+        calc_yaml_data = {
+            "meta": {
+                "id": calc_ulid,
+                "name": "test-calc",
+                "slug": "test-calc",
+                "path": "calculations/test_calc"
+            },
+            "id": "test-calc",
+        }
+        _save_yaml_raw(calc_yaml_data, calc_dir / "calculation.yaml")
+        
+        # Build resource index to ensure calculation is discoverable
+        from quantumvitas.core.resolution import build_resource_index
+        build_resource_index(project_root)
         
         paths = service.instantiate_workflow(
             workflow_id="bands",
             calc_dir=calc_dir,
-            structure_id="01STRUCT123",
-            parent_calculation_id="01CALC123",
+            structure_id=struct_ulid,
+            parent_calculation_id=calc_ulid,
         )
         
         assert len(paths) == 3
@@ -503,6 +604,8 @@ class TestWorkflowInstantiation:
     
     def test_instantiate_unknown_raises(self, tmp_path, service):
         """Instantiate unknown workflow raises ValueError."""
+        from quantumvitas.core.resources import generate_resource_id
+        
         calc_dir = tmp_path / "calc"
         calc_dir.mkdir()
         
@@ -510,26 +613,61 @@ class TestWorkflowInstantiation:
             service.instantiate_workflow(
                 workflow_id="nonexistent",
                 calc_dir=calc_dir,
-                structure_id="01STRUCT123",
-                parent_calculation_id="01CALC123",
+                structure_id=generate_resource_id(),
+                parent_calculation_id=generate_resource_id(),
             )
     
     def test_instantiate_all_journaled(self, tmp_path, service, test_journal):
         """All instantiated steps produce journal entries."""
-        calc_dir = tmp_path / "calc"
-        calc_dir.mkdir()
+        from quantumvitas.core.resources import generate_resource_id
+        
+        # Generate proper ULIDs (26 characters)
+        calc_ulid = generate_resource_id()
+        struct_ulid = generate_resource_id()
+        
+        # Create project structure
+        project_root = tmp_path / "project"
+        project_root.mkdir()
+        project_config = {
+            "project": {"name": "Test", "id": generate_resource_id()},
+            "calculations": [{"calculation_id": calc_ulid}]
+        }
+        (project_root / "project.qv.yml").write_text(
+            yaml.safe_dump(project_config, sort_keys=False)
+        )
+        
+        calc_dir = project_root / "calculations" / "test_calc"
+        calc_dir.mkdir(parents=True)
+        
+        # Create calculation.yaml with meta.id and proper structure
+        calc_yaml_data = {
+            "meta": {
+                "id": calc_ulid,
+                "name": "test-calc",
+                "slug": "test-calc",
+                "path": "calculations/test_calc"
+            },
+            "id": "test-calc",
+        }
+        _save_yaml_raw(calc_yaml_data, calc_dir / "calculation.yaml")
+        
+        # Build resource index to ensure calculation is discoverable
+        from quantumvitas.core.resolution import build_resource_index
+        build_resource_index(project_root)
         
         service.instantiate_workflow(
             workflow_id="dos",
             calc_dir=calc_dir,
-            structure_id="01STRUCT123",
-            parent_calculation_id="01CALC123",
+            structure_id=struct_ulid,
+            parent_calculation_id=calc_ulid,
         )
         
         entries = test_journal.list_entries()
         
-        # Should have 3 entries (one per step)
-        assert len(entries) == 3
+        # Should have 3 step entries (one per step) + 1 calculation entry (from calc_set_steps)
+        assert len(entries) >= 3
+        step_entries = [e for e in entries if e.doc_type == "step"]
+        assert len(step_entries) == 3
 
 
 # =============================================================================

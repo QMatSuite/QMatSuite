@@ -219,6 +219,8 @@ class QVDaemon:
             "discover_qe_engines": self._handle_discover_qe_engines,
             "set_qe_engine": self._handle_set_qe_engine,
             "set_log_level": self._handle_set_log_level,
+            "set_debug_resolution": self._handle_set_debug_resolution,
+            "get_debug_resolution": self._handle_get_debug_resolution,
             "list_qe_ui_parameters": self._handle_list_qe_ui_parameters,
             "list_qe_parameter_metadata": self._handle_list_qe_parameter_metadata,
             "reload_qe_parameter_metadata": self._handle_reload_qe_parameter_metadata,
@@ -1457,6 +1459,40 @@ class QVDaemon:
         self._update_logging_level(level)
         
         return {"ok": True, "level": level}
+    
+    def _handle_set_debug_resolution(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Enable or disable resolution/addressing debug logs.
+        
+        Payload:
+            enabled: bool - True to enable, False to disable
+        
+        Returns:
+            {"ok": true, "enabled": bool}
+        """
+        from quantumvitas.core.settings import load_settings, save_settings
+        
+        enabled = payload.get("enabled", False)
+        if not isinstance(enabled, bool):
+            raise ValueError(f"Invalid enabled value: {enabled}. Must be boolean")
+        
+        settings = load_settings()
+        settings.debug_resolution = enabled
+        save_settings(settings)
+        
+        return {"ok": True, "enabled": enabled}
+    
+    def _handle_get_debug_resolution(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get current resolution debug flag state.
+        
+        Returns:
+            {"ok": true, "enabled": bool}
+        """
+        from quantumvitas.core.settings import load_settings
+        
+        settings = load_settings()
+        return {"ok": True, "enabled": settings.debug_resolution}
     
     def _update_logging_level(self, level: str):
         """
@@ -2825,6 +2861,7 @@ class QVDaemon:
         
         return {
             "calculation_id": result.meta.id,
+            "calculation_ulid": result.meta.id,  # Explicit ULID for UI to use
             "name": result.meta.name,
             "slug": result.meta.slug,
             "n_steps": new_wf.get("n_steps", 0) if new_wf else 0,
@@ -2873,14 +2910,67 @@ class QVDaemon:
         
         Payload:
             project_root: str - Path to project root
-            selector: str - Calculation selector
+            calculation: str - Calculation selector (slug/name/ULID, resolved to ULID here)
         """
-        project_root = self._require_path(payload, "project_root")
-        selector = self._require_str(payload, "selector")
+        import logging
+        from quantumvitas.core.resolution import _is_ulid_like
         
+        logger = logging.getLogger(__name__)
+        
+        project_root = self._require_path(payload, "project_root")
+        selector = payload.get("calculation") or payload.get("selector")
+        
+        # Validate selector
+        if not selector:
+            return {
+                "ok": False,
+                "error": {
+                    "code": "invalid_argument",
+                    "message": "calculation selector must be provided"
+                }
+            }
+        
+        if not isinstance(selector, str):
+            return {
+                "ok": False,
+                "error": {
+                    "code": "invalid_argument",
+                    "message": f"calculation selector must be a string, got {type(selector).__name__}"
+                }
+            }
+        
+        selector = selector.strip()
+        if not selector:
+            return {
+                "ok": False,
+                "error": {
+                    "code": "invalid_argument",
+                    "message": "calculation selector must be a non-empty string"
+                }
+            }
+        
+        # Resolve selector to ULID at boundary
+        if _is_ulid_like(selector):
+            calculation_ulid = selector
+        else:
+            try:
+                calculation_resolved = self._resolve_calculation_with_fallback(project_root, selector)
+                calculation_ulid = calculation_resolved.id
+            except Exception as e:
+                return {
+                    "ok": False,
+                    "error": {
+                        "code": "not_found",
+                        "message": f"Calculation not found: {str(e)}"
+                    }
+                }
+        
+        cache = self.state.get_cache(project_root)
         return QVService.can_delete_calculation(
             project_root=project_root,
-            selector=selector,
+            calculation_ulid=calculation_ulid,
+            index=cache.index,
+            config=cache.config,
         )
     
     def _handle_delete_calculation(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -2893,24 +2983,115 @@ class QVDaemon:
             selector: str - Calculation selector (legacy, for backwards compat)
             force: bool - Force delete
         """
+        import logging
+        from quantumvitas.core.resolution import _is_ulid_like
+        
+        logger = logging.getLogger(__name__)
+        
         project_root = self._require_path(payload, "project_root")
         calculation_ulid = payload.get("calculation_ulid")
         selector = payload.get("selector")
         
+        # Validate selector at boundary
         if not calculation_ulid and not selector:
-            raise ValueError("Either calculation_ulid or selector must be provided")
+            return {
+                "ok": False,
+                "error": {
+                    "code": "invalid_argument",
+                    "message": "Either calculation_ulid or selector must be provided"
+                }
+            }
         
-        # Prefer ULID, fallback to selector for backwards compat
-        target = calculation_ulid if calculation_ulid else selector
+        # Validate selector is a non-empty string if provided
+        if selector is not None:
+            if not isinstance(selector, str):
+                logger.warning(
+                    f"[DELETE_CALCULATION] Invalid selector type: {type(selector).__name__}, "
+                    f"expected string. Returning invalid_argument."
+                )
+                return {
+                    "ok": False,
+                    "error": {
+                        "code": "invalid_argument",
+                        "message": f"selector must be a string, got {type(selector).__name__}"
+                    }
+                }
+            selector = selector.strip()
+            if not selector:
+                logger.warning(
+                    "[DELETE_CALCULATION] Empty selector provided. Returning invalid_argument."
+                )
+                return {
+                    "ok": False,
+                    "error": {
+                        "code": "invalid_argument",
+                        "message": "selector must be a non-empty string"
+                    }
+                }
+        
+        # Determine selector type for logging
+        if calculation_ulid:
+            selector_type = "ulid" if _is_ulid_like(calculation_ulid) else "invalid"
+            target_selector = calculation_ulid
+        else:
+            selector_type = "ulid" if _is_ulid_like(selector) else ("slug" if "/" not in selector and "\\" not in selector else "path")
+            target_selector = selector
+        
+        # ALWAYS-ON boundary log
+        logger.info(
+            f"[DELETE_CALCULATION] endpoint=DELETE_CALCULATION "
+            f"selector='{target_selector}' selector_type={selector_type}"
+        )
+        
+        # Resolve selector to ULID at boundary
+        if calculation_ulid:
+            # Already a ULID, validate it
+            from quantumvitas.core.resolution import validate_ulid
+            try:
+                calculation_ulid = validate_ulid(calculation_ulid, kind="calculation")
+            except ValueError as e:
+                return {
+                    "ok": False,
+                    "error": {
+                        "code": "invalid_argument",
+                        "message": str(e)
+                    }
+                }
+        else:
+            # Resolve selector to ULID
+            try:
+                calculation_resolved = self._resolve_calculation_with_fallback(project_root, selector)
+                calculation_ulid = calculation_resolved.id
+                logger.info(
+                    f"[DELETE_CALCULATION] Resolved selector '{selector}' -> ulid={calculation_ulid}"
+                )
+            except Exception as e:
+                return {
+                    "ok": False,
+                    "error": {
+                        "code": "not_found",
+                        "message": f"Calculation not found: {str(e)}"
+                    }
+                }
+        
         force = payload.get("force", False)
         
         # Get calculation name before deletion for response
-        check = QVService.can_delete_calculation(project_root, selector)
-        calculation_name = check.get("calculation_name", selector)
+        try:
+            check = QVService.can_delete_calculation(project_root, calculation_ulid)
+            calculation_name = check.get("calculation_name", calculation_ulid)
+        except Exception as e:
+            return {
+                "ok": False,
+                "error": {
+                    "code": "handler_error",
+                    "message": f"Failed to check calculation: {str(e)}"
+                }
+            }
         
         QVService.delete_calculation(
             project_root=project_root,
-            selector=selector,
+            calculation_ulid=calculation_ulid,
             force=force,
         )
         
@@ -2932,12 +3113,12 @@ class QVDaemon:
         
         GUI → Daemon → Backend API mapping:
         - GUI: StepDetailPanel calls 'get_step_detail' with calculation.slug and step.id (ULID)
-        - Daemon: _handle_get_step_detail() resolves selectors via registry
-        - Backend: QVService.get_step_detail() returns step metadata and parameters
+        - Daemon: _handle_get_step_detail() resolves calculation slug to ULID at boundary
+        - Backend: QVService.get_step_detail() requires calculation_ulid (ULID only)
         
         Payload:
             project_root: str - Path to project root
-            calculation: str - Calculation selector (GUI uses calculation.slug)
+            calculation: str - Calculation selector (GUI uses calculation.slug, resolved to ULID here)
             step: str - Step selector (GUI uses step.id ULID from calculation.steps[])
         
         Returns:
@@ -2949,24 +3130,66 @@ class QVDaemon:
               { ok: False, error: { code: "resource_not_found", kind: "step", ... } }
             - The RPC always resolves (never hangs) - either with data or with an error
         """
+        import logging
+        from quantumvitas.core.resolution import resolve_calculation, validate_ulid, _is_ulid_like
+        from quantumvitas.core.debug import is_resolution_debug_enabled
+        
+        logger = logging.getLogger(__name__)
+        debug_enabled = is_resolution_debug_enabled()
+        
         project_root = self._require_path(payload, "project_root")
-        calculation = self._require_str(payload, "calculation")
+        calculation_selector = self._require_str(payload, "calculation")
         step = self._require_str(payload, "step")
         
-        # Resolve with fallback to ensure cache is up-to-date
-        self._resolve_step_with_fallback(project_root, calculation, step)
+        # Resolve calculation selector to ULID (kind-constrained)
+        # This is the boundary where we accept slug/name but convert to ULID
+        if _is_ulid_like(calculation_selector):
+            calculation_ulid = calculation_selector
+        else:
+            # Resolve slug/name to ULID with kind constraint
+            # ALWAYS log boundary resolves (not gated by debug flag)
+            calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
+            calculation_ulid = calculation_resolved.meta.id
+            # Determine selector type for logging
+            selector_type = "slug" if calculation_selector in [calculation_resolved.meta.slug] else "name"
+            logger.info(
+                f"[BOUNDARY_RESOLVE] endpoint=GET_STEP_DETAIL selector='{calculation_selector}' "
+                f"selector_type={selector_type} expected_kind=calculation "
+                f"resolved_ulid={calculation_ulid} resolved_kind={calculation_resolved.meta.kind} "
+                f"project_root={project_root}"
+            )
+        
+        # Validate calculation_ulid
+        calculation_ulid = validate_ulid(calculation_ulid, kind="calculation")
+        
+        # DEBUG: Log the step identifier provided by UI (gated by debug flag)
+        is_ulid = len(step) == 26 and step.startswith("01")
+        if debug_enabled:
+            logger.info(
+                f"[STEP_DETAIL_RPC] UI provided step identifier: '{step}' "
+                f"(is_ulid={is_ulid}, len={len(step)}, expected_kind=step)"
+            )
+        if not is_ulid:
+            # Always log warnings about non-ULID step identifiers (not gated)
+            import traceback
+            logger.warning(
+                f"[STEP_DETAIL_RPC] WARNING: Step identifier is NOT a ULID! "
+                f"Value='{step}', Type={type(step).__name__}. "
+                f"This may cause slug collision issues. Call stack:\n"
+                f"{''.join(traceback.format_stack()[-5:-1])}"
+            )
         
         # Pass cached index and config to QVService to avoid rebuilding ResourceIndex
         # This eliminates the ~20s delay from duplicate index building
         cache = self.state.get_cache(project_root)
         
-        # CRITICAL: QVService.get_step_detail will raise ResourceNotFoundError
-        # if the step file is missing (ghost step). This is caught by handle_request
-        # and converted to a structured RPC error response with ok=False.
+        # CRITICAL: QVService.get_step_detail now requires calculation_ulid (ULID only)
+        # if the step file is missing (ghost step), QVService.get_step_detail raises ResourceNotFoundError
+        # This is caught by handle_request and converted to a structured RPC error response with ok=False.
         # The RPC always resolves (never hangs) - either with data or with an error.
         return QVService.get_step_detail(
             project_root=project_root,
-            calculation_selector=calculation,
+            calculation_ulid=calculation_ulid,
             step_selector=step,
             index=cache.index,
             config=cache.config,
@@ -2989,14 +3212,23 @@ class QVDaemon:
         parameters = payload.get("parameters", {})
         cards = payload.get("cards")
         
-        # Resolve with fallback to ensure cache is up-to-date
-        self._resolve_step_with_fallback(project_root, calculation, step)
+        # Resolve calculation selector to ULID at boundary
+        import logging
+        from quantumvitas.core.resolution import _is_ulid_like
+        
+        logger = logging.getLogger(__name__)
+        
+        if _is_ulid_like(calculation):
+            calculation_ulid = calculation
+        else:
+            calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation)
+            calculation_ulid = calculation_resolved.id
         
         # Pass cached index and config to avoid rebuilding ResourceIndex
         cache = self.state.get_cache(project_root)
         result = QVService.update_step_params(
             project_root=project_root,
-            calculation_selector=calculation,
+            calculation_ulid=calculation_ulid,
             step_selector=step,
             parameters=parameters,
             cards=cards,
@@ -3014,21 +3246,30 @@ class QVDaemon:
         
         Payload:
             project_root: str - Path to project root
-            calculation: str - Calculation selector
+            calculation: str - Calculation selector (slug/name/ULID, resolved to ULID here)
             step: str - Step selector
-            
-        Returns:
-            Dict with card view models
         """
+        import logging
+        from quantumvitas.core.resolution import _is_ulid_like
+        
+        logger = logging.getLogger(__name__)
+        
         project_root = self._require_path(payload, "project_root")
-        calculation = self._require_str(payload, "calculation")
+        calculation_selector = self._require_str(payload, "calculation")
         step = self._require_str(payload, "step")
+        
+        # Resolve calculation selector to ULID at boundary
+        if _is_ulid_like(calculation_selector):
+            calculation_ulid = calculation_selector
+        else:
+            calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
+            calculation_ulid = calculation_resolved.id
         
         cache = self.state.get_cache(project_root)
         
         return QVService.get_common_cards(
             project_root=project_root,
-            calculation_selector=calculation,
+            calculation_ulid=calculation_ulid,
             step_selector=step,
             index=cache.index,
             config=cache.config,
@@ -3048,19 +3289,31 @@ class QVDaemon:
         Returns:
             Updated step detail dict
         """
+        import logging
+        from quantumvitas.core.resolution import _is_ulid_like
+        
+        logger = logging.getLogger(__name__)
+        
         project_root = self._require_path(payload, "project_root")
-        calculation = self._require_str(payload, "calculation")
+        calculation_selector = self._require_str(payload, "calculation")
         step = self._require_str(payload, "step")
         card_name = self._require_str(payload, "card_name")
         view_model = payload.get("view_model", {})
         if not isinstance(view_model, dict):
             raise ValueError("view_model must be a dict")
         
+        # Resolve calculation selector to ULID at boundary
+        if _is_ulid_like(calculation_selector):
+            calculation_ulid = calculation_selector
+        else:
+            calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
+            calculation_ulid = calculation_resolved.id
+        
         cache = self.state.get_cache(project_root)
         
         return QVService.set_common_card(
             project_root=project_root,
-            calculation_selector=calculation,
+            calculation_ulid=calculation_ulid,
             step_selector=step,
             card_name=card_name,
             view_model=view_model,
@@ -3080,15 +3333,27 @@ class QVDaemon:
         Returns:
             Dict with species, mapping, pseudo_dir, available_pseudos, warnings
         """
+        import logging
+        from quantumvitas.core.resolution import _is_ulid_like
+        
+        logger = logging.getLogger(__name__)
+        
         project_root = self._require_path(payload, "project_root")
-        calculation = self._require_str(payload, "calculation")
+        calculation_selector = self._require_str(payload, "calculation")
         step = self._require_str(payload, "step")
+        
+        # Resolve calculation selector to ULID at boundary
+        if _is_ulid_like(calculation_selector):
+            calculation_ulid = calculation_selector
+        else:
+            calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
+            calculation_ulid = calculation_resolved.id
         
         cache = self.state.get_cache(project_root)
         
         return QVService.get_pseudo_mapping(
             project_root=project_root,
-            calculation_selector=calculation,
+            calculation_ulid=calculation_ulid,
             step_selector=step,
             index=cache.index,
             config=cache.config,
@@ -3108,19 +3373,31 @@ class QVDaemon:
         Returns:
             Updated step detail dict
         """
+        import logging
+        from quantumvitas.core.resolution import _is_ulid_like
+        
+        logger = logging.getLogger(__name__)
+        
         project_root = self._require_path(payload, "project_root")
-        calculation = self._require_str(payload, "calculation")
+        calculation_selector = self._require_str(payload, "calculation")
         step = self._require_str(payload, "step")
         mapping = payload.get("mapping", {})
         if not isinstance(mapping, dict):
             raise ValueError("mapping must be a dict")
         library_preference = payload.get("library_preference")
         
+        # Resolve calculation selector to ULID at boundary
+        if _is_ulid_like(calculation_selector):
+            calculation_ulid = calculation_selector
+        else:
+            calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
+            calculation_ulid = calculation_resolved.id
+        
         cache = self.state.get_cache(project_root)
         
         return QVService.set_pseudo_mapping(
             project_root=project_root,
-            calculation_selector=calculation,
+            calculation_ulid=calculation_ulid,
             step_selector=step,
             mapping=mapping,
             library_preference=library_preference,
@@ -3259,18 +3536,27 @@ class QVDaemon:
             calculation: str - Calculation selector
             step: str - Step selector
         """
+        import logging
+        from quantumvitas.core.resolution import _is_ulid_like
+        
+        logger = logging.getLogger(__name__)
+        
         project_root = self._require_path(payload, "project_root")
-        calculation = self._require_str(payload, "calculation")
+        calculation_selector = self._require_str(payload, "calculation")
         step = self._require_str(payload, "step")
         
-        # Resolve with fallback to ensure cache is up-to-date
-        self._resolve_step_with_fallback(project_root, calculation, step)
+        # Resolve calculation selector to ULID at boundary
+        if _is_ulid_like(calculation_selector):
+            calculation_ulid = calculation_selector
+        else:
+            calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
+            calculation_ulid = calculation_resolved.id
         
         # Pass cached index and config to avoid rebuilding ResourceIndex
         cache = self.state.get_cache(project_root)
         result = QVService.reset_step_params(
             project_root=project_root,
-            calculation_selector=calculation,
+            calculation_ulid=calculation_ulid,
             step_selector=step,
             index=cache.index,
             config=cache.config,
@@ -3758,20 +4044,39 @@ class QVDaemon:
         
         Payload:
             project_root: str - Path to project root
-            calculation: str - Calculation selector (slug or ULID)
+            calculation: str - Calculation selector (slug/name/ULID, resolved to ULID here)
         
         Returns:
             Dict with:
                 footprints: Dict mapping step_file name to footprint data
                     {"1_scf.step.yaml": {"params": {}, "spin": "collinear", ...}}
         """
+        import logging
+        from quantumvitas.core.resolution import _is_ulid_like
         from quantumvitas.presets.integration import get_step_preset_footprints
         
+        logger = logging.getLogger(__name__)
+        
         project_root = self._require_path(payload, "project_root")
-        calculation = self._require_str(payload, "calculation")
+        calculation_selector = self._require_str(payload, "calculation")
+        
+        # Resolve calculation selector to ULID (kind-constrained)
+        if _is_ulid_like(calculation_selector):
+            calculation_ulid = calculation_selector
+        else:
+            # ALWAYS log boundary resolves (not gated by debug flag)
+            resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
+            calculation_ulid = resolved.meta.id
+            selector_type = "slug" if calculation_selector == resolved.meta.slug else "name"
+            logger.info(
+                f"[BOUNDARY_RESOLVE] endpoint=GET_STEP_PRESET_FOOTPRINTS selector='{calculation_selector}' "
+                f"selector_type={selector_type} expected_kind=calculation "
+                f"resolved_ulid={calculation_ulid} resolved_kind={resolved.meta.kind} "
+                f"project_root={project_root}"
+            )
         
         # Resolve calculation with fallback to ensure cache is up-to-date
-        resolved = self._resolve_calculation_with_fallback(project_root, calculation)
+        resolved = self._resolve_calculation_with_fallback(project_root, calculation_ulid)
         # absolute_path points to calculation.yaml, so get the parent directory
         if resolved.absolute_path.name == "calculation.yaml":
             calculation_dir = resolved.absolute_path.parent
@@ -3791,20 +4096,44 @@ class QVDaemon:
         
         Payload:
             project_root: str - Path to project root
-            calculation: str - Calculation selector
+            calculation: str - Calculation selector (slug/name/ULID, resolved to ULID here)
         """
-        project_root = self._require_path(payload, "project_root")
-        calculation = self._require_str(payload, "calculation")
+        import logging
+        from quantumvitas.core.resolution import resolve_calculation, validate_ulid, _is_ulid_like
+        from quantumvitas.core.debug import is_resolution_debug_enabled
         
-        # Resolve with fallback to ensure cache is up-to-date
-        self._resolve_calculation_with_fallback(project_root, calculation)
+        logger = logging.getLogger(__name__)
+        
+        project_root = self._require_path(payload, "project_root")
+        calculation_selector = self._require_str(payload, "calculation")
+        
+        # Resolve calculation selector to ULID (kind-constrained)
+        # This is the boundary where we accept slug/name but convert to ULID
+        if _is_ulid_like(calculation_selector):
+            calculation_ulid = calculation_selector
+        else:
+            # Resolve slug/name to ULID with kind constraint
+            # ALWAYS log boundary resolves (not gated by debug flag)
+            calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
+            calculation_ulid = calculation_resolved.meta.id
+            # Determine selector type for logging
+            selector_type = "slug" if calculation_selector == calculation_resolved.meta.slug else "name"
+            logger.info(
+                f"[BOUNDARY_RESOLVE] endpoint=GET_CALCULATION_DETAIL selector='{calculation_selector}' "
+                f"selector_type={selector_type} expected_kind=calculation "
+                f"resolved_ulid={calculation_ulid} resolved_kind={calculation_resolved.meta.kind} "
+                f"project_root={project_root}"
+            )
+        
+        # Validate calculation_ulid
+        calculation_ulid = validate_ulid(calculation_ulid, kind="calculation")
         
         # Pass cached index and config to QVService to avoid rebuilding ResourceIndex
         # This eliminates the ~20s delay from duplicate index building
         cache = self.state.get_cache(project_root)
         return QVService.get_calculation_detail(
             project_root=project_root,
-            calculation_selector=calculation,
+            calculation_ulid=calculation_ulid,
             index=cache.index,
             config=cache.config,
         )
@@ -3885,19 +4214,28 @@ class QVDaemon:
             input_file: str - Path to QE input file (.in)
             step_name: str - Optional name for the new step (defaults to input file stem)
         """
+        import logging
+        from quantumvitas.core.resolution import _is_ulid_like
+        
+        logger = logging.getLogger(__name__)
+        
         project_root = self._require_path(payload, "project_root")
-        calculation = self._require_str(payload, "calculation")
+        calculation_selector = self._require_str(payload, "calculation")
         input_file = self._require_path(payload, "input_file")
         step_name = payload.get("step_name")
         
-        # Resolve with fallback to ensure cache is up-to-date
-        self._resolve_calculation_with_fallback(project_root, calculation)
+        # Resolve calculation selector to ULID at boundary
+        if _is_ulid_like(calculation_selector):
+            calculation_ulid = calculation_selector
+        else:
+            calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
+            calculation_ulid = calculation_resolved.id
         
         # Pass cached index and config to avoid rebuilding ResourceIndex
         cache = self.state.get_cache(project_root)
         result = QVService.import_step_from_qe_input(
             project_root=project_root,
-            calculation_selector=calculation,
+            calculation_ulid=calculation_ulid,
             input_file=input_file,
             step_name=step_name,
             index=cache.index,
@@ -3914,30 +4252,109 @@ class QVDaemon:
         
         Payload:
             project_root: str - Path to project root
-            calculation: str - Calculation selector
-            new_structure: str - New structure selector
+            calculation: str - Calculation selector (slug/name/ULID, resolved to ULID here)
+            new_structure: str - New structure selector (slug/name/ULID, resolved to ULID here)
             update_steps: bool - Whether to update step structure fields (default True)
         """
+        import logging
+        from quantumvitas.core.resolution import resolve_structure, _is_ulid_like, _is_path_like
+        
+        logger = logging.getLogger(__name__)
+        
         project_root = self._require_path(payload, "project_root")
-        calculation = self._require_str(payload, "calculation")
-        new_structure = self._require_str(payload, "new_structure")
+        calculation_selector = self._require_str(payload, "calculation")
+        structure_selector = self._require_str(payload, "new_structure")
         update_steps = payload.get("update_steps", True)
         
-        # Resolve with fallback to ensure cache is up-to-date
-        self._resolve_calculation_with_fallback(project_root, calculation)
+        # Log UI-provided identifiers
+        logger.info(
+            f"[CHANGE_CALC_STRUCTURE_RPC] UI provided calculation selector: '{calculation_selector}' "
+            f"(is_ulid={_is_ulid_like(calculation_selector)})"
+        )
+        logger.info(
+            f"[CHANGE_CALC_STRUCTURE_RPC] UI provided structure selector: '{structure_selector}' "
+            f"(is_ulid={_is_ulid_like(structure_selector)})"
+        )
         
-        # Pass cached index and config to avoid rebuilding ResourceIndex
+        # Warn if non-ULID selectors are provided
+        if not _is_ulid_like(calculation_selector):
+            logger.warning(
+                f"[CHANGE_CALC_STRUCTURE_RPC] WARNING: Non-ULID calculation selector '{calculation_selector}' "
+                f"provided by UI. Resolving to ULID at RPC boundary."
+            )
+        if not _is_ulid_like(structure_selector):
+            logger.warning(
+                f"[CHANGE_CALC_STRUCTURE_RPC] WARNING: Non-ULID structure selector '{structure_selector}' "
+                f"provided by UI. Resolving to ULID at RPC boundary."
+            )
+        
+        # Resolve calculation selector to ULID at RPC boundary
+        calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
+        calculation_ulid = calculation_resolved.id
+        
+        logger.info(
+            f"[CHANGE_CALC_STRUCTURE_RPC] Resolved calculation: selector='{calculation_selector}' -> "
+            f"ulid={calculation_ulid}, kind={calculation_resolved.meta.kind}"
+        )
+        
+        # Validate structure selector is not project_root
+        from pathlib import Path as PathLib
+        project_root_path = PathLib(project_root).resolve()
+        # Check if selector is a path that equals project_root
+        if _is_path_like(structure_selector):
+            try:
+                structure_selector_path = PathLib(structure_selector).resolve()
+                if structure_selector_path == project_root_path:
+                    raise ValueError(
+                        f"Invalid structure selector: '{structure_selector}' is the project root path. "
+                        f"Please provide a valid structure selector (ULID, slug, or name)."
+                    )
+            except (OSError, ValueError) as e:
+                # If it's our validation error, re-raise it
+                if "project root path" in str(e):
+                    raise
+                # Otherwise, it's not a valid path, continue with normal resolution
+                pass
+        
+        # Resolve structure selector to ULID at RPC boundary
         cache = self.state.get_cache(project_root)
+        try:
+            structure_resolved = resolve_structure(
+                project_root,
+                structure_selector,
+                config=cache.config,
+                index=cache.index,
+            )
+        except Exception as e:
+            # Check if error is due to project_root being passed as selector
+            error_msg = str(e).lower()
+            try:
+                if PathLib(structure_selector).resolve() == project_root_path:
+                    raise ValueError(
+                        f"Invalid structure selector: '{structure_selector}' is the project root path. "
+                        f"Please provide a valid structure selector (ULID, slug, or name)."
+                    ) from e
+            except (ValueError, OSError):
+                # Not a path, re-raise original error
+                pass
+            raise
+        
+        structure_ulid = structure_resolved.id
+        
+        logger.info(
+            f"[CHANGE_CALC_STRUCTURE_RPC] Resolved structure: selector='{structure_selector}' -> "
+            f"ulid={structure_ulid}, kind={structure_resolved.meta.kind}"
+        )
+        
+        # Pass ULIDs to core service (core service requires ULID only)
         result = QVService.change_calculation_structure(
             project_root=project_root,
-            calculation_selector=calculation,
-            new_structure=new_structure,
+            calculation_ulid=calculation_ulid,
+            new_structure_ulid=structure_ulid,
             update_steps=update_steps,
             index=cache.index,
             config=cache.config,
         )
-        
-        # Reorder doesn't change registry (only changes step order in calculation.yaml)
         
         return result
     
@@ -3947,22 +4364,47 @@ class QVDaemon:
         
         Payload:
             project_root: str - Path to project root
-            calculation: str - Calculation selector
+            calculation: str - Calculation selector (slug/name/ULID, resolved to ULID here)
             
         Returns:
             Dict with species, mapping, species_map, available_pseudos, warnings, sssp_defaults
         """
-        project_root = self._require_path(payload, "project_root")
-        calculation = self._require_str(payload, "calculation")
+        import logging
+        from quantumvitas.core.resolution import resolve_calculation, validate_ulid, _is_ulid_like
+        from quantumvitas.core.debug import is_resolution_debug_enabled
         
-        # Resolve with fallback to ensure cache is up-to-date
-        self._resolve_calculation_with_fallback(project_root, calculation)
+        logger = logging.getLogger(__name__)
+        debug_enabled = is_resolution_debug_enabled()
+        
+        project_root = self._require_path(payload, "project_root")
+        calculation_selector = self._require_str(payload, "calculation")
+        
+        # Resolve calculation selector to ULID (kind-constrained)
+        # This is the boundary where we accept slug/name but convert to ULID
+        if _is_ulid_like(calculation_selector):
+            calculation_ulid = calculation_selector
+        else:
+            # Resolve slug/name to ULID with kind constraint
+            # ALWAYS log boundary resolves (not gated by debug flag)
+            calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
+            calculation_ulid = calculation_resolved.meta.id
+            # Determine selector type for logging
+            selector_type = "slug" if calculation_selector == calculation_resolved.meta.slug else "name"
+            logger.info(
+                f"[BOUNDARY_RESOLVE] endpoint=GET_CALCULATION_PSEUDO_MAPPING selector='{calculation_selector}' "
+                f"selector_type={selector_type} expected_kind=calculation "
+                f"resolved_ulid={calculation_ulid} resolved_kind={calculation_resolved.meta.kind} "
+                f"project_root={project_root}"
+            )
+        
+        # Validate calculation_ulid
+        calculation_ulid = validate_ulid(calculation_ulid, kind="calculation")
         
         # Pass cached index and config
         cache = self.state.get_cache(project_root)
         return QVService.get_calculation_pseudo_mapping(
             project_root=project_root,
-            calculation_selector=calculation,
+            calculation_ulid=calculation_ulid,
             index=cache.index,
             config=cache.config,
         )
@@ -5163,11 +5605,11 @@ class QVDaemon:
     
     def _handle_detect_workflow_for_calculation(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Detect workflow for a calculation by ULID and return match + issues.
+        Detect workflow for a calculation and return match + issues.
         
         Payload:
             project_root: str - Path to project root
-            calculation_ulid: str - Calculation ULID
+            calculation: str - Calculation selector (slug/name/ULID, resolved to ULID here)
             
         Returns:
             Dict with:
@@ -5177,12 +5619,46 @@ class QVDaemon:
                 missing_step_types: list[str] - Missing required step types
                 issues: list[dict] - List of issues with "code" and "message"
         """
+        import logging
+        from quantumvitas.core.resolution import _is_ulid_like
         from quantumvitas.workflow.templates import get_workflow_service
         
-        project_root = self._require_path(payload, "project_root")
-        calculation_ulid = self._require_str(payload, "calculation_ulid")
+        logger = logging.getLogger(__name__)
         
-        # Resolve calculation by ULID
+        project_root = self._require_path(payload, "project_root")
+        # Accept both calculation_ulid (preferred) and calculation (legacy selector)
+        calculation_ulid_param = payload.get("calculation_ulid")
+        calculation_selector = payload.get("calculation")
+        
+        # Determine selector and type for logging
+        if calculation_ulid_param:
+            calculation_selector = calculation_ulid_param
+            selector_type = "ulid" if _is_ulid_like(calculation_selector) else "invalid"
+        elif calculation_selector:
+            selector_type = "ulid" if _is_ulid_like(calculation_selector) else ("slug" if "/" not in calculation_selector and "\\" not in calculation_selector else "path")
+        else:
+            return {
+                "ok": False,
+                "error": {
+                    "code": "invalid_argument",
+                    "message": "Either calculation_ulid or calculation must be provided"
+                }
+            }
+        
+        # Resolve calculation selector to ULID (kind-constrained)
+        if _is_ulid_like(calculation_selector):
+            calculation_ulid = calculation_selector
+        else:
+            # ALWAYS log boundary resolves (not gated by debug flag)
+            resolved = self._resolve_calculation_with_fallback(project_root, calculation_selector)
+            calculation_ulid = resolved.meta.id
+            logger.info(
+                f"[DETECT_WORKFLOW] endpoint=DETECT_WORKFLOW_FOR_CALCULATION "
+                f"selector='{calculation_selector}' selector_type={selector_type} "
+                f"resolved_ulid={calculation_ulid}"
+            )
+        
+        # Resolve calculation by ULID (for path resolution)
         resolved = self._resolve_calculation_with_fallback(project_root, calculation_ulid)
         if resolved.absolute_path.name == "calculation.yaml":
             calculation_dir = resolved.absolute_path.parent
@@ -5216,6 +5692,14 @@ class QVDaemon:
         
         present_count = len(match.present_steps)
         
+        # Build workflow label (e.g., "DOS (3/3)" or "Bands (2/3)")
+        if match.workflow_id and required_count > 0:
+            workflow_label = f"{match.workflow_name} ({present_count}/{required_count})"
+        elif match.workflow_id:
+            workflow_label = f"{match.workflow_name} ({present_count} steps)"
+        else:
+            workflow_label = "Unknown"
+        
         # Convert issues to simple dict format
         issues_list = [
             {
@@ -5229,10 +5713,12 @@ class QVDaemon:
         return {
             "workflow_id": match.workflow_id,
             "workflow_name": match.workflow_name,
+            "workflow_label": workflow_label,
             "coverage": {
                 "present": present_count,
                 "required": required_count,
             },
+            "present_steps": match.present_steps,
             "missing_step_types": match.missing_steps,
             "issues": issues_list,
         }

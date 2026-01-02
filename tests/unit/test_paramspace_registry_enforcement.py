@@ -34,6 +34,7 @@ EXPECTED_DIMENSIONS = [
     "occupations_scheme",
     "magnetism",
     "precision",
+    "convergence",
 ]
 
 

@@ -276,38 +276,143 @@ class ResourceIndex:
             if resource_id not in self.by_name[new_name_lower]:
                 self.by_name[new_name_lower].append(resource_id)
     
-    def resolve_id(self, selector: str, project_root: Path) -> Optional[str]:
+    def resolve_id(
+        self, 
+        selector: str, 
+        project_root: Path,
+        expected_kind: Optional[str] = None,
+    ) -> Optional[str]:
         """
         Resolve a selector to a resource ID.
         
         Resolution order:
         1. ULID (if selector is a ULID)
-        2. slug (exact match)
-        3. name (case-insensitive exact match)
+        2. slug (exact match, filtered by expected_kind if provided)
+        3. name (case-insensitive exact match, filtered by expected_kind if provided)
         4. path (if selector looks like a path)
+        
+        Args:
+            selector: Selector string (ULID, slug, name, or path)
+            project_root: Project root path
+            expected_kind: Optional resource kind to filter by ("calculation", "step", "structure", "project")
+                          If provided, only resources of this kind will be returned.
+                          If multiple matches of expected_kind exist, raises AmbiguousSelectorError.
         
         Returns:
             Resource ID (ULID) if found, None otherwise
+            
+        Raises:
+            AmbiguousSelectorError: If expected_kind is provided and multiple resources of that kind match
         """
+        import logging
+        from quantumvitas.core.debug import is_resolution_debug_enabled
+        
+        logger = logging.getLogger(__name__)
+        debug_enabled = is_resolution_debug_enabled()
+        
         # Strategy 1: ULID
         if _is_ulid_like(selector):
             if selector in self.by_id:
+                meta = self.by_id[selector]
+                # If expected_kind is provided, verify it matches
+                if expected_kind and meta.kind != expected_kind:
+                    # Always log warnings (not gated by debug flag)
+                    logger.warning(
+                        f"[RESOLVE_ID] ULID '{selector}' resolved to kind '{meta.kind}', "
+                        f"but expected_kind='{expected_kind}'. Returning None."
+                    )
+                    return None
+                if debug_enabled:
+                    logger.debug(
+                        f"[RESOLVE_ID] Resolved by ULID: '{selector}' -> {selector} "
+                        f"(kind={meta.kind}, expected_kind={expected_kind})"
+                    )
                 return selector
+            else:
+                if debug_enabled:
+                    logger.debug(f"[RESOLVE_ID] ULID '{selector}' not found in by_id index")
         
-        # Strategy 2: slug (exact match)
+        # Strategy 2: slug (exact match, filtered by expected_kind)
         if selector in self.by_slug:
-            return self.by_slug[selector]
+            resource_id = self.by_slug[selector]
+            meta = self.by_id.get(resource_id)
+            if meta:
+                # If expected_kind is provided, filter by kind
+                if expected_kind:
+                    if meta.kind != expected_kind:
+                        if debug_enabled:
+                            logger.debug(
+                                f"[RESOLVE_ID] Slug '{selector}' resolved to kind '{meta.kind}', "
+                                f"but expected_kind='{expected_kind}'. Skipping."
+                            )
+                    else:
+                        if debug_enabled:
+                            logger.info(
+                                f"[RESOLVE_ID] Resolved by SLUG: '{selector}' -> {resource_id} "
+                                f"(kind={meta.kind}, expected_kind={expected_kind}, name={meta.name})"
+                            )
+                        return resource_id
+                else:
+                    if debug_enabled:
+                        logger.info(
+                            f"[RESOLVE_ID] Resolved by SLUG: '{selector}' -> {resource_id} "
+                            f"(kind={meta.kind}, name={meta.name})"
+                        )
+                    return resource_id
         
-        # Strategy 3: name (case-insensitive exact match)
+        # Strategy 3: name (case-insensitive exact match, filtered by expected_kind)
         name_lower = selector.lower()
         if name_lower in self.by_name:
             ids = self.by_name[name_lower]
-            if len(ids) == 1:
-                return ids[0]
-            elif len(ids) > 1:
-                # Ambiguous - multiple resources with same name
-                # For now, return None (caller should handle ambiguity)
-                return None
+            
+            # Filter by expected_kind if provided
+            if expected_kind:
+                matching_ids = [
+                    id for id in ids 
+                    if self.by_id.get(id) and self.by_id[id].kind == expected_kind
+                ]
+                if len(matching_ids) > 1:
+                    # Ambiguous - multiple resources of expected_kind with same name
+                    raise AmbiguousSelectorError(
+                        f"Name '{selector}' matches {len(matching_ids)} {expected_kind} resources: "
+                        f"{matching_ids}. Please use ULID or slug to disambiguate."
+                    )
+                elif len(matching_ids) == 1:
+                    resource_id = matching_ids[0]
+                    meta = self.by_id.get(resource_id)
+                    if debug_enabled:
+                        logger.info(
+                            f"[RESOLVE_ID] Resolved by NAME: '{selector}' -> {resource_id} "
+                            f"(kind={meta.kind if meta else 'unknown'}, expected_kind={expected_kind})"
+                        )
+                    return resource_id
+                else:
+                    # No matches of expected_kind
+                    if debug_enabled:
+                        logger.debug(
+                            f"[RESOLVE_ID] Name '{selector}' matches {len(ids)} resources, "
+                            f"but none are of expected_kind='{expected_kind}'"
+                        )
+                    return None
+            else:
+                # No expected_kind filter
+                if len(ids) == 1:
+                    resource_id = ids[0]
+                    meta = self.by_id.get(resource_id)
+                    if debug_enabled:
+                        logger.info(
+                            f"[RESOLVE_ID] Resolved by NAME: '{selector}' -> {resource_id} "
+                            f"(kind={meta.kind if meta else 'unknown'})"
+                        )
+                    return resource_id
+                elif len(ids) > 1:
+                    # Ambiguous - multiple resources with same name
+                    # Always log warnings (not gated by debug flag)
+                    logger.warning(
+                        f"[RESOLVE_ID] Ambiguous name match: '{selector}' matches {len(ids)} resources: {ids}"
+                    )
+                    # For now, return None (caller should handle ambiguity)
+                    return None
         
         # Strategy 4: path
         if _is_path_like(selector):
@@ -315,8 +420,28 @@ class ResourceIndex:
             if not path.is_absolute():
                 path = (project_root / path).resolve()
             if path in self.by_path:
-                return self.by_path[path]
+                resource_id = self.by_path[path]
+                meta = self.by_id.get(resource_id)
+                # If expected_kind is provided, verify it matches
+                if expected_kind and meta and meta.kind != expected_kind:
+                    if debug_enabled:
+                        logger.debug(
+                            f"[RESOLVE_ID] Path '{selector}' resolved to kind '{meta.kind}', "
+                            f"but expected_kind='{expected_kind}'. Returning None."
+                        )
+                    return None
+                if debug_enabled:
+                    logger.info(
+                        f"[RESOLVE_ID] Resolved by PATH: '{selector}' -> {resource_id} "
+                        f"(kind={meta.kind if meta else 'unknown'}, expected_kind={expected_kind})"
+                    )
+                return resource_id
         
+        if debug_enabled:
+            logger.debug(
+                f"[RESOLVE_ID] No match found for selector: '{selector}' "
+                f"(expected_kind={expected_kind})"
+            )
         return None
 
 
@@ -354,6 +479,29 @@ def _is_ulid_like(s: str) -> bool:
     if len(s) != 26:
         return False
     return s.isalnum() and s.isupper()
+
+
+def validate_ulid(ulid_str: str, kind: str = "resource") -> str:
+    """
+    Validate that a string is a valid ULID.
+    
+    Args:
+        ulid_str: String to validate
+        kind: Resource kind for error message (e.g., "calculation", "step")
+        
+    Returns:
+        The ULID string if valid
+        
+    Raises:
+        ValueError: If the string is not a valid ULID
+    """
+    if not _is_ulid_like(ulid_str):
+        raise ValueError(
+            f"Invalid {kind} identifier: '{ulid_str}' is not a ULID. "
+            f"Expected 26-character ULID (e.g., '01ABCDEFGHIJKLMNOPQRSTUVWX'). "
+            f"Please resolve slug/name to ULID first using resolve_calculation() or similar."
+        )
+    return ulid_str
 
 
 def _is_path_like(s: str) -> bool:
@@ -953,12 +1101,13 @@ def resolve_calculation(
     
     selector = selector.strip()
     
-    # Try to resolve via ResourceIndex first
-    resource_id = index.resolve_id(selector, project_root)
+    # Try to resolve via ResourceIndex first (with expected_kind filter)
+    resource_id = index.resolve_id(selector, project_root, expected_kind="calculation")
     if resource_id:
         # Found in index - get meta and build ResolvedResource
         meta = index.by_id[resource_id]
         if meta.kind != "calculation":
+            # Should not happen with expected_kind filter, but defensive check
             raise SelectorNotFoundError(f"Resource '{selector}' is not a calculation (kind: {meta.kind})")
         
         # Find absolute path (calculation directory)
@@ -1146,15 +1295,37 @@ def resolve_step(
     if index is None:
         index = build_resource_index(project_root)
     
+    import logging
+    from quantumvitas.core.debug import is_resolution_debug_enabled
+    
+    logger = logging.getLogger(__name__)
+    debug_enabled = is_resolution_debug_enabled()
+    
+    if debug_enabled:
+        logger.info(
+            f"[RESOLVE_STEP] Resolving step: selector='{step_selector}', "
+            f"calculation='{calculation_selector}', project_root={project_root}"
+        )
+    
     # Strategy 1: Try ResourceIndex first (preferred)
-    resource_id = index.resolve_id(step_selector, project_root)
+    # Use expected_kind="step" to prevent slug collisions with calculations/structures
+    resource_id = index.resolve_id(step_selector, project_root, expected_kind="step")
     if resource_id:
         meta = index.by_id.get(resource_id)
+        if debug_enabled:
+            logger.info(
+                f"[RESOLVE_STEP] ResourceIndex resolved: selector='{step_selector}' -> "
+                f"resource_id={resource_id}, kind={meta.kind if meta else 'unknown'}, "
+                f"slug={meta.slug if meta else 'unknown'}, name={meta.name if meta else 'unknown'}, "
+                f"expected_kind=step"
+            )
         if meta and meta.kind == "step":
             # Verify this step belongs to the calculation
             # Check if step path is within calculation directory
-            step_path = project_root / meta.path
-            if step_path.is_relative_to(calculation_dir):
+            # NOTE: meta.path is used ONLY for verification (belongs-to check), NOT for resolution
+            # Resolution happens via ResourceIndex.resolve_id() above, which uses ULID/slug/name/path selectors
+            step_path = project_root / meta.path if meta.path else None
+            if step_path and step_path.is_relative_to(calculation_dir):
                 # Find absolute path
                 abs_path = None
                 for path, path_id in index.by_path.items():
@@ -1163,7 +1334,24 @@ def resolve_step(
                         break
                 
                 if abs_path is None:
-                    abs_path = step_path.resolve()
+                    # Fallback: construct from meta.path (display-only, should not be used for resolution)
+                    if step_path:
+                        abs_path = step_path.resolve()
+                    else:
+                        logger.error(
+                            f"[RESOLVE_STEP] ERROR: Cannot construct step path - meta.path is missing. "
+                            f"step_id={resource_id}, slug={meta.slug}"
+                        )
+                        raise SelectorNotFoundError(
+                            f"Step '{step_selector}' resolved but meta.path is missing. "
+                            f"This is a data integrity issue."
+                        )
+                
+                if debug_enabled:
+                    logger.info(
+                        f"[RESOLVE_STEP] Step resolved successfully: "
+                        f"id={resource_id}, slug={meta.slug}, path={abs_path}"
+                    )
                 
                 # CRITICAL: Verify the file actually exists on disk
                 # If registry says it exists but file is missing, raise RegistryOutOfSyncError
@@ -1189,6 +1377,16 @@ def resolve_step(
                     entry_data = {}
                 
                 return ResolvedResource(meta=meta, entry=entry_data, absolute_path=abs_path)
+        else:
+            # Resource found but wrong kind (should not happen with expected_kind filter)
+            kind_str = meta.kind if meta else "unknown"
+            # Always log errors (not gated by debug flag)
+            logger.error(
+                f"[RESOLVE_STEP] ERROR: Resource '{step_selector}' resolved to "
+                f"kind='{kind_str}', expected='step'. "
+                f"This should not happen when expected_kind='step' is used. "
+                f"This indicates a bug in resolve_id() filtering."
+            )
     
     # Strategy 2: Path (fallback for backwards compat)
     if _is_path_like(step_selector):

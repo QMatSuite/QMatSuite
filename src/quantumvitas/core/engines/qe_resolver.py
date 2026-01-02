@@ -152,20 +152,38 @@ def resolve_qe_bin_dir(settings=None) -> Path:
     if settings is None:
         settings = load_settings()
     
+    # ALWAYS-ON log: QE resolution attempt
+    logger.info(
+        f"[QE_INIT] Resolving QE bin directory: "
+        f"settings.qe.bin_dir={settings.qe.bin_dir}, "
+        f"source={'provided' if settings is not None else 'loaded'}"
+    )
+    
     # State 1: External QE (settings.qe.bin_dir is set)
     if settings.qe.bin_dir:
         bin_dir = Path(settings.qe.bin_dir).resolve()
         validate_qe_bin_dir(bin_dir)
-        logger.debug(f"Using external QE bin directory: {bin_dir}")
+        logger.info(
+            f"[QE_STATE] source=settings_disk qe_bin_dir={bin_dir} "
+            f"mode=external executables_found={list(bin_dir.glob('*.x'))}"
+        )
         return bin_dir
     
     # State 2: Internal QE (auto-select from .qmatsuite/engines/qe/**/bin)
     internal_bin_dir = find_internal_qe_bin_dir()
     if internal_bin_dir:
-        logger.debug(f"Using internal QE bin directory: {internal_bin_dir}")
+        executables = [f.name for f in internal_bin_dir.glob("*.x") if f.is_file()]
+        logger.info(
+            f"[QE_STATE] source=internal_scan qe_bin_dir={internal_bin_dir} "
+            f"mode=internal executables_found={executables}"
+        )
         return internal_bin_dir
     
     # No QE found
+    logger.warning(
+        f"[QE_STATE] source=none qe_bin_dir=None mode=None "
+        f"error='No internal QE found under .qmatsuite/engines/qe/**/bin'"
+    )
     raise RuntimeError(
         "No internal QE found under .qmatsuite/engines/qe/**/bin.\n"
         "Install internal QE or set qe.bin_dir to an external QE bin directory in Settings."
