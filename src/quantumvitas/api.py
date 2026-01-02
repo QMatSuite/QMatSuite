@@ -4816,7 +4816,6 @@ class QVService:
         save_step_doc(step_doc, import_result.spec_path)
         
         # Add step to calculation model using step_id (ULID) from step spec meta
-        rel_step_path = spec_path.relative_to(calculation_dir)
         # step_file is NOT stored - step location resolved via registry using step_id
         wf_model.steps.append(CalculationStepEntry(
             step_id=spec.meta.id,  # Use ULID from step spec meta (canonical reference)
@@ -4841,7 +4840,7 @@ class QVService:
         # Update registry in-place (add step, do NOT rebuild)
         if index is not None:
             from quantumvitas.core.resolution import update_registry_add_step
-            update_registry_add_step(index, spec.meta, spec_path)
+            update_registry_add_step(index, spec.meta, import_result.spec_path)
             # Also add structure if it was newly imported
             if structure_id_value and not structure_id_value in [m.id for m in index.by_id.values() if m.kind == "structure"]:
                 from quantumvitas.core.resolution import update_registry_add_structure

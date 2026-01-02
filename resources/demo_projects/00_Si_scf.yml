@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KDPDXRTFXQQRSQ1QZ0JZ0V60
+    id: 01KE005V9AAAYA20DK7CSFH44R
     name: 00_Si_scf
     slug: 00_si_scf
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KDPDXRTTMG00KRWGMPBRQ616
+    id: 01KE005V9S42YNKEEW5R69RNG9
     name: si.scf
     slug: si-scf
     path: structures/si-scf.json
@@ -17,7 +17,7 @@ structures:
   data:
     '@module': pymatgen.core.structure
     '@class': Structure
-    charge: 0.0
+    charge: 0
     lattice:
       matrix:
       - - -2.698803775692
@@ -70,7 +70,7 @@ structures:
       - 1.3494018878460001
 calculations:
 - meta:
-    id: 01KDPDXRTJ59KJGH4RWGN9GB5V
+    id: 01KE005V9CS1R0JGH1APBRQJYD
     name: Si Scf
     slug: si-scf
     path: calculations/si-scf
@@ -79,7 +79,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KDPDXRTQY79ZXZVZ55GRWY1A
+      id: 01KE005V9NBQKACMSTJ9B5VFY6
       name: si.scf
       slug: si-scf
       path: si.scf.step.yaml
@@ -107,7 +107,7 @@ calculations:
       Si:
         mass: 28.086
         pseudopot: Si.pz-vbc.UPF
-  structure_id: 01KDPDXRTGEV7VVWF3FR8E8BM6
+  structure_id: 01KE005V9B0TRJT5EJD2T16841
   species_map:
     Si:
       mass: 28.086

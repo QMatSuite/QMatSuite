@@ -21,6 +21,10 @@ class StepType(str, Enum):
     PROJWFC = "projwfc"
     RELAX = "relax"            # pw.x calculation with calculation='relax'
     VC_RELAX = "vc-relax"      # pw.x calculation with calculation='vc-relax'
+    # Wannier90 step types
+    W90_PREPROC = "w90_preproc"      # wannier90.x -pp (generate .nnkp)
+    PW2WANNIER90 = "pw2wannier90"    # pw2wannier90.x (compute overlaps)
+    W90_RUN = "w90_run"              # wannier90.x (main MLWF optimization)
     CUSTOM = "custom"
 
 
