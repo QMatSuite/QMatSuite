@@ -529,11 +529,16 @@
   flex: 1;
   padding: var(--space-4) var(--space-5);
   overflow-y: auto;
+  /* Ensure bottom padding is visible */
+  padding-bottom: var(--space-6);
+  box-sizing: border-box;
 }
 
 /* When inside a scroll container, remove internal scroll */
 .calculation-overview-tab__scroll-container .calculation-detail-panel .panel-content {
   overflow-y: visible;
+  /* Ensure content doesn't get clipped at bottom */
+  min-height: fit-content;
 }
 
 /* Section Headers */
@@ -542,7 +547,7 @@
 }
 
 .detail-section:last-child {
-  margin-bottom: 0;
+  margin-bottom: var(--space-4); /* Keep some bottom margin for last section to prevent clipping */
 }
 
 /* MetaForm: 2×2 form layout with aligned value column */

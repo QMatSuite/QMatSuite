@@ -260,11 +260,16 @@ class TestQVServiceCalculation:
     
     def test_delete_calculation(self, project):
         """Delete a calculation."""
-        QVService.init_calculation(project, "To Delete")
-        QVService.delete_calculation(project, "to-delete")
+        # Create calculation and get its ULID
+        calc_resource = QVService.init_calculation(project, "To Delete")
+        calculation_ulid = calc_resource.id
         
+        # Delete using ULID (core service requires ULID)
+        QVService.delete_calculation(project, calculation_ulid)
+        
+        # Verify deletion: get_calculation should raise error
         with pytest.raises(SelectorNotFoundError):
-            QVService.get_calculation(project, "to-delete")
+            QVService.get_calculation(project, calculation_ulid)
 
 
 class TestQVServiceStep:

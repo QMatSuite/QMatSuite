@@ -189,29 +189,39 @@ def _scan_pseudo_dir_cached(
     Cache key includes mtime and size to invalidate on changes.
     Returns tuple of (file_path, sha256, basename) tuples.
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
     pseudo_dir = Path(dir_path)
     if not pseudo_dir.exists():
+        logger.info(f"[PSEUDO_SCAN] Directory does not exist: {pseudo_dir}")
         return ()
     
+    logger.info(f"[PSEUDO_SCAN] Scanning directory: {pseudo_dir}")
     results = []
-    for pseudo_file in pseudo_dir.glob("*.UPF"):
-        if not pseudo_file.is_file():
-            continue
-        try:
-            sha256 = compute_sha256_file(pseudo_file)
-            results.append((str(pseudo_file), sha256, pseudo_file.name))
-        except Exception:
-            continue
     
-    for pseudo_file in pseudo_dir.glob("*.upf"):
-        if not pseudo_file.is_file():
-            continue
-        try:
-            sha256 = compute_sha256_file(pseudo_file)
-            results.append((str(pseudo_file), sha256, pseudo_file.name))
-        except Exception:
-            continue
+    # Scan case-insensitively: check both .UPF and .upf patterns
+    # Also check for any case variation
+    found_files = set()
+    for pattern in ["*.UPF", "*.upf", "*.Upf", "*.uPf", "*.upF", "*.UPf", "*.uPF", "*.UpF"]:
+        for pseudo_file in pseudo_dir.glob(pattern):
+            if not pseudo_file.is_file():
+                continue
+            # Avoid duplicates (case-insensitive matching)
+            if pseudo_file.name.lower() in found_files:
+                continue
+            found_files.add(pseudo_file.name.lower())
+            try:
+                sha256 = compute_sha256_file(pseudo_file)
+                results.append((str(pseudo_file), sha256, pseudo_file.name))
+            except Exception as e:
+                logger.warning(f"[PSEUDO_SCAN] Failed to compute SHA256 for {pseudo_file}: {e}")
+                continue
     
+    logger.info(
+        f"[PSEUDO_SCAN] Found {len(results)} pseudo files in {pseudo_dir}: "
+        f"{[r[2] for r in results]}"
+    )
     return tuple(results)
 
 
@@ -245,9 +255,17 @@ def get_pseudo_options_for_elements(
     if config is None:
         config = load_pseudo_config()
     
+    import logging
+    logger = logging.getLogger(__name__)
+    
     project_root = Path(project_root).resolve()
     project_pseudo_dir = project_root / "pseudo"
     internal_pseudo_dir = get_system_pseudo_dir()
+    
+    logger.info(
+        f"[PSEUDO_SCAN] Starting scan: project_pseudo_dir={project_pseudo_dir}, "
+        f"internal_pseudo_dir={internal_pseudo_dir}, elements={elements}"
+    )
     
     # Load bundle and build indices
     bundle = load_pseudo_libinfo_bundle()
@@ -402,11 +420,17 @@ def get_pseudo_options_for_elements(
     
     # Scan internal pseudos
     if internal_pseudo_dir and internal_pseudo_dir.exists():
-        # Scan both .UPF and .upf files
-        for pattern in ["*.UPF", "*.upf"]:
+        logger.info(f"[PSEUDO_SCAN] Scanning internal pseudo directory: {internal_pseudo_dir}")
+        found_files = set()
+        # Scan case-insensitively: check all case variations
+        for pattern in ["*.UPF", "*.upf", "*.Upf", "*.uPf", "*.upF", "*.UPf", "*.uPF", "*.UpF"]:
             for pseudo_file in internal_pseudo_dir.glob(pattern):
                 if not pseudo_file.is_file():
                     continue
+                # Avoid duplicates (case-insensitive matching)
+                if pseudo_file.name.lower() in found_files:
+                    continue
+                found_files.add(pseudo_file.name.lower())
                 
                 try:
                     sha256 = compute_sha256_file(pseudo_file)
@@ -442,7 +466,7 @@ def get_pseudo_options_for_elements(
                     if project_key in project_files_by_element_basename:
                         proj_sha256, proj_sha_family, proj_path = project_files_by_element_basename[project_key]
                         if proj_sha_family == sha_family and proj_sha256 != sha256:
-                            # Family match but sha256 differs: add warning
+                            # Family match but sha256 differs: add warning to internal variant
                             variant.family_match_warnings.append(
                                 f"project has same filename with family-match but different bytes; selecting this will overwrite on Run"
                             )
@@ -452,60 +476,68 @@ def get_pseudo_options_for_elements(
                                 proj_variant.family_match_warnings.append(
                                     f"family matches internal (bytes differ)"
                                 )
-                    
-                    # Add library chips if sha256 matches index
-                    if sha256 in occurrences_index:
-                        for occ in occurrences_index[sha256]:
-                            archive_name = occ.get("archive", {}).get("name", "")
-                            archive_sha256 = occ.get("archive", {}).get("sha256", "")
-                            library = occ.get("library", {})
-                            
-                            archive_status = None
-                            for arch in manifest_archives:
-                                if arch.asset_name == archive_name:
-                                    archive_status = arch
-                                    break
-                                if arch.sha256 == archive_sha256:
-                                    archive_status = arch
-                                    break
-                            
-                            if not archive_status:
-                                relative_path = occ.get("archive", {}).get("relative_path", "")
-                                if relative_path:
-                                    for arch in manifest_archives:
-                                        if arch.relative_path == relative_path:
-                                            archive_status = arch
-                                            break
-                            
-                            installed = False
-                            corrupt = False
-                            warning = None
-                            if archive_status:
-                                status = check_archive_status(
-                                    archive_status.asset_name,
-                                    archive_status.sha256,
-                                    config=config,
-                                )
-                                installed = status["installed"] and not status["corrupt"]
-                                corrupt = status["corrupt"]
-                                if corrupt:
-                                    warning = status.get("error") or "Archive corrupt, needs reinstall"
-                            
-                            label = _format_library_label(occ)
-                            lib_source = PseudoSource(
-                                kind="lib",
-                                label=label,
-                                installed=installed,
-                                corrupt=corrupt,
-                                warning=warning,
-                                archive_asset=archive_name,
-                                library_name=library.get("library_name"),
-                                library_version=library.get("library_version"),
-                            )
-                            variant.sources.append(lib_source)
-                
-                except Exception:
+                except Exception as e:
+                    logger.warning(f"[PSEUDO_SCAN] Failed to process {pseudo_file}: {e}")
                     continue
+        logger.info(
+            f"[PSEUDO_SCAN] Found {len(found_files)} internal pseudo files in {internal_pseudo_dir}"
+        )
+    else:
+        logger.info(f"[PSEUDO_SCAN] Internal pseudo directory does not exist: {internal_pseudo_dir}")
+    
+    # Add library chips for all variants (after scanning project and internal)
+    for element in elements:
+        for sha256, variant in variants_by_element[element].items():
+            # Add library chips if sha256 matches index
+            if sha256 in occurrences_index:
+                for occ in occurrences_index[sha256]:
+                    archive_name = occ.get("archive", {}).get("name", "")
+                    archive_sha256 = occ.get("archive", {}).get("sha256", "")
+                    library = occ.get("library", {})
+                    
+                    archive_status = None
+                    for arch in manifest_archives:
+                        if arch.asset_name == archive_name:
+                            archive_status = arch
+                            break
+                        if arch.sha256 == archive_sha256:
+                            archive_status = arch
+                            break
+                    
+                    if not archive_status:
+                        relative_path = occ.get("archive", {}).get("relative_path", "")
+                        if relative_path:
+                            for arch in manifest_archives:
+                                if arch.relative_path == relative_path:
+                                    archive_status = arch
+                                    break
+                    
+                    installed = False
+                    corrupt = False
+                    warning = None
+                    if archive_status:
+                        status = check_archive_status(
+                            archive_status.asset_name,
+                            archive_status.sha256,
+                            config=config,
+                        )
+                        installed = status["installed"] and not status["corrupt"]
+                        corrupt = status["corrupt"]
+                        if corrupt:
+                            warning = status.get("error") or "Archive corrupt, needs reinstall"
+                    
+                    label = _format_library_label(occ)
+                    lib_source = PseudoSource(
+                        kind="lib",
+                        label=label,
+                        installed=installed,
+                        corrupt=corrupt,
+                        warning=warning,
+                        archive_asset=archive_name,
+                        library_name=library.get("library_name"),
+                        library_version=library.get("library_version"),
+                    )
+                    variant.sources.append(lib_source)
     
     # Add library-only variants (from index, not in project/internal)
     for file_entry in bundle.index.get("files", []):
@@ -599,6 +631,13 @@ def get_pseudo_options_for_elements(
         
         variants.sort(key=sort_key)
         result[element] = [v.to_dict() for v in variants]
+    
+    # Final summary log
+    total_variants = sum(len(variants) for variants in result.values())
+    logger.info(
+        f"[PSEUDO_SCAN] Scan complete: total_variants={total_variants}, "
+        f"elements_with_options={[e for e, v in result.items() if len(v) > 0]}"
+    )
     
     return result
 

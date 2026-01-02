@@ -42,6 +42,9 @@
   overflow-x: hidden;
   /* Ensure flex children don't overflow */
   min-height: 0;
+  /* Ensure content is fully visible with padding */
+  padding-bottom: var(--space-4);
+  box-sizing: border-box;
 }
 
 /* When scroll container is applied, override overflow-hidden */
