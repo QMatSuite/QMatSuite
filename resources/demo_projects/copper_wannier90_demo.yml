@@ -1,0 +1,191 @@
+version: 1
+project:
+  meta:
+    id: 01KE052JRTPEZG8X7TVRGTRB8E
+    name: Copper Wannier90
+    slug: copper-wannier90
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    id: 01KE052JQKFK49ZFFYAA58P8A3
+    name: Copper
+    slug: copper
+    path: structures/copper.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - -1.8050235963389998
+        - 0.0
+        - 1.8050235963389998
+      - - 0.0
+        - 1.8050235963389998
+        - 1.8050235963389998
+      - - -1.8050235963389998
+        - 1.8050235963389998
+        - 0.0
+      pbc:
+      - true
+      - true
+      - true
+    properties: {}
+    sites:
+    - species:
+      - element: Cu
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Cu
+calculations:
+- meta:
+    id: 01KE052JRSKSBDNZ0FD67FFDT2
+    name: Copper MLWFs
+    slug: copper-mlwfs
+    path: calculations/copper-mlwfs
+    kind: calculation
+  structure_id: 01KE052JQKFK49ZFFYAA58P8A3
+  species_map:
+    Cu:
+      mass: 63.546
+      pseudopot: Cu.pz-n-van_ak.UPF
+      pseudo_basename: Cu.pz-n-van_ak.UPF
+      pseudo_sha256: 1da627eb28b875756f294c4201d7937c9905588a5f5c51ea562e314f266bb2ca
+      pseudo_sha_family: de1aa1c318431ac01818be83d52292c276b90b49e1119b99a731c0452cdd2cbb
+  steps:
+  - meta:
+      id: 01KE052JRTWBH35HBP3254DS1R
+      name: scf
+      slug: scf
+      path: steps/scf.step.yaml
+      kind: step
+    step_type: scf
+    structure_id: 01KE052JQKFK49ZFFYAA58P8A3
+    status: pending
+    parameters:
+      calculation: scf
+      ecutwfc: 30.0
+      occupations: smearing
+      smearing: cold
+      degauss: 0.02
+      k_points:
+        type: automatic
+        grid:
+        - 16
+        - 16
+        - 16
+        offset:
+        - 0
+        - 0
+        - 0
+  - meta:
+      id: 01KE052JRT532BJX3AQ830DGT3
+      name: nscf
+      slug: nscf
+      path: steps/nscf.step.yaml
+      kind: step
+    step_type: nscf
+    structure_id: 01KE052JQKFK49ZFFYAA58P8A3
+    status: pending
+    parameters:
+      calculation: nscf
+      ecutwfc: 30.0
+      nbnd: 12
+      nosym: true
+      k_points:
+        type: crystal
+        grid:
+        - 4
+        - 4
+        - 4
+    depends_on:
+    - 01KE052JRTWBH35HBP3254DS1R
+  - meta:
+      id: 01KE052JRTYBWMFPNCSMZV2BF1
+      name: w90_preproc
+      slug: w90_preproc
+      path: steps/w90_preproc.step.yaml
+      kind: step
+    step_type: w90_preproc
+    structure_id: 01KE052JQKFK49ZFFYAA58P8A3
+    status: pending
+    parameters:
+      seedname: copper
+      num_wann: 7
+      num_bands: 12
+      num_iter: 200
+      mp_grid:
+      - 4
+      - 4
+      - 4
+      projections: 'Cu:d
+
+        f=0.25,0.25,0.25:s
+
+        f=-0.25,-0.25,-0.25:s'
+      dis_win_max: 38.0
+      dis_froz_max: 13.0
+    depends_on:
+    - 01KE052JRT532BJX3AQ830DGT3
+  - meta:
+      id: 01KE052JRT6DXK0R81HEESZSCA
+      name: pw2wannier90
+      slug: pw2wannier90
+      path: steps/pw2wannier90.step.yaml
+      kind: step
+    step_type: pw2wannier90
+    structure_id: 01KE052JQKFK49ZFFYAA58P8A3
+    status: pending
+    parameters:
+      seedname: copper
+      prefix: cu
+      write_mmn: true
+      write_amn: true
+    depends_on:
+    - 01KE052JRT532BJX3AQ830DGT3
+    - 01KE052JRTYBWMFPNCSMZV2BF1
+  - meta:
+      id: 01KE052JRTTA0EJEJKD7NPH9R7
+      name: w90_run
+      slug: w90_run
+      path: steps/w90_run.step.yaml
+      kind: step
+    step_type: w90_run
+    structure_id: 01KE052JQKFK49ZFFYAA58P8A3
+    status: pending
+    parameters:
+      seedname: copper
+      num_wann: 7
+      num_bands: 12
+      num_iter: 200
+      dis_win_max: 38.0
+      dis_froz_max: 13.0
+    depends_on:
+    - 01KE052JRT6DXK0R81HEESZSCA
+pseudo:
+  directory: pseudo
+  files:
+  - Cu.pz-n-van_ak.UPF
+meta:
+  id: copper_wannier90_demo
+  title: Copper Wannier90
+  subtitle: 7 MLWFs for Fermi surface
+  tags:
+  - wannier90
+  - copper
+  - mlwf
+  - metal
+  - disentanglement
+  recommended_analysis: wannier
+  difficulty: intermediate

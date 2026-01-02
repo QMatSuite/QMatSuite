@@ -392,5 +392,46 @@ Missing:
 
 ---
 
+## 11. Demo Generator & Pseudo Library
+
+### 11.1 Demo Generator Files
+
+| File | Purpose | Entry Point |
+|------|---------|-------------|
+| `tools/generate_demo_snapshots.py` | Generate si_bands_demo.yml and si_dos_demo.yml | `main()` |
+| `tools/regenerate_si_bands_demo.py` | Regenerate only si_bands_demo.yml | `main()` |
+| `tools/import_tutorial_datasets.py` | Generate demos from tests/data/ folders (0_* to 19_*) | `main()` |
+
+### 11.2 Pseudo Library Path
+
+- **Internal pseudo library**: `resources/pseudo/` (repo root)
+- **Demo generation requirement**: All pseudos must exist in `resources/pseudo/` before generation
+- **No manifest lookup**: Demo generators use direct file system access only
+
+### 11.3 Demo Generation Invocation
+
+**CLI commands**:
+```bash
+# Generate main demos (si_bands, si_dos)
+python tools/generate_demo_snapshots.py
+
+# Regenerate si_bands only
+python tools/regenerate_si_bands_demo.py
+
+# Generate all tutorial demos (0_* to 19_*)
+python tools/import_tutorial_datasets.py
+```
+
+**Where species_map is written**:
+- `extract_species_map_from_qe_input()` in `calculation/folder_import.py` extracts `{mass, pseudopot}` from QE inputs
+- `export_project_to_snapshot()` in `project/snapshot.py` enhances species_map with sha256/sha_family (fallback mechanism)
+- **Gap**: Demo generators should compute triple upfront from `resources/pseudo/` before export
+
+**Demo enumeration**:
+- `generate_demo_snapshots.py`: Hardcoded list of 2 demos
+- `import_tutorial_datasets.py`: Scans `tests/data/` for folders matching `0_*` through `19_*`
+
+---
+
 *This audit was conducted against the codebase as of 2026-01-02.*
 

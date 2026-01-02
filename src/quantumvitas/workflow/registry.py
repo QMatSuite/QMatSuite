@@ -241,6 +241,43 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
     ),
     
     # -------------------------------------------------------------------------
+    # Wannier90 step types
+    # -------------------------------------------------------------------------
+    "w90_preproc": StepTypeSpec(
+        id="w90_preproc",
+        engine="qe",
+        executable="wannier90.x",
+        description="Wannier90 preprocessing (generate .nnkp)",
+        accepts_presets=False,
+        allowed_dimensions=frozenset(),
+        requires_structure=True,
+        requires_charge_density=False,  # Needs .win file, not charge density
+        produces_charge_density=False,
+    ),
+    "pw2wannier90": StepTypeSpec(
+        id="pw2wannier90",
+        engine="qe",
+        executable="pw2wannier90.x",
+        description="QE to Wannier90 interface (compute overlaps)",
+        accepts_presets=False,
+        allowed_dimensions=frozenset(),
+        requires_structure=False,  # Uses .nnkp + QE save files
+        requires_charge_density=True,  # Needs NSCF wavefunctions
+        produces_charge_density=False,
+    ),
+    "w90_run": StepTypeSpec(
+        id="w90_run",
+        engine="qe",
+        executable="wannier90.x",
+        description="Wannier90 MLWF optimization",
+        accepts_presets=False,
+        allowed_dimensions=frozenset(),
+        requires_structure=True,
+        requires_charge_density=False,  # Needs .mmn/.amn/.eig files
+        produces_charge_density=False,
+    ),
+    
+    # -------------------------------------------------------------------------
     # Custom escape hatch
     # -------------------------------------------------------------------------
     "custom": StepTypeSpec(

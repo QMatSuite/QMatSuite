@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KDPDXT8BE7S7SEPP4132TVR1
+    id: 01KE007VAXKJV206BJXVBKHD1Z
     name: 19_Si_CPMD
     slug: 19_si_cpmd
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KDPDXT8N0CFK7BDP69BT58AS
+    id: 01KE007VB9NFHDQ9110SES8YP0
     name: si.1_erelax
     slug: si-1_erelax
     path: structures/si-1_erelax.json
@@ -17,7 +17,7 @@ structures:
   data:
     '@module': pymatgen.core.structure
     '@class': Structure
-    charge: 0.0
+    charge: 0
     lattice:
       matrix:
       - - 5.630848791408369
@@ -148,7 +148,7 @@ structures:
       - 4.223136593556277
 calculations:
 - meta:
-    id: 01KDPDXT8DMFMPVY4D1RSSQZVC
+    id: 01KE007VAZFJT5ASWPDW7PR0PG
     name: Si Cpmd  4 Bomd Nvt
     slug: si-cpmd-4-bomd-nvt
     path: calculations/si-cpmd-4-bomd-nvt
@@ -157,7 +157,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KDPDXT8JQXZY10MJJB3MR9ZG
+      id: 01KE007VB4XV1E2MDJ2MKF4YJ6
       name: si.1_erelax
       slug: si-1_erelax
       path: si.1_erelax.step.yaml
@@ -190,7 +190,7 @@ calculations:
         mass: 28.0855
         pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
   - meta:
-      id: 01KDPDXT91WDS4HFFW2GH4TN60
+      id: 01KE007VBTAXFG1WEW9VBC7H2R
       name: si.2_randDisplace
       slug: si-2_randdisplace
       path: si.2_randDisplace.step.yaml
@@ -227,7 +227,7 @@ calculations:
         mass: 28.0855
         pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
   - meta:
-      id: 01KDPDXT9Q7C327HP64YZ89CYN
+      id: 01KE007VCTC08AN1J03Y1KQWRT
       name: si.3_cp_BOMD_NVT
       slug: si-3_cp_bomd_nvt
       path: si.3_cp_BOMD_NVT.step.yaml
@@ -266,7 +266,7 @@ calculations:
       Si:
         mass: 28.0855
         pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
-  structure_id: 01KDPDXT8BZV1N14ZQSG00RYQC
+  structure_id: 01KE007VAXYFVA082Z8J6JK8AH
   species_map:
     Si:
       mass: 28.0855

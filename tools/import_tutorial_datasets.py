@@ -34,6 +34,9 @@ from quantumvitas.calculation.importers import build_calculation_from_qe_inputs
 from quantumvitas.project.snapshot import ProjectSnapshot, export_project_to_snapshot
 from quantumvitas.calculation.structure_steps import StructureStepSpec, generate_qe_input_from_spec
 from quantumvitas.core.resources import generate_resource_id, meta_from_name
+from quantumvitas.core.pseudo_provenance import compute_sha256_file
+from quantumvitas.core.pseudo_libinfo import compute_sha_family_file
+from quantumvitas.core.engines.qe_pseudopotentials import download_pseudopotential
 
 
 @dataclass
@@ -66,6 +69,98 @@ class DemoResult:
     error: Optional[str] = None
     step_count: int = 0
     reference_artifacts: Dict[str, str] = field(default_factory=dict)
+
+
+def compute_pseudo_identity(
+    repo_root: Path,
+    pseudo_filename: str,
+    auto_download: bool = True,
+) -> Optional[Tuple[str, str]]:
+    """
+    Compute pseudo identity triple (sha256, sha_family) from resources/pseudo/.
+    If file is missing and auto_download=True, attempts to download from QE repository.
+    
+    Args:
+        repo_root: Repository root directory
+        pseudo_filename: Filename of pseudopotential (e.g., "Si.pbe-n-rrkjus_psl.1.0.0.UPF")
+        auto_download: If True and file missing, attempt to download from QE repository
+        
+    Returns:
+        Tuple of (sha256, sha_family) if file exists or was downloaded, None otherwise
+    """
+    resources_pseudo_dir = repo_root / "resources" / "pseudo"
+    pseudo_file = resources_pseudo_dir / pseudo_filename
+    
+    # If file doesn't exist and auto_download is enabled, try downloading
+    if not pseudo_file.exists() and auto_download:
+        resources_pseudo_dir.mkdir(parents=True, exist_ok=True)
+        print(f"  Attempting to download {pseudo_filename} from QE repository...")
+        if download_pseudopotential(pseudo_filename, resources_pseudo_dir):
+            print(f"  ✓ Successfully downloaded {pseudo_filename}")
+        else:
+            print(f"  ✗ Failed to download {pseudo_filename}")
+            return None
+    
+    if not pseudo_file.exists():
+        return None
+    
+    try:
+        sha256 = compute_sha256_file(pseudo_file)
+        sha_family = compute_sha_family_file(pseudo_file)
+        return (sha256, sha_family)
+    except Exception as e:
+        print(f"  ⚠️  Error computing hashes for {pseudo_filename}: {e}", file=sys.stderr)
+        return None
+
+
+def enhance_species_map_with_pseudo_identities(
+    species_map: Dict[str, Dict[str, Any]],
+    repo_root: Path,
+    auto_download: bool = True,
+) -> Tuple[Dict[str, Dict[str, Any]], List[str]]:
+    """
+    Enhance species_map with pseudo identity triple from resources/pseudo/.
+    
+    Args:
+        species_map: Species mapping dict (element -> {mass, pseudopot, ...})
+        repo_root: Repository root directory
+        
+    Returns:
+        Tuple of (enhanced_species_map, missing_pseudos_list)
+    """
+    enhanced = {}
+    missing_pseudos = []
+    
+    for element, entry in species_map.items():
+        if not isinstance(entry, dict):
+            enhanced[element] = entry
+            continue
+        
+        # Get pseudo filename
+        pseudo_filename = entry.get("pseudo_basename") or entry.get("pseudopot")
+        if not pseudo_filename:
+            enhanced[element] = entry
+            continue
+        
+        # Compute identity triple
+        identity = compute_pseudo_identity(repo_root, pseudo_filename, auto_download=auto_download)
+        if identity is None:
+            missing_pseudos.append(f"{element}: {pseudo_filename}")
+            continue
+        
+        sha256, sha_family = identity
+        
+        # Enhance entry
+        enhanced_entry = dict(entry)
+        enhanced_entry["pseudo_basename"] = pseudo_filename
+        if "pseudopot" not in enhanced_entry:
+            enhanced_entry["pseudopot"] = pseudo_filename
+        enhanced_entry["pseudo_sha256"] = sha256
+        enhanced_entry["pseudo_sha_family"] = sha_family
+        
+        enhanced[element] = enhanced_entry
+    
+    return enhanced, missing_pseudos
 
 
 def find_repo_root() -> Path:
@@ -1085,7 +1180,7 @@ def create_demo_from_dataset(
                 error="No input files found"
             )
         
-        # Check pseudopotentials for all inputs
+        # Check pseudopotentials for all inputs - must exist in resources/pseudo/
         missing_pseudos = []
         all_pseudos_needed = set()
         
@@ -1098,47 +1193,17 @@ def create_demo_from_dataset(
                 # Skip files that can't be parsed
                 continue
         
-        # Check if pseudos are available (with enhanced search)
-        # Also try to download missing ones to repo/resources/pseudo
-        repo_pseudo_dir = repo_root / "resources" / "pseudo"
-        repo_pseudo_dir.mkdir(parents=True, exist_ok=True)
-        
+        # Check if pseudos exist in resources/pseudo/, try downloading if missing
+        resources_pseudo_dir = repo_root / "resources" / "pseudo"
         missing_pseudos = []
         for pseudo_name in all_pseudos_needed:
-            # First check if already exists
-            if find_pseudopotential_file(pseudo_name, pseudo_search_dirs, dataset_path=dataset.folder_path):
-                continue
-            
-            # Try to download to repo/pseudo
-            try:
-                from quantumvitas.api import QVService
-                # Use a dummy project root for download (we just need the download function)
-                # The dest_dir will be repo/pseudo
-                result = QVService.download_pseudo_by_filename(
-                    project_root=repo_root,  # Use repo root as project root
-                    filename=pseudo_name,
-                    dest_dir=repo_pseudo_dir,
-                    config=None
-                )
-                
-                if result.get("errors"):
-                    # Download failed
+            pseudo_file = resources_pseudo_dir / pseudo_name
+            if not pseudo_file.exists():
+                # Try downloading from QE repository
+                resources_pseudo_dir.mkdir(parents=True, exist_ok=True)
+                print(f"    Attempting to download {pseudo_name} from QE repository...")
+                if not download_pseudopotential(pseudo_name, resources_pseudo_dir):
                     missing_pseudos.append(pseudo_name)
-                    print(f"    ⚠ Could not download {pseudo_name}: {', '.join(result.get('errors', []))}")
-                else:
-                    # Download succeeded (or was skipped because already exists)
-                    downloaded_name = result.get("filename", pseudo_name)
-                    if result.get("skipped"):
-                        print(f"    ℹ Pseudo {pseudo_name} already exists as {downloaded_name}")
-                    else:
-                        print(f"    ✓ Downloaded {pseudo_name} to repo/resources/pseudo")
-                    # Update search dirs to include repo/pseudo
-                    if repo_pseudo_dir not in pseudo_search_dirs:
-                        pseudo_search_dirs.append(repo_pseudo_dir)
-            except Exception as e:
-                # Download failed
-                missing_pseudos.append(pseudo_name)
-                print(f"    ⚠ Could not download {pseudo_name}: {str(e)}")
         
         if missing_pseudos:
             return DemoResult(
@@ -1146,7 +1211,7 @@ def create_demo_from_dataset(
                 demo_path=demo_file,
                 success=False,
                 missing_pseudos=missing_pseudos,
-                error=f"Missing pseudopotentials (could not download): {', '.join(missing_pseudos)}"
+                error=f"Missing pseudopotentials (download failed): {', '.join(missing_pseudos)}"
             )
         
         # Find the first file with complete structure information
@@ -1438,6 +1503,19 @@ def create_demo_from_dataset(
                     else:
                         # Relaxed structure not found - keep single calc but warn
                         print(f"    ⚠ Warning: relax/vc-relax detected but no post-relax structure found. Using initial structure for all steps.")
+            
+            # Enhance species_map in all calculations with pseudo identity triple
+            for calc in snapshot.calculations:
+                if "species_map" in calc:
+                    enhanced_map, missing = enhance_species_map_with_pseudo_identities(
+                        calc["species_map"],
+                        repo_root,
+                        auto_download=True,  # Already downloaded above, but ensure hashes are computed
+                    )
+                    if missing:
+                        # This should not happen if we checked earlier, but be safe
+                        print(f"    ⚠️  Warning: Missing pseudos in species_map: {missing}", file=sys.stderr)
+                    calc["species_map"] = enhanced_map
             
             # Add demo metadata matching existing format
             snapshot.meta = {

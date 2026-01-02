@@ -462,7 +462,8 @@ DATA_DEPENDENCIES = {
 ### 9.1 Overview
 
 PySCF integration is an architectural stress test:
-- Non-periodic (molecular) system_kind
+- **Molecular system_kind**: Uses `gto.Mole` (no lattice) for molecular calculations
+- **Periodic PySCF**: Uses `pbc.gto.Cell` (with lattice) and is classified as PERIODIC
 - Python-native execution (no external binary)
 - Different quantum chemistry paradigm
 
@@ -764,6 +765,211 @@ test('silicon bands workflow', async ({ page }) => {
 | D | Workflow as topology fingerprint | Avoids workflow as persisted entity |
 | E | W90 + PySCF as integration proof | Tests engine abstraction |
 | F | Desktop-first packaging | Simpler UX for v1.0 |
+
+---
+
+---
+
+## 12. Pre-Milestone Paving Tasks
+
+Before starting major milestone work, complete these small, low-risk improvements:
+
+### 12.1 Demo Generator Hygiene
+
+- [x] Demo generator writes pseudo identity triple (pseudo_basename, pseudo_sha256, pseudo_sha_family)
+- [x] Demo generators skip demos with missing pseudos (no broken demos)
+- [x] Demo verification tool added (`tools/verify_demos.py`)
+- [ ] Demo regeneration completed (with skip list documented)
+- [ ] All existing demos verified and regenerated
+
+**Commands**:
+```bash
+# Regenerate main demos
+python tools/generate_demo_snapshots.py
+
+# Regenerate tutorial demos
+python tools/import_tutorial_datasets.py
+
+# Verify all demos
+python tools/verify_demos.py
+```
+
+### 12.2 Documentation Fixes
+
+- [x] PySCF system_kind doc fix applied (molecular = no lattice, periodic = with lattice)
+- [x] Removed vacuum heuristics from system_kind inference spec
+- [x] Updated PLAN and CALC_TYPE_SYSTEM_KIND_SPEC with correct PySCF distinction
+
+### 12.3 Other Low-Risk Improvements
+
+- [ ] Verify all demo YAML files have complete pseudo triplets
+- [ ] Document demo generation workflow in `docs/DEMO_GENERATION.md` (if not already done)
+- [ ] Add CI check to run `tools/verify_demos.py` on PRs
+
+---
+
+## 13. Wannier90 Integration (MVP)
+
+**Goal**: Enable end-to-end Wannier90 workflows (SCF → NSCF → Wannier90) using the bundled QE engine.
+
+**Status**: ✅ MVP Implemented
+
+### 13.1 Architecture
+
+**New Step Types**:
+| Step Type | Executable | Description |
+|-----------|------------|-------------|
+| `w90_preproc` | `wannier90.x -pp` | Generate `.nnkp` file |
+| `pw2wannier90` | `pw2wannier90.x` | Compute overlaps (`.mmn`, `.amn`, `.eig`) |
+| `w90_run` | `wannier90.x` | Main MLWF optimization |
+
+**Dependency Graph** (Diamond Workflow):
+```
+SCF (pw.x)
+    ↓
+NSCF (pw.x, uniform k-grid)
+    ↓
+w90_preproc (wannier90.x -pp) ← requires .win file
+    ↓
+pw2wannier90 (pw2wannier90.x) ← requires .nnkp + QE save files
+    ↓
+w90_run (wannier90.x) ← requires .win + .mmn + .amn + .eig
+```
+
+### 13.2 Implementation Checklist
+
+- [x] Create `docs/architecture/WANNIER90_INTEGRATION_SPEC.md`
+- [x] Add `W90_PREPROC`, `PW2WANNIER90`, `W90_RUN` to `StepType` enum
+- [x] Register W90 step types in `workflow/registry.py`
+- [x] Add W90 executables to `EXECUTABLE_MAP` in `core/engines/qe.py`
+- [x] Add W90 to `KNOWN_STEP_TYPES` in `cli/main.py`
+- [x] Implement `.win` file parser/generator (`io/wannier90_input.py`)
+- [x] Implement `.pw2wan` file generator (`io/wannier90_input.py`)
+- [x] Add W90-specific command building in `build_command()`
+- [x] Add W90-specific execution logic in `run_step()` (no stdin for W90)
+- [x] Create Diamond demo generator (`tools/generate_wannier90_demo.py`)
+- [x] Copy `C.pz-vbc.UPF` pseudo to `resources/pseudo/`
+- [x] Generate `diamond_wannier90_demo.yml` demo project
+
+### 13.3 Demo Project
+
+**File**: `resources/demo_projects/diamond_wannier90_demo.yml`
+
+**Contents**:
+- 1 structure: Diamond (2 C atoms, FCC)
+- 1 calculation with 5 steps:
+  1. `scf` (pw.x)
+  2. `nscf` (pw.x, 4×4×4 k-grid)
+  3. `w90_preproc` (wannier90.x -pp diamond)
+  4. `pw2wannier90` (pw2wannier90.x)
+  5. `w90_run` (wannier90.x diamond)
+
+**Species Map** includes complete pseudo identity triple:
+```yaml
+C:
+  mass: 12.0
+  pseudopot: C.pz-vbc.UPF
+  pseudo_basename: C.pz-vbc.UPF
+  pseudo_sha256: 62d92a1d77af114f...
+  pseudo_sha_family: 013161d04858e342...
+```
+
+### 13.4 Commands
+
+```bash
+# Generate the Wannier90 demo
+python tools/generate_wannier90_demo.py
+
+# Verify demo was created correctly
+python tools/verify_demos.py
+
+# Run Wannier90 unit tests
+python -m pytest tests/unit/test_wannier90_integration.py -v
+
+# Run Wannier90 project-based integration tests (runs real QE + Wannier90)
+python -m pytest tests/integration/test_wannier90_project_execution.py -v -s
+
+# Run all Wannier90 tests
+python -m pytest tests/unit/test_wannier90_integration.py tests/integration/test_wannier90_project_execution.py -v
+```
+
+### 13.5 Test Results (2026-01-02)
+
+**All tests pass across two test suites:**
+
+#### Unit + Roundtrip Tests (34 tests)
+
+| Test Suite | Tests | Status |
+|------------|-------|--------|
+| Unit: StepType Registration | 6 | ✅ |
+| Unit: .win Parsing/Generation | 7 | ✅ |
+| Unit: .pw2wan Parsing/Generation | 3 | ✅ |
+| Unit: K-point Generation | 2 | ✅ |
+| Unit: Demo Validation | 3 | ✅ |
+| Integration: Example05 Diamond | 1 | ✅ |
+| Integration: Example06 Copper | 1 | ✅ |
+| Integration: Example16 Silicon | 1 | ✅ |
+| Integration: QE Input Roundtrip | 2 | ✅ |
+| Integration: .win Roundtrip | 7 | ✅ |
+
+#### Project-Based Integration Tests (6 tests) ✅ NEW
+
+These tests run through proper QMatSuite project structure in `.tmp/runs/`:
+
+| Test | Description | Status |
+|------|-------------|--------|
+| TestDiamondWannier90::test_executables_from_managed_engine | Verify executables from `.qmatsuite/engines/` | ✅ |
+| TestDiamondWannier90::test_project_structure | Verify project/pseudo/raw/ structure | ✅ |
+| TestDiamondWannier90::test_full_workflow_and_results | Run workflow, validate spread values | ✅ |
+| TestCopperWannier90::test_full_workflow_and_results | 7 WFs with disentanglement | ✅ |
+| TestSiliconWannier90::test_full_workflow_and_results | 8 WFs with disentanglement | ✅ |
+| TestProjectFilesAfterRun::test_diamond_files_in_raw | All outputs in raw/ | ✅ |
+
+**Test Directories (persist after run for inspection):**
+- `.tmp/runs/wannier90_diamond/`
+- `.tmp/runs/wannier90_copper/`
+- `.tmp/runs/wannier90_silicon/`
+
+**Verified Assertions:**
+- Executables come from managed engine path (NOT PATH lookup)
+- pw2wannier90.x correctly uses stdin redirection
+- All input/output files organized in `raw/` directory
+- Pseudos in `project/pseudo/` (copied from resources)
+- outdir/prefix paths correctly modified
+
+**Example05 (Diamond) Results:**
+- 4 MLWFs created with sp³ bonding character
+- Final Spread: 2.3255 Ang² (expected: ~2.32 ✅)
+- Each WF spread: 0.5814 Ang² (expected: ~0.58 ✅)
+
+**Example06 (Copper) Results:**
+- 7 MLWFs created (5d + 2s)
+- Disentanglement converged successfully
+- Fermi surface computable via interpolation
+
+**Example16 (Silicon) Results:**
+- 8 MLWFs created (sp³ × 2 atoms)
+- Disentanglement converged successfully
+- BoltzWann integration ready
+
+### 13.6 Expected Outputs
+
+After running the demo:
+- `diamond.nnkp` (from w90_preproc)
+- `diamond.mmn`, `diamond.amn`, `diamond.eig` (from pw2wannier90)
+- `diamond.wout`, `diamond.chk` (from w90_run)
+
+### 13.7 Future Work (Post-MVP)
+
+- [ ] postw90.x integration (Berry phase, transport, DOS)
+- [ ] wannier_plot.x integration (cube files for visualization)
+- [ ] Disentanglement parameters (dis_win_min/max, dis_froz_min/max)
+- [ ] Band structure interpolation (kpoint_path, bands_plot)
+- [ ] Spinor/SOC support
+- [ ] Fermi surface plotting
+- [ ] Additional examples (Silicon, Copper, Iron)
+- [ ] UI visualization of Wannier spread convergence
+- [ ] Parse .wout for spread/center extraction
 
 ---
 

@@ -202,76 +202,111 @@ class QECalculationRunner:
         # This is handled by run_and_verify_step, but we ensure it here as well
         # by checking if working_dir has the pseudopotentials
         
-        # Prepare stdin
-        stdin_file = input_file
-        
         # Determine output file (use relative path in working_dir)
         input_stem = input_file.stem
-        output_filename = f"{input_stem}.out"
+        
+        # Wannier90 steps have different output files
+        if step_type in ("w90_preproc", "w90_run"):
+            # Wannier90 writes to seedname.wout
+            output_filename = f"{input_stem}.wout"
+        else:
+            output_filename = f"{input_stem}.out"
         output_file = working_dir / output_filename
         
-        # Execute command with stdin redirection
+        # Check if step uses stdin or command-line arguments
+        uses_stdin = self.engine.uses_stdin(step_type)
+        
+        # Execute command
         # Write stdout directly to output file in working_dir
         try:
-            with open(stdin_file, 'r') as stdin_handle:
-                with open(output_file, 'w') as output_handle:
-                    process = subprocess.Popen(
-                        command,
-                        stdin=stdin_handle,
-                        stdout=output_handle,  # Write directly to output file
-                        stderr=subprocess.PIPE,
-                        cwd=str(working_dir),  # Run in working_dir
-                        env=env,
-                        text=True
-                    )
-                    
-                    try:
-                        _, stderr = process.communicate(timeout=timeout)
-                    except subprocess.TimeoutExpired:
-                        process.kill()
-                        _, stderr = process.communicate()
-                        return StepResult(
-                            step_type=step_type,
-                            input_file=input_file,
-                            success=False,
-                            error=f"Step execution timed out after {timeout}s",
-                            stdout="",  # Output already written to file
-                            stderr=stderr,
-                            execution_time=time.time() - start_time
+            if uses_stdin:
+                # Standard QE execution with stdin redirection
+                stdin_file = input_file
+                with open(stdin_file, 'r') as stdin_handle:
+                    with open(output_file, 'w') as output_handle:
+                        process = subprocess.Popen(
+                            command,
+                            stdin=stdin_handle,
+                            stdout=output_handle,
+                            stderr=subprocess.PIPE,
+                            cwd=str(working_dir),
+                            env=env,
+                            text=True
                         )
-                
-                return_code = process.returncode
-                
-                # Read stdout from output file for StepResult
-                stdout = output_file.read_text() if output_file.exists() else ""
-                
-                # Ensure output file ends with a newline
-                # This is required for some QE modules (e.g., dynmat.x) that expect
-                # output files to end with a newline character
-                if stdout and not stdout.endswith('\n'):
-                    output_file.write_text(stdout + '\n')
-                    stdout = stdout + '\n'
-                
-                # Parse output if successful
-                parsed_output = None
-                if return_code == 0 and output_file.exists():
-                    try:
-                        parsed_output = self.engine.parse_output(output_file, step_type)
-                    except Exception:
-                        pass  # Parsing is optional
-                
-                return StepResult(
-                    step_type=step_type,
-                    input_file=input_file,
-                    output_file=output_file if output_file.exists() else None,
-                    success=(return_code == 0),
-                    return_code=return_code,
-                    stdout=stdout,
-                    stderr=stderr,
-                    error=None if return_code == 0 else f"Step failed with return code {return_code}",
-                    execution_time=time.time() - start_time,
-                    parsed_output=parsed_output
+                        
+                        try:
+                            _, stderr = process.communicate(timeout=timeout)
+                        except subprocess.TimeoutExpired:
+                            process.kill()
+                            _, stderr = process.communicate()
+                            return StepResult(
+                                step_type=step_type,
+                                input_file=input_file,
+                                success=False,
+                                error=f"Step execution timed out after {timeout}s",
+                                stdout="",
+                                stderr=stderr,
+                                execution_time=time.time() - start_time
+                            )
+            else:
+                # Wannier90 execution without stdin (uses command-line seedname)
+                # Wannier90 writes its own output to seedname.wout
+                process = subprocess.Popen(
+                    command,
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    cwd=str(working_dir),
+                    env=env,
+                    text=True
                 )
+                
+                try:
+                    _, stderr = process.communicate(timeout=timeout)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    _, stderr = process.communicate()
+                    return StepResult(
+                        step_type=step_type,
+                        input_file=input_file,
+                        success=False,
+                        error=f"Step execution timed out after {timeout}s",
+                        stdout="",
+                        stderr=stderr,
+                        execution_time=time.time() - start_time
+                    )
+            
+            # Common result handling for both stdin and non-stdin cases
+            return_code = process.returncode
+            
+            # Read stdout from output file for StepResult
+            stdout = output_file.read_text() if output_file.exists() else ""
+            
+            # Ensure output file ends with a newline
+            if stdout and not stdout.endswith('\n'):
+                output_file.write_text(stdout + '\n')
+                stdout = stdout + '\n'
+            
+            # Parse output if successful
+            parsed_output = None
+            if return_code == 0 and output_file.exists():
+                try:
+                    parsed_output = self.engine.parse_output(output_file, step_type)
+                except Exception:
+                    pass  # Parsing is optional
+            
+            return StepResult(
+                step_type=step_type,
+                input_file=input_file,
+                output_file=output_file if output_file.exists() else None,
+                success=(return_code == 0),
+                return_code=return_code,
+                stdout=stdout,
+                stderr=stderr,
+                error=None if return_code == 0 else f"Step failed with return code {return_code}",
+                execution_time=time.time() - start_time,
+                parsed_output=parsed_output
+            )
         
         except Exception as e:
             return StepResult(
