@@ -25,6 +25,8 @@ class StepType(str, Enum):
     W90_PREPROC = "w90_preproc"      # wannier90.x -pp (generate .nnkp)
     PW2WANNIER90 = "pw2wannier90"    # pw2wannier90.x (compute overlaps)
     W90_RUN = "w90_run"              # wannier90.x (main MLWF optimization)
+    # PySCF step types (molecular quantum chemistry)
+    PYSCF_SCF = "pyscf_scf"          # PySCF single-point HF/DFT
     CUSTOM = "custom"
 
 
