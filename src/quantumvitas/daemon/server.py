@@ -344,6 +344,7 @@ class QVDaemon:
             # Workflow operations
             "list_workflow_templates": self._handle_list_workflow_templates,
             "detect_workflow": self._handle_detect_workflow,
+            "detect_workflow_for_calculation": self._handle_detect_workflow_for_calculation,
             "instantiate_workflow": self._handle_instantiate_workflow,
         }
     
@@ -2839,18 +2840,26 @@ class QVDaemon:
         
         Payload:
             project_root: str - Path to project root
-            selector: str - Calculation selector
+            calculation_ulid: str - Calculation ULID (preferred)
+            selector: str - Calculation selector (legacy, for backwards compat)
             new_name: str - New name
         """
         project_root = self._require_path(payload, "project_root")
-        selector = self._require_str(payload, "selector")
+        calculation_ulid = payload.get("calculation_ulid")
+        selector = payload.get("selector")
+        
+        if not calculation_ulid and not selector:
+            raise ValueError("Either calculation_ulid or selector must be provided")
+        
+        # Prefer ULID, fallback to selector for backwards compat
+        target = calculation_ulid if calculation_ulid else selector
         new_name = self._require_str(payload, "new_name")
         
         # Pass cached index and config for in-place registry updates
         cache = self.state.get_cache(project_root)
         result = QVService.rename_calculation(
             project_root=project_root,
-            selector=selector,
+            selector=target,
             new_name=new_name,
             index=cache.index,
             config=cache.config,
@@ -2880,11 +2889,19 @@ class QVDaemon:
         
         Payload:
             project_root: str - Path to project root
-            selector: str - Calculation selector
+            calculation_ulid: str - Calculation ULID (preferred)
+            selector: str - Calculation selector (legacy, for backwards compat)
             force: bool - Force delete
         """
         project_root = self._require_path(payload, "project_root")
-        selector = self._require_str(payload, "selector")
+        calculation_ulid = payload.get("calculation_ulid")
+        selector = payload.get("selector")
+        
+        if not calculation_ulid and not selector:
+            raise ValueError("Either calculation_ulid or selector must be provided")
+        
+        # Prefer ULID, fallback to selector for backwards compat
+        target = calculation_ulid if calculation_ulid else selector
         force = payload.get("force", False)
         
         # Get calculation name before deletion for response
@@ -5142,6 +5159,82 @@ class QVDaemon:
                 "extra_steps": match.extra_steps,
                 "ordering_valid": match.ordering_valid,
             }
+        }
+    
+    def _handle_detect_workflow_for_calculation(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Detect workflow for a calculation by ULID and return match + issues.
+        
+        Payload:
+            project_root: str - Path to project root
+            calculation_ulid: str - Calculation ULID
+            
+        Returns:
+            Dict with:
+                workflow_id: str | null - Best matching workflow ID
+                workflow_name: str - Workflow name
+                coverage: dict with "present" and "required" counts
+                missing_step_types: list[str] - Missing required step types
+                issues: list[dict] - List of issues with "code" and "message"
+        """
+        from quantumvitas.workflow.templates import get_workflow_service
+        
+        project_root = self._require_path(payload, "project_root")
+        calculation_ulid = self._require_str(payload, "calculation_ulid")
+        
+        # Resolve calculation by ULID
+        resolved = self._resolve_calculation_with_fallback(project_root, calculation_ulid)
+        if resolved.absolute_path.name == "calculation.yaml":
+            calculation_dir = resolved.absolute_path.parent
+        else:
+            calculation_dir = resolved.absolute_path
+        
+        # Validate kind (per Constitution: ULID-based resolution must validate kind)
+        if resolved.meta.kind != "calculation":
+            from quantumvitas.api import QVServiceError
+            raise QVServiceError(
+                f"Resource '{calculation_ulid}' is not a calculation (kind: {resolved.meta.kind})"
+            )
+        
+        # Detect workflow (uses calculation.yaml.steps[] as authoritative)
+        service = get_workflow_service()
+        match = service.detect_workflow(calculation_dir)
+        
+        # Validate workflow (get issues)
+        issues = service.validate_workflow(calculation_dir, match.workflow_id)
+        
+        # Build coverage info
+        if match.workflow_id:
+            workflow = service.get_template(match.workflow_id)
+            if workflow:
+                required_steps = set(workflow.step_sequence) - workflow.optional_steps
+                required_count = len(required_steps)
+            else:
+                required_count = len(match.present_steps)
+        else:
+            required_count = 0
+        
+        present_count = len(match.present_steps)
+        
+        # Convert issues to simple dict format
+        issues_list = [
+            {
+                "code": issue.severity,  # "error" or "warning"
+                "message": issue.message,
+                "step_type": issue.step_type,
+            }
+            for issue in issues
+        ]
+        
+        return {
+            "workflow_id": match.workflow_id,
+            "workflow_name": match.workflow_name,
+            "coverage": {
+                "present": present_count,
+                "required": required_count,
+            },
+            "missing_step_types": match.missing_steps,
+            "issues": issues_list,
         }
     
     def _handle_instantiate_workflow(self, payload: Dict[str, Any]) -> Dict[str, Any]:

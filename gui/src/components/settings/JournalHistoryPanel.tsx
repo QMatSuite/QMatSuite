@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import type { JournalEntry, ListJournalEntriesResult, GetJournalEntryResult } from '../../types/qv';
+import type { JournalEntry, ListJournalEntriesResult } from '../../types/qv';
 import './JournalHistoryPanel.css';
 
 interface JournalHistoryPanelProps {

@@ -1287,7 +1287,7 @@ function App() {
         
         const response = await qv.call('get_calculation_detail', {
           project_root: normalizedRoot,
-          calculation: calculation.slug ?? calculation.id,
+          calculation: calculation.id,  // Use ULID to avoid slug collisions
         });
         
         if (response.ok && response.data) {
@@ -1315,7 +1315,7 @@ function App() {
               // Retry once after a short delay
               const retryResponse = await qv.call('get_calculation_detail', {
                 project_root: normalizedRoot,
-                calculation: calculation.slug ?? calculation.id,
+                calculation: calculation.id,  // Use ULID to avoid slug collisions
               });
               if (retryResponse.ok && retryResponse.data) {
                 setSelectedCalculationDetail(retryResponse.data as CalculationDetailResult);
@@ -1885,7 +1885,7 @@ function App() {
     setIsRenaming(true);
     const response = await qv.call('rename_calculation', {
       project_root: projectRoot,
-      selector: renameCalculation.slug,
+      calculation_ulid: renameCalculation.id,  // Use ULID, not slug
       new_name: newName,
     });
     setIsRenaming(false);
@@ -1912,7 +1912,7 @@ function App() {
     setIsDeleting(true);
     const response = await qv.call('delete_calculation', {
       project_root: projectRoot,
-      selector: deleteCalculation.slug,
+      calculation_ulid: deleteCalculation.id,  // Use ULID, not slug
       force: force,
     });
     setIsDeleting(false);

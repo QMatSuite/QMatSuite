@@ -40,6 +40,33 @@ This document describes the design for a unified YAML document abstraction (`Yam
 
 ---
 
+## Hard Rules (Constitution §11)
+
+### No Branch Write (必须)
+- **Rule**: `set(path, dict)` is forbidden. Use `apply_patch()` for subtree updates.
+- **Rationale**: Prevents silent large overwrites and bypassing invariants/journal.
+- **Real Bug**: `species_overrides` dict cannot be set directly; must use `apply_patch()`.  
+  Fixed in `api.py:configure_step()` and related functions.
+
+### No Reference Leakage (必须)
+- **Rule**: Doc APIs must never return mutable dict/list references.
+- **Rule**: Branch export must use explicit method (`export_copy()`) and deep-copy.
+- **Rationale**: Prevents unauthorized mutation, makes changes journalable.
+
+### Leaf-Oriented Mutation (必须)
+- **Rule**: All mutations must be leaf-level (`set`/`delete`) or via `apply_patch` (which internally uses set/delete).
+- **Rationale**: Ensures all changes go through Doc boundary for Journal integration.
+
+### Subtree Updates Must Use apply_patch (必须)
+- **Rule**: For fields like `parameters`/`cards`/`species_overrides`, updating a dict subtree must use `apply_patch`.
+- **Real Bug Prevention**: The `species_overrides` bug occurred because code tried to `set(["species_overrides"], dict)`.  
+  All such paths now use `apply_patch({"species_overrides": dict})`.
+
+### Enforcement
+These rules are enforced by: `test_yamldoc`, `test_journal`, step creation integration tests.
+
+---
+
 ## Phase 1: Audit Findings
 
 ### Current YAML Loading/Dumping Sites

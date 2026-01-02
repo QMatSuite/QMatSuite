@@ -18,11 +18,13 @@ from quantumvitas.presets.dimensions import (
     MagnetismOption,
     OccupationsSchemeOption,
     PrecisionOption,
+    ConvergenceOption,
     CUSTOM,
 )
 from quantumvitas.presets.paramspace import (
     get_occupations_scheme_paramspace,
     get_magnetism_paramspace,
+    get_convergence_paramspace,
 )
 from quantumvitas.presets.precision_variants import (
     build_precision_pw_default_space,
@@ -87,6 +89,17 @@ PRECISION_PW_BANDS_PW_VARIANT = ParamSpaceVariant(
     applies_to_step_types=frozenset({"bands_pw"}),
 )
 
+# Convergence: single variant for all pw-based steps
+CONVERGENCE_SPACE = get_convergence_paramspace()
+CONVERGENCE_VARIANT = ParamSpaceVariant(
+    name="CONVERGENCE_PW",
+    dimension="convergence",
+    space=CONVERGENCE_SPACE,
+    applies_to_step_types=frozenset({
+        "scf", "nscf", "relax", "vc-relax", "bands_pw", "md", "vc-md",
+    }),
+)
+
 # All variants (authoritative list)
 VARIANTS: tuple[ParamSpaceVariant, ...] = (
     OCCUPATIONS_SCHEME_VARIANT,
@@ -94,6 +107,7 @@ VARIANTS: tuple[ParamSpaceVariant, ...] = (
     PRECISION_PW_DEFAULT_VARIANT,
     PRECISION_PW_NSCF_VARIANT,
     PRECISION_PW_BANDS_PW_VARIANT,
+    CONVERGENCE_VARIANT,
 )
 
 
@@ -193,17 +207,34 @@ PRECISION_ENUM_TO_PROFILE = {
     PrecisionOption.HIGH: "HIGH",
 }
 
+# Convergence: profile_name -> enum
+CONVERGENCE_PROFILE_TO_ENUM = {
+    "FAST": ConvergenceOption.FAST,
+    "NORMAL": ConvergenceOption.NORMAL,
+    "ROBUST": ConvergenceOption.ROBUST,
+    "VERY_ROBUST": ConvergenceOption.VERY_ROBUST,
+}
+
+CONVERGENCE_ENUM_TO_PROFILE = {
+    ConvergenceOption.FAST: "FAST",
+    ConvergenceOption.NORMAL: "NORMAL",
+    ConvergenceOption.ROBUST: "ROBUST",
+    ConvergenceOption.VERY_ROBUST: "VERY_ROBUST",
+}
+
 # Combined mappings per dimension
 PROFILE_TO_ENUM: Dict[str, Dict[str, Any]] = {
     "occupations_scheme": OCCUPATIONS_SCHEME_PROFILE_TO_ENUM,
     "magnetism": MAGNETISM_PROFILE_TO_ENUM,
     "precision": PRECISION_PROFILE_TO_ENUM,
+    "convergence": CONVERGENCE_PROFILE_TO_ENUM,
 }
 
 ENUM_TO_PROFILE: Dict[str, Dict[Any, str]] = {
     "occupations_scheme": OCCUPATIONS_SCHEME_ENUM_TO_PROFILE,
     "magnetism": MAGNETISM_ENUM_TO_PROFILE,
     "precision": PRECISION_ENUM_TO_PROFILE,
+    "convergence": CONVERGENCE_ENUM_TO_PROFILE,
 }
 
 
@@ -228,7 +259,7 @@ def get_variant(dimension: str, step_type: str) -> Optional[ParamSpaceVariant]:
 
 def compile_dimension_patch_for_step(
     dimension: str,
-    option_enum: Union[MagnetismOption, OccupationsSchemeOption, PrecisionOption],
+    option_enum: Union[MagnetismOption, OccupationsSchemeOption, PrecisionOption, ConvergenceOption],
     step_type: str,
     step_yaml: Dict[str, Dict[str, Any]],
     *,

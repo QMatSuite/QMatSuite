@@ -336,15 +336,21 @@ def save_calculation(model: CalculationModel, path: Path) -> None:
     """
     Save a CalculationModel to a calculation.yaml file.
     
+    Uses CalcDoc + yaml_io for Journal integration (per Constitution §11.1).
+    
     Args:
         model: CalculationModel to save
         path: Path to calculation.yaml or calculation directory
     """
+    from quantumvitas.core.yamldoc import CalcDoc
+    from quantumvitas.core.yaml_io import save_yaml_doc
+    
     if path.is_dir():
         path = path / "calculation.yaml"
     
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(model.to_dict(), sort_keys=False))
+    # Use CalcDoc + yaml_io (journaled)
+    calc_doc = CalcDoc(model.to_dict())
+    save_yaml_doc(calc_doc, path)
 
 
 def migrate_species_overrides_to_calc(
