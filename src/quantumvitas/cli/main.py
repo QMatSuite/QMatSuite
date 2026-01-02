@@ -865,13 +865,14 @@ def init_calculation_command(
 
 
 
-# Known QE step types for validation
+# Known step types for validation (QE + PySCF)
 KNOWN_STEP_TYPES = {
     "scf", "nscf", "relax", "vc-relax", "md", "vc-md",  # pw.x calculation types
     "dos", "bands", "bands_pw",  # post-processing
     "ph", "q2r", "matdyn", "dynmat",  # phonon
     "pp", "projwfc",  # other post-processing
     "w90_preproc", "pw2wannier90", "w90_run",  # Wannier90
+    "pyscf_scf",  # PySCF molecular QC
     "custom",  # escape hatch for unsupported types
 }
 

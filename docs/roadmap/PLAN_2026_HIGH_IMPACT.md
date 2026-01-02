@@ -973,5 +973,106 @@ After running the demo:
 
 ---
 
+## 14. PySCF Integration (MVP)
+
+**Goal**: Enable molecular quantum chemistry calculations using PySCF.
+
+**Status**: ✅ MVP Implemented (2026-01-02)
+
+### 14.1 Architecture
+
+**Key Design Decisions**:
+- **Molecular vs Periodic Detection**: A system is MOLECULAR if and only if it has no lattice vectors
+- **Python-Native Execution**: No subprocess, direct PySCF API calls
+- **Parallel Path**: PySCF code paths are completely separate from QE/PBC code
+
+**New Step Types**:
+| Step Type | Engine | Description |
+|-----------|--------|-------------|
+| `pyscf_scf` | pyscf | Single-point HF/DFT (RHF, UHF, RKS, UKS) |
+
+### 14.2 Implementation Checklist
+
+- [x] Create `docs/architecture/PYSCF_INTEGRATION_SPEC.md`
+- [x] Add `PYSCF_SCF` to `StepType` enum in `calculation/types.py`
+- [x] Register `pyscf_scf` in `workflow/registry.py`
+- [x] Add `pyscf_scf` to CLI `KNOWN_STEP_TYPES`
+- [x] Implement `PySCFEngine` adapter in `engine/pyscf_engine.py`
+  - [x] Molecule building from parameters
+  - [x] RHF/UHF/RKS/UKS method support
+  - [x] Result extraction (energy, MO energies, HOMO/LUMO gap)
+  - [x] Graceful error when PySCF not installed
+- [x] Create demo generator `tools/generate_pyscf_demo.py`
+- [x] Generate `resources/demo_projects/water_pyscf_scf.yml`
+- [x] Add unit tests `tests/unit/test_pyscf_integration.py`
+- [x] Add integration tests `tests/integration/test_pyscf_execution.py`
+- [x] Add `pyscf` optional dependency in `pyproject.toml`
+
+### 14.3 Demo Project
+
+**File**: `resources/demo_projects/water_pyscf_scf.yml`
+
+**Contents**:
+- 1 structure: H2O molecule (no lattice = MOLECULAR)
+- 1 calculation with 1 step:
+  - `pyscf_scf` (RHF/6-31G)
+
+**Expected Results**:
+| Property | Value | Unit |
+|----------|-------|------|
+| Energy | ~-75.98 | Hartree |
+| HOMO | ~-0.50 | Hartree |
+| LUMO | ~0.21 | Hartree |
+| Gap | ~19.3 | eV |
+
+### 14.4 Commands
+
+```bash
+# Generate the PySCF demo
+python tools/generate_pyscf_demo.py
+
+# Run PySCF unit tests
+python -m pytest tests/unit/test_pyscf_integration.py -v
+
+# Run PySCF integration tests (requires pyscf installed)
+python -m pytest tests/integration/test_pyscf_execution.py -v
+
+# Install pyscf (optional dependency)
+pip install pyscf
+# OR
+pip install quantumvitas[pyscf]
+```
+
+### 14.5 Test Results (2026-01-02)
+
+**Unit Tests (always run)**:
+| Test Suite | Tests | Status |
+|------------|-------|--------|
+| StepType Registration | 4 | ✅ |
+| Engine Availability | 4 | ✅ |
+| Demo Project Structure | 2 | ✅ |
+
+**Integration Tests (skip if pyscf not installed)**:
+| Test Suite | Tests | Status |
+|------------|-------|--------|
+| H2O Calculations | 3 | ✅ |
+| Results File | 2 | ✅ |
+| Unrestricted Methods | 2 | ✅ |
+| Demo Execution | 1 | ✅ |
+| Edge Cases | 3 | ✅ |
+
+### 14.6 Future Work (Post-MVP)
+
+- [ ] Geometry optimization (`pyscf_geomopt`)
+- [ ] MP2 single-point (`pyscf_mp2`)
+- [ ] CCSD/CCSD(T) (`pyscf_ccsd`)
+- [ ] TD-DFT excited states (`pyscf_tddft`)
+- [ ] Preset dimensions for method/basis selection
+- [ ] UI visualization of molecular orbitals
+- [ ] Additional demo molecules (CH4, NH3, benzene)
+- [ ] Integration with pymatgen Molecule class
+
+---
+
 *This plan is implementation-ready. Execute PRs in sequence per Phase plan.*
 

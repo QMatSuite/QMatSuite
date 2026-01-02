@@ -278,6 +278,21 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
     ),
     
     # -------------------------------------------------------------------------
+    # PySCF step types (molecular quantum chemistry)
+    # -------------------------------------------------------------------------
+    "pyscf_scf": StepTypeSpec(
+        id="pyscf_scf",
+        engine="pyscf",
+        executable="python",  # Python-native, no external binary
+        description="PySCF single-point calculation (HF/DFT)",
+        accepts_presets=False,  # MVP: no presets yet
+        allowed_dimensions=frozenset(),
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+    ),
+    
+    # -------------------------------------------------------------------------
     # Custom escape hatch
     # -------------------------------------------------------------------------
     "custom": StepTypeSpec(
