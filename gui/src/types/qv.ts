@@ -1939,6 +1939,44 @@ export interface GetJournalEntryResult {
   entry: JournalEntry | null;
 }
 
+// =============================================================================
+// Workflow Types
+// =============================================================================
+
+/** A workflow template definition */
+export interface WorkflowTemplate {
+  id: string;
+  name: string;
+  description: string;
+  step_sequence: string[];
+}
+
+/** Result of workflow detection */
+export interface WorkflowMatch {
+  workflow_id: string | null;
+  workflow_name: string;
+  coverage: number;
+  present_steps: string[];
+  missing_steps: string[];
+  extra_steps: string[];
+  ordering_valid: boolean;
+}
+
+/** Response from list_workflow_templates */
+export interface ListWorkflowTemplatesResult {
+  templates: WorkflowTemplate[];
+}
+
+/** Response from detect_workflow */
+export interface DetectWorkflowResult {
+  match: WorkflowMatch;
+}
+
+/** Response from instantiate_workflow */
+export interface InstantiateWorkflowResult {
+  step_paths: string[];
+}
+
 // Extend Window interface
 declare global {
   interface Window {

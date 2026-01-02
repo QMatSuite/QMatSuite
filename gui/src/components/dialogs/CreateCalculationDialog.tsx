@@ -5,7 +5,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Modal } from './Modal';
 import { useQVClient } from '../../hooks/useQVClient';
-import type { StructureInfo, CalculationTemplateInfo } from '../../types/qv';
+import type { StructureInfo, CalculationTemplateInfo, WorkflowTemplate } from '../../types/qv';
 
 interface CreateCalculationDialogProps {
   isOpen: boolean;
@@ -27,15 +27,18 @@ export function CreateCalculationDialog({
   const [calculationName, setCalculationName] = useState('');
   const [selectedStructure, setSelectedStructure] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('');
+  const [selectedWorkflow, setSelectedWorkflow] = useState('');
   const [templates, setTemplates] = useState<CalculationTemplateInfo[]>([]);
+  const [workflows, setWorkflows] = useState<WorkflowTemplate[]>([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Load templates when dialog opens
+  // Load templates and workflows when dialog opens
   useEffect(() => {
-    if (isOpen && templates.length === 0) {
-      loadTemplates();
+    if (isOpen) {
+      if (templates.length === 0) loadTemplates();
+      if (workflows.length === 0) loadWorkflows();
     }
   }, [isOpen]);
   
@@ -46,6 +49,13 @@ export function CreateCalculationDialog({
     
     if (response.ok && response.data) {
       setTemplates(response.data.templates);
+    }
+  }, [qv]);
+  
+  const loadWorkflows = useCallback(async () => {
+    const response = await qv.call('list_workflow_templates', {});
+    if (response.ok && response.data) {
+      setWorkflows(response.data.templates);
     }
   }, [qv]);
   
@@ -63,30 +73,74 @@ export function CreateCalculationDialog({
     setIsCreating(true);
     setError(null);
     
+    // Create the calculation first (without workflow template)
     const response = await qv.call('create_calculation', {
       project_root: projectRoot,
       name: calculationName,
       structure: selectedStructure || undefined,
-      template: selectedTemplate || undefined,
+      template: selectedWorkflow ? undefined : (selectedTemplate || undefined),
     });
     
-    setIsCreating(false);
-    
-    if (response.ok && response.data) {
-      onSuccess(response.data.calculation_id);
-      handleClose();
-    } else {
+    if (!response.ok || !response.data) {
+      setIsCreating(false);
       setError(response.error?.message || 'Failed to create calculation');
+      return;
     }
-  }, [qv, projectRoot, calculationName, selectedStructure, selectedTemplate, onSuccess]);
+    
+    const calculationId = response.data.calculation_id;
+    const calculationPath = response.data.calculation_path;
+    
+    // If workflow is selected, instantiate it
+    if (selectedWorkflow && calculationPath) {
+      const structureId = selectedStructure ? 
+        structures.find(s => s.slug === selectedStructure)?.id || '' : '';
+      
+      const wfResponse = await qv.call('instantiate_workflow', {
+        workflow_id: selectedWorkflow,
+        calculation_path: calculationPath,
+        structure_id: structureId,
+        calculation_id: calculationId,
+      });
+      
+      if (!wfResponse.ok) {
+        // Workflow instantiation failed but calculation was created
+        setIsCreating(false);
+        setError(`Calculation created, but workflow instantiation failed: ${wfResponse.error?.message}`);
+        onSuccess(calculationId);
+        handleClose();
+        return;
+      }
+    }
+    
+    setIsCreating(false);
+    onSuccess(calculationId);
+    handleClose();
+  }, [qv, projectRoot, calculationName, selectedStructure, selectedTemplate, selectedWorkflow, structures, onSuccess]);
   
   const handleClose = useCallback(() => {
     setCalculationName('');
     setSelectedStructure('');
     setSelectedTemplate('');
+    setSelectedWorkflow('');
     setError(null);
     onClose();
   }, [onClose]);
+  
+  // Auto-generate name when workflow is selected
+  const handleWorkflowChange = useCallback((workflowId: string) => {
+    setSelectedWorkflow(workflowId);
+    // Clear file template when workflow is selected
+    if (workflowId) {
+      setSelectedTemplate('');
+    }
+    // Auto-generate name from workflow
+    if (workflowId && !calculationName) {
+      const wf = workflows.find(w => w.id === workflowId);
+      if (wf) {
+        setCalculationName(wf.id);
+      }
+    }
+  }, [calculationName, workflows]);
   
   // Auto-generate name when template is selected
   const handleTemplateChange = useCallback((templateName: string) => {
@@ -154,30 +208,67 @@ export function CreateCalculationDialog({
         
         <div className="form-group">
           <label className="form-label">
-            Template
+            Workflow
           </label>
-          {isLoadingTemplates ? (
-            <div className="form-hint">Loading templates...</div>
-          ) : (
-            <select
-              className="form-select"
-              value={selectedTemplate}
-              onChange={(e) => handleTemplateChange(e.target.value)}
-            >
-              <option value="">— Empty calculation —</option>
-              {templates.map((t) => (
-                <option key={t.name} value={t.name}>
-                  {t.name} ({t.step_types.join(' → ')})
-                </option>
-              ))}
-            </select>
-          )}
+          <select
+            className="form-select"
+            value={selectedWorkflow}
+            onChange={(e) => handleWorkflowChange(e.target.value)}
+          >
+            <option value="">— None (manual steps) —</option>
+            {workflows.map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.name} ({w.step_sequence.join(' → ')})
+              </option>
+            ))}
+          </select>
           <span className="form-hint">
-            Optional. Use a template to pre-configure steps.
+            Select a workflow to auto-create steps.
           </span>
         </div>
         
-        {selectedTemplate && templates.find(t => t.name === selectedTemplate) && (
+        {selectedWorkflow && workflows.find(w => w.id === selectedWorkflow) && (
+          <div className="template-preview">
+            <div className="template-preview__label">Workflow steps:</div>
+            <div className="template-preview__steps">
+              {workflows.find(w => w.id === selectedWorkflow)?.step_sequence.map((type, idx) => (
+                <span key={idx} className="template-preview__step">
+                  {idx > 0 && <span className="step-arrow">→</span>}
+                  {type}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {!selectedWorkflow && (
+          <div className="form-group">
+            <label className="form-label">
+              File Template (Legacy)
+            </label>
+            {isLoadingTemplates ? (
+              <div className="form-hint">Loading templates...</div>
+            ) : (
+              <select
+                className="form-select"
+                value={selectedTemplate}
+                onChange={(e) => handleTemplateChange(e.target.value)}
+              >
+                <option value="">— Empty calculation —</option>
+                {templates.map((t) => (
+                  <option key={t.name} value={t.name}>
+                    {t.name} ({t.step_types.join(' → ')})
+                  </option>
+                ))}
+              </select>
+            )}
+            <span className="form-hint">
+              Or use a legacy file-based template.
+            </span>
+          </div>
+        )}
+        
+        {selectedTemplate && !selectedWorkflow && templates.find(t => t.name === selectedTemplate) && (
           <div className="template-preview">
             <div className="template-preview__label">Template steps:</div>
             <div className="template-preview__steps">

@@ -340,6 +340,11 @@ class QVDaemon:
             # Journal (change history)
             "list_journal_entries": self._handle_list_journal_entries,
             "get_journal_entry": self._handle_get_journal_entry,
+            
+            # Workflow operations
+            "list_workflow_templates": self._handle_list_workflow_templates,
+            "detect_workflow": self._handle_detect_workflow,
+            "instantiate_workflow": self._handle_instantiate_workflow,
         }
     
     def log(self, message: str, level: str = "INFO"):
@@ -5081,6 +5086,96 @@ class QVDaemon:
             return {"entry": None}
         
         return {"entry": entry.to_dict()}
+    
+    # -------------------------------------------------------------------------
+    # Workflow Handlers
+    # -------------------------------------------------------------------------
+    
+    def _handle_list_workflow_templates(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        List available workflow templates.
+        
+        Returns:
+            templates: List of workflow template dicts
+        """
+        from quantumvitas.workflow.templates import get_workflow_service
+        
+        service = get_workflow_service()
+        templates = service.list_templates()
+        
+        return {
+            "templates": [
+                {
+                    "id": t.id,
+                    "name": t.name,
+                    "description": t.description,
+                    "step_sequence": list(t.step_sequence),
+                }
+                for t in templates
+            ]
+        }
+    
+    def _handle_detect_workflow(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Detect workflow type from an existing calculation.
+        
+        Payload:
+            calculation_path: str - Path to calculation directory
+            
+        Returns:
+            match: Workflow match result dict
+        """
+        from quantumvitas.workflow.templates import get_workflow_service
+        
+        calc_path = self._require_path(payload, "calculation_path")
+        
+        service = get_workflow_service()
+        match = service.detect_workflow(calc_path)
+        
+        return {
+            "match": {
+                "workflow_id": match.workflow_id,
+                "workflow_name": match.workflow_name,
+                "coverage": match.coverage,
+                "present_steps": match.present_steps,
+                "missing_steps": match.missing_steps,
+                "extra_steps": match.extra_steps,
+                "ordering_valid": match.ordering_valid,
+            }
+        }
+    
+    def _handle_instantiate_workflow(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Instantiate a workflow by creating its steps.
+        
+        Payload:
+            workflow_id: str - Workflow template id
+            calculation_path: str - Path to calculation directory
+            structure_id: str - Structure ULID
+            calculation_id: str - Parent calculation ULID
+            
+        Returns:
+            step_paths: List of created step file paths
+        """
+        from quantumvitas.workflow.templates import get_workflow_service
+        
+        workflow_id = self._require_str(payload, "workflow_id")
+        calc_path = self._require_path(payload, "calculation_path")
+        structure_id = self._require_str(payload, "structure_id")
+        calculation_id = self._require_str(payload, "calculation_id")
+        
+        service = get_workflow_service()
+        
+        paths = service.instantiate_workflow(
+            workflow_id=workflow_id,
+            calc_dir=calc_path,
+            structure_id=structure_id,
+            parent_calculation_id=calculation_id,
+        )
+        
+        return {
+            "step_paths": [str(p) for p in paths]
+        }
     
     # -------------------------------------------------------------------------
     # Helpers
