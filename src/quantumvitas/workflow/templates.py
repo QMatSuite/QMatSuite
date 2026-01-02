@@ -187,12 +187,39 @@ class WorkflowService:
                 ordering_valid=False,
             )
         
-        # Collect step types in order
+        # Collect step types in order from calculation.yaml.steps[] (authoritative)
+        # Per Constitution: steps[] is single source of truth, do NOT scan filesystem
         present_steps: List[str] = []
+        from quantumvitas.core.project_utils import find_project_root
+        project_root = find_project_root(calc_dir)
+        
         for step_entry in steps:
-            step_type = step_entry.get("step_type")
+            step_type = None
+            
+            # Try new format first: step_id (ULID) -> resolve step -> get step_type
+            # This requires project_root to be available
+            step_ulid = step_entry.get("step_id")
+            if step_ulid and project_root:
+                try:
+                    from quantumvitas.core.resolution import resolve_step
+                    from quantumvitas.core.project_utils import load_project_config
+                    config = load_project_config(project_root)
+                    resolved_step = resolve_step(project_root, None, step_ulid, config=config)
+                    
+                    # Load step YAML to get step_type
+                    from quantumvitas.core.yamldoc import StepDoc
+                    step_doc = StepDoc.load(resolved_step.absolute_path)
+                    step_type = step_doc.get(["step_type"], default=None)
+                except Exception:
+                    # Step file missing or invalid - skip it (ghost step)
+                    pass
+            
+            # Fallback to legacy format: step_type directly in entry, or type field
             if not step_type:
-                # Try to load step file
+                step_type = step_entry.get("step_type") or step_entry.get("type")
+            
+            # Also try resolving by file path (legacy format)
+            if not step_type:
                 step_file = step_entry.get("file")
                 if step_file:
                     step_path = calc_dir / step_file
@@ -203,6 +230,7 @@ class WorkflowService:
                             step_type = step_doc.get(["step_type"], default=None)
                         except Exception:
                             pass
+            
             if step_type:
                 present_steps.append(step_type)
         
@@ -311,6 +339,7 @@ class WorkflowService:
         steps_dir.mkdir(exist_ok=True)
         
         created_paths: List[Path] = []
+        created_step_ulids: List[str] = []
         
         for step_type in workflow.step_sequence:
             # Create step document
@@ -328,6 +357,26 @@ class WorkflowService:
             # Save (journaled)
             save_step_doc(step_doc, step_path)
             created_paths.append(step_path)
+            
+            # Collect step ULID for calc steps[] update
+            step_ulid = step_doc.get(["meta", "id"])
+            created_step_ulids.append(step_ulid)
+        
+        # Update calculation.yaml.steps[] with created steps (authoritative)
+        # Per Constitution: steps[] is single source of truth
+        from quantumvitas.api import QVService
+        from quantumvitas.core.project_utils import find_project_root
+        
+        # Find project root (calc_dir is calculations/{slug}/)
+        project_root = find_project_root(calc_dir)
+        if project_root is None:
+            raise ValueError(f"Cannot find project root from {calc_dir}")
+        
+        QVService.calc_set_steps(
+            project_root=project_root,
+            calculation_ulid=parent_calculation_id,
+            ordered_step_ulids=created_step_ulids,
+        )
         
         return created_paths
     

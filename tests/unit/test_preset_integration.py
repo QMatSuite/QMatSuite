@@ -21,6 +21,7 @@ from typing import Dict, Any
 from quantumvitas.presets.dimensions import (
     MagnetismOption,
     OccupationsSchemeOption,
+    ConvergenceOption,
     CUSTOM,
     _CustomType,
 )
@@ -491,4 +492,233 @@ class TestRealCalculationIntegration:
         result = detect_workflow_type(si_dos_dir)
         # Result could be Unknown for raw tutorial input folders
         assert isinstance(result, str)
+
+
+class TestConvergencePreset:
+    """Test convergence preset implementation."""
+    
+    def test_fast_profile_patch(self):
+        """FAST profile produces exact patch values."""
+        from quantumvitas.presets.variants_registry import compile_dimension_patch_for_step
+        from quantumvitas.presets.dimensions import ConvergenceOption
+        
+        step_yaml = {"parameters": {"ELECTRONS": {}}}
+        patch, deletions = compile_dimension_patch_for_step(
+            "convergence",
+            ConvergenceOption.FAST,
+            "scf",
+            step_yaml,
+        )
+        
+        # Patch structure: {"ELECTRONS": {...}} (section-key structure)
+        assert "ELECTRONS" in patch
+        electrons = patch["ELECTRONS"]
+        assert electrons["mixing_beta"] == 0.7
+        assert electrons["electron_maxstep"] == 100
+        assert electrons["mixing_mode"] == "plain"
+        assert electrons["mixing_ndim"] == 8
+        assert electrons["diagonalization"] == "david"
+        
+        # Verify no extraneous keys
+        assert len(electrons) == 5
+        assert "conv_thr" not in electrons
+    
+    def test_normal_profile_patch(self):
+        """NORMAL profile produces exact patch values."""
+        from quantumvitas.presets.variants_registry import compile_dimension_patch_for_step
+        from quantumvitas.presets.dimensions import ConvergenceOption
+        
+        step_yaml = {"parameters": {"ELECTRONS": {}}}
+        patch, deletions = compile_dimension_patch_for_step(
+            "convergence",
+            ConvergenceOption.NORMAL,
+            "scf",
+            step_yaml,
+        )
+        
+        assert "ELECTRONS" in patch
+        electrons = patch["ELECTRONS"]
+        assert electrons["mixing_beta"] == 0.4
+        assert electrons["electron_maxstep"] == 150
+        assert electrons["mixing_mode"] == "plain"
+        assert electrons["mixing_ndim"] == 8
+        assert electrons["diagonalization"] == "david"
+        assert "conv_thr" not in electrons
+    
+    def test_robust_profile_patch(self):
+        """ROBUST profile produces exact patch values."""
+        from quantumvitas.presets.variants_registry import compile_dimension_patch_for_step
+        from quantumvitas.presets.dimensions import ConvergenceOption
+        
+        step_yaml = {"parameters": {"ELECTRONS": {}}}
+        patch, deletions = compile_dimension_patch_for_step(
+            "convergence",
+            ConvergenceOption.ROBUST,
+            "scf",
+            step_yaml,
+        )
+        
+        assert "ELECTRONS" in patch
+        electrons = patch["ELECTRONS"]
+        assert electrons["mixing_beta"] == 0.2
+        assert electrons["electron_maxstep"] == 200
+        assert electrons["mixing_mode"] == "TF"
+        assert electrons["mixing_ndim"] == 10
+        assert electrons["diagonalization"] == "rmm-davidson"
+        assert "conv_thr" not in electrons
+    
+    def test_very_robust_profile_patch(self):
+        """VERY_ROBUST profile produces exact patch values."""
+        from quantumvitas.presets.variants_registry import compile_dimension_patch_for_step
+        from quantumvitas.presets.dimensions import ConvergenceOption
+        
+        step_yaml = {"parameters": {"ELECTRONS": {}}}
+        patch, deletions = compile_dimension_patch_for_step(
+            "convergence",
+            ConvergenceOption.VERY_ROBUST,
+            "scf",
+            step_yaml,
+        )
+        
+        assert "ELECTRONS" in patch
+        electrons = patch["ELECTRONS"]
+        assert electrons["mixing_beta"] == 0.1
+        assert electrons["electron_maxstep"] == 250
+        assert electrons["mixing_mode"] == "local-TF"
+        assert electrons["mixing_ndim"] == 12
+        assert electrons["diagonalization"] == "cg"
+        assert "conv_thr" not in electrons
+    
+    def test_convergence_never_sets_conv_thr(self):
+        """Convergence preset never sets conv_thr (belongs to precision)."""
+        from quantumvitas.presets.variants_registry import compile_dimension_patch_for_step
+        from quantumvitas.presets.dimensions import ConvergenceOption
+        
+        step_yaml = {"parameters": {"ELECTRONS": {}}}
+        
+        # Test all profiles
+        for option in ConvergenceOption:
+            patch, deletions = compile_dimension_patch_for_step(
+                "convergence",
+                option,
+                "scf",
+                step_yaml,
+            )
+            
+            # Verify conv_thr is never in the patch
+            electrons = patch.get("ELECTRONS", {})
+            assert "conv_thr" not in electrons
+    
+    def test_convergence_and_precision_coexist(self, tmp_path):
+        """Convergence and precision can coexist; conv_thr only from precision."""
+        from quantumvitas.presets.integration import apply_presets_to_step
+        from quantumvitas.presets.dimensions import ConvergenceOption, PrecisionOption
+        
+        step_path = tmp_path / "test.step.yaml"
+        step_path.write_text(yaml.safe_dump({
+            "step_type": "scf",
+            "parameters": {
+                "SYSTEM": {"ecutwfc": 50, "ecutrho": 200},
+                "ELECTRONS": {},
+            },
+        }))
+        
+        # Apply both convergence and precision
+        # Note: precision requires context, so we'll test the patch compilation directly
+        from quantumvitas.presets.variants_registry import compile_dimension_patch_for_step
+        
+        step_yaml = {
+            "parameters": {
+                "SYSTEM": {"ecutwfc": 50, "ecutrho": 200},
+                "ELECTRONS": {},
+            }
+        }
+        
+        # Compile convergence patch
+        conv_patch, conv_deletions = compile_dimension_patch_for_step(
+            "convergence",
+            ConvergenceOption.NORMAL,
+            "scf",
+            step_yaml,
+        )
+        
+        # Compile precision patch (requires context, but we can check conv_thr ownership)
+        from quantumvitas.presets.spaces_registry import compile_dimension_patch
+        precision_patch, precision_deletions = compile_dimension_patch(
+            "precision",
+            PrecisionOption.MED,
+            step_yaml,
+            ecutwfc=50.0,
+            ecutrho=200.0,
+            conv_thr=1e-6,
+            nk1=4,
+            nk2=4,
+            nk3=4,
+        )
+        
+        # Verify convergence patch does NOT contain conv_thr
+        if "ELECTRONS" in conv_patch.get("parameters", {}):
+            assert "conv_thr" not in conv_patch["parameters"]["ELECTRONS"]
+        
+        # Verify precision patch DOES contain conv_thr
+        # Note: precision patch structure is different (direct ELECTRONS key)
+        assert "ELECTRONS" in precision_patch
+        assert "conv_thr" in precision_patch["ELECTRONS"]
+        assert precision_patch["ELECTRONS"]["conv_thr"] == 1e-6
+    
+    def test_convergence_applies_to_pw_steps(self, tmp_path):
+        """Convergence preset applies to all pw-based step types."""
+        from quantumvitas.presets.integration import apply_presets_to_step
+        from quantumvitas.presets.dimensions import ConvergenceOption
+        
+        # Test all pw-based step types
+        pw_step_types = ["scf", "nscf", "relax", "vc-relax", "bands_pw", "md", "vc-md"]
+        
+        for step_type in pw_step_types:
+            step_path = tmp_path / f"{step_type}.step.yaml"
+            step_path.write_text(yaml.safe_dump({
+                "step_type": step_type,
+                "parameters": {"ELECTRONS": {}},
+            }))
+            
+            # Apply convergence preset
+            result = apply_presets_to_step(
+                step_path,
+                {"convergence": "normal"},
+            )
+            
+            # Verify it was accepted
+            assert result["accepted"] is True
+            
+            # Verify convergence parameters were set
+            electrons = result["content"]["parameters"]["ELECTRONS"]
+            assert "mixing_beta" in electrons
+            assert "electron_maxstep" in electrons
+            assert "mixing_mode" in electrons
+            assert "mixing_ndim" in electrons
+            assert "diagonalization" in electrons
+            assert "conv_thr" not in electrons  # Critical: conv_thr not set
+    
+    def test_convergence_does_not_apply_to_non_pw_steps(self, tmp_path):
+        """Convergence preset does not apply to non-pw step types."""
+        from quantumvitas.presets.integration import apply_presets_to_step
+        
+        # Test non-pw step types
+        non_pw_step_types = ["dos", "bands", "projwfc", "pp"]
+        
+        for step_type in non_pw_step_types:
+            step_path = tmp_path / f"{step_type}.step.yaml"
+            step_path.write_text(yaml.safe_dump({
+                "step_type": step_type,
+                "parameters": {"ELECTRONS": {}},
+            }))
+            
+            # Apply convergence preset
+            result = apply_presets_to_step(
+                step_path,
+                {"convergence": "normal"},
+            )
+            
+            # Verify it was NOT accepted (no variant applies)
+            assert result["accepted"] is False
 

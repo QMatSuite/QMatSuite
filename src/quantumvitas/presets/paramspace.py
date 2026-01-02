@@ -821,3 +821,117 @@ def match_precision_profile(
     # All checks passed - return the profile name from canonical_values
     return canonical_values.get("profile_name")
 
+
+# ============================================================================
+# Convergence ParamSpace Definition
+# ============================================================================
+
+def build_convergence_paramspace() -> ParamSpace:
+    """
+    Build the ParamSpace for convergence dimension.
+    
+    Keys:
+    - ELECTRONS.mixing_beta (float, no default)
+    - ELECTRONS.electron_maxstep (int, no default)
+    - ELECTRONS.mixing_mode (string, no default)
+    - ELECTRONS.mixing_ndim (int, no default)
+    - ELECTRONS.diagonalization (string, no default)
+    
+    Note: conv_thr is NOT included (belongs to precision dimension).
+    
+    Profiles:
+    - FAST: mixing_beta=0.7, electron_maxstep=100, mixing_mode='plain', mixing_ndim=8, diagonalization='david'
+    - NORMAL: mixing_beta=0.4, electron_maxstep=150, mixing_mode='plain', mixing_ndim=8, diagonalization='david'
+    - ROBUST: mixing_beta=0.2, electron_maxstep=200, mixing_mode='TF', mixing_ndim=10, diagonalization='rmm-davidson'
+    - VERY_ROBUST: mixing_beta=0.1, electron_maxstep=250, mixing_mode='local-TF', mixing_ndim=12, diagonalization='cg'
+    """
+    key_mixing_beta = ParamKey(
+        section="ELECTRONS",
+        key="mixing_beta",
+        parser=parse_float,
+        canonicalizer=canonicalize_float,
+        default=None,  # No default - must be set by profile
+    )
+    
+    key_electron_maxstep = ParamKey(
+        section="ELECTRONS",
+        key="electron_maxstep",
+        parser=parse_int,
+        canonicalizer=canonicalize_int,
+        default=None,  # No default - must be set by profile
+    )
+    
+    key_mixing_mode = ParamKey(
+        section="ELECTRONS",
+        key="mixing_mode",
+        parser=canonicalize_string,
+        canonicalizer=canonicalize_string,
+        default=None,  # No default - must be set by profile
+    )
+    
+    key_mixing_ndim = ParamKey(
+        section="ELECTRONS",
+        key="mixing_ndim",
+        parser=parse_int,
+        canonicalizer=canonicalize_int,
+        default=None,  # No default - must be set by profile
+    )
+    
+    key_diagonalization = ParamKey(
+        section="ELECTRONS",
+        key="diagonalization",
+        parser=canonicalize_string,
+        canonicalizer=canonicalize_string,
+        default=None,  # No default - must be set by profile
+    )
+    
+    keys = [key_mixing_beta, key_electron_maxstep, key_mixing_mode, key_mixing_ndim, key_diagonalization]
+    
+    profiles = {
+        "FAST": {
+            key_mixing_beta: Cell.VALUE(0.7),
+            key_electron_maxstep: Cell.VALUE(100),
+            key_mixing_mode: Cell.VALUE("plain"),
+            key_mixing_ndim: Cell.VALUE(8),
+            key_diagonalization: Cell.VALUE("david"),
+        },
+        "NORMAL": {
+            key_mixing_beta: Cell.VALUE(0.4),
+            key_electron_maxstep: Cell.VALUE(150),
+            key_mixing_mode: Cell.VALUE("plain"),
+            key_mixing_ndim: Cell.VALUE(8),
+            key_diagonalization: Cell.VALUE("david"),
+        },
+        "ROBUST": {
+            key_mixing_beta: Cell.VALUE(0.2),
+            key_electron_maxstep: Cell.VALUE(200),
+            key_mixing_mode: Cell.VALUE("TF"),
+            key_mixing_ndim: Cell.VALUE(10),
+            key_diagonalization: Cell.VALUE("rmm-davidson"),
+        },
+        "VERY_ROBUST": {
+            key_mixing_beta: Cell.VALUE(0.1),
+            key_electron_maxstep: Cell.VALUE(250),
+            key_mixing_mode: Cell.VALUE("local-TF"),
+            key_mixing_ndim: Cell.VALUE(12),
+            key_diagonalization: Cell.VALUE("cg"),
+        },
+    }
+    
+    return ParamSpace(
+        name="convergence",
+        keys=keys,
+        profiles=profiles,
+    )
+
+
+_CONVERGENCE_PARAMSPACE: Optional[ParamSpace] = None
+
+
+def get_convergence_paramspace() -> ParamSpace:
+    """Get the Convergence ParamSpace (singleton)."""
+    global _CONVERGENCE_PARAMSPACE
+    if _CONVERGENCE_PARAMSPACE is None:
+        _CONVERGENCE_PARAMSPACE = build_convergence_paramspace()
+    return _CONVERGENCE_PARAMSPACE
+

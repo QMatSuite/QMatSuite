@@ -30,17 +30,36 @@ export function CreateCalculationDialog({
   const [selectedWorkflow, setSelectedWorkflow] = useState('');
   const [templates, setTemplates] = useState<CalculationTemplateInfo[]>([]);
   const [workflows, setWorkflows] = useState<WorkflowTemplate[]>([]);
+  const [localStructures, setLocalStructures] = useState<StructureInfo[]>([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+  const [isLoadingStructures, setIsLoadingStructures] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Load templates and workflows when dialog opens
+  // Use provided structures or fetch if not provided
+  const effectiveStructures = structures.length > 0 ? structures : localStructures;
+  
+  // Load templates, workflows, and structures when dialog opens
   useEffect(() => {
     if (isOpen) {
       if (templates.length === 0) loadTemplates();
       if (workflows.length === 0) loadWorkflows();
+      // Fetch structures if not provided via props
+      if (structures.length === 0 && localStructures.length === 0) {
+        loadStructures();
+      }
     }
   }, [isOpen]);
+  
+  const loadStructures = useCallback(async () => {
+    setIsLoadingStructures(true);
+    const response = await qv.listStructures(projectRoot);
+    setIsLoadingStructures(false);
+    
+    if (response.ok && response.data) {
+      setLocalStructures(response.data.structures);
+    }
+  }, [qv, projectRoot]);
   
   const loadTemplates = useCallback(async () => {
     setIsLoadingTemplates(true);
@@ -88,12 +107,15 @@ export function CreateCalculationDialog({
     }
     
     const calculationId = response.data.calculation_id;
-    const calculationPath = response.data.calculation_path;
+    const calculationSlug = response.data.slug;
     
     // If workflow is selected, instantiate it
-    if (selectedWorkflow && calculationPath) {
+    if (selectedWorkflow && calculationId) {
       const structureId = selectedStructure ? 
         structures.find(s => s.slug === selectedStructure)?.id || '' : '';
+      
+      // Construct calculation path from slug (calculations/{slug})
+      const calculationPath = `${projectRoot}/calculations/${calculationSlug}`;
       
       const wfResponse = await qv.call('instantiate_workflow', {
         workflow_id: selectedWorkflow,
@@ -195,11 +217,15 @@ export function CreateCalculationDialog({
             onChange={(e) => setSelectedStructure(e.target.value)}
           >
             <option value="">— None —</option>
-            {structures.map((s) => (
-              <option key={s.id} value={s.slug}>
-                {s.name} ({s.formula})
-              </option>
-            ))}
+            {isLoadingStructures ? (
+              <option disabled>Loading structures...</option>
+            ) : (
+              effectiveStructures.map((s) => (
+                <option key={s.id} value={s.slug}>
+                  {s.name} ({s.formula})
+                </option>
+              ))
+            )}
           </select>
           <span className="form-hint">
             Select a structure for this calculation

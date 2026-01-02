@@ -839,15 +839,11 @@ class QVService:
                 structure=structure_selector,
             )
         
-        # Get default parameters for this step type
-        defaults = get_default_step_params(step_type)
+        # Use step factory to create and save step (journaled via yaml_io)
+        from quantumvitas.workflow.step_factory import create_step_doc, save_step_doc
+        from quantumvitas.core.yamldoc import StepDoc
         
-        # Create step spec with defaults
-        # Calculate relative path from project root
-        step_yaml_path = step_yaml_path.resolve()
-        project_root_resolved = project_root.resolve()
-        rel_path = step_yaml_path.relative_to(project_root_resolved)
-        # Resolve structure selector to structure_id
+        # Resolve structure selector to structure_id if provided
         structure_id = None
         if structure_selector:
             from quantumvitas.core.project_utils import load_project_config
@@ -855,34 +851,43 @@ class QVService:
             resolved_structure = require_structure(project_root, structure_selector, config)
             structure_id = resolved_structure.meta.id
         
-        # DAG + ID-only model: Step YAML contains ONLY step-local configuration.
-        # NO structure_id (inherits from calculation.structure_id at execution time).
-        # NO parent_calculation_id (parent is implicit from step file location).
-        spec = StructureStepSpec(
-            meta=ResourceMeta(
-                id=step_id,
-                name=step_name,
-                slug=step_slug,
-                path=str(rel_path.as_posix()),
-                kind="step",
-            ),
-            step_type=step_type,
-            # Do NOT set structure_id (inherits from calculation)
-            # Do NOT set parent_calculation_id (parent is implicit)
-            structure="",  # Empty legacy field (not written to YAML)
-            parameters=defaults.get("parameters", {}),
-            cards=defaults.get("cards", {}),
-            species_overrides=defaults.get("species_overrides", {}),
-        )
-        step_yaml_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
+        # Get defaults for step type
+        defaults = get_default_step_params(step_type)
         
-        # Add step to calculation model using step_id (ULID) from step spec meta
-        wf_model.steps.append(CalculationStepEntry(
-            step_id=spec.meta.id,  # Use ULID from step spec meta (canonical reference)
-            type=step_type,
-            # step_file is NOT stored - step location resolved via registry using step_id
-        ))
-        save_calculation(wf_model, calculation_dir)
+        # Create step doc using factory (ensures Journal integration)
+        step_doc = create_step_doc(
+            step_type=step_type,
+            name=step_name,
+            structure_id=structure_id,  # Will be stored but not authoritative (DAG model)
+            parent_calculation_id=calculation.meta.id if hasattr(calculation, 'meta') else None,
+            overrides={
+                "parameters": defaults.get("parameters", {}),
+                "cards": defaults.get("cards", {}),
+                "species_overrides": defaults.get("species_overrides", {}),
+            },
+        )
+        
+        # Override meta.id and slug to match what was generated above
+        step_doc.set(["meta", "id"], step_id)
+        step_doc.set(["meta", "slug"], step_slug)
+        
+        # Calculate relative path for meta.path
+        step_yaml_path = step_yaml_path.resolve()
+        project_root_resolved = project_root.resolve()
+        rel_path = step_yaml_path.relative_to(project_root_resolved)
+        step_doc.set(["meta", "path"], str(rel_path.as_posix()))
+        
+        # Save using factory (goes through yaml_io.save_yaml_doc -> Journal)
+        save_step_doc(step_doc, step_yaml_path)
+        
+        # Add step to calculation model using helper (updates calculation.yaml.steps[])
+        step_id_from_doc = step_doc.get(["meta", "id"])
+        QVService.calc_add_step(
+            project_root=project_root,
+            calculation_ulid=calculation.meta.id,
+            step_ulid=step_id_from_doc,
+            step_type=step_type,
+        )
         
         return require_step(project_root, calculation_selector, step_slug)
     
@@ -894,20 +899,26 @@ class QVService:
         **kwargs: Any,
     ) -> None:
         """Configure a step's parameters."""
+        from quantumvitas.core.yamldoc import StepDoc
+        from quantumvitas.workflow.step_factory import save_step_doc
+        
         step = require_step(project_root, calculation_selector, step_selector)
         step_path = step.absolute_path
         
-        data = yaml.safe_load(step_path.read_text()) or {}
+        # Load as StepDoc
+        step_doc = StepDoc.load(step_path)
         
-        # Apply updates
+        # Apply updates via StepDoc API
         for key, value in kwargs.items():
             if value is not None:
-                if key in ("parameters", "cards"):
-                    data.setdefault(key, {}).update(value)
+                if key in ("parameters", "cards", "species_overrides"):
+                    # Use apply_patch for nested dicts
+                    step_doc.apply_patch({key: value})
                 else:
-                    data[key] = value
+                    step_doc.set([key], value)
         
-        step_path.write_text(yaml.safe_dump(data, sort_keys=False))
+        # Save via factory (journaled)
+        save_step_doc(step_doc, step_path)
     
     @staticmethod
     def delete_step(
@@ -1010,11 +1021,14 @@ class QVService:
                         f"The step must be listed in calculation.yaml's steps array.",
             )
         
-        # Remove the step entry from calculation model
-        wf_model.steps = [s for s in wf_model.steps if s.step_id != step_id]
-        
-        # Save updated calculation.yaml
-        save_calculation(wf_model, calculation_yaml_path)
+        # Remove the step entry from calculation model using helper
+        QVService.calc_remove_step(
+            project_root=project_root,
+            calculation_ulid=calculation_resolved.meta.id,
+            step_ulid=step_id,
+            index=index,
+            config=config,
+        )
         
         # Try to resolve and move step file to trash (handle ghost steps gracefully)
         # For ghost steps, require_step may fail, but we've already removed the entry from calculation.yaml
@@ -3476,50 +3490,45 @@ class QVService:
         Returns:
             Updated step detail dict
         """
-        from quantumvitas.calculation.structure_steps import StructureStepSpec
+        from quantumvitas.core.yamldoc import StepDoc
+        from quantumvitas.workflow.step_factory import save_step_doc
         
         step = resolve_step(project_root, calculation_selector, step_selector, config=config, index=index)
-        # Load step spec (DAG + ULID model: structure_id is already in spec)
-        from quantumvitas.core.resolution import make_structure_selector_resolver
-        from quantumvitas.core.project_utils import load_project_config
-        if config is None:
-            config = load_project_config(project_root)
-        resolver = make_structure_selector_resolver(project_root, config=config)
-        spec = StructureStepSpec.from_yaml(step.absolute_path, resolve_structure_selector=resolver)
         
-        # Validate and merge parameters
-        # STRING-ONLY RULE: All parameter values must be stored as strings in YAML
+        # Load as StepDoc
+        step_doc = StepDoc.load(step.absolute_path)
+        
+        # Build patch for parameters
+        param_patch = {}
         for namelist, params in parameters.items():
             namelist_upper = namelist.upper()
-            
-            # Create namelist if it doesn't exist
-            if namelist_upper not in spec.parameters:
-                spec.parameters[namelist_upper] = {}
+            param_patch[namelist_upper] = {}
             
             for key, value in params.items():
                 # Set or remove the parameter
                 if value is None:
-                    spec.parameters[namelist_upper].pop(key, None)
+                    param_patch[namelist_upper][key] = None  # None means delete in apply_patch
                 else:
                     # STRING-ONLY: Convert all values to strings for YAML storage
-                    # Do not coerce to numbers/bools - YAML must contain strings only
-                    spec.parameters[namelist_upper][key] = str(value)
-            
-            # Clean up empty namelists
-            if not spec.parameters[namelist_upper]:
-                del spec.parameters[namelist_upper]
+                    param_patch[namelist_upper][key] = str(value)
+        
+        # Apply parameter patch
+        if param_patch:
+            step_doc.apply_patch({"parameters": param_patch})
         
         # Update cards if provided
         if cards:
+            card_patch = {}
             for card_name, card_data in cards.items():
                 card_upper = card_name.upper()
                 if card_data is None:
-                    spec.cards.pop(card_upper, None)
+                    card_patch[card_upper] = None  # Delete
                 else:
-                    spec.cards[card_upper] = card_data
+                    card_patch[card_upper] = card_data
+            step_doc.apply_patch({"cards": card_patch})
         
-        # Save the updated spec
-        step.absolute_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
+        # Save via factory (journaled)
+        save_step_doc(step_doc, step.absolute_path)
         
         # Return the updated step detail (pass cached index/config to avoid rebuilding)
         return QVService.get_step_detail(
@@ -3662,13 +3671,15 @@ class QVService:
             # Convert raw text to card data dict
             card_data = k_points_to_card_data(raw)
             
-            # Update spec
-            spec.cards["K_POINTS"] = card_data
+            # Update via StepDoc
+            from quantumvitas.core.yamldoc import StepDoc
+            from quantumvitas.workflow.step_factory import save_step_doc
+            
+            step_doc = StepDoc.load(step.absolute_path)
+            step_doc.set(["cards", "K_POINTS"], card_data)
+            save_step_doc(step_doc, step.absolute_path)
         else:
             raise ValueError(f"Unsupported card: {card_name}")
-        
-        # Save updated spec
-        step.absolute_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
         
         # Return updated step detail
         return QVService.get_step_detail(
@@ -3920,8 +3931,14 @@ class QVService:
         # The library_preference is stored for future auto-fill operations but
         # doesn't affect the actual pseudo_dir which is enforced at runtime
         
-        # Save updated spec
-        step.absolute_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
+        # Save via StepDoc (journaled)
+        from quantumvitas.core.yamldoc import StepDoc
+        from quantumvitas.workflow.step_factory import save_step_doc
+        
+        step_doc = StepDoc.load(step.absolute_path)
+        # Use apply_patch for dict subtree updates
+        step_doc.apply_patch({"species_overrides": spec.species_overrides})
+        save_step_doc(step_doc, step.absolute_path)
         
         # Return updated step detail
         return QVService.get_step_detail(
@@ -4640,10 +4657,13 @@ class QVService:
             save_project_config(project_root, config)
             structure_id_value = meta.id  # Use the structure's ULID (canonical reference)
         
-        # Update step spec to reference structure by ID (canonical reference)
-        spec.structure_id = structure_id_value
-        spec_path = import_result.spec_path
-        spec_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
+        # Update step spec to reference structure by ID via StepDoc (journaled)
+        from quantumvitas.core.yamldoc import StepDoc
+        from quantumvitas.workflow.step_factory import save_step_doc
+        
+        step_doc = StepDoc.load(import_result.spec_path)
+        step_doc.set(["structure_id"], structure_id_value)
+        save_step_doc(step_doc, import_result.spec_path)
         
         # Add step to calculation model using step_id (ULID) from step spec meta
         rel_step_path = spec_path.relative_to(calculation_dir)
@@ -4731,13 +4751,18 @@ class QVService:
         # Get defaults for this step type
         defaults = get_default_step_params(spec.step_type)
         
-        # Reset parameters and cards to defaults, keep meta/structure/parent_calculation_id
-        spec.parameters = defaults.get("parameters", {})
-        spec.cards = defaults.get("cards", {})
-        spec.species_overrides = defaults.get("species_overrides", {})
+        # Reset parameters and cards to defaults via StepDoc (journaled)
+        from quantumvitas.core.yamldoc import StepDoc
+        from quantumvitas.workflow.step_factory import save_step_doc
         
-        # Save the updated spec
-        step.absolute_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
+        step_doc = StepDoc.load(step.absolute_path)
+        # Use apply_patch for dict subtree updates
+        step_doc.apply_patch({
+            "parameters": defaults.get("parameters", {}),
+            "cards": defaults.get("cards", {}),
+            "species_overrides": defaults.get("species_overrides", {}),
+        })
+        save_step_doc(step_doc, step.absolute_path)
         
         # Return the updated step detail (pass cached index/config to avoid rebuilding)
         return QVService.get_step_detail(
@@ -4747,6 +4772,170 @@ class QVService:
             index=index,
             config=config,
         )
+    
+    # -------------------------------------------------------------------------
+    # Calculation Step Membership Helpers (Authoritative: calculation.yaml.steps[])
+    # -------------------------------------------------------------------------
+    
+    @staticmethod
+    def _update_calculation_steps(
+        project_root: Path,
+        calculation_ulid: str,
+        steps_updater: callable,
+        *,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
+    ) -> None:
+        """
+        Internal helper to update calculation.yaml.steps[] atomically.
+        
+        Per Constitution: calculation.yaml.steps[] is the single source of truth.
+        All step membership changes must go through this helper.
+        
+        Args:
+            project_root: Project root path
+            calculation_ulid: Calculation ULID (not selector)
+            steps_updater: Function that takes list[CalculationStepEntry] and returns updated list
+            index: Optional ResourceIndex
+            config: Optional project config
+        """
+        from quantumvitas.core.models import load_calculation, save_calculation
+        from quantumvitas.core.project_utils import load_project_config
+        from quantumvitas.core.resolution import resolve_calculation
+        
+        if config is None:
+            config = load_project_config(project_root)
+        
+        # Resolve by ULID
+        calculation = resolve_calculation(project_root, calculation_ulid, config=config, index=index)
+        if calculation.meta.id != calculation_ulid:
+            raise QVServiceError(f"Calculation ULID mismatch: expected {calculation_ulid}, got {calculation.meta.id}")
+        
+        calc_path = calculation.absolute_path / "calculation.yaml"
+        wf_model = load_calculation(calc_path, project_root)
+        
+        # Update steps
+        wf_model.steps = steps_updater(wf_model.steps)
+        
+        # Save via CalcDoc + yaml_io (journaled)
+        save_calculation(wf_model, calc_path)
+    
+    @staticmethod
+    def calc_add_step(
+        project_root: Path,
+        calculation_ulid: str,
+        step_ulid: str,
+        step_type: str,
+        *,
+        position: Optional[int] = None,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
+    ) -> None:
+        """
+        Add a step to calculation.yaml.steps[].
+        
+        Args:
+            project_root: Project root path
+            calculation_ulid: Calculation ULID
+            step_ulid: Step ULID
+            step_type: Step type (for display)
+            position: Optional position to insert (default: append)
+            index: Optional ResourceIndex
+            config: Optional project config
+        """
+        from quantumvitas.core.models import CalculationStepEntry
+        
+        def updater(steps: List) -> List:
+            # Verify step_ulid not already present
+            if any(s.step_id == step_ulid for s in steps):
+                raise QVServiceError(f"Step {step_ulid} already in calculation")
+            
+            new_entry = CalculationStepEntry(step_id=step_ulid, type=step_type)
+            if position is None:
+                return steps + [new_entry]
+            else:
+                result = list(steps)
+                result.insert(position, new_entry)
+                return result
+        
+        QVService._update_calculation_steps(
+            project_root, calculation_ulid, updater, index=index, config=config
+        )
+    
+    @staticmethod
+    def calc_remove_step(
+        project_root: Path,
+        calculation_ulid: str,
+        step_ulid: str,
+        *,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
+    ) -> None:
+        """
+        Remove a step from calculation.yaml.steps[].
+        
+        Args:
+            project_root: Project root path
+            calculation_ulid: Calculation ULID
+            step_ulid: Step ULID to remove
+            index: Optional ResourceIndex
+            config: Optional project config
+        """
+        def updater(steps: List) -> List:
+            return [s for s in steps if s.step_id != step_ulid]
+        
+        QVService._update_calculation_steps(
+            project_root, calculation_ulid, updater, index=index, config=config
+        )
+    
+    @staticmethod
+    def calc_set_steps(
+        project_root: Path,
+        calculation_ulid: str,
+        ordered_step_ulids: List[str],
+        *,
+        index: Optional["ResourceIndex"] = None,
+        config: Optional[dict] = None,
+    ) -> None:
+        """
+        Set calculation.yaml.steps[] to an ordered list of step ULIDs.
+        
+        Args:
+            project_root: Project root path
+            calculation_ulid: Calculation ULID
+            ordered_step_ulids: Ordered list of step ULIDs
+            index: Optional ResourceIndex
+            config: Optional project config
+        """
+        from quantumvitas.core.models import load_calculation, CalculationStepEntry
+        from quantumvitas.core.resolution import resolve_calculation
+        
+        if config is None:
+            from quantumvitas.core.project_utils import load_project_config
+            config = load_project_config(project_root)
+        
+        # Resolve calculation to get current model
+        calculation = resolve_calculation(project_root, calculation_ulid, config=config, index=index)
+        calc_path = calculation.absolute_path / "calculation.yaml"
+        wf_model = load_calculation(calc_path, project_root)
+        
+        # Build mapping of step_ulid -> step entry
+        step_map = {s.step_id: s for s in wf_model.steps if s.step_id}
+        
+        # Build new steps list preserving type info
+        new_steps = []
+        for step_ulid in ordered_step_ulids:
+            if step_ulid in step_map:
+                new_steps.append(step_map[step_ulid])
+            else:
+                # Step not in current model - create minimal entry
+                # Type will be resolved when step is loaded
+                new_steps.append(CalculationStepEntry(step_id=step_ulid, type=None))
+        
+        wf_model.steps = new_steps
+        # Save via CalcDoc + yaml_io (journaled)
+        from quantumvitas.core.models import save_calculation
+        save_calculation(wf_model, calc_path)
     
     # -------------------------------------------------------------------------
     # Calculation Configuration (Phase 4 - Reorder, Change Structure)
@@ -4809,10 +4998,15 @@ class QVService:
             missing = existing_ids - seen
             raise QVServiceError(f"New order missing steps: {missing}")
         
-        # Update the model
-        wf_model.steps = reordered
-        from quantumvitas.core.models import save_calculation
-        save_calculation(wf_model, wf_path)
+        # Update the model using helper
+        ordered_step_ulids = [s.step_id for s in reordered if s.step_id]
+        QVService.calc_set_steps(
+            project_root=project_root,
+            calculation_ulid=calculation.meta.id,
+            ordered_step_ulids=ordered_step_ulids,
+            index=index,
+            config=config,
+        )
         
         # Return updated calculation info (pass cached index to avoid rebuilding)
         return QVService.get_calculation_detail(
@@ -5001,10 +5195,8 @@ class QVService:
             species_overrides=default_species,
         )
         
-        # Write step file
+        # Write step file via StepFactory (journaled)
         # CRITICAL: Ensure calculation.absolute_path is the calculation directory, not calculation.yaml
-        # Based on resolution.py line 637, calculation.absolute_path should be the directory
-        # But we verify this to avoid bugs where it might be the file
         if calculation.absolute_path.name == "calculation.yaml":
             calculation_dir = calculation.absolute_path.parent
         else:
@@ -5015,11 +5207,12 @@ class QVService:
         step_yaml_filename = f"{slug}.step.yaml"
         step_file_path = steps_dir / step_yaml_filename
         
-        # Write the step spec to disk
-        # This creates the actual step YAML file that will be loaded by get_step_detail
-        step_dict = step_spec.to_dict()
-        step_yaml_content = yaml.safe_dump(step_dict, sort_keys=False)
-        step_file_path.write_text(step_yaml_content)
+        # Create StepDoc from spec and save via factory
+        from quantumvitas.core.yamldoc import StepDoc
+        from quantumvitas.workflow.step_factory import save_step_doc
+        
+        step_doc = StepDoc(step_spec.to_dict())
+        save_step_doc(step_doc, step_file_path)
         
         # Verify the file was created (defensive check)
         if not step_file_path.exists():
@@ -5144,13 +5337,19 @@ class QVService:
                         # Load step spec (DAG + ULID model: structure_id is already in spec)
                         spec = StructureStepSpec.from_yaml(step_file, resolve_structure_selector=resolver)
                         # Check if step needs structure update (compare structure_id, not structure selector)
-                        if spec.structure_id != resolved_structure.meta.id:
-                            old_step_struct_id = spec.structure_id
-                            # Update step spec structure_id (canonical reference)
-                            spec.structure_id = resolved_structure.meta.id
+                        from quantumvitas.core.yamldoc import StepDoc
+                        from quantumvitas.workflow.step_factory import save_step_doc
+                        
+                        step_doc = StepDoc.load(step_file)
+                        current_structure_id = step_doc.get(["structure_id"], default=None)
+                        
+                        if current_structure_id != resolved_structure.meta.id:
+                            old_step_struct_id = current_structure_id
+                            # Update step structure_id via StepDoc (journaled)
+                            step_doc.set(["structure_id"], resolved_structure.meta.id)
                             # Do not write structure selector (DAG + ID-only model: only structure_id is written)
-                            spec.structure = ""
-                            step_file.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))
+                            step_doc.set(["structure"], "")
+                            save_step_doc(step_doc, step_file)
                             updated_steps.append({
                                 "step_id": spec.meta.id,
                                 "old_structure_id": old_step_struct_id,
@@ -6371,9 +6570,13 @@ class QVService:
         structures.append(entry)
         save_project_config(project_root, config)
         
-        # Update step YAML with produced_structure_ulid
-        step_yaml_data["produced_structure_ulid"] = meta.id
-        step_resolved.absolute_path.write_text(yaml.safe_dump(step_yaml_data, sort_keys=False))
+        # Update step YAML with produced_structure_ulid via StepDoc (journaled)
+        from quantumvitas.core.yamldoc import StepDoc
+        from quantumvitas.workflow.step_factory import save_step_doc
+        
+        step_doc = StepDoc.load(step_resolved.absolute_path)
+        step_doc.set(["produced_structure_ulid"], meta.id)
+        save_step_doc(step_doc, step_resolved.absolute_path)
         
         # Update registry in-place if index is provided
         if index is not None:
