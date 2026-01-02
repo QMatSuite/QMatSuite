@@ -1483,7 +1483,26 @@ export interface QVCommandMap {
       level: 'INFO' | 'DEBUG';
     };
     result: {
-      success: boolean;
+      ok: boolean;
+      level: 'INFO' | 'DEBUG';
+    };
+  };
+  // Set resolution debug flag
+  set_debug_resolution: {
+    payload: {
+      enabled: boolean;
+    };
+    result: {
+      ok: boolean;
+      enabled: boolean;
+    };
+  };
+  // Get resolution debug flag
+  get_debug_resolution: {
+    payload: Record<string, never>;
+    result: {
+      ok: boolean;
+      enabled: boolean;
     };
   };
   
@@ -2010,10 +2029,12 @@ export interface WorkflowIssue {
 export interface DetectWorkflowForCalculationResult {
   workflow_id: string | null;
   workflow_name: string;
+  workflow_label: string;  // Formatted label like "DOS (3/3)" or "Bands (2/3)"
   coverage: {
     present: number;
     required: number;
   };
+  present_steps?: string[];  // Optional list of present step types
   missing_step_types: string[];
   issues: WorkflowIssue[];
 }

@@ -988,22 +988,19 @@ export function CalculationDetailPanel({
           <div className="workflow-detection-badge" style={{ 
             margin: '12px 0', 
             padding: '8px 12px', 
-            backgroundColor: '#f0f0f0', 
-            borderRadius: '4px',
-            fontSize: '0.9em'
+            backgroundColor: 'var(--bg-secondary)',
+            border: '1px solid var(--border-color)',
+            borderRadius: 'var(--radius-md)',
+            fontSize: '0.9em',
+            color: 'var(--text-primary)'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontWeight: '500' }}>Detected workflow:</span>
-              <span style={{ fontWeight: '600' }}>
-                {workflowDetection.workflow_name || 'Unknown'}
+              <span style={{ fontWeight: '500', color: 'var(--text-primary)' }}>Detected workflow:</span>
+              <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
+                {workflowDetection.workflow_label || workflowDetection.workflow_name || 'Unknown'}
               </span>
-              {workflowDetection.coverage.required > 0 && (
-                <span style={{ color: '#666' }}>
-                  ({workflowDetection.coverage.present}/{workflowDetection.coverage.required})
-                </span>
-              )}
               {workflowDetection.missing_step_types.length > 0 && (
-                <span style={{ color: '#d32f2f', fontSize: '0.85em' }}>
+                <span style={{ color: 'var(--color-error)', fontSize: '0.85em' }}>
                   missing: {workflowDetection.missing_step_types.join(', ')}
                 </span>
               )}
@@ -1014,10 +1011,20 @@ export function CalculationDetailPanel({
                     marginLeft: 'auto',
                     padding: '2px 8px',
                     fontSize: '0.85em',
-                    border: '1px solid #ccc',
-                    borderRadius: '3px',
-                    backgroundColor: 'white',
-                    cursor: 'pointer'
+                    border: '1px solid var(--border-color)',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: 'var(--bg-button)',
+                    color: 'var(--text-secondary)',
+                    cursor: 'pointer',
+                    transition: 'all var(--transition-fast)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-button-hover)';
+                    e.currentTarget.style.color = 'var(--text-primary)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-button)';
+                    e.currentTarget.style.color = 'var(--text-secondary)';
                   }}
                 >
                   {showWorkflowIssues ? 'Hide' : 'Show'} Issues ({workflowDetection.issues.length})
@@ -1028,15 +1035,15 @@ export function CalculationDetailPanel({
               <div style={{ 
                 marginTop: '8px', 
                 padding: '8px',
-                backgroundColor: 'white',
-                borderRadius: '3px',
-                border: '1px solid #ddd'
+                backgroundColor: 'var(--bg-primary)',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-subtle)'
               }}>
-                <div style={{ fontWeight: '500', marginBottom: '4px' }}>Issues:</div>
+                <div style={{ fontWeight: '500', marginBottom: '4px', color: 'var(--text-primary)' }}>Issues:</div>
                 <ul style={{ margin: 0, paddingLeft: '20px' }}>
                   {workflowDetection.issues.map((issue, idx) => (
                     <li key={idx} style={{ 
-                      color: issue.code === 'error' ? '#d32f2f' : '#f57c00',
+                      color: issue.code === 'error' ? 'var(--color-error)' : 'var(--color-warning)',
                       marginBottom: '4px'
                     }}>
                       {issue.message}

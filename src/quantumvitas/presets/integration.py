@@ -407,8 +407,8 @@ def apply_presets_to_step(
     # Build unified patch for apply_patch (uses None for deletions)
     unified_patch: Dict[str, Dict[str, Any]] = {
         "parameters": {
-            "SYSTEM": {},
-            "ELECTRONS": {},
+        "SYSTEM": {},
+        "ELECTRONS": {},
         },
         "cards": {},
     }

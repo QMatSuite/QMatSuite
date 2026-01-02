@@ -111,8 +111,17 @@ def entry_matches(entry: dict, identifier: str) -> bool:
     
     Matches against (in order): id (ULID), name, slug, file path.
     Comparison is case-insensitive for names/slugs.
+    
+    Raises:
+        ValueError: If identifier is None or not a string
     """
+    if identifier is None:
+        raise ValueError("identifier must be a non-empty string, got None")
+    if not isinstance(identifier, str):
+        raise ValueError(f"identifier must be a string, got {type(identifier).__name__}")
     ident = identifier.strip()
+    if not ident:
+        raise ValueError("identifier must be a non-empty string after stripping")
     ident_lower = ident.lower()
     meta = entry.get("meta") or {}
     

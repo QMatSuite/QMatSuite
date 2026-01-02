@@ -36,12 +36,14 @@ class QMatSuiteSettings:
     """
     version: int = 1
     qe: QEConfig = field(default_factory=QEConfig)
+    debug_resolution: bool = False  # Enable detailed resolution/addressing debug logs
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {
             "version": self.version,
             "qe": asdict(self.qe),
+            "debug_resolution": self.debug_resolution,
         }
     
     @classmethod
@@ -86,6 +88,7 @@ class QMatSuiteSettings:
         return cls(
             version=data.get("version", 1),
             qe=qe,
+            debug_resolution=data.get("debug_resolution", False),  # Default: OFF
         )
 
 

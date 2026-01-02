@@ -187,36 +187,101 @@ class WorkflowService:
                 ordering_valid=False,
             )
         
+        import logging
+        from quantumvitas.core.debug import is_resolution_debug_enabled
+        
+        logger = logging.getLogger(__name__)
+        debug_enabled = is_resolution_debug_enabled()
+        
         # Collect step types in order from calculation.yaml.steps[] (authoritative)
         # Per Constitution: steps[] is single source of truth, do NOT scan filesystem
         present_steps: List[str] = []
         from quantumvitas.core.project_utils import find_project_root
         project_root = find_project_root(calc_dir)
         
-        for step_entry in steps:
+        logger.info(
+            f"[WORKFLOW_DETECT] Starting workflow detection for calc_dir={calc_dir}, "
+            f"project_root={project_root}, steps_count={len(steps)}"
+        )
+        
+        for i, step_entry in enumerate(steps):
             step_type = None
+            step_ulid = step_entry.get("step_id")
+            step_entry_type = step_entry.get("step_type") or step_entry.get("type")
+            
+            logger.info(
+                f"[WORKFLOW_DETECT] Processing step entry {i+1}/{len(steps)}: "
+                f"step_id={step_ulid}, type_in_entry={step_entry_type}"
+            )
             
             # Try new format first: step_id (ULID) -> resolve step -> get step_type
             # This requires project_root to be available
-            step_ulid = step_entry.get("step_id")
             if step_ulid and project_root:
                 try:
                     from quantumvitas.core.resolution import resolve_step
                     from quantumvitas.core.project_utils import load_project_config
                     config = load_project_config(project_root)
-                    resolved_step = resolve_step(project_root, None, step_ulid, config=config)
                     
-                    # Load step YAML to get step_type
-                    from quantumvitas.core.yamldoc import StepDoc
-                    step_doc = StepDoc.load(resolved_step.absolute_path)
-                    step_type = step_doc.get(["step_type"], default=None)
-                except Exception:
+                    # Resolve calculation first to get calculation_ulid
+                    # We need calc_dir to find the calculation
+                    calc_yaml = calc_dir / "calculation.yaml"
+                    if calc_yaml.exists():
+                        from quantumvitas.core.yamldoc import CalcDoc
+                        calc_doc = CalcDoc.load(calc_yaml)
+                        calculation_ulid = calc_doc.get(["meta", "id"], default=None)
+                        
+                        if calculation_ulid:
+                            resolved_step = resolve_step(
+                                project_root, 
+                                calculation_ulid,  # Use calculation_ulid, not None
+                                step_ulid, 
+                                config=config
+                            )
+                            
+                            # Load step YAML to get step_type
+                            from quantumvitas.core.yamldoc import StepDoc
+                            step_doc = StepDoc.load(resolved_step.absolute_path)
+                            step_type = step_doc.get(["step_type"], default=None)
+                            if debug_enabled:
+                                logger.info(
+                                    f"[WORKFLOW_DETECT] Resolved step by ULID: step_id={step_ulid} -> "
+                                    f"step_type={step_type} (from step YAML)"
+                                )
+                        else:
+                            if debug_enabled:
+                                logger.warning(
+                                    f"[WORKFLOW_DETECT] Cannot resolve step by ULID: calculation_ulid not found in calculation.yaml"
+                                )
+                    else:
+                        if debug_enabled:
+                            logger.warning(
+                                f"[WORKFLOW_DETECT] Cannot resolve step by ULID: calculation.yaml not found at {calc_yaml}"
+                            )
+                except Exception as e:
                     # Step file missing or invalid - skip it (ghost step)
+                    if debug_enabled:
+                        logger.warning(
+                            f"[WORKFLOW_DETECT] Failed to resolve step by ULID: step_id={step_ulid}, "
+                            f"error={type(e).__name__}: {e}"
+                        )
                     pass
             
             # Fallback to legacy format: step_type directly in entry, or type field
             if not step_type:
-                step_type = step_entry.get("step_type") or step_entry.get("type")
+                step_type = step_entry_type
+                if step_type:
+                    if debug_enabled:
+                        logger.info(
+                            f"[WORKFLOW_DETECT] Using type from calculation.yaml.steps[] entry: "
+                            f"step_id={step_ulid}, type={step_type}"
+                        )
+                else:
+                    # Always log warnings about missing type field (not gated)
+                    logger.warning(
+                        f"[WORKFLOW_DETECT] WARNING: Step entry has no type field! "
+                        f"step_id={step_ulid}, entry_keys={list(step_entry.keys())}. "
+                        f"Workflow detection may fail or be inaccurate."
+                    )
             
             # Also try resolving by file path (legacy format)
             if not step_type:
@@ -228,11 +293,32 @@ class WorkflowService:
                             from quantumvitas.core.yamldoc import StepDoc
                             step_doc = StepDoc.load(step_path)
                             step_type = step_doc.get(["step_type"], default=None)
+                            if debug_enabled:
+                                logger.info(
+                                    f"[WORKFLOW_DETECT] Resolved step by file path: "
+                                    f"file={step_file} -> step_type={step_type}"
+                                )
                         except Exception:
                             pass
             
             if step_type:
                 present_steps.append(step_type)
+                if debug_enabled:
+                    logger.info(
+                        f"[WORKFLOW_DETECT] Step {i+1} added to present_steps: {step_type}"
+                    )
+            else:
+                if debug_enabled:
+                    logger.warning(
+                        f"[WORKFLOW_DETECT] Step {i+1} could not be resolved: "
+                        f"step_id={step_ulid}, no step_type found"
+                    )
+        
+        if debug_enabled:
+            logger.info(
+                f"[WORKFLOW_DETECT] Collected present_steps: {present_steps} "
+                f"(from {len(steps)} step entries)"
+            )
         
         # Find best matching workflow
         # Prefer: 1) 100% coverage, 2) longer workflow with 100% coverage, 3) highest coverage
@@ -372,10 +458,17 @@ class WorkflowService:
         if project_root is None:
             raise ValueError(f"Cannot find project root from {calc_dir}")
         
+        # Build step_types mapping: step_ulid -> step_type
+        # This ensures calculation.yaml.steps[] includes type metadata
+        step_types = {}
+        for step_type, step_ulid in zip(workflow.step_sequence, created_step_ulids):
+            step_types[step_ulid] = step_type
+        
         QVService.calc_set_steps(
             project_root=project_root,
             calculation_ulid=parent_calculation_id,
             ordered_step_ulids=created_step_ulids,
+            step_types=step_types,  # Provide step types for canonical metadata
         )
         
         return created_paths
