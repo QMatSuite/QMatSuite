@@ -24,6 +24,7 @@ from quantumvitas.presets.dimensions import (
     MagnetismOption,
     OccupationsSchemeOption,
     PrecisionOption,
+    ConvergenceOption,
 )
 
 
@@ -32,6 +33,7 @@ DIMENSION_LABELS: Dict[str, str] = {
     "magnetism": "Magnetism",
     "occupations_scheme": "Occupations",
     "precision": "Precision",
+    "convergence": "Convergence",
 }
 
 # Human-readable labels for options
@@ -52,6 +54,12 @@ OPTION_LABELS: Dict[str, Dict[str, str]] = {
         "med": "Medium",
         "high": "High",
     },
+    "convergence": {
+        "fast": "Fast",
+        "normal": "Normal",
+        "robust": "Robust",
+        "very_robust": "Very Robust",
+    },
 }
 
 # Descriptions for dimensions
@@ -59,6 +67,7 @@ DIMENSION_DESCRIPTIONS: Dict[str, str] = {
     "magnetism": "Spin/SOC settings",
     "occupations_scheme": "Occupations scheme for BZ integration",
     "precision": "Precision level: controls k-mesh density, cutoffs, and convergence threshold",
+    "convergence": "Convergence strategy: controls ELECTRONS mixing parameters and max iterations (conv_thr belongs to precision)",
 }
 
 # Default options per dimension
@@ -66,6 +75,7 @@ DIMENSION_DEFAULTS: Dict[str, str] = {
     "magnetism": "nonmagnetic",
     "occupations_scheme": "fixed",
     "precision": "med",
+    "convergence": "normal",
 }
 
 # Order for dimensions (lower = earlier)
@@ -73,6 +83,7 @@ DIMENSION_ORDER: Dict[str, int] = {
     "magnetism": 10,
     "occupations_scheme": 20,
     "precision": 30,
+    "convergence": 40,
 }
 
 
@@ -155,6 +166,12 @@ def get_preset_catalog() -> Dict[str, Any]:
                 options.append({
                     "value": opt.value,
                     "label": OPTION_LABELS["precision"].get(opt.value, opt.value),
+                })
+        elif dimension == "convergence":
+            for opt in ConvergenceOption:
+                options.append({
+                    "value": opt.value,
+                    "label": OPTION_LABELS["convergence"].get(opt.value, opt.value),
                 })
         
         # Build scope

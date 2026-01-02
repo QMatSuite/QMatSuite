@@ -21,10 +21,12 @@ from quantumvitas.presets.dimensions import (
     MagnetismOption,
     OccupationsSchemeOption,
     PrecisionOption,
+    ConvergenceOption,
     CUSTOM,
     DIMENSION_MAGNETISM,
     DIMENSION_OCCUPATIONS_SCHEME,
     DIMENSION_PRECISION,
+    DIMENSION_CONVERGENCE,
     _CustomType,
 )
 from quantumvitas.presets.detector import detect_all_presets
@@ -315,6 +317,10 @@ DIMENSION_OWNED_KEYS: dict[str, dict[str, set[str]]] = {
         # NOTE: cards.K_POINTS is NOT included here because it's variant-dependent
         # bands_pw variant does NOT own K_POINTS
     },
+    DIMENSION_CONVERGENCE: {
+        "ELECTRONS": {"mixing_beta", "electron_maxstep", "mixing_mode", "mixing_ndim", "diagonalization"},
+        # NOTE: conv_thr is NOT included here (belongs to precision dimension)
+    },
 }
 
 
@@ -420,6 +426,8 @@ def apply_presets_to_step(
             )
         elif dimension == DIMENSION_PRECISION:
             option_enum = _normalize_option(filtered_options[dimension], PrecisionOption, PrecisionOption.MED)
+        elif dimension == DIMENSION_CONVERGENCE:
+            option_enum = _normalize_option(filtered_options[dimension], ConvergenceOption, ConvergenceOption.NORMAL)
         else:
             continue
         

@@ -184,3 +184,35 @@ def test_add_step_to_calculation_no_executable_in_spec(temp_project):
         spec = StructureStepSpec.from_dict(step_data, source_path=step_file)
         assert not hasattr(spec, "executable"), f"StructureStepSpec from {step_file.name} has executable attribute"
 
+
+def test_configure_step_species_overrides(temp_project):
+    """Test that configure_step handles species_overrides correctly using apply_patch."""
+    from quantumvitas.core.yamldoc import StepDoc
+    
+    # Add a step first
+    QVService.add_step_to_calculation(
+        project_root=temp_project,
+        calculation_selector="Test Calculation",
+        step_type="scf",
+        step_name="test-scf",
+    )
+    
+    # Configure step with species_overrides (dict value)
+    QVService.configure_step(
+        project_root=temp_project,
+        calculation_selector="Test Calculation",
+        step_selector="test-scf",
+        species_overrides={
+            "Si": {"pseudopot": "Si.UPF"},
+        },
+    )
+    
+    # Load step and verify species_overrides was set correctly
+    step_file = temp_project / "calculations" / "test-calculation" / "steps" / "test-scf.step.yaml"
+    step_doc = StepDoc.load(step_file)
+    
+    species_overrides = step_doc.export_copy(["species_overrides"])
+    assert species_overrides is not None
+    assert "Si" in species_overrides
+    assert species_overrides["Si"]["pseudopot"] == "Si.UPF"
+

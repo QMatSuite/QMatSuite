@@ -1059,7 +1059,8 @@ export interface QVCommandMap {
   rename_calculation: {
     payload: {
       project_root: string;
-      selector: string;
+      calculation_ulid?: string;  // Preferred: ULID
+      selector?: string;  // Legacy: selector (for backwards compat)
       new_name: string;
     };
     result: {
@@ -1083,7 +1084,8 @@ export interface QVCommandMap {
   delete_calculation: {
     payload: {
       project_root: string;
-      selector: string;
+      calculation_ulid?: string;  // Preferred: ULID
+      selector?: string;  // Legacy: selector (for backwards compat)
       force?: boolean;
     };
     result: {
@@ -1526,6 +1528,26 @@ export interface QVCommandMap {
       calculation: string;
     };
     result: WorkflowDetectionResult;
+  };
+  detect_workflow_for_calculation: {
+    payload: {
+      project_root: string;
+      calculation_ulid: string;
+    };
+    result: DetectWorkflowForCalculationResult;
+  };
+  list_workflow_templates: {
+    payload: Record<string, never>;
+    result: ListWorkflowTemplatesResult;
+  };
+  instantiate_workflow: {
+    payload: {
+      workflow_id: string;
+      calculation_path: string;
+      structure_id: string;
+      calculation_id: string;
+    };
+    result: InstantiateWorkflowResult;
   };
   
   // Apply presets to step (Constitution §10.3.3: overwrite, not merge)
@@ -1975,6 +1997,25 @@ export interface DetectWorkflowResult {
 /** Response from instantiate_workflow */
 export interface InstantiateWorkflowResult {
   step_paths: string[];
+}
+
+/** Workflow issue from validation */
+export interface WorkflowIssue {
+  code: 'error' | 'warning';
+  message: string;
+  step_type?: string;
+}
+
+/** Response from detect_workflow_for_calculation */
+export interface DetectWorkflowForCalculationResult {
+  workflow_id: string | null;
+  workflow_name: string;
+  coverage: {
+    present: number;
+    required: number;
+  };
+  missing_step_types: string[];
+  issues: WorkflowIssue[];
 }
 
 // Extend Window interface

@@ -3,7 +3,7 @@
  */
 
 import { useState, useCallback, useMemo, useEffect, type RefObject } from 'react';
-import type { CalculationInfo } from '../../types/qv';
+import type { CalculationInfo, DetectWorkflowForCalculationResult } from '../../types/qv';
 import './CalculationListPanel.css';
 
 interface CalculationListPanelProps {
@@ -542,6 +542,33 @@ export function CalculationDetailPanel({
     !isFocusMode && calculationForSteps ? calculationForSteps.slug : null
   );
   
+  // Workflow detection state
+  const [workflowDetection, setWorkflowDetection] = useState<DetectWorkflowForCalculationResult | null>(null);
+  const [showWorkflowIssues, setShowWorkflowIssues] = useState(false);
+  
+  // Detect workflow when calculation changes
+  useEffect(() => {
+    if (!calculation || !projectRoot) {
+      setWorkflowDetection(null);
+      return;
+    }
+    
+    qv.call('detect_workflow_for_calculation', {
+      project_root: projectRoot,
+      calculation_ulid: calculation.id,
+    })
+      .then(response => {
+        if (response.ok && response.data) {
+          setWorkflowDetection(response.data);
+        } else {
+          setWorkflowDetection(null);
+        }
+      })
+      .catch(() => {
+        setWorkflowDetection(null);
+      });
+  }, [calculation?.id, projectRoot, qv]);
+  
   // Handle deleting a step
   const handleDeleteStep = useCallback(async (stepId: string, stepType: string) => {
     if (!window.qv || !calculationForSteps || isDeletingStep) return;
@@ -953,6 +980,71 @@ export function CalculationDetailPanel({
             <span className="error-icon">⚠️</span>
             <span>{error}</span>
             <button className="error-dismiss" onClick={() => setError(null)}>×</button>
+          </div>
+        )}
+        
+        {/* Workflow detection badge */}
+        {workflowDetection && (
+          <div className="workflow-detection-badge" style={{ 
+            margin: '12px 0', 
+            padding: '8px 12px', 
+            backgroundColor: '#f0f0f0', 
+            borderRadius: '4px',
+            fontSize: '0.9em'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontWeight: '500' }}>Detected workflow:</span>
+              <span style={{ fontWeight: '600' }}>
+                {workflowDetection.workflow_name || 'Unknown'}
+              </span>
+              {workflowDetection.coverage.required > 0 && (
+                <span style={{ color: '#666' }}>
+                  ({workflowDetection.coverage.present}/{workflowDetection.coverage.required})
+                </span>
+              )}
+              {workflowDetection.missing_step_types.length > 0 && (
+                <span style={{ color: '#d32f2f', fontSize: '0.85em' }}>
+                  missing: {workflowDetection.missing_step_types.join(', ')}
+                </span>
+              )}
+              {workflowDetection.issues.length > 0 && (
+                <button
+                  onClick={() => setShowWorkflowIssues(!showWorkflowIssues)}
+                  style={{
+                    marginLeft: 'auto',
+                    padding: '2px 8px',
+                    fontSize: '0.85em',
+                    border: '1px solid #ccc',
+                    borderRadius: '3px',
+                    backgroundColor: 'white',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {showWorkflowIssues ? 'Hide' : 'Show'} Issues ({workflowDetection.issues.length})
+                </button>
+              )}
+            </div>
+            {showWorkflowIssues && workflowDetection.issues.length > 0 && (
+              <div style={{ 
+                marginTop: '8px', 
+                padding: '8px',
+                backgroundColor: 'white',
+                borderRadius: '3px',
+                border: '1px solid #ddd'
+              }}>
+                <div style={{ fontWeight: '500', marginBottom: '4px' }}>Issues:</div>
+                <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                  {workflowDetection.issues.map((issue, idx) => (
+                    <li key={idx} style={{ 
+                      color: issue.code === 'error' ? '#d32f2f' : '#f57c00',
+                      marginBottom: '4px'
+                    }}>
+                      {issue.message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
         

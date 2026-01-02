@@ -32,7 +32,8 @@ JournalEntry:
 
 ## Where Journal Hooks
 
-**Single Hook Point:** `src/quantumvitas/core/yaml_io.py::save_yaml_doc()`
+**Single Hook Point:** `src/quantumvitas/core/yaml_io.py::save_yaml_doc()`  
+**Constitution Rule:** See §11.5 - Journal hook 单一入口点
 
 ```python
 # yaml_io.py

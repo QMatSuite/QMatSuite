@@ -23,6 +23,7 @@ from quantumvitas.presets.paramspace import (
     get_occupations_scheme_paramspace,
     get_magnetism_paramspace,
     get_precision_paramspace,
+    get_convergence_paramspace,
     match_profile,
     compile_profile_patch,
     match_precision_profile,
@@ -31,6 +32,7 @@ from quantumvitas.presets.dimensions import (
     MagnetismOption,
     OccupationsSchemeOption,
     PrecisionOption,
+    ConvergenceOption,
     CUSTOM,
 )
 
@@ -43,12 +45,14 @@ from quantumvitas.presets.dimensions import (
 OCCUPATIONS_SCHEME_SPACE = get_occupations_scheme_paramspace()
 MAGNETISM_SPACE = get_magnetism_paramspace()
 PRECISION_SPACE = get_precision_paramspace()
+CONVERGENCE_SPACE = get_convergence_paramspace()
 
 # Registry: dimension name -> ParamSpace
 SPACES: Dict[str, ParamSpace] = {
     "occupations_scheme": OCCUPATIONS_SCHEME_SPACE,
     "magnetism": MAGNETISM_SPACE,
     "precision": PRECISION_SPACE,
+    "convergence": CONVERGENCE_SPACE,
 }
 
 
@@ -101,17 +105,34 @@ PRECISION_ENUM_TO_PROFILE = {
     PrecisionOption.HIGH: "HIGH",
 }
 
+# Convergence: profile_name -> enum
+CONVERGENCE_PROFILE_TO_ENUM = {
+    "FAST": ConvergenceOption.FAST,
+    "NORMAL": ConvergenceOption.NORMAL,
+    "ROBUST": ConvergenceOption.ROBUST,
+    "VERY_ROBUST": ConvergenceOption.VERY_ROBUST,
+}
+
+CONVERGENCE_ENUM_TO_PROFILE = {
+    ConvergenceOption.FAST: "FAST",
+    ConvergenceOption.NORMAL: "NORMAL",
+    ConvergenceOption.ROBUST: "ROBUST",
+    ConvergenceOption.VERY_ROBUST: "VERY_ROBUST",
+}
+
 # Combined mappings per dimension
 PROFILE_TO_ENUM: Dict[str, Dict[str, Any]] = {
     "occupations_scheme": OCCUPATIONS_SCHEME_PROFILE_TO_ENUM,
     "magnetism": MAGNETISM_PROFILE_TO_ENUM,
     "precision": PRECISION_PROFILE_TO_ENUM,
+    "convergence": CONVERGENCE_PROFILE_TO_ENUM,
 }
 
 ENUM_TO_PROFILE: Dict[str, Dict[Any, str]] = {
     "occupations_scheme": OCCUPATIONS_SCHEME_ENUM_TO_PROFILE,
     "magnetism": MAGNETISM_ENUM_TO_PROFILE,
     "precision": PRECISION_ENUM_TO_PROFILE,
+    "convergence": CONVERGENCE_ENUM_TO_PROFILE,
 }
 
 
@@ -127,7 +148,7 @@ def detect_dimension(
     lattice_matrix: Optional[list[list[float]]] = None,
     base_ecutwfc: Optional[float] = None,
     base_ecutrho: Optional[float] = None,
-) -> Union[MagnetismOption, OccupationsSchemeOption, PrecisionOption, type[CUSTOM]]:
+) -> Union[MagnetismOption, OccupationsSchemeOption, PrecisionOption, ConvergenceOption, type[CUSTOM]]:
     """
     Detect a preset dimension from step YAML using ParamSpace registry.
     
@@ -208,7 +229,7 @@ def detect_dimension(
 
 def compile_dimension_patch(
     dimension: str,
-    option_enum: Union[MagnetismOption, OccupationsSchemeOption, PrecisionOption],
+    option_enum: Union[MagnetismOption, OccupationsSchemeOption, PrecisionOption, ConvergenceOption],
     step_yaml: Dict[str, Dict[str, Any]],
     *,
     explicit_defaults: bool = True,

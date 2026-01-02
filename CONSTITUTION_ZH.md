@@ -953,3 +953,104 @@ workflow 与 preset 只是对现状的解释，而非事实。
 4. **JSON sanity-check 章节补充 enforcement 政策**：在"JSON 仅用于诊断工具"条款下补充：运行时可发 warning；对核心 step_types / 核心维度，必须有 enforcement tests（或 CI 约束）确保 variant 声称写入的 key 在 schema 中被接受，否则视为配置错误（fail）。
 
 5. **precision 的 K_POINTS 规则补充 kpath 归属提示**：在 bands_pw 的 precision variant 必须移除 K_POINTS 的规则后补充：bands_pw 的 K_POINTS 属于 kpath 语义；若要 preset 化，应由独立的 kpath 维度管理，而非 precision。
+
+---
+
+## 11. YAML 文档层（YamlDoc）与 Journal 体系
+
+### 11.1 YAML IO 必须通过 Doc + yaml_io（必须）
+
+所有 project/calc/step YAML 的读写必须使用 Doc 层和集中化的 yaml_io。  
+禁止在业务逻辑中直接使用 `yaml.safe_load`/`yaml.safe_dump`。
+
+**理由**：单一 hook 点支持 Journal 和未来 undo/redo；防止 bypass 路径导致状态不一致。
+
+### 11.2 无引用泄漏（必须）
+
+Doc API 不得返回可变 dict/list 引用。  
+分支导出必须使用显式方法名（如 `export_copy()`），且必须深拷贝。
+
+**理由**：防止未授权修改，确保所有变更可被 Journal 记录。
+
+### 11.3 叶级导向的变更（必须）
+
+所有变更必须是叶级（`set`/`delete`）或通过 `apply_patch`（内部使用 set/delete）。  
+禁止：`set(path, dict)` 分支替换。
+
+**理由**：防止静默大范围覆盖，防止绕过不变量/Journal。
+
+### 11.4 子树更新必须使用 apply_patch（必须）
+
+对于 `parameters`/`cards`/`species_overrides` 等字段，更新 dict 子树必须使用 `apply_patch`。  
+禁止直接 `set(path, dict)`（实际 bug：species_overrides 直接 set 导致 YamlDocError）。
+
+**理由**：一致性和防止分支写入违规。
+
+### 11.5 Journal hook 单一入口点（必须）
+
+Journal 仅在 `yaml_io.save_yaml_doc()`（Doc 边界）记录，不得分散在业务逻辑中。
+
+**理由**：单一位置保证可追溯性。
+
+### 11.6 执行与测试
+
+这些规则由以下测试强制执行：`test_yamldoc`、`test_journal`、step 创建集成测试。  
+详见 `docs/yamldoc_refactor_plan.md` 和 `docs/journal_design.md`。
+
+---
+
+## 12. ParamSpace 键所有权隔离（Key Ownership）
+
+### 12.1 键所有权唯一性（必须）
+
+YAML 叶键（section+key）必须由且仅由一个 ParamSpace 拥有。  
+重复所有权是错误。
+
+**理由**：保证可逆性、对称性，避免"后门纠缠"。
+
+### 12.2 Detect/Compile 访问规则（必须）
+
+在 detect/compile 中，ParamSpace 只能访问：
+- 其自身声明的 keys
+- oracle 暴露的先决条件
+
+禁止直接读写其他 paramspace 的 keys。
+
+**理由**：可逆性、对称性，无"后门纠缠"。
+
+### 12.3 非 YAML 输入允许
+
+结构/伪势/运行时派生事实可作为只读输入用于某些 space（如 precision）。  
+它们不是 YAML keys，不参与所有权。
+
+**理由**：保持系统实用性，不破坏隔离。
+
+---
+
+## 13. Workflow 与 StepTypeRegistry 原则
+
+### 13.1 Workflow 是运行时解释（必须）
+
+Workflow 模板不持久化；磁盘上的 YAML 是真相。  
+Workflow 仅用于运行时检测和实例化，不得写入 step/calc YAML。
+
+**理由**：避免状态同步问题，保持 YAML 纯粹性（见 10.1.2）。
+
+### 13.2 StepTypeRegistry 集中化 step_type 语义（必须）
+
+禁止在 UI/API/workflow 中分散 step_type 规则。  
+所有 step_type 知识必须通过 StepTypeRegistry/Spec 访问。
+
+**理由**：单一真相来源，数据驱动，可查询。
+
+### 13.3 Step 创建必须通过 StepFactory（必须）
+
+任何创建/更新 step.yaml 的操作必须使用集中化的 step factory/doc save 路径。  
+禁止直接 `yaml.safe_dump` 写入 step 文件。
+
+**理由**：确保所有 step 写入通过 yaml_io，从而被 Journal 记录。
+
+### 13.4 执行与测试
+
+这些规则由以下测试强制执行：`test_workflow`、step 创建集成测试。  
+详见 `docs/workflow_refactor_plan.md`。
