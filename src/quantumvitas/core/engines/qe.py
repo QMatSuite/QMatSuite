@@ -385,7 +385,7 @@ class QuantumEspressoEngine(Engine):
         # pw2wannier90 uses stdin like regular QE, no special handling needed
         
         # Add MPI wrapper if configured
-        if self.config.mpi_command and self.config.mpi_cores > 1:
+        if self.config.mpi_command and self.config.mpi_cores is not None and self.config.mpi_cores > 1:
             mpi_cmd = [self.config.mpi_command, "-np", str(self.config.mpi_cores)]
             command = mpi_cmd + command
         

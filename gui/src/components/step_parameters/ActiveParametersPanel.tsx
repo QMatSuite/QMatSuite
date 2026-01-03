@@ -136,7 +136,16 @@ export function ActiveParametersPanel({
   
   const hasActiveParameters = Object.keys(parametersByNamelist).length > 0 || cards.length > 0;
   
-  if (!hasActiveParameters) {
+  // Extract prefix/outdir injection metadata
+  const injectionInfo = stepDetail.prefix_outdir_injection;
+  const hasInjectionInfo = injectionInfo && (
+    injectionInfo.effective_prefix || 
+    injectionInfo.effective_outdir || 
+    injectionInfo.ignored_step_prefix || 
+    injectionInfo.ignored_step_outdir
+  );
+  
+  if (!hasActiveParameters && !hasInjectionInfo) {
     return (
       <div className="active-parameters-panel">
         <div className="active-parameters-panel__empty">
@@ -175,6 +184,57 @@ export function ActiveParametersPanel({
   
   return (
     <div className="active-parameters-panel">
+      {/* Prefix/Outdir Injection Info */}
+      {hasInjectionInfo && (
+        <div className="active-parameters-panel__injection-info">
+          <div className="active-parameters-panel__injection-header">
+            <span className="active-parameters-panel__injection-title">Calculation-Level Settings</span>
+            <span className="active-parameters-panel__injection-subtitle">These values are injected from the calculation and override step-level settings</span>
+          </div>
+          
+          <div className="active-parameters-panel__injection-fields">
+            {injectionInfo.effective_prefix && (
+              <div className="active-parameters-panel__injection-field">
+                <span className="active-parameters-panel__injection-label">Effective prefix:</span>
+                <code className="active-parameters-panel__injection-value">{injectionInfo.effective_prefix}</code>
+                <span className="active-parameters-panel__injection-note">(from calculation)</span>
+              </div>
+            )}
+            
+            {injectionInfo.effective_outdir && (
+              <div className="active-parameters-panel__injection-field">
+                <span className="active-parameters-panel__injection-label">Effective outdir:</span>
+                <code className="active-parameters-panel__injection-value">{injectionInfo.effective_outdir}</code>
+                <span className="active-parameters-panel__injection-note">(from calculation)</span>
+              </div>
+            )}
+            
+            {(injectionInfo.ignored_step_prefix || injectionInfo.ignored_step_outdir) && (
+              <div className="active-parameters-panel__injection-warning">
+                <span className="active-parameters-panel__injection-warning-icon">⚠️</span>
+                <div className="active-parameters-panel__injection-warning-content">
+                  <span className="active-parameters-panel__injection-warning-title">Ignored step-level overrides:</span>
+                  {injectionInfo.ignored_step_prefix && (
+                    <div className="active-parameters-panel__injection-warning-item">
+                      <span>prefix:</span>
+                      <code>{injectionInfo.ignored_step_prefix}</code>
+                      <span>(calculation value used instead)</span>
+                    </div>
+                  )}
+                  {injectionInfo.ignored_step_outdir && (
+                    <div className="active-parameters-panel__injection-warning-item">
+                      <span>outdir:</span>
+                      <code>{injectionInfo.ignored_step_outdir}</code>
+                      <span>(calculation value used instead)</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      
       {/* Namelist parameters */}
       {Object.entries(parametersByNamelist).map(([namelist, params]) => (
         <div key={namelist} className="active-parameters-panel__namelist-group">

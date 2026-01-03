@@ -193,3 +193,114 @@
   overflow-x: auto;
 }
 
+/* Injection Info */
+.active-parameters-panel__injection-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: var(--bg-info-subtle, #f0f7ff);
+  margin-bottom: var(--space-4);
+}
+
+.active-parameters-panel__injection-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.active-parameters-panel__injection-title {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.active-parameters-panel__injection-subtitle {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.active-parameters-panel__injection-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.active-parameters-panel__injection-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+}
+
+.active-parameters-panel__injection-label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  min-width: 120px;
+}
+
+.active-parameters-panel__injection-value {
+  font-size: var(--text-sm);
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+
+.active-parameters-panel__injection-note {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.active-parameters-panel__injection-warning {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--bg-warning-subtle, #fff8e1);
+  border: 1px solid var(--border-warning, #ffc107);
+}
+
+.active-parameters-panel__injection-warning-icon {
+  font-size: var(--text-lg);
+  flex-shrink: 0;
+}
+
+.active-parameters-panel__injection-warning-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1;
+}
+
+.active-parameters-panel__injection-warning-title {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.active-parameters-panel__injection-warning-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.active-parameters-panel__injection-warning-item code {
+  font-family: var(--font-mono);
+  background: var(--bg-secondary);
+  padding: 2px var(--space-1);
+  border-radius: var(--radius-sm);
+}
+

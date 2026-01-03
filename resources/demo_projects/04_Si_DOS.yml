@@ -1,18 +1,18 @@
 version: 1
 project:
   meta:
-    id: 01KC38M041WTC1XKXQHHRC1AHY
-    name: project1
-    slug: project1
+    id: 01KE2M08EGV2AXXRS1VXX68Y70
+    name: 04_Si_DOS
+    slug: 04_si_dos
     path: .
     kind: project
   settings: {}
 structures:
 - meta:
-    id: 01KC38MBGSS8MX3Z4ETZMXZZY4
-    name: Si
-    slug: si
-    path: structures/si.json
+    id: 01KE2M08ETEBYWTF11BF5FCEV1
+    name: si.1_scf
+    slug: si-1_scf
+    path: structures/si-1_scf.json
     kind: structure
   data:
     '@module': pymatgen.core.structure
@@ -70,8 +70,8 @@ structures:
       - 1.3773039781619374
 calculations:
 - meta:
-    id: 01KC38MFJZ7RF3SB7SHVYDQ4J8
-    name: Si dos
+    id: 01KE2M08EJSNJAQZ0TG3EKF1TQ
+    name: Si Dos
     slug: si-dos
     path: calculations/si-dos
     kind: calculation
@@ -79,77 +79,80 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KC38NVA0NES3T6YG7DK8DP82
-      name: scf
-      slug: scf
-      path: calculations/si-dos/steps/scf.step.yaml
+      id: 01KE2M08EQ6CB2252HKRGNM8B2
+      name: si.1_scf
+      slug: si-1_scf
+      path: si.1_scf.step.yaml
       kind: step
     step_type: scf
     parameters:
       CONTROL:
         calculation: scf
-        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
         restart_mode: from_scratch
-      ELECTRONS:
-        conv_thr: 1.0e-08
+        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
       SYSTEM:
         ecutwfc: 50
+      ELECTRONS:
+        conv_thr: 1.0e-08
+    input_name: si.1_scf.in
     cards:
       K_POINTS:
         option: automatic
         data:
-        - - 8
-          - 8
-          - 8
-          - 0
-          - 0
-          - 0
+        - - '8'
+          - '8'
+          - '8'
+          - '0'
+          - '0'
+          - '0'
     species_overrides:
       Si:
         mass: 28.0855
   - meta:
-      id: 01KC38P68GFY8CSNGKWZJRZ50E
-      name: nscf
-      slug: nscf
-      path: calculations/si-dos/steps/nscf.step.yaml
+      id: 01KE2M08FBP8QX85NXW1TAJFDA
+      name: si.2_nscf
+      slug: si-2_nscf
+      path: si.2_nscf.step.yaml
       kind: step
     step_type: nscf
     parameters:
       CONTROL:
         calculation: nscf
-        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
         restart_mode: from_scratch
-      ELECTRONS:
-        conv_thr: 1.0e-08
+        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
       SYSTEM:
         ecutwfc: 50
         occupations: tetrahedra
+      ELECTRONS:
+        conv_thr: 1.0e-08
+    input_name: si.2_nscf.in
     cards:
       K_POINTS:
         option: automatic
         data:
-        - - 12
-          - 12
-          - 12
-          - 0
-          - 0
-          - 0
+        - - '12'
+          - '12'
+          - '12'
+          - '0'
+          - '0'
+          - '0'
     species_overrides:
       Si:
         mass: 28.0855
   - meta:
-      id: 01KC38PGMYFABDDE5T6CA8A2J8
-      name: dos
-      slug: dos
-      path: calculations/si-dos/steps/dos.step.yaml
+      id: 01KE2M08G7M3JWF0NG68AJ4PJ8
+      name: si.3_dos
+      slug: si-3_dos
+      path: si.3_dos.step.yaml
       kind: step
     step_type: dos
     parameters:
       DOS:
-        emax: 16.0
-        emin: -9.0
         fildos: si.dos.dat
-  structure_id: 01KC38MBGSS8MX3Z4ETZMXZZY4
+        emin: -9.0
+        emax: 16.0
+    input_name: si.3_dos.in
+  structure_id: 01KE2M08EGEJV6P8DB5ZRP5C0K
   species_map:
     Si:
       mass: 28.0855
@@ -162,16 +165,16 @@ pseudo:
   files:
   - Si.pbe-n-rrkjus_psl.1.0.0.UPF
 meta:
-  id: si_dos_demo
-  title: Silicon density of states
+  id: 04_Si_DOS
+  title: 4 Si Dos
   subtitle: "SCF \u2192 NSCF \u2192 DOS"
   tags:
-  - dos
-  - Si
-  - PW
   - tutorial
+  - qe
+  - scf
+  - nscf
   recommended_analysis: dos
   difficulty: beginner
   reference_artifacts:
-    dos: si_dos_demo.dos.json
-    scf: si_dos_demo.scf.json
+    scf: 04_Si_DOS.scf.json
+    dos: 04_Si_DOS.dos.json

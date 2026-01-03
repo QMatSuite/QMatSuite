@@ -39,9 +39,31 @@ class Step:
         return self.meta.slug
 
     def resolve_input_path(self, calculation_raw_dir: Path) -> Path:
+        """
+        Resolve input file path relative to calculation_raw_dir.
+        
+        Raises ValueError if input_file is a directory (e.g., '.') or invalid.
+        """
         path = Path(self.input_file)
+        
+        # Safety check: prevent '.' or directory paths
+        if str(path) in ('.', './', '.'):
+            raise ValueError(
+                f"Invalid input_file '{self.input_file}': cannot be a directory. "
+                f"Step input_file must point to a file, not a directory."
+            )
+        
         if not path.is_absolute():
             path = (calculation_raw_dir / path).resolve()
+        
+        # Additional safety check: ensure resolved path is not a directory
+        if path.exists() and path.is_dir():
+            raise ValueError(
+                f"Resolved input_file path is a directory: {path}. "
+                f"This usually indicates a bug where input_file was set to '.' or a directory path. "
+                f"Step input_file must point to a file (e.g., 'scf.in', 'diamond.win')."
+            )
+        
         return path
 
     def run(

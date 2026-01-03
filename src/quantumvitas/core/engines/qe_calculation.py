@@ -159,7 +159,8 @@ class QECalculationRunner:
         
         # Set OMP_NUM_THREADS if not already set
         if 'OMP_NUM_THREADS' not in env:
-            env['OMP_NUM_THREADS'] = str(self.engine.config.omp_threads)
+            omp_threads = self.engine.config.omp_threads if self.engine.config.omp_threads is not None else 1
+            env['OMP_NUM_THREADS'] = str(omp_threads)
         
         # Constitution: QE runtime only reads project/pseudo
         # Step0 has already prepared pseudos in project/pseudo (if in project mode)
@@ -222,6 +223,18 @@ class QECalculationRunner:
             if uses_stdin:
                 # Standard QE execution with stdin redirection
                 stdin_file = input_file
+                # Safety check: ensure input_file is a file, not a directory
+                if stdin_file.exists() and stdin_file.is_dir():
+                    raise ValueError(
+                        f"Input file path is a directory: {stdin_file}. "
+                        f"This usually indicates input_file was incorrectly set to '.' or a directory. "
+                        f"Step input_file must point to a file (e.g., 'scf.in', 'diamond.win')."
+                    )
+                if not stdin_file.exists():
+                    raise FileNotFoundError(
+                        f"Input file not found: {stdin_file}. "
+                        f"Step materialization may have failed to generate the input file."
+                    )
                 with open(stdin_file, 'r') as stdin_handle:
                     with open(output_file, 'w') as output_handle:
                         process = subprocess.Popen(

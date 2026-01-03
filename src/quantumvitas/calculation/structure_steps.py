@@ -247,6 +247,7 @@ STEP_TYPE_NAMELIST_MAP = {
     "bands": "BANDS",
     "projwfc": "PROJWFC",
     "pp": "INPUTPP",
+    "pw2wannier90": "INPUTPP",  # pw2wannier90.x uses INPUTPP namelist
     "q2r": "INPUT",
     "matdyn": "INPUT",
     "dynmat": "INPUT",
@@ -254,14 +255,129 @@ STEP_TYPE_NAMELIST_MAP = {
 
 # Mapping of step type to QE module
 STEP_TYPE_MODULE_MAP = {
+    "scf": QEModule.PW,
+    "nscf": QEModule.PW,
+    "relax": QEModule.PW,
+    "vc-relax": QEModule.PW,
+    "md": QEModule.PW,
+    "vc-md": QEModule.PW,
+    "bands_pw": QEModule.PW,
     "dos": QEModule.DOS,
     "bands": QEModule.BANDS,
     "projwfc": QEModule.PROJWFC,
     "pp": QEModule.PP,
+    "pw2wannier90": QEModule.PP,  # pw2wannier90.x uses INPUTPP namelist (same as pp.x)
     "q2r": QEModule.Q2R,
     "matdyn": QEModule.MATDYN,
     "dynmat": QEModule.DYNMAT,
 }
+
+
+def _inject_calculation_prefix_outdir(
+    qe_input: QEInput,
+    step_type: str,
+    calculation_prefix: Optional[str],
+    calculation_outdir: str,
+    spec_params: Dict[str, Any],
+    logger,
+) -> None:
+    """
+    R2-R4: Inject calculation-level prefix/outdir into QE input if schema supports it.
+    
+    This implements the calculation-level prefix/outdir propagation rule:
+    - R1: Canonical prefix = calculation.meta.slug (passed as calculation_prefix)
+    - R2: Only inject if the step's QE module schema defines prefix/outdir parameters
+    - R3: Step-level prefix/outdir in spec_params are ignored (overridden by calculation-level)
+    - R4: Outdir defaults to "./outdir" if not provided
+    
+    Args:
+        qe_input: QEInput object to modify
+        step_type: Step type (e.g., "scf", "pw2wannier90")
+        calculation_prefix: Calculation-level prefix (from calculation.meta.slug)
+        calculation_outdir: Calculation-level outdir (defaults to "./outdir")
+        spec_params: Step spec parameters (to detect ignored step-level prefix/outdir)
+        logger: Logger instance for diagnostic messages
+    """
+    # Determine which QE module this step uses
+    step_type_lower = step_type.lower()
+    module = STEP_TYPE_MODULE_MAP.get(step_type_lower)
+    if not module:
+        # Unknown step type - skip injection
+        return
+    
+    # Check schema for prefix/outdir parameters
+    from quantumvitas.data import get_module_param_sections
+    sections = get_module_param_sections(module.value)
+    
+    # Build parameter-to-section mapping
+    param_to_sections: Dict[str, List[str]] = {}
+    for section_name, params in sections.items():
+        canonical_section = section_name.upper().lstrip("&")
+        for param in params:
+            param_lower = param.lower()
+            param_to_sections.setdefault(param_lower, []).append(canonical_section)
+    
+    # R3: Track ignored step-level prefix/outdir for UI display
+    ignored_step_prefix = None
+    ignored_step_outdir = None
+    
+    # Check step-level spec_params for prefix/outdir (will be ignored)
+    flat_spec_params = {}
+    for section_name, section_params in spec_params.items():
+        if isinstance(section_params, dict):
+            flat_spec_params.update({k.lower(): v for k, v in section_params.items()})
+        elif isinstance(section_params, str):
+            flat_spec_params[section_name.lower()] = section_params
+    
+    if "prefix" in flat_spec_params and calculation_prefix:
+        ignored_step_prefix = flat_spec_params["prefix"]
+        logger.info(
+            f"[PREFIX_INJECTION] Step-level prefix '{ignored_step_prefix}' will be ignored, "
+            f"calculation prefix '{calculation_prefix}' takes precedence"
+        )
+    
+    if "outdir" in flat_spec_params and calculation_outdir:
+        ignored_step_outdir = flat_spec_params["outdir"]
+        logger.info(
+            f"[PREFIX_INJECTION] Step-level outdir '{ignored_step_outdir}' will be ignored, "
+            f"calculation outdir '{calculation_outdir}' takes precedence"
+        )
+    
+    # R2: Inject prefix if schema defines it
+    if calculation_prefix and "prefix" in param_to_sections:
+        prefix_sections = param_to_sections["prefix"]
+        if prefix_sections:
+            # Use first section (most common case is single section)
+            target_section = prefix_sections[0]
+            namelist = qe_input.get_namelist(target_section)
+            if not namelist:
+                namelist = QENamelist(name=target_section)
+                qe_input.namelists.append(namelist)
+            
+            # R3: Override any existing prefix (step-level is ignored)
+            namelist.parameters["prefix"] = calculation_prefix
+            logger.info(
+                f"[PREFIX_INJECTION] Injected calculation prefix '{calculation_prefix}' "
+                f"into {target_section}.prefix (step_type={step_type}, module={module.value})"
+            )
+    
+    # R2: Inject outdir if schema defines it
+    if calculation_outdir and "outdir" in param_to_sections:
+        outdir_sections = param_to_sections["outdir"]
+        if outdir_sections:
+            # Use first section
+            target_section = outdir_sections[0]
+            namelist = qe_input.get_namelist(target_section)
+            if not namelist:
+                namelist = QENamelist(name=target_section)
+                qe_input.namelists.append(namelist)
+            
+            # R3: Override any existing outdir (step-level is ignored)
+            namelist.parameters["outdir"] = calculation_outdir
+            logger.info(
+                f"[PREFIX_INJECTION] Injected calculation outdir '{calculation_outdir}' "
+                f"into {target_section}.outdir (step_type={step_type}, module={module.value})"
+            )
 
 
 def _generate_postprocessing_input(
@@ -619,9 +735,10 @@ def materialize_step_spec(
                         site.frac_coords[2],
                     ])
             
-            # Generate filename
+            # Generate filename - ALWAYS use seedname.win (Wannier90 requirement)
+            # Do NOT use input_name override for Wannier90 steps
             seedname = w90_input.seedname
-            filename = input_name or f"{seedname}.win"
+            filename = f"{seedname}.win"
             generated_input = output_dir / filename
             
             # Write .win file
@@ -645,14 +762,42 @@ def materialize_step_spec(
                     else:
                         flat_params[key] = value
             
+            # Load calculation context for prefix/outdir injection
+            calc_prefix = None
+            calc_outdir = "./outdir"
+            if calculation_dir and project_root:
+                try:
+                    from quantumvitas.core.models import load_calculation
+                    from quantumvitas.core.resolution import make_structure_selector_resolver
+                    from quantumvitas.core.project_utils import load_project_config
+                    calc_yaml_path = Path(calculation_dir) / "calculation.yaml"
+                    if calc_yaml_path.exists():
+                        project_root_path = Path(project_root).resolve()
+                        config = load_project_config(project_root_path)
+                        resolver = make_structure_selector_resolver(project_root_path, config=config)
+                        calc_model = load_calculation(calc_yaml_path, project_root=project_root_path, resolve_structure_selector=resolver)
+                        calc_prefix = calc_model.meta.slug if calc_model.meta else None
+                except Exception:
+                    pass
+            
             pw2wan_input = Pw2Wannier90Input()
             pw2wan_input.seedname = flat_params.get("seedname", spec_obj.meta.slug or "wannier")
-            pw2wan_input.prefix = flat_params.get("prefix", "pwscf")
-            pw2wan_input.outdir = flat_params.get("outdir", "./outdir")
+            # R1-R3: Use calculation-level prefix, ignore step-level prefix
+            if calc_prefix:
+                pw2wan_input.prefix = calc_prefix
+                if "prefix" in flat_params and flat_params["prefix"] != calc_prefix:
+                    logger.info(
+                        f"[PREFIX_INJECTION] Step-level prefix '{flat_params['prefix']}' ignored, "
+                        f"using calculation prefix '{calc_prefix}' for pw2wannier90"
+                    )
+            else:
+                pw2wan_input.prefix = flat_params.get("prefix", "pwscf")
+            pw2wan_input.outdir = calc_outdir
             
-            # Generate filename
+            # Generate filename - ALWAYS use seedname.pw2wan (pw2wannier90 requirement)
+            # Do NOT use input_name override for pw2wannier90 steps
             seedname = pw2wan_input.seedname
-            filename = input_name or f"{seedname}.pw2wan"
+            filename = f"{seedname}.pw2wan"
             generated_input = output_dir / filename
             
             # Write .pw2wan file
@@ -672,9 +817,12 @@ def materialize_step_spec(
         project_root=project_root,  # Pass project_root for calculation resolution
     )
 
-    # Load calculation's species_map if available (calculation-level authority for pseudos)
+    # Load calculation context (species_map, prefix, outdir) if available
     calculation_species_map = None
+    calculation_prefix = None
+    calculation_outdir = "./outdir"  # Default outdir
     calculation_context = {}
+    calc_model = None
     if calculation_dir and project_root:
         try:
             from quantumvitas.core.models import load_calculation
@@ -687,13 +835,16 @@ def materialize_step_spec(
                 resolver = make_structure_selector_resolver(project_root_path, config=config)
                 calc_model = load_calculation(calc_yaml_path, project_root=project_root_path, resolve_structure_selector=resolver)
                 calculation_species_map = calc_model.species_map
+                # R1: Canonical prefix = calculation.meta.slug
+                calculation_prefix = calc_model.meta.slug if calc_model.meta else None
                 calculation_context["calculation_path"] = str(calc_yaml_path)
                 calculation_context["species_map"] = calc_model.species_map
+                calculation_context["prefix"] = calculation_prefix
                 if calc_model.structure_id:
                     struct_resolved = resolve_structure(project_root_path, calc_model.structure_id, config=config)
                     calculation_context["structure_path"] = str(struct_resolved.absolute_path)
         except Exception:
-            # If calculation loading fails, continue without species_map (fallback to QE input parsing)
+            # If calculation loading fails, continue without calculation context (fallback to QE input parsing)
             pass
     
     logger.info(
@@ -705,6 +856,17 @@ def materialize_step_spec(
     # This ensures ATOMIC_SPECIES in the generated QE input has actual pseudo filenames
     # (not placeholders) when calculation-level species_map is available
     qe_input, _ = generate_qe_input_from_spec(structure, spec_obj, species_map=calculation_species_map)
+    
+    # R2-R4: Inject calculation-level prefix/outdir if schema supports it
+    if calculation_prefix or calculation_outdir:
+        _inject_calculation_prefix_outdir(
+            qe_input=qe_input,
+            step_type=step_type_lower,
+            calculation_prefix=calculation_prefix,
+            calculation_outdir=calculation_outdir,
+            spec_params=spec_obj.parameters or {},
+            logger=logger,
+        )
 
     # Set outdir and pseudo_dir if project_root is provided
     if project_root:

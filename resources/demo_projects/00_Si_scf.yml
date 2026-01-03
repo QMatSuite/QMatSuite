@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KE005V9AAAYA20DK7CSFH44R
+    id: 01KE2KYNFA1YS70G548P3NBC22
     name: 00_Si_scf
     slug: 00_si_scf
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KE005V9S42YNKEEW5R69RNG9
+    id: 01KE2KYNFRQGJGGVK0TZ99TNPG
     name: si.scf
     slug: si-scf
     path: structures/si-scf.json
@@ -70,7 +70,7 @@ structures:
       - 1.3494018878460001
 calculations:
 - meta:
-    id: 01KE005V9CS1R0JGH1APBRQJYD
+    id: 01KE2KYNFCDM3MRZRCAC5PMM54
     name: Si Scf
     slug: si-scf
     path: calculations/si-scf
@@ -79,7 +79,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KE005V9NBQKACMSTJ9B5VFY6
+      id: 01KE2KYNFNQW5C44KZBFNGVJM6
       name: si.scf
       slug: si-scf
       path: si.scf.step.yaml
@@ -88,7 +88,6 @@ calculations:
     parameters:
       CONTROL:
         calculation: scf
-        prefix: si
         pseudo_dir: /home/anonymous/quantumEspresso_2019/q-e-qe-6.4.1_2_MPICH/pseudo
       SYSTEM:
         ecutwfc: 20.0
@@ -106,8 +105,7 @@ calculations:
     species_overrides:
       Si:
         mass: 28.086
-        pseudopot: Si.pz-vbc.UPF
-  structure_id: 01KE005V9B0TRJT5EJD2T16841
+  structure_id: 01KE2KYNFBA76RAM5E04QRDRS9
   species_map:
     Si:
       mass: 28.086
