@@ -5595,6 +5595,13 @@ class QVService:
         
         logger = logging.getLogger(__name__)
         
+        # Entry logging
+        logger.info(
+            f"[GET_CALCULATION_PSEUDO_MAPPING] ENTRY "
+            f"calculation_ulid={calculation_ulid} "
+            f"project_root={project_root}"
+        )
+        
         # Validate calculation_ulid is actually a ULID
         try:
             calculation_ulid = validate_ulid(calculation_ulid, kind="calculation")
@@ -5613,36 +5620,65 @@ class QVService:
         calculation = resolve_calculation(project_root, calculation_ulid, config=config, index=index)
         wf_path = calculation.absolute_path / "calculation.yaml"
         
+        logger.info(
+            f"[GET_CALCULATION_PSEUDO_MAPPING] resolved calculation path={wf_path}"
+        )
+        
         resolver = make_structure_selector_resolver(project_root, config=config)
         wf_model = load_calculation(wf_path, project_root=project_root, resolve_structure_selector=resolver)
         
         # Get element list from structure
         species_list: List[str] = []
+        structure_path = None
         if wf_model.structure_id:
             try:
                 struct_resolved = resolve_structure(project_root, wf_model.structure_id, config=config, index=index)
+                structure_path = struct_resolved.absolute_path
                 if struct_resolved.absolute_path.exists():
                     structure = read_structure(struct_resolved.absolute_path)
                     species_list = sorted(set(str(el) for el in structure.composition.elements))
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(
+                    f"[GET_CALCULATION_PSEUDO_MAPPING] failed to resolve structure: {e}"
+                )
+        
+        logger.info(
+            f"[GET_CALCULATION_PSEUDO_MAPPING] structure_path={structure_path} "
+            f"required_elements={species_list}"
+        )
         
         # Build mapping dict (element -> pseudopot filename) from species_map
         mapping: Dict[str, str] = {}
+        species_map_keys = []
+        element_pseudopot_values = {}
         if wf_model.species_map:
+            species_map_keys = list(wf_model.species_map.keys())
             for element, settings in wf_model.species_map.items():
                 pseudo = settings.get("pseudopot", "")
+                element_pseudopot_values[element] = pseudo
                 if pseudo:
                     mapping[element] = pseudo
         
+        logger.info(
+            f"[GET_CALCULATION_PSEUDO_MAPPING] species_map keys={species_map_keys} "
+            f"element_pseudopot_values={element_pseudopot_values}"
+        )
+        
         # Get available pseudos in project
         pseudo_dir = project_root / "pseudo"
+        pseudo_dir_exists = pseudo_dir.exists()
         available_pseudos: List[str] = []
-        if pseudo_dir.exists():
+        if pseudo_dir_exists:
             available_pseudos = sorted([
                 f.name for f in pseudo_dir.iterdir() 
                 if f.is_file() and f.suffix.lower() == ".upf"
             ])
+        
+        logger.info(
+            f"[GET_CALCULATION_PSEUDO_MAPPING] project_pseudo_dir={pseudo_dir} "
+            f"project_pseudo_dir.exists()={pseudo_dir_exists} "
+            f"available_pseudos={available_pseudos}"
+        )
         
         # Get INTERNAL (resources/pseudo) directory
         from quantumvitas.core.pseudo import get_system_pseudo_dir
@@ -5842,6 +5878,20 @@ class QVService:
             "sssp_precision": sssp_installed["precision"],
             "sssp_efficiency": sssp_installed["efficiency"],
         }
+        
+        # Build mapping_missing: elements with unresolved pseudos
+        mapping_missing = [
+            element for element in species_list
+            if not resolved_by_element.get(element, {}).get("resolved", False)
+        ]
+        
+        # Exit logging
+        logger.info(
+            f"[GET_CALCULATION_PSEUDO_MAPPING] EXIT "
+            f"final_pseudo_mapping={mapping} "
+            f"mapping_missing={mapping_missing} "
+            f"warnings={warnings}"
+        )
         
         return {
             "species": species_list,
@@ -6112,6 +6162,136 @@ class QVService:
     # -------------------------------------------------------------------------
     
     @staticmethod
+    def _preflight_check_and_seed_pseudos(
+        project_root: Path,
+        species_map: Optional[Dict[str, Dict[str, Any]]],
+        project_pseudo_dir: Path,
+    ) -> Dict[str, Any]:
+        """
+        Check pseudopotentials and auto-seed from internal library if needed.
+        
+        Resolution order:
+        1. project_pseudo_dir (use if exists)
+        2. resources/pseudo (internal library - copy to project if found)
+        
+        If sha256 is present in species_map, verify after copy.
+        
+        Args:
+            project_root: Project root path
+            species_map: Species mapping from calculation (element -> {pseudopot, pseudo_sha256, ...})
+            project_pseudo_dir: Project pseudo directory (project_root/pseudo)
+            
+        Returns:
+            Dict with "check" (preflight check entry), "error" (optional), "warning" (optional)
+        """
+        import shutil
+        from quantumvitas.core.paths import get_repo_root
+        from quantumvitas.core.pseudo_provenance import compute_sha256_file
+        
+        result: Dict[str, Any] = {}
+        
+        if not species_map:
+            # No species_map: check if pseudo directory has files
+            if project_pseudo_dir.exists() and any(project_pseudo_dir.iterdir()):
+                result["check"] = {"name": "Pseudopotentials", "ok": True, "message": "Pseudo directory has files"}
+            else:
+                result["check"] = {"name": "Pseudopotentials", "ok": True, "message": "No species_map defined - skipping pseudo check"}
+            return result
+        
+        # Resolve internal library path
+        try:
+            repo_root = get_repo_root()
+            internal_pseudo_dir = repo_root / "resources" / "pseudo"
+        except RuntimeError:
+            internal_pseudo_dir = None
+        
+        # Ensure project pseudo directory exists
+        project_pseudo_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Check each element in species_map
+        missing_pseudos = []
+        seeded_pseudos = []
+        sha_mismatches = []
+        
+        for element, entry in species_map.items():
+            if not isinstance(entry, dict):
+                continue
+            
+            pseudo_basename = entry.get("pseudo_basename") or entry.get("pseudopot")
+            if not pseudo_basename:
+                missing_pseudos.append(f"{element}: no pseudopot configured")
+                continue
+            
+            project_pseudo_path = project_pseudo_dir / pseudo_basename
+            expected_sha256 = entry.get("pseudo_sha256")
+            
+            # Check if pseudo exists in project
+            if project_pseudo_path.exists():
+                # Verify SHA256 if provided
+                if expected_sha256:
+                    try:
+                        actual_sha256 = compute_sha256_file(project_pseudo_path)
+                        if actual_sha256 != expected_sha256:
+                            sha_mismatches.append(
+                                f"{element}: SHA256 mismatch for {pseudo_basename} "
+                                f"(expected {expected_sha256[:16]}..., got {actual_sha256[:16]}...)"
+                            )
+                    except Exception as e:
+                        sha_mismatches.append(f"{element}: Cannot verify SHA256 for {pseudo_basename}: {e}")
+                continue
+            
+            # Try to seed from internal library
+            if internal_pseudo_dir and (internal_pseudo_dir / pseudo_basename).exists():
+                source_path = internal_pseudo_dir / pseudo_basename
+                try:
+                    shutil.copy2(source_path, project_pseudo_path)
+                    seeded_pseudos.append(f"{element}: {pseudo_basename} (from internal library)")
+                    
+                    # Verify SHA256 after copy
+                    if expected_sha256:
+                        actual_sha256 = compute_sha256_file(project_pseudo_path)
+                        if actual_sha256 != expected_sha256:
+                            sha_mismatches.append(
+                                f"{element}: SHA256 mismatch after seeding {pseudo_basename} "
+                                f"(expected {expected_sha256[:16]}..., got {actual_sha256[:16]}...)"
+                            )
+                except Exception as e:
+                    missing_pseudos.append(f"{element}: Failed to copy {pseudo_basename}: {e}")
+            else:
+                missing_pseudos.append(f"{element}: {pseudo_basename} not found in project or internal library")
+        
+        # Build result
+        if sha_mismatches:
+            result["check"] = {
+                "name": "Pseudopotentials",
+                "ok": False,
+                "message": f"SHA256 mismatch: {'; '.join(sha_mismatches[:2])}"
+            }
+            result["error"] = f"Pseudopotential SHA256 verification failed: {'; '.join(sha_mismatches)}"
+        elif missing_pseudos:
+            result["check"] = {
+                "name": "Pseudopotentials",
+                "ok": False,
+                "message": f"Missing: {'; '.join(missing_pseudos[:2])}"
+            }
+            result["error"] = f"Missing pseudopotentials: {'; '.join(missing_pseudos)}"
+        else:
+            if seeded_pseudos:
+                result["check"] = {
+                    "name": "Pseudopotentials",
+                    "ok": True,
+                    "message": f"OK (seeded {len(seeded_pseudos)} from internal library)"
+                }
+            else:
+                result["check"] = {
+                    "name": "Pseudopotentials",
+                    "ok": True,
+                    "message": "All pseudopotentials available"
+                }
+        
+        return result
+    
+    @staticmethod
     def preflight_check(
         project_root: Path,
         calculation_selector: Optional[str] = None,
@@ -6237,13 +6417,18 @@ class QVService:
                 checks.append({"name": "Calculation Config", "ok": False, "message": f"Failed to parse calculation.yaml: {e}"})
                 errors.append(f"Calculation configuration error: {e}")
             
-            # Check 5: Pseudo directory
+            # Check 5: Pseudo directory with auto-seeding from internal library
             pseudo_dir = project_path / "pseudo"
-            if pseudo_dir.exists() and any(pseudo_dir.iterdir()):
-                checks.append({"name": "Pseudopotentials", "ok": True, "message": "Pseudo directory has files"})
-            else:
-                checks.append({"name": "Pseudopotentials", "ok": False, "message": "No pseudopotentials found"})
-                warnings.append("No pseudopotential files in pseudo/ directory - QE may fail")
+            pseudo_check_result = QVService._preflight_check_and_seed_pseudos(
+                project_root=project_root,
+                species_map=wf_model.species_map,
+                project_pseudo_dir=pseudo_dir,
+            )
+            checks.append(pseudo_check_result["check"])
+            if pseudo_check_result.get("error"):
+                errors.append(pseudo_check_result["error"])
+            if pseudo_check_result.get("warning"):
+                warnings.append(pseudo_check_result["warning"])
             
             # Check 6: Working directory writable
             raw_dir = calculation.absolute_path / "raw"
