@@ -546,13 +546,13 @@ def apply_species_overrides_to_qe_input(
                 row[1] = float(values["mass"])
             except (TypeError, ValueError):
                 row[1] = values["mass"]
-        if "pseudopot" in values:
+        # Check both "pseudopot" (legacy) and "pseudo_basename" (new)
+        pseudo_value = values.get("pseudopot") or values.get("pseudo_basename")
+        if pseudo_value:
             while len(row) < 3:
                 row.append("")
-            pseudo_value = values["pseudopot"]
             # Only set if value is non-empty (empty string means keep placeholder/default)
-            if pseudo_value:
-                row[2] = str(pseudo_value)
+            row[2] = str(pseudo_value)
             # If empty, leave placeholder in place (will be caught by ensure_qe_pseudos)
 
 

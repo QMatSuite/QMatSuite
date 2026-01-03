@@ -4379,6 +4379,14 @@ class QVDaemon:
         project_root = self._require_path(payload, "project_root")
         calculation_selector = self._require_str(payload, "calculation")
         
+        # Entry logging
+        payload_keys = list(payload.keys())
+        logger.info(
+            f"[HANDLER_GET_CALCULATION_PSEUDO_MAPPING] ENTRY "
+            f"payload_keys={payload_keys} "
+            f"calculation_selector={calculation_selector}"
+        )
+        
         # Resolve calculation selector to ULID (kind-constrained)
         # This is the boundary where we accept slug/name but convert to ULID
         if _is_ulid_like(calculation_selector):
@@ -4402,12 +4410,23 @@ class QVDaemon:
         
         # Pass cached index and config
         cache = self.state.get_cache(project_root)
-        return QVService.get_calculation_pseudo_mapping(
+        result = QVService.get_calculation_pseudo_mapping(
             project_root=project_root,
             calculation_ulid=calculation_ulid,
             index=cache.index,
             config=cache.config,
         )
+        
+        # Exit logging
+        logger.info(
+            f"[HANDLER_GET_CALCULATION_PSEUDO_MAPPING] EXIT "
+            f"calculation_ulid={calculation_ulid} "
+            f"resolved_ulid={calculation_ulid} "
+            f"mapping_keys={list(result.get('mapping', {}).keys())} "
+            f"warnings={result.get('warnings', [])}"
+        )
+        
+        return result
     
     def _handle_update_calculation_species_map(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -4530,20 +4549,56 @@ class QVDaemon:
             Dict with:
             - options_by_element: Dict[str, List[PseudoOption dict]]
         """
+        import inspect
+        import logging
         from quantumvitas.api import QVService
         from quantumvitas.core.resolution import resolve_structure
         from quantumvitas.io import read_structure
         
+        logger = logging.getLogger(__name__)
+        
         project_root = self._require_path(payload, "project_root")
         calculation = self._require_str(payload, "calculation")
         
-        # Resolve calculation and get structure
-        self._resolve_calculation_with_fallback(project_root, calculation)
+        # Log entry
+        payload_keys = list(payload.keys())
+        logger.info(
+            f"[GET_PSEUDO_OPTIONS_FOR_CALCULATION] ENTRY "
+            f"payload_keys={payload_keys} "
+            f"calculation={calculation}"
+        )
+        
+        # Inspect get_calculation_detail signature
+        sig = inspect.signature(QVService.get_calculation_detail)
+        logger.info(
+            f"[GET_PSEUDO_OPTIONS_FOR_CALCULATION] "
+            f"inspect.signature(get_calculation_detail)={list(sig.parameters.keys())}"
+        )
+        
+        # Resolve calculation selector to ULID (boundary resolution, consistent with other endpoints)
+        from quantumvitas.core.resolution import validate_ulid, _is_ulid_like
+        if _is_ulid_like(calculation):
+            calculation_ulid = calculation
+        else:
+            calculation_resolved = self._resolve_calculation_with_fallback(project_root, calculation)
+            calculation_ulid = calculation_resolved.meta.id
+        
+        # Validate ULID
+        calculation_ulid = validate_ulid(calculation_ulid, kind="calculation")
+        
         cache = self.state.get_cache(project_root)
         
+        # Log actual call parameters
+        logger.info(
+            f"[GET_PSEUDO_OPTIONS_FOR_CALCULATION] "
+            f"calling get_calculation_detail with calculation_ulid={calculation_ulid} "
+            f"(resolved from selector={calculation}, index and config from cache)"
+        )
+        
+        # Call with calculation_ulid (not calculation_selector)
         calc_detail = QVService.get_calculation_detail(
             project_root=project_root,
-            calculation_selector=calculation,
+            calculation_ulid=calculation_ulid,
             index=cache.index,
             config=cache.config,
         )
