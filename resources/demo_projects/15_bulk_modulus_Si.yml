@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KE007F85GK5J4G2EQ233APTQ
+    id: 01KE2KZGY6JMYA4A5PTR0572GP
     name: 15_bulk_modulus_Si
     slug: 15_bulk_modulus_si
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KE007F8K0X41VD1H8MRWP6FY
+    id: 01KE2KZGYJNBHQ50EC7VMZJSSZ
     name: si.1_scf_equilibrium
     slug: si-1_scf_equilibrium
     path: structures/si-1_scf_equilibrium.json
@@ -69,7 +69,7 @@ structures:
       - 1.3673530097223552
       - 1.3673530097223552
 - meta:
-    id: 01KE007F9DJ8ZPFQJMKQ54ZBX2
+    id: 01KE2KZGZA0PX80AGCC9Q53YXK
     name: si.2_scf_1.01a
     slug: si-2_scf_1-01a
     path: structures/si-2_scf_1-01a.json
@@ -129,7 +129,7 @@ structures:
       - 1.3810265398195787
       - 1.3810265398195791
 - meta:
-    id: 01KE007FAPMM28DBNZ3WY8M01J
+    id: 01KE2KZH0GMJ46VFKD5FYAEJ3Q
     name: si.3_scf_0.99a
     slug: si-3_scf_0-99a
     path: structures/si-3_scf_0-99a.json
@@ -190,7 +190,7 @@ structures:
       - 1.3536794796251315
 calculations:
 - meta:
-    id: 01KE007F88HMC1FBY0EWEQYW9K
+    id: 01KE2KZGY86P1MK7ZWMJKDNNH5
     name: Bulk Modulus Si
     slug: bulk-modulus-si
     path: calculations/bulk-modulus-si
@@ -199,7 +199,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KE007F8EYMRT1YSQAYZKP7DR
+      id: 01KE2KZGYEF75PMEQ55GTTD1D0
       name: si.1_scf_equilibrium
       slug: si-1_scf_equilibrium
       path: si.1_scf_equilibrium.step.yaml
@@ -209,8 +209,6 @@ calculations:
       CONTROL:
         calculation: scf
         restart_mode: from_scratch
-        prefix: si
-        outdir: ./outdir
         pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
         tstress: true
         tprnfor: true
@@ -234,9 +232,8 @@ calculations:
     species_overrides:
       Si:
         mass: 28.0855
-        pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
   - meta:
-      id: 01KE007F97XEZ1GPKMVTVJGHSV
+      id: 01KE2KZGZ4FGHCDM324ZPDN1DZ
       name: si.2_scf_1.01a
       slug: si-2_scf_1-01a
       path: si.2_scf_1.01a.step.yaml
@@ -246,8 +243,6 @@ calculations:
       CONTROL:
         calculation: scf
         restart_mode: from_scratch
-        prefix: si
-        outdir: ./outdir
         pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
         tstress: true
         tprnfor: true
@@ -271,9 +266,8 @@ calculations:
     species_overrides:
       Si:
         mass: 28.0855
-        pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
   - meta:
-      id: 01KE007FAF6W3X2290920P9ZHQ
+      id: 01KE2KZH08QYV24EFJR25EPG9C
       name: si.3_scf_0.99a
       slug: si-3_scf_0-99a
       path: si.3_scf_0.99a.step.yaml
@@ -283,8 +277,6 @@ calculations:
       CONTROL:
         calculation: scf
         restart_mode: from_scratch
-        prefix: si
-        outdir: ./outdir
         pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
         tstress: true
         tprnfor: true
@@ -308,8 +300,7 @@ calculations:
     species_overrides:
       Si:
         mass: 28.0855
-        pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
-  structure_id: 01KE007F86SWCFPYXNEZJKF7YW
+  structure_id: 01KE2KZGY7QPTQSEWMFDFM712V
   species_map:
     Si:
       mass: 28.0855

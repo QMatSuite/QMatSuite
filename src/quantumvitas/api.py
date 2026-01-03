@@ -3400,6 +3400,89 @@ class QVService:
     # -------------------------------------------------------------------------
     
     @staticmethod
+    def _detect_prefix_outdir_injection(
+        spec: "StructureStepSpec",
+        calculation_model: "CalculationModel",
+        step_type: str,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Detect prefix/outdir injection and conflicts for UI display.
+        
+        Returns injection metadata dict if step supports prefix/outdir, None otherwise.
+        """
+        from quantumvitas.calculation.structure_steps import STEP_TYPE_MODULE_MAP
+        from quantumvitas.data import get_module_param_sections
+        
+        # Determine QE module for this step type
+        step_type_lower = (step_type or "scf").lower()
+        module = STEP_TYPE_MODULE_MAP.get(step_type_lower)
+        if not module:
+            # Unknown step type - no injection
+            return None
+        
+        # Check if schema defines prefix/outdir
+        try:
+            sections = get_module_param_sections(module.value)
+        except Exception:
+            # Schema not available - no injection info
+            return None
+        
+        # Build parameter-to-section mapping
+        param_to_sections: Dict[str, List[str]] = {}
+        for section_name, params in sections.items():
+            canonical_section = section_name.upper().lstrip("&")
+            for param in params:
+                param_lower = param.lower()
+                param_to_sections.setdefault(param_lower, []).append(canonical_section)
+        
+        # Check if this step supports prefix/outdir
+        supports_prefix = "prefix" in param_to_sections
+        supports_outdir = "outdir" in param_to_sections
+        
+        if not supports_prefix and not supports_outdir:
+            # Step doesn't support prefix/outdir - no injection
+            return None
+        
+        # Get calculation-level prefix (canonical = calculation.meta.slug)
+        calculation_prefix = calculation_model.meta.slug if calculation_model.meta else None
+        calculation_outdir = "./outdir"  # Default outdir
+        
+        # Check step-level spec for conflicts
+        spec_params = spec.parameters or {}
+        flat_params = {}
+        for section_name, section_params in spec_params.items():
+            if isinstance(section_params, dict):
+                flat_params.update({k.lower(): v for k, v in section_params.items()})
+            elif isinstance(section_params, str):
+                flat_params[section_name.lower()] = section_params
+        
+        ignored_step_prefix = None
+        ignored_step_outdir = None
+        
+        if supports_prefix and calculation_prefix:
+            if "prefix" in flat_params and flat_params["prefix"] != calculation_prefix:
+                ignored_step_prefix = flat_params["prefix"]
+        
+        if supports_outdir and calculation_outdir:
+            if "outdir" in flat_params and flat_params["outdir"] != calculation_outdir:
+                ignored_step_outdir = flat_params["outdir"]
+        
+        # Build injection info dict
+        injection_info: Dict[str, Any] = {}
+        
+        if supports_prefix:
+            injection_info["effective_prefix"] = calculation_prefix
+            if ignored_step_prefix:
+                injection_info["ignored_step_prefix"] = ignored_step_prefix
+        
+        if supports_outdir:
+            injection_info["effective_outdir"] = calculation_outdir
+            if ignored_step_outdir:
+                injection_info["ignored_step_outdir"] = ignored_step_outdir
+        
+        return injection_info if injection_info else None
+    
+    @staticmethod
     def get_step_detail(
         project_root: Path,
         calculation_ulid: str,
@@ -3563,7 +3646,14 @@ class QVService:
             }
             raise error
         
-        return {
+        # Detect prefix/outdir injection conflicts for UI display
+        injection_info = QVService._detect_prefix_outdir_injection(
+            spec=spec,
+            calculation_model=wf_model,
+            step_type=spec.step_type,
+        )
+        
+        result = {
             "id": step.meta.id,
             "name": step.meta.name,
             "slug": step.meta.slug,
@@ -3576,6 +3666,12 @@ class QVService:
             "cards": spec.cards,
             "species_overrides": spec.species_overrides,
         }
+        
+        # Add injection/conflict metadata if available
+        if injection_info:
+            result["prefix_outdir_injection"] = injection_info
+        
+        return result
     
     @staticmethod
     def update_step_params(
@@ -4709,8 +4805,65 @@ class QVService:
         spec = import_result.spec
         
         # Import structure into project if not already present
+        import logging
+        logger = logging.getLogger(__name__)
+        
         structure_id = import_result.structure_id
         structure_path = import_result.structure_path
+        
+        # Handle structure-less steps (e.g., post-processing steps)
+        if structure_path is None or (structure_path and not structure_path.exists()):
+            # Structure-less step or structure extraction failed
+            # Try to use calculation's structure if available
+            if wf_model.structure_id:
+                try:
+                    from quantumvitas.core.resolution import resolve_structure
+                    struct_resolved = resolve_structure(project_root, wf_model.structure_id, config=config, index=index)
+                    structure_path = struct_resolved.absolute_path
+                    if not structure_path.exists():
+                        raise QVServiceError(
+                            f"Cannot import step from {input_file}: step has no structure and calculation structure not found"
+                        )
+                except Exception as e:
+                    # Try to find any existing structure in the project
+                    structures_dir = project_root / "structures"
+                    if structures_dir.exists():
+                        structure_files = list(structures_dir.glob("*.json"))
+                        if structure_files:
+                            structure_path = structure_files[0]
+                            logger.info(
+                                f"[IMPORT_STEP] Step has no structure, using existing structure from project: {structure_path}"
+                            )
+                        else:
+                            raise QVServiceError(
+                                f"Cannot import step from {input_file}: step has no structure and no structures found in project. "
+                                f"This step requires a structure to be imported. Error: {e}"
+                            )
+                    else:
+                        raise QVServiceError(
+                            f"Cannot import step from {input_file}: step has no structure and calculation structure not accessible. "
+                            f"This may be a structure-less post-processing step, or the input file is missing structure data. Error: {e}"
+                        )
+            else:
+                # Try to find any existing structure in the project
+                structures_dir = project_root / "structures"
+                if structures_dir.exists():
+                    structure_files = list(structures_dir.glob("*.json"))
+                    if structure_files:
+                        structure_path = structure_files[0]
+                        logger.info(
+                            f"[IMPORT_STEP] Step has no structure, calculation has no structure_id, using existing structure from project: {structure_path}"
+                        )
+                    else:
+                        raise QVServiceError(
+                            f"Cannot import step from {input_file}: step has no structure and no structures found in project. "
+                            f"This step requires a structure to be imported."
+                        )
+                else:
+                    raise QVServiceError(
+                        f"Cannot import step from {input_file}: step has no structure and calculation has no structure. "
+                        f"This step requires a structure to be imported."
+                    )
         
         # Read structure to compute fingerprint
         from quantumvitas.io import read_structure

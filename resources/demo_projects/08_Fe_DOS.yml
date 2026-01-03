@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KE008H2XH524G5Q4974Z14GX
+    id: 01KE2M0MTGPF4MQNW6D3472HJ4
     name: 08_Fe_DOS
     slug: 08_fe_dos
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KE008H39NH8E51T1CGAFMQM4
+    id: 01KE2M0MTV66K9HXNY7QZ6STQT
     name: fe.scf_noncollin
     slug: fe-scf_noncollin
     path: structures/fe-scf_noncollin.json
@@ -57,7 +57,7 @@ structures:
       - 0.0
 calculations:
 - meta:
-    id: 01KE008H2ZVFPMXRFGADWMGG7V
+    id: 01KE2M0MTJDNZEQ4YF4BVGYKDC
     name: Fe Dos  2 Noncolinear
     slug: fe-dos-2-noncolinear
     path: calculations/fe-dos-2-noncolinear
@@ -66,7 +66,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KE008H35XC9ZQQ7C5PVTTYKN
+      id: 01KE2M0MTREA6S4KMY1E2CVVZX
       name: fe.scf_noncollin
       slug: fe-scf_noncollin
       path: fe.scf_noncollin.step.yaml
@@ -76,8 +76,6 @@ calculations:
       CONTROL:
         calculation: scf
         restart_mode: from_scratch
-        prefix: fe
-        outdir: ./outdir
         pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
       SYSTEM:
         ecutwfc: 40
@@ -106,8 +104,7 @@ calculations:
     species_overrides:
       Fe:
         mass: 55.845
-        pseudopot: Fe.pbe-spn-kjpaw_psl.0.2.1.UPF
-  structure_id: 01KE008H2YB12676SHBAWT5SMJ
+  structure_id: 01KE2M0MTHTSNFD07R9QXG12T0
   species_map:
     Fe:
       mass: 55.845

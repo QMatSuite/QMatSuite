@@ -371,6 +371,15 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
                 
                 # Export step data (ID-only model: structure_id, no structure selector)
                 step_dict = step_spec.to_dict()
+                
+                # R4: Remove prefix/outdir from step parameters (injected from calculation.meta.slug)
+                if "parameters" in step_dict:
+                    for section_name, section_params in step_dict["parameters"].items():
+                        if isinstance(section_params, dict):
+                            # Remove prefix and outdir from all sections
+                            section_params.pop("prefix", None)
+                            section_params.pop("outdir", None)
+                
                 calculation_dict["steps"].append(step_dict)
                 exported_step_ids.add(step_id)
             except Exception:
@@ -379,6 +388,7 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
         
         # If calc_species_map was not set from calculation model, compute it from step-level species_overrides
         # This migrates legacy projects to the new semantics on export
+        # IMPORTANT: Do this BEFORE cleaning species_overrides, so we can extract pseudopot info
         if not calc_species_map and calculation_dict["steps"]:
             step_species_overrides_list = [step.get("species_overrides") for step in calculation_dict["steps"]]
             if any(step_species_overrides_list):
@@ -389,6 +399,26 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
                 )
                 temp_calc = migrate_species_overrides_to_calc(temp_calc, step_species_overrides_list)
                 calc_species_map = temp_calc.species_map
+        
+        # R1: Now clean pseudopot fields from step-level species_overrides (already migrated to calc_species_map above)
+        # Remove pseudopot/pseudo_basename/pseudo_sha256/pseudo_sha_family from step-level species_overrides
+        for step_dict in calculation_dict["steps"]:
+            if "species_overrides" in step_dict:
+                cleaned_overrides = {}
+                for element, override in step_dict["species_overrides"].items():
+                    if isinstance(override, dict):
+                        # Only keep mass if present, remove all pseudo-related fields
+                        cleaned_override = {}
+                        if "mass" in override:
+                            cleaned_override["mass"] = override["mass"]
+                        # Explicitly exclude pseudo-related fields
+                        if cleaned_override:
+                            cleaned_overrides[element] = cleaned_override
+                if cleaned_overrides:
+                    step_dict["species_overrides"] = cleaned_overrides
+                else:
+                    # Remove empty species_overrides
+                    step_dict.pop("species_overrides", None)
         
         # Enhance species_map with sha256 and sha_family if missing (migration from legacy format)
         # This ensures exported snapshots have complete triplet: pseudo_basename + pseudo_sha256 + pseudo_sha_family

@@ -139,167 +139,164 @@ def generate_demo_snapshot() -> Dict[str, Any]:
     pw2wan_content = (example_dir / "diamond.pw2wan").read_text()
     win_content = (example_dir / "diamond.win").read_text()
     
+    # Parse QE input files to extract parameters and cards correctly
+    from quantumvitas.io import QEInputParser
+    from quantumvitas.calculation.importers import _build_step_spec_from_qe_input_data
+    from quantumvitas.io.structure_io import structure_from_qe_input
+    
+    scf_file = example_dir / "diamond.scf"
+    nscf_file = example_dir / "diamond.nscf"
+    scf_qe_input = QEInputParser.parse_file(scf_file)
+    nscf_qe_input = QEInputParser.parse_file(nscf_file)
+    
+    # Extract structure from SCF input (as PMGStructure, convert to dict for snapshot)
+    structure_pmg = structure_from_qe_input(scf_qe_input)
+    
     # Parse the .win file
     win_input = Wannier90Input.from_string(win_content)
     pw2wan_input = Pw2Wannier90Input.from_string(pw2wan_content)
     
-    # Build demo snapshot
-    # Structure: Diamond (2 C atoms, FCC)
+    # Build demo snapshot structure
+    from quantumvitas.core.resources import generate_ulid
+    structure_id = generate_ulid()
     structure = {
-        "__qv_meta__": {
-            "id": "01JGXYZ000000000000STRUCT1",
+        "meta": {
+            "id": structure_id,
             "name": "diamond",
             "slug": "diamond",
             "path": "structures/diamond.json",
             "kind": "structure",
         },
-        "lattice": {
-            "a": [[-1.613990, 0.000000, 1.613990]],
-            "b": [[0.000000, 1.613990, 1.613990]],
-            "c": [[-1.613990, 1.613990, 0.000000]],
-        },
-        "species": ["C", "C"],
-        "coords": [
-            [-0.125, -0.125, -0.125],
-            [0.125, 0.125, 0.125],
-        ],
-        "coord_type": "crystal",
+        "data": structure_pmg.as_dict(),  # Convert PMGStructure to dict
     }
+    # Fix pbc tuple -> list for YAML serialization (safe_dump can't handle tuples)
+    if "pbc" in structure["data"] and isinstance(structure["data"]["pbc"], tuple):
+        structure["data"]["pbc"] = list(structure["data"]["pbc"])
     
-    # Steps configuration
-    steps = [
-        {
-            "step_id": "01JGXYZ000000000000STEP001",
-            "step_type": "scf",
-            "name": "scf",
-            "parameters": {
-                "CONTROL": {
-                    "calculation": "scf",
-                    "prefix": "di",
-                    "pseudo_dir": "../../../pseudo",
-                    "outdir": "./",
-                },
-                "SYSTEM": {
-                    "ibrav": 2,
-                    "celldm(1)": 6.1,
-                    "nat": 2,
-                    "ntyp": 1,
-                    "ecutwfc": 40.0,
-                },
-                "ELECTRONS": {
-                    "diagonalization": "david",
-                    "mixing_mode": "plain",
-                    "mixing_beta": 0.7,
-                    "conv_thr": 1.0e-13,
-                },
+    # Helper to create step specs
+    def create_step_spec(step_type: str, index: int, seedname: str, params: Optional[Dict] = None, cards: Optional[Dict] = None) -> Dict[str, Any]:
+        """Create a step specification dictionary."""
+        step_id = generate_ulid()
+        calc_slug = "diamond-mlwfs"
+        spec = {
+            "meta": {
+                "id": step_id,
+                "name": step_type,
+                "slug": step_type,
+                "path": f"calculations/{calc_slug}/steps/{step_type}.step.yaml",
+                "kind": "step",
             },
-        },
-        {
-            "step_id": "01JGXYZ000000000000STEP002",
-            "step_type": "nscf",
-            "name": "nscf",
-            "parameters": {
-                "CONTROL": {
-                    "calculation": "nscf",
-                    "prefix": "di",
-                    "pseudo_dir": "../../../pseudo",
-                    "outdir": "./",
-                },
-                "SYSTEM": {
-                    "ibrav": 2,
-                    "celldm(1)": 6.1,
-                    "nat": 2,
-                    "ntyp": 1,
-                    "ecutwfc": 40.0,
-                    "nbnd": 4,
-                },
-                "ELECTRONS": {
-                    "conv_thr": 1.0e-11,
-                },
-            },
-            "kpoints": {
-                "type": "crystal",
-                "grid": [4, 4, 4],
-            },
-        },
-        {
-            "step_id": "01JGXYZ000000000000STEP003",
-            "step_type": "w90_preproc",
-            "name": "w90_preproc",
-            "parameters": {
-                "seedname": "diamond",
-                "num_wann": win_input.num_wann,
-                "num_iter": win_input.num_iter,
-                "mp_grid": win_input.mp_grid,
-                "projections_block": win_input.projections_block,
-                "unit_cell_cart": win_input.unit_cell_cart,
-                "atoms_frac": win_input.atoms_frac,
-                "kpoints": win_input.kpoints,
-                "wannier_plot": win_input.wannier_plot,
-                "wannier_plot_supercell": win_input.wannier_plot_supercell,
-            },
-        },
-        {
-            "step_id": "01JGXYZ000000000000STEP004",
-            "step_type": "pw2wannier90",
-            "name": "pw2wannier90",
-            "parameters": {
-                "seedname": pw2wan_input.seedname,
-                "prefix": pw2wan_input.prefix,
-                "outdir": pw2wan_input.outdir,
-                "write_mmn": pw2wan_input.write_mmn,
-                "write_amn": pw2wan_input.write_amn,
-                "write_unk": pw2wan_input.write_unk,
-                "spin_component": pw2wan_input.spin_component,
-            },
-        },
-        {
-            "step_id": "01JGXYZ000000000000STEP005",
-            "step_type": "w90_run",
-            "name": "w90_run",
-            "parameters": {
-                "seedname": "diamond",
-                "num_wann": win_input.num_wann,
-                "num_iter": win_input.num_iter,
-                "mp_grid": win_input.mp_grid,
-                "projections_block": win_input.projections_block,
-                "unit_cell_cart": win_input.unit_cell_cart,
-                "atoms_frac": win_input.atoms_frac,
-                "kpoints": win_input.kpoints,
-                "wannier_plot": win_input.wannier_plot,
-                "wannier_plot_supercell": win_input.wannier_plot_supercell,
-            },
-        },
-    ]
+            "step_type": step_type,
+            "index": index,
+        }
+        if params:
+            spec["parameters"] = params
+        if cards:
+            spec["cards"] = cards
+        return spec
     
-    # Build the full snapshot
+    # Build steps using QE input parser for QE steps (ensures K_POINTS is in cards, not parameters)
+    steps = []
+    seedname = "diamond"
+    calc_slug = "diamond-mlwfs"
+    
+    # SCF step: use _build_step_spec_from_qe_input_data to correctly extract parameters and cards
+    scf_params, scf_cards = _build_step_spec_from_qe_input_data(scf_qe_input, "scf", apply_defaults=False)
+    # Remove prefix/outdir from step parameters (injected from calculation.meta.slug)
+    for section in scf_params:
+        scf_params[section].pop("prefix", None)
+        scf_params[section].pop("outdir", None)
+    scf_step = create_step_spec("scf", 0, seedname, params=scf_params, cards=scf_cards)
+    steps.append(scf_step)
+    
+    # NSCF step: use _build_step_spec_from_qe_input_data
+    nscf_params, nscf_cards = _build_step_spec_from_qe_input_data(nscf_qe_input, "nscf", apply_defaults=False)
+    # Remove prefix/outdir from step parameters
+    for section in nscf_params:
+        nscf_params[section].pop("prefix", None)
+        nscf_params[section].pop("outdir", None)
+    nscf_step = create_step_spec("nscf", 1, seedname, params=nscf_params, cards=nscf_cards)
+    nscf_step["depends_on"] = [steps[0]["meta"]["id"]]
+    steps.append(nscf_step)
+    
+    # W90 preprocessing step: generate .win file (kpoints handled via mp_grid and kpoints in .win)
+    w90_preproc_params = {
+        "seedname": seedname,
+        "num_wann": win_input.num_wann,
+        "num_iter": win_input.num_iter,
+        "mp_grid": win_input.mp_grid,
+        "projections_block": win_input.projections_block,
+        "unit_cell_cart": win_input.unit_cell_cart,
+        "atoms_frac": win_input.atoms_frac,
+        # Note: kpoints handled via mp_grid in Wannier90, not as a separate parameter
+        "wannier_plot": win_input.wannier_plot,
+        "wannier_plot_supercell": win_input.wannier_plot_supercell,
+    }
+    w90_preproc_step = create_step_spec("w90_preproc", 2, seedname, params=w90_preproc_params)
+    w90_preproc_step["depends_on"] = [steps[1]["meta"]["id"]]  # Depends on NSCF
+    steps.append(w90_preproc_step)
+    
+    # pw2wannier90 step: remove prefix/outdir (injected from calculation level)
+    pw2wan_params = {
+        "seedname": pw2wan_input.seedname,
+        # prefix and outdir removed - injected from calculation.meta.slug
+        "write_mmn": pw2wan_input.write_mmn,
+        "write_amn": pw2wan_input.write_amn,
+        "write_unk": pw2wan_input.write_unk,
+        "spin_component": pw2wan_input.spin_component,
+    }
+    pw2wan_step = create_step_spec("pw2wannier90", 3, seedname, params=pw2wan_params)
+    pw2wan_step["depends_on"] = [steps[1]["meta"]["id"], steps[2]["meta"]["id"]]  # Depends on NSCF and w90_preproc
+    steps.append(pw2wan_step)
+    
+    # W90 run step: generate .win file (same structure as w90_preproc)
+    w90_run_params = {
+        "seedname": seedname,
+        "num_wann": win_input.num_wann,
+        "num_iter": win_input.num_iter,
+        "mp_grid": win_input.mp_grid,
+        "projections_block": win_input.projections_block,
+        "unit_cell_cart": win_input.unit_cell_cart,
+        "atoms_frac": win_input.atoms_frac,
+        # Note: kpoints handled via mp_grid in Wannier90
+        "wannier_plot": win_input.wannier_plot,
+        "wannier_plot_supercell": win_input.wannier_plot_supercell,
+    }
+    w90_run_step = create_step_spec("w90_run", 4, seedname, params=w90_run_params)
+    w90_run_step["depends_on"] = [steps[3]["meta"]["id"]]  # Depends on pw2wannier90
+    steps.append(w90_run_step)
+    
+    # Build the full snapshot (canonical format)
+    project_id = generate_ulid()
     snapshot = {
-        "__qv_snapshot_version__": "1.0",
+        "version": "1",
         "project": {
-            "name": "Diamond Wannier90 Demo",
-            "description": "End-to-end Wannier90 workflow for diamond (4 sp³ MLWFs)",
+            "meta": {
+                "id": project_id,
+                "name": "Diamond Wannier90 Demo",
+                "slug": "diamond-wannier90-demo",
+                "path": ".",
+                "kind": "project",
+            },
+            "settings": {},
         },
         "structures": [structure],
         "calculations": [
             {
-                "__qv_meta__": {
-                    "id": "01JGXYZ000000000000CALC001",
-                    "name": "Diamond Wannier90",
-                    "slug": "diamond-wannier90",
-                    "path": "calculations/diamond-wannier90",
+                "meta": {
+                    "id": calc_id,
+                    "name": "Diamond MLWFs",
+                    "slug": calc_slug,
+                    "path": f"calculations/{calc_slug}",
                     "kind": "calculation",
                 },
-                "structure_id": "01JGXYZ000000000000STRUCT1",
-                "species_map": species_map,
+                "mode": "normal",
+                "working_dir": "raw",
+                "structure_id": structure_id,
+                "species_map": species_map,  # Calculation-level pseudo mapping (authoritative)
                 "steps": steps,
             }
         ],
-        "raw_inputs": {
-            "diamond.scf": scf_content,
-            "diamond.nscf": nscf_content,
-            "diamond.pw2wan": pw2wan_content,
-            "diamond.win": win_content,
-        },
     }
     
     return snapshot
@@ -320,7 +317,7 @@ def write_demo_yaml(snapshot: Dict[str, Any], output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     
     with open(output_path, "w") as f:
-        yaml.dump(snapshot, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+        yaml.safe_dump(snapshot, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
 
 
 def main():

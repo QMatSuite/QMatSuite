@@ -1,18 +1,18 @@
 version: 1
 project:
   meta:
-    id: 01KC38Z11XMKJWB5HGV58QHEJZ
-    name: project2_bands
-    slug: project2_bands
+    id: 01KE2M0KQN0Y6T7V6NXYQZS4Z3
+    name: 07_Si_bandStructure
+    slug: 07_si_bandstructure
     path: .
     kind: project
   settings: {}
 structures:
 - meta:
-    id: 01KC38ZCMZZQ8DAA61A6SC8X23
-    name: Si
-    slug: si
-    path: structures/si.json
+    id: 01KE2M0KR15YW5PZMJPQXRVBCQ
+    name: si.0_scf
+    slug: si-0_scf
+    path: structures/si-0_scf.json
     kind: structure
   data:
     '@module': pymatgen.core.structure
@@ -70,134 +70,146 @@ structures:
       - 1.3773039781619374
 calculations:
 - meta:
-    id: 01KC38ZHBGWW0T1W9BV7ASEP2Z
-    name: Si bands
-    slug: si-bands
-    path: calculations/si-bands
+    id: 01KE2M0KQQYQ69E3HQJMQKZ8BM
+    name: Si Bandstructure
+    slug: si-bandstructure
+    path: calculations/si-bandstructure
     kind: calculation
   mode: normal
   working_dir: raw
   steps:
   - meta:
-      id: 01KC3901JEVJJ7S8G3E7Z9K2RZ
-      name: scf
-      slug: scf
-      path: calculations/si-bands/steps/scf.step.yaml
+      id: 01KE2M0KQXNKN5RFJ52WEECXP1
+      name: si.0_scf
+      slug: si-0_scf
+      path: si.0_scf.step.yaml
       kind: step
     step_type: scf
     parameters:
       CONTROL:
         calculation: scf
-        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
         restart_mode: from_scratch
+        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+      SYSTEM:
+        ecutwfc: 40
+        ecutrho: 320
+        nbnd: 8
       ELECTRONS:
         conv_thr: 1.0e-08
-      SYSTEM:
-        ecutrho: 320
-        ecutwfc: 40
-        nbnd: 8
+    input_name: si.0_scf.in
     cards:
       K_POINTS:
         option: automatic
         data:
-        - - 8
-          - 8
-          - 8
-          - 0
-          - 0
-          - 0
+        - - '8'
+          - '8'
+          - '8'
+          - '0'
+          - '0'
+          - '0'
     species_overrides:
       Si:
         mass: 28.0855
   - meta:
-      id: 01KC39AWHWQ5EQSNFQADAA2AGP
-      name: nscf
-      slug: nscf
-      path: calculations/si-bands/steps/nscf.step.yaml
+      id: 01KE2M0KRJCFZCXS4PFCR2J3X2
+      name: si.1_nscf
+      slug: si-1_nscf
+      path: si.1_nscf.step.yaml
       kind: step
     step_type: nscf
     parameters:
       CONTROL:
         calculation: nscf
-        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
         restart_mode: from_scratch
+        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+      SYSTEM:
+        ecutwfc: 40
+        ecutrho: 320
+        occupations: tetrahedra
+        nbnd: 8
       ELECTRONS:
         conv_thr: 1.0e-08
-      SYSTEM:
-        ecutrho: 320
-        ecutwfc: 40
-        nbnd: 8
-        occupations: tetrahedra
+    input_name: si.1_nscf.in
     cards:
       K_POINTS:
         option: automatic
         data:
-        - - 12
-          - 12
-          - 12
-          - 0
-          - 0
-          - 0
+        - - '12'
+          - '12'
+          - '12'
+          - '0'
+          - '0'
+          - '0'
     species_overrides:
       Si:
         mass: 28.0855
   - meta:
-      id: 01KC39C21NREKW2YVZJY8E40RN
-      name: bands_pw
-      slug: bands_pw
-      path: calculations/si-bands/steps/bands_pw.step.yaml
+      id: 01KE2M0KSH5KHW2DV1WBBPRW29
+      name: si.2_bands
+      slug: si-2_bands
+      path: si.2_bands.step.yaml
       kind: step
     step_type: bands_pw
     parameters:
       CONTROL:
         calculation: bands
-        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
         restart_mode: from_scratch
+        pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
+      SYSTEM:
+        ecutwfc: 40
+        ecutrho: 320
+        nbnd: 8
       ELECTRONS:
         conv_thr: 1.0e-08
-      SYSTEM:
-        ecutrho: 320
-        ecutwfc: 40
-        nbnd: 8
+    input_name: si.2_bands.in
     cards:
       K_POINTS:
         option: crystal_b
         data:
         - - 5
-        - - 0.0
-          - 0.5
-          - 0.0
-          - 20
-        - - 0.0
-          - 0.0
-          - 0.0
-          - 30
-        - - -0.5
-          - 0.0
-          - -0.5
-          - 10
-        - - -0.375
-          - 0.25
-          - -0.375
-          - 30
-        - - 0.0
-          - 0.0
-          - 0.0
-          - 20
+        - - '0.0000'
+          - '0.5000'
+          - '0.0000'
+          - '20'
+        - - '0.0000'
+          - '0.0000'
+          - '0.0000'
+          - '30'
+        - - '-0.500'
+          - '0.0000'
+          - '-0.500'
+          - '10'
+        - - '-0.375'
+          - '0.2500'
+          - '-0.375'
+          - '30'
+        - - '0.0000'
+          - '0.0000'
+          - '0.0000'
+          - '20'
     species_overrides:
       Si:
         mass: 28.0855
   - meta:
-      id: 01KC39BB6NNP4AF070GWPKK0J0
-      name: bands
-      slug: bands
-      path: calculations/si-bands/steps/bands.step.yaml
+      id: 01KE2M0KV1C01M0R0TKHE76KS7
+      name: si.3_bands.pp
+      slug: si-3_bands-pp
+      path: si.3_bands.pp.step.yaml
       kind: step
     step_type: bands
     parameters:
       BANDS:
         filband: si.bands.dat
-  structure_id: 01KC38ZCMZZQ8DAA61A6SC8X23
+    input_name: si.3_bands.pp.in
+  - meta:
+      id: 01KE2M0KWRJVHD1A86AF1G62GT
+      name: si.4_plotband
+      slug: si-4_plotband
+      path: si.4_plotband.step.yaml
+      kind: step
+    step_type: custom
+    input_name: si.4_plotband.in
+  structure_id: 01KE2M0KQPMSQQF6KAF80VY7K6
   species_map:
     Si:
       mass: 28.0855
@@ -210,17 +222,16 @@ pseudo:
   files:
   - Si.pbe-n-rrkjus_psl.1.0.0.UPF
 meta:
-  id: si_bands_demo
-  title: Silicon band structure
-  subtitle: "SCF \u2192 NSCF \u2192 Bands"
+  id: 07_Si_bandStructure
+  title: 7 Si Bandstructure
+  subtitle: "SCF \u2192 NSCF \u2192 Bands \u2192 Bands \u2192 custom"
   tags:
-  - bands
-  - Si
-  - PW
   - tutorial
-  - beginner
+  - qe
+  - scf
+  - nscf
   recommended_analysis: bands
   difficulty: beginner
   reference_artifacts:
-    bands: si_bands_demo.bands.json
-    scf: si_bands_demo.scf.json
+    scf: 07_Si_bandStructure.scf.json
+    bands: 07_Si_bandStructure.bands.json
