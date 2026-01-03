@@ -1,46 +1,50 @@
 """
 PySCF engine adapter for molecular quantum chemistry calculations.
 
-This module provides a Python-native engine for PySCF calculations.
-Unlike QE, PySCF runs directly in Python without subprocess execution.
+This module provides a subprocess-based engine for PySCF calculations.
+The daemon never imports PySCF directly - all PySCF execution happens
+in a subprocess via the runner module.
+
+Architecture:
+    Daemon (this module)           Runner subprocess
+    ┌─────────────────┐           ┌─────────────────┐
+    │ PySCFEngine     │  ──────▶  │ runner.py       │
+    │   .probe()      │  job.json │   import pyscf  │
+    │   .run_step()   │  ◀──────  │   run SCF       │
+    └─────────────────┘  results  └─────────────────┘
 
 PySCF is an optional dependency. Calculations will fail gracefully
 with a clear error message if PySCF is not installed.
+
+Windows: PySCF native Windows is not supported. The engine will
+report unavailable on Windows with instructions for WSL/Docker.
 """
 
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 import time
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
 from .base import Engine, EngineConfig, StepResult
-
-
-def _check_pyscf_available() -> bool:
-    """Check if PySCF is importable."""
-    try:
-        import pyscf
-        return True
-    except ImportError:
-        return False
 
 
 class PySCFEngine(Engine):
     """
     PySCF engine adapter.
     
-    Provides Python-native execution of molecular quantum chemistry
+    Provides subprocess-based execution of molecular quantum chemistry
     calculations using PySCF:
     - Hartree-Fock (RHF, UHF, ROHF)
     - DFT (RKS, UKS, ROKS)
     
-    Key differences from QE:
-    - No subprocess execution (direct Python API)
-    - No input files (parameters from step.yml)
-    - Outputs results.json (not text output)
+    Key design decisions:
+    - Never imports PySCF in this module (subprocess isolation)
+    - Works via job.json / results.json file exchange
+    - Supports dev-mode (current venv) and future managed bundles
     """
     
     name = "pyscf"
@@ -50,19 +54,97 @@ class PySCFEngine(Engine):
         Initialize PySCF engine.
         
         Args:
-            config: Optional engine configuration (mostly unused for PySCF)
+            config: Optional engine configuration
         """
         super().__init__(config or EngineConfig(name="pyscf"))
-        self._pyscf_available = _check_pyscf_available()
+        self._probe_cache: Optional[Dict[str, Any]] = None
+    
+    def probe(self) -> Dict[str, Any]:
+        """
+        Check if PySCF is available without importing it.
+        
+        Uses subprocess to check if PySCF can be imported.
+        Results are cached for performance.
+        
+        Returns:
+            Dict with 'available', 'version', 'reason' keys
+        """
+        if self._probe_cache is not None:
+            return self._probe_cache
+        
+        # Windows check
+        if sys.platform == "win32":
+            self._probe_cache = {
+                "available": False,
+                "version": None,
+                "reason": (
+                    "PySCF native Windows is not supported. "
+                    "Use WSL (Windows Subsystem for Linux) or Docker."
+                ),
+            }
+            return self._probe_cache
+        
+        # Try to import PySCF via subprocess
+        try:
+            result = subprocess.run(
+                [sys.executable, "-c", "import pyscf; print(pyscf.__version__)"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if result.returncode == 0:
+                version = result.stdout.strip()
+                self._probe_cache = {
+                    "available": True,
+                    "version": version,
+                    "reason": None,
+                }
+            else:
+                self._probe_cache = {
+                    "available": False,
+                    "version": None,
+                    "reason": (
+                        f"PySCF import failed. Install with: pip install pyscf\n"
+                        f"Error: {result.stderr.strip()}"
+                    ),
+                }
+        except subprocess.TimeoutExpired:
+            self._probe_cache = {
+                "available": False,
+                "version": None,
+                "reason": "PySCF import timed out",
+            }
+        except Exception as e:
+            self._probe_cache = {
+                "available": False,
+                "version": None,
+                "reason": f"Failed to check PySCF availability: {e}",
+            }
+        
+        return self._probe_cache
     
     @property
     def pyscf_available(self) -> bool:
         """Check if PySCF is available for calculations."""
-        return self._pyscf_available
+        return self.probe().get("available", False)
+    
+    def _get_runner_command(self) -> list:
+        """
+        Get the command to run the PySCF runner subprocess.
+        
+        Future: This method can be extended to support managed engine bundles
+        by checking for a managed pyscf-runner executable.
+        
+        Returns:
+            Command list for subprocess execution
+        """
+        # Dev-mode: use current Python interpreter
+        # Future: check for managed bundle first
+        return [sys.executable, "-m", "quantumvitas.engines.pyscf.runner"]
     
     def run_step(self, step, working_dir: Path) -> StepResult:
         """
-        Run a PySCF calculation step.
+        Run a PySCF calculation step via subprocess.
         
         Args:
             step: Step object with parameters attribute
@@ -71,30 +153,9 @@ class PySCFEngine(Engine):
         Returns:
             StepResult with calculation results
         """
+        start_time = time.time()
+        working_dir = Path(working_dir)
         working_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Check if PySCF is available
-        if not self._pyscf_available:
-            return StepResult(
-                step_type="pyscf_scf",
-                input_file=working_dir / "pyscf_input.py",
-                success=False,
-                error=(
-                    "PySCF is not installed. Please install with:\n"
-                    "  pip install pyscf\n\n"
-                    "Or with optional dependencies:\n"
-                    "  pip install quantumvitas[pyscf]"
-                ),
-                execution_time=0.0,
-            )
-        
-        # Extract parameters from step
-        if hasattr(step, 'parameters'):
-            params = step.parameters
-        elif isinstance(step, dict):
-            params = step.get('parameters', step)
-        else:
-            params = {}
         
         # Determine step type
         step_type = "pyscf_scf"
@@ -107,21 +168,153 @@ class PySCFEngine(Engine):
         elif hasattr(step, 'type'):
             step_type = step.type
         
-        # Run appropriate calculation
-        if step_type in ("pyscf_scf", "pyscf_rhf", "pyscf_uhf", "pyscf_rks", "pyscf_uks"):
-            return self._run_scf(params, working_dir)
-        else:
+        # Check platform
+        if sys.platform == "win32":
             return StepResult(
                 step_type=step_type,
-                input_file=working_dir / "pyscf_input.py",
+                input_file=working_dir / "job.json",
                 success=False,
-                error=f"Unknown PySCF step type: {step_type}",
-                execution_time=0.0,
+                error=(
+                    "PySCF native Windows is not supported. "
+                    "Use WSL (Windows Subsystem for Linux) or Docker."
+                ),
+                execution_time=time.time() - start_time,
             )
+        
+        # Check if PySCF is available
+        probe_result = self.probe()
+        if not probe_result.get("available"):
+            return StepResult(
+                step_type=step_type,
+                input_file=working_dir / "job.json",
+                success=False,
+                error=probe_result.get("reason", "PySCF not available"),
+                execution_time=time.time() - start_time,
+            )
+        
+        # Extract parameters from step
+        if hasattr(step, 'parameters'):
+            params = step.parameters
+        elif isinstance(step, dict):
+            params = step.get('parameters', step)
+        else:
+            params = {}
+        
+        # Build job spec
+        job_spec = {
+            "step_type": step_type,
+            "working_dir": str(working_dir),
+            "parameters": params,
+            "resources": {},
+        }
+        
+        # Add resource settings if available
+        if hasattr(step, 'options'):
+            options = step.options
+            if options.get("max_memory_mb"):
+                job_spec["resources"]["max_memory_mb"] = options["max_memory_mb"]
+            if options.get("scratch_dir"):
+                job_spec["resources"]["scratch_dir"] = str(options["scratch_dir"])
+            if options.get("threads"):
+                job_spec["resources"]["threads"] = options["threads"]
+        
+        # Write job.json
+        job_file = working_dir / "job.json"
+        try:
+            job_file.write_text(json.dumps(job_spec, indent=2))
+        except Exception as e:
+            return StepResult(
+                step_type=step_type,
+                input_file=job_file,
+                success=False,
+                error=f"Failed to write job file: {e}",
+                execution_time=time.time() - start_time,
+            )
+        
+        # Run subprocess
+        cmd = self._get_runner_command() + [str(job_file)]
+        
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                cwd=working_dir,
+                timeout=step.options.get("timeout") if hasattr(step, 'options') else None,
+            )
+            stdout = result.stdout
+            stderr = result.stderr
+            return_code = result.returncode
+        except subprocess.TimeoutExpired as e:
+            return StepResult(
+                step_type=step_type,
+                input_file=job_file,
+                success=False,
+                return_code=None,
+                stdout=e.stdout.decode() if e.stdout else "",
+                stderr=e.stderr.decode() if e.stderr else "",
+                error="Calculation timed out",
+                execution_time=time.time() - start_time,
+            )
+        except Exception as e:
+            return StepResult(
+                step_type=step_type,
+                input_file=job_file,
+                success=False,
+                error=f"Subprocess execution failed: {e}",
+                execution_time=time.time() - start_time,
+            )
+        
+        # Parse results
+        results_file = working_dir / "results.json"
+        parsed_output: Optional[Dict[str, Any]] = None
+        success = False
+        error = None
+        
+        if results_file.exists():
+            try:
+                parsed_output = json.loads(results_file.read_text())
+                success = parsed_output.get("success", False)
+                error = parsed_output.get("error")
+            except Exception as e:
+                error = f"Failed to parse results.json: {e}"
+        else:
+            # Try to parse stdout as JSON (runner prints results to stdout)
+            try:
+                parsed_output = json.loads(stdout)
+                success = parsed_output.get("success", False)
+                error = parsed_output.get("error")
+            except Exception:
+                error = stderr or stdout or f"Runner exited with code {return_code}"
+        
+        # Log file
+        log_file = working_dir / "pyscf.log"
+        
+        return StepResult(
+            step_type=step_type,
+            input_file=working_dir / "pyscf_input.py",  # Reproducible script
+            output_file=results_file if results_file.exists() else log_file,
+            success=success,
+            return_code=return_code,
+            stdout=stdout,
+            stderr=stderr,
+            error=error,
+            execution_time=time.time() - start_time,
+            parsed_output=parsed_output,
+        )
+    
+    # =========================================================================
+    # Legacy compatibility: Direct execution methods (deprecated)
+    # These are kept for backward compatibility with existing tests but
+    # should not be used in production. Use run_step() instead.
+    # =========================================================================
     
     def _run_scf(self, params: Dict[str, Any], working_dir: Path) -> StepResult:
         """
-        Run PySCF SCF (HF or DFT) calculation.
+        Run PySCF SCF calculation (legacy compatibility).
+        
+        This method is kept for backward compatibility with existing tests.
+        New code should use run_step() which uses subprocess.
         
         Args:
             params: Calculation parameters
@@ -130,394 +323,10 @@ class PySCFEngine(Engine):
         Returns:
             StepResult with SCF results
         """
-        start_time = time.time()
+        # Create a mock step object
+        class MockStep:
+            step_type = "pyscf_scf"
+            parameters = params
+            options = {}
         
-        # Import PySCF modules
-        try:
-            from pyscf import gto, scf, dft
-        except ImportError as e:
-            return StepResult(
-                step_type="pyscf_scf",
-                input_file=working_dir / "pyscf_input.py",
-                success=False,
-                error=f"Failed to import PySCF: {e}",
-                execution_time=time.time() - start_time,
-            )
-        
-        # Build molecule
-        try:
-            mol = self._build_mole(params)
-        except Exception as e:
-            return StepResult(
-                step_type="pyscf_scf",
-                input_file=working_dir / "pyscf_input.py",
-                success=False,
-                error=f"Failed to build molecule: {e}",
-                execution_time=time.time() - start_time,
-            )
-        
-        # Setup SCF/DFT method
-        method = params.get("method", "rhf").lower()
-        xc = params.get("xc", "pbe")
-        
-        try:
-            if method in ("rhf", "hf"):
-                mf = scf.RHF(mol)
-            elif method == "uhf":
-                mf = scf.UHF(mol)
-            elif method == "rohf":
-                mf = scf.ROHF(mol)
-            elif method in ("rks", "dft"):
-                mf = dft.RKS(mol)
-                mf.xc = xc
-            elif method == "uks":
-                mf = dft.UKS(mol)
-                mf.xc = xc
-            elif method == "roks":
-                mf = dft.ROKS(mol)
-                mf.xc = xc
-            else:
-                return StepResult(
-                    step_type="pyscf_scf",
-                    input_file=working_dir / "pyscf_input.py",
-                    success=False,
-                    error=f"Unknown method: {method}. Use rhf, uhf, rohf, rks, uks, or roks.",
-                    execution_time=time.time() - start_time,
-                )
-        except Exception as e:
-            return StepResult(
-                step_type="pyscf_scf",
-                input_file=working_dir / "pyscf_input.py",
-                success=False,
-                error=f"Failed to setup SCF: {e}",
-                execution_time=time.time() - start_time,
-            )
-        
-        # Convergence settings
-        mf.max_cycle = params.get("max_cycle", 50)
-        mf.conv_tol = params.get("conv_tol", 1e-9)
-        
-        # Optional: verbosity (write to log file)
-        log_file = working_dir / "pyscf.log"
-        mf.verbose = params.get("verbose", 4)
-        mf.stdout = open(log_file, 'w')
-        
-        # Run SCF
-        try:
-            energy = mf.kernel()
-            converged = mf.converged
-        except Exception as e:
-            mf.stdout.close()
-            return StepResult(
-                step_type="pyscf_scf",
-                input_file=working_dir / "pyscf_input.py",
-                success=False,
-                error=f"SCF calculation failed: {e}",
-                execution_time=time.time() - start_time,
-            )
-        finally:
-            if hasattr(mf.stdout, 'close'):
-                mf.stdout.close()
-        
-        # Extract results
-        results = self._extract_scf_results(mf, mol, energy, converged)
-        
-        # Add method info
-        results["method"] = method
-        if method in ("rks", "uks", "roks", "dft"):
-            results["xc_functional"] = xc
-        results["basis"] = params.get("basis", "sto-3g")
-        
-        # Write results.json
-        results_file = working_dir / "results.json"
-        try:
-            results_file.write_text(json.dumps(results, indent=2))
-        except Exception as e:
-            # Non-fatal: continue even if we can't write results
-            pass
-        
-        # Generate input script for reproducibility
-        self._write_input_script(params, working_dir)
-        
-        return StepResult(
-            step_type="pyscf_scf",
-            input_file=working_dir / "pyscf_input.py",
-            output_file=results_file,
-            success=converged,
-            return_code=0 if converged else 1,
-            stdout=log_file.read_text() if log_file.exists() else "",
-            stderr="",
-            error=None if converged else "SCF did not converge",
-            execution_time=time.time() - start_time,
-            parsed_output=results,
-        )
-    
-    def _build_mole(self, params: Dict[str, Any]):
-        """
-        Build PySCF Mole object from parameters.
-        
-        Args:
-            params: Dictionary with atoms, basis, charge, spin, unit
-            
-        Returns:
-            pyscf.gto.Mole object
-        """
-        from pyscf import gto
-        
-        atoms = params.get("atoms", [])
-        unit = params.get("unit", "Angstrom")
-        charge = params.get("charge", 0)
-        spin = params.get("spin", 0)  # 2S (number of unpaired electrons)
-        basis = params.get("basis", "sto-3g")
-        
-        # Build atom string for PySCF
-        # PySCF accepts: "O 0 0 0; H 0 0.757 0.587; H 0 -0.757 0.587"
-        atom_lines = []
-        for atom in atoms:
-            element = atom.get("element", atom.get("symbol", "X"))
-            
-            # Handle different coordinate formats
-            if "coords" in atom:
-                coords = atom["coords"]
-                x, y, z = coords[0], coords[1], coords[2]
-            else:
-                x = atom.get("x", 0.0)
-                y = atom.get("y", 0.0)
-                z = atom.get("z", 0.0)
-            
-            atom_lines.append(f"{element} {x} {y} {z}")
-        
-        atom_str = "; ".join(atom_lines)
-        
-        mol = gto.Mole()
-        mol.atom = atom_str
-        mol.basis = basis
-        mol.charge = charge
-        mol.spin = spin
-        mol.unit = unit
-        mol.build()
-        
-        return mol
-    
-    def _extract_scf_results(
-        self, 
-        mf, 
-        mol, 
-        energy: float, 
-        converged: bool
-    ) -> Dict[str, Any]:
-        """
-        Extract results from completed SCF calculation.
-        
-        Args:
-            mf: PySCF SCF object
-            mol: PySCF Mole object
-            energy: Total energy (Hartree)
-            converged: Whether SCF converged
-            
-        Returns:
-            Dictionary with results
-        """
-        import numpy as np
-        
-        results = {
-            "energy": float(energy),
-            "energy_unit": "Hartree",
-            "converged": converged,
-            "n_electrons": mol.nelectron,
-            "n_atoms": mol.natm,
-        }
-        
-        # MO energies and occupations
-        try:
-            mo_energy = mf.mo_energy
-            mo_occ = mf.mo_occ
-            
-            # Handle unrestricted case (alpha/beta separate)
-            if isinstance(mo_energy, (list, tuple)) or (hasattr(mo_energy, 'ndim') and mo_energy.ndim == 2):
-                # Unrestricted: [alpha, beta]
-                if hasattr(mo_energy[0], 'tolist'):
-                    results["mo_energies_alpha"] = mo_energy[0].tolist()
-                    results["mo_energies_beta"] = mo_energy[1].tolist()
-                    results["mo_occupations_alpha"] = mo_occ[0].tolist()
-                    results["mo_occupations_beta"] = mo_occ[1].tolist()
-                else:
-                    results["mo_energies_alpha"] = list(mo_energy[0])
-                    results["mo_energies_beta"] = list(mo_energy[1])
-                    results["mo_occupations_alpha"] = list(mo_occ[0])
-                    results["mo_occupations_beta"] = list(mo_occ[1])
-                
-                # HOMO/LUMO for alpha
-                alpha_e = np.array(results["mo_energies_alpha"])
-                alpha_occ = np.array(results["mo_occupations_alpha"])
-                homo_idx = int(np.where(alpha_occ > 0)[0][-1]) if np.any(alpha_occ > 0) else None
-                lumo_idx = int(np.where(alpha_occ == 0)[0][0]) if np.any(alpha_occ == 0) else None
-                
-                results["homo_index_alpha"] = homo_idx
-                results["lumo_index_alpha"] = lumo_idx
-                if homo_idx is not None:
-                    results["homo_energy_alpha"] = float(alpha_e[homo_idx])
-                if lumo_idx is not None:
-                    results["lumo_energy_alpha"] = float(alpha_e[lumo_idx])
-                if homo_idx is not None and lumo_idx is not None:
-                    gap = float(alpha_e[lumo_idx] - alpha_e[homo_idx])
-                    results["gap_alpha"] = gap
-                    results["gap_alpha_ev"] = gap * 27.2114
-            else:
-                # Restricted
-                if hasattr(mo_energy, 'tolist'):
-                    results["mo_energies"] = mo_energy.tolist()
-                    results["mo_occupations"] = mo_occ.tolist()
-                else:
-                    results["mo_energies"] = list(mo_energy)
-                    results["mo_occupations"] = list(mo_occ)
-                
-                # Find HOMO/LUMO
-                mo_e = np.array(results["mo_energies"])
-                mo_o = np.array(results["mo_occupations"])
-                
-                homo_idx = None
-                lumo_idx = None
-                for i, occ in enumerate(mo_o):
-                    if occ > 0:
-                        homo_idx = i
-                    elif lumo_idx is None and homo_idx is not None:
-                        lumo_idx = i
-                        break
-                
-                results["homo_index"] = homo_idx
-                results["lumo_index"] = lumo_idx
-                
-                if homo_idx is not None:
-                    results["homo_energy"] = float(mo_e[homo_idx])
-                if lumo_idx is not None:
-                    results["lumo_energy"] = float(mo_e[lumo_idx])
-                if homo_idx is not None and lumo_idx is not None:
-                    gap = float(mo_e[lumo_idx] - mo_e[homo_idx])
-                    results["gap"] = gap
-                    results["gap_ev"] = gap * 27.2114  # Hartree to eV
-        except Exception:
-            # MO extraction failed, continue without it
-            pass
-        
-        # Dipole moment (if available)
-        try:
-            dipole = mf.dip_moment(verbose=0)
-            if hasattr(dipole, 'tolist'):
-                results["dipole_moment"] = dipole.tolist()
-            else:
-                results["dipole_moment"] = list(dipole)
-            results["dipole_moment_unit"] = "Debye"
-        except Exception:
-            pass
-        
-        # Mulliken charges (if available)
-        try:
-            from pyscf import lo
-            mulliken = mf.mulliken_pop(verbose=0)
-            if len(mulliken) >= 2:
-                charges = mulliken[1]
-                if hasattr(charges, 'tolist'):
-                    results["mulliken_charges"] = charges.tolist()
-                else:
-                    results["mulliken_charges"] = list(charges)
-        except Exception:
-            pass
-        
-        return results
-    
-    def _write_input_script(self, params: Dict[str, Any], working_dir: Path) -> None:
-        """
-        Write a Python script that reproduces the calculation.
-        
-        Useful for debugging and reproducibility.
-        """
-        script_lines = [
-            "#!/usr/bin/env python",
-            '"""',
-            "PySCF input script generated by QMatSuite.",
-            "Run with: python pyscf_input.py",
-            '"""',
-            "",
-            "from pyscf import gto, scf, dft",
-            "",
-            "# Build molecule",
-            "mol = gto.Mole()",
-        ]
-        
-        # Atom string
-        atoms = params.get("atoms", [])
-        atom_lines = []
-        for atom in atoms:
-            element = atom.get("element", atom.get("symbol", "X"))
-            if "coords" in atom:
-                coords = atom["coords"]
-                x, y, z = coords[0], coords[1], coords[2]
-            else:
-                x = atom.get("x", 0.0)
-                y = atom.get("y", 0.0)
-                z = atom.get("z", 0.0)
-            atom_lines.append(f"    {element} {x} {y} {z}")
-        
-        script_lines.append("mol.atom = '''")
-        script_lines.extend(atom_lines)
-        script_lines.append("'''")
-        
-        script_lines.append(f"mol.basis = '{params.get('basis', 'sto-3g')}'")
-        script_lines.append(f"mol.charge = {params.get('charge', 0)}")
-        script_lines.append(f"mol.spin = {params.get('spin', 0)}")
-        script_lines.append(f"mol.unit = '{params.get('unit', 'Angstrom')}'")
-        script_lines.append("mol.build()")
-        script_lines.append("")
-        
-        # Method setup
-        method = params.get("method", "rhf").lower()
-        xc = params.get("xc", "pbe")
-        
-        if method in ("rhf", "hf"):
-            script_lines.append("mf = scf.RHF(mol)")
-        elif method == "uhf":
-            script_lines.append("mf = scf.UHF(mol)")
-        elif method == "rohf":
-            script_lines.append("mf = scf.ROHF(mol)")
-        elif method in ("rks", "dft"):
-            script_lines.append("mf = dft.RKS(mol)")
-            script_lines.append(f"mf.xc = '{xc}'")
-        elif method == "uks":
-            script_lines.append("mf = dft.UKS(mol)")
-            script_lines.append(f"mf.xc = '{xc}'")
-        elif method == "roks":
-            script_lines.append("mf = dft.ROKS(mol)")
-            script_lines.append(f"mf.xc = '{xc}'")
-        
-        script_lines.append(f"mf.max_cycle = {params.get('max_cycle', 50)}")
-        script_lines.append(f"mf.conv_tol = {params.get('conv_tol', 1e-9)}")
-        script_lines.append("")
-        script_lines.append("# Run calculation")
-        script_lines.append("energy = mf.kernel()")
-        script_lines.append("")
-        script_lines.append("# Print results")
-        script_lines.append("print(f'Total energy: {energy:.10f} Hartree')")
-        script_lines.append("print(f'Converged: {mf.converged}')")
-        script_lines.append("")
-        script_lines.append("# HOMO/LUMO")
-        script_lines.append("mo_e = mf.mo_energy")
-        script_lines.append("mo_occ = mf.mo_occ")
-        script_lines.append("homo_idx = None")
-        script_lines.append("lumo_idx = None")
-        script_lines.append("for i, occ in enumerate(mo_occ):")
-        script_lines.append("    if occ > 0:")
-        script_lines.append("        homo_idx = i")
-        script_lines.append("    elif lumo_idx is None and homo_idx is not None:")
-        script_lines.append("        lumo_idx = i")
-        script_lines.append("        break")
-        script_lines.append("")
-        script_lines.append("if homo_idx is not None and lumo_idx is not None:")
-        script_lines.append("    gap = mo_e[lumo_idx] - mo_e[homo_idx]")
-        script_lines.append("    print(f'HOMO: {mo_e[homo_idx]:.6f} Ha ({mo_e[homo_idx]*27.2114:.3f} eV)')")
-        script_lines.append("    print(f'LUMO: {mo_e[lumo_idx]:.6f} Ha ({mo_e[lumo_idx]*27.2114:.3f} eV)')")
-        script_lines.append("    print(f'Gap: {gap:.6f} Ha ({gap*27.2114:.3f} eV)')")
-        
-        script_path = working_dir / "pyscf_input.py"
-        script_path.write_text("\n".join(script_lines) + "\n")
-
+        return self.run_step(MockStep(), working_dir)
