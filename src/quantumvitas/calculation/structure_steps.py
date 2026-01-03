@@ -542,6 +542,128 @@ def materialize_step_spec(
             # If project loading fails, continue without project
             pass
 
+    # Check if this is a Wannier90 step type - these need special handling
+    # and should NOT go through QE input generation/validation
+    step_type_lower = (spec_obj.step_type or "scf").lower()
+    WANNIER90_STEP_TYPES = {"w90_preproc", "w90_run", "pw2wannier90"}
+    
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    if step_type_lower in WANNIER90_STEP_TYPES:
+        # WANNIER90 PATH: Generate .win or .pw2wan files, skip QE input generation
+        logger.info(
+            f"[MATERIALIZE_STEP_SPEC] Wannier90 step detected: step_type={step_type_lower}, "
+            f"skipping QE input generation and validation"
+        )
+        
+        # Generate Wannier90 input file based on step type
+        if step_type_lower == "w90_preproc" or step_type_lower == "w90_run":
+            # Generate .win file
+            from quantumvitas.io.wannier90_input import Wannier90Input
+            
+            # Resolve structure for Wannier90 input
+            structure = _resolve_structure_for_spec(
+                spec_obj,
+                resolved_spec_path,
+                calculation_dir=calculation_dir,
+                project=project,
+                project_root=project_root,
+            )
+            
+            # Extract parameters from spec
+            params = spec_obj.parameters or {}
+            # Flatten nested parameters if needed (step parameters may be nested)
+            flat_params = {}
+            if isinstance(params, dict):
+                for key, value in params.items():
+                    if isinstance(value, dict):
+                        flat_params.update(value)
+                    else:
+                        flat_params[key] = value
+            
+            # Create Wannier90Input from spec parameters
+            w90_input = Wannier90Input()
+            w90_input.seedname = flat_params.get("seedname", spec_obj.meta.slug or "wannier")
+            if "num_wann" in flat_params:
+                w90_input.num_wann = int(flat_params["num_wann"])
+            if "num_bands" in flat_params:
+                w90_input.num_bands = int(flat_params["num_bands"])
+            if "num_iter" in flat_params:
+                w90_input.num_iter = int(flat_params["num_iter"])
+            if "mp_grid" in flat_params:
+                mp_grid = flat_params["mp_grid"]
+                if isinstance(mp_grid, list):
+                    w90_input.mp_grid = [int(x) for x in mp_grid]
+            if "projections" in flat_params:
+                w90_input.projections_block = str(flat_params["projections"])
+            
+            # Add structure data
+            if structure:
+                # Unit cell in Bohr (convert from Angstrom)
+                # 1 Bohr = 0.5291772105638411 Angstrom
+                ANGSTROM_TO_BOHR = 1.0 / 0.5291772105638411
+                lattice = structure.lattice
+                w90_input.unit_cell_cart = [
+                    [lattice.matrix[i][j] * ANGSTROM_TO_BOHR for j in range(3)]
+                    for i in range(3)
+                ]
+                w90_input.length_unit = "bohr"
+                
+                # Atoms in fractional coordinates
+                for site in structure.sites:
+                    w90_input.atoms_frac.append([
+                        site.specie.symbol,
+                        site.frac_coords[0],
+                        site.frac_coords[1],
+                        site.frac_coords[2],
+                    ])
+            
+            # Generate filename
+            seedname = w90_input.seedname
+            filename = input_name or f"{seedname}.win"
+            generated_input = output_dir / filename
+            
+            # Write .win file
+            w90_input.write(generated_input)
+            logger.info(
+                f"[MATERIALIZE_STEP_SPEC] Generated Wannier90 .win file: {generated_input}"
+            )
+            
+            return generated_input, spec_obj
+        
+        elif step_type_lower == "pw2wannier90":
+            # Generate .pw2wan file
+            from quantumvitas.io.wannier90_input import Pw2Wannier90Input
+            
+            params = spec_obj.parameters or {}
+            flat_params = {}
+            if isinstance(params, dict):
+                for key, value in params.items():
+                    if isinstance(value, dict):
+                        flat_params.update(value)
+                    else:
+                        flat_params[key] = value
+            
+            pw2wan_input = Pw2Wannier90Input()
+            pw2wan_input.seedname = flat_params.get("seedname", spec_obj.meta.slug or "wannier")
+            pw2wan_input.prefix = flat_params.get("prefix", "pwscf")
+            pw2wan_input.outdir = flat_params.get("outdir", "./outdir")
+            
+            # Generate filename
+            seedname = pw2wan_input.seedname
+            filename = input_name or f"{seedname}.pw2wan"
+            generated_input = output_dir / filename
+            
+            # Write .pw2wan file
+            generated_input.write_text(pw2wan_input.to_string())
+            logger.info(
+                f"[MATERIALIZE_STEP_SPEC] Generated pw2wannier90 .pw2wan file: {generated_input}"
+            )
+            
+            return generated_input, spec_obj
+    
+    # QE PATH: Standard QE input generation (existing logic)
     structure = _resolve_structure_for_spec(
         spec_obj,
         resolved_spec_path,
@@ -550,7 +672,39 @@ def materialize_step_spec(
         project_root=project_root,  # Pass project_root for calculation resolution
     )
 
-    qe_input, _ = generate_qe_input_from_spec(structure, spec_obj)
+    # Load calculation's species_map if available (calculation-level authority for pseudos)
+    calculation_species_map = None
+    calculation_context = {}
+    if calculation_dir and project_root:
+        try:
+            from quantumvitas.core.models import load_calculation
+            from quantumvitas.core.resolution import make_structure_selector_resolver, resolve_structure
+            from quantumvitas.core.project_utils import load_project_config
+            calc_yaml_path = Path(calculation_dir) / "calculation.yaml"
+            if calc_yaml_path.exists():
+                project_root_path = Path(project_root).resolve()
+                config = load_project_config(project_root_path)
+                resolver = make_structure_selector_resolver(project_root_path, config=config)
+                calc_model = load_calculation(calc_yaml_path, project_root=project_root_path, resolve_structure_selector=resolver)
+                calculation_species_map = calc_model.species_map
+                calculation_context["calculation_path"] = str(calc_yaml_path)
+                calculation_context["species_map"] = calc_model.species_map
+                if calc_model.structure_id:
+                    struct_resolved = resolve_structure(project_root_path, calc_model.structure_id, config=config)
+                    calculation_context["structure_path"] = str(struct_resolved.absolute_path)
+        except Exception:
+            # If calculation loading fails, continue without species_map (fallback to QE input parsing)
+            pass
+    
+    logger.info(
+        f"[MATERIALIZE_STEP_SPEC] QE step detected: step_type={step_type_lower}, "
+        f"using QE input generation and validation"
+    )
+    
+    # Pass species_map to generate_qe_input_from_spec so it populates ATOMIC_SPECIES correctly
+    # This ensures ATOMIC_SPECIES in the generated QE input has actual pseudo filenames
+    # (not placeholders) when calculation-level species_map is available
+    qe_input, _ = generate_qe_input_from_spec(structure, spec_obj, species_map=calculation_species_map)
 
     # Set outdir and pseudo_dir if project_root is provided
     if project_root:
@@ -578,11 +732,26 @@ def materialize_step_spec(
         temp_input = output_dir / ".temp_input_for_pseudo_resolution.in"
         QEInputGenerator.write_file(qe_input, temp_input)
         
+        # Log before pseudo resolution
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(
+            f"[MATERIALIZE_STEP_SPEC] before ensure_qe_pseudos "
+            f"calculation_dir={calculation_dir} "
+            f"project_pseudo_dir={project_pseudo_dir} "
+            f"calculation_context={calculation_context} "
+            f"species_map_provided={'Yes' if calculation_species_map else 'No'}"
+        )
+        
         # Resolve pseudopotentials
+        # Pass calculation_species_map as PRIMARY source (calculation-level authority)
+        # This ensures calculation.yaml species_map is honored even if temp QE input has placeholders
         pseudo_result = ensure_qe_pseudos(
             qe_input_file=temp_input,
             project_pseudo_dir=project_pseudo_dir,
             system_pseudo_dir=get_system_pseudo_dir(),
+            species_map=calculation_species_map,
         )
         
         # Clean up temp file

@@ -167,6 +167,19 @@ class Calculation:
         # Count is incremented inside _build_step_from_spec when generating filename
         step_type_counts: Dict[str, int] = {}  # step_type -> count of steps with this type seen so far
         
+        # Log materialization entry
+        if materialize_steps:
+            import logging
+            logger = logging.getLogger(__name__)
+            step_ids = [step_data.get("step_id", "unknown") for step_data in data.get("steps", [])]
+            logger.info(
+                f"[MATERIALIZE_STEPS] ENTRY "
+                f"calculation_dir={calculation_dir} "
+                f"raw_dir={working_dir} "
+                f"steps_to_materialize={step_ids} "
+                f"n_steps={len(step_ids)}"
+            )
+        
         for step_data in data.get("steps", []):
             if materialize_steps:
                 # Execution mode: fully materialize steps (calls materialize_step_spec, requires pseudos)

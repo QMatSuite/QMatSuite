@@ -49,12 +49,51 @@ export function ActiveParametersPanel({
 }: ActiveParametersPanelProps) {
   
   // Group active parameters by namelist
+  // Handles both:
+  // 1. QE-style nested: { SYSTEM: { ecutwfc: 40 }, CONTROL: { ... } }
+  // 2. W90-style flat: { seedname: "diamond", num_wann: 4 }
   const parametersByNamelist = useMemo(() => {
     const grouped: Record<string, ParameterWithMetadata[]> = {};
     
-    // Process namelist parameters
+    // Detect if parameters are flat (non-namelist) or nested (namelist-wrapped)
+    // Flat parameters have primitive values at the top level
+    const isFlat = Object.values(stepDetail.parameters).some(
+      val => typeof val !== 'object' || val === null || Array.isArray(val)
+    );
+    
+    if (isFlat) {
+      // W90-style flat parameters: treat top-level keys as parameter names
+      // Group under a synthetic "PARAMETERS" section
+      const flatParams: ParameterWithMetadata[] = [];
+      
+      for (const [paramName, value] of Object.entries(stepDetail.parameters)) {
+        // Skip if value is an object (it's a namelist, not a flat param)
+        if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+          continue;
+        }
+        
+        flatParams.push({
+          namelist: 'PARAMETERS',
+          name: paramName,
+          value,
+          metadata: null, // No QE metadata for W90 params
+        });
+      }
+      
+      if (flatParams.length > 0) {
+        flatParams.sort((a, b) => a.name.localeCompare(b.name));
+        grouped['PARAMETERS'] = flatParams;
+      }
+    }
+    
+    // Process namelist parameters (nested objects)
     for (const [namelist, params] of Object.entries(stepDetail.parameters)) {
-      if (!params || Object.keys(params).length === 0) continue;
+      // Skip if params is not an object (handled above as flat param)
+      if (typeof params !== 'object' || params === null || Array.isArray(params)) {
+        continue;
+      }
+      
+      if (Object.keys(params).length === 0) continue;
       
       const namelistParams: ParameterWithMetadata[] = [];
       

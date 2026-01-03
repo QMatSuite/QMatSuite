@@ -70,6 +70,7 @@ def ensure_qe_pseudos(
     system_pseudo_dir: Optional[Path] = None,
     strict: bool = False,
     additional_search_dirs: Optional[List[Path]] = None,
+    species_map: Optional[Dict[str, Dict[str, Any]]] = None,
 ) -> PseudoResolutionResult:
     """
     Canonical entry point for QE pseudopotential resolution.
@@ -78,7 +79,9 @@ def ensure_qe_pseudos(
     All new code should use this function directly.
     
     This function handles all pseudopotential resolution logic:
-    1. Extracts required pseudopotential filenames from QE input
+    1. Determines required pseudopotential filenames:
+       - PRIMARY SOURCE: If species_map is provided, use it as source of truth (calculation-level authority)
+       - FALLBACK: Extract from QE input ATOMIC_SPECIES (for standalone/legacy cases)
     2. For each required pseudo:
        - First checks project_pseudo_dir (use if exists)
        - Then checks system_pseudo_dir (copy to project if found)
@@ -87,11 +90,14 @@ def ensure_qe_pseudos(
     3. Returns result with project_pseudo_dir path and resolved pseudo mapping
     
     Args:
-        qe_input_file: Path to QE input file (parsed to extract required pseudos)
+        qe_input_file: Path to QE input file (parsed to extract required pseudos if species_map not provided)
         project_pseudo_dir: Directory for project/run-specific pseudos (e.g., project_root/pseudo or workdir/pseudo)
         system_pseudo_dir: Optional system-wide pseudo cache directory. If None, uses quantumvitas resources/pseudo
         strict: If True, do not attempt network download; fail early if pseudo not found locally
         additional_search_dirs: Optional list of additional directories to search (e.g., test fixtures)
+        species_map: Optional calculation-level species_map (element -> {pseudopot/pseudo_basename, mass, ...}).
+                    If provided, this is used as the PRIMARY source for pseudo filenames, and QE input parsing
+                    is only used as a fallback/legacy path. This ensures calculation.yaml species_map is honored.
     
     Returns:
         PseudoResolutionResult with project_pseudo_dir, resolved pseudos, and availability status
@@ -99,36 +105,147 @@ def ensure_qe_pseudos(
     The project_pseudo_dir should be used to set pseudo_dir in the QE input file.
     All required pseudopotentials will be copied into this directory, making the project/run self-contained.
     """
-    # Parse QE input to extract required pseudopotentials
+    # Parse QE input to extract required elements from ATOMIC_SPECIES
     qe_input = QEInputParser.parse_file(qe_input_file)
     atomic_species = qe_input.get_card(QECardType.ATOMIC_SPECIES)
     
-    required_pps: List[str] = []
-    missing_placeholders: List[str] = []
+    # Extract required elements from ATOMIC_SPECIES
+    required_elements: List[str] = []
     if atomic_species and atomic_species.data:
         for line in atomic_species.data:
-            if isinstance(line, list) and len(line) >= 3:
-                pp_name = str(line[2]).strip() if line[2] else ""
-                element_symbol = str(line[0]).strip() if line[0] else "unknown"
-                
-                if not pp_name:
-                    # Empty or missing pseudopotential - treat as missing configuration
-                    # Placeholder semantics: __MISSING_PSEUDO__X = configuration error (not a file error)
-                    missing_placeholders.append(element_symbol)
-                elif is_missing_pseudo_placeholder(pp_name):
-                    # Explicit placeholder indicating missing configuration
-                    # Placeholder semantics: __MISSING_PSEUDO__X = configuration error (not a file error)
-                    element_symbol = pp_name.replace("__MISSING_PSEUDO__", "")
-                    missing_placeholders.append(element_symbol)
-                else:
-                    # Real pseudopotential filename (e.g., "Si.pbe-n-rrkjus_psl.1.0.0.UPF")
-                    # If this filename cannot be found, it's a missing-file error (not configuration)
-                    required_pps.append(pp_name)
+            if isinstance(line, list) and len(line) >= 1:
+                element_symbol = str(line[0]).strip()
+                if element_symbol and element_symbol not in required_elements:
+                    required_elements.append(element_symbol)
+    
+    # Determine required pseudopotential filenames
+    # RESOLUTION PRECEDENCE:
+    # 1. If species_map is provided, use it as PRIMARY source (calculation-level authority)
+    # 2. Otherwise, parse from QE input ATOMIC_SPECIES (legacy/standalone path)
+    required_pps: List[str] = []  # element -> pseudo filename mapping
+    element_to_pseudo: Dict[str, str] = {}
+    missing_placeholders: List[str] = []
+    
+    if species_map and required_elements:
+        # PRIMARY PATH: Use calculation-level species_map as source of truth
+        for element in required_elements:
+            entry = species_map.get(element)
+            if not isinstance(entry, dict):
+                missing_placeholders.append(element)
+                continue
+            
+            # Get pseudo filename from species_map (prefer pseudo_basename, fallback to pseudopot)
+            pseudo_filename = entry.get("pseudo_basename") or entry.get("pseudopot")
+            if not pseudo_filename:
+                missing_placeholders.append(element)
+            elif is_missing_pseudo_placeholder(pseudo_filename):
+                # Placeholder in species_map - treat as missing configuration
+                missing_placeholders.append(element)
+            else:
+                # Valid pseudo filename from species_map
+                element_to_pseudo[element] = pseudo_filename
+                if pseudo_filename not in required_pps:
+                    required_pps.append(pseudo_filename)
+    else:
+        # FALLBACK PATH: Parse from QE input ATOMIC_SPECIES (legacy/standalone)
+        if atomic_species and atomic_species.data:
+            for line in atomic_species.data:
+                if isinstance(line, list) and len(line) >= 3:
+                    pp_name = str(line[2]).strip() if line[2] else ""
+                    element_symbol = str(line[0]).strip() if line[0] else "unknown"
+                    
+                    if not pp_name:
+                        # Empty or missing pseudopotential - treat as missing configuration
+                        missing_placeholders.append(element_symbol)
+                    elif is_missing_pseudo_placeholder(pp_name):
+                        # Explicit placeholder indicating missing configuration
+                        element_symbol_from_placeholder = pp_name.replace("__MISSING_PSEUDO__", "")
+                        missing_placeholders.append(element_symbol_from_placeholder)
+                    else:
+                        # Real pseudopotential filename from QE input
+                        element_to_pseudo[element_symbol] = pp_name
+                        if pp_name not in required_pps:
+                            required_pps.append(pp_name)
     
     # Fail early with clear configuration error if placeholders or empty pseudos are found
     if missing_placeholders:
         elements_str = ", ".join(sorted(set(missing_placeholders)))
         first_element = elements_str.split(",")[0].strip()
+        
+        # Diagnostic logging before raise
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Try to extract calculation context from qe_input_file path
+        # Pattern: calculations/<calc>/raw/... or calculations/<calc>/steps/...
+        calc_context = {}
+        try:
+            qe_input_path = Path(qe_input_file).resolve()
+            parts = qe_input_path.parts
+            if "calculations" in parts:
+                calc_idx = parts.index("calculations")
+                if calc_idx + 1 < len(parts):
+                    calc_dir = Path(*parts[:calc_idx+2])
+                    calc_yaml = calc_dir / "calculation.yaml"
+                    if calc_yaml.exists():
+                        # Try to load calculation for context
+                        repo_root = _find_quantumvitas_root()
+                        if repo_root:
+                            project_root = None
+                            # Find project root (parent of calculations)
+                            if calc_idx > 0:
+                                potential_project = Path(*parts[:calc_idx])
+                                if (potential_project / "project.qv.yml").exists():
+                                    project_root = potential_project
+                            
+                            if project_root:
+                                from quantumvitas.core.models import load_calculation
+                                from quantumvitas.core.resolution import make_structure_selector_resolver
+                                from quantumvitas.core.project_utils import load_project_config
+                                try:
+                                    config = load_project_config(project_root)
+                                    resolver = make_structure_selector_resolver(project_root, config=config)
+                                    calc_model = load_calculation(calc_yaml, project_root=project_root, resolve_structure_selector=resolver)
+                                    calc_context["calculation_path"] = str(calc_yaml)
+                                    if calc_model.species_map:
+                                        calc_context["species_map_keys"] = list(calc_model.species_map.keys())
+                                        calc_context["element_pseudopot_values"] = {
+                                            elem: entry.get("pseudopot", "") if isinstance(entry, dict) else ""
+                                            for elem, entry in calc_model.species_map.items()
+                                        }
+                                    if calc_model.structure_id:
+                                        from quantumvitas.core.resolution import resolve_structure
+                                        try:
+                                            struct_resolved = resolve_structure(project_root, calc_model.structure_id, config=config)
+                                            calc_context["structure_path"] = str(struct_resolved.absolute_path)
+                                        except Exception:
+                                            pass
+                                except Exception:
+                                    pass
+        except Exception:
+            pass
+        
+        # Diagnostic logging before raise
+        source_type = "species_map (PRIMARY)" if species_map else "QE input ATOMIC_SPECIES (legacy/standalone)"
+        logger.error(
+            f"[PSEUDO_CONFIG_ERROR] Pseudopotential not configured for element(s): {elements_str}\n"
+            f"  Resolution source: {source_type}\n"
+            f"  qe_input_file={qe_input_file}\n"
+            f"  project_pseudo_dir={project_pseudo_dir}\n"
+            f"  system_pseudo_dir={system_pseudo_dir}\n"
+            f"  required_pps={required_pps}\n"
+            f"  required_elements={required_elements}\n"
+            f"  missing_placeholders={missing_placeholders}\n"
+            f"  element_to_pseudo={element_to_pseudo}\n"
+            f"  project_pseudo_dir.exists()={project_pseudo_dir.exists()}\n"
+            f"  calculation_path={calc_context.get('calculation_path', 'N/A')}\n"
+            f"  structure_path={calc_context.get('structure_path', 'N/A')}\n"
+            f"  species_map_keys={calc_context.get('species_map_keys', [])}\n"
+            f"  element_pseudopot_values={calc_context.get('element_pseudopot_values', {})}\n"
+            f"  species_map_provided={'Yes' if species_map else 'No'}\n"
+            f"  species_map_keys_provided={list(species_map.keys()) if species_map else []}"
+        )
+        
         raise ValueError(
             f"Pseudopotential not configured for element(s): {elements_str}. "
             f"This is a configuration error, not a missing file. "
