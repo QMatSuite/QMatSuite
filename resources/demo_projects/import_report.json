@@ -1,9 +1,17 @@
 {
   "total_datasets": 28,
-  "successful": 8,
-  "failed": 20,
+  "successful": 19,
+  "failed": 9,
   "verification": {
     "00_Si_scf": {
+      "consistent": true,
+      "issue_count": 0
+    },
+    "12_NMR_gipaw": {
+      "consistent": true,
+      "issue_count": 0
+    },
+    "13_graphene": {
       "consistent": true,
       "issue_count": 0
     },
@@ -19,7 +27,23 @@
       "consistent": true,
       "issue_count": 0
     },
+    "04_Si_DOS": {
+      "consistent": true,
+      "issue_count": 0
+    },
+    "06_Al_DOS": {
+      "consistent": true,
+      "issue_count": 0
+    },
+    "07_Si_bandStructure": {
+      "consistent": true,
+      "issue_count": 0
+    },
     "08_Fe_DOS": {
+      "consistent": true,
+      "issue_count": 0
+    },
+    "09_Si_phonon": {
       "consistent": true,
       "issue_count": 0
     }
@@ -48,10 +72,10 @@
     {
       "demo_name": "10_benzene_TDDFT",
       "success": false,
-      "error": "Missing pseudopotentials (download failed): C.upf, H.upf",
+      "error": "Missing pseudopotentials (download failed): H.upf, C.upf",
       "missing_pseudos": [
-        "C.upf",
-        "H.upf"
+        "H.upf",
+        "C.upf"
       ],
       "step_count": 0,
       "reference_artifacts": {},
@@ -74,42 +98,63 @@
     },
     {
       "demo_name": "12_NMR_gipaw",
-      "success": false,
-      "error": "Missing pseudopotentials (download failed): Si.pbe-tm-gipaw.UPF, H.pbe-tm-gipaw.UPF, C.pbe-tm-gipaw.UPF",
-      "missing_pseudos": [
-        "Si.pbe-tm-gipaw.UPF",
-        "H.pbe-tm-gipaw.UPF",
-        "C.pbe-tm-gipaw.UPF"
-      ],
-      "step_count": 0,
-      "reference_artifacts": {},
-      "validation": null,
-      "verification": {},
+      "success": true,
+      "error": null,
+      "missing_pseudos": [],
+      "step_count": 1,
+      "reference_artifacts": {
+        "scf": "12_NMR_gipaw.scf.json"
+      },
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
       "detailed_verification": null
     },
     {
       "demo_name": "12_NMR_gipaw",
-      "success": false,
-      "error": "Missing pseudopotentials (download failed): H.pbe-tm-gipaw.UPF, C.pbe-tm-gipaw.UPF",
-      "missing_pseudos": [
-        "H.pbe-tm-gipaw.UPF",
-        "C.pbe-tm-gipaw.UPF"
-      ],
-      "step_count": 0,
-      "reference_artifacts": {},
-      "validation": null,
-      "verification": {},
+      "success": true,
+      "error": null,
+      "missing_pseudos": [],
+      "step_count": 1,
+      "reference_artifacts": {
+        "scf": "12_NMR_gipaw.scf.json"
+      },
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
       "detailed_verification": null
     },
     {
       "demo_name": "13_graphene",
-      "success": false,
-      "error": "Error creating demo: ibrav=12/-12 requires b, c, and cos(angle).\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 1316, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 346, in materialize_project_from_qe_input_folder\n    ref_structure = structure_from_qe_input(reference_qe_input)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/io/structure_io.py\", line 332, in structure_from_qe_input\n    lattice = _lattice_from_ibrav(system)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/io/structure_io.py\", line 511, in _lattice_from_ibrav\n    vectors = _ibrav_vectors(ibrav, params)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/io/structure_io.py\", line 630, in _ibrav_vectors\n    raise ValueError(\"ibrav=12/-12 requires b, c, and cos(angle).\")\nValueError: ibrav=12/-12 requires b, c, and cos(angle).\n",
+      "success": true,
+      "error": null,
       "missing_pseudos": [],
-      "step_count": 0,
-      "reference_artifacts": {},
-      "validation": null,
-      "verification": {},
+      "step_count": 3,
+      "reference_artifacts": {
+        "scf": "13_graphene.scf.json",
+        "bands": "13_graphene.bands.json"
+      },
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
       "detailed_verification": null
     },
     {
@@ -204,12 +249,16 @@
     },
     {
       "demo_name": "19_Si_CPMD",
-      "success": false,
-      "error": "Error creating demo: expected str, bytes or os.PathLike object, not NoneType\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 1316, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 433, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(**call_kwargs)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/api.py\", line 4717, in import_step_from_qe_input\n    structure = read_structure(structure_path)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/io/structure_io.py\", line 46, in read_structure\n    filepath = Path(filepath)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 1072, in __new__\n    self = cls._from_parts(args, init=False)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 697, in _from_parts\n    drv, root, parts = self._parse_args(args)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 681, in _parse_args\n    a = os.fspath(a)\nTypeError: expected str, bytes or os.PathLike object, not NoneType\n",
+      "success": true,
+      "error": null,
       "missing_pseudos": [],
-      "step_count": 0,
+      "step_count": 3,
       "reference_artifacts": {},
-      "validation": null,
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
       "verification": {
         "consistent": true,
         "issues": []
@@ -316,22 +365,32 @@
     },
     {
       "demo_name": "04_Si_DOS",
-      "success": false,
-      "error": "Error creating demo: expected str, bytes or os.PathLike object, not NoneType\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 1316, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 433, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(**call_kwargs)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/api.py\", line 4717, in import_step_from_qe_input\n    structure = read_structure(structure_path)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/io/structure_io.py\", line 46, in read_structure\n    filepath = Path(filepath)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 1072, in __new__\n    self = cls._from_parts(args, init=False)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 697, in _from_parts\n    drv, root, parts = self._parse_args(args)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 681, in _parse_args\n    a = os.fspath(a)\nTypeError: expected str, bytes or os.PathLike object, not NoneType\n",
+      "success": true,
+      "error": null,
       "missing_pseudos": [],
-      "step_count": 0,
-      "reference_artifacts": {},
-      "validation": null,
-      "verification": {},
+      "step_count": 2,
+      "reference_artifacts": {
+        "scf": "04_Si_DOS.scf.json",
+        "dos": "04_Si_DOS.dos.json"
+      },
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
       "detailed_verification": null
     },
     {
       "demo_name": "05_NH3_inversion",
       "success": false,
-      "error": "Missing pseudopotentials (download failed): N.oncvpsp.upf, H_ONCV_PBE-1.0.oncvpsp.upf",
+      "error": "Missing pseudopotentials (download failed): H_ONCV_PBE-1.0.oncvpsp.upf, N.oncvpsp.upf",
       "missing_pseudos": [
-        "N.oncvpsp.upf",
-        "H_ONCV_PBE-1.0.oncvpsp.upf"
+        "H_ONCV_PBE-1.0.oncvpsp.upf",
+        "N.oncvpsp.upf"
       ],
       "step_count": 0,
       "reference_artifacts": {},
@@ -341,34 +400,61 @@
     },
     {
       "demo_name": "06_Al_DOS",
-      "success": false,
-      "error": "Error creating demo: expected str, bytes or os.PathLike object, not NoneType\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 1316, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 433, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(**call_kwargs)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/api.py\", line 4717, in import_step_from_qe_input\n    structure = read_structure(structure_path)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/io/structure_io.py\", line 46, in read_structure\n    filepath = Path(filepath)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 1072, in __new__\n    self = cls._from_parts(args, init=False)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 697, in _from_parts\n    drv, root, parts = self._parse_args(args)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 681, in _parse_args\n    a = os.fspath(a)\nTypeError: expected str, bytes or os.PathLike object, not NoneType\n",
+      "success": true,
+      "error": null,
       "missing_pseudos": [],
-      "step_count": 0,
-      "reference_artifacts": {},
-      "validation": null,
-      "verification": {},
+      "step_count": 3,
+      "reference_artifacts": {
+        "scf": "06_Al_DOS.scf.json",
+        "dos": "06_Al_DOS.dos.json"
+      },
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
       "detailed_verification": null
     },
     {
       "demo_name": "07_Si_bandStructure",
-      "success": false,
-      "error": "Error creating demo: expected str, bytes or os.PathLike object, not NoneType\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 1316, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 433, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(**call_kwargs)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/api.py\", line 4717, in import_step_from_qe_input\n    structure = read_structure(structure_path)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/io/structure_io.py\", line 46, in read_structure\n    filepath = Path(filepath)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 1072, in __new__\n    self = cls._from_parts(args, init=False)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 697, in _from_parts\n    drv, root, parts = self._parse_args(args)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 681, in _parse_args\n    a = os.fspath(a)\nTypeError: expected str, bytes or os.PathLike object, not NoneType\n",
+      "success": true,
+      "error": null,
       "missing_pseudos": [],
-      "step_count": 0,
-      "reference_artifacts": {},
-      "validation": null,
-      "verification": {},
+      "step_count": 3,
+      "reference_artifacts": {
+        "scf": "07_Si_bandStructure.scf.json",
+        "bands": "07_Si_bandStructure.bands.json"
+      },
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
       "detailed_verification": null
     },
     {
       "demo_name": "08_Fe_DOS",
-      "success": false,
-      "error": "Error creating demo: expected str, bytes or os.PathLike object, not NoneType\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 1316, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 433, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(**call_kwargs)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/api.py\", line 4717, in import_step_from_qe_input\n    structure = read_structure(structure_path)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/io/structure_io.py\", line 46, in read_structure\n    filepath = Path(filepath)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 1072, in __new__\n    self = cls._from_parts(args, init=False)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 697, in _from_parts\n    drv, root, parts = self._parse_args(args)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 681, in _parse_args\n    a = os.fspath(a)\nTypeError: expected str, bytes or os.PathLike object, not NoneType\n",
+      "success": true,
+      "error": null,
       "missing_pseudos": [],
-      "step_count": 0,
-      "reference_artifacts": {},
-      "validation": null,
+      "step_count": 3,
+      "reference_artifacts": {
+        "scf": "08_Fe_DOS.scf.json",
+        "dos": "08_Fe_DOS.dos.json"
+      },
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
       "verification": {
         "consistent": true,
         "issues": []
@@ -397,35 +483,62 @@
     },
     {
       "demo_name": "09_Si_phonon",
-      "success": false,
-      "error": "Error creating demo: expected str, bytes or os.PathLike object, not NoneType\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 1316, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 433, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(**call_kwargs)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/api.py\", line 4717, in import_step_from_qe_input\n    structure = read_structure(structure_path)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/io/structure_io.py\", line 46, in read_structure\n    filepath = Path(filepath)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 1072, in __new__\n    self = cls._from_parts(args, init=False)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 697, in _from_parts\n    drv, root, parts = self._parse_args(args)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 681, in _parse_args\n    a = os.fspath(a)\nTypeError: expected str, bytes or os.PathLike object, not NoneType\n",
+      "success": true,
+      "error": null,
       "missing_pseudos": [],
-      "step_count": 0,
-      "reference_artifacts": {},
-      "validation": null,
-      "verification": {},
+      "step_count": 1,
+      "reference_artifacts": {
+        "scf": "09_Si_phonon.scf.json"
+      },
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
       "detailed_verification": null
     },
     {
       "demo_name": "09_Si_phonon",
-      "success": false,
-      "error": "Error creating demo: expected str, bytes or os.PathLike object, not NoneType\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 1316, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 433, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(**call_kwargs)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/api.py\", line 4717, in import_step_from_qe_input\n    structure = read_structure(structure_path)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/io/structure_io.py\", line 46, in read_structure\n    filepath = Path(filepath)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 1072, in __new__\n    self = cls._from_parts(args, init=False)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 697, in _from_parts\n    drv, root, parts = self._parse_args(args)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 681, in _parse_args\n    a = os.fspath(a)\nTypeError: expected str, bytes or os.PathLike object, not NoneType\n",
+      "success": true,
+      "error": null,
       "missing_pseudos": [],
-      "step_count": 0,
-      "reference_artifacts": {},
-      "validation": null,
-      "verification": {},
+      "step_count": 1,
+      "reference_artifacts": {
+        "scf": "09_Si_phonon.scf.json"
+      },
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
       "detailed_verification": null
     },
     {
       "demo_name": "09_Si_phonon",
-      "success": false,
-      "error": "Error creating demo: expected str, bytes or os.PathLike object, not NoneType\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 1316, in create_demo_from_dataset\n    snapshot = materialize_project_from_qe_input_folder(\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/calculation/folder_import.py\", line 433, in materialize_project_from_qe_input_folder\n    service.import_step_from_qe_input(**call_kwargs)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/api.py\", line 4717, in import_step_from_qe_input\n    structure = read_structure(structure_path)\n  File \"/Users/kfranke/QMatSuite/src/quantumvitas/io/structure_io.py\", line 46, in read_structure\n    filepath = Path(filepath)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 1072, in __new__\n    self = cls._from_parts(args, init=False)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 697, in _from_parts\n    drv, root, parts = self._parse_args(args)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 681, in _parse_args\n    a = os.fspath(a)\nTypeError: expected str, bytes or os.PathLike object, not NoneType\n",
+      "success": true,
+      "error": null,
       "missing_pseudos": [],
-      "step_count": 0,
-      "reference_artifacts": {},
-      "validation": null,
-      "verification": {},
+      "step_count": 1,
+      "reference_artifacts": {
+        "scf": "09_Si_phonon.scf.json"
+      },
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"/Users/kfranke/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QVService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
       "detailed_verification": null
     }
   ]

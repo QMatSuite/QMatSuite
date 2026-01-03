@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KE007VAXKJV206BJXVBKHD1Z
+    id: 01KE2KZXC2WRP1AG4Y9XFYFYWX
     name: 19_Si_CPMD
     slug: 19_si_cpmd
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KE007VB9NFHDQ9110SES8YP0
+    id: 01KE2KZXCEFJ7HS66HR9HQD64F
     name: si.1_erelax
     slug: si-1_erelax
     path: structures/si-1_erelax.json
@@ -148,7 +148,7 @@ structures:
       - 4.223136593556277
 calculations:
 - meta:
-    id: 01KE007VAZFJT5ASWPDW7PR0PG
+    id: 01KE2KZXC5XPHQ48Q92C3KFKHM
     name: Si Cpmd  4 Bomd Nvt
     slug: si-cpmd-4-bomd-nvt
     path: calculations/si-cpmd-4-bomd-nvt
@@ -157,7 +157,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KE007VB4XV1E2MDJ2MKF4YJ6
+      id: 01KE2KZXCASHV81MSTY4K7NY8M
       name: si.1_erelax
       slug: si-1_erelax
       path: si.1_erelax.step.yaml
@@ -167,8 +167,6 @@ calculations:
       CONTROL:
         calculation: cp
         restart_mode: from_scratch
-        prefix: si
-        outdir: ./outdir
         pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
         ndr: 50
         ndw: 50
@@ -188,9 +186,8 @@ calculations:
     species_overrides:
       Si:
         mass: 28.0855
-        pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
   - meta:
-      id: 01KE007VBTAXFG1WEW9VBC7H2R
+      id: 01KE2KZXCZ6926T5DH1P36BAB5
       name: si.2_randDisplace
       slug: si-2_randdisplace
       path: si.2_randDisplace.step.yaml
@@ -200,8 +197,6 @@ calculations:
       CONTROL:
         calculation: cp
         restart_mode: restart
-        prefix: si
-        outdir: ./outdir
         pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
         ndr: 50
         ndw: 51
@@ -225,9 +220,8 @@ calculations:
     species_overrides:
       Si:
         mass: 28.0855
-        pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
   - meta:
-      id: 01KE007VCTC08AN1J03Y1KQWRT
+      id: 01KE2KZXDZVGRSHS8B23FY3EAH
       name: si.3_cp_BOMD_NVT
       slug: si-3_cp_bomd_nvt
       path: si.3_cp_BOMD_NVT.step.yaml
@@ -237,8 +231,6 @@ calculations:
       CONTROL:
         calculation: cp
         restart_mode: reset_counters
-        prefix: si
-        outdir: ./outdir
         pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
         nstep: 250
         iprint: 1
@@ -265,8 +257,7 @@ calculations:
     species_overrides:
       Si:
         mass: 28.0855
-        pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
-  structure_id: 01KE007VAXYFVA082Z8J6JK8AH
+  structure_id: 01KE2KZXC3KDRFMED4BX6PHSMD
   species_map:
     Si:
       mass: 28.0855

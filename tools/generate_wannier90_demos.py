@@ -30,7 +30,7 @@ sys.path.insert(0, str(repo_root / "src"))
 from quantumvitas.project.snapshot import export_project_to_snapshot
 from quantumvitas.core.pseudo_provenance import compute_sha256_file
 from quantumvitas.core.pseudo_libinfo import compute_sha_family_file
-from quantumvitas.core.resources import generate_ulid
+from quantumvitas.core.resources import generate_resource_id as generate_ulid
 import yaml
 
 
@@ -187,8 +187,17 @@ def parse_structure_from_scf(scf_content: str) -> Dict[str, Any]:
     return structure, atomic_species
 
 
-def create_step_spec(step_type: str, index: int, seedname: str, params: Optional[Dict] = None) -> Dict[str, Any]:
-    """Create a step specification dictionary."""
+def create_step_spec(step_type: str, index: int, seedname: str, params: Optional[Dict] = None, cards: Optional[Dict] = None, calc_name: str = "") -> Dict[str, Any]:
+    """Create a step specification dictionary.
+    
+    Args:
+        step_type: Step type (scf, nscf, w90_preproc, etc.)
+        index: Step index in calculation
+        seedname: Seedname for input files
+        params: Step parameters (namelist sections) - NO prefix/outdir, NO pseudo mapping
+        cards: Step cards (e.g., K_POINTS) - MUST be separate from parameters
+        calc_name: Calculation slug for path generation
+    """
     step_id = generate_ulid()
     
     # Determine input file name based on step type
@@ -205,24 +214,39 @@ def create_step_spec(step_type: str, index: int, seedname: str, params: Optional
     else:
         input_name = f"{seedname}.{step_type}"
     
+    calc_slug = calc_name if calc_name else f"{seedname}-mlwfs"
+    
     spec = {
         "meta": {
             "id": step_id,
-            "name": f"{step_type}_{seedname}",
-            "step_type": step_type,
+            "name": step_type,  # Use step_type as name (simpler)
+            "slug": step_type,
+            "path": f"calculations/{calc_slug}/steps/{step_type}.step.yaml",
+            "kind": "step",
         },
-        "input_file": input_name,
+        "step_type": step_type,
         "index": index,
     }
     
+    # Add parameters if provided (namelist sections only)
     if params:
         spec["parameters"] = params
+    
+    # Add cards if provided (K_POINTS, etc.) - MUST be separate from parameters
+    if cards:
+        spec["cards"] = cards
     
     return spec
 
 
 def generate_demo_snapshot(name: str, config: Dict[str, Any]) -> Dict[str, Any]:
     """Generate a demo snapshot from example configuration."""
+    from quantumvitas.io import QEInputParser
+    from quantumvitas.calculation.importers import _build_step_spec_from_qe_input_data
+    from quantumvitas.io.structure_io import structure_from_qe_input
+    from quantumvitas.io import write_structure
+    from quantumvitas.core.resources import meta_from_name, ensure_relative_path
+    
     example_dir = EXAMPLES_ROOT / config["dir"]
     seedname = config["seedname"]
     
@@ -233,16 +257,26 @@ def generate_demo_snapshot(name: str, config: Dict[str, Any]) -> Dict[str, Any]:
         print(f"  ⚠️  Skipping {name} - pseudo not available")
         return None
     
-    # Read SCF input to get structure
+    # Read and parse QE input files
     scf_file = example_dir / f"{seedname}.scf"
+    nscf_file = example_dir / f"{seedname}.nscf"
+    
     if not scf_file.exists():
         print(f"  ⚠️  SCF file not found: {scf_file}")
         return None
     
-    scf_content = scf_file.read_text()
-    structure, atomic_species = parse_structure_from_scf(scf_content)
+    # Parse QE inputs to extract parameters and cards correctly
+    scf_qe_input = QEInputParser.parse_file(scf_file)
+    nscf_qe_input = QEInputParser.parse_file(nscf_file) if nscf_file.exists() else None
     
-    # Build species_map with pseudo identity
+    # Extract structure from SCF input (as PMGStructure, convert to dict for snapshot)
+    structure_pmg = structure_from_qe_input(scf_qe_input)
+    structure = structure_pmg.as_dict()  # Convert to dict format for snapshot
+    # Fix pbc tuple -> list for YAML serialization (safe_dump can't handle tuples)
+    if "pbc" in structure and isinstance(structure["pbc"], tuple):
+        structure["pbc"] = list(structure["pbc"])
+    
+    # Build species_map with pseudo identity (calculation-level only)
     pseudo_identity = compute_pseudo_identity(config["pseudo"])
     if not pseudo_identity:
         print(f"  ⚠️  Could not compute pseudo identity")
@@ -262,14 +296,86 @@ def generate_demo_snapshot(name: str, config: Dict[str, Any]) -> Dict[str, Any]:
     calc_id = generate_ulid()
     structure_id = generate_ulid()
     
-    # Create steps
-    steps = [
-        create_step_spec("scf", 0, seedname),
-        create_step_spec("nscf", 1, seedname),
-        create_step_spec("w90_preproc", 2, seedname),
-        create_step_spec("pw2wannier90", 3, seedname),
-        create_step_spec("w90_run", 4, seedname),
-    ]
+    # Calculate calculation slug for step paths
+    calc_slug = f"{name}-mlwfs"
+    
+    # Create steps by parsing QE inputs (correctly extracts K_POINTS as cards)
+    steps = []
+    
+    # SCF step
+    scf_params, scf_cards = _build_step_spec_from_qe_input_data(scf_qe_input, "scf", apply_defaults=False)
+    # Remove prefix/outdir from step parameters (injected from calculation.meta.slug)
+    for section in scf_params:
+        scf_params[section].pop("prefix", None)
+        scf_params[section].pop("outdir", None)
+    # Remove step-level pseudo mapping if present (should only be in calculation-level species_map)
+    # _build_step_spec_from_qe_input_data doesn't include species_overrides, so this is safe
+    scf_step = create_step_spec("scf", 0, seedname, params=scf_params, cards=scf_cards, calc_name=calc_slug)
+    steps.append(scf_step)
+    
+    # NSCF step
+    if nscf_qe_input:
+        nscf_params, nscf_cards = _build_step_spec_from_qe_input_data(nscf_qe_input, "nscf", apply_defaults=False)
+        # Remove prefix/outdir from step parameters
+        for section in nscf_params:
+            nscf_params[section].pop("prefix", None)
+            nscf_params[section].pop("outdir", None)
+        nscf_step = create_step_spec("nscf", 1, seedname, params=nscf_params, cards=nscf_cards, calc_name=calc_slug)
+        nscf_step["depends_on"] = [steps[0]["meta"]["id"]]
+        steps.append(nscf_step)
+    
+    # Wannier90 steps (no QE input, use Wannier90 input files)
+    # Read .win file for w90_preproc and w90_run
+    win_file = example_dir / f"{seedname}.win"
+    if win_file.exists():
+        from quantumvitas.io.wannier90_input import Wannier90Input
+        win_input = Wannier90Input.from_file(win_file)
+        
+        w90_params = {
+            "seedname": seedname,
+            "num_wann": win_input.num_wann,
+            "num_bands": win_input.num_bands,
+            "mp_grid": win_input.mp_grid,
+            "projections_block": win_input.projections_block,
+        }
+        if win_input.num_iter:
+            w90_params["num_iter"] = win_input.num_iter
+        
+        w90_preproc_step = create_step_spec("w90_preproc", len(steps), seedname, params=w90_params, calc_name=calc_slug)
+        w90_preproc_step["depends_on"] = [steps[-1]["meta"]["id"]] if steps else []
+        steps.append(w90_preproc_step)
+        
+        # w90_run uses same parameters
+        w90_run_step = create_step_spec("w90_run", len(steps) + 1, seedname, params=w90_params, calc_name=calc_slug)
+        steps.append(w90_run_step)
+    
+    # pw2wannier90 step (depends on NSCF and w90_preproc, must run before w90_run)
+    pw2wan_file = example_dir / f"{seedname}.pw2wan"
+    pw2wan_step = None
+    if pw2wan_file.exists():
+        pw2wan_params = {
+            "seedname": seedname,
+            # prefix/outdir will be injected from calculation.meta.slug
+            # Do NOT include them in step parameters
+        }
+        # Find w90_preproc step index
+        w90_preproc_idx = next((i for i, s in enumerate(steps) if s["step_type"] == "w90_preproc"), None)
+        nscf_idx = next((i for i, s in enumerate(steps) if s["step_type"] == "nscf"), None)
+        
+        if w90_preproc_idx is not None and nscf_idx is not None:
+            pw2wan_step = create_step_spec("pw2wannier90", len(steps), seedname, params=pw2wan_params, calc_name=calc_slug)
+            pw2wan_step["depends_on"] = [steps[nscf_idx]["meta"]["id"], steps[w90_preproc_idx]["meta"]["id"]]
+            # Insert before w90_run
+            w90_run_idx = next((i for i, s in enumerate(steps) if s["step_type"] == "w90_run"), None)
+            if w90_run_idx is not None:
+                steps.insert(w90_run_idx, pw2wan_step)
+            else:
+                steps.append(pw2wan_step)
+    
+    # Update w90_run dependency to depend on pw2wannier90
+    w90_run_idx = next((i for i, s in enumerate(steps) if s["step_type"] == "w90_run"), None)
+    if w90_run_idx is not None and pw2wan_step:
+        steps[w90_run_idx]["depends_on"] = [pw2wan_step["meta"]["id"]]
     
     # Build snapshot
     snapshot = {
@@ -278,15 +384,21 @@ def generate_demo_snapshot(name: str, config: Dict[str, Any]) -> Dict[str, Any]:
         "project": {
             "meta": {
                 "id": project_id,
-                "name": f"{name}_wannier90_demo",
-                "created_at": datetime.now().isoformat(),
+                "name": f"{name.title()} Wannier90 Demo",
+                "slug": f"{name}-wannier90-demo",
+                "path": ".",
+                "kind": "project",
             },
+            "settings": {},
         },
         "structures": [
             {
                 "meta": {
                     "id": structure_id,
                     "name": name.title(),
+                    "slug": name.lower(),
+                    "path": f"structures/{name.lower()}.json",
+                    "kind": "structure",
                 },
                 "data": structure,
             }
@@ -295,10 +407,15 @@ def generate_demo_snapshot(name: str, config: Dict[str, Any]) -> Dict[str, Any]:
             {
                 "meta": {
                     "id": calc_id,
-                    "name": f"{name}_wannier90",
+                    "name": f"{name.title()} MLWFs",
+                    "slug": f"{name}-mlwfs",
+                    "path": f"calculations/{name}-mlwfs",
+                    "kind": "calculation",
                 },
+                "mode": "normal",
+                "working_dir": "raw",
                 "structure_id": structure_id,
-                "species_map": species_map,
+                "species_map": species_map,  # Calculation-level pseudo mapping (authoritative)
                 "steps": steps,
             }
         ],
@@ -363,7 +480,7 @@ def main():
             # Write demo file
             demo_file = DEMO_OUTPUT_DIR / f"{name}_wannier90_demo.yml"
             with open(demo_file, "w") as f:
-                yaml.dump(snapshot, f, default_flow_style=False, sort_keys=False)
+                yaml.safe_dump(snapshot, f, default_flow_style=False, sort_keys=False)
             print(f"  ✓ Written {demo_file.name}")
             generated.append(name)
             

@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    id: 01KE0086215F88MJ73DYWJBDEK
+    id: 01KE2M08798WRBADVSAKXWVSGT
     name: 03_Si_vc_relax
     slug: 03_si_vc_relax
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    id: 01KE00862G0F7SP6CSD1NFJM5H
+    id: 01KE2M087NGQ9WQ2SM27A8KATG
     name: si.vc_relax
     slug: si-vc_relax
     path: structures/si-vc_relax.json
@@ -70,7 +70,7 @@ structures:
       - 1.85212023822
 calculations:
 - meta:
-    id: 01KE008625VAV0F3TGJYQDWE6E
+    id: 01KE2M087BT7AVR2VM6XQ7A5RC
     name: Si Vc Relax
     slug: si-vc-relax
     path: calculations/si-vc-relax
@@ -79,7 +79,7 @@ calculations:
   working_dir: raw
   steps:
   - meta:
-      id: 01KE00862BYFSQ6YP0YHBP04WR
+      id: 01KE2M087HC2KQ8NX8SEESD2Q7
       name: si.vc_relax
       slug: si-vc_relax
       path: si.vc_relax.step.yaml
@@ -88,8 +88,6 @@ calculations:
     parameters:
       CONTROL:
         calculation: vc-relax
-        prefix: si
-        outdir: ./outdir
         pseudo_dir: /home/anonymous/quantumEspresso_2019/SSSP_precision_pseudos
         etot_conv_thr: 1.0e-05
         forc_conv_thr: 0.0001
@@ -113,8 +111,7 @@ calculations:
     species_overrides:
       Si:
         mass: 28.0855
-        pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
-  structure_id: 01KE008623M4D00Y7B3BE42HK0
+  structure_id: 01KE2M087ACNW7EWMBP23SQZHF
   species_map:
     Si:
       mass: 28.0855

@@ -622,19 +622,29 @@ def _ibrav_vectors(ibrav: int, params: Dict[str, float]) -> List[List[float]]:
     if ibrav in (12, -12):
         b = params.get("b")
         c_val = params.get("c")
+        # ibrav=12: Monoclinic, unique axis c. Uses cos(gamma) where gamma is angle between a and b.
+        # ibrav=-12: Monoclinic, unique axis b. Uses cos(beta) where beta is angle between a and c.
         if ibrav == 12:
-            cos_angle = params.get("cosbc")
+            cos_angle = params.get("cosab")  # cos(gamma) = cos(angle between a and b)
         else:
-            cos_angle = params.get("cosac")
+            cos_angle = params.get("cosac")  # cos(beta) = cos(angle between a and c)
         if not b or not c_val or cos_angle is None:
             raise ValueError("ibrav=12/-12 requires b, c, and cos(angle).")
         if ibrav == 12:
+            # Monoclinic, unique axis c (gamma != 90°)
+            # v1 = (a, 0, 0)
+            # v2 = (b*cos(gamma), b*sin(gamma), 0)
+            # v3 = (0, 0, c)
             sin_gamma = (1 - cos_angle**2) ** 0.5
             return [
                 vec(a, 0, 0),
                 vec(b * cos_angle, b * sin_gamma, 0),
                 vec(0, 0, c_val),
             ]
+        # ibrav=-12: Monoclinic, unique axis b (beta != 90°)
+        # v1 = (a, 0, 0)
+        # v2 = (0, b, 0)
+        # v3 = (c*cos(beta), 0, c*sin(beta))
         sin_beta = (1 - cos_angle**2) ** 0.5
         return [
             vec(a, 0, 0),

@@ -1,0 +1,22 @@
+{
+  "converged": true,
+  "iterations": [],
+  "total_energy_ry": null,
+  "fermi_energy_ev": 6.1331,
+  "homo_ev": null,
+  "lumo_ev": null,
+  "band_gap_ev": null,
+  "n_electrons": 8.0,
+  "n_kpoints": 72,
+  "n_bands": 8,
+  "ecutwfc_ry": 50.0,
+  "ecutrho_ry": 200.0,
+  "calculation_type": null,
+  "total_cpu_time_s": 8.87,
+  "total_wall_time_s": 9.06,
+  "units": {
+    "energy": "Ry",
+    "fermi": "eV",
+    "time": "s"
+  }
+}
