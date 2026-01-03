@@ -4,7 +4,7 @@ Unit tests for PySCF integration.
 Tests cover:
 - Step type registration
 - Engine adapter initialization
-- Molecule building
+- Subprocess-based execution
 - Parameter validation
 """
 
@@ -74,34 +74,72 @@ class TestPySCFEngineAvailability:
         engine = PySCFEngine()
         assert engine.name == "pyscf"
     
-    def test_pyscf_availability_check(self):
-        """Engine correctly detects PySCF availability."""
-        from quantumvitas.engine.pyscf_engine import PySCFEngine, _check_pyscf_available
+    def test_engine_in_default_registry(self):
+        """PySCFEngine is registered in default registry."""
+        from quantumvitas.engine.registry import create_default_registry
         
-        # Check function returns bool
-        result = _check_pyscf_available()
-        assert isinstance(result, bool)
+        registry = create_default_registry()
+        assert registry.has("pyscf")
         
-        # Engine property matches
+        engine = registry.get("pyscf")
+        assert engine.name == "pyscf"
+    
+    def test_probe_returns_dict(self):
+        """Engine probe() returns a dict with expected keys."""
+        from quantumvitas.engine.pyscf_engine import PySCFEngine
+        import sys
+        
         engine = PySCFEngine()
-        assert engine.pyscf_available == result
+        result = engine.probe()
+        
+        assert isinstance(result, dict)
+        assert "available" in result
+        assert isinstance(result["available"], bool)
+        
+        # On non-Windows, should have version or reason
+        if sys.platform != "win32":
+            if result["available"]:
+                assert "version" in result
+            else:
+                assert "reason" in result
+    
+    @pytest.mark.skipif(
+        not _pyscf_importable(),
+        reason="PySCF not installed"
+    )
+    def test_pyscf_available_when_installed(self):
+        """Engine detects PySCF when installed."""
+        from quantumvitas.engine.pyscf_engine import PySCFEngine
+        import sys
+        
+        if sys.platform == "win32":
+            pytest.skip("PySCF not supported on Windows")
+        
+        engine = PySCFEngine()
+        probe_result = engine.probe()
+        
+        assert probe_result["available"] is True
+        assert probe_result.get("version") is not None
+        assert engine.pyscf_available is True
     
     def test_graceful_failure_without_pyscf(self, tmp_path, monkeypatch):
-        """Engine returns error when PySCF not installed."""
+        """Engine returns error when PySCF not available."""
         from quantumvitas.engine.pyscf_engine import PySCFEngine
         
-        # Mock PySCF as unavailable
-        monkeypatch.setattr(
-            "quantumvitas.engine.pyscf_engine._check_pyscf_available",
-            lambda: False
-        )
-        
         engine = PySCFEngine()
-        engine._pyscf_available = False
+        
+        # Mock probe to return unavailable
+        engine._probe_cache = {
+            "available": False,
+            "version": None,
+            "reason": "PySCF not installed. Install with: pip install pyscf",
+        }
         
         # Create mock step
         class MockStep:
+            step_type = "pyscf_scf"
             parameters = {"atoms": []}
+            options = {}
         
         result = engine.run_step(MockStep(), tmp_path)
         
@@ -113,14 +151,21 @@ class TestPySCFEngineAvailability:
     not _pyscf_importable(),
     reason="PySCF not installed"
 )
-class TestPySCFMoleculeBuilding:
-    """Tests for molecule building from parameters."""
+class TestPySCFSubprocessRunner:
+    """Tests for PySCF subprocess runner module."""
+    
+    def test_runner_import(self):
+        """Runner module can be imported."""
+        from quantumvitas.engines.pyscf import runner
+        
+        assert runner is not None
+        assert hasattr(runner, "run_job")
+        assert hasattr(runner, "build_mole")
+        assert hasattr(runner, "run_scf")
     
     def test_build_water_molecule(self):
         """Build H2O molecule from parameters."""
-        from quantumvitas.engine.pyscf_engine import PySCFEngine
-        
-        engine = PySCFEngine()
+        from quantumvitas.engines.pyscf.runner import build_mole
         
         params = {
             "atoms": [
@@ -134,7 +179,7 @@ class TestPySCFMoleculeBuilding:
             "unit": "Angstrom",
         }
         
-        mol = engine._build_mole(params)
+        mol = build_mole(params)
         
         assert mol.nelectron == 10
         assert mol.natm == 3
@@ -143,9 +188,7 @@ class TestPySCFMoleculeBuilding:
     
     def test_build_molecule_with_coords_format(self):
         """Build molecule using coords list format."""
-        from quantumvitas.engine.pyscf_engine import PySCFEngine
-        
-        engine = PySCFEngine()
+        from quantumvitas.engines.pyscf.runner import build_mole
         
         params = {
             "atoms": [
@@ -157,16 +200,14 @@ class TestPySCFMoleculeBuilding:
             "spin": 0,
         }
         
-        mol = engine._build_mole(params)
+        mol = build_mole(params)
         
         assert mol.nelectron == 2
         assert mol.natm == 2
     
     def test_build_charged_molecule(self):
         """Build charged molecule."""
-        from quantumvitas.engine.pyscf_engine import PySCFEngine
-        
-        engine = PySCFEngine()
+        from quantumvitas.engines.pyscf.runner import build_mole
         
         params = {
             "atoms": [
@@ -177,16 +218,14 @@ class TestPySCFMoleculeBuilding:
             "spin": 0,
         }
         
-        mol = engine._build_mole(params)
+        mol = build_mole(params)
         
         assert mol.nelectron == 2  # Li has 3 electrons, Li+ has 2
         assert mol.charge == 1
     
     def test_build_open_shell_molecule(self):
         """Build open-shell (radical) molecule."""
-        from quantumvitas.engine.pyscf_engine import PySCFEngine
-        
-        engine = PySCFEngine()
+        from quantumvitas.engines.pyscf.runner import build_mole
         
         params = {
             "atoms": [
@@ -197,9 +236,30 @@ class TestPySCFMoleculeBuilding:
             "spin": 2,  # Triplet oxygen
         }
         
-        mol = engine._build_mole(params)
+        mol = build_mole(params)
         
         assert mol.spin == 2
+    
+    def test_detect_molecular_system(self):
+        """Detect molecular (no cell) system."""
+        from quantumvitas.engines.pyscf.runner import detect_system_type
+        
+        params = {
+            "atoms": [{"element": "H", "x": 0, "y": 0, "z": 0}],
+        }
+        
+        assert detect_system_type(params) == "molecular"
+    
+    def test_detect_periodic_system(self):
+        """Detect periodic (with cell) system."""
+        from quantumvitas.engines.pyscf.runner import detect_system_type
+        
+        params = {
+            "atoms": [{"element": "H", "x": 0, "y": 0, "z": 0}],
+            "cell": [[5, 0, 0], [0, 5, 0], [0, 0, 5]],
+        }
+        
+        assert detect_system_type(params) == "periodic"
 
 
 @pytest.mark.skipif(
@@ -207,7 +267,7 @@ class TestPySCFMoleculeBuilding:
     reason="PySCF not installed"
 )
 class TestPySCFSCFExecution:
-    """Tests for SCF execution (requires PySCF installed)."""
+    """Tests for SCF execution via subprocess (requires PySCF installed)."""
     
     def test_rhf_h2(self, tmp_path):
         """Run RHF on H2 molecule."""
@@ -342,4 +402,3 @@ class TestPySCFDemoProject:
         assert params["method"] == "rhf"
         assert "basis" in params
         assert "atoms" in params
-
