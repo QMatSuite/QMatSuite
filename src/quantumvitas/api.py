@@ -2742,8 +2742,21 @@ class QVService:
             )
         
         # Try to load from artifact first
+        # If step_selector is provided, check if we should re-parse to ensure we get
+        # high-symmetry points from the correct step's stdout file
         cached = read_artifact(calculation_dir, AnalysisType.BANDS)
-        if cached:
+        should_reparse = False
+        if cached and step_selector:
+            # If cached artifact exists but has no high-symmetry points, re-parse
+            # (might have been created before bands.out was available)
+            high_sym_points = cached.get("high_symmetry_points", [])
+            if not high_sym_points or len(high_sym_points) == 0:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.debug(f"[GET_BANDS] Cached artifact has no high-symmetry points, re-parsing with step_selector={step_selector}")
+                should_reparse = True
+        
+        if cached and not should_reparse:
             return {
                 "calculation": calculation_selector,
                 "step": step_selector,
@@ -2757,17 +2770,25 @@ class QVService:
                 "units": cached.get("units", {"energy": "eV", "k_distance": "2π/a"}),
             }
         
-        # No artifact - parse and create one
+        # No artifact or need to re-parse - parse and create one
         status = ensure_analysis_artifact(
             analysis_type=AnalysisType.BANDS,
             calculation_dir=calculation_dir,
             raw_dir=raw_dir,
             step_selector=step_selector,
-            force=False,
+            force=should_reparse,  # Force re-parse if we detected missing labels
         )
         
         if not status.ok:
-            raise QVServiceError(status.error or "Failed to parse band structure data")
+            import logging
+            logger = logging.getLogger(__name__)
+            error_msg = status.error or "Failed to parse band structure data"
+            logger.error(
+                f"[GET_BAND_STRUCTURE_DATA] ensure_analysis_artifact failed: "
+                f"step_selector={step_selector}, calculation={calculation_selector}, "
+                f"error={error_msg}"
+            )
+            raise QVServiceError(error_msg)
         
         # Now read the freshly created artifact
         cached = read_artifact(calculation_dir, AnalysisType.BANDS)

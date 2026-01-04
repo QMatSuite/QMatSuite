@@ -175,15 +175,18 @@ test.describe('E2E: Step Parameter Defaults', () => {
     const stepFileContent = fs.readFileSync(stepFilePathResolved, 'utf-8');
     
     // Verify defaults are present in the step file content
-    // Check for CONTROL section with outdir and restart_mode
+    // Check for CONTROL section with restart_mode
+    // Note: outdir is intentionally injected at materialization/runtime, not persisted in step YAML
     expect(stepFileContent).toContain('CONTROL');
-    expect(stepFileContent).toMatch(/outdir:\s*['"]?\.\/outdir['"]?/);
     expect(stepFileContent).toMatch(/restart_mode:\s*['"]?from_scratch['"]?/);
     
     // Check for ELECTRONS section with conv_thr
     expect(stepFileContent).toContain('ELECTRONS');
     // Match conv_thr with various formats: 1.0e-08, 1e-08, 1e-8, etc.
     expect(stepFileContent).toMatch(/conv_thr:\s*1\.?0*e?-?0*8/i);
+    
+    // Check that calculation type is scf
+    expect(stepFileContent).toMatch(/calculation:\s*['"]?scf['"]?/i);
     
     // Check for visible error messages in the UI (toasts, banners, etc.)
     const errorElements = appPage.locator('[class*="error"], [class*="Error"], [data-testid*="error"], [data-testid*="Error"], .daemon-error-banner, .error-boundary');

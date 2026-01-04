@@ -258,10 +258,30 @@ test.describe('E2E Test 3: Run calculation → Run & Logs → Analysis (within c
     // The calculation should already be selected (from when we clicked it earlier)
     await appPage.waitForTimeout(2000);
     
-    // CalculationAnalysisPanel auto-detects analysis type based on last step and auto-loads
-    // For Si bands demo, it should auto-select "bands" and load automatically
-    // Wait for bands chart to appear (auto-loading may take time)
-    // The chart should appear after data is automatically loaded
+    // With the new step-driven Analysis UX, we need to:
+    // 1. Select the 'bands' step chip (NOT 'bands_pw' - only 'bands' step has plot capability)
+    // 2. Click the "Plot" view mode tab
+    // 3. Wait for the bands chart to appear
+    
+    // Find and click the 'bands' step chip (step_type must be exactly "bands", not "bands_pw")
+    // Use the specific testid for the bands step tab
+    const bandsStepChip = analysisPanel.locator('[data-testid="qv-analysis-step-tab-bands"]');
+    await expect(bandsStepChip).toBeVisible({ timeout: 5000 });
+    
+    // Verify it's the correct step (not bands_pw)
+    const stepType = await bandsStepChip.getAttribute('data-step-type');
+    expect(stepType?.toLowerCase()).toBe('bands');
+    
+    await bandsStepChip.click();
+    
+    // Wait for the view mode tabs to appear
+    const plotTab = analysisPanel.locator('.calculation-analysis-panel__view-mode-tab').filter({ hasText: /^Plot$/i });
+    await expect(plotTab).toBeVisible({ timeout: 5000 });
+    
+    // Click the Plot tab to switch to plot view
+    await plotTab.click();
+    
+    // Wait for bands chart to appear (loading may take time)
     await expect(appPage.getByTestId('qv-analysis-bands-chart')).toBeVisible({ timeout: 30000 });
     
     // Optionally check that the chart container has some child elements (e.g. band paths)
