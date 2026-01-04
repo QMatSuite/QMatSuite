@@ -115,6 +115,10 @@
 ### 5.3 单位真相（必须）
 - 内部 lattice / cell parameters 的绝对单位统一为：**Å（angstrom）**。
 
+### 5.4 输出文件命名不变量（必须）
+- 输入可版本化（scf.in, scf-1.in），但输出 capture 文件必须固定为 `{step_type}.out/.err` 并覆盖。
+- **禁止由 input 推导 output 文件名**（例如：scf-1.in → scf-1.out 是错误的；正确应为 scf-1.in → scf.out）。
+
 ---
 
 ## 6. Pseudopotential 身份：SHA（严格相同）vs SHATOKEN（物理相同）
