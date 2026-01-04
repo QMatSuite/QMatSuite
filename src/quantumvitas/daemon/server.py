@@ -4867,11 +4867,22 @@ class QVDaemon:
         if step:
             self._resolve_step_with_fallback(project_root, calculation, step)
         
-        return QVService.get_band_structure_data(
-            project_root=project_root,
-            calculation_selector=calculation,
-            step_selector=step,
-        )
+        try:
+            return QVService.get_band_structure_data(
+                project_root=project_root,
+                calculation_selector=calculation,
+                step_selector=step,
+            )
+        except QVServiceError as e:
+            # Log failure details at error boundary
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(
+                f"[GET_BAND_STRUCTURE_DATA] Failed: step={step}, calculation={calculation}, "
+                f"project_root={project_root}, error={e}"
+            )
+            # Re-raise to be caught by outer handler that returns ok=false
+            raise
     
     def _handle_get_reference_analysis(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """

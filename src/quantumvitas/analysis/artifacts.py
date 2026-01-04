@@ -275,8 +275,25 @@ def get_required_files_for_analysis(
             result["missing"].append("Bands data file (*.dat.gnu)")
         
         # Optional files for better analysis
-        if bands_files.get("bands_out"):
-            result["files"]["bands_pp_out"] = str(bands_files["bands_out"])
+        # Check for bands stdout file (for high-symmetry points)
+        # Priority: 1) bands.out (new convention), 2) legacy patterns from find_bands_files
+        bands_stdout_candidates = [
+            raw_dir / "bands.out",  # New naming convention: step_type.out
+            raw_dir / "bands_pw.out",  # Alternative step type
+        ]
+        
+        bands_out_found = None
+        for candidate in bands_stdout_candidates:
+            if candidate.exists():
+                bands_out_found = candidate
+                break
+        
+        if not bands_out_found and bands_files.get("bands_out"):
+            bands_out_found = bands_files["bands_out"]
+        
+        if bands_out_found:
+            result["files"]["bands_pp_out"] = str(bands_out_found)
+        
         if bands_files.get("scf_out"):
             result["files"]["scf_output"] = str(bands_files["scf_out"])
         if bands_files.get("nscf_out"):
@@ -470,12 +487,15 @@ def parse_and_write_bands_artifact(
     Args:
         calculation_dir: Calculation directory
         raw_dir: Raw directory with QE outputs
-        step_selector: Optional step selector
+        step_selector: Optional step selector (ULID)
         force: Force re-parse even if artifact exists
         
     Returns:
         AnalysisStatus with result
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
     artifact_path = get_artifact_path(calculation_dir, AnalysisType.BANDS)
     
     # Check for existing artifact
@@ -498,10 +518,12 @@ def parse_and_write_bands_artifact(
     # Find required files
     file_info = get_required_files_for_analysis(AnalysisType.BANDS, raw_dir, step_selector)
     if not file_info["found"]:
+        error_msg = f"Missing required files: {', '.join(file_info['missing'])}"
+        logger.error(f"[BANDS_ARTIFACT] {error_msg}")
         return AnalysisStatus(
             ok=False,
             analysis_type="bands",
-            error=f"Missing required files: {', '.join(file_info['missing'])}",
+            error=error_msg,
         )
     
     # Parse band structure
@@ -525,10 +547,62 @@ def parse_and_write_bands_artifact(
             except Exception:
                 pass
         
-        # Parse bands
+        # Parse bands - try to get stdout file for high-symmetry points
+        # Priority: 1) bands_pp_out from file_info, 2) step_type.out if step_selector provided
+        
         symmetry_file = None
         if file_info["files"].get("bands_pp_out"):
             symmetry_file = Path(file_info["files"]["bands_pp_out"])
+            logger.debug(f"[BANDS_ARTIFACT] Using bands_pp_out from file_info: {symmetry_file}")
+        elif step_selector:
+            # Try to resolve step to get step_type, then check for {step_type}.out
+            try:
+                from quantumvitas.core.resolution import require_step
+                # We need project_root and calculation_selector to resolve step
+                # But we can infer from calculation_dir
+                project_root = calculation_dir.parent.parent  # calculation_dir is usually <project>/calculations/<calc_name>
+                # Try to find calculation by looking for calculation.yaml
+                calc_yaml = calculation_dir / "calculation.yaml"
+                if calc_yaml.exists():
+                    import yaml
+                    calc_data = yaml.safe_load(calc_yaml.read_text()) or {}
+                    calc_meta = calc_data.get("meta", {})
+                    calc_id = calc_meta.get("id") or calc_meta.get("slug") or calculation_dir.name
+                    step = require_step(project_root, calc_id, step_selector)
+                    # Get step type from step
+                    from quantumvitas.calculation.structure_steps import StructureStepSpec
+                    try:
+                        spec = StructureStepSpec.from_yaml(step.absolute_path, resolve_structure_selector=None)
+                        step_type = spec.step_type
+                    except Exception:
+                        # Fallback: try from calculation.yaml
+                        steps = calc_data.get("steps", [])
+                        step_entry = next((e for e in steps if e.get("id") == step_selector or e.get("step_id") == step_selector), None)
+                        step_type = step_entry.get("type") if step_entry else None
+                    
+                    if step_type:
+                        step_stdout = raw_dir / f"{step_type}.out"
+                        logger.debug(f"[BANDS_ARTIFACT] Checking for stdout file: {step_stdout} (step_type={step_type})")
+                        if step_stdout.exists():
+                            symmetry_file = step_stdout
+                            logger.debug(f"[BANDS_ARTIFACT] Found stdout file: {symmetry_file}")
+                        else:
+                            logger.debug(f"[BANDS_ARTIFACT] Stdout file not found: {step_stdout}")
+            except Exception as e:
+                # If resolution fails, continue without symmetry file
+                logger.debug(f"[BANDS_ARTIFACT] Failed to resolve step for stdout file: {e}")
+                pass
+        
+        if symmetry_file:
+            logger.debug(f"[BANDS_ARTIFACT] Using symmetry_file: {symmetry_file} (exists={symmetry_file.exists()})")
+        else:
+            logger.debug(f"[BANDS_ARTIFACT] No symmetry_file found for high-symmetry points")
+        
+        # Log file paths before parsing
+        logger.info(
+            f"[BANDS_ARTIFACT] Parsing: bands_file={bands_file}, "
+            f"symmetry_file={symmetry_file}, fermi_energy={fermi_energy}"
+        )
         
         band_data = parse_bands_gnu(
             bands_file,
@@ -545,6 +619,11 @@ def parse_and_write_bands_artifact(
         # Write artifact
         write_artifact(calculation_dir, AnalysisType.BANDS, data)
         
+        logger.info(
+            f"[BANDS_ARTIFACT] Success: n_bands={band_data.n_bands}, "
+            f"n_kpoints={band_data.n_kpoints}, n_labels={len(band_data.high_symmetry_points)}"
+        )
+        
         return AnalysisStatus(
             ok=True,
             analysis_type="bands",
@@ -558,10 +637,18 @@ def parse_and_write_bands_artifact(
             },
         )
     except Exception as e:
+        error_msg = f"Failed to parse band structure: {e}"
+        logger.error(
+            f"[BANDS_ARTIFACT] {error_msg}: step_selector={step_selector}, "
+            f"bands_file={file_info.get('files', {}).get('bands_gnu')}, "
+            f"symmetry_file={symmetry_file}"
+        )
+        import traceback
+        logger.debug(f"[BANDS_ARTIFACT] Traceback: {traceback.format_exc()}")
         return AnalysisStatus(
             ok=False,
             analysis_type="bands",
-            error=f"Failed to parse band structure: {e}",
+            error=error_msg,
         )
 
 

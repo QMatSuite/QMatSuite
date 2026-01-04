@@ -702,16 +702,28 @@ def parse_bands_gnu(
             reciprocal_lattice = _parse_reciprocal_lattice_vectors(pw_path)
     
     # Parse high-symmetry points if symmetry file provided
+    import logging
+    logger = logging.getLogger(__name__)
+    
     high_sym_points: List[HighSymmetryPoint] = []
     if symmetry_file:
         sym_path = Path(symmetry_file)
+        logger.debug(f"[PARSE_BANDS] Attempting to parse high-symmetry points from: {sym_path}")
         if sym_path.exists():
-            struct_path = Path(structure_file) if structure_file else None
-            high_sym_points = _parse_bands_symmetry_output(
-                sym_path,
-                reciprocal_lattice=reciprocal_lattice,
-                structure_file=struct_path,
-            )
+            try:
+                struct_path = Path(structure_file) if structure_file else None
+                high_sym_points = _parse_bands_symmetry_output(
+                    sym_path,
+                    reciprocal_lattice=reciprocal_lattice,
+                    structure_file=struct_path,
+                )
+                logger.debug(f"[PARSE_BANDS] Parsed {len(high_sym_points)} high-symmetry points from {sym_path.name}")
+            except Exception as e:
+                logger.debug(f"[PARSE_BANDS] Failed to parse high-symmetry points from {sym_path}: {e}", exc_info=True)
+                # Continue without high-symmetry points - plot will still render
+                high_sym_points = []
+        else:
+            logger.debug(f"[PARSE_BANDS] Symmetry file not found: {sym_path}")
     
     return BandStructureData(
         k_distances=k_distances,
@@ -881,35 +893,66 @@ def _parse_bands_symmetry_output(
         path: Path to bands.x output file
         reciprocal_lattice: Optional 3x3 array of reciprocal lattice vectors (rows are b1,b2,b3)
         structure_file: Optional path to structure file for pymatgen labeling
+        
+    Returns:
+        List of HighSymmetryPoint objects, deduplicated by x coordinate
     """
-    text = path.read_text()
-    points: List[HighSymmetryPoint] = []
+    import logging
+    logger = logging.getLogger(__name__)
     
+    text = path.read_text()
+    from typing import Dict
+    points_dict: Dict[float, HighSymmetryPoint] = {}  # x_coord -> point (for deduplication)
+    
+    # More flexible regex: allows optional spacing and text between k-coords and "x coordinate"
     pattern = re.compile(
-        r'high-symmetry point:\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+x coordinate\s+([-\d.]+)'
+        r'high-symmetry point:\s*([-\d.]+)\s+([-\d.]+)\s+([-\d.]+).*?x coordinate\s+([-\d.]+)',
+        re.IGNORECASE
     )
     
+    matches_found = 0
     for match in pattern.finditer(text):
-        kx, ky, kz = float(match.group(1)), float(match.group(2)), float(match.group(3))
-        x_coord = float(match.group(4))
-        k_cart = (kx, ky, kz)
-        
-        # Convert to crystal coordinates if reciprocal lattice is available
-        if reciprocal_lattice is not None:
-            k_cryst = _cartesian_to_crystal(k_cart, reciprocal_lattice)
-            # Try pymatgen first, then fall back to simple identification
-            label = _identify_high_symmetry_label_pymatgen(k_cryst, structure_file)
-        else:
-            # Fall back to old behavior (Cartesian-based identification)
-            label = _identify_high_symmetry_point_cartesian(kx, ky, kz)
-        
-        points.append(HighSymmetryPoint(
-            label=label,
-            k_distance=x_coord,
-            k_coords=k_cart,  # Store original Cartesian coords
-        ))
+        matches_found += 1
+        try:
+            kx, ky, kz = float(match.group(1)), float(match.group(2)), float(match.group(3))
+            x_coord = float(match.group(4))
+            k_cart = (kx, ky, kz)
+            
+            # Deduplicate by x coordinate within epsilon (1e-6)
+            # If x_coord already exists, keep the first one (preserve order)
+            eps = 1e-6
+            existing_x = None
+            for existing_x_coord in points_dict.keys():
+                if abs(existing_x_coord - x_coord) < eps:
+                    existing_x = existing_x_coord
+                    break
+            
+            if existing_x is None:
+                # Convert to crystal coordinates if reciprocal lattice is available
+                if reciprocal_lattice is not None:
+                    k_cryst = _cartesian_to_crystal(k_cart, reciprocal_lattice)
+                    # Try pymatgen first, then fall back to simple identification
+                    label = _identify_high_symmetry_label_pymatgen(k_cryst, structure_file)
+                else:
+                    # Fall back to old behavior (Cartesian-based identification)
+                    label = _identify_high_symmetry_point_cartesian(kx, ky, kz)
+                
+                points_dict[x_coord] = HighSymmetryPoint(
+                    label=label,
+                    k_distance=x_coord,
+                    k_coords=k_cart,  # Store original Cartesian coords
+                )
+        except (ValueError, IndexError) as e:
+            logger.debug(f"Failed to parse high-symmetry point from line: {e}")
+            continue
     
-    return points
+    # Return points sorted by x coordinate (preserve file order as much as possible)
+    points_list = list(points_dict.values())
+    points_list.sort(key=lambda p: p.k_distance)
+    
+    logger.debug(f"Parsed {matches_found} high-symmetry point matches from {path.name}, deduplicated to {len(points_list)} unique points")
+    
+    return points_list
 
 
 def _identify_high_symmetry_point_cartesian(kx: float, ky: float, kz: float) -> str:
@@ -992,8 +1035,12 @@ def find_bands_files(
             result['bands_gnu'] = file
         # Look for bands.x output - multiple naming conventions
         elif name.endswith('.out'):
-            # bands.x output patterns: *.bands.out, *bandspp*.out, *_bands.out
-            if '.bands.out' in name or 'bandspp' in name:
+            # bands.x output patterns: 
+            # - bands.out (new convention: step_type.out)
+            # - *.bands.out, *bandspp*.out, *_bands.out (legacy patterns)
+            if name == 'bands.out':
+                result['bands_out'] = file
+            elif '.bands.out' in name or 'bandspp' in name:
                 result['bands_out'] = file
             # Also check for bands_pp or bands.pp patterns
             elif 'bands' in name and ('pp' in name or '_pp' in name):
