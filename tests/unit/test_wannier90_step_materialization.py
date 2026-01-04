@@ -177,15 +177,17 @@ def test_pw2wannier90_generates_pw2wan_file(temp_dir, simple_structure):
     )
     
     # Check file exists and has correct extension
+    # E2: pw2wannier90 input file should be pw2wan.in (not test.pw2wan)
     assert generated_input.exists()
-    assert generated_input.name == "test.pw2wan" or generated_input.name.endswith(".pw2wan")
+    assert generated_input.name == "pw2wan.in", f"Expected pw2wan.in, got {generated_input.name}"
     
     # Check content
     content = generated_input.read_text()
     assert "&inputpp" in content
     assert "seedname" in content
-    assert "prefix" in content
-    assert "outdir" in content
+    # E1: prefix/outdir are injected at execution, may or may not be in generated input
+    # But seedname must be present (controls output file names)
+    assert "test" in content, "seedname should be in pw2wan input content"
 
 
 if __name__ == "__main__":

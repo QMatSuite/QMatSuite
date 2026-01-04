@@ -382,7 +382,36 @@ class QuantumEspressoEngine(Engine):
             # wannier90.x seedname
             seedname = input_file.stem
             command.append(seedname)
-        # pw2wannier90 uses stdin like regular QE, no special handling needed
+        elif step_type == "pw2wannier90":
+            # pw2wannier90.x -i input.in (use -i flag, NOT stdin)
+            # IMPORTANT: Use relative path from working_dir to avoid path issues
+            # Always use relative path from working_dir (pw2wannier90.x runs with cwd=working_dir)
+            input_file_resolved = Path(input_file)
+            
+            # Safety check: prevent '.' or directory paths
+            if str(input_file_resolved) in (".", "./", ".."):
+                raise ValueError(
+                    f"Invalid input_file for pw2wannier90: '{input_file_resolved}'. "
+                    f"Cannot be '.' or a directory. Must be a valid file path."
+                )
+            
+            if input_file_resolved.is_absolute():
+                # Make relative to working_dir if possible
+                try:
+                    working_dir_resolved = working_dir.resolve()
+                    input_file_rel = input_file_resolved.relative_to(working_dir_resolved)
+                    # Use relative path (e.g., "pw2wan.in")
+                    command.append("-i")
+                    command.append(str(input_file_rel))
+                except ValueError:
+                    # Not relative to working_dir - this is unexpected, but use absolute as fallback
+                    # Log a warning but continue (some edge cases might need absolute paths)
+                    command.append("-i")
+                    command.append(str(input_file_resolved))
+            else:
+                # Already relative, use as-is (should be relative to working_dir)
+                command.append("-i")
+                command.append(str(input_file_resolved))
         
         # Add MPI wrapper if configured
         if self.config.mpi_command and self.config.mpi_cores is not None and self.config.mpi_cores > 1:
@@ -404,8 +433,9 @@ class QuantumEspressoEngine(Engine):
         Returns:
             True if step uses stdin, False if uses command-line arguments
         """
-        # These Wannier90 steps use command-line seedname, not stdin
-        no_stdin_steps = {"w90_preproc", "w90_run"}
+        # These Wannier90 steps use command-line arguments, not stdin
+        # pw2wannier90 uses -i flag to avoid Errno 21 issues with stdin redirection
+        no_stdin_steps = {"w90_preproc", "w90_run", "pw2wannier90"}
         return step_type not in no_stdin_steps
     
     def detect_module_from_input(self, input_file: Path) -> QEModule:

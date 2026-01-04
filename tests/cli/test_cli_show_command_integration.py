@@ -198,6 +198,20 @@ def test_cli_show_command_executes_against_references(
 
         output_file, generated_input = _extract_paths(run_result.stdout)
         assert output_file.exists(), f"Output file missing: {output_file}"
+        
+        # Debug: Check file size and content preview
+        output_size = output_file.stat().st_size
+        if output_size == 0:
+            # Output file is empty - execution likely failed
+            output_content_preview = ""
+        else:
+            output_content_preview = output_file.read_text()[:500]  # First 500 chars
+        
+        assert output_size > 0, (
+            f"Output file {output_file} is empty (0 bytes). "
+            f"This indicates execution failed. CLI stdout:\n{run_result.stdout}"
+        )
+        
         if generated_input is None:
             generated_input = step_spec_path
 
@@ -217,5 +231,23 @@ def test_cli_show_command_executes_against_references(
             reference_file=case.reference_path,
             category=pw_dir.name,
         )
-        assert success, f"{input_path.name}: {message}"
+        if not success:
+            # Provide more context for debugging
+            output_content_preview = ""
+            if output_file.exists() and output_file.stat().st_size > 0:
+                try:
+                    content = output_file.read_text()
+                    # Show first 500 chars and last 200 chars
+                    if len(content) > 700:
+                        output_content_preview = f"\nOutput file preview (first 500 + last 200 chars):\n{content[:500]}\n... [truncated] ...\n{content[-200:]}"
+                    else:
+                        output_content_preview = f"\nOutput file content:\n{content}"
+                except Exception:
+                    output_content_preview = "\n(Could not read output file content)"
+            raise AssertionError(
+                f"{input_path.name}: {message}"
+                f"\nOutput file: {output_file}"
+                f"\nOutput file size: {output_file.stat().st_size if output_file.exists() else 0} bytes"
+                f"{output_content_preview}"
+            )
 

@@ -886,6 +886,41 @@ export interface QVCommandMap {
     };
   };
   
+  list_step_artifacts: {
+    payload: {
+      project_root: string;
+      calculation: string;
+      step: string;
+    };
+    result: {
+      raw_dir: string;
+      artifacts: Array<{
+        path_relative_to_raw: string;
+        kind: string;
+        size_bytes: number;
+        mtime: number;
+        is_default_candidate: boolean;
+      }>;
+    };
+  };
+  
+  read_step_artifact_text: {
+    payload: {
+      project_root: string;
+      calculation: string;
+      step: string;
+      artifact_path: string;
+      head_lines?: number;
+      tail_lines?: number;
+    };
+    result: {
+      content: string;
+      truncated: boolean;
+      total_bytes: number;
+      resolved_path: string;
+    };
+  };
+  
   // Job management
   run_calculation: {
     payload: {

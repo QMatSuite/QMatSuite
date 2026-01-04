@@ -34,7 +34,7 @@ class Wannier90Input:
     
     # Unit cell (list of 3 vectors, each a list of 3 floats)
     unit_cell_cart: List[List[float]] = field(default_factory=list)
-    length_unit: str = "bohr"  # 'bohr' or 'ang'
+    length_unit: str = "ang"  # 'bohr' or 'ang' - default to 'ang' (Angstrom)
     
     # Atoms (list of [element, x, y, z])
     atoms_frac: List[List[Any]] = field(default_factory=list)
@@ -68,7 +68,7 @@ class Wannier90Input:
         """
         lines = []
         
-        # Core parameters
+        # Core parameters (must come first)
         if self.num_wann is not None:
             lines.append(f"num_wann        = {self.num_wann}")
         if self.num_bands is not None:
@@ -86,8 +86,11 @@ class Wannier90Input:
             lines.append("bands_plot = .true.")
             lines.append("")
         
-        # Extra parameters (key = value)
+        # Extra parameters (key = value) - but exclude QE-specific ones
         for key, value in self.extra_parameters.items():
+            # Skip QE namelist parameters that shouldn't be in .win file
+            if key.lower() in ("outdir", "pseudo_dir", "prefix", "control", "system", "electrons"):
+                continue
             if isinstance(value, bool):
                 val_str = ".true." if value else ".false."
             elif isinstance(value, str):
@@ -145,16 +148,39 @@ class Wannier90Input:
             lines.append("end unit_cell_cart")
             lines.append("")
         
-        # MP grid
+        # MP grid (must come before kpoints block)
         if self.mp_grid:
             lines.append(f"mp_grid : {self.mp_grid[0]} {self.mp_grid[1]} {self.mp_grid[2]}")
             lines.append("")
         
-        # K-points block
+        # K-points block (Wannier90 requires explicit kpoints when mp_grid is specified)
         if self.kpoints:
             lines.append("begin kpoints")
             for kpt in self.kpoints:
-                lines.append(f"{kpt[0]:.4f}  {kpt[1]:.4f}  {kpt[2]:.4f}")
+                # Format with stable precision and canonicalize (snap near 0/1)
+                # Use 10 decimal places for consistency, snap values near 0/1
+                kx, ky, kz = float(kpt[0]), float(kpt[1]), float(kpt[2])
+                # Canonicalize: snap near 0 and 1
+                tol = 1e-12
+                if abs(kx) < tol:
+                    kx = 0.0
+                elif abs(kx - 1.0) < tol:
+                    kx = 0.0
+                elif abs(kx + 1.0) < tol:
+                    kx = 0.0
+                if abs(ky) < tol:
+                    ky = 0.0
+                elif abs(ky - 1.0) < tol:
+                    ky = 0.0
+                elif abs(ky + 1.0) < tol:
+                    ky = 0.0
+                if abs(kz) < tol:
+                    kz = 0.0
+                elif abs(kz - 1.0) < tol:
+                    kz = 0.0
+                elif abs(kz + 1.0) < tol:
+                    kz = 0.0
+                lines.append(f"  {kx:10.10f}  {ky:10.10f}  {kz:10.10f}")
             lines.append("end kpoints")
             lines.append("")
         
@@ -171,10 +197,21 @@ class Wannier90Input:
             lines.append("end kpoint_path")
             lines.append("")
         
-        # Extra raw lines
+        # Extra raw lines (but filter out QE namelist syntax)
         if self.extra_lines:
-            lines.append(self.extra_lines.strip())
-            lines.append("")
+            extra_lines_clean = []
+            for line in self.extra_lines.strip().split("\n"):
+                line_stripped = line.strip()
+                # Skip QE namelist syntax
+                if line_stripped.startswith("&") or line_stripped.startswith("/"):
+                    continue
+                # Skip QE-specific parameters
+                if any(qe_param in line_stripped.lower() for qe_param in ["outdir", "pseudo_dir", "prefix"]):
+                    continue
+                extra_lines_clean.append(line)
+            if extra_lines_clean:
+                lines.extend(extra_lines_clean)
+                lines.append("")
         
         return "\n".join(lines)
     
@@ -322,7 +359,8 @@ class Pw2Wannier90Input:
             String content of the .pw2wan file
         """
         lines = []
-        lines.append("&inputpp")
+        # Add space after &inputpp to match QE format (some versions expect this)
+        lines.append("&inputpp ")
         lines.append(f"   outdir = '{self.outdir}'")
         lines.append(f"   prefix = '{self.prefix}'")
         lines.append(f"   seedname = '{self.seedname}'")
@@ -335,7 +373,8 @@ class Pw2Wannier90Input:
         if self.write_dmn:
             lines.append(f"   write_dmn = .true.")
         lines.append("/")
-        return "\n".join(lines)
+        # Add trailing newline to match reference format
+        return "\n".join(lines) + "\n"
     
     def write(self, path: Path) -> None:
         """Write .pw2wan file to disk."""
