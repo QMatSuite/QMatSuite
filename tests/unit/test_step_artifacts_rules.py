@@ -253,3 +253,4 @@ class TestStepArtifactsIntegration:
         default = get_default_artifact("w90_run", w90_params, raw_dir, all_artifacts)
         assert default == "diamond.wout"
 
+
